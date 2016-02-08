@@ -1,178 +1,242 @@
-From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: 4.1.15 - ext4 / xattr related crash?
-Date: Mon, 8 Feb 2016 10:49:50 +0100
-Message-ID: <20160208094950.GH10986@pcnci.linuxbox.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/2] dax: move writeback calls into the filesystems
+Date: Mon, 8 Feb 2016 11:48:50 +0100
+Message-ID: <20160208104849.GB9451@quack.suse.cz>
+References: <1454829553-29499-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1454829553-29499-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="0OWHXb1mYLuhj1Ox"
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:36952 "EHLO gwu.lbox.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751054AbcBHKAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2016 05:00:16 -0500
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---0OWHXb1mYLuhj1Ox
 Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+In-Reply-To: <1454829553-29499-3-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Sun 07-02-16 00:19:13, Ross Zwisler wrote:
+> Previously calls to dax_writeback_mapping_range() for all DAX filesystems
+> (ext2, ext4 & xfs) were centralized in filemap_write_and_wait_range().
+> dax_writeback_mapping_range() needs a struct block_device, and it used to
+> get that from inode->i_sb->s_bdev.  This is correct for normal inodes
+> mounted on ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
+> block devices and for XFS real-time files.
+> 
+> Instead, call dax_writeback_mapping_range() directly from the filesystem or
+> raw block device fsync/msync code so that they can supply us with a valid
+> block device.
+> 
+> It should be noted that this will reduce the number of calls to
+> dax_writeback_mapping_range() because filemap_write_and_wait_range() is
+> called in the various filesystems for operations other than just
+> fsync/msync.  Both ext4 & XFS call filemap_write_and_wait_range() outside
+> of ->fsync for hole punch, truncate, and block relocation
+> (xfs_shift_file_space() && ext4_collapse_range()/ext4_insert_range()).
+> 
+> I don't believe that these extra flushes are necessary in the DAX case.  In
+> the page cache case when we have dirty data in the page cache, that data
+> will be actively lost if we evict a dirty page cache page without flushing
+> it to media first.  For DAX, though, the data will remain consistent with
+> the physical address to which it was written regardless of whether it's in
+> the processor cache or not - really the only reason I see to flush is in
+> response to a fsync or msync so that our data is durable on media in case
+> of a power loss.  The case where we could throw dirty data out of the page
+> cache and essentially lose writes simply doesn't exist.
 
-I've just had server crash that could be ext4 or xattr related..
-It's running x86_64 4.1.15, updated from 4.0.5 about a week ago.
+You should at least note that sync(2) won't make data durable with this
+patch in the changelog. Dave and Christoph have told you that Linux users
+depend on sync(2) to make data durable and I fully agree with them.  Given
+current options, I think we can live with this for 4.5 but long term this
+is IMO unacceptable.
 
-The box stopped responding, but I have netconsole logged backtraces..
+								Honza
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  fs/block_dev.c      |  7 +++++++
+>  fs/dax.c            |  5 ++---
+>  fs/ext2/file.c      | 10 ++++++++++
+>  fs/ext4/fsync.c     | 10 +++++++++-
+>  fs/xfs/xfs_file.c   | 12 ++++++++++--
+>  include/linux/dax.h |  4 ++--
+>  mm/filemap.c        |  6 ------
+>  7 files changed, 40 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/block_dev.c b/fs/block_dev.c
+> index fa0507a..312ad44 100644
+> --- a/fs/block_dev.c
+> +++ b/fs/block_dev.c
+> @@ -356,8 +356,15 @@ int blkdev_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
+>  {
+>  	struct inode *bd_inode = bdev_file_inode(filp);
+>  	struct block_device *bdev = I_BDEV(bd_inode);
+> +	struct address_space *mapping = bd_inode->i_mapping;
+>  	int error;
+>  	
+> +	if (dax_mapping(mapping) && mapping->nrexceptional) {
+> +		error = dax_writeback_mapping_range(mapping, bdev, start, end);
+> +		if (error)
+> +			return error;
+> +	}
+> +
+>  	error = filemap_write_and_wait_range(filp->f_mapping, start, end);
+>  	if (error)
+>  		return error;
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 4592241..4b5006a 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -484,11 +484,10 @@ static int dax_writeback_one(struct block_device *bdev,
+>   * end]. This is required by data integrity operations to ensure file data is
+>   * on persistent storage prior to completion of the operation.
+>   */
+> -int dax_writeback_mapping_range(struct address_space *mapping, loff_t start,
+> -		loff_t end)
+> +int dax_writeback_mapping_range(struct address_space *mapping,
+> +		struct block_device *bdev, loff_t start, loff_t end)
+>  {
+>  	struct inode *inode = mapping->host;
+> -	struct block_device *bdev = inode->i_sb->s_bdev;
+>  	pgoff_t start_index, end_index, pmd_index;
+>  	pgoff_t indices[PAGEVEC_SIZE];
+>  	struct pagevec pvec;
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 2c88d68..d1abf53 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -162,6 +162,16 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+>  	int ret;
+>  	struct super_block *sb = file->f_mapping->host->i_sb;
+>  	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+> +#ifdef CONFIG_FS_DAX
+> +	struct address_space *inode_mapping = file->f_inode->i_mapping;
+> +
+> +	if (dax_mapping(inode_mapping) && inode_mapping->nrexceptional) {
+> +		ret = dax_writeback_mapping_range(inode_mapping, sb->s_bdev,
+> +				start, end);
+> +		if (ret)
+> +			return ret;
+> +	}
+> +#endif
+>  
+>  	ret = generic_file_fsync(file, start, end, datasync);
+>  	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index 8850254..e9cf53b 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -27,6 +27,7 @@
+>  #include <linux/sched.h>
+>  #include <linux/writeback.h>
+>  #include <linux/blkdev.h>
+> +#include <linux/dax.h>
+>  
+>  #include "ext4.h"
+>  #include "ext4_jbd2.h"
+> @@ -83,10 +84,10 @@ static int ext4_sync_parent(struct inode *inode)
+>   * What we do is just kick off a commit and wait on it.  This will snapshot the
+>   * inode to disk.
+>   */
+> -
+>  int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  {
+>  	struct inode *inode = file->f_mapping->host;
+> +	struct address_space *mapping = inode->i_mapping;
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+>  	int ret = 0, err;
+> @@ -97,6 +98,13 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+>  
+>  	trace_ext4_sync_file_enter(file, datasync);
+>  
+> +	if (dax_mapping(mapping) && mapping->nrexceptional) {
+> +		err = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
+> +				start, end);
+> +		if (err)
+> +			goto out;
+> +	}
+> +
+>  	if (inode->i_sb->s_flags & MS_RDONLY) {
+>  		/* Make sure that we read updated s_mount_flags value */
+>  		smp_rmb();
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 52883ac..84e95cc 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -209,7 +209,8 @@ xfs_file_fsync(
+>  	loff_t			end,
+>  	int			datasync)
+>  {
+> -	struct inode		*inode = file->f_mapping->host;
+> +	struct address_space	*mapping = file->f_mapping;
+> +	struct inode		*inode = mapping->host;
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	struct xfs_mount	*mp = ip->i_mount;
+>  	int			error = 0;
+> @@ -218,7 +219,14 @@ xfs_file_fsync(
+>  
+>  	trace_xfs_file_fsync(ip);
+>  
+> -	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
+> +	if (dax_mapping(mapping) && mapping->nrexceptional) {
+> +		error = dax_writeback_mapping_range(mapping,
+> +				xfs_find_bdev_for_inode(inode), start, end);
+> +		if (error)
+> +			return error;
+> +	}
+> +
+> +	error = filemap_write_and_wait_range(mapping, start, end);
+>  	if (error)
+>  		return error;
+>  
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index bad27b0..8e9f114 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -42,6 +42,6 @@ static inline bool dax_mapping(struct address_space *mapping)
+>  {
+>  	return mapping->host && IS_DAX(mapping->host);
+>  }
+> -int dax_writeback_mapping_range(struct address_space *mapping, loff_t start,
+> -		loff_t end);
+> +int dax_writeback_mapping_range(struct address_space *mapping,
+> +		struct block_device *bdev, loff_t start, loff_t end);
+>  #endif
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index bc94386..c4286eb 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -482,12 +482,6 @@ int filemap_write_and_wait_range(struct address_space *mapping,
+>  {
+>  	int err = 0;
+>  
+> -	if (dax_mapping(mapping) && mapping->nrexceptional) {
+> -		err = dax_writeback_mapping_range(mapping, lstart, lend);
+> -		if (err)
+> -			return err;
+> -	}
+> -
+>  	if (mapping->nrpages) {
+>  		err = __filemap_fdatawrite_range(mapping, lstart, lend,
+>  						 WB_SYNC_ALL);
+> -- 
+> 2.5.0
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-it all stareted with "INFO: rcu_preempt detected stalls on CPUs/tasks:"
-Feb  8 07:28:38 remrprv1a [139450.378657] INFO: rcu_preempt detected stalls=
- on CPUs/tasks:
-Feb  8 07:28:38 remrprv1a {
-Feb  8 07:28:38 remrprv1a }
-Feb  8 07:28:38 remrprv1a (detected by 3, t=3D60008 jiffies, g=3D6904096, c=
-=3D6904095, q=3D94)
-Feb  8 07:28:38 remrprv1a [139450.390575] All QSes seen, last rcu_preempt k=
-thread activity 60004 (4434008039-4433948035), jiffies_till_next_fqs=3D3, r=
-oot ->qsmask 0x0
-Feb  8 07:28:38 remrprv1a [139450.403123] ceph-osd        R
-Feb  8 07:28:38 remrprv1a running task
-Feb  8 07:28:38 remrprv1a 0 10554      1 0x00000008
-Feb  8 07:28:38 remrprv1a [139450.410642]  ffffffff81a3b600
-Feb  8 07:28:38 remrprv1a ffff88107fc63d78
-Feb  8 07:28:38 remrprv1a ffffffff8107ab90
-Feb  8 07:28:38 remrprv1a ffff88107fc75940
-Feb  8 07:28:38 remrprv1a=20
-Feb  8 07:28:38 remrprv1a [139450.418809]  ffffffff81a3b600
-Feb  8 07:28:38 remrprv1a ffff88107fc63e38
-Feb  8 07:28:38 remrprv1a ffffffff810aed8a
-Feb  8 07:28:38 remrprv1a 0000000000000000
-Feb  8 07:28:38 remrprv1a=20
-Feb  8 07:28:38 remrprv1a [139450.426963]  0000000000000092
-Feb  8 07:28:38 remrprv1a ffff88107fc63dd8
-Feb  8 07:28:38 remrprv1a 0000000000000092
-Feb  8 07:28:38 remrprv1a 0000000000695920
-Feb  8 07:28:38 remrprv1a
-Feb  8 07:28:38 remrprv1a [139450.435133] Call Trace:
-Feb  8 07:28:38 remrprv1a [139450.437886]  <IRQ>
-Feb  8 07:28:38 remrprv1a [<ffffffff8107ab90>] sched_show_task+0xc0/0x120
-Feb  8 07:28:38 remrprv1a [139450.444551]  [<ffffffff810aed8a>] rcu_check_c=
-allbacks+0xa5a/0xab0
-Feb  8 07:28:38 remrprv1a [139450.450961]  [<ffffffff810b2909>] update_proc=
-ess_times+0x39/0x70
-Feb  8 07:28:38 remrprv1a [139450.457283]  [<ffffffff810c3242>] tick_sched_=
-timer+0x62/0xc0
-Feb  8 07:28:38 remrprv1a [139450.463245]  [<ffffffff810b3583>] __run_hrtim=
-er+0x73/0x200
-Feb  8 07:28:38 remrprv1a [139450.469040]  [<ffffffff810c31e0>] ? tick_nohz=
-_handler+0x100/0x100
-Feb  8 07:28:38 remrprv1a [139450.475440]  [<ffffffff810b3aa2>] hrtimer_int=
-errupt+0x102/0x240
-Feb  8 07:28:38 remrprv1a [139450.481670]  [<ffffffff81038c69>] local_apic_=
-timer_interrupt+0x39/0x60
-Feb  8 07:28:38 remrprv1a [139450.488505]  [<ffffffff814c9055>] smp_apic_ti=
-mer_interrupt+0x45/0x59
-Feb  8 07:28:38 remrprv1a [139450.495165]  [<ffffffff814c755b>] apic_timer_=
-interrupt+0x6b/0x70
-Feb  8 07:28:38 remrprv1a [<ffffffff8128001b>] ? delay_tsc+0x4b/0x90
-Feb  8 07:28:38 remrprv1a [139450.507697]  [<ffffffff8127ffbf>] __delay+0xf=
-/0x20
-Feb  8 07:28:38 remrprv1a [139450.512791]  [<ffffffff81095b0e>] do_raw_spin=
-_lock+0x8e/0x180
-Feb  8 07:28:38 remrprv1a [139450.518844]  [<ffffffff814c6545>] _raw_spin_l=
-ock+0x15/0x20
-Feb  8 07:28:38 remrprv1a [139450.524640]  [<ffffffff811ea3d5>] __mb_cache_=
-entry_release+0x75/0x120
-Feb  8 07:28:38 remrprv1a [139450.531383]  [<ffffffff811eabee>] mb_cache_en=
-try_release+0xe/0x10
-Feb  8 07:28:38 remrprv1a [139450.537815]  [<ffffffffa018fbd7>] ext4_xattr_=
-cache_insert+0x57/0x80 [ext4]
-Feb  8 07:28:38 remrprv1a [139450.548968]  [<ffffffffa01916c8>] ext4_xattr_=
-get+0x1b8/0x250 [ext4]
-Feb  8 07:28:38 remrprv1a [139450.555545]  [<ffffffff811b0099>] ? mntput_no=
-_expire+0x39/0x1c0
-Feb  8 07:28:38 remrprv1a [139450.561777]  [<ffffffffa01963ff>] ext4_xattr_=
-security_get+0x2f/0x40 [ext4]
-Feb  8 07:28:38 remrprv1a [139450.568960]  [<ffffffff811b3bb3>] generic_get=
-xattr+0x83/0x90
-Feb  8 07:28:38 remrprv1a [139450.574931]  [<ffffffff8122fb7d>] cap_inode_n=
-eed_killpriv+0x2d/0x40
-Feb  8 07:28:38 remrprv1a [139450.581512]  [<ffffffff81230e96>] security_in=
-ode_need_killpriv+0x16/0x20
-Feb  8 07:28:38 remrprv1a [139450.588518]  [<ffffffff811a8e63>] file_remove=
-_suid+0x53/0xd0
-Feb  8 07:28:38 remrprv1a [139450.594485]  [<ffffffff81281704>] ? lockref_g=
-et_not_dead+0x34/0x50
-Feb  8 07:28:38 remrprv1a [139450.600975]  [<ffffffff81126507>] __generic_f=
-ile_write_iter+0x57/0x1b0
-Feb  8 07:28:38 remrprv1a [139450.607812]  [<ffffffffa0145e76>] ext4_file_w=
-rite_iter+0x126/0x3c0 [ext4]
-Feb  8 07:28:38 remrprv1a [139450.614912]  [<ffffffff8119f7b8>] ? path_open=
-at+0xa8/0x6a0
-Feb  8 07:28:38 remrprv1a [139450.620705]  [<ffffffff8118da3f>] do_iter_rea=
-dv_writev+0x5f/0x80
-Feb  8 07:28:38 remrprv1a [139450.627018]  [<ffffffff8118eff2>] do_readv_wr=
-itev+0x172/0x220
-Feb  8 07:28:38 remrprv1a [139450.633079]  [<ffffffffa0145d50>] ? ext4_unwr=
-itten_wait+0xb0/0xb0 [ext4]
-Feb  8 07:28:38 remrprv1a [139450.640093]  [<ffffffff81044f9d>] ? __bad_are=
-a_nosemaphore+0x20d/0x220
-Feb  8 07:28:38 remrprv1a [139450.646922]  [<ffffffff8118f0e1>] vfs_writev+=
-0x41/0x50
-Feb  8 07:28:38 remrprv1a [139450.652362]  [<ffffffff8118f219>] SyS_writev+=
-0x59/0xf0
-Feb  8 07:28:38 remrprv1a [139450.657807]  [<ffffffff8118dca2>] ? SyS_lseek=
-+0x62/0xb0
-Feb  8 07:28:38 remrprv1a [139450.663333]  [<ffffffff814c6797>] system_call=
-_fastpath+0x12/0x6a
-Feb  8 07:28:38 remrprv1a [139450.669648] rcu_preempt kthread starved for 6=
-0283 jiffies!
-
-and continued with lots of stalls / softlockups..
-
-as the full log is quite long, I'm not attaching it here, it can be
-downloaded at http://nik.lbox.cz/download/trace.txt
-
-My question is, is this some known issue, maybe fixed in later kernels? I h=
-aven't
-found anything related in git..
-
-If I could provide any further information, please let me know
-
-BR
-
-nik
-
-
-
---=20
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28.rijna 168, 709 00 Ostrava
-
-tel.:   +420 591 166 214
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-www.linuxbox.cz
-
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
-
---0OWHXb1mYLuhj1Ox
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
-
-iEYEARECAAYFAla4ZL4ACgkQ3xdJJrLygV6HngCeIohJg9CTihN2eepSV1vZwvGw
-d5UAn2Q0aEupcTsXhZlOoHUHFdL37+lX
-=Ftuj
------END PGP SIGNATURE-----
-
---0OWHXb1mYLuhj1Ox--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
