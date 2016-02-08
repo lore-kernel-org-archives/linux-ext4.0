@@ -1,26 +1,83 @@
-From: Ms Ayala <ana.mascarenhas@mj.gov.br>
-Subject: Very Urgent,response needed.
-Date: Mon, 8 Feb 2016 00:28:17 +0300
-Message-ID: <6754a5f8-a365-4dda-b5c0-d832389ed7a0__45123.1096442372$1454903471$gmane$org@TIMON.mj.gov.br>
-Reply-To: msayalabrnaca101@163.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Recipients <ana.mascarenhas@mj.gov.br>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from piaget.mj.gov.br ([200.198.212.76]:43257 "EHLO piaget.mj.gov.br"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753011AbcBHDu6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2016 22:50:58 -0500
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <zwisler@gmail.com>
+Subject: Re: [PATCH 1/2] dax: pass bdev argument to dax_clear_blocks()
+Date: Sun, 7 Feb 2016 21:29:38 -0700
+Message-ID: <00FE872A-9B2A-4492-A83C-59025ACB1F4A@gmail.com>
+References: <1454829553-29499-1-git-send-email-ross.zwisler@linux.intel.com> <1454829553-29499-2-git-send-email-ross.zwisler@linux.intel.com> <CAPcyv4jOAKeTXt0EvZzfxzqcaf+ZWrtsFeN2JFP_sf1HcTpVOw@mail.gmail.com> <20160208014601.GB2343@linux.intel.com>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+	charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: Dan Williams <dan.j.williams@intel.com>, Theodore Ts'o <tytso@mit.edu>,
+ "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+ Dave Chinner <david@fromorbit.com>,
+ "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+ XFS Developers <xfs@oss.sgi.com>, Linux MM <linux-mm@kvack.org>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ linux-ext4 <linux-ext4@vger.kernel.org>,
+ Andrew Morton <akpm@linux-foundation.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160208014601.GB2343@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+> On Feb 7, 2016, at 6:46 PM, Ross Zwisler <ross.zwisler@linux.intel.com> wr=
+ote:
+>=20
+>> On Sun, Feb 07, 2016 at 10:19:29AM -0800, Dan Williams wrote:
+>> On Sat, Feb 6, 2016 at 11:19 PM, Ross Zwisler
+>> <ross.zwisler@linux.intel.com> wrote:
+>>> dax_clear_blocks() needs a valid struct block_device and previously it w=
+as
+>>> using inode->i_sb->s_bdev in all cases.  This is correct for normal inod=
+es
+>>> on mounted ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
+>>> block devices and for XFS real-time devices.
+>>>=20
+>>> Instead, have the caller pass in a struct block_device pointer which it
+>>> knows to be correct.
+>>>=20
+>>> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+>>> ---
+>>> fs/dax.c               | 4 ++--
+>>> fs/ext2/inode.c        | 5 +++--
+>>> fs/xfs/xfs_aops.c      | 2 +-
+>>> fs/xfs/xfs_aops.h      | 1 +
+>>> fs/xfs/xfs_bmap_util.c | 4 +++-
+>>> include/linux/dax.h    | 3 ++-
+>>> 6 files changed, 12 insertions(+), 7 deletions(-)
+>>>=20
+>>> diff --git a/fs/dax.c b/fs/dax.c
+>>> index 227974a..4592241 100644
+>>> --- a/fs/dax.c
+>>> +++ b/fs/dax.c
+>>> @@ -83,9 +83,9 @@ struct page *read_dax_sector(struct block_device *bdev=
+, sector_t n)
+>>>  * and hence this means the stack from this point must follow GFP_NOFS
+>>>  * semantics for all operations.
+>>>  */
+>>> -int dax_clear_blocks(struct inode *inode, sector_t block, long _size)
+>>> +int dax_clear_blocks(struct inode *inode, struct block_device *bdev,
+>>> +               sector_t block, long _size)
+>>=20
+>> Since this is a bdev relative routine we should also resolve the
+>> sector, i.e. the signature should drop the inode:
+>>=20
+>> int dax_clear_sectors(struct block_device *bdev, sector_t sector, long _s=
+ize)
+>=20
+> The inode is still needed because dax_clear_blocks() needs inode->i_blkbit=
+s.
+> Unless there is some easy way to get this from the bdev that I'm not seein=
+g?
 
-I am Ms. Ayala; I am getting in touch with you regarding an extremely
-important and urgent matter.If you would oblige me the opportunity,I shall
-provide you with details upon your response.Please respond to: msayalabrnaca101@163.com
+Never mind, you are passing in the sector, not the block.  Sure, this seems b=
+etter - I'll fix this for v2.=
 
-Faithfully,
-Ms. Ayala Bracha
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
