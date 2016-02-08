@@ -1,26 +1,152 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 2/3] xfs: don't use ioends for direct write completions
-Date: Mon, 8 Feb 2016 10:22:00 +0100
-Message-ID: <20160208092200.GA31881@lst.de>
-References: <1454524816-11392-1-git-send-email-hch@lst.de> <1454524816-11392-3-git-send-email-hch@lst.de> <20160208010026.GL31407@dastard> <20160208061731.GC27429@dastard> <20160208073121.GA30092@lst.de> <20160208091644.GD27429@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v8 6/9] dax: add support for fsync/msync
+Date: Mon, 8 Feb 2016 10:44:30 +0100
+Message-ID: <20160208094430.GA9451@quack.suse.cz>
+References: <1452230879-18117-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1452230879-18117-7-git-send-email-ross.zwisler@linux.intel.com>
+ <878u2xrjrw.fsf@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:60434 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751245AbcBHJWD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2016 04:22:03 -0500
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, "H. Peter Anvin" <hpa@zytor.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Dave Hansen <dave.hansen@linux.intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Thomas Gleixner <tglx@linutronix.de>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, x86@kernel.org, xfs@oss.sgi.com
+To: Dmitry Monakhov <dmonlist@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160208091644.GD27429@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <878u2xrjrw.fsf@openvz.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 08, 2016 at 08:16:44PM +1100, Dave Chinner wrote:
-> I can't tell if you are saying what I've done is fine if the
-> xfs-dio-fix-4.6 branch is stable (so others can pull it) or whether
-> it should be in some other tree. Can you clarify, Christoph?
+On Sat 06-02-16 17:33:07, Dmitry Monakhov wrote:
+> > +int dax_writeback_mapping_range(struct address_space *mapping, loff_t start,
+> > +		loff_t end)
+> > +{
+> > +	struct inode *inode = mapping->host;
+> > +	struct block_device *bdev = inode->i_sb->s_bdev;
+> > +	pgoff_t indices[PAGEVEC_SIZE];
+> > +	pgoff_t start_page, end_page;
+> > +	struct pagevec pvec;
+> > +	void *entry;
+> > +	int i, ret = 0;
+> > +
+> > +	if (WARN_ON_ONCE(inode->i_blkbits != PAGE_SHIFT))
+> > +		return -EIO;
+> > +
+> > +	rcu_read_lock();
+> > +	entry = radix_tree_lookup(&mapping->page_tree, start & PMD_MASK);
+> > +	rcu_read_unlock();
+> > +
+> > +	/* see if the start of our range is covered by a PMD entry */
+> > +	if (entry && RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
+> > +		start &= PMD_MASK;
+> > +
+> > +	start_page = start >> PAGE_CACHE_SHIFT;
+> > +	end_page = end >> PAGE_CACHE_SHIFT;
+> > +
+> > +	tag_pages_for_writeback(mapping, start_page, end_page);
+> > +
+> > +	pagevec_init(&pvec, 0);
+> > +	while (1) {
+> > +		pvec.nr = find_get_entries_tag(mapping, start_page,
+> > +				PAGECACHE_TAG_TOWRITE, PAGEVEC_SIZE,
+> > +				pvec.pages, indices);
+> > +
+> > +		if (pvec.nr == 0)
+> > +			break;
+> > +
+> > +		for (i = 0; i < pvec.nr; i++) {
+> > +			ret = dax_writeback_one(bdev, mapping, indices[i],
+> > +					pvec.pages[i]);
+> > +			if (ret < 0)
+> > +				return ret;
+> > +		}
+> I think it would be more efficient to use batched locking like follows:
+>                 spin_lock_irq(&mapping->tree_lock);
+> 		for (i = 0; i < pvec.nr; i++) {
+>                     struct blk_dax_ctl dax[PAGEVEC_SIZE];                
+>                     radix_tree_tag_clear(page_tree, indices[i], PAGECACHE_TAG_TOWRITE);
+>                     /* It is also reasonable to merge adjacent dax
+>                      * regions in to one */
+>                     dax[i].sector = RADIX_DAX_SECTOR(entry);
+>                     dax[i].size = (type == RADIX_DAX_PMD ? PMD_SIZE : PAGE_SIZE);                    
+> 
+>                 }
+>                 spin_unlock_irq(&mapping->tree_lock);
+>                	if (blk_queue_enter(q, true) != 0)
+>                     goto error;
+>                 for (i = 0; i < pvec.nr; i++) {
+>                     rc = bdev_direct_access(bdev, dax[i]);
+>                     wb_cache_pmem(dax[i].addr, dax[i].size);
+>                 }
+>                 ret = blk_queue_exit(q, true)
 
-What you are doing is fine, thanks!
+We need to clear the radix tree tag only after flushing caches. But in
+principle I agree that some batching of radix tree tag manipulations should
+be doable. But frankly so far we have issues with correctness so speed is
+not our main concern.
+
+> > +	}
+> > +	wmb_pmem();
+> > +	return 0;
+> > +}
+> > +EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
+> > +
+> >  static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
+> >  			struct vm_area_struct *vma, struct vm_fault *vmf)
+> >  {
+> > @@ -363,6 +532,11 @@ static int dax_insert_mapping(struct inode *inode, struct buffer_head *bh,
+> >  	}
+> >  	dax_unmap_atomic(bdev, &dax);
+> >  
+> > +	error = dax_radix_entry(mapping, vmf->pgoff, dax.sector, false,
+> > +			vmf->flags & FAULT_FLAG_WRITE);
+> > +	if (error)
+> > +		goto out;
+> > +
+> >  	error = vm_insert_mixed(vma, vaddr, dax.pfn);
+> >  
+> >   out:
+> > @@ -487,6 +661,7 @@ int __dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+> >  		delete_from_page_cache(page);
+> >  		unlock_page(page);
+> >  		page_cache_release(page);
+> > +		page = NULL;
+> >  	}
+> I've realized that I do not understand why dax_fault code works at all.
+> During dax_fault we want to remove page from mapping and insert dax-entry
+>  Basically code looks like follows:
+> 0 page = find_get_page()
+> 1 lock_page(page)
+> 2 delete_from_page_cache(page);
+> 3 unlock_page(page);
+> 4 dax_insert_mapping(inode, &bh, vma, vmf);
+> 
+> BUT what on earth protects us from other process to reinsert page again
+> after step(2) but before (4)?
+
+Nothing, it's a bug and Ross / Matthew are working on fixing it...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
