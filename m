@@ -1,204 +1,143 @@
-From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: Re: 4.1.15 - ext4 / xattr related crash?
-Date: Mon, 8 Feb 2016 12:27:11 +0100
-Message-ID: <20160208112711.GI10986@pcnci.linuxbox.cz>
-References: <20160208094950.GH10986@pcnci.linuxbox.cz>
+From: Mark Rutland <mark.rutland@arm.com>
+Subject: Latent undefined behaviour in fs/ext4/mballoc.c (seen in v4.5-rc3)
+Date: Mon, 8 Feb 2016 14:45:44 +0000
+Message-ID: <20160208144543.GA12536@leverpostej>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="fmvA4kSBHQVZhkR6"
-Cc: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:49611 "EHLO gwu.lbox.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750915AbcBHL1O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Feb 2016 06:27:14 -0500
-Content-Disposition: inline
-In-Reply-To: <20160208094950.GH10986@pcnci.linuxbox.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---fmvA4kSBHQVZhkR6
 Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-kernel@vger.kernel.org, aryabinin@virtuozzo.com
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-One more information, probably worth mentioning - the box
-is running as CEPH storage node (this is noticeable from the
-backtrace), therefore it uses xattrs a lot. Some minutes before
-the hang, I've removed quite a lot of ceph snapshots, probably
-causing lots of file delete operations..
+Hi,
 
-On Mon, Feb 08, 2016 at 10:49:50AM +0100, Nikola Ciprich wrote:
-> Hi,
->=20
-> I've just had server crash that could be ext4 or xattr related..
-> It's running x86_64 4.1.15, updated from 4.0.5 about a week ago.
->=20
-> The box stopped responding, but I have netconsole logged backtraces..
->=20
-> it all stareted with "INFO: rcu_preempt detected stalls on CPUs/tasks:"
-> Feb  8 07:28:38 remrprv1a [139450.378657] INFO: rcu_preempt detected stal=
-ls on CPUs/tasks:
-> Feb  8 07:28:38 remrprv1a {
-> Feb  8 07:28:38 remrprv1a }
-> Feb  8 07:28:38 remrprv1a (detected by 3, t=3D60008 jiffies, g=3D6904096,=
- c=3D6904095, q=3D94)
-> Feb  8 07:28:38 remrprv1a [139450.390575] All QSes seen, last rcu_preempt=
- kthread activity 60004 (4434008039-4433948035), jiffies_till_next_fqs=3D3,=
- root ->qsmask 0x0
-> Feb  8 07:28:38 remrprv1a [139450.403123] ceph-osd        R
-> Feb  8 07:28:38 remrprv1a running task
-> Feb  8 07:28:38 remrprv1a 0 10554      1 0x00000008
-> Feb  8 07:28:38 remrprv1a [139450.410642]  ffffffff81a3b600
-> Feb  8 07:28:38 remrprv1a ffff88107fc63d78
-> Feb  8 07:28:38 remrprv1a ffffffff8107ab90
-> Feb  8 07:28:38 remrprv1a ffff88107fc75940
-> Feb  8 07:28:38 remrprv1a=20
-> Feb  8 07:28:38 remrprv1a [139450.418809]  ffffffff81a3b600
-> Feb  8 07:28:38 remrprv1a ffff88107fc63e38
-> Feb  8 07:28:38 remrprv1a ffffffff810aed8a
-> Feb  8 07:28:38 remrprv1a 0000000000000000
-> Feb  8 07:28:38 remrprv1a=20
-> Feb  8 07:28:38 remrprv1a [139450.426963]  0000000000000092
-> Feb  8 07:28:38 remrprv1a ffff88107fc63dd8
-> Feb  8 07:28:38 remrprv1a 0000000000000092
-> Feb  8 07:28:38 remrprv1a 0000000000695920
-> Feb  8 07:28:38 remrprv1a
-> Feb  8 07:28:38 remrprv1a [139450.435133] Call Trace:
-> Feb  8 07:28:38 remrprv1a [139450.437886]  <IRQ>
-> Feb  8 07:28:38 remrprv1a [<ffffffff8107ab90>] sched_show_task+0xc0/0x120
-> Feb  8 07:28:38 remrprv1a [139450.444551]  [<ffffffff810aed8a>] rcu_check=
-_callbacks+0xa5a/0xab0
-> Feb  8 07:28:38 remrprv1a [139450.450961]  [<ffffffff810b2909>] update_pr=
-ocess_times+0x39/0x70
-> Feb  8 07:28:38 remrprv1a [139450.457283]  [<ffffffff810c3242>] tick_sche=
-d_timer+0x62/0xc0
-> Feb  8 07:28:38 remrprv1a [139450.463245]  [<ffffffff810b3583>] __run_hrt=
-imer+0x73/0x200
-> Feb  8 07:28:38 remrprv1a [139450.469040]  [<ffffffff810c31e0>] ? tick_no=
-hz_handler+0x100/0x100
-> Feb  8 07:28:38 remrprv1a [139450.475440]  [<ffffffff810b3aa2>] hrtimer_i=
-nterrupt+0x102/0x240
-> Feb  8 07:28:38 remrprv1a [139450.481670]  [<ffffffff81038c69>] local_api=
-c_timer_interrupt+0x39/0x60
-> Feb  8 07:28:38 remrprv1a [139450.488505]  [<ffffffff814c9055>] smp_apic_=
-timer_interrupt+0x45/0x59
-> Feb  8 07:28:38 remrprv1a [139450.495165]  [<ffffffff814c755b>] apic_time=
-r_interrupt+0x6b/0x70
-> Feb  8 07:28:38 remrprv1a [<ffffffff8128001b>] ? delay_tsc+0x4b/0x90
-> Feb  8 07:28:38 remrprv1a [139450.507697]  [<ffffffff8127ffbf>] __delay+0=
-xf/0x20
-> Feb  8 07:28:38 remrprv1a [139450.512791]  [<ffffffff81095b0e>] do_raw_sp=
-in_lock+0x8e/0x180
-> Feb  8 07:28:38 remrprv1a [139450.518844]  [<ffffffff814c6545>] _raw_spin=
-_lock+0x15/0x20
-> Feb  8 07:28:38 remrprv1a [139450.524640]  [<ffffffff811ea3d5>] __mb_cach=
-e_entry_release+0x75/0x120
-> Feb  8 07:28:38 remrprv1a [139450.531383]  [<ffffffff811eabee>] mb_cache_=
-entry_release+0xe/0x10
-> Feb  8 07:28:38 remrprv1a [139450.537815]  [<ffffffffa018fbd7>] ext4_xatt=
-r_cache_insert+0x57/0x80 [ext4]
-> Feb  8 07:28:38 remrprv1a [139450.548968]  [<ffffffffa01916c8>] ext4_xatt=
-r_get+0x1b8/0x250 [ext4]
-> Feb  8 07:28:38 remrprv1a [139450.555545]  [<ffffffff811b0099>] ? mntput_=
-no_expire+0x39/0x1c0
-> Feb  8 07:28:38 remrprv1a [139450.561777]  [<ffffffffa01963ff>] ext4_xatt=
-r_security_get+0x2f/0x40 [ext4]
-> Feb  8 07:28:38 remrprv1a [139450.568960]  [<ffffffff811b3bb3>] generic_g=
-etxattr+0x83/0x90
-> Feb  8 07:28:38 remrprv1a [139450.574931]  [<ffffffff8122fb7d>] cap_inode=
-_need_killpriv+0x2d/0x40
-> Feb  8 07:28:38 remrprv1a [139450.581512]  [<ffffffff81230e96>] security_=
-inode_need_killpriv+0x16/0x20
-> Feb  8 07:28:38 remrprv1a [139450.588518]  [<ffffffff811a8e63>] file_remo=
-ve_suid+0x53/0xd0
-> Feb  8 07:28:38 remrprv1a [139450.594485]  [<ffffffff81281704>] ? lockref=
-_get_not_dead+0x34/0x50
-> Feb  8 07:28:38 remrprv1a [139450.600975]  [<ffffffff81126507>] __generic=
-_file_write_iter+0x57/0x1b0
-> Feb  8 07:28:38 remrprv1a [139450.607812]  [<ffffffffa0145e76>] ext4_file=
-_write_iter+0x126/0x3c0 [ext4]
-> Feb  8 07:28:38 remrprv1a [139450.614912]  [<ffffffff8119f7b8>] ? path_op=
-enat+0xa8/0x6a0
-> Feb  8 07:28:38 remrprv1a [139450.620705]  [<ffffffff8118da3f>] do_iter_r=
-eadv_writev+0x5f/0x80
-> Feb  8 07:28:38 remrprv1a [139450.627018]  [<ffffffff8118eff2>] do_readv_=
-writev+0x172/0x220
-> Feb  8 07:28:38 remrprv1a [139450.633079]  [<ffffffffa0145d50>] ? ext4_un=
-written_wait+0xb0/0xb0 [ext4]
-> Feb  8 07:28:38 remrprv1a [139450.640093]  [<ffffffff81044f9d>] ? __bad_a=
-rea_nosemaphore+0x20d/0x220
-> Feb  8 07:28:38 remrprv1a [139450.646922]  [<ffffffff8118f0e1>] vfs_write=
-v+0x41/0x50
-> Feb  8 07:28:38 remrprv1a [139450.652362]  [<ffffffff8118f219>] SyS_write=
-v+0x59/0xf0
-> Feb  8 07:28:38 remrprv1a [139450.657807]  [<ffffffff8118dca2>] ? SyS_lse=
-ek+0x62/0xb0
-> Feb  8 07:28:38 remrprv1a [139450.663333]  [<ffffffff814c6797>] system_ca=
-ll_fastpath+0x12/0x6a
-> Feb  8 07:28:38 remrprv1a [139450.669648] rcu_preempt kthread starved for=
- 60283 jiffies!
->=20
-> and continued with lots of stalls / softlockups..
->=20
-> as the full log is quite long, I'm not attaching it here, it can be
-> downloaded at http://nik.lbox.cz/download/trace.txt
->=20
-> My question is, is this some known issue, maybe fixed in later kernels? I=
- haven't
-> found anything related in git..
->=20
-> If I could provide any further information, please let me know
->=20
-> BR
->=20
-> nik
->=20
->=20
->=20
-> --=20
-> -------------------------------------
-> Ing. Nikola CIPRICH
-> LinuxBox.cz, s.r.o.
-> 28.rijna 168, 709 00 Ostrava
->=20
-> tel.:   +420 591 166 214
-> fax:    +420 596 621 273
-> mobil:  +420 777 093 799
-> www.linuxbox.cz
->=20
-> mobil servis: +420 737 238 656
-> email servis: servis@linuxbox.cz
-> -------------------------------------
+While trying UBSAN on arm64, I hit a couple of splats at boot in the
+ext4 mballoc code [1] (duplicated below), on v4.5-rc3. In both cases a
+dynamically-computed shift amount underflows before it is applied,
+leading to a too-large shift in one case and a negative shift in the
+other.
 
+The code in question seems largely unchanged since 2008 judging by git
+blame, and I didn't spot any relevant changes in linux-next today
+(next-20160208), so I assume I'm the first to report this.
 
+I've had a quick look at figuring out what's happening below, but I'm
+not familiar with the code and I'm not sure what the intended results
+are. Any help would be appreciated.
 
---=20
--------------------------------------
-Ing. Nikola CIPRICH
-LinuxBox.cz, s.r.o.
-28.rijna 168, 709 00 Ostrava
+The first splat looks like:
 
-tel.:   +420 591 166 214
-fax:    +420 596 621 273
-mobil:  +420 777 093 799
-www.linuxbox.cz
+[    3.804750] ================================================================================
+[    3.813176] UBSAN: Undefined behaviour in fs/ext4/mballoc.c:2612:15
+[    3.819431] shift exponent 4294967295 is too large for 32-bit type 'int'
+[    3.826121] CPU: 0 PID: 1 Comm: swapper/0 Not tainted 4.5.0-rc2+ #48
+[    3.832463] Hardware name: AMD Overdrive/Supercharger/Default string, BIOS ROD0085E 11/23/2015
+[    3.841060] Call trace:
+[    3.843499] [<ffffffc00008d7b8>] dump_backtrace+0x0/0x298
+[    3.848887] [<ffffffc00008da64>] show_stack+0x14/0x20
+[    3.853929] [<ffffffc00056e0f0>] dump_stack+0xe0/0x178
+[    3.859056] [<ffffffc0005b734c>] ubsan_epilogue+0x14/0x50
+[    3.864444] [<ffffffc0005b7748>] __ubsan_handle_shift_out_of_bounds+0xe0/0x138
+[    3.871655] [<ffffffc0003e1734>] ext4_mb_init+0x84c/0x920
+[    3.877043] [<ffffffc0003ba294>] ext4_fill_super+0x2eac/0x4958
+[    3.882866] [<ffffffc0002c1008>] mount_bdev+0x180/0x1e8
+[    3.888079] [<ffffffc0003adf8c>] ext4_mount+0x14/0x20
+[    3.893118] [<ffffffc0002c23f4>] mount_fs+0x44/0x1c8
+[    3.898073] [<ffffffc0002ed9c0>] vfs_kern_mount+0x50/0x1a8
+[    3.903547] [<ffffffc0002f3d90>] do_mount+0x240/0x1478
+[    3.908673] [<ffffffc0002f54d0>] SyS_mount+0x90/0xf8
+[    3.913627] [<ffffffc000eb2750>] mount_block_root+0x22c/0x3c4
+[    3.919361] [<ffffffc000eb2a08>] mount_root+0x120/0x138
+[    3.924574] [<ffffffc000eb2b5c>] prepare_namespace+0x13c/0x184
+[    3.930396] [<ffffffc000eb21bc>] kernel_init_freeable+0x390/0x3b4
+[    3.936479] [<ffffffc000bb4a78>] kernel_init+0x10/0xe0
+[    3.941606] [<ffffffc000086cd0>] ret_from_fork+0x10/0x40
+[    3.946905] ================================================================================
 
-mobil servis: +420 737 238 656
-email servis: servis@linuxbox.cz
--------------------------------------
+Which corresponds to the following loop:
 
---fmvA4kSBHQVZhkR6
-Content-Type: application/pgp-signature
+2606         i = 1;
+2607         offset = 0;
+2608         max = sb->s_blocksize << 2;
+2609         do {
+2610                 sbi->s_mb_offsets[i] = offset;
+2611                 sbi->s_mb_maxs[i] = max;
+2612                 offset += 1 << (sb->s_blocksize_bits - i);
+2613                 max = max >> 1;
+2614                 i++;
+2615         } while (i <= sb->s_blocksize_bits + 1);
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.14 (GNU/Linux)
+The loop condition permits an iteration where i == sb->s_blocksize_bits + 1, as
+sb->s_blocksize_bits is an unsigned char and i is an unsigned, the result is an
+unsigned underflow value (4294967295). This leads us to try to left shift 1 by
+an insanely large value.
 
-iEYEARECAAYFAla4e48ACgkQ3xdJJrLygV7vDQCaAgvHKVSKrK78CZrcw26J4kBf
-R7YAn3dAKup1Az6ThPE0LK5PmtH9ZBdc
-=6e6R
------END PGP SIGNATURE-----
+The second splat looks like:
 
---fmvA4kSBHQVZhkR6--
+[    5.566166] ================================================================================
+[    5.574596] UBSAN: Undefined behaviour in fs/ext4/mballoc.c:1274:11
+[    5.580851] shift exponent -1 is negative
+[    5.584851] CPU: 4 PID: 1028 Comm: mount Not tainted 4.5.0-rc2+ #48
+[    5.591105] Hardware name: AMD Overdrive/Supercharger/Default string, BIOS ROD0085E 11/23/2015
+[    5.599702] Call trace:
+[    5.602142] [<ffffffc00008d7b8>] dump_backtrace+0x0/0x298
+[    5.607530] [<ffffffc00008da64>] show_stack+0x14/0x20
+[    5.612572] [<ffffffc00056e0f0>] dump_stack+0xe0/0x178
+[    5.617700] [<ffffffc0005b734c>] ubsan_epilogue+0x14/0x50
+[    5.623088] [<ffffffc0005b7748>] __ubsan_handle_shift_out_of_bounds+0xe0/0x138
+[    5.630300] [<ffffffc0003d2a04>] mb_find_order_for_block+0x154/0x1b0
+[    5.636641] [<ffffffc0003d2b2c>] mb_find_extent+0xcc/0x548
+[    5.642116] [<ffffffc0003de6a8>] ext4_mb_complex_scan_group+0xe8/0x4e8
+[    5.648632] [<ffffffc0003ded7c>] ext4_mb_regular_allocator+0x2d4/0x648
+[    5.655148] [<ffffffc0003e2b4c>] ext4_mb_new_blocks+0x344/0x7e0
+[    5.661056] [<ffffffc0003cbf54>] ext4_ext_map_blocks+0x684/0xf68
+[    5.667052] [<ffffffc000393664>] ext4_map_blocks+0x12c/0x500
+[    5.672699] [<ffffffc000398df4>] ext4_writepages+0x47c/0xe38
+[    5.678348] [<ffffffc00020da20>] do_writepages+0x48/0xc8
+[    5.683649] [<ffffffc0001f9100>] __filemap_fdatawrite_range+0x70/0xe8
+[    5.690078] [<ffffffc0001f91b0>] filemap_flush+0x18/0x20
+[    5.695378] [<ffffffc000394b64>] ext4_alloc_da_blocks+0x3c/0x78
+[    5.701285] [<ffffffc0003ac1c8>] ext4_rename+0x690/0xe38
+[    5.706585] [<ffffffc0003ac98c>] ext4_rename2+0x1c/0x40
+[    5.711800] [<ffffffc0002d0510>] vfs_rename+0x2c0/0xa90
+[    5.717013] [<ffffffc0002d661c>] SyS_renameat2+0x464/0x5c0
+[    5.722486] [<ffffffc0002d6788>] SyS_renameat+0x10/0x18
+[    5.727700] [<ffffffc000086d30>] el0_svc_naked+0x24/0x28
+[    5.732998] ================================================================================
+
+Which corresponds to:
+
+1259 static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
+1260 {
+1261         int order = 1;
+1262         void *bb;
+1263 
+1264         BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+1265         BUG_ON(block >= (1 << (e4b->bd_blkbits + 3)));
+1266 
+1267         bb = e4b->bd_buddy;
+1268         while (order <= e4b->bd_blkbits + 1) {
+1269                 block = block >> 1;
+1270                 if (!mb_test_bit(block, bb)) {
+1271                         /* this block is part of buddy of order 'order' */
+1272                         return order;
+1273                 }
+1274                 bb += 1 << (e4b->bd_blkbits - order);
+1275                 order++;
+1276         }
+1277         return 0;
+1278 }
+
+We allow an iteration when order == e4b->bd_blkbits + 1 and so we calculate a
+shift amount of -1.
+
+Any idea of what should be done in these cases?
+
+Thanks,
+Mark.
+
+[1] http://lists.infradead.org/pipermail/linux-arm-kernel/2016-February/405825.html
