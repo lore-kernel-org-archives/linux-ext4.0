@@ -1,92 +1,91 @@
-From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Subject: Re: richacl(7) man page review comments
-Date: Wed, 10 Feb 2016 14:34:04 -0500
-Message-ID: <20160210193404.GA13989@fieldses.org>
-References: <56B770B6.7040803@gmail.com>
- <56B77262.7090107@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-	lkml <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <56B77262.7090107-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 0/2] DAX bdev fixes - move flushing calls to FS
+Date: Wed, 10 Feb 2016 13:48:54 -0700
+Message-ID: <1455137336-28720-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	xfs@oss.sgi.com
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Feb 07, 2016 at 05:35:46PM +0100, Michael Kerrisk (man-pages) wrote:
-> > This permission is always implicitly granted.
-> > .HP
-> > .B write_attributes
-> > .RB ( A ):
-> > Change the times associated with a file or directory to an arbitrary value.
-> > This permission is always implicitly granted to the file owner.
-> > .HP
-> > .B read_acl
-> > .RB ( c ):
-> > Read the ACL of a file or directory. This permission is always
-> > implicitly granted.
-> > .HP
-> > .B write_acl
-> > .RB ( C ):
-> > Change the ACL or file mode of a file or directory.
-> > .HP
-> > .B write_owner
-> > .RB ( o ):
-> > Take ownership of a file or directory.  Change the owning group of a file or
-> > directory to a group of which the calling process is a member.
-> > .HP
-> > .B read_named_attrs
-> > .RB ( R ),
-> > .B write_named_attrs
-> > .RB ( W ),
-> > .B synchronize
-> > .RB ( S ),
-> > .B write_retention
-> > .RB ( e ),
-> > .B write_retention_hold
-> > .RB ( E ):
-> > These permissions can be stored, but do not have a local meaning.
-> 
-> So, I thenk that a sentence here should explain why these permissions
-> exist. Is if for future extension, because they are meaningful in NFS,
-> or something else?
+During testing of raw block devices + DAX I noticed that the struct
+block_device that we were using for DAX operations was incorrect.  For the
+fault handlers, etc. we can just get the correct bdev via get_block(),
+which is passed in as a function pointer, but for the *sync code and for
+sector zeroing we don't have access to get_block().  This is also an issue
+for XFS real-time devices, whenever we get those working.
 
-Yeah, "synchronize" is something only Windows clients care about, as I
-understand it.  The others are for NFS features that nobody has tried to
-implement yet.  It's useful to store those bits but they don't do
-anything at this point.  We could provie FC references, I guess, but
-it's probably not worth going into much detail about.
+Patch one of this series fixes the DAX sector zeroing code by explicitly
+passing in a valid struct block_device.
 
-> > Automatic Inheritance allows permission changes to propagate from a directory
-> > to files and subdirectories inside that directory, recursively.  Carrying out
-> > this propagation of permissions is the responsibility of the process changing
-> > the directory permissions (usually, setrichacl(1)).
-> 
-> I'm confused by the previous sentence. the feature is labeled "Automatic
-> Inheritance", implying that the user/process need do nothing. The next
-> sentence says "propagation ... is the responsibility of the process".
-> These two points seem contradictory. I think something more needs to be
-> said here.
+Patch two of this series fixes DAX *sync support by moving calls to
+dax_writeback_mapping_range() out of filemap_write_and_wait_range() and
+into the filesystem/block device ->writepages function so that it can
+supply us with a valid block device. This also fixes DAX code to properly
+flush caches in response to sync(2).
 
-Yeah, the "automatic" name is probably misleading, but I think we're
-stuck with that name and just need to make the point a bit more
-forcefully.
+Thanks to Jan Kara for his initial draft of patch 2:
+https://lkml.org/lkml/2016/2/9/485
 
-Userland utilities take responsibility for the actual recursive
-propagation of changes, all the kernel does is provide a few bits which
-help to do it correctly (e.g. to distinguish between ACEs that ewre
-inherited inherited (and can be blown away by propagation) and those
-that were added locally).
+Here are the changes that I've made to that patch:
 
---b.
+1) For DAX mappings, only return after calling
+dax_writeback_mapping_range() if we encountered an error.  In the non-error
+case we still need to write back normal pages, else we lose metadata
+updates. 
+
+2) In dax_writeback_mapping_range(), move the new check for 
+        if (!mapping->nrexceptional || wbc->sync_mode != WB_SYNC_ALL)
+above the i_blkbits check.  In my testing I found cases where
+dax_writeback_mapping_range() was called for inodes with i_blkbits !=
+PAGE_SHIFT - I'm assuming these are internal metadata inodes?  They have no
+exceptional DAX entries to flush, so we have no work to do, but if we
+return error from the i_blkbits check we will fail the overall writeback
+operation.  Please let me know if it seems wrong for us to be seeing inodes
+set to use DAX but with i_blkbits != PAGE_SHIFT and I'll get more info.
+
+3) In filemap_write_and_wait() and filemap_write_and_wait_range(), continue
+the writeback in the case that DAX is enabled but we only have a nonzero
+mapping->nrpages.  As with 1) and 2), I believe this is necessary to
+properly writeback metadata changes.  If this sounds wrong, please let me
+know and I'll get more info.
+
+A working tree can be found here:
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_bdev_v2
+
+Ross Zwisler (2):
+  dax: supply DAX clearing code with correct bdev
+  dax: move writeback calls into the filesystems
+
+ fs/block_dev.c         | 16 +++++++++++++++-
+ fs/dax.c               | 22 ++++++++++++----------
+ fs/ext2/inode.c        | 17 +++++++++++++++--
+ fs/ext4/inode.c        |  7 +++++++
+ fs/xfs/xfs_aops.c      | 11 ++++++++++-
+ fs/xfs/xfs_aops.h      |  1 +
+ fs/xfs/xfs_bmap_util.c |  3 ++-
+ include/linux/dax.h    |  8 +++++---
+ mm/filemap.c           | 12 ++++--------
+ 9 files changed, 71 insertions(+), 26 deletions(-)
+
+-- 
+2.5.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
