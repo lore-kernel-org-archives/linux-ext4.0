@@ -1,52 +1,103 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 111961] ext4 umount - invalid opcode with PLEXTOR
- PX-128M6G-2242
-Date: Wed, 10 Feb 2016 17:33:04 +0000
-Message-ID: <bug-111961-13602-qQA4uDRoPX@https.bugzilla.kernel.org/>
-References: <bug-111961-13602@https.bugzilla.kernel.org/>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: Fix scheduling in atomic on group checksum failure
+Date: Wed, 10 Feb 2016 09:52:46 -0800
+Message-ID: <20160210175246.GA6338@birch.djwong.org>
+References: <1455112710-18765-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, Dmitry Vyukov <dvyukov@google.com>,
+	linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:49322 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752201AbcBJRdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Feb 2016 12:33:07 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 79E7920394
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Feb 2016 17:33:06 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id B77382034F
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Feb 2016 17:33:04 +0000 (UTC)
-In-Reply-To: <bug-111961-13602@https.bugzilla.kernel.org/>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30983 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751974AbcBJRwz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Feb 2016 12:52:55 -0500
+Content-Disposition: inline
+In-Reply-To: <1455112710-18765-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=111961
+On Wed, Feb 10, 2016 at 02:58:30PM +0100, Jan Kara wrote:
+> When block group checksum is wrong, we call ext4_error() while holding
+> group spinlock from ext4_init_block_bitmap() or
+> ext4_init_inode_bitmap() which results in scheduling while in atomic.
+> Fix the issue by calling ext4_error() later after dropping the spinlock.
+> 
+> CC: stable@vger.kernel.org
+> Reported-by: Dmitry Vyukov <dvyukov@google.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
---- Comment #9 from Sebastian <info@dynpages.de> ---
-Hi,
+Looks ok, so
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-just wanted to let you know that I didn't face any error related to ext4 after
-disabling acpi for the sata controller.
+--D
 
-This was my change (custom powertop settings runner started by systemd):
-
-# Enable SATA link power management for host0   
-#echo 'min_power' > '/sys/class/scsi_host/host0/link_power_management_policy';
-# Enable SATA link power management for host1   
-#echo 'min_power' > '/sys/class/scsi_host/host1/link_power_management_policy';
-
-
-looks fine so far.
-
-
-best regards
-
-
-Sebastian
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> ---
+>  fs/ext4/balloc.c | 7 ++++---
+>  fs/ext4/ialloc.c | 6 ++++--
+>  2 files changed, 8 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index ec0668a60678..fe1f50fe764f 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -191,7 +191,6 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+>  	/* If checksum is bad mark all blocks used to prevent allocation
+>  	 * essentially implementing a per-group read-only flag. */
+>  	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+> -		ext4_error(sb, "Checksum bad for group %u", block_group);
+>  		grp = ext4_get_group_info(sb, block_group);
+>  		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>  			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> @@ -442,14 +441,16 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
+>  	}
+>  	ext4_lock_group(sb, block_group);
+>  	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+> -
+>  		err = ext4_init_block_bitmap(sb, bh, block_group, desc);
+>  		set_bitmap_uptodate(bh);
+>  		set_buffer_uptodate(bh);
+>  		ext4_unlock_group(sb, block_group);
+>  		unlock_buffer(bh);
+> -		if (err)
+> +		if (err) {
+> +			ext4_error(sb, "Failed to init block bitmap for group "
+> +				   "%u: %d", block_group, err);
+>  			goto out;
+> +		}
+>  		goto verify;
+>  	}
+>  	ext4_unlock_group(sb, block_group);
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 3fcfd50a2e8a..acc0ad56bf2f 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -76,7 +76,6 @@ static int ext4_init_inode_bitmap(struct super_block *sb,
+>  	/* If checksum is bad mark all blocks and inodes use to prevent
+>  	 * allocation, essentially implementing a per-group read-only flag. */
+>  	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+> -		ext4_error(sb, "Checksum bad for group %u", block_group);
+>  		grp = ext4_get_group_info(sb, block_group);
+>  		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>  			percpu_counter_sub(&sbi->s_freeclusters_counter,
+> @@ -191,8 +190,11 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+>  		set_buffer_verified(bh);
+>  		ext4_unlock_group(sb, block_group);
+>  		unlock_buffer(bh);
+> -		if (err)
+> +		if (err) {
+> +			ext4_error(sb, "Failed to init inode bitmap for group "
+> +				   "%u: %d", block_group, err);
+>  			goto out;
+> +		}
+>  		return bh;
+>  	}
+>  	ext4_unlock_group(sb, block_group);
+> -- 
+> 2.6.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
