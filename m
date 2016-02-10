@@ -1,96 +1,120 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v2 2/2] dax: move writeback calls into the filesystems
-Date: Wed, 10 Feb 2016 15:43:40 -0700
-Message-ID: <20160210224340.GA30938@linux.intel.com>
-References: <1455137336-28720-1-git-send-email-ross.zwisler@linux.intel.com>
- <1455137336-28720-3-git-send-email-ross.zwisler@linux.intel.com>
- <20160210220312.GP14668@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] ext4: test partial blocksize defrag integrity issue
+Date: Thu, 11 Feb 2016 10:16:14 +1100
+Message-ID: <20160210231614.GC19486@dastard>
+References: <1455117464-15565-1-git-send-email-eguan@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.com>,
-	Matthew Wilcox <willy@linux.intel.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, xfs@oss.sgi.com, Jan Kara <jack@suse.cz>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:26716 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750897AbcBJXQR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Feb 2016 18:16:17 -0500
 Content-Disposition: inline
-In-Reply-To: <20160210220312.GP14668@dastard>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1455117464-15565-1-git-send-email-eguan@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 11, 2016 at 09:03:12AM +1100, Dave Chinner wrote:
-> On Wed, Feb 10, 2016 at 01:48:56PM -0700, Ross Zwisler wrote:
-> > Previously calls to dax_writeback_mapping_range() for all DAX filesystems
-> > (ext2, ext4 & xfs) were centralized in filemap_write_and_wait_range().
-> > dax_writeback_mapping_range() needs a struct block_device, and it used to
-> > get that from inode->i_sb->s_bdev.  This is correct for normal inodes
-> > mounted on ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
-> > block devices and for XFS real-time files.
-> > 
-> > Instead, call dax_writeback_mapping_range() directly from the filesystem
-> > ->writepages function so that it can supply us with a valid block
-> > device. This also fixes DAX code to properly flush caches in response to
-> > sync(2).
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/block_dev.c      | 16 +++++++++++++++-
-> >  fs/dax.c            | 13 ++++++++-----
-> >  fs/ext2/inode.c     | 11 +++++++++++
-> >  fs/ext4/inode.c     |  7 +++++++
-> >  fs/xfs/xfs_aops.c   |  9 +++++++++
-> >  include/linux/dax.h |  6 ++++--
-> >  mm/filemap.c        | 12 ++++--------
-> >  7 files changed, 58 insertions(+), 16 deletions(-)
-> > 
-> > diff --git a/fs/block_dev.c b/fs/block_dev.c
-> > index 39b3a17..fc01e43 100644
-> > --- a/fs/block_dev.c
-> > +++ b/fs/block_dev.c
-> > @@ -1693,13 +1693,27 @@ static int blkdev_releasepage(struct page *page, gfp_t wait)
-> >  	return try_to_free_buffers(page);
-> >  }
-> >  
-> > +static int blkdev_writepages(struct address_space *mapping,
-> > +			     struct writeback_control *wbc)
-> > +{
-> > +	if (dax_mapping(mapping)) {
-> > +		struct block_device *bdev = I_BDEV(mapping->host);
-> > +		int error;
-> > +
-> > +		error = dax_writeback_mapping_range(mapping, bdev, wbc);
-> > +		if (error)
-> > +			return error;
-> > +	}
-> > +	return generic_writepages(mapping, wbc);
-> > +}
+On Wed, Feb 10, 2016 at 11:17:44PM +0800, Eryu Guan wrote:
+> Calling EXT4_IOC_MOVE_EXTENT on file not aligned with block size and
+> block size is smaller than page size would cause integrity issue on the
+> partial-blocksize part when copying data between orign file and donor
+> file.
 > 
-> Can you remind of the reason for calling generic_writepages() on DAX
-> enabled address spaces?
+> This ext4 kernel patch would fix it, titled
+> "ext4: don't read blocks from disk after extents being swapped in
+> move_extent_per_page())"
+> 
+> Though this bug only happens in the blocksize smaller than pagesize
+> case, there's no harm to test on various block size fs, so no block size
+> is specified in the test, it depends on the test configurations.
+> 
+> Signed-off-by: Eryu Guan <eguan@redhat.com>
+> ---
+>  tests/ext4/020     | 89 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/020.out |  6 ++++
+>  tests/ext4/group   |  1 +
+>  3 files changed, 96 insertions(+)
+>  create mode 100755 tests/ext4/020
+>  create mode 100644 tests/ext4/020.out
+> 
+> diff --git a/tests/ext4/020 b/tests/ext4/020
+> new file mode 100755
+> index 0000000..6740c7e
+> --- /dev/null
+> +++ b/tests/ext4/020
+> @@ -0,0 +1,89 @@
+> +#! /bin/bash
+> +# FS QA Test 020
+> +#
+> +# Test partial blocksize defrag integrity issue.
+> +#
+> +# Calling EXT4_IOC_MOVE_EXTENT on file not aligned with block size and block
+> +# size is smaller than page size would cause integrity issue on the
+> +# partial-blocksize part when copying data between orign file and donor file.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2016 Red Hat Inc. All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +#
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1	# failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +	cd /
+> +	rm -f $tmp.*
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +. ./common/defrag
+> +
+> +# remove previous $seqres.full before test
+> +rm -f $seqres.full
+> +
+> +# real QA test starts here
+> +_supported_fs ext4
+> +_supported_os Linux
+> +_require_scratch
+> +_require_defrag
+> +
+> +e4compact=$here/src/e4compact
+> +if [ ! -x $d4compact ]; then
+              ^^^^^^^^^
+> +	_notrun "$e4compact executable not found"
+> +fi
 
-Sure.  The initial version of this patch didn't do this, and during testing I
-hit a bunch of xfstests failures.  In ext2 at least I believe these were
-happening because we were skipping the call into generic_writepages() for DAX
-inodes. Without a lot of data to back this up, my guess is that this is due
-to metadata inodes or something being marked as DAX (so dax_mapping(mapping)
-returns true), but having dirty page cache pages that need to be written back
-as part of the writeback.
+And, yes, we really need that _requires_test_command function that
+Darrick was adding to his patchset...
 
-Changing this so we always call generic_writepages() even in the DAX case
-solved the xfstest failures. 
+Cheers,
 
-If this sounds incorrect, please let me know and I'll go and gather more data.
-
-- Ross
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
