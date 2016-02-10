@@ -1,60 +1,82 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4: BUG: scheduling while atomic in ext4_commit_super
-Date: Wed, 10 Feb 2016 14:57:48 +0100
-Message-ID: <20160210135748.GH12245@quack.suse.cz>
-References: <CACT4Y+Y5MveKSQ0Yywdcfa8M+cVPAEXRTiaFGM-ajo_x_pTWHQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	syzkaller <syzkaller@googlegroups.com>,
-	Kostya Serebryany <kcc@google.com>,
-	Alexander Potapenko <glider@google.com>,
-	Sasha Levin <sasha.levin@oracle.com>
-To: Dmitry Vyukov <dvyukov@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CACT4Y+Y5MveKSQ0Yywdcfa8M+cVPAEXRTiaFGM-ajo_x_pTWHQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Subject: [PATCH] ext4: Fix scheduling in atomic on group checksum failure
+Date: Wed, 10 Feb 2016 14:58:30 +0100
+Message-ID: <1455112710-18765-1-git-send-email-jack@suse.cz>
+Cc: Dmitry Vyukov <dvyukov@google.com>, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 24-01-16 17:48:00, Dmitry Vyukov wrote:
-> Hello,
-> 
-> I've hit the following BUG while running syzkaller fuzzer:
-> 
-> JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 1). There's
-> a risk of filesystem corruption in case of system crash.
-> EXT4-fs error (device sda): ext4_init_block_bitmap:194: comm
-> kworker/u10:2: Checksum bad for group 3
-> BUG: sleeping function called from invalid context at
-> include/linux/buffer_head.h:354
-> in_atomic(): 1, irqs_disabled(): 0, pid: 20922, name: kworker/u10:2
-> INFO: lockdep is turned off.
-> CPU: 3 PID: 20922 Comm: kworker/u10:2 Tainted: G        W       4.4.0+ #276
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-> Workqueue: writeback wb_workfn (flush-8:0)
->  00000000ffffffff ffff8800608ded00 ffffffff82999e2d ffff880067570000
->  00000000000051ba 0000000000000000 ffff8800608ded28 ffffffff813cc25b
->  ffff880067570000 ffffffff864a4ba0 0000000000000162 ffff8800608ded68
-> Call Trace:
->  [<     inline     >] __dump_stack lib/dump_stack.c:15
->  [<ffffffff82999e2d>] dump_stack+0x6f/0xa2 lib/dump_stack.c:50
->  [<ffffffff813cc25b>] ___might_sleep+0x27b/0x3a0 kernel/sched/core.c:7703
->  [<ffffffff813cc410>] __might_sleep+0x90/0x1a0 kernel/sched/core.c:7665
->  [<     inline     >] lock_buffer include/linux/buffer_head.h:354
->  [<ffffffff8186b353>] __sync_dirty_buffer+0x63/0x270 fs/buffer.c:3129
->  [<ffffffff81acb8b3>] ext4_commit_super+0x713/0xa80 fs/ext4/super.c:4333
->  [<     inline     >] save_error_info fs/ext4/super.c:316
->  [<ffffffff81acc547>] __ext4_error+0xe7/0x1d0 fs/ext4/super.c:419
->  [<     inline     >] ext4_init_block_bitmap fs/ext4/balloc.c:194
+When block group checksum is wrong, we call ext4_error() while holding
+group spinlock from ext4_init_block_bitmap() or
+ext4_init_inode_bitmap() which results in scheduling while in atomic.
+Fix the issue by calling ext4_error() later after dropping the spinlock.
 
-Yeah, we call ext4_error() from inappropriate place. Thanks for reporting
-this. I'll send a fix in a moment.
+CC: stable@vger.kernel.org
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/balloc.c | 7 ++++---
+ fs/ext4/ialloc.c | 6 ++++--
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index ec0668a60678..fe1f50fe764f 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -191,7 +191,6 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+ 	/* If checksum is bad mark all blocks used to prevent allocation
+ 	 * essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+-		ext4_error(sb, "Checksum bad for group %u", block_group);
+ 		grp = ext4_get_group_info(sb, block_group);
+ 		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+ 			percpu_counter_sub(&sbi->s_freeclusters_counter,
+@@ -442,14 +441,16 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
+ 	}
+ 	ext4_lock_group(sb, block_group);
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-
+ 		err = ext4_init_block_bitmap(sb, bh, block_group, desc);
+ 		set_bitmap_uptodate(bh);
+ 		set_buffer_uptodate(bh);
+ 		ext4_unlock_group(sb, block_group);
+ 		unlock_buffer(bh);
+-		if (err)
++		if (err) {
++			ext4_error(sb, "Failed to init block bitmap for group "
++				   "%u: %d", block_group, err);
+ 			goto out;
++		}
+ 		goto verify;
+ 	}
+ 	ext4_unlock_group(sb, block_group);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 3fcfd50a2e8a..acc0ad56bf2f 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -76,7 +76,6 @@ static int ext4_init_inode_bitmap(struct super_block *sb,
+ 	/* If checksum is bad mark all blocks and inodes use to prevent
+ 	 * allocation, essentially implementing a per-group read-only flag. */
+ 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
+-		ext4_error(sb, "Checksum bad for group %u", block_group);
+ 		grp = ext4_get_group_info(sb, block_group);
+ 		if (!EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+ 			percpu_counter_sub(&sbi->s_freeclusters_counter,
+@@ -191,8 +190,11 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 		set_buffer_verified(bh);
+ 		ext4_unlock_group(sb, block_group);
+ 		unlock_buffer(bh);
+-		if (err)
++		if (err) {
++			ext4_error(sb, "Failed to init inode bitmap for group "
++				   "%u: %d", block_group, err);
+ 			goto out;
++		}
+ 		return bh;
+ 	}
+ 	ext4_unlock_group(sb, block_group);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.6.2
