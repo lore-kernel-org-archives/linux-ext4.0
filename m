@@ -1,118 +1,87 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 2/2] dax: move writeback calls into the filesystems
-Date: Thu, 11 Feb 2016 07:22:00 -0800
-Message-ID: <CAPcyv4g60iOTd-ShBCfsK+B7xArcc5pWXWktNop53otDbUW-3g@mail.gmail.com>
-References: <1455137336-28720-1-git-send-email-ross.zwisler@linux.intel.com>
-	<1455137336-28720-3-git-send-email-ross.zwisler@linux.intel.com>
-	<20160210220312.GP14668@dastard>
-	<20160210224340.GA30938@linux.intel.com>
-	<20160211125044.GJ21760@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Linux MM <linux-mm@kvack.org>,
+From: Anton Protopopov <a.s.protopopov@gmail.com>
+Subject: [PATCH] ext4: ioctl: fix erroneous return value
+Date: Thu, 11 Feb 2016 10:58:58 -0500
+Message-ID: <1455206338-2869-1-git-send-email-a.s.protopopov@gmail.com>
+Cc: Anton Protopopov <a.s.protopopov@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160211125044.GJ21760@quack.suse.cz>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 11, 2016 at 4:50 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 10-02-16 15:43:40, Ross Zwisler wrote:
->> On Thu, Feb 11, 2016 at 09:03:12AM +1100, Dave Chinner wrote:
->> > On Wed, Feb 10, 2016 at 01:48:56PM -0700, Ross Zwisler wrote:
->> > > Previously calls to dax_writeback_mapping_range() for all DAX filesystems
->> > > (ext2, ext4 & xfs) were centralized in filemap_write_and_wait_range().
->> > > dax_writeback_mapping_range() needs a struct block_device, and it used to
->> > > get that from inode->i_sb->s_bdev.  This is correct for normal inodes
->> > > mounted on ext2, ext4 and XFS filesystems, but is incorrect for DAX raw
->> > > block devices and for XFS real-time files.
->> > >
->> > > Instead, call dax_writeback_mapping_range() directly from the filesystem
->> > > ->writepages function so that it can supply us with a valid block
->> > > device. This also fixes DAX code to properly flush caches in response to
->> > > sync(2).
->> > >
->> > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->> > > Signed-off-by: Jan Kara <jack@suse.cz>
->> > > ---
->> > >  fs/block_dev.c      | 16 +++++++++++++++-
->> > >  fs/dax.c            | 13 ++++++++-----
->> > >  fs/ext2/inode.c     | 11 +++++++++++
->> > >  fs/ext4/inode.c     |  7 +++++++
->> > >  fs/xfs/xfs_aops.c   |  9 +++++++++
->> > >  include/linux/dax.h |  6 ++++--
->> > >  mm/filemap.c        | 12 ++++--------
->> > >  7 files changed, 58 insertions(+), 16 deletions(-)
->> > >
->> > > diff --git a/fs/block_dev.c b/fs/block_dev.c
->> > > index 39b3a17..fc01e43 100644
->> > > --- a/fs/block_dev.c
->> > > +++ b/fs/block_dev.c
->> > > @@ -1693,13 +1693,27 @@ static int blkdev_releasepage(struct page *page, gfp_t wait)
->> > >   return try_to_free_buffers(page);
->> > >  }
->> > >
->> > > +static int blkdev_writepages(struct address_space *mapping,
->> > > +                      struct writeback_control *wbc)
->> > > +{
->> > > + if (dax_mapping(mapping)) {
->> > > +         struct block_device *bdev = I_BDEV(mapping->host);
->> > > +         int error;
->> > > +
->> > > +         error = dax_writeback_mapping_range(mapping, bdev, wbc);
->> > > +         if (error)
->> > > +                 return error;
->> > > + }
->> > > + return generic_writepages(mapping, wbc);
->> > > +}
->> >
->> > Can you remind of the reason for calling generic_writepages() on DAX
->> > enabled address spaces?
->>
->> Sure.  The initial version of this patch didn't do this, and during testing I
->> hit a bunch of xfstests failures.  In ext2 at least I believe these were
->> happening because we were skipping the call into generic_writepages() for DAX
->> inodes. Without a lot of data to back this up, my guess is that this is due
->> to metadata inodes or something being marked as DAX (so dax_mapping(mapping)
->> returns true), but having dirty page cache pages that need to be written back
->> as part of the writeback.
->>
->> Changing this so we always call generic_writepages() even in the DAX case
->> solved the xfstest failures.
->>
->> If this sounds incorrect, please let me know and I'll go and gather more data.
->
-> So I think a more correct fix it to not set S_DAX for inodes that will have
-> any pagecache pages - e.g. don't set S_DAX for block device inodes when
-> filesystem is mounted on it (probably the easiest is to just refuse to
-> mount filesystem on block device which has S_DAX set).
+The ext4_ioctl_setflags() function which is used in the ioctls
+EXT4_IOC_SETFLAGS and EXT4_IOC_FSSETXATTR may return the positive value
+EPERM instead of -EPERM in case of error. This bug was introduced by a
+recent commit 9b7365fc.
 
-I think we have a wider problem here.  See __blkdev_get, we set S_DAX
-on all block devices that have ->direct_access() and have a
-page-aligned starting address.  It seems to me we need to modify the
-metadata i/o paths to bypass the page cache, or teach the fsync code
-how to flush populated data pages out of the radix.
+The following program can be used to illustrate the wrong behavior:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+    #include <sys/types.h>
+    #include <sys/ioctl.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+    #include <err.h>
+
+    #define FS_IOC_GETFLAGS _IOR('f', 1, long)
+    #define FS_IOC_SETFLAGS _IOW('f', 2, long)
+    #define FS_IMMUTABLE_FL 0x00000010
+
+    int main(void)
+    {
+        int fd;
+        long flags;
+
+        fd = open("file", O_RDWR|O_CREAT, 0600);
+        if (fd < 0)
+            err(1, "open");
+
+        if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0)
+            err(1, "ioctl: FS_IOC_GETFLAGS");
+
+        flags |= FS_IMMUTABLE_FL;
+
+        if (ioctl(fd, FS_IOC_SETFLAGS, &flags) < 0)
+            err(1, "ioctl: FS_IOC_SETFLAGS");
+
+        warnx("ioctl returned no error");
+
+        return 0;
+    }
+
+Running it gives the following result:
+
+    $ strace -e ioctl ./test
+    ioctl(3, FS_IOC_GETFLAGS, 0x7ffdbd8bfd38) = 0
+    ioctl(3, FS_IOC_SETFLAGS, 0x7ffdbd8bfd38) = 1
+    test: ioctl returned no error
+    +++ exited with 0 +++
+
+Running the program on a kernel with the bug fixed gives the proper result:
+
+    $ strace -e ioctl ./test
+    ioctl(3, FS_IOC_GETFLAGS, 0x7ffdd2768258) = 0
+    ioctl(3, FS_IOC_SETFLAGS, 0x7ffdd2768258) = -1 EPERM (Operation not permitted)
+    test: ioctl: FS_IOC_SETFLAGS: Operation not permitted
+    +++ exited with 1 +++
+
+Signed-off-by: Anton Protopopov <a.s.protopopov@gmail.com>
+---
+ fs/ext4/ioctl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0f6c369..a99b010 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -208,7 +208,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ {
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	handle_t *handle = NULL;
+-	int err = EPERM, migrate = 0;
++	int err = -EPERM, migrate = 0;
+ 	struct ext4_iloc iloc;
+ 	unsigned int oldflags, mask, i;
+ 	unsigned int jflag;
+-- 
+2.6.5
