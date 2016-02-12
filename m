@@ -1,194 +1,79 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: revert i_data_sum locking cleanups for dioread_nolock
-Date: Fri, 12 Feb 2016 13:25:06 -0500
-Message-ID: <20160212182506.GB1592@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 0/2] DAX bdev fixes - move flushing calls to FS
+Date: Fri, 12 Feb 2016 12:03:20 -0700
+Message-ID: <20160212190320.GA24857@linux.intel.com>
+References: <1455137336-28720-1-git-send-email-ross.zwisler@linux.intel.com>
+ <20160211124304.GI21760@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, jack@suse.cz
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:33254 "EHLO
-	mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752519AbcBLSY7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Feb 2016 13:24:59 -0500
-Received: by mail-qk0-f172.google.com with SMTP id s5so34367058qkd.0
-        for <linux-ext4@vger.kernel.org>; Fri, 12 Feb 2016 10:24:58 -0800 (PST)
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160211124304.GI21760@quack.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Commit 2bcba4781fa3 ("ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag")
-can cause a kernel panic when xfstest generic/300 is run on a file
-system mounted with dioread_nolock.  The panic is typically triggered
-from check_irqs_on() (fs/buffer.c: 1272), and happens because
-ext4_end_io_dio() is being called in an interrupt context rather than
-from a workqueue for AIO.  This suggests that buffer_defer_completion
-may not be set properly when creating an unwritten extent for async
-direct I/O.
+On Thu, Feb 11, 2016 at 01:43:04PM +0100, Jan Kara wrote:
+> On Wed 10-02-16 13:48:54, Ross Zwisler wrote:
+> > 3) In filemap_write_and_wait() and filemap_write_and_wait_range(), continue
+> > the writeback in the case that DAX is enabled but we only have a nonzero
+> > mapping->nrpages.  As with 1) and 2), I believe this is necessary to
+> > properly writeback metadata changes.  If this sounds wrong, please let me
+> > know and I'll get more info.
+> 
+> And I'm surprised here as well. If there are dax_mapping() inodes that have
+> pagecache pages, then we have issues with radix tree handling as well. So
+> how come dax_mapping() inodes have pages attached? If it is about block
+> device inodes, then I find it buggy, that S_DAX gets set for such inodes
+> when filesystem is mounted on them because in such cases we are IMO asking
+> for data corruption sooner rather than later...
 
-Revert the locking changes until this problem can be resolved.  Patch
-applied to 4.5-rc3 and tested with a full xfstest-bld auto group run.
+I think I've figured this one out, at least partially.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/ext4.h              |  6 ++++--
- fs/ext4/inode.c             | 43 +++++++++++++++++++++++--------------------
- include/trace/events/ext4.h |  1 +
- 3 files changed, 28 insertions(+), 22 deletions(-)
+For ext2 the issues I was seeing were due to the fact that directory inodes
+have S_DAX set, but have dirty page cache pages.   In testing with
+generic/002, I see two ext2 inodes with S_DAX trying to do a writeback while
+they have dirty page cache pages.  The first has i_ino=2, which is the
+EXT2_ROOT_INO.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0662b28..36fcf2a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -563,10 +563,12 @@ enum {
- #define EXT4_GET_BLOCKS_NO_NORMALIZE		0x0040
- 	/* Request will not result in inode size update (user for fallocate) */
- #define EXT4_GET_BLOCKS_KEEP_SIZE		0x0080
-+	/* Do not take i_data_sem locking in ext4_map_blocks */
-+#define EXT4_GET_BLOCKS_NO_LOCK			0x0100
- 	/* Convert written extents to unwritten */
--#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
-+#define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0200
- 	/* Write zeros to newly created written extents */
--#define EXT4_GET_BLOCKS_ZERO			0x0200
-+#define EXT4_GET_BLOCKS_ZERO			0x0300
- #define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
- 					EXT4_GET_BLOCKS_ZERO)
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 83bc8bf..f72dc04 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -418,7 +418,8 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
- 	 * out taking i_data_sem.  So at the time the unwritten extent
- 	 * could be converted.
- 	 */
--	down_read(&EXT4_I(inode)->i_data_sem);
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		down_read(&EXT4_I(inode)->i_data_sem);
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
-@@ -426,7 +427,8 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
- 		retval = ext4_ind_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
- 	}
--	up_read((&EXT4_I(inode)->i_data_sem));
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		up_read((&EXT4_I(inode)->i_data_sem));
- 
- 	/*
- 	 * We don't check m_len because extent will be collpased in status
-@@ -522,7 +524,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	 * Try to see if we can get the block without requesting a new
- 	 * file system block.
- 	 */
--	down_read(&EXT4_I(inode)->i_data_sem);
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		down_read(&EXT4_I(inode)->i_data_sem);
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
- 		retval = ext4_ext_map_blocks(handle, inode, map, flags &
- 					     EXT4_GET_BLOCKS_KEEP_SIZE);
-@@ -553,7 +556,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		if (ret < 0)
- 			retval = ret;
- 	}
--	up_read((&EXT4_I(inode)->i_data_sem));
-+	if (!(flags & EXT4_GET_BLOCKS_NO_LOCK))
-+		up_read((&EXT4_I(inode)->i_data_sem));
- 
- found:
- 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-@@ -703,7 +707,7 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 	map.m_lblk = iblock;
- 	map.m_len = bh->b_size >> inode->i_blkbits;
- 
--	if (flags && !handle) {
-+	if (flags && !(flags & EXT4_GET_BLOCKS_NO_LOCK) && !handle) {
- 		/* Direct IO write... */
- 		if (map.m_len > DIO_MAX_BLOCKS)
- 			map.m_len = DIO_MAX_BLOCKS;
-@@ -898,6 +902,9 @@ int do_journal_get_write_access(handle_t *handle,
- 	return ret;
- }
- 
-+static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
-+		   struct buffer_head *bh_result, int create);
-+
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 				  get_block_t *get_block)
-@@ -3070,21 +3077,13 @@ int ext4_get_block_write(struct inode *inode, sector_t iblock,
- 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
- }
- 
--static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
-+static int ext4_get_block_write_nolock(struct inode *inode, sector_t iblock,
- 		   struct buffer_head *bh_result, int create)
- {
--	int ret;
--
--	ext4_debug("ext4_get_block_overwrite: inode %lu, create flag %d\n",
-+	ext4_debug("ext4_get_block_write_nolock: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
--	ret = _ext4_get_block(inode, iblock, bh_result, 0);
--	/*
--	 * Blocks should have been preallocated! ext4_file_write_iter() checks
--	 * that.
--	 */
--	WARN_ON_ONCE(!buffer_mapped(bh_result));
--
--	return ret;
-+	return _ext4_get_block(inode, iblock, bh_result,
-+			       EXT4_GET_BLOCKS_NO_LOCK);
- }
- 
- #ifdef CONFIG_FS_DAX
-@@ -3230,8 +3229,10 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	/* If we do a overwrite dio, i_mutex locking can be released */
- 	overwrite = *((int *)iocb->private);
- 
--	if (overwrite)
-+	if (overwrite) {
-+		down_read(&EXT4_I(inode)->i_data_sem);
- 		inode_unlock(inode);
-+	}
- 
- 	/*
- 	 * We could direct write to holes and fallocate.
-@@ -3274,7 +3275,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	}
- 
- 	if (overwrite) {
--		get_block_func = ext4_get_block_overwrite;
-+		get_block_func = ext4_get_block_write_nolock;
- 	} else {
- 		get_block_func = ext4_get_block_write;
- 		dio_flags = DIO_LOCKING;
-@@ -3330,8 +3331,10 @@ retake_lock:
- 	if (iov_iter_rw(iter) == WRITE)
- 		inode_dio_end(inode);
- 	/* take i_mutex locking again if we do a ovewrite dio */
--	if (overwrite)
-+	if (overwrite) {
-+		up_read(&EXT4_I(inode)->i_data_sem);
- 		inode_lock(inode);
-+	}
- 
- 	return ret;
- }
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 4e4b2fa..6599e75 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -43,6 +43,7 @@ struct extent_status;
- 	{ EXT4_GET_BLOCKS_METADATA_NOFAIL,	"METADATA_NOFAIL" },	\
- 	{ EXT4_GET_BLOCKS_NO_NORMALIZE,		"NO_NORMALIZE" },	\
- 	{ EXT4_GET_BLOCKS_KEEP_SIZE,		"KEEP_SIZE" },		\
-+	{ EXT4_GET_BLOCKS_NO_LOCK,		"NO_LOCK" },		\
- 	{ EXT4_GET_BLOCKS_ZERO,			"ZERO" })
- 
- #define show_mflags(flags) __print_flags(flags, "",	\
--- 
-2.1.4
+The second inode changes from run to run, but for my last run was 155649.  The
+test failed because that directory inode was found to be corrupt by fsck.ext2:
 
+	*** fsck.ext2 output ***
+	fsck from util-linux 2.26.2
+	e2fsck 1.42.12 (29-Aug-2014)
+	Pass 1: Checking inodes, blocks, and sizes
+	Pass 2: Checking directory structure
+	Directory inode 155649, block #0, offset 0: directory corrupted
+
+If I change the code in ext2_writepages() so that it does the
+mpage_writepages() even for DAX inodes, all my xfstests pass.  I'm not sure
+this is the right fix, though - should it instead be that ext2 directory
+inodes don't have S_DAX set?
+
+A similar problem occurs with ext4, though I haven't yet tracked it down to an
+inode type.  It could be that ext4 directory inodes have the same issue, and
+Eric Sandeen suggested we might also have an issue with XATTRS attached to
+inodes.
+
+As with ext2, if I allow the normal writeback to occur in ext4_writepages()
+even for DAX inodes, the issues go away, but I'm not sure whether or not this
+is the correct fix.
+
+As far as I can see, XFS does not have these issues - returning immediately
+having done just the DAX writeback in xfs_vm_writepages() lets all my xfstests
+pass.
+
+For v4.5 should I send out an updated version of this series that does the
+regular page writeback for ext2 & ext4, or should we work to clear S_DAX for
+regular filesystem inodes that have dirty page cache data?
