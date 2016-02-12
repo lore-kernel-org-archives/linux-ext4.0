@@ -1,30 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix potential integer overflow
-Date: Fri, 12 Feb 2016 01:16:31 -0500
-Message-ID: <20160212061631.GG11298@thunk.org>
-References: <1453306688-5528-1-git-send-email-wuninsu@gmail.com>
+Subject: Re: [PATCH] ext4: don't read blocks from disk after extents being
+ swapped in move_extent_per_page()
+Date: Fri, 12 Feb 2016 01:21:58 -0500
+Message-ID: <20160212062158.GH11298@thunk.org>
+References: <1455117406-15497-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, taesoo@gatech.edu,
-	yeongjin.jang@gatech.edu, insu@gatech.edu, changwoo@gatech.edu
-To: Insu Yun <wuninsu@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49080 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:49113 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750714AbcBLGQg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Feb 2016 01:16:36 -0500
+	id S1750823AbcBLGWA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Feb 2016 01:22:00 -0500
 Content-Disposition: inline
-In-Reply-To: <1453306688-5528-1-git-send-email-wuninsu@gmail.com>
+In-Reply-To: <1455117406-15497-1-git-send-email-guaneryu@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 20, 2016 at 11:18:08AM -0500, Insu Yun wrote:
-> Since sizeof(ext_new_group_data) > sizeof(ext_new_flex_group_data),
-> integer overflow could be happened.
-> Therefore, need to fix integer overflow sanitization.
+On Wed, Feb 10, 2016 at 11:16:45PM +0800, Eryu Guan wrote:
+> I notice ext4/307 fails occasionally on ppc64 host, reporting md5
+> checksum mismatch after moving data from original file to donor file.
 > 
-> Signed-off-by: Insu Yun <wuninsu@gmail.com>
+> The reason is that move_extent_per_page() calls __block_write_begin()
+> and block_commit_write() to write saved data from original inode blocks
+> to donor inode blocks, but __block_write_begin() not only maps buffer
+> heads but also reads block content from disk if the size is not block
+> size aligned. At this time the physical block number in mapped buffer
+> head is pointing to the donor file not the original file, and that
+> results in reading wrong data to page, which get written to disk in
+> following block_commit_write call.
 
 Thanks, applied.
 
