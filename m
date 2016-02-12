@@ -1,103 +1,225 @@
-From: Georg Altmann <george@george-net.de>
-Subject: Re: [PATCH] ext4: clarify error messages for mounting fs w/o journal
- /w journal options
-Date: Fri, 12 Feb 2016 18:32:47 +0100
-Message-ID: <56BE173F.2050703@george-net.de>
-References: <1455283909-23354-1-git-send-email-george@george-net.de>
- <20160212170308.GC7928@thunk.org>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: 4.5-rc1 panic when running generic/300 with dioread_nolock
+Date: Fri, 12 Feb 2016 13:22:12 -0500
+Message-ID: <20160212182212.GA1592@localhost.localdomain>
+References: <20160211002344.GA15231@localhost.localdomain>
+ <20160211092533.GA21760@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="SDQsFN39onF0nQIiOfcnOoM7LQ4oDLQVO"
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160212170308.GC7928@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+	tytso@mit.edu
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:35965 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752235AbcBLSWF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Feb 2016 13:22:05 -0500
+Received: by mail-qg0-f42.google.com with SMTP id y9so68948005qgd.3
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Feb 2016 10:22:04 -0800 (PST)
+Content-Disposition: inline
+In-Reply-To: <20160211092533.GA21760@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---SDQsFN39onF0nQIiOfcnOoM7LQ4oDLQVO
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
+* Jan Kara <jack@suse.cz>:
+> On Wed 10-02-16 19:23:44, Eric Whitney wrote:
+> > I've been seeing a panic and other signs of locking trouble when running
+> > xfstest generic/300 with xfstests-bld's x86-64 test appliance in the
+> > dioread_nolock test configuration.  This began with the 4.5-rc1 kernel and has
+> > continued through 4.5-rc3.  It happens in more than 50% of my test runs and
+> > is accompanied by an inconsistent lock state warning.  It does not occur in
+> > any other xfstest-bld test configuration.
+> > 
+> > The panic bisects to "ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag"
+> > (2dcba4781f).  Reverting this commit (requires minor merging) in a 4.5-rc1
+> > kernel eliminates the panic.
+> > 
+> > Typical dmesg output follows.
+> 
+> Uh, it seems like we fail to set buffer_defer_completion() when creating
+> unwritten extent for direct IO so ext4_end_io_dio() gets called directly
+> from IRQ instead of from the workqueue. Not sure why that happens because
+> _ext4_get_block() seems to set buffer_defer_completion whenever we return
+> unwritten extent. I don't have time to debug this right now so it may be
+> best to try bisecting the breakage if you have time to do that...
+> 
+> 								Honza
+>
 
+Honza:
 
+Thanks very much for your analysis!  I'm continuing to look at this, and will
+post if I make any progress.  In the meantime, I'm also going to post a patch
+that can be used to temporarily revert the suspect commit - this was a
+request that came out of this week's concall.
 
-Am 12.02.2016 um 18:03 schrieb Theodore Ts'o:
-> On Fri, Feb 12, 2016 at 02:31:49PM +0100, Georg Altmann wrote:
->> Previous message was hard to understand: When mounting a ext4 fs witho=
-ut a
->> journal, but a mount option that controls journaling is used, clearly =
-state
->> that the fs cannot be mounted with this option because it has no journ=
-al.
->=20
-> Well, technically it's possible for the file system to have a journal,
-> but for journalling not to be enabled.  For example:
->=20
-> root@kvm-xfstests:~# dmesg -n 7
-> root@kvm-xfstests:~# mke2fs -t ext4 -Fq /dev/vdc
-> /dev/vdc contains a ext4 file system
-> 	created on Fri Feb 12 11:59:10 2016
-> root@kvm-xfstests:~# dumpe2fs /dev/vdc | grep features
-> dumpe2fs 1.43-WIP (18-May-2015)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index f=
-iletype extent 64bit flex_bg sparse_super large_file huge_file dir_nlink =
-extra_isize metadata_csum
-> Journal features:         (none)
-> root@kvm-xfstests:~# mount -o noload,commit=3D1 /dev/vdc /vdc 2> /dev/n=
-ull
-> [  313.867505] EXT4-fs (vdc): can't mount with commit=3D1, fs mounted w=
-/o journal
->=20
-> So saying "fs has no journal" isn't necessarily going to be correct.
-> Maybe "Can't mount with data=3Dxxx, journalling not enabled" would be
-> less confusing to users?
+Thanks,
+Eric
 
-Yes.
-
-I do not understand the error checking logic here enough:
-it could be either fs without journal or journal not enabled, right?
-So how about
-"can't mount with data=3Dxxx, journalling not enabled or no journal"
-?
-
-Or, if this can be justified in regard of code complexity, handle both
-cases separately. Even nicer diagnostics for the user...
-
-Should I send a new patch?
-
-Regards,
-Georg
-
-
---=20
-PGP-Key: 0x1E320E65
-D150 7783 A0D1 7507 1266  C5B3 BBF1 9C42 1E32 0E65
-
-I don't like the idea of secret agencies to analyse and archive
-personal communication. GnuPG is available as open source, free as as in
-freedom, as a countermeasure. I use http://www.enigmail.net/ for Mozilla
-Thunderbird. If you can, please use a frontend of your choice to send me
-encrypted e-mail. See http://www.gnupg.org/ for an overview.
-
-
---SDQsFN39onF0nQIiOfcnOoM7LQ4oDLQVO
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQEcBAEBCAAGBQJWvhdAAAoJELvxnEIeMg5lFL0H/AwxHsfwrd1PRTIsdQ55pRAF
-J55P4JBRVeTFuU58QZzftJExyQceqF0TT6TTgEdW1+9aSTc7MvYLke6A6dKpEjnc
-ZqXIG8Js3SYisBz3zXn/Fn3LLFC5Glj7oSSS9IcppJ98B/HEl5HaF+3jLmr/OpjN
-qJIXk1nZsU5FEXP0wj+5R92r32TJfaneqLoUjWQyqmSW3FJEteDd0encJji4RC/o
-MlapQ9/qUtmXkmW0PAFN/Rl2mMpM16AvnZoW7nHlXJYlAccZFgPmNS2EPWeZppT1
-/4SWIVxQlaDUwVUy2tWBkqK0iwe5Pz8yvvtyGB1Iw/Q9EPJ5MjUgcJR07GuWeJ4=
-=/gMQ
------END PGP SIGNATURE-----
-
---SDQsFN39onF0nQIiOfcnOoM7LQ4oDLQVO--
+> > generic/300 7s ...	[16:06:59][    3.320917] run fstests generic/300 at 2016-02-05 16:06:59
+> > [    4.078053] 
+> > [    4.078330] =================================
+> > [    4.079036] [ INFO: inconsistent lock state ]
+> > [    4.079407] 4.4.0-rc4+ #7 Not tainted
+> > [    4.079724] ---------------------------------
+> > [    4.080007] inconsistent {HARDIRQ-ON-W} -> {IN-HARDIRQ-R} usage.
+> > [    4.080007] fio/904 [HC1[1]:SC0[0]:HE0:SE1] takes:
+> > [    4.080007]  (&journal->j_state_lock){+?++..}, at: [<ffffffff812f9bce>] start_this_handle+0xae/0x450
+> > [    4.080007] {HARDIRQ-ON-W} state was registered at:
+> > [    4.080007]   [<ffffffff810fc766>] __lock_acquire+0x896/0x1fb0
+> > [    4.080007]   [<ffffffff810fe756>] lock_acquire+0xb6/0x130
+> > [    4.080007]   [<ffffffff81724df1>] _raw_write_lock+0x31/0x40
+> > [    4.080007]   [<ffffffff812c171d>] ext4_init_journal_params+0x4d/0xc0
+> > [    4.080007]   [<ffffffff812d152e>] ext4_fill_super+0x236e/0x31c0
+> > [    4.080007]   [<ffffffff8121cfe5>] mount_bdev+0x185/0x1b0
+> > [    4.080007]   [<ffffffff812c1285>] ext4_mount+0x15/0x20
+> > [    4.080007]   [<ffffffff8121d8a8>] mount_fs+0x38/0x170
+> > [    4.080007]   [<ffffffff8123ce1b>] vfs_kern_mount+0x6b/0x160
+> > [    4.080007]   [<ffffffff8123fda8>] do_mount+0x218/0xe70
+> > [    4.080007]   [<ffffffff81240cfb>] SyS_mount+0x8b/0xd0
+> > [    4.080007]   [<ffffffff81d49395>] mount_block_root+0xf6/0x284
+> > [    4.080007]   [<ffffffff81d496ad>] mount_root+0x67/0x6a
+> > [    4.080007]   [<ffffffff81d49817>] prepare_namespace+0x167/0x19f
+> > [    4.080007]   [<ffffffff81d491c5>] kernel_init_freeable+0x268/0x278
+> > [    4.080007]   [<ffffffff8171800e>] kernel_init+0xe/0xe0
+> > [    4.080007]   [<ffffffff8172561f>] ret_from_fork+0x3f/0x70
+> > [    4.080007] irq event stamp: 38034
+> > [    4.080007] hardirqs last  enabled at (38033): [<ffffffff811adac7>] context_tracking_exit.part.6+0x37/0x60
+> > [    4.080007] hardirqs last disabled at (38034): [<ffffffff81725d8c>] common_interrupt+0x8c/0x91
+> > [    4.080007] softirqs last  enabled at (36084): [<ffffffff810ae829>] __do_softirq+0x2a9/0x340
+> > [    4.080007] softirqs last disabled at (36063): [<ffffffff810aea8e>] irq_exit+0xbe/0xc0
+> > [    4.080007] 
+> > [    4.080007] other info that might help us debug this:
+> > [    4.080007]  Possible unsafe locking scenario:
+> > [    4.080007] 
+> > [    4.080007]        CPU0
+> > [    4.080007]        ----
+> > [    4.080007]   lock(&journal->j_state_lock);
+> > [    4.080007]   <Interrupt>
+> > [    4.080007]     lock(&journal->j_state_lock);
+> > [    4.080007] 
+> > [    4.080007]  *** DEADLOCK ***
+> > [    4.080007] 
+> > [    4.080007] 1 lock held by fio/904:
+> > [    4.080007]  #0:  (&(&vblk->vqs[i].lock)->rlock){-.-...}, at: [<ffffffff81588193>] virtblk_done+0x43/0xe0
+> > [    4.080007] 
+> > [    4.080007] stack backtrace:
+> > [    4.080007] CPU: 0 PID: 904 Comm: fio Not tainted 4.4.0-rc4+ #7
+> > [    4.080007] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140531_083030-gandalf 04/01/2014
+> > [    4.080007]  ffffffff826152e0 ffff88007fc039b0 ffffffff8138fb82 ffff88007a18c880
+> > [    4.080007]  ffff88007fc03a00 ffffffff811aed8c 0000000000000000 0000000000000000
+> > [    4.080007]  0000000000000001 0000000000000001 ffff88007a18d0d8 ffff88007a18c880
+> > [    4.080007] Call Trace:
+> > [    4.080007]  <IRQ>  [<ffffffff8138fb82>] dump_stack+0x44/0x62
+> > [    4.080007]  [<ffffffff811aed8c>] print_usage_bug+0x1f3/0x208
+> > [    4.080007]  [<ffffffff810fb889>] mark_lock+0x649/0x6c0
+> > [    4.080007]  [<ffffffff810fa9e0>] ? print_shortest_lock_dependencies+0x1d0/0x1d0
+> > [    4.080007]  [<ffffffff810fc8ee>] __lock_acquire+0xa1e/0x1fb0
+> > [    4.080007]  [<ffffffff810f7565>] ? cpuacct_charge+0x5/0x190
+> > [    4.080007]  [<ffffffff810f983d>] ? __lock_is_held+0x4d/0x70
+> > [    4.080007]  [<ffffffff810f983d>] ? __lock_is_held+0x4d/0x70
+> > [    4.080007]  [<ffffffff810fe756>] lock_acquire+0xb6/0x130
+> > [    4.080007]  [<ffffffff812f9bce>] ? start_this_handle+0xae/0x450
+> > [    4.080007]  [<ffffffff81724b34>] _raw_read_lock+0x34/0x50
+> > [    4.080007]  [<ffffffff812f9bce>] ? start_this_handle+0xae/0x450
+> > [    4.080007]  [<ffffffff812f9bce>] start_this_handle+0xae/0x450
+> > [    4.080007]  [<ffffffff812f9700>] ? new_handle+0x20/0x60
+> > [    4.080007]  [<ffffffff812fa10f>] jbd2__journal_start+0xbf/0x190
+> > [    4.080007]  [<ffffffff812dd171>] ? ext4_convert_unwritten_extents+0xb1/0x210
+> > [    4.080007]  [<ffffffff812df221>] __ext4_journal_start_sb+0x71/0xd0
+> > [    4.080007]  [<ffffffff812dd171>] ext4_convert_unwritten_extents+0xb1/0x210
+> > [    4.080007]  [<ffffffff812b4dee>] ext4_put_io_end+0x4e/0x70
+> > [    4.080007]  [<ffffffff812ab13a>] ext4_end_io_dio+0x2a/0x30
+> > [    4.080007]  [<ffffffff81258bcb>] dio_complete+0xcb/0x1b0
+> > [    4.080007]  [<ffffffff81258d2f>] dio_bio_end_aio+0x7f/0x130
+> > [    4.080007]  [<ffffffff8135d06f>] bio_endio+0x3f/0x60
+> > [    4.080007]  [<ffffffff813647c7>] blk_update_request+0x97/0x320
+> > [    4.080007]  [<ffffffff8136e85a>] blk_mq_end_request+0x1a/0x70
+> > [    4.080007]  [<ffffffff8158833f>] virtblk_request_done+0x3f/0x70
+> > [    4.080007]  [<ffffffff8136e92b>] __blk_mq_complete_request+0x7b/0xf0
+> > [    4.080007]  [<ffffffff8136e9bc>] blk_mq_complete_request+0x1c/0x20
+> > [    4.080007]  [<ffffffff815881b4>] virtblk_done+0x64/0xe0
+> > [    4.080007]  [<ffffffff81432ee1>] vring_interrupt+0x31/0x50
+> > [    4.080007]  [<ffffffff81107ac1>] handle_irq_event_percpu+0x81/0x1b0
+> > [    4.080007]  [<ffffffff81107c29>] handle_irq_event+0x39/0x60
+> > [    4.080007]  [<ffffffff8110ac9f>] handle_edge_irq+0x6f/0x150
+> > [    4.080007]  [<ffffffff81056ded>] handle_irq+0x1d/0x30
+> > [    4.080007]  [<ffffffff81727ab1>] do_IRQ+0x61/0x120
+> > [    4.080007]  [<ffffffff81725d91>] common_interrupt+0x91/0x91
+> > [    4.080007]  <EOI>  [<ffffffff811adacc>] ? context_tracking_exit.part.6+0x3c/0x60
+> > [    4.080007]  [<ffffffff811adb0d>] context_tracking_exit+0x1d/0x20
+> > [    4.080007]  [<ffffffff810026bf>] enter_from_user_mode+0x1f/0x50
+> > [    4.080007]  [<ffffffff810027b6>] syscall_trace_enter_phase1+0xc6/0x130
+> > [    4.080007]  [<ffffffff81002017>] ? trace_hardirqs_on_thunk+0x17/0x19
+> > [    4.080007]  [<ffffffff81725335>] tracesys+0xd/0x44
+> > [    4.080007] ------------[ cut here ]------------
+> > [    4.080007] kernel BUG at fs/buffer.c:1281!
+> > [    4.080007] invalid opcode: 0000 [#1] SMP 
+> > [    4.080007] Modules linked in:
+> > [    4.080007] CPU: 0 PID: 904 Comm: fio Not tainted 4.4.0-rc4+ #7
+> > [    4.080007] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140531_083030-gandalf 04/01/2014
+> > [    4.080007] task: ffff88007a18c880 ti: ffff880079144000 task.ti: ffff880079144000
+> > [    4.080007] RIP: 0010:[<ffffffff81252f41>]  [<ffffffff81252f41>] __find_get_block+0x121/0x130
+> > [    4.080007] RSP: 0018:ffff88007fc03a78  EFLAGS: 00010046
+> > [    4.080007] RAX: 0000000000000086 RBX: 0000000000018980 RCX: 0000000002400048
+> > [    4.080007] RDX: 0000000000001000 RSI: 000000000000dde0 RDI: ffff88007c06ca80
+> > [    4.080007] RBP: ffff88007fc03aa8 R08: 0000000000000001 R09: 0000000000000000
+> > [    4.080007] R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007c06ca80
+> > [    4.080007] R13: 000000000000dde0 R14: 0000000000001000 R15: 0000000002400048
+> > [    4.080007] FS:  00007fcfc0cd4740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+> > [    4.080007] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > [    4.080007] CR2: 000000000258c018 CR3: 000000007a031000 CR4: 00000000000006f0
+> > [    4.080007] Stack:
+> > [    4.080007]  ffffffff81253223 0000000000018980 ffff880079c86af0 000000000000dde0
+> > [    4.080007]  ffff88007a088900 0000000000000001 ffff88007fc03b00 ffffffff812d68d6
+> > [    4.080007]  0000000002408040 000003867fc03b00 ffffffff81841db0 ffffffff00000000
+> > [    4.080007] Call Trace:
+> > [    4.080007]  <IRQ> 
+> > [    4.080007]  [<ffffffff81253223>] ? __getblk_gfp+0x23/0x60
+> > [    4.080007]  [<ffffffff812d68d6>] __read_extent_tree_block+0x46/0x200
+> > [    4.080007]  [<ffffffff812d7b89>] ext4_find_extent+0x139/0x320
+> > [    4.080007]  [<ffffffff812dc2a7>] ext4_ext_map_blocks+0x87/0xdd0
+> > [    4.080007]  [<ffffffff812adbaa>] ? ext4_map_blocks+0xea/0x4b0
+> > [    4.080007]  [<ffffffff812adbce>] ext4_map_blocks+0x10e/0x4b0
+> > [    4.080007]  [<ffffffff812dd171>] ? ext4_convert_unwritten_extents+0xb1/0x210
+> > [    4.080007]  [<ffffffff812dd194>] ext4_convert_unwritten_extents+0xd4/0x210
+> > [    4.080007]  [<ffffffff812b4dee>] ext4_put_io_end+0x4e/0x70
+> > [    4.080007]  [<ffffffff812ab13a>] ext4_end_io_dio+0x2a/0x30
+> > [    4.080007]  [<ffffffff81258bcb>] dio_complete+0xcb/0x1b0
+> > [    4.080007]  [<ffffffff81258d2f>] dio_bio_end_aio+0x7f/0x130
+> > [    4.080007]  [<ffffffff8135d06f>] bio_endio+0x3f/0x60
+> > [    4.080007]  [<ffffffff813647c7>] blk_update_request+0x97/0x320
+> > [    4.080007]  [<ffffffff8136e85a>] blk_mq_end_request+0x1a/0x70
+> > [    4.080007]  [<ffffffff8158833f>] virtblk_request_done+0x3f/0x70
+> > [    4.080007]  [<ffffffff8136e92b>] __blk_mq_complete_request+0x7b/0xf0
+> > [    4.080007]  [<ffffffff8136e9bc>] blk_mq_complete_request+0x1c/0x20
+> > [    4.080007]  [<ffffffff815881b4>] virtblk_done+0x64/0xe0
+> > [    4.080007]  [<ffffffff81432ee1>] vring_interrupt+0x31/0x50
+> > [    4.080007]  [<ffffffff81107ac1>] handle_irq_event_percpu+0x81/0x1b0
+> > [    4.080007]  [<ffffffff81107c29>] handle_irq_event+0x39/0x60
+> > [    4.080007]  [<ffffffff8110ac9f>] handle_edge_irq+0x6f/0x150
+> > [    4.080007]  [<ffffffff81056ded>] handle_irq+0x1d/0x30
+> > [    4.080007]  [<ffffffff81727ab1>] do_IRQ+0x61/0x120
+> > [    4.080007]  [<ffffffff81725d91>] common_interrupt+0x91/0x91
+> > [    4.080007]  <EOI> 
+> > [    4.080007]  [<ffffffff811adacc>] ? context_tracking_exit.part.6+0x3c/0x60
+> > [    4.080007]  [<ffffffff811adb0d>] context_tracking_exit+0x1d/0x20
+> > [    4.080007]  [<ffffffff810026bf>] enter_from_user_mode+0x1f/0x50
+> > [    4.080007]  [<ffffffff810027b6>] syscall_trace_enter_phase1+0xc6/0x130
+> > [    4.080007]  [<ffffffff81002017>] ? trace_hardirqs_on_thunk+0x17/0x19
+> > [    4.080007]  [<ffffffff81725335>] tracesys+0xd/0x44
+> > [    4.080007] Code: de ff d0 49 8b 04 24 48 85 c0 75 e9 eb b3 4c 89 e6 4c 89 ef e8 41 ed ff ff 48 85 c0 48 89 c3 74 b5 48 89 c7 e8 e1 fc ff ff eb ab <0f> 0b 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 
+> > [    4.080007] RIP  [<ffffffff81252f41>] __find_get_block+0x121/0x130
+> > [    4.080007]  RSP <ffff88007fc03a78>
+> > [    4.080007] ---[ end trace 9bbf559562132712 ]---
+> > [    4.080007] Kernel panic - not syncing: Fatal exception in interrupt
+> > [    4.080007] Kernel Offset: disabled
+> > [    4.080007] ---[ end Kernel panic - not syncing: Fatal exception in interrupt
+> > 
+> > 
+> > 
+> > 
+> > 
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
