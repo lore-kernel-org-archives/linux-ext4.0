@@ -1,78 +1,38 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 2/2] dax: move writeback calls into the filesystems
-Date: Fri, 12 Feb 2016 10:44:15 +1100
-Message-ID: <20160211234415.GM19486@dastard>
-References: <1455137336-28720-1-git-send-email-ross.zwisler@linux.intel.com>
- <1455137336-28720-3-git-send-email-ross.zwisler@linux.intel.com>
- <20160210220312.GP14668@dastard>
- <20160210224340.GA30938@linux.intel.com>
- <20160211125044.GJ21760@quack.suse.cz>
- <CAPcyv4g60iOTd-ShBCfsK+B7xArcc5pWXWktNop53otDbUW-3g@mail.gmail.com>
- <20160211204635.GI19486@dastard>
- <CAPcyv4h4u+LB5U5nm4Jo32r=33D02yv36k5QxmJoy3DRiHmQEQ@mail.gmail.com>
- <20160211224616.GL19486@dastard>
- <CAPcyv4hR60bahtQq68SgSG2uT9zP4H8u3zbUqtqndnx=ogwVtA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix scheduling in atomic on group checksum failure
+Date: Thu, 11 Feb 2016 23:47:19 -0500
+Message-ID: <20160212044719.GC11298@thunk.org>
+References: <1455112710-18765-1-git-send-email-jack@suse.cz>
+ <20160210175246.GA6338@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	XFS Developers <xfs@oss.sgi.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Jan Kara <jack@suse.cz>, Dmitry Vyukov <dvyukov@google.com>,
+	linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48686 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750825AbcBLEr0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Feb 2016 23:47:26 -0500
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4hR60bahtQq68SgSG2uT9zP4H8u3zbUqtqndnx=ogwVtA@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160210175246.GA6338@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 11, 2016 at 02:59:14PM -0800, Dan Williams wrote:
-> On Thu, Feb 11, 2016 at 2:46 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Thu, Feb 11, 2016 at 12:58:38PM -0800, Dan Williams wrote:
-> >> On Thu, Feb 11, 2016 at 12:46 PM, Dave Chinner <david@fromorbit.com> wrote:
-> >> Maybe I don't need to worry because it's already the case that a
-> >> mmap of the raw device may not see the most up to date data for a
-> >> file that has dirty fs-page-cache data.
-> >
-> > It goes both ways. What happens if mkfs or fsck modifies the
-> > block device via mmap+DAX and then the filesystem mounts the block
-> > device and tries to read that metadata via the block device page
-> > cache?
-> >
-> > Quite frankly, DAX on the block device is a can of worms we really
-> > don't need to deal with right now. IMO it's a solution looking for a
-> > problem to solve,
+On Wed, Feb 10, 2016 at 09:52:46AM -0800, Darrick J. Wong wrote:
+> On Wed, Feb 10, 2016 at 02:58:30PM +0100, Jan Kara wrote:
+> > When block group checksum is wrong, we call ext4_error() while holding
+> > group spinlock from ext4_init_block_bitmap() or
+> > ext4_init_inode_bitmap() which results in scheduling while in atomic.
+> > Fix the issue by calling ext4_error() later after dropping the spinlock.
+> > 
+> > CC: stable@vger.kernel.org
+> > Reported-by: Dmitry Vyukov <dvyukov@google.com>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> Virtualization use cases want to give large ranges to guest-VMs, and
-> it is currently the only way to reliably get 1GiB mappings.
+> Looks ok, so
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Precisely my point - block devices are not the best way to solve
-this problem.
+Applied, thanks.
 
-A file, on XFS, with a 1GB extent size hint and preallocated to be
-aligned to 1GB addresses (i.e. mkfs.xfs -d su=1G,sw=1 on the host
-filesystem) will give reliable 1GB aligned blocks for DAX mappings,
-just like a block device will. Peformance wise it's little different
-to using the block device directly. Management wise it's way more
-flexible, especially as such image files can be recycled for new VMs
-almost instantly via FALLOC_FL_FLAG_ZERO_RANGE.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
