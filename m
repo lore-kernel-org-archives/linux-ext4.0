@@ -1,190 +1,207 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 8/9] tune2fs: recover the journal
-Date: Sat, 13 Feb 2016 14:38:17 -0800
-Message-ID: <20160213223817.25381.99799.stgit@birch.djwong.org>
+Subject: [PATCH 9/9] libext2fs: sort keys for xattr blocks
+Date: Sat, 13 Feb 2016 14:38:24 -0800
+Message-ID: <20160213223824.25381.8002.stgit@birch.djwong.org>
 References: <20160213223725.25381.20929.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Darren Hart <dvhart@linux.intel.com>,
+	Richard Purdie <richard.purdie@linuxfoundation.org>
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34094 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:34132 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751064AbcBMWiU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Feb 2016 17:38:20 -0500
+	with ESMTP id S1751064AbcBMWic (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Feb 2016 17:38:32 -0500
 In-Reply-To: <20160213223725.25381.20929.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the journal needs to be recovered to avoid clobbering whatever
-changes tune2fs makes, do so.
+Richard Purdie reports that libext2fs doesn't sort attribute keys in
+the xattr block correctly, causing the kernel to return -ENODATA when
+querying attributes that should be there.  Therefore, sort attributes
+so that whatever ends up in the xattr block is sorted according to
+what the kernel expects.
 
+Cc: Darren Hart <dvhart@linux.intel.com>
+Reported-by: Richard Purdie <richard.purdie@linuxfoundation.org>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- misc/Makefile.in              |    2 +
- misc/tune2fs.c                |   22 ++++++++++-----
- tests/t_replay_and_set/expect |   36 +++++++++++++++++++++++++
- tests/t_replay_and_set/name   |    1 +
- tests/t_replay_and_set/script |   60 +++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 112 insertions(+), 9 deletions(-)
- create mode 100644 tests/t_replay_and_set/expect
- create mode 100644 tests/t_replay_and_set/name
- create mode 100644 tests/t_replay_and_set/script
+ lib/ext2fs/ext_attr.c        |   24 +++++++++++-
+ tests/d_xattr_sorting/expect |   29 ++++++++++++++
+ tests/d_xattr_sorting/name   |    1 
+ tests/d_xattr_sorting/script |   86 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 139 insertions(+), 1 deletion(-)
+ create mode 100644 tests/d_xattr_sorting/expect
+ create mode 100644 tests/d_xattr_sorting/name
+ create mode 100644 tests/d_xattr_sorting/script
 
 
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 52cd5bb..98872df 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -47,7 +47,7 @@ UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
- 
- LPROGS=		@E2INITRD_PROG@
- 
--TUNE2FS_OBJS=	tune2fs.o util.o
-+TUNE2FS_OBJS=	tune2fs.o util.o journal.o recovery.o revoke.o
- MKLPF_OBJS=	mklost+found.o
- MKE2FS_OBJS=	mke2fs.o util.o default_profile.o mk_hugefiles.o \
- 			create_inode.o
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 457e9e5..657349a 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -113,6 +113,7 @@ struct blk_move {
- 	blk64_t new_loc;
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 0a4f8c0..b121837 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -254,10 +254,15 @@ static struct ea_name_index ea_names[] = {
+ 	{0, NULL},
  };
  
-+errcode_t ext2fs_run_ext3_journal(ext2_filsys *fs);
- 
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
- static const char *please_dir_fsck =
-@@ -3139,15 +3140,20 @@ retry_open:
- 		free(ext_mount_opts);
- 	}
- 
--	/* Warn if file system needs recovery and it is opened for writing. */
-+	/* Recover the journal if possible. */
- 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & EXT2_MF_MOUNTED) &&
--	    (sb->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL) &&
--	    (sb->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER)) {
--		fprintf(stderr,
--_("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
--  "\te2fsck -E journal_only %s\n\n"
--  "then rerun this command.  Otherwise, any changes made may be overwritten\n"
--  "by journal recovery.\n"), device_name);
-+	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
-+		errcode_t err;
++static int find_ea_index(char *fullname, char **name, int *index);
 +
-+		printf(_("Recovering journal.\n"));
-+		err = ext2fs_run_ext3_journal(&fs);
-+		if (err) {
-+			com_err("tune2fs", err, "while recovering journal.\n");
-+			printf(_("Please run e2fsck -fy %s.\n"), argv[1]);
-+			goto closefs;
-+		}
-+		ext2fs_clear_feature_journal_needs_recovery(fs->super);
-+		ext2fs_mark_super_dirty(fs);
- 	}
+ /* Push empty attributes to the end and inlinedata to the front. */
+ static int attr_compare(const void *a, const void *b)
+ {
+ 	const struct ext2_xattr *xa = a, *xb = b;
++	char *xa_suffix, *xb_suffix;
++	int xa_idx, xb_idx;
++	int cmp;
  
- 	free(device_name);
-diff --git a/tests/t_replay_and_set/expect b/tests/t_replay_and_set/expect
+ 	if (xa->name == NULL)
+ 		return +1;
+@@ -267,7 +272,24 @@ static int attr_compare(const void *a, const void *b)
+ 		return -1;
+ 	else if (!strcmp(xb->name, "system.data"))
+ 		return +1;
+-	return 0;
++
++	/*
++	 * Duplicate the kernel's sorting algorithm because xattr blocks
++	 * require sorted keys.
++	 */
++	xa_suffix = xa->name;
++	xb_suffix = xb->name;
++	xa_idx = xb_idx = 0;
++	find_ea_index(xa->name, &xa_suffix, &xa_idx);
++	find_ea_index(xb->name, &xb_suffix, &xb_idx);
++	cmp = xa_idx - xb_idx;
++	if (cmp)
++		return cmp;
++	cmp = strlen(xa_suffix) - strlen(xb_suffix);
++	if (cmp)
++		return cmp;
++	cmp = strcmp(xa_suffix, xb_suffix);
++	return cmp;
+ }
+ 
+ static const char *find_ea_prefix(int index)
+diff --git a/tests/d_xattr_sorting/expect b/tests/d_xattr_sorting/expect
 new file mode 100644
-index 0000000..f491937
+index 0000000..17da663
 --- /dev/null
-+++ b/tests/t_replay_and_set/expect
-@@ -0,0 +1,36 @@
-+64-bit filesystem support is not enabled.  The larger fields afforded by this feature enable full-strength checksumming.  Pass -O 64bit to rectify.
-+Creating filesystem with 65536 4k blocks and 16384 inodes
-+Superblock backups stored on blocks: 
-+	32768
-+
-+Allocating group tables:    done                            
-+Writing inode tables:    done                            
-+Creating journal (4096 blocks): done
-+Writing superblocks and filesystem accounting information:    done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
++++ b/tests/d_xattr_sorting/expect
+@@ -0,0 +1,29 @@
++debugfs sort extended attributes
++mke2fs -Fq -b 1024 test.img 512
 +Exit status is 0
-+debugfs write journal
-+disable metadata_csum on a dirty-journal fs
-+Recovering journal.
-+fsck the whole mess
++ea_set / security.SMEG64 -f /tmp/b
++Exit status is 0
++ea_set / security.imb -f /tmp/b
++Exit status is 0
++ea_set / user.moo cow
++Exit status is 0
++ea_list /
++Extended attributes:
++  user.moo = "cow" (3)
++  security.imb = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" (256)
++  security.SMEG64 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" (256)
++Exit status is 0
++ea_get / security.imb
++xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
++Exit status is 0
++ea_get / nosuchea
++ea_get: Extended attribute key not found while getting extended attribute
++Exit status is 0
++e2fsck -yf -N test_filesys
 +Pass 1: Checking inodes, blocks, and sizes
 +Pass 2: Checking directory structure
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+Block bitmap differences:  +(0--1050) +(32768--36880)
-+Fix? yes
-+
-+Inode bitmap differences:  +(1--11)
-+Fix? yes
-+
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 11/16384 files (0.0% non-contiguous), 5164/65536 blocks
-+Exit status is 1
-diff --git a/tests/t_replay_and_set/name b/tests/t_replay_and_set/name
++test_filesys: 11/64 files (0.0% non-contiguous), 29/512 blocks
++Exit status is 0
+diff --git a/tests/d_xattr_sorting/name b/tests/d_xattr_sorting/name
 new file mode 100644
-index 0000000..4e4759e
+index 0000000..dde8926
 --- /dev/null
-+++ b/tests/t_replay_and_set/name
++++ b/tests/d_xattr_sorting/name
 @@ -0,0 +1 @@
-+recover journal and clear features
-diff --git a/tests/t_replay_and_set/script b/tests/t_replay_and_set/script
++sort extended attributes in debugfs
+diff --git a/tests/d_xattr_sorting/script b/tests/d_xattr_sorting/script
 new file mode 100644
-index 0000000..1253099
+index 0000000..30c189a
 --- /dev/null
-+++ b/tests/t_replay_and_set/script
-@@ -0,0 +1,60 @@
++++ b/tests/d_xattr_sorting/script
+@@ -0,0 +1,86 @@
 +if test -x $DEBUGFS_EXE; then
 +
-+FSCK_OPT=-fy
 +OUT=$test_name.log
-+if [ -f $test_dir/expect.gz ]; then
-+	EXP=$test_name.tmp
-+	gunzip < $test_dir/expect.gz > $EXP1
-+else
-+	EXP=$test_dir/expect
-+fi
++EXP=$test_dir/expect
++VERIFY_FSCK_OPT=-yf
 +
-+cp /dev/null $OUT
++TEST_DATA=$test_name.tmp
++VERIFY_DATA=$test_name.ver.tmp
 +
-+$MKE2FS -F -o Linux -b 4096 -O has_journal,metadata_csum -T ext4 $TMPFILE 65536 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
++echo "debugfs sort extended attributes" > $OUT
 +
-+$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
++
++echo "mke2fs -Fq -b 1024 test.img 512" >> $OUT
++
++$MKE2FS -Fq $TMPFILE 512 > /dev/null 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++perl -e 'print "x" x 256;' > /tmp/b
++
++echo "ea_set / security.SMEG64 -f /tmp/b" > $OUT.new
++$DEBUGFS -w -R "ea_set / security.SMEG64 -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-+rm -f $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
 +
-+bitmaps="$($DUMPE2FS $TMPFILE 2>&1 | grep 'bitmap at' | sed -e 's/^.*bitmap at \([0-9]*\).*$/\1/g' | tr '\n' ',')"
-+
-+echo "debugfs write journal" >> $OUT
-+echo "jo" > $TMPFILE.cmd
-+echo "jw -b $bitmaps /dev/zero" >> $TMPFILE.cmd
-+echo "jc" >> $TMPFILE.cmd
-+$DEBUGFS_EXE -w -f $TMPFILE.cmd $TMPFILE 2>> $OUT.new > /dev/null
-+sed -f $cmd_dir/filter.sed < $OUT.new >> $OUT
-+rm -rf $OUT.new
-+
-+echo "disable metadata_csum on a dirty-journal fs" >> $OUT
-+$TUNE2FS -O ^metadata_csum $TMPFILE 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT 2>&1
-+
-+echo "fsck the whole mess" >> $OUT
-+$FSCK -fy -N test_filesys $TMPFILE > $OUT.new 2>&1
++echo "ea_set / security.imb -f /tmp/b" > $OUT.new
++$DEBUGFS -w -R "ea_set / security.imb -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
 +status=$?
 +echo Exit status is $status >> $OUT.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-+rm -f $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
 +
-+rm -f $TMPFILE
++echo "ea_set / user.moo cow" > $OUT.new
++$DEBUGFS -w -R "ea_set / user.moo cow" $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
 +
++rm -rf /tmp/b
++
++echo "ea_list /" > $OUT.new
++$DEBUGFS -w -R "ea_list /" $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
++
++echo "ea_get / security.imb" > $OUT.new
++$DEBUGFS -w -R "ea_get / security.imb" $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
++
++echo "ea_get / nosuchea" > $OUT.new
++$DEBUGFS -w -R "ea_get / nosuchea" $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
++
++echo e2fsck $VERIFY_FSCK_OPT -N test_filesys > $OUT.new
++$FSCK $VERIFY_FSCK_OPT -N test_filesys $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
++
++#
++# Do the verification
++#
++
++rm -f $TMPFILE $OUT.new
 +cmp -s $OUT $EXP
 +status=$?
 +
@@ -194,10 +211,9 @@ index 0000000..1253099
 +else
 +	echo "$test_name: $test_description: failed"
 +	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
 +fi
 +
-+unset IMAGE FSCK_OPT OUT EXP
++unset VERIFY_FSCK_OPT NATIVE_FSCK_OPT OUT EXP TEST_DATA VERIFY_DATA
 +
 +else #if test -x $DEBUGFS_EXE; then
 +	echo "$test_name: $test_description: skipped"
