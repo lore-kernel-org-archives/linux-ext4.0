@@ -1,137 +1,356 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 5/9] tests: check proper operation of metadata_csum_seed
-Date: Sat, 13 Feb 2016 14:37:57 -0800 (PST)
-Message-ID: <20160213223757.25381.15201.stgit@birch.djwong.org>
+Subject: [PATCH 7/9] tune2fs: confirm dangerous operations
+Date: Sat, 13 Feb 2016 14:38:11 -0800
+Message-ID: <20160213223811.25381.24546.stgit@birch.djwong.org>
 References: <20160213223725.25381.20929.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:36133 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:36205 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751064AbcBMWiD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Feb 2016 17:38:03 -0500
+	with ESMTP id S1751064AbcBMWiR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Feb 2016 17:38:17 -0500
 In-Reply-To: <20160213223725.25381.20929.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Give admins a short amount of time to confirm that they want to
+proceed with a dangerous operation.  Refuse to perform the op
+unless the filesystem is freshly checked.
+
+Cc: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- lib/ext2fs/ismounted.c                           |   14 ++++++
- tests/t_change_uuid/expect                       |    7 +++
- tests/t_change_uuid/script                       |   34 ++++++++++++++
- tests/t_change_uuid_mcsum/expect                 |    7 +++
- tests/t_change_uuid_mcsum/script                 |   34 ++++++++++++++
- tests/t_change_uuid_mcsum_mounted/expect         |    7 +++
- tests/t_change_uuid_mcsum_mounted/script         |   34 ++++++++++++++
- tests/t_change_uuid_mcsum_seed_mounted/expect    |   21 +++++++++
- tests/t_change_uuid_mcsum_seed_mounted/script    |   52 ++++++++++++++++++++++
- tests/t_change_uuid_mounted/expect               |    7 +++
- tests/t_change_uuid_mounted/script               |   34 ++++++++++++++
- tests/t_disable_changed_csum_seed/expect         |   17 +++++++
- tests/t_disable_changed_csum_seed/script         |   47 ++++++++++++++++++++
- tests/t_disable_changed_csum_seed_mounted/expect |   19 ++++++++
- tests/t_disable_changed_csum_seed_mounted/script |   47 ++++++++++++++++++++
- tests/t_disable_csum_seed/expect                 |   14 ++++++
- tests/t_disable_csum_seed/script                 |   43 ++++++++++++++++++
- tests/t_disable_meta_csum_and_seed/expect        |   14 ++++++
- tests/t_disable_meta_csum_and_seed/script        |   44 +++++++++++++++++++
- tests/t_enable_csum_seed/expect                  |   12 +++++
- tests/t_enable_csum_seed/script                  |   38 ++++++++++++++++
- tests/t_format_csum_seed/expect                  |   10 ++++
- tests/t_format_csum_seed/script                  |   34 ++++++++++++++
- 23 files changed, 590 insertions(+)
- create mode 100644 tests/t_change_uuid/expect
- create mode 100755 tests/t_change_uuid/script
- create mode 100644 tests/t_change_uuid_mcsum/expect
- create mode 100755 tests/t_change_uuid_mcsum/script
- create mode 100644 tests/t_change_uuid_mcsum_mounted/expect
- create mode 100755 tests/t_change_uuid_mcsum_mounted/script
- create mode 100644 tests/t_change_uuid_mcsum_seed_mounted/expect
- create mode 100755 tests/t_change_uuid_mcsum_seed_mounted/script
- create mode 100644 tests/t_change_uuid_mounted/expect
- create mode 100755 tests/t_change_uuid_mounted/script
- create mode 100644 tests/t_disable_changed_csum_seed/expect
- create mode 100755 tests/t_disable_changed_csum_seed/script
- create mode 100644 tests/t_disable_changed_csum_seed_mounted/expect
- create mode 100755 tests/t_disable_changed_csum_seed_mounted/script
- create mode 100644 tests/t_disable_csum_seed/expect
- create mode 100755 tests/t_disable_csum_seed/script
- create mode 100644 tests/t_disable_meta_csum_and_seed/expect
- create mode 100755 tests/t_disable_meta_csum_and_seed/script
- create mode 100644 tests/t_enable_csum_seed/expect
- create mode 100755 tests/t_enable_csum_seed/script
- create mode 100644 tests/t_format_csum_seed/expect
- create mode 100755 tests/t_format_csum_seed/script
+ misc/tune2fs.c           |   40 +++++++++-----
+ tests/t_dangerous/expect |   97 +++++++++++++++++++++++++++++++++
+ tests/t_dangerous/name   |    1 
+ tests/t_dangerous/script |  134 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 259 insertions(+), 13 deletions(-)
+ create mode 100644 tests/t_dangerous/expect
+ create mode 100644 tests/t_dangerous/name
+ create mode 100644 tests/t_dangerous/script
 
 
-diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c
-index b1eff85..ae2e832 100644
---- a/lib/ext2fs/ismounted.c
-+++ b/lib/ext2fs/ismounted.c
-@@ -90,6 +90,20 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- 	int		fd;
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f9e654f..457e9e5 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -405,14 +405,24 @@ static int update_mntopts(ext2_filsys fs, char *mntopts)
+ 	return 0;
+ }
  
- 	*mount_flags = 0;
-+
-+	if (getenv("EXT2FS_PRETEND_RO_MOUNT")) {
-+		*mount_flags = EXT2_MF_MOUNTED | EXT2_MF_READONLY;
-+		if (getenv("EXT2FS_PRETEND_ROOTFS"))
-+			*mount_flags = EXT2_MF_ISROOT;
-+		return 0;
+-static int check_fsck_needed(ext2_filsys fs)
++static void check_fsck_needed(ext2_filsys fs, const char *prompt)
+ {
+-	if (fs->super->s_state & EXT2_VALID_FS)
+-		return 0;
+-	printf("\n%s\n", _(please_fsck));
+-	if (mount_flags & EXT2_MF_READONLY)
+-		printf("%s", _("(and reboot afterwards!)\n"));
+-	return 1;
++	/* Refuse to modify anything but a freshly checked valid filesystem. */
++	if (!(fs->super->s_state & EXT2_VALID_FS) ||
++	    (fs->super->s_state & EXT2_ERROR_FS) ||
++	    (fs->super->s_lastcheck < fs->super->s_mtime)) {
++		printf("\n%s\n", _(please_fsck));
++		if (mount_flags & EXT2_MF_READONLY)
++			printf("%s", _("(and reboot afterwards!)\n"));
++		exit(1);
 +	}
-+	if (getenv("EXT2FS_PRETEND_RW_MOUNT")) {
-+		*mount_flags = EXT2_MF_MOUNTED;
-+		if (getenv("EXT2FS_PRETEND_ROOTFS"))
-+			*mount_flags = EXT2_MF_ISROOT;
-+		return 0;
++
++	/* Give the admin a few seconds to bail out of a dangerous op. */
++	if (!getenv("TUNE2FS_FORCE_PROMPT") && (!isatty(0) || !isatty(1)))
++		return;
++
++	puts(prompt);
++	proceed_question(5);
+ }
+ 
+ static void request_dir_fsck_afterwards(ext2_filsys fs)
+@@ -1145,8 +1155,8 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+-		if (check_fsck_needed(fs))
+-			exit(1);
++		check_fsck_needed(fs,
++			_("Enabling checksums could take some time."));
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("Cannot enable metadata_csum on a mounted "
+ 				"filesystem!\n"), stderr);
+@@ -1186,8 +1196,8 @@ mmp_error:
+ 			EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+ 		__u32	test_features[3];
+ 
+-		if (check_fsck_needed(fs))
+-			exit(1);
++		check_fsck_needed(fs,
++			_("Disabling checksums could take some time."));
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fputs(_("Cannot disable metadata_csum on a mounted "
+ 				"filesystem!\n"), stderr);
+@@ -2784,6 +2794,8 @@ retry_open:
+ 			rc = 1;
+ 			goto closefs;
+ 		}
++		check_fsck_needed(fs,
++			_("Resizing inodes could take some time."));
+ 		/*
+ 		 * If inode resize is requested use the
+ 		 * Undo I/O manager
+@@ -2999,8 +3011,10 @@ retry_open:
+ 				try_confirm_csum_seed_support();
+ 				exit(1);
+ 			}
+-			if (check_fsck_needed(fs))
+-				exit(1);
++			if (!ext2fs_has_feature_csum_seed(fs->super))
++				check_fsck_needed(fs,
++					_("Setting UUID on a checksummed "
++					  "filesystem could take some time."));
+ 
+ 			/*
+ 			 * Determine if the block group checksums are
+diff --git a/tests/t_dangerous/expect b/tests/t_dangerous/expect
+new file mode 100644
+index 0000000..353bd57
+--- /dev/null
++++ b/tests/t_dangerous/expect
+@@ -0,0 +1,97 @@
++tune2fs dangerous prompts test
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 445 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++tune2fs -O metadata_csum test.img
++
++Please run e2fsck on the filesystem.
++
++Exit status is 1
++tune2fs -O metadata_csum test.img
++Exit status is 0
++Creating filesystem with 524288 1k blocks and 65536 inodes
++Superblock backups stored on blocks: 
++	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
++
++Allocating group tables:      done                            
++Writing inode tables:      done                            
++Creating journal (16384 blocks): done
++Creating 445 huge file(s) with 1024 blocks each: done
++Writing superblocks and filesystem accounting information:      done
++
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++tune2fs -O metadata_csum test.img
++Enabling checksums could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++tune2fs -I 512 test.img
++Resizing inodes could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++tune2fs -U random test.img
++Setting UUID on a checksummed filesystem could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Exit status is 1
++
++Change in FS metadata:
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
++tune2fs -O metadata_csum test.img
++Enabling checksums could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) 
++Please run e2fsck -D on the filesystem.
++
++Exit status is 0
++test_filesys was not cleanly unmounted, check forced.
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++
++
++tune2fs -I 512 test.img
++Resizing inodes could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) Setting inode size 512
++Exit status is 0
++tune2fs -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 test.img
++Setting UUID on a checksummed filesystem could take some time.
++Proceed anyway (or wait 5 seconds) ? (y,n) Exit status is 0
++Backing up journal inode block information.
++
++
++Change in FS metadata:
++@@ -1,3 +1,3 @@
++-Filesystem UUID:          6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf
++-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
++-Inode size:	          256
+++Filesystem UUID:          f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0
+++Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
+++Inode size:	          512
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++Exit status is 0
+diff --git a/tests/t_dangerous/name b/tests/t_dangerous/name
+new file mode 100644
+index 0000000..c9a1030
+--- /dev/null
++++ b/tests/t_dangerous/name
+@@ -0,0 +1 @@
++dangerous tune2fs operation prompts
+diff --git a/tests/t_dangerous/script b/tests/t_dangerous/script
+new file mode 100644
+index 0000000..dc70ad2
+--- /dev/null
++++ b/tests/t_dangerous/script
+@@ -0,0 +1,134 @@
++FSCK_OPT=-fn
++OUT=$test_name.log
++EXP=$test_dir/expect
++CONF=$TMPFILE.conf
++
++cat > $CONF << ENDL
++[fs_types]
++	ext4h = {
++		features = has_journal,extent,huge_file,^flex_bg,uninit_bg,dir_nlink,extra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit
++		blocksize = 1024
++		inode_size = 256
++		make_hugefiles = true
++		hugefiles_dir = /
++		hugefiles_slack = 32M
++		hugefiles_name = aaaaa
++		hugefiles_digits = 4
++		hugefiles_size = 1M
++		zero_hugefiles = false
 +	}
++ENDL
 +
- 	if ((f = setmntent (mtab_file, "r")) == NULL) {
- 		if (errno == ENOENT) {
- 			if (getenv("EXT2FS_NO_MTAB_OK"))
-diff --git a/tests/t_change_uuid/expect b/tests/t_change_uuid/expect
-new file mode 100644
-index 0000000..0a9b20e
---- /dev/null
-+++ b/tests/t_change_uuid/expect
-@@ -0,0 +1,7 @@
-+create fs without metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-diff --git a/tests/t_change_uuid/script b/tests/t_change_uuid/script
-new file mode 100755
-index 0000000..be8cbfa
---- /dev/null
-+++ b/tests/t_change_uuid/script
-@@ -0,0 +1,34 @@
-+test_description="change uuid on a pre-metadata-csum"
++echo "tune2fs dangerous prompts test" > $OUT
 +
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -U 6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf $TMPFILE 524288 >> $OUT 2>&1
 +
-+# Test command line option
-+echo "create fs without metadata_csum" >> $OUT
-+$MKE2FS -O ^metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
++# trigger a filesystem check
++$DEBUGFS -w -R 'ssv mtime now' $TMPFILE > /dev/null 2>&1
++$DEBUGFS -w -R 'ssv lastcheck 20000' $TMPFILE > /dev/null 2>&1
 +
-+echo "change UUID" >> $OUT
-+$TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++$TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
 +
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
++# check fs
++$FSCK -f -y -N test_filesys $TMPFILE > /dev/null 2>&1
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++$TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h -U 6fc3daa4-180d-4f2b-a6f2-f7a5efb79bcf $TMPFILE 524288 >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.before
++$FSCK $FSCK_OPT -f -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change inode size
++echo "tune2fs -I 512 test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -I 512 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change uuid
++echo "tune2fs -U random test.img" >> $OUT
++echo 'n' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -U random $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd_dir/filter.sed > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++$DUMPE2FS $TMPFILE 2> /dev/null | egrep '^(Filesystem features:|Filesystem UUID:|Inode size:)' > $OUT.before
++
++# add mcsum
++echo "tune2fs -O metadata_csum test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -O metadata_csum $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# change inode size
++echo "tune2fs -I 512 test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -I 512 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# change uuid
++echo "tune2fs -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 test.img" >> $OUT
++echo 'y' | TUNE2FS_FORCE_PROMPT=1 $TUNE2FS -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++# check
++$FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
++
++# dump and check
++$DUMPE2FS $TMPFILE 2> /dev/null | egrep '^(Filesystem features:|Filesystem UUID:|Inode size:)' > $OUT.after
++echo "Change in FS metadata:" >> $OUT
++diff -u $OUT.before $OUT.after | tail -n +3 >> $OUT
++$FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
++status=$?
++echo Exit status is $status >> $OUT
++
++rm $TMPFILE $OUT.before $OUT.after $CONF
++
++#
++# Do the verification
++#
++
++sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" -e 's/test_filesys:.*//g' < $OUT > $OUT.new
++mv $OUT.new $OUT
 +
 +cmp -s $OUT $EXP
 +status=$?
@@ -142,662 +361,7 @@ index 0000000..be8cbfa
 +else
 +	echo "$test_name: $test_description: failed"
 +	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
 +fi
 +
-diff --git a/tests/t_change_uuid_mcsum/expect b/tests/t_change_uuid_mcsum/expect
-new file mode 100644
-index 0000000..fb26e72
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum/expect
-@@ -0,0 +1,7 @@
-+create fs with metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-diff --git a/tests/t_change_uuid_mcsum/script b/tests/t_change_uuid_mcsum/script
-new file mode 100755
-index 0000000..826d287
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum/script
-@@ -0,0 +1,34 @@
-+test_description="change uuid on a metadata-csum"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs with metadata_csum" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+$TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_change_uuid_mcsum_mounted/expect b/tests/t_change_uuid_mcsum_mounted/expect
-new file mode 100644
-index 0000000..e10e9a9
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum_mounted/expect
-@@ -0,0 +1,7 @@
-+create fs with metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+change UUID
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-diff --git a/tests/t_change_uuid_mcsum_mounted/script b/tests/t_change_uuid_mcsum_mounted/script
-new file mode 100755
-index 0000000..0efcae5
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum_mounted/script
-@@ -0,0 +1,34 @@
-+test_description="change uuid on a metadata-csum"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs with metadata_csum" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_change_uuid_mcsum_seed_mounted/expect b/tests/t_change_uuid_mcsum_seed_mounted/expect
-new file mode 100644
-index 0000000..b2d2d91
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum_seed_mounted/expect
-@@ -0,0 +1,21 @@
-+create fs with metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+change UUID
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-diff --git a/tests/t_change_uuid_mcsum_seed_mounted/script b/tests/t_change_uuid_mcsum_seed_mounted/script
-new file mode 100755
-index 0000000..05b0bd7
---- /dev/null
-+++ b/tests/t_change_uuid_mcsum_seed_mounted/script
-@@ -0,0 +1,52 @@
-+test_description="change uuid on a metadata-csum with mcsum-seed"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs with metadata_csum" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum seed" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -O metadata_csuM_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_change_uuid_mounted/expect b/tests/t_change_uuid_mounted/expect
-new file mode 100644
-index 0000000..0a9b20e
---- /dev/null
-+++ b/tests/t_change_uuid_mounted/expect
-@@ -0,0 +1,7 @@
-+create fs without metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-diff --git a/tests/t_change_uuid_mounted/script b/tests/t_change_uuid_mounted/script
-new file mode 100755
-index 0000000..827ff59
---- /dev/null
-+++ b/tests/t_change_uuid_mounted/script
-@@ -0,0 +1,34 @@
-+test_description="change uuid on a mounted pre-metadata-csum"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without metadata_csum" >> $OUT
-+$MKE2FS -O ^metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_disable_changed_csum_seed/expect b/tests/t_disable_changed_csum_seed/expect
-new file mode 100644
-index 0000000..e00f367
---- /dev/null
-+++ b/tests/t_disable_changed_csum_seed/expect
-@@ -0,0 +1,17 @@
-+create fs without csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+turn off csum_seed
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-diff --git a/tests/t_disable_changed_csum_seed/script b/tests/t_disable_changed_csum_seed/script
-new file mode 100755
-index 0000000..9443731
---- /dev/null
-+++ b/tests/t_disable_changed_csum_seed/script
-@@ -0,0 +1,47 @@
-+test_description="disable csum seed via tune2fs after changing uuid"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum_seed" >> $OUT
-+$TUNE2FS -O metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+$TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn off csum_seed" >> $OUT
-+$TUNE2FS -O ^metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_disable_changed_csum_seed_mounted/expect b/tests/t_disable_changed_csum_seed_mounted/expect
-new file mode 100644
-index 0000000..288494b
---- /dev/null
-+++ b/tests/t_disable_changed_csum_seed_mounted/expect
-@@ -0,0 +1,19 @@
-+create fs without csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+change UUID
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+turn off csum_seed
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          a61be2e0-b3b8-4fbc-b2cd-d84b306b9731
-+Checksum seed:            0x3ba62721
-diff --git a/tests/t_disable_changed_csum_seed_mounted/script b/tests/t_disable_changed_csum_seed_mounted/script
-new file mode 100755
-index 0000000..3be6dd9
---- /dev/null
-+++ b/tests/t_disable_changed_csum_seed_mounted/script
-@@ -0,0 +1,47 @@
-+test_description="disable csum seed on mounted fs via tune2fs after changing uuid"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum_seed" >> $OUT
-+$TUNE2FS -O metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change UUID" >> $OUT
-+$TUNE2FS -U a61be2e0-b3b8-4fbc-b2cd-d84b306b9731 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn off csum_seed" >> $OUT
-+EXT2FS_PRETEND_RW_MOUNT=1 $TUNE2FS -O ^metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_disable_csum_seed/expect b/tests/t_disable_csum_seed/expect
-new file mode 100644
-index 0000000..e6c50fe
---- /dev/null
-+++ b/tests/t_disable_csum_seed/expect
-@@ -0,0 +1,14 @@
-+create fs without csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+turn off csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-diff --git a/tests/t_disable_csum_seed/script b/tests/t_disable_csum_seed/script
-new file mode 100755
-index 0000000..28fdc5c
---- /dev/null
-+++ b/tests/t_disable_csum_seed/script
-@@ -0,0 +1,43 @@
-+test_description="disable csum seed via tune2fs"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum_seed" >> $OUT
-+$TUNE2FS -O metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn off csum_seed" >> $OUT
-+$TUNE2FS -O ^metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_disable_meta_csum_and_seed/expect b/tests/t_disable_meta_csum_and_seed/expect
-new file mode 100644
-index 0000000..a1c9cca
---- /dev/null
-+++ b/tests/t_disable_meta_csum_and_seed/expect
-@@ -0,0 +1,14 @@
-+create fs without csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+turn off metadata_csum
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-diff --git a/tests/t_disable_meta_csum_and_seed/script b/tests/t_disable_meta_csum_and_seed/script
-new file mode 100755
-index 0000000..9eb18e3
---- /dev/null
-+++ b/tests/t_disable_meta_csum_and_seed/script
-@@ -0,0 +1,44 @@
-+test_description="disable csum seed and csums via tune2fs"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum_seed" >> $OUT
-+$TUNE2FS -O metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn off metadata_csum" >> $OUT
-+$TUNE2FS -O ^metadata_csum $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | grep 'metadata_csum' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_enable_csum_seed/expect b/tests/t_enable_csum_seed/expect
-new file mode 100644
-index 0000000..07d9a4f
---- /dev/null
-+++ b/tests/t_enable_csum_seed/expect
-@@ -0,0 +1,12 @@
-+create fs without csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+turn on csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+change uuid
-+Filesystem UUID:          1dd136c6-e47a-4833-9bf5-519f8aacabe4
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          1dd136c6-e47a-4833-9bf5-519f8aacabe4
-+Checksum seed:            0x3ba62721
-diff --git a/tests/t_enable_csum_seed/script b/tests/t_enable_csum_seed/script
-new file mode 100755
-index 0000000..55cade6
---- /dev/null
-+++ b/tests/t_enable_csum_seed/script
-@@ -0,0 +1,38 @@
-+test_description="enable csum seed via tune2fs"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs without csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,^metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "turn on csum_seed" >> $OUT
-+$TUNE2FS -O metadata_csum_seed $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change uuid" >> $OUT
-+$TUNE2FS -U 1dd136c6-e47a-4833-9bf5-519f8aacabe4 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
-diff --git a/tests/t_format_csum_seed/expect b/tests/t_format_csum_seed/expect
-new file mode 100644
-index 0000000..39e6d6a
---- /dev/null
-+++ b/tests/t_format_csum_seed/expect
-@@ -0,0 +1,10 @@
-+create fs with csum_seed
-+Filesystem UUID:          6b33f586-a183-4383-921d-30da3fef2e5c
-+Checksum seed:            0x3ba62721
-+change uuid
-+Filesystem UUID:          1dd136c6-e47a-4833-9bf5-519f8aacabe4
-+Checksum seed:            0x3ba62721
-+check filesystem
-+fsck returns 0
-+Filesystem UUID:          1dd136c6-e47a-4833-9bf5-519f8aacabe4
-+Checksum seed:            0x3ba62721
-diff --git a/tests/t_format_csum_seed/script b/tests/t_format_csum_seed/script
-new file mode 100755
-index 0000000..1829514
---- /dev/null
-+++ b/tests/t_format_csum_seed/script
-@@ -0,0 +1,34 @@
-+test_description="format with csum_seed"
-+
-+trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
-+dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+rm -rf $OUT
-+
-+# Test command line option
-+echo "create fs with csum_seed" >> $OUT
-+$MKE2FS -O metadata_csum,metadata_csum_seed -U 6b33f586-a183-4383-921d-30da3fef2e5c -F $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "change uuid" >> $OUT
-+$TUNE2FS -U 1dd136c6-e47a-4833-9bf5-519f8aacabe4 $TMPFILE > /dev/null 2>&1
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+echo "check filesystem" >> $OUT
-+$FSCK $FSCK_OPT -fy $TMPFILE > /dev/null 2>&1
-+echo "fsck returns $?" >> $OUT
-+$DUMPE2FS $TMPFILE 2>&1 | egrep '(Checksum seed:|UUID)' >> $OUT
-+
-+cmp -s $OUT $EXP
-+status=$?
-+
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+	rm -f $test_name.tmp
-+fi
-+
++unset IMAGE FSCK_OPT OUT EXP CONF
 
