@@ -1,75 +1,53 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: [PATCH 4.3 152/200] ext2, ext4: warn when mounting with dax enabled
-Date: Sun, 14 Feb 2016 14:22:39 -0800
-Message-ID: <20160214222222.900736920@linuxfoundation.org>
-References: <20160214222217.084543173@linuxfoundation.org>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: richacl(7) man page review comments
+Date: Mon, 15 Feb 2016 00:12:21 +0100
+Message-ID: <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
+References: <56B770B6.7040803@gmail.com> <56B77262.7090107@gmail.com>
+	<CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+	<56C0F150.60008@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	stable@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	Dan Williams <dan.j.williams@intel.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160214222217.084543173@linuxfoundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-cifs@vger.kernel.org,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Linux API <linux-api@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	lkml <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <56C0F150.60008@gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-4.3-stable review patch.  If anyone has any objections, please let me know.
+On Sun, Feb 14, 2016 at 10:27 PM, Michael Kerrisk (man-pages)
+<mtk.manpages@gmail.com> wrote:
+> On 02/12/2016 11:25 PM, Andreas Gruenbacher wrote:
+>> We could sure move acl(5) and richacl(7) there.
+>
+> We already have acl(5) (now "acl(7)" in man pages) ;-).
 
-------------------
+Hmm, I can't find that page either in
+git://git.kernel.org/pub/scm/docs/man-pages/man-pages or on
+http://man7.org/. Are you sure you don't mean xattr.7 == attr.5 which
+documents the xattr syscall interface?
 
-From: Dan Williams <dan.j.williams@intel.com>
+Andreas
 
-commit ef83b6e8f40bb24b92ad73b5889732346e54a793 upstream.
-
-Similar to XFS warn when mounting DAX while it is still considered under
-development.  Also, aspects of the DAX implementation, for example
-synchronization against multiple faults and faults causing block
-allocation, depend on the correct implementation in the filesystem.  The
-maturity of a given DAX implementation is filesystem specific.
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Matthew Wilcox <willy@linux.intel.com>
-Cc: linux-ext4@vger.kernel.org
-Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-Reported-by: Dave Chinner <david@fromorbit.com>
-Acked-by: Jan Kara <jack@suse.com>
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-
----
- fs/ext2/super.c |    2 ++
- fs/ext4/super.c |    6 +++++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
-
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -566,6 +566,8 @@ static int parse_options(char *options,
- 			/* Fall through */
- 		case Opt_dax:
- #ifdef CONFIG_FS_DAX
-+			ext2_msg(sb, KERN_WARNING,
-+		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
- 			set_opt(sbi->s_mount_opt, DAX);
- #else
- 			ext2_msg(sb, KERN_INFO, "dax option not supported");
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1664,8 +1664,12 @@ static int handle_mount_opt(struct super
- 		}
- 		sbi->s_jquota_fmt = m->mount_opt;
- #endif
--#ifndef CONFIG_FS_DAX
- 	} else if (token == Opt_dax) {
-+#ifdef CONFIG_FS_DAX
-+		ext4_msg(sb, KERN_WARNING,
-+		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-+			sbi->s_mount_opt |= m->mount_opt;
-+#else
- 		ext4_msg(sb, KERN_INFO, "dax option not supported");
- 		return -1;
- #endif
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
