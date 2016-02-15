@@ -1,101 +1,63 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH v2][RESEND] ext4: make sure to revoke all the freeable blocks
- in ext4_free_blocks
-Date: Mon, 15 Feb 2016 11:04:00 +0900
-Message-ID: <1455501840-7918-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:34354 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751436AbcBOCED (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Feb 2016 21:04:03 -0500
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0O2K001QXGEOUCD0@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Mon, 15 Feb 2016 11:04:00 +0900 (KST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Subject: Re: richacl(7) man page review comments
+Date: Mon, 15 Feb 2016 11:25:12 +0100
+Message-ID: <56C1A788.9020008@gmail.com>
+References: <56B770B6.7040803@gmail.com> <56B77262.7090107@gmail.com>
+ <CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+ <56C0F150.60008@gmail.com>
+ <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>,
+	lkml <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Andreas Dilger <adilger@dilger.ca>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Now, ext4_free_blocks() doesn't revoke data blocks of per-file data
-journalled inode and it can cause file data inconsistency problems.
-Even though data blocks of per-file data journalled inode are already
-forgotten by jbd2_journal_invalidatepage() in advance of invoking
-ext4_free_blocks(), we still need to revoke the data blocks here.
-Moreover some of the metadata blocks, which are not found by
-sb_find_get_block(), are still needed to be revoked, but this is also
-missing here.
+Hi Andreas,
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c |   32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
+On 02/15/2016 12:12 AM, Andreas Gruenbacher wrote:
+> On Sun, Feb 14, 2016 at 10:27 PM, Michael Kerrisk (man-pages)
+> <mtk.manpages@gmail.com> wrote:
+>> On 02/12/2016 11:25 PM, Andreas Gruenbacher wrote:
+>>> We could sure move acl(5) and richacl(7) there.
+>>
+>> We already have acl(5) (now "acl(7)" in man pages) ;-).
+> 
+> Hmm, I can't find that page either in
+> git://git.kernel.org/pub/scm/docs/man-pages/man-pages or on
+> http://man7.org/. Are you sure you don't mean xattr.7 == attr.5 which
+> documents the xattr syscall interface?
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 61eaf74..26419d6 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4695,16 +4695,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	}
- 
- 	/*
--	 * We need to make sure we don't reuse the freed block until
--	 * after the transaction is committed, which we can do by
--	 * treating the block as metadata, below.  We make an
--	 * exception if the inode is to be written in writeback mode
--	 * since writeback mode has weak data consistency guarantees.
--	 */
--	if (!ext4_should_writeback_data(inode))
--		flags |= EXT4_FREE_BLOCKS_METADATA;
--
--	/*
- 	 * If the extent to be freed does not begin on a cluster
- 	 * boundary, we need to deal with partial clusters at the
- 	 * beginning and end of the extent.  Normally we will free
-@@ -4738,14 +4728,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
- 		int i;
-+		int is_metadata = flags & EXT4_FREE_BLOCKS_METADATA;
- 
- 		for (i = 0; i < count; i++) {
- 			cond_resched();
--			bh = sb_find_get_block(inode->i_sb, block + i);
--			if (!bh)
--				continue;
--			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
--				    inode, bh, block + i);
-+			if (is_metadata)
-+				bh = sb_find_get_block(inode->i_sb, block + i);
-+			ext4_forget(handle, is_metadata, inode, bh, block + i);
- 		}
- 	}
- 
-@@ -4819,12 +4808,17 @@ do_more:
- 	if (err)
- 		goto error_return;
- 
--	if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
-+	/*
-+	 * We need to make sure we don't reuse the freed block until after the
-+	 * transaction is committed. We make an exception if the inode is to be
-+	 * written in writeback mode since writeback mode has weak data
-+	 * consistency guarantees.
-+	 */
-+	if (ext4_handle_valid(handle) &&
-+	    ((flags & EXT4_FREE_BLOCKS_METADATA) ||
-+	     !ext4_should_writeback_data(inode))) {
- 		struct ext4_free_data *new_entry;
- 		/*
--		 * blocks being freed are metadata. these blocks shouldn't
--		 * be used until this transaction is committed
--		 *
- 		 * We use __GFP_NOFAIL because ext4_free_blocks() is not allowed
- 		 * to fail.
- 		 */
+You're right. I was confusing with xattr(7). So, I think it might
+make some sense to eventually move both of these into man-pages (for 
+richacl(7), at least, it's probably worth delaying this for a bit), 
+since  they're describing kernel-user-space interfaces. I can see 
+counter-arguments too, such as these pages are closely related to 
+the corresponding user-space libraries you maintain. What do you
+think?
+
+Thanks,
+
+Michael
+
+
+
 -- 
-1.7.9.5
-
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
