@@ -1,20 +1,101 @@
-From: =?utf-8?B?5oiR55qE55u45YaM5Zyo?= <hr@4000376120.com>
-Subject: =?utf-8?B?5oiR55qE55u45YaM5Zyo?=
-Date: Mon, 15 Feb 2016 08:41:36 +0800
-Message-ID: <20160215084148678230@4000376120.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH v2][RESEND] ext4: make sure to revoke all the freeable blocks
+ in ext4_free_blocks
+Date: Mon, 15 Feb 2016 11:04:00 +0900
+Message-ID: <1455501840-7918-1-git-send-email-daeho.jeong@samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>
+To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [116.255.204.46] ([116.255.204.46]:2478 "HELO 4000376120.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with SMTP
-	id S1751935AbcBOA4j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Feb 2016 19:56:39 -0500
+Received: from mailout1.samsung.com ([203.254.224.24]:34354 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751436AbcBOCED (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Feb 2016 21:04:03 -0500
+Received: from epcpsbgr5.samsung.com
+ (u145.gpu120.samsung.co.kr [203.254.230.145])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0O2K001QXGEOUCD0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Mon, 15 Feb 2016 11:04:00 +0900 (KST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-5L2g55qE6ICB5pyL5Y+L6YKA5L2g5p2lUee+pDozNDMyNTc3NTkNCg==
+Now, ext4_free_blocks() doesn't revoke data blocks of per-file data
+journalled inode and it can cause file data inconsistency problems.
+Even though data blocks of per-file data journalled inode are already
+forgotten by jbd2_journal_invalidatepage() in advance of invoking
+ext4_free_blocks(), we still need to revoke the data blocks here.
+Moreover some of the metadata blocks, which are not found by
+sb_find_get_block(), are still needed to be revoked, but this is also
+missing here.
 
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/mballoc.c |   32 +++++++++++++-------------------
+ 1 file changed, 13 insertions(+), 19 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 61eaf74..26419d6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4695,16 +4695,6 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	/*
+-	 * We need to make sure we don't reuse the freed block until
+-	 * after the transaction is committed, which we can do by
+-	 * treating the block as metadata, below.  We make an
+-	 * exception if the inode is to be written in writeback mode
+-	 * since writeback mode has weak data consistency guarantees.
+-	 */
+-	if (!ext4_should_writeback_data(inode))
+-		flags |= EXT4_FREE_BLOCKS_METADATA;
+-
+-	/*
+ 	 * If the extent to be freed does not begin on a cluster
+ 	 * boundary, we need to deal with partial clusters at the
+ 	 * beginning and end of the extent.  Normally we will free
+@@ -4738,14 +4728,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 
+ 	if (!bh && (flags & EXT4_FREE_BLOCKS_FORGET)) {
+ 		int i;
++		int is_metadata = flags & EXT4_FREE_BLOCKS_METADATA;
+ 
+ 		for (i = 0; i < count; i++) {
+ 			cond_resched();
+-			bh = sb_find_get_block(inode->i_sb, block + i);
+-			if (!bh)
+-				continue;
+-			ext4_forget(handle, flags & EXT4_FREE_BLOCKS_METADATA,
+-				    inode, bh, block + i);
++			if (is_metadata)
++				bh = sb_find_get_block(inode->i_sb, block + i);
++			ext4_forget(handle, is_metadata, inode, bh, block + i);
+ 		}
+ 	}
+ 
+@@ -4819,12 +4808,17 @@ do_more:
+ 	if (err)
+ 		goto error_return;
+ 
+-	if ((flags & EXT4_FREE_BLOCKS_METADATA) && ext4_handle_valid(handle)) {
++	/*
++	 * We need to make sure we don't reuse the freed block until after the
++	 * transaction is committed. We make an exception if the inode is to be
++	 * written in writeback mode since writeback mode has weak data
++	 * consistency guarantees.
++	 */
++	if (ext4_handle_valid(handle) &&
++	    ((flags & EXT4_FREE_BLOCKS_METADATA) ||
++	     !ext4_should_writeback_data(inode))) {
+ 		struct ext4_free_data *new_entry;
+ 		/*
+-		 * blocks being freed are metadata. these blocks shouldn't
+-		 * be used until this transaction is committed
+-		 *
+ 		 * We use __GFP_NOFAIL because ext4_free_blocks() is not allowed
+ 		 * to fail.
+ 		 */
+-- 
+1.7.9.5
 
