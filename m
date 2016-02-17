@@ -1,35 +1,92 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 112631] Cannot open encrypted Luks root filesystem
-Date: Wed, 17 Feb 2016 20:30:28 +0000
-Message-ID: <bug-112631-13602-5v1on7YCvN@https.bugzilla.kernel.org/>
-References: <bug-112631-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 2/6] ext2, ext4: only set S_DAX for regular inodes
+Date: Wed, 17 Feb 2016 22:33:25 +0100
+Message-ID: <20160217213325.GH14140@quack.suse.cz>
+References: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1455680059-20126-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45955 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964976AbcBQUaa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Feb 2016 15:30:30 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 913D420211
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Feb 2016 20:30:29 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 9FC0D203A0
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Feb 2016 20:30:28 +0000 (UTC)
-In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1455680059-20126-3-git-send-email-ross.zwisler@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=112631
+On Tue 16-02-16 20:34:15, Ross Zwisler wrote:
+> When S_DAX is set on an inode we assume that if there are pages attached
+> to the mapping (mapping->nrpages != 0), those pages are clean zero pages
+> that were used to service reads from holes.  Any dirty data associated with
+> the inode should be in the form of DAX exceptional entries
+> (mapping->nrexceptional) that is written back via
+> dax_writeback_mapping_range().
+> 
+> With the current code, though, this isn't always true.  For example, ext2
+> and ext4 directory inodes can have S_DAX set, but have their dirty data
+> stored as dirty page cache entries.  For these types of inodes, having
+> S_DAX set doesn't really make sense since their I/O doesn't actually happen
+> through the DAX code path.
+> 
+> Instead, only allow S_DAX to be set for regular inodes for ext2 and ext4.
+> This allows us to have strict DAX vs non-DAX paths in the writeback code.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-alex.theoto <alex.theoto@gmail.com> changed:
+Looks good. You can add:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-          Component|ecryptfs                    |Other
+Reviewed-by: Jan Kara <jack@suse.cz>
 
+								Honza
+
+> ---
+>  fs/ext2/inode.c | 2 +-
+>  fs/ext4/inode.c | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 338eefd..27e2cdd 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1296,7 +1296,7 @@ void ext2_set_inode_flags(struct inode *inode)
+>  		inode->i_flags |= S_NOATIME;
+>  	if (flags & EXT2_DIRSYNC_FL)
+>  		inode->i_flags |= S_DIRSYNC;
+> -	if (test_opt(inode->i_sb, DAX))
+> +	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+>  		inode->i_flags |= S_DAX;
+>  }
+>  
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 83bc8bf..7088aa5 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4127,7 +4127,7 @@ void ext4_set_inode_flags(struct inode *inode)
+>  		new_fl |= S_NOATIME;
+>  	if (flags & EXT4_DIRSYNC_FL)
+>  		new_fl |= S_DIRSYNC;
+> -	if (test_opt(inode->i_sb, DAX))
+> +	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+>  		new_fl |= S_DAX;
+>  	inode_set_flags(inode, new_fl,
+>  			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
+> -- 
+> 2.5.0
+> 
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
