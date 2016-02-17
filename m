@@ -1,80 +1,86 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] ext4: Prevent panic for destroyed devices
-Date: Tue, 16 Feb 2016 14:36:04 +0400
-Message-ID: <1455618965-26699-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v3 0/6] DAX fixes, move flushing calls to FS
+Date: Tue, 16 Feb 2016 20:34:13 -0700
+Message-ID: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:41553 "EHLO relay.sw.ru"
+Received: from mga01.intel.com ([192.55.52.88]:40050 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754930AbcBPKgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Feb 2016 05:36:22 -0500
+	id S933169AbcBQDef (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Feb 2016 22:34:35 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some devices(nbd) can becomes unoperatable via kill_bdev
-so its pagecache will be invalidated and all buffers becomes unmapped.
-In that situation we will trigger BUGON on submit_bh.
+This patch series fixes several issues with the current DAX code:
 
-#Testcase
-mkdir  -p a/mnt
-cd a
-truncate -s 1G img
-mkfs.ext4 -F img
-qemu-nbd -c /dev/nbd0 img
-mount /dev/nbd0 /mnt
-cp -r /bin/ /mnt&
-# Disconnect nbd while cp is active
-qemu-nbd -d /dev/nbd0
-sync
+1) DAX is used by default on raw block devices that are capable of
+supporting it.  This creates an issue because there are still uses of the
+block device that use the page cache, and having one block device user
+doing DAX I/O and another doing page cache I/O can lead to data corruption.
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- fs/ext4/super.c | 24 +++++++++++++++++++++---
- 1 file changed, 21 insertions(+), 3 deletions(-)
+2) When S_DAX is set on an inode we assume that if there are pages attached
+to the mapping (mapping->nrpages != 0), those pages are clean zero pages
+that were used to service reads from holes.  This wasn't true in all cases.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3ed01ec..617d8b4a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4320,7 +4320,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
- 	int error = 0;
- 
--	if (!sbh || block_device_ejected(sb))
-+	if (!sbh || !buffer_mapped(sbh) || block_device_ejected(sb))
- 		return error;
- 	if (buffer_write_io_error(sbh)) {
- 		/*
-@@ -4368,8 +4368,26 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 	ext4_superblock_csum_set(sb);
- 	mark_buffer_dirty(sbh);
- 	if (sync) {
--		error = __sync_dirty_buffer(sbh,
--			test_opt(sb, BARRIER) ? WRITE_FUA : WRITE_SYNC);
-+		lock_buffer(sbh);
-+		/* superblock bh may be invalidated due to drive failure */
-+		if (!buffer_mapped(sbh)) {
-+			unlock_buffer(sbh);
-+			ext4_msg(sb, KERN_ERR, "Can not write superblock "
-+				 "because disk cache was invalidated");
-+			return -EIO;
-+		}
-+		if (test_clear_buffer_dirty(sbh)) {
-+			get_bh(sbh);
-+			sbh->b_end_io = end_buffer_write_sync;
-+			error = submit_bh(test_opt(sb, BARRIER) ?
-+					  WRITE_FUA : WRITE_SYNC, sbh);
-+			wait_on_buffer(sbh);
-+			if (!error && !buffer_uptodate(sbh))
-+				error = -EIO;
-+		} else {
-+			unlock_buffer(sbh);
-+		}
-+
- 		if (error)
- 			return error;
- 
+3) ext4 online defrag combined with DAX I/O could lead to data corruption.
+
+4) The DAX block/sector zeroing code needs a valid struct block_device,
+which it wasn't always getting.
+
+5) The DAX writeback code needs a valid struct block_device, which it
+wasn't always getting.
+
+6) The DAX writeback code needs to be called for sync(2) and syncfs(2).
+
+The last patch in this series reenables the DAX I/O path for raw block
+devices when they would otherwise be doing direct I/O.  It can be dropped
+if it is too controversial.
+
+Thank you to Dan Williams and Jan Kara for their code contributions to this
+set.
+
+A working tree can be found here:
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_bdev_v3
+
+Dan Williams (2):
+  block: disable block device DAX by default
+  block: use dax_do_io() if blkdev_dax_capable()
+
+Ross Zwisler (4):
+  ext2, ext4: only set S_DAX for regular inodes
+  ext4: Online defrag not supported with DAX
+  dax: give DAX clearing code correct bdev
+  dax: move writeback calls into the filesystems
+
+ block/Kconfig          | 13 +++++++++++++
+ block/ioctl.c          |  1 +
+ fs/block_dev.c         | 22 +++++++++++++++++++---
+ fs/dax.c               | 21 +++++++++++----------
+ fs/ext2/inode.c        | 16 +++++++++++++---
+ fs/ext4/inode.c        |  6 +++++-
+ fs/ext4/ioctl.c        |  5 +++++
+ fs/xfs/xfs_aops.c      |  6 +++++-
+ fs/xfs/xfs_aops.h      |  1 +
+ fs/xfs/xfs_bmap_util.c |  3 ++-
+ include/linux/dax.h    |  8 +++++---
+ include/linux/fs.h     | 31 +++++++++++++++++++++----------
+ mm/filemap.c           | 12 ++++--------
+ 13 files changed, 105 insertions(+), 40 deletions(-)
+
 -- 
-1.8.3.1
+2.5.0
 
