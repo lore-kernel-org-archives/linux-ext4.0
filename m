@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v3 2/6] ext2, ext4: only set S_DAX for regular inodes
-Date: Tue, 16 Feb 2016 20:34:15 -0700
-Message-ID: <1455680059-20126-3-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v3 3/6] ext4: Online defrag not supported with DAX
+Date: Tue, 16 Feb 2016 20:34:16 -0700
+Message-ID: <1455680059-20126-4-git-send-email-ross.zwisler@linux.intel.com>
 References: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
@@ -27,54 +27,36 @@ In-Reply-To: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-When S_DAX is set on an inode we assume that if there are pages attached
-to the mapping (mapping->nrpages != 0), those pages are clean zero pages
-that were used to service reads from holes.  Any dirty data associated with
-the inode should be in the form of DAX exceptional entries
-(mapping->nrexceptional) that is written back via
-dax_writeback_mapping_range().
+Online defrag operations for ext4 are hard coded to use the page cache.
+See ext4_ioctl() -> ext4_move_extents() -> move_extent_per_page()
 
-With the current code, though, this isn't always true.  For example, ext2
-and ext4 directory inodes can have S_DAX set, but have their dirty data
-stored as dirty page cache entries.  For these types of inodes, having
-S_DAX set doesn't really make sense since their I/O doesn't actually happen
-through the DAX code path.
+When combined with DAX I/O, which circumvents the page cache, this can
+result in data corruption.  This was observed with xfstests ext4/307 and
+ext4/308.
 
-Instead, only allow S_DAX to be set for regular inodes for ext2 and ext4.
-This allows us to have strict DAX vs non-DAX paths in the writeback code.
+Fix this by only allowing online defrag for non-DAX files.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- fs/ext2/inode.c | 2 +-
- fs/ext4/inode.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ioctl.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 338eefd..27e2cdd 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1296,7 +1296,7 @@ void ext2_set_inode_flags(struct inode *inode)
- 		inode->i_flags |= S_NOATIME;
- 	if (flags & EXT2_DIRSYNC_FL)
- 		inode->i_flags |= S_DIRSYNC;
--	if (test_opt(inode->i_sb, DAX))
-+	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
- 		inode->i_flags |= S_DAX;
- }
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0f6c369..e32c86f 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -583,6 +583,11 @@ group_extend_out:
+ 				 "Online defrag not supported with bigalloc");
+ 			err = -EOPNOTSUPP;
+ 			goto mext_out;
++		} else if (IS_DAX(inode)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online defrag not supported with DAX");
++			err = -EOPNOTSUPP;
++			goto mext_out;
+ 		}
  
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 83bc8bf..7088aa5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4127,7 +4127,7 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & EXT4_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
--	if (test_opt(inode->i_sb, DAX))
-+	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
- 		new_fl |= S_DAX;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
+ 		err = mnt_want_write_file(filp);
 -- 
 2.5.0
 
