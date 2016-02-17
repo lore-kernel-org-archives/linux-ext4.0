@@ -1,98 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 3/6] ext4: Online defrag not supported with DAX
-Date: Wed, 17 Feb 2016 23:10:29 +0100
-Message-ID: <20160217221029.GM14140@quack.suse.cz>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v3 6/6] block: use dax_do_io() if blkdev_dax_capable()
+Date: Wed, 17 Feb 2016 14:18:13 -0800
+Message-ID: <CAPcyv4g3iCL1q7FoeTwKvtqo2mLfA=mfi1K5PdmZVjU+PA-gOA@mail.gmail.com>
 References: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
- <1455680059-20126-4-git-send-email-ross.zwisler@linux.intel.com>
- <20160217215037.GB30126@linux.intel.com>
+	<1455680059-20126-7-git-send-email-ross.zwisler@linux.intel.com>
+	<20160217215420.GK14140@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+Content-Type: text/plain; charset=UTF-8
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
-	Theodore Ts'o <tytso@mit.edu>,
+	"Theodore Ts'o" <tytso@mit.edu>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
 	Jeff Layton <jlayton@poochiereds.net>,
 	Jens Axboe <axboe@kernel.dk>,
 	Matthew Wilcox <willy@linux.intel.com>,
-	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44039 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965230AbcBQWKK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Feb 2016 17:10:10 -0500
-Content-Disposition: inline
-In-Reply-To: <20160217215037.GB30126@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-block@vger.kernel.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	XFS Developers <xfs@oss.sgi.com>, Jens Axboe <axboe@fb.com>,
+	Al Viro <viro@ftp.linux.org.uk>,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160217215420.GK14140@quack.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 17-02-16 14:50:37, Ross Zwisler wrote:
-> On Tue, Feb 16, 2016 at 08:34:16PM -0700, Ross Zwisler wrote:
-> > Online defrag operations for ext4 are hard coded to use the page cache.
-> > See ext4_ioctl() -> ext4_move_extents() -> move_extent_per_page()
-> > 
-> > When combined with DAX I/O, which circumvents the page cache, this can
-> > result in data corruption.  This was observed with xfstests ext4/307 and
-> > ext4/308.
-> > 
-> > Fix this by only allowing online defrag for non-DAX files.
-> 
-> Jan,
-> 
-> Thinking about this a bit more, it's probably the case that the data
-> corruption I was observing was due to us skipping the writeback of the dirty
-> page cache pages because S_DAX was set.
-> 
-> I do think we have a problem with defrag because it is doing the extent
-> swapping using the page cache, and we won't flush the dirty pages due to
-> S_DAX being set.
-> 
-> This patch is the quick and easy answer, and is perhaps appropriate for v4.5.
-> 
-> Looking forward, though, what do you think the correct solution is?  Making an
-> extent swapper that doesn't use the page cache (as I believe XFS has? see
-> xfs_swap_extents()), or maybe just unsetting S_DAX while we do the defrag and
-> being careful to block out page faults and I/O?  Or is it acceptable to just
-> say that DAX and defrag are mutually exclusive for ext4?
+On Wed, Feb 17, 2016 at 1:54 PM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 16-02-16 20:34:19, Ross Zwisler wrote:
+>> From: Dan Williams <dan.j.williams@intel.com>
+>>
+>> Setting S_DAX on an inode requires that the inode participate in the
+>> DAX-fsync mechanism which expects to use the pagecache for tracking
+>> potentially dirty cpu cachelines.  However, dax_do_io() participates in
+>> the standard pagecache sync semantics and arranges for dirty pages to be
+>> flushed through the driver when a direct-IO operation accesses the same
+>> ranges.
+>>
+>> It should always be valid to use the dax_do_io() path regardless of
+>> whether the block_device inode has S_DAX set.  In either case dirty
+>> pages or dirty cachelines are made durable before the direct-IO
+>> operation proceeds.
+>
+> Please no. I agree that going via DAX path for normal likely won't
+> introduce new data corruption issues. But I dislike having a special
+> case for block devices. Also you have no way of turning DAX off for block
+> devices AFAIU and as Dave said, DAX should be opt-in, not opt-out. Note
+> that you may actually want to go through the block layer for normal IO e.g.
+> because you use IO cgroups to limit processes so using DAX regresses some
+> functionality.
+>
 
-For 4.5 I'd just say just make them exclusive. Long term, we could just
-avoid using page cache for copying data - grab all the necessary locks,
-wait for all DIO to complete, evict anything in pagecache, copy data, swap
-extents. It could even result in a simpler code.
+Sounds good.
 
-								Honza
-
-
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > ---
-> >  fs/ext4/ioctl.c | 5 +++++
-> >  1 file changed, 5 insertions(+)
-> > 
-> > diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> > index 0f6c369..e32c86f 100644
-> > --- a/fs/ext4/ioctl.c
-> > +++ b/fs/ext4/ioctl.c
-> > @@ -583,6 +583,11 @@ group_extend_out:
-> >  				 "Online defrag not supported with bigalloc");
-> >  			err = -EOPNOTSUPP;
-> >  			goto mext_out;
-> > +		} else if (IS_DAX(inode)) {
-> > +			ext4_msg(sb, KERN_ERR,
-> > +				 "Online defrag not supported with DAX");
-> > +			err = -EOPNOTSUPP;
-> > +			goto mext_out;
-> >  		}
-> >  
-> >  		err = mnt_want_write_file(filp);
-> > -- 
-> > 2.5.0
-> > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+As Ross mentioned in the cover letter, I'm fine with dropping this one
+for now as we think through how to restore raw device DAX support.  In
+the meantime we can still force CONFIG_BLK_DEV_DAX=y for testing.
