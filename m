@@ -1,155 +1,107 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v3 6/6] block: use dax_do_io() if blkdev_dax_capable()
-Date: Tue, 16 Feb 2016 20:34:19 -0700
-Message-ID: <1455680059-20126-7-git-send-email-ross.zwisler@linux.intel.com>
-References: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Dan Williams <dan.j.williams@intel.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Jens Axboe <axboe@kernel.dk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-block@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	xfs@oss.sgi.com,
-	Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@fb.com>,
-	Al Viro <viro@ftp.linux.org.uk>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Darren Hart <dvhart@infradead.org>
+Subject: Re: xattr corruption issue on ext2fs generated filesystems
+Date: Tue, 16 Feb 2016 23:35:43 -0800
+Message-ID: <20160217073543.GE22091@dvhart-mobl5.amr.corp.intel.com>
+References: <1454757826.27087.300.camel@linuxfoundation.org>
+ <1455128452.24036.38.camel@linux.intel.com>
+ <20160213212955.GD6338@birch.djwong.org>
+ <20160213223459.GE6338@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Richard Purdie <richard.purdie@linuxfoundation.org>,
+	Darren Hart <dvhart@linux.intel.com>,
+	linux-ext4@vger.kernel.org, Ted Ts'o <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:44411 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750837AbcBQHfm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Feb 2016 02:35:42 -0500
+Content-Disposition: inline
+In-Reply-To: <20160213223459.GE6338@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Dan Williams <dan.j.williams@intel.com>
+On Sat, Feb 13, 2016 at 02:34:59PM -0800, Darrick J. Wong wrote:
+> On Sat, Feb 13, 2016 at 01:29:55PM -0800, Darrick J. Wong wrote:
+> > On Wed, Feb 10, 2016 at 10:20:52AM -0800, Darren Hart wrote:
+> > > On Sat, 2016-02-06 at 11:23 +0000, Richard Purdie wrote:
+> > > > I'm using the -d option of mke2fs to construct a filesystem, I'=
+m
+> > > > seeing
+> > > > that some xattrs are being corrupted. The filesystem builds wit=
+h no
+> > > > errors but when mounted by the kernel, I see errors like
+> > > > "security.ima:
+> > > > No such attribute". The strace from such a failure is:
+> > >=20
+> > >=20
+> > > Interesting. +Ted and +Darrick who helped us merge the -d argumen=
+t
+> > > originally.
+> > >=20
+> > >=20
+> > > > mmap(NULL, 26258, PROT_READ, MAP_SHARED, 3, 0) =3D 0x7fdb36a8c0=
+00
+> > > > close(3)=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=3D 0
+> > > > getrlimit(RLIMIT_NOFILE, {rlim_cur=3D1024, rlim_max=3D64*1024})=
+ =3D 0
+> > > > lstat("mnt/foobar", {st_mode=3DS_IFREG|0755, st_size=3D1, ...})=
+ =3D 0
+> > > > listxattr("mnt/foobar", NULL, 0) =3D 30
+> > > > listxattr("mnt/foobar", "security.SMACK64\0security.ima\0", 256=
+) =3D 30
+> > > > getxattr("mnt/foobar", "security.SMACK64", 0x0, 0) =3D 1
+> > > > getxattr("mnt/foobar", "security.SMACK64", "_", 256) =3D 1
+> > > > fstat(1, {st_mode=3DS_IFCHR|0620, st_rdev=3Dmakedev(136, 13), .=
+=2E.}) =3D 0
+> > > > mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOU=
+S, -1,
+> > > > 0) =3D 0x7fdb36a8b000
+> > > > write(1, "# file: mnt/foobar\n", 19# file: mnt/foobar) =3D 19
+> > > > write(1, "security.SMACK64=3D\"_\"\n", 21security.SMACK64=3D"_"=
+) =3D 21
+> > > > getxattr("mnt/foobar", "security.ima", 0x0, 0) =3D -1 ENODATA (=
+No data
+> > > > available)
+> > > > write(2, "mnt/foobar: ", 12mnt/foobar: ) =3D 12
+> > > > write(2, "security.ima: No such attribute\n", 32security.ima: N=
+o such
+> > > > attribute) =3D 32=3D 32
+> >=20
+> > Aha, you're right, the trick is that EAs in an external block have =
+to be sorted
+> > by index number, then by strlen(name), and then by strcmp(name).  U=
+nlike inode
+> > attributes, which can be in any order.
+> >=20
+> > e2fsprogs inserts them in whatever order you happened to set them, =
+which is
+> > whatever order llistxattr provides them.
+> >=20
+> > So, Mr. Purdie's is correct -- attr_compare needs to do more work, =
+but it needs
+> > to grab the index number and the suffix text (via find_ea_index()) =
+and
+> > replicate the same comparison operators as the kernel code.
+> >=20
+> > (Not sure why we bother to sort the keys in the xattr block since t=
+here can
+> > only be one block, but whatever...)
+>=20
+> A patch to (I hope) fix this issue will appear shortly as patch #9 in
+> my e2fsprogs patchbomb.  When it appears, can you please give it a sp=
+in?
 
-Setting S_DAX on an inode requires that the inode participate in the
-DAX-fsync mechanism which expects to use the pagecache for tracking
-potentially dirty cpu cachelines.  However, dax_do_io() participates in
-the standard pagecache sync semantics and arranges for dirty pages to be
-flushed through the driver when a direct-IO operation accesses the same
-ranges.
+Thank you very much Darrick!
 
-It should always be valid to use the dax_do_io() path regardless of
-whether the block_device inode has S_DAX set.  In either case dirty
-pages or dirty cachelines are made durable before the direct-IO
-operation proceeds.
-
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jens Axboe <axboe@fb.com>
-Cc: Al Viro <viro@ftp.linux.org.uk>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
----
- block/ioctl.c      |  1 +
- fs/block_dev.c     |  3 ++-
- include/linux/fs.h | 31 +++++++++++++++++++++----------
- 3 files changed, 24 insertions(+), 11 deletions(-)
-
-diff --git a/block/ioctl.c b/block/ioctl.c
-index d8996bb..7c64286 100644
---- a/block/ioctl.c
-+++ b/block/ioctl.c
-@@ -434,6 +434,7 @@ bool blkdev_dax_capable(struct block_device *bdev)
- 
- 	return true;
- }
-+EXPORT_SYMBOL(blkdev_dax_capable);
- #endif
- 
- static int blkdev_flushbuf(struct block_device *bdev, fmode_t mode,
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 826b164..0e937dd 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -166,8 +166,9 @@ blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = bdev_file_inode(file);
-+	struct block_device *bdev = I_BDEV(inode);
- 
--	if (IS_DAX(inode))
-+	if (blkdev_dax_capable(bdev))
- 		return dax_do_io(iocb, inode, iter, offset, blkdev_get_block,
- 				NULL, DIO_SKIP_DIO_COUNT);
- 	return __blockdev_direct_IO(iocb, inode, I_BDEV(inode), iter, offset,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ae68100..a3f5ee8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -830,7 +830,14 @@ static inline unsigned imajor(const struct inode *inode)
- 	return MAJOR(inode->i_rdev);
- }
- 
-+#ifdef CONFIG_BLOCK
- extern struct block_device *I_BDEV(struct inode *inode);
-+#else
-+static inline struct block_device *I_BDEV(struct inode *inode)
-+{
-+	return NULL;
-+}
-+#endif
- 
- struct fown_struct {
- 	rwlock_t lock;          /* protects pid, uid, euid fields */
-@@ -2306,15 +2313,6 @@ extern struct super_block *freeze_bdev(struct block_device *);
- extern void emergency_thaw_all(void);
- extern int thaw_bdev(struct block_device *bdev, struct super_block *sb);
- extern int fsync_bdev(struct block_device *);
--#ifdef CONFIG_FS_DAX
--extern bool blkdev_dax_capable(struct block_device *bdev);
--#else
--static inline bool blkdev_dax_capable(struct block_device *bdev)
--{
--	return false;
--}
--#endif
--
- extern struct super_block *blockdev_superblock;
- 
- static inline bool sb_is_blkdev_sb(struct super_block *sb)
-@@ -2902,9 +2900,22 @@ extern int generic_show_options(struct seq_file *m, struct dentry *root);
- extern void save_mount_options(struct super_block *sb, char *options);
- extern void replace_mount_options(struct super_block *sb, char *options);
- 
-+#ifdef CONFIG_FS_DAX
-+extern bool blkdev_dax_capable(struct block_device *bdev);
-+#else
-+static inline bool blkdev_dax_capable(struct block_device *bdev)
-+{
-+	return false;
-+}
-+#endif
-+
- static inline bool io_is_direct(struct file *filp)
- {
--	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
-+	struct inode *inode = filp->f_mapping->host;
-+
-+	return (filp->f_flags & O_DIRECT) || IS_DAX(inode)
-+		|| (S_ISBLK(file_inode(filp)->i_mode)
-+				&& blkdev_dax_capable(I_BDEV(inode)));
- }
- 
- static inline int iocb_flags(struct file *file)
--- 
-2.5.0
-
+--=20
+Darren Hart
+Intel Open Source Technology Center
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
