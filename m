@@ -1,161 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: revert i_data_sum locking cleanups for
- dioread_nolock
-Date: Thu, 18 Feb 2016 23:09:56 +0100
-Message-ID: <20160218220956.GA24219@quack.suse.cz>
-References: <20160212182506.GB1592@localhost.localdomain>
- <20160216050840.GA3426@thunk.org>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="tKW2IUtsqtDRztdT"
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
-	jack@suse.cz
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: problem in ext2fs_get_next_inode_full() ?
+Date: Thu, 18 Feb 2016 15:30:35 -0700
+Message-ID: <E32557C0-B912-4F00-BF85-F0A1A2B23496@dilger.ca>
+References: <D2EB8E48.12F559%andreas.dilger@intel.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43597 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423513AbcBRWJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Feb 2016 17:09:34 -0500
-Content-Disposition: inline
-In-Reply-To: <20160216050840.GA3426@thunk.org>
+Received: from mail-pf0-f171.google.com ([209.85.192.171]:36025 "EHLO
+	mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757190AbcBRWaj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Feb 2016 17:30:39 -0500
+Received: by mail-pf0-f171.google.com with SMTP id e127so38996702pfe.3
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Feb 2016 14:30:38 -0800 (PST)
+In-Reply-To: <D2EB8E48.12F559%andreas.dilger@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---tKW2IUtsqtDRztdT
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Tue 16-02-16 00:08:40, Ted Tso wrote:
-> On Fri, Feb 12, 2016 at 01:25:06PM -0500, Eric Whitney wrote:
-> > Commit 2bcba4781fa3 ("ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag")
-> > can cause a kernel panic when xfstest generic/300 is run on a file
-> > system mounted with dioread_nolock.  The panic is typically triggered
-> > from check_irqs_on() (fs/buffer.c: 1272), and happens because
-> > ext4_end_io_dio() is being called in an interrupt context rather than
-> > from a workqueue for AIO.  This suggests that buffer_defer_completion
-> > may not be set properly when creating an unwritten extent for async
-> > direct I/O.
-> > 
-> > Revert the locking changes until this problem can be resolved.  Patch
-> > applied to 4.5-rc3 and tested with a full xfstest-bld auto group run.
-> > 
-> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+On Feb 18, 2016, at 3:05 PM, Dilger, Andreas <andreas.dilger@intel.com> wrote:
 > 
-> Applied, thanks.
+> I was just looking at ext2fs_get_next_inode_full() to trace where we
+> are using large inodes and whether we could change the APIs to just
+> pass large inodes around instead of typecasting them.  It has the
+> following hunk of code:
 > 
-> I was able to reliably reproduce the problem without this revert patch
-> using a 32-bit x86 kvm-xfstests test appliance:
+>        if (extra_bytes) {
+> 		memcpy(scan->temp_buffer+extra_bytes, scan->ptr,
+> 		       scan->inode_size - extra_bytes);
+> 		scan->ptr += scan->inode_size - extra_bytes;
+> 		scan->bytes_left -= scan->inode_size - extra_bytes;
 > 
->    ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests/testing/root_fs.img.i386
+> #ifdef WORDS_BIGENDIAN
+> 		memset(inode, 0, bufsize);
+> 		ext2fs_swap_inode_full(scan->fs,
+> 				(struct ext2_inode_large *) inode,
+> 				(struct ext2_inode_large *) scan->temp_buffer,
+> 				0, bufsize);
+> #else
+> 		*inode = *((struct ext2_inode *) scan->temp_buffer);
+> #endif
 > 
-> Using the command: "kvm-xfstests -c dioread_nolock generic/300"
+> So if the inode is being swabbed then it handles the full inode size, but
+> if it is not being swabbed (the common case) it appears that it is only
+> copying the small inode into "*inode" using a struct assignment.  This
+> appears like it would be dropping the large inode data, but I'm not sure
+> if or when this "extra_bytes" case is hit.  The "else" clause appears to
+> copy the requested (full) inode size properly via "memcpy(..., bufsize)".
 > 
-> With this patch, the problem goes away, so reverting the patch is
-> clearly the right thing for now.  There is something screwy going on,
-> since the original commit shouldn't have made a difference, but let's
-> revert it first, and figure it out when we have time to investigate
-> more deeply.
+> Should the struct assignment be changed similarly to use memcpy()?
 
-OK, I had a look into this. So I'm not 100% what has happened but the
-following looks likely: Current io_end handling can overwrite io_end
-pointer in the inode in dioread_nolock mode (nothing prevents unlocked DIO
-to overwrite pointer of locked DIO and then clear it out). I suspect that
-the change in i_data_sem locking made this race more visible. Attached
-patch should fix the issue (I don't see failures of generic/300 with it in
-dioread_nolock mode). Can you consider this instead of a revert Eric sent?
+To follow up on my own email - I also see struct ext2_inode_cache_ent is
+only caching the small inode, and not a large inode.  This would seem to
+potentially cause loss of the large inode data if the inode cache is
+used by tools like resize2fs or others that move around inodes?
 
-I have also a more complete rewrite of io_end handling which makes the code
-more comprehensible and avoids storing io_end pointer in the inode (thus
-avoids similar pitfalls in future) but that is a 4.6 matter. I'll submit
-the rewrite once xfstests runs complete.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---tKW2IUtsqtDRztdT
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Fix-crashes-in-dioread_nolock-mode.patch"
-
->From 09eae61bb0433f8424f606fde00db35dbd72615d Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Thu, 18 Feb 2016 22:50:07 +0100
-Subject: [PATCH] ext4: Fix crashes in dioread_nolock mode
-
-Competing overwrite DIO in dioread_nolock mode will just overwrite
-pointer to io_end in the inode. This may result in data corruption or
-extent conversion happening from IO completion interrupt because we
-don't properly set buffer_defer_completion() when unlocked DIO races
-with locked DIO to unwritten extent.
-
-Since unlocked DIO doesn't need io_end for anything, just avoid
-allocating it and corrupting pointer from inode for locked DIO.
-A cleaner fix would be to avoid these games with io_end pointer from the
-inode but that requires more intrusive changes so we leave that for
-later.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 40 ++++++++++++++++++++--------------------
- 1 file changed, 20 insertions(+), 20 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 83bc8bfb3bea..ee8ca1ff4023 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3253,29 +3253,29 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	 * case, we allocate an io_end structure to hook to the iocb.
- 	 */
- 	iocb->private = NULL;
--	ext4_inode_aio_set(inode, NULL);
--	if (!is_sync_kiocb(iocb)) {
--		io_end = ext4_init_io_end(inode, GFP_NOFS);
--		if (!io_end) {
--			ret = -ENOMEM;
--			goto retake_lock;
--		}
--		/*
--		 * Grab reference for DIO. Will be dropped in ext4_end_io_dio()
--		 */
--		iocb->private = ext4_get_io_end(io_end);
--		/*
--		 * we save the io structure for current async direct
--		 * IO, so that later ext4_map_blocks() could flag the
--		 * io structure whether there is a unwritten extents
--		 * needs to be converted when IO is completed.
--		 */
--		ext4_inode_aio_set(inode, io_end);
--	}
--
- 	if (overwrite) {
- 		get_block_func = ext4_get_block_overwrite;
- 	} else {
-+		ext4_inode_aio_set(inode, NULL);
-+		if (!is_sync_kiocb(iocb)) {
-+			io_end = ext4_init_io_end(inode, GFP_NOFS);
-+			if (!io_end) {
-+				ret = -ENOMEM;
-+				goto retake_lock;
-+			}
-+			/*
-+			 * Grab reference for DIO. Will be dropped in
-+			 * ext4_end_io_dio()
-+			 */
-+			iocb->private = ext4_get_io_end(io_end);
-+			/*
-+			 * we save the io structure for current async direct
-+			 * IO, so that later ext4_map_blocks() could flag the
-+			 * io structure whether there is a unwritten extents
-+			 * needs to be converted when IO is completed.
-+			 */
-+			ext4_inode_aio_set(inode, io_end);
-+		}
- 		get_block_func = ext4_get_block_write;
- 		dio_flags = DIO_LOCKING;
- 	}
--- 
-2.6.2
+Cheers, Andreas
 
 
---tKW2IUtsqtDRztdT--
+
+
+
