@@ -1,49 +1,70 @@
-From: Pete <pete@leptonyx.com>
-Subject: Bug: {m,a}time issue in ext4
-Date: Wed, 17 Feb 2016 21:58:05 +0000
-Message-ID: <0cde87b04ffccea1719810a6a93f353d@leptonyx.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v3 3/6] ext4: Online defrag not supported with DAX
+Date: Thu, 18 Feb 2016 11:12:23 +1100
+Message-ID: <20160218001223.GJ19486@dastard>
+References: <1455680059-20126-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1455680059-20126-4-git-send-email-ross.zwisler@linux.intel.com>
+ <20160217215037.GB30126@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 7.mo7.mail-out.ovh.net ([46.105.43.131]:33194 "EHLO
-	7.mo7.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423442AbcBQWdc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Feb 2016 17:33:32 -0500
-Received: from mail329.ha.ovh.net (gw6.ovh.net [213.251.189.206])
-	by mo7.mail-out.ovh.net (Postfix) with ESMTP id 0616CFF87EB
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Feb 2016 22:58:05 +0100 (CET)
-Received: from RCM-2.101.50.50 (localhost [127.0.0.1])
-	by mail329.ha.ovh.net (Postfix) with ESMTPA id C01E1300073
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Feb 2016 22:58:05 +0100 (CET)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Jan Kara <jack@suse.com>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, xfs@oss.sgi.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160217215037.GB30126@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed, Feb 17, 2016 at 02:50:37PM -0700, Ross Zwisler wrote:
+> On Tue, Feb 16, 2016 at 08:34:16PM -0700, Ross Zwisler wrote:
+> > Online defrag operations for ext4 are hard coded to use the page cache.
+> > See ext4_ioctl() -> ext4_move_extents() -> move_extent_per_page()
+> > 
+> > When combined with DAX I/O, which circumvents the page cache, this can
+> > result in data corruption.  This was observed with xfstests ext4/307 and
+> > ext4/308.
+> > 
+> > Fix this by only allowing online defrag for non-DAX files.
+> 
+> Jan,
+> 
+> Thinking about this a bit more, it's probably the case that the data
+> corruption I was observing was due to us skipping the writeback of the dirty
+> page cache pages because S_DAX was set.
+> 
+> I do think we have a problem with defrag because it is doing the extent
+> swapping using the page cache, and we won't flush the dirty pages due to
+> S_DAX being set.
+> 
+> This patch is the quick and easy answer, and is perhaps appropriate for v4.5.
+> 
+> Looking forward, though, what do you think the correct solution is?  Making an
+> extent swapper that doesn't use the page cache (as I believe XFS has? see
+> xfs_swap_extents()),
 
-I don't know if this is the right place to report this - please correct 
-me if it isn't the case.
+XFS does the data copy in userspace using direct IO so we don't
+care about whether DAX is enabled or not on either the source or
+destination inode. i.e. xfs_swap_extents() is a pure
+metadata operation, swapping the entire extent tree between two
+inodes if the source data has not changed while the copy was in
+progress.
 
-The touch command on Linux currently allows a user to set a file's 
-{m,a}time field in an ext4 filesystem to datetimes outside the bounds 
-allowed by the filesystem (1901-12-13 20:45:52 to 2446-05-10 23:38:55) 
-with impunity, flagging no error or warning.
+Cheers,
 
-This results in the storing of the relevant modulo bits in i_{m,a}time 
-and i_{m,a}time_extra, but retaining the erroneous original value at 
-some place in the filesystem cache.
-
-Thus, subsequent calls to stat or ls -l will display the erroneous 
-value, and will carry on doing so until the filesystem is remounted, in 
-which case the timestamp bits are then re-read from scratch and 
-interpreted correctly by stat and ls -l.
-
-This means, among other aspects, that someone can set an out-of-bounds 
-value, unmount and remount the filesystem, and find the datetime to have 
-changed from the one which they believed to have entered, and which was 
-reported previously.
-
-Behaviour observed in (kernel 4.4.0-3 / e2fsprogs-1.42.13-3.3.x86_64) 
-and (kernel 3.19.0 / e2fsprogs 1.42.9).
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
