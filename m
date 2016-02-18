@@ -1,62 +1,96 @@
-From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCH] blkid: fix ZFS device detection
-Date: Thu, 18 Feb 2016 13:05:57 -0700
-Message-ID: <1455825957-42143-1-git-send-email-andreas.dilger@intel.com>
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <andreas.dilger@intel.com>
-To: tytso@mit.edu
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: use directio end_io error status to finish
+ unwritten aio dio correctly
+Date: Thu, 18 Feb 2016 22:30:06 +0100
+Message-ID: <20160218213006.GG4338@quack.suse.cz>
+References: <20160218054557.GH6338@birch.djwong.org>
+ <20160218060148.GA10571@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.139]:53671 "EHLO
-	smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1426363AbcBRUOI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Feb 2016 15:14:08 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41555 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757146AbcBRV3o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Feb 2016 16:29:44 -0500
+Content-Disposition: inline
+In-Reply-To: <20160218060148.GA10571@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-While the main blkid functionality is in util-linux, there is still
-some use for blkid on non-Linux platforms.
+On Wed 17-02-16 22:01:48, Christoph Hellwig wrote:
+> Might help to tell that this is on top of a direct-io.c patch from the
+> XFS tree.
+> 
+> I don't think clearing any flags is the right thing - now that we
+> always call ->end_io the code dealing with it in ext4_ext_direct_IO
+> can simply be moved to the ->end_io handler.
+> 
+> Something like the untested patch below:
 
-Fix the ZFS device detection by looking at multiple uberblocks to
-see if any are present, rather than looking for the ZFS boot block
-which is not always present.
+Yeah, this looks good to me.
 
-There are slots for up to 128 uberblocks, but the first 4 are not
-written to disk on a newly-formatted filesystem so check several
-of them at different offsets within the uberblock array.
-
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
----
- lib/blkid/probe.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
-
-diff --git a/lib/blkid/probe.c b/lib/blkid/probe.c
-index 4b797ab..161f4f1 100644
---- a/lib/blkid/probe.c
-+++ b/lib/blkid/probe.c
-@@ -1440,10 +1440,19 @@ static struct blkid_magic type_array[] = {
-   { "iso9660",	32,	 1,  5, "CD001",		probe_iso9660 },
-   { "iso9660",	32,	 9,  5, "CDROM",		probe_iso9660 },
-   { "jfs",	32,	 0,  4, "JFS1",			probe_jfs },
--  { "zfs",       8,	 0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c", probe_zfs },
--  { "zfs",       8,	 0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0", probe_zfs },
--  { "zfs",     264,	 0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c", probe_zfs },
--  { "zfs",     264,	 0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0", probe_zfs },
-+  /* ZFS has 128 root blocks (#4 is the first used), check only 6 of them */
-+  { "zfs",     128,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     128,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-+  { "zfs",     132,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     132,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-+  { "zfs",     136,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     136,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-+  { "zfs",     384,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     384,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-+  { "zfs",     388,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     388,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-+  { "zfs",     392,	 0,  8, "\0\0\0\0\0\xba\xb1\x0c", probe_zfs },
-+  { "zfs",     392,	 0,  8, "\x0c\xb1\xba\0\0\0\0\0", probe_zfs },
-   { "hfsplus",	 1,	 0,  2, "BD",			probe_hfsplus },
-   { "hfsplus",	 1,	 0,  2, "H+",			probe_hfsplus },
-   { "hfsplus",	 1,	 0,  2, "HX",			probe_hfsplus },
+								Honza
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 9db04dd..b741c79 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3166,23 +3166,25 @@ static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+>  {
+>          ext4_io_end_t *io_end = iocb->private;
+>  
+> -	if (size <= 0)
+> -		return 0;
+> -
+>  	/* if not async direct IO just return */
+>  	if (!io_end)
+>  		return 0;
+>  
+> +	if (size <= 0) {
+> +		WARN_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
+> +		goto out;
+> +	}
+> +
+>  	ext_debug("ext4_end_io_dio(): io_end 0x%p "
+>  		  "for inode %lu, iocb 0x%p, offset %llu, size %zd\n",
+>   		  iocb->private, io_end->inode->i_ino, iocb, offset,
+>  		  size);
+>  
+> -	iocb->private = NULL;
+>  	io_end->offset = offset;
+>  	io_end->size = size;
+> +out:
+>  	ext4_put_io_end(io_end);
+> -
+> +	iocb->private = NULL;
+>  	return 0;
+>  }
+>  
+> @@ -3306,16 +3308,6 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+>  	if (io_end) {
+>  		ext4_inode_aio_set(inode, NULL);
+>  		ext4_put_io_end(io_end);
+> -		/*
+> -		 * When no IO was submitted ext4_end_io_dio() was not
+> -		 * called so we have to put iocb's reference.
+> -		 */
+> -		if (ret <= 0 && ret != -EIOCBQUEUED && iocb->private) {
+> -			WARN_ON(iocb->private != io_end);
+> -			WARN_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
+> -			ext4_put_io_end(io_end);
+> -			iocb->private = NULL;
+> -		}
+>  	}
+>  	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+>  						EXT4_STATE_DIO_UNWRITTEN)) {
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-1.8.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
