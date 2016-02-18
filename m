@@ -1,8 +1,8 @@
-From: Jan Kara <jack@suse.cz>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH] ext4: use directio end_io error status to finish
  unwritten aio dio correctly
-Date: Thu, 18 Feb 2016 22:30:06 +0100
-Message-ID: <20160218213006.GG4338@quack.suse.cz>
+Date: Fri, 19 Feb 2016 09:02:32 +1100
+Message-ID: <20160218220232.GA4262@dastard>
 References: <20160218054557.GH6338@birch.djwong.org>
  <20160218060148.GA10571@infradead.org>
 Mime-Version: 1.0
@@ -12,16 +12,17 @@ Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
 To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41555 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757146AbcBRV3o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Feb 2016 16:29:44 -0500
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:32714 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1425045AbcBRWCf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Feb 2016 17:02:35 -0500
 Content-Disposition: inline
 In-Reply-To: <20160218060148.GA10571@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 17-02-16 22:01:48, Christoph Hellwig wrote:
+On Wed, Feb 17, 2016 at 10:01:48PM -0800, Christoph Hellwig wrote:
 > Might help to tell that this is on top of a direct-io.c patch from the
 > XFS tree.
 > 
@@ -30,10 +31,6 @@ On Wed 17-02-16 22:01:48, Christoph Hellwig wrote:
 > can simply be moved to the ->end_io handler.
 > 
 > Something like the untested patch below:
-
-Yeah, this looks good to me.
-
-								Honza
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 > index 9db04dd..b741c79 100644
@@ -54,6 +51,10 @@ Yeah, this looks good to me.
 > +		WARN_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
 > +		goto out;
 > +	}
+
+That will still issue a warning when an I/O error occurs on an
+unwritten extent.
+
 > +
 >  	ext_debug("ext4_end_io_dio(): io_end 0x%p "
 >  		  "for inode %lu, iocb 0x%p, offset %llu, size %zd\n",
@@ -65,32 +66,17 @@ Yeah, this looks good to me.
 >  	io_end->size = size;
 > +out:
 >  	ext4_put_io_end(io_end);
-> -
-> +	iocb->private = NULL;
->  	return 0;
->  }
->  
-> @@ -3306,16 +3308,6 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
->  	if (io_end) {
->  		ext4_inode_aio_set(inode, NULL);
->  		ext4_put_io_end(io_end);
-> -		/*
-> -		 * When no IO was submitted ext4_end_io_dio() was not
-> -		 * called so we have to put iocb's reference.
-> -		 */
-> -		if (ret <= 0 && ret != -EIOCBQUEUED && iocb->private) {
-> -			WARN_ON(iocb->private != io_end);
-> -			WARN_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
-> -			ext4_put_io_end(io_end);
-> -			iocb->private = NULL;
-> -		}
->  	}
->  	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
->  						EXT4_STATE_DIO_UNWRITTEN)) {
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Won't that now call ext4_put_io_end() ->
+ext4_convert_unwritten_extents() with an uninitialised offset and
+size?
+
+i.e. I don't think this prevents warnings, and may make things
+worse when real errors occur....
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
