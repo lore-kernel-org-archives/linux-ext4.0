@@ -1,82 +1,58 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: use directio end_io error status to finish
- unwritten aio dio correctly
-Date: Fri, 19 Feb 2016 09:02:32 +1100
-Message-ID: <20160218220232.GA4262@dastard>
-References: <20160218054557.GH6338@birch.djwong.org>
- <20160218060148.GA10571@infradead.org>
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+Subject: problem in ext2fs_get_next_inode_full() ?
+Date: Thu, 18 Feb 2016 22:05:44 +0000
+Message-ID: <D2EB8E48.12F559%andreas.dilger@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:32714 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1425045AbcBRWCf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Feb 2016 17:02:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20160218060148.GA10571@infradead.org>
+Received: from mga04.intel.com ([192.55.52.120]:56403 "EHLO mga04.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423513AbcBRWFq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Feb 2016 17:05:46 -0500
+Content-Language: en-US
+Content-ID: <79B3B3F8F68B634684F26641A23F7ECB@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 17, 2016 at 10:01:48PM -0800, Christoph Hellwig wrote:
-> Might help to tell that this is on top of a direct-io.c patch from the
-> XFS tree.
-> 
-> I don't think clearing any flags is the right thing - now that we
-> always call ->end_io the code dealing with it in ext4_ext_direct_IO
-> can simply be moved to the ->end_io handler.
-> 
-> Something like the untested patch below:
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9db04dd..b741c79 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3166,23 +3166,25 @@ static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
->  {
->          ext4_io_end_t *io_end = iocb->private;
->  
-> -	if (size <= 0)
-> -		return 0;
-> -
->  	/* if not async direct IO just return */
->  	if (!io_end)
->  		return 0;
->  
-> +	if (size <= 0) {
-> +		WARN_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
-> +		goto out;
-> +	}
+I was just looking at ext2fs_get_next_inode_full() to trace where we
+are using large inodes and whether we could change the APIs to just
+pass large inodes around instead of typecasting them.  It has the
+following hunk of code:
 
-That will still issue a warning when an I/O error occurs on an
-unwritten extent.
+        if (extra_bytes) {
+		memcpy(scan->temp_buffer+extra_bytes, scan->ptr,
+		       scan->inode_size - extra_bytes);
+		scan->ptr += scan->inode_size - extra_bytes;
+		scan->bytes_left -= scan->inode_size - extra_bytes;
 
-> +
->  	ext_debug("ext4_end_io_dio(): io_end 0x%p "
->  		  "for inode %lu, iocb 0x%p, offset %llu, size %zd\n",
->   		  iocb->private, io_end->inode->i_ino, iocb, offset,
->  		  size);
->  
-> -	iocb->private = NULL;
->  	io_end->offset = offset;
->  	io_end->size = size;
-> +out:
->  	ext4_put_io_end(io_end);
+#ifdef WORDS_BIGENDIAN
+		memset(inode, 0, bufsize);
+		ext2fs_swap_inode_full(scan->fs,
+				(struct ext2_inode_large *) inode,
+				(struct ext2_inode_large *) scan->temp_buffer,
+				0, bufsize);
+#else
+		*inode = *((struct ext2_inode *) scan->temp_buffer);
+#endif
 
-Won't that now call ext4_put_io_end() ->
-ext4_convert_unwritten_extents() with an uninitialised offset and
-size?
+So if the inode is being swabbed then it handles the full inode size, but
+if it is not being swabbed (the common case) it appears that it is only
+copying the small inode into "*inode" using a struct assignment.  This
+appears like it would be dropping the large inode data, but I'm not sure
+if or when this "extra_bytes" case is hit.  The "else" clause appears to
+copy the requested (full) inode size properly via "memcpy(..., bufsize)".
 
-i.e. I don't think this prevents warnings, and may make things
-worse when real errors occur....
+Should the struct assignment be changed similarly to use memcpy()?
 
-Cheers,
 
-Dave.
+Cheers, Andreas
 -- 
-Dave Chinner
-david@fromorbit.com
+Andreas Dilger
+
+Lustre Principal Architect
+Intel High Performance Data Division
+
+
