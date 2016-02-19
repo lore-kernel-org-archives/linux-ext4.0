@@ -1,64 +1,72 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 112631] Cannot open encrypted Luks root filesystem
-Date: Fri, 19 Feb 2016 18:52:19 +0000
-Message-ID: <bug-112631-13602-i0ZGddtzGy@https.bugzilla.kernel.org/>
-References: <bug-112631-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 4.5
+Date: Fri, 19 Feb 2016 15:03:40 -0500
+Message-ID: <20160219200340.GA9571@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45134 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:57616 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S2992921AbcBSSwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Feb 2016 13:52:22 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A37B820522
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2016 18:52:21 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 5CA002053F
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2016 18:52:19 +0000 (UTC)
-In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
+	id S1751400AbcBSUDn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Feb 2016 15:03:43 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=112631
+The following changes since commit 36f90b0a2ddd60823fe193a85e60ff1906c2a9b3:
 
-Karl Sponser <karl.sponser@web.de> changed:
+  Linux 4.5-rc2 (2016-01-31 18:12:16 -0800)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |karl.sponser@web.de
+are available in the git repository at:
 
---- Comment #2 from Karl Sponser <karl.sponser@web.de> ---
-I can confirm the problem on Fedora ARM with the RPI Kernel 4.1.18 (previous
-kernels worked). It's not possible to open a luks container nor format a new
-device:
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
+for you to fetch changes up to 74dae4278546b897eb81784fdfcce872ddd8b2b8:
 
+  ext4: fix crashes in dioread_nolock mode (2016-02-19 00:33:21 -0500)
 
-# cryptsetup luksOpen /dev/vg1/test1 luks-test1
-Enter passphrase for /dev/vg1/test1:
-Failed to setup dm-crypt key mapping for device /dev/vg1/test1.
-Check that kernel supports aes-xts-plain64 cipher (check syslog for more info).
+----------------------------------------------------------------
+Miscellaneous ext4 bug fixes for v4.5
 
+----------------------------------------------------------------
+Anton Protopopov (1):
+      ext4: ioctl: fix erroneous return value
 
+Eryu Guan (2):
+      ext4: don't read blocks from disk after extents being swapped
+      ext4: remove unused parameter "newblock" in convert_initialized_extent()
 
-# cryptsetup luksFormat /dev/vg1/test2
-WARNING!
-========
-This will overwrite data on /dev/vg1/test2 irrevocably.
-Are you sure? (Type uppercase yes): YES
-Enter passphrase:
-Verify passphrase:
-Failed to setup dm-crypt key mapping for device /dev/vg1/test2.
-Check that kernel supports aes-xts-plain64 cipher (check syslog for more info). 
+Huaitong Han (1):
+      ext4: add a line break for proc mb_groups display
 
+Insu Yun (1):
+      ext4: fix potential integer overflow
 
+Jan Kara (3):
+      ext4: fix scheduling in atomic on group checksum failure
+      ext4: fix bh->b_state corruption
+      ext4: fix crashes in dioread_nolock mode
 
-Even if the message tells to check syslog for more information, there's no
-entry in /var/log/messages nor in dmesg output.
+Kirill Tkhai (1):
+      ext4: fix memleak in ext4_readdir()
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Theodore Ts'o (2):
+      ext4 crypto: revalidate dentry after adding or removing the key
+      ext4 crypto: move context consistency check to ext4_file_open()
+
+ fs/ext4/balloc.c      |  7 ++++---
+ fs/ext4/crypto.c      | 56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/dir.c         | 13 +++++++++++--
+ fs/ext4/ext4.h        |  1 +
+ fs/ext4/extents.c     |  4 ++--
+ fs/ext4/file.c        |  9 +++++++++
+ fs/ext4/ialloc.c      |  6 ++++--
+ fs/ext4/inode.c       | 72 ++++++++++++++++++++++++++++++++++++++++++++++++++----------------------
+ fs/ext4/ioctl.c       |  2 +-
+ fs/ext4/mballoc.c     |  2 +-
+ fs/ext4/move_extent.c | 15 ++++++++++++---
+ fs/ext4/namei.c       | 26 ++++++++++++++++++++++++--
+ fs/ext4/resize.c      |  2 +-
+ 13 files changed, 176 insertions(+), 39 deletions(-)
