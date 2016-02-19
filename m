@@ -1,43 +1,103 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/6] ext4: Pack ioend structure better
-Date: Fri, 19 Feb 2016 16:59:37 +0100
-Message-ID: <1455897582-13292-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 6/6] ext4: Remove i_ioend_count
+Date: Fri, 19 Feb 2016 16:59:42 +0100
+Message-ID: <1455897582-13292-7-git-send-email-jack@suse.cz>
 References: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56628 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56701 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1947678AbcBSP71 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Feb 2016 10:59:27 -0500
+	id S1948093AbcBSP7q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Feb 2016 10:59:46 -0500
 In-Reply-To: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 64-bit architectures we have two 4-byte holes in struct ext4_io_end.
-Order entries better to avoid this and thus make the structure occupy
-64 instead of 72 bytes for 64-bit architectures.
+Remove counter of pending io ends as it is unused.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/ext4.h    | 7 +------
+ fs/ext4/inode.c   | 3 ---
+ fs/ext4/page-io.c | 4 ----
+ fs/ext4/super.c   | 1 -
+ 4 files changed, 1 insertion(+), 14 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0662b285dc8a..1046621ef64d 100644
+index 29d51505a9d2..00fed23dedf5 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -182,9 +182,9 @@ typedef struct ext4_io_end {
- 	struct bio		*bio;		/* Linked list of completed
- 						 * bios covering the extent */
- 	unsigned int		flag;		/* unwritten or not */
-+	atomic_t		count;		/* reference counter */
- 	loff_t			offset;		/* offset in the file */
- 	ssize_t			size;		/* size of the extent */
--	atomic_t		count;		/* reference counter */
- } ext4_io_end_t;
+@@ -1024,13 +1024,8 @@ struct ext4_inode_info {
+ 	 * transaction reserved
+ 	 */
+ 	struct list_head i_rsv_conversion_list;
+-	/*
+-	 * Completed IOs that need unwritten extents handling and don't have
+-	 * transaction reserved
+-	 */
+-	atomic_t i_ioend_count;	/* Number of outstanding io_end structs */
+-	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
+ 	struct work_struct i_rsv_conversion_work;
++	atomic_t i_unwritten; /* Nr. of inflight conversions pending */
  
- struct ext4_io_submit {
+ 	spinlock_t i_block_reservation_lock;
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ef411c4f11f8..c74c8e7c377b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -216,7 +216,6 @@ void ext4_evict_inode(struct inode *inode)
+ 		}
+ 		truncate_inode_pages_final(&inode->i_data);
+ 
+-		WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+ 		goto no_delete;
+ 	}
+ 
+@@ -228,8 +227,6 @@ void ext4_evict_inode(struct inode *inode)
+ 		ext4_begin_ordered_truncate(inode, 0);
+ 	truncate_inode_pages_final(&inode->i_data);
+ 
+-	WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+-
+ 	/*
+ 	 * Protect us against freezing - iput() caller didn't have to have any
+ 	 * protection against it
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 090b3498638e..349d7aa04fe7 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -128,9 +128,6 @@ static void ext4_release_io_end(ext4_io_end_t *io_end)
+ 	BUG_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
+ 	WARN_ON(io_end->handle);
+ 
+-	if (atomic_dec_and_test(&EXT4_I(io_end->inode)->i_ioend_count))
+-		wake_up_all(ext4_ioend_wq(io_end->inode));
+-
+ 	for (bio = io_end->bio; bio; bio = next_bio) {
+ 		next_bio = bio->bi_private;
+ 		ext4_finish_bio(bio);
+@@ -265,7 +262,6 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+ {
+ 	ext4_io_end_t *io = kmem_cache_zalloc(io_end_cachep, flags);
+ 	if (io) {
+-		atomic_inc(&EXT4_I(inode)->i_ioend_count);
+ 		io->inode = inode;
+ 		INIT_LIST_HEAD(&io->list);
+ 		atomic_set(&io->count, 1);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6d8a01b4f535..e3872174875a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -944,7 +944,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	spin_lock_init(&ei->i_completed_io_lock);
+ 	ei->i_sync_tid = 0;
+ 	ei->i_datasync_tid = 0;
+-	atomic_set(&ei->i_ioend_count, 0);
+ 	atomic_set(&ei->i_unwritten, 0);
+ 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
 -- 
 2.6.2
 
