@@ -1,112 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext4: Fix data exposure after a crash
-Date: Fri, 19 Feb 2016 19:44:30 +0100
-Message-ID: <20160219184430.GA15651@quack.suse.cz>
-References: <1452507830-8574-1-git-send-email-jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 112631] Cannot open encrypted Luks root filesystem
+Date: Fri, 19 Feb 2016 18:52:19 +0000
+Message-ID: <bug-112631-13602-i0ZGddtzGy@https.bugzilla.kernel.org/>
+References: <bug-112631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
-	Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54105 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:45134 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1948884AbcBSSoI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Feb 2016 13:44:08 -0500
-Content-Disposition: inline
-In-Reply-To: <1452507830-8574-1-git-send-email-jack@suse.cz>
+	id S2992921AbcBSSwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Feb 2016 13:52:22 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id A37B820522
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2016 18:52:21 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 5CA002053F
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Feb 2016 18:52:19 +0000 (UTC)
+In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+https://bugzilla.kernel.org/show_bug.cgi?id=112631
 
-It seems this patch (and the following cleanup) got missed. Can you please
-merge it? Thanks!
+Karl Sponser <karl.sponser@web.de> changed:
 
-								Honza
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |karl.sponser@web.de
 
-On Mon 11-01-16 11:23:49, Jan Kara wrote:
-> Huang has reported that in his powerfail testing he is seeing stale
-> block contents in some of recently allocated blocks although he mounts
-> ext4 in data=ordered mode. After some investigation I have found out
-> that indeed when delayed allocation is used, we don't add inode to
-> transaction's list of inodes needing flushing before commit. Originally
-> we were doing that but commit f3b59291a69d removed the logic with a
-> flawed argument that it is not needed.
-> 
-> The problem is that although for delayed allocated blocks we write their
-> contents immediately after allocating them, there is no guarantee that
-> the IO scheduler or device doesn't reorder things and thus transaction
-> allocating blocks and attaching them to inode can reach stable storage
-> before actual block contents. Actually whenever we attach freshly
-> allocated blocks to inode using a written extent, we should add inode to
-> transaction's ordered inode list to make sure we properly wait for block
-> contents to be written before committing the transaction. So that is
-> what we do in this patch. This also handles other cases where stale data
-> exposure was possible - like filling hole via mmap in
-> data=ordered,nodelalloc mode.
-> 
-> The only exception to the above rule are extending direct IO writes where
-> blkdev_direct_IO() waits for IO to complete before increasing i_size and
-> thus stale data exposure is not possible. For now we don't complicate
-> the code with optimizing this special case since the overhead is pretty
-> low. In case this is observed to be a performance problem we can always
-> handle it using a special flag to ext4_map_blocks().
-> 
-> CC: stable@vger.kernel.org
-> Fixes: f3b59291a69d0b734be1fc8be489fef2dd846d3d
-> Reported-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-> Tested-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 23 ++++++++++++++---------
->  1 file changed, 14 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ff2f3cd38522..b216a3eb41a8 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -682,6 +682,20 @@ out_sem:
->  		ret = check_block_validity(inode, map);
->  		if (ret != 0)
->  			return ret;
-> +
-> +		/*
-> +		 * Inodes with freshly allocated blocks where contents will be
-> +		 * visible after transaction commit must be on transaction's
-> +		 * ordered data list.
-> +		 */
-> +		if (map->m_flags & EXT4_MAP_NEW &&
-> +		    !(map->m_flags & EXT4_MAP_UNWRITTEN) &&
-> +		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
-> +		    ext4_should_order_data(inode)) {
-> +			ret = ext4_jbd2_file_inode(handle, inode);
-> +			if (ret)
-> +				return ret;
-> +		}
->  	}
->  	return retval;
->  }
-> @@ -1135,15 +1149,6 @@ static int ext4_write_end(struct file *file,
->  	int i_size_changed = 0;
->  
->  	trace_ext4_write_end(inode, pos, len, copied);
-> -	if (ext4_test_inode_state(inode, EXT4_STATE_ORDERED_MODE)) {
-> -		ret = ext4_jbd2_file_inode(handle, inode);
-> -		if (ret) {
-> -			unlock_page(page);
-> -			page_cache_release(page);
-> -			goto errout;
-> -		}
-> -	}
-> -
->  	if (ext4_has_inline_data(inode)) {
->  		ret = ext4_write_inline_data_end(inode, pos, len,
->  						 copied, page);
-> -- 
-> 2.6.2
-> 
+--- Comment #2 from Karl Sponser <karl.sponser@web.de> ---
+I can confirm the problem on Fedora ARM with the RPI Kernel 4.1.18 (previous
+kernels worked). It's not possible to open a luks container nor format a new
+device:
+
+
+
+# cryptsetup luksOpen /dev/vg1/test1 luks-test1
+Enter passphrase for /dev/vg1/test1:
+Failed to setup dm-crypt key mapping for device /dev/vg1/test1.
+Check that kernel supports aes-xts-plain64 cipher (check syslog for more info).
+
+
+
+# cryptsetup luksFormat /dev/vg1/test2
+WARNING!
+========
+This will overwrite data on /dev/vg1/test2 irrevocably.
+Are you sure? (Type uppercase yes): YES
+Enter passphrase:
+Verify passphrase:
+Failed to setup dm-crypt key mapping for device /dev/vg1/test2.
+Check that kernel supports aes-xts-plain64 cipher (check syslog for more info). 
+
+
+
+Even if the message tells to check syslog for more information, there's no
+entry in /var/log/messages nor in dmesg output.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
