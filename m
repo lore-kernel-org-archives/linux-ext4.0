@@ -1,149 +1,250 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/6] ext4: Use i_mutex to serialize unaligned AIO DIO
-Date: Fri, 19 Feb 2016 16:59:38 +0100
-Message-ID: <1455897582-13292-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/6] ext4: Rename and split get blocks functions
+Date: Fri, 19 Feb 2016 16:59:39 +0100
+Message-ID: <1455897582-13292-4-git-send-email-jack@suse.cz>
 References: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56631 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56627 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1947544AbcBSP72 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1947612AbcBSP72 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 19 Feb 2016 10:59:28 -0500
 In-Reply-To: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we've used hashed aio_mutex to serialize unaligned AIO DIO.
-However the code cleanups that happened after 2011 when the lock was
-introduced made aio_mutex acquired at almost the same places where we
-already have exclusion using i_mutex. So just use i_mutex for the
-exclusion of unaligned AIO DIO.
-
-The change moves waiting for pending unwritten extent conversion under
-i_mutex. That makes special handling of O_APPEND writes unnecessary and
-also avoids possible livelocking of unaligned AIO DIO with aligned one
-(nothing was preventing contiguous stream of aligned AIO DIOs to let
-unaligned AIO DIO wait forever).
+Rename ext4_get_blocks_write() to ext4_get_blocks_unwritten() to better
+describe what it does. Also split out get blocks functions for direct
+IO. Later we move functionality from _ext4_get_blocks() there. There's no
+functional change in this patch.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  3 ---
- fs/ext4/file.c  | 32 +++++++++++++-------------------
- fs/ext4/super.c |  5 +----
- 3 files changed, 14 insertions(+), 26 deletions(-)
+ fs/ext4/ext4.h     |  8 +++--
+ fs/ext4/indirect.c | 10 +++---
+ fs/ext4/inline.c   |  7 ++--
+ fs/ext4/inode.c    | 96 ++++++++++++++++++++++++++++++++++--------------------
+ 4 files changed, 74 insertions(+), 47 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1046621ef64d..b02b2e58805a 100644
+index b02b2e58805a..80cc3914b6ad 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -3284,10 +3284,7 @@ static inline void ext4_inode_resume_unlocked_dio(struct inode *inode)
- #define EXT4_WQ_HASH_SZ		37
- #define ext4_ioend_wq(v)   (&ext4__ioend_wq[((unsigned long)(v)) %\
- 					    EXT4_WQ_HASH_SZ])
--#define ext4_aio_mutex(v)  (&ext4__aio_mutex[((unsigned long)(v)) %\
--					     EXT4_WQ_HASH_SZ])
- extern wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
--extern struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
+@@ -2505,12 +2505,14 @@ extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
+ int ext4_inode_is_fast_symlink(struct inode *inode);
+ struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
+ struct buffer_head *ext4_bread(handle_t *, struct inode *, ext4_lblk_t, int);
+-int ext4_get_block_write(struct inode *inode, sector_t iblock,
+-			 struct buffer_head *bh_result, int create);
++int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
++			     struct buffer_head *bh_result, int create);
+ int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+ 			    struct buffer_head *bh_result, int create);
+ int ext4_get_block(struct inode *inode, sector_t iblock,
+-				struct buffer_head *bh_result, int create);
++		   struct buffer_head *bh_result, int create);
++int ext4_dio_get_block(struct inode *inode, sector_t iblock,
++		       struct buffer_head *bh_result, int create);
+ int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 			   struct buffer_head *bh, int create);
+ int ext4_walk_page_buffers(handle_t *handle,
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 355ef9c36c87..1655ff195e0e 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -693,21 +693,21 @@ retry:
+ 		}
+ 		if (IS_DAX(inode))
+ 			ret = dax_do_io(iocb, inode, iter, offset,
+-					ext4_get_block, NULL, 0);
++					ext4_dio_get_block, NULL, 0);
+ 		else
+ 			ret = __blockdev_direct_IO(iocb, inode,
+ 						   inode->i_sb->s_bdev, iter,
+-						   offset, ext4_get_block, NULL,
+-						   NULL, 0);
++						   offset, ext4_dio_get_block,
++						   NULL, NULL, 0);
+ 		inode_dio_end(inode);
+ 	} else {
+ locked:
+ 		if (IS_DAX(inode))
+ 			ret = dax_do_io(iocb, inode, iter, offset,
+-					ext4_get_block, NULL, DIO_LOCKING);
++					ext4_dio_get_block, NULL, DIO_LOCKING);
+ 		else
+ 			ret = blockdev_direct_IO(iocb, inode, iter, offset,
+-						 ext4_get_block);
++						 ext4_dio_get_block);
  
- #define EXT4_RESIZING	0
- extern int ext4_resize_begin(struct super_block *sb);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 1126436dada1..7d5fb122fd26 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -93,31 +93,29 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file_inode(iocb->ki_filp);
--	struct mutex *aio_mutex = NULL;
- 	struct blk_plug plug;
- 	int o_direct = iocb->ki_flags & IOCB_DIRECT;
-+	int unaligned_aio = 0;
- 	int overwrite = 0;
- 	ssize_t ret;
+ 		if (unlikely(iov_iter_rw(iter) == WRITE && ret < 0)) {
+ 			loff_t isize = i_size_read(inode);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index dfe3b9bafc0d..36d8cc9327f5 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -581,9 +581,10 @@ retry:
+ 	if (ret)
+ 		goto out;
  
-+	inode_lock(inode);
-+	ret = generic_write_checks(iocb, from);
-+	if (ret <= 0)
-+		goto out;
-+
- 	/*
--	 * Unaligned direct AIO must be serialized; see comment above
--	 * In the case of O_APPEND, assume that we must always serialize
-+	 * Unaligned direct AIO must be serialized among each other as zeroing
-+	 * of partial blocks of two competing unaligned AIOs can result in data
-+	 * corruption.
- 	 */
--	if (o_direct &&
--	    ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
-+	if (o_direct && ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
- 	    !is_sync_kiocb(iocb) &&
--	    (iocb->ki_flags & IOCB_APPEND ||
--	     ext4_unaligned_aio(inode, from, iocb->ki_pos))) {
--		aio_mutex = ext4_aio_mutex(inode);
--		mutex_lock(aio_mutex);
-+	    ext4_unaligned_aio(inode, from, iocb->ki_pos)) {
-+		unaligned_aio = 1;
- 		ext4_unwritten_wait(inode);
- 	}
+-	if (ext4_should_dioread_nolock(inode))
+-		ret = __block_write_begin(page, from, to, ext4_get_block_write);
+-	else
++	if (ext4_should_dioread_nolock(inode)) {
++		ret = __block_write_begin(page, from, to,
++					  ext4_get_block_unwritten);
++	} else
+ 		ret = __block_write_begin(page, from, to, ext4_get_block);
  
--	inode_lock(inode);
--	ret = generic_write_checks(iocb, from);
--	if (ret <= 0)
--		goto out;
--
- 	/*
- 	 * If we have encountered a bitmap-format file, the size limit
- 	 * is smaller than s_maxbytes, which is for extent-mapped files.
-@@ -139,7 +137,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		blk_start_plug(&plug);
- 
- 		/* check whether we do a DIO overwrite or not */
--		if (ext4_should_dioread_nolock(inode) && !aio_mutex &&
-+		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
- 		    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
- 			struct ext4_map_blocks map;
- 			unsigned int blkbits = inode->i_blkbits;
-@@ -181,14 +179,10 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (o_direct)
- 		blk_finish_plug(&plug);
- 
--	if (aio_mutex)
--		mutex_unlock(aio_mutex);
- 	return ret;
- 
- out:
- 	inode_unlock(inode);
--	if (aio_mutex)
--		mutex_unlock(aio_mutex);
- 	return ret;
+ 	if (!ret && ext4_should_journal_data(inode)) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ee8ca1ff4023..47b11fbd1417 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -741,6 +741,60 @@ int ext4_get_block(struct inode *inode, sector_t iblock,
  }
  
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3ed01ec011d7..6d8a01b4f535 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5321,7 +5321,6 @@ MODULE_ALIAS_FS("ext4");
+ /*
++ * Get block function used when preparing for buffered write if we require
++ * creating an unwritten extent if blocks haven't been allocated.  The extent
++ * will be converted to written after the IO is complete.
++ */
++int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
++			     struct buffer_head *bh_result, int create)
++{
++	ext4_debug("ext4_get_block_unwritten: inode %lu, create flag %d\n",
++		   inode->i_ino, create);
++	return _ext4_get_block(inode, iblock, bh_result,
++			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
++}
++
++/* Get block function for DIO reads and writes to inodes without extents */
++int ext4_dio_get_block(struct inode *inode, sector_t iblock,
++		       struct buffer_head *bh, int create)
++{
++	return _ext4_get_block(inode, iblock, bh,
++			       create ? EXT4_GET_BLOCKS_CREATE : 0);
++}
++
++/*
++ * Get block function for DIO writes when we create unwritten extent if
++ * blocks are not allocated yet. The extent will be converted to written
++ * after IO is complete.
++ */
++static int ext4_dio_get_block_unwritten(struct inode *inode, sector_t iblock,
++			struct buffer_head *bh_result, int create)
++{
++	ext4_debug("ext4_dio_get_block_unwritten: inode %lu, create flag %d\n",
++		   inode->i_ino, create);
++	return _ext4_get_block(inode, iblock, bh_result,
++			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
++}
++
++static int ext4_dio_get_block_overwrite(struct inode *inode, sector_t iblock,
++		   struct buffer_head *bh_result, int create)
++{
++	int ret;
++
++	ext4_debug("ext4_dio_get_block_overwrite: inode %lu, create flag %d\n",
++		   inode->i_ino, create);
++	ret = _ext4_get_block(inode, iblock, bh_result, 0);
++	/*
++	 * Blocks should have been preallocated! ext4_file_write_iter() checks
++	 * that.
++	 */
++	WARN_ON_ONCE(!buffer_mapped(bh_result));
++
++	return ret;
++}
++
++
++/*
+  * `handle' can be NULL if create is zero
+  */
+ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+@@ -1051,13 +1105,14 @@ retry_journal:
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	if (ext4_should_dioread_nolock(inode))
+ 		ret = ext4_block_write_begin(page, pos, len,
+-					     ext4_get_block_write);
++					     ext4_get_block_unwritten);
+ 	else
+ 		ret = ext4_block_write_begin(page, pos, len,
+ 					     ext4_get_block);
+ #else
+ 	if (ext4_should_dioread_nolock(inode))
+-		ret = __block_write_begin(page, pos, len, ext4_get_block_write);
++		ret = __block_write_begin(page, pos, len,
++					  ext4_get_block_unwritten);
+ 	else
+ 		ret = __block_write_begin(page, pos, len, ext4_get_block);
+ #endif
+@@ -3056,37 +3111,6 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+ 		return try_to_free_buffers(page);
+ }
  
- /* Shared across all ext4 file systems */
- wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
--struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
- 
- static int __init ext4_init_fs(void)
- {
-@@ -5334,10 +5333,8 @@ static int __init ext4_init_fs(void)
- 	/* Build-time check for flags consistency */
- 	ext4_check_flag_values();
- 
--	for (i = 0; i < EXT4_WQ_HASH_SZ; i++) {
--		mutex_init(&ext4__aio_mutex[i]);
-+	for (i = 0; i < EXT4_WQ_HASH_SZ; i++)
- 		init_waitqueue_head(&ext4__ioend_wq[i]);
--	}
- 
- 	err = ext4_init_es();
- 	if (err)
+-/*
+- * ext4_get_block used when preparing for a DIO write or buffer write.
+- * We allocate an uinitialized extent if blocks haven't been allocated.
+- * The extent will be converted to initialized after the IO is complete.
+- */
+-int ext4_get_block_write(struct inode *inode, sector_t iblock,
+-		   struct buffer_head *bh_result, int create)
+-{
+-	ext4_debug("ext4_get_block_write: inode %lu, create flag %d\n",
+-		   inode->i_ino, create);
+-	return _ext4_get_block(inode, iblock, bh_result,
+-			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
+-}
+-
+-static int ext4_get_block_overwrite(struct inode *inode, sector_t iblock,
+-		   struct buffer_head *bh_result, int create)
+-{
+-	int ret;
+-
+-	ext4_debug("ext4_get_block_overwrite: inode %lu, create flag %d\n",
+-		   inode->i_ino, create);
+-	ret = _ext4_get_block(inode, iblock, bh_result, 0);
+-	/*
+-	 * Blocks should have been preallocated! ext4_file_write_iter() checks
+-	 * that.
+-	 */
+-	WARN_ON_ONCE(!buffer_mapped(bh_result));
+-
+-	return ret;
+-}
+-
+ #ifdef CONFIG_FS_DAX
+ int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+ 			    struct buffer_head *bh_result, int create)
+@@ -3254,7 +3278,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 	 */
+ 	iocb->private = NULL;
+ 	if (overwrite) {
+-		get_block_func = ext4_get_block_overwrite;
++		get_block_func = ext4_dio_get_block_overwrite;
+ 	} else {
+ 		ext4_inode_aio_set(inode, NULL);
+ 		if (!is_sync_kiocb(iocb)) {
+@@ -3276,7 +3300,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 			 */
+ 			ext4_inode_aio_set(inode, io_end);
+ 		}
+-		get_block_func = ext4_get_block_write;
++		get_block_func = ext4_dio_get_block_unwritten;
+ 		dio_flags = DIO_LOCKING;
+ 	}
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+@@ -5470,7 +5494,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	unlock_page(page);
+ 	/* OK, we need to fill the hole... */
+ 	if (ext4_should_dioread_nolock(inode))
+-		get_block = ext4_get_block_write;
++		get_block = ext4_get_block_unwritten;
+ 	else
+ 		get_block = ext4_get_block;
+ retry_alloc:
 -- 
 2.6.2
 
