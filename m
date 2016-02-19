@@ -1,180 +1,149 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/6] ext4: Move trans handling and completion deferal out of _ext4_get_block
-Date: Fri, 19 Feb 2016 16:59:40 +0100
-Message-ID: <1455897582-13292-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/6] ext4: Use i_mutex to serialize unaligned AIO DIO
+Date: Fri, 19 Feb 2016 16:59:38 +0100
+Message-ID: <1455897582-13292-3-git-send-email-jack@suse.cz>
 References: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56638 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56631 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1948334AbcBSP72 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1947544AbcBSP72 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 19 Feb 2016 10:59:28 -0500
 In-Reply-To: <1455897582-13292-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is no need to handle starting of a transaction and deferal of DIO
-completion in _ext4_get_block() function. We can move this out to get
-block functions for direct IO that need it. That way we can add stricter
-checks verifying things work as we expect.
+Currently we've used hashed aio_mutex to serialize unaligned AIO DIO.
+However the code cleanups that happened after 2011 when the lock was
+introduced made aio_mutex acquired at almost the same places where we
+already have exclusion using i_mutex. So just use i_mutex for the
+exclusion of unaligned AIO DIO.
+
+The change moves waiting for pending unwritten extent conversion under
+i_mutex. That makes special handling of O_APPEND writes unnecessary and
+also avoids possible livelocking of unaligned AIO DIO with aligned one
+(nothing was preventing contiguous stream of aligned AIO DIOs to let
+unaligned AIO DIO wait forever).
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 92 ++++++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 59 insertions(+), 33 deletions(-)
+ fs/ext4/ext4.h  |  3 ---
+ fs/ext4/file.c  | 32 +++++++++++++-------------------
+ fs/ext4/super.c |  5 +----
+ 3 files changed, 14 insertions(+), 26 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 47b11fbd1417..506180729faf 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -686,50 +686,25 @@ out_sem:
- 	return retval;
- }
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1046621ef64d..b02b2e58805a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3284,10 +3284,7 @@ static inline void ext4_inode_resume_unlocked_dio(struct inode *inode)
+ #define EXT4_WQ_HASH_SZ		37
+ #define ext4_ioend_wq(v)   (&ext4__ioend_wq[((unsigned long)(v)) %\
+ 					    EXT4_WQ_HASH_SZ])
+-#define ext4_aio_mutex(v)  (&ext4__aio_mutex[((unsigned long)(v)) %\
+-					     EXT4_WQ_HASH_SZ])
+ extern wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
+-extern struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
  
--/* Maximum number of blocks we map for direct IO at once. */
--#define DIO_MAX_BLOCKS 4096
--
- static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 			   struct buffer_head *bh, int flags)
+ #define EXT4_RESIZING	0
+ extern int ext4_resize_begin(struct super_block *sb);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 1126436dada1..7d5fb122fd26 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -93,31 +93,29 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
  {
--	handle_t *handle = ext4_journal_current_handle();
- 	struct ext4_map_blocks map;
--	int ret = 0, started = 0;
--	int dio_credits;
-+	int ret = 0;
+ 	struct file *file = iocb->ki_filp;
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+-	struct mutex *aio_mutex = NULL;
+ 	struct blk_plug plug;
+ 	int o_direct = iocb->ki_flags & IOCB_DIRECT;
++	int unaligned_aio = 0;
+ 	int overwrite = 0;
+ 	ssize_t ret;
  
- 	if (ext4_has_inline_data(inode))
- 		return -ERANGE;
- 
- 	map.m_lblk = iblock;
- 	map.m_len = bh->b_size >> inode->i_blkbits;
--
--	if (flags && !handle) {
--		/* Direct IO write... */
--		if (map.m_len > DIO_MAX_BLOCKS)
--			map.m_len = DIO_MAX_BLOCKS;
--		dio_credits = ext4_chunk_trans_blocks(inode, map.m_len);
--		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
--					    dio_credits);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			return ret;
--		}
--		started = 1;
--	}
--
--	ret = ext4_map_blocks(handle, inode, &map, flags);
-+	ret = ext4_map_blocks(ext4_journal_current_handle(), inode, &map,
-+			      flags);
- 	if (ret > 0) {
--		ext4_io_end_t *io_end = ext4_inode_aio(inode);
--
- 		map_bh(bh, inode->i_sb, map.m_pblk);
- 		bh->b_state = (bh->b_state & ~EXT4_MAP_FLAGS) | map.m_flags;
--		if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN)
--			set_buffer_defer_completion(bh);
- 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 		ret = 0;
- 	}
--	if (started)
--		ext4_journal_stop(handle);
- 	return ret;
- }
- 
-@@ -754,12 +729,42 @@ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
- 			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
- }
- 
-+/* Maximum number of blocks we map for direct IO at once. */
-+#define DIO_MAX_BLOCKS 4096
++	inode_lock(inode);
++	ret = generic_write_checks(iocb, from);
++	if (ret <= 0)
++		goto out;
 +
-+static handle_t *start_dio_trans(struct inode *inode,
-+				 struct buffer_head *bh_result)
-+{
-+	int dio_credits;
-+
-+	/* Trim mapping request to maximum we can map at once for DIO */
-+	if (bh_result->b_size >> inode->i_blkbits > DIO_MAX_BLOCKS)
-+		bh_result->b_size = DIO_MAX_BLOCKS << inode->i_blkbits;
-+	dio_credits = ext4_chunk_trans_blocks(inode,
-+				      bh_result->b_size >> inode->i_blkbits);
-+	return ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, dio_credits);
-+}
-+
- /* Get block function for DIO reads and writes to inodes without extents */
- int ext4_dio_get_block(struct inode *inode, sector_t iblock,
- 		       struct buffer_head *bh, int create)
- {
--	return _ext4_get_block(inode, iblock, bh,
--			       create ? EXT4_GET_BLOCKS_CREATE : 0);
-+	handle_t *handle;
-+	int ret;
-+
-+	/* We don't expect handle for direct IO */
-+	WARN_ON_ONCE(ext4_journal_current_handle());
-+
-+	if (create) {
-+		handle = start_dio_trans(inode, bh);
-+		if (IS_ERR(handle))
-+			return PTR_ERR(handle);
-+	}
-+	ret = _ext4_get_block(inode, iblock, bh,
-+			      create ? EXT4_GET_BLOCKS_CREATE : 0);
-+	if (create)
-+		ext4_journal_stop(handle);
-+	return ret;
- }
- 
- /*
-@@ -770,10 +775,28 @@ int ext4_dio_get_block(struct inode *inode, sector_t iblock,
- static int ext4_dio_get_block_unwritten(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
- {
-+	handle_t *handle;
-+	int ret;
-+
- 	ext4_debug("ext4_dio_get_block_unwritten: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
--	return _ext4_get_block(inode, iblock, bh_result,
--			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
-+	/* We don't expect handle for direct IO */
-+	WARN_ON_ONCE(ext4_journal_current_handle());
-+
-+	handle = start_dio_trans(inode, bh_result);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+	ret = _ext4_get_block(inode, iblock, bh_result,
-+			      EXT4_GET_BLOCKS_IO_CREATE_EXT);
-+	ext4_journal_stop(handle);
-+	if (!ret && buffer_unwritten(bh_result)) {
-+		ext4_io_end_t *io_end = ext4_inode_aio(inode);
-+
-+		set_buffer_defer_completion(bh_result);
-+		WARN_ON_ONCE(io_end && !(io_end->flag & EXT4_IO_END_UNWRITTEN));
-+	}
-+
-+	return ret;
- }
- 
- static int ext4_dio_get_block_overwrite(struct inode *inode, sector_t iblock,
-@@ -783,12 +806,15 @@ static int ext4_dio_get_block_overwrite(struct inode *inode, sector_t iblock,
- 
- 	ext4_debug("ext4_dio_get_block_overwrite: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
-+	/* We don't expect handle for direct IO */
-+	WARN_ON_ONCE(ext4_journal_current_handle());
-+
- 	ret = _ext4_get_block(inode, iblock, bh_result, 0);
  	/*
- 	 * Blocks should have been preallocated! ext4_file_write_iter() checks
- 	 * that.
+-	 * Unaligned direct AIO must be serialized; see comment above
+-	 * In the case of O_APPEND, assume that we must always serialize
++	 * Unaligned direct AIO must be serialized among each other as zeroing
++	 * of partial blocks of two competing unaligned AIOs can result in data
++	 * corruption.
  	 */
--	WARN_ON_ONCE(!buffer_mapped(bh_result));
-+	WARN_ON_ONCE(!buffer_mapped(bh_result) || buffer_unwritten(bh_result));
+-	if (o_direct &&
+-	    ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
++	if (o_direct && ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
+ 	    !is_sync_kiocb(iocb) &&
+-	    (iocb->ki_flags & IOCB_APPEND ||
+-	     ext4_unaligned_aio(inode, from, iocb->ki_pos))) {
+-		aio_mutex = ext4_aio_mutex(inode);
+-		mutex_lock(aio_mutex);
++	    ext4_unaligned_aio(inode, from, iocb->ki_pos)) {
++		unaligned_aio = 1;
+ 		ext4_unwritten_wait(inode);
+ 	}
  
+-	inode_lock(inode);
+-	ret = generic_write_checks(iocb, from);
+-	if (ret <= 0)
+-		goto out;
+-
+ 	/*
+ 	 * If we have encountered a bitmap-format file, the size limit
+ 	 * is smaller than s_maxbytes, which is for extent-mapped files.
+@@ -139,7 +137,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		blk_start_plug(&plug);
+ 
+ 		/* check whether we do a DIO overwrite or not */
+-		if (ext4_should_dioread_nolock(inode) && !aio_mutex &&
++		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
+ 		    !file->f_mapping->nrpages && pos + length <= i_size_read(inode)) {
+ 			struct ext4_map_blocks map;
+ 			unsigned int blkbits = inode->i_blkbits;
+@@ -181,14 +179,10 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (o_direct)
+ 		blk_finish_plug(&plug);
+ 
+-	if (aio_mutex)
+-		mutex_unlock(aio_mutex);
+ 	return ret;
+ 
+ out:
+ 	inode_unlock(inode);
+-	if (aio_mutex)
+-		mutex_unlock(aio_mutex);
  	return ret;
  }
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3ed01ec011d7..6d8a01b4f535 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5321,7 +5321,6 @@ MODULE_ALIAS_FS("ext4");
+ 
+ /* Shared across all ext4 file systems */
+ wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
+-struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
+ 
+ static int __init ext4_init_fs(void)
+ {
+@@ -5334,10 +5333,8 @@ static int __init ext4_init_fs(void)
+ 	/* Build-time check for flags consistency */
+ 	ext4_check_flag_values();
+ 
+-	for (i = 0; i < EXT4_WQ_HASH_SZ; i++) {
+-		mutex_init(&ext4__aio_mutex[i]);
++	for (i = 0; i < EXT4_WQ_HASH_SZ; i++)
+ 		init_waitqueue_head(&ext4__ioend_wq[i]);
+-	}
+ 
+ 	err = ext4_init_es();
+ 	if (err)
 -- 
 2.6.2
 
