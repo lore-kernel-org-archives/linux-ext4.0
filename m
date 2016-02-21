@@ -1,69 +1,72 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] xfstests-bld: add exclude file for ext3 tests
-Date: Sun, 21 Feb 2016 11:34:11 +1100
-Message-ID: <20160221003411.GZ14668@dastard>
+Date: Sat, 20 Feb 2016 21:57:54 -0500
+Message-ID: <20160221025754.GA15641@thunk.org>
 References: <20160220155157.GA19420@localhost.localdomain>
+ <20160221003411.GZ14668@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:22808 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751337AbcBUAe0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Feb 2016 19:34:26 -0500
+Received: from imap.thunk.org ([74.207.234.97]:60310 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752502AbcBUC55 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Feb 2016 21:57:57 -0500
 Content-Disposition: inline
-In-Reply-To: <20160220155157.GA19420@localhost.localdomain>
+In-Reply-To: <20160221003411.GZ14668@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 20, 2016 at 10:51:57AM -0500, Eric Whitney wrote:
-> Add an exclude file for the ext3 test case to prevent failure reports
-> from tests that exercise unsupported online defrag functionality.
-
-ext3 should not run these tests because of the _requires_defrag
-check in these tests results in a _notrun command being run
-when FSTYP=ext3.
-
-> Two online defrag tests - ext4/307 and /308 - are not included because
-> they contain explicit requirements for fallocate support that prevents
-> them from running on an emulated ext3 file system.
-
-Same here.
-
-> It may be possible to modify the excluded tests at a future date so they
-> will not run unless the test file system is extent mapped.  For now, this
-> patch is an expedient measure to reduce testing noise.
+On Sun, Feb 21, 2016 at 11:34:11AM +1100, Dave Chinner wrote:
+> On Sat, Feb 20, 2016 at 10:51:57AM -0500, Eric Whitney wrote:
+> > Add an exclude file for the ext3 test case to prevent failure reports
+> > from tests that exercise unsupported online defrag functionality.
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
->  kvm-xfstests/test-appliance/files/root/conf/ext3.exclude | 6 ++++++
->  1 file changed, 6 insertions(+)
->  create mode 100644 kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
+> ext3 should not run these tests because of the _requires_defrag
+> check in these tests results in a _notrun command being run
+> when FSTYP=ext3.
+
+In this particular case, the test is being run with
+
+FSTYP=ext4
+MKFS_OPTIONS="-q -O ^extents,^flex_bg,^uninit_bg,^64bit,^metadata_csum,^huge_file,^dir_nlink,^extra_isize"
+EXT_MOUNT_OPTIONS="nodelalloc"
+
+This is why _requires_defrag is passing and so ext4/307 and ext4/308
+is allowed to run.
+
+Historically, this test was set up in this fashion because I wanted to
+make sure the ext4 kernel code would be used, and not the code found
+in fs/ext3 (this was before fs/ext3 was removed from the kernel).
+Since we want to support testing on ancient kernels (either 3.10
+android kernels or 2.6.34 RHEL6 kernels), using this strategy for
+testing ext4's support for file systems with ext3 features is
+something that still makes sense to do, and so I would want to keep
+running tests using this setup.
+
+> > Two online defrag tests - ext4/307 and /308 - are not included because
+> > they contain explicit requirements for fallocate support that prevents
+> > them from running on an emulated ext3 file system.
 > 
-> diff --git a/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude b/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
-> new file mode 100644
-> index 0000000..c46c79b
-> --- /dev/null
-> +++ b/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
-> @@ -0,0 +1,6 @@
-> +# ext4's ext3 emulation does not support on-line
-> +# defrag, which requires extent-based files
-> +ext4/301
-> +ext4/302
-> +ext4/303
-> +ext4/304
+> Same here.
 
-So what we really need to understand is why _require_defrag is not
-preventing these tests beign run on an ext3 filesystem?
+So probably the right answer here is to change _require_defrag so that
+for EXT4, to also add the assertion:
 
-Eric, what is the output of these tests when it is run on an ext3
-filesytsem? What is the fstyp you are testing?
+_require_xfs_io_command "falloc"
 
-Cheers,
+I'll note this is a not quite guaranteed to be correct because
+_require_xfs_io_command tests to see whether or not falloc works on
+TEST_DEV, and these tests are actually create a test file system on
+SCRATCH_DEV, and in theory TEST_DEV and SCRATCH_DEV could have
+different file system features.  That's because xfstests never runs
+mkfs on TEST_DEV, but SCRATCH_DEV does get mkfs'ed and in theory the
+file system features set by MKFS_OPTIONS could be different from what
+exists on TEST_DEV.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I'm willing to consider this a test configuration error, and certainly
+kvm-xfstests doesn't ever set up such a arguably non-sensible test
+configuration.
+
+						- Ted
