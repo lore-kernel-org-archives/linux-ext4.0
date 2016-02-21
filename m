@@ -1,38 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: make sure to revoke all the freeable blocks in
- ext4_free_blocks
-Date: Sun, 21 Feb 2016 18:35:21 -0500
-Message-ID: <20160221233521.GA23122@thunk.org>
-References: <1450316940-10774-1-git-send-email-daeho.jeong@samsung.com>
+Subject: Re: [PATCH] ext4: iterate over buffer heads correctly in
+ move_extent_per_page()
+Date: Sun, 21 Feb 2016 18:39:46 -0500
+Message-ID: <20160221233946.GB23122@thunk.org>
+References: <1456070249-29945-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: Daeho Jeong <daeho.jeong@samsung.com>
+Cc: linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33596 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33614 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752434AbcBUXf1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Feb 2016 18:35:27 -0500
+	id S1752434AbcBUXjs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Feb 2016 18:39:48 -0500
 Content-Disposition: inline
-In-Reply-To: <1450316940-10774-1-git-send-email-daeho.jeong@samsung.com>
+In-Reply-To: <1456070249-29945-1-git-send-email-guaneryu@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 17, 2015 at 10:49:00AM +0900, Daeho Jeong wrote:
-> Now, ext4_free_blocks() doesn't revoke data blocks of per-file data
-> journalled inode and it can cause file data inconsistency problems.
-> Even though data blocks of per-file data journalled inode are already
-> forgotten by jbd2_journal_invalidatepage() in advance of invoking
-> ext4_free_blocks(), we still need to revoke the data blocks here.
-> Moreover some of the metadata blocks, which are not found by
-> sb_find_get_block(), are still needed to be revoked, but this is also
-> missing here.
+On Sun, Feb 21, 2016 at 11:57:29PM +0800, Eryu Guan wrote:
+> In commit bcff24887d00 ("ext4: don't read blocks from disk after extents
+> being swapped") bh is not updated correctly in the for loop and wrong
+> data has been written to disk. generic/324 catches this on sub-page
+> block size ext4.
 > 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+> Fixes: bcff24887d00 ("ext4: don't read blocks from disk after extentsbeing swapped")
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 
 Thanks, applied.
-
-Apologies for the delay.
 
 						- Ted
