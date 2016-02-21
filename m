@@ -1,53 +1,82 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: use directio end_io error status to finish
- unwritten aio dio correctly
-Date: Sun, 21 Feb 2016 17:28:26 +1100
-Message-ID: <20160221062826.GB14668@dastard>
-References: <20160218054557.GH6338@birch.djwong.org>
- <20160218060148.GA10571@infradead.org>
- <20160218220232.GA4262@dastard>
- <20160219131829.GA30166@quack.suse.cz>
+Subject: Re: [PATCH] xfstests-bld: add exclude file for ext3 tests
+Date: Sun, 21 Feb 2016 17:23:56 +1100
+Message-ID: <20160221062356.GA14668@dastard>
+References: <20160220155157.GA19420@localhost.localdomain>
+ <20160221003411.GZ14668@dastard>
+ <20160221025754.GA15641@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:24603 "EHLO
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:32232 "EHLO
 	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751285AbcBUUpd (ORCPT
+	by vger.kernel.org with ESMTP id S1751296AbcBUUvS (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Feb 2016 15:45:33 -0500
+	Sun, 21 Feb 2016 15:51:18 -0500
 Content-Disposition: inline
-In-Reply-To: <20160219131829.GA30166@quack.suse.cz>
+In-Reply-To: <20160221025754.GA15641@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 19, 2016 at 02:18:29PM +0100, Jan Kara wrote:
-> On Fri 19-02-16 09:02:32, Dave Chinner wrote:
-> > Won't that now call ext4_put_io_end() ->
-> > ext4_convert_unwritten_extents() with an uninitialised offset and
-> > size?
+On Sat, Feb 20, 2016 at 09:57:54PM -0500, Theodore Ts'o wrote:
+> On Sun, Feb 21, 2016 at 11:34:11AM +1100, Dave Chinner wrote:
+> > On Sat, Feb 20, 2016 at 10:51:57AM -0500, Eric Whitney wrote:
+> > > Add an exclude file for the ext3 test case to prevent failure reports
+> > > from tests that exercise unsupported online defrag functionality.
 > > 
-> > i.e. I don't think this prevents warnings, and may make things
-> > worse when real errors occur....
+> > ext3 should not run these tests because of the _requires_defrag
+> > check in these tests results in a _notrun command being run
+> > when FSTYP=ext3.
 > 
-> Yeah, if IO error occurs while writing to unwritten extent we need to just
-> destroy the IO end without doing the extent conversion (since we don't know
-> how much got written). Attached patch should fix the issue - full xfstests
-> run is in progress but a quick check using generic/299 has passed.
+> In this particular case, the test is being run with
 > 
-> How do we merge this? It depends on the changes in Dave's tree so do we
-> merge it via that? I have other ext4 changes pending in this area so Ted
-> would then have to pull some branch from Dave's tree. Guys?
+> FSTYP=ext4
+> MKFS_OPTIONS="-q -O ^extents,^flex_bg,^uninit_bg,^64bit,^metadata_csum,^huge_file,^dir_nlink,^extra_isize"
+> EXT_MOUNT_OPTIONS="nodelalloc"
+> 
+> This is why _requires_defrag is passing and so ext4/307 and ext4/308
+> is allowed to run.
 
-The xfs-dio-fix-4.6 branch in the XFS tree is stable, so feel free
-to pull it into other trees. However, it might be better for me to
-append this patch to that branch once it is revewed and tested to
-keep them all together in a stable branch. It can still be pulled
-into other trees if needed...
+Ok, I suspected that this was the reason for it occurring, but
+that's not really testing "ext3" in the true sense - it's a modified
+ext4 on-disk variant that happens to match the ext3 configuration.
+
+> > > Two online defrag tests - ext4/307 and /308 - are not included because
+> > > they contain explicit requirements for fallocate support that prevents
+> > > them from running on an emulated ext3 file system.
+> > 
+> > Same here.
+> 
+> So probably the right answer here is to change _require_defrag so that
+> for EXT4, to also add the assertion:
+> 
+> _require_xfs_io_command "falloc"
+> 
+> I'll note this is a not quite guaranteed to be correct because
+> _require_xfs_io_command tests to see whether or not falloc works on
+> TEST_DEV, and these tests are actually create a test file system on
+> SCRATCH_DEV, and in theory TEST_DEV and SCRATCH_DEV could have
+> different file system features.  That's because xfstests never runs
+> mkfs on TEST_DEV, but SCRATCH_DEV does get mkfs'ed and in theory the
+> file system features set by MKFS_OPTIONS could be different from what
+> exists on TEST_DEV.
+
+Right - that's normally why we have "_require_scratch_foo" so that
+it's specific which device requires that functionality. Seems easy
+enough to fix that problem.
+
+back to the ext4-as-ext3, defrag requires extents to be enabled in
+the ext4 filesystem, right?  So you could check whether than flag is
+set easily enough with something like this:
+
+dumpe2fs -h $dev |grep features |grep -q extent
+if [ $? -ne 0 ]; then
+	_notrun "Filesystem does not support defrag operations"
+fi
+
+That would work for everything with a fstyp of ext4, wouldn't it?
 
 Cheers,
 
