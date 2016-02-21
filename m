@@ -1,52 +1,69 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 112631] Cannot open encrypted Luks root filesystem
-Date: Sat, 20 Feb 2016 18:46:50 +0000
-Message-ID: <bug-112631-13602-ZWKAdCtfT0@https.bugzilla.kernel.org/>
-References: <bug-112631-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] xfstests-bld: add exclude file for ext3 tests
+Date: Sun, 21 Feb 2016 11:34:11 +1100
+Message-ID: <20160221003411.GZ14668@dastard>
+References: <20160220155157.GA19420@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:60089 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751666AbcBTSqy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Feb 2016 13:46:54 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id EED6E2051F
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Feb 2016 18:46:52 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A670F204FC
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Feb 2016 18:46:50 +0000 (UTC)
-In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:22808 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751337AbcBUAe0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 20 Feb 2016 19:34:26 -0500
+Content-Disposition: inline
+In-Reply-To: <20160220155157.GA19420@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D112631
+On Sat, Feb 20, 2016 at 10:51:57AM -0500, Eric Whitney wrote:
+> Add an exclude file for the ext3 test case to prevent failure reports
+> from tests that exercise unsupported online defrag functionality.
 
-Henrique de Moraes Holschuh <hmh@hmh.eng.br> changed:
+ext3 should not run these tests because of the _requires_defrag
+check in these tests results in a _notrun command being run
+when FSTYP=ext3.
 
-           What    |Removed                     |Added
------------------------------------------------------------------------=
------
-                 CC|                            |hmh@hmh.eng.br
+> Two online defrag tests - ext4/307 and /308 - are not included because
+> they contain explicit requirements for fallocate support that prevents
+> them from running on an emulated ext3 file system.
 
---- Comment #5 from Henrique de Moraes Holschuh <hmh@hmh.eng.br> ---
-=46rom https://lwn.net/Articles/676552/
+Same here.
 
-Posted Feb 20, 2016 16:33 UTC (Sat) by alonz (subscriber, #815)
-Interesting... the code in cryptsetup indeed breaks the assumptions enf=
-orced by
-this commit (it closed the "tfmfd" before the "opfd", while the code al=
-ways
-assumed the opposite and now enforces it). So it has always been "buggy=
- but
-working" =E2=80=93 which is no excuse for breaking userspace.
+> It may be possible to modify the excluded tests at a future date so they
+> will not run unless the test file system is extent mapped.  For now, this
+> patch is an expedient measure to reduce testing noise.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  kvm-xfstests/test-appliance/files/root/conf/ext3.exclude | 6 ++++++
+>  1 file changed, 6 insertions(+)
+>  create mode 100644 kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
+> 
+> diff --git a/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude b/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
+> new file mode 100644
+> index 0000000..c46c79b
+> --- /dev/null
+> +++ b/kvm-xfstests/test-appliance/files/root/conf/ext3.exclude
+> @@ -0,0 +1,6 @@
+> +# ext4's ext3 emulation does not support on-line
+> +# defrag, which requires extent-based files
+> +ext4/301
+> +ext4/302
+> +ext4/303
+> +ext4/304
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So what we really need to understand is why _require_defrag is not
+preventing these tests beign run on an ext3 filesystem?
+
+Eric, what is the output of these tests when it is run on an ext3
+filesytsem? What is the fstyp you are testing?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
