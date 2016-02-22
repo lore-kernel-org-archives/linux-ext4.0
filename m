@@ -1,82 +1,158 @@
-From: Alexander Peganz <a.peganz@gmail.com>
-Subject: support request: how to fix corruption after offline-shrink?
-Date: Mon, 22 Feb 2016 10:58:22 +0100
-Message-ID: <CADtmLM9aZ5+ey78y=hddD6ZazP24juPWQOTh4hB-TjbskJNVPA@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix extent cache fragmentation
+Date: Mon, 22 Feb 2016 15:37:41 +0100
+Message-ID: <20160222143741.GA10531@quack.suse.cz>
+References: <1455010041-23082-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f52.google.com ([209.85.215.52]:33587 "EHLO
-	mail-lf0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753237AbcBVJ6n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Feb 2016 04:58:43 -0500
-Received: by mail-lf0-f52.google.com with SMTP id m1so90946352lfg.0
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Feb 2016 01:58:42 -0800 (PST)
+Received: from mx2.suse.de ([195.135.220.15]:34949 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932104AbcBVOhU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Feb 2016 09:37:20 -0500
+Content-Disposition: inline
+In-Reply-To: <1455010041-23082-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Hello,
 
+On Tue 09-02-16 13:27:21, Dmitry Monakhov wrote:
+> Currently we populate extent-status inside ext4_map_blocks() by map's result
+> which is sub-optimal because usually map request are too small (few blocks),
+> even is extent itself is big (thousands of blocks).
+> In my case I have perfectly plain file:
+> File size of /mnt/static_exec_test is 889320 (218 blocks of 4096 bytes)
+>  ext:     logical_offset:        physical_offset: length:   expected: flags:
+>    0:        0..     217:      33024..     33241:    218:             last,eof
+> 
+> Test case performs exec in a loop which result in random page faults
+> W/o patch es_trace looks like follows (extent status tree contains 39 peaces):
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 198
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [198/1) mapped 33222 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 0
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 2 [0/1) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 197
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [197/1) mapped 33221 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 196
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [196/1) mapped 33220 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 17
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [17/1) mapped 33041 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 159
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [159/1) mapped 33183 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 18
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [18/1) mapped 33042 status W
+> 
+> With the patch it looks much more sane (extent status tree contains 1 peace)
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 198
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 0 [0/0) 0
+> ext4_es_insert_extent: dev 1,0 ino 12 es [0/218) mapped 33024 status W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 198
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 0
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 197
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 196
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 17
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 159
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 18
+> ext4_es_lookup_extent_exit: dev 1,0 ino 12 found 1 [0/218) 33024 W
+> ext4_es_lookup_extent_enter: dev 1,0 ino 12 lblk 59
 
-Shrinking an ext4 filesystem with resize2fs 1.42.5 from Debian
-Wheezy's e2fsprogs corrupted the filesystem. I have found out from
-mailing list archives and blog and forum posts that offline resizing
-with such old versions of resize2fs is prone to corrupt ext4
-filesystems. So I probably have run into one of those bugs. If I
-understand the older messages I found correctly the data is actually
-still complete and undamaged, but some of the metadata was somewhat
-scrambled during the resize. Now I am looking for the most reliable
-way to safe the most data.
+So in principle this patch is fine but I hate how handling of extent status
+tree is proliferating to fs/ext4/extent.c to handle some cases especially
+through special function flags. So looking into the code, probably it would
+make sense to move all updates of the extent status tree handling down into
+ext4_ext_map_blocks() and ext4_ind_map_blocks(). Thoughts?
 
+								Honza
 
-I have since updated e2fsprogs to Stretch's 1.42.13. Checking with
-e2fsck -fn the fs gives me a few hundred error messages each of:
-Inode X, end of extent exceeds allowed value
-Logical start X does not match logical start Y at next level.
-Inode X, i_blocks is Y, should be Z.
-Plus a long list of Block bitmap differences.
-
-tune2fs -l states the fs is clean with errors with the following
-features: has_journal ext_attr resize_inode dir_index filetype extent
-flex_bg sparse_super large_file huge_file uninit_bg dir_nlink
-extra_isize
-
-My first instinct was to e2fsck -fp the fs, but -p tells me it cannot
-safely fix the fs. I dabbled a bit with debugfs (admittedly not really
-knowing what exactly I'm doing) and the fs seems to be largely intact,
-with little more than a hundred files of the 6TB (around 4 in use)
-being affected - although I moved around 2TB worth of files to another
-fs earlier before noticing the corruption, so a few dozen of those are
-probably damaged.
-
-
-What I'd like to know is how to proceed from here. If I run e2fsck -fy
-and hope for the best - can this only make things better or do I risk
-causing further damage?
-
-I am currently waiting for a few additional disks, once they get here
-I could try mounting the fs (I'm guessing mount can be convinced to
-mount the fs without checking it first when the interval- and mount
-count checks are disabled beforehand with tune2fs?) and just copying
-files over to the new disks, but I guess that I would loose the chance
-to repair any files that are currently damaged?
-
-
-Any assistance that can be provided is greatly appreciated!
-
-
-PS:
-In case it helps here is the brief history of the fs as far as I remember it:
-The fs was created unter Ubuntu 10.04LTS, so probably with a really
-old version of mke2fs. It was online-grown with 10.04's resize2fs when
-more disks were added to the RAID array. The array was later moved to
-a Debian Wheezy server were it was in use for a few years before the
-fateful offline shrink was performed.
-
-
-PPS:
-Not related at all to the problem but something that has always
-confused me and I never found definite info on: if features that seem
-to be supersets of other features (e.g. huge_file > large_file,
-sparse_super2 > sparse_super) are both enabled on a fs I'm guessing
-the more powerful one "wins"? Or are both flags required?
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/ext4.h           | 1 +
+>  fs/ext4/extents.c        | 6 ++++++
+>  fs/ext4/extents_status.c | 2 +-
+>  fs/ext4/inode.c          | 5 +++--
+>  4 files changed, 11 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 0662b28..6dbdabc 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -567,6 +567,7 @@ enum {
+>  #define EXT4_GET_BLOCKS_CONVERT_UNWRITTEN	0x0100
+>  	/* Write zeros to newly created written extents */
+>  #define EXT4_GET_BLOCKS_ZERO			0x0200
+> +#define EXT4_GET_BLOCKS_CACHE			0x0400
+>  #define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
+>  					EXT4_GET_BLOCKS_ZERO)
+>  
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 0ffabaf..7a8c610 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4328,7 +4328,13 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+>  		 * we split out initialized portions during a write.
+>  		 */
+>  		ee_len = ext4_ext_get_actual_len(ex);
+> +		if (flags & EXT4_GET_BLOCKS_CACHE) {
+> +			unsigned int status = EXTENT_STATUS_WRITTEN;
+>  
+> +			if (ext4_ext_is_unwritten(ex))
+> +				status = EXTENT_STATUS_UNWRITTEN;
+> +			ext4_es_cache_extent(inode, ee_block, ee_len, ee_start, status);
+> +		}
+>  		trace_ext4_ext_show_extent(inode, ee_block, ee_start, ee_len);
+>  
+>  		/* if found extent covers block, simply return it */
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index ac748b3..79a29b9 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -811,7 +811,7 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+>  		else if (lblk > ext4_es_end(es1))
+>  			node = node->rb_right;
+>  		else {
+> -			found = 1;
+> +			found = 2;
+>  			break;
+>  		}
+>  	}
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 83bc8bf..0096de2 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -524,8 +524,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>  	 */
+>  	down_read(&EXT4_I(inode)->i_data_sem);
+>  	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
+> -		retval = ext4_ext_map_blocks(handle, inode, map, flags &
+> -					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> +		retval = ext4_ext_map_blocks(handle, inode, map,
+> +					     (flags & EXT4_GET_BLOCKS_KEEP_SIZE) |
+> +					     EXT4_GET_BLOCKS_CACHE);
+>  	} else {
+>  		retval = ext4_ind_map_blocks(handle, inode, map, flags &
+>  					     EXT4_GET_BLOCKS_KEEP_SIZE);
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
