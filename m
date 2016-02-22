@@ -1,511 +1,309 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 03/11] ext2: Convert to mbcache2
-Date: Mon, 22 Feb 2016 08:48:13 +0100
-Message-ID: <1456127301-7702-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 11/11] mbcache: Add reusable flag to cache entries
+Date: Mon, 22 Feb 2016 08:48:21 +0100
+Message-ID: <1456127301-7702-12-git-send-email-jack@suse.cz>
 References: <1456127301-7702-1-git-send-email-jack@suse.cz>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
 	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49070 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:49105 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751271AbcBVHsG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Feb 2016 02:48:06 -0500
+	id S1751271AbcBVHsK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Feb 2016 02:48:10 -0500
 In-Reply-To: <1456127301-7702-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The conversion is generally straightforward. We convert filesystem from
-a global cache to per-fs one. Similarly to ext4 the tricky part is that
-xattr block corresponding to found mbcache entry can get freed before we
-get buffer lock for that block. So we have to check whether the entry is
-still valid after getting the buffer lock.
+From: Andreas Gruenbacher <agruenba@redhat.com>
 
+To reduce amount of damage caused by single bad block, we limit number
+of inodes sharing an xattr block to 1024. Thus there can be more xattr
+blocks with the same contents when there are lots of files with the same
+extended attributes. These xattr blocks naturally result in hash
+collisions and can form long hash chains and we unnecessarily check each
+such block only to find out we cannot use it because it is already
+shared by too many inodes.
+
+Add a reusable flag to cache entries which is cleared when a cache entry
+has reached its maximum refcount.  Cache entries which are not marked
+reusable are skipped by mb_cache_entry_find_{first,next}. This
+significantly speeds up mbcache when there are many same xattr blocks.
+For example for xattr-bench with 5 values and each process handling
+20000 files, the run for 64 processes is 25x faster with this patch.
+Even for 8 processes the speedup is almost 3x. We have also verified
+that for situations where there is only one xattr block of each kind,
+the patch doesn't have a measurable cost.
+
+[JK: Remove handling of setting the same value since it is not needed
+anymore, check for races in e_reusable setting, improve changelog,
+add measurements]
+
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/ext2.h  |   3 ++
- fs/ext2/super.c |  25 ++++++----
- fs/ext2/xattr.c | 143 ++++++++++++++++++++++++++------------------------------
- fs/ext2/xattr.h |  21 ++-------
- 4 files changed, 92 insertions(+), 100 deletions(-)
+ fs/ext2/xattr.c         |  2 +-
+ fs/ext4/xattr.c         | 66 +++++++++++++++++++++++++++++++------------------
+ fs/mbcache.c            | 38 +++++++++++++++++++++++++---
+ include/linux/mbcache.h |  5 +++-
+ 4 files changed, 81 insertions(+), 30 deletions(-)
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 4c69c94cafd8..f98ce7e60a0f 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -61,6 +61,8 @@ struct ext2_block_alloc_info {
- #define rsv_start rsv_window._rsv_start
- #define rsv_end rsv_window._rsv_end
- 
-+struct mb2_cache;
-+
- /*
-  * second extended-fs super-block data in memory
-  */
-@@ -111,6 +113,7 @@ struct ext2_sb_info {
- 	 * of the mount options.
- 	 */
- 	spinlock_t s_lock;
-+	struct mb2_cache *s_mb_cache;
- };
- 
- static inline spinlock_t *
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 2a188413a2b0..b78caf25f746 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -131,7 +131,10 @@ static void ext2_put_super (struct super_block * sb)
- 
- 	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
- 
--	ext2_xattr_put_super(sb);
-+	if (sbi->s_mb_cache) {
-+		ext2_xattr_destroy_cache(sbi->s_mb_cache);
-+		sbi->s_mb_cache = NULL;
-+	}
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		struct ext2_super_block *es = sbi->s_es;
- 
-@@ -1104,6 +1107,14 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 		ext2_msg(sb, KERN_ERR, "error: insufficient memory");
- 		goto failed_mount3;
- 	}
-+
-+#ifdef CONFIG_EXT2_FS_XATTR
-+	sbi->s_mb_cache = ext2_xattr_create_cache();
-+	if (!sbi->s_mb_cache) {
-+		ext2_msg(sb, KERN_ERR, "Failed to create an mb_cache");
-+		goto failed_mount3;
-+	}
-+#endif
- 	/*
- 	 * set up enough so that it can read an inode
- 	 */
-@@ -1149,6 +1160,8 @@ cantfind_ext2:
- 			sb->s_id);
- 	goto failed_mount;
- failed_mount3:
-+	if (sbi->s_mb_cache)
-+		ext2_xattr_destroy_cache(sbi->s_mb_cache);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
-@@ -1555,20 +1568,17 @@ MODULE_ALIAS_FS("ext2");
- 
- static int __init init_ext2_fs(void)
- {
--	int err = init_ext2_xattr();
--	if (err)
--		return err;
-+	int err;
-+
- 	err = init_inodecache();
- 	if (err)
--		goto out1;
-+		return err;
-         err = register_filesystem(&ext2_fs_type);
- 	if (err)
- 		goto out;
- 	return 0;
- out:
- 	destroy_inodecache();
--out1:
--	exit_ext2_xattr();
- 	return err;
- }
- 
-@@ -1576,7 +1586,6 @@ static void __exit exit_ext2_fs(void)
- {
- 	unregister_filesystem(&ext2_fs_type);
- 	destroy_inodecache();
--	exit_ext2_xattr();
- }
- 
- MODULE_AUTHOR("Remy Card and others");
 diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index f57a7aba32eb..7162b4869bc3 100644
+index 71d58c2d7a19..1a5e3bff0b63 100644
 --- a/fs/ext2/xattr.c
 +++ b/fs/ext2/xattr.c
-@@ -56,7 +56,7 @@
- #include <linux/buffer_head.h>
- #include <linux/init.h>
- #include <linux/slab.h>
--#include <linux/mbcache.h>
-+#include <linux/mbcache2.h>
- #include <linux/quotaops.h>
- #include <linux/rwsem.h>
- #include <linux/security.h>
-@@ -90,14 +90,12 @@
- static int ext2_xattr_set2(struct inode *, struct buffer_head *,
- 			   struct ext2_xattr_header *);
- 
--static int ext2_xattr_cache_insert(struct buffer_head *);
-+static int ext2_xattr_cache_insert(struct mb2_cache *, struct buffer_head *);
- static struct buffer_head *ext2_xattr_cache_find(struct inode *,
- 						 struct ext2_xattr_header *);
- static void ext2_xattr_rehash(struct ext2_xattr_header *,
- 			      struct ext2_xattr_entry *);
- 
--static struct mb_cache *ext2_xattr_cache;
--
- static const struct xattr_handler *ext2_xattr_handler_map[] = {
- 	[EXT2_XATTR_INDEX_USER]		     = &ext2_xattr_user_handler,
- #ifdef CONFIG_EXT2_FS_POSIX_ACL
-@@ -152,6 +150,7 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
- 	size_t name_len, size;
- 	char *end;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
- 
- 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
- 		  name_index, name, buffer, (long)buffer_size);
-@@ -196,7 +195,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_get",
- 			goto found;
- 		entry = next;
- 	}
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 	error = -ENODATA;
- 	goto cleanup;
-@@ -209,7 +208,7 @@ found:
- 	    le16_to_cpu(entry->e_value_offs) + size > inode->i_sb->s_blocksize)
- 		goto bad_block;
- 
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 	if (buffer) {
- 		error = -ERANGE;
-@@ -247,6 +246,7 @@ ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	char *end;
- 	size_t rest = buffer_size;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
- 
- 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
- 		  buffer, (long)buffer_size);
-@@ -281,7 +281,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
- 			goto bad_block;
- 		entry = next;
- 	}
--	if (ext2_xattr_cache_insert(bh))
-+	if (ext2_xattr_cache_insert(ext2_mb_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 
- 	/* list the attribute names */
-@@ -483,22 +483,23 @@ bad_block:		ext2_error(sb, "ext2_xattr_set",
- 	/* Here we know that we can set the new attribute. */
- 
- 	if (header) {
--		struct mb_cache_entry *ce;
--
- 		/* assert(header == HDR(bh)); */
--		ce = mb_cache_entry_get(ext2_xattr_cache, bh->b_bdev,
--					bh->b_blocknr);
- 		lock_buffer(bh);
- 		if (header->h_refcount == cpu_to_le32(1)) {
-+			__u32 hash = le32_to_cpu(header->h_hash);
-+
- 			ea_bdebug(bh, "modifying in-place");
--			if (ce)
--				mb_cache_entry_free(ce);
-+			/*
-+			 * This must happen under buffer lock for
-+			 * ext2_xattr_set2() to reliably detect modified block
-+			 */
-+			mb2_cache_entry_delete_block(EXT2_SB(sb)->s_mb_cache,
-+						     hash, bh->b_blocknr);
-+
- 			/* keep the buffer locked while modifying it. */
- 		} else {
- 			int offset;
- 
--			if (ce)
--				mb_cache_entry_release(ce);
- 			unlock_buffer(bh);
- 			ea_bdebug(bh, "cloning");
- 			header = kmalloc(bh->b_size, GFP_KERNEL);
-@@ -626,6 +627,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 	struct super_block *sb = inode->i_sb;
- 	struct buffer_head *new_bh = NULL;
- 	int error;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(sb)->s_mb_cache;
- 
- 	if (header) {
- 		new_bh = ext2_xattr_cache_find(inode, header);
-@@ -653,7 +655,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			   don't need to change the reference count. */
- 			new_bh = old_bh;
- 			get_bh(new_bh);
--			ext2_xattr_cache_insert(new_bh);
-+			ext2_xattr_cache_insert(ext2_mb_cache, new_bh);
- 		} else {
- 			/* We need to allocate a new block */
- 			ext2_fsblk_t goal = ext2_group_first_block_no(sb,
-@@ -674,7 +676,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			memcpy(new_bh->b_data, header, new_bh->b_size);
- 			set_buffer_uptodate(new_bh);
- 			unlock_buffer(new_bh);
--			ext2_xattr_cache_insert(new_bh);
-+			ext2_xattr_cache_insert(ext2_mb_cache, new_bh);
- 			
- 			ext2_xattr_update_super_block(sb);
- 		}
-@@ -707,19 +709,21 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 
- 	error = 0;
- 	if (old_bh && old_bh != new_bh) {
--		struct mb_cache_entry *ce;
--
- 		/*
- 		 * If there was an old block and we are no longer using it,
- 		 * release the old block.
- 		 */
--		ce = mb_cache_entry_get(ext2_xattr_cache, old_bh->b_bdev,
--					old_bh->b_blocknr);
- 		lock_buffer(old_bh);
- 		if (HDR(old_bh)->h_refcount == cpu_to_le32(1)) {
-+			__u32 hash = le32_to_cpu(HDR(old_bh)->h_hash);
-+
-+			/*
-+			 * This must happen under buffer lock for
-+			 * ext2_xattr_set2() to reliably detect freed block
-+			 */
-+			mb2_cache_entry_delete_block(ext2_mb_cache,
-+						     hash, old_bh->b_blocknr);
- 			/* Free the old block. */
--			if (ce)
--				mb_cache_entry_free(ce);
- 			ea_bdebug(old_bh, "freeing");
- 			ext2_free_blocks(inode, old_bh->b_blocknr, 1);
- 			mark_inode_dirty(inode);
-@@ -730,8 +734,6 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 		} else {
- 			/* Decrement the refcount only. */
- 			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
--			if (ce)
--				mb_cache_entry_release(ce);
- 			dquot_free_block_nodirty(inode, 1);
- 			mark_inode_dirty(inode);
- 			mark_buffer_dirty(old_bh);
-@@ -757,7 +759,6 @@ void
- ext2_xattr_delete_inode(struct inode *inode)
- {
- 	struct buffer_head *bh = NULL;
--	struct mb_cache_entry *ce;
- 
- 	down_write(&EXT2_I(inode)->xattr_sem);
- 	if (!EXT2_I(inode)->i_file_acl)
-@@ -777,19 +778,22 @@ ext2_xattr_delete_inode(struct inode *inode)
- 			EXT2_I(inode)->i_file_acl);
- 		goto cleanup;
- 	}
--	ce = mb_cache_entry_get(ext2_xattr_cache, bh->b_bdev, bh->b_blocknr);
- 	lock_buffer(bh);
- 	if (HDR(bh)->h_refcount == cpu_to_le32(1)) {
--		if (ce)
--			mb_cache_entry_free(ce);
-+		__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
-+
-+		/*
-+		 * This must happen under buffer lock for ext2_xattr_set2() to
-+		 * reliably detect freed block
-+		 */
-+		mb2_cache_entry_delete_block(EXT2_SB(inode->i_sb)->s_mb_cache,
-+					     hash, bh->b_blocknr);
- 		ext2_free_blocks(inode, EXT2_I(inode)->i_file_acl, 1);
- 		get_bh(bh);
- 		bforget(bh);
- 		unlock_buffer(bh);
- 	} else {
- 		le32_add_cpu(&HDR(bh)->h_refcount, -1);
--		if (ce)
--			mb_cache_entry_release(ce);
- 		ea_bdebug(bh, "refcount now=%d",
- 			le32_to_cpu(HDR(bh)->h_refcount));
- 		unlock_buffer(bh);
-@@ -806,18 +810,6 @@ cleanup:
- }
- 
- /*
-- * ext2_xattr_put_super()
-- *
-- * This is called when a file system is unmounted.
-- */
--void
--ext2_xattr_put_super(struct super_block *sb)
--{
--	mb_cache_shrink(sb->s_bdev);
--}
--
--
--/*
-  * ext2_xattr_cache_insert()
-  *
-  * Create a new entry in the extended attribute cache, and insert
-@@ -826,28 +818,20 @@ ext2_xattr_put_super(struct super_block *sb)
-  * Returns 0, or a negative error number on failure.
-  */
- static int
--ext2_xattr_cache_insert(struct buffer_head *bh)
-+ext2_xattr_cache_insert(struct mb2_cache *cache, struct buffer_head *bh)
- {
+@@ -823,7 +823,7 @@ ext2_xattr_cache_insert(struct mb_cache *cache, struct buffer_head *bh)
  	__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
--	struct mb_cache_entry *ce;
  	int error;
  
--	ce = mb_cache_entry_alloc(ext2_xattr_cache, GFP_NOFS);
--	if (!ce)
--		return -ENOMEM;
--	error = mb_cache_entry_insert(ce, bh->b_bdev, bh->b_blocknr, hash);
-+	error = mb2_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr);
+-	error = mb_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr);
++	error = mb_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr, 1);
  	if (error) {
--		mb_cache_entry_free(ce);
  		if (error == -EBUSY) {
  			ea_bdebug(bh, "already in cache (%d cache entries)",
- 				atomic_read(&ext2_xattr_cache->c_entry_count));
- 			error = 0;
- 		}
--	} else {
--		ea_bdebug(bh, "inserting [%x] (%d cache entries)", (int)hash,
--			  atomic_read(&ext2_xattr_cache->c_entry_count));
--		mb_cache_entry_release(ce);
--	}
-+	} else
-+		ea_bdebug(bh, "inserting [%x]", (int)hash);
- 	return error;
- }
- 
-@@ -903,23 +887,17 @@ static struct buffer_head *
- ext2_xattr_cache_find(struct inode *inode, struct ext2_xattr_header *header)
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index b661ae8332e3..0441e055c8e8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -545,6 +545,8 @@ static void
+ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 			 struct buffer_head *bh)
  {
- 	__u32 hash = le32_to_cpu(header->h_hash);
--	struct mb_cache_entry *ce;
-+	struct mb2_cache_entry *ce;
-+	struct mb2_cache *ext2_mb_cache = EXT2_SB(inode->i_sb)->s_mb_cache;
++	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
++	u32 hash, ref;
+ 	int error = 0;
  
- 	if (!header->h_hash)
- 		return NULL;  /* never share */
- 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
- again:
--	ce = mb_cache_entry_find_first(ext2_xattr_cache, inode->i_sb->s_bdev,
--				       hash);
-+	ce = mb2_cache_entry_find_first(ext2_mb_cache, hash);
- 	while (ce) {
- 		struct buffer_head *bh;
+ 	BUFFER_TRACE(bh, "get_write_access");
+@@ -553,23 +555,34 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 		goto out;
  
--		if (IS_ERR(ce)) {
--			if (PTR_ERR(ce) == -EAGAIN)
--				goto again;
--			break;
--		}
+ 	lock_buffer(bh);
+-	if (BHDR(bh)->h_refcount == cpu_to_le32(1)) {
+-		__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
 -
- 		bh = sb_bread(inode->i_sb, ce->e_block);
++	hash = le32_to_cpu(BHDR(bh)->h_hash);
++	ref = le32_to_cpu(BHDR(bh)->h_refcount);
++	if (ref == 1) {
+ 		ea_bdebug(bh, "refcount now=0; freeing");
+ 		/*
+ 		 * This must happen under buffer lock for
+ 		 * ext4_xattr_block_set() to reliably detect freed block
+ 		 */
+-		mb_cache_entry_delete_block(EXT4_GET_MB_CACHE(inode), hash,
+-					    bh->b_blocknr);
++		mb_cache_entry_delete_block(ext4_mb_cache, hash, bh->b_blocknr);
+ 		get_bh(bh);
+ 		unlock_buffer(bh);
+ 		ext4_free_blocks(handle, inode, bh, 0, 1,
+ 				 EXT4_FREE_BLOCKS_METADATA |
+ 				 EXT4_FREE_BLOCKS_FORGET);
+ 	} else {
+-		le32_add_cpu(&BHDR(bh)->h_refcount, -1);
++		ref--;
++		BHDR(bh)->h_refcount = cpu_to_le32(ref);
++		if (ref == EXT4_XATTR_REFCOUNT_MAX - 1) {
++			struct mb_cache_entry *ce;
++
++			ce = mb_cache_entry_get(ext4_mb_cache, hash,
++						bh->b_blocknr);
++			if (ce) {
++				ce->e_reusable = 1;
++				mb_cache_entry_put(ext4_mb_cache, ce);
++			}
++		}
++
+ 		/*
+ 		 * Beware of this ugliness: Releasing of xattr block references
+ 		 * from different inodes can race and so we have to protect
+@@ -872,6 +885,8 @@ inserted:
+ 			if (new_bh == bs->bh)
+ 				ea_bdebug(new_bh, "keeping");
+ 			else {
++				u32 ref;
++
+ 				/* The old block is released after updating
+ 				   the inode. */
+ 				error = dquot_alloc_block(inode,
+@@ -886,15 +901,18 @@ inserted:
+ 				lock_buffer(new_bh);
+ 				/*
+ 				 * We have to be careful about races with
+-				 * freeing or rehashing of xattr block. Once we
+-				 * hold buffer lock xattr block's state is
+-				 * stable so we can check whether the block got
+-				 * freed / rehashed or not.  Since we unhash
+-				 * mbcache entry under buffer lock when freeing
+-				 * / rehashing xattr block, checking whether
+-				 * entry is still hashed is reliable.
++				 * freeing, rehashing or adding references to
++				 * xattr block. Once we hold buffer lock xattr
++				 * block's state is stable so we can check
++				 * whether the block got freed / rehashed or
++				 * not.  Since we unhash mbcache entry under
++				 * buffer lock when freeing / rehashing xattr
++				 * block, checking whether entry is still
++				 * hashed is reliable. Same rules hold for
++				 * e_reusable handling.
+ 				 */
+-				if (hlist_bl_unhashed(&ce->e_hash_list)) {
++				if (hlist_bl_unhashed(&ce->e_hash_list) ||
++				    !ce->e_reusable) {
+ 					/*
+ 					 * Undo everything and check mbcache
+ 					 * again.
+@@ -909,9 +927,12 @@ inserted:
+ 					new_bh = NULL;
+ 					goto inserted;
+ 				}
+-				le32_add_cpu(&BHDR(new_bh)->h_refcount, 1);
++				ref = le32_to_cpu(BHDR(new_bh)->h_refcount) + 1;
++				BHDR(new_bh)->h_refcount = cpu_to_le32(ref);
++				if (ref >= EXT4_XATTR_REFCOUNT_MAX)
++					ce->e_reusable = 0;
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+-					le32_to_cpu(BHDR(new_bh)->h_refcount));
++					  ref);
+ 				unlock_buffer(new_bh);
+ 				error = ext4_handle_dirty_xattr_block(handle,
+ 								      inode,
+@@ -1566,11 +1587,14 @@ cleanup:
+ static void
+ ext4_xattr_cache_insert(struct mb_cache *ext4_mb_cache, struct buffer_head *bh)
+ {
+-	__u32 hash = le32_to_cpu(BHDR(bh)->h_hash);
++	struct ext4_xattr_header *header = BHDR(bh);
++	__u32 hash = le32_to_cpu(header->h_hash);
++	int reusable = le32_to_cpu(header->h_refcount) <
++		       EXT4_XATTR_REFCOUNT_MAX;
+ 	int error;
+ 
+ 	error = mb_cache_entry_create(ext4_mb_cache, GFP_NOFS, hash,
+-				      bh->b_blocknr);
++				      bh->b_blocknr, reusable);
+ 	if (error) {
+ 		if (error == -EBUSY)
+ 			ea_bdebug(bh, "already in cache");
+@@ -1645,12 +1669,6 @@ ext4_xattr_cache_find(struct inode *inode, struct ext4_xattr_header *header,
  		if (!bh) {
- 			ext2_error(inode->i_sb, "ext2_xattr_cache_find",
-@@ -927,7 +905,21 @@ again:
- 				inode->i_ino, (unsigned long) ce->e_block);
- 		} else {
- 			lock_buffer(bh);
--			if (le32_to_cpu(HDR(bh)->h_refcount) >
-+			/*
-+			 * We have to be careful about races with freeing or
-+			 * rehashing of xattr block. Once we hold buffer lock
-+			 * xattr block's state is stable so we can check
-+			 * whether the block got freed / rehashed or not.
-+			 * Since we unhash mbcache entry under buffer lock when
-+			 * freeing / rehashing xattr block, checking whether
-+			 * entry is still hashed is reliable.
-+			 */
-+			if (hlist_bl_unhashed(&ce->e_hash_list)) {
-+				mb2_cache_entry_put(ext2_mb_cache, ce);
-+				unlock_buffer(bh);
-+				brelse(bh);
-+				goto again;
-+			} else if (le32_to_cpu(HDR(bh)->h_refcount) >
- 				   EXT2_XATTR_REFCOUNT_MAX) {
- 				ea_idebug(inode, "block %ld refcount %d>%d",
- 					  (unsigned long) ce->e_block,
-@@ -936,13 +928,14 @@ again:
- 			} else if (!ext2_xattr_cmp(header, HDR(bh))) {
- 				ea_bdebug(bh, "b_count=%d",
- 					  atomic_read(&(bh->b_count)));
--				mb_cache_entry_release(ce);
-+				mb2_cache_entry_touch(ext2_mb_cache, ce);
-+				mb2_cache_entry_put(ext2_mb_cache, ce);
- 				return bh;
- 			}
- 			unlock_buffer(bh);
- 			brelse(bh);
+ 			EXT4_ERROR_INODE(inode, "block %lu read error",
+ 					 (unsigned long) ce->e_block);
+-		} else if (le32_to_cpu(BHDR(bh)->h_refcount) >=
+-				EXT4_XATTR_REFCOUNT_MAX) {
+-			ea_idebug(inode, "block %lu refcount %d>=%d",
+-				  (unsigned long) ce->e_block,
+-				  le32_to_cpu(BHDR(bh)->h_refcount),
+-					  EXT4_XATTR_REFCOUNT_MAX);
+ 		} else if (ext4_xattr_cmp(header, BHDR(bh)) == 0) {
+ 			*pce = ce;
+ 			return bh;
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index 903be151dcfe..eccda3a02de6 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -63,13 +63,14 @@ static inline struct hlist_bl_head *mb_cache_entry_head(struct mb_cache *cache,
+  * @mask - gfp mask with which the entry should be allocated
+  * @key - key of the entry
+  * @block - block that contains data
++ * @reusable - is the block reusable by other inodes?
+  *
+  * Creates entry in @cache with key @key and records that data is stored in
+  * block @block. The function returns -EBUSY if entry with the same key
+  * and for the same block already exists in cache. Otherwise 0 is returned.
+  */
+ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
+-			  sector_t block)
++			  sector_t block, bool reusable)
+ {
+ 	struct mb_cache_entry *entry, *dup;
+ 	struct hlist_bl_node *dup_node;
+@@ -91,6 +92,7 @@ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
+ 	atomic_set(&entry->e_refcnt, 1);
+ 	entry->e_key = key;
+ 	entry->e_block = block;
++	entry->e_reusable = reusable;
+ 	head = mb_cache_entry_head(cache, key);
+ 	hlist_bl_lock(head);
+ 	hlist_bl_for_each_entry(dup, dup_node, head, e_hash_list) {
+@@ -137,7 +139,7 @@ static struct mb_cache_entry *__entry_find(struct mb_cache *cache,
+ 	while (node) {
+ 		entry = hlist_bl_entry(node, struct mb_cache_entry,
+ 				       e_hash_list);
+-		if (entry->e_key == key) {
++		if (entry->e_key == key && entry->e_reusable) {
+ 			atomic_inc(&entry->e_refcnt);
+ 			goto out;
  		}
--		ce = mb_cache_entry_find_next(ce, inode->i_sb->s_bdev, hash);
-+		ce = mb2_cache_entry_find_next(ext2_mb_cache, ce);
- 	}
- 	return NULL;
+@@ -184,10 +186,38 @@ struct mb_cache_entry *mb_cache_entry_find_next(struct mb_cache *cache,
  }
-@@ -1015,17 +1008,15 @@ static void ext2_xattr_rehash(struct ext2_xattr_header *header,
+ EXPORT_SYMBOL(mb_cache_entry_find_next);
  
- #undef BLOCK_HASH_SHIFT
- 
--int __init
--init_ext2_xattr(void)
-+#define HASH_BUCKET_BITS 10
++/*
++ * mb_cache_entry_get - get a cache entry by block number (and key)
++ * @cache - cache we work with
++ * @key - key of block number @block
++ * @block - block number
++ */
++struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 key,
++					  sector_t block)
++{
++	struct hlist_bl_node *node;
++	struct hlist_bl_head *head;
++	struct mb_cache_entry *entry;
 +
-+struct mb2_cache *ext2_xattr_create_cache(void)
- {
--	ext2_xattr_cache = mb_cache_create("ext2_xattr", 6);
--	if (!ext2_xattr_cache)
--		return -ENOMEM;
--	return 0;
-+	return mb2_cache_create(HASH_BUCKET_BITS);
- }
- 
--void
--exit_ext2_xattr(void)
-+void ext2_xattr_destroy_cache(struct mb2_cache *cache)
- {
--	mb_cache_destroy(ext2_xattr_cache);
-+	if (cache)
-+		mb2_cache_destroy(cache);
- }
-diff --git a/fs/ext2/xattr.h b/fs/ext2/xattr.h
-index 60edf298644e..6ea38aa9563a 100644
---- a/fs/ext2/xattr.h
-+++ b/fs/ext2/xattr.h
-@@ -53,6 +53,8 @@ struct ext2_xattr_entry {
- #define EXT2_XATTR_SIZE(size) \
- 	(((size) + EXT2_XATTR_ROUND) & ~EXT2_XATTR_ROUND)
- 
-+struct mb2_cache;
++	head = mb_cache_entry_head(cache, key);
++	hlist_bl_lock(head);
++	hlist_bl_for_each_entry(entry, node, head, e_hash_list) {
++		if (entry->e_key == key && entry->e_block == block) {
++			atomic_inc(&entry->e_refcnt);
++			goto out;
++		}
++	}
++	entry = NULL;
++out:
++	hlist_bl_unlock(head);
++	return entry;
++}
++EXPORT_SYMBOL(mb_cache_entry_get);
 +
- # ifdef CONFIG_EXT2_FS_XATTR
+ /* mb_cache_entry_delete_block - remove information about block from cache
+  * @cache - cache we work with
+- * @key - key of the entry to remove
+- * @block - block containing data for @key
++ * @key - key of block @block
++ * @block - block number
+  *
+  * Remove entry from cache @cache with key @key with data stored in @block.
+  */
+diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
+index 607e6968542e..86c9a8b480c5 100644
+--- a/include/linux/mbcache.h
++++ b/include/linux/mbcache.h
+@@ -18,6 +18,7 @@ struct mb_cache_entry {
+ 	/* Key in hash - stable during lifetime of the entry */
+ 	u32			e_key;
+ 	u32			e_referenced:1;
++	u32			e_reusable:1;
+ 	/* Block number of hashed block - stable during lifetime of the entry */
+ 	sector_t		e_block;
+ };
+@@ -26,7 +27,7 @@ struct mb_cache *mb_cache_create(int bucket_bits);
+ void mb_cache_destroy(struct mb_cache *cache);
  
- extern const struct xattr_handler ext2_xattr_user_handler;
-@@ -65,10 +67,9 @@ extern int ext2_xattr_get(struct inode *, int, const char *, void *, size_t);
- extern int ext2_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
+-			  sector_t block);
++			  sector_t block, bool reusable);
+ void __mb_cache_entry_free(struct mb_cache_entry *entry);
+ static inline int mb_cache_entry_put(struct mb_cache *cache,
+ 				     struct mb_cache_entry *entry)
+@@ -39,6 +40,8 @@ static inline int mb_cache_entry_put(struct mb_cache *cache,
  
- extern void ext2_xattr_delete_inode(struct inode *);
--extern void ext2_xattr_put_super(struct super_block *);
- 
--extern int init_ext2_xattr(void);
--extern void exit_ext2_xattr(void);
-+extern struct mb2_cache *ext2_xattr_create_cache(void);
-+extern void ext2_xattr_destroy_cache(struct mb2_cache *cache);
- 
- extern const struct xattr_handler *ext2_xattr_handlers[];
- 
-@@ -93,19 +94,7 @@ ext2_xattr_delete_inode(struct inode *inode)
- {
- }
- 
--static inline void
--ext2_xattr_put_super(struct super_block *sb)
--{
--}
--
--static inline int
--init_ext2_xattr(void)
--{
--	return 0;
--}
+ void mb_cache_entry_delete_block(struct mb_cache *cache, u32 key,
+ 				  sector_t block);
++struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 key,
++					  sector_t block);
+ struct mb_cache_entry *mb_cache_entry_find_first(struct mb_cache *cache,
+ 						 u32 key);
+ struct mb_cache_entry *mb_cache_entry_find_next(struct mb_cache *cache,
+-- 
+2.6.2
+
