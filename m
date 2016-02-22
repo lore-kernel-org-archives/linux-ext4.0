@@ -1,13 +1,14 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v4 1/5] block: disable block device DAX by default
-Date: Mon, 22 Feb 2016 11:59:18 -0700
-Message-ID: <1456167562-28576-2-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v4 3/5] ext4: Online defrag not supported with DAX
+Date: Mon, 22 Feb 2016 11:59:20 -0700
+Message-ID: <1456167562-28576-4-git-send-email-ross.zwisler@linux.intel.com>
 References: <1456167562-28576-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Dan Williams <dan.j.williams@intel.com>,
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"Theodore Ts'o" <tytso@mit.edu>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
 	Jan Kara <jack@suse.com>,
 	Jens Axboe <axboe@kernel.dk>,
@@ -17,101 +18,44 @@ Cc: Dan Williams <dan.j.williams@intel.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	linux-nvdimm@lists.01.org,
-	xfs@oss.sgi.com,
-	Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@fb.com>,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Al Viro <viro@ftp.linux.org.uk>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>
+	xfs@oss.sgi.com
 To: linux-kernel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1456167562-28576-1-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Dan Williams <dan.j.williams@intel.com>
+Online defrag operations for ext4 are hard coded to use the page cache.
+See ext4_ioctl() -> ext4_move_extents() -> move_extent_per_page()
 
-The recent *sync enabling discovered that we are inserting into the
-block_device pagecache counter to the expectations of the dirty data
-tracking for dax mappings.  This can lead to data corruption.
+When combined with DAX I/O, which circumvents the page cache, this can
+result in data corruption.  This was observed with xfstests ext4/307 and
+ext4/308.
 
-We want to support DAX for block devices eventually, but it requires
-wider changes to properly manage the pagecache.
+Fix this by only allowing online defrag for non-DAX files.
 
-  [<ffffffff81576d93>] dump_stack+0x85/0xc2
-  [<ffffffff812b9ee0>] dax_writeback_mapping_range+0x60/0xe0
-  [<ffffffff812a1d4f>] blkdev_writepages+0x3f/0x50
-  [<ffffffff811db011>] do_writepages+0x21/0x30
-  [<ffffffff811cb6a6>] __filemap_fdatawrite_range+0xc6/0x100
-  [<ffffffff811cb75a>] filemap_write_and_wait+0x4a/0xa0
-  [<ffffffff812a15e0>] set_blocksize+0x70/0xd0
-  [<ffffffff812a273d>] sb_set_blocksize+0x1d/0x50
-  [<ffffffff8132ac9b>] ext4_fill_super+0x75b/0x3360
-  [<ffffffff81583381>] ? vsnprintf+0x201/0x4c0
-  [<ffffffff815836d9>] ? snprintf+0x49/0x60
-  [<ffffffff81263010>] mount_bdev+0x180/0x1b0
-  [<ffffffff8132a540>] ? ext4_calculate_overhead+0x370/0x370
-  [<ffffffff8131ad95>] ext4_mount+0x15/0x20
-  [<ffffffff81263908>] mount_fs+0x38/0x170
-
-Mark the support broken so its disabled by default, but otherwise still
-available for testing.
-
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jens Axboe <axboe@fb.com>
-Cc: Matthew Wilcox <matthew.r.wilcox@intel.com>
-Cc: Al Viro <viro@ftp.linux.org.uk>
-Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Suggested-by: Dave Chinner <david@fromorbit.com>
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- block/Kconfig  | 13 +++++++++++++
- fs/block_dev.c |  6 +++++-
- 2 files changed, 18 insertions(+), 1 deletion(-)
+ fs/ext4/ioctl.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/block/Kconfig b/block/Kconfig
-index 161491d..0363cd7 100644
---- a/block/Kconfig
-+++ b/block/Kconfig
-@@ -88,6 +88,19 @@ config BLK_DEV_INTEGRITY
- 	T10/SCSI Data Integrity Field or the T13/ATA External Path
- 	Protection.  If in doubt, say N.
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a99b010..eae5917 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -583,6 +583,11 @@ group_extend_out:
+ 				 "Online defrag not supported with bigalloc");
+ 			err = -EOPNOTSUPP;
+ 			goto mext_out;
++		} else if (IS_DAX(inode)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Online defrag not supported with DAX");
++			err = -EOPNOTSUPP;
++			goto mext_out;
+ 		}
  
-+config BLK_DEV_DAX
-+	bool "Block device DAX support"
-+	depends on FS_DAX
-+	depends on BROKEN
-+	help
-+	  When DAX support is available (CONFIG_FS_DAX) raw block
-+	  devices can also support direct userspace access to the
-+	  storage capacity via MMAP(2) similar to a file on a
-+	  DAX-enabled filesystem.  However, the DAX I/O-path disables
-+	  some standard I/O-statistics, and the MMAP(2) path has some
-+	  operational differences due to bypassing the page
-+	  cache.  If in doubt, say N.
-+
- config BLK_DEV_THROTTLING
- 	bool "Block layer bio throttling support"
- 	depends on BLK_CGROUP=y
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 39b3a17..31c6d10 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1201,7 +1201,11 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
- 		bdev->bd_disk = disk;
- 		bdev->bd_queue = disk->queue;
- 		bdev->bd_contains = bdev;
--		bdev->bd_inode->i_flags = disk->fops->direct_access ? S_DAX : 0;
-+		if (IS_ENABLED(CONFIG_BLK_DEV_DAX) && disk->fops->direct_access)
-+			bdev->bd_inode->i_flags = S_DAX;
-+		else
-+			bdev->bd_inode->i_flags = 0;
-+
- 		if (!partno) {
- 			ret = -ENXIO;
- 			bdev->bd_part = disk_get_part(disk, partno);
+ 		err = mnt_want_write_file(filp);
 -- 
 2.5.0
 
