@@ -1,68 +1,105 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: use directio end_io error status to finish
- unwritten aio dio correctly
-Date: Mon, 22 Feb 2016 12:11:02 -0800
-Message-ID: <20160222201102.GA8168@birch.djwong.org>
-References: <20160218054557.GH6338@birch.djwong.org>
- <20160218060148.GA10571@infradead.org>
- <20160218220232.GA4262@dastard>
- <20160219131829.GA30166@quack.suse.cz>
- <20160221062826.GB14668@dastard>
- <20160222081914.GD7791@quack.suse.cz>
-Mime-Version: 1.0
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: support request: how to fix corruption after offline-shrink?
+Date: Mon, 22 Feb 2016 14:51:57 -0700
+Message-ID: <935D79B1-4451-4677-A650-353615C61E3A@dilger.ca>
+References: <CADtmLM9aZ5+ey78y=hddD6ZazP24juPWQOTh4hB-TjbskJNVPA@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Alexander Peganz <a.peganz@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34866 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751301AbcBVULf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Feb 2016 15:11:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20160222081914.GD7791@quack.suse.cz>
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:34734 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752756AbcBVVv5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Feb 2016 16:51:57 -0500
+Received: by mail-ig0-f181.google.com with SMTP id g6so97566085igt.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Feb 2016 13:51:57 -0800 (PST)
+In-Reply-To: <CADtmLM9aZ5+ey78y=hddD6ZazP24juPWQOTh4hB-TjbskJNVPA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 22, 2016 at 09:19:14AM +0100, Jan Kara wrote:
-> On Sun 21-02-16 17:28:26, Dave Chinner wrote:
-> > On Fri, Feb 19, 2016 at 02:18:29PM +0100, Jan Kara wrote:
-> > > On Fri 19-02-16 09:02:32, Dave Chinner wrote:
-> > > > Won't that now call ext4_put_io_end() ->
-> > > > ext4_convert_unwritten_extents() with an uninitialised offset and
-> > > > size?
-> > > > 
-> > > > i.e. I don't think this prevents warnings, and may make things
-> > > > worse when real errors occur....
-> > > 
-> > > Yeah, if IO error occurs while writing to unwritten extent we need to just
-> > > destroy the IO end without doing the extent conversion (since we don't know
-> > > how much got written). Attached patch should fix the issue - full xfstests
-> > > run is in progress but a quick check using generic/299 has passed.
-> > > 
-> > > How do we merge this? It depends on the changes in Dave's tree so do we
-> > > merge it via that? I have other ext4 changes pending in this area so Ted
-> > > would then have to pull some branch from Dave's tree. Guys?
-> > 
-> > The xfs-dio-fix-4.6 branch in the XFS tree is stable, so feel free
-> > to pull it into other trees. However, it might be better for me to
-> > append this patch to that branch once it is revewed and tested to
-> > keep them all together in a stable branch. It can still be pulled
-> > into other trees if needed...
+On Feb 22, 2016, at 2:58 AM, Alexander Peganz <a.peganz@gmail.com> wrote:
+> Shrinking an ext4 filesystem with resize2fs 1.42.5 from Debian
+> Wheezy's e2fsprogs corrupted the filesystem. I have found out from
+> mailing list archives and blog and forum posts that offline resizing
+> with such old versions of resize2fs is prone to corrupt ext4
+> filesystems. So I probably have run into one of those bugs. If I
+> understand the older messages I found correctly the data is actually
+> still complete and undamaged, but some of the metadata was somewhat
+> scrambled during the resize. Now I am looking for the most reliable
+> way to safe the most data.
 > 
-> Full xfstests run completed for me fine with the patch so it should be
-> good to go in your tree in that regard. So additional review would be fine
-> though. Darrick, can you have a look?
-
-Looks good to me and passes generic/25[02], so
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
 > 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+> I have since updated e2fsprogs to Stretch's 1.42.13. Checking with
+> e2fsck -fn the fs gives me a few hundred error messages each of:
+> Inode X, end of extent exceeds allowed value
+> Logical start X does not match logical start Y at next level.
+> Inode X, i_blocks is Y, should be Z.
+> Plus a long list of Block bitmap differences.
+> 
+> tune2fs -l states the fs is clean with errors with the following
+> features: has_journal ext_attr resize_inode dir_index filetype extent
+> flex_bg sparse_super large_file huge_file uninit_bg dir_nlink
+> extra_isize
+> 
+> My first instinct was to e2fsck -fp the fs, but -p tells me it cannot
+> safely fix the fs. I dabbled a bit with debugfs (admittedly not really
+> knowing what exactly I'm doing) and the fs seems to be largely intact,
+> with little more than a hundred files of the 6TB (around 4 in use)
+> being affected - although I moved around 2TB worth of files to another
+> fs earlier before noticing the corruption, so a few dozen of those are
+> probably damaged.
+> 
+> 
+> What I'd like to know is how to proceed from here. If I run e2fsck -fy
+> and hope for the best - can this only make things better or do I risk
+> causing further damage?
+> 
+
+> I am currently waiting for a few additional disks, once they get here
+> I could try mounting the fs (I'm guessing mount can be convinced to
+> mount the fs without checking it first when the interval- and mount
+> count checks are disabled beforehand with tune2fs?) and just copying
+> files over to the new disks, but I guess that I would loose the chance
+> to repair any files that are currently damaged?
+
+If you have the capacity to do so, it is recommended to make a full "dd"
+backup of the original filesystem device, and then run "e2fsck -fy" on
+the backup, so that you can always make _another_ copy from the original
+should this go badly.  If the "e2fsck -fy" on the backup goes well, you
+can run e2fsck on the primary copy, or just use the new copy and reformat
+the original (after possibly keeping it around for some time for safety).
+
+
+> Any assistance that can be provided is greatly appreciated!
+> 
+> 
+> PS:
+> In case it helps here is the brief history of the fs as far as I remember it:
+> The fs was created unter Ubuntu 10.04LTS, so probably with a really
+> old version of mke2fs. It was online-grown with 10.04's resize2fs when
+> more disks were added to the RAID array. The array was later moved to
+> a Debian Wheezy server were it was in use for a few years before the
+> fateful offline shrink was performed.
+> 
+> 
+> PPS:
+> Not related at all to the problem but something that has always
+> confused me and I never found definite info on: if features that seem
+> to be supersets of other features (e.g. huge_file > large_file,
+> sparse_super2 > sparse_super) are both enabled on a fs I'm guessing
+> the more powerful one "wins"? Or are both flags required?
+
+In some cases the new feature supersedes the older one, but often they
+are complimentary.  For example "large_file" allows storing the high 32
+bits of the file size (i.e. files > 2^32 bytes in size = 4GB), while
+"huge_file" allows storing the high 16 bits of the block count (i.e.
+files > 2^32 sectors in size = 2TB), so they both need to be enabled.
+
+Cheers, Andreas
+
+
+
+
+
