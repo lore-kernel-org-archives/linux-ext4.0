@@ -1,78 +1,150 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 08/11] ext4: Kill ext4_mballoc_ready
-Date: Mon, 22 Feb 2016 08:48:18 +0100
-Message-ID: <1456127301-7702-9-git-send-email-jack@suse.cz>
+Subject: [PATCH 05/11] mbcache2: Limit cache size
+Date: Mon, 22 Feb 2016 08:48:15 +0100
+Message-ID: <1456127301-7702-6-git-send-email-jack@suse.cz>
 References: <1456127301-7702-1-git-send-email-jack@suse.cz>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
 	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49095 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:49094 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751543AbcBVHsI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751555AbcBVHsI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 22 Feb 2016 02:48:08 -0500
 In-Reply-To: <1456127301-7702-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+So far number of entries in mbcache is limited only by the pressure from
+the shrinker. Since too many entries degrade the hash table and
+generally we expect that caching more entries has diminishing returns,
+limit number of entries the same way as in the old mbcache to 16 * hash
+table size.
 
-This variable, introduced in commit 9c191f70, is unnecessary: it is set
-once the module has been initialized correctly, and ext4_fill_super
-cannot run unless the module has been initialized correctly.
+Once we exceed the desired maximum number of entries, we schedule a
+backround work to reclaim entries. If the background work cannot keep up
+and the number of entries exceeds two times the desired maximum, we
+reclaim some entries directly when allocating a new entry.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/super.c | 14 ++++----------
- 1 file changed, 4 insertions(+), 10 deletions(-)
+ fs/mbcache2.c | 50 +++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 45 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ecc37e103435..2f550519e0aa 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -55,7 +55,6 @@
+diff --git a/fs/mbcache2.c b/fs/mbcache2.c
+index 5c3e1a8c38f6..3e3198d6b9d6 100644
+--- a/fs/mbcache2.c
++++ b/fs/mbcache2.c
+@@ -4,6 +4,7 @@
+ #include <linux/list_bl.h>
+ #include <linux/module.h>
+ #include <linux/sched.h>
++#include <linux/workqueue.h>
+ #include <linux/mbcache2.h>
  
- static struct ext4_lazy_init *ext4_li_info;
- static struct mutex ext4_li_mtx;
--static int ext4_mballoc_ready;
- static struct ratelimit_state ext4_mount_msg_ratelimit;
+ /*
+@@ -27,16 +28,29 @@ struct mb2_cache {
+ 	struct hlist_bl_head	*c_hash;
+ 	/* log2 of hash table size */
+ 	int			c_bucket_bits;
++	/* Maximum entries in cache to avoid degrading hash too much */
++	int			c_max_entries;
+ 	/* Protects c_lru_list, c_entry_count */
+ 	spinlock_t		c_lru_list_lock;
+ 	struct list_head	c_lru_list;
+ 	/* Number of entries in cache */
+ 	unsigned long		c_entry_count;
+ 	struct shrinker		c_shrink;
++	/* Work for shrinking when the cache has too many entries */
++	struct work_struct	c_shrink_work;
+ };
  
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
-@@ -3795,12 +3794,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+ static struct kmem_cache *mb2_entry_cache;
  
- no_journal:
--	if (ext4_mballoc_ready) {
--		sbi->s_mb_cache = ext4_xattr_create_cache();
--		if (!sbi->s_mb_cache) {
--			ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
--			goto failed_mount_wq;
--		}
-+	sbi->s_mb_cache = ext4_xattr_create_cache();
-+	if (!sbi->s_mb_cache) {
-+		ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
-+		goto failed_mount_wq;
- 	}
++static unsigned long mb2_cache_shrink(struct mb2_cache *cache,
++				      unsigned int nr_to_scan);
++
++/*
++ * Number of entries to reclaim synchronously when there are too many entries
++ * in cache
++ */
++#define SYNC_SHRINK_BATCH 64
++
+ /*
+  * mb2_cache_entry_create - create entry in cache
+  * @cache - cache where the entry should be created
+@@ -55,6 +69,13 @@ int mb2_cache_entry_create(struct mb2_cache *cache, gfp_t mask, u32 key,
+ 	struct hlist_bl_node *dup_node;
+ 	struct hlist_bl_head *head;
  
- 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
-@@ -5361,8 +5358,6 @@ static int __init ext4_init_fs(void)
- 	err = ext4_init_mballoc();
- 	if (err)
- 		goto out2;
--	else
--		ext4_mballoc_ready = 1;
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
-@@ -5378,7 +5373,6 @@ out:
- 	unregister_as_ext3();
- 	destroy_inodecache();
- out1:
--	ext4_mballoc_ready = 0;
- 	ext4_exit_mballoc();
- out2:
- 	ext4_exit_sysfs();
++	/* Schedule background reclaim if there are too many entries */
++	if (cache->c_entry_count >= cache->c_max_entries)
++		schedule_work(&cache->c_shrink_work);
++	/* Do some sync reclaim if background reclaim cannot keep up */
++	if (cache->c_entry_count >= 2*cache->c_max_entries)
++		mb2_cache_shrink(cache, SYNC_SHRINK_BATCH);
++
+ 	entry = kmem_cache_alloc(mb2_entry_cache, mask);
+ 	if (!entry)
+ 		return -ENOMEM;
+@@ -223,12 +244,9 @@ static unsigned long mb2_cache_count(struct shrinker *shrink,
+ }
+ 
+ /* Shrink number of entries in cache */
+-static unsigned long mb2_cache_scan(struct shrinker *shrink,
+-				    struct shrink_control *sc)
++static unsigned long mb2_cache_shrink(struct mb2_cache *cache,
++				      unsigned int nr_to_scan)
+ {
+-	int nr_to_scan = sc->nr_to_scan;
+-	struct mb2_cache *cache = container_of(shrink, struct mb2_cache,
+-					      c_shrink);
+ 	struct mb2_cache_entry *entry;
+ 	struct hlist_bl_head *head;
+ 	unsigned int shrunk = 0;
+@@ -261,6 +279,25 @@ static unsigned long mb2_cache_scan(struct shrinker *shrink,
+ 	return shrunk;
+ }
+ 
++static unsigned long mb2_cache_scan(struct shrinker *shrink,
++				    struct shrink_control *sc)
++{
++	int nr_to_scan = sc->nr_to_scan;
++	struct mb2_cache *cache = container_of(shrink, struct mb2_cache,
++					      c_shrink);
++	return mb2_cache_shrink(cache, nr_to_scan);
++}
++
++/* We shrink 1/X of the cache when we have too many entries in it */
++#define SHRINK_DIVISOR 16
++
++static void mb2_cache_shrink_worker(struct work_struct *work)
++{
++	struct mb2_cache *cache = container_of(work, struct mb2_cache,
++					       c_shrink_work);
++	mb2_cache_shrink(cache, cache->c_max_entries / SHRINK_DIVISOR);
++}
++
+ /*
+  * mb2_cache_create - create cache
+  * @bucket_bits: log2 of the hash table size
+@@ -280,6 +317,7 @@ struct mb2_cache *mb2_cache_create(int bucket_bits)
+ 	if (!cache)
+ 		goto err_out;
+ 	cache->c_bucket_bits = bucket_bits;
++	cache->c_max_entries = bucket_count << 4;
+ 	INIT_LIST_HEAD(&cache->c_lru_list);
+ 	spin_lock_init(&cache->c_lru_list_lock);
+ 	cache->c_hash = kmalloc(bucket_count * sizeof(struct hlist_bl_head),
+@@ -296,6 +334,8 @@ struct mb2_cache *mb2_cache_create(int bucket_bits)
+ 	cache->c_shrink.seeks = DEFAULT_SEEKS;
+ 	register_shrinker(&cache->c_shrink);
+ 
++	INIT_WORK(&cache->c_shrink_work, mb2_cache_shrink_worker);
++
+ 	return cache;
+ 
+ err_out:
 -- 
 2.6.2
 
