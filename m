@@ -1,38 +1,94 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/11 v3] ext[24]: MBCache rewrite
-Date: Mon, 22 Feb 2016 19:45:39 +0100
-Message-ID: <20160222184539.GB16468@quack.suse.cz>
-References: <1456127301-7702-1-git-send-email-jack@suse.cz>
- <20160222163116.GB1215@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Gruenbacher <agruenba@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54537 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285AbcBVSpS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Feb 2016 13:45:18 -0500
-Content-Disposition: inline
-In-Reply-To: <20160222163116.GB1215@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v4 0/5] DAX fixes, move flushing calls to FS
+Date: Mon, 22 Feb 2016 11:59:17 -0700
+Message-ID: <1456167562-28576-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.com>,
+	Jens Axboe <axboe@kernel.dk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	xfs@oss.sgi.com
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 22-02-16 11:31:16, Ted Tso wrote:
-> On Mon, Feb 22, 2016 at 08:48:10AM +0100, Jan Kara wrote:
-> > Hello,
-> > 
-> > since Ted didn't merge the mbcache rewrite patches yet, here is a new version
-> > of mbcache rewrite series with some improvements from Andreas Grunbacher. Ted,
-> > can you please pick up this series for the next merge window? Thanks!
-> 
-> I had actually already pulled mbcache2 into ext4.git, but I'll replace
-> it with your new patch series.
+Changes since v3:
+- Added Reviewed-by tags from Jan Kara.
+- Dropped patch 6, "block: use dax_do_io() if blkdev_dax_capable()"
 
-Thanks!
+I believe that this series is ready for inclusion in v4.5.  I think it
+should be merged for v4.5 because it fixes serious issues with the DAX code
+including possible data corruption and kernel OOPSes.
 
-								Honza
+akpm, for the v4.5 merge do you want these patches to go through the -mm
+tree, or would it be better if I just sent them to Linus directly?
+
+A working tree can be found here:
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=fsync_bdev_v4
+
+---
+Previous summary with issue impacts added:
+
+This patch series fixes several issues with the current DAX code:
+
+1) DAX is used by default on raw block devices that are capable of
+supporting it.  This creates an issue because there are still uses of the
+block device that use the page cache, and having one block device user
+doing DAX I/O and another doing page cache I/O can lead to data corruption.
+
+2) When S_DAX is set on an inode we assume that if there are pages attached
+to the mapping (mapping->nrpages != 0), those pages are clean zero pages
+that were used to service reads from holes.  This wasn't true in all cases.
+
+3) ext4 online defrag combined with DAX I/O could lead to data corruption.
+
+4) The DAX block/sector zeroing code needs a valid struct block_device,
+which it wasn't always getting.  This could lead to a kernel OOPS.
+
+5) The DAX writeback code needs a valid struct block_device, which it
+wasn't always getting.  This could lead to a kernel OOPS.
+
+6) The DAX writeback code needs to be called for sync(2) and syncfs(2).
+This could lead to data loss.
+
+Dan Williams (1):
+  block: disable block device DAX by default
+
+Ross Zwisler (4):
+  ext2, ext4: only set S_DAX for regular inodes
+  ext4: Online defrag not supported with DAX
+  dax: give DAX clearing code correct bdev
+  dax: move writeback calls into the filesystems
+
+ block/Kconfig          | 13 +++++++++++++
+ fs/block_dev.c         | 19 +++++++++++++++++--
+ fs/dax.c               | 21 +++++++++++----------
+ fs/ext2/inode.c        | 16 +++++++++++++---
+ fs/ext4/inode.c        |  6 +++++-
+ fs/ext4/ioctl.c        |  5 +++++
+ fs/xfs/xfs_aops.c      |  6 +++++-
+ fs/xfs/xfs_aops.h      |  1 +
+ fs/xfs/xfs_bmap_util.c |  3 ++-
+ include/linux/dax.h    |  8 +++++---
+ mm/filemap.c           | 12 ++++--------
+ 11 files changed, 81 insertions(+), 29 deletions(-)
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.5.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
