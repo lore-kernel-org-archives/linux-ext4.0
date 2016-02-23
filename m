@@ -1,48 +1,124 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: richacl(7) man page review comments
-Date: Tue, 23 Feb 2016 12:14:35 +0100
-Message-ID: <CAHc6FU4dSsqVBJsN3jCAPrEtX5beiJ9Km_g=r53kJ+8iQPOSUA@mail.gmail.com>
-References: <56B770B6.7040803@gmail.com>
-	<56B77262.7090107@gmail.com>
-	<CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
-	<56C0F23C.7030902@gmail.com>
-	<CAHc6FU4CCrcrA6=oCiq2A5rGd9CCGELaTZq6tGpmd2jcV_Zp4A@mail.gmail.com>
-	<56CA2EEB.9080504@gmail.com>
-	<CAHc6FU46vO8NM3cvFH7b8X7U9R+m6wcYj8EQKVnSQkiY3Q051A@mail.gmail.com>
-	<56CC3B4A.7070204@gmail.com>
+From: Nicolai Stange <nicstange@gmail.com>
+Subject: Re: [PATCH v2] kset- and class-registration cleanups
+Date: Tue, 23 Feb 2016 15:58:49 +0100
+Message-ID: <87wppvlbh2.fsf@gmail.com>
+References: <871tbpebjw.fsf@gmail.com> <20151117041213.GA10860@kroah.com>
+	<87k2pfcl73.fsf_-_@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>,
-	lkml <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	Andreas Dilger <adilger@dilger.ca>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <56CC3B4A.7070204@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Nicolai Stange <nicstange@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Mark Fasheh <mfasheh@suse.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Joe Perches <joe@perches.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <87k2pfcl73.fsf_-_@gmail.com> (Nicolai Stange's message of "Wed,
+	18 Nov 2015 17:43:28 +0100")
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 23, 2016 at 11:58 AM, Michael Kerrisk (man-pages)
-<mtk.manpages@gmail.com> wrote:
-> So, in terms of actually testing this stuff, is it just a matter of
-> applying your patch series to the kernel, building the kernel, pulling
-> the RichACL user-space tools from Git, and mount(8)ing a filesystem with
-> the right option?
+Nicolai Stange <nicstange@gmail.com> writes:
 
-You'd create a test filesystem with the appropriate feature flag set
-(mkfs.ext4 -O richacl2 / mkfs.xfs -m richacl=1), RichACLs are not
-enabled by mount options anymore. This will obviously require versions
-of e2fsprogs / xfsprogs that understand the feature. If you want
-coreutils support which isn't strictly necessary, you'll need the
-patched version too. Other than that, it's really simple.
+> In order to have something to base further discussion on, here comes the
+> second version.
+>
 
-Andreas
+Hi Greg,
+
+I'd like to ask whether this is still in your review queue or did it
+slip through?
+
+Should I resend?
+
+Thank you,
+
+Nicolai
+
+> In addition to some changes to the inital patch (now [1/3]), two
+> additional ones have been introduced.
+>
+> The three patches depend on one another in sequence.
+>
+> For a detailed changelist, see the end of this mail.
+>
+> Greg Kroah-Hartman <gregkh@linuxfoundation.org> writes:
+>> On Tue, Nov 17, 2015 at 01:04:19AM +0100, Nicolai Stange wrote:
+>> Yes, but those calls all succeed, so this isn't a problem in the "real"
+>> world :)
+>
+> I added a word about non-impact in the commit message of [1/3].
+>
+>>> +static void glue_dirs_release_dummy(struct kobject *kobj)
+>>> +{
+>>> +	/*
+>>> +	 * The glue_dirs kset member of struct subsys_private is never
+>>> +	 * registered and thus, never unregistered.
+>>> +	 * This release function is a dummy to make kset_init() happy.
+>>> +	 */
+>>> +	pr_err(
+>>> +	"class (%p): unexpected kset_put() on glue_dirs, something is broken.",
+>>> +		container_of(kobj, struct subsys_private,
+>>> +				glue_dirs.kobj)->class);
+>>> +	dump_stack();
+>>
+>> How can this ever happen?
+>
+> Not at all. I'm not sure I understand you correctly here.
+> Do you strictly want to abandon the dummy releaser, or more specifically,
+> the dummy kobj_type?
+> For the moment, I turned the pr_err()/dump_stack() into a WARN() for the
+> sake of better style.
+>
+>>>  	if (error) {
+>>> -		kfree(cp);
+>>> +		/*
+>>> +		 * class->release() would be called by cp->subsys'
+>>> +		 * release function. Prevent this from happening in
+>>> +		 * the error case by zeroing cp->class out.
+>>> +		 */
+>>> +		cp->class = NULL;
+>>> +		cls->p = NULL;
+>>> +		kset_put(&cp->subsys);
+>>
+>> That seems pretty messy, why can't we allow the release to be called?  I
+>> don't think this is really correct :(
+>
+> At the moment, it is necessary. I've added [3/3] for the case that you
+> want cls->class_release() to get called from __class_register() on error.
+> In [3/3] you will also find the (few) callers expecting the behaviour as
+> it currently is.
+>
+>
+> Detailed changes from initial version to v2:
+> [1/3] lib/kobject: fix memory leak in error path of kset_create_and_add()
+> This one is the original patch with a few changes:
+> - added a word of non-impact to commit message
+> - use WARN() instead of open coded pr_error()/dump_stack() pair in
+>   struct class' glue_dirs' dummy class releaser.
+> - follow my own advice in the docstring of kset_register() and
+>   use kset_put() instead of kset_unregister() on error of
+>   kset_register() in ext4's ext4_init_sysfs() and ocfs2's mlog_sys_init().
+>
+> [2/3] drivers/base/class: __class_register(): make error behaviour consistent
+> This one is new and quite unrelated to the original patch.
+> Following the sidenote made in my last mail, it makes __class_register()
+> properly clean up after itself on error.
+>
+> [3/3] drivers/base/class: __class_register(): invoke class' releaser on failure
+> This one is new.
+> It addresses Greg K-H's comment on the initial version about the messiness
+> of avoiding to call class->class_release() from __class_register() on
+> error. Given the fact that I had to introduce an explicit
+> cls->class_release() in the early part when there is no kset object
+> available yet, I'm by no means sure that it is much less messy now and
+> that this patch is worth the trouble.
+> -> It is up to you to judge.
+> As there are enough people bothered already, I did not CC the people
+> suggested for this one by get_maintainer.pl: all of them are maintainers
+> of external subsystems and probably not particularly interested in
+> __class_register() and friends. I will do this as soon as
+> a decision for this patch has been made, perhaps in a separate thread.
