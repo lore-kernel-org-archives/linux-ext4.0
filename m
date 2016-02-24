@@ -1,59 +1,34 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH] ext2, ext4: Fix issue with missing journal entry
-Date: Wed, 24 Feb 2016 13:44:46 -0700
-Message-ID: <20160224204446.GB13473@linux.intel.com>
-References: <1453921308-5544-1-git-send-email-ross.zwisler@linux.intel.com>
- <20160128131630.GI7726@quack.suse.cz>
- <20160128163211.GA19770@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 112631] Cannot open encrypted Luks filesystem. Cruptsetup
+ error.
+Date: Wed, 24 Feb 2016 21:01:42 +0000
+Message-ID: <bug-112631-13602-ZDiLacGj5i@https.bugzilla.kernel.org/>
+References: <bug-112631-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Jan Kara <jack@suse.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160128163211.GA19770@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:50827 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753149AbcBXVBp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Feb 2016 16:01:45 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 576CD2038A
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2016 21:01:44 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 10DDA202F0
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2016 21:01:43 +0000 (UTC)
+In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 28, 2016 at 09:32:11AM -0700, Ross Zwisler wrote:
-> On Thu, Jan 28, 2016 at 02:16:30PM +0100, Jan Kara wrote:
-> > On Wed 27-01-16 12:01:48, Ross Zwisler wrote:
-> > > As it is currently written ext4_dax_mkwrite() assumes that the call into
-> > > __dax_mkwrite() will not have to do a block allocation so it doesn't create
-> > > a journal entry.  For a read that creates a zero page to cover a hole
-> > > followed by a write that actually allocates storage this is incorrect.  The
-> > > ext4_dax_mkwrite() -> __dax_mkwrite() -> __dax_fault() path calls
-> > > get_blocks() to allocate storage.
-> > > 
-> > > Fix this by having the ->page_mkwrite fault handler call ext4_dax_fault()
-> > > as this function already has all the logic needed to allocate a journal
-> > > entry and call __dax_fault().
-> > > 
-> > > Also update the ext2 fault handlers in this same way to remove duplicate
-> > > code and keep the logic between ext2 and ext4 the same.
-> > > 
-> > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > 
-> > Ah, ok, you are right. The patch looks good but Matthew is reworking the
-> > area more (so ext4_da_mkwrite() is likely to return) so it this worth it?
-> > Or do you expect Matthew's patches to land much later?
-> 
-> Yep, Matthew is in the process of reworking all of the DAX fault handling.
-> 
-> I was thinking that we might want to take this patch for v4.5, since it fixes
-> a bug that I'm guessing could lead to some sort of corruption (lack of a
-> journal entry entry for an allocating write), and then Matthew's reworks would
-> land in v4.6?
+https://bugzilla.kernel.org/show_bug.cgi?id=112631
 
-Hey Jan,
+--- Comment #20 from Karl Sponser <karl.sponser@web.de> ---
+Fedora won't patch to cryptsetup, because it's a kernel bug:
+https://bugzilla.redhat.com/show_bug.cgi?id=1311286#c2
 
-Looks like this patch didn't ever get merged for v4.5?  Is it still queued for
-v4.6?
-
-Thanks,
-- Ross
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
