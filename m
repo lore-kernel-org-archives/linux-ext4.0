@@ -1,42 +1,86 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 112631] Cannot open encrypted Luks filesystem. Cruptsetup
- error.
-Date: Tue, 23 Feb 2016 20:52:11 +0000
-Message-ID: <bug-112631-13602-CG061UOxzn@https.bugzilla.kernel.org/>
-References: <bug-112631-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45336 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755051AbcBWUwQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Feb 2016 15:52:16 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 382AC20364
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Feb 2016 20:52:14 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id BE279202FF
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Feb 2016 20:52:12 +0000 (UTC)
-In-Reply-To: <bug-112631-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Adam Buchbinder <adam.buchbinder@gmail.com>
+Subject: [PATCH] ext4: Fix misspellings in comments.
+Date: Tue, 23 Feb 2016 17:47:47 -0800
+Message-ID: <1456278467-5889-1-git-send-email-adam.buchbinder@gmail.com>
+Cc: trivial@kernel.org, Adam Buchbinder <adam.buchbinder@gmail.com>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=112631
+Signed-off-by: Adam Buchbinder <adam.buchbinder@gmail.com>
+---
+ fs/ext4/ext4_extents.h | 2 +-
+ fs/ext4/extents.c      | 2 +-
+ fs/ext4/ialloc.c       | 2 +-
+ fs/ext4/mballoc.c      | 2 +-
+ fs/ext4/migrate.c      | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
 
-Milan Broz <gmazyland@gmail.com> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |gmazyland@gmail.com
-
---- Comment #19 from Milan Broz <gmazyland@gmail.com> ---
-It is kernel bug and it should be fixed in kernel.
-Or there is a new rule to break API and userspace in stable kernels?
-
-See http://www.mail-archive.com/linux-crypto@vger.kernel.org/msg17926.html
-
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 3c93815..8ecf84b 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -11,7 +11,7 @@
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+- * You should have received a copy of the GNU General Public Licens
++ * You should have received a copy of the GNU General Public License
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3753ceb..2d4d96c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -15,7 +15,7 @@
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+- * You should have received a copy of the GNU General Public Licens
++ * You should have received a copy of the GNU General Public License
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index acc0ad5..237b877 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -787,7 +787,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	sbi = EXT4_SB(sb);
+ 
+ 	/*
+-	 * Initalize owners and quota early so that we don't have to account
++	 * Initialize owners and quota early so that we don't have to account
+ 	 * for quota initialization worst case in standard inode creating
+ 	 * transaction
+ 	 */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4424b7b..41f4786 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -11,7 +11,7 @@
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+- * You should have received a copy of the GNU General Public Licens
++ * You should have received a copy of the GNU General Public License
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index a465189..364ea4d 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -361,7 +361,7 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+ 	 * blocks.
+ 	 *
+ 	 * While converting to extents we need not
+-	 * update the orignal inode i_blocks for extent blocks
++	 * update the original inode i_blocks for extent blocks
+ 	 * via quota APIs. The quota update happened via tmp_inode already.
+ 	 */
+ 	spin_lock(&inode->i_lock);
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.7.0.rc3.207.g0ac5344
