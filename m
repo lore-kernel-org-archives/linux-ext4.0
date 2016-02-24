@@ -1,208 +1,54 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH RFC] ext4: use __GFP_NOFAIL in ext4_free_blocks()
-Date: Wed, 24 Feb 2016 20:09:12 +0300
-Message-ID: <20160224170912.2195.8153.stgit@buzz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: Michal Hocko <mhocko@suse.com>, linux-kernel@vger.kernel.org,
- linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
- Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
- linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
+From: mchristi@redhat.com
+Subject: [PATCH 00/35 v4] separate operations from flags in the bio/request structs
+Date: Wed, 24 Feb 2016 13:47:37 -0600
+Message-ID: <1456343292-14535-1-git-send-email-mchristi@redhat.com>
+To: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+Return-path: <linux-bcache-owner@vger.kernel.org>
+Sender: linux-bcache-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This might be unexpected but pages allocated for sbi->s_buddy_cache are
-charged to current memory cgroup. So, GFP_NOFS allocation could fail if
-current task has been killed by OOM or if current memory cgroup has no
-free memory left. Block allocator cannot handle such failures here yet.
+The following patches begin to cleanup the request->cmd_flags and
+bio->bi_rw mess. We currently use cmd_flags to specify the operation,
+attributes and state of the request. For bi_rw we use it for similar
+info and also the priority but then also have another bi_flags field
+for state. At some point, we abused them so much we just made cmd_flags
+64 bits, so we could add more.
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
----
- fs/ext4/mballoc.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 file changed, 28 insertions(+), 19 deletions(-)
+The following patches seperate the operation (read, write discard,
+flush, etc) from cmd_flags/bi_rw.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4424b7bf8ac6..8b7e573eaf97 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -815,7 +815,7 @@ static void mb_regenerate_buddy(struct ext4_buddy *e4b)
-  * for this page; do not hold this lock when calling this routine!
-  */
- 
--static int ext4_mb_init_cache(struct page *page, char *incore)
-+static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
- {
- 	ext4_group_t ngroups;
- 	int blocksize;
-@@ -848,7 +848,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 	/* allocate buffer_heads to read bitmaps */
- 	if (groups_per_page > 1) {
- 		i = sizeof(struct buffer_head *) * groups_per_page;
--		bh = kzalloc(i, GFP_NOFS);
-+		bh = kzalloc(i, gfp);
- 		if (bh == NULL) {
- 			err = -ENOMEM;
- 			goto out;
-@@ -983,7 +983,7 @@ out:
-  * are on the same page e4b->bd_buddy_page is NULL and return value is 0.
-  */
- static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
--		ext4_group_t group, struct ext4_buddy *e4b)
-+		ext4_group_t group, struct ext4_buddy *e4b, gfp_t gfp)
- {
- 	struct inode *inode = EXT4_SB(sb)->s_buddy_cache;
- 	int block, pnum, poff;
-@@ -1002,7 +1002,7 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
- 	block = group * 2;
- 	pnum = block / blocks_per_page;
- 	poff = block % blocks_per_page;
--	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	page = find_or_create_page(inode->i_mapping, pnum, gfp);
- 	if (!page)
- 		return -ENOMEM;
- 	BUG_ON(page->mapping != inode->i_mapping);
-@@ -1016,7 +1016,7 @@ static int ext4_mb_get_buddy_page_lock(struct super_block *sb,
- 
- 	block++;
- 	pnum = block / blocks_per_page;
--	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	page = find_or_create_page(inode->i_mapping, pnum, gfp);
- 	if (!page)
- 		return -ENOMEM;
- 	BUG_ON(page->mapping != inode->i_mapping);
-@@ -1042,7 +1042,7 @@ static void ext4_mb_put_buddy_page_lock(struct ext4_buddy *e4b)
-  * calling this routine!
-  */
- static noinline_for_stack
--int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
-+int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- {
- 
- 	struct ext4_group_info *this_grp;
-@@ -1062,7 +1062,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- 	 * The call to ext4_mb_get_buddy_page_lock will mark the
- 	 * page accessed.
- 	 */
--	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b);
-+	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b, gfp);
- 	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
- 		/*
- 		 * somebody initialized the group
-@@ -1072,7 +1072,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- 	}
- 
- 	page = e4b.bd_bitmap_page;
--	ret = ext4_mb_init_cache(page, NULL);
-+	ret = ext4_mb_init_cache(page, NULL, gfp);
- 	if (ret)
- 		goto err;
- 	if (!PageUptodate(page)) {
-@@ -1091,7 +1091,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
- 	}
- 	/* init buddy cache */
- 	page = e4b.bd_buddy_page;
--	ret = ext4_mb_init_cache(page, e4b.bd_bitmap);
-+	ret = ext4_mb_init_cache(page, e4b.bd_bitmap, gfp);
- 	if (ret)
- 		goto err;
- 	if (!PageUptodate(page)) {
-@@ -1109,8 +1109,8 @@ err:
-  * calling this routine!
-  */
- static noinline_for_stack int
--ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
--					struct ext4_buddy *e4b)
-+ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
-+		       struct ext4_buddy *e4b, gfp_t gfp)
- {
- 	int blocks_per_page;
- 	int block;
-@@ -1140,7 +1140,7 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 		 * we need full data about the group
- 		 * to make a good selection
- 		 */
--		ret = ext4_mb_init_group(sb, group);
-+		ret = ext4_mb_init_group(sb, group, gfp);
- 		if (ret)
- 			return ret;
- 	}
-@@ -1168,11 +1168,11 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 			 * wait for it to initialize.
- 			 */
- 			page_cache_release(page);
--		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+		page = find_or_create_page(inode->i_mapping, pnum, gfp);
- 		if (page) {
- 			BUG_ON(page->mapping != inode->i_mapping);
- 			if (!PageUptodate(page)) {
--				ret = ext4_mb_init_cache(page, NULL);
-+				ret = ext4_mb_init_cache(page, NULL, gfp);
- 				if (ret) {
- 					unlock_page(page);
- 					goto err;
-@@ -1204,11 +1204,12 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	if (page == NULL || !PageUptodate(page)) {
- 		if (page)
- 			page_cache_release(page);
--		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+		page = find_or_create_page(inode->i_mapping, pnum, gfp);
- 		if (page) {
- 			BUG_ON(page->mapping != inode->i_mapping);
- 			if (!PageUptodate(page)) {
--				ret = ext4_mb_init_cache(page, e4b->bd_bitmap);
-+				ret = ext4_mb_init_cache(page, e4b->bd_bitmap,
-+							 gfp);
- 				if (ret) {
- 					unlock_page(page);
- 					goto err;
-@@ -1247,6 +1248,12 @@ err:
- 	return ret;
- }
- 
-+static int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
-+			      struct ext4_buddy *e4b)
-+{
-+	return ext4_mb_load_buddy_gfp(sb, group, e4b, GFP_NOFS);
-+}
-+
- static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- {
- 	if (e4b->bd_bitmap_page)
-@@ -2045,7 +2052,7 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 
- 	/* We only do this if the grp has never been initialized */
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
--		int ret = ext4_mb_init_group(ac->ac_sb, group);
-+		int ret = ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
- 		if (ret)
- 			return ret;
- 	}
-@@ -4815,7 +4822,9 @@ do_more:
- #endif
- 	trace_ext4_mballoc_free(sb, inode, block_group, bit, count_clusters);
- 
--	err = ext4_mb_load_buddy(sb, block_group, &e4b);
-+	/* __GFP_NOFAIL: retry infinitely, ignore TIF_MEMDIE and memcg limit. */
-+	err = ext4_mb_load_buddy_gfp(sb, block_group, &e4b,
-+				     GFP_NOFS|__GFP_NOFAIL);
- 	if (err)
- 		goto error_return;
- 
-@@ -5217,7 +5226,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
- 		grp = ext4_get_group_info(sb, group);
- 		/* We only do this if the grp has never been initialized */
- 		if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
--			ret = ext4_mb_init_group(sb, group);
-+			ret = ext4_mb_init_group(sb, group, GFP_NOFS);
- 			if (ret)
- 				break;
- 		}
+This patchset was made against linux-next from today Feb 24 2016
+(git tag next-20160224).
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I put a git tree here:
+https://github.com/mikechristie/linux-kernel.git
+
+v4:
+1. Rebased to current linux-next tree.
+
+v3:
+
+1. Used "=" instead of "|="  to setup bio bi_rw.
+2. Removed __get_request cmd_flags compat code.
+3. Merged initial dm related changes requested by Mike Snitzer.
+4. Fixed ubd kbuild errors in flush related patches.
+5. Fix 80 char col issues in several patches.
+6. Fix issue with one of the btrfs patches where it looks like I reverted
+a patch when trying to fix a merge error.
+
+v2
+
+1. Dropped arguments from submit_bio, and had callers setup
+bio.
+2. Add REQ_OP_FLUSH for request_fn users and renamed REQ_FLUSH
+to REQ_PREFLUSH for make_request_fn users.
+3. Dropped bio/rq_data_dir functions, and added a op_is_write
+function instead.
