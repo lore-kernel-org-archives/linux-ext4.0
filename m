@@ -1,158 +1,227 @@
-From: kbuild test robot <lkp@intel.com>
-Subject: Re: [PATCH] fix waring calltrace when usb was ejected.
-Date: Wed, 24 Feb 2016 13:51:29 +0800
-Message-ID: <201602241345.0ejtdtH2%fengguang.wu@intel.com>
-References: <1456287921-8961-1-git-send-email-zhangaihua1@huawei.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 113041] New: mbcache NULL pointer dereference
+Date: Wed, 24 Feb 2016 10:05:11 +0000
+Message-ID: <bug-113041-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="ew6BAiZeqk4r7MaW"
-Cc: kbuild-all@01.org, tytso@mit.edu, linux-ext4@vger.kernel.org,
-	zhangaihua <zhangaihua1@huawei.com>
-To: zhangaihua1@huawei.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:50752 "EHLO mga01.intel.com"
+Received: from mail.kernel.org ([198.145.29.136]:38956 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751930AbcBXFwz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Feb 2016 00:52:55 -0500
-Content-Disposition: inline
-In-Reply-To: <1456287921-8961-1-git-send-email-zhangaihua1@huawei.com>
+	id S1753758AbcBXKFR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Feb 2016 05:05:17 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id EB89E20256
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2016 10:05:14 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 91C41202C8
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Feb 2016 10:05:12 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=113041
 
---ew6BAiZeqk4r7MaW
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+            Bug ID: 113041
+           Summary: mbcache NULL pointer dereference
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.2.2
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: johnny+bugzilla@appdata.biz
+        Regression: No
 
-Hi zhangaihua,
+Experienced a sudden restart without any noticeable load except high memory
+usage.
+Logged crash message below:
 
-[auto build test ERROR on ext4/dev]
-[also build test ERROR on v4.5-rc5 next-20160223]
-[if your patch is applied to the wrong git tree, please drop us a note to help improving the system]
+[1500169.920760] BUG: unable to handle kernel NULL pointer dereference at      
+    (null)
+[1500169.921056] IP: [<ffffffffa00f4fb9>] mb_cache_shrink+0x2c9/0x3a0 [mbcache]
+[1500169.921056] PGD 78938f067 PUD 30aa81067 PMD 0 
+[1500169.921056] Oops: 0000 [#1] SMP 
+[1500169.921056] Modules linked in: xt_conntrack ipt_MASQUERADE
+nf_nat_masquerade_ipv4 vxlan ip6_udp_tunnel udp_tunnel iptable_nat
+nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 xt_addrtype iptable_filter
+br_netfilter nf_nat nf_conntrack bridge stp llc xfs libcrc32c nls_ascii
+nls_cp437 vfat fat xenfs xen_privcmd ext4 crc16 mbcache jbd2 crc32c_intel hmac
+ata_piix drbg libata aesni_intel aes_x86_64 glue_helper lrw mousedev gf128mul
+ablk_helper cryptd i2c_piix4 xen_blkfront microcode scsi_mod firmware_class
+ixgbevf i2c_core psmouse evdev acpi_cpufreq button sch_fq_codel ip_tables
+autofs4
+[1500169.921056] CPU: 0 PID: 23022 Comm: java Not tainted 4.2.2-coreos-r2 #2
+[1500169.921056] Hardware name: Xen HVM domU, BIOS 4.2.amazon 12/07/2015
+[1500169.921056] task: ffff8800eba50000 ti: ffff8800270fc000 task.ti:
+ffff8800270fc000
+[1500169.921056] RIP: 0010:[<ffffffffa00f4fb9>]  [<ffffffffa00f4fb9>]
+mb_cache_shrink+0x2c9/0x3a0 [mbcache]
+[1500169.921056] RSP: 0018:ffff8800270ff358  EFLAGS: 00010213
+[1500169.921056] RAX: 0000000000000000 RBX: 0000000000000000 RCX:
+0000000180270025
+[1500169.921056] RDX: 0000000180270026 RSI: ffffea001ce5fcc0 RDI:
+0000000000000000
+[1500169.921056] RBP: ffff8800270ff388 R08: 00000000397f3e01 R09:
+0000000180270025
+[1500169.921056] R10: ffff8807b0e18f80 R11: ffff8807397f3e38 R12:
+ffff8800270ff358
+[1500169.921056] R13: 0000000000000036 R14: 0000000000000080 R15:
+ffffffffa00f7000
+[1500169.921056] FS:  00007f43d702d700(0000) GS:ffff8807b0e00000(0000)
+knlGS:0000000000000000
+[1500169.921056] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[1500169.921056] CR2: 0000000000000000 CR3: 00000002f1e43000 CR4:
+00000000001406f0
+[1500169.921056] Stack:
+[1500169.921056]  ffff880584aebf70 ffff8803d200b208 0000000000000000
+0000000000000098
+[1500169.921056]  0000000000000080 000000000000004c ffff8800270ff468
+ffffffff8115ef3d
+[1500169.921056]  ffff880000000003 ffffffff8109cd00 ffff880000000001
+ffff880788906340
+[1500169.921056] Call Trace:
+[1500169.921056]  [<ffffffff8115ef3d>] shrink_slab+0x1ed/0x370
+[1500169.921056]  [<ffffffff8109cd00>] ? enqueue_entity+0x3e0/0xdc0
+[1500169.921056]  [<ffffffff81163283>] shrink_zone+0x283/0x290
+[1500169.921056]  [<ffffffff811633ec>] do_try_to_free_pages+0x15c/0x430
+[1500169.921056]  [<ffffffff8116377a>] try_to_free_pages+0xba/0x130
+[1500169.921056]  [<ffffffff8115658a>] __alloc_pages_nodemask+0x56a/0x970
+[1500169.921056]  [<ffffffff81199221>] alloc_pages_current+0x91/0x100
+[1500169.921056]  [<ffffffff811a3d9c>] new_slab+0x34c/0x440
+[1500169.921056]  [<ffffffff810afc01>] ?
+__raw_callee_save___pv_queued_spin_unlock+0x11/0x20
+[1500169.921056]  [<ffffffff811a4239>] __slab_alloc+0x3a9/0x490
+[1500169.921056]  [<ffffffffa01e5a6f>] ? ext4_orphan_del+0x47ff/0xda20 [ext4]
+[1500169.921056]  [<ffffffff8126818c>] ? hashtab_search+0x5c/0x80
+[1500169.921056]  [<ffffffff81274787>] ? mls_level_isvalid+0x57/0x60
+[1500169.921056]  [<ffffffffa01e5a6f>] ? ext4_orphan_del+0x47ff/0xda20 [ext4]
+[1500169.921056]  [<ffffffff811a44b1>] kmem_cache_alloc+0x191/0x1f0
+[1500169.921056]  [<ffffffffa01e5a6f>] ext4_orphan_del+0x47ff/0xda20 [ext4]
+[1500169.921056]  [<ffffffff811d7a9d>] alloc_inode+0x1d/0x90
+[1500169.921056]  [<ffffffff811d98a1>] new_inode_pseudo+0x11/0x60
+[1500169.921056]  [<ffffffff811d990b>] new_inode+0x1b/0x40
+[1500169.921056]  [<ffffffffa01cec7f>] __ext4_new_inode+0x7f/0x1190 [ext4]
+[1500169.921056]  [<ffffffffa01df63c>] ext4_insert_dentry+0x188c/0x1900 [ext4]
+[1500169.921056]  [<ffffffff811c9e2a>] vfs_create+0xca/0x130
+[1500169.921056]  [<ffffffff8123c748>] ovl_create_real+0xb8/0x230
+[1500169.921056]  [<ffffffff8123d9ab>] ovl_create_or_link+0x10b/0x500
+[1500169.921056]  [<ffffffff8123dddd>] ovl_create_object+0x3d/0x60
+[1500169.921056]  [<ffffffff8125d533>] ? selinux_inode_create+0x13/0x20
+[1500169.921056]  [<ffffffff8123deb1>] ovl_create+0x21/0x30
+[1500169.921056]  [<ffffffff811c9e2a>] vfs_create+0xca/0x130
+[1500169.921056]  [<ffffffff811cc3f1>] path_openat+0xab1/0x13e0
+[1500169.921056]  [<ffffffff811cce9b>] ? putname+0x5b/0x60
+[1500169.921056]  [<ffffffff81090f6f>] ? wake_up_q+0x2f/0x70
+[1500169.921056]  [<ffffffff811a4499>] ? kmem_cache_alloc+0x179/0x1f0
+[1500169.921056]  [<ffffffff811cdddb>] do_filp_open+0x7b/0xe0
+[1500169.921056]  [<ffffffff811daeb9>] ? __alloc_fd+0x89/0x110
+[1500169.921056]  [<ffffffff811bd27c>] do_sys_open+0x12c/0x210
+[1500169.921056]  [<ffffffff81021b4f>] ? syscall_trace_enter_phase1+0xff/0x150
+[1500169.921056]  [<ffffffff811bd37e>] SyS_open+0x1e/0x20
+[1500169.921056]  [<ffffffff8152bbae>] entry_SYSCALL_64_fastpath+0x12/0x71
+[1500169.921056] Code: 4c 89 ef ff 14 25 c8 b8 a2 81 48 8b 7d d0 45 31 ed 4c 39
+e7 48 8b 1f 74 17 e8 04 f1 ff ff 48 89 d8 49 83 c5 01 48 89 df 4c 39 e0 <48> 8b
+1b 75 e9 48 83 c4 18 4c 89 e8 5b 41 5c 41 5d 5d c3 f3 90 
+[1500169.921056] RIP  [<ffffffffa00f4fb9>] mb_cache_shrink+0x2c9/0x3a0
+[mbcache]
+[1500169.921056]  RSP <ffff8800270ff358>
+[1500169.921056] CR2: 0000000000000000
+[1500170.273210] ---[ end trace 76bceb77fead570b ]---
+[1500170.278279] Kernel panic - not syncing: Fatal exception
+[1500170.282063] Kernel Offset: disabled
 
-url:    https://github.com/0day-ci/linux/commits/zhangaihua1-huawei-com/fix-waring-calltrace-when-usb-was-ejected/20160224-122520
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-config: arm-allnoconfig (attached as .config)
-reproduce:
-        wget https://git.kernel.org/cgit/linux/kernel/git/wfg/lkp-tests.git/plain/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        # save the attached .config to linux build tree
-        make.cross ARCH=arm 
 
-All errors (new ones prefixed by >>):
+Additional information collected after reboot:
 
-   fs/built-in.o: In function `__mark_inode_dirty':
->> :(.text+0x14ac2): undefined reference to `block_device_ejected'
+cat /proc/version
+Linux version 4.2.2-coreos-r2 (buildbot@ip-10-204-3-57) (gcc version 4.9.3
+(Gentoo Hardened 4.9.3 p1.2, pie-0.6.3) ) #2 SMP Tue Feb 2 13:27:19 UTC 2016
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+cat /proc/meminfo
+MemTotal:       31419640 kB
+MemFree:         1313584 kB
+MemAvailable:   13120824 kB
+Buffers:         1164008 kB
+Cached:          9589260 kB
+SwapCached:            0 kB
+Active:         11727272 kB
+Inactive:        7908784 kB
+Active(anon):    8903468 kB
+Inactive(anon):      344 kB
+Active(file):    2823804 kB
+Inactive(file):  7908440 kB
+Unevictable:     8990544 kB
+Mlocked:         8990544 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+Dirty:                96 kB
+Writeback:             0 kB
+AnonPages:      17873320 kB
+Mapped:           373056 kB
+Shmem:               696 kB
+Slab:            1337196 kB
+SReclaimable:    1158852 kB
+SUnreclaim:       178344 kB
+KernelStack:        8816 kB
+PageTables:        41244 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:    15709820 kB
+Committed_AS:   24212340 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:       61388 kB
+VmallocChunk:   34359668736 kB
+HardwareCorrupted:     0 kB
+AnonHugePages:  17457152 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+DirectMap4k:      180224 kB
+DirectMap2M:    31950848 kB
 
---ew6BAiZeqk4r7MaW
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
+processor    : 0
+vendor_id    : GenuineIntel
+cpu family    : 6
+model        : 62
+model name    : Intel(R) Xeon(R) CPU E5-2670 v2 @ 2.50GHz
+stepping    : 4
+microcode    : 0x428
+cpu MHz        : 2494.012
+cache size    : 25600 KB
+physical id    : 0
+siblings    : 4
+core id        : 0
+cpu cores    : 2
+apicid        : 0
+initial apicid    : 0
+fpu        : yes
+fpu_exception    : yes
+cpuid level    : 13
+wp        : yes
+flags        : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov
+pat pse36 clflush mmx fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc
+rep_good nopl xtopology eagerfpu pni pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2
+x2apic popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm
+fsgsbase smep erms xsaveopt
+bugs        :
+bogomips    : 4988.02
+clflush size    : 64
+cache_alignment    : 64
+address sizes    : 46 bits physical, 48 bits virtual
+power management:
+....
 
-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
-mJlJAAA=
+Java application that triggered the crash: Cassandra 2.1.12
 
---ew6BAiZeqk4r7MaW--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
