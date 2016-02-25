@@ -1,62 +1,124 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH RFC] ext4: use __GFP_NOFAIL in ext4_free_blocks()
-Date: Thu, 25 Feb 2016 11:27:44 +0100
-Message-ID: <20160225102743.GF17573@dhcp22.suse.cz>
-References: <20160224170912.2195.8153.stgit@buzz>
- <56CEC2EC.5000506@kyup.com>
- <20160225090839.GC17573@dhcp22.suse.cz>
- <56CEC568.6080809@kyup.com>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: [PATCH] ext4/jbd2: Fix jbd2_journal_destory() for umount path
+Date: Thu, 25 Feb 2016 20:28:27 +0900
+Message-ID: <87fuwh58ro.fsf@mail.parknet.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
-	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Nikolay Borisov <kernel@kyup.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <56CEC568.6080809@kyup.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 25-02-16 11:12:08, Nikolay Borisov wrote:
-> 
-> 
-> On 02/25/2016 11:08 AM, Michal Hocko wrote:
-> > On Thu 25-02-16 11:01:32, Nikolay Borisov wrote:
-> >>
-> >>
-> >> On 02/24/2016 07:09 PM, Konstantin Khlebnikov wrote:
-> >>> This might be unexpected but pages allocated for sbi->s_buddy_cache are
-> >>> charged to current memory cgroup. So, GFP_NOFS allocation could fail if
-> >>> current task has been killed by OOM or if current memory cgroup has no
-> >>> free memory left. Block allocator cannot handle such failures here yet.
-> >>>
-> >>> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-> >>
-> >> Adding new users of GFP_NOFAIL is deprecated.
-> > 
-> > This is not true. GFP_NOFAIL should be used where the allocation failure
-> > is no tolleratable and it is much more preferrable to doing an opencoded
-> > endless loop over page allocator.
-> 
-> In that case the comments in buffered_rmqueue,
+On umount path, jbd2_journal_destroy() writes latest transaction ID
+(->j_tail_sequence) to be used at next mount.
 
-yes, will post the patch. The warning for order > 1 is still valid.
+The bug is that ->j_tail_sequence is not holding latest transaction ID
+in some cases. So, at next mount, there is chance to conflict with
+remaining (not overwritten yet) transactions.
 
-> and the WARN_ON in
-> __alloc_pages_may_oom and __alloc_pages_slowpath perhaps should be
-> removed since they are misleading?
+	mount (id=10)
+	write transaction (id=11)
+	write transaction (id=12)
+	umount (id=10) <= the bug doesn't write latest ID
 
-We are only warning about absurd cases where __GFP_NOFAIL doesn't make
-any sense.
+	mount (id=10)
+	write transaction (id=11)
+	crash
+
+	recovery
+	transaction (id=11)
+	transaction (id=12) <= valid transaction ID, but old commit
+	                       must not replay
+
+Like above, this bug become the cause of recovery failure, or FS
+corruption.
+
+So why ->j_tail_sequence doesn't point latest ID?
+
+Because if checkpoint transactions was reclaimed by memory pressure
+(i.e. bdev_try_to_free_page()), then ->j_tail_sequence is not updated.
+(And another case is, __jbd2_journal_clean_checkpoint_list() is called
+with empty transaction.)
+
+So in above cases, ->j_tail_sequence is not pointing latest
+transaction ID at umount path. Plus, REQ_FLUSH for checkpoint is not
+done too.
+
+So, to fix this problem with minimum changes, this patch updates
+->j_tail_sequence, and issue REQ_FLUSH.  (With more complex changes,
+some optimizations would be possible to avoid unnecessary REQ_FLUSH
+for example though.)
+
+BTW,
+
+	journal->j_tail_sequence =
+		++journal->j_transaction_sequence;
+
+Increment of ->j_transaction_sequence seems to be unnecessary, but
+ext3 does this.
+
+Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+---
+
+ fs/jbd2/journal.c |   16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff -puN fs/jbd2/journal.c~ext4-umount-fix fs/jbd2/journal.c
+--- linux/fs/jbd2/journal.c~ext4-umount-fix	2016-02-25 03:26:32.710407670 +0900
++++ linux-hirofumi/fs/jbd2/journal.c	2016-02-25 03:26:32.711407673 +0900
+@@ -1412,7 +1412,7 @@ out:
+  * Update a journal's dynamic superblock fields to show that journal is empty.
+  * Write updated superblock to disk waiting for IO to complete.
+  */
+-static void jbd2_mark_journal_empty(journal_t *journal)
++static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 
+@@ -1430,7 +1430,7 @@ static void jbd2_mark_journal_empty(jour
+ 	sb->s_start    = cpu_to_be32(0);
+ 	read_unlock(&journal->j_state_lock);
+ 
+-	jbd2_write_superblock(journal, WRITE_FUA);
++	jbd2_write_superblock(journal, write_op);
+ 
+ 	/* Log is no longer empty */
+ 	write_lock(&journal->j_state_lock);
+@@ -1716,7 +1716,13 @@ int jbd2_journal_destroy(journal_t *jour
+ 	if (journal->j_sb_buffer) {
+ 		if (!is_journal_aborted(journal)) {
+ 			mutex_lock(&journal->j_checkpoint_mutex);
+-			jbd2_mark_journal_empty(journal);
++
++			write_lock(&journal->j_state_lock);
++			journal->j_tail_sequence =
++				++journal->j_transaction_sequence;
++			write_unlock(&journal->j_state_lock);
++
++			jbd2_mark_journal_empty(journal, WRITE_FLUSH_FUA);
+ 			mutex_unlock(&journal->j_checkpoint_mutex);
+ 		} else
+ 			err = -EIO;
+@@ -1975,7 +1981,7 @@ int jbd2_journal_flush(journal_t *journa
+ 	 * the magic code for a fully-recovered superblock.  Any future
+ 	 * commits of data to the journal will restore the current
+ 	 * s_start value. */
+-	jbd2_mark_journal_empty(journal);
++	jbd2_mark_journal_empty(journal, WRITE_FUA);
+ 	mutex_unlock(&journal->j_checkpoint_mutex);
+ 	write_lock(&journal->j_state_lock);
+ 	J_ASSERT(!journal->j_running_transaction);
+@@ -2021,7 +2027,7 @@ int jbd2_journal_wipe(journal_t *journal
+ 	if (write) {
+ 		/* Lock to make assertions happy... */
+ 		mutex_lock(&journal->j_checkpoint_mutex);
+-		jbd2_mark_journal_empty(journal);
++		jbd2_mark_journal_empty(journal, WRITE_FUA);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	}
+ 
+_
+
 -- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
