@@ -1,73 +1,40 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2, ext4: Fix issue with missing journal entry
-Date: Thu, 25 Feb 2016 09:37:28 +0100
-Message-ID: <20160225083728.GA24965@quack.suse.cz>
-References: <1453921308-5544-1-git-send-email-ross.zwisler@linux.intel.com>
- <20160128131630.GI7726@quack.suse.cz>
- <20160128163211.GA19770@linux.intel.com>
- <20160224204446.GB13473@linux.intel.com>
+From: Nikolay Borisov <kernel@kyup.com>
+Subject: Re: [PATCH RFC] ext4: use __GFP_NOFAIL in ext4_free_blocks()
+Date: Thu, 25 Feb 2016 11:01:32 +0200
+Message-ID: <56CEC2EC.5000506@kyup.com>
+References: <20160224170912.2195.8153.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Jan Kara <jack@suse.com>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36916 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758731AbcBYIhJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Feb 2016 03:37:09 -0500
-Content-Disposition: inline
-In-Reply-To: <20160224204446.GB13473@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Michal Hocko <mhocko@suse.com>, linux-kernel@vger.kernel.org,
+ linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
+ Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org
+To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+ Theodore Ts'o <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160224170912.2195.8153.stgit@buzz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-02-16 13:44:46, Ross Zwisler wrote:
-> On Thu, Jan 28, 2016 at 09:32:11AM -0700, Ross Zwisler wrote:
-> > On Thu, Jan 28, 2016 at 02:16:30PM +0100, Jan Kara wrote:
-> > > On Wed 27-01-16 12:01:48, Ross Zwisler wrote:
-> > > > As it is currently written ext4_dax_mkwrite() assumes that the call into
-> > > > __dax_mkwrite() will not have to do a block allocation so it doesn't create
-> > > > a journal entry.  For a read that creates a zero page to cover a hole
-> > > > followed by a write that actually allocates storage this is incorrect.  The
-> > > > ext4_dax_mkwrite() -> __dax_mkwrite() -> __dax_fault() path calls
-> > > > get_blocks() to allocate storage.
-> > > > 
-> > > > Fix this by having the ->page_mkwrite fault handler call ext4_dax_fault()
-> > > > as this function already has all the logic needed to allocate a journal
-> > > > entry and call __dax_fault().
-> > > > 
-> > > > Also update the ext2 fault handlers in this same way to remove duplicate
-> > > > code and keep the logic between ext2 and ext4 the same.
-> > > > 
-> > > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > > 
-> > > Ah, ok, you are right. The patch looks good but Matthew is reworking the
-> > > area more (so ext4_da_mkwrite() is likely to return) so it this worth it?
-> > > Or do you expect Matthew's patches to land much later?
-> > 
-> > Yep, Matthew is in the process of reworking all of the DAX fault handling.
-> > 
-> > I was thinking that we might want to take this patch for v4.5, since it fixes
-> > a bug that I'm guessing could lead to some sort of corruption (lack of a
-> > journal entry entry for an allocating write), and then Matthew's reworks would
-> > land in v4.6?
+
+
+On 02/24/2016 07:09 PM, Konstantin Khlebnikov wrote:
+> This might be unexpected but pages allocated for sbi->s_buddy_cache are
+> charged to current memory cgroup. So, GFP_NOFS allocation could fail if
+> current task has been killed by OOM or if current memory cgroup has no
+> free memory left. Block allocator cannot handle such failures here yet.
 > 
-> Hey Jan,
-> 
-> Looks like this patch didn't ever get merged for v4.5?  Is it still queued for
-> v4.6?
+> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 
-Ted has been pretty busy lately and we probably didn't make it sufficiently
-clear that he should pick up this patch. Ted, can you please pick up this
-patch and push it to 4.5? Thanks. Feel free to add my:
+Adding new users of GFP_NOFAIL is deprecated. Where exactly does the
+block allocator fail, I skimmed the code and failing ext4_mb_load_buddy
+seems to be handled at all call sites. There are some BUG_ONs but from
+the comments there I guess they should occur when we try to find a page
+and not allocate a new one?
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
