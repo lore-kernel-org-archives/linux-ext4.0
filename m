@@ -1,37 +1,54 @@
-From: Nikolay Borisov <kernel@kyup.com>
+From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: [PATCH RFC] ext4: use __GFP_NOFAIL in ext4_free_blocks()
-Date: Thu, 25 Feb 2016 11:01:32 +0200
-Message-ID: <56CEC2EC.5000506@kyup.com>
+Date: Thu, 25 Feb 2016 10:08:39 +0100
+Message-ID: <20160225090839.GC17573@dhcp22.suse.cz>
 References: <20160224170912.2195.8153.stgit@buzz>
+ <56CEC2EC.5000506@kyup.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: Michal Hocko <mhocko@suse.com>, linux-kernel@vger.kernel.org,
- linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
- Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
- linux-ext4@vger.kernel.org
-To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
- Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Nikolay Borisov <kernel@kyup.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160224170912.2195.8153.stgit@buzz>
+Content-Disposition: inline
+In-Reply-To: <56CEC2EC.5000506@kyup.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-On 02/24/2016 07:09 PM, Konstantin Khlebnikov wrote:
-> This might be unexpected but pages allocated for sbi->s_buddy_cache are
-> charged to current memory cgroup. So, GFP_NOFS allocation could fail if
-> current task has been killed by OOM or if current memory cgroup has no
-> free memory left. Block allocator cannot handle such failures here yet.
+On Thu 25-02-16 11:01:32, Nikolay Borisov wrote:
 > 
-> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+> 
+> On 02/24/2016 07:09 PM, Konstantin Khlebnikov wrote:
+> > This might be unexpected but pages allocated for sbi->s_buddy_cache are
+> > charged to current memory cgroup. So, GFP_NOFS allocation could fail if
+> > current task has been killed by OOM or if current memory cgroup has no
+> > free memory left. Block allocator cannot handle such failures here yet.
+> > 
+> > Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+> 
+> Adding new users of GFP_NOFAIL is deprecated.
 
-Adding new users of GFP_NOFAIL is deprecated. Where exactly does the
-block allocator fail, I skimmed the code and failing ext4_mb_load_buddy
-seems to be handled at all call sites. There are some BUG_ONs but from
-the comments there I guess they should occur when we try to find a page
-and not allocate a new one?
+This is not true. GFP_NOFAIL should be used where the allocation failure
+is no tolleratable and it is much more preferrable to doing an opencoded
+endless loop over page allocator.
+
+> Where exactly does the
+> block allocator fail, I skimmed the code and failing ext4_mb_load_buddy
+> seems to be handled at all call sites. There are some BUG_ONs but from
+> the comments there I guess they should occur when we try to find a page
+> and not allocate a new one?
+
+I have posted a similar patch last year:
+http://lkml.kernel.org/r/1438768284-30927-6-git-send-email-mhocko@kernel.org
+because I could see emergency reboots when GFP_NOFS allocations were
+allowed to fail.
+
+-- 
+Michal Hocko
+SUSE Labs
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
