@@ -1,27 +1,30 @@
-From: =?utf-8?B?5oiR55qE55u45YaM5Zyo?= <export4@samhwasteel.com>
-Subject: =?utf-8?B?5oiR55qE55u45YaM5Zyo?=
-Date: Fri, 26 Feb 2016 02:54:44 +0800
-Message-ID: <20160226025450178146@samhwasteel.com>
+From: Jakob Lagerstedt <jakob.lagerstedt@slu.se>
+Subject: resize2fs unresponsive
+Date: Fri, 26 Feb 2016 14:33:38 +0100
+Message-ID: <1531dc8e596.f715a7bd144008.4814276246115556854@slu.se>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailfilter.kiswel.com ([211.192.82.10]:52470 "EHLO
-	mailfilter.kiswel.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933357AbcBYTNi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Feb 2016 14:13:38 -0500
-Received: from [49.64.131.241] ([49.64.131.241])
-          by mailfilter.kiswel.com ([10.50.150.253])
-          with ESMTP id 1456417600.493190.3070749600.mailfilter
-          for <linux-ext4@vger.kernel.org>;
-          Fri, 26 Feb 2016 01:26:40 +0900 (KST)
+Received: from sender163-mail.zoho.com ([74.201.84.163]:25498 "EHLO
+	sender163-mail.zoho.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751555AbcBZNdj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2016 08:33:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-5L2g55qE6ICB5pyL5Y+L6YKA5L2g5p2lUee+pDozNDMyNTc3NTkNCg==
+Dear developers,
 
+We started a resize2fs (version 1.42.9) on Ubuntu 14.04 against a unmounted raid. 
 
+It has taken a long time and not much seems to be happening. We have not found any answers to these questions in the documentation and conflicting answers from forums.
 
+What are the risks asociated with killing the process?
+
+Can the resize be restarted if we kill it?
+
+Best regards
+Swedish University of Agricultural Sciences
+Phone +46-18-673177
 
