@@ -1,30 +1,35 @@
-From: Jakob Lagerstedt <jakob.lagerstedt@slu.se>
-Subject: resize2fs unresponsive
-Date: Fri, 26 Feb 2016 14:33:38 +0100
-Message-ID: <1531dc8e596.f715a7bd144008.4814276246115556854@slu.se>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fix for 4.6
+Date: Sat, 27 Feb 2016 14:17:47 -0500
+Message-ID: <20160227191747.GA23919@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sender163-mail.zoho.com ([74.201.84.163]:25498 "EHLO
-	sender163-mail.zoho.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751555AbcBZNdj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2016 08:33:39 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear developers,
+The following changes since commit 74dae4278546b897eb81784fdfcce872ddd8b2b8:
 
-We started a resize2fs (version 1.42.9) on Ubuntu 14.04 against a unmounted raid. 
+  ext4: fix crashes in dioread_nolock mode (2016-02-19 00:33:21 -0500)
 
-It has taken a long time and not much seems to be happening. We have not found any answers to these questions in the documentation and conflicting answers from forums.
+are available in the git repository at:
 
-What are the risks asociated with killing the process?
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/tags/ext4_for_linus_stable
 
-Can the resize be restarted if we kill it?
+for you to fetch changes up to 1e9d180ba39f42e8ca4a808baef3a3ef034b1c2c:
 
-Best regards
-Swedish University of Agricultural Sciences
-Phone +46-18-673177
+  ext2, ext4: fix issue with missing journal entry in ext4_dax_mkwrite() (2016-02-27 14:01:16 -0500)
 
+----------------------------------------------------------------
+This fixes a file system corruption bug with DAX
+
+----------------------------------------------------------------
+Ross Zwisler (1):
+      ext2, ext4: fix issue with missing journal entry in ext4_dax_mkwrite()
+
+ fs/ext2/file.c | 19 +------------------
+ fs/ext4/file.c | 19 ++-----------------
+ 2 files changed, 3 insertions(+), 35 deletions(-)
