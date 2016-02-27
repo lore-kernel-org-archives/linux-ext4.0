@@ -1,35 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fix for 4.6
-Date: Sat, 27 Feb 2016 14:17:47 -0500
-Message-ID: <20160227191747.GA23919@thunk.org>
+Subject: Re: [PATCH] ext2, ext4: Fix issue with missing journal entry
+Date: Sat, 27 Feb 2016 14:21:48 -0500
+Message-ID: <20160227192148.GC15325@thunk.org>
+References: <1453921308-5544-1-git-send-email-ross.zwisler@linux.intel.com>
+ <20160128131630.GI7726@quack.suse.cz>
+ <20160128163211.GA19770@linux.intel.com>
+ <20160224204446.GB13473@linux.intel.com>
+ <20160225083728.GA24965@quack.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-nvdimm@ml01.01.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <20160225083728.GA24965@quack.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 74dae4278546b897eb81784fdfcce872ddd8b2b8:
+On Thu, Feb 25, 2016 at 09:37:28AM +0100, Jan Kara wrote:
+> > Looks like this patch didn't ever get merged for v4.5?  Is it still queued for
+> > v4.6?
+> 
+> Ted has been pretty busy lately and we probably didn't make it sufficiently
+> clear that he should pick up this patch. Ted, can you please pick up this
+> patch and push it to 4.5? Thanks. Feel free to add my:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-  ext4: fix crashes in dioread_nolock mode (2016-02-19 00:33:21 -0500)
+Sorry, yes, I missed this one since most of the DAX patches have been
+going through other trees.   I've just sent a pull request to Linus.
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/tags/ext4_for_linus_stable
-
-for you to fetch changes up to 1e9d180ba39f42e8ca4a808baef3a3ef034b1c2c:
-
-  ext2, ext4: fix issue with missing journal entry in ext4_dax_mkwrite() (2016-02-27 14:01:16 -0500)
-
-----------------------------------------------------------------
-This fixes a file system corruption bug with DAX
-
-----------------------------------------------------------------
-Ross Zwisler (1):
-      ext2, ext4: fix issue with missing journal entry in ext4_dax_mkwrite()
-
- fs/ext2/file.c | 19 +------------------
- fs/ext4/file.c | 19 ++-----------------
- 2 files changed, 3 insertions(+), 35 deletions(-)
+      	      	    	     	       - Ted
