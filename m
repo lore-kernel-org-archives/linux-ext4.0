@@ -1,134 +1,61 @@
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Subject: [PATCH v2] ext4/jbd2: Fix FS corruption possibility on umount path
-Date: Sun, 28 Feb 2016 23:24:51 +0900
-Message-ID: <87a8mk6hfw.fsf@mail.parknet.co.jp>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: richacl(7) man page review comments
+Date: Sun, 28 Feb 2016 23:11:57 +0100
+Message-ID: <CAHc6FU4eOzNg0Tfb-29uQD9r1AzwZhZPMZnRnbjyYpkQxm=Cxw@mail.gmail.com>
+References: <56B770B6.7040803@gmail.com>
+	<56B77262.7090107@gmail.com>
+	<CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+	<56C0F23C.7030902@gmail.com>
+	<CAHc6FU4CCrcrA6=oCiq2A5rGd9CCGELaTZq6tGpmd2jcV_Zp4A@mail.gmail.com>
+	<56CA2EEB.9080504@gmail.com>
+	<CAHc6FU46vO8NM3cvFH7b8X7U9R+m6wcYj8EQKVnSQkiY3Q051A@mail.gmail.com>
+	<56CC3174.2060207@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	lkml <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+To: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <56CC3174.2060207-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On umount path, jbd2_journal_destroy() writes latest transaction ID
-(->j_tail_sequence) to be used at next mount.
+On Tue, Feb 23, 2016 at 11:16 AM, Michael Kerrisk (man-pages)
+<mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+> On 02/22/2016 03:46 PM, Andreas Gruenbacher wrote:
+>> On Sun, Feb 21, 2016 at 10:40 PM, Michael Kerrisk (man-pages) <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+>>> I've once more pulled from the latest git; here's some more comments.
+>>
+>> thanks again. I've updated the repo with your changes.
+>
+> Thanks!
+>
+> [...]
+>
+>>> I'm going to play the broken record :-)
+>>>
+>>> Could we start with just a few simple examples already, and build up
+>>> over future iterations of this page?
+>>
+>> Yes, as soon as I'll get to it :)
+>
+> Sure. But, to press the point home, I'm interested to do further
+> review, but I feel like the lack of examples is limiting my ability to
+> understand what's going on and deepen the feedback that I provide in
+> future iterations. So, start please, even if only starting small :-).
 
-The bug is that ->j_tail_sequence is not holding latest transaction ID
-in some cases. So, at next mount, there is chance to conflict with
-remaining (not overwritten yet) transactions.
+I've added a richaclex(7) examples man page now. What did I miss to explain?
 
-	mount (id=10)
-	write transaction (id=11)
-	write transaction (id=12)
-	umount (id=10) <= the bug doesn't write latest ID
-
-	mount (id=10)
-	write transaction (id=11)
-	crash
-
-	mount
-	[recovery process]
-		transaction (id=11)
-		transaction (id=12) <= valid transaction ID, but old commit
-                                       must not replay
-
-Like above, this bug become the cause of recovery failure, or FS
-corruption.
-
-So why ->j_tail_sequence doesn't point latest ID?
-
-Because if checkpoint transactions was reclaimed by memory pressure
-(i.e. bdev_try_to_free_page()), then ->j_tail_sequence is not updated.
-(And another case is, __jbd2_journal_clean_checkpoint_list() is called
-with empty transaction.)
-
-So in above cases, ->j_tail_sequence is not pointing latest
-transaction ID at umount path. Plus, REQ_FLUSH for checkpoint is not
-done too.
-
-So, to fix this problem with minimum changes, this patch updates
-->j_tail_sequence, and issue REQ_FLUSH.  (With more complex changes,
-some optimizations would be possible to avoid unnecessary REQ_FLUSH
-for example though.)
-
-BTW,
-
-	journal->j_tail_sequence =
-		++journal->j_transaction_sequence;
-
-Increment of ->j_transaction_sequence seems to be unnecessary, but
-ext3 does this.
-
-v2: Fix "make htmldocs" warning
-
-Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Cc: stable@vger.kernel.org
----
-
- fs/jbd2/journal.c |   17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
-
-diff -puN fs/jbd2/journal.c~ext4-umount-fix fs/jbd2/journal.c
---- linux/fs/jbd2/journal.c~ext4-umount-fix	2016-02-28 10:16:41.997093008 +0900
-+++ linux-hirofumi/fs/jbd2/journal.c	2016-02-28 23:01:25.865647233 +0900
-@@ -1408,11 +1408,12 @@ out:
- /**
-  * jbd2_mark_journal_empty() - Mark on disk journal as empty.
-  * @journal: The journal to update.
-+ * @write_op: With which operation should we write the journal sb
-  *
-  * Update a journal's dynamic superblock fields to show that journal is empty.
-  * Write updated superblock to disk waiting for IO to complete.
-  */
--static void jbd2_mark_journal_empty(journal_t *journal)
-+static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
- {
- 	journal_superblock_t *sb = journal->j_superblock;
- 
-@@ -1430,7 +1431,7 @@ static void jbd2_mark_journal_empty(jour
- 	sb->s_start    = cpu_to_be32(0);
- 	read_unlock(&journal->j_state_lock);
- 
--	jbd2_write_superblock(journal, WRITE_FUA);
-+	jbd2_write_superblock(journal, write_op);
- 
- 	/* Log is no longer empty */
- 	write_lock(&journal->j_state_lock);
-@@ -1716,7 +1717,13 @@ int jbd2_journal_destroy(journal_t *jour
- 	if (journal->j_sb_buffer) {
- 		if (!is_journal_aborted(journal)) {
- 			mutex_lock(&journal->j_checkpoint_mutex);
--			jbd2_mark_journal_empty(journal);
-+
-+			write_lock(&journal->j_state_lock);
-+			journal->j_tail_sequence =
-+				++journal->j_transaction_sequence;
-+			write_unlock(&journal->j_state_lock);
-+
-+			jbd2_mark_journal_empty(journal, WRITE_FLUSH_FUA);
- 			mutex_unlock(&journal->j_checkpoint_mutex);
- 		} else
- 			err = -EIO;
-@@ -1975,7 +1982,7 @@ int jbd2_journal_flush(journal_t *journa
- 	 * the magic code for a fully-recovered superblock.  Any future
- 	 * commits of data to the journal will restore the current
- 	 * s_start value. */
--	jbd2_mark_journal_empty(journal);
-+	jbd2_mark_journal_empty(journal, WRITE_FUA);
- 	mutex_unlock(&journal->j_checkpoint_mutex);
- 	write_lock(&journal->j_state_lock);
- 	J_ASSERT(!journal->j_running_transaction);
-@@ -2021,7 +2028,7 @@ int jbd2_journal_wipe(journal_t *journal
- 	if (write) {
- 		/* Lock to make assertions happy... */
- 		mutex_lock(&journal->j_checkpoint_mutex);
--		jbd2_mark_journal_empty(journal);
-+		jbd2_mark_journal_empty(journal, WRITE_FUA);
- 		mutex_unlock(&journal->j_checkpoint_mutex);
- 	}
- 
-_
-
--- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Thanks,
+Andreas
