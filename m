@@ -1,55 +1,134 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: resize2fs unresponsive
-Date: Sat, 27 Feb 2016 14:56:03 -0500
-Message-ID: <20160227195603.GA24887@thunk.org>
-References: <1531dc8e596.f715a7bd144008.4814276246115556854@slu.se>
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: [PATCH v2] ext4/jbd2: Fix FS corruption possibility on umount path
+Date: Sun, 28 Feb 2016 23:24:51 +0900
+Message-ID: <87a8mk6hfw.fsf@mail.parknet.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jakob Lagerstedt <jakob.lagerstedt@slu.se>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34440 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756710AbcB0T4J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 27 Feb 2016 14:56:09 -0500
-Content-Disposition: inline
-In-Reply-To: <1531dc8e596.f715a7bd144008.4814276246115556854@slu.se>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 26, 2016 at 02:33:38PM +0100, Jakob Lagerstedt wrote:
-> Dear developers,
-> 
-> We started a resize2fs (version 1.42.9) on Ubuntu 14.04 against a unmounted raid. 
-> 
-> It has taken a long time and not much seems to be happening. We have
-> not found any answers to these questions in the documentation and
-> conflicting answers from forums.
+On umount path, jbd2_journal_destroy() writes latest transaction ID
+(->j_tail_sequence) to be used at next mount.
 
-So a couple of things.  resize2fs using a mounted raid is safer than
-an unmounted filesystems.  There were bugs with older versions of
-resize2fs that could cause corruption, specifically with doing
-resize2fs for large file systems while unmounted.  So I strongly
-recommend that you not try to do unmounted resize2fs except with the
-very lastest version of e2fsprogs (1.42.13).
+The bug is that ->j_tail_sequence is not holding latest transaction ID
+in some cases. So, at next mount, there is chance to conflict with
+remaining (not overwritten yet) transactions.
 
-Unfortunately, killing an resize2fs while unmounted while _usually_
-safe, *can* cause damage while it is relocating the inode table
-blocks.  This normally wouldn't happen, since we reserve space to
-avoid needing to do this, but without knowing how big the file system
-was when it was originally created, and how big you are trying to
-resize it to.  If you send it an interrupt signal (e.g., type
-control-C) it will try to stop at a clean point.  But if you send it a
-kill -9 or there is a power failure while it is relocating the inode
-table, you can lose data.  (This is not a problem if you use resize2fs
-while it is mounted, since when it is mounted it uses the journal to
-make sure things stay consistent even if the sytem crashes.)
+	mount (id=10)
+	write transaction (id=11)
+	write transaction (id=12)
+	umount (id=10) <= the bug doesn't write latest ID
 
-Given the balance of risks, it's probably better to interrupt it with
-a control C, and then run e2fsck on the file system afterwards.
+	mount (id=10)
+	write transaction (id=11)
+	crash
 
-> Can the resize be restarted if we kill it?
+	mount
+	[recovery process]
+		transaction (id=11)
+		transaction (id=12) <= valid transaction ID, but old commit
+                                       must not replay
 
-No, it can't be restarted.
+Like above, this bug become the cause of recovery failure, or FS
+corruption.
 
-						- Ted
+So why ->j_tail_sequence doesn't point latest ID?
+
+Because if checkpoint transactions was reclaimed by memory pressure
+(i.e. bdev_try_to_free_page()), then ->j_tail_sequence is not updated.
+(And another case is, __jbd2_journal_clean_checkpoint_list() is called
+with empty transaction.)
+
+So in above cases, ->j_tail_sequence is not pointing latest
+transaction ID at umount path. Plus, REQ_FLUSH for checkpoint is not
+done too.
+
+So, to fix this problem with minimum changes, this patch updates
+->j_tail_sequence, and issue REQ_FLUSH.  (With more complex changes,
+some optimizations would be possible to avoid unnecessary REQ_FLUSH
+for example though.)
+
+BTW,
+
+	journal->j_tail_sequence =
+		++journal->j_transaction_sequence;
+
+Increment of ->j_transaction_sequence seems to be unnecessary, but
+ext3 does this.
+
+v2: Fix "make htmldocs" warning
+
+Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: stable@vger.kernel.org
+---
+
+ fs/jbd2/journal.c |   17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff -puN fs/jbd2/journal.c~ext4-umount-fix fs/jbd2/journal.c
+--- linux/fs/jbd2/journal.c~ext4-umount-fix	2016-02-28 10:16:41.997093008 +0900
++++ linux-hirofumi/fs/jbd2/journal.c	2016-02-28 23:01:25.865647233 +0900
+@@ -1408,11 +1408,12 @@ out:
+ /**
+  * jbd2_mark_journal_empty() - Mark on disk journal as empty.
+  * @journal: The journal to update.
++ * @write_op: With which operation should we write the journal sb
+  *
+  * Update a journal's dynamic superblock fields to show that journal is empty.
+  * Write updated superblock to disk waiting for IO to complete.
+  */
+-static void jbd2_mark_journal_empty(journal_t *journal)
++static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 
+@@ -1430,7 +1431,7 @@ static void jbd2_mark_journal_empty(jour
+ 	sb->s_start    = cpu_to_be32(0);
+ 	read_unlock(&journal->j_state_lock);
+ 
+-	jbd2_write_superblock(journal, WRITE_FUA);
++	jbd2_write_superblock(journal, write_op);
+ 
+ 	/* Log is no longer empty */
+ 	write_lock(&journal->j_state_lock);
+@@ -1716,7 +1717,13 @@ int jbd2_journal_destroy(journal_t *jour
+ 	if (journal->j_sb_buffer) {
+ 		if (!is_journal_aborted(journal)) {
+ 			mutex_lock(&journal->j_checkpoint_mutex);
+-			jbd2_mark_journal_empty(journal);
++
++			write_lock(&journal->j_state_lock);
++			journal->j_tail_sequence =
++				++journal->j_transaction_sequence;
++			write_unlock(&journal->j_state_lock);
++
++			jbd2_mark_journal_empty(journal, WRITE_FLUSH_FUA);
+ 			mutex_unlock(&journal->j_checkpoint_mutex);
+ 		} else
+ 			err = -EIO;
+@@ -1975,7 +1982,7 @@ int jbd2_journal_flush(journal_t *journa
+ 	 * the magic code for a fully-recovered superblock.  Any future
+ 	 * commits of data to the journal will restore the current
+ 	 * s_start value. */
+-	jbd2_mark_journal_empty(journal);
++	jbd2_mark_journal_empty(journal, WRITE_FUA);
+ 	mutex_unlock(&journal->j_checkpoint_mutex);
+ 	write_lock(&journal->j_state_lock);
+ 	J_ASSERT(!journal->j_running_transaction);
+@@ -2021,7 +2028,7 @@ int jbd2_journal_wipe(journal_t *journal
+ 	if (write) {
+ 		/* Lock to make assertions happy... */
+ 		mutex_lock(&journal->j_checkpoint_mutex);
+-		jbd2_mark_journal_empty(journal);
++		jbd2_mark_journal_empty(journal, WRITE_FUA);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	}
+ 
+_
+
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
