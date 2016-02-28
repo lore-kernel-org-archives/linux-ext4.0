@@ -1,61 +1,63 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: richacl(7) man page review comments
-Date: Sun, 28 Feb 2016 23:11:57 +0100
-Message-ID: <CAHc6FU4eOzNg0Tfb-29uQD9r1AzwZhZPMZnRnbjyYpkQxm=Cxw@mail.gmail.com>
-References: <56B770B6.7040803@gmail.com>
-	<56B77262.7090107@gmail.com>
-	<CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
-	<56C0F23C.7030902@gmail.com>
-	<CAHc6FU4CCrcrA6=oCiq2A5rGd9CCGELaTZq6tGpmd2jcV_Zp4A@mail.gmail.com>
-	<56CA2EEB.9080504@gmail.com>
-	<CAHc6FU46vO8NM3cvFH7b8X7U9R+m6wcYj8EQKVnSQkiY3Q051A@mail.gmail.com>
-	<56CC3174.2060207@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	lkml <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <56CC3174.2060207-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH v2 3/3] ext4: enable again per-file data journaling on delalloc
+ mode
+Date: Mon, 29 Feb 2016 08:48:52 +0900
+Message-ID: <1456703332-12852-3-git-send-email-daeho.jeong@samsung.com>
+References: <1456703332-12852-1-git-send-email-daeho.jeong@samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>
+To: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout4.samsung.com ([203.254.224.34]:39932 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751582AbcB1Xsx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Feb 2016 18:48:53 -0500
+Received: from epcpsbgr5.samsung.com
+ (u145.gpu120.samsung.co.kr [203.254.230.145])
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0O3A024WV7HF3700@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Mon, 29 Feb 2016 08:48:51 +0900 (KST)
+In-reply-to: <1456703332-12852-1-git-send-email-daeho.jeong@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 23, 2016 at 11:16 AM, Michael Kerrisk (man-pages)
-<mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
-> On 02/22/2016 03:46 PM, Andreas Gruenbacher wrote:
->> On Sun, Feb 21, 2016 at 10:40 PM, Michael Kerrisk (man-pages) <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
->>> I've once more pulled from the latest git; here's some more comments.
->>
->> thanks again. I've updated the repo with your changes.
->
-> Thanks!
->
-> [...]
->
->>> I'm going to play the broken record :-)
->>>
->>> Could we start with just a few simple examples already, and build up
->>> over future iterations of this page?
->>
->> Yes, as soon as I'll get to it :)
->
-> Sure. But, to press the point home, I'm interested to do further
-> review, but I feel like the lack of examples is limiting my ability to
-> understand what's going on and deepen the feedback that I provide in
-> future iterations. So, start please, even if only starting small :-).
+Several problems occurred when per-file data journaling is enabled on
+"delalloc" mode, so the per-file data journaling was permanently
+deactivated by commit 3d2b15826282 ("ext4: ignore
+EXT4_INODE_JOURNAL_DATA flag with delalloc"). But, those are not
+problems for only "delalloc" mode and when you execute xfstest on
+"nodelalloc" mode, same problems happen on "nodelalloc" mode. We always
+execute xfstest on "delalloc" mode, which is default mode, so we
+haven't realized problems of per-file data journaling feature. Finally,
+problems of per-file data journaling feature were fixed by
+commit 9c02ac97989d ("ext4: fix xfstest generic/269 double revoked
+buffer bug with bigalloc") and previous patchset. Now, we can re-enable
+the feature on "delalloc" mode.
 
-I've added a richaclex(7) examples man page now. What did I miss to explain?
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4_jbd2.h |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-Thanks,
-Andreas
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 5f58462..9463bb8 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -393,12 +393,10 @@ static inline int ext4_inode_journal_mode(struct inode *inode)
+ {
+ 	if (EXT4_JOURNAL(inode) == NULL)
+ 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+-	/* We do not support data journalling with delayed allocation */
+ 	if (!S_ISREG(inode->i_mode) ||
+ 	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
+ 		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+-	    !test_opt(inode->i_sb, DELALLOC))
++	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA))
+ 		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+ 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
+ 		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
+-- 
+1.7.9.5
+
