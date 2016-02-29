@@ -1,38 +1,33 @@
-From: "Alecssandro" <contactalecssandrokonart65@live.com>
-Subject: =?utf-8?q?INFORMA=C3=87=C3=83O_IMPORTANTE__RE=3A_Consultoria_de_Investime?=
- =?utf-8?q?nto_em_sua_Localidade=2E?=
-Date: Sun, 28 Feb 2016 04:43:04 -0800
-Message-ID: <20160228134204.17A928FD783__34031.4864101403$1456760630$gmane$org@webmail.cefet-rj.br>
-Reply-To: contactalecssandrokonart@gmail.com
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/35 v4] separate operations from flags in the
+ bio/request structs
+Date: Mon, 29 Feb 2016 09:13:39 -0800
+Message-ID: <20160229171339.GA17755@infradead.org>
+References: <1456343292-14535-1-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Recipients <contactalecssandrokonart65@live.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from webmail.cefet-rj.br ([200.9.149.52]:44489 "EHLO
-	webmail.cefet-rj.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752059AbcB2PnD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Feb 2016 10:43:03 -0500
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+To: mchristi@redhat.com
+Return-path: <linux-bcache-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1456343292-14535-1-git-send-email-mchristi@redhat.com>
+Sender: linux-bcache-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Any reason you've dropped my ACK for the previous version?
 
-Oi Amigo,
+Jens, is this something you're fine with?  Would be great to figure
+out a way to get this into 4.6.  There's probably going to be
+plenty of conflicts, so having some sort of stable base tree
+would be nice..
 
-INFORMA=C7=C3O IMPORTANTE
-
-Nossa fam=EDlia est=E1 interessada em investir fundos em sua localidade=
-=2E
-
-Mais informa=E7=F5es para voc=EA se interessou.
-
-Sauda=E7=F5es,
-Sir Henry Neville Lindley Keswick
-Presidente da Jardine Matheson Holdings Ltd
-https://en.wikipedia.org/wiki/Keswick_family
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(Talking about conflicts, seems like the block for-linus and for-next
+trees already conflict quite a bit..)
