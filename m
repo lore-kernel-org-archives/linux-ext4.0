@@ -1,44 +1,40 @@
-From: Mike Christie <michaelc@cs.wisc.edu>
-Subject: Re: [PATCH 00/35 v4] separate operations from flags in the
-	bio/request structs
-Date: Mon, 29 Feb 2016 11:30:22 -0600
-Message-ID: <56D4802E.3090507@cs.wisc.edu>
-References: <1456343292-14535-1-git-send-email-mchristi@redhat.com>
-	<20160229171339.GA17755@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [v3 5/5] Add project ID support for chattr/lsattr
+Date: Mon, 29 Feb 2016 23:24:58 -0500
+Message-ID: <20160301042458.GD9772@thunk.org>
+References: <1452589008-18750-1-git-send-email-lixi@ddn.com>
+ <1452589008-18750-6-git-send-email-lixi@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-bcache@vger.kernel.org, linux-block@vger.kernel.org, xfs@oss.sgi.com,
-	ocfs2-devel@oss.oracle.com, linux-scsi@vger.kernel.org,
-	konrad.wilk@oracle.com, linux-kernel@vger.kernel.org,
-	philipp.reisner@linbit.com, linux-f2fs-devel@lists.sourceforge.net,
-	linux-raid@vger.kernel.org, dm-devel@redhat.com,
-	target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
-	osd-dev@open-osd.org, linux-fsdevel@vger.kernel.org,
-	lars.ellenberg@linbit.com, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, drbd-dev@lists.linbit.com
-To: Christoph Hellwig <hch@infradead.org>, mchristi@redhat.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160229171339.GA17755@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Li Xi <pkuelelixi@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:42342 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751089AbcCAEZD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Feb 2016 23:25:03 -0500
+Content-Disposition: inline
+In-Reply-To: <1452589008-18750-6-git-send-email-lixi@ddn.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/29/2016 11:13 AM, Christoph Hellwig wrote:
-> Any reason you've dropped my ACK for the previous version?
+On Tue, Jan 12, 2016 at 05:56:48PM +0900, Li Xi wrote:
+> Chattr and lsattr can be used to set or get project ID:
+> chattr -p <project id> file
+> lsattr -p file
+> 
+> Signed-off-by: Li Xi <lixi@ddn.com>
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> ---
+>  lib/e2p/Makefile.in |   11 +++++++++--
+>  lib/e2p/e2p.h       |    2 ++
+>  misc/chattr.1.in    |    7 +++++++
+>  misc/chattr.c       |   33 +++++++++++++++++++++++++++++++--
+>  misc/lsattr.1.in    |    5 ++++-
+>  misc/lsattr.c       |   18 ++++++++++++++++--
+>  6 files changed, 69 insertions(+), 7 deletions(-)
 
-Sorry. I think I accidentally dropped it when I rebased back over to
-linux-next. It looks like it only got stuck on the first patch. I will
-fix that up on the resend for those kbuild errors.
+Hi, this patch is missing the new files for fgetproject.c and
+fsetproject.c.   Can you resend them, please?
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+						- Ted
