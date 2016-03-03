@@ -1,44 +1,36 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/5] ext4: Fix setting of referenced bit in ext4_es_lookup_extent()
-Date: Thu,  3 Mar 2016 11:23:47 +0100
-Message-ID: <1457000631-10215-2-git-send-email-jack@suse.cz>
-References: <1457000631-10215-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/5] ext4: Fix softlockups in ext4_seek_data()
+Date: Thu,  3 Mar 2016 11:23:46 +0100
+Message-ID: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51039 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51038 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755838AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755544AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 3 Mar 2016 05:23:39 -0500
-In-Reply-To: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We were setting referenced bit on the extent structure we return from
-ext4_es_lookup_extent() which is just a private structure on stack. Thus
-setting had no effect. Set the bit in the structure in the status tree
-instead.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents_status.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+I've seen several reports of softlockups somewhere under ext4_seek_data()
+usually during fuzzing. The culprit is that ext4_seek_data() iterates holes
+block by block and thus suitably crafted file can make ext4_seek_data() do
+a *lot* of lookups using ext4_map_blocks() which is slow. This is really
+unnecessary since in principle we have all the information for efficient
+skipping of holes, just a layer below. Even for indirect-block based files
+we can easily reduce the asymptotic complexity of hole iteration from linear
+to logarithmic albeit with a relatively large constant.
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index ac748b3af1c1..e38b987ac7f5 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -823,8 +823,8 @@ out:
- 		es->es_lblk = es1->es_lblk;
- 		es->es_len = es1->es_len;
- 		es->es_pblk = es1->es_pblk;
--		if (!ext4_es_is_referenced(es))
--			ext4_es_set_referenced(es);
-+		if (!ext4_es_is_referenced(es1))
-+			ext4_es_set_referenced(es1);
- 		stats->es_stats_cache_hits++;
- 	} else {
- 		stats->es_stats_cache_misses++;
--- 
-2.6.2
+Patches 1 and 4 in this series are independent cleanups I've spotted while
+changing the code, they can be merged separately. Patches 2 and 3 are
+preparatory changes which make ext4_map_blocks() return hole size in
+map->m_len field. We still return 0 from ext4_map_blocks() calls finding hole
+to maintain backward compatibility of this function and it still makes sense
+as such - it still returns the number of allocated blocks starting at given
+logical offset. Patch 5 then uses the newly available information in
+ext4_seek_data() and it also rewrites ext4_seek_hole() so that both functions
+are symmetric.
 
+								Honza
