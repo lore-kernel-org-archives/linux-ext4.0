@@ -1,296 +1,126 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/5] ext4: More efficient SEEK_DATA implementation
-Date: Thu,  3 Mar 2016 11:23:51 +0100
-Message-ID: <1457000631-10215-6-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/5] ext4: Return hole from ext4_map_blocks()
+Date: Thu,  3 Mar 2016 11:23:49 +0100
+Message-ID: <1457000631-10215-4-git-send-email-jack@suse.cz>
 References: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51049 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51040 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757105AbcCCKXl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Mar 2016 05:23:41 -0500
+	id S1755336AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Mar 2016 05:23:39 -0500
 In-Reply-To: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Using SEEK_DATA in a huge sparse file can easily lead to sotflockups as
-ext4_seek_data() iterates hole block-by-block. Fix the problem by using
-returned hole size from ext4_map_blocks() and thus skip the hole in one
-go.
-
-Update also SEEK_HOLE implementation to follow the same pattern as
-SEEK_DATA to make future maintenance easier.
-
-Furthermore we add cond_resched() to both ext4_seek_data() and
-ext4_seek_hole() to avoid softlockups in case evil user creates huge
-fragmented file and we have to go through lots of extents.
+Currently, ext4_map_blocks() just returns 0 when it finds a hole and
+allocation is not requested. However we have all the information
+available to tell how large the hole actually is and there are callers
+of ext4_map_blocks() which would save some block-by-block hole iteration
+if they knew this information. So fill in struct ext4_map_blocks even
+for holes with the information we have. We keep returning 0 for holes to
+maintain backward compatibility of the function.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  3 ++
- fs/ext4/file.c  | 97 +++++++++++++++++++++------------------------------------
- fs/ext4/inode.c | 67 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 106 insertions(+), 61 deletions(-)
+ fs/ext4/extents.c  | 11 +++++++++--
+ fs/ext4/indirect.c | 19 +++++++++++++++++--
+ fs/ext4/inode.c    | 15 ++++++++++-----
+ 3 files changed, 36 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 157b458a69d4..f9b1adf9f902 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2559,6 +2559,9 @@ extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
- extern int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk,
- 			      ext4_fsblk_t pblk, ext4_lblk_t len);
-+extern int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
-+				unsigned int map_len,
-+				struct extent_status *result);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2dc6261e247f..0e924ca153f9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4380,13 +4380,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+ 		ext4_lblk_t hole_start, hole_len;
  
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 474f1a4d2ca8..7191095a8ca2 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -432,7 +432,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
-  */
- static int ext4_find_unwritten_pgoff(struct inode *inode,
- 				     int whence,
--				     struct ext4_map_blocks *map,
-+				     ext4_lblk_t end_blk,
- 				     loff_t *offset)
- {
- 	struct pagevec pvec;
-@@ -447,7 +447,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 	blkbits = inode->i_sb->s_blocksize_bits;
- 	startoff = *offset;
- 	lastoff = startoff;
--	endoff = (loff_t)(map->m_lblk + map->m_len) << blkbits;
-+	endoff = (loff_t)end_blk << blkbits;
- 
- 	index = startoff >> PAGE_CACHE_SHIFT;
- 	end = endoff >> PAGE_CACHE_SHIFT;
-@@ -565,12 +565,11 @@ out:
- static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- {
- 	struct inode *inode = file->f_mapping->host;
--	struct ext4_map_blocks map;
- 	struct extent_status es;
- 	ext4_lblk_t start, last, end;
- 	loff_t dataoff, isize;
- 	int blkbits;
--	int ret = 0;
-+	int ret;
- 
- 	inode_lock(inode);
- 
-@@ -587,41 +586,32 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- 	dataoff = offset;
- 
- 	do {
--		map.m_lblk = last;
--		map.m_len = end - last + 1;
--		ret = ext4_map_blocks(NULL, inode, &map, 0);
--		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
--			if (last != start)
--				dataoff = (loff_t)last << blkbits;
--			break;
-+		ret = ext4_get_next_extent(inode, last, end - last + 1, &es);
-+		if (ret <= 0) {
-+			/* No extent found -> no data */
-+			if (ret == 0)
-+				ret = -ENXIO;
-+			inode_unlock(inode);
-+			return ret;
- 		}
- 
--		/*
--		 * If there is a delay extent at this offset,
--		 * it will be as a data.
--		 */
--		ext4_es_find_delayed_extent_range(inode, last, last, &es);
--		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
--			if (last != start)
--				dataoff = (loff_t)last << blkbits;
-+		last = es.es_lblk;
-+		if (last != start)
-+			dataoff = (loff_t)last << blkbits;
-+		if (!ext4_es_is_unwritten(&es))
- 			break;
--		}
- 
++		hole_start = map->m_lblk;
++		hole_len = ext4_ext_determine_hole(inode, path, &hole_start);
  		/*
- 		 * If there is a unwritten extent at this offset,
- 		 * it will be as a data or a hole according to page
- 		 * cache that has data or not.
+ 		 * put just found gap into cache to speed up
+ 		 * subsequent requests
  		 */
--		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
--			int unwritten;
--			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_DATA,
--							      &map, &dataoff);
--			if (unwritten)
--				break;
--		}
--
--		last++;
-+		if (ext4_find_unwritten_pgoff(inode, SEEK_DATA,
-+					      es.es_lblk + es.es_len, &dataoff))
-+			break;
-+		last += es.es_len;
- 		dataoff = (loff_t)last << blkbits;
-+		cond_resched();
- 	} while (last <= end);
+-		hole_start = map->m_lblk;
+-		hole_len = ext4_ext_determine_hole(inode, path, &hole_start);
+ 		ext4_ext_put_gap_in_cache(inode, hole_start, hole_len);
++
++		/* Update hole_len to reflect hole size after map->m_lblk */
++		if (hole_start != map->m_lblk)
++			hole_len -= map->m_lblk - hole_start;
++		map->m_pblk = 0;
++		map->m_len = min_t(unsigned int, map->m_len, hole_len);
++
+ 		goto out2;
+ 	}
  
- 	inode_unlock(inode);
-@@ -638,12 +628,11 @@ static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
- static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
- {
- 	struct inode *inode = file->f_mapping->host;
--	struct ext4_map_blocks map;
- 	struct extent_status es;
- 	ext4_lblk_t start, last, end;
- 	loff_t holeoff, isize;
- 	int blkbits;
--	int ret = 0;
-+	int ret;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 355ef9c36c87..7544d1047dc6 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -555,8 +555,23 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 		goto got_it;
+ 	}
  
- 	inode_lock(inode);
+-	/* Next simple case - plain lookup or failed read of indirect block */
+-	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0 || err == -EIO)
++	/* Next simple case - plain lookup failed */
++	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
++		unsigned epb = inode->i_sb->s_blocksize / sizeof(u32);
++		int i;
++
++		/* Count number blocks in a subtree under 'partial' */
++		count = 1;
++		for (i = 0; partial + i != chain + depth - 1; i++)
++			count *= epb;
++		/* Fill in size of a hole we found */
++		map->m_pblk = 0;
++		map->m_len = min_t(unsigned int, map->m_len, count);
++		goto cleanup;
++	}
++
++	/* Failed read of indirect block */
++	if (err == -EIO)
+ 		goto cleanup;
  
-@@ -660,44 +649,30 @@ static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
- 	holeoff = offset;
- 
- 	do {
--		map.m_lblk = last;
--		map.m_len = end - last + 1;
--		ret = ext4_map_blocks(NULL, inode, &map, 0);
--		if (ret > 0 && !(map.m_flags & EXT4_MAP_UNWRITTEN)) {
--			last += ret;
--			holeoff = (loff_t)last << blkbits;
--			continue;
-+		ret = ext4_get_next_extent(inode, last, end - last + 1, &es);
-+		if (ret < 0) {
-+			inode_unlock(inode);
-+			return ret;
- 		}
--
--		/*
--		 * If there is a delay extent at this offset,
--		 * we will skip this extent.
--		 */
--		ext4_es_find_delayed_extent_range(inode, last, last, &es);
--		if (es.es_len != 0 && in_range(last, es.es_lblk, es.es_len)) {
--			last = es.es_lblk + es.es_len;
--			holeoff = (loff_t)last << blkbits;
--			continue;
-+		/* Found a hole? */
-+		if (ret == 0 || es.es_lblk > last) {
-+			if (last != start)
-+				holeoff = (loff_t)last << blkbits;
-+			break;
- 		}
--
- 		/*
- 		 * If there is a unwritten extent at this offset,
- 		 * it will be as a data or a hole according to page
- 		 * cache that has data or not.
- 		 */
--		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
--			int unwritten;
--			unwritten = ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
--							      &map, &holeoff);
--			if (!unwritten) {
--				last += ret;
--				holeoff = (loff_t)last << blkbits;
--				continue;
--			}
--		}
-+		if (ext4_es_is_unwritten(&es) &&
-+		    ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
-+					      last + es.es_len, &holeoff))
-+			break;
- 
--		/* find a hole */
--		break;
-+		last += es.es_len;
-+		holeoff = (loff_t)last << blkbits;
-+		cond_resched();
- 	} while (last <= end);
- 
- 	inode_unlock(inode);
+ 	/*
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e38c88b37e2e..af7b1e9f7762 100644
+index 9cc57c3b4661..ef590607b4a7 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -5545,3 +5545,70 @@ int ext4_filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 
- 	return err;
- }
-+
-+/*
-+ * Find the first extent at or after @lblk in an inode that is not a hole.
-+ * Search for @map_len blocks at most. The extent is returned in @result.
-+ *
-+ * The function returns 1 if we found an extent. The function returns 0 in
-+ * case there is no extent at or after @lblk and in that case also sets
-+ * @result->es_len to 0. In case of error, the error code is returned.
-+ */
-+int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
-+			 unsigned int map_len, struct extent_status *result)
-+{
-+	struct ext4_map_blocks map;
-+	struct extent_status es = {};
-+	int ret;
-+
-+	map.m_lblk = lblk;
-+	map.m_len = map_len;
-+
-+	/*
-+	 * For non-extent based files this loop may iterate several times since
-+	 * we do not determine full hole size.
-+	 */
-+	while (map.m_len > 0) {
-+		ret = ext4_map_blocks(NULL, inode, &map, 0);
-+		if (ret < 0)
-+			return ret;
-+		/* There's extent covering m_lblk? Just return it. */
-+		if (ret > 0) {
-+			int status;
-+
-+			ext4_es_store_pblock(result, map.m_pblk);
-+			result->es_lblk = map.m_lblk;
-+			result->es_len = map.m_len;
-+			if (map.m_flags & EXT4_MAP_UNWRITTEN)
-+				status = EXTENT_STATUS_UNWRITTEN;
-+			else
-+				status = EXTENT_STATUS_WRITTEN;
-+			ext4_es_store_status(result, status);
-+			return 1;
-+		}
-+		ext4_es_find_delayed_extent_range(inode, map.m_lblk,
-+						  map.m_lblk + map.m_len - 1,
-+						  &es);
-+		/* Is delalloc data before next block in extent tree? */
-+		if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
-+			ext4_lblk_t offset = 0;
-+
-+			if (es.es_lblk < lblk)
-+				offset = lblk - es.es_lblk;
-+			result->es_lblk = es.es_lblk + offset;
-+			ext4_es_store_pblock(result,
-+					     ext4_es_pblock(&es) + offset);
-+			result->es_len = es.es_len - offset;
-+			ext4_es_store_status(result, ext4_es_status(&es));
-+
-+			return 1;
-+		}
-+		/* There's a hole at m_lblk, advance us after it */
-+		map.m_lblk += map.m_len;
-+		map_len -= map.m_len;
-+		map.m_len = map_len;
-+		cond_resched();
-+	}
-+	result->es_len = 0;
-+	return 0;
-+}
+@@ -458,13 +458,13 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
+  * Otherwise, call with ext4_ind_map_blocks() to handle indirect mapping
+  * based files
+  *
+- * On success, it returns the number of blocks being mapped or allocated.
+- * if create==0 and the blocks are pre-allocated and unwritten block,
+- * the result buffer head is unmapped. If the create ==1, it will make sure
+- * the buffer head is mapped.
++ * On success, it returns the number of blocks being mapped or allocated.  if
++ * create==0 and the blocks are pre-allocated and unwritten, the resulting @map
++ * is marked as unwritten. If the create == 1, it will mark @map as mapped.
+  *
+  * It returns 0 if plain look up failed (blocks have not been allocated), in
+- * that case, buffer head is unmapped
++ * that case, @map is returned as unmapped but we still do fill map->m_len to
++ * indicate the length of a hole starting at map->m_lblk.
+  *
+  * It returns the error in case of allocation failure.
+  */
+@@ -507,6 +507,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 				retval = map->m_len;
+ 			map->m_len = retval;
+ 		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
++			map->m_pblk = 0;
++			retval = es.es_len - (map->m_lblk - es.es_lblk);
++			if (retval > map->m_len)
++				retval = map->m_len;
++			map->m_len = retval;
+ 			retval = 0;
+ 		} else {
+ 			BUG_ON(1);
 -- 
 2.6.2
 
