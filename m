@@ -1,126 +1,49 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/5] ext4: Return hole from ext4_map_blocks()
-Date: Thu,  3 Mar 2016 11:23:49 +0100
-Message-ID: <1457000631-10215-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 4/5] ext4: Cleanup handling of bh->b_state in DAX mmap
+Date: Thu,  3 Mar 2016 11:23:50 +0100
+Message-ID: <1457000631-10215-5-git-send-email-jack@suse.cz>
 References: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51040 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51042 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755336AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755980AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 3 Mar 2016 05:23:39 -0500
 In-Reply-To: <1457000631-10215-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, ext4_map_blocks() just returns 0 when it finds a hole and
-allocation is not requested. However we have all the information
-available to tell how large the hole actually is and there are callers
-of ext4_map_blocks() which would save some block-by-block hole iteration
-if they knew this information. So fill in struct ext4_map_blocks even
-for holes with the information we have. We keep returning 0 for holes to
-maintain backward compatibility of the function.
+ext4_dax_mmap_get_block() updates bh->b_state directly instead of using
+ext4_update_bh_state(). This is mostly a cosmetic issue since DAX code
+always passes on-stack buffer_head but clean this up to make code more
+uniform.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c  | 11 +++++++++--
- fs/ext4/indirect.c | 19 +++++++++++++++++--
- fs/ext4/inode.c    | 15 ++++++++++-----
- 3 files changed, 36 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2dc6261e247f..0e924ca153f9 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4380,13 +4380,20 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
- 		ext4_lblk_t hole_start, hole_len;
- 
-+		hole_start = map->m_lblk;
-+		hole_len = ext4_ext_determine_hole(inode, path, &hole_start);
- 		/*
- 		 * put just found gap into cache to speed up
- 		 * subsequent requests
- 		 */
--		hole_start = map->m_lblk;
--		hole_len = ext4_ext_determine_hole(inode, path, &hole_start);
- 		ext4_ext_put_gap_in_cache(inode, hole_start, hole_len);
-+
-+		/* Update hole_len to reflect hole size after map->m_lblk */
-+		if (hole_start != map->m_lblk)
-+			hole_len -= map->m_lblk - hole_start;
-+		map->m_pblk = 0;
-+		map->m_len = min_t(unsigned int, map->m_len, hole_len);
-+
- 		goto out2;
- 	}
- 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 355ef9c36c87..7544d1047dc6 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -555,8 +555,23 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 		goto got_it;
- 	}
- 
--	/* Next simple case - plain lookup or failed read of indirect block */
--	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0 || err == -EIO)
-+	/* Next simple case - plain lookup failed */
-+	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-+		unsigned epb = inode->i_sb->s_blocksize / sizeof(u32);
-+		int i;
-+
-+		/* Count number blocks in a subtree under 'partial' */
-+		count = 1;
-+		for (i = 0; partial + i != chain + depth - 1; i++)
-+			count *= epb;
-+		/* Fill in size of a hole we found */
-+		map->m_pblk = 0;
-+		map->m_len = min_t(unsigned int, map->m_len, count);
-+		goto cleanup;
-+	}
-+
-+	/* Failed read of indirect block */
-+	if (err == -EIO)
- 		goto cleanup;
- 
- 	/*
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9cc57c3b4661..ef590607b4a7 100644
+index ef590607b4a7..e38c88b37e2e 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -458,13 +458,13 @@ static void ext4_map_blocks_es_recheck(handle_t *handle,
-  * Otherwise, call with ext4_ind_map_blocks() to handle indirect mapping
-  * based files
-  *
-- * On success, it returns the number of blocks being mapped or allocated.
-- * if create==0 and the blocks are pre-allocated and unwritten block,
-- * the result buffer head is unmapped. If the create ==1, it will make sure
-- * the buffer head is mapped.
-+ * On success, it returns the number of blocks being mapped or allocated.  if
-+ * create==0 and the blocks are pre-allocated and unwritten, the resulting @map
-+ * is marked as unwritten. If the create == 1, it will mark @map as mapped.
-  *
-  * It returns 0 if plain look up failed (blocks have not been allocated), in
-- * that case, buffer head is unmapped
-+ * that case, @map is returned as unmapped but we still do fill map->m_len to
-+ * indicate the length of a hole starting at map->m_lblk.
-  *
-  * It returns the error in case of allocation failure.
-  */
-@@ -507,6 +507,11 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 				retval = map->m_len;
- 			map->m_len = retval;
- 		} else if (ext4_es_is_delayed(&es) || ext4_es_is_hole(&es)) {
-+			map->m_pblk = 0;
-+			retval = es.es_len - (map->m_lblk - es.es_lblk);
-+			if (retval > map->m_len)
-+				retval = map->m_len;
-+			map->m_len = retval;
- 			retval = 0;
- 		} else {
- 			BUG_ON(1);
+@@ -3180,13 +3180,12 @@ out:
+ 	WARN_ON_ONCE(ret == 0 && create);
+ 	if (ret > 0) {
+ 		map_bh(bh_result, inode->i_sb, map.m_pblk);
+-		bh_result->b_state = (bh_result->b_state & ~EXT4_MAP_FLAGS) |
+-					map.m_flags;
+ 		/*
+ 		 * At least for now we have to clear BH_New so that DAX code
+ 		 * doesn't attempt to zero blocks again in a racy way.
+ 		 */
+-		bh_result->b_state &= ~(1 << BH_New);
++		map.m_flags &= ~EXT4_MAP_NEW;
++		ext4_update_bh_state(bh_result, map.m_flags);
+ 		bh_result->b_size = map.m_len << inode->i_blkbits;
+ 		ret = 0;
+ 	}
 -- 
 2.6.2
 
