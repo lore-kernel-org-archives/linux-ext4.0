@@ -1,153 +1,108 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/5] ext4: Factor out determining of hole size
-Date: Thu,  3 Mar 2016 11:23:48 +0100
-Message-ID: <1457000631-10215-3-git-send-email-jack@suse.cz>
-References: <1457000631-10215-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51041 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755894AbcCCKXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Mar 2016 05:23:39 -0500
-In-Reply-To: <1457000631-10215-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: lokesh jaliminche <lokesh.jaliminche@gmail.com>
+Subject: Re: ext2/3 using ext4 module mkdir IO error on pmem DAX mount
+Date: Thu, 3 Mar 2016 22:49:51 +0530
+Message-ID: <CAKJOkCoLEs2cQuS+CeciUY39ErQeOYmkQ_Jj4gHePPTUTMngrA@mail.gmail.com>
+References: <20160302064304.GA15559@dhcp12-144.nay.redhat.com>
+	<20160303002824.GA31238@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Xiong Zhou <xzhou@redhat.com>, Andreas Dilger <adilger@dilger.ca>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-nvdimm@ml01.01.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-next@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <20160303002824.GA31238@linux.intel.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4_ext_put_gap_in_cache() determines hole size in the extent tree,
-then trims this with possible delayed allocated blocks, and inserts the
-result into the extent status tree. Factor out determination of the size
-of the hole in the extent tree as we will need this information in
-ext4_ext_map_blocks() as well.
+Hi,
+   I have tested it locally I am also getting same error but not
+consistently. I have put some debug logs for debugging, as per the logs
+it seems that block_group is not getting initialized properly. I am
+not sure weather this is because of my patch. Need to debug more.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents.c | 80 ++++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 47 insertions(+), 33 deletions(-)
+commands :
+=========
+[root@cli02-ws Desktop]# dd if=/dev/zero of=/mnt/test bs=1024 count=100000
+[root@cli02-ws Desktop]# losetup /dev/loop4 /mnt/test
+[root@cli02-ws Desktop]# mkfs.ext2 /mnt/test
+[root@cli02-ws Desktop]# mount -t ext2 -o loop /mnt/test /mnt/test_ext4
+[root@cli02-ws Desktop]# cd /mnt/test_ext4/
+[root@cli02-ws test_ext4]# mkdir 1
+mkdir: cannot create directory `1': Input/output error
+[root@cli02-ws test_ext4]# mkdir 2
+[root@cli02-ws test_ext4]# mkdir 3
+mkdir: cannot create directory `3': Input/output error
+[root@cli02-ws test_ext4]# mkdir 4
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3753ceb0b0dd..2dc6261e247f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2293,59 +2293,69 @@ static int ext4_fill_fiemap_extents(struct inode *inode,
- }
- 
- /*
-- * ext4_ext_put_gap_in_cache:
-- * calculate boundaries of the gap that the requested block fits into
-- * and cache this gap
-+ * ext4_ext_determine_hole - determine hole around given block
-+ * @inode:	inode we lookup in
-+ * @path:	path in extent tree to @lblk
-+ * @lblk:	pointer to logical block around which we want to determine hole
-+ *
-+ * Determine hole length (and start if easily possible) around given logical
-+ * block. We don't try too hard to find the beginning of the hole but @path
-+ * actually points to extent before @lblk, we provide it.
-+ *
-+ * The function returns the length of a hole starting at @lblk. We update @lblk
-+ * to the beginning of the hole if we managed to find it.
-  */
--static void
--ext4_ext_put_gap_in_cache(struct inode *inode, struct ext4_ext_path *path,
--				ext4_lblk_t block)
-+static ext4_lblk_t ext4_ext_determine_hole(struct inode *inode,
-+					   struct ext4_ext_path *path,
-+					   ext4_lblk_t *lblk)
- {
- 	int depth = ext_depth(inode);
--	ext4_lblk_t len;
--	ext4_lblk_t lblock;
- 	struct ext4_extent *ex;
--	struct extent_status es;
-+	ext4_lblk_t len;
- 
- 	ex = path[depth].p_ext;
- 	if (ex == NULL) {
- 		/* there is no extent yet, so gap is [0;-] */
--		lblock = 0;
-+		*lblk = 0;
- 		len = EXT_MAX_BLOCKS;
--		ext_debug("cache gap(whole file):");
--	} else if (block < le32_to_cpu(ex->ee_block)) {
--		lblock = block;
--		len = le32_to_cpu(ex->ee_block) - block;
--		ext_debug("cache gap(before): %u [%u:%u]",
--				block,
--				le32_to_cpu(ex->ee_block),
--				 ext4_ext_get_actual_len(ex));
--	} else if (block >= le32_to_cpu(ex->ee_block)
-+	} else if (*lblk < le32_to_cpu(ex->ee_block)) {
-+		len = le32_to_cpu(ex->ee_block) - *lblk;
-+	} else if (*lblk >= le32_to_cpu(ex->ee_block)
- 			+ ext4_ext_get_actual_len(ex)) {
- 		ext4_lblk_t next;
--		lblock = le32_to_cpu(ex->ee_block)
--			+ ext4_ext_get_actual_len(ex);
- 
-+		*lblk = le32_to_cpu(ex->ee_block) + ext4_ext_get_actual_len(ex);
- 		next = ext4_ext_next_allocated_block(path);
--		ext_debug("cache gap(after): [%u:%u] %u",
--				le32_to_cpu(ex->ee_block),
--				ext4_ext_get_actual_len(ex),
--				block);
--		BUG_ON(next == lblock);
--		len = next - lblock;
-+		BUG_ON(next == *lblk);
-+		len = next - *lblk;
- 	} else {
- 		BUG();
- 	}
-+	return len;
-+}
- 
--	ext4_es_find_delayed_extent_range(inode, lblock, lblock + len - 1, &es);
-+/*
-+ * ext4_ext_put_gap_in_cache:
-+ * calculate boundaries of the gap that the requested block fits into
-+ * and cache this gap
-+ */
-+static void
-+ext4_ext_put_gap_in_cache(struct inode *inode, ext4_lblk_t hole_start,
-+			  ext4_lblk_t hole_len)
-+{
-+	struct extent_status es;
-+
-+	ext4_es_find_delayed_extent_range(inode, hole_start,
-+					  hole_start + hole_len - 1, &es);
- 	if (es.es_len) {
- 		/* There's delayed extent containing lblock? */
--		if (es.es_lblk <= lblock)
-+		if (es.es_lblk <= hole_start)
- 			return;
--		len = min(es.es_lblk - lblock, len);
-+		hole_len = min(es.es_lblk - hole_start, hole_len);
- 	}
--	ext_debug(" -> %u:%u\n", lblock, len);
--	ext4_es_insert_extent(inode, lblock, len, ~0, EXTENT_STATUS_HOLE);
-+	ext_debug(" -> %u:%u\n", hole_start, hole_len);
-+	ext4_es_insert_extent(inode, hole_start, hole_len, ~0,
-+			      EXTENT_STATUS_HOLE);
- }
- 
- /*
-@@ -4368,11 +4378,15 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	 * we couldn't try to create block if create flag is zero
- 	 */
- 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
-+		ext4_lblk_t hole_start, hole_len;
-+
- 		/*
- 		 * put just found gap into cache to speed up
- 		 * subsequent requests
- 		 */
--		ext4_ext_put_gap_in_cache(inode, path, map->m_lblk);
-+		hole_start = map->m_lblk;
-+		hole_len = ext4_ext_determine_hole(inode, path, &hole_start);
-+		ext4_ext_put_gap_in_cache(inode, hole_start, hole_len);
- 		goto out2;
- 	}
- 
--- 
-2.6.2
+debug_logs :
+=========
+[root@cli02-ws Desktop]# tail -f /var/log/messages 2>&1 | tee faillog
+Mar  3 13:13:27 cli02-ws kernel: [  228.167307] EXT4-fs (loop0):
+mounting ext2 file system using the ext4 subsystem
+Mar  3 13:13:27 cli02-ws kernel: [  228.169634] EXT4-fs (loop0):
+mounted filesystem without journal. Opts: (null)
+Mar  3 13:13:42 cli02-ws kernel: [  243.506280] max_blocks_per_group : 7949
+Mar  3 13:13:42 cli02-ws kernel: [  243.506285] stats.free_clusters  : 7949
+Mar  3 13:13:42 cli02-ws kernel: [  243.506287] inodes_per_group*f   : 1928
+Mar  3 13:13:42 cli02-ws kernel: [  243.506290] stats.free_inodes    : 1928
+Mar  3 13:13:42 cli02-ws kernel: [  243.506292] block_group
+:2103884794 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Mar  3 13:13:42 cli02-ws kernel: [  243.506295] group_count : 13
+Mar  3 13:13:42 cli02-ws kernel: [  243.506298] EXT4-fs error (device
+loop0): ext4_get_group_desc:291: comm mkdir: block_group >=
+groups_count - block_group = 2103884794, groups_count = 13
+Mar  3 13:14:09 cli02-ws kernel: [  270.809734] max_blocks_per_group : 7949
+Mar  3 13:14:09 cli02-ws kernel: [  270.809739] stats.free_clusters  : 1452
+Mar  3 13:14:09 cli02-ws kernel: [  270.809742] inodes_per_group*f   : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809744] stats.free_inodes    : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809747] max_blocks_per_group : 7949
+Mar  3 13:14:09 cli02-ws kernel: [  270.809750] stats.free_clusters  : 7677
+Mar  3 13:14:09 cli02-ws kernel: [  270.809752] inodes_per_group*f   : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809755] stats.free_inodes    : 1917
+Mar  3 13:14:09 cli02-ws kernel: [  270.809757] max_blocks_per_group : 7949
+Mar  3 13:14:09 cli02-ws kernel: [  270.809760] stats.free_clusters  : 7691
+Mar  3 13:14:09 cli02-ws kernel: [  270.809762] inodes_per_group*f   : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809765] stats.free_inodes    : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809767] max_blocks_per_group : 7949
+Mar  3 13:14:09 cli02-ws kernel: [  270.809770] stats.free_clusters  : 7949
+Mar  3 13:14:09 cli02-ws kernel: [  270.809772] inodes_per_group*f   : 1928
+Mar  3 13:14:09 cli02-ws kernel: [  270.809775] stats.free_inodes    : 1928
+Mar  3 13:14:38 cli02-ws kernel: [  299.081995] max_blocks_per_group : 7949
+Mar  3 13:14:38 cli02-ws kernel: [  299.082038] stats.free_clusters  : 7949
+Mar  3 13:14:38 cli02-ws kernel: [  299.082040] inodes_per_group*f   : 1928
+Mar  3 13:14:38 cli02-ws kernel: [  299.082042] stats.free_inodes    : 1928
+Mar  3 13:14:38 cli02-ws kernel: [  299.082045] block_group
+:1066167208<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+Mar  3 13:14:38 cli02-ws kernel: [  299.082048] group_count : 13
+Mar  3 13:14:38 cli02-ws kernel: [  299.082051] EXT4-fs error (device
+loop0): ext4_get_group_desc:291: comm mkdir: block_group >=
+groups_count - block_group = 1066167208, groups_count = 13
+Mar  3 13:14:48 cli02-ws kernel: [  309.138432] max_blocks_per_group : 7949
+Mar  3 13:14:48 cli02-ws kernel: [  309.138436] stats.free_clusters  : 7949
+Mar  3 13:14:48 cli02-ws kernel: [  309.138439] inodes_per_group*f   : 1928
+Mar  3 13:14:48 cli02-ws kernel: [  309.138452] stats.free_inodes    : 1928
 
+Regards,
+Lokesh
+
+On Thu, Mar 3, 2016 at 5:58 AM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> On Wed, Mar 02, 2016 at 02:43:04PM +0800, Xiong Zhou wrote:
+>> Hi,
+>>
+>> mkdir failed IO error on pmem DAX ext2/3 fs mount using ext4 module.
+>>
+>> This happends only on -next tree, not on Linus' tree,
+>> at least from 4.5.0-rc5-next-20160224.
+>
+> I was able to reproduce this and bisect it to the following commit:
+>
+> commit 1f2d779fed21 ("ext4: optimize group search for inode allocation")
+>
+> The fact that DAX was enabled in this failure was a red herring - it fails
+> without DAX as well.  The key is just that we're mounting an ext2 formatted
+> filesystem using the ext4 module, I think.
+>
+> - Ross
