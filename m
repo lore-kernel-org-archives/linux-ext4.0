@@ -1,51 +1,36 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 bug: getdents uninterruptible for 117 seconds
-Date: Wed, 2 Mar 2016 16:43:30 -0500
-Message-ID: <20160302214330.GB24012@thunk.org>
-References: <20160302171511.GM12913@kvack.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: ext2/3 using ext4 module mkdir IO error on pmem DAX mount
+Date: Wed, 2 Mar 2016 17:28:24 -0700
+Message-ID: <20160303002824.GA31238@linux.intel.com>
+References: <20160302064304.GA15559@dhcp12-144.nay.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Benjamin LaHaise <bcrl@kvack.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52132 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751821AbcCBVne (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Mar 2016 16:43:34 -0500
+Cc: linux-nvdimm@ml01.01.org, linux-ext4@vger.kernel.org,
+	linux-next@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Xiong Zhou <xzhou@redhat.com>,
+	Lokesh Jaliminche <lokesh.jaliminche@gmail.com>,
+	Andreas Dilger <adilger@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160302171511.GM12913@kvack.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160302064304.GA15559@dhcp12-144.nay.redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 02, 2016 at 12:15:11PM -0500, Benjamin LaHaise wrote:
-> Hi folks,
+On Wed, Mar 02, 2016 at 02:43:04PM +0800, Xiong Zhou wrote:
+> Hi,
 > 
-> While working on a bug involving write starvation, the test I was running 
-> managed to trigger some pretty horrific worst case behaviour in ext4.  The 
-> filesystem I'm working on is about 4TB in size, and is used for storing a 
-> number of spool files across 100 subdirectories in the filesystem.  One of 
-> these subdirectories ended up growing to ~497MB in size.  Once all of the 
-> files were removed from these directories, the filesystem was unmounted.  
-> On subsequent mounts of the filesystem, it became apparent that whenever 
-> a specific directory was accessed using ls or find, the kernel would block 
-> in getdents() for north of 117 seconds.  It is clear that ext4 is slowly 
-> reading the entire contents of the directory into memory during this time 
-> at a rate of ~4MB/s.  This filesystem is being stored on an external 8Gbps 
-> FC SAN comprised of about 8 x 10Krpm spindles.
+> mkdir failed IO error on pmem DAX ext2/3 fs mount using ext4 module.
 > 
-> I've placed a copy of the e2image for the filesystem at 
-> http://www.kvack.org/~bcrl/ext4/ext4-readdir.img.xz .  The problematic 
-> directory is broken/1.  The relevant snippet of strace output is below.  
-> Thoughts?
+> This happends only on -next tree, not on Linus' tree,
+> at least from 4.5.0-rc5-next-20160224.
 
-Yes, this is a known problem.  Right now we don't have a way of
-removing empty directory blocks from a directory.  This can be fixed
-up by running "e2fsck -fD /dev/sdXX" off-line, but it's not terribly
-satisfying.
+I was able to reproduce this and bisect it to the following commit:
 
-There are things we could do in theory try to make things better, but
-they haven't been implemented yet.  In practice they tend to happen
-with pathological workloads, but they do happen occasionally in real
-life.  It's just not something we've had time to address up until now.
+commit 1f2d779fed21 ("ext4: optimize group search for inode allocation")
 
-       	    	     	       	     - Ted
+The fact that DAX was enabled in this failure was a red herring - it fails
+without DAX as well.  The key is just that we're mounting an ext2 formatted
+filesystem using the ext4 module, I think.
+
+- Ross
