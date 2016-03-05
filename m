@@ -1,114 +1,137 @@
-From: Stefan Assmann <sassmann@kpanic.de>
-Subject: RIP [<ffffffff812c3b77>] ext4_release_file+0x37/0xc0 with 4.5-rc6
- when resuming from suspend
-Date: Sat, 5 Mar 2016 11:24:46 +0100
-Message-ID: <56DAB3EE.5020203@kpanic.de>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 113781] New: kernel 4.4.1-2-ARCH, 4.4.3-1-ARCH and Fake RAID
+ array setup
+Date: Sat, 05 Mar 2016 13:57:05 +0000
+Message-ID: <bug-113781-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: sassmann@kpanic.de
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout-40-253.xlhost.de ([84.200.40.253]:34381 "EHLO
-	app1a.xlhost.de" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754305AbcCEKaZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Mar 2016 05:30:25 -0500
+Received: from mail.kernel.org ([198.145.29.136]:33197 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751148AbcCEN5K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Mar 2016 08:57:10 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id DA3D62022A
+	for <linux-ext4@vger.kernel.org>; Sat,  5 Mar 2016 13:57:07 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id D52CF20253
+	for <linux-ext4@vger.kernel.org>; Sat,  5 Mar 2016 13:57:05 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Occasionally when trying to resume from suspend to RAM I get the
-following GPF.
+https://bugzilla.kernel.org/show_bug.cgi?id=113781
 
-  Stefan
+            Bug ID: 113781
+           Summary: kernel 4.4.1-2-ARCH, 4.4.3-1-ARCH and Fake RAID array
+                    setup
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.4.1-2-ARCH, 4.4.3-1-ARCH
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: hasecomp@aim.com
+        Regression: No
 
-[  882.344245] PM: resume of devices complete after 83682.775 msecs
-[  882.420550] PM: Finishing wakeup.
-[  882.420551] Restarting tasks ...=C2=B7
-[  882.420664] i915 0000:00:02.0: BAR 6: [??? 0x00000000 flags 0x2] has=
- bogus alignment
-[  882.421141] done.
-[  882.422027] usb 3-9.1.1: USB disconnect, device number 33
-[  882.452719] general protection fault: 0000 [#1] SMP=C2=B7
-[  882.453244] Modules linked in: btrfs xor raid6_pq ufs hfsplus hfs mi=
-nix msdos jfs xfs libcrc32c xt_CHECKSUM tun fuse ipt_MASQUERADE nf_nat_=
-masquerade_ipv4 xt_addrtype br_netfilter overlay ip6t_rpfilter ip6t_REJ=
-ECT nf_reject_ipv6 xt_conntrack ip_set nfnetlink ebtable_filter ebtable=
-_nat
-ebtable_broute bridge ebtables ip6table_raw ip6table_nat nf_conntrack_i=
-pv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6tab=
-le_filter ip6_tables iptable_raw iptable_nat nf_conntrack_ipv4 nf_defra=
-g_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security =
-bnep arc4
-intel_rapl x86_pkg_temp_thermal iwlmvm snd_hda_codec_realtek coretemp s=
-nd_hda_codec_hdmi snd_hda_codec_generic mac80211 vfat fat kvm_intel snd=
-_hda_intel iTCO_wdt iTCO_vendor_support kvm snd_hda_codec btusb iwlwifi=
- uvcvideo btrtl
-[  882.456611]  snd_hda_core videobuf2_vmalloc videobuf2_memops videobu=
-f2_v4l2 btbcm snd_hwdep irqbypass snd_seq videobuf2_core btintel snd_se=
-q_device cfg80211 i2c_i801 pcspkr videodev joydev lpc_ich bluetooth thi=
-nkpad_acpi snd_pcm media ie31200_edac snd_timer snd mei_me mei edac_cor=
-e shpchp
-soundcore rfkill tpm_tis tpm nfsd binfmt_misc auth_rpcgss nfs_acl lockd=
- grace dm_crypt 8021q garp stp llc mrp i915 crct10dif_pclmul crc32_pclm=
-ul crc32c_intel i2c_algo_bit drm_kms_helper ghash_clmulni_intel sdhci_p=
-ci e1000e sdhci mmc_core drm serio_raw ptp pps_core wmi fjes video sunr=
-pc
-[  882.459687] CPU: 7 PID: 5299 Comm: dhclient Tainted: G        W     =
-  4.5.0-0.rc6.git1.1.vanilla.knurd.1.fc23.x86_64 #1
-[  882.460305] Hardware name: LENOVO 20EGS0R60P/20EGS0R60P, BIOS GNET73=
-WW (2.21 ) 03/12/2015
-[  882.460923] task: ffff880420921d80 ti: ffff88046819c000 task.ti: fff=
-f88046819c000
-[  882.461578] RIP: 0010:[<ffffffff812c3b77>]  [<ffffffff812c3b77>] ext=
-4_release_file+0x37/0xc0
-[  882.462231] RSP: 0018:ffff88046819fbf8  EFLAGS: 00010246
-[  882.462870] RAX: c0c0c0c000000039 RBX: ffff8804698e9000 RCX: 0000000=
-000000001
-[  882.463511] RDX: ffff8804642035d8 RSI: ffff880464203500 RDI: ffff880=
-4698e9000
-[  882.464135] RBP: ffff88046819fc10 R08: 0000000000000000 R09: 0000000=
-000000000
-[  882.464774] R10: ffff8804698e9000 R11: ffff880464203510 R12: 0000000=
-000000010
-[  882.465384] R13: ffff8804698e9000 R14: ffff880464a076a0 R15: ffff880=
-46afee0c0
-[  882.466020] FS:  00007f95c134c8c0(0000) GS:ffff88047e3c0000(0000) kn=
-lGS:0000000000000000
-[  882.466637] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  882.467248] CR2: 000055f5eb54eda0 CR3: 0000000001c0a000 CR4: 0000000=
-0001406e0
-[  882.467887] Stack:
-[  882.468495]  ffff8804698e9000 ffff880464203500 0000000000000010 ffff=
-88046819fc58
-[  882.469118]  ffffffff8123b34f ffff8804698e9000 ffff880464203510 ffff=
-ffff81f28ed0
-[  882.469758]  ffff880420922478 ffff880420921d80 ffff880464203c00 ffff=
-8804653fe968
-[  882.470441] Call Trace:
-[  882.471076]  [<ffffffff8123b34f>] __fput+0xdf/0x1f0
-[  882.471688]  [<ffffffff8123b49e>] ____fput+0xe/0x10
-[  882.472304]  [<ffffffff810c0d03>] task_work_run+0x73/0x90
-[  882.472952]  [<ffffffff810a7185>] do_exit+0x2d5/0xb30
-[  882.473556]  [<ffffffff810a7a67>] do_group_exit+0x47/0xb0
-[  882.474187]  [<ffffffff810b2f51>] get_signal+0x291/0x610
-[  882.474803]  [<ffffffff81017287>] do_signal+0x37/0x6b0
-[  882.475449]  [<ffffffff811e3fb6>] ? handle_mm_fault+0x866/0x1ae0
-[  882.476097]  [<ffffffff81114dda>] ? ktime_get_ts64+0x4a/0xf0
-[  882.476732]  [<ffffffff8124daab>] ? poll_select_copy_remaining+0xfb/=
-0x140
-[  882.477365]  [<ffffffff8100320c>] exit_to_usermode_loop+0x8c/0xd0
-[  882.478002]  [<ffffffff81003d41>] syscall_return_slowpath+0xa1/0xb0
-[  882.478641]  [<ffffffff817b830c>] int_ret_from_sys_call+0x25/0x8f
-[  882.479267] Code: 48 89 fb 48 83 ec 08 48 8b 87 68 ff ff ff 48 c1 e8=
- 24 a8 01 75 4e f6 46 44 02 74 0b 8b 83 50 01 00 00 83 f8 01 74 54 48 8=
-b 43 28 <48> 8b 80 58 04 00 00 48 8b 40 68 f6 40 5c 20 74 1d 48 8b 83 6=
-8=C2=B7
-[  882.480630] RIP  [<ffffffff812c3b77>] ext4_release_file+0x37/0xc0
-[  882.481277]  RSP <ffff88046819fbf8>
-[  882.481937] ---[ end trace 32281f35372d5d05 ]---
+Unfortunately, I am not 100% sure that this is a kernel problem, but after you
+read this post, I hope you understand why I assigned this bug report to the
+Linux kernel. A search on "RAID" through the bug database did not result in
+anything comparable with the Fake RAID problem described here.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+First the symptoms, afterwards detailed explanation of the software and
+hardware used. Below, it always concerns PC configurations with a so-called
+"Fake RAID array", with 2 disks connected in a RAID 0 setup.
+
+PC 1.
+
+Immediately after Linux kernel 4.4.1-2-x86_64 ARCH had been installed on
+2016-02-03, no Fake RAID disks were recognised anymore. When you start dmraid,
+under kernel 4.4.1-2 you get a message something like "No block devices", under
+kernel 4.4.3-1 you get the message "No raid disks". Downgrade to the previously
+working kernel 4.3.3-3-x86_64 ARCH made the PC run again. According to fsck
+filesystems are still OK.
+
+PC 2.
+
+A fairly heavily used PC at the time. Around 2016-02-03 Linux kernel
+4.4.1-2-x86_64 ARCH was one of the updates. It took approximately 2 to 3 weeks
+until the disks were suddenly hopelessly screwed up. It is impossible to do
+anything with these disks; I will have to reformat them again and for safety's
+sake I will also repartition them again one day. Power supply has been taken
+off these disks and temporarily a third (single) disk has been installed with a
+Linux system (kernel 4.4.1-2-x86_64 ARCH, in the meantime 4.4.3-1-x86_64 ARCH).
+PC runs fine, admittedly only for a few days now, but my faith in Linux and/or
+the hardware would be unbearably shaken if this configuration would fail in the
+near or further future. 
+
+PC 3.
+
+Around 2016-02-03 Linux kernel 4.4.1-2-x86_64 ARCH was among updates. At the
+time, this system was rarely used. Having seen the problems with the other 2
+PC's, I downgraded the kernel to 4.3.3-3-x86_64 ARCH. According to fsck the
+filesystems are still OK. 
+
+Downgrading the kernel is of course not a permanent solution.
+
+Software.
+
+For approximately 3 years now, I use the Archlinux distribution on my PCs.
+Archlinux has no versions, it has "rolling updates". So far, I never had
+problems with this distribution.
+
+Besides the kernel, from the dependency tree, here are some of the Archlinux
+packages that maybe relevant in the context of Fake RAID, together with their
+installation dates (installation dates are taken from the file date in the
+package cache).
+
+- dmraid: version 1.0.0.rc16.3-10-x86_64, since october 2013.
+- device-mapper: version 2.02.141-1-x86_64, since 2016-01-25.
+- thin-provisioning-tools: version 0.6.0-2-x86_64, since 2016-01-24.
+
+All filesystems are eventually ext4, the home directory is encrypted with Luks.
+
+Hardware.
+
+Not clear if it helps, but here is the hardware, relevant in this context, of
+the PCs mentioned above.
+
+PC 1 (since January 2009).
+
+Motherboard: Asus M3A78-T.
+CPU: AMD Phenom X4 9850.
+Storage controller: AMD 750 with Promise (Fake) RAID firmware.
+Magnetic disks (2*): Western Digital Cavair Blue WD3200AAKS.
+
+PC 2 (since April 2012).
+
+Motherboard: Asus F1A75-V PRO.
+CPU: AMD A8 3850.
+Storage controller: AMD A75 FCH with Promise (Fake) RAID firmware.
+Magnetic disks (2*): Western Digital WD5000AAKX Blue.
+
+PC 3 (since August 2010).
+Motherboard: Asus M4A89GTD Pro/USB3.
+CPU: AMD Phenom II X4 965.
+Storage controller: AMD 850 with Promise (Fake) RAID firmware.
+Magnetic disks (2*): Western Digital WD5000AAKS.
+
+If I can help by supplying more data, please let me know. From the disks on PCs
+1 and 3 I can read data in a "normal" way. From the disks on PC 2 I'm not so
+sure. Most likely, I can still read data such as a superblock (or what is left
+of it) with dd from a live CD, but in that case you would have to specify
+precisely on which disk and where I can find the data, as well as how much data
+you want.
+
+Kind regards,
+Andre Hasekamp.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
