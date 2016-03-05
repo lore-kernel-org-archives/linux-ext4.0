@@ -1,65 +1,39 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 06/12] xfs/030: fix output on newer filesystems
-Date: Fri, 04 Mar 2016 16:37:56 -0800
-Message-ID: <20160305003756.28738.26362.stgit@birch.djwong.org>
+Subject: [PATCH 07/12] xfs/073: fix output
+Date: Fri, 04 Mar 2016 16:38:03 -0800
+Message-ID: <20160305003803.28738.34407.stgit@birch.djwong.org>
 References: <20160305003717.28738.98818.stgit@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, xfs@oss.sgi.com
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	fstests@vger.kernel.org, xfs@oss.sgi.com
 To: david@fromorbit.com, darrick.wong@oracle.com
-Return-path: <xfs-bounces@oss.sgi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:39713 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760234AbcCEAiL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2016 19:38:11 -0500
 In-Reply-To: <20160305003717.28738.98818.stgit@birch.djwong.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- tests/xfs/030           |    5 ++++-
- tests/xfs/030.out.linux |    2 ++
- 2 files changed, 6 insertions(+), 1 deletion(-)
+ tests/xfs/073.out |    3 +++
+ 1 file changed, 3 insertions(+)
 
 
-diff --git a/tests/xfs/030 b/tests/xfs/030
-index 4cb1524..33c906c 100755
---- a/tests/xfs/030
-+++ b/tests/xfs/030
-@@ -57,7 +57,10 @@ _check_ag()
- 		echo "Corrupting $structure - setting bits to $1"
- 		_check_repair $1 "$structure" |
- 			sed -e '/^error following ag 0 unlinked list$/d' \
--			    -e '/^bad agbno AGBNO for finobt/d'
-+			    -e '/^bad agbno AGBNO for finobt/d' \
-+			    -e '/^bad agbno AGBNO for rmapbt/d' \
-+			    -e '/^bad agbno AGBNO for refcntbt/d' \
-+			    -e '/^Missing reverse-mapping record.*/d'
- 	done
- }
- 
-diff --git a/tests/xfs/030.out.linux b/tests/xfs/030.out.linux
-index cf3259f..14b9b35 100644
---- a/tests/xfs/030.out.linux
-+++ b/tests/xfs/030.out.linux
-@@ -231,6 +231,8 @@ bad agbno AGBNO in agfl, agno 0
- bad agbno AGBNO in agfl, agno 0
- bad agbno AGBNO in agfl, agno 0
- bad agbno AGBNO in agfl, agno 0
-+bad agbno AGBNO in agfl, agno 0
-+bad agbno AGBNO in agfl, agno 0
-         - found root inode chunk
- Phase 3 - for each AG...
-         - scan and clear agi unlinked lists...
+diff --git a/tests/xfs/073.out b/tests/xfs/073.out
+index 3f27467..fb035cb 100644
+--- a/tests/xfs/073.out
++++ b/tests/xfs/073.out
+@@ -1,4 +1,7 @@
+ QA output created by 073
++warning: finobt not supported without CRC support, disabled.
++warning: rmapbt not supported without CRC support, disabled.
++warning: reflink not supported without CRC support, disabled.
+ meta-data=DDEV isize=XXX agcount=N, agsize=XXX blks
+ data     = bsize=XXX blocks=XXX, imaxpct=PCT
+          = sunit=XXX swidth=XXX, unwritten=X
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
