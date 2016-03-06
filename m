@@ -1,90 +1,80 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 9/9] libext2fs: sort keys for xattr blocks
-Date: Sun, 6 Mar 2016 14:08:41 -0800
-Message-ID: <20160306220841.GA27960@birch.djwong.org>
-References: <20160213223725.25381.20929.stgit@birch.djwong.org>
- <20160213223824.25381.8002.stgit@birch.djwong.org>
- <20160306035514.GH10297@thunk.org>
+Subject: Re: [PATCH 13/12] xfs/209: filter scratch dir properly
+Date: Sun, 6 Mar 2016 14:09:35 -0800
+Message-ID: <20160306220935.GB27960@birch.djwong.org>
+References: <20160305003717.28738.98818.stgit@birch.djwong.org>
+	<20160305202502.GI10245@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Darren Hart <dvhart@linux.intel.com>,
-	Richard Purdie <richard.purdie@linuxfoundation.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49348 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750848AbcCFWIv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Mar 2016 17:08:51 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	fstests@vger.kernel.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20160306035514.GH10297@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160305202502.GI10245@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Mar 05, 2016 at 10:55:14PM -0500, Theodore Ts'o wrote:
-> On Sat, Feb 13, 2016 at 02:38:24PM -0800, Darrick J. Wong wrote:
-> > Richard Purdie reports that libext2fs doesn't sort attribute keys in
-> > the xattr block correctly, causing the kernel to return -ENODATA when
-> > querying attributes that should be there.  Therefore, sort attributes
-> > so that whatever ends up in the xattr block is sorted according to
-> > what the kernel expects.
-> > 
-> > Cc: Darren Hart <dvhart@linux.intel.com>
-> > Reported-by: Richard Purdie <richard.purdie@linuxfoundation.org>
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Applied, with one minor change.  You should never use something like
-> /tmp/b in a test script becuase it's possible that /tmp/b might
-> already exist, and might be not even owned by the user.  (In my case
-> /tmp/b was a root owned file that was sufficiently big that it it
-> caused ea_set command to fail with a "out of space" error.)
-> 
-> If /tmp/b was writable by the user and was something previous, then
-> the developer might get after the test script executes "rm -rf /tmp/b".
-
-Oops, my bad.  Thank you for fixing this. :)
+Good catch,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 --D
 
+On Sat, Mar 05, 2016 at 12:25:02PM -0800, Christoph Hellwig wrote:
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 > 
-> 						- Ted
-> 
-> diff --git a/tests/d_xattr_sorting/script b/tests/d_xattr_sorting/script
-> index 30c189a..30187f1 100644
-> --- a/tests/d_xattr_sorting/script
-> +++ b/tests/d_xattr_sorting/script
-> @@ -17,16 +17,18 @@ $MKE2FS -Fq $TMPFILE 512 > /dev/null 2>&1
->  status=$?
->  echo Exit status is $status >> $OUT
+> diff --git a/tests/xfs/209 b/tests/xfs/209
+> index cecd9c7..9bf1f12 100755
+> --- a/tests/xfs/209
+> +++ b/tests/xfs/209
+> @@ -73,7 +73,7 @@ echo "Check cowextsize settings"
+>  seq 1 2 | while read nr; do
+>  	seq 1 4 | while read nnr; do
+>  		file="$testdir/dir-$nr/file-$nnr"
+> -		$XFS_IO_PROG -c "cowextsize" $file
+> +		$XFS_IO_PROG -c "cowextsize" $file | _filter_scratch
+>  	done
+>  done
 >  
-> -perl -e 'print "x" x 256;' > /tmp/b
-> +B=$(mktemp ${TMPDIR:-/tmp}/b.XXXXXX)
-> +
-> +perl -e 'print "x" x 256;' > $B
->  
->  echo "ea_set / security.SMEG64 -f /tmp/b" > $OUT.new
-> -$DEBUGFS -w -R "ea_set / security.SMEG64 -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
-> +$DEBUGFS -w -R "ea_set / security.SMEG64 -f $B" $TMPFILE >> $OUT.new 2>&1
->  status=$?
->  echo Exit status is $status >> $OUT.new
->  sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
->  
->  echo "ea_set / security.imb -f /tmp/b" > $OUT.new
-> -$DEBUGFS -w -R "ea_set / security.imb -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
-> +$DEBUGFS -w -R "ea_set / security.imb -f $B" $TMPFILE >> $OUT.new 2>&1
->  status=$?
->  echo Exit status is $status >> $OUT.new
->  sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
-> @@ -37,7 +39,8 @@ status=$?
->  echo Exit status is $status >> $OUT.new
->  sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
->  
-> -rm -rf /tmp/b
-> +rm -f $B
-> +unset B
->  
->  echo "ea_list /" > $OUT.new
->  $DEBUGFS -w -R "ea_list /" $TMPFILE >> $OUT.new 2>&1
+> diff --git a/tests/xfs/209.out b/tests/xfs/209.out
+> index 109af34..b97fa96 100644
+> --- a/tests/xfs/209.out
+> +++ b/tests/xfs/209.out
+> @@ -3,11 +3,11 @@ Format and mount
+>  Set extsz and cowextsz on directory
+>  Create a fake tree structure
+>  Check cowextsize settings
+> -[1048576] /opt/test-209/dir-1/file-1
+> -[1048576] /opt/test-209/dir-1/file-2
+> -[1048576] /opt/test-209/dir-1/file-3
+> -[1048576] /opt/test-209/dir-1/file-4
+> -[1048576] /opt/test-209/dir-2/file-1
+> -[1048576] /opt/test-209/dir-2/file-2
+> -[1048576] /opt/test-209/dir-2/file-3
+> -[1048576] /opt/test-209/dir-2/file-4
+> +[1048576] SCRATCH_MNT/test-209/dir-1/file-1
+> +[1048576] SCRATCH_MNT/test-209/dir-1/file-2
+> +[1048576] SCRATCH_MNT/test-209/dir-1/file-3
+> +[1048576] SCRATCH_MNT/test-209/dir-1/file-4
+> +[1048576] SCRATCH_MNT/test-209/dir-2/file-1
+> +[1048576] SCRATCH_MNT/test-209/dir-2/file-2
+> +[1048576] SCRATCH_MNT/test-209/dir-2/file-3
+> +[1048576] SCRATCH_MNT/test-209/dir-2/file-4
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
