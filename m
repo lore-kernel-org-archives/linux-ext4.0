@@ -1,55 +1,79 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/9] filefrag: accommodate holes when calculating
- expected values
-Date: Sat, 5 Mar 2016 21:41:00 -0500
-Message-ID: <20160306024100.GG10297@thunk.org>
+Subject: Re: [PATCH 9/9] libext2fs: sort keys for xattr blocks
+Date: Sat, 5 Mar 2016 22:55:14 -0500
+Message-ID: <20160306035514.GH10297@thunk.org>
 References: <20160213223725.25381.20929.stgit@birch.djwong.org>
- <20160213223804.25381.9378.stgit@birch.djwong.org>
+ <20160213223824.25381.8002.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Darren Hart <dvhart@linux.intel.com>,
+	Richard Purdie <richard.purdie@linuxfoundation.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36744 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:36798 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750917AbcCFClI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 5 Mar 2016 21:41:08 -0500
+	id S1751026AbcCFDzU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 5 Mar 2016 22:55:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20160213223804.25381.9378.stgit@birch.djwong.org>
+In-Reply-To: <20160213223824.25381.8002.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 13, 2016 at 02:38:04PM -0800, Darrick J. Wong wrote:
-> Currently, filefrag's "expected physical block" column expects extent
-> records to be physically adjacent regardless of the amount of logical
-> block space between the two records.  This means that if we punch a
-> hole in a file, we get reports like this:
+On Sat, Feb 13, 2016 at 02:38:24PM -0800, Darrick J. Wong wrote:
+> Richard Purdie reports that libext2fs doesn't sort attribute keys in
+> the xattr block correctly, causing the kernel to return -ENODATA when
+> querying attributes that should be there.  Therefore, sort attributes
+> so that whatever ends up in the xattr block is sorted according to
+> what the kernel expects.
 > 
-> ext:   logical_offset:   physical_offset: length:  expected: flags:
-> 4:     4096..    8343:   57376..  61623:   4248:
-> 5:     8345..   10313:   61625..  63593:   1969:   61624:
-> 
-> Notice how it expects 8345 to map to 61624, and scores this against
-> the fragmentation of the file.  Flagging this as "unexpected" is
-> incorrect because the gap in the logical mapping is exactly the same
-> size as the gap in the physical extents.
-> 
-> Furthermore, this particular mapping leaves the door open to the
-> optimal mapping -- if a write to block 8344 causes it to be mapped to
-> 61624, the entire range 4096-10313 can be mapped with a single extent.
-> Until that happens, there's no way to combine extents 4 and 5 because
-> of the gap in the logical mapping at block 8344.
-> 
-> Therefore, tweak the extent report to account for holes.
-> 
-> v2: Make it work for extents crossing FIEMAP calls, and clean up the
-> FIBMAP version to report correct expected values.
-> 
-> v3: Don't count physically but not logically contiguous extents
-> in the fragmentation summary.
-> 
+> Cc: Darren Hart <dvhart@linux.intel.com>
+> Reported-by: Richard Purdie <richard.purdie@linuxfoundation.org>
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.
+Applied, with one minor change.  You should never use something like
+/tmp/b in a test script becuase it's possible that /tmp/b might
+already exist, and might be not even owned by the user.  (In my case
+/tmp/b was a root owned file that was sufficiently big that it it
+caused ea_set command to fail with a "out of space" error.)
+
+If /tmp/b was writable by the user and was something previous, then
+the developer might get after the test script executes "rm -rf /tmp/b".
 
 						- Ted
+
+diff --git a/tests/d_xattr_sorting/script b/tests/d_xattr_sorting/script
+index 30c189a..30187f1 100644
+--- a/tests/d_xattr_sorting/script
++++ b/tests/d_xattr_sorting/script
+@@ -17,16 +17,18 @@ $MKE2FS -Fq $TMPFILE 512 > /dev/null 2>&1
+ status=$?
+ echo Exit status is $status >> $OUT
+ 
+-perl -e 'print "x" x 256;' > /tmp/b
++B=$(mktemp ${TMPDIR:-/tmp}/b.XXXXXX)
++
++perl -e 'print "x" x 256;' > $B
+ 
+ echo "ea_set / security.SMEG64 -f /tmp/b" > $OUT.new
+-$DEBUGFS -w -R "ea_set / security.SMEG64 -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
++$DEBUGFS -w -R "ea_set / security.SMEG64 -f $B" $TMPFILE >> $OUT.new 2>&1
+ status=$?
+ echo Exit status is $status >> $OUT.new
+ sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
+ 
+ echo "ea_set / security.imb -f /tmp/b" > $OUT.new
+-$DEBUGFS -w -R "ea_set / security.imb -f /tmp/b" $TMPFILE >> $OUT.new 2>&1
++$DEBUGFS -w -R "ea_set / security.imb -f $B" $TMPFILE >> $OUT.new 2>&1
+ status=$?
+ echo Exit status is $status >> $OUT.new
+ sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
+@@ -37,7 +39,8 @@ status=$?
+ echo Exit status is $status >> $OUT.new
+ sed -f $cmd_dir/filter.sed $OUT.new >> $OUT
+ 
+-rm -rf /tmp/b
++rm -f $B
++unset B
+ 
+ echo "ea_list /" > $OUT.new
+ $DEBUGFS -w -R "ea_list /" $TMPFILE >> $OUT.new 2>&1
