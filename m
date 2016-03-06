@@ -1,71 +1,61 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: RIP [<ffffffff812c3b77>] ext4_release_file+0x37/0xc0 with
- 4.5-rc6 when resuming from suspend
-Date: Sun, 6 Mar 2016 14:10:10 -0500
-Message-ID: <20160306191010.GM10297@thunk.org>
-References: <56DAB3EE.5020203@kpanic.de>
+Subject: Re: [v4 1/6] Always read full inode structure
+Date: Sun, 6 Mar 2016 14:31:34 -0500
+Message-ID: <20160306193134.GN10297@thunk.org>
+References: <1457237696-13770-1-git-send-email-lixi@ddn.com>
+ <1457237696-13770-2-git-send-email-lixi@ddn.com>
+ <20160306054622.GK10297@thunk.org>
+ <3DEDB39A-8511-470C-A438-726E2672B821@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Stefan Assmann <sassmann@kpanic.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Li Xi <pkuelelixi@gmail.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37884 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37924 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750718AbcCFTKQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Mar 2016 14:10:16 -0500
+	id S1751233AbcCFTbi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Mar 2016 14:31:38 -0500
 Content-Disposition: inline
-In-Reply-To: <56DAB3EE.5020203@kpanic.de>
+In-Reply-To: <3DEDB39A-8511-470C-A438-726E2672B821@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 05, 2016 at 11:24:46AM +0100, Stefan Assmann wrote:
-> Occasionally when trying to resume from suspend to RAM I get the
-> following GPF.
->=20
->   Stefan
->=20
-> [  882.344245] PM: resume of devices complete after 83682.775 msecs
-> [  882.420550] PM: Finishing wakeup.
-> [  882.420551] Restarting tasks ...=B7
-> [  882.420664] i915 0000:00:02.0: BAR 6: [??? 0x00000000 flags 0x2] h=
-as bogus alignment
-> [  882.421141] done.
-> [  882.422027] usb 3-9.1.1: USB disconnect, device number 33
+On Sat, Mar 05, 2016 at 11:27:25PM -0700, Andreas Dilger wrote:
+> Do you think it really makes e2fsprogs less efficient?  The disk IO has
+> already happened, and definitely included the whole inode even if only
+> the small inode data was requested.  The ext2fs block cache will still
+> cache the whole inode block, so fetching the whole inode is no overhead.
 
-Hmm.... did you have a ext4 file system mounted on some kind of USB
-attached storage device (USB thumb drive, USB HDD, etc.)?
+I'm concerned about all of the extra memory allocation and
+deallocation that we would need to do.  If you have a million inodes,
+that's a million malloc()'s and free()'s.
 
-> [  882.461578] RIP: 0010:[<ffffffff812c3b77>]  [<ffffffff812c3b77>] e=
-xt4_release_file+0x37/0xc0
 
-Also, can you translate this address to a file and line number?  Use
-the command:
+> In contrast, several places in the code are doing extra work to fetch
+> the large inode data after having fetched the small inode data.  It is
+> also fairly confusing in different parts of the code which "know" that
+> the inode pointer is pointing to a full inode buffer, so it is a lot
+> cleaner if we just always read the full inode data everywhere.
 
-addr2line -e /usr/src/linux/vmlinux -i -a ffffffff812c3b77
+Can you point at some of these places?  See below, but I think it's a
+lot more complicated to do what you are suggested.
 
-Also, if you could give the lines around fs/ext4/file.c (unless it is
-exactly 4.5-rc6 without any other changes or commit) that would also
-be helpful.
+> Even better would be if the API explicitly just passed ext4_inode_large
+> everywhere, which wouldn't break the ABI, but it might cause problems
+> for anything that encodes the argument types (e.g. C++).  At least if
+> the e2fsprogs internal functions are reading the full inode the code is
+> easier to understand.
 
-I don't see anything in ext4_release_file() that would obviously be a
-potential problem after a suspend/reasume.  One possibly is that some
-other piece of code is corrupting memory.
+For the inode structure, for better or for worse, we have a "caller
+allocates" convention.  So we can't just fill in the full inode unless
+the caller explicitly requests it, and tells us how much space it has
+available.
 
-> [  882.459687] CPU: 7 PID: 5299 Comm: dhclient Tainted: G        W   =
-    4.5.0-0.rc6.git1.1.vanilla.knurd.1.fc23.x86_64 #1
+Also, if the caller passes in a pointer to struct ext2_inode, the
+library can't assume it's a full inode.  Fortunately, in the vast
+majority of the places where the library needs to look at the inode,
+it doesn't need to look at the full inode.
 
-Is it always dhclient which is trying to exit?
-
-If you can give a detailed description of your hardware configuration
-(what devices, what file systems / partitions you have mounted, etc.)
-that would be helpful.
-
-Thanks,
+Cheers,
 
 					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
