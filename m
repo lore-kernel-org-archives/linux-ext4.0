@@ -1,80 +1,39 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 13/12] xfs/209: filter scratch dir properly
-Date: Sun, 6 Mar 2016 14:09:35 -0800
-Message-ID: <20160306220935.GB27960@birch.djwong.org>
-References: <20160305003717.28738.98818.stgit@birch.djwong.org>
-	<20160305202502.GI10245@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/6] blkid: fix ZFS device detection
+Date: Sun, 6 Mar 2016 18:10:25 -0500
+Message-ID: <20160306231025.GA30238@thunk.org>
+References: <1457224716-72388-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	fstests@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <andreas.dilger@intel.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:38266 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751634AbcCFXKa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Mar 2016 18:10:30 -0500
 Content-Disposition: inline
-In-Reply-To: <20160305202502.GI10245@infradead.org>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1457224716-72388-1-git-send-email-adilger@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Good catch,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-On Sat, Mar 05, 2016 at 12:25:02PM -0800, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+On Sat, Mar 05, 2016 at 05:38:31PM -0700, Andreas Dilger wrote:
+> From: Andreas Dilger <andreas.dilger@intel.com>
 > 
-> diff --git a/tests/xfs/209 b/tests/xfs/209
-> index cecd9c7..9bf1f12 100755
-> --- a/tests/xfs/209
-> +++ b/tests/xfs/209
-> @@ -73,7 +73,7 @@ echo "Check cowextsize settings"
->  seq 1 2 | while read nr; do
->  	seq 1 4 | while read nnr; do
->  		file="$testdir/dir-$nr/file-$nnr"
-> -		$XFS_IO_PROG -c "cowextsize" $file
-> +		$XFS_IO_PROG -c "cowextsize" $file | _filter_scratch
->  	done
->  done
->  
-> diff --git a/tests/xfs/209.out b/tests/xfs/209.out
-> index 109af34..b97fa96 100644
-> --- a/tests/xfs/209.out
-> +++ b/tests/xfs/209.out
-> @@ -3,11 +3,11 @@ Format and mount
->  Set extsz and cowextsz on directory
->  Create a fake tree structure
->  Check cowextsize settings
-> -[1048576] /opt/test-209/dir-1/file-1
-> -[1048576] /opt/test-209/dir-1/file-2
-> -[1048576] /opt/test-209/dir-1/file-3
-> -[1048576] /opt/test-209/dir-1/file-4
-> -[1048576] /opt/test-209/dir-2/file-1
-> -[1048576] /opt/test-209/dir-2/file-2
-> -[1048576] /opt/test-209/dir-2/file-3
-> -[1048576] /opt/test-209/dir-2/file-4
-> +[1048576] SCRATCH_MNT/test-209/dir-1/file-1
-> +[1048576] SCRATCH_MNT/test-209/dir-1/file-2
-> +[1048576] SCRATCH_MNT/test-209/dir-1/file-3
-> +[1048576] SCRATCH_MNT/test-209/dir-1/file-4
-> +[1048576] SCRATCH_MNT/test-209/dir-2/file-1
-> +[1048576] SCRATCH_MNT/test-209/dir-2/file-2
-> +[1048576] SCRATCH_MNT/test-209/dir-2/file-3
-> +[1048576] SCRATCH_MNT/test-209/dir-2/file-4
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> While the main blkid functionality is in util-linux, there is still
+> use for blkid on non-Linux platforms.
+> 
+> Fix the ZFS device detection by looking at multiple uberblocks to
+> see if any are present, rather than looking for the ZFS boot block
+> which is not always present.
+> 
+> There are slots for up to 128 uberblocks, but the first 4 are not
+> written to disk on a newly-formatted filesystem, so check several
+> of them at different offsets within the uberblock array.
+> 
+> Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Thanks, applied.
+
+					- Ted
