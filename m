@@ -1,37 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V3] resize2fs: clear uninit BG if allocating from new
- group
-Date: Sun, 6 Mar 2016 21:51:52 -0500
-Message-ID: <20160307025152.GG30238@thunk.org>
-References: <55FB41CA.8010003@redhat.com>
- <5697ECEB.3020408@redhat.com>
- <5697F69E.4090404@redhat.com>
+Subject: Re: [PATCH v2] e2fsck: fix problem report typo
+Date: Sun, 6 Mar 2016 22:06:06 -0500
+Message-ID: <20160307030606.GH30238@thunk.org>
+References: <20160107183118.GB8716@localhost.localdomain>
+ <20160107184403.GB28338@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38650 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38690 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751341AbcCGCv4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Mar 2016 21:51:56 -0500
+	id S1751341AbcCGDGK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Mar 2016 22:06:10 -0500
 Content-Disposition: inline
-In-Reply-To: <5697F69E.4090404@redhat.com>
+In-Reply-To: <20160107184403.GB28338@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 14, 2016 at 01:27:26PM -0600, Eric Sandeen wrote:
-> If resize2fs_get_alloc_block() allocates from a BLOCK_UNINIT
-> group, nothing clears the UNINIT flag, so it is skipped when we
-> go to write out modified bitmaps.  This leads to post-resize2fs
-> e2fsck errors; used blocks in UNINIT groups, not marked in the
-> block bitmap.  This was seen on r_ext4_small_bg.
+On Thu, Jan 07, 2016 at 10:44:03AM -0800, Darrick J. Wong wrote:
+> On Thu, Jan 07, 2016 at 01:31:18PM -0500, Eric Whitney wrote:
+> > Remove the stray left parenthesis.  Observed while testing bigalloc_1k
+> > filesystems with shared/298 on 32 bit ARM running 4.3 kernels.
+> > 
+> > v2: Modify the expect files for the relevant regression tests.
 > 
-> This patch uses clear_block_uninit() to clear the flag,
-> and my problem goes away.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Looks ok now,
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.  Apologies for the delay.
+Thanks, applied.
 
 							- Ted
