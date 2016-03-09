@@ -1,49 +1,52 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: regression in 4.5-rc5 - generic/324 failure
-Date: Wed, 9 Mar 2016 17:17:46 -0500
-Message-ID: <20160309221746.GA1763@localhost.localdomain>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: regression in 4.5-rc5 - generic/324 failure
+Date: Wed, 9 Mar 2016 18:19:49 -0500
+Message-ID: <20160309231949.GC3949@thunk.org>
+References: <20160309221746.GA1763@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, guaneryu@gmail.com
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, guaneryu@gmail.com
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:33453 "EHLO
-	mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752142AbcCIWRL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Mar 2016 17:17:11 -0500
-Received: by mail-qk0-f172.google.com with SMTP id s5so26780488qkd.0
-        for <linux-ext4@vger.kernel.org>; Wed, 09 Mar 2016 14:17:10 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:53512 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965087AbcCIXTv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 9 Mar 2016 18:19:51 -0500
 Content-Disposition: inline
+In-Reply-To: <20160309221746.GA1763@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I'm seeing generic/324 fail consistently when run with xfstest-bld's test
-appliance in the 1k block size test case on x86_64.  This happened first on my
-4.5-rc5 regression run, and it repeated on -rc6 and -rc7.
+On Wed, Mar 09, 2016 at 05:17:46PM -0500, Eric Whitney wrote:
+> I'm seeing generic/324 fail consistently when run with xfstest-bld's test
+> appliance in the 1k block size test case on x86_64.  This happened first on my
+> 4.5-rc5 regression run, and it repeated on -rc6 and -rc7.
+> 
+> Reverting a commit introduced in 4.5-rc5 inhibits the failure:
+> "ext4: don't read blocks from disk after extents being swapped" (bcff24887d00)
 
-Reverting a commit introduced in 4.5-rc5 inhibits the failure:
-"ext4: don't read blocks from disk after extents being swapped" (bcff24887d00)
+Yeah, sorry, I didn't recognize the failure you described on the
+phone.  This has been fixed in the ext4 dev tree:
 
-And here's the failed test output:
+commit 87f9a031af48defee9f34c6aaf06d6f1988c244d
+Author: Eryu Guan <guaneryu@gmail.com>
+Date:   Sun Feb 21 18:38:44 2016 -0500
 
-generic/324 15s ...	[22:10:20][    3.304758] run fstests generic/324 at 2016-03-09 22:10:20
- [22:10:21] [failed, exit status 1] - output mismatch (see /results/results-1k/generic/324.out.bad)
-    --- tests/generic/324.out	2015-10-25 10:50:34.000000000 +0000
-    +++ /results/results-1k/generic/324.out.bad	2016-03-09 22:10:21.753937505 +0000
-    @@ -22,2509 +22,5 @@
-     XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-     Before: in_range(10, 40)
-     After: in_range(1, -1)
-    -Defragment file with 250 * 2 fragments
-    -wrote 1234/1234 bytes at offset 0
-    -XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-    -wrote 1234/1234 bytes at offset 123400
-    ...
-    (Run 'diff -u tests/generic/324.out /results/results-1k/generic/324.out.bad'  to see the entire diff)
-diff: standard output: Broken pipe
-Ran: generic/324
-Failures: generic/324
-Failed 1 of 1 tests
+    ext4: iterate over buffer heads correctly in move_extent_per_page()
+    
+    In commit bcff24887d00 ("ext4: don't read blocks from disk after extents
+    being swapped") bh is not updated correctly in the for loop and wrong
+    data has been written to disk. generic/324 catches this on sub-page
+    block size ext4.
+    
+    Fixes: bcff24887d00 ("ext4: don't read blocks from disk after extentsbeing swapped")
+    Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+    Cc: stable@vger.kernel.org
 
-Thanks,
-Eric
+I should have realized this was a 4.5 regression that should have been
+pushed to Linus directly.  It's awfully late, and I'm not sure there's
+going to be a -rc8, but I'll see if I can get this to Linus this cycle
+or not.
+
+						- Ted
