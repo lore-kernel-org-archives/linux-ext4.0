@@ -1,82 +1,85 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH] ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
-Date: Fri, 11 Mar 2016 23:38:53 +0800
-Message-ID: <1457710733-10192-1-git-send-email-guaneryu@gmail.com>
-Cc: tytso@mit.edu, Eryu Guan <guaneryu@gmail.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f66.google.com ([209.85.220.66]:33472 "EHLO
-	mail-pa0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932747AbcCKPl4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Mar 2016 10:41:56 -0500
-Received: by mail-pa0-f66.google.com with SMTP id q6so8760579pav.0
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Mar 2016 07:41:56 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+Date: Fri, 11 Mar 2016 17:11:51 +0100
+Message-ID: <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+	<20160311140134.GA14808@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-cifs@vger.kernel.org,
+	Linux API <linux-api@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160311140134.GA14808@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4_reserve_inode_write() in ext4_mark_inode_dirty() could fail on
-error (e.g. EIO) and iloc.bh can be NULL in this case. But the error is
-ignored in the following "if" condition and ext4_expand_extra_isize()
-might be called with NULL iloc.bh set, which triggers NULL pointer
-dereference.
+On Fri, Mar 11, 2016 at 3:01 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Feb 29, 2016 at 09:17:05AM +0100, Andreas Gruenbacher wrote:
+>> Al,
+>>
+>> could you please make sure you are happy with the current version of the
+>> richacl patch queue for the next merge window?
+>
+> I'm still not happy.
+>
+> For one I still see no reason to merge this broken ACL model at all.
+> It provides our actualy Linux users no benefit at all,
 
-This is uncovered by commit 8b4953e13f4c ("ext4: reserve code points for
-the project quota feature"), which enlarges the ext4_inode size, and
-run the following script on new kernel but with old mke2fs:
+This permission model is useful in mixed environments that involve
+UNIX and Windows machines. Think of NAS boxes with Linux and Windows
+clients, for example. It also fits the NFSv4 ACL model very well. If
+you're not a user dealing with such environments, then the model
+likely won't provide any benefits to *you*, and you're better off with
+a less complicated permission model. That doesn't say anything about
+other users, though.
 
-  #/bin/bash
-  mnt=/mnt/ext4
-  devname=ext4-error
-  dev=/dev/mapper/$devname
-  fsimg=/home/fs.img
+> while breaking a lot of assumptions,
 
-  trap cleanup 0 1 2 3 9 15
+The model is designed specifically to be compliant with the POSIX
+permission model. What assumptions are you talking about?
 
-  cleanup()
-  {
-          umount $mnt >/dev/null 2>&1
-          dmsetup remove $devname
-          losetup -d $backend_dev
-          rm -f $fsimg
-          exit 0
-  }
+> especially by adding allow and deny ACE at the same time.
 
-  rm -f $fsimg
-  fallocate -l 1g $fsimg
-  backend_dev=`losetup -f --show $fsimg`
-  devsize=`blockdev --getsz $backend_dev`
+I remember from past discussions that a permission model like the
+POSIX ACL model that doesn't have DENY ACEs would be more to your
+liking. This argument is dead from the start though: NFSv4 ACLs
+without DENY ACEs cannot represent basic file permissions like 0604
+where the owning group has fewer permissions than others, for example
+(see the richaclex(7) man page). We would end up with a permission
+model that isn't even compatible with the traditional POSIX file
+permission model, one which nobody else implements or cares about.
 
-  good_tab="0 $devsize linear $backend_dev 0"
-  error_tab="0 $devsize error $backend_dev 0"
+> It also doesn't help with the issue that the main thing it's trying
+> to be compatible with (Windows) actually uses a fundamentally different
+> identifier to apply the ACLs to - as long as you're still limited
+> to users and groups and not guids we'll still have that mapping problem
+> anyway.
 
-  dmsetup create $devname --table "$good_tab"
+Samba has been dealing with mapping between SIDs and UIDs/GIDs for a
+long time, and it's working acceptably well.
 
-  mkfs -t ext4 $dev
-  mount -t ext4 -o errors=continue,strictatime $dev $mnt
+We could store SIDs in ACEs, but that wouldn't make the actual
+problems go away: Files on Linux have an owner and an owning group
+which are identitifed by UID/GID, whereas a file is owned by a SID
+which can be either a user or a group in a SID world. Also, processes
+on Linux have an owner and a list of groups which are identified by
+UID/GID, so any SIDs stored in filesystems would never match a
+process, anyway.
 
-  dmsetup load $devname --table "$error_tab" && dmsetup resume $devname
-  echo 3 > /proc/sys/vm/drop_caches
-  ls -l $mnt
-  exit 0
+(NFSv4 refers to users and groups as opposed to SIDs, and so it
+doesn't have this problem.)
 
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
----
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index aee960b..f1f26ea 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5261,7 +5261,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 	might_sleep();
- 	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
- 	err = ext4_reserve_inode_write(handle, inode, &iloc);
--	if (ext4_handle_valid(handle) &&
-+	if (!err && ext4_handle_valid(handle) &&
- 	    EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
- 	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
- 		/*
--- 
-2.5.0
-
+Thanks,
+Andreas
