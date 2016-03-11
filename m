@@ -1,37 +1,65 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: Re: [PATCH v3 2/3] ext4: fix races between changing inode journal mode
- and ext4_writepages
-Date: Thu, 10 Mar 2016 22:20:51 +0000 (GMT)
-Message-ID: <1215152764.118411457648450728.JavaMail.weblogic@ep2mlwas08b>
-Reply-To: daeho.jeong@samsung.com
+From: Daniel Axtens <dja@axtens.net>
+Subject: ext4_file_open: Inconsistent encryption contexts (commit ff978b09f973) breaking Docker
+Date: Fri, 11 Mar 2016 11:44:54 +1100
+Message-ID: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: base64
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?utf-8?Q?=EC=A0=95=EB=8C=80=ED=98=B8?= <daeho.jeong@samsung.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:59687 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932204AbcCJWUy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Mar 2016 17:20:54 -0500
-Received: from epcpsbgr4.samsung.com
- (u144.gpu120.samsung.co.kr [203.254.230.144])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0O3U001SXGQR6BA0@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Fri, 11 Mar 2016 07:20:51 +0900 (KST)
-MIME-version: 1.0
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+To: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk,
+	miklos@szeredi.hu, linux-unionfs@vger.kernel.org
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-PiBZb3UgbmVlZCB0byBjaGFuZ2UgaG93IGRheF93cml0ZWJhY2tfbWFwcGluZ19yYW5nZSgpIGlz
-IGNhbGxlZCBhIGZldyBsaW5lcw0KPiBiZWxvdyBzbyB0aGF0IGl0IGFsc28gZXhpdHMgdmlhIG91
-dF93cml0ZXBhZ2VzOiBhbmQgbm90IGRpcmVjdGx5Lg0KDQpPb3BzLCBJIGZvdW5kIHRoYXQgSSBt
-YWRlIHRoaXMgcGF0Y2ggb24gYSBsaXR0bGUgb2xkIHZlcnNpb24gd2hlcmUgZXh0NF93cml0ZXBh
-Z2VzKCkNCmRvZXNuJ3QgdXNlIGRheF93cml0ZWJhY2tfbWFwcGluZ19yYW5nZSgpIGZ1bmN0aW9u
-LiBTb3JyeSBhYm91dCB0aGF0Lg0KSSdsbCBmaXggdGhpcyBwcm9ibGVtLg0KDQpUaGFuayB5b3Uu
-IDotKQ==
+Hi,
 
+Trying to run a Docker container on a mainline kernel is failing
+intermittently, in interesting and exciting ways, such as:
 
+$ docker run -it --rm --env PACKAGE=sinatra npmtest
+operation not permitted
+docker: Error response from daemon: Cannot start container 4fc0120a6389f25241f84527a0d31854806f6fe4fd98d019f790cea0ae7e230b: [10] System error: operation not permitted.
+
+$ docker run -it --rm --env PACKAGE=sinatra npmtest
+Unable to find user tester
+docker: Error response from daemon: Cannot start container a28d6256cfcde750e8e4ff60fc72217b19b58160df68f55d798ea2f3000c4564: [10] System error: Unable to find user tester.
+
+$ docker run ...
+...
+Error: EPERM, operation not permitted '/usr/share/npm/node_modules/npmconf/node_modules/config-chain/index.js'
+
+$ docker run ...
+...
+Error: EPERM, operation not permitted '/usr/lib/nodejs/form-data/form_data.js'
+
+$ docker run ...
+...
+/bin/bash: /usr/bin/npm: Operation not permitted
+
+Each of these failures is accompanied by lines in dmesg like these:
+
+EXT4-fs warning (device sda2): ext4_file_open:402: Inconsistent encryption contexts: 27842/3691208
+
+EXT4-fs warning (device sda2): ext4_file_open:402: Inconsistent encryption contexts: 41086/3128060
+
+(With different context numbers each time)
+
+Grepping for the error message took me to ff978b09f973:
+"ext4 crypto: move context consistency check to ext4_file_open()"
+which went in to mainline in rc5.
+
+A build with the source rolled back to the commit immediately before
+that doesn't exhibit the issue.
+
+Docker is using Overlay filesystems backing onto an ext4 filesystem, so
+some interaction between Overlay FS and ext4 may be the cause. I'm not
+much of a file system developer so I don't really know where to go from
+here, but I'm happy to help however I can.
+
+The machine is a ppc64le VM running Ubuntu, docker 1.11.0-dev, build
+dd32445. I've turned on most of the kernel debugging options I can think
+of and nothing interesting is showing up. fsck reports the root ext4
+filesystem is clean. If I've missed any helpful info please let me know.
+
+Regards,
+Daniel Axtens
