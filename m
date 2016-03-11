@@ -1,149 +1,82 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH 2/2] generic: test I/O on dm error device
-Date: Fri, 11 Mar 2016 23:40:22 +0800
-Message-ID: <1457710822-30532-2-git-send-email-eguan@redhat.com>
-References: <1457710822-30532-1-git-send-email-eguan@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH] ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
+Date: Fri, 11 Mar 2016 23:38:53 +0800
+Message-ID: <1457710733-10192-1-git-send-email-guaneryu@gmail.com>
+Cc: tytso@mit.edu, Eryu Guan <guaneryu@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44906 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932721AbcCKPlw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 11 Mar 2016 10:41:52 -0500
-In-Reply-To: <1457710822-30532-1-git-send-email-eguan@redhat.com>
+Received: from mail-pa0-f66.google.com ([209.85.220.66]:33472 "EHLO
+	mail-pa0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932747AbcCKPl4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Mar 2016 10:41:56 -0500
+Received: by mail-pa0-f66.google.com with SMTP id q6so8760579pav.0
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Mar 2016 07:41:56 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a test that performs simple I/O on dm error device, which
-returns EIO on all I/O request.
+ext4_reserve_inode_write() in ext4_mark_inode_dirty() could fail on
+error (e.g. EIO) and iloc.bh can be NULL in this case. But the error is
+ignored in the following "if" condition and ext4_expand_extra_isize()
+might be called with NULL iloc.bh set, which triggers NULL pointer
+dereference.
 
-This is motivated by an ext4 bug that crashes kernel on error path when
-trying to update atime. Following kernel patch should fix the issue
+This is uncovered by commit 8b4953e13f4c ("ext4: reserve code points for
+the project quota feature"), which enlarges the ext4_inode size, and
+run the following script on new kernel but with old mke2fs:
 
-  ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
+  #/bin/bash
+  mnt=/mnt/ext4
+  devname=ext4-error
+  dev=/dev/mapper/$devname
+  fsimg=/home/fs.img
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
+  trap cleanup 0 1 2 3 9 15
+
+  cleanup()
+  {
+          umount $mnt >/dev/null 2>&1
+          dmsetup remove $devname
+          losetup -d $backend_dev
+          rm -f $fsimg
+          exit 0
+  }
+
+  rm -f $fsimg
+  fallocate -l 1g $fsimg
+  backend_dev=`losetup -f --show $fsimg`
+  devsize=`blockdev --getsz $backend_dev`
+
+  good_tab="0 $devsize linear $backend_dev 0"
+  error_tab="0 $devsize error $backend_dev 0"
+
+  dmsetup create $devname --table "$good_tab"
+
+  mkfs -t ext4 $dev
+  mount -t ext4 -o errors=continue,strictatime $dev $mnt
+
+  dmsetup load $devname --table "$error_tab" && dmsetup resume $devname
+  echo 3 > /proc/sys/vm/drop_caches
+  ls -l $mnt
+  exit 0
+
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 ---
- tests/generic/338     | 90 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/338.out |  2 ++
- tests/generic/group   |  1 +
- 3 files changed, 93 insertions(+)
- create mode 100755 tests/generic/338
- create mode 100644 tests/generic/338.out
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tests/generic/338 b/tests/generic/338
-new file mode 100755
-index 0000000..cea4d82
---- /dev/null
-+++ b/tests/generic/338
-@@ -0,0 +1,90 @@
-+#! /bin/bash
-+# FS QA Test 338
-+#
-+# Test I/O on dm error device.
-+#
-+# Motivated by an ext4 bug that crashes kernel on error path when trying to
-+# update atime.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2016 Red Hat Inc.,  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+	_dmerror_cleanup
-+	_destroy_loop_device $LOOP_DEV
-+	rm -f $LOOP_FILE
-+	rm -rf $LOOP_MNT
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/dmerror
-+
-+# remove previous $seqres.full before test
-+rm -f $seqres.full
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+_require_test
-+_require_loop
-+_require_dm_target error
-+# If TEST_DEV is not a valid block device, FSTYP cannot be mkfs'ed either
-+_require_block_device $TEST_DEV
-+
-+echo "Silence is golden"
-+
-+# Use loop device as backend of dm error device, because drop_caches drops
-+# caches hold by loop device too and forces reading inode info from disk and
-+# triggers NULL pointer dereference on buggy ext4
-+LOOP_FILE=$TEST_DIR/$seq-$$.img
-+LOOP_MNT=$TEST_DIR/$seq-$$.mnt
-+mkdir -p $LOOP_MNT
-+$XFS_IO_PROG -fc "truncate 512M" $LOOP_FILE >>$seqres.full 2>&1
-+LOOP_DEV=`_create_loop_device $LOOP_FILE`
-+
-+_dmerror_init $LOOP_DEV $LOOP_MNT
-+_mkfs_dev $DMERROR_DEV
-+# Use strictatime mount option here to force atime updates, which could help
-+# trigger the NULL pointer dereference on ext4 more easily
-+_dmerror_mount "-o strictatime"
-+_dmerror_load_error_table
-+
-+# drop all caches, force reading from error device
-+echo 3 > /proc/sys/vm/drop_caches
-+
-+# do some test I/O
-+ls -l $LOOP_MNT >>$seqres.full 2>&1
-+$XFS_IO_PROG -fc "pwrite 0 1M" $LOOP_MNT/testfile >>$seqres.full 2>&1
-+
-+# no panic no hang, success, all done
-+status=0
-+exit
-diff --git a/tests/generic/338.out b/tests/generic/338.out
-new file mode 100644
-index 0000000..3482cf4
---- /dev/null
-+++ b/tests/generic/338.out
-@@ -0,0 +1,2 @@
-+QA output created by 338
-+Silence is golden
-diff --git a/tests/generic/group b/tests/generic/group
-index 727648c..8818827 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -340,3 +340,4 @@
- 335 auto quick metadata
- 336 auto quick metadata
- 337 auto quick metadata
-+338 auto quick rw
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index aee960b..f1f26ea 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5261,7 +5261,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
+ 	might_sleep();
+ 	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+-	if (ext4_handle_valid(handle) &&
++	if (!err && ext4_handle_valid(handle) &&
+ 	    EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
+ 	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
+ 		/*
 -- 
 2.5.0
 
