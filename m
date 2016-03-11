@@ -1,62 +1,51 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit
- ff978b09f973) breaking Docker
-Date: Thu, 10 Mar 2016 21:15:06 -0500
-Message-ID: <20160311021506.GA32214@thunk.org>
-References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+Date: Fri, 11 Mar 2016 06:01:34 -0800
+Message-ID: <20160311140134.GA14808@infradead.org>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	viro@zeniv.linux.org.uk, miklos@szeredi.hu,
-	linux-unionfs@vger.kernel.org
-To: Daniel Axtens <dja@axtens.net>
-Return-path: <linux-unionfs-owner@vger.kernel.org>
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
-Sender: linux-unionfs-owner@vger.kernel.org
+In-Reply-To: <1456733847-17982-1-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 11, 2016 at 11:44:54AM +1100, Daniel Axtens wrote:
-> Hi,
+On Mon, Feb 29, 2016 at 09:17:05AM +0100, Andreas Gruenbacher wrote:
+> Al,
 > 
-> Trying to run a Docker container on a mainline kernel is failing
-> intermittently, in interesting and exciting ways, such as:
-> 
-> $ docker run -it --rm --env PACKAGE=sinatra npmtest
-> operation not permitted
-> docker: Error response from daemon: Cannot start container 4fc0120a6389f25241f84527a0d31854806f6fe4fd98d019f790cea0ae7e230b: [10] System error: operation not permitted.
-> 
-> EXT4-fs warning (device sda2): ext4_file_open:402: Inconsistent encryption contexts: 27842/3691208
+> could you please make sure you are happy with the current version of the
+> richacl patch queue for the next merge window?
 
-This could only happen if the EXT4_ENCRYPT_FL flag is set.  (I assume
-you weren't actually trying to use ext4 encryption.)  The flag can't
-be set using the FS_IOC_SETFLAGS ioctl.  It can only be set using
-EXT4_IOC_SET_ENCRYPTION_POLICY.
+I'm still not happy.
 
-The only thing I can think of is that overlayfs is somehow setting or
-otherwise corrupting the i_flags.
+For one I still see no reason to merge this broken ACL model at all.
+It provides our actualy Linux users no benefit at all, while breaking
+a lot of assumptions, especially by adding allow and deny ACE at the
+same sime.
 
-So if you could try changing the relevant code in ext4_file_open() to
-look like this:
+It also doesn't help with the issue that the main thing it's trying
+to be compatible with (Windows) actually uses a fundamentally different
+identifier to apply the ACLs to - as long as you're still limited
+to users and groups and not guids we'll still have that mapping problem
+anyway.
 
-	if (ext4_encrypted_inode(dir) &&
-	    !ext4_is_child_context_consistent_with_parent(dir, inode)) {
-		char tmpbuf[128];
-
-		ext4_warning(inode->i_sb,
-			     "Inconsistent encryption contexts: %lu/%lu\n",
-			     (unsigned long) dir->i_ino,
-			     (unsigned long) inode->i_ino);
-		cp = d_path(&filp->f_path, tmpbuf, sizeof(tmpbuf));
-		if (!IS_ERR(cp))
-			pr_err("pathname: %s\n", cp);
-		pr_err("inode flags: %lu\n", EXT4_I(inode)->i_flags);
-		WARN_ON(1);
-		return -EPERM;
-	}
-
-This should give you the stack trace as well as the pathname and inode
-flag information.  This will hopefully give us a bit more context
-about how this is happening.
-
-						- Ted
+But besides that fundamental question on the purpose of it I also
+don't think the code is suitable, more in the individual patches.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
