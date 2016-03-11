@@ -1,159 +1,62 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit
- ff978b09f973) breaking Docker
-Date: Fri, 11 Mar 2016 16:34:03 +0100
-Message-ID: <20160311153403.GJ8655@tucsk>
-References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
- <20160311021506.GA32214@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Daniel Axtens <dja@axtens.net>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-unionfs@vger.kernel.org
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160311021506.GA32214@thunk.org>
-Sender: linux-unionfs-owner@vger.kernel.org
+From: Eryu Guan <eguan@redhat.com>
+Subject: [PATCH 1/2] common: make _dmerror_init accept device and mount point as param
+Date: Fri, 11 Mar 2016 23:40:21 +0800
+Message-ID: <1457710822-30532-1-git-send-email-eguan@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 10, 2016 at 09:15:06PM -0500, Theodore Ts'o wrote:
-> On Fri, Mar 11, 2016 at 11:44:54AM +1100, Daniel Axtens wrote:
-> > Hi,
-> > 
-> > Trying to run a Docker container on a mainline kernel is failing
-> > intermittently, in interesting and exciting ways, such as:
-> > 
-> > $ docker run -it --rm --env PACKAGE=sinatra npmtest
-> > operation not permitted
-> > docker: Error response from daemon: Cannot start container 4fc0120a6389f25241f84527a0d31854806f6fe4fd98d019f790cea0ae7e230b: [10] System error: operation not permitted.
-> > 
-> > EXT4-fs warning (device sda2): ext4_file_open:402: Inconsistent encryption contexts: 27842/3691208
-> 
-> This could only happen if the EXT4_ENCRYPT_FL flag is set.  (I assume
-> you weren't actually trying to use ext4 encryption.)  The flag can't
-> be set using the FS_IOC_SETFLAGS ioctl.  It can only be set using
-> EXT4_IOC_SET_ENCRYPTION_POLICY.
-> 
-> The only thing I can think of is that overlayfs is somehow setting or
-> otherwise corrupting the i_flags.
+Currently dmerror code takes use of SCRATCH_DEV and SCRATCH_MNT as the
+backend device and mount point, and there's no way to change them.
 
-Could you please try the following patch?
+Now teach _dmerror_init to accept first argument as backend device and
+second argument as the alternative mount point, this can be useful when
+SCRATCH_DEV and/or SCRATCH_MNT is not suitable for the test.
 
-It adds more sanity checks to unlink/rmdir/rename to prevent passing an
-inappropriate dentry to the underlying filesystem, which could have caused the
-corruption.
-
-Thanks,
-Miklos
-
-
+Signed-off-by: Eryu Guan <eguan@redhat.com>
 ---
- fs/overlayfs/dir.c |   59 ++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 38 insertions(+), 21 deletions(-)
+ common/dmerror | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
---- a/fs/overlayfs/dir.c
-+++ b/fs/overlayfs/dir.c
-@@ -596,21 +596,25 @@ static int ovl_remove_upper(struct dentr
+diff --git a/common/dmerror b/common/dmerror
+index 004530d..b2f1e8f 100644
+--- a/common/dmerror
++++ b/common/dmerror
+@@ -20,7 +20,8 @@
+ 
+ _dmerror_init()
  {
- 	struct dentry *upperdir = ovl_dentry_upper(dentry->d_parent);
- 	struct inode *dir = upperdir->d_inode;
--	struct dentry *upper = ovl_dentry_upper(dentry);
-+	struct dentry *upper;
- 	int err;
+-	local dm_backing_dev=$SCRATCH_DEV
++	local dm_backing_dev=${1:-$SCRATCH_DEV}
++	DMERROR_MNT=${2:-$SCRATCH_MNT}
  
- 	inode_lock_nested(dir, I_MUTEX_PARENT);
-+	upper = lookup_one_len(dentry->d_name.name, upperdir,
-+			       dentry->d_name.len);
-+	err = PTR_ERR(upper);
-+	if (IS_ERR(upper))
-+		goto out_unlock;
-+
- 	err = -ESTALE;
--	if (upper->d_parent == upperdir) {
--		/* Don't let d_delete() think it can reset d_inode */
--		dget(upper);
-+	if (upper == ovl_dentry_upper(dentry)) {
- 		if (is_dir)
- 			err = vfs_rmdir(dir, upper);
- 		else
- 			err = vfs_unlink(dir, upper, NULL);
--		dput(upper);
- 		ovl_dentry_version_inc(dentry->d_parent);
- 	}
-+	dput(upper);
+ 	$DMSETUP_PROG remove error-test > /dev/null 2>&1
  
- 	/*
- 	 * Keeping this dentry hashed would mean having to release
-@@ -620,6 +624,7 @@ static int ovl_remove_upper(struct dentr
- 	 */
- 	if (!err)
- 		d_drop(dentry);
-+out_unlock:
- 	inode_unlock(dir);
+@@ -38,7 +39,7 @@ _dmerror_init()
  
- 	return err;
-@@ -840,29 +845,39 @@ static int ovl_rename2(struct inode *old
+ _dmerror_mount_options()
+ {
+-	echo `_common_dev_mount_options $*` $DMERROR_DEV $SCRATCH_MNT
++	echo `_common_dev_mount_options $*` $DMERROR_DEV $DMERROR_MNT
+ }
  
- 	trap = lock_rename(new_upperdir, old_upperdir);
+ _dmerror_mount()
+@@ -48,12 +49,12 @@ _dmerror_mount()
  
--	olddentry = ovl_dentry_upper(old);
--	newdentry = ovl_dentry_upper(new);
--	if (newdentry) {
-+
-+	olddentry = lookup_one_len(old->d_name.name, old_upperdir,
-+				   old->d_name.len);
-+	err = PTR_ERR(olddentry);
-+	if (IS_ERR(olddentry))
-+		goto out_unlock;
-+
-+	err = -ESTALE;
-+	if (olddentry != ovl_dentry_upper(old))
-+		goto out_dput_old;
-+
-+	newdentry = lookup_one_len(new->d_name.name, new_upperdir,
-+				   new->d_name.len);
-+	err = PTR_ERR(newdentry);
-+	if (IS_ERR(newdentry))
-+		goto out_dput_old;
-+
-+	err = -ESTALE;
-+	if (ovl_dentry_upper(new)) {
- 		if (opaquedir) {
--			newdentry = opaquedir;
--			opaquedir = NULL;
-+			if (newdentry != opaquedir)
-+				goto out_dput;
- 		} else {
--			dget(newdentry);
-+			if (newdentry != ovl_dentry_upper(new))
-+				goto out_dput;
- 		}
- 	} else {
-+		if (!d_is_negative(newdentry) &&
-+		    (!new_opaque || !ovl_is_whiteout(newdentry)))
-+			goto out_dput;
- 		new_create = true;
--		newdentry = lookup_one_len(new->d_name.name, new_upperdir,
--					   new->d_name.len);
--		err = PTR_ERR(newdentry);
--		if (IS_ERR(newdentry))
--			goto out_unlock;
- 	}
+ _dmerror_unmount()
+ {
+-	umount $SCRATCH_MNT
++	umount $DMERROR_MNT
+ }
  
--	err = -ESTALE;
--	if (olddentry->d_parent != old_upperdir)
--		goto out_dput;
--	if (newdentry->d_parent != new_upperdir)
--		goto out_dput;
- 	if (olddentry == trap)
- 		goto out_dput;
- 	if (newdentry == trap)
-@@ -925,6 +940,8 @@ static int ovl_rename2(struct inode *old
+ _dmerror_cleanup()
+ {
+-	$UMOUNT_PROG $SCRATCH_MNT > /dev/null 2>&1
++	$UMOUNT_PROG $DMERROR_MNT > /dev/null 2>&1
+ 	$DMSETUP_PROG remove error-test > /dev/null 2>&1
+ }
  
- out_dput:
- 	dput(newdentry);
-+out_dput_old:
-+	dput(olddentry);
- out_unlock:
- 	unlock_rename(new_upperdir, old_upperdir);
- out_revert_creds:
+-- 
+2.5.0
