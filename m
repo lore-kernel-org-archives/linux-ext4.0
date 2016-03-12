@@ -1,90 +1,312 @@
-From: Daniel Axtens <dja@axtens.net>
-Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit ff978b09f973) breaking Docker
-Date: Sat, 12 Mar 2016 10:32:05 +1100
-Message-ID: <8760ws3822.fsf@gamma.ozlabs.ibm.com>
-References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com> <20160311021506.GA32214@thunk.org> <20160311153403.GJ8655@tucsk>
-Mime-Version: 1.0
-Content-Type: text/plain
-To: Miklos Szeredi <miklos@szeredi.hu>, Theodore Ts'o <tytso@mit.edu>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	viro@zeniv.linux.org.uk, linux-unionfs@vger.kernel.org
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-In-Reply-To: <20160311153403.GJ8655@tucsk>
-Sender: linux-unionfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] fuse2fs: improve command-line parsing
+Date: Sat, 12 Mar 2016 02:14:36 -0500
+Message-ID: <1457766876-23519-1-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: darrick.wong@oracle.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35826 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751028AbcCLHOr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 12 Mar 2016 02:14:47 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Miklos,
+Use libfuse's command line parsing, which is much more powerful and
+flexible than what we had before, and to allow the user to have more
+fine-grained control over FUSE's run-time options.
 
-> Could you please try the following patch?
->
-> It adds more sanity checks to unlink/rmdir/rename to prevent passing an
-> inappropriate dentry to the underlying filesystem, which could have caused the
-> corruption.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ misc/fuse2fs.c | 185 +++++++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 120 insertions(+), 65 deletions(-)
 
-I've tested with your patch.
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 1cbdcb7..4412fe3 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -36,6 +36,8 @@
+ #include "ext2fs/ext2fs.h"
+ #include "ext2fs/ext2_fs.h"
+ 
++#include "../version.h"
++
+ #ifdef ENABLE_NLS
+ #include <libintl.h>
+ #include <locale.h>
+@@ -303,6 +305,10 @@ struct fuse2fs {
+ 	unsigned long magic;
+ 	ext2_filsys fs;
+ 	pthread_mutex_t bfl;
++	char *device;
++	int ro;
++	int debug;
++	int no_default_opts;
+ 	int panic_on_error;
+ 	int minixdf;
+ 	int alloc_all_blocks;
+@@ -3624,49 +3630,100 @@ static int get_random_bytes(void *p, size_t sz)
+ 	return (size_t) r == sz;
+ }
+ 
+-static void print_help(const char *progname)
++enum {
++	FUSE2FS_VERSION,
++	FUSE2FS_HELP,
++	FUSE2FS_HELPFULL,
++};
++
++#define FUSE2FS_OPT(t, p, v) { t, offsetof(struct fuse2fs, p), v }
++
++static struct fuse_opt fuse2fs_opts[] = {
++	FUSE2FS_OPT("ro",		ro,			1),
++	FUSE2FS_OPT("errors=panic",	panic_on_error,		1),
++	FUSE2FS_OPT("minixdf",		minixdf,		1),
++	FUSE2FS_OPT("fuse2fs_debug",	debug,			1),
++	FUSE2FS_OPT("no_default_opts",	no_default_opts,	1),
++
++	FUSE_OPT_KEY("-V",             FUSE2FS_VERSION),
++	FUSE_OPT_KEY("--version",      FUSE2FS_VERSION),
++	FUSE_OPT_KEY("-h",             FUSE2FS_HELP),
++	FUSE_OPT_KEY("--help",         FUSE2FS_HELP),
++	FUSE_OPT_KEY("--helpfull",     FUSE2FS_HELPFULL),
++	FUSE_OPT_END
++};
++
++
++static int fuse2fs_opt_proc(void *data, const char *arg,
++			    int key, struct fuse_args *outargs)
+ {
+-	printf(_("Usage: %s dev mntpt [-o options] [fuse_args]\n"), progname);
++	struct fuse2fs *ff = data;
++
++	switch (key) {
++	case FUSE_OPT_KEY_NONOPT:
++		if (!ff->device) {
++			ff->device = strdup(arg);
++			return 0;
++		}
++		return 1;
++	case FUSE2FS_HELP:
++	case FUSE2FS_HELPFULL:
++		fprintf(stderr,
++	"usage: %s device/image mountpoint [options]\n"
++	"\n"
++	"general options:\n"
++	"    -o opt,[opt...]  mount options\n"
++	"    -h   --help      print help\n"
++	"    -V   --version   print version\n"
++	"\n"
++	"fuse2fs options:\n"
++	"    -o ro                  read-only mount\n"
++	"    -o errors=panic        dump core on error\n"
++	"    -o minixdf             minix-style df\n"
++	"    -o no_default_opts     do not include default fuse options\n"
++	"    -o fuse2fs_debug       enable fuse2fs debugging\n"
++	"\n",
++			outargs->argv[0]);
++		if (key == FUSE2FS_HELPFULL) {
++			fuse_opt_add_arg(outargs, "-ho");
++			fuse_main(outargs->argc, outargs->argv, &fs_ops, NULL);
++		} else {
++			fprintf(stderr, "Try --helpfull to get a list of "
++				"all flags, including the FUSE options.\n");
++		}
++		exit(1);
++
++	case FUSE2FS_VERSION:
++		fprintf(stderr, "fuse2fs %s (%s)\n", E2FSPROGS_VERSION,
++			E2FSPROGS_DATE);
++		fuse_opt_add_arg(outargs, "--version");
++		fuse_main(outargs->argc, outargs->argv, &fs_ops, NULL);
++		exit(0);
++	}
++	return 1;
+ }
+ 
+ int main(int argc, char *argv[])
+ {
++	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
++	struct fuse2fs fctx;
+ 	errcode_t err;
+ 	char *tok, *arg, *logfile;
+ 	int i;
+-	int readwrite = 1, panic_on_error = 0, minixdf = 0;
+-	struct fuse2fs *ff;
+ 	char extra_args[BUFSIZ];
+ 	int ret = 0, flags = EXT2_FLAG_64BITS | EXT2_FLAG_EXCLUSIVE;
+ 
+-	if (argc < 2) {
+-		print_help(argv[0]);
+-		return 1;
+-	}
++	memset(&fctx, 0, sizeof(fctx));
++	fctx.magic = FUSE2FS_MAGIC;
+ 
+-	for (i = 1; i < argc; i++) {
+-		if (strcmp(argv[i], "--help") == 0) {
+-			print_help(argv[0]);
+-			return 1;
+-		}
+-	}
+-
+-	for (i = 1; i < argc - 1; i++) {
+-		if (strcmp(argv[i], "-o"))
+-			continue;
+-		arg = argv[i + 1];
+-		while ((tok = strtok(arg, ","))) {
+-			arg = NULL;
+-			if (!strcmp(tok, "ro"))
+-				readwrite = 0;
+-			else if (!strcmp(tok, "errors=panic"))
+-				panic_on_error = 1;
+-			else if (!strcmp(tok, "minixdf"))
+-				minixdf = 1;
+-		}
++	fuse_opt_parse(&args, &fctx, fuse2fs_opts, fuse2fs_opt_proc);
++	if (fctx.device == NULL) {
++		fprintf(stderr, "Missing ext4 device/image\n");
++		fprintf(stderr, "See '%s -h' for usage\n", argv[0]);
++		exit(1);
+ 	}
+ 
+-	if (!readwrite)
++	if (fctx.ro)
+ 		printf("%s", _("Mounting read-only.\n"));
+ 
+ #ifdef ENABLE_NLS
+@@ -3678,57 +3735,48 @@ int main(int argc, char *argv[])
+ #endif
+ 	add_error_table(&et_ext2_error_table);
+ 
+-	ff = calloc(1, sizeof(*ff));
+-	if (!ff) {
+-		perror("init");
+-		return 1;
+-	}
+-	ff->magic = FUSE2FS_MAGIC;
+-	ff->panic_on_error = panic_on_error;
+-	ff->minixdf = minixdf;
+-
+ 	/* Set up error logging */
+ 	logfile = getenv("FUSE2FS_LOGFILE");
+ 	if (logfile) {
+-		ff->err_fp = fopen(logfile, "a");
+-		if (!ff->err_fp) {
++		fctx.err_fp = fopen(logfile, "a");
++		if (!fctx.err_fp) {
+ 			perror(logfile);
+ 			goto out_nofs;
+ 		}
+ 	} else
+-		ff->err_fp = stderr;
++		fctx.err_fp = stderr;
+ 
+ 	/* Will we allow users to allocate every last block? */
+ 	if (getenv("FUSE2FS_ALLOC_ALL_BLOCKS")) {
+ 		printf(_("%s: Allowing users to allocate all blocks. "
+-		       "This is dangerous!\n"), argv[1]);
+-		ff->alloc_all_blocks = 1;
++		       "This is dangerous!\n"), fctx.device);
++		fctx.alloc_all_blocks = 1;
+ 	}
+ 
+ 	/* Start up the fs (while we still can use stdout) */
+ 	ret = 2;
+-	if (readwrite)
++	if (!fctx.ro)
+ 		flags |= EXT2_FLAG_RW;
+-	err = ext2fs_open2(argv[1], NULL, flags, 0, 0, unix_io_manager,
++	err = ext2fs_open2(fctx.device, NULL, flags, 0, 0, unix_io_manager,
+ 			   &global_fs);
+ 	if (err) {
+-		printf(_("%s: %s.\n"), argv[1], error_message(err));
+-		printf(_("Please run e2fsck -fy %s.\n"), argv[1]);
++		printf(_("%s: %s.\n"), fctx.device, error_message(err));
++		printf(_("Please run e2fsck -fy %s.\n"), fctx.device);
+ 		goto out_nofs;
+ 	}
+-	ff->fs = global_fs;
+-	global_fs->priv_data = ff;
++	fctx.fs = global_fs;
++	global_fs->priv_data = &fctx;
+ 
+ 	ret = 3;
+ 	if (ext2fs_has_feature_journal_needs_recovery(global_fs->super)) {
+-		if (readwrite) {
+-			printf(_("%s: recovering journal\n"), argv[1]);
++		if (!fctx.ro) {
++			printf(_("%s: recovering journal\n"), fctx.device);
+ 			err = ext2fs_run_ext3_journal(&global_fs);
+ 			if (err) {
+-				printf(_("%s: %s.\n"), argv[1],
++				printf(_("%s: %s.\n"), fctx.device,
+ 				       error_message(err));
+ 				printf(_("Please run e2fsck -fy %s.\n"),
+-				       argv[1]);
++				       fctx.device);
+ 				goto out;
+ 			}
+ 			ext2fs_clear_feature_journal_needs_recovery(global_fs->super);
+@@ -3740,10 +3788,10 @@ int main(int argc, char *argv[])
+ 		}
+ 	}
+ 
+-	if (readwrite) {
++	if (!fctx.ro) {
+ 		if (ext2fs_has_feature_journal(global_fs->super))
+ 			printf(_("%s: Writing to the journal is not supported.\n"),
+-			       argv[1]);
++			       fctx.device);
+ 		err = ext2fs_read_inode_bitmap(global_fs);
+ 		if (err) {
+ 			translate_error(global_fs, 0, err);
+@@ -3779,19 +3827,27 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	/* Initialize generation counter */
+-	get_random_bytes(&ff->next_generation, sizeof(unsigned int));
++	get_random_bytes(&fctx.next_generation, sizeof(unsigned int));
+ 
+-	/* Stuff in some fuse parameters of our own */
++	/* Set up default fuse parameters */
+ 	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
+-		 "fsname=%s,attr_timeout=0,allow_other" FUSE_PLATFORM_OPTS,
++		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
+ 		 argv[1]);
+-	argv[0] = argv[1];
+-	argv[1] = argv[2];
+-	argv[2] = extra_args;
++	if (fctx.no_default_opts == 0)
++		fuse_opt_add_arg(&args, extra_args);
++
++	if (fctx.debug) {
++		int	i;
++
++		printf("fuse arguments:");
++		for (i = 0; i < args.argc; i++)
++			printf(" '%s'", args.argv[i]);
++		printf("\n");
++	}
+ 
+-	pthread_mutex_init(&ff->bfl, NULL);
+-	fuse_main(argc, argv, &fs_ops, ff);
+-	pthread_mutex_destroy(&ff->bfl);
++	pthread_mutex_init(&fctx.bfl, NULL);
++	fuse_main(args.argc, args.argv, &fs_ops, &fctx);
++	pthread_mutex_destroy(&fctx.bfl);
+ 
+ 	ret = 0;
+ out:
+@@ -3800,7 +3856,6 @@ out:
+ 		com_err(argv[0], err, "while closing fs");
+ 	global_fs = NULL;
+ out_nofs:
+-	free(ff);
+ 
+ 	return ret;
+ }
+-- 
+2.5.0
 
-I'm still seeing similar errors but anecdotally I seem to be seeing them
-at a significantly reduced rate. (I can check properly if the rate
-changes if that helps.)
-
-Errors are still like this: (I applied Ted's debug info stuff on top of
-your patch)
-
-[  246.364767] EXT4-fs warning (device sda2): ext4_file_open:388: Inconsistent encryption contexts: 49318/2952405
-[  246.364767] 
-[  246.365000] pathname: /home/dja/kernel/overlay/linux/include/dt-bindings/dma/nbpfaxi.h
-[  246.365170] inode flags: 48000080000
-[  246.365255] ------------[ cut here ]------------
-[  246.365346] WARNING: at /scratch/dja/linux/fs/ext4/file.c:393
-[  246.365460] Modules linked in: ipt_MASQUERADE nf_nat_masquerade_ipv4 iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 xt_addrtype iptable_filter ip_tables xt_conntrack x_tables nf_nat nf_conntrack br_netfilter bridge stp llc overlay
-[  246.366086] CPU: 4 PID: 2780 Comm: tar Tainted: G        W       4.5.0-rc7-00219-gc253bd0 #10
-[  246.366252] task: c0000003e5fd5500 ti: c0000003ec0bc000 task.ti: c0000003ec0bc000
-[  246.366393] NIP: c0000000005f949c LR: c0000000005f9498 CTR: c0000000000d7410
-[  246.366535] REGS: c0000003ec0bf360 TRAP: 0700   Tainted: G        W        (4.5.0-rc7-00219-gc253bd0)
-[  246.366713] MSR: 8000000000029033 <SF,EE,ME,IR,DR,RI,LE>  CR: 28888828  XER: 00000000
-[  246.367073] CFAR: c00000000116faac SOFTE: 1 
-GPR00: c0000000005f9498 c0000003ec0bf5e0 c000000002c06500 0000000000000018 
-GPR04: 0000000000000001 c0000000001f15a0 0000000000000000 0000000000000001 
-GPR08: 0000000000000007 0000000000000000 0000000000000001 646e69622d74642f 
-GPR12: 0000000000008800 c00000000fb82400 00000000000081a4 0000000088000000 
-GPR16: c00000029829e220 0000000000000000 0000000000000000 c0000003f311b810 
-GPR20: c0000003e5fd5500 0000000000000000 0000000000000000 c0000000025fce38 
-GPR24: 0000000000000001 c0000002982fb270 c0000003f8e0f000 c0000003e98ff420 
-GPR28: c0000003f8e0e000 c000000298300000 c0000003f311b800 c0000002982fb098 
-[  246.368951] NIP [c0000000005f949c] ext4_file_open+0x34c/0x4a0
-[  246.369068] LR [c0000000005f9498] ext4_file_open+0x348/0x4a0
-[  246.369184] Call Trace:
-[  246.369238] [c0000003ec0bf5e0] [c0000000005f9498] ext4_file_open+0x348/0x4a0 (unreliable)
-[  246.369404] [c0000003ec0bfae0] [c0000000004c5c04] do_dentry_open+0x2e4/0x590
-[  246.369547] [c0000003ec0bfb50] [c0000000004ea0bc] path_openat+0x9ac/0x1f10
-[  246.369689] [c0000003ec0bfc80] [c0000000004ed9d8] do_filp_open+0xa8/0x1a0
-[  246.369836] [c0000003ec0bfdc0] [c0000000004c87e0] do_sys_open+0x1b0/0x340
-[  246.369982] [c0000003ec0bfe30] [c000000000009210] system_call+0x38/0xb4
-[  246.370123] Instruction dump:
-[  246.370195] 419d0014 3c62fe83 38630408 48b76575 60000000 2fbf01f0 41de0150 e89ffe60 
-[  246.370445] 3c62fe83 38630418 48b76559 60000000 <0fe00000> 3860ffff 4bfffdd4 60000000 
-[  246.370715] ---[ end trace befd0478e64e65a3 ]---
-
-
-There doesn't seem to be any pattern to the broken directories - here's
-a snippet of the tar output:
-tar: linux/include/dt-bindings/dma/axi-dmac.h: Cannot open: Operation not permitted
-tar: linux/include/dt-bindings/dma/sun4i-a10.h: Cannot open: Operation not permitted
-tar: linux/include/dt-bindings/dma/at91.h: Cannot open: Operation not permitted
-tar: linux/include/dt-bindings/dma/nbpfaxi.h: Cannot open: Operation not permitted
-tar: linux/include/soc/at91/at91sam9_sdramc.h: Cannot open: Operation not permitted
-tar: linux/include/soc/at91/at91sam9_ddrsdr.h: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/hysdn_pof.h: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/Makefile: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/hysdn_net.c: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/hysdn_defs.h: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/boardergo.c: Cannot open: Operation not permitted
-tar: linux/drivers/isdn/hysdn/hysdn_init.c: Cannot open: Operation not permitted
-
-The set of broken directories seems to be somewhat consistent if I rerun
-the command within the same overlay mount (especially the first couple
-of directories), but if I unmount the overlay, clean the upper and work
-directories, and remount it, the set of broken directories is different.
-
-Regards,
-Daniel
