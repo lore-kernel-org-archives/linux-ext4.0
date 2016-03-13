@@ -1,34 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fix compile error while opening the macro DOUBLE_CHECK
-Date: Sun, 13 Mar 2016 17:19:30 -0400
-Message-ID: <20160313211930.GF29218@thunk.org>
-References: <1448960309-27346-1-git-send-email-zhangaihua1@huawei.com>
+Subject: Re: [PATCH RFC] ext4: use __GFP_NOFAIL in ext4_free_blocks()
+Date: Sun, 13 Mar 2016 17:30:06 -0400
+Message-ID: <20160313213006.GG29218@thunk.org>
+References: <20160224170912.2195.8153.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: zhangaihua1@huawei.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38882 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932122AbcCMVTf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Mar 2016 17:19:35 -0400
+Cc: Michal Hocko <mhocko@suse.com>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, Dmitry Monakhov <dmonakhov@virtuozzo.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1448960309-27346-1-git-send-email-zhangaihua1@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160224170912.2195.8153.stgit@buzz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 01, 2015 at 04:58:29PM +0800, zhangaihua1@huawei.com wrote:
-> From: Aihua Zhang <zhangaihua1@huawei.com>
+On Wed, Feb 24, 2016 at 08:09:12PM +0300, Konstantin Khlebnikov wrote:
+> This might be unexpected but pages allocated for sbi->s_buddy_cache are
+> charged to current memory cgroup. So, GFP_NOFS allocation could fail if
+> current task has been killed by OOM or if current memory cgroup has no
+> free memory left. Block allocator cannot handle such failures here yet.
 > 
-> the error is:
->     fs/ext4/mballoc.c:475:43: error: 'struct ext4_group_info' has
-> no member named 'bb_bitmap'.
->     so, the definition of macro DOUBLE_CHECK should before
-> 'struct ext4_group_info', I fixed it, and I moved the macro
-> AGGRESSIVE_CHECK together, because I think they shoule be together.
-> 
-> Signed-off-by: Aihua Zhang <zhangaihua1@huawei.com>
+> Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 
-Applied, thanks.  Apologies for the delay.
+Thanks, applied.
 
-							- Ted
+					- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
