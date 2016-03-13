@@ -1,68 +1,41 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference in
- ext4_mark_inode_dirty()
-Date: Sun, 13 Mar 2016 15:07:45 +0800
-Message-ID: <20160313070744.GH4672@eguan.usersys.redhat.com>
-References: <1457710733-10192-1-git-send-email-guaneryu@gmail.com>
- <20160313023922.GA29218@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 113781] kernel 4.4.1-2-ARCH, 4.4.3-1-ARCH and Fake RAID array
+ setup
+Date: Sun, 13 Mar 2016 11:01:46 +0000
+Message-ID: <bug-113781-13602-zfhV2kdJ6V@https.bugzilla.kernel.org/>
+References: <bug-113781-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f67.google.com ([209.85.220.67]:34598 "EHLO
-	mail-pa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751355AbcCMHHw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Mar 2016 03:07:52 -0400
-Received: by mail-pa0-f67.google.com with SMTP id hj7so11782499pac.1
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Mar 2016 23:07:51 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20160313023922.GA29218@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:57520 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932249AbcCMLB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Mar 2016 07:01:59 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 8670320375
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Mar 2016 11:01:57 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 35CDD202B8
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Mar 2016 11:01:47 +0000 (UTC)
+In-Reply-To: <bug-113781-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Mar 12, 2016 at 09:39:22PM -0500, Theodore Ts'o wrote:
-> On Fri, Mar 11, 2016 at 11:38:53PM +0800, Eryu Guan wrote:
-> > ext4_reserve_inode_write() in ext4_mark_inode_dirty() could fail on
-> > error (e.g. EIO) and iloc.bh can be NULL in this case. But the error is
-> > ignored in the following "if" condition and ext4_expand_extra_isize()
-> > might be called with NULL iloc.bh set, which triggers NULL pointer
-> > dereference.
-> 
-> Nice catch!  I'm going fix this slightly differently (although I'll
-> keep your description).  The patch is a wee bit bigger, but the end
-> result is simpler to read.
+https://bugzilla.kernel.org/show_bug.cgi?id=113781
 
-Yes, it's more easier to read. Thanks!
+--- Comment #1 from Andre Hasekamp <hasecomp@aim.com> ---
+2016-03-13
 
-Eryu
+Kernel 4.4.5-1-ARCH
+device-mapper 2.02.145-1
+thin-provisioning-tools 0.6.1-2
 
-> 
-> Thanks,
-> 
-> 						- Ted
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ce2c4c6..b41432e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5312,6 +5312,8 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
->  	might_sleep();
->  	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
->  	err = ext4_reserve_inode_write(handle, inode, &iloc);
-> +	if (err)
-> +		return err;
->  	if (ext4_handle_valid(handle) &&
->  	    EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
->  	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
-> @@ -5342,9 +5344,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
->  			}
->  		}
->  	}
-> -	if (!err)
-> -		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-> -	return err;
-> +	return ext4_mark_iloc_dirty(handle, inode, &iloc);
->  }
->  
->  /*
+Unfortunately the problem remains the same.
+
+Andre Hasekamp.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
