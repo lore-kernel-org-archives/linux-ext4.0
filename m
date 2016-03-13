@@ -1,58 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] jbd2: Prevent panic for destroyed devices
-Date: Sun, 13 Mar 2016 18:28:06 -0400
-Message-ID: <20160313222806.GK29218@thunk.org>
-References: <1455618965-26699-1-git-send-email-dmonakhov@openvz.org>
- <1455618965-26699-2-git-send-email-dmonakhov@openvz.org>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+Date: Mon, 14 Mar 2016 00:02:13 +0100
+Message-ID: <CAHc6FU5Bq9afVdNogc9DQYyyXwLfUopXW5ZnSuct3N+NvKW4Rg@mail.gmail.com>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+	<20160311140134.GA14808@infradead.org>
+	<CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+	<CAH2r5mv3OTmPOQBV7xc-uZmB0gWxykXOCEVOcybx3tbHiViTZg@mail.gmail.com>
+	<20160311230254.GG2792@jra3>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39052 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932195AbcCMW2I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Mar 2016 18:28:08 -0400
-Content-Disposition: inline
-In-Reply-To: <1455618965-26699-2-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+To: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20160311230254.GG2792@jra3>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 16, 2016 at 02:36:05PM +0400, Dmitry Monakhov wrote:
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 81e6226..f2760c8 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1333,6 +1333,18 @@ static int jbd2_write_superblock(journal_t *journal, int write_op)
->  	if (!(journal->j_flags & JBD2_BARRIER))
->  		write_op &= ~(REQ_FUA | REQ_FLUSH);
->  	lock_buffer(bh);
-> +	/*
-> +	 * Some disk drives may invalidate its page cache on failure
-> +	 * so sbh becomes unmapped.
-> +	 */
-> +	if (!buffer_mapped(bh)) {
+On Sat, Mar 12, 2016 at 12:02 AM, Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org> wrote:
+> On Fri, Mar 11, 2016 at 02:05:16PM -0600, Steve French wrote:
+>> Sounds like I need to quickly rework the SMB3 ACL helper functions
+>> for cifs.ko
+>>
+>> Also do you know where is the current version of the corresponding
+>> vfs_richacl for
+>> Samba which works with the current RichACL format?
+>
+> I have a patch for a new vfs_richacl somewhere. I remember
+> sending it to Andreas for testing...
 
-I think checking bh->bdev == NULL is a better check for this
-condition.
+Ah, the patch was for testing, not resting ... how could I get that mixed up.
 
-> +		/* Disk dissapeared under us, there is nothing we can
+I've applied your patch to the latest master branch, made it compile
+again, and fixed a few obvious problems. The results I get with
+smbcacls look reasonable now.
 
-Spelling nit: "disappeared"
+The code is here:
+  https://github.com/andreas-gruenbacher/samba richacl
 
-> +		   do but complain */
-> +		printk(KERN_ERR "JBD2: journal superblock was invalidated "
-> +		       "for %s.\n", journal->j_devname);
-> +		return -EIO;
-> +	}
-> +
+I've used the following smb.conf:
+  [richacl]
+  comment = Richacl directory
+  path = /mnt/ext4
+  vfs objects = richacl
+  writeable = yes
+  browseable = yes
 
-This is missing a an "unlock_buffer(bh)" before we return.
+Is there a particular reason why you didn't make vfs_richacl a
+dynamically loadable module?
 
-
->  	if (buffer_write_io_error(bh)) {
->  		/*
->  		 * Oh, dear.  A previous attempt to write the journal
-
-		       	      		 	 - Ted
-						 
+Thanks,
+Andreas
