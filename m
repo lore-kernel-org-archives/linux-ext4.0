@@ -1,125 +1,90 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Buffer Head Leak In mmp
-Date: Sun, 13 Mar 2016 17:57:30 -0400
-Message-ID: <20160313215730.GI29218@thunk.org>
-References: <CAJ-febOhan58G=Aw+-CD6OD2iKuFY3dxkzBfVMCwBd6vXs1rFg@mail.gmail.com>
- <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca>
+Subject: Re: [PATCH 1/2] ext4: Prevent panic for destroyed devices
+Date: Sun, 13 Mar 2016 18:26:51 -0400
+Message-ID: <20160313222651.GJ29218@thunk.org>
+References: <1455618965-26699-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "vikram.jadhav07" <vikramjadhavpucsd2007@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38986 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39038 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754247AbcCMV5e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Mar 2016 17:57:34 -0400
+	id S1751023AbcCMW0y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Mar 2016 18:26:54 -0400
 Content-Disposition: inline
-In-Reply-To: <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca>
+In-Reply-To: <1455618965-26699-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've made the changes Andreas suggested, and ended up with this.  Andreas, PTAL?
+On Tue, Feb 16, 2016 at 02:36:04PM +0400, Dmitry Monakhov wrote:
+> Some devices(nbd) can becomes unoperatable via kill_bdev
+> so its pagecache will be invalidated and all buffers becomes unmapped.
+> In that situation we will trigger BUGON on submit_bh.
+> 
+> #Testcase
+> mkdir  -p a/mnt
+> cd a
+> truncate -s 1G img
+> mkfs.ext4 -F img
+> qemu-nbd -c /dev/nbd0 img
+> mount /dev/nbd0 /mnt
+> cp -r /bin/ /mnt&
+> # Disconnect nbd while cp is active
+> qemu-nbd -d /dev/nbd0
+> sync
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+> ---
+>  fs/ext4/super.c | 24 +++++++++++++++++++++---
+>  1 file changed, 21 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3ed01ec..617d8b4a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4320,7 +4320,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+>  	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
+>  	int error = 0;
+>  
+> -	if (!sbh || block_device_ejected(sb))
+> +	if (!sbh || !buffer_mapped(sbh) || block_device_ejected(sb))
+>  		return error;
+>  	if (buffer_write_io_error(sbh)) {
+>  		/*
 
-     	      	      	      		     	   - Ted
+Hmm... error is zero here, so probably need change "return error" to "return EIO".
 
-commit 0304688676bdfc8159e165313d71da19c118ba27
-Author: vikram.jadhav07 <vikramjadhavpucsd2007@gmail.com>
-Date:   Sun Mar 13 17:56:52 2016 -0400
+> @@ -4368,8 +4368,26 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+>  	ext4_superblock_csum_set(sb);
+>  	mark_buffer_dirty(sbh);
+>  	if (sync) {
+> -		error = __sync_dirty_buffer(sbh,
+> -			test_opt(sb, BARRIER) ? WRITE_FUA : WRITE_SYNC);
+> +		lock_buffer(sbh);
+> +		/* superblock bh may be invalidated due to drive failure */
+> +		if (!buffer_mapped(sbh)) {
+> +			unlock_buffer(sbh);
+> +			ext4_msg(sb, KERN_ERR, "Can not write superblock "
+> +				 "because disk cache was invalidated");
+> +			return -EIO;
+> +		}
+> +		if (test_clear_buffer_dirty(sbh)) {
+> +			get_bh(sbh);
+> +			sbh->b_end_io = end_buffer_write_sync;
+> +			error = submit_bh(test_opt(sb, BARRIER) ?
+> +					  WRITE_FUA : WRITE_SYNC, sbh);
+> +			wait_on_buffer(sbh);
+> +			if (!error && !buffer_uptodate(sbh))
+> +				error = -EIO;
+> +		} else {
+> +			unlock_buffer(sbh);
+> +		}
+> +
 
-    ext4: clean up error handling in the MMP support
-    
-    There is memory leak as both caller function kmmpd() and callee
-    read_mmp_block() not releasing bh_check  (i.e buffer_head).
-    Given patch fixes this problem.
-    
-    [ Additional changes suggested by Andreas Dilger -- TYT ]
-    
-    Signed-off-by: Jadhav Vikram <vikramjadhavpucsd2007@gmail.com>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Instead of replicating all of __sync_dirty_buffer() here, we should
+just add a check to __sync_dirty_buffer() and have it return EIO if
+bh->bdev is NULL.  (Which I think is a better check than checking
+buffer_mapped).
 
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 0a512aa..2444527 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -91,21 +91,22 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
- 	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
- 	wait_on_buffer(*bh);
- 	if (!buffer_uptodate(*bh)) {
--		brelse(*bh);
--		*bh = NULL;
- 		ret = -EIO;
- 		goto warn_exit;
- 	}
--
- 	mmp = (struct mmp_struct *)((*bh)->b_data);
--	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
-+	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC) {
- 		ret = -EFSCORRUPTED;
--	else if (!ext4_mmp_csum_verify(sb, mmp))
-+		goto warn_exit;
-+	}
-+	if (!ext4_mmp_csum_verify(sb, mmp)) {
- 		ret = -EFSBADCRC;
--	else
--		return 0;
--
-+		goto warn_exit;
-+	}
-+	return 0;
- warn_exit:
-+	brelse(*bh);
-+	*bh = NULL;
- 	ext4_warning(sb, "Error %d while reading MMP block %llu",
- 		     ret, mmp_block);
- 	return ret;
-@@ -181,15 +182,13 @@ static int kmmpd(void *data)
- 		    EXT4_FEATURE_INCOMPAT_MMP)) {
- 			ext4_warning(sb, "kmmpd being stopped since MMP feature"
- 				     " has been disabled.");
--			EXT4_SB(sb)->s_mmp_tsk = NULL;
--			goto failed;
-+			goto exit_thread;
- 		}
- 
- 		if (sb->s_flags & MS_RDONLY) {
- 			ext4_warning(sb, "kmmpd being stopped since filesystem "
- 				     "has been remounted as readonly.");
--			EXT4_SB(sb)->s_mmp_tsk = NULL;
--			goto failed;
-+			goto exit_thread;
- 		}
- 
- 		diff = jiffies - last_update_time;
-@@ -211,9 +210,7 @@ static int kmmpd(void *data)
- 			if (retval) {
- 				ext4_error(sb, "error reading MMP data: %d",
- 					   retval);
--
--				EXT4_SB(sb)->s_mmp_tsk = NULL;
--				goto failed;
-+				goto exit_thread;
- 			}
- 
- 			mmp_check = (struct mmp_struct *)(bh_check->b_data);
-@@ -225,7 +222,9 @@ static int kmmpd(void *data)
- 					     "The filesystem seems to have been"
- 					     " multiply mounted.");
- 				ext4_error(sb, "abort");
--				goto failed;
-+				put_bh(bh_check);
-+				retval = -EBUSY;
-+				goto exit_thread;
- 			}
- 			put_bh(bh_check);
- 		}
-@@ -248,7 +247,8 @@ static int kmmpd(void *data)
- 
- 	retval = write_mmp_block(sb, bh);
- 
--failed:
-+exit_thread:
-+	EXT4_SB(sb)->s_mmp_tsk = NULL;
- 	kfree(data);
- 	brelse(bh);
- 	return retval;
+						- Ted
