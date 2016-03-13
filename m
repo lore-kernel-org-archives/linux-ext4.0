@@ -1,51 +1,125 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC -v2 4/8] jbd, jbd2: Do not fail journal because of
- frozen_buffer allocation failure
-Date: Sun, 13 Mar 2016 17:37:26 -0400
-Message-ID: <20160313213726.GH29218@thunk.org>
-References: <1438768284-30927-1-git-send-email-mhocko@kernel.org>
- <1438768284-30927-5-git-send-email-mhocko@kernel.org>
- <20150818103823.GC5033@dhcp22.suse.cz>
+Subject: Re: [PATCH] ext4: Buffer Head Leak In mmp
+Date: Sun, 13 Mar 2016 17:57:30 -0400
+Message-ID: <20160313215730.GI29218@thunk.org>
+References: <CAJ-febOhan58G=Aw+-CD6OD2iKuFY3dxkzBfVMCwBd6vXs1rFg@mail.gmail.com>
+ <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Michal Hocko <mhocko@kernel.org>
+Cc: "vikram.jadhav07" <vikramjadhavpucsd2007@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38954 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38986 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752063AbcCMVha (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Mar 2016 17:37:30 -0400
+	id S1754247AbcCMV5e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Mar 2016 17:57:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20150818103823.GC5033@dhcp22.suse.cz>
+In-Reply-To: <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 18, 2015 at 12:38:23PM +0200, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
-> 
-> Journal transaction might fail prematurely because the frozen_buffer
-> is allocated by GFP_NOFS request:
-> [   72.440013] do_get_write_access: OOM for frozen_buffer
-> [   72.440014] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-> [   72.440015] EXT4-fs error (device sda1) in ext4_reserve_inode_write:4735: Out of memory
-> (...snipped....)
-> [   72.495559] do_get_write_access: OOM for frozen_buffer
-> [   72.495560] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-> [   72.496839] do_get_write_access: OOM for frozen_buffer
-> [   72.496841] EXT4-fs: ext4_reserve_inode_write:4729: aborting transaction: Out of memory in __ext4_journal_get_write_access
-> [   72.505766] Aborting journal on device sda1-8.
-> [   72.505851] EXT4-fs (sda1): Remounting filesystem read-only
-> 
-> This wasn't a problem until "mm: page_alloc: do not lock up GFP_NOFS
-> allocations upon OOM" because small GPF_NOFS allocations never failed.
-> This allocation seems essential for the journal and GFP_NOFS is too
-> restrictive to the memory allocator so let's use __GFP_NOFAIL here to
-> emulate the previous behavior.
-> 
-> jbd code has the very same issue so let's do the same there as well.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.com>
+I've made the changes Andreas suggested, and ended up with this.  Andreas, PTAL?
 
-Applied, thanks.
+     	      	      	      		     	   - Ted
 
-					- Ted
+commit 0304688676bdfc8159e165313d71da19c118ba27
+Author: vikram.jadhav07 <vikramjadhavpucsd2007@gmail.com>
+Date:   Sun Mar 13 17:56:52 2016 -0400
+
+    ext4: clean up error handling in the MMP support
+    
+    There is memory leak as both caller function kmmpd() and callee
+    read_mmp_block() not releasing bh_check  (i.e buffer_head).
+    Given patch fixes this problem.
+    
+    [ Additional changes suggested by Andreas Dilger -- TYT ]
+    
+    Signed-off-by: Jadhav Vikram <vikramjadhavpucsd2007@gmail.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 0a512aa..2444527 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -91,21 +91,22 @@ static int read_mmp_block(struct super_block *sb, struct buffer_head **bh,
+ 	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
+ 	wait_on_buffer(*bh);
+ 	if (!buffer_uptodate(*bh)) {
+-		brelse(*bh);
+-		*bh = NULL;
+ 		ret = -EIO;
+ 		goto warn_exit;
+ 	}
+-
+ 	mmp = (struct mmp_struct *)((*bh)->b_data);
+-	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC)
++	if (le32_to_cpu(mmp->mmp_magic) != EXT4_MMP_MAGIC) {
+ 		ret = -EFSCORRUPTED;
+-	else if (!ext4_mmp_csum_verify(sb, mmp))
++		goto warn_exit;
++	}
++	if (!ext4_mmp_csum_verify(sb, mmp)) {
+ 		ret = -EFSBADCRC;
+-	else
+-		return 0;
+-
++		goto warn_exit;
++	}
++	return 0;
+ warn_exit:
++	brelse(*bh);
++	*bh = NULL;
+ 	ext4_warning(sb, "Error %d while reading MMP block %llu",
+ 		     ret, mmp_block);
+ 	return ret;
+@@ -181,15 +182,13 @@ static int kmmpd(void *data)
+ 		    EXT4_FEATURE_INCOMPAT_MMP)) {
+ 			ext4_warning(sb, "kmmpd being stopped since MMP feature"
+ 				     " has been disabled.");
+-			EXT4_SB(sb)->s_mmp_tsk = NULL;
+-			goto failed;
++			goto exit_thread;
+ 		}
+ 
+ 		if (sb->s_flags & MS_RDONLY) {
+ 			ext4_warning(sb, "kmmpd being stopped since filesystem "
+ 				     "has been remounted as readonly.");
+-			EXT4_SB(sb)->s_mmp_tsk = NULL;
+-			goto failed;
++			goto exit_thread;
+ 		}
+ 
+ 		diff = jiffies - last_update_time;
+@@ -211,9 +210,7 @@ static int kmmpd(void *data)
+ 			if (retval) {
+ 				ext4_error(sb, "error reading MMP data: %d",
+ 					   retval);
+-
+-				EXT4_SB(sb)->s_mmp_tsk = NULL;
+-				goto failed;
++				goto exit_thread;
+ 			}
+ 
+ 			mmp_check = (struct mmp_struct *)(bh_check->b_data);
+@@ -225,7 +222,9 @@ static int kmmpd(void *data)
+ 					     "The filesystem seems to have been"
+ 					     " multiply mounted.");
+ 				ext4_error(sb, "abort");
+-				goto failed;
++				put_bh(bh_check);
++				retval = -EBUSY;
++				goto exit_thread;
+ 			}
+ 			put_bh(bh_check);
+ 		}
+@@ -248,7 +247,8 @@ static int kmmpd(void *data)
+ 
+ 	retval = write_mmp_block(sb, bh);
+ 
+-failed:
++exit_thread:
++	EXT4_SB(sb)->s_mmp_tsk = NULL;
+ 	kfree(data);
+ 	brelse(bh);
+ 	return retval;
