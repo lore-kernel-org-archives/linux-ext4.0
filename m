@@ -1,40 +1,34 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 114301] jbd2_journal_write_revoke_records
-Date: Sun, 13 Mar 2016 19:35:29 +0000
-Message-ID: <bug-114301-13602-ma5H37cCKf@https.bugzilla.kernel.org/>
-References: <bug-114301-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] fix compile error while opening the macro DOUBLE_CHECK
+Date: Sun, 13 Mar 2016 17:19:30 -0400
+Message-ID: <20160313211930.GF29218@thunk.org>
+References: <1448960309-27346-1-git-send-email-zhangaihua1@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: zhangaihua1@huawei.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42708 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:38882 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752624AbcCMTfe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Mar 2016 15:35:34 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id F02D7203AD
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Mar 2016 19:35:32 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 582CA203B5
-	for <linux-ext4@vger.kernel.org>; Sun, 13 Mar 2016 19:35:30 +0000 (UTC)
-In-Reply-To: <bug-114301-13602@https.bugzilla.kernel.org/>
+	id S932122AbcCMVTf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Mar 2016 17:19:35 -0400
+Content-Disposition: inline
+In-Reply-To: <1448960309-27346-1-git-send-email-zhangaihua1@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=114301
+On Tue, Dec 01, 2015 at 04:58:29PM +0800, zhangaihua1@huawei.com wrote:
+> From: Aihua Zhang <zhangaihua1@huawei.com>
+> 
+> the error is:
+>     fs/ext4/mballoc.c:475:43: error: 'struct ext4_group_info' has
+> no member named 'bb_bitmap'.
+>     so, the definition of macro DOUBLE_CHECK should before
+> 'struct ext4_group_info', I fixed it, and I moved the macro
+> AGGRESSIVE_CHECK together, because I think they shoule be together.
+> 
+> Signed-off-by: Aihua Zhang <zhangaihua1@huawei.com>
 
-Christian Kujau <lists@nerdbynature.de> changed:
+Applied, thanks.  Apologies for the delay.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |lists@nerdbynature.de
-
---- Comment #1 from Christian Kujau <lists@nerdbynature.de> ---
-Setting this to "high" won't help much :-) Was this error reported to the ext4
-mailing list? What happened before this error? Was the system under load? Can
-you reproduce this crash? With a current kernel?
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+							- Ted
