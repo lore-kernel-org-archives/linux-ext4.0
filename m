@@ -1,59 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference in
- ext4_mark_inode_dirty()
-Date: Sat, 12 Mar 2016 21:39:22 -0500
-Message-ID: <20160313023922.GA29218@thunk.org>
-References: <1457710733-10192-1-git-send-email-guaneryu@gmail.com>
+Subject: Re: [PATCH] fix: print ext4 mountopt data_err=abort correctly
+Date: Sat, 12 Mar 2016 21:57:05 -0500
+Message-ID: <20160313025705.GB29218@thunk.org>
+References: <1457528979-25737-1-git-send-email-alnovak@suse.cz>
+ <1457548240-30948-1-git-send-email-alnovak@suse.cz>
+ <1457548240-30948-2-git-send-email-alnovak@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37428 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752973AbcCMCj0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 12 Mar 2016 21:39:26 -0500
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ales Novak <alnovak@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1457710733-10192-1-git-send-email-guaneryu@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1457548240-30948-2-git-send-email-alnovak@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 11, 2016 at 11:38:53PM +0800, Eryu Guan wrote:
-> ext4_reserve_inode_write() in ext4_mark_inode_dirty() could fail on
-> error (e.g. EIO) and iloc.bh can be NULL in this case. But the error is
-> ignored in the following "if" condition and ext4_expand_extra_isize()
-> might be called with NULL iloc.bh set, which triggers NULL pointer
-> dereference.
+On Wed, Mar 09, 2016 at 07:30:40PM +0100, Ales Novak wrote:
+> If data_err=abort option is specified for an ext3/ext4 mount,
+> /proc/mounts does show it as "(null)". This is caused by token2str()
+> returning NULL for Opt_data_err_abort (due to its pattern containing
+> '=').
+> 
+> This is perhaps more logical solution than the previously submitted,
+> handling these 'data_err=' options in other way than MOPT_SET.
+> 
+> Signed-off-by: Ales Novak <alnovak@suse.cz>
 
-Nice catch!  I'm going fix this slightly differently (although I'll
-keep your description).  The patch is a wee bit bigger, but the end
-result is simpler to read.
-
-Thanks,
+Thanks, applied.
 
 						- Ted
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ce2c4c6..b41432e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5312,6 +5312,8 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 	might_sleep();
- 	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
- 	err = ext4_reserve_inode_write(handle, inode, &iloc);
-+	if (err)
-+		return err;
- 	if (ext4_handle_valid(handle) &&
- 	    EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
- 	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
-@@ -5342,9 +5344,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 			}
- 		}
- 	}
--	if (!err)
--		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
--	return err;
-+	return ext4_mark_iloc_dirty(handle, inode, &iloc);
- }
- 
- /*
