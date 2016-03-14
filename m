@@ -1,44 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 114301] jbd2_journal_write_revoke_records
-Date: Mon, 14 Mar 2016 03:30:22 +0000
-Message-ID: <bug-114301-13602-j1Sa4Ld2Q6@https.bugzilla.kernel.org/>
-References: <bug-114301-13602@https.bugzilla.kernel.org/>
+From: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+Date: Sun, 13 Mar 2016 20:54:24 -0700
+Message-ID: <20160314035424.GA7131@jeremy-HP>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+ <20160311140134.GA14808@infradead.org>
+ <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+ <CAH2r5mv3OTmPOQBV7xc-uZmB0gWxykXOCEVOcybx3tbHiViTZg@mail.gmail.com>
+ <20160311230254.GG2792@jra3>
+ <CAHc6FU5Bq9afVdNogc9DQYyyXwLfUopXW5ZnSuct3N+NvKW4Rg@mail.gmail.com>
+Reply-To: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:56880 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750871AbcCNDa0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Mar 2016 23:30:26 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id B33E42046F
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2016 03:30:24 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 1934D20461
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2016 03:30:23 +0000 (UTC)
-In-Reply-To: <bug-114301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	"linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAHc6FU5Bq9afVdNogc9DQYyyXwLfUopXW5ZnSuct3N+NvKW4Rg-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D114301
+On Mon, Mar 14, 2016 at 12:02:13AM +0100, Andreas Gruenbacher wrote:
+> On Sat, Mar 12, 2016 at 12:02 AM, Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org> wrote:
+> > On Fri, Mar 11, 2016 at 02:05:16PM -0600, Steve French wrote:
+> >> Sounds like I need to quickly rework the SMB3 ACL helper functions
+> >> for cifs.ko
+> >>
+> >> Also do you know where is the current version of the corresponding
+> >> vfs_richacl for
+> >> Samba which works with the current RichACL format?
+> >
+> > I have a patch for a new vfs_richacl somewhere. I remember
+> > sending it to Andreas for testing...
+> 
+> Ah, the patch was for testing, not resting ... how could I get that mixed up.
 
-xierui1010@sina.com.cn changed:
+:-).
 
-           What    |Removed                     |Added
------------------------------------------------------------------------=
------
-             Status|RESOLVED                    |CLOSED
+> I've applied your patch to the latest master branch, made it compile
+> again, and fixed a few obvious problems. The results I get with
+> smbcacls look reasonable now.
+> 
+> The code is here:
+>   https://github.com/andreas-gruenbacher/samba richacl
+> 
+> I've used the following smb.conf:
+>   [richacl]
+>   comment = Richacl directory
+>   path = /mnt/ext4
+>   vfs objects = richacl
+>   writeable = yes
+>   browseable = yes
 
---- Comment #3 from xierui1010@sina.com.cn ---
-Dear=EF=BC=8Cthe system under load.I can't to reproduce this problem.
-Thank you for your help!
+Great ! Once richacls gets into the kernel I'll submit
+this into the Samba master branch.
 
---=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Is there a particular reason why you didn't make vfs_richacl a
+> dynamically loadable module?
+
+Probably sheer lazyness :-).
