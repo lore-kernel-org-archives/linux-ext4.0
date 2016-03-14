@@ -1,80 +1,170 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 out of order when use cfq scheduler
-Date: Mon, 14 Mar 2016 08:39:28 +0100
-Message-ID: <20160314073928.GD5213@quack.suse.cz>
-References: <20151222150037.GB18178@quack.suse.cz>
- <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
- <20160105153050.GF14464@quack.suse.cz>
- <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
- <20160106100621.GA24046@quack.suse.cz>
- <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
- <20160107102420.GB8380@quack.suse.cz>
- <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
- <20160107114736.GC8380@quack.suse.cz>
- <20160313042723.GC29218@thunk.org>
+Subject: Re: [PATCH v4 2/3] ext4: fix races between changing inode journal
+ mode and ext4_writepages
+Date: Mon, 14 Mar 2016 08:43:33 +0100
+Message-ID: <20160314074333.GE5213@quack.suse.cz>
+References: <1457922900-30367-1-git-send-email-daeho.jeong@samsung.com>
+ <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Li, Michael" <huayil@qti.qualcomm.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55846 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56124 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754909AbcCNHjX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Mar 2016 03:39:23 -0400
+	id S933638AbcCNHnO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Mar 2016 03:43:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20160313042723.GC29218@thunk.org>
+In-Reply-To: <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 12-03-16 23:27:23, Ted Tso wrote:
-> On Thu, Jan 07, 2016 at 12:47:36PM +0100, Jan Kara wrote:
-> > The problem is in all kernels starting with 3.8. Attached is a patch which
-> > should fix the issue. Can you test whether it fixes the problem for you?
+On Mon 14-03-16 11:34:59, Daeho Jeong wrote:
+> Now, in ext4, there is a race condition between changing inode journal
+> mode and ext4_writepages(). While ext4_writepages() is executed on
+> a non-journalled mode inode, the inode's journal mode could be enabled
+> by ioctl() and then, some pages dirtied after switching the journal
+> mode will be still exposed to ext4_writepages() in non-journaled mode.
+> To resolve this problem, we use fs-wide per-cpu rw semaphore by
+> Jan Kara's suggestion because we don't want to waste ext4_inode_info's
+> space for this extra rare case.
 > 
-> Sorry, I missed this patch because it was attached to an discussion
-> thread.
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-I have actually sent this patch in a standalone thread on January 11
-(http://lists.openwall.net/linux-ext4/2016/01/11/3) together with one more
-cleanup.
-
-> > The problem is that although for delayed allocated blocks we write their
-> > contents immediately after allocating them, there is no guarantee that
-> > the IO scheduler or device doesn't reorder things
-> 
-> I don't think that's the problem.  In the commit thread when we call
-> blkdev_issue_flush() that acts as a barrier so the I/O scheduler won't
-> reorder writes after that point, which is before we write the commit
-> block.  Instead, I believe the problem is in ext4_writepages:
-> 
-> 		ext4_journal_stop(handle);
-> 		/* Submit prepared bio */
-> 		ext4_io_submit(&mpd.io_submit);
-> 
-> Once we release the handle, the commit can start --- *before* we have
-> a chance to submit the I/O.   Oops.
-> 
-> I believe if we swap these two calls, it should fix the problem Huang
-> was seeing.
-
-No, that won't be enough. blkdev_issue_flush() is not guaranteed to do
-anything to IOs which have not reported completion before
-blkdev_issue_flush() was called. Specifically, CFQ will queue submitted bio
-in its internal RB tree, following flush request completely bypasses this
-tree and goes directly to the disk where it flushes caches. And only later
-CFQ decides to schedule async writeback from the flusher thread which is
-queued in the RB tree...
-
-Note that the behavior has changed to be like this with the flushing
-machinery rewrite. Before that, IO scheduler had to drain all the
-outstanding IO requests (IO cache flush behaved like IO barrier). So your
-patch would be enough with the old flushing machinery but is not enough
-since 3.0 or so...
+Yeah, this patch is fine now. Thanks!
 
 								Honza
+
+> ---
+>  fs/ext4/ext4.h                |    4 ++++
+>  fs/ext4/inode.c               |   15 ++++++++++++---
+>  fs/ext4/super.c               |    4 ++++
+>  kernel/locking/percpu-rwsem.c |    1 +
+>  4 files changed, 21 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 157b458..c757a3d 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -33,6 +33,7 @@
+>  #include <linux/ratelimit.h>
+>  #include <crypto/hash.h>
+>  #include <linux/falloc.h>
+> +#include <linux/percpu-rwsem.h>
+>  #ifdef __KERNEL__
+>  #include <linux/compat.h>
+>  #endif
+> @@ -1475,6 +1476,9 @@ struct ext4_sb_info {
+>  	struct ratelimit_state s_err_ratelimit_state;
+>  	struct ratelimit_state s_warning_ratelimit_state;
+>  	struct ratelimit_state s_msg_ratelimit_state;
+> +
+> +	/* Barrier between changing inodes' journal flags and writepages ops. */
+> +	struct percpu_rw_semaphore s_journal_flag_rwsem;
+>  };
+>  
+>  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 71fab4c..4f45f24 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2476,11 +2476,14 @@ static int ext4_writepages(struct address_space *mapping,
+>  	struct blk_plug plug;
+>  	bool give_up_on_write = false;
+>  
+> +	percpu_down_read(&sbi->s_journal_flag_rwsem);
+>  	trace_ext4_writepages(inode, wbc);
+>  
+> -	if (dax_mapping(mapping))
+> -		return dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
+> -						   wbc);
+> +	if (dax_mapping(mapping)) {
+> +		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
+> +						  wbc);
+> +		goto out_writepages;
+> +	}
+>  
+>  	/*
+>  	 * No pages to write? This is mainly a kludge to avoid starting
+> @@ -2650,6 +2653,7 @@ retry:
+>  out_writepages:
+>  	trace_ext4_writepages_result(inode, wbc, ret,
+>  				     nr_to_write - wbc->nr_to_write);
+> +	percpu_up_read(&sbi->s_journal_flag_rwsem);
+>  	return ret;
+>  }
+>  
+> @@ -5366,6 +5370,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  	journal_t *journal;
+>  	handle_t *handle;
+>  	int err;
+> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  
+>  	/*
+>  	 * We have to be very careful here: changing a data block's
+> @@ -5405,6 +5410,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  		}
+>  	}
+>  
+> +	percpu_down_write(&sbi->s_journal_flag_rwsem);
+>  	jbd2_journal_lock_updates(journal);
+>  
+>  	/*
+> @@ -5421,6 +5427,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  		err = jbd2_journal_flush(journal);
+>  		if (err < 0) {
+>  			jbd2_journal_unlock_updates(journal);
+> +			percpu_up_write(&sbi->s_journal_flag_rwsem);
+>  			ext4_inode_resume_unlocked_dio(inode);
+>  			return err;
+>  		}
+> @@ -5429,6 +5436,8 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  	ext4_set_aops(inode);
+>  
+>  	jbd2_journal_unlock_updates(journal);
+> +	percpu_up_write(&sbi->s_journal_flag_rwsem);
+> +
+>  	if (val)
+>  		up_write(&EXT4_I(inode)->i_mmap_sem);
+>  	ext4_inode_resume_unlocked_dio(inode);
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3ed01ec..a12950d 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -861,6 +861,7 @@ static void ext4_put_super(struct super_block *sb)
+>  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+>  	percpu_counter_destroy(&sbi->s_dirs_counter);
+>  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
+> +	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
+>  	brelse(sbi->s_sbh);
+>  #ifdef CONFIG_QUOTA
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+> @@ -3926,6 +3927,9 @@ no_journal:
+>  	if (!err)
+>  		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0,
+>  					  GFP_KERNEL);
+> +	if (!err)
+> +		err = percpu_init_rwsem(&sbi->s_journal_flag_rwsem);
+> +
+>  	if (err) {
+>  		ext4_msg(sb, KERN_ERR, "insufficient memory");
+>  		goto failed_mount6;
+> diff --git a/kernel/locking/percpu-rwsem.c b/kernel/locking/percpu-rwsem.c
+> index f231e0b..bec0b64 100644
+> --- a/kernel/locking/percpu-rwsem.c
+> +++ b/kernel/locking/percpu-rwsem.c
+> @@ -37,6 +37,7 @@ void percpu_free_rwsem(struct percpu_rw_semaphore *brw)
+>  	free_percpu(brw->fast_read_ctr);
+>  	brw->fast_read_ctr = NULL; /* catch use after free bugs */
+>  }
+> +EXPORT_SYMBOL_GPL(percpu_free_rwsem);
+>  
+>  /*
+>   * This is the fast-path for down_read/up_read. If it succeeds we rely
+> -- 
+> 1.7.9.5
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
