@@ -1,171 +1,51 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit
- ff978b09f973) breaking Docker
-Date: Mon, 14 Mar 2016 11:27:35 +0100
-Message-ID: <20160314102735.GM8655@tucsk>
-References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
- <20160311021506.GA32214@thunk.org>
- <20160311153403.GJ8655@tucsk>
- <87ziu1eetp.fsf@gamma.ozlabs.ibm.com>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
+Date: Mon, 14 Mar 2016 14:02:33 +0100
+Message-ID: <CAHc6FU64SzTN23LMzGcPex=jRz_Euwb_CHrW=kX+A5sn8=SFSg@mail.gmail.com>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
+	<20160311142719.GG14808@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk,
-	linux-unionfs@vger.kernel.org
-To: Daniel Axtens <dja@axtens.net>
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <87ziu1eetp.fsf@gamma.ozlabs.ibm.com>
-Sender: linux-unionfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20160311142719.GG14808-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 14, 2016 at 05:47:14PM +1100, Daniel Axtens wrote:
-> Hi all,
-> 
-> To make sure I wasn't crazy, I installed a mainline kernel on my x86 laptop.
-> 
-> It also doesn't work there, but I do get a far more detailed set of
-> backtraces, which I've added below. It also means it's not powerpc
-> specific, which should help in debugging it.
+On Fri, Mar 11, 2016 at 3:27 PM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
+>> +static inline int
+>> +ext4_acl_chmod(struct inode *inode, umode_t mode)
+>> +{
+>> +     if (IS_RICHACL(inode))
+>> +             return richacl_chmod(inode, inode->i_mode);
+>> +     return posix_acl_chmod(inode, inode->i_mode);
+>> +}
+>
+> Thi isn't ext4-specific and potentially duplicated in every caller.
+> Please provide this as a common helper.
 
-Hi Daniel,
+This can go in neither fs.h nor posix_acl.h nor richacl.h unless we
+turn it into a macro, and I don't think we want to add a new header
+file for such extreme trivia.
 
-Could you please try the below patch?
+> Also while we're at it, the mode argument is ignore and the function
+> always uses inode->i_mode instead.
 
-It's actually three patches rolled into one:
+Right, thanks.
 
-1) ext4: use dget_parent() in ext4_file_open()
-
-   Even with dget_parent() we don't hold i_mutex on directory and so the file
-   could be moved in the mean time.  Not sure if it's a problem.  Ted?
-
-2) vfs: add file_dentry()
-
-   Posted here:
-      http://marc.info/?l=linux-fsdevel&m=145745197615687&w=2
-
-3) ext4: use file_dentry()
-
-   s/\([a-z_]*\)->f_path\.dentry/file_dentry(\1)/
-
-Thanks,
-Miklos
-
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 4cd318f31cbe..38847f38b34a 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -335,7 +335,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	struct super_block *sb = inode->i_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct vfsmount *mnt = filp->f_path.mnt;
--	struct inode *dir = filp->f_path.dentry->d_parent->d_inode;
-+	struct dentry *dir;
- 	struct path path;
- 	char buf[64], *cp;
- 	int ret;
-@@ -379,14 +379,18 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		if (ext4_encryption_info(inode) == NULL)
- 			return -ENOKEY;
- 	}
--	if (ext4_encrypted_inode(dir) &&
--	    !ext4_is_child_context_consistent_with_parent(dir, inode)) {
-+
-+	dir = dget_parent(file_dentry(filp));
-+	if (ext4_encrypted_inode(d_inode(dir)) &&
-+	    !ext4_is_child_context_consistent_with_parent(d_inode(dir), inode)) {
- 		ext4_warning(inode->i_sb,
- 			     "Inconsistent encryption contexts: %lu/%lu\n",
--			     (unsigned long) dir->i_ino,
-+			     (unsigned long) d_inode(dir)->i_ino,
- 			     (unsigned long) inode->i_ino);
-+		dput(dir);
- 		return -EPERM;
- 	}
-+	dput(dir);
- 	/*
- 	 * Set up the jbd2_inode if we are opening the inode for
- 	 * writing and the journal is present
-diff --git a/fs/open.c b/fs/open.c
-index 55bdc75e2172..6326c11eda78 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -831,6 +831,17 @@ char *file_path(struct file *filp, char *buf, int buflen)
- }
- EXPORT_SYMBOL(file_path);
- 
-+struct dentry *file_dentry(const struct file *file)
-+{
-+	struct dentry *dentry = file->f_path.dentry;
-+
-+	if (likely(d_inode(dentry) == file_inode(file)))
-+		return dentry;
-+	else
-+		return dentry->d_op->d_native_dentry(dentry, file_inode(file));
-+}
-+EXPORT_SYMBOL(file_dentry);
-+
- /**
-  * vfs_open - open the file at the given path
-  * @path: path to open
-diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
-index 619ad4b016d2..5142aa2034c4 100644
---- a/fs/overlayfs/super.c
-+++ b/fs/overlayfs/super.c
-@@ -336,14 +336,30 @@ static int ovl_dentry_weak_revalidate(struct dentry *dentry, unsigned int flags)
- 	return ret;
- }
- 
-+static struct dentry *ovl_d_native_dentry(struct dentry *dentry,
-+					 struct inode *inode)
-+{
-+	struct ovl_entry *oe = dentry->d_fsdata;
-+	struct dentry *realentry = ovl_upperdentry_dereference(oe);
-+
-+	if (realentry && inode == d_inode(realentry))
-+		return realentry;
-+	realentry = __ovl_dentry_lower(oe);
-+	if (realentry && inode == d_inode(realentry))
-+		return realentry;
-+	BUG();
-+}
-+
- static const struct dentry_operations ovl_dentry_operations = {
- 	.d_release = ovl_dentry_release,
- 	.d_select_inode = ovl_d_select_inode,
-+	.d_native_dentry = ovl_d_native_dentry,
- };
- 
- static const struct dentry_operations ovl_reval_dentry_operations = {
- 	.d_release = ovl_dentry_release,
- 	.d_select_inode = ovl_d_select_inode,
-+	.d_native_dentry = ovl_d_native_dentry,
- 	.d_revalidate = ovl_dentry_revalidate,
- 	.d_weak_revalidate = ovl_dentry_weak_revalidate,
- };
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index c4b5f4b3f8f8..99ecb6de636c 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -161,6 +161,7 @@ struct dentry_operations {
- 	struct vfsmount *(*d_automount)(struct path *);
- 	int (*d_manage)(struct dentry *, bool);
- 	struct inode *(*d_select_inode)(struct dentry *, unsigned);
-+	struct dentry *(*d_native_dentry)(struct dentry *, struct inode *);
- } ____cacheline_aligned;
- 
- /*
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ae681002100a..1091d9f43271 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1234,6 +1234,8 @@ static inline struct inode *file_inode(const struct file *f)
- 	return f->f_inode;
- }
- 
-+extern struct dentry *file_dentry(const struct file *file);
-+
- static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
- {
- 	return locks_lock_inode_wait(file_inode(filp), fl);
+Andreas
