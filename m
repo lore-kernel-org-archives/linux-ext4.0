@@ -1,51 +1,48 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
-Date: Mon, 14 Mar 2016 14:02:33 +0100
-Message-ID: <CAHc6FU64SzTN23LMzGcPex=jRz_Euwb_CHrW=kX+A5sn8=SFSg@mail.gmail.com>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
-	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
-	<20160311142719.GG14808@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 out of order when use cfq scheduler
+Date: Mon, 14 Mar 2016 10:36:35 -0400
+Message-ID: <20160314143635.GM29218@thunk.org>
+References: <c67f356b63d94d35ad010a6e987b68f0@SGPMBX1004.APAC.bosch.com>
+ <20160105153050.GF14464@quack.suse.cz>
+ <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
+ <20160106100621.GA24046@quack.suse.cz>
+ <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
+ <20160107102420.GB8380@quack.suse.cz>
+ <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
+ <20160107114736.GC8380@quack.suse.cz>
+ <20160313042723.GC29218@thunk.org>
+ <20160314073928.GD5213@quack.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20160311142719.GG14808-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41790 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932497AbcCNOgn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Mar 2016 10:36:43 -0400
+Content-Disposition: inline
+In-Reply-To: <20160314073928.GD5213@quack.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 11, 2016 at 3:27 PM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
->> +static inline int
->> +ext4_acl_chmod(struct inode *inode, umode_t mode)
->> +{
->> +     if (IS_RICHACL(inode))
->> +             return richacl_chmod(inode, inode->i_mode);
->> +     return posix_acl_chmod(inode, inode->i_mode);
->> +}
->
-> Thi isn't ext4-specific and potentially duplicated in every caller.
-> Please provide this as a common helper.
+On Mon, Mar 14, 2016 at 08:39:28AM +0100, Jan Kara wrote:
+> No, that won't be enough. blkdev_issue_flush() is not guaranteed to do
+> anything to IOs which have not reported completion before
+> blkdev_issue_flush() was called. Specifically, CFQ will queue submitted bio
+> in its internal RB tree, following flush request completely bypasses this
+> tree and goes directly to the disk where it flushes caches. And only later
+> CFQ decides to schedule async writeback from the flusher thread which is
+> queued in the RB tree...
 
-This can go in neither fs.h nor posix_acl.h nor richacl.h unless we
-turn it into a macro, and I don't think we want to add a new header
-file for such extreme trivia.
+Oh, right.  I am forgetting about the flushing mahchinery rewrite.
+Thanks for pointing that out.
 
-> Also while we're at it, the mode argument is ignore and the function
-> always uses inode->i_mode instead.
+But what we *could* do is to swap those two calls and then in the case
+where delalloc is enabled, could maintain a list of inodes where we
+only need to call filemap_fdatawait(), and not initiate writeback for
+any dirty pages which had been caused by non-allocating writes.
 
-Right, thanks.
-
-Andreas
+						- Ted
