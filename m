@@ -1,170 +1,180 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v4 2/3] ext4: fix races between changing inode journal
- mode and ext4_writepages
-Date: Mon, 14 Mar 2016 08:43:33 +0100
-Message-ID: <20160314074333.GE5213@quack.suse.cz>
-References: <1457922900-30367-1-git-send-email-daeho.jeong@samsung.com>
- <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
-To: Daeho Jeong <daeho.jeong@samsung.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Buffer Head Leak In mmp
+Date: Mon, 14 Mar 2016 02:41:34 -0600
+Message-ID: <BFF88A70-A864-4957-A807-30C6191C4D45@dilger.ca>
+References: <CAJ-febOhan58G=Aw+-CD6OD2iKuFY3dxkzBfVMCwBd6vXs1rFg@mail.gmail.com> <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca> <20160313215730.GI29218@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: "vikram.jadhav07" <vikramjadhavpucsd2007@gmail.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56124 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933638AbcCNHnO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Mar 2016 03:43:14 -0400
-Content-Disposition: inline
-In-Reply-To: <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:34654 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755421AbcCNIlk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2016 04:41:40 -0400
+Received: by mail-ig0-f169.google.com with SMTP id av4so56649264igc.1
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2016 01:41:39 -0700 (PDT)
+In-Reply-To: <20160313215730.GI29218@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-03-16 11:34:59, Daeho Jeong wrote:
-> Now, in ext4, there is a race condition between changing inode journal
-> mode and ext4_writepages(). While ext4_writepages() is executed on
-> a non-journalled mode inode, the inode's journal mode could be enabled
-> by ioctl() and then, some pages dirtied after switching the journal
-> mode will be still exposed to ext4_writepages() in non-journaled mode.
-> To resolve this problem, we use fs-wide per-cpu rw semaphore by
-> Jan Kara's suggestion because we don't want to waste ext4_inode_info's
-> space for this extra rare case.
-> 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Yeah, this patch is fine now. Thanks!
+--Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-								Honza
+On Mar 13, 2016, at 3:57 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> I've made the changes Andreas suggested, and ended up with this.  =
+Andreas, PTAL?
 
-> ---
->  fs/ext4/ext4.h                |    4 ++++
->  fs/ext4/inode.c               |   15 ++++++++++++---
->  fs/ext4/super.c               |    4 ++++
->  kernel/locking/percpu-rwsem.c |    1 +
->  4 files changed, 21 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 157b458..c757a3d 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -33,6 +33,7 @@
->  #include <linux/ratelimit.h>
->  #include <crypto/hash.h>
->  #include <linux/falloc.h>
-> +#include <linux/percpu-rwsem.h>
->  #ifdef __KERNEL__
->  #include <linux/compat.h>
->  #endif
-> @@ -1475,6 +1476,9 @@ struct ext4_sb_info {
->  	struct ratelimit_state s_err_ratelimit_state;
->  	struct ratelimit_state s_warning_ratelimit_state;
->  	struct ratelimit_state s_msg_ratelimit_state;
-> +
-> +	/* Barrier between changing inodes' journal flags and writepages ops. */
-> +	struct percpu_rw_semaphore s_journal_flag_rwsem;
->  };
->  
->  static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 71fab4c..4f45f24 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2476,11 +2476,14 @@ static int ext4_writepages(struct address_space *mapping,
->  	struct blk_plug plug;
->  	bool give_up_on_write = false;
->  
-> +	percpu_down_read(&sbi->s_journal_flag_rwsem);
->  	trace_ext4_writepages(inode, wbc);
->  
-> -	if (dax_mapping(mapping))
-> -		return dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
-> -						   wbc);
-> +	if (dax_mapping(mapping)) {
-> +		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
-> +						  wbc);
-> +		goto out_writepages;
+Sorry, not sure what "PTAL" means... :-)
+
+In any case, the patch looks good to me.
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca.
+
+> commit 0304688676bdfc8159e165313d71da19c118ba27
+> Author: vikram.jadhav07 <vikramjadhavpucsd2007@gmail.com>
+> Date:   Sun Mar 13 17:56:52 2016 -0400
+>=20
+>    ext4: clean up error handling in the MMP support
+>=20
+>    There is memory leak as both caller function kmmpd() and callee
+>    read_mmp_block() not releasing bh_check  (i.e buffer_head).
+>    Given patch fixes this problem.
+>=20
+>    [ Additional changes suggested by Andreas Dilger -- TYT ]
+>=20
+>    Signed-off-by: Jadhav Vikram <vikramjadhavpucsd2007@gmail.com>
+>    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>=20
+> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+> index 0a512aa..2444527 100644
+> --- a/fs/ext4/mmp.c
+> +++ b/fs/ext4/mmp.c
+> @@ -91,21 +91,22 @@ static int read_mmp_block(struct super_block *sb, =
+struct buffer_head **bh,
+> 	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
+> 	wait_on_buffer(*bh);
+> 	if (!buffer_uptodate(*bh)) {
+> -		brelse(*bh);
+> -		*bh =3D NULL;
+> 		ret =3D -EIO;
+> 		goto warn_exit;
+> 	}
+> -
+> 	mmp =3D (struct mmp_struct *)((*bh)->b_data);
+> -	if (le32_to_cpu(mmp->mmp_magic) !=3D EXT4_MMP_MAGIC)
+> +	if (le32_to_cpu(mmp->mmp_magic) !=3D EXT4_MMP_MAGIC) {
+> 		ret =3D -EFSCORRUPTED;
+> -	else if (!ext4_mmp_csum_verify(sb, mmp))
+> +		goto warn_exit;
 > +	}
->  
->  	/*
->  	 * No pages to write? This is mainly a kludge to avoid starting
-> @@ -2650,6 +2653,7 @@ retry:
->  out_writepages:
->  	trace_ext4_writepages_result(inode, wbc, ret,
->  				     nr_to_write - wbc->nr_to_write);
-> +	percpu_up_read(&sbi->s_journal_flag_rwsem);
->  	return ret;
->  }
->  
-> @@ -5366,6 +5370,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  	journal_t *journal;
->  	handle_t *handle;
->  	int err;
-> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  
->  	/*
->  	 * We have to be very careful here: changing a data block's
-> @@ -5405,6 +5410,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  		}
->  	}
->  
-> +	percpu_down_write(&sbi->s_journal_flag_rwsem);
->  	jbd2_journal_lock_updates(journal);
->  
->  	/*
-> @@ -5421,6 +5427,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  		err = jbd2_journal_flush(journal);
->  		if (err < 0) {
->  			jbd2_journal_unlock_updates(journal);
-> +			percpu_up_write(&sbi->s_journal_flag_rwsem);
->  			ext4_inode_resume_unlocked_dio(inode);
->  			return err;
->  		}
-> @@ -5429,6 +5436,8 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
->  	ext4_set_aops(inode);
->  
->  	jbd2_journal_unlock_updates(journal);
-> +	percpu_up_write(&sbi->s_journal_flag_rwsem);
-> +
->  	if (val)
->  		up_write(&EXT4_I(inode)->i_mmap_sem);
->  	ext4_inode_resume_unlocked_dio(inode);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3ed01ec..a12950d 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -861,6 +861,7 @@ static void ext4_put_super(struct super_block *sb)
->  	percpu_counter_destroy(&sbi->s_freeinodes_counter);
->  	percpu_counter_destroy(&sbi->s_dirs_counter);
->  	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
-> +	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
->  	brelse(sbi->s_sbh);
->  #ifdef CONFIG_QUOTA
->  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-> @@ -3926,6 +3927,9 @@ no_journal:
->  	if (!err)
->  		err = percpu_counter_init(&sbi->s_dirtyclusters_counter, 0,
->  					  GFP_KERNEL);
-> +	if (!err)
-> +		err = percpu_init_rwsem(&sbi->s_journal_flag_rwsem);
-> +
->  	if (err) {
->  		ext4_msg(sb, KERN_ERR, "insufficient memory");
->  		goto failed_mount6;
-> diff --git a/kernel/locking/percpu-rwsem.c b/kernel/locking/percpu-rwsem.c
-> index f231e0b..bec0b64 100644
-> --- a/kernel/locking/percpu-rwsem.c
-> +++ b/kernel/locking/percpu-rwsem.c
-> @@ -37,6 +37,7 @@ void percpu_free_rwsem(struct percpu_rw_semaphore *brw)
->  	free_percpu(brw->fast_read_ctr);
->  	brw->fast_read_ctr = NULL; /* catch use after free bugs */
->  }
-> +EXPORT_SYMBOL_GPL(percpu_free_rwsem);
->  
->  /*
->   * This is the fast-path for down_read/up_read. If it succeeds we rely
-> -- 
-> 1.7.9.5
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> +	if (!ext4_mmp_csum_verify(sb, mmp)) {
+> 		ret =3D -EFSBADCRC;
+> -	else
+> -		return 0;
+> -
+> +		goto warn_exit;
+> +	}
+> +	return 0;
+> warn_exit:
+> +	brelse(*bh);
+> +	*bh =3D NULL;
+> 	ext4_warning(sb, "Error %d while reading MMP block %llu",
+> 		     ret, mmp_block);
+> 	return ret;
+> @@ -181,15 +182,13 @@ static int kmmpd(void *data)
+> 		    EXT4_FEATURE_INCOMPAT_MMP)) {
+> 			ext4_warning(sb, "kmmpd being stopped since MMP =
+feature"
+> 				     " has been disabled.");
+> -			EXT4_SB(sb)->s_mmp_tsk =3D NULL;
+> -			goto failed;
+> +			goto exit_thread;
+> 		}
+>=20
+> 		if (sb->s_flags & MS_RDONLY) {
+> 			ext4_warning(sb, "kmmpd being stopped since =
+filesystem "
+> 				     "has been remounted as readonly.");
+> -			EXT4_SB(sb)->s_mmp_tsk =3D NULL;
+> -			goto failed;
+> +			goto exit_thread;
+> 		}
+>=20
+> 		diff =3D jiffies - last_update_time;
+> @@ -211,9 +210,7 @@ static int kmmpd(void *data)
+> 			if (retval) {
+> 				ext4_error(sb, "error reading MMP data: =
+%d",
+> 					   retval);
+> -
+> -				EXT4_SB(sb)->s_mmp_tsk =3D NULL;
+> -				goto failed;
+> +				goto exit_thread;
+> 			}
+>=20
+> 			mmp_check =3D (struct mmp_struct =
+*)(bh_check->b_data);
+> @@ -225,7 +222,9 @@ static int kmmpd(void *data)
+> 					     "The filesystem seems to =
+have been"
+> 					     " multiply mounted.");
+> 				ext4_error(sb, "abort");
+> -				goto failed;
+> +				put_bh(bh_check);
+> +				retval =3D -EBUSY;
+> +				goto exit_thread;
+> 			}
+> 			put_bh(bh_check);
+> 		}
+> @@ -248,7 +247,8 @@ static int kmmpd(void *data)
+>=20
+> 	retval =3D write_mmp_block(sb, bh);
+>=20
+> -failed:
+> +exit_thread:
+> +	EXT4_SB(sb)->s_mmp_tsk =3D NULL;
+> 	kfree(data);
+> 	brelse(bh);
+> 	return retval;
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVuZ5PnKl2rkXzB/gAQgkoQ//XFl/P+kLvFh6cn2bY7TLxcn3p1mmrPCU
+sE9675eH2tm7HLrKK5U5adVOdoJLt1eAInLsSe4JZTvu43z3tftHTLnLBr9qXP2S
+p+1dKpD/OFJEV/akfnsyXFUXTFUK6W+MWoFyqaEpcv195t8GTE21yZf3iXck7v3v
+n3LGxP6+sLNXlatSuTeZLE33l3h2bHe5DI23aOCYi2QsaCSvkD3bpBBs0ukSGcr3
+04UO/18DSIVkp7cAiAOt/J6aH05hGg59pqxmcboKBsQmOTPmo4NSjo0uuV8eIhVt
+AuMxUQNO9Q1IPgJXnx00XD2QJ/Kpo65HIcUWAXOfNHLmDtb7loUlo2oHz6jVXyeL
+QNAyyOX9ofNIsQ4TBb5BfWmsFMbrD2mZPRVkf5keZjvh9WdB6tX91jTlLwTkG8t0
+SK5I6hgub5esWhDbNoo6WpItv6wAzA4wbM4Mht7p71y67GwSOFlFGpZ8aTStSWfe
+qSwg6jpMz3vD4Ys9WCZrUZ9PGAA4if6yHS+2/zcIZCc4TKtL7Ic4q+V3JNxmwICa
+x8ds/ZgnTCZ7fG1dQjLYFwsOZFVev6UjrcUoNuHl+lKD5TjqtYOmDm5xV7UZaUOT
+JydiF6MJeGtEGMxP/EQpeBXcuwIPypouUaJvWNSIszY0w/6YHOfoWHOxcwCsLg/v
+0dvgI0xfVzU=
+=XdPU
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36--
