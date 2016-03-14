@@ -1,45 +1,62 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: fix extent cache fragmentation
-Date: Mon, 14 Mar 2016 18:18:44 +0300
-Message-ID: <87h9g9ulyj.fsf@openvz.org>
-References: <1455010041-23082-1-git-send-email-dmonakhov@openvz.org> <20160222143741.GA10531@quack.suse.cz> <874mcy1hnv.fsf@openvz.org> <20160310043513.GC4937@thunk.org>
+From: Benjamin LaHaise <bcrl@kvack.org>
+Subject: [PATCH] ext4: make it possible to interrupt initial readdir call
+Date: Mon, 14 Mar 2016 13:57:32 -0400
+Message-ID: <20160314175732.GL17923@kvack.org>
+References: <20160302171511.GM12913@kvack.org> <20160302214330.GB24012@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:35928 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934381AbcCNPSs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2016 11:18:48 -0400
-Received: by mail-lb0-f169.google.com with SMTP id x1so243505974lbj.3
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2016 08:18:47 -0700 (PDT)
-In-Reply-To: <20160310043513.GC4937@thunk.org>
+Received: from kanga.kvack.org ([205.233.56.17]:52203 "EHLO kanga.kvack.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754176AbcCNR5d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Mar 2016 13:57:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20160302214330.GB24012@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o <tytso@mit.edu> writes:
+This patch is a follow up to the email "ext4 bug: getdents uninterruptible 
+for 117 seconds".  When doing the initial readdir on an ext4 filesystem 
+that grew a directory to 497MB (the filesystem image can be downloaded at
+http://www.kvack.org/~bcrl/ext4/ext4-readdir.img.xz), the first getdents64() 
+system call blocked for 117 seconds.  Begin to address this issue by making 
+the ext4 readdir() operation interruptible by fatal signals so that it is 
+possible to abort a process that is stuck on this operation.
 
-> On Wed, Feb 24, 2016 at 03:17:40PM +0400, Dmitry Monakhov wrote:
->> > So in principle this patch is fine but I hate how handling of extent status
->> > tree is proliferating to fs/ext4/extent.c to handle some cases especially
->> > through special function flags. So looking into the code, probably it would
->> > make sense to move all updates of the extent status tree handling down into
->> > ext4_ext_map_blocks() and ext4_ind_map_blocks(). Thoughts?
->>
->> Agree. This was my initial diea but patch was too big for stable
->> releases. In fact this is not critical fix so we can simply make is
->> in good way and simply ignore @stable. Will send updated version shortly.
->
-> Hi Dmitry,
->
-> Have you had a chance to come up with an updated patch?
-Not yet. But I plan to do it this week.
->
-> Thanks,
->
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/ext4/dir.c   |    3 +++
+ fs/ext4/namei.c |    4 ++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 33f5e2a..a3e32e8 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -553,6 +553,9 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
+ 		info->curr_node = rb_first(&info->root);
+ 
+ 	while (1) {
++		if (fatal_signal_pending(current))
++			return -ERESTARTSYS;
++
+ 		/*
+ 		 * Fill the rbtree if we have no more entries,
+ 		 * or the inode has changed since we last read in the
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 48e4b89..8097cd1 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -959,6 +959,10 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	bh = ext4_read_dirblock(dir, block, DIRENT);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
++	if (fatal_signal_pending(current)) {
++		brelse(bh);
++		return -ERESTARTSYS;
++	}
+ 
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	top = (struct ext4_dir_entry_2 *) ((char *) de +
+-- 
+"Thought is the essence of where you are now."
