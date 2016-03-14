@@ -1,180 +1,171 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Buffer Head Leak In mmp
-Date: Mon, 14 Mar 2016 02:41:34 -0600
-Message-ID: <BFF88A70-A864-4957-A807-30C6191C4D45@dilger.ca>
-References: <CAJ-febOhan58G=Aw+-CD6OD2iKuFY3dxkzBfVMCwBd6vXs1rFg@mail.gmail.com> <B747AA6A-644E-475E-BE24-07C400041058@dilger.ca> <20160313215730.GI29218@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: "vikram.jadhav07" <vikramjadhavpucsd2007@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:34654 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755421AbcCNIlk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Mar 2016 04:41:40 -0400
-Received: by mail-ig0-f169.google.com with SMTP id av4so56649264igc.1
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Mar 2016 01:41:39 -0700 (PDT)
-In-Reply-To: <20160313215730.GI29218@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit
+ ff978b09f973) breaking Docker
+Date: Mon, 14 Mar 2016 11:27:35 +0100
+Message-ID: <20160314102735.GM8655@tucsk>
+References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
+ <20160311021506.GA32214@thunk.org>
+ <20160311153403.GJ8655@tucsk>
+ <87ziu1eetp.fsf@gamma.ozlabs.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk,
+	linux-unionfs@vger.kernel.org
+To: Daniel Axtens <dja@axtens.net>
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87ziu1eetp.fsf@gamma.ozlabs.ibm.com>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+On Mon, Mar 14, 2016 at 05:47:14PM +1100, Daniel Axtens wrote:
+> Hi all,
+> 
+> To make sure I wasn't crazy, I installed a mainline kernel on my x86 laptop.
+> 
+> It also doesn't work there, but I do get a far more detailed set of
+> backtraces, which I've added below. It also means it's not powerpc
+> specific, which should help in debugging it.
+
+Hi Daniel,
+
+Could you please try the below patch?
+
+It's actually three patches rolled into one:
+
+1) ext4: use dget_parent() in ext4_file_open()
+
+   Even with dget_parent() we don't hold i_mutex on directory and so the file
+   could be moved in the mean time.  Not sure if it's a problem.  Ted?
+
+2) vfs: add file_dentry()
+
+   Posted here:
+      http://marc.info/?l=linux-fsdevel&m=145745197615687&w=2
+
+3) ext4: use file_dentry()
+
+   s/\([a-z_]*\)->f_path\.dentry/file_dentry(\1)/
+
+Thanks,
+Miklos
 
 
---Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Mar 13, 2016, at 3:57 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> I've made the changes Andreas suggested, and ended up with this.  =
-Andreas, PTAL?
-
-Sorry, not sure what "PTAL" means... :-)
-
-In any case, the patch looks good to me.
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca.
-
-> commit 0304688676bdfc8159e165313d71da19c118ba27
-> Author: vikram.jadhav07 <vikramjadhavpucsd2007@gmail.com>
-> Date:   Sun Mar 13 17:56:52 2016 -0400
->=20
->    ext4: clean up error handling in the MMP support
->=20
->    There is memory leak as both caller function kmmpd() and callee
->    read_mmp_block() not releasing bh_check  (i.e buffer_head).
->    Given patch fixes this problem.
->=20
->    [ Additional changes suggested by Andreas Dilger -- TYT ]
->=20
->    Signed-off-by: Jadhav Vikram <vikramjadhavpucsd2007@gmail.com>
->    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
->=20
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index 0a512aa..2444527 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -91,21 +91,22 @@ static int read_mmp_block(struct super_block *sb, =
-struct buffer_head **bh,
-> 	submit_bh(READ_SYNC | REQ_META | REQ_PRIO, *bh);
-> 	wait_on_buffer(*bh);
-> 	if (!buffer_uptodate(*bh)) {
-> -		brelse(*bh);
-> -		*bh =3D NULL;
-> 		ret =3D -EIO;
-> 		goto warn_exit;
-> 	}
-> -
-> 	mmp =3D (struct mmp_struct *)((*bh)->b_data);
-> -	if (le32_to_cpu(mmp->mmp_magic) !=3D EXT4_MMP_MAGIC)
-> +	if (le32_to_cpu(mmp->mmp_magic) !=3D EXT4_MMP_MAGIC) {
-> 		ret =3D -EFSCORRUPTED;
-> -	else if (!ext4_mmp_csum_verify(sb, mmp))
-> +		goto warn_exit;
-> +	}
-> +	if (!ext4_mmp_csum_verify(sb, mmp)) {
-> 		ret =3D -EFSBADCRC;
-> -	else
-> -		return 0;
-> -
-> +		goto warn_exit;
-> +	}
-> +	return 0;
-> warn_exit:
-> +	brelse(*bh);
-> +	*bh =3D NULL;
-> 	ext4_warning(sb, "Error %d while reading MMP block %llu",
-> 		     ret, mmp_block);
-> 	return ret;
-> @@ -181,15 +182,13 @@ static int kmmpd(void *data)
-> 		    EXT4_FEATURE_INCOMPAT_MMP)) {
-> 			ext4_warning(sb, "kmmpd being stopped since MMP =
-feature"
-> 				     " has been disabled.");
-> -			EXT4_SB(sb)->s_mmp_tsk =3D NULL;
-> -			goto failed;
-> +			goto exit_thread;
-> 		}
->=20
-> 		if (sb->s_flags & MS_RDONLY) {
-> 			ext4_warning(sb, "kmmpd being stopped since =
-filesystem "
-> 				     "has been remounted as readonly.");
-> -			EXT4_SB(sb)->s_mmp_tsk =3D NULL;
-> -			goto failed;
-> +			goto exit_thread;
-> 		}
->=20
-> 		diff =3D jiffies - last_update_time;
-> @@ -211,9 +210,7 @@ static int kmmpd(void *data)
-> 			if (retval) {
-> 				ext4_error(sb, "error reading MMP data: =
-%d",
-> 					   retval);
-> -
-> -				EXT4_SB(sb)->s_mmp_tsk =3D NULL;
-> -				goto failed;
-> +				goto exit_thread;
-> 			}
->=20
-> 			mmp_check =3D (struct mmp_struct =
-*)(bh_check->b_data);
-> @@ -225,7 +222,9 @@ static int kmmpd(void *data)
-> 					     "The filesystem seems to =
-have been"
-> 					     " multiply mounted.");
-> 				ext4_error(sb, "abort");
-> -				goto failed;
-> +				put_bh(bh_check);
-> +				retval =3D -EBUSY;
-> +				goto exit_thread;
-> 			}
-> 			put_bh(bh_check);
-> 		}
-> @@ -248,7 +247,8 @@ static int kmmpd(void *data)
->=20
-> 	retval =3D write_mmp_block(sb, bh);
->=20
-> -failed:
-> +exit_thread:
-> +	EXT4_SB(sb)->s_mmp_tsk =3D NULL;
-> 	kfree(data);
-> 	brelse(bh);
-> 	return retval;
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVuZ5PnKl2rkXzB/gAQgkoQ//XFl/P+kLvFh6cn2bY7TLxcn3p1mmrPCU
-sE9675eH2tm7HLrKK5U5adVOdoJLt1eAInLsSe4JZTvu43z3tftHTLnLBr9qXP2S
-p+1dKpD/OFJEV/akfnsyXFUXTFUK6W+MWoFyqaEpcv195t8GTE21yZf3iXck7v3v
-n3LGxP6+sLNXlatSuTeZLE33l3h2bHe5DI23aOCYi2QsaCSvkD3bpBBs0ukSGcr3
-04UO/18DSIVkp7cAiAOt/J6aH05hGg59pqxmcboKBsQmOTPmo4NSjo0uuV8eIhVt
-AuMxUQNO9Q1IPgJXnx00XD2QJ/Kpo65HIcUWAXOfNHLmDtb7loUlo2oHz6jVXyeL
-QNAyyOX9ofNIsQ4TBb5BfWmsFMbrD2mZPRVkf5keZjvh9WdB6tX91jTlLwTkG8t0
-SK5I6hgub5esWhDbNoo6WpItv6wAzA4wbM4Mht7p71y67GwSOFlFGpZ8aTStSWfe
-qSwg6jpMz3vD4Ys9WCZrUZ9PGAA4if6yHS+2/zcIZCc4TKtL7Ic4q+V3JNxmwICa
-x8ds/ZgnTCZ7fG1dQjLYFwsOZFVev6UjrcUoNuHl+lKD5TjqtYOmDm5xV7UZaUOT
-JydiF6MJeGtEGMxP/EQpeBXcuwIPypouUaJvWNSIszY0w/6YHOfoWHOxcwCsLg/v
-0dvgI0xfVzU=
-=XdPU
------END PGP SIGNATURE-----
-
---Apple-Mail=_AB23E310-3823-468E-91A0-C41ED3186D36--
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 4cd318f31cbe..38847f38b34a 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -335,7 +335,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct vfsmount *mnt = filp->f_path.mnt;
+-	struct inode *dir = filp->f_path.dentry->d_parent->d_inode;
++	struct dentry *dir;
+ 	struct path path;
+ 	char buf[64], *cp;
+ 	int ret;
+@@ -379,14 +379,18 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 		if (ext4_encryption_info(inode) == NULL)
+ 			return -ENOKEY;
+ 	}
+-	if (ext4_encrypted_inode(dir) &&
+-	    !ext4_is_child_context_consistent_with_parent(dir, inode)) {
++
++	dir = dget_parent(file_dentry(filp));
++	if (ext4_encrypted_inode(d_inode(dir)) &&
++	    !ext4_is_child_context_consistent_with_parent(d_inode(dir), inode)) {
+ 		ext4_warning(inode->i_sb,
+ 			     "Inconsistent encryption contexts: %lu/%lu\n",
+-			     (unsigned long) dir->i_ino,
++			     (unsigned long) d_inode(dir)->i_ino,
+ 			     (unsigned long) inode->i_ino);
++		dput(dir);
+ 		return -EPERM;
+ 	}
++	dput(dir);
+ 	/*
+ 	 * Set up the jbd2_inode if we are opening the inode for
+ 	 * writing and the journal is present
+diff --git a/fs/open.c b/fs/open.c
+index 55bdc75e2172..6326c11eda78 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -831,6 +831,17 @@ char *file_path(struct file *filp, char *buf, int buflen)
+ }
+ EXPORT_SYMBOL(file_path);
+ 
++struct dentry *file_dentry(const struct file *file)
++{
++	struct dentry *dentry = file->f_path.dentry;
++
++	if (likely(d_inode(dentry) == file_inode(file)))
++		return dentry;
++	else
++		return dentry->d_op->d_native_dentry(dentry, file_inode(file));
++}
++EXPORT_SYMBOL(file_dentry);
++
+ /**
+  * vfs_open - open the file at the given path
+  * @path: path to open
+diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
+index 619ad4b016d2..5142aa2034c4 100644
+--- a/fs/overlayfs/super.c
++++ b/fs/overlayfs/super.c
+@@ -336,14 +336,30 @@ static int ovl_dentry_weak_revalidate(struct dentry *dentry, unsigned int flags)
+ 	return ret;
+ }
+ 
++static struct dentry *ovl_d_native_dentry(struct dentry *dentry,
++					 struct inode *inode)
++{
++	struct ovl_entry *oe = dentry->d_fsdata;
++	struct dentry *realentry = ovl_upperdentry_dereference(oe);
++
++	if (realentry && inode == d_inode(realentry))
++		return realentry;
++	realentry = __ovl_dentry_lower(oe);
++	if (realentry && inode == d_inode(realentry))
++		return realentry;
++	BUG();
++}
++
+ static const struct dentry_operations ovl_dentry_operations = {
+ 	.d_release = ovl_dentry_release,
+ 	.d_select_inode = ovl_d_select_inode,
++	.d_native_dentry = ovl_d_native_dentry,
+ };
+ 
+ static const struct dentry_operations ovl_reval_dentry_operations = {
+ 	.d_release = ovl_dentry_release,
+ 	.d_select_inode = ovl_d_select_inode,
++	.d_native_dentry = ovl_d_native_dentry,
+ 	.d_revalidate = ovl_dentry_revalidate,
+ 	.d_weak_revalidate = ovl_dentry_weak_revalidate,
+ };
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index c4b5f4b3f8f8..99ecb6de636c 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -161,6 +161,7 @@ struct dentry_operations {
+ 	struct vfsmount *(*d_automount)(struct path *);
+ 	int (*d_manage)(struct dentry *, bool);
+ 	struct inode *(*d_select_inode)(struct dentry *, unsigned);
++	struct dentry *(*d_native_dentry)(struct dentry *, struct inode *);
+ } ____cacheline_aligned;
+ 
+ /*
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ae681002100a..1091d9f43271 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1234,6 +1234,8 @@ static inline struct inode *file_inode(const struct file *f)
+ 	return f->f_inode;
+ }
+ 
++extern struct dentry *file_dentry(const struct file *file);
++
+ static inline int locks_lock_file_wait(struct file *filp, struct file_lock *fl)
+ {
+ 	return locks_lock_inode_wait(file_inode(filp), fl);
