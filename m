@@ -1,50 +1,33 @@
-From: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
-Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
-Date: Tue, 15 Mar 2016 08:45:14 -0700
-Message-ID: <20160315154514.GB39038@jra3>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
- <20160311140134.GA14808@infradead.org>
- <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
- <20160315071103.GC19747@infradead.org>
-Reply-To: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 113041] mbcache NULL pointer dereference
+Date: Tue, 15 Mar 2016 15:47:17 +0000
+Message-ID: <bug-113041-13602-Y2TmUWwVIv@https.bugzilla.kernel.org/>
+References: <bug-113041-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160315071103.GC19747-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:36702 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932129AbcCOPrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Mar 2016 11:47:25 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 2E88120263
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 15:47:20 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 8533320306
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 15:47:17 +0000 (UTC)
+In-Reply-To: <bug-113041-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 15, 2016 at 12:11:03AM -0700, Christoph Hellwig wrote:
-> On Fri, Mar 11, 2016 at 05:11:51PM +0100, Andreas Gruenbacher wrote:
-> > > while breaking a lot of assumptions,
-> > 
-> > The model is designed specifically to be compliant with the POSIX
-> > permission model. What assumptions are you talking about?
-> 
-> People have long learned that we only have 'alloc' permissions.  Any
-> model that mixes allow and deny ACE is a mistake.
+https://bugzilla.kernel.org/show_bug.cgi?id=113041
 
-People can also learn and change though :-). One of the
-biggest complaints people deploying Samba on Linux have is the
-incompatible ACL models.
+--- Comment #3 from nickkrause@sympatico.ca ---
+If you tell me what Cassandra was doing I may be able to find the issue through
+reading the code carefully but I would like to still test it to make sure.
 
-Whilst I have sympathy with your intense dislike of the
-Windows ACL model, this comes down to the core of "who
-do we serve ?" IMHO we should serve the users (although
-I must confess I'd look awful in a TRON suit :-).
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
