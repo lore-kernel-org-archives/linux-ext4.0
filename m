@@ -1,38 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 113041] mbcache NULL pointer dereference
-Date: Tue, 15 Mar 2016 02:11:55 +0000
-Message-ID: <bug-113041-13602-aGJf9TRLwQ@https.bugzilla.kernel.org/>
-References: <bug-113041-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/2] generic: test I/O on dm error device
+Date: Tue, 15 Mar 2016 13:46:16 +1100
+Message-ID: <20160315024616.GC30721@dastard>
+References: <1457710822-30532-1-git-send-email-eguan@redhat.com>
+ <1457710822-30532-2-git-send-email-eguan@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45916 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932831AbcCOCL7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Mar 2016 22:11:59 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4B07C203A5
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 02:11:57 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id E83BB20375
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 02:11:55 +0000 (UTC)
-In-Reply-To: <bug-113041-13602@https.bugzilla.kernel.org/>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:31850 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753405AbcCOCqc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 14 Mar 2016 22:46:32 -0400
+Content-Disposition: inline
+In-Reply-To: <1457710822-30532-2-git-send-email-eguan@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=113041
+On Fri, Mar 11, 2016 at 11:40:22PM +0800, Eryu Guan wrote:
+> This is a test that performs simple I/O on dm error device, which
+> returns EIO on all I/O request.
+> 
+> This is motivated by an ext4 bug that crashes kernel on error path when
+> trying to update atime. Following kernel patch should fix the issue
+> 
+>   ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
 
-nickkrause@sympatico.ca changed:
+Why does this test require the loop device? Why can't you just
+unmount the filesystem, run 'blkdev --flushbufs <dev>' to ensure
+there are no cached buffers/pages on the block device, then mount
+it again?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |nickkrause@sympatico.ca
+Cheers,
 
---- Comment #1 from nickkrause@sympatico.ca ---
-Have you tried a newer rc candidate to see if this bug has been fixed.
-
+Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
