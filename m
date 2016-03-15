@@ -1,66 +1,38 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
-Date: Tue, 15 Mar 2016 00:18:54 -0700
-Message-ID: <20160315071854.GG19747@infradead.org>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
-	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
-	<20160311142719.GG14808@infradead.org>
-	<CAHc6FU64SzTN23LMzGcPex=jRz_Euwb_CHrW=kX+A5sn8=SFSg@mail.gmail.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH 2/2] generic: test I/O on dm error device
+Date: Tue, 15 Mar 2016 16:02:14 +0800
+Message-ID: <20160315080214.GQ11419@eguan.usersys.redhat.com>
+References: <1457710822-30532-1-git-send-email-eguan@redhat.com>
+ <1457710822-30532-2-git-send-email-eguan@redhat.com>
+ <20160315024616.GC30721@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, linux-cifs@vger.kernel.org,
-	Linux API <linux-api@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAHc6FU64SzTN23LMzGcPex=jRz_Euwb_CHrW=kX+A5sn8=SFSg@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+In-Reply-To: <20160315024616.GC30721@dastard>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 14, 2016 at 02:02:33PM +0100, Andreas Gruenbacher wrote:
-> On Fri, Mar 11, 2016 at 3:27 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> >> +static inline int
-> >> +ext4_acl_chmod(struct inode *inode, umode_t mode)
-> >> +{
-> >> +     if (IS_RICHACL(inode))
-> >> +             return richacl_chmod(inode, inode->i_mode);
-> >> +     return posix_acl_chmod(inode, inode->i_mode);
-> >> +}
-> >
-> > Thi isn't ext4-specific and potentially duplicated in every caller.
-> > Please provide this as a common helper.
+On Tue, Mar 15, 2016 at 01:46:16PM +1100, Dave Chinner wrote:
+> On Fri, Mar 11, 2016 at 11:40:22PM +0800, Eryu Guan wrote:
+> > This is a test that performs simple I/O on dm error device, which
+> > returns EIO on all I/O request.
+> > 
+> > This is motivated by an ext4 bug that crashes kernel on error path when
+> > trying to update atime. Following kernel patch should fix the issue
+> > 
+> >   ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
 > 
-> This can go in neither fs.h nor posix_acl.h nor richacl.h unless we
-> turn it into a macro, and I don't think we want to add a new header
-> file for such extreme trivia.
+> Why does this test require the loop device? Why can't you just
+> unmount the filesystem, run 'blkdev --flushbufs <dev>' to ensure
+> there are no cached buffers/pages on the block device, then mount
+> it again?
 
-I'd expect us to grow a few more of thos helper if we get the sharing
-right (either a real common base object, or wrappers for anything
-dealing with the acl pointers in the inode), so a new linux/acl.h
-should be fine.
+Yes, 'blockdev --flushbufs <dev>' works, and I found that I only need to
+add a blockdev call before dropping caches. This makes the code much
+cleaner and easier to read, perhaps the first patch can be dropped as
+well. I'll send out v2 shortly. Thanks for the review!
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Eryu
