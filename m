@@ -1,68 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 out of order when use cfq scheduler
-Date: Tue, 15 Mar 2016 11:46:34 +0100
-Message-ID: <20160315104634.GG17942@quack.suse.cz>
-References: <20160105153050.GF14464@quack.suse.cz>
- <c73ca48af09742318189c61d167c4459@SGPMBX1004.APAC.bosch.com>
- <20160106100621.GA24046@quack.suse.cz>
- <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
- <20160107102420.GB8380@quack.suse.cz>
- <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
- <20160107114736.GC8380@quack.suse.cz>
- <20160313042723.GC29218@thunk.org>
- <20160314073928.GD5213@quack.suse.cz>
- <20160314143635.GM29218@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 114621] New: /etc/fstab: impossible to disable relatime
+Date: Tue, 15 Mar 2016 12:17:11 +0000
+Message-ID: <bug-114621-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-	"HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Li, Michael" <huayil@qti.qualcomm.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40090 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:50263 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751911AbcCOKq3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Mar 2016 06:46:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20160314143635.GM29218@thunk.org>
+	id S934698AbcCOMRR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Mar 2016 08:17:17 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 20F2E202E6
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 12:17:15 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 42E70202EC
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2016 12:17:12 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-03-16 10:36:35, Ted Tso wrote:
-> On Mon, Mar 14, 2016 at 08:39:28AM +0100, Jan Kara wrote:
-> > No, that won't be enough. blkdev_issue_flush() is not guaranteed to do
-> > anything to IOs which have not reported completion before
-> > blkdev_issue_flush() was called. Specifically, CFQ will queue submitted bio
-> > in its internal RB tree, following flush request completely bypasses this
-> > tree and goes directly to the disk where it flushes caches. And only later
-> > CFQ decides to schedule async writeback from the flusher thread which is
-> > queued in the RB tree...
-> 
-> Oh, right.  I am forgetting about the flushing mahchinery rewrite.
-> Thanks for pointing that out.
-> 
-> But what we *could* do is to swap those two calls and then in the case
-> where delalloc is enabled, could maintain a list of inodes where we
-> only need to call filemap_fdatawait(), and not initiate writeback for
-> any dirty pages which had been caused by non-allocating writes.
+https://bugzilla.kernel.org/show_bug.cgi?id=114621
 
-We actually don't need to swap those two calls - page is already marked as
-under writeback in
+            Bug ID: 114621
+           Summary: /etc/fstab: impossible to disable relatime
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.1.15-pv
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: armin_mohring@web.de
+        Regression: No
 
-  mpage_map_and_submit_buffers() -> mpage_submit_page -> ext4_bio_write_page
+/etc/fstab: no entry relatime.
+But the partitions are mounted with option relatime.
 
-which gets called while we still hold the transaction handle. I agree
-calling filemap_fdatawait() from JBD2 during commit should be enough to fix
-issues with delalloc writeback. I'm just somewhat afraid that it will be
-more fragile: If we add inode to transaction's list in ext4_map_blocks(),
-we are pretty sure there's no way to allocate block to an inode without
-introducing data exposure issues (which are then very hard to spot). If we
-depend on callers of ext4_map_blocks() to properly add inode to appropriate
-transaction list, we have much more places to check. I'll think whether we
-could make this more robust.
+But this causes an error in dmesg.
+NCQ is disabled for a SSD and a HDD.
 
-								Honza
+----------------------
+[    5.640926] ata2.00: ATA-9: WDC WD4003FZEX-00Z4SA0, 01.01A01, max UDMA/133
+[    5.640931] ata2.00: 7814037168 sectors, multi 16: LBA48 NCQ (depth 31/32),
+AA
+[    5.641470] ata2.00: configured for UDMA/133
+[    5.642179] ata3.00: ATAPI: HL-DT-ST BD-RE  BH16NS55, 1.01, max UDMA/133
+[    5.642252] ata1.00: supports DRM functions and may not be fully accessible
+[    5.642296] ata1.00: READ LOG DMA EXT failed, trying unqueued
+[    5.642320] ata1.00: failed to get NCQ Send/Recv Log Emask 0x1
+[    5.642323] ata1.00: ATA-9: Samsung SSD 850 PRO 512GB, EXM01B6Q, max
+UDMA/133
+[    5.642326] ata1.00: 1000215216 sectors, multi 1: LBA48 NCQ (depth 31/32),
+AA
+[    5.642542] ata1.00: supports DRM functions and may not be fully accessible
+[    5.642580] ata1.00: failed to get NCQ Send/Recv Log Emask 0x1
+[    5.642632] ata1.00: configured for UDMA/133
+
+-------------------------------------
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
