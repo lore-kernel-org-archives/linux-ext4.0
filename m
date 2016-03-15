@@ -1,61 +1,61 @@
-From: Volker Lendecke <Volker.Lendecke-PS7XAnAlDA+VvDNblw4Uiw@public.gmane.org>
-Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
-Date: Tue, 15 Mar 2016 21:17:00 +0100
-Message-ID: <20160315201700.GA22945@sernet.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH v18 19/22] richacl: Add richacl xattr handler
+Date: Tue, 15 Mar 2016 17:05:26 -0400
+Message-ID: <20160315210526.GC3658@fieldses.org>
 References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
- <20160311140134.GA14808@infradead.org>
- <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
- <20160315071103.GC19747@infradead.org>
- <20160315154514.GB39038@jra3>
-Reply-To: Volker.Lendecke-PS7XAnAlDA+VvDNblw4Uiw@public.gmane.org
+	<1456733847-17982-20-git-send-email-agruenba@redhat.com>
+	<20160311141735.GF14808@infradead.org>
+	<20160311141905.GC13178@fieldses.org>
+	<20160315071014.GB19747@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
-	Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-To: Cristoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>, Andreas Gruenbacher <agruenba@redhat.com>,
+	linux-api@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+	Jeff Layton <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <20160315154514.GB39038@jra3>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20160315071014.GB19747@infradead.org>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 15, 2016 at 08:45:14AM -0700, Jeremy Allison wrote:
-> On Tue, Mar 15, 2016 at 12:11:03AM -0700, Christoph Hellwig wrote:
-> > People have long learned that we only have 'alloc' permissions.  Any
-> > model that mixes allow and deny ACE is a mistake.
+On Tue, Mar 15, 2016 at 12:10:14AM -0700, Christoph Hellwig wrote:
+> On Fri, Mar 11, 2016 at 09:19:05AM -0500, J. Bruce Fields wrote:
+> > On Fri, Mar 11, 2016 at 06:17:35AM -0800, Christoph Hellwig wrote:
+> > > On Mon, Feb 29, 2016 at 09:17:24AM +0100, Andreas Gruenbacher wrote:
+> > > > Add richacl xattr handler implementing the xattr operations based on the
+> > > > get_richacl and set_richacl inode operations.
+> > > 
+> > > Given all the issues with Posix ACLs and selinux attributes these really
+> > > should be proper syscalls instead of abusing the xattr interface.
+> > 
+> > What are those problems exactly?
 > 
-> People can also learn and change though :-). One of the
-> biggest complaints people deploying Samba on Linux have is the
-> incompatible ACL models.
+> That people get confused between the attr used by the xattr syscall
+> interface and the attr used to store things on disk or the protocol.
+> This has happened every time we have non-native support, e.g. XFS, NFS,
+> CIFS, ntfs, etc.  And it's only going to become worse.
 
-Just to confirm: I see this a lot in the field. NFSv4 ACLs, while not a
-perfect match for NTFS ACLs are a lot closer much more usable to people
-who want to serve Windows clients.
+How has that confusion caused problems in practice?
 
-Also in the pure linux world there is a lot that you can not express
-with just rwx, sgid, sticky bits and friends. If you want the additional
-functionality of the richacl bits, I would call it a big mistake to
-omit negative aces, if just for the reason not to create yet another
-ACLs flavor.
+--b.
 
-> Whilst I have sympathy with your intense dislike of the
-> Windows ACL model, this comes down to the core of "who
-> do we serve ?"
-
-The world has enough confusion around ACL semanics, please do not add
-more to it by creating your own model of the day.
-
-Volker
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
