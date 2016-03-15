@@ -1,37 +1,34 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/2] generic: test I/O on dm error device
-Date: Tue, 15 Mar 2016 13:46:16 +1100
-Message-ID: <20160315024616.GC30721@dastard>
-References: <1457710822-30532-1-git-send-email-eguan@redhat.com>
- <1457710822-30532-2-git-send-email-eguan@redhat.com>
+Subject: Re: [PATCH 12/12] block: test fallocate for block devices
+Date: Tue, 15 Mar 2016 14:41:48 +1100
+Message-ID: <20160315034148.GF30721@dastard>
+References: <20160305003717.28738.98818.stgit@birch.djwong.org>
+ <20160305003837.28738.49794.stgit@birch.djwong.org>
+ <20160305182508.GA25528@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:31850 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753405AbcCOCqc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 14 Mar 2016 22:46:32 -0400
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	fstests@vger.kernel.org, xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1457710822-30532-2-git-send-email-eguan@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160305182508.GA25528@infradead.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 11, 2016 at 11:40:22PM +0800, Eryu Guan wrote:
-> This is a test that performs simple I/O on dm error device, which
-> returns EIO on all I/O request.
+On Sat, Mar 05, 2016 at 10:25:08AM -0800, Christoph Hellwig wrote:
+> I'm not sure xfstests is the right fit, as it does not test a file
+> system, but rather block devices.
 > 
-> This is motivated by an ext4 bug that crashes kernel on error path when
-> trying to update atime. Following kernel patch should fix the issue
-> 
->   ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
+> If people think it should go into xfstests we should at least not
+> add it to the default group, but just to a new bdev group.
 
-Why does this test require the loop device? Why can't you just
-unmount the filesystem, run 'blkdev --flushbufs <dev>' to ensure
-there are no cached buffers/pages on the block device, then mount
-it again?
+I think it's the right place to test it - we have all the
+infrastructure available to do it (i.e. xfs_io and various block
+devices) and we really need to make sure this stuff works,
+especially if we start to write filesystem code that depends on
+correct behaviour...
 
 Cheers,
 
