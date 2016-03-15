@@ -1,38 +1,34 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 12/12] block: test fallocate for block devices
-Date: Tue, 15 Mar 2016 14:41:48 +1100
-Message-ID: <20160315034148.GF30721@dastard>
-References: <20160305003717.28738.98818.stgit@birch.djwong.org>
- <20160305003837.28738.49794.stgit@birch.djwong.org>
- <20160305182508.GA25528@infradead.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+Date: Tue, 15 Mar 2016 00:09:10 -0700
+Message-ID: <20160315070910.GA19747@infradead.org>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+ <20160311140134.GA14808@infradead.org>
+ <20160311140757.GB13178@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	fstests@vger.kernel.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-nfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel@vger.kernel.org,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4@vger.kernel.org,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160305182508.GA25528@infradead.org>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20160311140757.GB13178@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Mar 05, 2016 at 10:25:08AM -0800, Christoph Hellwig wrote:
-> I'm not sure xfstests is the right fit, as it does not test a file
-> system, but rather block devices.
-> 
-> If people think it should go into xfstests we should at least not
-> add it to the default group, but just to a new bdev group.
+On Fri, Mar 11, 2016 at 09:07:57AM -0500, J. Bruce Fields wrote:
+> Could you explain what you mean by "adding allow and deny ACE at the
+> same time"?
 
-I think it's the right place to test it - we have all the
-infrastructure available to do it (i.e. xfs_io and various block
-devices) and we really need to make sure this stuff works,
-especially if we start to write filesystem code that depends on
-correct behaviour...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+NFSv4/rich ACLs have both ALLOW and DENY ACE, which is contrary to
+the model how we've operated since the dawn of time.
