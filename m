@@ -1,134 +1,64 @@
 From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v20 21/23] vfs: Add richacl permission checking
-Date: Wed, 16 Mar 2016 23:19:01 +0100
-Message-ID: <1458166743-18488-22-git-send-email-agruenba@redhat.com>
-References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
+Subject: Re: [PATCH v18 11/22] vfs: Cache base_acl objects in inodes
+Date: Wed, 16 Mar 2016 23:31:38 +0100
+Message-ID: <CAHc6FU54E9EnsK3H==VyK3htXMNb4pPR4jcLi1GcOF+nb4Sw+g@mail.gmail.com>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+	<1456733847-17982-12-git-send-email-agruenba@redhat.com>
+	<20160311140746.GC14808@infradead.org>
+	<CAHc6FU7hSDBa51mJZZZ=q3agzWXk=DZicnyuPriKHnC2Nxr8rw@mail.gmail.com>
+	<20160315071256.GD19747@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-cifs@vger.kernel.org,
+	Linux API <linux-api@vger.kernel.org>,
 	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	LKML <linux-kernel@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>, jaegeuk@kernel.org,
+	chao2.yu@samsung.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vk0-f50.google.com ([209.85.213.50]:35321 "EHLO
+	mail-vk0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932524AbcCPWbj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2016 18:31:39 -0400
+Received: by mail-vk0-f50.google.com with SMTP id e6so80627439vkh.2
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2016 15:31:39 -0700 (PDT)
+In-Reply-To: <20160315071256.GD19747@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hook the richacl permission checking function into the vfs.
+On Tue, Mar 15, 2016 at 8:12 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Fri, Mar 11, 2016 at 05:24:45PM +0100, Andreas Gruenbacher wrote:
+>> POSIX ACLs and RichACLs are different objects, with different members
+>> and different algorithms operating on them. The only commonality is
+>> that they are both kmalloc()ed, reference counted objects, and when an
+>> inode is destroyed, both kinds of ACLs can be put in the same way,
+>> avoiding an unnecessary if. What kind of common-code container beyond
+>> that are you still dreaming about?
+>
+> We still have a main object that is simply a list of ACEs.  But if that
+> doesn't work out (I suspect it should) I don't think the common base
+> object is a good idea.  It just leads to a lot of crazy container_of
+> calls.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/namei.c     | 51 +++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/posix_acl.c |  6 +++---
- 2 files changed, 52 insertions(+), 5 deletions(-)
+There are two such container_of calls for POSIX ACLs in fs/jffs2/acl.c
+[which could be replaced by get_acl()], two in fs/posix_acl.c for
+POSIX ACLs, and two in fs/richacl.c for RichACLs. That's it.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 28707ae..b55cee6 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -35,6 +35,7 @@
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
- 
- #include "internal.h"
-@@ -255,7 +256,40 @@ void putname(struct filename *name)
- 		__putname(name);
- }
- 
--static int check_acl(struct inode *inode, int mask)
-+static int check_richacl(struct inode *inode, int mask)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+
-+	if (mask & MAY_NOT_BLOCK) {
-+		acl = get_cached_richacl_rcu(inode);
-+		if (!acl)
-+			goto no_acl;
-+		/* no ->get_richacl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
-+	}
-+
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+no_acl:
-+#endif
-+	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+		    MAY_CHMOD | MAY_SET_TIMES)) {
-+		/* File permission bits cannot grant this. */
-+		return -EACCES;
-+	}
-+	return -EAGAIN;
-+}
-+
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -290,11 +324,24 @@ static int acl_permission_check(struct inode *inode, int mask)
- {
- 	unsigned int mode = inode->i_mode;
- 
-+	/*
-+	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
-+	 * permissions, and we can skip checking posix acls for the owner.
-+	 * With richacls, the owner may be granted fewer permissions than the
-+	 * mode bits seem to suggest (for example, append but not write), and
-+	 * we always need to check the richacl.
-+	 */
-+
-+	if (IS_RICHACL(inode)) {
-+		int error = check_richacl(inode, mask);
-+		if (error != -EAGAIN)
-+			return error;
-+	}
- 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
- 		mode >>= 6;
- 	else {
- 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
--			int error = check_acl(inode, mask);
-+			int error = check_posix_acl(inode, mask);
- 			if (error != -EAGAIN)
- 				return error;
- 		}
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index f24646e..7810c6f 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -100,13 +100,13 @@ struct posix_acl *get_acl(struct inode *inode, int type)
- {
- 	struct posix_acl *acl;
- 
-+	if (!IS_POSIXACL(inode))
-+		return NULL;
-+
- 	acl = get_cached_acl(inode, type);
- 	if (acl != ACL_NOT_CACHED)
- 		return acl;
- 
--	if (!IS_POSIXACL(inode))
--		return NULL;
--
- 	/*
- 	 * A filesystem can force a ACL callback by just never filling the
- 	 * ACL cache. But normally you'd fill the cache either at inode
--- 
-2.5.0
+> If the common object abstraction doesn't work out we'll need
+> a procedural one instead that has common acl_* calls that decide what
+> do to based on the file system acl flag.
+
+I've already made such abstractions where it made sense; if you can
+find more, I don't see why we shouldn't add them.
+
+Thanks,
+Andreas
