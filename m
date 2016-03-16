@@ -1,76 +1,136 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Reporting project quota usage?
-Date: Wed, 16 Mar 2016 15:49:31 -0600
-Message-ID: <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
-References: <20160316052906.GA23610@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_640D3415-F987-40F7-A7B3-4EDEC1B063A3"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Li Xi <pkuelelixi@gmail.com>, Jan Kara <jack@suse.cz>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:35439 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965002AbcCPVth (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2016 17:49:37 -0400
-Received: by mail-ig0-f175.google.com with SMTP id vf5so128252489igb.0
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2016 14:49:37 -0700 (PDT)
-In-Reply-To: <20160316052906.GA23610@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH v20 00/23] Richacls (Core and Ext4)
+Date: Wed, 16 Mar 2016 23:18:40 +0100
+Message-ID: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
+Cc: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+Al,
+
+here is a minor update to the richacl patches with some feedback from Christoph
+incorporated.
+
+Changes since the last posting (https://lkml.org/lkml/2016/3/14/503):
+
+ * Merge richacl_base.c and richacl_inode.c into richacl.c.
+
+ * Add linux/acl.h header including function acl_chmod.
+   Use it in richacl enabled filesystems.
 
 
---Apple-Mail=_640D3415-F987-40F7-A7B3-4EDEC1B063A3
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+The complete patch queue is available here:
 
-On Mar 15, 2016, at 11:29 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> 
-> Am I missing something, or do we currently don't have a way to report
-> project quota usage with ext4?  The support doesn't appear to be in
-> quota tools, and xfs_quota doesn't work without changes because it
-> only tries to operate on XFS file systems.
-
-At one time I thought Dave was going to patch xfs_quota to try the quota
-ioctls for "foreign" filesystems like ext4 that supported them, but I'm
-not sure if that patch was landed, nor whether it has been released.
-
-On the opposite front, Jan was updating the generic quota tools to support
-the XFS ioctls that project quota is using?
-
-Cheers, Andreas
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2016-03-16
 
 
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
 
 
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
 
 
---Apple-Mail=_640D3415-F987-40F7-A7B3-4EDEC1B063A3
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+Please see the richacl homepage for more information:
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+  http://www.bestbits.at/richacl/
 
-iQIVAwUBVunU63Kl2rkXzB/gAQir1Q//cxrglR6jTD9Cur6ihfDOGgBmBlmLhd0y
-QChfRvnNAyzu8cJwuAzSJUTdfesGWY2xJMdSAIHjY3sZynfqQC8huAt3VJRYxEWP
-naS5wGge5u9a+QdCxu6L+B1HtUaOhzgMB9J2Q95M2gie71ho9DZIx/H+D3NqlzMl
-lGx9kWN5PnIXp4PcnsEjYr6sukEI4e/jfIQ+SaTdxJfnxmxlxL/LECp6eMOLG/cl
-+aaPNi21dMDjy7om1MZmFBTy/9meeb8zj4a4CpGqaHRSgbEnpCw/GlMmZA1cMu0/
-qfB7Thk+ymaIXIMPh7Hzxs79QTnyrOjkOwzUWG0yaxy5YTKimyMSq+NADugdRNYS
-tUiEbq9/uFGxXuMRv07Yjv4sn8lnIfVoFFSAq7EXQrZH1xCMWO/Urjn7nhRJLaf2
-kZavI/ZK3XvF+Z7om4888WsAUOw4A4XGwxzb4fgf/NVdO1mO9sO1ctOPPHrWrUCU
-Zfez9J9kpj4NxTp54YSKK+cRnGjwZVcsZsd8JOG4ufdcQ/7K5hy6mafhfrJo0SoC
-EJAucaF8Vdevgt7A9MKhQiCuxx34Jmhfhsd24rKIsxMB6u8643oAo7PiYUoU3bTe
-DB7/LcqfQ+TNLGEWrceo9D2OvFg4LgV3fBTJo3TNudUK0o8JOgqom4Vp/8Wy2tNx
-cW+kBr1MMfI=
-=gUuj
------END PGP SIGNATURE-----
 
---Apple-Mail=_640D3415-F987-40F7-A7B3-4EDEC1B063A3--
+Thanks,
+Andreas
+
+Andreas Gruenbacher (21):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Permission check algorithm
+  posix_acl: Unexport acl_by_type and make it static
+  posix_acl: Improve xattr fixup code
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   1 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |   5 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 137 ++++
+ fs/ext4/richacl.h                               |  40 ++
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/jffs2/acl.c                                  |  10 +-
+ fs/namei.c                                      | 118 +++-
+ fs/posix_acl.c                                  |  50 +-
+ fs/richacl.c                                    | 889 ++++++++++++++++++++++++
+ fs/richacl_xattr.c                              | 235 +++++++
+ fs/xattr.c                                      |  29 +-
+ include/linux/acl.h                             |  15 +
+ include/linux/fs.h                              |  60 +-
+ include/linux/posix_acl.h                       |  13 +-
+ include/linux/richacl.h                         | 205 ++++++
+ include/linux/richacl_xattr.h                   |  31 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 ++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 33 files changed, 2131 insertions(+), 108 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
+-- 
+2.5.0
