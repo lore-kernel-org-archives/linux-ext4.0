@@ -1,61 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Li Xi <pkuelelixi@gmail.com>
 Subject: Re: Reporting project quota usage?
-Date: Wed, 16 Mar 2016 20:48:47 -0400
-Message-ID: <20160317004847.GG23593@thunk.org>
+Date: Thu, 17 Mar 2016 09:47:44 +0800
+Message-ID: <CAPTn0cBgrUGG+8iAb=wfUke4g8AWBB3tHV25YFuA5FF05we8Aw@mail.gmail.com>
 References: <20160316052906.GA23610@thunk.org>
- <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Li Xi <pkuelelixi@gmail.com>, Jan Kara <jack@suse.cz>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=UTF-8
+Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54372 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751433AbcCQAsw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Mar 2016 20:48:52 -0400
-Content-Disposition: inline
-In-Reply-To: <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
+Received: from mail-vk0-f45.google.com ([209.85.213.45]:32802 "EHLO
+	mail-vk0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967098AbcCQBrp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Mar 2016 21:47:45 -0400
+Received: by mail-vk0-f45.google.com with SMTP id k1so85125954vkb.0
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Mar 2016 18:47:44 -0700 (PDT)
+In-Reply-To: <20160316052906.GA23610@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 16, 2016 at 03:49:31PM -0600, Andreas Dilger wrote:
-> 
-> At one time I thought Dave was going to patch xfs_quota to try the quota
-> ioctls for "foreign" filesystems like ext4 that supported them, but I'm
-> not sure if that patch was landed, nor whether it has been released.
-> 
-> On the opposite front, Jan was updating the generic quota tools to support
-> the XFS ioctls that project quota is using?
+Hi,
 
-It's quite possible I'm missing something, but it doesn't look like
-either has landed.  I've hacked xfs_quota (not anything that I would
-want to submit for merging) so I can report usage project quota stats,
-and to be able to set hard and soft limits.  But I was trying to
-figure out what we should be telling users who wanted to use Project
-Quota, but I'm pretty sure "pull down xfsprogs sources, and apply this
-hacky patch[1], and then when you use the tooll ignore a whole bunch
-of spurious warnings" is the right way to go.  :-)
+I sent a patch of quota tool to Jan Kara ccing you. With that patch,
+project quota
+of ext4 can be reported. However, that patch needs a lot of improvement.
 
-I am also curious how Li Xi was testing the patches he sent me.
+That patch can be found here too:
 
-     	     	       	   	       - Ted
+https://github.com/ddn-lixi/project_quota_ext4_utils/blob/master/quota-tools.git/patches/project_quota_support_for_quota-tools.patch
 
-[1]
+Regards,
+Li Xi
 
-diff --git a/libxcmd/paths.c b/libxcmd/paths.c
-index 5c65737..6c69a35 100644
---- a/libxcmd/paths.c
-+++ b/libxcmd/paths.c
-@@ -301,8 +301,8 @@ fs_table_initialise_mounts(
- 			return errno;
- 
- 	while ((mnt = getmntent(mtp)) != NULL) {
--		if (strcmp(mnt->mnt_type, "xfs") != 0)
--			continue;
-+//		if (strcmp(mnt->mnt_type, "xfs") != 0)
-+//			continue;
- 		if (!realpath(mnt->mnt_dir, rmnt_dir))
- 			continue;
- 		if (!realpath(mnt->mnt_fsname, rmnt_fsname))
+On Wed, Mar 16, 2016 at 1:29 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Am I missing something, or do we currently don't have a way to report
+> project quota usage with ext4?  The support doesn't appear to be in
+> quota tools, and xfs_quota doesn't work without changes because it
+> only tries to operate on XFS file systems.
+>
+> Thanks,
+>
+>                                                 - Ted
