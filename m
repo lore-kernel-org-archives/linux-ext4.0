@@ -1,51 +1,66 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Reporting project quota usage?
-Date: Thu, 17 Mar 2016 12:31:56 +1100
-Message-ID: <20160317013156.GH11812@dastard>
-References: <20160316052906.GA23610@thunk.org>
- <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
- <20160317004847.GG23593@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 114821] New: Frequent and recurring ext4 "bad header invalid
+ magic" errors on a healthy drive
+Date: Thu, 17 Mar 2016 05:05:04 +0000
+Message-ID: <bug-114821-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, Li Xi <pkuelelixi@gmail.com>,
-	Jan Kara <jack@suse.cz>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:33039 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751802AbcCQBvf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Mar 2016 21:51:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20160317004847.GG23593@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:42368 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751698AbcCQFFH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Mar 2016 01:05:07 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 3FAFC2021B
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Mar 2016 05:05:06 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 9699D20268
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Mar 2016 05:05:04 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 16, 2016 at 08:48:47PM -0400, Theodore Ts'o wrote:
-> On Wed, Mar 16, 2016 at 03:49:31PM -0600, Andreas Dilger wrote:
-> > 
-> > At one time I thought Dave was going to patch xfs_quota to try the quota
-> > ioctls for "foreign" filesystems like ext4 that supported them, but I'm
-> > not sure if that patch was landed, nor whether it has been released.
-> > 
-> > On the opposite front, Jan was updating the generic quota tools to support
-> > the XFS ioctls that project quota is using?
-> 
-> It's quite possible I'm missing something, but it doesn't look like
-> either has landed.  I've hacked xfs_quota (not anything that I would
-> want to submit for merging)
+https://bugzilla.kernel.org/show_bug.cgi?id=114821
 
-I posted a patch to do it, but I haven't had a chance to fix the
-problems Eric noticed because other stuff happened.
+            Bug ID: 114821
+           Summary: Frequent and recurring ext4 "bad header invalid magic"
+                    errors on a healthy drive
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.18.5+
+          Hardware: ARM
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: dse.ssd@gmail.com
+        Regression: No
 
-You're welcome to fix it up and repost it:
+Recurring ext4 "bad header" errors are reported for a healthy, few months old
+external USB drive (WD MyBook 1230) connected to a Raspberry Pi running
+Raspbian 7, kernel 3.18.5+. The drive was working fine previously when
+formatted in NTFS, SMART has no errors logged, drive passes short and long
+SMART self-tests as well as manufacturer diagnostic tests (WD Data Lifeguard).
+Another external USB drive (a WD MyBook 1140), formatted in NTFS shows no
+problems when connected to the same machine. The specific error is:
 
-http://oss.sgi.com/archives/xfs/2016-02/msg00109.html
+ext4_ext_check_inode:495: inode #1523: comm ls: pblk 0 bad header/extent:
+invalid magic - magic 0, entries 0, max 0(0), depth 0(0)
 
-Cheers,
+The errors are produced whenever some certain files are accessed and the hard
+drive produces a distinct (and rather unsettling) clunk every few seconds,
+which sounds like a head load/unload or something, but the files seem to be
+read without error.
 
-Dave.
+Running fsck reports and fixes some errors and makes the ext4 partition clean
+again, but the same errors are produced when the files are read again. The
+offending files can be moved to another device and back to the same location to
+stop the error from recurring, but it soon appears when accessing other files.
+
 -- 
-Dave Chinner
-david@fromorbit.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
