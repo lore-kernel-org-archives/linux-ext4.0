@@ -1,81 +1,61 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
-Date: Wed, 16 Mar 2016 23:38:32 +0100
-Message-ID: <CAHc6FU5f4i_nvwR06Cp7dMJ0AZp2ZuXVrY7cdksLOR3y9P1_rw@mail.gmail.com>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
-	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
-	<20160311142719.GG14808@infradead.org>
-	<CAHc6FU4TVKKYr-apCNTuR3aWAHpv7wZJ7ixePfy0Qt2VA49TZQ@mail.gmail.com>
-	<20160315071707.GF19747@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Reporting project quota usage?
+Date: Wed, 16 Mar 2016 20:48:47 -0400
+Message-ID: <20160317004847.GG23593@thunk.org>
+References: <20160316052906.GA23610@thunk.org>
+ <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20160315071707.GF19747-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Li Xi <pkuelelixi@gmail.com>, Jan Kara <jack@suse.cz>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54372 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751433AbcCQAsw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Mar 2016 20:48:52 -0400
+Content-Disposition: inline
+In-Reply-To: <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 15, 2016 at 8:17 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
-> On Mon, Mar 14, 2016 at 12:08:31AM +0100, Andreas Gruenbacher wrote:
->> The xattr representation is the same on disk and at the xattr syscall
->> layer, and so richacl_from_xattr is used for converting into the
->> in-memory representation in both cases. The error codes are not the
->> same when a user supplies an invalid value via setxattr or NFS and
->> when an invalid xattr is read from disk though. I'll add a parameter
->> to richacl_from_xattr to make this more explicit.
->
-> Better add a wrapper instead of a parameter.
->
->>
->> >> +static int
->> >> +__ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
->> >> +{
->> >> +     const int name_index = EXT4_XATTR_INDEX_RICHACL;
->> >> +     umode_t mode = inode->i_mode;
->> >> +     int retval, size;
->> >> +     void *value;
->> >> +
->> >> +     if (richacl_equiv_mode(acl, &mode) == 0) {
->> >> +             inode->i_ctime = ext4_current_time(inode);
->> >> +             inode->i_mode = mode;
->> >> +             ext4_mark_inode_dirty(handle, inode);
->> >> +             return __ext4_remove_richacl(handle, inode);
->> >> +     }
->> >
->> > Should this check for a NULL acl instead of special casing that
->> > in ext4_set_richacl?
->>
->> I'm not sure I understand what you mean. When the
->
-> ext4_set_richacl checks for a NULL acl pointer and then calls into
-> __ext4_remove_richacl.  I'd rather have that special casing in one
-> place.
+On Wed, Mar 16, 2016 at 03:49:31PM -0600, Andreas Dilger wrote:
+> 
+> At one time I thought Dave was going to patch xfs_quota to try the quota
+> ioctls for "foreign" filesystems like ext4 that supported them, but I'm
+> not sure if that patch was landed, nor whether it has been released.
+> 
+> On the opposite front, Jan was updating the generic quota tools to support
+> the XFS ioctls that project quota is using?
 
-Those are two different cases: the first is where ext4_set_richacl is
-called with a NULL acl to remove an existing ACL; the second is where
-ext4_set_richacl is called with a mode-equivalent ACL to set the mode
-and remove any existing ACL.
+It's quite possible I'm missing something, but it doesn't look like
+either has landed.  I've hacked xfs_quota (not anything that I would
+want to submit for merging) so I can report usage project quota stats,
+and to be able to set hard and soft limits.  But I was trying to
+figure out what we should be telling users who wanted to use Project
+Quota, but I'm pretty sure "pull down xfsprogs sources, and apply this
+hacky patch[1], and then when you use the tooll ignore a whole bunch
+of spurious warnings" is the right way to go.  :-)
 
-The check for mode-equivalent ACLs is in __ext4_set_richacl and not in
-ext4_set_richacl because an inherited ACL (ext4_init_acl) can also be
-mode-equivalent.
+I am also curious how Li Xi was testing the patches he sent me.
 
-Andreas
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     	     	       	   	       - Ted
+
+[1]
+
+diff --git a/libxcmd/paths.c b/libxcmd/paths.c
+index 5c65737..6c69a35 100644
+--- a/libxcmd/paths.c
++++ b/libxcmd/paths.c
+@@ -301,8 +301,8 @@ fs_table_initialise_mounts(
+ 			return errno;
+ 
+ 	while ((mnt = getmntent(mtp)) != NULL) {
+-		if (strcmp(mnt->mnt_type, "xfs") != 0)
+-			continue;
++//		if (strcmp(mnt->mnt_type, "xfs") != 0)
++//			continue;
+ 		if (!realpath(mnt->mnt_dir, rmnt_dir))
+ 			continue;
+ 		if (!realpath(mnt->mnt_fsname, rmnt_fsname))
