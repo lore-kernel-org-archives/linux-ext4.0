@@ -1,52 +1,58 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v20 00/23] Richacls (Core and Ext4)
-Date: Fri, 18 Mar 2016 09:48:14 +0100
-Message-ID: <CAHc6FU4ZQQ9qQH+_3cGTO3GjH4AEfgfYzezU5VMWHFG9C4MPEg@mail.gmail.com>
-References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
-	<CAH2r5mu66qi=G6sMNQzS_Ciu9ctyS4Q+bKskVqk1Hj5_x7FWng@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4 out of order when use cfq scheduler
+Date: Fri, 18 Mar 2016 10:20:05 +0100
+Message-ID: <20160318092005.GA7152@quack.suse.cz>
+References: <20160107102420.GB8380@quack.suse.cz>
+ <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
+ <20160107114736.GC8380@quack.suse.cz>
+ <20160313042723.GC29218@thunk.org>
+ <20160314073928.GD5213@quack.suse.cz>
+ <20160314143635.GM29218@thunk.org>
+ <20160315104634.GG17942@quack.suse.cz>
+ <20160315144633.GA12352@quack.suse.cz>
+ <20160315200951.GA1445@quack.suse.cz>
+ <4ec8c36a910942be8d6d4745385f3cce@SGPMBX1004.APAC.bosch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	"linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-	"linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jeff Layton <jlayton@poochiereds.net>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>
-To: Steve French <smfrench@gmail.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <CAH2r5mu66qi=G6sMNQzS_Ciu9ctyS4Q+bKskVqk1Hj5_x7FWng@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+	"Li, Michael" <huayil@qti.qualcomm.com>
+To: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:43146 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932177AbcCRJTl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Mar 2016 05:19:41 -0400
+Content-Disposition: inline
+In-Reply-To: <4ec8c36a910942be8d6d4745385f3cce@SGPMBX1004.APAC.bosch.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 18, 2016 at 6:20 AM, Steve French <smfrench@gmail.com> wrote:
-> Reviewing the current version of your patch series in your tree
->  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
->         richacl-2016-03-16
->
-> you can add my reviewed by to the following patches so far:
+On Wed 16-03-16 02:30:13, HUANG Weller (CM/ESW12-CN) wrote:
+> 
+> > >
+> > > OK, I have something - Huang, can you check whether the attached
+> > > patches also fix your data exposure issues please? The first patch is
+> > > the original fix, patch two is a cleanup, patches 3 and 4 implement
+> > > the speedup suggested by Ted. Patches are only lightly tested so far.
+> > > I'll run more comprehensive tests later and in particular I want to
+> > > check whether the additional complexity actually brings us some
+> > > advantage at least for workloads which redirty pages in addition to
+> > > writing some new ones using delayed allocation.
+> > 
+> > OK, there was a bug in patch 3. Attached is a new version of patches 3 and 4.
+> > 
+> 
+> Patches are applied on my kernel. Basically it is working. 
+> Power loss test is running now. Need some days to give you test result.
 
-Done, thanks.
+Thank you!
 
-Andreas
+> At same time, Some conflicts need your confirm:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+The resolution of the conflicts looks good.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
