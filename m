@@ -1,56 +1,51 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 out of order when use cfq scheduler
-Date: Fri, 18 Mar 2016 10:20:05 +0100
-Message-ID: <20160318092005.GA7152@quack.suse.cz>
-References: <20160107102420.GB8380@quack.suse.cz>
- <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
- <20160107114736.GC8380@quack.suse.cz>
- <20160313042723.GC29218@thunk.org>
- <20160314073928.GD5213@quack.suse.cz>
- <20160314143635.GM29218@thunk.org>
- <20160315104634.GG17942@quack.suse.cz>
- <20160315144633.GA12352@quack.suse.cz>
- <20160315200951.GA1445@quack.suse.cz>
- <4ec8c36a910942be8d6d4745385f3cce@SGPMBX1004.APAC.bosch.com>
+Subject: Re: Reporting project quota usage?
+Date: Fri, 18 Mar 2016 10:40:15 +0100
+Message-ID: <20160318094015.GB7152@quack.suse.cz>
+References: <20160316052906.GA23610@thunk.org>
+ <A21F30FD-8207-473D-860A-F1B2118D35C0@dilger.ca>
+ <20160317004847.GG23593@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Li, Michael" <huayil@qti.qualcomm.com>
-To: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Cc: Andreas Dilger <adilger@dilger.ca>, Li Xi <pkuelelixi@gmail.com>,
+	Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43146 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45278 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932177AbcCRJTl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Mar 2016 05:19:41 -0400
+	id S1752771AbcCRJju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Mar 2016 05:39:50 -0400
 Content-Disposition: inline
-In-Reply-To: <4ec8c36a910942be8d6d4745385f3cce@SGPMBX1004.APAC.bosch.com>
+In-Reply-To: <20160317004847.GG23593@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 16-03-16 02:30:13, HUANG Weller (CM/ESW12-CN) wrote:
-> 
-> > >
-> > > OK, I have something - Huang, can you check whether the attached
-> > > patches also fix your data exposure issues please? The first patch is
-> > > the original fix, patch two is a cleanup, patches 3 and 4 implement
-> > > the speedup suggested by Ted. Patches are only lightly tested so far.
-> > > I'll run more comprehensive tests later and in particular I want to
-> > > check whether the additional complexity actually brings us some
-> > > advantage at least for workloads which redirty pages in addition to
-> > > writing some new ones using delayed allocation.
+On Wed 16-03-16 20:48:47, Ted Tso wrote:
+> On Wed, Mar 16, 2016 at 03:49:31PM -0600, Andreas Dilger wrote:
 > > 
-> > OK, there was a bug in patch 3. Attached is a new version of patches 3 and 4.
+> > At one time I thought Dave was going to patch xfs_quota to try the quota
+> > ioctls for "foreign" filesystems like ext4 that supported them, but I'm
+> > not sure if that patch was landed, nor whether it has been released.
 > > 
+> > On the opposite front, Jan was updating the generic quota tools to support
+> > the XFS ioctls that project quota is using?
 > 
-> Patches are applied on my kernel. Basically it is working. 
-> Power loss test is running now. Need some days to give you test result.
+> It's quite possible I'm missing something, but it doesn't look like
+> either has landed.  I've hacked xfs_quota (not anything that I would
+> want to submit for merging) so I can report usage project quota stats,
+> and to be able to set hard and soft limits.  But I was trying to
+> figure out what we should be telling users who wanted to use Project
+> Quota, but I'm pretty sure "pull down xfsprogs sources, and apply this
+> hacky patch[1], and then when you use the tooll ignore a whole bunch
+> of spurious warnings" is the right way to go.  :-)
+> 
+> I am also curious how Li Xi was testing the patches he sent me.
 
-Thank you!
-
-> At same time, Some conflicts need your confirm:
-
-The resolution of the conflicts looks good.
+As Li Xi mentioned, he has a patch for quota-tools which implements the
+project quota support but it needs some cleanup (you can check my reply to
+email "[PATCH] Add project quota support" - it didn't go to any list but
+you were CCed). Li Xi, do you have any idea when you can get to it?
 
 								Honza
 -- 
