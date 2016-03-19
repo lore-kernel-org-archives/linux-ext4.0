@@ -1,98 +1,82 @@
 From: Nicolai Stange <nicstange@gmail.com>
-Subject: [PATCH v2 2/2] fs/ext4: ext4_mb_init(): silence UBSAN
-Date: Sat, 19 Mar 2016 22:12:05 +0100
-Message-ID: <1458421925-5481-3-git-send-email-nicstange@gmail.com>
+Subject: [PATCH v2 1/2] fs/ext4: mb_find_order_for_block(): silence UBSAN
+Date: Sat, 19 Mar 2016 22:12:04 +0100
+Message-ID: <1458421925-5481-2-git-send-email-nicstange@gmail.com>
 References: <1458421925-5481-1-git-send-email-nicstange@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Nicolai Stange <nicstange@gmail.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:33381 "EHLO
-	mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755200AbcCSVMX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Mar 2016 17:12:23 -0400
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:33369 "EHLO
+	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755075AbcCSVMV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Mar 2016 17:12:21 -0400
 In-Reply-To: <1458421925-5481-1-git-send-email-nicstange@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, in ext4_mb_init(), there's a loop like the following:
+Currently, in mb_find_order_for_block(), there's a loop like the following:
 
-  do {
+  while (order <= e4b->bd_blkbits + 1) {
     ...
-    offset += 1 << (sb->s_blocksize_bits - i);
-    i++;
-  } while (i <= sb->s_blocksize_bits + 1);
+    bb += 1 << (e4b->bd_blkbits - order);
+  }
 
-Note that the updated offset is used in the loop's next iteration only.
+Note that the updated bb is used in the loop's next iteration only.
 
-However, at the last iteration, that is at i == sb->s_blocksize_bits + 1,
-the shift count becomes equal to (unsigned)-1 > 31 (c.f. C99 6.5.7(3))
-and UBSAN reports
+However, at the last iteration, that is at order == e4b->bd_blkbits + 1,
+the shift count becomes negative (c.f. C99 6.5.7(3)) and UBSAN reports
 
-  UBSAN: Undefined behaviour in fs/ext4/mballoc.c:2621:15
-  shift exponent 4294967295 is too large for 32-bit type 'int'
+  UBSAN: Undefined behaviour in fs/ext4/mballoc.c:1281:11
+  shift exponent -1 is negative
   [...]
   Call Trace:
-   [<ffffffff818c4d25>] dump_stack+0xbc/0x117
-   [<ffffffff818c4c69>] ? _atomic_dec_and_lock+0x169/0x169
-   [<ffffffff819411ab>] ubsan_epilogue+0xd/0x4e
-   [<ffffffff81941cac>] __ubsan_handle_shift_out_of_bounds+0x1fb/0x254
-   [<ffffffff81941ab1>] ? __ubsan_handle_load_invalid_value+0x158/0x158
-   [<ffffffff814b6dc1>] ? kmem_cache_alloc+0x101/0x390
-   [<ffffffff816fc13b>] ? ext4_mb_init+0x13b/0xfd0
-   [<ffffffff814293c7>] ? create_cache+0x57/0x1f0
-   [<ffffffff8142948a>] ? create_cache+0x11a/0x1f0
-   [<ffffffff821c2168>] ? mutex_lock+0x38/0x60
-   [<ffffffff821c23ab>] ? mutex_unlock+0x1b/0x50
-   [<ffffffff814c26ab>] ? put_online_mems+0x5b/0xc0
-   [<ffffffff81429677>] ? kmem_cache_create+0x117/0x2c0
-   [<ffffffff816fcc49>] ext4_mb_init+0xc49/0xfd0
+   [<ffffffff818c4d35>] dump_stack+0xbc/0x117
+   [<ffffffff818c4c79>] ? _atomic_dec_and_lock+0x169/0x169
+   [<ffffffff819411bb>] ubsan_epilogue+0xd/0x4e
+   [<ffffffff81941cbc>] __ubsan_handle_shift_out_of_bounds+0x1fb/0x254
+   [<ffffffff81941ac1>] ? __ubsan_handle_load_invalid_value+0x158/0x158
+   [<ffffffff816e93a0>] ? ext4_mb_generate_from_pa+0x590/0x590
+   [<ffffffff816502c8>] ? ext4_read_block_bitmap_nowait+0x598/0xe80
+   [<ffffffff816e7b7e>] mb_find_order_for_block+0x1ce/0x240
    [...]
-
-Observe that the mentioned shift exponent, 4294967295, equals (unsigned)-1.
 
 Unless compilers start to do some fancy transformations (which at least
 GCC 6.0.0 doesn't currently do), the issue is of cosmetic nature only: the
-such calculated value of offset is never used again.
+such calculated value of bb is never used again.
 
-Silence UBSAN by introducing another variable, offset_incr, holding the
-next increment to apply to offset and adjust that one by right shifting it
-by one position per loop iteration.
+Silence UBSAN by introducing another variable, bb_incr, holding the next
+increment to apply to bb and adjust that one by right shifting it by one
+position per loop iteration.
 
 Signed-off-by: Nicolai Stange <nicstange@gmail.com>
 ---
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4bc89fe..8dc0d9b 100644
+index 50e05df..4bc89fe 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2585,7 +2585,7 @@ int ext4_mb_init(struct super_block *sb)
+@@ -1266,6 +1266,7 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
+ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	unsigned i, j;
--	unsigned offset;
-+	unsigned offset, offset_incr;
- 	unsigned max;
- 	int ret;
+ 	int order = 1;
++	int bb_incr = 1 << (e4b->bd_blkbits - 1);
+ 	void *bb;
  
-@@ -2614,11 +2614,13 @@ int ext4_mb_init(struct super_block *sb)
- 
- 	i = 1;
- 	offset = 0;
-+	offset_incr = 1 << (sb->s_blocksize_bits - 1);
- 	max = sb->s_blocksize << 2;
- 	do {
- 		sbi->s_mb_offsets[i] = offset;
- 		sbi->s_mb_maxs[i] = max;
--		offset += 1 << (sb->s_blocksize_bits - i);
-+		offset += offset_incr;
-+		offset_incr = offset_incr >> 1;
- 		max = max >> 1;
- 		i++;
- 	} while (i <= sb->s_blocksize_bits + 1);
+ 	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
+@@ -1278,7 +1279,8 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
+ 			/* this block is part of buddy of order 'order' */
+ 			return order;
+ 		}
+-		bb += 1 << (e4b->bd_blkbits - order);
++		bb += bb_incr;
++		bb_incr >>= 1;
+ 		order++;
+ 	}
+ 	return 0;
 -- 
 2.7.3
 
