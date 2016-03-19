@@ -1,81 +1,44 @@
 From: Nicolai Stange <nicstange@gmail.com>
-Subject: [PATCH] fs/ext4: mb_find_order_for_block(): silence UBSAN
-Date: Sat, 19 Mar 2016 20:54:07 +0100
-Message-ID: <1458417247-3164-1-git-send-email-nicstange@gmail.com>
+Subject: [PATCH v2 0/2] fs/ext4: mballoc.c: silence two UBSAN reports
+Date: Sat, 19 Mar 2016 22:12:03 +0100
+Message-ID: <1458421925-5481-1-git-send-email-nicstange@gmail.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Nicolai Stange <nicstange@gmail.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:35367 "EHLO
-	mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754898AbcCSTyT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Mar 2016 15:54:19 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently, in mb_find_order_for_block(), there's a loop like the following:
+v1 can be found here:
 
-  while (order <= e4b->bd_blkbits + 1) {
-    ...
-    bb += 1 << (e4b->bd_blkbits - order);
-  }
+  http://lkml.kernel.org/g/1458417247-3164-1-git-send-email-nicstange@gmail.com
 
-Note that the updated bb is used in the loop's next iteration only.
 
-However, at the last iteration, that is at order == e4b->bd_blkbits + 1,
-the shift count becomes negative (c.f. C99 6.5.7(3)) and UBSAN reports
+Unfortunately, I failed to recognize that the very same issue fixed by v1
+appears again at another place in fs/ext4/mballoc.c.
 
-  UBSAN: Undefined behaviour in fs/ext4/mballoc.c:1281:11
-  shift exponent -1 is negative
-  Call Trace:
-   [<ffffffff818c4d35>] dump_stack+0xbc/0x117
-   [<ffffffff818c4c79>] ? _atomic_dec_and_lock+0x169/0x169
-   [<ffffffff819411bb>] ubsan_epilogue+0xd/0x4e
-   [<ffffffff81941cbc>] __ubsan_handle_shift_out_of_bounds+0x1fb/0x254
-   [<ffffffff81941ac1>] ? __ubsan_handle_load_invalid_value+0x158/0x158
-   [<ffffffff816e93a0>] ? ext4_mb_generate_from_pa+0x590/0x590
-   [<ffffffff816502c8>] ? ext4_read_block_bitmap_nowait+0x598/0xe80
-   [<ffffffff816e7b7e>] mb_find_order_for_block+0x1ce/0x240
-   [...]
+Hence a v2 with the [2/2] addressing that second occurence.
 
-Unless compilers start to do some fancy transformations (which at least
-GCC 4.6.0 doesn't currently do), the issue is of cosmetic nature only: the
-such calculated value of bb is never used again.
 
-Silence UBSAN by introducing another variable, bb_incr, holding the next
-increment to apply to bb and adjust that one by right shifting it by one
-position per loop iteration.
+Applicable to linux-next-20160318.
 
-Signed-off-by: Nicolai Stange <nicstange@gmail.com>
----
- Applicable to linux-next-20160318
 
- fs/ext4/mballoc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Changes to v1:
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 50e05df..4bc89fe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1266,6 +1266,7 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
- static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
- {
- 	int order = 1;
-+	int bb_incr = 1 << (e4b->bd_blkbits - 1);
- 	void *bb;
- 
- 	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
-@@ -1278,7 +1279,8 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
- 			/* this block is part of buddy of order 'order' */
- 			return order;
- 		}
--		bb += 1 << (e4b->bd_blkbits - order);
-+		bb += bb_incr;
-+		bb_incr >>= 1;
- 		order++;
- 	}
- 	return 0;
+ [1/2] ("fs/ext4: mb_find_order_for_block(): silence UBSAN")
+  - corrected GCC version from 4.6.0 to 6.0.0 in commit message 
+
+ [2/2] ("fs/ext4: ext4_mb_init(): silence UBSAN")
+  - new.
+
+
+Nicolai Stange (2):
+  fs/ext4: mb_find_order_for_block(): silence UBSAN
+  fs/ext4: ext4_mb_init(): silence UBSAN
+
+ fs/ext4/mballoc.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
 -- 
 2.7.3
-
