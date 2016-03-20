@@ -1,72 +1,89 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 114821] Frequent and recurring ext4 "bad header invalid magic"
- errors on a healthy drive
-Date: Sun, 20 Mar 2016 20:50:12 +0000
-Message-ID: <bug-114821-13602-JRhgln1z84@https.bugzilla.kernel.org/>
-References: <bug-114821-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Noticeable usability weakness of ext4 recovery, especially
+ during boot
+Date: Sun, 20 Mar 2016 17:51:23 -0400
+Message-ID: <20160320215123.GC3331@thunk.org>
+References: <20160320171053.GA24115@rhlx01.hs-esslingen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:53239 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216AbcCTUuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 20 Mar 2016 16:50:16 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id ACE0720270
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2016 20:50:14 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id F185420260
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Mar 2016 20:50:12 +0000 (UTC)
-In-Reply-To: <bug-114821-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-kernel@vger.kernel.org
+To: Andreas Mohr <andi@lisas.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160320171053.GA24115@rhlx01.hs-esslingen.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=114821
+On Sun, Mar 20, 2016 at 06:10:53PM +0100, Andreas Mohr wrote:
+> [   18.164828] EXT4-fs (sda2): mounting ext3 file system using the ext4 subsyste
+> [  248.211176] EXT4-fs (sda2): recovery complete
+> [  249.595977] EXT4-fs (sda2): mounted filesystem with ordered data mode. Opts: 
+> (null)
+> 
+> (note the HUGE gap in dmesg timestamps above)
+> 
+> All that *may* have been acceptable, if it were not for the fact
+> that especially during boot
+> certain activity progress is not readily visible,
+> thus there's a *lot* of confusion of what is [not] happening with the system
+> (as strongly opposed to a situation where one is mounting an ext4 partition
+> directly via the shell, where it's quite obvious that mount is hanging
+> right at the shell prompt,
+> and diagnostic verification via dmesg etc. is readily reachable,
+> as opposed to system boot).
 
---- Comment #8 from Lukas <dse.ssd@gmail.com> ---
-The command
+I'm curious --- what kind of removable USB drive is your sda drive?
 
-$ debugfs -c -R 'stat <1523>' /dev/sdb1
+Normally journal replay does *not* take nearly four minutes.  It
+usually only takes at most a few seconds --- which is why we've not
+bothered to put in any kind of progress notification scheme.  (Which
+on most Linux distribution would be covered by some boot graphics
+anyway, so it would be largely wasted.)
 
-produces the following output:
+There *is* such a progress bar system for a file system consistency
+check, which normally is what can take minutes.
 
-Inode: 1523   Type: regular    Mode:  0644   Flags: 0x80000
-Generation: 0    Version: 0x00000000
-User:  1001   Group:   100   Size: 0
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x56b66f93 -- Sat Feb  6 17:11:31 2016
-atime: 0x56b66f93 -- Sat Feb  6 17:11:31 2016
-mtime: 0x4e4d75ac -- Thu Aug 18 16:27:24 2011
-Size of extra inode fields: 0
-EXTENTS:
-(END)
+> - progress may easily not be determinable via "out of band signalling" ;)
+>   (completely silent USB stick rather than plain old metal platters HDD!!)
 
-Executing 'stat <1523>' command does not cause a head load cycle.
+Ah, it's some USB stick.  I'm guessing it must be a *really* crappy
+USB stick that doesn't do random writes well at all.  Even so, though
+this is quite unusual.  This is much more normal:
 
-As I understand, there are no blocks assigned to the inode. The file is an
-empty text file, so maybe it makes sense? I've created a new empty text file
-and it also has no blocks assigned to its inode, but it can be read and stat'ed
-with no problems.
+[8583.604009] sd 9:0:0:0: [sdc] Attached SCSI removable disk
+[8589.049603] EXT4-fs (sdc1): recovery complete
+[8589.055767] EXT4-fs (sdc1): mounted filesystem with ordered data mode. Opts: (null)
 
-I've checked a few of the other inode numbers that appear in dmesg less
-frequently and - all of them point to empty text files! I would guess the
-reason why inode #1523 appears so often in the logs is because the file is in
-the root directory and gets listed each time the root is traversed.
+This is with an amazingly craptastic 1GB USB stick drive made of
+plastic which looks like it would fall apart if you twisted it
+slightly as you insert or remove it, and for which I paid less than
+$4.00 USD.  (Basically something I treat as completely disposable.  :-)
 
-So, is it possible that something went wrong with just the zero-length files
-while I was copying my data to it? I did use ext2fsd on Windows 8.1 to copy
-some of the files... I just tested it again, and I can copy zero-length files
-to the drive using Windows and read them when mounted on linux with no
-problems.
+And as it turns out, most of this time is the delay between when the
+kernel notified udevd, and when udisks actually got around to mounting
+the device.  After a clean unmount, where no recovery / journal replay
+is needed:
 
-And since the zero-length files have no useful information (other than their
-file names, which I can still read) and have no blocks assigned to them can I
-now just remove them using debugfs?
+[9108.564843] sd 15:0:0:0: [sdc] Attached SCSI removable disk
+[9113.746002] EXT4-fs (sdc1): mounted filesystem with ordered data mode. Opts: (null)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> Thus, the question here would be
+> which parts may need to be sufficiently improved
+> to achieve an acceptable level of usability.
+> I'd think that even simply adding a message
+> that one is about to enter a potentially longer-term operation
+> (with a details message such as "recovery")
+> rather than "standard" mount activity
+> would be sufficient,
+> both for text boot *and* GUI boot with some sufficiently accessible
+> "boot details" window.
+
+Well, we could, but on most devices, it's largely wasted.  Perhaps the
+more interesting question is why is your USB stick so slow?  Because
+that's going to have a much larger usability issue for you...
+
+Cheers,
+
+							- Ted
