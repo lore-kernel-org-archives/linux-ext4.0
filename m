@@ -1,95 +1,33 @@
-From: Vishal Verma <vishal.l.verma@intel.com>
-Subject: [PATCH 3/5] dax: enable dax in the presence of known media errors
-	(badblocks)
-Date: Thu, 24 Mar 2016 17:17:28 -0600
-Message-ID: <1458861450-17705-4-git-send-email-vishal.l.verma@intel.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH 3/5] dax: enable dax in the presence of known media
+ errors (badblocks)
+Date: Thu, 24 Mar 2016 23:23:26 +0000
+Message-ID: <1458861805.7619.1.camel@intel.com>
 References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
+	 <1458861450-17705-4-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jens Axboe <axboe@fb.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>, xfs@oss.sgi.com,
-	linux-block@vger.kernel.org, linux-mm@kvack.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>, linux-fsdevel@vger.kernel.org,
-	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: linux-nvdimm@lists.01.org
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1458861450-17705-4-git-send-email-vishal.l.verma@intel.com>
+Content-Language: en-US
+Content-ID: <A001440F8D6C3C4CB24CFB5EC465E195@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Dan Williams <dan.j.williams@intel.com>
-
-From: Dan Williams <dan.j.williams@intel.com>
-
-1/ If a mapping overlaps a bad sector fail the request.
-
-2/ Do not opportunistically report more dax-capable capacity than is
-   requested when errors present.
-
-[vishal: fix a conflict with system RAM collision patches]
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
----
- block/ioctl.c         | 9 ---------
- drivers/nvdimm/pmem.c | 8 ++++++++
- 2 files changed, 8 insertions(+), 9 deletions(-)
-
-diff --git a/block/ioctl.c b/block/ioctl.c
-index d8996bb..cd7f392 100644
---- a/block/ioctl.c
-+++ b/block/ioctl.c
-@@ -423,15 +423,6 @@ bool blkdev_dax_capable(struct block_device *bdev)
- 			|| (bdev->bd_part->nr_sects % (PAGE_SIZE / 512)))
- 		return false;
- 
--	/*
--	 * If the device has known bad blocks, force all I/O through the
--	 * driver / page cache.
--	 *
--	 * TODO: support finer grained dax error handling
--	 */
--	if (disk->bb && disk->bb->count)
--		return false;
--
- 	return true;
- }
- #endif
-diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-index da10554..eac5f93 100644
---- a/drivers/nvdimm/pmem.c
-+++ b/drivers/nvdimm/pmem.c
-@@ -174,9 +174,17 @@ static long pmem_direct_access(struct block_device *bdev,
- 	struct pmem_device *pmem = bdev->bd_disk->private_data;
- 	resource_size_t offset = sector * 512 + pmem->data_offset;
- 
-+	if (unlikely(is_bad_pmem(&pmem->bb, sector, dax->size)))
-+		return -EIO;
- 	dax->addr = pmem->virt_addr + offset;
- 	dax->pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
- 
-+	/*
-+	 * If badblocks are present, limit known good range to the
-+	 * requested range.
-+	 */
-+	if (unlikely(pmem->bb.count))
-+		return dax->size;
- 	return pmem->size - pmem->pfn_pad - offset;
- }
- 
--- 
-2.5.5
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+T24gVGh1LCAyMDE2LTAzLTI0IGF0IDE3OjE3IC0wNjAwLCBWaXNoYWwgVmVybWEgd3JvdGU6DQo+
+IEZyb206IERhbiBXaWxsaWFtcyA8ZGFuLmoud2lsbGlhbXNAaW50ZWwuY29tPg0KPiANCj4gRnJv
+bTogRGFuIFdpbGxpYW1zIDxkYW4uai53aWxsaWFtc0BpbnRlbC5jb20+DQoNCkVlcCwgbm90IHN1
+cmUgaG93IHRoaXMgaGFwcGVuZWQsIGxvb2tlZCBhbHJpZ2h0IGluIHRoZSBwYXRjaGVzIQ==
