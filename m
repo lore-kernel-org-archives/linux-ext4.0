@@ -1,51 +1,66 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 out of order when use cfq scheduler
-Date: Thu, 24 Mar 2016 13:17:32 +0100
-Message-ID: <20160324121732.GE4025@quack.suse.cz>
-References: <3ab48fa47e434455b101251730e69bd2@SGPMBX1004.APAC.bosch.com>
- <20160107102420.GB8380@quack.suse.cz>
- <f0c925079bb4450380c019a7455a2537@SGPMBX1004.APAC.bosch.com>
- <20160107114736.GC8380@quack.suse.cz>
- <20160313042723.GC29218@thunk.org>
- <20160314073928.GD5213@quack.suse.cz>
- <20160314143635.GM29218@thunk.org>
- <20160315104634.GG17942@quack.suse.cz>
- <20160315144633.GA12352@quack.suse.cz>
- <ac387f41e9604a229d680a94930b74d9@SGPMBX1004.APAC.bosch.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Li, Michael" <huayil@qti.qualcomm.com>
-To: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57768 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751421AbcCXMRF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Mar 2016 08:17:05 -0400
-Content-Disposition: inline
-In-Reply-To: <ac387f41e9604a229d680a94930b74d9@SGPMBX1004.APAC.bosch.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vishal Verma <vishal.l.verma@intel.com>
+Subject: [PATCH 0/5] dax: handling of media errors
+Date: Thu, 24 Mar 2016 17:17:25 -0600
+Message-ID: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
+Cc: Vishal Verma <vishal.l.verma@intel.com>,
+	linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: linux-nvdimm@lists.01.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 24-03-16 10:16:05, HUANG Weller (CM/ESW12-CN) wrote:
-> > 
-> > OK, I have something - Huang, can you check whether the attached patches also
-> > fix your data exposure issues please? The first patch is the original fix, patch two
-> > is a cleanup, patches 3 and 4 implement the speedup suggested by Ted. Patches
-> > are only lightly tested so far.  I'll run more comprehensive tests later and in
-> > particular I want to check whether the additional complexity actually brings us
-> > some advantage at least for workloads which redirty pages in addition to writing
-> > some new ones using delayed allocation.
-> > 
-> 
-> Test done.
-> Both targets(kernel 3.10.63) PASS the power loss test with 10,000 cycles. Test with io-scheduler CFQ.
+Until now, dax has been disabled if media errors were found on
+any device. This series attempts to address that.
 
-Thanks for testing! I'll submit those patches once I verify there is some
-performance gain in only waiting...
+The first three patches from Dan re-enable dax even when media
+errors are present.
 
-								Honza
+The fourth patch from Matthew removes the
+zeroout path from dax entirely, making zeroout operations always
+go through the driver (The motivation is that if a backing device
+has media errors, and we create a sparse file on it, we don't
+want the initial zeroing to happen via dax, we want to give the
+block driver a chance to clear the errors).
+
+The fifth patch changes the behaviour of dax_do_io by adding a
+wrapper around it that is passed all the arguments also needed by
+__blockdev_do_direct_IO. If (the new) __dax_do_io fails with -EIO
+due to a bad block, we simply retry with the direct_IO path which
+forces the IO to go through the block driver, and can attempt to
+clear the error.
+
+Dan Williams (3):
+  block, dax: pass blk_dax_ctl through to drivers
+  dax: fallback from pmd to pte on error
+  dax: enable dax in the presence of known media errors (badblocks)
+
+Vishal Verma (2):
+  dax: use sb_issue_zerout instead of calling dax_clear_sectors
+  dax: handle media errors in dax_do_io
+
+ arch/powerpc/sysdev/axonram.c | 10 +++----
+ block/ioctl.c                 |  9 ------
+ drivers/block/brd.c           |  9 +++---
+ drivers/nvdimm/pmem.c         | 17 ++++++++---
+ drivers/s390/block/dcssblk.c  | 12 ++++----
+ fs/block_dev.c                |  7 +++--
+ fs/dax.c                      | 70 +++++++++++++++++++++----------------------
+ fs/ext2/inode.c               | 12 ++++----
+ fs/ext4/indirect.c            | 11 ++++---
+ fs/ext4/inode.c               |  5 ++--
+ fs/xfs/xfs_aops.c             |  7 +++--
+ fs/xfs/xfs_bmap_util.c        |  9 ------
+ include/linux/blkdev.h        |  3 +-
+ include/linux/dax.h           |  7 +++--
+ 14 files changed, 93 insertions(+), 95 deletions(-)
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.5.5
+
