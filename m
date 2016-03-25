@@ -1,86 +1,55 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling dax_clear_sectors
-Date: Fri, 25 Mar 2016 11:47:26 -0700
-Message-ID: <CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH 5/5] dax: handle media errors in dax_do_io
+Date: Fri, 25 Mar 2016 20:59:30 +0000
+Message-ID: <1458939566.5501.5.camel@intel.com>
 References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-	<1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
+	 <1458861450-17705-6-git-send-email-vishal.l.verma@intel.com>
+	 <20160325104549.GB10525@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>, linux-block@vger.kernel.org,
-	XFS Developers <xfs@oss.sgi.com>, linux-ext4 <linux-ext4@vger.kernel.org>,
-	Linux MM <linux-mm@kvack.org>, Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>, Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.cz>, Jens Axboe <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Vishal Verma <vishal.l.verma@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"Williams, Dan J" <dan.j.williams@intel.com>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "hch@infradead.org" <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160325104549.GB10525@infradead.org>
+Content-Language: en-US
+Content-ID: <21B546D71D01A9489F096D2F38A6C68A@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 24, 2016 at 4:17 PM, Vishal Verma <vishal.l.verma@intel.com> wrote:
-> From: Matthew Wilcox <matthew.r.wilcox@intel.com>
->
-> dax_clear_sectors() cannot handle poisoned blocks.  These must be
-> zeroed using the BIO interface instead.  Convert ext2 and XFS to use
-> only sb_issue_zerout().
->
-> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
-> [vishal: Also remove the dax_clear_sectors function entirely]
-> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
-> ---
->  fs/dax.c               | 32 --------------------------------
->  fs/ext2/inode.c        |  7 +++----
->  fs/xfs/xfs_bmap_util.c |  9 ---------
->  include/linux/dax.h    |  1 -
->  4 files changed, 3 insertions(+), 46 deletions(-)
->
-> diff --git a/fs/dax.c b/fs/dax.c
-> index bb7e9f8..a30481e 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -78,38 +78,6 @@ struct page *read_dax_sector(struct block_device *bdev, sector_t n)
->         return page;
->  }
->
-> -/*
-> - * dax_clear_sectors() is called from within transaction context from XFS,
-> - * and hence this means the stack from this point must follow GFP_NOFS
-> - * semantics for all operations.
-> - */
-> -int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size)
-> -{
-> -       struct blk_dax_ctl dax = {
-> -               .sector = _sector,
-> -               .size = _size,
-> -       };
-> -
-> -       might_sleep();
-> -       do {
-> -               long count, sz;
-> -
-> -               count = dax_map_atomic(bdev, &dax);
-> -               if (count < 0)
-> -                       return count;
-> -               sz = min_t(long, count, SZ_128K);
-> -               clear_pmem(dax.addr, sz);
-> -               dax.size -= sz;
-> -               dax.sector += sz / 512;
-> -               dax_unmap_atomic(bdev, &dax);
-> -               cond_resched();
-> -       } while (dax.size);
-> -
-> -       wmb_pmem();
-> -       return 0;
-> -}
-> -EXPORT_SYMBOL_GPL(dax_clear_sectors);
-
-What about the other unwritten extent conversions in the dax path?
-Shouldn't those be converted to block-layer zero-outs as well?
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+T24gRnJpLCAyMDE2LTAzLTI1IGF0IDAzOjQ1IC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gT24gVGh1LCBNYXIgMjQsIDIwMTYgYXQgMDU6MTc6MzBQTSAtMDYwMCwgVmlzaGFsIFZl
+cm1hIHdyb3RlOg0KPiA+IA0KPiA+IGRheF9kb19pbyAoY2FsbGVkIGZvciByZWFkKCkgb3Igd3Jp
+dGUoKSBmb3IgYSBkYXggZmlsZSBzeXN0ZW0pIG1heQ0KPiA+IGZhaWwNCj4gPiBpbiB0aGUgcHJl
+c2VuY2Ugb2YgYmFkIGJsb2NrcyBvciBtZWRpYSBlcnJvcnMuIFNpbmNlIHdlIGV4cGVjdCB0aGF0
+DQo+ID4gYQ0KPiA+IHdyaXRlIHNob3VsZCBjbGVhciBtZWRpYSBlcnJvcnMgb24gbnZkaW1tcywg
+bWFrZSBkYXhfZG9faW8gZmFsbA0KPiA+IGJhY2sgdG8NCj4gPiB0aGUgZGlyZWN0X0lPIHBhdGgs
+IHdoaWNoIHdpbGwgc2VuZCBkb3duIGEgYmlvIHRvIHRoZSBkcml2ZXIsIHdoaWNoDQo+ID4gY2Fu
+DQo+ID4gdGhlbiBhdHRlbXB0IHRvIGNsZWFyIHRoZSBlcnJvci4NCj4gTGVhdmUgdGhlIGZhbGxi
+YWNrIG9uIC1FSU8gdG8gdGhlIGNhbGxlcnMgcGxlYXNlLsKgwqBUaGV5IGdlbmVyYWxseQ0KPiBj
+YWxsDQo+IF9fYmxvY2tkZXZfZGlyZWN0X0lPIGFueXdheSwgc28gaXQgc2hvdWxkIGFjdHVhbGx5
+IGJlY29tZSBzaW1wbGVyDQo+IHRoYXQNCj4gd2F5Lg0KDQpJIHRob3VnaHQgb2YgdGhpcywgYnV0
+IG1hZGUgdGhlIHJldHJ5aW5nIGhhcHBlbiBpbiB0aGUgd3JhcHBlciBzbyB0aGF0DQppdCBjYW4g
+YmUgY2VudHJhbGl6ZWQuIElmIHRoZSBjYWxsZXJzIHdlcmUgdG8gYmVjb21lIHJlc3BvbnNpYmxl
+IGZvcg0KdGhlIHJldHJ5LCB0aGVuIGFueSBuZXcgY2FsbGVycyBvZiBkYXhfZG9faW8gbWlnaHQg
+bm90IHJlYWxpemUgdGhleSBhcmUNCnJlc3BvbnNpYmxlIGZvciByZXRyeWluZywgYW5kIGhpdCBw
+cm9ibGVtcy4gQW5vdGhlciB0cmlja3kgcG9pbnQgbWlnaHQNCmJlOiBpbiB0aGUgd3JhcHBlciwg
+aWYgX19kYXhfZG9faW8gZmFpbGVkIHdpdGggLUVJTywgYW5kIHN1YnNlcXVlbnRseQ0KX19ibG9j
+a2Rldl9kaXJlY3RfSU8gYWxzbyBmYWlscyB3aXRoIGEgKmRpZmZlcmVudCogZXJyb3IsIEkgY2hv
+c2UgdG8NCnJldHVybiAtRUlPIGJlY2F1c2UgdGhhdCB3YXMgdGhlICdmaXJzdCcgZXJyb3Igd2Ug
+aGl0IGFuZCBjYXVzZWQgdXMgdG8NCmZhbGxiYWNrLi4gKERvZXMgdGhpcyBldmVuIHNlZW0gcmVh
+c29uYWJsZT8pIEFuZCBpZiBzbywgZG8gd2Ugd2FudCB0bw0KcHVzaCBiYWNrIHRoaXMgZGVjaXNp
+b24gdG9vLCB0byB0aGUgY2FsbGVycz8=
