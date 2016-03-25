@@ -1,41 +1,86 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 102731] I have a cough.
-Date: Fri, 25 Mar 2016 16:55:03 +0000
-Message-ID: <bug-102731-13602-xFh7ucgu5n@https.bugzilla.kernel.org/>
-References: <bug-102731-13602@https.bugzilla.kernel.org/>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling dax_clear_sectors
+Date: Fri, 25 Mar 2016 11:47:26 -0700
+Message-ID: <CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
+References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
+	<1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:53925 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753472AbcCYQzI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Mar 2016 12:55:08 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 55AEF2034A
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Mar 2016 16:55:07 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 4873F20340
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Mar 2016 16:55:04 +0000 (UTC)
-In-Reply-To: <bug-102731-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>, linux-block@vger.kernel.org,
+	XFS Developers <xfs@oss.sgi.com>, linux-ext4 <linux-ext4@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>, Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>, Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.cz>, Jens Axboe <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Vishal Verma <vishal.l.verma@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=102731
+On Thu, Mar 24, 2016 at 4:17 PM, Vishal Verma <vishal.l.verma@intel.com> wrote:
+> From: Matthew Wilcox <matthew.r.wilcox@intel.com>
+>
+> dax_clear_sectors() cannot handle poisoned blocks.  These must be
+> zeroed using the BIO interface instead.  Convert ext2 and XFS to use
+> only sb_issue_zerout().
+>
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> [vishal: Also remove the dax_clear_sectors function entirely]
+> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
+> ---
+>  fs/dax.c               | 32 --------------------------------
+>  fs/ext2/inode.c        |  7 +++----
+>  fs/xfs/xfs_bmap_util.c |  9 ---------
+>  include/linux/dax.h    |  1 -
+>  4 files changed, 3 insertions(+), 46 deletions(-)
+>
+> diff --git a/fs/dax.c b/fs/dax.c
+> index bb7e9f8..a30481e 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -78,38 +78,6 @@ struct page *read_dax_sector(struct block_device *bdev, sector_t n)
+>         return page;
+>  }
+>
+> -/*
+> - * dax_clear_sectors() is called from within transaction context from XFS,
+> - * and hence this means the stack from this point must follow GFP_NOFS
+> - * semantics for all operations.
+> - */
+> -int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size)
+> -{
+> -       struct blk_dax_ctl dax = {
+> -               .sector = _sector,
+> -               .size = _size,
+> -       };
+> -
+> -       might_sleep();
+> -       do {
+> -               long count, sz;
+> -
+> -               count = dax_map_atomic(bdev, &dax);
+> -               if (count < 0)
+> -                       return count;
+> -               sz = min_t(long, count, SZ_128K);
+> -               clear_pmem(dax.addr, sz);
+> -               dax.size -= sz;
+> -               dax.sector += sz / 512;
+> -               dax_unmap_atomic(bdev, &dax);
+> -               cond_resched();
+> -       } while (dax.size);
+> -
+> -       wmb_pmem();
+> -       return 0;
+> -}
+> -EXPORT_SYMBOL_GPL(dax_clear_sectors);
 
---- Comment #44 from cwseys@physics.wisc.edu ---
-Any ideas why ext4 in guests with kernel version 3.2.x (Wheezy) did not go 
-read-only, but guests with 3.16.x (Jessie) did?
+What about the other unwritten extent conversions in the dax path?
+Shouldn't those be converted to block-layer zero-outs as well?
 
-I suppose running a vmhost with kernel 3.16 and bisecting the guest's kernel 
-from 3.2 to 3.16 would give us this answer.
-
-But not sure how interesting it would be given that the root cause is KVM not 
-simulating real machine correctly.
-
-C.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
