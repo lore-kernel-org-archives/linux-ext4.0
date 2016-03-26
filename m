@@ -1,112 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/5] nfs: use file_dentry()
-Date: Sat, 26 Mar 2016 17:09:57 -0400
-Message-ID: <1459026600-9232-3-git-send-email-tytso@mit.edu>
-References: <1459026600-9232-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 0/5] Miklos's vfs/nfs/ext4 patches in the ext4.git tree
+Date: Sat, 26 Mar 2016 17:09:55 -0400
+Message-ID: <1459026600-9232-1-git-send-email-tytso@mit.edu>
 Cc: dhowells@redhat.com, viro@ZenIV.linux.org.uk,
 	Linux Filesystem Development List
 	<linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org,
-	Miklos Szeredi <mszeredi@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, <stable@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>
+	Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34262 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754130AbcCZVKS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Mar 2016 17:10:18 -0400
-In-Reply-To: <1459026600-9232-1-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Miklos Szeredi <mszeredi@redhat.com>
+I have the following patches in the ext4.git tree which I plan to push
+to Linus as bug fixes during this development cycles.  Al, are you
+happy with Miklos's v2 version of "fs: add file_dentrY()" patch?
 
-NFS may be used as lower layer of overlayfs and accessing f_path.dentry can
-lead to a crash.
+Miklos Szeredi (4):
+  fs: add file_dentry()
+  nfs: use file_dentry()
+  ext4: use dget_parent() in ext4_file_open()
+  ext4: use file_dentry()
 
-Fix by replacing direct access of file->f_path.dentry with the
-file_dentry() accessor, which will always return a native object.
+Theodore Ts'o (1):
+  ext4 crypto: use dget_parent() in ext4_d_revalidate()
 
-Fixes: 4bacc9c9234c ("overlayfs: Make f_path always point to the overlay and f_inode to the underlay")
-Signed-off-by: Miklos Szeredi <mszeredi@redhat.com>
-Tested-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
-Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: <stable@vger.kernel.org> # v4.2
-Cc: David Howells <dhowells@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/nfs/dir.c      | 6 +++---
- fs/nfs/inode.c    | 2 +-
- fs/nfs/nfs4file.c | 4 ++--
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ fs/dcache.c            |  5 ++++-
+ fs/ext4/crypto.c       | 12 ++++++++----
+ fs/ext4/file.c         | 12 ++++++++----
+ fs/nfs/dir.c           |  6 +++---
+ fs/nfs/inode.c         |  2 +-
+ fs/nfs/nfs4file.c      |  4 ++--
+ fs/overlayfs/super.c   | 33 +++++++++++++++++++++++++++++++++
+ include/linux/dcache.h | 10 ++++++++++
+ include/linux/fs.h     | 10 ++++++++++
+ 9 files changed, 79 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4bfa7d8..a89d32a 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -377,7 +377,7 @@ int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
-  again:
- 	timestamp = jiffies;
- 	gencount = nfs_inc_attr_generation_counter();
--	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred, entry->cookie, pages,
-+	error = NFS_PROTO(inode)->readdir(file_dentry(file), cred, entry->cookie, pages,
- 					  NFS_SERVER(inode)->dtsize, desc->plus);
- 	if (error < 0) {
- 		/* We requested READDIRPLUS, but the server doesn't grok it */
-@@ -560,7 +560,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 		count++;
- 
- 		if (desc->plus != 0)
--			nfs_prime_dcache(desc->file->f_path.dentry, entry);
-+			nfs_prime_dcache(file_dentry(desc->file), entry);
- 
- 		status = nfs_readdir_add_to_array(entry, page);
- 		if (status != 0)
-@@ -864,7 +864,7 @@ static bool nfs_dir_mapping_need_revalidate(struct inode *dir)
-  */
- static int nfs_readdir(struct file *file, struct dir_context *ctx)
- {
--	struct dentry	*dentry = file->f_path.dentry;
-+	struct dentry	*dentry = file_dentry(file);
- 	struct inode	*inode = d_inode(dentry);
- 	nfs_readdir_descriptor_t my_desc,
- 			*desc = &my_desc;
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 86faecf..847b678 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -940,7 +940,7 @@ int nfs_open(struct inode *inode, struct file *filp)
- {
- 	struct nfs_open_context *ctx;
- 
--	ctx = alloc_nfs_open_context(filp->f_path.dentry, filp->f_mode);
-+	ctx = alloc_nfs_open_context(file_dentry(filp), filp->f_mode);
- 	if (IS_ERR(ctx))
- 		return PTR_ERR(ctx);
- 	nfs_file_set_open_context(filp, ctx);
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 57ca1c8..2a9ff14 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -26,7 +26,7 @@ static int
- nfs4_file_open(struct inode *inode, struct file *filp)
- {
- 	struct nfs_open_context *ctx;
--	struct dentry *dentry = filp->f_path.dentry;
-+	struct dentry *dentry = file_dentry(filp);
- 	struct dentry *parent = NULL;
- 	struct inode *dir;
- 	unsigned openflags = filp->f_flags;
-@@ -57,7 +57,7 @@ nfs4_file_open(struct inode *inode, struct file *filp)
- 	parent = dget_parent(dentry);
- 	dir = d_inode(parent);
- 
--	ctx = alloc_nfs_open_context(filp->f_path.dentry, filp->f_mode);
-+	ctx = alloc_nfs_open_context(file_dentry(filp), filp->f_mode);
- 	err = PTR_ERR(ctx);
- 	if (IS_ERR(ctx))
- 		goto out;
 -- 
 2.5.0
 
