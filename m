@@ -1,99 +1,230 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: check if in-inode xattr is corrupted in ext4_expand_extra_isize_ea()
-Date: Sat, 26 Mar 2016 17:03:00 -0400
-Message-ID: <1459026180-8872-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4 crypto: don't let data integrity writebacks fail with ENOMEM
+Date: Sat, 26 Mar 2016 17:04:13 -0400
+Message-ID: <1459026253-9001-1-git-send-email-tytso@mit.edu>
+Cc: jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34184 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34194 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466AbcCZVDH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 26 Mar 2016 17:03:07 -0400
+	id S1754284AbcCZVEU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Mar 2016 17:04:20 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We aren't checking to see if the in-inode extended attribute is
-corrupted before we try to expand the inode's extra isize fields.
+We don't want the writeback triggered from the journal commit (in
+data=writeback mode) to cause the journal to abort due to
+generic_writepages() returning an ENOMEM error.  In addition, if
+fsync() fails with ENOMEM, most applications will probably not do the
+right thing.
 
-This can lead to potential crashes caused by the BUG_ON() check in
-ext4_xattr_shift_entries().
+So if we are doing a data integrity sync, and ext4_encrypt() returns
+ENOMEM, we will submit any queued I/O to date, and then retry the
+allocation using GFP_NOFAIL.
+
+Google-Bug-Id: 27641567
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/xattr.c | 32 ++++++++++++++++++++++++++++----
- 1 file changed, 28 insertions(+), 4 deletions(-)
+ fs/ext4/crypto.c   | 37 +++++++++++++++++++++----------------
+ fs/ext4/ext4.h     |  6 ++++--
+ fs/ext4/page-io.c  | 14 +++++++++++++-
+ fs/ext4/readpage.c |  2 +-
+ 4 files changed, 39 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 0441e05..e79bd32 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -230,6 +230,27 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
- 	return error;
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index edc053a..012fd32 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -91,7 +91,8 @@ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx)
+  * Return: An allocated and initialized encryption context on success; error
+  * value or NULL otherwise.
+  */
+-struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
++struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode,
++					    gfp_t gfp_flags)
+ {
+ 	struct ext4_crypto_ctx *ctx = NULL;
+ 	int res = 0;
+@@ -118,7 +119,7 @@ struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode)
+ 		list_del(&ctx->free_list);
+ 	spin_unlock_irqrestore(&ext4_crypto_ctx_lock, flags);
+ 	if (!ctx) {
+-		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, GFP_NOFS);
++		ctx = kmem_cache_zalloc(ext4_crypto_ctx_cachep, gfp_flags);
+ 		if (!ctx) {
+ 			res = -ENOMEM;
+ 			goto out;
+@@ -255,7 +256,8 @@ static int ext4_page_crypto(struct inode *inode,
+ 			    ext4_direction_t rw,
+ 			    pgoff_t index,
+ 			    struct page *src_page,
+-			    struct page *dest_page)
++			    struct page *dest_page,
++			    gfp_t gfp_flags)
+ 
+ {
+ 	u8 xts_tweak[EXT4_XTS_TWEAK_SIZE];
+@@ -266,7 +268,7 @@ static int ext4_page_crypto(struct inode *inode,
+ 	struct crypto_skcipher *tfm = ci->ci_ctfm;
+ 	int res = 0;
+ 
+-	req = skcipher_request_alloc(tfm, GFP_NOFS);
++	req = skcipher_request_alloc(tfm, gfp_flags);
+ 	if (!req) {
+ 		printk_ratelimited(KERN_ERR
+ 				   "%s: crypto_request_alloc() failed\n",
+@@ -307,9 +309,10 @@ static int ext4_page_crypto(struct inode *inode,
+ 	return 0;
  }
  
-+static int
-+__xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
-+			 void *end, const char *function, unsigned int line)
-+{
-+	struct ext4_xattr_entry *entry = IFIRST(header);
-+	int error = -EFSCORRUPTED;
-+
-+	if (((void *) header >= end) ||
-+	    (header->h_magic != le32_to_cpu(EXT4_XATTR_MAGIC)))
-+		goto errout;
-+	error = ext4_xattr_check_names(entry, end, entry);
-+errout:
-+	if (error)
-+		__ext4_error_inode(inode, function, line, 0,
-+				   "corrupted in-inode xattr");
-+	return error;
-+}
-+
-+#define xattr_check_inode(inode, header, end) \
-+	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
-+
- static inline int
- ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size)
+-static struct page *alloc_bounce_page(struct ext4_crypto_ctx *ctx)
++static struct page *alloc_bounce_page(struct ext4_crypto_ctx *ctx,
++				      gfp_t gfp_flags)
  {
-@@ -341,7 +362,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 	header = IHDR(inode, raw_inode);
- 	entry = IFIRST(header);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = ext4_xattr_check_names(entry, end, entry);
-+	error = xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_find_entry(&entry, name_index, name,
-@@ -477,7 +498,7 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
--	error = ext4_xattr_check_names(IFIRST(header), end, IFIRST(header));
-+	error = xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
- 	error = ext4_xattr_list_entries(dentry, IFIRST(header),
-@@ -1040,8 +1061,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	is->s.here = is->s.first;
- 	is->s.end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
--		error = ext4_xattr_check_names(IFIRST(header), is->s.end,
--					       IFIRST(header));
-+		error = xattr_check_inode(inode, header, is->s.end);
- 		if (error)
- 			return error;
- 		/* Find the named attribute. */
-@@ -1356,6 +1376,10 @@ retry:
- 	last = entry;
- 	total_ino = sizeof(struct ext4_xattr_ibody_header);
+-	ctx->w.bounce_page = mempool_alloc(ext4_bounce_page_pool, GFP_NOWAIT);
++	ctx->w.bounce_page = mempool_alloc(ext4_bounce_page_pool, gfp_flags);
+ 	if (ctx->w.bounce_page == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	ctx->flags |= EXT4_WRITE_PATH_FL;
+@@ -332,7 +335,8 @@ static struct page *alloc_bounce_page(struct ext4_crypto_ctx *ctx)
+  * error value or NULL.
+  */
+ struct page *ext4_encrypt(struct inode *inode,
+-			  struct page *plaintext_page)
++			  struct page *plaintext_page,
++			  gfp_t gfp_flags)
+ {
+ 	struct ext4_crypto_ctx *ctx;
+ 	struct page *ciphertext_page = NULL;
+@@ -340,17 +344,17 @@ struct page *ext4_encrypt(struct inode *inode,
  
-+	error = xattr_check_inode(inode, header, end);
-+	if (error)
-+		goto cleanup;
+ 	BUG_ON(!PageLocked(plaintext_page));
+ 
+-	ctx = ext4_get_crypto_ctx(inode);
++	ctx = ext4_get_crypto_ctx(inode, gfp_flags);
+ 	if (IS_ERR(ctx))
+ 		return (struct page *) ctx;
+ 
+ 	/* The encryption operation will require a bounce page. */
+-	ciphertext_page = alloc_bounce_page(ctx);
++	ciphertext_page = alloc_bounce_page(ctx, gfp_flags);
+ 	if (IS_ERR(ciphertext_page))
+ 		goto errout;
+ 	ctx->w.control_page = plaintext_page;
+ 	err = ext4_page_crypto(inode, EXT4_ENCRYPT, plaintext_page->index,
+-			       plaintext_page, ciphertext_page);
++			       plaintext_page, ciphertext_page, gfp_flags);
+ 	if (err) {
+ 		ciphertext_page = ERR_PTR(err);
+ 	errout:
+@@ -378,8 +382,8 @@ int ext4_decrypt(struct page *page)
+ {
+ 	BUG_ON(!PageLocked(page));
+ 
+-	return ext4_page_crypto(page->mapping->host,
+-				EXT4_DECRYPT, page->index, page, page);
++	return ext4_page_crypto(page->mapping->host, EXT4_DECRYPT,
++				page->index, page, page, GFP_NOFS);
+ }
+ 
+ int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
+@@ -398,11 +402,11 @@ int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 	BUG_ON(inode->i_sb->s_blocksize != PAGE_CACHE_SIZE);
+ 
+-	ctx = ext4_get_crypto_ctx(inode);
++	ctx = ext4_get_crypto_ctx(inode, GFP_NOFS);
+ 	if (IS_ERR(ctx))
+ 		return PTR_ERR(ctx);
+ 
+-	ciphertext_page = alloc_bounce_page(ctx);
++	ciphertext_page = alloc_bounce_page(ctx, GFP_NOWAIT);
+ 	if (IS_ERR(ciphertext_page)) {
+ 		err = PTR_ERR(ciphertext_page);
+ 		goto errout;
+@@ -410,11 +414,12 @@ int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
+ 
+ 	while (len--) {
+ 		err = ext4_page_crypto(inode, EXT4_ENCRYPT, lblk,
+-				       ZERO_PAGE(0), ciphertext_page);
++				       ZERO_PAGE(0), ciphertext_page,
++				       GFP_NOFS);
+ 		if (err)
+ 			goto errout;
+ 
+-		bio = bio_alloc(GFP_KERNEL, 1);
++		bio = bio_alloc(GFP_NOWAIT, 1);
+ 		if (!bio) {
+ 			err = -ENOMEM;
+ 			goto errout;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c047435..7e4e3e9 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2282,11 +2282,13 @@ extern struct kmem_cache *ext4_crypt_info_cachep;
+ bool ext4_valid_contents_enc_mode(uint32_t mode);
+ uint32_t ext4_validate_encryption_key_size(uint32_t mode, uint32_t size);
+ extern struct workqueue_struct *ext4_read_workqueue;
+-struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode);
++struct ext4_crypto_ctx *ext4_get_crypto_ctx(struct inode *inode,
++					    gfp_t gfp_flags);
+ void ext4_release_crypto_ctx(struct ext4_crypto_ctx *ctx);
+ void ext4_restore_control_page(struct page *data_page);
+ struct page *ext4_encrypt(struct inode *inode,
+-			  struct page *plaintext_page);
++			  struct page *plaintext_page,
++			  gfp_t gfp_flags);
+ int ext4_decrypt(struct page *page);
+ int ext4_encrypted_zeroout(struct inode *inode, ext4_lblk_t lblk,
+ 			   ext4_fsblk_t pblk, ext4_lblk_t len);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index d77d15f..51b3492 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -23,6 +23,7 @@
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+ #include <linux/mm.h>
++#include <linux/backing-dev.h>
+ 
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+@@ -470,9 +471,20 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 
+ 	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
+ 	    nr_to_submit) {
+-		data_page = ext4_encrypt(inode, page);
++		gfp_t gfp_flags = GFP_NOFS;
 +
- 	free = ext4_xattr_free_space(last, &min_offs, base, &total_ino);
- 	if (free >= new_extra_isize) {
- 		entry = IFIRST(header);
++	retry_encrypt:
++		data_page = ext4_encrypt(inode, page, gfp_flags);
+ 		if (IS_ERR(data_page)) {
+ 			ret = PTR_ERR(data_page);
++			if (ret == ENOMEM && wbc->sync_mode == WB_SYNC_ALL) {
++				if (io->io_bio) {
++					ext4_io_submit(io);
++					congestion_wait(BLK_RW_ASYNC, HZ/50);
++				}
++				gfp_flags |= __GFP_NOFAIL;
++				goto retry_encrypt;
++			}
+ 			data_page = NULL;
+ 			goto out;
+ 		}
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index 5dc5e95..bc7642f 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -279,7 +279,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 
+ 			if (ext4_encrypted_inode(inode) &&
+ 			    S_ISREG(inode->i_mode)) {
+-				ctx = ext4_get_crypto_ctx(inode);
++				ctx = ext4_get_crypto_ctx(inode, GFP_NOFS);
+ 				if (IS_ERR(ctx))
+ 					goto set_error_page;
+ 			}
 -- 
 2.5.0
 
