@@ -1,65 +1,80 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [PATCH 5/5] dax: handle media errors in dax_do_io
-Date: Fri, 25 Mar 2016 22:36:17 +0000
-Message-ID: <1458945374.5501.9.camel@intel.com>
-References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-	 <1458861450-17705-6-git-send-email-vishal.l.verma@intel.com>
-	 <20160325104549.GB10525@infradead.org> <1458939566.5501.5.camel@intel.com>
-	 <CAPcyv4jFPYYP=eL72V6MmW2fcXFP3PfQfcO+zYV4NN7rdu1ksg@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Ext4 jbd2 state lock race condition
+Date: Sat, 26 Mar 2016 11:21:29 -0400
+Message-ID: <20160326152129.GC4539@thunk.org>
+References: <CAF=9w3kK=kupvjVnG+dyiwYHnf530EDnQZqb+T+N+4FwW3GpfA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"hch@infradead.org" <hch@infradead.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: "Williams, Dan J" <dan.j.williams@intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Da-Chang Guan <dcguan@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:9967 "EHLO mga01.intel.com"
+Received: from imap.thunk.org ([74.207.234.97]:33638 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753965AbcCYWgu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Mar 2016 18:36:50 -0400
-In-Reply-To: <CAPcyv4jFPYYP=eL72V6MmW2fcXFP3PfQfcO+zYV4NN7rdu1ksg@mail.gmail.com>
-Content-Language: en-US
-Content-ID: <D29E0545A3E9D4499429DC06CF52E08B@intel.com>
+	id S1752383AbcCZPVe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 26 Mar 2016 11:21:34 -0400
+Content-Disposition: inline
+In-Reply-To: <CAF=9w3kK=kupvjVnG+dyiwYHnf530EDnQZqb+T+N+4FwW3GpfA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-T24gRnJpLCAyMDE2LTAzLTI1IGF0IDE0OjQyIC0wNzAwLCBEYW4gV2lsbGlhbXMgd3JvdGU6DQo+
-IE9uIEZyaSwgTWFyIDI1LCAyMDE2IGF0IDE6NTkgUE0sIFZlcm1hLCBWaXNoYWwgTA0KPiA8dmlz
-aGFsLmwudmVybWFAaW50ZWwuY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTYtMDMt
-MjUgYXQgMDM6NDUgLTA3MDAsIENocmlzdG9waCBIZWxsd2lnIHdyb3RlOg0KPiA+ID4gDQo+ID4g
-PiBPbiBUaHUsIE1hciAyNCwgMjAxNiBhdCAwNToxNzozMFBNIC0wNjAwLCBWaXNoYWwgVmVybWEg
-d3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gZGF4X2RvX2lvIChjYWxsZWQgZm9y
-IHJlYWQoKSBvciB3cml0ZSgpIGZvciBhIGRheCBmaWxlIHN5c3RlbSkNCj4gPiA+ID4gbWF5DQo+
-ID4gPiA+IGZhaWwNCj4gPiA+ID4gaW4gdGhlIHByZXNlbmNlIG9mIGJhZCBibG9ja3Mgb3IgbWVk
-aWEgZXJyb3JzLiBTaW5jZSB3ZSBleHBlY3QNCj4gPiA+ID4gdGhhdA0KPiA+ID4gPiBhDQo+ID4g
-PiA+IHdyaXRlIHNob3VsZCBjbGVhciBtZWRpYSBlcnJvcnMgb24gbnZkaW1tcywgbWFrZSBkYXhf
-ZG9faW8gZmFsbA0KPiA+ID4gPiBiYWNrIHRvDQo+ID4gPiA+IHRoZSBkaXJlY3RfSU8gcGF0aCwg
-d2hpY2ggd2lsbCBzZW5kIGRvd24gYSBiaW8gdG8gdGhlIGRyaXZlciwNCj4gPiA+ID4gd2hpY2gN
-Cj4gPiA+ID4gY2FuDQo+ID4gPiA+IHRoZW4gYXR0ZW1wdCB0byBjbGVhciB0aGUgZXJyb3IuDQo+
-ID4gPiBMZWF2ZSB0aGUgZmFsbGJhY2sgb24gLUVJTyB0byB0aGUgY2FsbGVycyBwbGVhc2UuwqDC
-oFRoZXkgZ2VuZXJhbGx5DQo+ID4gPiBjYWxsDQo+ID4gPiBfX2Jsb2NrZGV2X2RpcmVjdF9JTyBh
-bnl3YXksIHNvIGl0IHNob3VsZCBhY3R1YWxseSBiZWNvbWUgc2ltcGxlcg0KPiA+ID4gdGhhdA0K
-PiA+ID4gd2F5Lg0KPiA+IEkgdGhvdWdodCBvZiB0aGlzLCBidXQgbWFkZSB0aGUgcmV0cnlpbmcg
-aGFwcGVuIGluIHRoZSB3cmFwcGVyIHNvDQo+ID4gdGhhdA0KPiA+IGl0IGNhbiBiZSBjZW50cmFs
-aXplZC4gSWYgdGhlIGNhbGxlcnMgd2VyZSB0byBiZWNvbWUgcmVzcG9uc2libGUNCj4gPiBmb3IN
-Cj4gPiB0aGUgcmV0cnksIHRoZW4gYW55IG5ldyBjYWxsZXJzIG9mIGRheF9kb19pbyBtaWdodCBu
-b3QgcmVhbGl6ZSB0aGV5DQo+ID4gYXJlDQo+ID4gcmVzcG9uc2libGUgZm9yIHJldHJ5aW5nLCBh
-bmQgaGl0IHByb2JsZW1zLg0KPiBUaGF0J3MgdGhlaXIgcHJlcm9nYXRpdmUgb3RoZXJ3aXNlIHlv
-dSBhcmUgcHJlY2x1ZGluZyBhbiBhbHRlcm5hdGUNCj4gaGFuZGxpbmcgb2YgYSBkYXhfZG9faW8o
-KSBmYWlsdXJlLsKgwqBNYXliZSBhIGZzIG9yIHVwcGVyIGxheWVyIGNhbg0KPiByZWNvdmVyIGlu
-IGEgZGlmZmVyZW50IG1hbm5lciB0aGFuIHJlLXN1Ym1pdCB0aGUgSS9PIHRvIHRoZQ0KPiBfX2Js
-b2NrZGV2X2RpcmVjdF9JTyBwYXRoLg0KDQpJJ20gaGFwcHkgdG8gbWFrZSB0aGUgY2hhbmdlLCBi
-dXQgd2UgZG9uJ3QgcHJlY2x1ZGUgdGhhdCAtLSBfX2RheF9kb19pbw0KaXMgc3RpbGwgZXhwb3J0
-ZWQgYW5kIGF2YWlsYWJsZS4u
+On Fri, Mar 25, 2016 at 06:32:47PM +0800, Da-Chang Guan wrote:
+> Hi, all,
+> 
+>   We have a 4 core Android device has system hang issue. The stack
+> trace shows system hang may caused by jbd2 state lock racing.
+
+So this is an ancient kernel (3.7.2) --- which is extremely old.  It's
+not even a stable kernel, and in fact starting this year I stopped
+caring about 3.10 kernels since while it was disgraceful we are
+shipping phones in 2016 using kernels dating from 2013, there are no
+mobile devices I care about that will be using anything older than
+3.18 going forward.
+
+So just to set your expectations, as upstream developers we generally
+only support the latest upstream kernels.  Because I've been doing
+some work to add ext4 encrpytion support into Android, for a while I
+suffered having to support 3.10 based device kernels.  At this point,
+though, I personally have little or no interest for kernels older than
+3.18.
+
+In terms of trying to debug this, if you can reproduce the bug, you'll
+be in much better shape.  Also, if you have a serial conosle and
+CONFIG_MAGIC_SYSRQ is enabled, I'd suggest getting stack traces of all
+the CPU's so you can see who else might be holding the lock.  If you
+can't reproduce the problem, and you can't get the stack traces for
+all the CPU's using the magic sysrq, I doubt there's much that can be
+done to reproduce the problem.
+
+May I suggest upgrading to at least 3.18, preferably the latest stable
+kernel, which as of this writing is 3.18.29?  I am running regression
+tests on 3.18, and making sure that critical bug fixes are getting
+back ported to 4.4 and 3.18.  (With 3.14 and 3.10 happening if I have
+time and if it's not too difficult, but starting this year, those two
+kernels are much lower priority for me.)
+
+Best regards,
+
+>    We want to know who acquires the lock at that time so we can fix
+> it.  But we don't even know how to start debug.
+
+If you can reproduce the problem, using CONFIG_LOCKDEP will be very
+helpful.  Also perhaps useful would be to build 3.7.2 on x86, and then
+use xfstests to try flush out bugs.  I'm sure you will find them ---
+when I first started testing a 3.10-based msm kernel, I was able to
+trivially trigger kernel crashes using kvm-xfstests.  I think you'll
+find it is much easier to find the bugs on x86, and then fix up the
+kernel so it's not crashing there, and then see if that addresses your
+problem on arm, because there is a much more powerful testing
+infrastructure you can use for x86.  See:
+
+	       http://thunk.org/gce-xfstests
+
+If you can upgrade to a non-antique kernel, though, I think you'll
+save yourself much more time.  It may be that using kvm-xfstests or
+gce-xfstests to demonstrate how unstable 3.7.2 might be helpful in
+pursuading your management to let you upgrade to something a bit more
+recent.
+
+Cheers,
+
+						- Ted
