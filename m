@@ -1,25 +1,58 @@
-From: info@loan.com
-Subject: Darlehen Angebot
-Date: Sun, 27 Mar 2016 18:13:17 +0530
-Message-ID: <201603271243.u2RCFKDp011515__23301.0409436703$1459088521$gmane$org@lifc-proxy.univ-fcomte.fr>
-Reply-To: legacyassetgrougp@hotmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/5] Miklos's vfs/nfs/ext4 patches in the ext4.git tree
+Date: Sun, 27 Mar 2016 14:15:06 -0400
+Message-ID: <20160327181506.GF31129@thunk.org>
+References: <1459026600-9232-1-git-send-email-tytso@mit.edu>
+ <CA+icZUWO82Mew_3BNS32EVU1zSzpoNQqTGNyJiEJsKUocEvUUg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Recipients <info@loan.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	David Howells <dhowells@redhat.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org
+To: Sedat Dilek <sedat.dilek@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lifc.univ-fcomte.fr ([194.57.88.66]:56508 "EHLO
-	lifc-proxy.univ-fcomte.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751618AbcC0OVI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Mar 2016 10:21:08 -0400
-Content-Description: Mail message body
+Received: from imap.thunk.org ([74.207.234.97]:35578 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752561AbcC0SPP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 27 Mar 2016 14:15:15 -0400
+Content-Disposition: inline
+In-Reply-To: <CA+icZUWO82Mew_3BNS32EVU1zSzpoNQqTGNyJiEJsKUocEvUUg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sie ben=F6tigen ein Darlehen niedrige Rate? Altanlage gibt aus Darlehen=
- in g=FCnstigen Preis gilt jetzt: legacyassetgrougp@hotmail.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Sun, Mar 27, 2016 at 10:06:14AM +0200, Sedat Dilek wrote:
+> On Sat, Mar 26, 2016 at 10:09 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > I have the following patches in the ext4.git tree which I plan to push
+> > to Linus as bug fixes during this development cycles.  Al, are you
+> > happy with Miklos's v2 version of "fs: add file_dentrY()" patch?
+> >
+> > Miklos Szeredi (4):
+> >   fs: add file_dentry()
+> >   nfs: use file_dentry()
+> >   ext4: use dget_parent() in ext4_file_open()
+> >   ext4: use file_dentry()
+> >
+> > Theodore Ts'o (1):
+> >   ext4 crypto: use dget_parent() in ext4_d_revalidate()
+> >
+> 
+> I asked that already in a previous series of that patchset.
+> 
+> Are those CC-stable-tags correct?
+> 
+> fs: add file_dentry()
+> Cc: <stable@vger.kernel.org> # v4.2
+
+To quote from the commit description
+
+    This series fixes bugs in nfs and ext4 due to 4bacc9c9234c ("overlayfs:
+    Make f_path always point to the overlay and f_inode to the underlay").
+
+% git tag --contains 4bacc9c9234c | grep ^v | head -1
+v4.2
+
+Cheers,
+
+					- Ted
