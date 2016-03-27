@@ -1,58 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 0/5] Miklos's vfs/nfs/ext4 patches in the ext4.git tree
-Date: Sun, 27 Mar 2016 14:15:06 -0400
-Message-ID: <20160327181506.GF31129@thunk.org>
+Subject: Re: [PATCH 5/5] ext4 crypto: use dget_parent() in ext4_d_revalidate()
+Date: Sun, 27 Mar 2016 14:16:01 -0400
+Message-ID: <20160327181601.GG31129@thunk.org>
 References: <1459026600-9232-1-git-send-email-tytso@mit.edu>
- <CA+icZUWO82Mew_3BNS32EVU1zSzpoNQqTGNyJiEJsKUocEvUUg@mail.gmail.com>
+ <1459026600-9232-6-git-send-email-tytso@mit.edu>
+ <CA+icZUVtS+Y63LCkk_72EwJqg+BSWSLKo8=W=957Qzwq99S+wQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	David Howells <dhowells@redhat.com>,
 	Al Viro <viro@zeniv.linux.org.uk>,
 	Linux Filesystem Development List
-	<linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org
+	<linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org,
+	stable@vger.kernel.org
 To: Sedat Dilek <sedat.dilek@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35578 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752561AbcC0SPP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 27 Mar 2016 14:15:15 -0400
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CA+icZUWO82Mew_3BNS32EVU1zSzpoNQqTGNyJiEJsKUocEvUUg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CA+icZUVtS+Y63LCkk_72EwJqg+BSWSLKo8=W=957Qzwq99S+wQ@mail.gmail.com>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Mar 27, 2016 at 10:06:14AM +0200, Sedat Dilek wrote:
-> On Sat, Mar 26, 2016 at 10:09 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > I have the following patches in the ext4.git tree which I plan to push
-> > to Linus as bug fixes during this development cycles.  Al, are you
-> > happy with Miklos's v2 version of "fs: add file_dentrY()" patch?
+On Sun, Mar 27, 2016 at 10:02:46AM +0200, Sedat Dilek wrote:
+> On Sat, Mar 26, 2016 at 10:10 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > This avoids potential problems caused by a race where the inode gets
+> > renamed out from its parent directory and the parent directory is
+> > deleted while ext4_d_revalidate() is running.
 > >
-> > Miklos Szeredi (4):
-> >   fs: add file_dentry()
-> >   nfs: use file_dentry()
-> >   ext4: use dget_parent() in ext4_file_open()
-> >   ext4: use file_dentry()
-> >
-> > Theodore Ts'o (1):
-> >   ext4 crypto: use dget_parent() in ext4_d_revalidate()
-> >
+> > Fixes: 28b4c263961c
 > 
-> I asked that already in a previous series of that patchset.
+> Full Fixes-tag...
 > 
-> Are those CC-stable-tags correct?
+> Fixes: 28b4c263961c ("ext4 crypto: revalidate dentry after adding or
+> removing the key")
 > 
-> fs: add file_dentry()
-> Cc: <stable@vger.kernel.org> # v4.2
+> > Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > Cc: stable@vger.kernel.org
+> 
+> This for Linux v4.6(-rc1+) ?
 
-To quote from the commit description
+Probably v4.6-rc2 at this point, since I'm still waiting for acks from
+folks.
 
-    This series fixes bugs in nfs and ext4 due to 4bacc9c9234c ("overlayfs:
-    Make f_path always point to the overlay and f_inode to the underlay").
-
-% git tag --contains 4bacc9c9234c | grep ^v | head -1
-v4.2
-
-Cheers,
-
-					- Ted
+						- Ted
