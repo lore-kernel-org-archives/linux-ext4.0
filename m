@@ -1,51 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 115441] New: Cant boot with nvme with recent kernels
-Date: Tue, 29 Mar 2016 08:40:41 +0000
-Message-ID: <bug-115441-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: GETNEXTQUOTA causes kernel crash if quota not enabled
+Date: Tue, 29 Mar 2016 13:36:33 +0200
+Message-ID: <20160329113633.GD12993@quack.suse.cz>
+References: <20160328044339.GA15808@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:55753 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:52395 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756329AbcC2Ikq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Mar 2016 04:40:46 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7A95320212
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2016 08:40:44 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 6AD60201FE
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2016 08:40:41 +0000 (UTC)
+	id S1756825AbcC2LgF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Mar 2016 07:36:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20160328044339.GA15808@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=115441
+On Mon 28-03-16 00:43:39, Ted Tso wrote:
+> Hi Jan, this looks like a recent change that just landed in the quota
+> tree.  The crash is in dquot_get_next_id() because
+> sb_dqopt(sb)->ops[0] is NULL.
+> 
+> This looks like it was introduced in a fairly recent commit:
+> be6257b251ce ("quota: Add support for ->get_nextdqblk() for VFS
+> quota").
+> 
+> Please see reproduction below.  It can also be easily reproduced using
+> "kvm-xfstests -c encrypt generic/244")
 
-            Bug ID: 115441
-           Summary: Cant boot with nvme with recent kernels
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.3.6-040306
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: jarkko_korpi@hotmail.com
-        Regression: No
+Thanks for report! Obviously we are missing a test whether quota is
+actually enabled for the filesystem (the test generic/244 seems to be
+somewhat buggy for VFS quota based filesystems). It was not written yet
+when I was testing my changes and it never occured to me to run
+Q_GENTEXTQUOTA against a filesystem with quotas disabled... I'll fix it up.
 
-I didnt know what exactly is the component I should be targeting. Most likely
-not filesystems. The kernel version I added, does work, but any effort 4.4
-series or newer has been a result not booting system which has been fixed using
-earlier kernel.
-
-There is some regression that prevents you from booting from nvme ssd. Grub
-works, but you just cant boot from the disk.
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
