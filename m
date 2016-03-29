@@ -1,53 +1,52 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ocfs2: Fix Q_GETNEXTQUOTA for filesystem without quotas
-Date: Tue, 29 Mar 2016 18:11:44 +0200
-Message-ID: <1459267904-10755-2-git-send-email-jack@suse.cz>
-References: <1459267904-10755-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/2] quota: Handle Q_GETNEXTQUOTA when quota is disabled
+Date: Tue, 29 Mar 2016 18:11:43 +0200
+Message-ID: <1459267904-10755-1-git-send-email-jack@suse.cz>
 Cc: linux-fsdevel@vger.kernel.org, Ted Tso <tytso@mit.edu>,
 	ocfs2-devel@oss.oracle.com, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1459267904-10755-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When Q_GETNEXTQUOTA was called for filesystem with quotas disabled
-ocfs2_get_next_id() oopses. Fix the problem by checking early whether
-the filesystem has quotas enabled.
+Currently we oopsed when Q_GETNEXTQUOTA got called when quota was
+disabled. Properly check whether quota is enabled for the filesystem
+before calling into quota format handler.
 
+Reported-by: Ted Tso <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ocfs2/quota_global.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/quota/dquot.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ocfs2/quota_global.c b/fs/ocfs2/quota_global.c
-index 3892f3c079ca..ab6a6cdcf91c 100644
---- a/fs/ocfs2/quota_global.c
-+++ b/fs/ocfs2/quota_global.c
-@@ -867,6 +867,10 @@ static int ocfs2_get_next_id(struct super_block *sb, struct kqid *qid)
- 	int status = 0;
+I have queue this fix for the bug Ted reported and will push it to Linus soon.
+
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index ba827daea5a0..ff21980d0119 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -2047,11 +2047,20 @@ int dquot_get_next_id(struct super_block *sb, struct kqid *qid)
+ 	struct quota_info *dqopt = sb_dqopt(sb);
+ 	int err;
  
- 	trace_ocfs2_get_next_id(from_kqid(&init_user_ns, *qid), type);
-+	if (!sb_has_quota_loaded(sb, type)) {
-+		status = -ESRCH;
+-	if (!dqopt->ops[qid->type]->get_next_id)
+-		return -ENOSYS;
++	mutex_lock(&dqopt->dqonoff_mutex);
++	if (!sb_has_quota_active(sb, qid->type)) {
++		err = -ESRCH;
 +		goto out;
 +	}
- 	status = ocfs2_lock_global_qf(info, 0);
- 	if (status < 0)
- 		goto out;
-@@ -878,8 +882,11 @@ static int ocfs2_get_next_id(struct super_block *sb, struct kqid *qid)
- out_global:
- 	ocfs2_unlock_global_qf(info, 0);
- out:
--	/* Avoid logging ENOENT since it just means there isn't next ID */
--	if (status && status != -ENOENT)
-+	/*
-+	 * Avoid logging ENOENT since it just means there isn't next ID and
-+	 * ESRCH which means quota isn't enabled for the filesystem.
-+	 */
-+	if (status && status != -ENOENT && status != -ESRCH)
- 		mlog_errno(status);
- 	return status;
++	if (!dqopt->ops[qid->type]->get_next_id) {
++		err = -ENOSYS;
++		goto out;
++	}
+ 	mutex_lock(&dqopt->dqio_mutex);
+ 	err = dqopt->ops[qid->type]->get_next_id(sb, qid);
+ 	mutex_unlock(&dqopt->dqio_mutex);
++out:
++	mutex_unlock(&dqopt->dqonoff_mutex);
+ 
+ 	return err;
  }
 -- 
 2.6.2
