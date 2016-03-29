@@ -1,50 +1,37 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling dax_clear_sectors
-Date: Tue, 29 Mar 2016 12:37:14 -0700
-Message-ID: <CAPcyv4hcSz7zKXzW3ZtdFbgBLbe0J2oNR-QC2L83adsvU3siFw@mail.gmail.com>
-References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-	<1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
-	<CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
-	<1458939796.5501.8.camel@intel.com>
-	<CAPcyv4jWqVcav7dQPh7WHpqB6QDrCezO5jbd9QW9xH3zsU4C1w@mail.gmail.com>
-	<1459195288.15523.3.camel@intel.com>
-	<CAPcyv4jFwh679arTNoUzLZpJCSoR+KhMdEmwqddCU1RWOrjD=Q@mail.gmail.com>
-	<1459277829.6412.3.camel@intel.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 0/5] Miklos's vfs/nfs/ext4 patches in the ext4.git tree
+Date: Tue, 29 Mar 2016 20:58:45 +0100
+Message-ID: <20160329195844.GW17997@ZenIV.linux.org.uk>
+References: <1459026600-9232-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	dhowells@redhat.com,
+	Linux Filesystem Development List
+	<linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1459277829.6412.3.camel@intel.com>
+Content-Disposition: inline
+In-Reply-To: <1459026600-9232-1-git-send-email-tytso@mit.edu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 29, 2016 at 11:57 AM, Verma, Vishal L
-<vishal.l.verma@intel.com> wrote:
-> On Mon, 2016-03-28 at 16:34 -0700, Dan Williams wrote:
->
-> <>
->
->> Seems kind of sad to fail the fault due to a bad block when we were
->> going to zero it anyway, right?  I'm not seeing a compelling reason to
->> keep any zeroing in fs/dax.c.
->
-> Agreed - but how do we do this? clear_pmem needs to be able to clear an
-> arbitrary number of bytes, but to go through the driver, we'd need to
-> send down a bio? If only the driver had an rw_bytes like interface that
-> could be used by anyone... :)
+On Sat, Mar 26, 2016 at 05:09:55PM -0400, Theodore Ts'o wrote:
+> I have the following patches in the ext4.git tree which I plan to push
+> to Linus as bug fixes during this development cycles.  Al, are you
+> happy with Miklos's v2 version of "fs: add file_dentrY()" patch?
 
-I think we're ok because clear_pmem() will always happen on PAGE_SIZE,
-or HPAGE_SIZE boundaries.
+I'm not really happy, but I guess we'll have to live with that approach.
+I would still like to point out that *any* use of file_dentry() (or
+file->f_path.dentry, for that matter) is a serious red flag - odds are,
+the code using it is broken, possibly by design.
+
+I still don't understand the locking in ext4 crypto, and I'm not at all
+convinced that it is correct ;-/  OTOH, there are filesystems where we
+really need dentry and (hopefully) treat it sanely enough, so consider
+that helper and method ACKed.  I can take it via vfs.git, or leave it
+to ext4.git, or do some combination thereof (e.g. the infrastructure
+goes into never-rebased branch in vfs.git, with ext4/btrfs/nfs merging
+from it).  Up to you...
+
+Al, still bloody unhappy about the whole pile of worms...
