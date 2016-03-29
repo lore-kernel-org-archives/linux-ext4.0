@@ -1,129 +1,136 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling dax_clear_sectors
-Date: Mon, 28 Mar 2016 16:34:16 -0700
-Message-ID: <CAPcyv4jFwh679arTNoUzLZpJCSoR+KhMdEmwqddCU1RWOrjD=Q@mail.gmail.com>
-References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-	<1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
-	<CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
-	<1458939796.5501.8.camel@intel.com>
-	<CAPcyv4jWqVcav7dQPh7WHpqB6QDrCezO5jbd9QW9xH3zsU4C1w@mail.gmail.com>
-	<1459195288.15523.3.camel@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1459195288.15523.3.camel@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: [PATCH e2fsprogs] include sys/sysmacros.h as needed
+Date: Mon, 28 Mar 2016 20:42:48 -0400
+Message-ID: <1459212168-25407-1-git-send-email-vapier@gentoo.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.gentoo.org ([140.211.166.183]:41822 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753255AbcC2Amx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Mar 2016 20:42:53 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 93D61340943
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Mar 2016 00:42:52 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 28, 2016 at 1:01 PM, Verma, Vishal L
-<vishal.l.verma@intel.com> wrote:
-> On Fri, 2016-03-25 at 14:20 -0700, Dan Williams wrote:
->> On Fri, Mar 25, 2016 at 2:03 PM, Verma, Vishal L
->> <vishal.l.verma@intel.com> wrote:
->> >
->> > On Fri, 2016-03-25 at 11:47 -0700, Dan Williams wrote:
->> > >
->> > > On Thu, Mar 24, 2016 at 4:17 PM, Vishal Verma <vishal.l.verma@int
->> > > el.c
->> > > om> wrote:
->> > > >
->> > > >
->> > > > From: Matthew Wilcox <matthew.r.wilcox@intel.com>
->> > > >
->> > > > dax_clear_sectors() cannot handle poisoned blocks.  These must
->> > > > be
->> > > > zeroed using the BIO interface instead.  Convert ext2 and XFS
->> > > > to
->> > > > use
->> > > > only sb_issue_zerout().
->> > > >
->> > > > Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
->> > > > [vishal: Also remove the dax_clear_sectors function entirely]
->> > > > Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
->> > > > ---
->> > > >  fs/dax.c               | 32 --------------------------------
->> > > >  fs/ext2/inode.c        |  7 +++----
->> > > >  fs/xfs/xfs_bmap_util.c |  9 ---------
->> > > >  include/linux/dax.h    |  1 -
->> > > >  4 files changed, 3 insertions(+), 46 deletions(-)
->> > > >
->> > > > diff --git a/fs/dax.c b/fs/dax.c
->> > > > index bb7e9f8..a30481e 100644
->> > > > --- a/fs/dax.c
->> > > > +++ b/fs/dax.c
->> > > > @@ -78,38 +78,6 @@ struct page *read_dax_sector(struct
->> > > > block_device
->> > > > *bdev, sector_t n)
->> > > >         return page;
->> > > >  }
->> > > >
->> > > > -/*
->> > > > - * dax_clear_sectors() is called from within transaction
->> > > > context
->> > > > from XFS,
->> > > > - * and hence this means the stack from this point must follow
->> > > > GFP_NOFS
->> > > > - * semantics for all operations.
->> > > > - */
->> > > > -int dax_clear_sectors(struct block_device *bdev, sector_t
->> > > > _sector,
->> > > > long _size)
->> > > > -{
->> > > > -       struct blk_dax_ctl dax = {
->> > > > -               .sector = _sector,
->> > > > -               .size = _size,
->> > > > -       };
->> > > > -
->> > > > -       might_sleep();
->> > > > -       do {
->> > > > -               long count, sz;
->> > > > -
->> > > > -               count = dax_map_atomic(bdev, &dax);
->> > > > -               if (count < 0)
->> > > > -                       return count;
->> > > > -               sz = min_t(long, count, SZ_128K);
->> > > > -               clear_pmem(dax.addr, sz);
->> > > > -               dax.size -= sz;
->> > > > -               dax.sector += sz / 512;
->> > > > -               dax_unmap_atomic(bdev, &dax);
->> > > > -               cond_resched();
->> > > > -       } while (dax.size);
->> > > > -
->> > > > -       wmb_pmem();
->> > > > -       return 0;
->> > > > -}
->> > > > -EXPORT_SYMBOL_GPL(dax_clear_sectors);
->> > > What about the other unwritten extent conversions in the dax
->> > > path?
->> > > Shouldn't those be converted to block-layer zero-outs as well?
->> > Could you point me to where these might be? I thought once we've
->> > converted all the zeroout type callers (by removing
->> > dax_clear_sectors),
->> > and fixed up dax_do_io to try a driver fallback, we've handled all
->> > the
->> > media error cases in dax..
->> grep for usages of clear_pmem()... which I was hoping to eliminate
->> after this change to push zeroing down to the driver.
->
-> Ok, so I looked at these, and it looks like the majority of callers of
-> clear_pmem are from the fault path (either pmd or regular), and in
-> those cases we should be 'protected', as we would have failed at a
-> prior step (dax_map_atomic).
+The minor/major/makedev macros are not entirely standard.  glibc has had
+the definitions in sys/sysmacros.h since the start, and wants to move away
+from always defining them implicitly via sys/types.h (as this pollutes the
+namespace in violation of POSIX).  Other C libraries have already dropped
+them.  Since the configure script already checks for this header, use that
+to pull in the header in files that use these macros.
 
-Seems kind of sad to fail the fault due to a bad block when we were
-going to zero it anyway, right?  I'm not seeing a compelling reason to
-keep any zeroing in fs/dax.c.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ debugfs/debugfs.c      | 3 +++
+ lib/blkid/devname.c    | 3 +++
+ lib/blkid/devno.c      | 3 +++
+ lib/ext2fs/finddev.c   | 3 +++
+ lib/ext2fs/ismounted.c | 3 +++
+ misc/create_inode.c    | 4 ++++
+ misc/mk_hugefiles.c    | 3 +++
+ 7 files changed, 22 insertions(+)
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 0cf0837..f8b30a2 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -26,6 +26,9 @@ extern char *optarg;
+ #include <errno.h>
+ #endif
+ #include <fcntl.h>
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ 
+ #include "debugfs.h"
+ #include "uuid/uuid.h"
+diff --git a/lib/blkid/devname.c b/lib/blkid/devname.c
+index 3e2efa9..671e781 100644
+--- a/lib/blkid/devname.c
++++ b/lib/blkid/devname.c
+@@ -36,6 +36,9 @@
+ #if HAVE_SYS_MKDEV_H
+ #include <sys/mkdev.h>
+ #endif
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ #include <time.h>
+ 
+ #include "blkidP.h"
+diff --git a/lib/blkid/devno.c b/lib/blkid/devno.c
+index 479d977..61e6fc7 100644
+--- a/lib/blkid/devno.c
++++ b/lib/blkid/devno.c
+@@ -31,6 +31,9 @@
+ #if HAVE_SYS_MKDEV_H
+ #include <sys/mkdev.h>
+ #endif
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ 
+ #include "blkidP.h"
+ 
+diff --git a/lib/ext2fs/finddev.c b/lib/ext2fs/finddev.c
+index 311608d..62fa0db 100644
+--- a/lib/ext2fs/finddev.c
++++ b/lib/ext2fs/finddev.c
+@@ -31,6 +31,9 @@
+ #if HAVE_SYS_MKDEV_H
+ #include <sys/mkdev.h>
+ #endif
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ 
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c
+index e0f69dd..7404996 100644
+--- a/lib/ext2fs/ismounted.c
++++ b/lib/ext2fs/ismounted.c
+@@ -49,6 +49,9 @@
+ #if HAVE_SYS_TYPES_H
+ #include <sys/types.h>
+ #endif
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ 
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index 0de5719..03a5ba9 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -22,6 +22,10 @@
+ #include <attr/xattr.h>
+ #endif
+ #include <sys/ioctl.h>
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
++
+ #include <ext2fs/ext2fs.h>
+ #include <ext2fs/ext2_types.h>
+ #include <ext2fs/fiemap.h>
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index 71a15c5..00e95cd 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -35,6 +35,9 @@ extern int optind;
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#ifdef HAVE_SYS_SYSMACROS_H
++#include <sys/sysmacros.h>
++#endif
+ #include <libgen.h>
+ #include <limits.h>
+ #include <blkid/blkid.h>
+-- 
+2.7.4
+
