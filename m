@@ -1,8 +1,9 @@
 From: Vishal Verma <vishal.l.verma@intel.com>
-Subject: [PATCH v2 0/5] dax: handling of media errors
-Date: Tue, 29 Mar 2016 19:59:45 -0600
-Message-ID: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-Cc: Vishal Verma <vishal.l.verma@intel.com>,
+Subject: [PATCH v2 3/5] dax: enable dax in the presence of known media errors (badblocks)
+Date: Tue, 29 Mar 2016 19:59:48 -0600
+Message-ID: <1459303190-20072-4-git-send-email-vishal.l.verma@intel.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+Cc: Dan Williams <dan.j.williams@intel.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-block@vger.kernel.org,
 	xfs@oss.sgi.com,
@@ -10,7 +11,6 @@ Cc: Vishal Verma <vishal.l.verma@intel.com>,
 	linux-mm@kvack.org,
 	Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
 	Jan Kara <jack@suse.cz>,
 	Jens Axboe <axboe@fb.com>,
@@ -20,72 +20,66 @@ Cc: Vishal Verma <vishal.l.verma@intel.com>,
 	Christoph Hellwig <hch@infradead.org>
 To: linux-nvdimm@lists.01.org
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Until now, dax has been disabled if media errors were found on
-any device. This series attempts to address that.
+From: Dan Williams <dan.j.williams@intel.com>
 
-The first three patches from Dan re-enable dax even when media
-errors are present.
+1/ If a mapping overlaps a bad sector fail the request.
 
-The fourth patch from Matthew removes the
-zeroout path from dax entirely, making zeroout operations always
-go through the driver (The motivation is that if a backing device
-has media errors, and we create a sparse file on it, we don't
-want the initial zeroing to happen via dax, we want to give the
-block driver a chance to clear the errors).
+2/ Do not opportunistically report more dax-capable capacity than is
+   requested when errors present.
 
-One pending item is addressing clear_pmem usages in dax.c. clear_pmem is
-'unsafe' as it attempts to simply memcpy, and does not go through the driver.
-We have a few options of solving this:
- 1. Remove all usages of clear_pmem that are not sector-aligned. For the
-    ones that are aligned, replace them with a bio submission that goes
-    through the driver to clear errors.
- 2. Export from the block layer, either an API to zero sub-sector ranges,
-    or in general, clear errors in a range. The dax attempts to clear_pmem
-    can then use either of these and not be hit be media errors.
+[vishal: fix a conflict with system RAM collision patches]
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+---
+ block/ioctl.c         | 9 ---------
+ drivers/nvdimm/pmem.c | 8 ++++++++
+ 2 files changed, 8 insertions(+), 9 deletions(-)
 
-I'll send out a v3 with a crack at option 1, but I wanted to get these
-changes (especially the ones in xfs) out for review.
-
-The fifth patch changes all the callers of dax_do_io to check for
-EIO, and fallback to direct_IO as needed. This forces the IO to
-go through the block driver, and can attempt to clear the error.
-
-
-v2:
- - Use blockdev_issue_zeroout in xfs instead of sb_issue_zeroout (Christoph)
- - Un-wrapper-ize dax_do_io and leave the fallback to direct_IO to callers
-   (Christoph)
- - Rebase to v4.6-rc1 (fixup a couple of conflicts in ext4 and xfs)
-
-
-Dan Williams (3):
-  block, dax: pass blk_dax_ctl through to drivers
-  dax: fallback from pmd to pte on error
-  dax: enable dax in the presence of known media errors (badblocks)
-
-Vishal Verma (2):
-  dax: use sb_issue_zerout instead of calling dax_clear_sectors
-  dax: handle media errors in dax_do_io
-
- arch/powerpc/sysdev/axonram.c | 10 +++++-----
- block/ioctl.c                 |  9 ---------
- drivers/block/brd.c           |  9 +++++----
- drivers/nvdimm/pmem.c         | 17 +++++++++++++----
- drivers/s390/block/dcssblk.c  | 12 ++++++------
- fs/block_dev.c                | 19 +++++++++++++++----
- fs/dax.c                      | 36 ++----------------------------------
- fs/ext2/inode.c               | 29 ++++++++++++++++++-----------
- fs/ext4/indirect.c            | 18 +++++++++++++-----
- fs/ext4/inode.c               | 21 ++++++++++++++-------
- fs/xfs/xfs_aops.c             | 14 ++++++++++++--
- fs/xfs/xfs_bmap_util.c        | 15 ++++-----------
- include/linux/blkdev.h        |  3 +--
- include/linux/dax.h           |  1 -
- 14 files changed, 108 insertions(+), 105 deletions(-)
-
+diff --git a/block/ioctl.c b/block/ioctl.c
+index d8996bb..cd7f392 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -423,15 +423,6 @@ bool blkdev_dax_capable(struct block_device *bdev)
+ 			|| (bdev->bd_part->nr_sects % (PAGE_SIZE / 512)))
+ 		return false;
+ 
+-	/*
+-	 * If the device has known bad blocks, force all I/O through the
+-	 * driver / page cache.
+-	 *
+-	 * TODO: support finer grained dax error handling
+-	 */
+-	if (disk->bb && disk->bb->count)
+-		return false;
+-
+ 	return true;
+ }
+ #endif
+diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+index da10554..eac5f93 100644
+--- a/drivers/nvdimm/pmem.c
++++ b/drivers/nvdimm/pmem.c
+@@ -174,9 +174,17 @@ static long pmem_direct_access(struct block_device *bdev,
+ 	struct pmem_device *pmem = bdev->bd_disk->private_data;
+ 	resource_size_t offset = sector * 512 + pmem->data_offset;
+ 
++	if (unlikely(is_bad_pmem(&pmem->bb, sector, dax->size)))
++		return -EIO;
+ 	dax->addr = pmem->virt_addr + offset;
+ 	dax->pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
+ 
++	/*
++	 * If badblocks are present, limit known good range to the
++	 * requested range.
++	 */
++	if (unlikely(pmem->bb.count))
++		return dax->size;
+ 	return pmem->size - pmem->pfn_pad - offset;
+ }
+ 
 -- 
 2.5.5
 
