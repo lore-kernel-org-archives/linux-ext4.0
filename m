@@ -1,191 +1,131 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/4] jbd2: Add support for avoiding data writes during transaction commits
-Date: Wed, 30 Mar 2016 18:19:26 +0200
-Message-ID: <1459354767-8693-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 4/4] ext4: Do not ask jbd2 to write data for delalloc buffers
+Date: Wed, 30 Mar 2016 18:19:27 +0200
+Message-ID: <1459354767-8693-5-git-send-email-jack@suse.cz>
 References: <1459354767-8693-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Weller.Huang@cn.bosch.com,
 	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44277 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:44273 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754625AbcC3QTI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755030AbcC3QTI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 30 Mar 2016 12:19:08 -0400
 In-Reply-To: <1459354767-8693-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently when filesystem needs to make sure data is on permanent
-storage before committing a transaction it adds inode to transaction's
-inode list. During transaction commit, jbd2 writes back all dirty
-buffers that have allocated underlying blocks and waits for the IO to
-finish. However when doing writeback for delayed allocated data, we
-allocate blocks and immediately submit the data. Thus asking jbd2 to
-write dirty pages just unnecessarily adds more work to jbd2 possibly
-writing back other redirtied blocks.
+Currently we ask jbd2 to write all dirty allocated buffers before
+committing a transaction when doing writeback of delay allocated blocks.
+However this is unnecessary since we move all pages to writeback state
+before dropping a transaction handle and then submit all the necessary
+IO. We still need the transaction commit to wait for all the outstanding
+writeback before flushing disk caches during transaction commit to avoid
+data exposure issues though. Use the new jbd2 capability and ask it to
+only wait for outstanding writeback during transaction commit when
+writing back data in ext4_writepages().
 
-Add support to jbd2 to allow filesystem to ask jbd2 to only wait for
-outstanding data writes before committing a transaction and thus avoid
-unnecessary writes.
-
+Tested-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4_jbd2.h   |  3 ++-
- fs/jbd2/commit.c      |  4 ++++
- fs/jbd2/journal.c     |  3 ++-
- fs/jbd2/transaction.c | 22 ++++++++++++++++++----
- fs/ocfs2/journal.h    |  2 +-
- include/linux/jbd2.h  | 13 +++++++++++--
- 6 files changed, 38 insertions(+), 9 deletions(-)
+ fs/ext4/ext4.h        |  3 +++
+ fs/ext4/ext4_jbd2.h   | 12 +++++++++++-
+ fs/ext4/inode.c       | 10 +++++++---
+ fs/ext4/move_extent.c |  2 +-
+ 4 files changed, 22 insertions(+), 5 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8647d1253903..118bd14c1c20 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -581,6 +581,9 @@ enum {
+ #define EXT4_GET_BLOCKS_ZERO			0x0200
+ #define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
+ 					EXT4_GET_BLOCKS_ZERO)
++	/* Caller will submit data before dropping transaction handle. This
++	 * allows jbd2 to avoid submitting data before commit. */
++#define EXT4_GET_BLOCKS_IO_SUBMIT		0x0400
+ 
+ /*
+  * The bit position of these flags must not overlap with any of the
 diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 5f5846211095..f1c940b38b30 100644
+index f1c940b38b30..09c1ef38cbe6 100644
 --- a/fs/ext4/ext4_jbd2.h
 +++ b/fs/ext4/ext4_jbd2.h
-@@ -362,7 +362,8 @@ static inline int ext4_journal_force_commit(journal_t *journal)
- static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
+@@ -359,7 +359,8 @@ static inline int ext4_journal_force_commit(journal_t *journal)
+ 	return 0;
+ }
+ 
+-static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
++static inline int ext4_jbd2_inode_add_write(handle_t *handle,
++					    struct inode *inode)
  {
  	if (ext4_handle_valid(handle))
--		return jbd2_journal_file_inode(handle, EXT4_I(inode)->jinode);
-+		return jbd2_journal_inode_add_write(handle,
-+						    EXT4_I(inode)->jinode);
+ 		return jbd2_journal_inode_add_write(handle,
+@@ -367,6 +368,15 @@ static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
  	return 0;
  }
  
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 517f2de784cf..ad6efdabca2c 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -219,6 +219,8 @@ static int journal_submit_data_buffers(journal_t *journal,
- 
- 	spin_lock(&journal->j_list_lock);
- 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
-+		if (!(jinode->i_flags & JI_WRITE_DATA))
-+			continue;
- 		mapping = jinode->i_vfs_inode->i_mapping;
- 		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
-@@ -256,6 +258,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
- 	/* For locking, see the comment in journal_submit_data_buffers() */
- 	spin_lock(&journal->j_list_lock);
- 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
-+		if (!(jinode->i_flags & JI_WAIT_DATA))
-+			continue;
- 		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
- 		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index de73a9516a54..ad7de5f9aa69 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -94,7 +94,8 @@ EXPORT_SYMBOL(jbd2_journal_blocks_per_page);
- EXPORT_SYMBOL(jbd2_journal_invalidatepage);
- EXPORT_SYMBOL(jbd2_journal_try_to_free_buffers);
- EXPORT_SYMBOL(jbd2_journal_force_commit);
--EXPORT_SYMBOL(jbd2_journal_file_inode);
-+EXPORT_SYMBOL(jbd2_journal_inode_add_write);
-+EXPORT_SYMBOL(jbd2_journal_inode_add_wait);
- EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
- EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
- EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 01e4652d88f6..b2b25d65e994 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2462,7 +2462,8 @@ void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
- /*
-  * File inode in the inode list of the handle's transaction
-  */
--int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
-+static int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode,
-+				   unsigned long flags)
- {
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal;
-@@ -2487,12 +2488,14 @@ int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
- 	 * and if jinode->i_next_transaction == transaction, commit code
- 	 * will only file the inode where we want it.
++static inline int ext4_jbd2_inode_add_wait(handle_t *handle,
++					   struct inode *inode)
++{
++	if (ext4_handle_valid(handle))
++		return jbd2_journal_inode_add_wait(handle,
++						   EXT4_I(inode)->jinode);
++	return 0;
++}
++
+ static inline void ext4_update_inode_fsync_trans(handle_t *handle,
+ 						 struct inode *inode,
+ 						 int datasync)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8ffba0ec3b80..58e05feb999f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -694,7 +694,10 @@ out_sem:
+ 		    !(map->m_flags & EXT4_MAP_UNWRITTEN) &&
+ 		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
+ 		    ext4_should_order_data(inode)) {
+-			ret = ext4_jbd2_file_inode(handle, inode);
++			if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
++				ret = ext4_jbd2_inode_add_wait(handle, inode);
++			else
++				ret = ext4_jbd2_inode_add_write(handle, inode);
+ 			if (ret)
+ 				return ret;
+ 		}
+@@ -2320,7 +2323,8 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+ 	 * the data was copied into the page cache.
  	 */
--	if (jinode->i_transaction == transaction ||
--	    jinode->i_next_transaction == transaction)
-+	if ((jinode->i_transaction == transaction ||
-+	    jinode->i_next_transaction == transaction) &&
-+	    (jinode->i_flags & flags) == flags)
- 		return 0;
+ 	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
+-			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
++			   EXT4_GET_BLOCKS_METADATA_NOFAIL |
++			   EXT4_GET_BLOCKS_IO_SUBMIT;
+ 	dioread_nolock = ext4_should_dioread_nolock(inode);
+ 	if (dioread_nolock)
+ 		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
+@@ -3635,7 +3639,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		err = 0;
+ 		mark_buffer_dirty(bh);
+ 		if (ext4_should_order_data(inode))
+-			err = ext4_jbd2_file_inode(handle, inode);
++			err = ext4_jbd2_inode_add_write(handle, inode);
+ 	}
  
- 	spin_lock(&journal->j_list_lock);
--
-+	jinode->i_flags |= flags;
-+	/* Is inode already attached where we need it? */
- 	if (jinode->i_transaction == transaction ||
- 	    jinode->i_next_transaction == transaction)
- 		goto done;
-@@ -2523,6 +2526,17 @@ done:
- 	return 0;
- }
+ unlock:
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 4098acc701c3..93e9635bc65e 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -400,7 +400,7 @@ data_copy:
  
-+int jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *jinode)
-+{
-+	return jbd2_journal_file_inode(handle, jinode,
-+				       JI_WRITE_DATA | JI_WAIT_DATA);
-+}
-+
-+int jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *jinode)
-+{
-+	return jbd2_journal_file_inode(handle, jinode, JI_WAIT_DATA);
-+}
-+
- /*
-  * File truncate and transaction commit interact with each other in a
-  * non-trivial way.  If a transaction writing data block A is
-diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
-index f4cd3c3e9fb7..497a4171ef61 100644
---- a/fs/ocfs2/journal.h
-+++ b/fs/ocfs2/journal.h
-@@ -619,7 +619,7 @@ static inline int ocfs2_calc_tree_trunc_credits(struct super_block *sb,
+ 	/* Even in case of data=writeback it is reasonable to pin
+ 	 * inode to transaction, to prevent unexpected data loss */
+-	*err = ext4_jbd2_file_inode(handle, orig_inode);
++	*err = ext4_jbd2_inode_add_write(handle, orig_inode);
  
- static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
- {
--	return jbd2_journal_file_inode(handle, &OCFS2_I(inode)->ip_jinode);
-+	return jbd2_journal_inode_add_write(handle, &OCFS2_I(inode)->ip_jinode);
- }
- 
- static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index fd1083c46c61..39511484ad10 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -403,11 +403,19 @@ static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
- 
- /* Flags in jbd_inode->i_flags */
- #define __JI_COMMIT_RUNNING 0
--/* Commit of the inode data in progress. We use this flag to protect us from
-+#define __JI_WRITE_DATA 1
-+#define __JI_WAIT_DATA 2
-+
-+/*
-+ * Commit of the inode data in progress. We use this flag to protect us from
-  * concurrent deletion of inode. We cannot use reference to inode for this
-  * since we cannot afford doing last iput() on behalf of kjournald
-  */
- #define JI_COMMIT_RUNNING (1 << __JI_COMMIT_RUNNING)
-+/* Write allocated dirty buffers in this inode before commit */
-+#define JI_WRITE_DATA (1 << __JI_WRITE_DATA)
-+/* Wait for outstanding data writes for this inode before commit */
-+#define JI_WAIT_DATA (1 << __JI_WAIT_DATA)
- 
- /**
-  * struct jbd_inode is the structure linking inodes in ordered mode
-@@ -1270,7 +1278,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
- extern int	   jbd2_journal_force_commit_nested(journal_t *);
--extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
-+extern int	   jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *inode);
-+extern int	   jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *inode);
- extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
- 				struct jbd2_inode *inode, loff_t new_size);
- extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+ unlock_pages:
+ 	unlock_page(pagep[0]);
 -- 
 2.6.2
 
