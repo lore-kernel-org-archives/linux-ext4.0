@@ -1,97 +1,145 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [oss-security] CVE Request - Linux kernel (multiple versions)
- ext2/ext3  filesystem DoS
-Date: Wed, 30 Mar 2016 16:43:04 -0400
-Message-ID: <20160330204304.GD6207@thunk.org>
-References: <f4df42b35dd9a6c8c6851eba66b2b3f1.squirrel@webmail-etu.univ-nantes.fr>
- <1459286067.2596.18.camel@debian.org>
- <57514A3C-DBAD-4E5E-98EA-23E490629C02@dilger.ca>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: block allocator issue with ext4+DAX
+Date: Wed, 30 Mar 2016 16:01:29 -0600
+Message-ID: <20160330220129.GA9101@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Yves-Alexis Perez <corsac@debian.org>,
-	oss-security@lists.openwall.com, Theodore Tso <tytso@google.com>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49206 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751156AbcC3UnT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Mar 2016 16:43:19 -0400
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <57514A3C-DBAD-4E5E-98EA-23E490629C02@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 29, 2016 at 04:56:11PM -0600, Andreas Dilger wrote:
-> On Mar 29, 2016, at 3:14 PM, Yves-Alexis Perez <corsac@debian.org> wr=
-ote:
-> >=20
-> > [dropping MITRE from CC since it's not about the CVE]
-> > [adding ext and Theodore to CC]
-> >=20
-> > On mar., 2016-03-29 at 19:24 +0200, Hugues ANGUELKOV wrote:
-> >> Hello,
-> >>=20
-> >> The linux kernel is prone to a Denial of service when mounting spe=
-cially
-> >> crafted ext2/ext3 (possibly ext4) filesystems. This occurs in the =
-function
-> >> ext4_handle_error who call the panic function on precise circumsta=
-nce.
-> >=20
-> > Did you contact the upstream maintainers about this? I'm adding the=
-m just in
-> > case they're not already aware of that=E2=80=A6
-> >=20
-> >> This was tested on severals linux kernel version: 3.10, 3.18, 3.19=
-, on
-> >> real hardware and Xen DomU PV & HVM (the crash report attached is =
-from a
-> >> Fedora 3.18 PV DomU), from different distribution release: Ubuntu,=
- CentOS,
-> >> Fedora, Linux Mint, QubesOS.
-> >> This a low security impact bug, because generally only root can mo=
-unt
-> >> image, however on Desktop (or possibly server?) system configured =
-with
-> >> automount the bug is easily triggable (think of android smartphone=
-? Haven't
-> >> test yet).
->=20
-> It seems that the important point here is that the filesystem has
-> "s_errors=3DEXT4_ERRORS_PANIC" set in the superblock?  I don't think
-> the actual corruption that triggered the ext4_error() call is importa=
-nt,
-> since there are any number of other failure cases that could generate
-> a similar error.
->=20
-> It seems practical to change s_errors at mount time from EXT4_ERRORS_=
-PANIC
-> to EXT4_ERRORS_RO for filesystems mounted by regular users.  The ques=
-tion
-> is whether there is a way for the ext4 code to know this at mount tim=
-e?
+I've hit an issue in my testing which I believe to be related to the ext4
+block allocator when using the DAX mount option.  I originally found this
+issue with the generic/102 xfstest, but have reduced it to the minimal
+reproducer at the bottom of this email.  I've been able to reproduce this with
+both BRD and with PMEM as the underlying block device.
 
-You can mount the file system with "mount -o errors=3Dcontinue" and thi=
-s
-will override the default behavior specified in the super block.
+For this test we're running in a very small filesystem, only 512 MiB.  We
+fallocate() 400 MiB of that space, unlink the file, then try and rewrite that
+400 MiB file one chunk at a time.
 
-I would argue that a Desktop or server system that had automount
-should either (a) mount with -o errors=3Dcontinue, or (b) force an fsck
-on the file system before mounting it.
+What actually happens is that during the rewrite we run out of memory and the
+DAX call to get_block() in dax_io() fails with -ENOSPC.
 
-So I think this is a particularly meaningless CVE, which is why I have
-zero respect for people who try to make any kind of conclusion based
-on CVE counts.   I certainly don't plan to do anything about this.
+Here are the steps to reproduce this issue:
 
-You might as well complain that since the system ships with a reboot
-command that can be executed by a clueless root user, that this is a
-potential DOS attack scenario deserving of a CVE....
+  # fdisk -l /dev/ram0
+  Disk /dev/ram0: 1 GiB, 1073741824 bytes, 2097152 sectors
+  Units: sectors of 1 * 512 = 512 bytes
+  Sector size (logical/physical): 512 bytes / 4096 bytes
+  I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+  
+  # mkfs.ext4 /dev/ram0 512M
+  
+  # mount /dev/ram0 /mnt
+  
+  # gcc -o test test.c
+  
+  # ./test	# success!
+  
+  # umount /mnt
+  
+  # mount -o dax /dev/ram0 /mnt	# requires CONFIG_BLK_DEV_RAM_DAX
+  
+  # ./test	# failure
+  Partial write - only 577536 written
 
-	      	     	      		   - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This test succeeds with xfs, ext2, and with ext4 without the DAX mount option.
+I've also tried it with O_DIRECT, and that has the same behavior - we succeed
+without DAX and fail with DAX.
+
+Another clue is that a sync() call in the middle of the test between the
+unlink and the following writes clears up the issue.
+
+Something that might be related is the output in
+/proc/fs/ext4/ram0/mb_groups.  Here is that output when we're in a good
+state, and the writes will succeed:
+
+#group: free  frags first [ 2^0   2^1   2^2   2^3   2^4   2^5   2^6   2^7 2^8   2^9   2^10  2^11  2^12  2^13  ]
+#0    : 30673 1     2095  [ 1     0     0     0     1     0     1     1     1 1     1     0     1     3     ]
+#1    : 32735 1     33    [ 1     1     1     1     1     0     1     1     1 1     1     1     1     3     ]
+#2    : 28672 1     4096  [ 0     0     0     0     0     0     0     0     0 0     0     0     1     3     ]
+#3    : 32735 1     33    [ 1     1     1     1     1     0     1     1     1 1     1     1     1     3     ]
+
+Here is the output in that file when we're in a bad state, and our writes are
+about to fail:
+
+#group: free  frags first [ 2^0   2^1   2^2   2^3   2^4   2^5   2^6   2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]
+#0    : 18385 1     14383 [ 1     0     0     0     1     0     1     1     1     1     1     0     0     2     ]
+#1    : 2015  1     33    [ 1     1     1     1     1     0     1     1     1     1     1     0     0     0     ]
+#2    : 0     0     32768 [ 0     0     0     0     0     0     0     0     0     0     0     0     0     0     ]
+#3    : 2015  1     33    [ 1     1     1     1     1     0     1     1     1     1     1     0     0     0     ]
+
+It appears as though we've exhausted group #2.  Interestingly, if I run sync()
+at this point it takes us from the bad output to the good, which leads me to
+believe the newly unlinked blocks in group #2 are finally being freed back
+into that group for reallocation or something. (I've clearly reached the
+limits of my ext4-fu. :)  )
+
+I'm happy to help test proposed fixes.
+
+Thanks,
+- Ross
+
+---
+#define _GNU_SOURCE
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define MB(a) ((a)*1024ULL*1024)
+
+int main(int argc, char *argv[])
+{
+	int i, fd, ret;
+	void *buffer; 
+
+	buffer = malloc(MB(1));
+
+	fd = open("/mnt/file", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		perror("fd");
+		return 1;
+	}
+
+	ret = fallocate(fd, 0, 0, MB(400));
+	if (ret) {
+		perror("fallocate");
+		return 1;
+	}
+	close(fd);
+
+	unlink("/mnt/file");
+
+	/* a sync() call here makes the DAX case of this test pass */
+//	sync();
+
+	fd = open("/mnt/file", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		perror("fd");
+		return 1;
+	}
+
+	for (i = 0; i < 400; i++) {
+		ret = write(fd, buffer, MB(1));
+
+		if (ret < 0) {
+			perror("write");
+			return 1;
+		} else if (ret != MB(1)) {
+			fprintf(stderr, "Partial write - only %lu written\n",
+					ret);
+			return 1;
+		}
+	}
+
+	close(fd);
+	free(buffer);
+	return 0;
+}
