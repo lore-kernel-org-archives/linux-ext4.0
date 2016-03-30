@@ -1,44 +1,70 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 29 Mar 2016 23:56:46 -0700
-Message-ID: <20160330065646.GA13123@infradead.org>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
- <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
- <20160330063415.GA2132@infradead.org>
- <1459320877.4102.3.camel@kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling
+ dax_clear_sectors
+Date: Wed, 30 Mar 2016 09:49:26 +0200
+Message-ID: <20160330074926.GC12776@quack.suse.cz>
+References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
+ <1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
+ <CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
+ <1458939796.5501.8.camel@intel.com>
+ <CAPcyv4jWqVcav7dQPh7WHpqB6QDrCezO5jbd9QW9xH3zsU4C1w@mail.gmail.com>
+ <1459195288.15523.3.camel@intel.com>
+ <CAPcyv4jFwh679arTNoUzLZpJCSoR+KhMdEmwqddCU1RWOrjD=Q@mail.gmail.com>
+ <1459277829.6412.3.camel@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Vishal Verma <vishal.l.verma@intel.com>,
-	linux-block@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	linux-nvdimm@ml01.01.org, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, Jens Axboe <axboe@fb.com>, linux-mm@kvack.org,
-	Matthew Wilcox <matthew.r.wilcox@intel.com>,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-To: Vishal Verma <vishal@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Williams, Dan J" <dan.j.williams@intel.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1459320877.4102.3.camel@kernel.org>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <1459277829.6412.3.camel@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 30, 2016 at 12:54:37AM -0600, Vishal Verma wrote:
-> On Tue, 2016-03-29 at 23:34 -0700, Christoph Hellwig wrote:
-> > Hi Vishal,
-> > 
-> > still NAK to calling the direct I/O code directly from the dax code.
-> 
-> Hm, I thought this was what you meant -- do the fallback/retry attempts
-> at the callers of dax_do_io instead of the new dax wrapper function..
-> Did I misunderstand you?
+On Tue 29-03-16 18:57:16, Verma, Vishal L wrote:
+> On Mon, 2016-03-28 at 16:34 -0700, Dan Williams wrote:
+>=20
+> <>
+>=20
+> > Seems kind of sad to fail the fault due to a bad block when we were
+> > going to zero it anyway, right?=A0=A0I'm not seeing a compelling re=
+ason to
+> > keep any zeroing in fs/dax.c.
+>=20
+> Agreed - but how do we do this? clear_pmem needs to be able to clear =
+an
+> arbitrary number of bytes, but to go through the driver, we'd need to
+> send down a bio? If only the driver had an rw_bytes like interface th=
+at
+> could be used by anyone... :)
 
-Sorry, it is.  I misread fs/block_dev.c as fs/dax.c before my first
-coffee this morning.  I'll properly review the series in the afternoon..
+Actually, my patches for page fault locking remove zeroing from
+dax_insert_mapping() and __dax_pmd_fault() - the zeroing now happens fr=
+om
+the filesystem only and the zeroing in those two functions is just a de=
+ad
+code...
 
+								Honza
+--=20
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
