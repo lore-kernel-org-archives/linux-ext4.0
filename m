@@ -1,131 +1,53 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] ext4: Do not ask jbd2 to write data for delalloc buffers
-Date: Wed, 30 Mar 2016 18:19:27 +0200
-Message-ID: <1459354767-8693-5-git-send-email-jack@suse.cz>
-References: <1459354767-8693-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Weller.Huang@cn.bosch.com,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: "Navin P.S" <navinp1912@gmail.com>
+Subject: [PATCH 1/1] Fix Ubsan error
+Date: Wed, 30 Mar 2016 22:29:55 +0530
+Message-ID: <CAA=40849KSFkpG3kkppAruwxfqtQwTw0KsV-LXR5wODdspxDWw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44273 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755030AbcC3QTI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 30 Mar 2016 12:19:08 -0400
-In-Reply-To: <1459354767-8693-1-git-send-email-jack@suse.cz>
+Received: from mail-vk0-f51.google.com ([209.85.213.51]:33629 "EHLO
+	mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753127AbcC3RAf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Mar 2016 13:00:35 -0400
+Received: by mail-vk0-f51.google.com with SMTP id k1so69378734vkb.0
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Mar 2016 10:00:35 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we ask jbd2 to write all dirty allocated buffers before
-committing a transaction when doing writeback of delay allocated blocks.
-However this is unnecessary since we move all pages to writeback state
-before dropping a transaction handle and then submit all the necessary
-IO. We still need the transaction commit to wait for all the outstanding
-writeback before flushing disk caches during transaction commit to avoid
-data exposure issues though. Use the new jbd2 capability and ask it to
-only wait for outstanding writeback during transaction commit when
-writing back data in ext4_writepages().
+Hi,
+  This fixes bugs 114701 and 112161 at bugzilla.kernel.org
+  It is caused due to left shift by a negative value which is undefined.
+  Since these values are not used after a negative shift the change
+  introduces a break.
 
-Tested-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Navin P.S <navinp1912@gmail.com>
 ---
- fs/ext4/ext4.h        |  3 +++
- fs/ext4/ext4_jbd2.h   | 12 +++++++++++-
- fs/ext4/inode.c       | 10 +++++++---
- fs/ext4/move_extent.c |  2 +-
- 4 files changed, 22 insertions(+), 5 deletions(-)
+ fs/ext4/mballoc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8647d1253903..118bd14c1c20 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -581,6 +581,9 @@ enum {
- #define EXT4_GET_BLOCKS_ZERO			0x0200
- #define EXT4_GET_BLOCKS_CREATE_ZERO		(EXT4_GET_BLOCKS_CREATE |\
- 					EXT4_GET_BLOCKS_ZERO)
-+	/* Caller will submit data before dropping transaction handle. This
-+	 * allows jbd2 to avoid submitting data before commit. */
-+#define EXT4_GET_BLOCKS_IO_SUBMIT		0x0400
- 
- /*
-  * The bit position of these flags must not overlap with any of the
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index f1c940b38b30..09c1ef38cbe6 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -359,7 +359,8 @@ static inline int ext4_journal_force_commit(journal_t *journal)
- 	return 0;
- }
- 
--static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
-+static inline int ext4_jbd2_inode_add_write(handle_t *handle,
-+					    struct inode *inode)
- {
- 	if (ext4_handle_valid(handle))
- 		return jbd2_journal_inode_add_write(handle,
-@@ -367,6 +368,15 @@ static inline int ext4_jbd2_file_inode(handle_t *handle, struct inode *inode)
- 	return 0;
- }
- 
-+static inline int ext4_jbd2_inode_add_wait(handle_t *handle,
-+					   struct inode *inode)
-+{
-+	if (ext4_handle_valid(handle))
-+		return jbd2_journal_inode_add_wait(handle,
-+						   EXT4_I(inode)->jinode);
-+	return 0;
-+}
-+
- static inline void ext4_update_inode_fsync_trans(handle_t *handle,
- 						 struct inode *inode,
- 						 int datasync)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8ffba0ec3b80..58e05feb999f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -694,7 +694,10 @@ out_sem:
- 		    !(map->m_flags & EXT4_MAP_UNWRITTEN) &&
- 		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
- 		    ext4_should_order_data(inode)) {
--			ret = ext4_jbd2_file_inode(handle, inode);
-+			if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
-+				ret = ext4_jbd2_inode_add_wait(handle, inode);
-+			else
-+				ret = ext4_jbd2_inode_add_write(handle, inode);
- 			if (ret)
- 				return ret;
- 		}
-@@ -2320,7 +2323,8 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
- 	 * the data was copied into the page cache.
- 	 */
- 	get_blocks_flags = EXT4_GET_BLOCKS_CREATE |
--			   EXT4_GET_BLOCKS_METADATA_NOFAIL;
-+			   EXT4_GET_BLOCKS_METADATA_NOFAIL |
-+			   EXT4_GET_BLOCKS_IO_SUBMIT;
- 	dioread_nolock = ext4_should_dioread_nolock(inode);
- 	if (dioread_nolock)
- 		get_blocks_flags |= EXT4_GET_BLOCKS_IO_CREATE_EXT;
-@@ -3635,7 +3639,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 		err = 0;
- 		mark_buffer_dirty(bh);
- 		if (ext4_should_order_data(inode))
--			err = ext4_jbd2_file_inode(handle, inode);
-+			err = ext4_jbd2_inode_add_write(handle, inode);
- 	}
- 
- unlock:
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 4098acc701c3..93e9635bc65e 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -400,7 +400,7 @@ data_copy:
- 
- 	/* Even in case of data=writeback it is reasonable to pin
- 	 * inode to transaction, to prevent unexpected data loss */
--	*err = ext4_jbd2_file_inode(handle, orig_inode);
-+	*err = ext4_jbd2_inode_add_write(handle, orig_inode);
- 
- unlock_pages:
- 	unlock_page(pagep[0]);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 50e05df..8ccfcf7 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1278,6 +1278,8 @@ static int mb_find_order_for_block(struct
+ext4_buddy *e4b, int block)
+  /* this block is part of buddy of order 'order' */
+  return order;
+  }
++ if (order > e4b->bd_blkbits)
++ break;
+  bb += 1 << (e4b->bd_blkbits - order);
+  order++;
+  }
+@@ -2616,6 +2618,8 @@ int ext4_mb_init(struct super_block *sb)
+  do {
+  sbi->s_mb_offsets[i] = offset;
+  sbi->s_mb_maxs[i] = max;
++ if (i > sb->s_blocksize_bits)
++ break;
+  offset += 1 << (sb->s_blocksize_bits - i);
+  max = max >> 1;
+  i++;
 -- 
-2.6.2
-
+2.5.0
