@@ -1,37 +1,39 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Reporting project quota usage?
-Date: Thu, 31 Mar 2016 10:47:41 +0200
-Message-ID: <20160331084741.GA11041@quack.suse.cz>
-References: <20160316052906.GA23610@thunk.org>
- <CAPTn0cBgrUGG+8iAb=wfUke4g8AWBB3tHV25YFuA5FF05we8Aw@mail.gmail.com>
- <20160322145846.GA25765@quack.suse.cz>
- <20160330092549.GA27101@quack.suse.cz>
- <CAPTn0cBuDkTqhgYQBhrV2jLE9B0ow6nKxiYKuR6Cvm35uD5Vuw@mail.gmail.com>
+Subject: Re: block allocator issue with ext4+DAX
+Date: Thu, 31 Mar 2016 10:59:25 +0200
+Message-ID: <20160331085925.GC11041@quack.suse.cz>
+References: <20160330220129.GA9101@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Li Xi <pkuelelixi@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40305 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752206AbcCaIrK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 31 Mar 2016 04:47:10 -0400
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAPTn0cBuDkTqhgYQBhrV2jLE9B0ow6nKxiYKuR6Cvm35uD5Vuw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160330220129.GA9101@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi!
-
-On Thu 31-03-16 10:55:51, Li Xi wrote:
-> Sorry for delay.
+On Wed 30-03-16 16:01:29, Ross Zwisler wrote:
+> I've hit an issue in my testing which I believe to be related to the ext4
+> block allocator when using the DAX mount option.  I originally found this
+> issue with the generic/102 xfstest, but have reduced it to the minimal
+> reproducer at the bottom of this email.  I've been able to reproduce this with
+> both BRD and with PMEM as the underlying block device.
 > 
-> Please feel free to add "Signed-off-by: Li Xi <lixi@ddn.com>".
+> For this test we're running in a very small filesystem, only 512 MiB.  We
+> fallocate() 400 MiB of that space, unlink the file, then try and rewrite that
+> 400 MiB file one chunk at a time.
+> 
+> What actually happens is that during the rewrite we run out of memory and the
+> DAX call to get_block() in dax_io() fails with -ENOSPC.
 
-Thanks. I have pushed out patches with project quota support to quota-tools
-reporsitories.
+Yes, I have already sent a fix for this bug here:
+
+http://www.spinics.net/lists/linux-ext4/msg51649.html
+
+Ted, can you please pick it up? Thanks!
 
 								Honza
 -- 
