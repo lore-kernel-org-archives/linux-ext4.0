@@ -1,41 +1,35 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: block allocator issue with ext4+DAX
-Date: Thu, 31 Mar 2016 10:59:25 +0200
-Message-ID: <20160331085925.GC11041@quack.suse.cz>
-References: <20160330220129.GA9101@linux.intel.com>
+From: Elder I Frank <eesdeityrs@jjhghg.website.tk>
+Subject: To Your Attention
+Date: Thu, 31 Mar 2016 06:30:21 -0700
+Message-ID: <DB3PR05MB0697BFDE5ACCD85F1DB3484D89990@DB3PR05MB0697.eurprd05.prod.outlook.com>
+Reply-To: <elder_frank1@yahoo.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160330220129.GA9101@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: Recipients <eesdeityrs@jjhghg.website.tk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-db3hn0247.outbound.protection.outlook.com ([157.55.234.247]:65473
+	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751654AbcCaNaa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2016 09:30:30 -0400
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 30-03-16 16:01:29, Ross Zwisler wrote:
-> I've hit an issue in my testing which I believe to be related to the ext4
-> block allocator when using the DAX mount option.  I originally found this
-> issue with the generic/102 xfstest, but have reduced it to the minimal
-> reproducer at the bottom of this email.  I've been able to reproduce this with
-> both BRD and with PMEM as the underlying block device.
-> 
-> For this test we're running in a very small filesystem, only 512 MiB.  We
-> fallocate() 400 MiB of that space, unlink the file, then try and rewrite that
-> 400 MiB file one chunk at a time.
-> 
-> What actually happens is that during the rewrite we run out of memory and the
-> DAX call to get_block() in dax_io() fails with -ENOSPC.
+To Your Attention,
 
-Yes, I have already sent a fix for this bug here:
+On behalf of the board and management of International Monetary Committees it was resolved by the federal executive council and agreed that your Inheritance/Contract Fund valued at $10.5M would be released to you via DIPLOMATIC CHANNEL immediately your attention is received so you are advice to confirm the following information.send your reply to: elderifrank@gmail.com
 
-http://www.spinics.net/lists/linux-ext4/msg51649.html
+Your Name,===============
+Address,===================
+Next of kin.==============
+Your Occupation=============
+A scanned copy of your ID or passport.=============
+Direct TelePhone Number===================
 
-Ted, can you please pick it up? Thanks!
+Regards
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Elder Idris Frank
+Federal Ministry of Finance
+Email:elderifrank@gmail.com
