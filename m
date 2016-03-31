@@ -1,96 +1,38 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: CVE Request - Linux kernel (multiple versions)
- ext2/ext3 filesystem DoS
-Date: Thu, 31 Mar 2016 12:51:25 -0400
-Message-ID: <20160331165125.GF6207@thunk.org>
-References: <f4df42b35dd9a6c8c6851eba66b2b3f1.squirrel@webmail-etu.univ-nantes.fr>
- <1459286067.2596.18.camel@debian.org>
- <57514A3C-DBAD-4E5E-98EA-23E490629C02@dilger.ca>
- <20160330204304.GD6207@thunk.org>
- <56FD3718.2090502@redhat.com>
-Reply-To: oss-security-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org
+From: Marc Haber <mh+linux-kernel@zugschlus.de>
+Subject: Re: ext4_file_open: Inconsistent encryption contexts (commit
+ ff978b09f973) breaking Docker
+Date: Thu, 31 Mar 2016 22:39:34 +0200
+Message-ID: <20160331203933.GA31018@torres.zugschlus.de>
+References: <87io0t3ks9.fsf@gamma.ozlabs.ibm.com>
+ <20160311021506.GA32214@thunk.org>
+ <20160311153403.GJ8655@tucsk>
+ <87ziu1eetp.fsf@gamma.ozlabs.ibm.com>
+ <20160314102735.GM8655@tucsk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	Yves-Alexis Perez <corsac-8fiUuRrzOP0dnm+yROfE0A@public.gmane.org>,
-	oss-security-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org, Theodore Tso <tytso-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <oss-security-return-19189-gcsos-oss-security=m.gmane.org-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org>
-List-Post: <mailto:oss-security-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org>
-List-Help: <mailto:oss-security-help-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org>
-List-Unsubscribe: <mailto:oss-security-unsubscribe-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org>
-List-Subscribe: <mailto:oss-security-subscribe-ZwoEplunGu1jrUoiu81ncdBPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain; charset=utf-8
+Cc: Daniel Axtens <dja@axtens.net>, Theodore Ts'o <tytso@mit.edu>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	viro@zeniv.linux.org.uk, linux-unionfs@vger.kernel.org
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <56FD3718.2090502-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+In-Reply-To: <20160314102735.GM8655@tucsk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 31, 2016 at 09:41:28AM -0500, Eric Sandeen wrote:
-> 
-> In the end, errors=panic is really a debug option; a small hoop-jump to
-> use it doesn't sound too bad to me.
+On Mon, Mar 14, 2016 at 11:27:35AM +0100, Miklos Szeredi wrote:
+> Could you please try the below patch?
 
-The problem is that it's not just a debug option.  It makes a huge
-amount of sense to use this on your root file system, or on any file
-system where having the system stagger on after file system errors
-have been detected, possibly allowing more data to be corrupted to be
-a very bad thing to do.  (Example: an ATM machine which uses
-remount-ro, and doesn't notice it can no longer update its logs or its
-databases, and continues to dispense money....)
+I can confirm that I have the issue on kernel 4.5 with Debian's
+schroot using overlayfs, and that this patch fixes it.
 
-On Thu, 31 Mar 2016 08:53:17 -0600, Kurt Seifried wrote:
->The problem is that:
->
->a) means I'll be mounting filesystems with errors that I may want to know
->about (but not have my  system panic about)
+It should be in 4.5.1.
 
-So mount them with errors=continue or errors=read-only on the command line.
+Greetings
+Marc
 
->b) fsck takes a long time on large disks (the smallest size of disk I buy
->for USB drives is 1TB, if I fsck every time I plug one in I'll die of old
->age).
-
-If this is a non-trusted device, then that's the only safe thing to do
---- and even then it's not all that safe.  Even though every year or
-two someone does run checks to make sure we won't across due to static
-fuzzing techniques, I'm fairly certain that if someone was plugging in
-a maliciously crafted USB hardware device that was dynamically
-changing its data between different read requests, that you could
-probably craft a malicious modulation that causes a kernel crash or
-worse, some kind of privilege escalation attack.
-
-Of course, it's probably easier to to just create a device that
-pretends to be a HID device, so probably the only really sane thing to
-do is to epoxy your USB ports.
-
-
-Ultimately, the real problem is that the Linux kernel doesn't know
-whether or not the file system is trusted or not.  The decision to
-automount comes from userspace, and the kernel doesn't know whether
-this is an trusted internal disk, a trusted removeable media which the
-user trusts, or some random USB thumb drive that the user picked up
-from the parking lot.
-
-To be fair userspace can't really tell the difference between the last
-two, so adding hueristics to force a full fsck is going to gore your
-particular Ox, but that's the nature of hueristics --- because they
-are rules of thumb, inevitably they will get it wrong one way or
-another.  Profession paranoids, of which this list tends to be
-over-represented, will tend to make these tradeoffs in favor of more
-security, even if they screw over user convenience.  (Such as your
-complaining about fsck's taking a long time.)
-
-If we were going to use some hueristic the best I could come up with
-might be if the file system was mounted with MS_NOSUID, MS_NODEV, and
-MS_NOEXEC, then we should some or all default mount options in the
-superblock.  I am sure this will still gore somebody's ox, and
-arguably the decision to explicitly specifiy errors=remount-ro should
-probably be done in the automount daemon, but if that's too hard to
-manage, perhaps that's a change kernel developers could make to the
-component which is under our control.
-
-This is really a system-level problem, though, for which putting epoxy
-in the USB ports might actually be the more general solution.  It
-certainly is the more secure option.   :-)
-
-       	   	       		       - Ted
+-- 
+-----------------------------------------------------------------------------
+Marc Haber         | "I don't trust Computers. They | Mailadresse im Header
+Leimen, Germany    |  lose things."    Winona Ryder | Fon: *49 6224 1600402
+Nordisch by Nature |  How to make an American Quilt | Fax: *49 6224 1600421
