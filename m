@@ -1,37 +1,35 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Legal characters in encrypted fscrypto (f2fs/ext4) filename?
-Date: Fri, 1 Apr 2016 01:00:18 -0500
-Message-ID: <20160401060018.GD1323@zzz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Retry block allocation for failed DIO and DAX
+ writes
+Date: Fri, 1 Apr 2016 02:06:35 -0400
+Message-ID: <20160401060635.GB29897@thunk.org>
+References: <1458565946-27627-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	jaegeuk@kernel.org, tytso@mit.edu, mhalcrow@google.com
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56070 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751280AbcDAGGj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Apr 2016 02:06:39 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1458565946-27627-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+On Mon, Mar 21, 2016 at 02:12:26PM +0100, Jan Kara wrote:
+> Currently if block allocation for DIO or DAX write fails due to ENOSPC,
+> we just returned it to userspace. However these ENOSPC errors can be
+> transient because the transaction freeing blocks has not yet committed.
+> This demonstrates as failures of generic/102 test when the filesystem is
+> mounted with 'dax' mount option.
+> 
+> Fix the problem by properly retrying the allocation in case of ENOSPC
+> error in get blocks functions used for direct IO.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-While reviewing the new filesystem encryption code, I was confused by the
-intended set of legal characters in the printable form of an encrypted filename.
+Thanks, applied.
 
-According to the actual code in fs/crypto/fname.c, the legal characters are:
-
-	a-zA-Z0-9+,
-
-Alternatively, according to the comment in the same file, the legal characters
-are actually:
-
-	a-zA-Z0-9+_
-
-Still alternatively, according to the design document[1], the legal characters
-are actually:
-
-	a-zA-Z0-9+=
-
-Which one is correct?
-
-[1] https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYnykNTg/preview?pref=2&pli=1#
+						- Ted
