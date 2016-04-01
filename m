@@ -1,80 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Legal characters in encrypted fscrypto (f2fs/ext4)
-	filename?
-Date: Fri, 1 Apr 2016 02:21:21 -0400
-Message-ID: <20160401062121.GC29897@thunk.org>
-References: <20160401060018.GD1323@zzz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 115731] New: ext2 file system is not supporting
+Date: Fri, 01 Apr 2016 10:53:06 +0000
+Message-ID: <bug-115731-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: mhalcrow@google.com, linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
-	linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <20160401060018.GD1323@zzz>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:43936 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754816AbcDAKxJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 Apr 2016 06:53:09 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CD3DD201C7
+	for <linux-ext4@vger.kernel.org>; Fri,  1 Apr 2016 10:53:07 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id D61AE201B4
+	for <linux-ext4@vger.kernel.org>; Fri,  1 Apr 2016 10:53:06 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 01, 2016 at 01:00:18AM -0500, Eric Biggers wrote:
-> Hello,
-> 
-> While reviewing the new filesystem encryption code, I was confused by the
-> intended set of legal characters in the printable form of an encrypted filename.
-> 
-> According to the actual code in fs/crypto/fname.c, the legal characters are:
-> 
-> 	a-zA-Z0-9+,
+https://bugzilla.kernel.org/show_bug.cgi?id=115731
 
-It's not really a question of "legality".  Rather, the base-64
-encoding that we use is merely a presentation layer issue.  It's
-really an implementation detail that does not affect the on-disk
-encoding, and so in fact, it can be changed in different kernel
-versions since the "encrypted filename" is essentially a cookie which
-is presented to the user via readdir(), and which the user can then
-send back to the kernel using, say, the unlink() system call.
+            Bug ID: 115731
+           Summary: ext2 file system is not supporting
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.5
+          Hardware: IA-32
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext2
+          Assignee: fs_ext2@kernel-bugs.osdl.org
+          Reporter: bindupulikanti@gmail.com
+        Regression: No
 
-It's changed over time to avoid potential confusion --- for example
-the traditional base-64 encoding uses a-zA-Z0-9+/ --- but the use of
-'/' causes problem because it's the pathname separator.
-
-The fact that the design doc and comments are out of date is
-unfortunate, but ultimately, it really doesn't matter.  
-
-> Alternatively, according to the comment in the same file, the legal characters
-> are actually:
-> 
-> 	a-zA-Z0-9+_
-> 
-> Still alternatively, according to the design document[1], the legal characters
-> are actually:
-> 
-> 	a-zA-Z0-9+=
-
-As I recall the equals sign could cause problems with shell scripts.
-I don't remember the objection to the underscore character.
-
-If you wanted to patch the kernel so that on your system, you used
-a-ZA-Z0-9^@, you wouldn't break compatibility or interoperability.  So
-there really isn't any such thing as "correct".
-
-Cheers,
-
-  	  		     	       - Ted
-			       
-
-------------------------------------------------------------------------------
-Transform Data into Opportunity.
-Accelerate data analysis in your applications with
-Intel Data Analytics Acceleration Library.
-Click to learn more.
-http://pubads.g.doubleclick.net/gampad/clk?id=278785471&iu=/4140
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
