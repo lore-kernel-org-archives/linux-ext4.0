@@ -1,62 +1,38 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [PATCH 4/5] dax: use sb_issue_zerout instead of calling
- dax_clear_sectors
-Date: Fri, 1 Apr 2016 19:17:52 +0000
-Message-ID: <1459538265.23200.8.camel@intel.com>
-References: <1458861450-17705-1-git-send-email-vishal.l.verma@intel.com>
-	 <1458861450-17705-5-git-send-email-vishal.l.verma@intel.com>
-	 <CAPcyv4iKK=1Nhz4QqEkhc4gum+UvUS4a=+Sza2zSa1Kyrth41w@mail.gmail.com>
-	 <1458939796.5501.8.camel@intel.com>
-	 <CAPcyv4jWqVcav7dQPh7WHpqB6QDrCezO5jbd9QW9xH3zsU4C1w@mail.gmail.com>
-	 <1459195288.15523.3.camel@intel.com>
-	 <CAPcyv4jFwh679arTNoUzLZpJCSoR+KhMdEmwqddCU1RWOrjD=Q@mail.gmail.com>
-	 <1459277829.6412.3.camel@intel.com> <20160330074926.GC12776@quack.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>, "linux-mm@kvack.org"
-	<linux-mm@kvack.org>, "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"Williams, Dan J" <dan.j.williams@intel.com>, "axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, "Wilcox, Matthew
- R" <matthew.r.wilcox@intel.com>, "david@fromorbit.com" <david@fromorbit.com>
-To: "jack@suse.cz" <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160330074926.GC12776@quack.suse.cz>
-Content-Language: en-US
-Content-ID: <BCDA0CA9B9E5EA4C9093399005FC4758@intel.com>
-Sender: owner-linux-mm@kvack.org
+From: Waiman Long <Waiman.Long@hpe.com>
+Subject: [PATCH 0/3] ext4: Improve parallel I/O performance on NVDIMM
+Date: Fri,  1 Apr 2016 23:09:35 -0400
+Message-ID: <1459566578-30221-1-git-send-email-Waiman.Long@hpe.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>,
+	Waiman Long <Waiman.Long@hpe.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gV2VkLCAyMDE2LTAzLTMwIGF0IDA5OjQ5ICswMjAwLCBKYW4gS2FyYSB3cm90ZToNCj4gT24g
-VHVlIDI5LTAzLTE2IDE4OjU3OjE2LCBWZXJtYSwgVmlzaGFsIEwgd3JvdGU6DQo+ID4gDQo+ID4g
-T24gTW9uLCAyMDE2LTAzLTI4IGF0IDE2OjM0IC0wNzAwLCBEYW4gV2lsbGlhbXMgd3JvdGU6DQo+
-ID4gDQo+ID4gPD4NCj4gPiANCj4gPiA+IA0KPiA+ID4gU2VlbXMga2luZCBvZiBzYWQgdG8gZmFp
-bCB0aGUgZmF1bHQgZHVlIHRvIGEgYmFkIGJsb2NrIHdoZW4gd2UNCj4gPiA+IHdlcmUNCj4gPiA+
-IGdvaW5nIHRvIHplcm8gaXQgYW55d2F5LCByaWdodD/CoMKgSSdtIG5vdCBzZWVpbmcgYSBjb21w
-ZWxsaW5nDQo+ID4gPiByZWFzb24gdG8NCj4gPiA+IGtlZXAgYW55IHplcm9pbmcgaW4gZnMvZGF4
-LmMuDQo+ID4gQWdyZWVkIC0gYnV0IGhvdyBkbyB3ZSBkbyB0aGlzPyBjbGVhcl9wbWVtIG5lZWRz
-IHRvIGJlIGFibGUgdG8gY2xlYXINCj4gPiBhbg0KPiA+IGFyYml0cmFyeSBudW1iZXIgb2YgYnl0
-ZXMsIGJ1dCB0byBnbyB0aHJvdWdoIHRoZSBkcml2ZXIsIHdlJ2QgbmVlZA0KPiA+IHRvDQo+ID4g
-c2VuZCBkb3duIGEgYmlvPyBJZiBvbmx5IHRoZSBkcml2ZXIgaGFkIGFuIHJ3X2J5dGVzIGxpa2Ug
-aW50ZXJmYWNlDQo+ID4gdGhhdA0KPiA+IGNvdWxkIGJlIHVzZWQgYnkgYW55b25lLi4uIDopDQo+
-IEFjdHVhbGx5LCBteSBwYXRjaGVzIGZvciBwYWdlIGZhdWx0IGxvY2tpbmcgcmVtb3ZlIHplcm9p
-bmcgZnJvbQ0KPiBkYXhfaW5zZXJ0X21hcHBpbmcoKSBhbmQgX19kYXhfcG1kX2ZhdWx0KCkgLSB0
-aGUgemVyb2luZyBub3cgaGFwcGVucw0KPiBmcm9tDQo+IHRoZSBmaWxlc3lzdGVtIG9ubHkgYW5k
-IHRoZSB6ZXJvaW5nIGluIHRob3NlIHR3byBmdW5jdGlvbnMgaXMganVzdCBhDQo+IGRlYWQNCj4g
-Y29kZS4uLg0KDQpUaGF0IHNob3VsZCBtYWtlIHRoaW5ncyBlYXNpZXIhIERvIHlvdSBoYXZlIGEg
-dHJlZSBJIGNvdWxkIG1lcmdlIGluIHRvDQpnZXQgdGhpcz8gKFdJUCBpcyBvayBhcyB3ZSBrbm93
-IHRoYXQgbXkgc2VyaWVzIHdpbGwgZGVwZW5kIG9uIHlvdXJzLi4pDQpvciwgaWYgeW91IGNhbiBk
-aXN0aWxsIG91dCB0aGF0IHBhdGNoIG9uIGEgNC42LXJjMSBiYXNlLCBJIGNvdWxkIGNhcnJ5DQpp
-dCBpbiBteSBzZXJpZXMgdG9vICh5b3VyIHYyJ3MgMy8xMCBkb2Vzbid0IGFwcGx5IG9uIDQuNi1y
-YzEuLikNCg0KVGhhbmtzLA0KCS1WaXNoYWw=
+This patchset aims to improve parallel I/O performance of the ext4
+filesystem on fast storage devices like NVDIMM.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Patch 1 eliminates duplicated inode_dio_begin()/inode_dio_end() calls.
+
+Patch 2 provides a set of simple percpu statistics count helper functions.
+
+Patch 3 converts some ext4 statistics counts into percpu counts using
+the helper functions.
+
+Waiman Long (3):
+  ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin() called
+  percpu_stats: Simple per-cpu statistics count helper functions
+  ext4: Make cache hits/misses per-cpu counts
+
+ fs/ext4/extents_status.c     |   20 +++++---
+ fs/ext4/extents_status.h     |   11 ++++-
+ fs/ext4/indirect.c           |   10 +++-
+ fs/ext4/inode.c              |   12 ++++-
+ include/linux/percpu_stats.h |  103 ++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 141 insertions(+), 15 deletions(-)
+ create mode 100644 include/linux/percpu_stats.h
