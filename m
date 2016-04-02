@@ -1,7 +1,7 @@
 From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH 2/3] percpu_stats: Simple per-cpu statistics count helper functions
-Date: Fri,  1 Apr 2016 23:09:37 -0400
-Message-ID: <1459566578-30221-3-git-send-email-Waiman.Long@hpe.com>
+Subject: [PATCH 1/3] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin() called
+Date: Fri,  1 Apr 2016 23:09:36 -0400
+Message-ID: <1459566578-30221-2-git-send-email-Waiman.Long@hpe.com>
 References: <1459566578-30221-1-git-send-email-Waiman.Long@hpe.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Scott J Norton <scott.norton@hpe.com>,
@@ -16,146 +16,95 @@ In-Reply-To: <1459566578-30221-1-git-send-email-Waiman.Long@hpe.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch introduces a set of simple per-cpu statictics count helper
-functions that can be used by other kernel subsystems for keeping
-track of the number of events that happens. It is per-cpu based to
-reduce overhead and improve accuracy of the counter. Using per-cpu
-counter is usually overkill for such purpose.
+When performing direct I/O, the current ext4 code does
+not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
+__blockdev_direct_IO() when inode_dio_begin() has, in fact, been
+called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
+inode_dio_begin()/inode_dio_end() internally.  This doubling of
+inode_dio_begin()/inode_dio_end() calls are wasteful.
 
-The following APIs are provided:
+This patch removes the extra internal inode_dio_begin()/inode_dio_end()
+calls when those calls are being issued by the caller directly. For
+really fast storage systems like NVDIMM, the removal of the extra
+inode_dio_begin()/inode_dio_end() can give a meaningful boost to
+I/O performance.
 
- - int percpu_stats_init(struct percpu_stats *pcs, int num)
-   Initialize the per-cpu statictics counts structure which should have
-   the given number of statistics counts. Return -ENOMEM on error.
+On a 4-socket Haswell-EX system (72 cores) running 4.6-rc1 kernel,
+fio with 38 threads doing parallel I/O on two shared files on an
+NVDIMM with DAX gave the following aggregrate bandwidth with and
+without the patch:
 
- - void percpu_stats_destroy(struct percpu_stats *pcs)
-   Free the percpu memory allocated.
-
- - void percpu_stats_inc(struct percpu_stats *pcs, int stat)
-   void percpu_stats_dec(struct percpu_stats *pcs, int stat)
-   Increment and decrement the given per-cpu statistics count.
-
- - unsigned long percpu_stats_sum(struct percpu_stats *pcs, int stat)
-   Return the current aggregated sum of the given statistics count.
-
- - void percpu_stats_reset(struct percpu_stats *pcs)
-   Clear all the statistics counts defined in the given percpu_stats
-   structure.
+  Test          W/O patch       With patch      % change
+  ----          ---------       ----------      --------
+  Read-only      8688MB/s       10173MB/s        +17.1%
+  Read-write     2687MB/s        2830MB/s         +5.3%
 
 Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 ---
- include/linux/percpu_stats.h |  103 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 103 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/percpu_stats.h
+ fs/ext4/indirect.c |   10 ++++++++--
+ fs/ext4/inode.c    |   12 +++++++++---
+ 2 files changed, 17 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/percpu_stats.h b/include/linux/percpu_stats.h
-new file mode 100644
-index 0000000..a4f715e
---- /dev/null
-+++ b/include/linux/percpu_stats.h
-@@ -0,0 +1,103 @@
-+#ifndef _LINUX_PERCPU_STATS_H
-+#define _LINUX_PERCPU_STATS_H
-+/*
-+ * Simple per-cpu statistics counts that have less overhead than the
-+ * per-cpu counters.
-+ */
-+#include <linux/percpu.h>
-+#include <linux/types.h>
-+
-+struct percpu_stats {
-+	unsigned long __percpu *stats;
-+	int nstats;	/* Number of statistics counts in stats array */
-+};
-+
-+/*
-+ * Reset the all statistics counts to 0 in the percpu_stats structure
-+ */
-+static inline void percpu_stats_reset(struct percpu_stats *pcs)
-+{
-+	int cpu;
-+
-+	for_each_possible_cpu(cpu) {
-+		unsigned long *pstats =  per_cpu_ptr(pcs->stats, cpu);
-+		int stat;
-+
-+		for (stat = 0; stat < pcs->nstats; stat++, pstats++)
-+			*pstats = 0;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 3027fa6..4304be6 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -706,14 +706,20 @@ retry:
+ 			inode_dio_end(inode);
+ 			goto locked;
+ 		}
++		/*
++		 * Need to pass in DIO_SKIP_DIO_COUNT to prevent
++		 * duplicated inode_dio_begin/inode_dio_end sequence.
++		 */
+ 		if (IS_DAX(inode))
+ 			ret = dax_do_io(iocb, inode, iter, offset,
+-					ext4_dio_get_block, NULL, 0);
++					ext4_dio_get_block, NULL,
++					DIO_SKIP_DIO_COUNT);
+ 		else
+ 			ret = __blockdev_direct_IO(iocb, inode,
+ 						   inode->i_sb->s_bdev, iter,
+ 						   offset, ext4_dio_get_block,
+-						   NULL, NULL, 0);
++						   NULL, NULL,
++						   DIO_SKIP_DIO_COUNT);
+ 		inode_dio_end(inode);
+ 	} else {
+ locked:
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dab84a2..779aa33 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3358,9 +3358,15 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 	 * Make all waiters for direct IO properly wait also for extent
+ 	 * conversion. This also disallows race between truncate() and
+ 	 * overwrite DIO as i_dio_count needs to be incremented under i_mutex.
++	 *
++	 * Both dax_do_io() and __blockdev_direct_IO() will unnecessarily
++	 * call inode_dio_begin()/inode_dio_end() again if the
++	 * DIO_SKIP_DIO_COUNT flag is not set.
+ 	 */
+-	if (iov_iter_rw(iter) == WRITE)
++	if (iov_iter_rw(iter) == WRITE) {
++		dio_flags = DIO_SKIP_DIO_COUNT;
+ 		inode_dio_begin(inode);
 +	}
-+
-+	/*
-+	 * If a statistics count is in the middle of being updated, it
-+	 * is possible that the above clearing may not work. So we need
-+	 * to double check again to make sure that the counters are really
-+	 * cleared. Still there is a still a very small chance that the
-+	 * second clearing does not work.
-+	 */
-+	for_each_possible_cpu(cpu) {
-+		unsigned long *pstats =  per_cpu_ptr(pcs->stats, cpu);
-+		int stat;
-+
-+		for (stat = 0; stat < pcs->nstats; stat++, pstats++)
-+			if (*pstats)
-+				*pstats = 0;
-+	}
-+}
-+
-+static inline int percpu_stats_init(struct percpu_stats *pcs, int num)
-+{
-+	pcs->nstats = num;
-+	pcs->stats  = __alloc_percpu(sizeof(unsigned long) * num,
-+				     __alignof__(unsigned long));
-+	if (!pcs->stats)
-+		return -ENOMEM;
-+
-+	percpu_stats_reset(pcs);
-+	return 0;
-+}
-+
-+static inline void percpu_stats_destroy(struct percpu_stats *pcs)
-+{
-+	free_percpu(pcs->stats);
-+	pcs->stats  = NULL;
-+	pcs->nstats = 0;
-+}
-+
-+static inline void
-+__percpu_stats_add(struct percpu_stats *pcs, int stat, int cnt)
-+{
-+	unsigned long *pstat;
-+
-+	if ((unsigned int)stat >= pcs->nstats)
-+		return;
-+	preempt_disable();
-+	pstat = this_cpu_ptr(&pcs->stats[stat]);
-+	*pstat += cnt;
-+	preempt_enable();
-+}
-+
-+static inline void percpu_stats_inc(struct percpu_stats *pcs, int stat)
-+{
-+	__percpu_stats_add(pcs, stat, 1);
-+}
-+
-+static inline void percpu_stats_dec(struct percpu_stats *pcs, int stat)
-+{
-+	__percpu_stats_add(pcs, stat, -1);
-+}
-+
-+static inline unsigned long
-+percpu_stats_sum(struct percpu_stats *pcs, int stat)
-+{
-+	int cpu;
-+	unsigned long sum = 0;
-+
-+	if ((unsigned int)stat >= pcs->nstats)
-+		return sum;
-+
-+	for_each_possible_cpu(cpu)
-+		sum += per_cpu(pcs->stats[stat], cpu);
-+	return sum;
-+}
-+
-+#endif /* _LINUX_PERCPU_STATS_H */
+ 
+ 	/* If we do a overwrite dio, i_mutex locking can be released */
+ 	overwrite = *((int *)iocb->private);
+@@ -3393,10 +3399,10 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 		get_block_func = ext4_dio_get_block_overwrite;
+ 	else if (is_sync_kiocb(iocb)) {
+ 		get_block_func = ext4_dio_get_block_unwritten_sync;
+-		dio_flags = DIO_LOCKING;
++		dio_flags |= DIO_LOCKING;
+ 	} else {
+ 		get_block_func = ext4_dio_get_block_unwritten_async;
+-		dio_flags = DIO_LOCKING;
++		dio_flags |= DIO_LOCKING;
+ 	}
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
 -- 
 1.7.1
