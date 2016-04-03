@@ -1,49 +1,66 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 88321] WARNING: CPU: 1 PID: 6784 at fs/dcache.c:1318
- umount_check+0x77/0x7b()
-Date: Sat, 02 Apr 2016 17:55:12 +0000
-Message-ID: <bug-88321-13602-UVbXZaOYop@https.bugzilla.kernel.org/>
-References: <bug-88321-13602@https.bugzilla.kernel.org/>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH 00/13] fscrypto: cleanups and fixes
+Date: Sun,  3 Apr 2016 00:21:51 -0500
+Message-ID: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:37713 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750978AbcDBRzS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 2 Apr 2016 13:55:18 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id BD01820390
-	for <linux-ext4@vger.kernel.org>; Sat,  2 Apr 2016 17:55:16 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 05BB32037E
-	for <linux-ext4@vger.kernel.org>; Sat,  2 Apr 2016 17:55:13 +0000 (UTC)
-In-Reply-To: <bug-88321-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: tytso@mit.edu, Eric Biggers <ebiggers3@gmail.com>, mhalcrow@google.com,
+	linux-kernel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org,
+	linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=88321
+This patchset includes various cleanups for the new filesystem encryption
+code as well as some bug fixes for the FS_IOC_SET_ENCRYPTION_POLICY ioctl.
 
-Theodore Tso <tytso@mit.edu> changed:
+Eric Biggers (13):
+  fscrypto: remove unnecessary includes
+  fscrypto: rename some functions for clarity
+  fscrypto: rename functions to load and unload inode encryption info
+  fscrypto: return bool instead of int where appropriate
+  fscrypto: comment improvements and fixes
+  fscrypto: crypto_alloc_skcipher() always returns an ERR_PTR(), never
+    NULL
+  fscrypto: simplify building key descriptor string
+  fscrypto: use standard macros from kernel.h
+  fscrypto: make fname_encrypt() actually return length of ciphertext
+  fscrypto: restrict setting new policy to empty files and directories
+    only
+  fscrypto: restrict setting encryption policy to inode owner
+  fscrypto: require write access to mount to set encryption policy
+  fscrypto: improve error handling in fscrypt_set_policy()
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
---- Comment #2 from Theodore Tso <tytso@mit.edu> ---
-Please note that Nick Krause was banned from the Linux Kernel list because he
-has a tendency to guess, and while it was one thing to be wasting kernel
-developers' time, it was quite another when he was giving bad advice to users
-who were looking for help.
-
-Having looked at the warning issued on line fs/dcache:1318, which is due to a
-dentry in the file system to be unmounted was still being used.  The
-nfs_put_client() call has nothing to do with dentries.
-
-If you want to try Nick's suggestion, please feel free.  But it's not likely to
-fix things, and it might make things worse.
+ fs/crypto/crypto.c       |  25 +++++----
+ fs/crypto/fname.c        |  72 ++++++++++++++++----------
+ fs/crypto/keyinfo.c      |  47 ++++++++---------
+ fs/crypto/policy.c       | 131 +++++++++++++++++++++++++++--------------------
+ fs/f2fs/dir.c            |   4 +-
+ fs/f2fs/f2fs.h           |   6 +--
+ fs/f2fs/file.c           |  10 ++--
+ fs/f2fs/inode.c          |   2 +-
+ fs/f2fs/namei.c          |  10 ++--
+ fs/f2fs/super.c          |   2 +-
+ include/linux/fscrypto.h |  81 +++++++++++++++++++++--------
+ 11 files changed, 236 insertions(+), 154 deletions(-)
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.7.4
+
+
+------------------------------------------------------------------------------
+Transform Data into Opportunity.
+Accelerate data analysis in your applications with
+Intel Data Analytics Acceleration Library.
+Click to learn more.
+http://pubads.g.doubleclick.net/gampad/clk?id=278785471&iu=/4140
