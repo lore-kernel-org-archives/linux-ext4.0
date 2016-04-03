@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 10/13] fscrypto: restrict setting new policy to
-	empty files and directories only
-Date: Sun,  3 Apr 2016 00:22:01 -0500
-Message-ID: <1459660924-2960-11-git-send-email-ebiggers3@gmail.com>
+Subject: [PATCH 13/13] fscrypto: improve error handling in
+	fscrypt_set_policy()
+Date: Sun,  3 Apr 2016 00:22:04 -0500
+Message-ID: <1459660924-2960-14-git-send-email-ebiggers3@gmail.com>
 References: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,80 +24,112 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On f2fs, a user could create a regular file of small positive size and
-issue FS_IOC_SET_ENCRYPTION_POLICY to set its encryption policy.
-However, this did not behave as expected because the existing data was
-not actually encrypted by the ioctl.
-
-Fix this by only permitting an encryption policy to be created for empty
-regular files and directories.
-
-For a correct solution, it is necessary to conduct the operation under
-the inode lock; otherwise the inode's size might be changed concurrently.
+In some cases, the previous code did not correctly propagate errors to
+the caller.  Also, only one call to ->get_context() is required.
 
 Signed-off-by: Eric Biggers <ebiggers3@gmail.com>
 ---
- fs/crypto/policy.c | 42 ++++++++++++++++++++++++++++++------------
- 1 file changed, 30 insertions(+), 12 deletions(-)
+ fs/crypto/policy.c | 64 +++++++++++++++++++++++++-----------------------------
+ 1 file changed, 29 insertions(+), 35 deletions(-)
 
 diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index 93244b5..cb5ba27 100644
+index 6a767e6..83421fe 100644
 --- a/fs/crypto/policy.c
 +++ b/fs/crypto/policy.c
-@@ -94,23 +94,41 @@ static int create_encryption_context_from_policy(struct inode *inode,
+@@ -13,37 +13,17 @@
+ #include <linux/fscrypto.h>
+ #include <linux/mount.h>
  
- int fscrypt_set_policy(struct inode *inode, const struct fscrypt_policy *policy)
+-static bool inode_has_encryption_context(struct inode *inode)
+-{
+-	if (!inode->i_sb->s_cop->get_context)
+-		return false;
+-	return (inode->i_sb->s_cop->get_context(inode, NULL, 0L) > 0);
+-}
+-
+-/*
+- * check whether the policy is consistent with the encryption context
+- * for the inode
+- */
+-static bool is_encryption_context_consistent_with_policy(struct inode *inode,
++static bool is_encryption_context_consistent_with_policy(
++				const struct fscrypt_context *ctx,
+ 				const struct fscrypt_policy *policy)
  {
-+	int ret = 0;
-+
- 	if (policy->version != 0)
- 		return -EINVAL;
- 
-+	inode_lock(inode);
-+
- 	if (!inode_has_encryption_context(inode)) {
--		if (!inode->i_sb->s_cop->empty_dir)
--			return -EOPNOTSUPP;
--		if (!inode->i_sb->s_cop->empty_dir(inode))
--			return -ENOTEMPTY;
--		return create_encryption_context_from_policy(inode, policy);
-+		/* A new policy may only be set on an empty directory or an
-+		 * empty regular file. */
-+		ret = -EINVAL;
-+		if (S_ISDIR(inode->i_mode)) {
-+			if (!inode->i_sb->s_cop->empty_dir)
-+				ret = -EOPNOTSUPP;
-+			else if (inode->i_sb->s_cop->empty_dir(inode))
-+				ret = 0;
-+			else
-+				ret = -ENOTEMPTY;
-+		} else if (S_ISREG(inode->i_mode)) {
-+			ret = -ENOTEMPTY;
-+			if (inode->i_size == 0)
-+				ret = 0;
-+		}
-+		if (!ret) {
-+			ret = create_encryption_context_from_policy(inode,
-+								    policy);
-+		}
-+	} else if (!is_encryption_context_consistent_with_policy(inode, policy)) {
-+		printk(KERN_WARNING
-+		       "%s: Policy inconsistent with encryption context\n",
-+		       __func__);
-+		ret = -EINVAL;
- 	}
+-	struct fscrypt_context ctx;
+-	int res;
 -
--	if (is_encryption_context_consistent_with_policy(inode, policy))
--		return 0;
+-	if (!inode->i_sb->s_cop->get_context)
+-		return false;
 -
--	printk(KERN_WARNING "%s: Policy inconsistent with encryption context\n",
--	       __func__);
--	return -EINVAL;
-+	inode_unlock(inode);
-+	return ret;
+-	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+-	if (res != sizeof(ctx))
+-		return false;
+-
+-	return (memcmp(ctx.master_key_descriptor, policy->master_key_descriptor,
+-			FS_KEY_DESCRIPTOR_SIZE) == 0 &&
+-			(ctx.flags == policy->flags) &&
+-			(ctx.contents_encryption_mode ==
+-			 policy->contents_encryption_mode) &&
+-			(ctx.filenames_encryption_mode ==
+-			 policy->filenames_encryption_mode));
++	return memcmp(ctx->master_key_descriptor, policy->master_key_descriptor,
++		      FS_KEY_DESCRIPTOR_SIZE) == 0 &&
++		(ctx->flags == policy->flags) &&
++		(ctx->contents_encryption_mode ==
++		 policy->contents_encryption_mode) &&
++		(ctx->filenames_encryption_mode ==
++		 policy->filenames_encryption_mode);
  }
- EXPORT_SYMBOL(fscrypt_set_policy);
  
+ static int create_encryption_context_from_policy(struct inode *inode,
+@@ -96,6 +76,7 @@ static int create_encryption_context_from_policy(struct inode *inode,
+ int fscrypt_set_policy(struct file *file, const struct fscrypt_policy *policy)
+ {
+ 	struct inode *inode = file_inode(file);
++	struct fscrypt_context existing;
+ 	int ret;
+ 
+ 	if (!inode_owner_or_capable(inode))
+@@ -110,7 +91,25 @@ int fscrypt_set_policy(struct file *file, const struct fscrypt_policy *policy)
+ 
+ 	inode_lock(inode);
+ 
+-	if (!inode_has_encryption_context(inode)) {
++	ret = -ENODATA;
++	if (inode->i_sb->s_cop->get_context) {
++		ret = inode->i_sb->s_cop->get_context(inode, &existing,
++						      sizeof(existing));
++	}
++	if (ret != -ENODATA) {
++		/* An existing policy cannot be changed.  However, an attempt to
++		 * set an identical policy will succeed. */
++		if (ret == sizeof(existing) &&
++		    is_encryption_context_consistent_with_policy(&existing,
++								 policy)) {
++			ret = 0;
++		} else if (ret >= 0 || ret == -ERANGE) {
++			printk(KERN_WARNING
++			       "%s: Policy inconsistent with encryption context\n",
++			       __func__);
++			ret = -EINVAL;
++		}
++	} else {
+ 		/* A new policy may only be set on an empty directory or an
+ 		 * empty regular file. */
+ 		ret = -EINVAL;
+@@ -130,11 +129,6 @@ int fscrypt_set_policy(struct file *file, const struct fscrypt_policy *policy)
+ 			ret = create_encryption_context_from_policy(inode,
+ 								    policy);
+ 		}
+-	} else if (!is_encryption_context_consistent_with_policy(inode, policy)) {
+-		printk(KERN_WARNING
+-		       "%s: Policy inconsistent with encryption context\n",
+-		       __func__);
+-		ret = -EINVAL;
+ 	}
+ 	inode_unlock(inode);
+ 	mnt_drop_write_file(file);
 -- 
 2.7.4
 
