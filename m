@@ -1,19 +1,16 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 07/13] fscrypto: simplify building key descriptor
-	string
-Date: Sun,  3 Apr 2016 00:21:58 -0500
-Message-ID: <1459660924-2960-8-git-send-email-ebiggers3@gmail.com>
-References: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
+Subject: A few more filesystem encryption questions
+Date: Sun, 3 Apr 2016 00:58:33 -0500
+Message-ID: <20160403055833.GA3214@zzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, Eric Biggers <ebiggers3@gmail.com>, mhalcrow@google.com,
-	linux-kernel@vger.kernel.org,
+Cc: tytso@mit.edu, mhalcrow@google.com, linux-kernel@vger.kernel.org,
 	linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org,
 	linux-ext4@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
+Content-Disposition: inline
 List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
@@ -24,34 +21,35 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Eric Biggers <ebiggers3@gmail.com>
----
- fs/crypto/keyinfo.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+Hello,
 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index cb06351..5fcee4d 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -164,13 +164,8 @@ retry:
- 		memset(raw_key, 0x42, FS_AES_256_XTS_KEY_SIZE);
- 		goto got_key;
- 	}
--	memcpy(full_key_descriptor, FS_KEY_DESC_PREFIX,
--					FS_KEY_DESC_PREFIX_SIZE);
--	sprintf(full_key_descriptor + FS_KEY_DESC_PREFIX_SIZE,
--					"%*phN", FS_KEY_DESCRIPTOR_SIZE,
--					ctx.master_key_descriptor);
--	full_key_descriptor[FS_KEY_DESC_PREFIX_SIZE +
--					(2 * FS_KEY_DESCRIPTOR_SIZE)] = '\0';
-+	sprintf(full_key_descriptor, FS_KEY_DESC_PREFIX "%*phN",
-+		FS_KEY_DESCRIPTOR_SIZE, ctx.master_key_descriptor);
- 	keyring_key = request_key(&key_type_logon, full_key_descriptor, NULL);
- 	if (IS_ERR(keyring_key)) {
- 		res = PTR_ERR(keyring_key);
--- 
-2.7.4
+A few more questions about the new filesystem encryption code:
 
+I found that a process without access to the master encryption key can read a
+file's full decrypted contents, provided that the file was opened recently by a
+process with access to the key.  This is true even if the privileged process
+merely opened and closed the file, without reading any bytes.  A similar story
+applies to filenames; a 'ls' by a process able to decrypt the names reveals them
+to all users/processes.  Essentially, it seems that despite the use of the
+kernel keyrings mechanism where different users/processes can have different
+keys, this doesn't fully carry over into filesystem encryption.  Is this a known
+and understood limitation of the design?
+
+The design document states that an encryption policy can be changed "if the
+directory is empty or the file is 0 bytes in length".  However, the code doesn't
+allow an existing encryption policy to be changed.  Which behavior was intended?
+
+I had brought up the question of the endianness of the XTS tweak value.  I also
+realized that since the page index is used, the XTS tweak will be dependent on
+PAGE_SIZE.  So the current behavior is that an encrypted filesystem can only be
+read on a device with the same endianness _and_ PAGE_SIZE.  Is is the case that
+due to the early Android users, it is too late to start using the byte offset
+instead of the PAGE_SIZE?  What about if the XTS tweak was fixed as the number
+of 4096-byte blocks from the start of the file as a le64 --- is that what the
+existing users are expected to be doing in practice?  Are there any
+architectures with PAGE_SIZE < 4096 for which that value wouldn't work?
+
+Eric
 
 ------------------------------------------------------------------------------
 Transform Data into Opportunity.
