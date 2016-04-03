@@ -1,7 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 08/13] fscrypto: use standard macros from kernel.h
-Date: Sun,  3 Apr 2016 00:21:59 -0500
-Message-ID: <1459660924-2960-9-git-send-email-ebiggers3@gmail.com>
+Subject: [PATCH 11/13] fscrypto: restrict setting encryption
+	policy to inode owner
+Date: Sun,  3 Apr 2016 00:22:02 -0500
+Message-ID: <1459660924-2960-12-git-send-email-ebiggers3@gmail.com>
 References: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,52 +24,33 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
+On a filesystem with encryption enabled, a user could set an encryption
+policy on any empty directory to which they have readonly access.  This
+is a potential security issue since such a directory might be owned by
+another user, and the new encryption policy may prevent that user from
+creating files in their own directory.
+
+Fix this by requiring inode_owner_or_capable() permission to set an
+encryption policy.
+
 Signed-off-by: Eric Biggers <ebiggers3@gmail.com>
 ---
- fs/crypto/fname.c | 17 +++++------------
- 1 file changed, 5 insertions(+), 12 deletions(-)
+ fs/crypto/policy.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index cd0eae8..e5c6959 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -14,11 +14,6 @@
- #include <linux/ratelimit.h>
- #include <linux/fscrypto.h>
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index cb5ba27..3f5c275 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -96,6 +96,9 @@ int fscrypt_set_policy(struct inode *inode, const struct fscrypt_policy *policy)
+ {
+ 	int ret = 0;
  
--static u32 size_round_up(size_t size, size_t blksize)
--{
--	return ((size + blksize - 1) / blksize) * blksize;
--}
--
- /**
-  * fname_crypt_complete() - The completion callback for filename encryption and
-  *			    decryption
-@@ -61,10 +56,9 @@ static int fname_encrypt(struct inode *inode,
- 	if (iname->len <= 0 || iname->len > lim)
- 		return -EIO;
- 
--	ciphertext_len = (iname->len < FS_CRYPTO_BLOCK_SIZE) ?
--					FS_CRYPTO_BLOCK_SIZE : iname->len;
--	ciphertext_len = size_round_up(ciphertext_len, padding);
--	ciphertext_len = (ciphertext_len > lim) ? lim : ciphertext_len;
-+	ciphertext_len = max_t(u32, iname->len, FS_CRYPTO_BLOCK_SIZE);
-+	ciphertext_len = round_up(ciphertext_len, padding);
-+	ciphertext_len = min(ciphertext_len, lim);
- 
- 	if (ciphertext_len <= sizeof(buf)) {
- 		workbuf = buf;
-@@ -235,9 +229,8 @@ u32 fscrypt_fname_encrypted_size(struct inode *inode, u32 ilen)
- 
- 	if (ci)
- 		padding = 4 << (ci->ci_flags & FS_POLICY_FLAGS_PAD_MASK);
--	if (ilen < FS_CRYPTO_BLOCK_SIZE)
--		ilen = FS_CRYPTO_BLOCK_SIZE;
--	return size_round_up(ilen, padding);
-+	ilen = max_t(u32, ilen, FS_CRYPTO_BLOCK_SIZE);
-+	return round_up(ilen, padding);
- }
- EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
++	if (!inode_owner_or_capable(inode))
++		return -EACCES;
++
+ 	if (policy->version != 0)
+ 		return -EINVAL;
  
 -- 
 2.7.4
