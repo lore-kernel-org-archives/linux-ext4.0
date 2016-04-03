@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 01/13] fscrypto: remove unnecessary includes
-Date: Sun,  3 Apr 2016 00:21:52 -0500
-Message-ID: <1459660924-2960-2-git-send-email-ebiggers3@gmail.com>
+Subject: [PATCH 08/13] fscrypto: use standard macros from kernel.h
+Date: Sun,  3 Apr 2016 00:21:59 -0500
+Message-ID: <1459660924-2960-9-git-send-email-ebiggers3@gmail.com>
 References: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -25,52 +25,51 @@ List-Id: linux-ext4.vger.kernel.org
 
 Signed-off-by: Eric Biggers <ebiggers3@gmail.com>
 ---
- fs/crypto/crypto.c  | 1 -
- fs/crypto/fname.c   | 2 --
- fs/crypto/keyinfo.c | 3 ---
- 3 files changed, 6 deletions(-)
+ fs/crypto/fname.c | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index 06cd1a2..2c7923d 100644
---- a/fs/crypto/crypto.c
-+++ b/fs/crypto/crypto.c
-@@ -27,7 +27,6 @@
- #include <linux/bio.h>
- #include <linux/dcache.h>
- #include <linux/fscrypto.h>
--#include <linux/ecryptfs.h>
- 
- static unsigned int num_prealloc_crypto_pages = 32;
- static unsigned int num_prealloc_crypto_ctxs = 128;
 diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 5d6d491..3108806 100644
+index cd0eae8..e5c6959 100644
 --- a/fs/crypto/fname.c
 +++ b/fs/crypto/fname.c
-@@ -10,8 +10,6 @@
-  * This has not yet undergone a rigorous security audit.
-  */
- 
--#include <keys/encrypted-type.h>
--#include <keys/user-type.h>
- #include <linux/scatterlist.h>
+@@ -14,11 +14,6 @@
  #include <linux/ratelimit.h>
  #include <linux/fscrypto.h>
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 06f5aa4..03d2b0d 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -8,11 +8,8 @@
-  * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
-  */
  
--#include <keys/encrypted-type.h>
- #include <keys/user-type.h>
--#include <linux/random.h>
- #include <linux/scatterlist.h>
--#include <uapi/linux/keyctl.h>
- #include <linux/fscrypto.h>
+-static u32 size_round_up(size_t size, size_t blksize)
+-{
+-	return ((size + blksize - 1) / blksize) * blksize;
+-}
+-
+ /**
+  * fname_crypt_complete() - The completion callback for filename encryption and
+  *			    decryption
+@@ -61,10 +56,9 @@ static int fname_encrypt(struct inode *inode,
+ 	if (iname->len <= 0 || iname->len > lim)
+ 		return -EIO;
  
- static void derive_crypt_complete(struct crypto_async_request *req, int rc)
+-	ciphertext_len = (iname->len < FS_CRYPTO_BLOCK_SIZE) ?
+-					FS_CRYPTO_BLOCK_SIZE : iname->len;
+-	ciphertext_len = size_round_up(ciphertext_len, padding);
+-	ciphertext_len = (ciphertext_len > lim) ? lim : ciphertext_len;
++	ciphertext_len = max_t(u32, iname->len, FS_CRYPTO_BLOCK_SIZE);
++	ciphertext_len = round_up(ciphertext_len, padding);
++	ciphertext_len = min(ciphertext_len, lim);
+ 
+ 	if (ciphertext_len <= sizeof(buf)) {
+ 		workbuf = buf;
+@@ -235,9 +229,8 @@ u32 fscrypt_fname_encrypted_size(struct inode *inode, u32 ilen)
+ 
+ 	if (ci)
+ 		padding = 4 << (ci->ci_flags & FS_POLICY_FLAGS_PAD_MASK);
+-	if (ilen < FS_CRYPTO_BLOCK_SIZE)
+-		ilen = FS_CRYPTO_BLOCK_SIZE;
+-	return size_round_up(ilen, padding);
++	ilen = max_t(u32, ilen, FS_CRYPTO_BLOCK_SIZE);
++	return round_up(ilen, padding);
+ }
+ EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
+ 
 -- 
 2.7.4
 
