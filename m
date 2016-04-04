@@ -1,53 +1,96 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 02/13] fscrypto: rename some functions for
-	clarity
-Date: Sun, 3 Apr 2016 03:45:05 -0400
-Message-ID: <20160403074505.GG3334@thunk.org>
-References: <1459660924-2960-1-git-send-email-ebiggers3@gmail.com>
-	<1459660924-2960-3-git-send-email-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: mhalcrow@google.com, linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
-	linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <1459660924-2960-3-git-send-email-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+From: Bastien Philbert <bastienphilbert@gmail.com>
+Subject: [PATCH] ext4:Remove unneeded function definition and prototype for ext4_ext_calc_metadata_amount
+Date: Sun,  3 Apr 2016 23:04:11 -0400
+Message-ID: <1459739051-5000-1-git-send-email-bastienphilbert@gmail.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Apr 03, 2016 at 12:21:53AM -0500, Eric Biggers wrote:
-> Rename fscrypt_complete() to page_crypt_complete().  This callback is
-> specifically for data pages; fscrypto also performs filename encryption.
-> 
-> Rename dir_crypt_complete() to fname_crypt_complete().  This callback is
-> also used for symlink targets, not just directory entries.
-> 
-> Rename fscrypt_process_policy() to fscrypt_set_policy().  The new name
-> better matches the ioctl, and it goes along with fscrypt_get_policy().
-> 
-> Signed-off-by: Eric Biggers <ebiggers3@gmail.com>
+This removes the unneeded function definition and prototype for
+ext4_ext_calc_metadata_amount in the files ext4.c and extents.c
+as there are no more callers of this particular function and thus
+it can now be removed without issues in order to remove unnessary
+code from ext4 codebase.
 
-I'd really rather not renaming any globally visible functions until
-after ext4 is converted over to use fs/crypto, just to avoid confusion.
+Signed-off-by: Bastien Philbert <bastienphilbert@gmail.com>
+---
+ fs/ext4/ext4.h    |  2 --
+ fs/ext4/extents.c | 47 -----------------------------------------------
+ 2 files changed, 49 deletions(-)
 
-Cheers,
-
-					- Ted
-
-------------------------------------------------------------------------------
-Transform Data into Opportunity.
-Accelerate data analysis in your applications with
-Intel Data Analytics Acceleration Library.
-Click to learn more.
-http://pubads.g.doubleclick.net/gampad/clk?id=278785471&iu=/4140
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c047435..557cc35 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3180,8 +3180,6 @@ extern int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 					  loff_t offset, ssize_t len);
+ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			   struct ext4_map_blocks *map, int flags);
+-extern int ext4_ext_calc_metadata_amount(struct inode *inode,
+-					 ext4_lblk_t lblocks);
+ extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
+ 						   int num,
+ 						   struct ext4_ext_path *path);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 95bf467..e06a09e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -304,53 +304,6 @@ ext4_force_split_extent_at(handle_t *handle, struct inode *inode,
+ 			(nofail ? EXT4_GET_BLOCKS_METADATA_NOFAIL:0));
+ }
+ 
+-/*
+- * Calculate the number of metadata blocks needed
+- * to allocate @blocks
+- * Worse case is one block per extent
+- */
+-int ext4_ext_calc_metadata_amount(struct inode *inode, ext4_lblk_t lblock)
+-{
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	int idxs;
+-
+-	idxs = ((inode->i_sb->s_blocksize - sizeof(struct ext4_extent_header))
+-		/ sizeof(struct ext4_extent_idx));
+-
+-	/*
+-	 * If the new delayed allocation block is contiguous with the
+-	 * previous da block, it can share index blocks with the
+-	 * previous block, so we only need to allocate a new index
+-	 * block every idxs leaf blocks.  At ldxs**2 blocks, we need
+-	 * an additional index block, and at ldxs**3 blocks, yet
+-	 * another index blocks.
+-	 */
+-	if (ei->i_da_metadata_calc_len &&
+-	    ei->i_da_metadata_calc_last_lblock+1 == lblock) {
+-		int num = 0;
+-
+-		if ((ei->i_da_metadata_calc_len % idxs) == 0)
+-			num++;
+-		if ((ei->i_da_metadata_calc_len % (idxs*idxs)) == 0)
+-			num++;
+-		if ((ei->i_da_metadata_calc_len % (idxs*idxs*idxs)) == 0) {
+-			num++;
+-			ei->i_da_metadata_calc_len = 0;
+-		} else
+-			ei->i_da_metadata_calc_len++;
+-		ei->i_da_metadata_calc_last_lblock++;
+-		return num;
+-	}
+-
+-	/*
+-	 * In the worst case we need a new set of index blocks at
+-	 * every level of the inode's extent tree.
+-	 */
+-	ei->i_da_metadata_calc_len = 1;
+-	ei->i_da_metadata_calc_last_lblock = lblock;
+-	return ext_depth(inode) + 1;
+-}
+-
+ static int
+ ext4_ext_max_entries(struct inode *inode, int depth)
+ {
+-- 
+2.5.0
