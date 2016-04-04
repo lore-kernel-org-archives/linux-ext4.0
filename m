@@ -1,32 +1,26 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Refreshed rootfs.img for kvm-xfstests
-Date: Mon, 4 Apr 2016 02:13:14 -0400
-Message-ID: <20160404061314.GA3112@thunk.org>
+Subject: Re: [patch] ext4 crypto: fix some error handling
+Date: Mon, 4 Apr 2016 02:19:34 -0400
+Message-ID: <20160404061934.GA4939@thunk.org>
+References: <20160402044916.GC11775@mwanda>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36070 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750810AbcDDGNQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Apr 2016 02:13:16 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	kernel-janitors@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160402044916.GC11775@mwanda>
+Sender: kernel-janitors-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-There is an updated rootfs.img file available at:
+On Sat, Apr 02, 2016 at 07:49:16AM +0300, Dan Carpenter wrote:
+> We should be testing for -ENOMEM but the minus sign is missing.
+> 
+> Fixes: c9af28fdd449 ('ext4 crypto: don't let data integrity writebacks fail with ENOMEM')
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+Thanks, applied.
 
-It includes the latest updates from the xfstests-dev and quota
-upstreams.  Some spurious test filaures in the encrypt and quota
-configurations have been fixed.
-
-In the gce-xfstests driver, we now also support DAX testing.  For more
-information about this test framework, please see:
-
-    http://thunk.org/gce-xfstests
-
-Cheers,
-
-						- Ted
+					- Ted
