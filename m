@@ -1,8 +1,8 @@
 From: Waiman Long <waiman.long@hpe.com>
 Subject: Re: [PATCH 2/3] percpu_stats: Simple per-cpu statistics count helper
  functions
-Date: Wed, 6 Apr 2016 15:52:39 -0400
-Message-ID: <57056907.20705@hpe.com>
+Date: Wed, 6 Apr 2016 17:51:45 -0400
+Message-ID: <570584F1.10909@hpe.com>
 References: <1459566578-30221-1-git-send-email-Waiman.Long@hpe.com> <1459566578-30221-3-git-send-email-Waiman.Long@hpe.com> <20160404160228.GW7822@mtj.duckdns.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
@@ -15,15 +15,10 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	Douglas Hatch <doug.hatch@hpe.com>,
 	Toshimitsu Kani <toshi.kani@hpe.com>
 To: Tejun Heo <tj@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bn1on0147.outbound.protection.outlook.com ([157.56.110.147]:32448
-	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753181AbcDFTw4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Apr 2016 15:52:56 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20160404160228.GW7822@mtj.duckdns.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 On 04/04/2016 12:02 PM, Tejun Heo wrote:
 > Hello,
@@ -35,14 +30,22 @@ On 04/04/2016 12:02 PM, Tejun Heo wrote:
 > I'm not sure ulong is the best choice here.  Atomic reads on 32bit are
 > nice but people often need 64bit counters for stats.  It probably is a
 > better idea to use u64_stats_sync.
->
+
+Got that, will incorporate 64-bit counter support for 32-bit architecture.
+
 >> +/*
 >> + * Reset the all statistics counts to 0 in the percpu_stats structure
 > Proper function description please.
->
+
+Sure. Will do that for all the functions.
+
 >> + */
 >> +static inline void percpu_stats_reset(struct percpu_stats *pcs)
 > Why is this function inline?
+
+It doesn't need to be inlined, but I need to add a lib/percpu_stats.c 
+file to hold the function which I will do in my v2 patch.
+
 >
 >> +{
 >> +	int cpu;
@@ -72,7 +75,10 @@ On 04/04/2016 12:02 PM, Tejun Heo wrote:
 >> +				*pstats = 0;
 >> +	}
 > I don't think this is acceptable.
->
+
+I am not sure what you mean here by not acceptable. Please enlighten me 
+on that.
+
 >> +}
 >> +
 >> +static inline int percpu_stats_init(struct percpu_stats *pcs, int num)
@@ -94,7 +100,9 @@ On 04/04/2016 12:02 PM, Tejun Heo wrote:
 >> +	pcs->nstats = 0;
 >> +}
 > Why inline the above functions?
->
+
+Will move this function to lib/percpu_stats.c.
+
 >> +static inline void
 >> +__percpu_stats_add(struct percpu_stats *pcs, int stat, int cnt)
 >> +{
