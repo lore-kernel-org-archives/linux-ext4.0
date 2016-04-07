@@ -1,63 +1,84 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 2/3] percpu_stats: Simple per-cpu statistics count helper
- functions
-Date: Thu, 7 Apr 2016 12:06:23 -0400
-Message-ID: <20160407160623.GF7822@mtj.duckdns.org>
-References: <1459566578-30221-1-git-send-email-Waiman.Long@hpe.com>
- <1459566578-30221-3-git-send-email-Waiman.Long@hpe.com>
- <20160404160228.GW7822@mtj.duckdns.org>
- <570584F1.10909@hpe.com>
- <20160406225424.GK24661@htj.duckdns.org>
- <57068395.1080703@hpe.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 bug fixes for 4.6
+Date: Thu, 7 Apr 2016 14:36:27 -0400
+Message-ID: <20160407183627.GA2369@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Christoph Lameter <cl@linux.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Waiman Long <waiman.long@hpe.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f175.google.com ([209.85.161.175]:32929 "EHLO
-	mail-yw0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751559AbcDGQG0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Apr 2016 12:06:26 -0400
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <57068395.1080703@hpe.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello, Waiman.
+The following changes since commit 243d50678583100855862bc084b8b307eea67f68:
 
-On Thu, Apr 07, 2016 at 11:58:13AM -0400, Waiman Long wrote:
-> We can certainly make it watertight. However, that will certainly require
-> adding performance overhead in the percpu stats update fast path which I am
-> not willing to pay.
+  Merge branch 'overlayfs-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/vfs (2016-03-22 13:11:15 -0700)
 
-There are multiple options depending on the specific balance you want
-to hit.  Reset can be made very heavy (involving RCU sync operation)
-to make hot path overhead minimal, local locking or atomic ops can
-also be used which while more expensive than this_cpu_*() ops still
-avoids cacheline bouncing.
+are available in the git repository at:
 
-> The purpose of this stat counters reset functionality is to allow developers
-> to reset the stat counters, run certain workload and see how things are
-> going in the kernel when the workload completes assuming that those stat
-> counters are exposed via sysfs, debugfs, etc. The developers can certainly
-> check the stat counters after the reset to make sure that they are properly
-> reset. So I don't think we need an airtight way of doing it. If you have
-> scenarios in your mind that require airtight reset of the stat counters,
-> please let me know and I will see what I can do about it.
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-No matter what, don't create something which can yield a completely
-surprising result once in a blue moon.  You might think it's okay
-because the likelihood is low but that just means that the resulting
-malfunctions will be that much more obscure and difficult to
-reproduce.
+for you to fetch changes up to c325a67c72903e1cc30e990a15ce745bda0dbfde:
 
-Thanks.
+  ext4: ignore quota mount options if the quota feature is enabled (2016-04-03 17:03:37 -0400)
 
--- 
-tejun
+----------------------------------------------------------------
+These changes contains a fix for overlayfs interacting with some
+(badly behaved) dentry code in various file systems.  These have been
+reviewed by Al and the respective file system mtinainers and are going
+through the ext4 tree for convenience.
+
+This also has a few ext4 encryption bug fixes that were discovered in
+Android testing (yes, we will need to get these sync'ed up with the
+fs/crypto code; I'll take care of that).  It also has some bug fixes
+and a change to ignore the legacy quota options to allow for xfstests
+regression testing of ext4's internal quota feature and to be more
+consistent with how xfs handles this case.
+
+----------------------------------------------------------------
+Dan Carpenter (1):
+      ext4 crypto: fix some error handling
+
+Filipe Manana (1):
+      btrfs: fix crash/invalid memory access on fsync when using overlayfs
+
+Jan Kara (1):
+      ext4: retry block allocation for failed DIO and DAX writes
+
+Miklos Szeredi (4):
+      fs: add file_dentry()
+      nfs: use file_dentry()
+      ext4: use dget_parent() in ext4_file_open()
+      ext4: use file_dentry()
+
+Theodore Ts'o (7):
+      ext4: check if in-inode xattr is corrupted in ext4_expand_extra_isize_ea()
+      ext4 crypto: don't let data integrity writebacks fail with ENOMEM
+      ext4 crypto: use dget_parent() in ext4_d_revalidate()
+      ext4: allow readdir()'s of large empty directories to be interrupted
+      ext4: add lockdep annotations for i_data_sem
+      ext4: avoid calling dquot_get_next_id() if quota is not enabled
+      ext4: ignore quota mount options if the quota feature is enabled
+
+ fs/btrfs/file.c        |  2 +-
+ fs/dcache.c            |  5 ++++-
+ fs/ext4/crypto.c       | 49 +++++++++++++++++++++++++++++--------------------
+ fs/ext4/dir.c          |  5 +++++
+ fs/ext4/ext4.h         | 29 +++++++++++++++++++++++++++--
+ fs/ext4/file.c         | 12 ++++++++----
+ fs/ext4/inode.c        | 58 ++++++++++++++++++++++++++++------------------------------
+ fs/ext4/move_extent.c  | 11 +++++++++--
+ fs/ext4/namei.c        |  5 +++++
+ fs/ext4/page-io.c      | 14 +++++++++++++-
+ fs/ext4/readpage.c     |  2 +-
+ fs/ext4/super.c        | 61 +++++++++++++++++++++++++++++++++++++++++++++++--------------
+ fs/ext4/xattr.c        | 32 ++++++++++++++++++++++++++++----
+ fs/nfs/dir.c           |  6 +++---
+ fs/nfs/inode.c         |  2 +-
+ fs/nfs/nfs4file.c      |  4 ++--
+ fs/overlayfs/super.c   | 33 +++++++++++++++++++++++++++++++++
+ include/linux/dcache.h | 10 ++++++++++
+ include/linux/fs.h     | 10 ++++++++++
+ 19 files changed, 264 insertions(+), 86 deletions(-)
