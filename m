@@ -1,7 +1,7 @@
 From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH v2 4/4] ext4: Make cache hits/misses per-cpu counts
-Date: Fri,  8 Apr 2016 12:16:22 -0400
-Message-ID: <1460132182-11690-5-git-send-email-Waiman.Long@hpe.com>
+Subject: [PATCH v2 3/4] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin() called
+Date: Fri,  8 Apr 2016 12:16:21 -0400
+Message-ID: <1460132182-11690-4-git-send-email-Waiman.Long@hpe.com>
 References: <1460132182-11690-1-git-send-email-Waiman.Long@hpe.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Scott J Norton <scott.norton@hpe.com>,
@@ -11,131 +11,110 @@ Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from g2t4625.austin.hp.com ([15.73.212.76]:52348 "EHLO
+	g2t4625.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758763AbcDHQQy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Apr 2016 12:16:54 -0400
+Received: from g1t6216.austin.hp.com (g1t6216.austin.hp.com [15.73.96.123])
+	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by g2t4625.austin.hp.com (Postfix) with ESMTPS id B2BB23852
+	for <linux-ext4@vger.kernel.org>; Fri,  8 Apr 2016 16:16:47 +0000 (UTC)
 In-Reply-To: <1460132182-11690-1-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch changes the es_stats_cache_hits and es_stats_cache_misses
-statistics counts to per-cpu variables to reduce cacheline contention
-issues whem multiple threads are trying to update those counts
-simultaneously. It uses the new per-cpu stats APIs provided by the
-percpu_stats.h header file.
+When performing direct I/O, the current ext4 code does
+not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
+__blockdev_direct_IO() when inode_dio_begin() has, in fact, been
+called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
+inode_dio_begin()/inode_dio_end() internally.  This doubling of
+inode_dio_begin()/inode_dio_end() calls are wasteful.
 
-With a 38-threads fio I/O test with 2 shared files (on DAX-mount
-NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1 kernel,
-the aggregated bandwidths before and after the patch were:
+This patch removes the extra internal inode_dio_begin()/inode_dio_end()
+calls when those calls are being issued by the caller directly. For
+really fast storage systems like NVDIMM, the removal of the extra
+inode_dio_begin()/inode_dio_end() can give a meaningful boost to
+I/O performance.
+
+On a 4-socket Haswell-EX system (72 cores) running 4.6-rc1 kernel,
+fio with 38 threads doing parallel I/O on two shared files on an
+NVDIMM with DAX gave the following aggregrate bandwidth with and
+without the patch:
 
   Test          W/O patch       With patch      % change
   ----          ---------       ----------      --------
-  Read-only     10173MB/s       16141MB/s        +58.7%
-  Read-write     2830MB/s        4315MB/s        +52.5%
+  Read-only      8688MB/s       10173MB/s        +17.1%
+  Read-write     2687MB/s        2830MB/s         +5.3%
 
 Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 ---
- fs/ext4/extents_status.c |   22 +++++++++++++---------
- fs/ext4/extents_status.h |   11 +++++++++--
- 2 files changed, 22 insertions(+), 11 deletions(-)
+ fs/ext4/indirect.c |   10 ++++++++--
+ fs/ext4/inode.c    |   12 +++++++++---
+ 2 files changed, 17 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index e38b987..bfa8d63 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -825,9 +825,9 @@ out:
- 		es->es_pblk = es1->es_pblk;
- 		if (!ext4_es_is_referenced(es1))
- 			ext4_es_set_referenced(es1);
--		stats->es_stats_cache_hits++;
-+		percpu_stats_inc(&stats->es_stats, es_stats_cache_hits);
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 3027fa6..4304be6 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -706,14 +706,20 @@ retry:
+ 			inode_dio_end(inode);
+ 			goto locked;
+ 		}
++		/*
++		 * Need to pass in DIO_SKIP_DIO_COUNT to prevent
++		 * duplicated inode_dio_begin/inode_dio_end sequence.
++		 */
+ 		if (IS_DAX(inode))
+ 			ret = dax_do_io(iocb, inode, iter, offset,
+-					ext4_dio_get_block, NULL, 0);
++					ext4_dio_get_block, NULL,
++					DIO_SKIP_DIO_COUNT);
+ 		else
+ 			ret = __blockdev_direct_IO(iocb, inode,
+ 						   inode->i_sb->s_bdev, iter,
+ 						   offset, ext4_dio_get_block,
+-						   NULL, NULL, 0);
++						   NULL, NULL,
++						   DIO_SKIP_DIO_COUNT);
+ 		inode_dio_end(inode);
  	} else {
--		stats->es_stats_cache_misses++;
-+		percpu_stats_inc(&stats->es_stats, es_stats_cache_misses);
+ locked:
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dab84a2..779aa33 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3358,9 +3358,15 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 	 * Make all waiters for direct IO properly wait also for extent
+ 	 * conversion. This also disallows race between truncate() and
+ 	 * overwrite DIO as i_dio_count needs to be incremented under i_mutex.
++	 *
++	 * Both dax_do_io() and __blockdev_direct_IO() will unnecessarily
++	 * call inode_dio_begin()/inode_dio_end() again if the
++	 * DIO_SKIP_DIO_COUNT flag is not set.
+ 	 */
+-	if (iov_iter_rw(iter) == WRITE)
++	if (iov_iter_rw(iter) == WRITE) {
++		dio_flags = DIO_SKIP_DIO_COUNT;
+ 		inode_dio_begin(inode);
++	}
+ 
+ 	/* If we do a overwrite dio, i_mutex locking can be released */
+ 	overwrite = *((int *)iocb->private);
+@@ -3393,10 +3399,10 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
+ 		get_block_func = ext4_dio_get_block_overwrite;
+ 	else if (is_sync_kiocb(iocb)) {
+ 		get_block_func = ext4_dio_get_block_unwritten_sync;
+-		dio_flags = DIO_LOCKING;
++		dio_flags |= DIO_LOCKING;
+ 	} else {
+ 		get_block_func = ext4_dio_get_block_unwritten_async;
+-		dio_flags = DIO_LOCKING;
++		dio_flags |= DIO_LOCKING;
  	}
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
-@@ -1113,9 +1113,9 @@ int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
- 	seq_printf(seq, "stats:\n  %lld objects\n  %lld reclaimable objects\n",
- 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
- 		   percpu_counter_sum_positive(&es_stats->es_stats_shk_cnt));
--	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
--		   es_stats->es_stats_cache_hits,
--		   es_stats->es_stats_cache_misses);
-+	seq_printf(seq, "  %llu/%llu cache hits/misses\n",
-+		   percpu_stats_sum(&es_stats->es_stats, es_stats_cache_hits),
-+		   percpu_stats_sum(&es_stats->es_stats, es_stats_cache_misses));
- 	if (inode_cnt)
- 		seq_printf(seq, "  %d inodes on list\n", inode_cnt);
- 
-@@ -1142,8 +1142,6 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- 	sbi->s_es_nr_inode = 0;
- 	spin_lock_init(&sbi->s_es_lock);
- 	sbi->s_es_stats.es_stats_shrunk = 0;
--	sbi->s_es_stats.es_stats_cache_hits = 0;
--	sbi->s_es_stats.es_stats_cache_misses = 0;
- 	sbi->s_es_stats.es_stats_scan_time = 0;
- 	sbi->s_es_stats.es_stats_max_scan_time = 0;
- 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
-@@ -1153,15 +1151,20 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- 	if (err)
- 		goto err1;
- 
-+	err = percpu_stats_init(&sbi->s_es_stats.es_stats, es_stats_cnt, 0);
-+	if (err)
-+		goto err2;
-+
- 	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
- 	sbi->s_es_shrinker.count_objects = ext4_es_count;
- 	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
- 	err = register_shrinker(&sbi->s_es_shrinker);
- 	if (err)
--		goto err2;
-+		goto err3;
- 
- 	return 0;
--
-+err3:
-+	percpu_stats_destroy(&sbi->s_es_stats.es_stats);
- err2:
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
- err1:
-@@ -1173,6 +1176,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- {
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
-+	percpu_stats_destroy(&sbi->s_es_stats.es_stats);
- 	unregister_shrinker(&sbi->s_es_shrinker);
- }
- 
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index f7aa24f..c163189 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -11,6 +11,8 @@
- #ifndef _EXT4_EXTENTS_STATUS_H
- #define _EXT4_EXTENTS_STATUS_H
- 
-+#include <linux/percpu_stats.h>
-+
- /*
-  * Turn on ES_DEBUG__ to get lots of info about extent status operations.
-  */
-@@ -67,10 +69,15 @@ struct ext4_es_tree {
- 	struct extent_status *cache_es;	/* recently accessed extent */
- };
- 
-+enum ext4_es_stat_type {
-+	es_stats_cache_hits,
-+	es_stats_cache_misses,
-+	es_stats_cnt,
-+};
-+
- struct ext4_es_stats {
- 	unsigned long es_stats_shrunk;
--	unsigned long es_stats_cache_hits;
--	unsigned long es_stats_cache_misses;
-+	struct percpu_stats es_stats;
- 	u64 es_stats_scan_time;
- 	u64 es_stats_max_scan_time;
- 	struct percpu_counter es_stats_all_cnt;
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
 -- 
 1.7.1
+
