@@ -1,58 +1,97 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 bug fixes for 4.6
-Date: Sun, 10 Apr 2016 13:50:11 -0700
-Message-ID: <CA+55aFyGeZTy291E5jRkF63qBL=cRpLVw4FGzePZR7FhNUFp_w@mail.gmail.com>
-References: <xr93bn5iyzeq.fsf@gthelen.mtv.corp.google.com>
-	<CA+55aFwdgD1Y7caKoL=8aPvoKUwObA-Fa8LypPBZMA87pBcu1w@mail.gmail.com>
-	<CA+55aFzfmHptveL=y1C5VidQjjiSekcCq=-fg1Z-W6Szog-VRA@mail.gmail.com>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Exposes stale data in ext4 data=ordered + delalloc
+Date: Mon, 11 Apr 2016 00:18:35 +0000
+Message-ID: <C26C67884C4B7A48980D57463559486403296680@BPXM20GP.gisp.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001a1137665a04d4b905302793ff
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Greg Thelen <gthelen@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFzfmHptveL=y1C5VidQjjiSekcCq=-fg1Z-W6Szog-VRA@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="iso-2022-jp"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO200.gate.nec.co.jp ([210.143.35.50]:47711 "EHLO
+	tyo200.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751118AbcDKATt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Apr 2016 20:19:49 -0400
+Received: from tyo202.gate.nec.co.jp ([10.7.69.202])
+	by tyo200.gate.nec.co.jp (8.13.8/8.13.4) with ESMTP id u3B0Jkah007566
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Apr 2016 09:19:46 +0900 (JST)
+Content-Language: ja-JP
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---001a1137665a04d4b905302793ff
-Content-Type: text/plain; charset=UTF-8
+Hi all,
 
-On Sun, Apr 10, 2016 at 1:48 PM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> The attached patch is actually tested and seems to fix the issue.
+I found the security problem that exposes stale data in ext4 data=ordered
+when the power failure occurred during ext4_writepages(). This problem can be
+reproduced in linux-4.5.
 
-Christ. Now really attached.
+Steps to reproduce:
+(1) Create 2GB file filled up with the character 'Z' and remove the file.
+    It means that all the data blocks in ext4 is filled up with 'Z'.
 
-I'll just go back to bed, because today is just not working out. Maybe
-things will be better tomorrow.
+    # mkfs -t ext4 /dev/sdb1 2G
+    # mount /dev/sdb1 /mnt/mp1
+    # xfs_io -f -c "pwrite -b 1M -S 0x5A5A5A5A 0 2G" /mnt/mp1/filldata
+    # sync
+    # rm -f /mnt/mp1/filldata
+    # sync
 
-Or maybe I should start drinking, and at least have an excuse.
+(2) Do force reboot (sysrq + b) during creating six files filled up with
+    the character 'A' in parallel.
 
-              Linus
+    # for i in {1..6} ; do \
+      xfs_io -f -c "pwrite -b 1M -S 0x41414141 0 300M" /mnt/mp1/file$i & \
+      done
+    # sleep 10
+    # echo b > /proc/sysrq-trigger
 
---001a1137665a04d4b905302793ff
-Content-Type: text/plain; charset=US-ASCII; name="patch.diff"
-Content-Disposition: attachment; filename="patch.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_imv1mscb0
+(3) After force reboot, when you read the file created by (2), sometimes
+    you can see the character 'Z' which is written in the removed file by (1).
 
-IGZzL2V4dDQvbmFtZWkuYyB8IDIgKy0KIGZzL3JlYWRkaXIuYyAgICB8IDIgKysKIDIgZmlsZXMg
-Y2hhbmdlZCwgMyBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEvZnMv
-ZXh0NC9uYW1laS5jIGIvZnMvZXh0NC9uYW1laS5jCmluZGV4IGRiOThmODlmNzM3Zi4uYzA3NDIy
-ZDI1NGI2IDEwMDY0NAotLS0gYS9mcy9leHQ0L25hbWVpLmMKKysrIGIvZnMvZXh0NC9uYW1laS5j
-CkBAIC0xMTA3LDcgKzExMDcsNyBAQCBpbnQgZXh0NF9odHJlZV9maWxsX3RyZWUoc3RydWN0IGZp
-bGUgKmRpcl9maWxlLCBfX3UzMiBzdGFydF9oYXNoLAogCX0KIAogCXdoaWxlICgxKSB7Ci0JCWlm
-IChzaWduYWxfcGVuZGluZyhjdXJyZW50KSkgeworCQlpZiAoZmF0YWxfc2lnbmFsX3BlbmRpbmco
-Y3VycmVudCkpIHsKIAkJCWVyciA9IC1FUkVTVEFSVFNZUzsKIAkJCWdvdG8gZXJyb3V0OwogCQl9
-CmRpZmYgLS1naXQgYS9mcy9yZWFkZGlyLmMgYi9mcy9yZWFkZGlyLmMKaW5kZXggZTY5ZWYzYjc5
-Nzg3Li4yYjBiYjRmYjg5OTAgMTAwNjQ0Ci0tLSBhL2ZzL3JlYWRkaXIuYworKysgYi9mcy9yZWFk
-ZGlyLmMKQEAgLTI0OCw2ICsyNDgsOCBAQCBzdGF0aWMgaW50IGZpbGxkaXI2NChzdHJ1Y3QgZGly
-X2NvbnRleHQgKmN0eCwgY29uc3QgY2hhciAqbmFtZSwgaW50IG5hbWxlbiwKIAkJcmV0dXJuIC1F
-SU5WQUw7CiAJZGlyZW50ID0gYnVmLT5wcmV2aW91czsKIAlpZiAoZGlyZW50KSB7CisJCWlmIChz
-aWduYWxfcGVuZGluZyhjdXJyZW50KSkKKwkJCXJldHVybiAtRUlOVFI7CiAJCWlmIChfX3B1dF91
-c2VyKG9mZnNldCwgJmRpcmVudC0+ZF9vZmYpKQogCQkJZ290byBlZmF1bHQ7CiAJfQo=
---001a1137665a04d4b905302793ff--
+    # hexdump -C /mnt/mp1/file1 | tail
+    00000000  41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
+    *
+    0ec00000  5a 5a 5a 5a 5a 5a 5a 5a  5a 5a 5a 5a 5a 5a 5a 5a  |ZZZZZZZZZZZZZZZZ|
+    *
+
+Without the following patch, ext4 will achieve data=ordered guarantees.
+
+ext4: remove calls to ext4_jbd2_file_inode() from delalloc write path
+http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=f3b59291a69d0b734be1fc8be489fef2dd846d3d
+
+Primarily, ext4 writepages operation calls ext4_jbd2_file_inode()
+to submit data buffers to disk before committing transaction.
+But the above patch makes ext4_writepages() not calling ext4_jbd2_file_inode().
+Due to this change, it is possible to precede metadata
+in the following power failure case (*):
+
+ext4_writepages
+  +- ext4_journal_start_with_reserve
+  +- mpage_map_and_submit_extent
+  |  |- mpage_map_one_extent
+  |  |  |- ext4_map_blocks
+  |  |- ext4_mark_inode_dirty
+  |
+  +- ext4_journal_stop
+  |
+  | (*) If jbd2_journal_commit_transaction() is called, commit above transaction
+  |     with updating extents and file size. And then, power failure occurred
+  |     before/during submitting data buffers.
+  |
+  +- ext4_io_submit
+
+Note that stale data exposure is not happened when writing data into
+allocated blocks, but happened when writing data into new blocks.
+In ext4, whenever allocating a new block with non-aligned data,
+the remaining region is zeroed out. Therefore, if metadata is updated
+but corresponding file data is not written in an allocated block,
+you can only see the zeroed data which is not the stale data.
+
+I think this work is not data=ordered behavior that prevents
+stale data exposure. Is this right?
+
+Regards,
+Kazuya Mio
+
