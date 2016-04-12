@@ -1,19 +1,21 @@
 From: Toshi Kani <toshi.kani@hpe.com>
-Subject: [PATCH v2 0/5] Align mmap address for DAX pmd mappings
-Date: Tue, 12 Apr 2016 14:39:14 -0600
-Message-ID: <1460493555-31611-1-git-send-email-toshi.kani@hpe.com>
+Subject: [PATCH v2 1/5] dax: add dax_get_unmapped_area for pmd mappings
+Date: Tue, 12 Apr 2016 14:39:15 -0600
+Message-ID: <1460493555-31611-2-git-send-email-toshi.kani@hpe.com>
+References: <1460493555-31611-1-git-send-email-toshi.kani@hpe.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, jack@suse.cz, linux-nvdimm@lists.01.org,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, willy@linux.intel.com,
-	ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-	kirill.shutemov@linux.intel.com
+Cc: tytso@mit.edu, jack@suse.cz, Toshi Kani <toshi.kani@hpe.com>,
+	linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, adilger.kernel@dilger.ca,
+	viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	willy@linux.intel.com, ross.zwisler@linux.intel.com,
+	linux-ext4@vger.kernel.org, kirill.shutemov@linux.intel.com
 To: akpm@linux-foundation.org,
 	dan.j.williams@intel.com
 Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1460493555-31611-1-git-send-email-toshi.kani@hpe.com>
 List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
 	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
 List-Archive: <http://oss.sgi.com/pipermail/xfs>
@@ -37,32 +39,94 @@ It calls mmap() with a NULL address, which needs to be changed to
 provide a pmd-aligned address for testing with DAX pmd mappings.
 Changing all applications that call mmap() with NULL is undesirable.
 
-This patch-set extends filesystems to align an mmap address for
-a DAX file so that unmodified applications can use DAX pmd mappings.
+Add dax_get_unmapped_area(), which can be called by filesystem's
+get_unmapped_area to align an mmap address by the pmd size for
+a DAX file.  It calls the default handler, mm->get_unmapped_area(),
+to find a range and then aligns it for a DAX file.
 
 [1]: https://github.com/axboe/fio/blob/master/engines/mmap.c
-
-v2:
- - Change filesystems to provide their get_unmapped_area().
-   (Matthew Wilcox)
- - Add more description about the benefit. (Matthew Wilcox)
-
+Signed-off-by: Toshi Kani <toshi.kani@hpe.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Dan Williams <dan.j.williams@intel.com>
+Cc: Matthew Wilcox <willy@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
 ---
-Toshi Kani (5):
- 1/5 dax: add dax_get_unmapped_area for pmd mappings
- 2/5 ext4: call dax_get_unmapped_area() for DAX pmd mappings
- 3/5 xfs: call dax_get_unmapped_area() for DAX pmd mappings
- 4/5 ext2: call dax_get_unmapped_area() for DAX pmd mappings
- 5/5 block: call dax_get_unmapped_area() for DAX pmd mappings
+ fs/dax.c            |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/dax.h |    2 ++
+ 2 files changed, 47 insertions(+)
 
----
- fs/block_dev.c      |  3 +++
- fs/dax.c            | 45 +++++++++++++++++++++++++++++++++++++++++++++
- fs/ext2/file.c      |  3 +++
- fs/ext4/file.c      |  3 +++
- fs/xfs/xfs_file.c   |  3 +++
- include/linux/dax.h |  2 ++
- 6 files changed, 59 insertions(+)
+diff --git a/fs/dax.c b/fs/dax.c
+index 75ba46d..b54fdb9 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1158,3 +1158,48 @@ int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
+ 	return dax_zero_page_range(inode, from, length, get_block);
+ }
+ EXPORT_SYMBOL_GPL(dax_truncate_page);
++
++/**
++ * dax_get_unmapped_area - handle get_unmapped_area for a DAX file
++ * @filp: The file being mmap'd, if not NULL
++ * @addr: The mmap address. If NULL, the kernel assigns the address
++ * @len: The mmap size in bytes
++ * @pgoff: The page offset in the file where the mapping starts from.
++ * @flags: The mmap flags
++ *
++ * This function can be called by a filesystem for get_unmapped_area().
++ * When a target file is a DAX file, it aligns the mmap address at the
++ * beginning of the file by the pmd size.
++ *
++ * When the target file is not a DAX file, @addr is specified, the
++ * request is not suitable for pmd mappings, or mm->get_unmapped_area()
++ * failed with extended @len, it simply calls the default handler,
++ * mm->get_unmapped_area(), with the original arguments.
++ */
++unsigned long dax_get_unmapped_area(struct file *filp, unsigned long addr,
++		unsigned long len, unsigned long pgoff, unsigned long flags)
++{
++	unsigned long off, off_end, off_pmd, len_pmd, addr_pmd;
++
++	if (IS_ENABLED(CONFIG_FS_DAX_PMD) &&
++	    filp && !addr && IS_DAX(filp->f_mapping->host)) {
++		off = pgoff << PAGE_SHIFT;
++		off_end = off + len;
++		off_pmd = round_up(off, PMD_SIZE);
++
++		if ((off_end > off_pmd) && ((off_end - off_pmd) >= PMD_SIZE)) {
++			len_pmd = len + PMD_SIZE;
++
++			addr_pmd = current->mm->get_unmapped_area(
++					filp, addr, len_pmd, pgoff, flags);
++
++			if (!IS_ERR_VALUE(addr_pmd)) {
++				addr_pmd += (off - addr_pmd) & (PMD_SIZE - 1);
++				return addr_pmd;
++			}
++		}
++	}
++
++	return current->mm->get_unmapped_area(filp, addr, len, pgoff, flags);
++}
++EXPORT_SYMBOL_GPL(dax_get_unmapped_area);
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 636dd59..9d52de0 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -10,6 +10,8 @@ ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *, loff_t,
+ int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size);
+ int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
+ int dax_truncate_page(struct inode *, loff_t from, get_block_t);
++unsigned long dax_get_unmapped_area(struct file *filp, unsigned long addr,
++		unsigned long len, unsigned long pgoff, unsigned long flags);
+ int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t,
+ 		dax_iodone_t);
+ int __dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t,
 
 _______________________________________________
 xfs mailing list
