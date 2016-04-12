@@ -1,41 +1,47 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 107301] system hang during ext4 xattr operation
-Date: Tue, 12 Apr 2016 12:52:24 +0000
-Message-ID: <bug-107301-13602-Xu5jD3YIde@https.bugzilla.kernel.org/>
-References: <bug-107301-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:38241 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933459AbcDLMw2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Apr 2016 08:52:28 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id A065720383
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2016 12:52:26 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id A625120361
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2016 12:52:24 +0000 (UTC)
-In-Reply-To: <bug-107301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Waiman Long <Waiman.Long@hpe.com>
+Subject: [PATCH v3 0/2] ext4: Improve parallel I/O performance on NVDIMM
+Date: Tue, 12 Apr 2016 14:12:53 -0400
+Message-ID: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>,
+	Waiman Long <Waiman.Long@hpe.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=107301
+v2->v3:
+ - Remove the percpu_stats helper functions and use percpu_counters
+   instead.
 
---- Comment #26 from Philipp Matthias Hahn <pmhahn@pmhahn.de> ---
-(In reply to Jan Kara from comment #25)
-> Phillip, I see you are using some variant of 4.1 kernel. As comment 23
-> mentions, fixes for the problem have landed in 4.6-rc1. So is it possible
-> for you to test that kernel?
+v1->v2:
+ - Remove percpu_stats_reset() which is not really needed in this
+   patchset.
+ - Move some percpu_stats* functions to the newly created
+   lib/percpu_stats.c.
+ - Add a new patch to support 64-bit statistics counts in 32-bit
+   architectures.
+ - Rearrange the patches by moving the percpu_stats patches to the
+   front followed by the ext4 patches.
 
-As that problem happend in production, I'm unwilling to install an -rc kernel
-there.
-Currently I don't have the time to try to reproduce it in my development
-environment, but that may change if that lockup happens again.
-Can you be more specific on which change in 4.6-rc1 you're referencing?
+This patchset aims to improve parallel I/O performance of the ext4
+filesystem on fast storage devices like NVDIMM.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Patch 1 eliminates duplicated inode_dio_begin()/inode_dio_end() calls.
+
+Patch 2 converts some ext4 statistics counts into percpu counts using
+the helper functions.
+
+Waiman Long (2):
+  ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin() called
+  ext4: Make cache hits/misses per-cpu counts
+
+ fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h |    4 ++--
+ fs/ext4/indirect.c       |   10 ++++++++--
+ fs/ext4/inode.c          |   12 +++++++++---
+ 4 files changed, 48 insertions(+), 16 deletions(-)
