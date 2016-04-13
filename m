@@ -1,73 +1,65 @@
-From: Toshi Kani <toshi.kani@hpe.com>
-Subject: Re: [PATCH v2 2/5] ext4: call dax_get_unmapped_area() for DAX pmd
- mappings
-Date: Wed, 13 Apr 2016 12:52:44 -0600
-Message-ID: <1460573564.24985.60.camel@hpe.com>
-References: <1460493572-31667-1-git-send-email-toshi.kani@hpe.com>
-	 <20160413030156.GN2781@linux.intel.com> <1460560116.24985.55.camel@hpe.com>
-	 <20160413182249.GB3120@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: akpm@linux-foundation.org, dan.j.williams@intel.com,
-	linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org
-To: Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160413182249.GB3120@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: mchristi@redhat.com
+Subject: [PATCH 00/42] v5: separate operations from flags in the bio/request structs
+Date: Wed, 13 Apr 2016 14:35:46 -0500
+Message-ID: <1460576188-5751-1-git-send-email-mchristi@redhat.com>
+To: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+Return-path: <linux-bcache-owner@vger.kernel.org>
+Sender: linux-bcache-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2016-04-13 at 14:22 -0400, Matthew Wilcox wrote:
-> On Wed, Apr 13, 2016 at 09:08:36AM -0600, Toshi Kani wrote:
-> >=20
-> > >=20
-> > > Could you do something like:
-> > >=20
-> > > =C2=A0#ifdef CONFIG_FS_DAX
-> > > =C2=A0struct page *read_dax_sector(struct block_device *bdev, sec=
-tor_t n);
-> > > +unsigned long dax_get_unmapped_area(struct file *filp, unsigned =
-long
-> > > addr,
-> > > +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0unsigned long len, unsigned long pgoff, unsigne=
-d long
-> > > flags);
-> > > =C2=A0#else
-> > > =C2=A0static inline struct page *read_dax_sector(struct block_dev=
-ice
-> > > *bdev,
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0sector_t n)
-> > > =C2=A0{
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0return ERR_=
-PTR(-ENXIO);
-> > > =C2=A0}
-> > > +#define dax_get_unmapped_area	NULL
-> > > =C2=A0#endif
-> > >=20
-> > > in patch 1/5.=C2=A0=C2=A0Then there's no need for the ifdefs in e=
-ach
-> > > filesystem.
-> >
-> > I thought about it, but I do not think we can use an inline functio=
-n to
-> > an entry point.
->
-> That's not an inline function.=C2=A0=C2=A0It's just NULL.=C2=A0=C2=A0=
-So after the
-> preprocessor is done with it, it just looks like:
->=20
-> 	.get_unmapped_area =3D NULL,
->=20
-> and it won't be called by get_unmapped_area().
+The following patches begin to cleanup the request->cmd_flags and
+bio->bi_rw mess. We currently use cmd_flags to specify the operation,
+attributes and state of the request. For bi_rw we use it for similar
+info and also the priority but then also have another bi_flags field
+for state. At some point, we abused them so much we just made cmd_flags
+64 bits, so we could add more.
 
-Oh, I see. Good idea. I will do that.
+The following patches seperate the operation (read, write discard,
+flush, etc) from cmd_flags/bi_rw.
 
-Thanks,
--Toshi
+This patchset was made against linux-next from today April 13
+(git tag next-20160413).
+
+I put a git tree here:
+https://github.com/mikechristie/linux-kernel.git
+The patches are in the op branch.
+
+v5:
+1. Missed crypto fs submit_bio_wait call.
+2. Change nfs bi_rw check to bi_op.
+3. btrfs. Convert finish_parity_scrub.
+4. Reworked against Jens's QUEUE_FLAG patches so I could drop my similar
+code.
+5. Separated the core block layer change into multiple patches for
+merging, elevator, stats, mq and non mq request allocation to try
+and make it easier to read.
+
+v4:
+1. Rebased to current linux-next tree.
+
+v3:
+
+1. Used "=" instead of "|="  to setup bio bi_rw.
+2. Removed __get_request cmd_flags compat code.
+3. Merged initial dm related changes requested by Mike Snitzer.
+4. Fixed ubd kbuild errors in flush related patches.
+5. Fix 80 char col issues in several patches.
+6. Fix issue with one of the btrfs patches where it looks like I reverted
+a patch when trying to fix a merge error.
+
+v2
+
+1. Dropped arguments from submit_bio, and had callers setup
+bio.
+2. Add REQ_OP_FLUSH for request_fn users and renamed REQ_FLUSH
+to REQ_PREFLUSH for make_request_fn users.
+3. Dropped bio/rq_data_dir functions, and added a op_is_write
+function instead.
