@@ -1,62 +1,104 @@
 From: Toshi Kani <toshi.kani@hpe.com>
-Subject: Re: ext4 error
-Date: Wed, 13 Apr 2016 08:10:27 -0600
-Message-ID: <1460556627.24985.28.camel@hpe.com>
-References: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
+Subject: Re: [PATCH v2 1/5] dax: add dax_get_unmapped_area for pmd mappings
+Date: Wed, 13 Apr 2016 08:55:03 -0600
+Message-ID: <1460559303.24985.52.camel@hpe.com>
+References: <1460493555-31611-1-git-send-email-toshi.kani@hpe.com>
+	<1460493555-31611-2-git-send-email-toshi.kani@hpe.com>
+	<20160413031801.GO2781@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>, "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Eric Shang <EricShang@zhaoxin.com>,
-	Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: jack@suse.cz, linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, adilger.kernel@dilger.ca,
+	kirill.shutemov@linux.intel.com, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org, ross.zwisler@linux.intel.com,
+	dan.j.williams@intel.com, viro@zeniv.linux.org.uk
+To: Matthew Wilcox <willy@linux.intel.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20160413031801.GO2781@linux.intel.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2016-04-13 at 13:44 +0000, Eric Shang wrote:
-> HI All:
-> =C2=A0 I meet an ext4 error, following is the error log. After panic,=
- I check the
-> emmc by the tool debufs, the inode 69878 i_nlink is not zero. And thi=
-s inode
-> don't belong to parent dir 6987, it belong to other file(this inode b=
-elong to
-> two files when check by debugfs ncheck), I guess than this inode has =
-beed
-> deleted in memory and already used by other file. But the parent dent=
-ry
-> buff_head not flush to emmc. But when lookup this dentry can't find i=
-t' in
-> dentry cache, and then lookup_real, read the dentry from emmc, get th=
-e file
-> inode which already be deleted.
-> =C2=A0 Can any give me some help how to check this issue. My kernel v=
-ersion is 3.18
-> form Android . I thinks something wrong with dentry cache flush and d=
-irty
-> buff_head flush to emmc. Thanks all!
-
-Are you somehow using DAX and my dax_get_unmapped_area patches in your =
-Android
-3.18 kernel? I doubt this is the case, but I thought I should check sin=
-ce you
-reported it to me and Matthew with the same cc list.
-
-If you are simply using a distributed Android kernel, you should report=
- it to
-Android email list or bug tracker.
-
--Toshi
+T24gVHVlLCAyMDE2LTA0LTEyIGF0IDIzOjE4IC0wNDAwLCBNYXR0aGV3IFdpbGNveCB3cm90ZToK
+PiBPbiBUdWUsIEFwciAxMiwgMjAxNiBhdCAwMjozOToxNVBNIC0wNjAwLCBUb3NoaSBLYW5pIHdy
+b3RlOgo+ID4gCj4gPiArICogV2hlbiB0aGUgdGFyZ2V0IGZpbGUgaXMgbm90IGEgREFYIGZpbGUs
+IEBhZGRyIGlzIHNwZWNpZmllZCwgdGhlCj4gPiArICogcmVxdWVzdCBpcyBub3Qgc3VpdGFibGUg
+Zm9yIHBtZCBtYXBwaW5ncywgb3IgbW0tCj4gPiA+Z2V0X3VubWFwcGVkX2FyZWEoKQo+ID4gKyAq
+IGZhaWxlZCB3aXRoIGV4dGVuZGVkIEBsZW4sIGl0IHNpbXBseSBjYWxscyB0aGUgZGVmYXVsdCBo
+YW5kbGVyLAo+ID4gKyAqIG1tLT5nZXRfdW5tYXBwZWRfYXJlYSgpLCB3aXRoIHRoZSBvcmlnaW5h
+bCBhcmd1bWVudHMuCj4KPiBJIHRoaW5rIHlvdSBjYW4gbG9zZSB0aGlzIHBhcmFncmFwaC7CoMKg
+SXQgZGVzY3JpYmVzIHdoYXQgdGhlIGZ1bmN0aW9uCj4gZG9lcywgbm90IHdoeSBpdCBkb2VzIGl0
+IC4uLiBhbmQgd2UgY2FuIHNlZSB3aGF0IHRoZSBmdW5jdGlvbiBkb2VzIGZyb20KPiByZWFkaW5n
+IHRoZSBjb2RlLgoKQWdyZWVkLiDCoEkgd2lsbCByZW1vdmUgdGhpcyBwYXJhZ3JhcGguCgo+IEkg
+dGhpbmsgdGhpcyBpcyBvbmUgb2YgdGhvc2UgZnVuY3Rpb25zIHdoaWNoIGlzIGFjdHVhbGx5IGlt
+cHJvdmVkIHdpdGgKPiBnb3RvcywgcHVyZWx5IHRvIHJlZHVjZSB0aGUgaW5kZW50YXRpb24gbGV2
+ZWwuCj4gCj4gdW5zaWduZWQgbG9uZyBkYXhfZ2V0X3VubWFwcGVkX2FyZWEoc3RydWN0IGZpbGUg
+KmZpbHAsIHVuc2lnbmVkIGxvbmcKPiBhZGRyLAo+IAkJdW5zaWduZWQgbG9uZyBsZW4sIHVuc2ln
+bmVkIGxvbmcgcGdvZmYsIHVuc2lnbmVkIGxvbmcKPiBmbGFncykKPiB7Cj4gCXVuc2lnbmVkIGxv
+bmcgb2ZmLCBvZmZfZW5kLCBvZmZfcG1kLCBsZW5fcG1kLCBhZGRyX3BtZDsKPiAKPiAJaWYgKCFJ
+U19FTkFCTEVEKENPTkZJR19GU19EQVhfUE1EKSB8fAo+IAnCoMKgwqDCoCFmaWxwIHx8IGFkZHIg
+fHwgIUlTX0RBWChmaWxwLT5mX21hcHBpbmctPmhvc3QpKQo+IAkJZ290byBvdXQ7Cj4gCj4gCW9m
+ZiA9IHBnb2ZmIDw8IFBBR0VfU0hJRlQ7Cj4gCW9mZl9lbmQgPSBvZmYgKyBsZW47Cj4gCW9mZl9w
+bWQgPSByb3VuZF91cChvZmYsIFBNRF9TSVpFKTsKPiAJaWYgKChvZmZfZW5kIDw9IG9mZl9wbWQp
+IHx8ICgob2ZmX2VuZCAtIG9mZl9wbWQpIDwgUE1EX1NJWkUpKQo+IAkJZ290byBvdXQ7Cj4gCj4g
+CWxlbl9wbWQgPSBsZW4gKyBQTURfU0laRTsKPiAJYWRkcl9wbWQgPSBjdXJyZW50LT5tbS0+Z2V0
+X3VubWFwcGVkX2FyZWEoZmlscCwgYWRkciwgbGVuX3BtZCwKPiAJCQkJCQkJcGdvZmYsIGZsYWdz
+KTsKPiAKPiAJaWYgKCFJU19FUlJfVkFMVUUoYWRkcl9wbWQpKSB7Cj4gCQlhZGRyX3BtZCArPSAo
+b2ZmIC0gYWRkcl9wbWQpICYgKFBNRF9TSVpFIC0gMSk7Cj4gCQlyZXR1cm4gYWRkcl9wbWQ7Cj4g
+CX0KPiAKPiDCoG91dDoKPiAJcmV0dXJuIGN1cnJlbnQtPm1tLT5nZXRfdW5tYXBwZWRfYXJlYShm
+aWxwLCBhZGRyLCBsZW4sIHBnb2ZmLAo+IGZsYWdzKTsKPiB9CgpTb3VuZHMgZ29vZC4KCj4gTm93
+IC4uLiBiYWNrIHRvIHRoZSBvcmlnaW5hbCB2ZXJzaW9uLCBzb21lIHF1ZXN0aW9uczoKPiAKPiA+
+IAo+ID4gK3Vuc2lnbmVkIGxvbmcgZGF4X2dldF91bm1hcHBlZF9hcmVhKHN0cnVjdCBmaWxlICpm
+aWxwLCB1bnNpZ25lZCBsb25nCj4gPiBhZGRyLAo+ID4gKwkJdW5zaWduZWQgbG9uZyBsZW4sIHVu
+c2lnbmVkIGxvbmcgcGdvZmYsIHVuc2lnbmVkIGxvbmcKPiA+IGZsYWdzKQo+ID4gK3sKPiA+ICsJ
+dW5zaWduZWQgbG9uZyBvZmYsIG9mZl9lbmQsIG9mZl9wbWQsIGxlbl9wbWQsIGFkZHJfcG1kOwo+
+ID4gKwo+ID4gKwlpZiAoSVNfRU5BQkxFRChDT05GSUdfRlNfREFYX1BNRCkgJiYKPiA+ICsJwqDC
+oMKgwqBmaWxwICYmICFhZGRyICYmIElTX0RBWChmaWxwLT5mX21hcHBpbmctPmhvc3QpKSB7Cj4g
+PiArCQlvZmYgPSBwZ29mZiA8PCBQQUdFX1NISUZUOwo+ID4gKwkJb2ZmX2VuZCA9IG9mZiArIGxl
+bjsKPgo+IENhbiBvZmYgKyBsZW4gd3JhcCBoZXJlLCBvciBkaWQgdGhhdCBnZXQgY2hlY2tlZCBl
+YXJsaWVyPwoKWWVzLCBkb19tbWFwKCkgaGFzIGNoZWNrZWQgdGhpcyBjb25kaXRpb24gZWFybGll
+ci4gwqBCdXQsIEkgdGhpbmsgSSBuZWVkIHRvCmNoZWNrIGl0IGZvciAob2ZmICsgbGVuX3BtZCku
+Cgo+ID4gCj4gPiArCQlvZmZfcG1kID0gcm91bmRfdXAob2ZmLCBQTURfU0laRSk7Cj4gPiArCj4g
+PiArCQlpZiAoKG9mZl9lbmQgPiBvZmZfcG1kKSAmJiAoKG9mZl9lbmQgLSBvZmZfcG1kKSA+PQo+
+ID4gUE1EX1NJWkUpKSB7Cj4KPiBXZSdyZSBvbmx5IGdvaW5nIHRvIGxvb2sgZm9yIGEgUE1ELWFs
+aWduZWQgbWFwcGluZyBpZiB0aGUgbWFwcGluZyBpcyBhdAo+IGxlYXN0IGRvdWJsZSBQTURfU0la
+RT/CoMKgSSBkb24ndCB1bmRlcnN0YW5kIHRoYXQgZGVjaXNpb24uwqDCoFNlZW1zIHRvIG1lCj4g
+dGhhdCBpZiBJIGFzayB0byBtYXAgb2Zmc2V0IDRNQiwgbGVuZ3RoIDJNQiwgSSBzaG91bGQgZ2V0
+IGEgUE1ELWFsaWduZWQKPiBtYXBwaW5nLgoKSXQgY2hlY2tzIGlmIHRoaXMgcmVxdWVzdCBjYW4g
+YmUgY292ZXJlZCBieSBhIFBNRCBwYWdlLsKgwqAnb2ZmX3BtZCcgaXMgdGhlCmZpcnN0IFBNRC1h
+bGlnbmVkIG9mZnNldC7CoMKgVGhlcmUgbmVlZHMgdG8gYmUgYXQgbGVhc3QgMk1CIGZyb20gdGhp
+cyBvZmZzZXQKdG8gdGhlIGVuZCwgJ29mZl9lbmQnLCBpbiBvcmRlciB0byBjb3ZlciB3aXRoIGEg
+UE1EIHBhZ2UuCgpJbiB5b3VyIGV4YW1wbGUsICdvZmZfcG1kJyBpcyBzdGlsbCA0TUIsIHdoaWNo
+IGhhcyAyTUIgdG8gdGhlIGVuZC7CoMKgU28sIHNvCnRoaXMgcmVxdWVzdCBjYW4gYmUgY292ZXJl
+ZCBieSBhIFBNRCBwYWdlLgoKQW5vdGhlciBleGFtcGxlLCBzYXksIG9mZnNldCA0S0IgYW5kIGxl
+bmd0aCAyTUIuIMKgJ29mZl9wbWQnIGlzIDJNQiwgd2hpY2gKaGFzIG9ubHkgNEtCIHRvIHRoZSBl
+bmQuwqDCoFNvLCB0aGlzIHJlcXVlc3QgY2Fubm90IGJlIGNvdmVyZWQgYnkgYSBQTUQgcGFnZS4K
+Cj4gU3BlYWtpbmcgb2Ygb2Zmc2V0LCB3ZSBkb24ndCBoYXZlIGFueSBjaGVja3MgdGhhdCBvZmZz
+ZXQgaXMgYSBtdWx0aXBsZQo+IG9mIFBNRF9TSVpFLsKgwqBJIGtub3cgdGhhdCB0aGVvcmV0aWNh
+bGx5IHdlIGNvdWxkIG1hcCBvZmZzZXQgMS41TUIsIGxlbmd0aAo+IDNNQiBhbmQgc2VlIHRoZSBm
+aXJzdCAwLjVNQiBmaWxsZWQgd2l0aCBzbWFsbCBwYWdlcywgdGhlbiB0aGUgbmV4dCAyTUIKPiBm
+aWxsZWQgd2l0aCBvbmUgbGFyZ2UgcGFnZSwgYW5kIHRoZSB0YWlsIGZpbGxlZCB3aXRoIHNtYWxs
+IHBhZ2VzLCBidXQgSQo+IHRoaW5rIHdlJ3JlIGJldHRlciBvZmYgb25seSBsb29raW5nIGZvciBQ
+TUQtYWxpZ25tZW50IGlmIHRoZSB1c2VyIGFza2VkCj4gZm9yIGFuIGFsaWduZWQgb2Zmc2V0IGlu
+IHRoZSBmaWxlLgoKWWVzLCB0aGF0J3Mgd2hhdCBpdCBjaGVja3MuIMKgSW4gdGhpcyBjYXNlLCAn
+b2ZmX3BtZCcgaXMgc2V0IHRvIDJNQiwgd2hpY2gKaGFzIDIuNU1CIHRvIHRoZSBlbmQuIMKgU28s
+IGl0IGNhbiBiZSBjb3ZlcmVkIGJ5IGEgUE1EIHBhZ2UuIMKgVGhlIG9mZnNldAppdHNlbGYgZG9l
+cyBub3QgaGF2ZSB0byBiZSBhbGlnbmVkIGJ5IDJNQi4KCgo+ID4gKwkJCWxlbl9wbWQgPSBsZW4g
+KyBQTURfU0laRTsKPiA+ICsKPiA+ICsJCQlhZGRyX3BtZCA9IGN1cnJlbnQtPm1tLT5nZXRfdW5t
+YXBwZWRfYXJlYSgKPiA+ICsJCQkJCWZpbHAsIGFkZHIsIGxlbl9wbWQsIHBnb2ZmLAo+ID4gZmxh
+Z3MpOwo+ID4gKwo+ID4gKwkJCWlmICghSVNfRVJSX1ZBTFVFKGFkZHJfcG1kKSkgewo+ID4gKwkJ
+CQlhZGRyX3BtZCArPSAob2ZmIC0gYWRkcl9wbWQpICYKPiA+IChQTURfU0laRSAtIDEpOwo+Cj4g
+Li4uIHRoZW4geW91IHdvdWxkbid0IG5lZWQgdGhpcyBjYWxjdWxhdGlvbiA7LSkKCkFwcGxpY2F0
+aW9ucyBzaG91bGQgbm90IGJlIHJlcXVpcmVkIHRvIHByb3ZpZGUgYSAyTUItYWxpZ25lZCBvZmZz
+ZXQuCgpUaGFua3MsCi1Ub3NoaQoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX18KeGZzIG1haWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5jb20KaHR0cDovL29zcy5z
+Z2kuY29tL21haWxtYW4vbGlzdGluZm8veGZzCg==
