@@ -1,67 +1,62 @@
-From: Eric Shang <EricShang@zhaoxin.com>
-Subject: ext4 error
-Date: Wed, 13 Apr 2016 13:44:55 +0000
-Message-ID: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
+From: Toshi Kani <toshi.kani@hpe.com>
+Subject: Re: ext4 error
+Date: Wed, 13 Apr 2016 08:10:27 -0600
+Message-ID: <1460556627.24985.28.camel@hpe.com>
+References: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "jack@suse.cz" <jack@suse.cz>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"tytso@mit.edu" <tytso@mit.edu>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
 	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: Matthew Wilcox <willy@linux.intel.com>, Toshi Kani <toshi.kani@hpe.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Language: zh-CN
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"jack@suse.cz" <jack@suse.cz>, "tytso@mit.edu" <tytso@mit.edu>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Eric Shang <EricShang@zhaoxin.com>,
+	Matthew Wilcox <willy@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-HI All:
-  I meet an ext4 error, following is the error log. After panic, I check the emmc by the tool debufs, the inode 69878 i_nlink is not zero. And this inode don't belong to parent dir 6987, it belong to other file(this inode belong to two files when check by debugfs ncheck), I guess than this inode has beed deleted in memory and already used by other file. But the parent dentry buff_head not flush to emmc. But when lookup this dentry can't find it' in dentry cache, and then lookup_real, read the dentry from emmc, get the file inode which already be deleted. 
-  Can any give me some help how to check this issue. My kernel version is 3.18 form Android . I thinks something wrong with dentry cache flush and dirty buff_head flush to emmc. Thanks all!
+On Wed, 2016-04-13 at 13:44 +0000, Eric Shang wrote:
+> HI All:
+> =C2=A0 I meet an ext4 error, following is the error log. After panic,=
+ I check the
+> emmc by the tool debufs, the inode 69878 i_nlink is not zero. And thi=
+s inode
+> don't belong to parent dir 6987, it belong to other file(this inode b=
+elong to
+> two files when check by debugfs ncheck), I guess than this inode has =
+beed
+> deleted in memory and already used by other file. But the parent dent=
+ry
+> buff_head not flush to emmc. But when lookup this dentry can't find i=
+t' in
+> dentry cache, and then lookup_real, read the dentry from emmc, get th=
+e file
+> inode which already be deleted.
+> =C2=A0 Can any give me some help how to check this issue. My kernel v=
+ersion is 3.18
+> form Android . I thinks something wrong with dentry cache flush and d=
+irty
+> buff_head flush to emmc. Thanks all!
 
-:Sending Trackball (ACTION_MOVE): 0:(-[44802.841647] EXT4-fs error (device mmcblk0p16): ext4_lookup:1417: inode #69877: comm installd: deleted inode referenced: 69878
-5.0[44802.853210] Aborting journal on device mmcblk0p16-8.
-,2.[44802.858345] Kernel panic - not syncing: EXT4-fs (device mmcblk0p16): panic forced after error
-[44802.858345] 
-[44802.868322] CPU: 1 PID: 216 Comm: installd Tainted: P           O   3.18.0-94.02.04 #1
-[44802.876223] [<c0016874>] (unwind_backtrace) from [<c00123e8>] (show_stack+0x10/0x14)
-[44802.883927] [<c00123e8>] (show_stack) from [<c07af1b0>] (dump_stack+0x70/0xbc)
-[44802.891117] [<c07af1b0>] (dump_stack) from [<c07ab328>] (panic+0xa4/0x218)
-[44802.897965] [<c07ab328>] (panic) from [<c01c2fa4>] (ext4_handle_error+0x6c/0xa8)
-[44802.905330] [<c01c2fa4>] (ext4_handle_error) from [<c01c323c>] (__ext4_error_inode+0x6c/0x114)
-[44802.913909] [<c01c323c>] (__ext4_error_inode) from [<c01b2e18>] (ext4_lookup+0xf0/0x148)
-[44802.921970] [<c01b2e18>] (ext4_lookup) from [<c0130148>] (lookup_real+0x20/0x50)
-[44802.929336] [<c0130148>] (lookup_real) from [<c0130c60>] (__lookup_hash+0x34/0x44)
-[44802.936873] [<c0130c60>] (__lookup_hash) from [<c0131f98>] (lookup_slow+0x38/0x9c)
-[44802.944414] [<c0131f98>] (lookup_slow) from [<c0132a34>] (path_lookupat+0x228/0x728)
-[44802.952127] [<c0132a34>] (path_lookupat) from [<c0132f54>] (filename_lookup+0x20/0xbc)
-[44802.960013] [<c0132f54>] (filename_lookup) from [<c0136128>] (user_path_at_empty+0x50/0x78)
-[44802.968334] [<c0136128>] (user_path_at_empty) from [<c0136164>] (user_path_at+0x14/0x1c)
-[44802.976394] [<c0136164>] (user_path_at) from [<c012c52c>] (vfs_fstatat+0x48/0x8c)
-[44802.983847] [<c012c52c>] (vfs_fstatat) from [<c012c820>] (SyS_fstatat64+0x14/0x30)
-[44802.991389] [<c012c820>] (SyS_fstatat64) from [<c000eae0>] (ret_fast_syscall+0x0/0x48)
+Are you somehow using DAX and my dax_get_unmapped_area patches in your =
+Android
+3.18 kernel? I doubt this is the case, but I thought I should check sin=
+ce you
+reported it to me and Matthew with the same cc list.
 
-Best Regards
-EricShang	
+If you are simply using a distributed Android kernel, you should report=
+ it to
+Android email list or bug tracker.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+-Toshi
