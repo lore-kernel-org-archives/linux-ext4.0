@@ -1,76 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 error
-Date: Wed, 13 Apr 2016 23:22:07 -0400
-Message-ID: <20160414032207.GC16656@thunk.org>
-References: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
+From: Hannes Reinecke <hare@suse.de>
+Subject: Re: [PATCH 00/42] v5: separate operations from flags in the
+ bio/request structs
+Date: Thu, 14 Apr 2016 08:09:30 +0200
+Message-ID: <570F341A.2040108@suse.de>
+References: <1460576188-5751-1-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "jack@suse.cz" <jack@suse.cz>, Toshi Kani <toshi.kani@hpe.com>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>
-To: Eric Shang <EricShang@zhaoxin.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: mchristi@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, konrad.wilk@oracle.com,
+	drbd-dev@lists.linbit.com, philipp.reisner@linbit.com,
+	lars.ellenberg@linbit.com, linux-raid@vger.kernel.org,
+	dm-devel@redhat.com, linux-fsdevel@vger.kernel.org,
+	linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-mtd@lists.infradead.org, target-devel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, osd-dev@open-osd.org, xfs@oss.sgi.com,
+	ocfs2-devel@oss.oracle.com
+Return-path: <linux-bcache-owner@vger.kernel.org>
+In-Reply-To: <1460576188-5751-1-git-send-email-mchristi@redhat.com>
+Sender: linux-bcache-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 13, 2016 at 01:44:55PM +0000, Eric Shang wrote:
-> HI All:
->   I meet an ext4 error, following is the error log. After panic, I check the emmc by the tool debufs, the inode 69878 i_nlink is not zero. And this inode don't belong to parent dir 6987, it belong to other file(this inode belong to two files when check by debugfs ncheck), I guess than this inode has beed deleted in memory and already used by other file. But the parent dentry buff_head not flush to emmc. But when lookup this dentry can't find it' in dentry cache, and then lookup_real, read the dentry from emmc, get the file inode which already be deleted. 
->   Can any give me some help how to check this issue. My kernel version is 3.18 form Android . I thinks something wrong with dentry cache flush and dirty buff_head flush to emmc. Thanks all!
+On 04/13/2016 09:35 PM, mchristi@redhat.com wrote:
+> The following patches begin to cleanup the request->cmd_flags and
+> bio->bi_rw mess. We currently use cmd_flags to specify the operation,
+> attributes and state of the request. For bi_rw we use it for similar
+> info and also the priority but then also have another bi_flags field
+> for state. At some point, we abused them so much we just made cmd_fla=
+gs
+> 64 bits, so we could add more.
+>=20
+> The following patches seperate the operation (read, write discard,
+> flush, etc) from cmd_flags/bi_rw.
+>=20
+> This patchset was made against linux-next from today April 13
+> (git tag next-20160413).
+>=20
+> I put a git tree here:
+> https://github.com/mikechristie/linux-kernel.git
+> The patches are in the op branch.
+>=20
+A round of applause for you.
 
-If I had to guess, this was caused starting with a corrupted file
-system, where the inode allocation bitmap showed that an inode which
-was in use by the file system, was erroneously showing it as free.
-This allowed it to be allocated for use in a second file (which would
-have wiped out the contents for the original file stored at that
-inode).  Later on, the file was deleted via either the older or newer
-pathname, which dropped the ref count to zero, and then an access via
-the other pathname would have resulted in this error.
+=46or the entire series:
 
-After the panic, the on-disk data structures wouldn't have been
-updated from whatever the in-memory data structures might have been
-("Kernel panic - not syncing").  So what you see from using debugfs
-after the crash might not be represenatative of what you saw before
-the crash.
+Reviewed-by: Hannes Reinecke <hare@suse.com>
 
-I'm not sure there's much debugging that can be done, because there
-are any number of sources for the original corruption.  It could be
-caused by a hardware issue in the flash or the memory, or it could be
-caused by a wild pointer corrupting a disk buffer, etc. etc.  The
-panic won't result in a useful stack trace because that's when the
-problem was *noticed*.  But that's very different from where the file
-system corruption was *introduced*.
+Cheers,
 
-If you can reliably reproduce this sort of failure, then it becomes
-possible to try to track it down.  But if it's a one-off event,
-there's not much anyone can do.
-
-Best regards,
-
-						- Ted
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Hannes
+--=20
+Dr. Hannes Reinecke		   Teamlead Storage & Networking
+hare@suse.de			               +49 911 74053 688
+SUSE LINUX GmbH, Maxfeldstr. 5, 90409 N=FCrnberg
+GF: F. Imend=F6rffer, J. Smithard, J. Guild, D. Upmanyu, G. Norton
+HRB 21284 (AG N=FCrnberg)
