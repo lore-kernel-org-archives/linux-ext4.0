@@ -1,66 +1,76 @@
-From: Waiman Long <waiman.long@hpe.com>
-Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin()
- called
-Date: Thu, 14 Apr 2016 12:21:13 -0400
-Message-ID: <570FC379.7000107@hpe.com>
-References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com> <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com> <20160414031634.GJ10643@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160414031634.GJ10643@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: allow readdir()'s of large empty directories to be interrupted
+Date: Thu, 14 Apr 2016 16:37:45 -0400
+Message-ID: <1460666265-22596-1-git-send-email-tytso@mit.edu>
+Cc: torvalds@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56160 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751694AbcDNUhw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Apr 2016 16:37:52 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/13/2016 11:16 PM, Dave Chinner wrote:
-> On Tue, Apr 12, 2016 at 02:12:54PM -0400, Waiman Long wrote:
->> When performing direct I/O, the current ext4 code does
->> not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
->> __blockdev_direct_IO() when inode_dio_begin() has, in fact, been
->> called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
->> inode_dio_begin()/inode_dio_end() internally.  This doubling of
->> inode_dio_begin()/inode_dio_end() calls are wasteful.
->>
->> This patch removes the extra internal inode_dio_begin()/inode_dio_end()
->> calls when those calls are being issued by the caller directly. For
->> really fast storage systems like NVDIMM, the removal of the extra
->> inode_dio_begin()/inode_dio_end() can give a meaningful boost to
->> I/O performance.
-> Doesn't this break truncate IO serialisation?
->
-> i.e. it appears to me that the ext4 use of inode_dio_begin()/
-> inode_dio_end() does not cover AIO, where the IO is still in flight
-> when submission returns. i.e. the inode_dio_end() call
-> needs to be in IO completion, not in the submitter context. The only
-> reason it doesn't break right now is that the duplicate accounting
-> in the DIO code is correct w.r.t. AIO. Hence bypassing the DIO
-> accounting will cause AIO writes to race with truncate.
->
-> Same AIO vs truncate problem occurs with the indirect read case you
-> modified to skip the direct IO layer accounting.
+If a directory has a large number of empty blocks, iterating over all
+of them can take a long time, leading to scheduler warnings and users
+getting irritated when they can't kill a process in the middle of one
+of these long-running readdir operations.  Fix this by adding checks to
+ext4_readdir() and ext4_htree_fill_tree().
 
-I don't quite understand how the duplicate accounting is correct wrt 
-AIO. Both the direct and indirect paths are something like:
+This was reverted earlier due to a typo in the original commit where I
+experimented with using signal_pending() instead of
+fatal_signal_pending().  The test was in the wrong place if we were
+going to return signal_pending() since we would end up returning
+duplicant entries.  See 9f2394c9be47 for a more detailed explanation.
 
-     inode_dio_begin()
-     ...
-         inode_dio_begin()
-         ...
-         inode_dio_end()
-     ...
-     inode_dio_end()
+As it turns out, we can't use signal_pending() anyway because there
+are callers of readdir() that would be very cranky if we were to ever
+return EINTR.  As a result, we can only allow ourselves to get
+interrupted by a signal if it is a fatal one.  So Linus's proposal to
+add "if (signal_pending(current)) return -EINTR;" to filldir64() would
+probably cause more than a few userspace regressions.
 
-What the patch does is to eliminate the innermost inode_dio_begin/end 
-pair. Unless there is a difference between a dio count of 2 vs. 1, I 
-can't see how the code correctness differ with and without my patch.
+Reported-by: Benjamin LaHaise <bcrl@kvack.org>
+Google-Bug-Id: 27880676
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/dir.c   | 5 +++++
+ fs/ext4/namei.c | 5 +++++
+ 2 files changed, 10 insertions(+)
 
-Cheers,
-Longman
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 561d730..4173bfe 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -150,6 +150,11 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 	while (ctx->pos < inode->i_size) {
+ 		struct ext4_map_blocks map;
+ 
++		if (fatal_signal_pending(current)) {
++			err = -ERESTARTSYS;
++			goto errout;
++		}
++		cond_resched();
+ 		map.m_lblk = ctx->pos >> EXT4_BLOCK_SIZE_BITS(sb);
+ 		map.m_len = 1;
+ 		err = ext4_map_blocks(NULL, inode, &map, 0);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 48e4b89..c07422d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1107,6 +1107,11 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	}
+ 
+ 	while (1) {
++		if (fatal_signal_pending(current)) {
++			err = -ERESTARTSYS;
++			goto errout;
++		}
++		cond_resched();
+ 		block = dx_get_block(frame->at);
+ 		ret = htree_dirblock_to_tree(dir_file, dir, block, &hinfo,
+ 					     start_hash, start_minor_hash);
+-- 
+2.5.0
+
