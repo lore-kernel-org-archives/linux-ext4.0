@@ -1,56 +1,76 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if
- inode_dio_begin() called
-Date: Thu, 14 Apr 2016 13:16:34 +1000
-Message-ID: <20160414031634.GJ10643@dastard>
-References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com>
- <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 error
+Date: Wed, 13 Apr 2016 23:22:07 -0400
+Message-ID: <20160414032207.GC16656@thunk.org>
+References: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Waiman Long <Waiman.Long@hpe.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "jack@suse.cz" <jack@suse.cz>, Toshi Kani <toshi.kani@hpe.com>,
+	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>
+To: Eric Shang <EricShang@zhaoxin.com>
+Return-path: <xfs-bounces@oss.sgi.com>
 Content-Disposition: inline
-In-Reply-To: <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 12, 2016 at 02:12:54PM -0400, Waiman Long wrote:
-> When performing direct I/O, the current ext4 code does
-> not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
-> __blockdev_direct_IO() when inode_dio_begin() has, in fact, been
-> called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
-> inode_dio_begin()/inode_dio_end() internally.  This doubling of
-> inode_dio_begin()/inode_dio_end() calls are wasteful.
-> 
-> This patch removes the extra internal inode_dio_begin()/inode_dio_end()
-> calls when those calls are being issued by the caller directly. For
-> really fast storage systems like NVDIMM, the removal of the extra
-> inode_dio_begin()/inode_dio_end() can give a meaningful boost to
-> I/O performance.
+On Wed, Apr 13, 2016 at 01:44:55PM +0000, Eric Shang wrote:
+> HI All:
+>   I meet an ext4 error, following is the error log. After panic, I check the emmc by the tool debufs, the inode 69878 i_nlink is not zero. And this inode don't belong to parent dir 6987, it belong to other file(this inode belong to two files when check by debugfs ncheck), I guess than this inode has beed deleted in memory and already used by other file. But the parent dentry buff_head not flush to emmc. But when lookup this dentry can't find it' in dentry cache, and then lookup_real, read the dentry from emmc, get the file inode which already be deleted. 
+>   Can any give me some help how to check this issue. My kernel version is 3.18 form Android . I thinks something wrong with dentry cache flush and dirty buff_head flush to emmc. Thanks all!
 
-Doesn't this break truncate IO serialisation?
+If I had to guess, this was caused starting with a corrupted file
+system, where the inode allocation bitmap showed that an inode which
+was in use by the file system, was erroneously showing it as free.
+This allowed it to be allocated for use in a second file (which would
+have wiped out the contents for the original file stored at that
+inode).  Later on, the file was deleted via either the older or newer
+pathname, which dropped the ref count to zero, and then an access via
+the other pathname would have resulted in this error.
 
-i.e. it appears to me that the ext4 use of inode_dio_begin()/
-inode_dio_end() does not cover AIO, where the IO is still in flight
-when submission returns. i.e. the inode_dio_end() call
-needs to be in IO completion, not in the submitter context. The only
-reason it doesn't break right now is that the duplicate accounting
-in the DIO code is correct w.r.t. AIO. Hence bypassing the DIO
-accounting will cause AIO writes to race with truncate.
+After the panic, the on-disk data structures wouldn't have been
+updated from whatever the in-memory data structures might have been
+("Kernel panic - not syncing").  So what you see from using debugfs
+after the crash might not be represenatative of what you saw before
+the crash.
 
-Same AIO vs truncate problem occurs with the indirect read case you
-modified to skip the direct IO layer accounting.
+I'm not sure there's much debugging that can be done, because there
+are any number of sources for the original corruption.  It could be
+caused by a hardware issue in the flash or the memory, or it could be
+caused by a wild pointer corrupting a disk buffer, etc. etc.  The
+panic won't result in a useful stack trace because that's when the
+problem was *noticed*.  But that's very different from where the file
+system corruption was *introduced*.
 
-Cheers,
+If you can reliably reproduce this sort of failure, then it becomes
+possible to try to track it down.  But if it's a one-off event,
+there's not much anyone can do.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Best regards,
+
+						- Ted
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
