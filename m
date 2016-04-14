@@ -1,66 +1,56 @@
-From: Eric Shang <EricShang@zhaoxin.com>
-Subject: =?utf-8?B?562U5aSNOiBleHQ0IGVycm9y?=
-Date: Thu, 14 Apr 2016 02:02:18 +0000
-Message-ID: <0255994B402DE243B1DFC1057A00655201AE84@ZXSHMBX02.zhaoxin.com>
-References: <0255994B402DE243B1DFC1057A00655201AC6F@ZXSHMBX02.zhaoxin.com>
- <1460556627.24985.28.camel@hpe.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if
+ inode_dio_begin() called
+Date: Thu, 14 Apr 2016 13:16:34 +1000
+Message-ID: <20160414031634.GJ10643@dastard>
+References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com>
+ <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"dan.j.williams@intel.com" <dan.j.williams@intel.com>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"kirill.shutemov@linux.intel.com" <kirill.shutemov@linux.intel.com>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>, "tytso@mit.edu" <tytso@mit.edu>,
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Toshi Kani <toshi.kani@hpe.com>,
-	Matthew Wilcox <willy@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Waiman Long <Waiman.Long@hpe.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1460556627.24985.28.camel@hpe.com>
-Content-Language: zh-CN
+Content-Disposition: inline
+In-Reply-To: <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SGkgVG9zaGk6DQoJVGhhbmtzISBJIHRoaW5rIHRoaXMgbm90IHJlbGF0ZSB0byBEQVggYW5kIGRh
-eF9nZXRfdW5tYXBwZWRfYXJlYSwgSSBhbSBhIGp1bmlvciBrZXJuZWwgbWFpbnRhaW5lciBmb3Ig
-b3VyIGNvbXBhbnkuIFRoaXMgaXNzdWUgYm90aGVyIG1lIGxvbmcgdGltZSwgbG9va3MgbGlrZSBr
-ZXJuZWwgZXh0NCBpc3N1ZSBvciBvdXIgZW1tYyBkcml2ZXIgaXNzdWUsIEkgd2lsbCBkaWcgaXQg
-b3V0LCBUaGFua3MhDQoNCkJlc3QgUmVnYXJkcw0KRXJpY1NoYW5nDQoNCg0KLS0tLS3pgq7ku7bl
-jp/ku7YtLS0tLQ0K5Y+R5Lu25Lq6OiBUb3NoaSBLYW5pIFttYWlsdG86dG9zaGkua2FuaUBocGUu
-Y29tXSANCuWPkemAgeaXtumXtDogMjAxNuW5tDTmnIgxM+aXpSAyMjoxMA0K5pS25Lu25Lq6OiBF
-cmljIFNoYW5nOyBNYXR0aGV3IFdpbGNveA0K5oqE6YCBOiBha3BtQGxpbnV4LWZvdW5kYXRpb24u
-b3JnOyBkYW4uai53aWxsaWFtc0BpbnRlbC5jb207IHZpcm9AemVuaXYubGludXgub3JnLnVrOyBy
-b3NzLnp3aXNsZXJAbGludXguaW50ZWwuY29tOyBraXJpbGwuc2h1dGVtb3ZAbGludXguaW50ZWwu
-Y29tOyBkYXZpZEBmcm9tb3JiaXQuY29tOyBqYWNrQHN1c2UuY3o7IHR5dHNvQG1pdC5lZHU7IGFk
-aWxnZXIua2VybmVsQGRpbGdlci5jYTsgbGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZzsgbGludXgt
-ZnNkZXZlbEB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnOyB4ZnNA
-b3NzLnNnaS5jb207IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmcNCuS4u+mimDogUmU6IGV4
-dDQgZXJyb3INCg0KT24gV2VkLCAyMDE2LTA0LTEzIGF0IDEzOjQ0ICswMDAwLCBFcmljIFNoYW5n
-IHdyb3RlOg0KPiBISSBBbGw6DQo+IMKgIEkgbWVldCBhbiBleHQ0IGVycm9yLCBmb2xsb3dpbmcg
-aXMgdGhlIGVycm9yIGxvZy4gQWZ0ZXIgcGFuaWMsIEkgDQo+IGNoZWNrIHRoZSBlbW1jIGJ5IHRo
-ZSB0b29sIGRlYnVmcywgdGhlIGlub2RlIDY5ODc4IGlfbmxpbmsgaXMgbm90IA0KPiB6ZXJvLiBB
-bmQgdGhpcyBpbm9kZSBkb24ndCBiZWxvbmcgdG8gcGFyZW50IGRpciA2OTg3LCBpdCBiZWxvbmcg
-dG8gDQo+IG90aGVyIGZpbGUodGhpcyBpbm9kZSBiZWxvbmcgdG8gdHdvIGZpbGVzIHdoZW4gY2hl
-Y2sgYnkgZGVidWdmcyANCj4gbmNoZWNrKSwgSSBndWVzcyB0aGFuIHRoaXMgaW5vZGUgaGFzIGJl
-ZWQgZGVsZXRlZCBpbiBtZW1vcnkgYW5kIA0KPiBhbHJlYWR5IHVzZWQgYnkgb3RoZXIgZmlsZS4g
-QnV0IHRoZSBwYXJlbnQgZGVudHJ5IGJ1ZmZfaGVhZCBub3QgZmx1c2ggDQo+IHRvIGVtbWMuIEJ1
-dCB3aGVuIGxvb2t1cCB0aGlzIGRlbnRyeSBjYW4ndCBmaW5kIGl0JyBpbiBkZW50cnkgY2FjaGUs
-IA0KPiBhbmQgdGhlbiBsb29rdXBfcmVhbCwgcmVhZCB0aGUgZGVudHJ5IGZyb20gZW1tYywgZ2V0
-IHRoZSBmaWxlIGlub2RlIHdoaWNoIGFscmVhZHkgYmUgZGVsZXRlZC4NCj4gwqAgQ2FuIGFueSBn
-aXZlIG1lIHNvbWUgaGVscCBob3cgdG8gY2hlY2sgdGhpcyBpc3N1ZS4gTXkga2VybmVsIHZlcnNp
-b24gDQo+IGlzIDMuMTggZm9ybSBBbmRyb2lkIC4gSSB0aGlua3Mgc29tZXRoaW5nIHdyb25nIHdp
-dGggZGVudHJ5IGNhY2hlIA0KPiBmbHVzaCBhbmQgZGlydHkgYnVmZl9oZWFkIGZsdXNoIHRvIGVt
-bWMuIFRoYW5rcyBhbGwhDQoNCkFyZSB5b3Ugc29tZWhvdyB1c2luZyBEQVggYW5kIG15IGRheF9n
-ZXRfdW5tYXBwZWRfYXJlYSBwYXRjaGVzIGluIHlvdXIgQW5kcm9pZA0KMy4xOCBrZXJuZWw/IEkg
-ZG91YnQgdGhpcyBpcyB0aGUgY2FzZSwgYnV0IEkgdGhvdWdodCBJIHNob3VsZCBjaGVjayBzaW5j
-ZSB5b3UgcmVwb3J0ZWQgaXQgdG8gbWUgYW5kIE1hdHRoZXcgd2l0aCB0aGUgc2FtZSBjYyBsaXN0
-Lg0KDQpJZiB5b3UgYXJlIHNpbXBseSB1c2luZyBhIGRpc3RyaWJ1dGVkIEFuZHJvaWQga2VybmVs
-LCB5b3Ugc2hvdWxkIHJlcG9ydCBpdCB0byBBbmRyb2lkIGVtYWlsIGxpc3Qgb3IgYnVnIHRyYWNr
-ZXIuDQoNCi1Ub3NoaQ0K
+On Tue, Apr 12, 2016 at 02:12:54PM -0400, Waiman Long wrote:
+> When performing direct I/O, the current ext4 code does
+> not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
+> __blockdev_direct_IO() when inode_dio_begin() has, in fact, been
+> called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
+> inode_dio_begin()/inode_dio_end() internally.  This doubling of
+> inode_dio_begin()/inode_dio_end() calls are wasteful.
+> 
+> This patch removes the extra internal inode_dio_begin()/inode_dio_end()
+> calls when those calls are being issued by the caller directly. For
+> really fast storage systems like NVDIMM, the removal of the extra
+> inode_dio_begin()/inode_dio_end() can give a meaningful boost to
+> I/O performance.
+
+Doesn't this break truncate IO serialisation?
+
+i.e. it appears to me that the ext4 use of inode_dio_begin()/
+inode_dio_end() does not cover AIO, where the IO is still in flight
+when submission returns. i.e. the inode_dio_end() call
+needs to be in IO completion, not in the submitter context. The only
+reason it doesn't break right now is that the duplicate accounting
+in the DIO code is correct w.r.t. AIO. Hence bypassing the DIO
+accounting will cause AIO writes to race with truncate.
+
+Same AIO vs truncate problem occurs with the indirect read case you
+modified to skip the direct IO layer accounting.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
