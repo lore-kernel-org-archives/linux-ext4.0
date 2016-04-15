@@ -1,50 +1,90 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Fri, 15 Apr 2016 11:56:20 -0700
-Message-ID: <CAPcyv4jcPDDcru1ySJLY7SzDQQWFXbfHm493N0twa1vHBEc6aQ@mail.gmail.com>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
-	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
-	<1460739288.3012.3.camel@intel.com>
-	<x49potq6bm2.fsf@segfault.boston.devel.redhat.com>
-	<1460741821.3012.11.camel@intel.com>
-	<CAPcyv4hemNM4uQYCPBXyH+DWTOLvyBNBeMYstKbPdad_Cw48HQ@mail.gmail.com>
-	<x49lh4e6928.fsf@segfault.boston.devel.redhat.com>
-	<CAPcyv4hRQj2ZsFj7Xa_=OwcHrzP9_5yUpt3LQ+bPH4PcLe7UCQ@mail.gmail.com>
-	<x494mb2ivcl.fsf@segfault.boston.devel.redhat.com>
+From: Mike Christie <mchristi@redhat.com>
+Subject: Re: [PATCH 41/42] block: do not use REQ_FLUSH for tracking flush
+ support
+Date: Fri, 15 Apr 2016 13:58:17 -0500
+Message-ID: <571139C9.8060405@redhat.com>
+References: <1460716802-2294-1-git-send-email-mchristi@redhat.com>
+ <1460716802-2294-42-git-send-email-mchristi@redhat.com>
+ <5710C77F.2000405@pfupf.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Verma, Vishal L" <vishal.l.verma@intel.com>, "hch@infradead.org" <hch@infradead.org>,
-	"jack@suse.cz" <jack@suse.cz>, "axboe@fb.com" <axboe@fb.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>, "david@fromorbit.com" <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <x494mb2ivcl.fsf@segfault.boston.devel.redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: Juergen Gross <kernel@pfupf.net>,
+	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+Return-path: <linux-scsi-owner@vger.kernel.org>
+In-Reply-To: <5710C77F.2000405@pfupf.net>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 15, 2016 at 11:24 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
->> Moreover, we're going to do the full badblocks lookup anyway when we
->> call ->direct_access().  If we had that information earlier we can
->> avoid this fallback dance.
->
-> None of the proposed approaches looks clean to me.  I'll go along with
-> whatever you guys think is best.  I am in favor of wrapping up all that
-> duplicated code, though.
+On 04/15/2016 05:50 AM, Juergen Gross wrote:
+> On 15/04/16 12:40, mchristi@redhat.com wrote:
+>> From: Mike Christie <mchristi@redhat.com>
+>>
+>> The last patch added a REQ_OP_FLUSH for request_fn drivers
+>> and the next patch renames REQ_FLUSH to REQ_PREFLUSH which
+>> will be used by file systems and make_request_fn drivers so
+>> they can send a write/flush combo.
+>>
+>> This patch drops xen's use of REQ_FLUSH to track if it supports
+>> REQ_OP_FLUSH requests, so REQ_FLUSH can be deleted.
+>>
+>> v6:
+>> - Dropped parts of patch handled by Jens's QUEUE_FLAG_WC/FUA
+>> patches and modified patch to check feature_flush/fua bits.
+>>
+>> Signed-off-by: Mike Christie <mchristi@redhat.com>
+>> Reviewed-by: Hannes Reinecke <hare@suse.com>
+>> ---
+>>  drivers/block/xen-blkfront.c | 47 ++++++++++++++++++++++----------------------
+>>  1 file changed, 24 insertions(+), 23 deletions(-)
+>>
+>> diff --git a/drivers/block/xen-blkfront.c b/drivers/block/xen-blkfront.c
+>> index f01691a..d6429e7 100644
+>> --- a/drivers/block/xen-blkfront.c
+>> +++ b/drivers/block/xen-blkfront.c
+> 
+> ...
+> 
+>> @@ -985,24 +981,22 @@ static int xlvbd_init_blk_queue(struct gendisk *gd, u16 sector_size,
+>>  	return 0;
+>>  }
+>>  
+>> -static const char *flush_info(unsigned int feature_flush)
+>> +static const char *flush_info(struct blkfront_info *info)
+>>  {
+>> -	switch (feature_flush & ((REQ_FLUSH | REQ_FUA))) {
+>> -	case REQ_FLUSH|REQ_FUA:
+>> +	if (info->feature_flush && info->feature_fua)
+>>  		return "barrier: enabled;";
+>> -	case REQ_FLUSH:
+>> +	else if (info->feature_fua)
+> 
+> Shouldn't this test feature_flush?
+> 
+>>  		return "flush diskcache: enabled;";
+>> -	default:
+>> +	else
+>>  		return "barrier or flush: disabled;";
+>> -	}
+>>  }
+>>  
+>>  static void xlvbd_flush(struct blkfront_info *info)
+>>  {
+>> -	blk_queue_write_cache(info->rq, info->feature_flush & REQ_FLUSH,
+>> -				info->feature_flush & REQ_FUA);
+>> +	blk_queue_write_cache(info->rq, info->feature_flush ? true : false,
+>> +			      info->feature_flush ? true : false);
+> 
+> And here the second test should be feature_fua?
+> 
 
-Christoph originally pushed for open coding this fallback decision
-per-filesystem.  I agree with you on the "none the above" options are
-clean.
+You are right. Will fix up and resend.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
