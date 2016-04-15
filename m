@@ -1,65 +1,42 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH] ext4: allow readdir()'s of large empty directories to be interrupted
-Date: Thu, 14 Apr 2016 19:01:14 -0700
-Message-ID: <CA+55aFw63jj-PJ2c=aYZivkfHfei=1W2z72qs0P+aj-f0J1UKw@mail.gmail.com>
-References: <1460666265-22596-1-git-send-email-tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] e2image: don't leak progress info to stdout
+Date: Thu, 14 Apr 2016 22:20:46 -0500
+Message-ID: <57105E0E.1040006@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Alex Markley <alex@malexmedia.net>
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ig0-f194.google.com ([209.85.213.194]:34552 "EHLO
-	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751078AbcDOCBP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2016 22:01:15 -0400
-Received: by mail-ig0-f194.google.com with SMTP id qu10so1209728igc.1
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2016 19:01:15 -0700 (PDT)
-In-Reply-To: <1460666265-22596-1-git-send-email-tytso@mit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:40524 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752602AbcDODUs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Apr 2016 23:20:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 14, 2016 at 1:37 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->
->  So Linus's proposal to
-> add "if (signal_pending(current)) return -EINTR;" to filldir64() would
-> probably cause more than a few userspace regressions.
+Commit c8ee0d60 fixed most of these, but missed this one.
 
-I don't think you actually read or understood my proposal.
+# e2image -r -p <device> - > imagefile
 
-The proposal added it to inside the if-statement in
+leads to a corrupted image due to the "Scanning inodes..."
+printf going to stdout.
 
-        dirent = buf->previous;
-        if (dirent) {
-+               if (signal_pending(current)) return -EINTR;
+Reported-by: Alex Markley <alex@malexmedia.net>
+Addresses-Red-Hat-Bugzilla: #1327329
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-and that actually guarantees that readdir() _never_ returns -EINTR,
-because there is at least one entry that got filled out (the previous
-one filled in, now pointed to be "dirent").
+diff --git a/misc/e2image.c b/misc/e2image.c
+index e9b4ae2..690ad2c 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -1285,7 +1285,7 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
+ 
+ 	mark_table_blocks(fs);
+ 	if (show_progress)
+-		printf("%s", _("Scanning inodes...\n"));
++		fprintf(stderr, "%s", _("Scanning inodes...\n"));
+ 
+ 	retval = ext2fs_open_inode_scan(fs, 0, &scan);
+ 	if (retval) {
 
-So the iterator wrapper that is actually readdir() (getdents) will see
-that filldir64 returned an error, and stop filling entries. But
-because at least entry has been filled, it will return a positive
-number - the amount filled.
-
-This is similar to the interruptible partial read or write case:
-getting a signal after something has been read or written will not
-return -EINTR, it will return the partial result.
-
-And we _know_ that getdents is ok with partial results, since the
-caller by definition doesn't know how many entries it will get, and
-you generally never get a completely full buffer anyway (since
-directory entries have varying sizes and the last one seldom fits
-exactly in the buffer provided).
-
-I ran that kernel for several days, in addition to testing it with the
-test-program that broke with the ext4 changes. It was fine. I didn't
-commit it, because I didn't think it was appropriate for outside the
-merge window, but I don't believe it can break.
-
-Now, it is very possible that ext4 might want to handle the fatal
-signal despite that, simply because ext4 may be looping over blocks
-that simply don't contain any directory entries at all. That said, it
-is possible that my one-liner makes your fatal-signal case irrelevant,
-simply because it makes it so unlikely to matter in practice.
-
-              Linus
