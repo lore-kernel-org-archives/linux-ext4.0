@@ -1,53 +1,72 @@
-From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH v4 0/2] ext4: Improve parallel I/O performance on NVDIMM
-Date: Fri, 15 Apr 2016 15:03:10 -0400
-Message-ID: <1460746992-1443-1-git-send-email-Waiman.Long@hpe.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>,
-	Waiman Long <Waiman.Long@hpe.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Toshi Kani <toshi.kani@hpe.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Fri, 15 Apr 2016 13:01:49 -0600
+Message-ID: <1460746909.4597.7.camel@hpe.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	 <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+	 <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+	 <1460739288.3012.3.camel@intel.com>
+	 <x49potq6bm2.fsf@segfault.boston.devel.redhat.com>
+	 <1460741821.3012.11.camel@intel.com>
+	 <CAPcyv4hemNM4uQYCPBXyH+DWTOLvyBNBeMYstKbPdad_Cw48HQ@mail.gmail.com>
+	 <x49lh4e6928.fsf@segfault.boston.devel.redhat.com>
+	 <CAPcyv4hRQj2ZsFj7Xa_=OwcHrzP9_5yUpt3LQ+bPH4PcLe7UCQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Cc: "axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
+ "david@fromorbit.com" <david@fromorbit.com>, "linux-kernel@vger.kernel.org"
+ <linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+ "hch@infradead.org" <hch@infradead.org>, "linux-mm@kvack.org"
+ <linux-mm@kvack.org>,  "linux-block@vger.kernel.org"
+ <linux-block@vger.kernel.org>, "viro@zeniv.linux.org.uk"
+ <viro@zeniv.linux.org.uk>, "linux-nvdimm@ml01.01.org"
+ <linux-nvdimm@ml01.01.org>,  "linux-fsdevel@vger.kernel.org"
+ <linux-fsdevel@vger.kernel.org>, "akpm@linux-foundation.org"
+ <akpm@linux-foundation.org>, "linux-ext4@vger.kernel.org"
+ <linux-ext4@vger.kernel.org>, "Wilcox, Matthew R"
+ <matthew.r.wilcox@intel.com>
+To: Dan Williams <dan.j.williams@intel.com>, Jeff Moyer <jmoyer@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <CAPcyv4hRQj2ZsFj7Xa_=OwcHrzP9_5yUpt3LQ+bPH4PcLe7UCQ@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-v3->v4:
- - For patch 1, add the DIO_SKIP_DIO_COUNT flag to dax_do_io() calls
-   only to address issue raised by Dave Chinner.
+On Fri, 2016-04-15 at 11:17 -0700, Dan Williams wrote:
+> On Fri, Apr 15, 2016 at 11:06 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
+> >=20
+> > Dan Williams <dan.j.williams@intel.com> writes:
+> >=C2=A0
+> > > > > There's a lot of special casing here, so you might consider
+> > > > > adding comments.
+> > > > Correct - maybe we should reconsider wrapper-izing this? :)
+> > > Another option is just to skip dax_do_io() and this special casing
+> > > fallback entirely if errors are present.=C2=A0=C2=A0I.e. only attem=
+pt dax_do_io
+> > > when: IS_DAX() && gendisk->bb && bb->count =3D=3D 0.
+> >
+> > So, if there's an error anywhere on the device, penalize all I/O (not
+> > just writes, and not just on sectors that are bad)?=C2=A0=C2=A0I'm no=
+t sure
+> > that's a great plan, either.
+> >=20
+> If errors are rare how much are we actually losing in practice?
+> Moreover, we're going to do the full badblocks lookup anyway when we
+> call ->direct_access().=C2=A0=C2=A0If we had that information earlier w=
+e can
+> avoid this fallback dance.
 
-v2->v3:
- - Remove the percpu_stats helper functions and use percpu_counters
-   instead.
+A system running with DAX may have active data set in NVDIMM lager than R=
+AM
+size. =C2=A0In this case, falling back to non-DAX will allocate page cach=
+e for
+the data, which will saturate the system with memory pressure.
 
-v1->v2:
- - Remove percpu_stats_reset() which is not really needed in this
-   patchset.
- - Move some percpu_stats* functions to the newly created
-   lib/percpu_stats.c.
- - Add a new patch to support 64-bit statistics counts in 32-bit
-   architectures.
- - Rearrange the patches by moving the percpu_stats patches to the
-   front followed by the ext4 patches.
+Thanks,
+-Toshi =C2=A0
 
-This patchset aims to improve parallel I/O performance of the ext4
-filesystem on DAX.
-
-Patch 1 eliminates duplicated inode_dio_begin()/inode_dio_end()
-calls in dax_do_io().
-
-Patch 2 converts some ext4 statistics counts into percpu counts using
-the helper functions.
-
-Waiman Long (2):
-  ext4: Add DIO_SKIP_DIO_COUNT flag to dax_do_io()
-  ext4: Make cache hits/misses per-cpu counts
-
- fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
- fs/ext4/extents_status.h |    4 ++--
- fs/ext4/indirect.c       |    9 ++++++++-
- fs/ext4/inode.c          |   11 ++++++++---
- 4 files changed, 47 insertions(+), 15 deletions(-)
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
