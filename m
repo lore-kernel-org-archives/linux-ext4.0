@@ -1,107 +1,195 @@
-From: Juergen Gross <kernel@pfupf.net>
-Subject: Re: [PATCH 41/42] block: do not use REQ_FLUSH for tracking flush
-	support
-Date: Fri, 15 Apr 2016 12:50:39 +0200
-Message-ID: <5710C77F.2000405@pfupf.net>
-References: <1460716802-2294-1-git-send-email-mchristi@redhat.com>
-	<1460716802-2294-42-git-send-email-mchristi@redhat.com>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH v2 1/5] block, dax: pass blk_dax_ctl through to drivers
+Date: Fri, 15 Apr 2016 10:55:17 -0400
+Message-ID: <x49bn5a7wh6.fsf@segfault.boston.devel.redhat.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	<1459303190-20072-2-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: mchristi@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, konrad.wilk@oracle.com,
-	drbd-dev@lists.linbit.com, philipp.reisner@linbit.com,
-	lars.ellenberg@linbit.com, linux-raid@vger.kernel.org,
-	dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1460716802-2294-42-git-send-email-mchristi@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain
+Cc: linux-nvdimm@ml01.01.org, Jens Axboe <axboe@fb.com>,
+	Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <david@fromorbit.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-block@vger.kernel.org, linux-mm@kvack.org,
+	Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Vishal Verma <vishal.l.verma@intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1459303190-20072-2-git-send-email-vishal.l.verma@intel.com>
+	(Vishal Verma's message of "Tue, 29 Mar 2016 19:59:46 -0600")
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 15/04/16 12:40, mchristi@redhat.com wrote:
-> From: Mike Christie <mchristi@redhat.com>
-> 
-> The last patch added a REQ_OP_FLUSH for request_fn drivers
-> and the next patch renames REQ_FLUSH to REQ_PREFLUSH which
-> will be used by file systems and make_request_fn drivers so
-> they can send a write/flush combo.
-> 
-> This patch drops xen's use of REQ_FLUSH to track if it supports
-> REQ_OP_FLUSH requests, so REQ_FLUSH can be deleted.
-> 
-> v6:
-> - Dropped parts of patch handled by Jens's QUEUE_FLAG_WC/FUA
-> patches and modified patch to check feature_flush/fua bits.
-> 
-> Signed-off-by: Mike Christie <mchristi@redhat.com>
-> Reviewed-by: Hannes Reinecke <hare@suse.com>
+Vishal Verma <vishal.l.verma@intel.com> writes:
+
+> From: Dan Williams <dan.j.williams@intel.com>
+>
+> This is in preparation for doing badblocks checking against the
+> requested sector range in the driver.  Currently we opportunistically
+> return as much data that can be "dax'd" starting at the given sector.
+> When errors are present we want to limit that range to the first
+> encountered error, or fail the dax request if the range encompasses an
+> error.
+
+I'm not a fan of hiding arguments like this, but it looks fine.
+
+Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
+
+
+> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 > ---
->  drivers/block/xen-blkfront.c | 47 ++++++++++++++++++++++----------------------
->  1 file changed, 24 insertions(+), 23 deletions(-)
-> 
-> diff --git a/drivers/block/xen-blkfront.c b/drivers/block/xen-blkfront.c
-> index f01691a..d6429e7 100644
-> --- a/drivers/block/xen-blkfront.c
-> +++ b/drivers/block/xen-blkfront.c
-
-...
-
-> @@ -985,24 +981,22 @@ static int xlvbd_init_blk_queue(struct gendisk *gd, u16 sector_size,
->  	return 0;
+>  arch/powerpc/sysdev/axonram.c | 10 +++++-----
+>  drivers/block/brd.c           |  9 +++++----
+>  drivers/nvdimm/pmem.c         |  9 +++++----
+>  drivers/s390/block/dcssblk.c  | 12 ++++++------
+>  fs/block_dev.c                |  2 +-
+>  include/linux/blkdev.h        |  3 +--
+>  6 files changed, 23 insertions(+), 22 deletions(-)
+>
+> diff --git a/arch/powerpc/sysdev/axonram.c b/arch/powerpc/sysdev/axonram.c
+> index 0d112b9..d85673f 100644
+> --- a/arch/powerpc/sysdev/axonram.c
+> +++ b/arch/powerpc/sysdev/axonram.c
+> @@ -139,17 +139,17 @@ axon_ram_make_request(struct request_queue *queue, struct bio *bio)
+>  
+>  /**
+>   * axon_ram_direct_access - direct_access() method for block device
+> - * @device, @sector, @data: see block_device_operations method
+> + * @dax: see block_device_operations method
+>   */
+>  static long
+> -axon_ram_direct_access(struct block_device *device, sector_t sector,
+> -		       void __pmem **kaddr, pfn_t *pfn)
+> +axon_ram_direct_access(struct block_device *device, struct blk_dax_ctl *dax)
+>  {
+> +	sector_t sector = get_start_sect(device) + dax->sector;
+>  	struct axon_ram_bank *bank = device->bd_disk->private_data;
+>  	loff_t offset = (loff_t)sector << AXON_RAM_SECTOR_SHIFT;
+>  
+> -	*kaddr = (void __pmem __force *) bank->io_addr + offset;
+> -	*pfn = phys_to_pfn_t(bank->ph_addr + offset, PFN_DEV);
+> +	dax->addr = (void __pmem __force *) bank->io_addr + offset;
+> +	dax->pfn = phys_to_pfn_t(bank->ph_addr + offset, PFN_DEV);
+>  	return bank->size - offset;
 >  }
 >  
-> -static const char *flush_info(unsigned int feature_flush)
-> +static const char *flush_info(struct blkfront_info *info)
->  {
-> -	switch (feature_flush & ((REQ_FLUSH | REQ_FUA))) {
-> -	case REQ_FLUSH|REQ_FUA:
-> +	if (info->feature_flush && info->feature_fua)
->  		return "barrier: enabled;";
-> -	case REQ_FLUSH:
-> +	else if (info->feature_fua)
-
-Shouldn't this test feature_flush?
-
->  		return "flush diskcache: enabled;";
-> -	default:
-> +	else
->  		return "barrier or flush: disabled;";
-> -	}
+> diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+> index f7ecc28..e3e4780 100644
+> --- a/drivers/block/brd.c
+> +++ b/drivers/block/brd.c
+> @@ -380,9 +380,10 @@ static int brd_rw_page(struct block_device *bdev, sector_t sector,
 >  }
 >  
->  static void xlvbd_flush(struct blkfront_info *info)
+>  #ifdef CONFIG_BLK_DEV_RAM_DAX
+> -static long brd_direct_access(struct block_device *bdev, sector_t sector,
+> -			void __pmem **kaddr, pfn_t *pfn)
+> +static long brd_direct_access(struct block_device *bdev,
+> +		struct blk_dax_ctl *dax)
 >  {
-> -	blk_queue_write_cache(info->rq, info->feature_flush & REQ_FLUSH,
-> -				info->feature_flush & REQ_FUA);
-> +	blk_queue_write_cache(info->rq, info->feature_flush ? true : false,
-> +			      info->feature_flush ? true : false);
-
-And here the second test should be feature_fua?
-
->  	pr_info("blkfront: %s: %s %s %s %s %s\n",
-> -		info->gd->disk_name, flush_info(info->feature_flush),
-> +		info->gd->disk_name, flush_info(info),
->  		"persistent grants:", info->feature_persistent ?
->  		"enabled;" : "disabled;", "indirect descriptors:",
->  		info->max_indirect_segments ? "enabled;" : "disabled;");
-
-
-Juergen
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+> +	sector_t sector = get_start_sect(bdev) + dax->sector;
+>  	struct brd_device *brd = bdev->bd_disk->private_data;
+>  	struct page *page;
+>  
+> @@ -391,8 +392,8 @@ static long brd_direct_access(struct block_device *bdev, sector_t sector,
+>  	page = brd_insert_page(brd, sector);
+>  	if (!page)
+>  		return -ENOSPC;
+> -	*kaddr = (void __pmem *)page_address(page);
+> -	*pfn = page_to_pfn_t(page);
+> +	dax->addr = (void __pmem *)page_address(page);
+> +	dax->pfn = page_to_pfn_t(page);
+>  
+>  	return PAGE_SIZE;
+>  }
+> diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+> index ca5721c..da10554 100644
+> --- a/drivers/nvdimm/pmem.c
+> +++ b/drivers/nvdimm/pmem.c
+> @@ -167,14 +167,15 @@ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
+>  	return rc;
+>  }
+>  
+> -static long pmem_direct_access(struct block_device *bdev, sector_t sector,
+> -		      void __pmem **kaddr, pfn_t *pfn)
+> +static long pmem_direct_access(struct block_device *bdev,
+> +		struct blk_dax_ctl *dax)
+>  {
+> +	sector_t sector = get_start_sect(bdev) + dax->sector;
+>  	struct pmem_device *pmem = bdev->bd_disk->private_data;
+>  	resource_size_t offset = sector * 512 + pmem->data_offset;
+>  
+> -	*kaddr = pmem->virt_addr + offset;
+> -	*pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
+> +	dax->addr = pmem->virt_addr + offset;
+> +	dax->pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
+>  
+>  	return pmem->size - pmem->pfn_pad - offset;
+>  }
+> diff --git a/drivers/s390/block/dcssblk.c b/drivers/s390/block/dcssblk.c
+> index 1bce9cf..5719c30 100644
+> --- a/drivers/s390/block/dcssblk.c
+> +++ b/drivers/s390/block/dcssblk.c
+> @@ -30,8 +30,8 @@ static int dcssblk_open(struct block_device *bdev, fmode_t mode);
+>  static void dcssblk_release(struct gendisk *disk, fmode_t mode);
+>  static blk_qc_t dcssblk_make_request(struct request_queue *q,
+>  						struct bio *bio);
+> -static long dcssblk_direct_access(struct block_device *bdev, sector_t secnum,
+> -			 void __pmem **kaddr, pfn_t *pfn);
+> +static long dcssblk_direct_access(struct block_device *bdev,
+> +		struct blk_dax_ctl *dax)
+>  
+>  static char dcssblk_segments[DCSSBLK_PARM_LEN] = "\0";
+>  
+> @@ -882,9 +882,9 @@ fail:
+>  }
+>  
+>  static long
+> -dcssblk_direct_access (struct block_device *bdev, sector_t secnum,
+> -			void __pmem **kaddr, pfn_t *pfn)
+> +dcssblk_direct_access(struct block_device *bdev, struct blk_dax_ctl *dax)
+>  {
+> +	sector_t secnum = get_start_sect(bdev) + dax->sector;
+>  	struct dcssblk_dev_info *dev_info;
+>  	unsigned long offset, dev_sz;
+>  
+> @@ -893,8 +893,8 @@ dcssblk_direct_access (struct block_device *bdev, sector_t secnum,
+>  		return -ENODEV;
+>  	dev_sz = dev_info->end - dev_info->start;
+>  	offset = secnum * 512;
+> -	*kaddr = (void __pmem *) (dev_info->start + offset);
+> -	*pfn = __pfn_to_pfn_t(PFN_DOWN(dev_info->start + offset), PFN_DEV);
+> +	dax->addr = (void __pmem *) (dev_info->start + offset);
+> +	dax->pfn = __pfn_to_pfn_t(PFN_DOWN(dev_info->start + offset), PFN_DEV);
+>  
+>  	return dev_sz - offset;
+>  }
+> diff --git a/fs/block_dev.c b/fs/block_dev.c
+> index 3172c4e..c5837fa 100644
+> --- a/fs/block_dev.c
+> +++ b/fs/block_dev.c
+> @@ -488,7 +488,7 @@ long bdev_direct_access(struct block_device *bdev, struct blk_dax_ctl *dax)
+>  	sector += get_start_sect(bdev);
+>  	if (sector % (PAGE_SIZE / 512))
+>  		return -EINVAL;
+> -	avail = ops->direct_access(bdev, sector, &dax->addr, &dax->pfn);
+> +	avail = ops->direct_access(bdev, dax);
+>  	if (!avail)
+>  		return -ERANGE;
+>  	if (avail > 0 && avail & ~PAGE_MASK)
+> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> index 7e5d7e0..92f8a1f 100644
+> --- a/include/linux/blkdev.h
+> +++ b/include/linux/blkdev.h
+> @@ -1656,8 +1656,7 @@ struct block_device_operations {
+>  	int (*rw_page)(struct block_device *, sector_t, struct page *, int rw);
+>  	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+>  	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+> -	long (*direct_access)(struct block_device *, sector_t, void __pmem **,
+> -			pfn_t *);
+> +	long (*direct_access)(struct block_device *, struct blk_dax_ctl *dax);
+>  	unsigned int (*check_events) (struct gendisk *disk,
+>  				      unsigned int clearing);
+>  	/* ->media_changed() is DEPRECATED, use ->check_events() instead */
