@@ -1,7 +1,7 @@
 From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH v4 1/2] ext4: Add DIO_SKIP_DIO_COUNT flag to dax_do_io()
-Date: Fri, 15 Apr 2016 15:03:11 -0400
-Message-ID: <1460746992-1443-2-git-send-email-Waiman.Long@hpe.com>
+Subject: [PATCH v4 2/2] ext4: Make cache hits/misses per-cpu counts
+Date: Fri, 15 Apr 2016 15:03:12 -0400
+Message-ID: <1460746992-1443-3-git-send-email-Waiman.Long@hpe.com>
 References: <1460746992-1443-1-git-send-email-Waiman.Long@hpe.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
@@ -12,106 +12,140 @@ Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Waiman Long <Waiman.Long@hpe.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g2t4625.austin.hp.com ([15.73.212.76]:42487 "EHLO
-	g2t4625.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751325AbcDOTDg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Apr 2016 15:03:36 -0400
-Received: from g2t4621.austin.hp.com (g2t4621.austin.hp.com [15.73.212.80])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by g2t4625.austin.hp.com (Postfix) with ESMTPS id 720644DD7
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Apr 2016 19:03:34 +0000 (UTC)
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1460746992-1443-1-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When performing direct I/O on DAX, the current ext4 code does not pass
-in the DIO_SKIP_DIO_COUNT flag to dax_do_io() when inode_dio_begin()
-has, in fact, been called. This causes dax_do_io() to invoke the
-inode_dio_begin()/inode_dio_end() pair internally.  This doubling of
-inode_dio_begin()/inode_dio_end() calls are wasteful.
+This patch changes the es_stats_cache_hits and es_stats_cache_misses
+statistics counts to per-cpu variables to reduce cacheline contention
+issues whem multiple threads are trying to update those counts
+simultaneously. It uses the new per-cpu stats APIs provided by the
+percpu_stats.h header file.
 
-For __blockdev_direct_IO(), however, the inode_dio_end() call can be
-deferred for AIO. So setting DIO_SKIP_DIO_COUNT may not be appropriate.
-
-This patch removes the extra internal inode_dio_begin()/inode_dio_end()
-calls for DAX when those calls are being issued by the caller
-directly. For really fast storage systems like NVDIMM, the removal
-of the extra inode_dio_begin()/inode_dio_end() can give a meaningful
-boost to I/O performance.
-
-On a 4-socket Haswell-EX system (72 cores) running 4.6-rc1 kernel,
-fio with 38 threads doing parallel I/O on two shared files on an
-NVDIMM with DAX gave the following aggregrate bandwidth with and
-without the patch:
+With a 38-threads fio I/O test with 2 shared files (on DAX-mount
+NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1 kernel,
+the aggregated bandwidths before and after the patch were:
 
   Test          W/O patch       With patch      % change
   ----          ---------       ----------      --------
-  Read-only      8688MB/s       10173MB/s        +17.1%
-  Read-write     2687MB/s        2830MB/s         +5.3%
+  Read-only     10173MB/s       16141MB/s        +58.7%
+  Read-write     2830MB/s        4315MB/s        +52.5%
 
 Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 ---
- fs/ext4/indirect.c |    9 ++++++++-
- fs/ext4/inode.c    |   11 ++++++++---
- 2 files changed, 16 insertions(+), 4 deletions(-)
+ fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h |    4 ++--
+ 2 files changed, 31 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 3027fa6..1dfc280 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -706,9 +706,16 @@ retry:
- 			inode_dio_end(inode);
- 			goto locked;
- 		}
-+		/*
-+		 * Need to pass in DIO_SKIP_DIO_COUNT to dax_do_io() to prevent
-+		 * duplicated inode_dio_begin/inode_dio_end pair. The flag
-+		 * isn't used in __blockdev_direct_IO() as the inode_dio_end()
-+		 * call can be deferred for AIO.
-+		 */
- 		if (IS_DAX(inode))
- 			ret = dax_do_io(iocb, inode, iter, offset,
--					ext4_dio_get_block, NULL, 0);
-+					ext4_dio_get_block, NULL,
-+					DIO_SKIP_DIO_COUNT);
- 		else
- 			ret = __blockdev_direct_IO(iocb, inode,
- 						   inode->i_sb->s_bdev, iter,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dab84a2..b18ee2f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3358,9 +3358,14 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	 * Make all waiters for direct IO properly wait also for extent
- 	 * conversion. This also disallows race between truncate() and
- 	 * overwrite DIO as i_dio_count needs to be incremented under i_mutex.
-+	 *
-+	 * The dax_do_io() will unnecessarily call inode_dio_begin() &
-+	 * inode_dio_end() again if the DIO_SKIP_DIO_COUNT flag is not set.
- 	 */
--	if (iov_iter_rw(iter) == WRITE)
-+	if (iov_iter_rw(iter) == WRITE) {
-+		dio_flags = IS_DAX(inode) ? DIO_SKIP_DIO_COUNT : 0;
- 		inode_dio_begin(inode);
-+	}
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e38b987..92ca56d 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -770,6 +770,15 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ }
  
- 	/* If we do a overwrite dio, i_mutex locking can be released */
- 	overwrite = *((int *)iocb->private);
-@@ -3393,10 +3398,10 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 		get_block_func = ext4_dio_get_block_overwrite;
- 	else if (is_sync_kiocb(iocb)) {
- 		get_block_func = ext4_dio_get_block_unwritten_sync;
--		dio_flags = DIO_LOCKING;
-+		dio_flags |= DIO_LOCKING;
+ /*
++ * For pure statistics count, use a large batch size to make sure that
++ * it does percpu update as much as possible.
++ */
++static inline void ext4_es_stats_inc(struct percpu_counter *fbc)
++{
++	__percpu_counter_add(fbc, 1, (1 << 30));
++}
++
++/*
+  * ext4_es_lookup_extent() looks up an extent in extent status tree.
+  *
+  * ext4_es_lookup_extent is called by ext4_map_blocks/ext4_da_map_blocks.
+@@ -825,9 +834,9 @@ out:
+ 		es->es_pblk = es1->es_pblk;
+ 		if (!ext4_es_is_referenced(es1))
+ 			ext4_es_set_referenced(es1);
+-		stats->es_stats_cache_hits++;
++		ext4_es_stats_inc(&stats->es_stats_cache_hits);
  	} else {
- 		get_block_func = ext4_dio_get_block_unwritten_async;
--		dio_flags = DIO_LOCKING;
-+		dio_flags |= DIO_LOCKING;
+-		stats->es_stats_cache_misses++;
++		ext4_es_stats_inc(&stats->es_stats_cache_misses);
  	}
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
+ 
+ 	read_unlock(&EXT4_I(inode)->i_es_lock);
+@@ -1113,9 +1122,9 @@ int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
+ 	seq_printf(seq, "stats:\n  %lld objects\n  %lld reclaimable objects\n",
+ 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
+ 		   percpu_counter_sum_positive(&es_stats->es_stats_shk_cnt));
+-	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
+-		   es_stats->es_stats_cache_hits,
+-		   es_stats->es_stats_cache_misses);
++	seq_printf(seq, "  %lld/%lld cache hits/misses\n",
++		   percpu_counter_sum_positive(&es_stats->es_stats_cache_hits),
++		   percpu_counter_sum_positive(&es_stats->es_stats_cache_misses));
+ 	if (inode_cnt)
+ 		seq_printf(seq, "  %d inodes on list\n", inode_cnt);
+ 
+@@ -1142,8 +1151,6 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	sbi->s_es_nr_inode = 0;
+ 	spin_lock_init(&sbi->s_es_lock);
+ 	sbi->s_es_stats.es_stats_shrunk = 0;
+-	sbi->s_es_stats.es_stats_cache_hits = 0;
+-	sbi->s_es_stats.es_stats_cache_misses = 0;
+ 	sbi->s_es_stats.es_stats_scan_time = 0;
+ 	sbi->s_es_stats.es_stats_max_scan_time = 0;
+ 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
+@@ -1153,15 +1160,26 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	if (err)
+ 		goto err1;
+ 
++	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_hits, 0, GFP_KERNEL);
++	if (err)
++		goto err2;
++
++	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_misses, 0, GFP_KERNEL);
++	if (err)
++		goto err3;
++
+ 	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
+ 	sbi->s_es_shrinker.count_objects = ext4_es_count;
+ 	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
+ 	err = register_shrinker(&sbi->s_es_shrinker);
+ 	if (err)
+-		goto err2;
++		goto err4;
+ 
+ 	return 0;
+-
++err4:
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
++err3:
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
+ err2:
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+ err1:
+@@ -1173,6 +1191,8 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ {
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
+ 	unregister_shrinker(&sbi->s_es_shrinker);
+ }
+ 
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index f7aa24f..d537868 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -69,10 +69,10 @@ struct ext4_es_tree {
+ 
+ struct ext4_es_stats {
+ 	unsigned long es_stats_shrunk;
+-	unsigned long es_stats_cache_hits;
+-	unsigned long es_stats_cache_misses;
+ 	u64 es_stats_scan_time;
+ 	u64 es_stats_max_scan_time;
++	struct percpu_counter es_stats_cache_hits;
++	struct percpu_counter es_stats_cache_misses;
+ 	struct percpu_counter es_stats_all_cnt;
+ 	struct percpu_counter es_stats_shk_cnt;
+ };
 -- 
 1.7.1
-
