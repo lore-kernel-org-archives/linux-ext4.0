@@ -1,76 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: allow readdir()'s of large empty directories to be interrupted
-Date: Thu, 14 Apr 2016 16:37:45 -0400
-Message-ID: <1460666265-22596-1-git-send-email-tytso@mit.edu>
-Cc: torvalds@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH] ext4: allow readdir()'s of large empty directories to be interrupted
+Date: Thu, 14 Apr 2016 19:01:14 -0700
+Message-ID: <CA+55aFw63jj-PJ2c=aYZivkfHfei=1W2z72qs0P+aj-f0J1UKw@mail.gmail.com>
+References: <1460666265-22596-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56160 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751694AbcDNUhw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 Apr 2016 16:37:52 -0400
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:34552 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751078AbcDOCBP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2016 22:01:15 -0400
+Received: by mail-ig0-f194.google.com with SMTP id qu10so1209728igc.1
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2016 19:01:15 -0700 (PDT)
+In-Reply-To: <1460666265-22596-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a directory has a large number of empty blocks, iterating over all
-of them can take a long time, leading to scheduler warnings and users
-getting irritated when they can't kill a process in the middle of one
-of these long-running readdir operations.  Fix this by adding checks to
-ext4_readdir() and ext4_htree_fill_tree().
+On Thu, Apr 14, 2016 at 1:37 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>
+>  So Linus's proposal to
+> add "if (signal_pending(current)) return -EINTR;" to filldir64() would
+> probably cause more than a few userspace regressions.
 
-This was reverted earlier due to a typo in the original commit where I
-experimented with using signal_pending() instead of
-fatal_signal_pending().  The test was in the wrong place if we were
-going to return signal_pending() since we would end up returning
-duplicant entries.  See 9f2394c9be47 for a more detailed explanation.
+I don't think you actually read or understood my proposal.
 
-As it turns out, we can't use signal_pending() anyway because there
-are callers of readdir() that would be very cranky if we were to ever
-return EINTR.  As a result, we can only allow ourselves to get
-interrupted by a signal if it is a fatal one.  So Linus's proposal to
-add "if (signal_pending(current)) return -EINTR;" to filldir64() would
-probably cause more than a few userspace regressions.
+The proposal added it to inside the if-statement in
 
-Reported-by: Benjamin LaHaise <bcrl@kvack.org>
-Google-Bug-Id: 27880676
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/dir.c   | 5 +++++
- fs/ext4/namei.c | 5 +++++
- 2 files changed, 10 insertions(+)
+        dirent = buf->previous;
+        if (dirent) {
++               if (signal_pending(current)) return -EINTR;
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 561d730..4173bfe 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -150,6 +150,11 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 	while (ctx->pos < inode->i_size) {
- 		struct ext4_map_blocks map;
- 
-+		if (fatal_signal_pending(current)) {
-+			err = -ERESTARTSYS;
-+			goto errout;
-+		}
-+		cond_resched();
- 		map.m_lblk = ctx->pos >> EXT4_BLOCK_SIZE_BITS(sb);
- 		map.m_len = 1;
- 		err = ext4_map_blocks(NULL, inode, &map, 0);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 48e4b89..c07422d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1107,6 +1107,11 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	}
- 
- 	while (1) {
-+		if (fatal_signal_pending(current)) {
-+			err = -ERESTARTSYS;
-+			goto errout;
-+		}
-+		cond_resched();
- 		block = dx_get_block(frame->at);
- 		ret = htree_dirblock_to_tree(dir_file, dir, block, &hinfo,
- 					     start_hash, start_minor_hash);
--- 
-2.5.0
+and that actually guarantees that readdir() _never_ returns -EINTR,
+because there is at least one entry that got filled out (the previous
+one filled in, now pointed to be "dirent").
 
+So the iterator wrapper that is actually readdir() (getdents) will see
+that filldir64 returned an error, and stop filling entries. But
+because at least entry has been filled, it will return a positive
+number - the amount filled.
+
+This is similar to the interruptible partial read or write case:
+getting a signal after something has been read or written will not
+return -EINTR, it will return the partial result.
+
+And we _know_ that getdents is ok with partial results, since the
+caller by definition doesn't know how many entries it will get, and
+you generally never get a completely full buffer anyway (since
+directory entries have varying sizes and the last one seldom fits
+exactly in the buffer provided).
+
+I ran that kernel for several days, in addition to testing it with the
+test-program that broke with the ext4 changes. It was fine. I didn't
+commit it, because I didn't think it was appropriate for outside the
+merge window, but I don't believe it can break.
+
+Now, it is very possible that ext4 might want to handle the fatal
+signal despite that, simply because ext4 may be looping over blocks
+that simply don't contain any directory entries at all. That said, it
+is possible that my one-liner makes your fatal-signal case irrelevant,
+simply because it makes it so unlikely to matter in practice.
+
+              Linus
