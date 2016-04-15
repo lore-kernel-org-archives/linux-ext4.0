@@ -1,99 +1,90 @@
-From: Waiman Long <waiman.long@hpe.com>
-Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin()
- called
-Date: Fri, 15 Apr 2016 13:17:41 -0400
-Message-ID: <57112235.1090201@hpe.com>
-References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com> <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com> <20160414031634.GJ10643@dastard> <570FC379.7000107@hpe.com> <20160415081757.GK10643@dastard>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Fri, 15 Apr 2016 17:37:02 +0000
+Message-ID: <1460741821.3012.11.camel@intel.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	 <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+	 <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+	 <1460739288.3012.3.camel@intel.com>
+	 <x49potq6bm2.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bn1on0135.outbound.protection.outlook.com ([157.56.110.135]:55456
-	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752529AbcDORRu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Apr 2016 13:17:50 -0400
-In-Reply-To: <20160415081757.GK10643@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>, "linux-mm@kvack.org"
+	<linux-mm@kvack.org>, "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>, "axboe@fb.com"
+	<axboe@fb.com>, "linux-fsdevel@vger.kernel.org"
+	<linux-fsdevel@vger.kernel.org>, "linux-ext4@vger.kernel.org"
+	<linux-ext4@vger.kernel.org>, "Wilcox, Matthew R"
+	<matthew.r.wilcox@intel.com>, "david@fromorbit.com" <david@fromorbit.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "jmoyer@redhat.com" <jmoyer@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <x49potq6bm2.fsf@segfault.boston.devel.redhat.com>
+Content-Language: en-US
+Content-ID: <CCD91253E6E05545B2738755BAAADF3C@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 04/15/2016 04:17 AM, Dave Chinner wrote:
-> On Thu, Apr 14, 2016 at 12:21:13PM -0400, Waiman Long wrote:
->> On 04/13/2016 11:16 PM, Dave Chinner wrote:
->>> On Tue, Apr 12, 2016 at 02:12:54PM -0400, Waiman Long wrote:
->>>> When performing direct I/O, the current ext4 code does
->>>> not pass in the DIO_SKIP_DIO_COUNT flag to dax_do_io() or
->>>> __blockdev_direct_IO() when inode_dio_begin() has, in fact, been
->>>> called. This causes dax_do_io()/__blockdev_direct_IO() to invoke
->>>> inode_dio_begin()/inode_dio_end() internally.  This doubling of
->>>> inode_dio_begin()/inode_dio_end() calls are wasteful.
->>>>
->>>> This patch removes the extra internal inode_dio_begin()/inode_dio_end()
->>>> calls when those calls are being issued by the caller directly. For
->>>> really fast storage systems like NVDIMM, the removal of the extra
->>>> inode_dio_begin()/inode_dio_end() can give a meaningful boost to
->>>> I/O performance.
->>> Doesn't this break truncate IO serialisation?
->>>
->>> i.e. it appears to me that the ext4 use of inode_dio_begin()/
->>> inode_dio_end() does not cover AIO, where the IO is still in flight
->>> when submission returns. i.e. the inode_dio_end() call
->>> needs to be in IO completion, not in the submitter context. The only
->>> reason it doesn't break right now is that the duplicate accounting
->>> in the DIO code is correct w.r.t. AIO. Hence bypassing the DIO
->>> accounting will cause AIO writes to race with truncate.
->>>
->>> Same AIO vs truncate problem occurs with the indirect read case you
->>> modified to skip the direct IO layer accounting.
->> I don't quite understand how the duplicate accounting is correct wrt
->> AIO. Both the direct and indirect paths are something like:
->>
->>      inode_dio_begin()
->>      ...
->>          inode_dio_begin()
->>          ...
->>          inode_dio_end()
->>      ...
->>      inode_dio_end()
-> With AIO:
->
-> 	inode_dio_begin()
-> 	...
-> 		inode_dio_begin()
-> 		<submit IO, no wait>
-> 	...
-> 	inode_dio_end()
-> <ext4 returns to userspace with AIO+DIO in progress>
->
-> <some time later DIO completes>
-> 	dio_complete
-> 		  inode_dio_end()
->
-> IOWs, the ext4 accounting is broken w.r.t. AIO, where IO submission
-> does not wait for IO completion before returning.
->
->> What the patch does is to eliminate the innermost
->> inode_dio_begin/end pair.
-> Yes, and with that change inode_dio_wait() no longer waits for
-> AIO+DIO writes on ext4, hence breaking truncate IO barrier
-> requirements of inode_dio_wait().
->
-> Cheers,
->
-> Dave.
+T24gRnJpLCAyMDE2LTA0LTE1IGF0IDEzOjExIC0wNDAwLCBKZWZmIE1veWVyIHdyb3RlOg0KPiAi
+VmVybWEsIFZpc2hhbCBMIiA8dmlzaGFsLmwudmVybWFAaW50ZWwuY29tPiB3cml0ZXM6DQo+IA0K
+PiA+IA0KPiA+IE9uIEZyaSwgMjAxNi0wNC0xNSBhdCAxMjoxMSAtMDQwMCwgSmVmZiBNb3llciB3
+cm90ZToNCj4gPiA+IA0KPiA+ID4gVmlzaGFsIFZlcm1hIDx2aXNoYWwubC52ZXJtYUBpbnRlbC5j
+b20+IHdyaXRlczoNCj4gPiA+ID4gDQo+ID4gPiA+ICsJaWYgKElTX0RBWChpbm9kZSkpIHsNCj4g
+PiA+ID4gKwkJcmV0ID0gZGF4X2RvX2lvKGlvY2IsIGlub2RlLCBpdGVyLCBvZmZzZXQsDQo+ID4g
+PiA+IGJsa2Rldl9nZXRfYmxvY2ssDQo+ID4gPiA+IMKgCQkJCU5VTEwsIERJT19TS0lQX0RJT19D
+T1VOVCk7DQo+ID4gPiA+IC0JcmV0dXJuIF9fYmxvY2tkZXZfZGlyZWN0X0lPKGlvY2IsIGlub2Rl
+LA0KPiA+ID4gPiBJX0JERVYoaW5vZGUpLA0KPiA+ID4gPiBpdGVyLCBvZmZzZXQsDQo+ID4gPiA+
+ICsJCWlmIChyZXQgPT0gLUVJTyAmJiAoaW92X2l0ZXJfcncoaXRlcikgPT0NCj4gPiA+ID4gV1JJ
+VEUpKQ0KPiA+ID4gPiArCQkJcmV0X3NhdmVkID0gcmV0Ow0KPiA+ID4gPiArCQllbHNlDQo+ID4g
+PiA+ICsJCQlyZXR1cm4gcmV0Ow0KPiA+ID4gPiArCX0NCj4gPiA+ID4gKw0KPiA+ID4gPiArCXJl
+dCA9IF9fYmxvY2tkZXZfZGlyZWN0X0lPKGlvY2IsIGlub2RlLCBJX0JERVYoaW5vZGUpLA0KPiA+
+ID4gPiBpdGVyLCBvZmZzZXQsDQo+ID4gPiA+IMKgCQkJCcKgwqDCoMKgYmxrZGV2X2dldF9ibG9j
+aywgTlVMTCwNCj4gPiA+ID4gTlVMTCwNCj4gPiA+ID4gwqAJCQkJwqDCoMKgwqBESU9fU0tJUF9E
+SU9fQ09VTlQpOw0KPiA+ID4gPiArCWlmIChyZXQgPCAwICYmIHJldF9zYXZlZCkNCj4gPiA+ID4g
+KwkJcmV0dXJuIHJldF9zYXZlZDsNCj4gPiA+ID4gKw0KPiA+ID4gSG1tLCBkaWQgeW91IGp1c3Qg
+YnJlYWsgYXN5bmMgRElPP8KgwqBJIHRoaW5rIHlvdSBkaWQhwqDCoDopDQo+ID4gPiBfX2Jsb2Nr
+ZGV2X2RpcmVjdF9JTyBjYW4gcmV0dXJuIC1FSU9DQlFVRVVFRCwgYW5kIHlvdSd2ZSBub3cNCj4g
+PiA+IHR1cm5lZA0KPiA+ID4gdGhhdA0KPiA+ID4gaW50byAtRUlPLsKgwqBSZWFsbHksIEkgZG9u
+J3Qgc2VlIGEgcmVhc29uIHRvIHNhdmUgdGhhdCBmaXJzdA0KPiA+ID4gLUVJTy7CoMKgVGhlDQo+
+ID4gPiBzYW1lIGFwcGxpZXMgdG8gYWxsIGluc3RhbmNlcyBpbiB0aGlzIHBhdGNoLg0KPiA+IFRo
+ZSByZWFzb24gSSBzYXZlZCBpdCB3YXMgaWYgX19ibG9ja2Rldl9kaXJlY3RfSU8gZmFpbHMgZm9y
+IHNvbWUNCj4gPiByZWFzb24sIHdlIHNob3VsZCByZXR1cm4gdGhlIG9yaWdpbmFsIGNhdXNlIG8g
+dGhlIGVycm9yLCB3aGljaCB3YXMNCj4gPiBhbg0KPiA+IEVJTy4uIGkuZS4gd2Ugc2hvdWxkbid0
+IGJlIGhpZGluZyB0aGUgRUlPIGlmIHRoZSBkaXJlY3RfSU8gZmFpbHMNCj4gPiB3aXRoDQo+ID4g
+c29tZXRoaW5nIGVsc2UuLg0KPiBPSy4NCj4gDQo+ID4gDQo+ID4gQnV0LCBob3cgZG9lcyBfRUlP
+Q0JRVUVVRUQgd29yaz8gTWF5YmUgd2UgbmVlZCBhbiBleGNlcHRpb24gZm9yIGl0Pw0KPiBGb3Ig
+YXN5bmMgZGlyZWN0IEkvTywgb25seSB0aGUgc2V0dXAgcGhhc2Ugb2YgdGhlIEkvTyBpcyBwZXJm
+b3JtZWQNCj4gYW5kDQo+IHRoZW4gd2UgcmV0dXJuIHRvIHRoZSBjYWxsZXIuwqDCoC1FSU9DQlFV
+RVVFRCBzaWduaWZpZXMgdGhpcy4NCj4gDQo+IFlvdSdyZSBoZWFkaW5nIHRvd2FyZHMgY29kZSB0
+aGF0IGxvb2tzIGxpa2UgdGhpczoNCj4gDQo+IMKgwqDCoMKgwqDCoMKgwqBpZiAoSVNfREFYKGlu
+b2RlKSkgew0KPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHJldCA9IGRheF9kb19p
+byhpb2NiLCBpbm9kZSwgaXRlciwgb2Zmc2V0LA0KPiBibGtkZXZfZ2V0X2Jsb2NrLA0KPiDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgTlVMTCwgRElPX1NLSVBfRElPX0NPVU5UKTsNCj4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqBpZiAocmV0ID09IC1FSU8gJiYgKGlvdl9pdGVyX3J3KGl0ZXIpID09IFdSSVRFKSkN
+Cj4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgcmV0X3Nh
+dmVkID0gcmV0Ow0KPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGVsc2UNCj4gwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgcmV0dXJuIHJldDsN
+Cj4gwqDCoMKgwqDCoMKgwqDCoH0NCj4gDQo+IMKgwqDCoMKgwqDCoMKgwqByZXQgPSBfX2Jsb2Nr
+ZGV2X2RpcmVjdF9JTyhpb2NiLCBpbm9kZSwgSV9CREVWKGlub2RlKSwgaXRlciwNCj4gb2Zmc2V0
+LA0KPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqBibGtkZXZfZ2V0X2Jsb2NrLCBOVUxMLCBOVUxMLA0KPiDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqBESU9fU0tJUF9ESU9fQ09VTlQpOw0KPiDCoMKgwqDCoMKgwqDCoMKgaWYgKHJl
+dCA8IDAgJiYgcmV0ICE9IC1FSU9DQlFVRVVFRCAmJiByZXRfc2F2ZWQpDQo+IMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgcmV0dXJuIHJldF9zYXZlZDsNCj4gDQo+IFRoZXJlJ3MgYSBs
+b3Qgb2Ygc3BlY2lhbCBjYXNpbmcgaGVyZSwgc28geW91IG1pZ2h0IGNvbnNpZGVyIGFkZGluZw0K
+PiBjb21tZW50cy4NCg0KQ29ycmVjdCAtIG1heWJlIHdlIHNob3VsZCByZWNvbnNpZGVyIHdyYXBw
+ZXItaXppbmcgdGhpcz8gOikNCg0KVGhhbmtzIGZvciB0aGUgZXhwbGFuYXRpb24gYW5kIGZvciBj
+YXRjaGluZyB0aGlzLiBJJ2xsIGZpeCBpdCBmb3IgdGhlDQpuZXh0IHJldmlzaW9uLg0KDQo+IA0K
+PiBDaGVlcnMsDQo+IEplZmY=
 
-You are right and thank for pointing this out to me. I think I focus too 
-much on the dax_do_io() internal and didn't realize that inode_dio_end() 
-can be deferred in __blockdev_direct_IO(). I will update my patch to 
-eliminate the extra inode_dio_begin/end pair only for dax_do_io().
-
-Cheers,
-Longman
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
