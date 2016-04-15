@@ -1,89 +1,44 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v2 3/5] dax: enable dax in the presence of known media errors (badblocks)
-Date: Fri, 15 Apr 2016 10:56:10 -0400
-Message-ID: <x4937qm7wfp.fsf@segfault.boston.devel.redhat.com>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-4-git-send-email-vishal.l.verma@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: allow readdir()'s of large empty directories to be
+ interrupted
+Date: Fri, 15 Apr 2016 10:56:22 -0400
+Message-ID: <20160415145622.GA11838@thunk.org>
+References: <1460666265-22596-1-git-send-email-tytso@mit.edu>
+ <CA+55aFw63jj-PJ2c=aYZivkfHfei=1W2z72qs0P+aj-f0J1UKw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nvdimm@ml01.01.org, Jens Axboe <axboe@fb.com>,
-        Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-        xfs@oss.sgi.com, linux-block@vger.kernel.org, linux-mm@kvack.org,
-        Matthew Wilcox <matthew.r.wilcox@intel.com>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>
-To: Vishal Verma <vishal.l.verma@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1459303190-20072-4-git-send-email-vishal.l.verma@intel.com>
-	(Vishal Verma's message of "Tue, 29 Mar 2016 19:59:48 -0600")
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:59790 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752255AbcDOO4a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Apr 2016 10:56:30 -0400
+Content-Disposition: inline
+In-Reply-To: <CA+55aFw63jj-PJ2c=aYZivkfHfei=1W2z72qs0P+aj-f0J1UKw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Vishal Verma <vishal.l.verma@intel.com> writes:
+On Thu, Apr 14, 2016 at 07:01:14PM -0700, Linus Torvalds wrote:
+> On Thu, Apr 14, 2016 at 1:37 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> >
+> >  So Linus's proposal to
+> > add "if (signal_pending(current)) return -EINTR;" to filldir64() would
+> > probably cause more than a few userspace regressions.
+> 
+> I don't think you actually read or understood my proposal.
+> 
+> The proposal added it to inside the if-statement in
+> 
+>         dirent = buf->previous;
+>         if (dirent) {
+> +               if (signal_pending(current)) return -EINTR;
+> 
+> and that actually guarantees that readdir() _never_ returns -EINTR,
+> because there is at least one entry that got filled out (the previous
+> one filled in, now pointed to be "dirent").
 
-> From: Dan Williams <dan.j.williams@intel.com>
->
-> 1/ If a mapping overlaps a bad sector fail the request.
->
-> 2/ Do not opportunistically report more dax-capable capacity than is
->    requested when errors present.
->
-> [vishal: fix a conflict with system RAM collision patches]
-> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Sorry, yes I didn't understand that was what you were getting at.
+That makes a lot of sense.  Thanks!!
 
-Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
-
-> ---
->  block/ioctl.c         | 9 ---------
->  drivers/nvdimm/pmem.c | 8 ++++++++
->  2 files changed, 8 insertions(+), 9 deletions(-)
->
-> diff --git a/block/ioctl.c b/block/ioctl.c
-> index d8996bb..cd7f392 100644
-> --- a/block/ioctl.c
-> +++ b/block/ioctl.c
-> @@ -423,15 +423,6 @@ bool blkdev_dax_capable(struct block_device *bdev)
->  			|| (bdev->bd_part->nr_sects % (PAGE_SIZE / 512)))
->  		return false;
->  
-> -	/*
-> -	 * If the device has known bad blocks, force all I/O through the
-> -	 * driver / page cache.
-> -	 *
-> -	 * TODO: support finer grained dax error handling
-> -	 */
-> -	if (disk->bb && disk->bb->count)
-> -		return false;
-> -
->  	return true;
->  }
->  #endif
-> diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-> index da10554..eac5f93 100644
-> --- a/drivers/nvdimm/pmem.c
-> +++ b/drivers/nvdimm/pmem.c
-> @@ -174,9 +174,17 @@ static long pmem_direct_access(struct block_device *bdev,
->  	struct pmem_device *pmem = bdev->bd_disk->private_data;
->  	resource_size_t offset = sector * 512 + pmem->data_offset;
->  
-> +	if (unlikely(is_bad_pmem(&pmem->bb, sector, dax->size)))
-> +		return -EIO;
->  	dax->addr = pmem->virt_addr + offset;
->  	dax->pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
->  
-> +	/*
-> +	 * If badblocks are present, limit known good range to the
-> +	 * requested range.
-> +	 */
-> +	if (unlikely(pmem->bb.count))
-> +		return dax->size;
->  	return pmem->size - pmem->pfn_pad - offset;
->  }
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
