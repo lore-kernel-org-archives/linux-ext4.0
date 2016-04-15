@@ -1,9 +1,9 @@
 From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v2 2/5] dax: fallback from pmd to pte on error
-Date: Fri, 15 Apr 2016 10:55:43 -0400
-Message-ID: <x497ffy7wgg.fsf@segfault.boston.devel.redhat.com>
+Subject: Re: [PATCH v2 3/5] dax: enable dax in the presence of known media errors (badblocks)
+Date: Fri, 15 Apr 2016 10:56:10 -0400
+Message-ID: <x4937qm7wfp.fsf@segfault.boston.devel.redhat.com>
 References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-3-git-send-email-vishal.l.verma@intel.com>
+	<1459303190-20072-4-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nvdimm@ml01.01.org, Jens Axboe <axboe@fb.com>,
@@ -16,8 +16,8 @@ Cc: linux-nvdimm@ml01.01.org, Jens Axboe <axboe@fb.com>,
         Al Viro <viro@zeniv.linux.org.uk>
 To: Vishal Verma <vishal.l.verma@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1459303190-20072-3-git-send-email-vishal.l.verma@intel.com>
-	(Vishal Verma's message of "Tue, 29 Mar 2016 19:59:47 -0600")
+In-Reply-To: <1459303190-20072-4-git-send-email-vishal.l.verma@intel.com>
+	(Vishal Verma's message of "Tue, 29 Mar 2016 19:59:48 -0600")
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
@@ -25,34 +25,62 @@ Vishal Verma <vishal.l.verma@intel.com> writes:
 
 > From: Dan Williams <dan.j.williams@intel.com>
 >
-> In preparation for consulting a badblocks list in pmem_direct_access(),
-> teach dax_pmd_fault() to fallback rather than fail immediately upon
-> encountering an error.  The thought being that reducing the span of the
-> dax request may avoid the error region.
+> 1/ If a mapping overlaps a bad sector fail the request.
 >
+> 2/ Do not opportunistically report more dax-capable capacity than is
+>    requested when errors present.
+>
+> [vishal: fix a conflict with system RAM collision patches]
 > Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 
 Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
 
 > ---
->  fs/dax.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+>  block/ioctl.c         | 9 ---------
+>  drivers/nvdimm/pmem.c | 8 ++++++++
+>  2 files changed, 8 insertions(+), 9 deletions(-)
 >
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 90322eb..ec6417b 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -945,8 +945,8 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
->  		long length = dax_map_atomic(bdev, &dax);
+> diff --git a/block/ioctl.c b/block/ioctl.c
+> index d8996bb..cd7f392 100644
+> --- a/block/ioctl.c
+> +++ b/block/ioctl.c
+> @@ -423,15 +423,6 @@ bool blkdev_dax_capable(struct block_device *bdev)
+>  			|| (bdev->bd_part->nr_sects % (PAGE_SIZE / 512)))
+>  		return false;
 >  
->  		if (length < 0) {
-> -			result = VM_FAULT_SIGBUS;
-> -			goto out;
-> +			dax_pmd_dbg(&bh, address, "dax-error fallback");
-> +			goto fallback;
->  		}
->  		if (length < PMD_SIZE) {
->  			dax_pmd_dbg(&bh, address, "dax-length too small");
+> -	/*
+> -	 * If the device has known bad blocks, force all I/O through the
+> -	 * driver / page cache.
+> -	 *
+> -	 * TODO: support finer grained dax error handling
+> -	 */
+> -	if (disk->bb && disk->bb->count)
+> -		return false;
+> -
+>  	return true;
+>  }
+>  #endif
+> diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+> index da10554..eac5f93 100644
+> --- a/drivers/nvdimm/pmem.c
+> +++ b/drivers/nvdimm/pmem.c
+> @@ -174,9 +174,17 @@ static long pmem_direct_access(struct block_device *bdev,
+>  	struct pmem_device *pmem = bdev->bd_disk->private_data;
+>  	resource_size_t offset = sector * 512 + pmem->data_offset;
+>  
+> +	if (unlikely(is_bad_pmem(&pmem->bb, sector, dax->size)))
+> +		return -EIO;
+>  	dax->addr = pmem->virt_addr + offset;
+>  	dax->pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
+>  
+> +	/*
+> +	 * If badblocks are present, limit known good range to the
+> +	 * requested range.
+> +	 */
+> +	if (unlikely(pmem->bb.count))
+> +		return dax->size;
+>  	return pmem->size - pmem->pfn_pad - offset;
+>  }
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
