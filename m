@@ -1,36 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 116471] Core in ext4 filesystem on a Dell Server
-Date: Sat, 16 Apr 2016 05:21:12 +0000
-Message-ID: <bug-116471-13602-CA62twz4ep@https.bugzilla.kernel.org/>
-References: <bug-116471-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:45996 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750798AbcDPFVS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 16 Apr 2016 01:21:18 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 031A62026C
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Apr 2016 05:21:16 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 0FC062027D
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Apr 2016 05:21:13 +0000 (UTC)
-In-Reply-To: <bug-116471-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Nicolai Stange <nicstange@gmail.com>
+Subject: [PATCH] fs/ext4: ext4_find_extent(): remove unmeetable inconsisteny check
+Date: Sat, 16 Apr 2016 10:31:37 +0200
+Message-ID: <1460795497-2530-1-git-send-email-nicstange@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Nicolai Stange <nicstange@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=116471
+ext4_find_extent(), stripped down to the parts relevant to this patch,
+reads as
 
---- Comment #3 from kparamasivam@hpe.com ---
-Thanks Christian and Eric.
-This place https://bugs.centos.org/view.php?id=9080 has no resolution for the
-issue. 
+  ppos = 0;
+  i = depth;
+  while (i) {
+    --i;
+    ++ppos;
+    if (unlikely(ppos > depth)) {
+      ...
+      ret = -EFSCORRUPTED;
+      goto err;
+    }
+  }
 
-Consistently we have hit this same issue on 2 of our box.
+Due to the loop's bounds, the condition ppos > depth can never be met.
 
+Remove this dead code.
+
+Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+---
+ Applicable to linux-next-20150415.
+
+ fs/ext4/extents.c | 7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 95bf467..d01a405 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -907,13 +907,6 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 
+ 		eh = ext_block_hdr(bh);
+ 		ppos++;
+-		if (unlikely(ppos > depth)) {
+-			put_bh(bh);
+-			EXT4_ERROR_INODE(inode,
+-					 "ppos %d > depth %d", ppos, depth);
+-			ret = -EFSCORRUPTED;
+-			goto err;
+-		}
+ 		path[ppos].p_bh = bh;
+ 		path[ppos].p_hdr = eh;
+ 	}
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.8.1
