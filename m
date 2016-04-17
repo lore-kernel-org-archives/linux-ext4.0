@@ -1,89 +1,51 @@
-From: Nicolai Stange <nicstange@gmail.com>
-Subject: Re: [PATCH] fs/ext4: mb_find_order_for_block(): silence UBSAN
-Date: Sun, 17 Apr 2016 10:35:09 +0200
-Message-ID: <87twj0pr9e.fsf@gmail.com>
-References: <1458417247-3164-1-git-send-email-nicstange@gmail.com>
+From: Juergen Gross <kernel@pfupf.net>
+Subject: Re: [PATCH 41/42] block: do not use REQ_FLUSH for tracking flush
+ support
+Date: Sun, 17 Apr 2016 10:46:59 +0200
+Message-ID: <57134D83.8020309@pfupf.net>
+References: <1460747777-8479-1-git-send-email-mchristi@redhat.com>
+ <1460747777-8479-42-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Nicolai Stange <nicstange@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1458417247-3164-1-git-send-email-nicstange@gmail.com> (Nicolai
-	Stange's message of "Sat, 19 Mar 2016 20:54:07 +0100")
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: mchristi@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, konrad.wilk@oracle.com,
+	drbd-dev@lists.linbit.com, philipp.reisner@linbit.com,
+	lars.ellenberg@linbit.com, linux-raid@vger.kernel.org,
+	dm-devel@redhat.com, linux-fsdevel@vger.kernel.org,
+	linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-mtd@lists.infradead.org, target-devel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, osd-dev@open-osd.org, xfs@oss.sgi.com,
+	ocfs2-devel@oss.oracle.com
+Return-path: <linux-bcache-owner@vger.kernel.org>
+In-Reply-To: <1460747777-8479-42-git-send-email-mchristi@redhat.com>
+Sender: linux-bcache-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On 15/04/16 21:16, mchristi@redhat.com wrote:
+> From: Mike Christie <mchristi@redhat.com>
+> 
+> The last patch added a REQ_OP_FLUSH for request_fn drivers
+> and the next patch renames REQ_FLUSH to REQ_PREFLUSH which
+> will be used by file systems and make_request_fn drivers so
+> they can send a write/flush combo.
+> 
+> This patch drops xen's use of REQ_FLUSH to track if it supports
+> REQ_OP_FLUSH requests, so REQ_FLUSH can be deleted.
+> 
+> v7:
+> - Fix feature_flush/fua use.
+> 
+> v6:
+> - Dropped parts of patch handled by Jens's QUEUE_FLAG_WC/FUA
+> patches and modified patch to check feature_flush/fua bits.
+> 
+> Signed-off-by: Mike Christie <mchristi@redhat.com>
+> Reviewed-by: Hannes Reinecke <hare@suse.com>
+> Cc: Juergen Gross <kernel@pfupf.net>
 
-Nicolai Stange <nicstange@gmail.com> writes:
-> Currently, in mb_find_order_for_block(), there's a loop like the following:
->
->   while (order <= e4b->bd_blkbits + 1) {
->     ...
->     bb += 1 << (e4b->bd_blkbits - order);
->   }
->
-> Note that the updated bb is used in the loop's next iteration only.
->
-> However, at the last iteration, that is at order == e4b->bd_blkbits + 1,
-> the shift count becomes negative (c.f. C99 6.5.7(3)) and UBSAN reports
->
->   UBSAN: Undefined behaviour in fs/ext4/mballoc.c:1281:11
->   shift exponent -1 is negative
->   Call Trace:
->    [<ffffffff818c4d35>] dump_stack+0xbc/0x117
->    [<ffffffff818c4c79>] ? _atomic_dec_and_lock+0x169/0x169
->    [<ffffffff819411bb>] ubsan_epilogue+0xd/0x4e
->    [<ffffffff81941cbc>] __ubsan_handle_shift_out_of_bounds+0x1fb/0x254
->    [<ffffffff81941ac1>] ? __ubsan_handle_load_invalid_value+0x158/0x158
->    [<ffffffff816e93a0>] ? ext4_mb_generate_from_pa+0x590/0x590
->    [<ffffffff816502c8>] ? ext4_read_block_bitmap_nowait+0x598/0xe80
->    [<ffffffff816e7b7e>] mb_find_order_for_block+0x1ce/0x240
->    [...]
+Acked-by: Juergen Gross <jgross@suse.com>
 
 
-FYI, this UBSAN splat has been independently reported here:
-
-  https://bugzilla.kernel.org/show_bug.cgi?id=114701
-
-An alternative patch has been attached at this bug report.
-
->
-> Unless compilers start to do some fancy transformations (which at least
-> GCC 4.6.0 doesn't currently do), the issue is of cosmetic nature only: the
-> such calculated value of bb is never used again.
->
-> Silence UBSAN by introducing another variable, bb_incr, holding the next
-> increment to apply to bb and adjust that one by right shifting it by one
-> position per loop iteration.
->
-> Signed-off-by: Nicolai Stange <nicstange@gmail.com>
-> ---
->  Applicable to linux-next-20160318
->
->  fs/ext4/mballoc.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 50e05df..4bc89fe 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -1266,6 +1266,7 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
->  static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
->  {
->  	int order = 1;
-> +	int bb_incr = 1 << (e4b->bd_blkbits - 1);
->  	void *bb;
->  
->  	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
-> @@ -1278,7 +1279,8 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
->  			/* this block is part of buddy of order 'order' */
->  			return order;
->  		}
-> -		bb += 1 << (e4b->bd_blkbits - order);
-> +		bb += bb_incr;
-> +		bb_incr >>= 1;
->  		order++;
->  	}
->  	return 0;
+Juergen
