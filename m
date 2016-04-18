@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/18] ext4: Handle transient ENOSPC properly for DAX
-Date: Mon, 18 Apr 2016 23:35:24 +0200
-Message-ID: <1461015341-20153-2-git-send-email-jack@suse.cz>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
+Subject: [RFC v3] [PATCH 0/18] DAX page fault locking
+Date: Mon, 18 Apr 2016 23:35:23 +0200
+Message-ID: <1461015341-20153-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org,
 	linux-mm@kvack.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
@@ -12,118 +11,47 @@ Cc: linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1461015341-20153-1-git-send-email-jack@suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_dax_get_blocks() was accidentally omitted fixing get blocks
-handlers to properly handle transient ENOSPC errors. Fix it now to use
-ext4_get_blocks_trans() helper which takes care of these errors.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 75 +++++++++++++++------------------------------------------
- 1 file changed, 20 insertions(+), 55 deletions(-)
+this is my third attempt at DAX page fault locking rewrite. The patch set has
+passed xfstests both with and without DAX mount option on ext4 and xfs for
+me and also additional page fault beating using the new page fault stress
+tests I have added to xfstests. So I'd be grateful if you guys could have a
+closer look at the patches so that they can be merged. Thanks.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 981a1fc30eaa..3e0c06028668 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3218,72 +3218,37 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
- int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
- 			    struct buffer_head *bh_result, int create)
- {
--	int ret, err;
--	int credits;
--	struct ext4_map_blocks map;
--	handle_t *handle = NULL;
--	int flags = 0;
-+	int ret;
- 
- 	ext4_debug("ext4_dax_mmap_get_block: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
--	map.m_lblk = iblock;
--	map.m_len = bh_result->b_size >> inode->i_blkbits;
--	credits = ext4_chunk_trans_blocks(inode, map.m_len);
--	if (create) {
--		flags |= EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_CREATE_ZERO;
--		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			return ret;
--		}
--	}
-+	if (!create)
-+		return _ext4_get_block(inode, iblock, bh_result, 0);
- 
--	ret = ext4_map_blocks(handle, inode, &map, flags);
--	if (create) {
--		err = ext4_journal_stop(handle);
--		if (ret >= 0 && err < 0)
--			ret = err;
--	}
--	if (ret <= 0)
--		goto out;
--	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
--		int err2;
-+	ret = ext4_get_block_trans(inode, iblock, bh_result,
-+				   EXT4_GET_BLOCKS_PRE_IO |
-+				   EXT4_GET_BLOCKS_CREATE_ZERO);
-+	if (ret < 0)
-+		return ret;
- 
-+	if (buffer_unwritten(bh_result)) {
- 		/*
- 		 * We are protected by i_mmap_sem so we know block cannot go
- 		 * away from under us even though we dropped i_data_sem.
- 		 * Convert extent to written and write zeros there.
--		 *
--		 * Note: We may get here even when create == 0.
- 		 */
--		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			goto out;
--		}
--
--		err = ext4_map_blocks(handle, inode, &map,
--		      EXT4_GET_BLOCKS_CONVERT | EXT4_GET_BLOCKS_CREATE_ZERO);
--		if (err < 0)
--			ret = err;
--		err2 = ext4_journal_stop(handle);
--		if (err2 < 0 && ret > 0)
--			ret = err2;
--	}
--out:
--	WARN_ON_ONCE(ret == 0 && create);
--	if (ret > 0) {
--		map_bh(bh_result, inode->i_sb, map.m_pblk);
--		/*
--		 * At least for now we have to clear BH_New so that DAX code
--		 * doesn't attempt to zero blocks again in a racy way.
--		 */
--		map.m_flags &= ~EXT4_MAP_NEW;
--		ext4_update_bh_state(bh_result, map.m_flags);
--		bh_result->b_size = map.m_len << inode->i_blkbits;
--		ret = 0;
-+		ret = ext4_get_block_trans(inode, iblock, bh_result,
-+					   EXT4_GET_BLOCKS_CONVERT |
-+					   EXT4_GET_BLOCKS_CREATE_ZERO);
-+		if (ret < 0)
-+			return ret;
- 	}
--	return ret;
-+	/*
-+	 * At least for now we have to clear BH_New so that DAX code
-+	 * doesn't attempt to zero blocks again in a racy way.
-+	 */
-+	clear_buffer_new(bh_result);
-+	return 0;
- }
- #endif
- 
--- 
-2.6.6
+Changes since v2:
+- lot of additional ext4 fixes and cleanups
+- make PMD page faults depend on CONFIG_BROKEN instead of #if 0
+- fixed page reference leak when replacing hole page with a pfn
+- added some reviewed-by tags
+- rebased on top of current Linus' tree
+
+Changes since v1:
+- handle wakeups of exclusive waiters properly
+- fix cow fault races
+- other minor stuff
+
+General description
+
+The basic idea is that we use a bit in an exceptional radix tree entry as
+a lock bit and use it similarly to how page lock is used for normal faults.
+That way we fix races between hole instantiation and read faults of the
+same index. For now I have disabled PMD faults since there the issues with
+page fault locking are even worse. Now that Matthew's multi-order radix tree
+has landed, I can have a look into using that for proper locking of PMD faults
+but first I want normal pages sorted out.
+
+In the end I have decided to implement the bit locking directly in the DAX
+code. Originally I was thinking we could provide something generic directly
+in the radix tree code but the functions DAX needs are rather specific.
+Maybe someone else will have a good idea how to distill some generally useful
+functions out of what I've implemented for DAX but for now I didn't bother
+with that.
+
+								Honza
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
