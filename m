@@ -1,82 +1,192 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 03/18] DAX: move RADIX_DAX_ definitions to dax.c
-Date: Mon, 18 Apr 2016 23:35:26 +0200
-Message-ID: <1461015341-20153-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 08/18] ext4: Pre-zero allocated blocks for DAX IO
+Date: Mon, 18 Apr 2016 23:35:31 +0200
+Message-ID: <1461015341-20153-9-git-send-email-jack@suse.cz>
 References: <1461015341-20153-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org,
+Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org,
-	Matthew Wilcox <willy@linux.intel.com>,
-	NeilBrown <neilb@suse.com>,
+	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>,
 	Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:33771 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752021AbcDRVfy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Apr 2016 17:35:54 -0400
 In-Reply-To: <1461015341-20153-1-git-send-email-jack@suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: NeilBrown <neilb@suse.com>
+Currently ext4 treats DAX IO the same way as direct IO. I.e., it
+allocates unwritten extents before IO is done and converts unwritten
+extents afterwards. However this way DAX IO can race with page fault to
+the same area:
 
-These don't belong in radix-tree.c any more than PAGECACHE_TAG_* do.
-Let's try to maintain the idea that radix-tree simply implements an
-abstract data type.
+ext4_ext_direct_IO()				dax_fault()
+  dax_io()
+    get_block() - allocates unwritten extent
+    copy_from_iter_pmem()
+						  get_block() - converts
+						    unwritten block to
+						    written and zeroes it
+						    out
+  ext4_convert_unwritten_extents()
 
-Acked-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Reviewed-by: Matthew Wilcox <willy@linux.intel.com>
-Signed-off-by: NeilBrown <neilb@suse.com>
+So data written with DAX IO gets lost. Similarly dax_new_buf() called
+from dax_io() can overwrite data that has been already written to the
+block via mmap.
+
+Fix the problem by using pre-zeroed blocks for DAX IO the same way as we
+use them for DAX mmap. The downside of this solution is that every
+allocating write writes each block twice (once zeros, once data). Fixing
+the race with locking is possible as well however we would need to
+lock-out faults for the whole range written to by DAX IO. And that is
+not easy to do without locking-out faults for the whole file which seems
+too aggressive.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c                   | 9 +++++++++
- include/linux/radix-tree.h | 9 ---------
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ fs/ext4/ext4.h  | 11 +++++++++--
+ fs/ext4/file.c  |  4 ++--
+ fs/ext4/inode.c | 42 +++++++++++++++++++++++++++++++++---------
+ 3 files changed, 44 insertions(+), 13 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 75ba46d82a76..08799a510b4d 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -32,6 +32,15 @@
- #include <linux/pfn_t.h>
- #include <linux/sizes.h>
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 35792b430fb6..173da8faff81 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2521,8 +2521,8 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
+ struct buffer_head *ext4_bread(handle_t *, struct inode *, ext4_lblk_t, int);
+ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
+ 			     struct buffer_head *bh_result, int create);
+-int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+-			    struct buffer_head *bh_result, int create);
++int ext4_dax_get_block(struct inode *inode, sector_t iblock,
++		       struct buffer_head *bh_result, int create);
+ int ext4_get_block(struct inode *inode, sector_t iblock,
+ 		   struct buffer_head *bh_result, int create);
+ int ext4_dio_get_block(struct inode *inode, sector_t iblock,
+@@ -3328,6 +3328,13 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+ 	}
+ }
  
-+#define RADIX_DAX_MASK	0xf
-+#define RADIX_DAX_SHIFT	4
-+#define RADIX_DAX_PTE  (0x4 | RADIX_TREE_EXCEPTIONAL_ENTRY)
-+#define RADIX_DAX_PMD  (0x8 | RADIX_TREE_EXCEPTIONAL_ENTRY)
-+#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_MASK)
-+#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
-+#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
-+		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE)))
++static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
++{
++	int blksize = 1 << inode->i_blkbits;
 +
- static long dax_map_atomic(struct block_device *bdev, struct blk_dax_ctl *dax)
- {
- 	struct request_queue *q = bdev->bd_queue;
-diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
-index 51a97ac8bfbf..d08d6ec3bf53 100644
---- a/include/linux/radix-tree.h
-+++ b/include/linux/radix-tree.h
-@@ -52,15 +52,6 @@
- #define RADIX_TREE_EXCEPTIONAL_ENTRY	2
- #define RADIX_TREE_EXCEPTIONAL_SHIFT	2
++	return IS_ALIGNED(off, blksize) && IS_ALIGNED(off + len, blksize);
++}
++
+ #endif	/* __KERNEL__ */
  
--#define RADIX_DAX_MASK	0xf
--#define RADIX_DAX_SHIFT	4
--#define RADIX_DAX_PTE  (0x4 | RADIX_TREE_EXCEPTIONAL_ENTRY)
--#define RADIX_DAX_PMD  (0x8 | RADIX_TREE_EXCEPTIONAL_ENTRY)
--#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_MASK)
--#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
--#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
--		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE)))
--
- static inline int radix_tree_is_indirect_ptr(void *ptr)
+ #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index b3a9c6eeadbc..2e9aa49a95fa 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -207,7 +207,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+-		result = __dax_fault(vma, vmf, ext4_dax_mmap_get_block);
++		result = __dax_fault(vma, vmf, ext4_dax_get_block);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -243,7 +243,7 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+ 		result = __dax_pmd_fault(vma, addr, pmd, flags,
+-				ext4_dax_mmap_get_block);
++				ext4_dax_get_block);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 23fd0e0a9223..6d5d5c1db293 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3215,12 +3215,17 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+ }
+ 
+ #ifdef CONFIG_FS_DAX
+-int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+-			    struct buffer_head *bh_result, int create)
++/*
++ * Get block function for DAX IO and mmap faults. It takes care of converting
++ * unwritten extents to written ones and initializes new / converted blocks
++ * to zeros.
++ */
++int ext4_dax_get_block(struct inode *inode, sector_t iblock,
++		       struct buffer_head *bh_result, int create)
  {
- 	return (int)((unsigned long)ptr & RADIX_TREE_INDIRECT_PTR);
+ 	int ret;
+ 
+-	ext4_debug("ext4_dax_mmap_get_block: inode %lu, create flag %d\n",
++	ext4_debug("ext4_dax_get_block: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+ 	if (!create)
+ 		return _ext4_get_block(inode, iblock, bh_result, 0);
+@@ -3233,9 +3238,9 @@ int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+ 
+ 	if (buffer_unwritten(bh_result)) {
+ 		/*
+-		 * We are protected by i_mmap_sem so we know block cannot go
+-		 * away from under us even though we dropped i_data_sem.
+-		 * Convert extent to written and write zeros there.
++		 * We are protected by i_mmap_sem or i_mutex so we know block
++		 * cannot go away from under us even though we dropped
++		 * i_data_sem. Convert extent to written and write zeros there.
+ 		 */
+ 		ret = ext4_get_block_trans(inode, iblock, bh_result,
+ 					   EXT4_GET_BLOCKS_CONVERT |
+@@ -3250,6 +3255,14 @@ int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
+ 	clear_buffer_new(bh_result);
+ 	return 0;
+ }
++#else
++/* Just define empty function, it will never get called. */
++int ext4_dax_get_block(struct inode *inode, sector_t iblock,
++		       struct buffer_head *bh_result, int create)
++{
++	BUG();
++	return 0;
++}
+ #endif
+ 
+ static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+@@ -3371,8 +3384,20 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	iocb->private = NULL;
+ 	if (overwrite)
+ 		get_block_func = ext4_dio_get_block_overwrite;
+-	else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
+-		 round_down(offset, 1 << inode->i_blkbits) >= inode->i_size) {
++	else if (IS_DAX(inode)) {
++		/*
++		 * We can avoid zeroing for aligned DAX writes beyond EOF. Other
++		 * writes need zeroing either because they can race with page
++		 * faults or because they use partial blocks.
++		 */
++		if (round_down(offset, 1<<inode->i_blkbits) >= inode->i_size &&
++		    ext4_aligned_io(inode, offset, count))
++			get_block_func = ext4_dio_get_block;
++		else
++			get_block_func = ext4_dax_get_block;
++		dio_flags = DIO_LOCKING;
++	} else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
++		   round_down(offset, 1 << inode->i_blkbits) >= inode->i_size) {
+ 		get_block_func = ext4_dio_get_block;
+ 		dio_flags = DIO_LOCKING | DIO_SKIP_HOLES;
+ 	} else if (is_sync_kiocb(iocb)) {
+@@ -3386,7 +3411,6 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
+ #endif
+ 	if (IS_DAX(inode)) {
+-		dio_flags &= ~DIO_SKIP_HOLES;
+ 		ret = dax_do_io(iocb, inode, iter, offset, get_block_func,
+ 				ext4_end_io_dio, dio_flags);
+ 	} else
 -- 
 2.6.6
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
