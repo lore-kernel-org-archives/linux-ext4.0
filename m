@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/18] ext4: Refactor direct IO code
-Date: Mon, 18 Apr 2016 23:35:30 +0200
-Message-ID: <1461015341-20153-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 13/18] dax: Make huge page handling depend of CONFIG_BROKEN
+Date: Mon, 18 Apr 2016 23:35:36 +0200
+Message-ID: <1461015341-20153-14-git-send-email-jack@suse.cz>
 References: <1461015341-20153-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
@@ -9,385 +9,70 @@ Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
 	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>,
 	Jan Kara <jack@suse.cz>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:33776 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751430AbcDRVfz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 Apr 2016 17:35:55 -0400
 In-Reply-To: <1461015341-20153-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently ext4 direct IO handling is split between ext4_ext_direct_IO()
-and ext4_ind_direct_IO(). However the extent based function calls into
-the indirect based one for some cases and for example it is not able to
-handle file extending. Previously it was not also properly handling
-retries in case of ENOSPC errors. With DAX things would get even more
-contrieved so just refactor the direct IO code and instead of indirect /
-extent split do the split to read vs writes.
+Currently the handling of huge pages for DAX is racy. For example the
+following can happen:
+
+CPU0 (THP write fault)			CPU1 (normal read fault)
+
+__dax_pmd_fault()			__dax_fault()
+  get_block(inode, block, &bh, 0) -> not mapped
+					get_block(inode, block, &bh, 0)
+					  -> not mapped
+  if (!buffer_mapped(&bh) && write)
+    get_block(inode, block, &bh, 1) -> allocates blocks
+  truncate_pagecache_range(inode, lstart, lend);
+					dax_load_hole();
+
+This results in data corruption since process on CPU1 won't see changes
+into the file done by CPU0.
+
+The race can happen even if two normal faults race however with THP the
+situation is even worse because the two faults don't operate on the same
+entries in the radix tree and we want to use these entries for
+serialization. So make THP support in DAX code depend on CONFIG_BROKEN
+for now.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h     |   2 -
- fs/ext4/indirect.c | 127 ---------------------------------------------------
- fs/ext4/inode.c    | 131 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 114 insertions(+), 146 deletions(-)
+ fs/dax.c            | 2 +-
+ include/linux/dax.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 349afebe21ee..35792b430fb6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2581,8 +2581,6 @@ extern int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 				struct ext4_map_blocks *map, int flags);
--extern ssize_t ext4_ind_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
--				  loff_t offset);
- extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
- extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks);
- extern void ext4_ind_truncate(handle_t *, struct inode *inode);
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 3027fa681de5..bc15c2c17633 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -649,133 +649,6 @@ out:
+diff --git a/fs/dax.c b/fs/dax.c
+index d7addfab2094..388327f56fa8 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -707,7 +707,7 @@ int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
  }
+ EXPORT_SYMBOL_GPL(dax_fault);
  
+-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
++#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && defined(CONFIG_BROKEN)
  /*
-- * O_DIRECT for ext3 (or indirect map) based files
-- *
-- * If the O_DIRECT write will extend the file then add this inode to the
-- * orphan list.  So recovery will truncate it back to the original size
-- * if the machine crashes during the write.
-- *
-- * If the O_DIRECT write is intantiating holes inside i_size and the machine
-- * crashes then stale disk data _may_ be exposed inside the file. But current
-- * VFS code falls back into buffered path in that case so we are safe.
-- */
--ssize_t ext4_ind_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
--			   loff_t offset)
--{
--	struct file *file = iocb->ki_filp;
--	struct inode *inode = file->f_mapping->host;
--	struct ext4_inode_info *ei = EXT4_I(inode);
--	handle_t *handle;
--	ssize_t ret;
--	int orphan = 0;
--	size_t count = iov_iter_count(iter);
--	int retries = 0;
--
--	if (iov_iter_rw(iter) == WRITE) {
--		loff_t final_size = offset + count;
--
--		if (final_size > inode->i_size) {
--			/* Credits for sb + inode write */
--			handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--			if (IS_ERR(handle)) {
--				ret = PTR_ERR(handle);
--				goto out;
--			}
--			ret = ext4_orphan_add(handle, inode);
--			if (ret) {
--				ext4_journal_stop(handle);
--				goto out;
--			}
--			orphan = 1;
--			ei->i_disksize = inode->i_size;
--			ext4_journal_stop(handle);
--		}
--	}
--
--retry:
--	if (iov_iter_rw(iter) == READ && ext4_should_dioread_nolock(inode)) {
--		/*
--		 * Nolock dioread optimization may be dynamically disabled
--		 * via ext4_inode_block_unlocked_dio(). Check inode's state
--		 * while holding extra i_dio_count ref.
--		 */
--		inode_dio_begin(inode);
--		smp_mb();
--		if (unlikely(ext4_test_inode_state(inode,
--						    EXT4_STATE_DIOREAD_LOCK))) {
--			inode_dio_end(inode);
--			goto locked;
--		}
--		if (IS_DAX(inode))
--			ret = dax_do_io(iocb, inode, iter, offset,
--					ext4_dio_get_block, NULL, 0);
--		else
--			ret = __blockdev_direct_IO(iocb, inode,
--						   inode->i_sb->s_bdev, iter,
--						   offset, ext4_dio_get_block,
--						   NULL, NULL, 0);
--		inode_dio_end(inode);
--	} else {
--locked:
--		if (IS_DAX(inode))
--			ret = dax_do_io(iocb, inode, iter, offset,
--					ext4_dio_get_block, NULL, DIO_LOCKING);
--		else
--			ret = blockdev_direct_IO(iocb, inode, iter, offset,
--						 ext4_dio_get_block);
--
--		if (unlikely(iov_iter_rw(iter) == WRITE && ret < 0)) {
--			loff_t isize = i_size_read(inode);
--			loff_t end = offset + count;
--
--			if (end > isize)
--				ext4_truncate_failed_write(inode);
--		}
--	}
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
--		goto retry;
--
--	if (orphan) {
--		int err;
--
--		/* Credits for sb + inode write */
--		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--		if (IS_ERR(handle)) {
--			/* This is really bad luck. We've written the data
--			 * but cannot extend i_size. Bail out and pretend
--			 * the write failed... */
--			ret = PTR_ERR(handle);
--			if (inode->i_nlink)
--				ext4_orphan_del(NULL, inode);
--
--			goto out;
--		}
--		if (inode->i_nlink)
--			ext4_orphan_del(handle, inode);
--		if (ret > 0) {
--			loff_t end = offset + ret;
--			if (end > inode->i_size) {
--				ei->i_disksize = end;
--				i_size_write(inode, end);
--				/*
--				 * We're going to return a positive `ret'
--				 * here due to non-zero-length I/O, so there's
--				 * no way of reporting error returns from
--				 * ext4_mark_inode_dirty() to userspace.  So
--				 * ignore it.
--				 */
--				ext4_mark_inode_dirty(handle, inode);
--			}
--		}
--		err = ext4_journal_stop(handle);
--		if (ret == 0)
--			ret = err;
--	}
--out:
--	return ret;
--}
--
--/*
-  * Calculate the number of metadata blocks need to reserve
-  * to allocate a new block at @lblocks for non extent file based file
-  */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3e0c06028668..23fd0e0a9223 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3281,7 +3281,9 @@ static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
+  * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
+  * more often than one might expect in the below function.
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 7c45ac7ea1d1..0591f4853228 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -23,7 +23,7 @@ static inline struct page *read_dax_sector(struct block_device *bdev,
  }
- 
- /*
-- * For ext4 extent files, ext4 will do direct-io write to holes,
-+ * Handling of direct IO writes.
-+ *
-+ * For ext4 extent files, ext4 will do direct-io write even to holes,
-  * preallocated extents, and those write extend the file, no need to
-  * fall back to buffered IO.
-  *
-@@ -3299,21 +3301,37 @@ static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
-  * if the machine crashes during the write.
-  *
-  */
--static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
--				  loff_t offset)
-+static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter,
-+				    loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
- 	ssize_t ret;
- 	size_t count = iov_iter_count(iter);
- 	int overwrite = 0;
- 	get_block_t *get_block_func = NULL;
- 	int dio_flags = 0;
- 	loff_t final_size = offset + count;
-+	int orphan = 0;
-+	handle_t *handle;
- 
--	/* Use the old path for reads and writes beyond i_size. */
--	if (iov_iter_rw(iter) != WRITE || final_size > inode->i_size)
--		return ext4_ind_direct_IO(iocb, iter, offset);
-+	if (final_size > inode->i_size) {
-+		/* Credits for sb + inode write */
-+		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
-+		if (IS_ERR(handle)) {
-+			ret = PTR_ERR(handle);
-+			goto out;
-+		}
-+		ret = ext4_orphan_add(handle, inode);
-+		if (ret) {
-+			ext4_journal_stop(handle);
-+			goto out;
-+		}
-+		orphan = 1;
-+		ei->i_disksize = inode->i_size;
-+		ext4_journal_stop(handle);
-+	}
- 
- 	BUG_ON(iocb->private == NULL);
- 
-@@ -3322,8 +3340,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	 * conversion. This also disallows race between truncate() and
- 	 * overwrite DIO as i_dio_count needs to be incremented under i_mutex.
- 	 */
--	if (iov_iter_rw(iter) == WRITE)
--		inode_dio_begin(inode);
-+	inode_dio_begin(inode);
- 
- 	/* If we do a overwrite dio, i_mutex locking can be released */
- 	overwrite = *((int *)iocb->private);
-@@ -3332,7 +3349,7 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 		inode_unlock(inode);
- 
- 	/*
--	 * We could direct write to holes and fallocate.
-+	 * For extent mapped files we could direct write to holes and fallocate.
- 	 *
- 	 * Allocated blocks to fill the hole are marked as unwritten to prevent
- 	 * parallel buffered read to expose the stale data before DIO complete
-@@ -3354,7 +3371,11 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 	iocb->private = NULL;
- 	if (overwrite)
- 		get_block_func = ext4_dio_get_block_overwrite;
--	else if (is_sync_kiocb(iocb)) {
-+	else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
-+		 round_down(offset, 1 << inode->i_blkbits) >= inode->i_size) {
-+		get_block_func = ext4_dio_get_block;
-+		dio_flags = DIO_LOCKING | DIO_SKIP_HOLES;
-+	} else if (is_sync_kiocb(iocb)) {
- 		get_block_func = ext4_dio_get_block_unwritten_sync;
- 		dio_flags = DIO_LOCKING;
- 	} else {
-@@ -3364,10 +3385,11 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
  #endif
--	if (IS_DAX(inode))
-+	if (IS_DAX(inode)) {
-+		dio_flags &= ~DIO_SKIP_HOLES;
- 		ret = dax_do_io(iocb, inode, iter, offset, get_block_func,
- 				ext4_end_io_dio, dio_flags);
--	else
-+	} else
- 		ret = __blockdev_direct_IO(iocb, inode,
- 					   inode->i_sb->s_bdev, iter, offset,
- 					   get_block_func,
-@@ -3387,12 +3409,87 @@ static ssize_t ext4_ext_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 		ext4_clear_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN);
- 	}
  
--	if (iov_iter_rw(iter) == WRITE)
--		inode_dio_end(inode);
-+	inode_dio_end(inode);
- 	/* take i_mutex locking again if we do a ovewrite dio */
- 	if (overwrite)
- 		inode_lock(inode);
- 
-+	if (ret < 0 && final_size > inode->i_size)
-+		ext4_truncate_failed_write(inode);
-+
-+	/* Handle extending of i_size after direct IO write */
-+	if (orphan) {
-+		int err;
-+
-+		/* Credits for sb + inode write */
-+		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
-+		if (IS_ERR(handle)) {
-+			/* This is really bad luck. We've written the data
-+			 * but cannot extend i_size. Bail out and pretend
-+			 * the write failed... */
-+			ret = PTR_ERR(handle);
-+			if (inode->i_nlink)
-+				ext4_orphan_del(NULL, inode);
-+
-+			goto out;
-+		}
-+		if (inode->i_nlink)
-+			ext4_orphan_del(handle, inode);
-+		if (ret > 0) {
-+			loff_t end = offset + ret;
-+			if (end > inode->i_size) {
-+				ei->i_disksize = end;
-+				i_size_write(inode, end);
-+				/*
-+				 * We're going to return a positive `ret'
-+				 * here due to non-zero-length I/O, so there's
-+				 * no way of reporting error returns from
-+				 * ext4_mark_inode_dirty() to userspace.  So
-+				 * ignore it.
-+				 */
-+				ext4_mark_inode_dirty(handle, inode);
-+			}
-+		}
-+		err = ext4_journal_stop(handle);
-+		if (ret == 0)
-+			ret = err;
-+	}
-+out:
-+	return ret;
-+}
-+
-+static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter,
-+				   loff_t offset)
-+{
-+	int unlocked = 0;
-+	struct inode *inode = iocb->ki_filp->f_mapping->host;
-+	ssize_t ret;
-+
-+	if (ext4_should_dioread_nolock(inode)) {
-+		/*
-+		 * Nolock dioread optimization may be dynamically disabled
-+		 * via ext4_inode_block_unlocked_dio(). Check inode's state
-+		 * while holding extra i_dio_count ref.
-+		 */
-+		inode_dio_begin(inode);
-+		smp_mb();
-+		if (unlikely(ext4_test_inode_state(inode,
-+						    EXT4_STATE_DIOREAD_LOCK)))
-+			inode_dio_end(inode);
-+		else
-+			unlocked = 1;
-+	}
-+	if (IS_DAX(inode)) {
-+		ret = dax_do_io(iocb, inode, iter, offset, ext4_dio_get_block,
-+				NULL, unlocked ? 0 : DIO_LOCKING);
-+	} else {
-+		ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
-+					   iter, offset, ext4_dio_get_block,
-+					   NULL, NULL,
-+					   unlocked ? 0 : DIO_LOCKING);
-+	}
-+	if (unlocked)
-+		inode_dio_end(inode);
- 	return ret;
- }
- 
-@@ -3420,10 +3517,10 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter,
- 		return 0;
- 
- 	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
--	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		ret = ext4_ext_direct_IO(iocb, iter, offset);
-+	if (iov_iter_rw(iter) == READ)
-+		ret = ext4_direct_IO_read(iocb, iter, offset);
- 	else
--		ret = ext4_ind_direct_IO(iocb, iter, offset);
-+		ret = ext4_direct_IO_write(iocb, iter, offset);
- 	trace_ext4_direct_IO_exit(inode, offset, count, iov_iter_rw(iter), ret);
- 	return ret;
- }
+-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
++#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && defined(CONFIG_BROKEN)
+ int dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
+ 				unsigned int flags, get_block_t);
+ int __dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
 -- 
 2.6.6
 
