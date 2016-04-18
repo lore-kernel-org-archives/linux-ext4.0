@@ -1,158 +1,119 @@
-From: Jakub Wilk <jwilk@jwilk.net>
-Subject: [PATCH] ext4: remove trailing \n from ext4_warning/ext4_error calls
-Date: Mon, 18 Apr 2016 16:09:49 +0200
-Message-ID: <1460988589-8606-1-git-send-email-jwilk@jwilk.net>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 2.mo69.mail-out.ovh.net ([178.33.251.80]:58439 "EHLO
-	2.mo69.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751126AbcDRO2c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2016 10:28:32 -0400
-Received: from mail433.ha.ovh.net (b9.ovh.net [213.186.33.59])
-	by mo69.mail-out.ovh.net (Postfix) with SMTP id BBC64FFA171
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Apr 2016 16:09:54 +0200 (CEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+Subject: Re: [PATCH 16/42] nilfs: set bi_op to REQ_OP
+Date: Tue, 19 Apr 2016 01:04:15 +0900 (JST)
+Message-ID: <20160419.010415.105960685033839882.konishi.ryusuke@lab.ntt.co.jp>
+References: <1460747777-8479-1-git-send-email-mchristi@redhat.com>
+	<1460747777-8479-17-git-send-email-mchristi@redhat.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
+	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+To: Mike Christie <mchristi@redhat.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <1460747777-8479-17-git-send-email-mchristi@redhat.com>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Messages passed to ext4_warning() or ext4_error() don't need trailing
-newlines, because these function add the newlines themselves.
+On Fri, 15 Apr 2016 14:15:51 -0500, mchristi@redhat.com wrote:
+> From: Mike Christie <mchristi@redhat.com>
+> 
+> This patch has nilfs use bio->bi_op for REQ_OPs and rq_flag_bits
+> to bio->bi_rw.
+> 
+> Signed-off-by: Mike Christie <mchristi@redhat.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Reviewed-by: Hannes Reinecke <hare@suse.com>
+> ---
+>  fs/nilfs2/segbuf.c | 18 ++++++++++--------
+>  1 file changed, 10 insertions(+), 8 deletions(-)
 
-Signed-off-by: Jakub Wilk <jwilk@jwilk.net>
----
- fs/ext4/extents.c        | 4 ++--
- fs/ext4/extents_status.c | 2 +-
- fs/ext4/file.c           | 2 +-
- fs/ext4/inline.c         | 2 +-
- fs/ext4/mballoc.c        | 2 +-
- fs/ext4/mmp.c            | 4 ++--
- fs/ext4/namei.c          | 2 +-
- fs/ext4/resize.c         | 2 +-
- 8 files changed, 10 insertions(+), 10 deletions(-)
+Looks good to me.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 95bf467..d09855b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2583,7 +2583,7 @@ static int ext4_remove_blocks(handle_t *handle, struct inode *inode,
- 		}
- 	} else
- 		ext4_error(sbi->s_sb, "strange request: removal(2) "
--			   "%u-%u from %u:%u\n",
-+			   "%u-%u from %u:%u",
- 			   from, to, le32_to_cpu(ex->ee_block), ee_len);
- 	return 0;
- }
-@@ -3738,7 +3738,7 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 	if (ee_block != map->m_lblk || ee_len > map->m_len) {
- #ifdef EXT4_DEBUG
- 		ext4_warning("Inode (%ld) finished: extent logical block %llu,"
--			     " len %u; IO logical block %llu, len %u\n",
-+			     " len %u; IO logical block %llu, len %u",
- 			     inode->i_ino, (unsigned long long)ee_block, ee_len,
- 			     (unsigned long long)map->m_lblk, map->m_len);
- #endif
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index e38b987a..37e0592 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -707,7 +707,7 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	    (status & EXTENT_STATUS_WRITTEN)) {
- 		ext4_warning(inode->i_sb, "Inserting extent [%u/%u] as "
- 				" delayed and written which can potentially "
--				" cause data loss.\n", lblk, len);
-+				" cause data loss.", lblk, len);
- 		WARN_ON(1);
- 	}
- 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index fa2208b..3e850b9 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -378,7 +378,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	if (ext4_encrypted_inode(d_inode(dir)) &&
- 	    !ext4_is_child_context_consistent_with_parent(d_inode(dir), inode)) {
- 		ext4_warning(inode->i_sb,
--			     "Inconsistent encryption contexts: %lu/%lu\n",
-+			     "Inconsistent encryption contexts: %lu/%lu",
- 			     (unsigned long) d_inode(dir)->i_ino,
- 			     (unsigned long) inode->i_ino);
- 		dput(dir);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 7bc6c85..ff7538c 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1780,7 +1780,7 @@ int empty_inline_dir(struct inode *dir, int *has_inline_data)
- 			ext4_warning(dir->i_sb,
- 				     "bad inline directory (dir #%lu) - "
- 				     "inode %u, rec_len %u, name_len %d"
--				     "inline size %d\n",
-+				     "inline size %d",
- 				     dir->i_ino, le32_to_cpu(de->inode),
- 				     le16_to_cpu(de->rec_len), de->name_len,
- 				     inline_size);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index eeeade7..efa111a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4935,7 +4935,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 	 * boundary.
- 	 */
- 	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
--		ext4_warning(sb, "too much blocks added to group %u\n",
-+		ext4_warning(sb, "too much blocks added to group %u",
- 			     block_group);
- 		err = -EINVAL;
- 		goto error_return;
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 2444527..23d436d 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -121,7 +121,7 @@ void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
- 	__ext4_warning(sb, function, line, "%s", msg);
- 	__ext4_warning(sb, function, line,
- 		       "MMP failure info: last update time: %llu, last update "
--		       "node: %s, last update device: %s\n",
-+		       "node: %s, last update device: %s",
- 		       (long long unsigned int) le64_to_cpu(mmp->mmp_time),
- 		       mmp->mmp_nodename, mmp->mmp_bdevname);
- }
-@@ -353,7 +353,7 @@ skip:
- 	 * wait for MMP interval and check mmp_seq.
- 	 */
- 	if (schedule_timeout_interruptible(HZ * wait_time) != 0) {
--		ext4_warning(sb, "MMP startup interrupted, failing mount\n");
-+		ext4_warning(sb, "MMP startup interrupted, failing mount");
- 		goto failed;
- 	}
- 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 48e4b89..9025064 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1613,7 +1613,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 			if (nokey)
- 				return ERR_PTR(-ENOKEY);
- 			ext4_warning(inode->i_sb,
--				     "Inconsistent encryption contexts: %lu/%lu\n",
-+				     "Inconsistent encryption contexts: %lu/%lu",
- 				     (unsigned long) dir->i_ino,
- 				     (unsigned long) inode->i_ino);
- 			return ERR_PTR(-EPERM);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 34038e3..cf68100 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -41,7 +41,7 @@ int ext4_resize_begin(struct super_block *sb)
- 	 */
- 	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
- 		ext4_warning(sb, "There are errors in the filesystem, "
--			     "so online resizing is not allowed\n");
-+			     "so online resizing is not allowed");
- 		return -EPERM;
- 	}
- 
--- 
-2.8.0.rc3
+Acked-by: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
 
+Thanks,
+Ryuske Konishi
+
+> 
+> diff --git a/fs/nilfs2/segbuf.c b/fs/nilfs2/segbuf.c
+> index 7666f1d..7b13e14 100644
+> --- a/fs/nilfs2/segbuf.c
+> +++ b/fs/nilfs2/segbuf.c
+> @@ -350,7 +350,8 @@ static void nilfs_end_bio_write(struct bio *bio)
+>  }
+>  
+>  static int nilfs_segbuf_submit_bio(struct nilfs_segment_buffer *segbuf,
+> -				   struct nilfs_write_info *wi, int mode)
+> +				   struct nilfs_write_info *wi, int mode,
+> +				   int mode_flags)
+>  {
+>  	struct bio *bio = wi->bio;
+>  	int err;
+> @@ -368,7 +369,8 @@ static int nilfs_segbuf_submit_bio(struct nilfs_segment_buffer *segbuf,
+>  
+>  	bio->bi_end_io = nilfs_end_bio_write;
+>  	bio->bi_private = segbuf;
+> -	bio->bi_rw = mode;
+> +	bio->bi_op = mode;
+> +	bio->bi_rw = mode_flags;
+>  	submit_bio(bio);
+>  	segbuf->sb_nbio++;
+>  
+> @@ -442,7 +444,7 @@ static int nilfs_segbuf_submit_bh(struct nilfs_segment_buffer *segbuf,
+>  		return 0;
+>  	}
+>  	/* bio is FULL */
+> -	err = nilfs_segbuf_submit_bio(segbuf, wi, mode);
+> +	err = nilfs_segbuf_submit_bio(segbuf, wi, mode, 0);
+>  	/* never submit current bh */
+>  	if (likely(!err))
+>  		goto repeat;
+> @@ -466,19 +468,19 @@ static int nilfs_segbuf_write(struct nilfs_segment_buffer *segbuf,
+>  {
+>  	struct nilfs_write_info wi;
+>  	struct buffer_head *bh;
+> -	int res = 0, rw = WRITE;
+> +	int res = 0;
+>  
+>  	wi.nilfs = nilfs;
+>  	nilfs_segbuf_prepare_write(segbuf, &wi);
+>  
+>  	list_for_each_entry(bh, &segbuf->sb_segsum_buffers, b_assoc_buffers) {
+> -		res = nilfs_segbuf_submit_bh(segbuf, &wi, bh, rw);
+> +		res = nilfs_segbuf_submit_bh(segbuf, &wi, bh, REQ_OP_WRITE);
+>  		if (unlikely(res))
+>  			goto failed_bio;
+>  	}
+>  
+>  	list_for_each_entry(bh, &segbuf->sb_payload_buffers, b_assoc_buffers) {
+> -		res = nilfs_segbuf_submit_bh(segbuf, &wi, bh, rw);
+> +		res = nilfs_segbuf_submit_bh(segbuf, &wi, bh, REQ_OP_WRITE);
+>  		if (unlikely(res))
+>  			goto failed_bio;
+>  	}
+> @@ -488,8 +490,8 @@ static int nilfs_segbuf_write(struct nilfs_segment_buffer *segbuf,
+>  		 * Last BIO is always sent through the following
+>  		 * submission.
+>  		 */
+> -		rw |= REQ_SYNC;
+> -		res = nilfs_segbuf_submit_bio(segbuf, &wi, rw);
+> +		res = nilfs_segbuf_submit_bio(segbuf, &wi, REQ_OP_WRITE,
+> +					      REQ_SYNC);
+>  	}
+>  
+>   failed_bio:
+> -- 
+> 2.7.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
