@@ -1,70 +1,225 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 17/18] dax: Use radix tree entry lock to protect cow
- faults
-Date: Tue, 19 Apr 2016 16:33:43 +0200
-Message-ID: <20160419143343.GC22413@quack2.suse.cz>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <1461015341-20153-18-git-send-email-jack@suse.cz>
- <20160419114609.GA13932@gmail.com>
+From: Philipp Hahn <hahn@univention.de>
+Subject: [BUG 4.1.11] EXT4-fs error: ext4_xattr_block_get:299 - Remounting
+ filesystem read-only
+Date: Tue, 19 Apr 2016 16:38:15 +0200
+Message-ID: <571642D7.4020905@univention.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
-To: Jerome Glisse <j.glisse@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160419114609.GA13932@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: multipart/mixed;
+ boundary="------------090307010504020900000302"
+Cc: Jens Thorp-Hansen <thorp-hansen@univention.de>,
+	Stefan Gohmann <gohmann@univention.de>
+To: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 19-04-16 07:46:09, Jerome Glisse wrote:
-> On Mon, Apr 18, 2016 at 11:35:40PM +0200, Jan Kara wrote:
-> > diff --git a/mm/memory.c b/mm/memory.c
-> > index 93897f23cc11..f09cdb8d48fa 100644
-> > --- a/mm/memory.c
-> > +++ b/mm/memory.c
-> > @@ -63,6 +63,7 @@
-> >  #include <linux/dma-debug.h>
-> >  #include <linux/debugfs.h>
-> >  #include <linux/userfaultfd_k.h>
-> > +#include <linux/dax.h>
-> >  
-> >  #include <asm/io.h>
-> >  #include <asm/mmu_context.h>
-> > @@ -2785,7 +2786,8 @@ oom:
-> >   */
-> >  static int __do_fault(struct vm_area_struct *vma, unsigned long address,
-> >  			pgoff_t pgoff, unsigned int flags,
-> > -			struct page *cow_page, struct page **page)
-> > +			struct page *cow_page, struct page **page,
-> > +			void **entry)
-> >  {
-> >  	struct vm_fault vmf;
-> >  	int ret;
-> > @@ -2800,8 +2802,10 @@ static int __do_fault(struct vm_area_struct *vma, unsigned long address,
-> >  	ret = vma->vm_ops->fault(vma, &vmf);
-> >  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY)))
-> >  		return ret;
-> > -	if (!vmf.page)
-> > -		goto out;
-> 
-> Removing the above sounds seriously bogus to me as it means that below
-> if (unlikely(PageHWPoison(vmf.page))) could dereference a NULL pointer.
+This is a multi-part message in MIME format.
+--------------090307010504020900000302
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 
-If you do not return a valid page, you must return appropriate return code
-from the ->fault handler. That being VM_FAULT_NOPAGE, VM_FAULT_DAX_LOCKED,
-or some error. That has always been the case except for DAX abuse which was
-added by commit 2e4cdab0584f "mm: allow page fault handlers to perform the
-COW" about an year ago. And my patch fixes this abuse.
+Hello,
 
-I'm not aware of any other code that would start abusing the return value
-from the ->fault handler. If some such code indeed got merged during the
-last year, it should be fixed as well.
+we have a virtual machine running linxu-4.1.11 on VMware ESX. After
+swapping hard disks on the host the VM mounted its root file system
+read-only two times now after detecting some file system corruption.
 
-								Honza
+I hopefully collected enough data from the system, which I attach to
+this mail.
+
+Looking at the ACL block I don't see the EXT4_XATTR_MAGIC.
+But I see the string  signature of two EAs ("posix_acl" and
+"DOSATTRIB"), so block 14221335 seems to be a corrupted ACL block.
+
+
+
+We recently observed several other problems related to EAs, so here for
+reference:
+
+* With 3.16 we had on corruption on KVM. I re-checked
+<https://bugzilla.kernel.org/show_bug.cgi?id=102731>, which is fixed
+since v3.17-rc1~141^2~79, so this is a different bug.
+And here we're running on VMware.
+
+* With 4.1.11 we observed samba hanging due to many different EAs:
+<https://bugzilla.kernel.org/show_bug.cgi?id=107301>-
+Here smbd doesn't get stuck, but the fs gets mounted read-only.
+
+* There is
+<http://lkml.iu.edu/hypermail/linux/kernel/1603.2/01585.html>, which has
+"ext4_xattr_block_get" in it, but is with 4.5.
+
+
+Any ideas?
+
+Philipp
+
+PS: I'm subscribed to LKML but not to ext4.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Philipp Hahn
+Open Source Software Engineer
+
+Univention GmbH
+be open.
+Mary-Somerville-Str. 1
+D-28359 Bremen
+Tel.: +49 421 22232-0
+Fax : +49 421 22232-99
+hahn@univention.de
+
+http://www.univention.de/
+Geschäftsführer: Peter H. Ganten
+HRB 20755 Amtsgericht Bremen
+Steuer-Nr.: 71-597-02876
+
+--------------090307010504020900000302
+Content-Type: text/plain; charset=UTF-8;
+ name="2016040721000198_ext4-xattr-corrupt.txt"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="2016040721000198_ext4-xattr-corrupt.txt"
+
+IyB1bmFtZSAtcgo0LjEuMC11Y3MxNjMtYW1kNjQKIyBUaGlzIG1hdGNoZXMgbGludXgtNC4x
+LjEyCgoKIyBkbWVzZwpbMTAyNDQwNC4zMTM0NTddIEVYVDQtZnMgZXJyb3IgKGRldmljZSBk
+bS0wKTogZXh0NF94YXR0cl9ibG9ja19nZXQ6Mjk5OiBpbm9kZSAjMzU1NTM1NjogY29tbSBz
+bWJkOiBiYWQgYmxvY2sgMTQyMjEzMzUKWzEwMjQ0MDQuMzEzNjMxXSBBYm9ydGluZyBqb3Vy
+bmFsIG9uIGRldmljZSBkbS0wLTguClsxMDI0NDA0LjMxMzc2Ml0gRVhUNC1mcyAoZG0tMCk6
+IFJlbW91bnRpbmcgZmlsZXN5c3RlbSByZWFkLW9ubHkKWzEwMjQ0MDQuMzE0NjIwXSBFWFQ0
+LWZzIGVycm9yIChkZXZpY2UgZG0tMCk6IGV4dDRfeGF0dHJfYmxvY2tfZ2V0OjI5OTogaW5v
+ZGUgIzM1NTUzNTY6IGNvbW0gc21iZDogYmFkIGJsb2NrIDE0MjIxMzM1ClsxMDI0NDA0LjMx
+NTQxOF0gRVhUNC1mcyBlcnJvciAoZGV2aWNlIGRtLTApOiBleHQ0X3hhdHRyX2Jsb2NrX2dl
+dDoyOTk6IGlub2RlICMzNTU1MzU2OiBjb21tIHNtYmQ6IGJhZCBibG9jayAxNDIyMTMzNQpb
+MTAyNDQwNC4zMTU2MzldIEVYVDQtZnMgZXJyb3IgKGRldmljZSBkbS0wKTogZXh0NF94YXR0
+cl9ibG9ja19nZXQ6Mjk5OiBpbm9kZSAjMzU1NTM1NjogY29tbSBzbWJkOiBiYWQgYmxvY2sg
+MTQyMjEzMzUKWzEwMjQ0MDQuMzE2MjY5XSBFWFQ0LWZzIGVycm9yIChkZXZpY2UgZG0tMCk6
+IGV4dDRfeGF0dHJfYmxvY2tfZ2V0OjI5OTogaW5vZGUgIzM1NTUzNTY6IGNvbW0gc21iZDog
+YmFkIGJsb2NrIDE0MjIxMzM1ClsxMDI0NDA0LjMxNjg0OF0gRVhUNC1mcyBlcnJvciAoZGV2
+aWNlIGRtLTApOiBleHQ0X3hhdHRyX2Jsb2NrX2dldDoyOTk6IGlub2RlICMzNTU1MzU2OiBj
+b21tIHNtYmQ6IGJhZCBibG9jayAxNDIyMTMzNQpbMTAyNDQwNC4zMjYzMjBdIEVYVDQtZnMg
+ZXJyb3IgKGRldmljZSBkbS0wKTogZXh0NF94YXR0cl9ibG9ja19nZXQ6Mjk5OiBpbm9kZSAj
+MzU1NTM1NjogY29tbSBzbWJkOiBiYWQgYmxvY2sgMTQyMjEzMzUKWzEwMjQ0MDQuMzI3MTgy
+XSBFWFQ0LWZzIGVycm9yIChkZXZpY2UgZG0tMCk6IGV4dDRfeGF0dHJfYmxvY2tfZ2V0OjI5
+OTogaW5vZGUgIzM1NTUzNTY6IGNvbW0gc21iZDogYmFkIGJsb2NrIDE0MjIxMzM1CgoKZGVi
+dWdmczogIHN0YXQgPDM1NTUzNTY+Cklub2RlOiAzNTU1MzU2ICAgVHlwZTogZGlyZWN0b3J5
+ICAgIE1vZGU6ICAwNzcwICAgRmxhZ3M6IDB4ODAwMDAKR2VuZXJhdGlvbjogMTM5NzUxOTU0
+NSAgICBWZXJzaW9uOiAweDAwMDAwMDAwOjAwMDAwMDA3ClVzZXI6ICAzMjc5ICAgR3JvdXA6
+ICA1MDU1ICAgU2l6ZTogNDA5NgpGaWxlIEFDTDogMTQyMjEzMzUgICAgRGlyZWN0b3J5IEFD
+TDogMApMaW5rczogMiAgIEJsb2NrY291bnQ6IDE2CkZyYWdtZW50OiAgQWRkcmVzczogMCAg
+ICBOdW1iZXI6IDAgICAgU2l6ZTogMAogY3RpbWU6IDB4NTcxNWYyY2M6MzAyMWQ3OTggLS0g
+VHVlIEFwciAxOSAxMDo1Njo0NCAyMDE2CiBhdGltZTogMHg1NzE1ZjE2Njo0MDA1ZWNiNCAt
+LSBUdWUgQXByIDE5IDEwOjUwOjQ2IDIwMTYKIG10aW1lOiAweDUyZDUxZTMwOjQyOTJmMDMw
+IC0tIFR1ZSBKYW4gMTQgMTI6MjM6MjggMjAxNApjcnRpbWU6IDB4NTJkNTFlNjg6OTNiNGEy
+YjQgLS0gVHVlIEphbiAxNCAxMjoyNDoyNCAyMDE0ClNpemUgb2YgZXh0cmEgaW5vZGUgZmll
+bGRzOiAyOApFeHRlbmRlZCBhdHRyaWJ1dGVzIHN0b3JlZCBpbiBpbm9kZSBib2R5OiAKICAg
+PSAiMDEgMDAgMDAgMDAgMDEgMDAgMDcgMDAgMDIgMDAgMDcgMDAgY2YgMGMgMDAgMDAgMDQg
+MDAgMDAgMDAgMDggMDAgMDcgMDAgMjEgMDAgMDAgMDAgMDggMDAgMDAgMDAgYmYgMTMgMDAg
+MDAgMTAgMDAgMDcgMDAgMjAgMDAgMDAgMDAgIiAoNDQpCkVYVEVOVFM6CigwKToxNDE3NTAw
+NwoKCmRlYnVnZnM6ICBuY2hlY2sgMzU1NTM1NgpJbm9kZSAgIFBhdGhuYW1lCjM1NTUzNTYg
+L2hvbWUvY3JpL3dpbmRvd3MtcHJvZmlsZXMvZGVmYXVsdC9FaWdlbmUgRGF0ZWllbi9NdXNl
+U2NvcmUvcGx1Z2lucy9icmVhawoKCmRlYnVnZnM6ICBscyAiL2hvbWUvY3JpL3dpbmRvd3Mt
+cHJvZmlsZXMvZGVmYXVsdC9FaWdlbmUgRGF0ZWllbi9NdXNlU2NvcmUvcGx1Z2lucy9icmVh
+ayIKIDM1NTUzNTYgICgxMikgLiAgICAzNTU1MzUxICAoMTIpIC4uICAgIDM1NTM4NTIgICg0
+MCkgYnJlYWsuanMgICAKIDM1NTM4NTAgICg0MDMyKSBicmVhay51aSAgIAoKCmRlYnVnZnM6
+ICBsb2dkdW1wIC1pIDwzNTU1MzU2PgpJbm9kZSAzNTU1MzU2IGlzIGF0IGdyb3VwIDQzNCwg
+YmxvY2sgMTQxNTY4MzIsIG9mZnNldCAzNDU2CkpvdXJuYWwgc3RhcnRzIGF0IGJsb2NrIDIy
+NjIwLCB0cmFuc2FjdGlvbiA5MDIwMjUwMQpGb3VuZCBzZXF1ZW5jZSA5MDE4NzMyMyAobm90
+IDkwMjAyOTUxKSBhdCBibG9jayAyOTI3MTogZW5kIG9mIGpvdXJuYWwuCgoKZGVidWdmczog
+IHRlc3RiIDE0MjIxMzM1CkJsb2NrIDE0MjIxMzM1IG1hcmtlZCBpbiB1c2UKCgpkZWJ1Z2Zz
+OiAgbG9nZHVtcCAtYiAxNDIyMTMzNQpKb3VybmFsIHN0YXJ0cyBhdCBibG9jayAyMjYyMCwg
+dHJhbnNhY3Rpb24gOTAyMDI1MDEKICBGUyBibG9jayAxNDE1NTc3OCBsb2dnZWQgYXQgc2Vx
+dWVuY2UgOTAyMDI5NDYsIGpvdXJuYWwgYmxvY2sgMjkxODEgKGZsYWdzIDB4MikKICAgIChi
+bG9jayBiaXRtYXAgZm9yIGJsb2NrIDE0MjIxMzM1OiBibG9jayBpcyBDTEVBUikKRm91bmQg
+c2VxdWVuY2UgOTAxODczMjMgKG5vdCA5MDIwMjk1MSkgYXQgYmxvY2sgMjkyNzE6IGVuZCBv
+ZiBqb3VybmFsLgoKCiMgZGQgaWY9L2Rldi9kbS0wIG9mPS9kZXYvc2htLzEgYnM9NGsgY291
+bnQ9MSBza2lwPTE0MjIxMzM1CiMgb2QgL2Rldi9zaG0vMQowMDAwMDAwIDEwMTUwMCAwMDAw
+MDAgMDAwMDAxIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAKMDAwMDAyMCAw
+MDAwMDAgMDAwMDAwIDAwMDExMCAwNDU1MDQgMDUwMDYyIDAzMTA2MSAwMzI0NjEgMDMzMTI3
+CjAwMDAwNDAgMDAwNDExIDAwNzcxMCAwMDAwMDAgMDAwMDAwIDAwMDA3MCAwMDAwMDAgMDI1
+MDM1IDA2Njc3NwowMDAwMDYwIDA0NzUwNCAwNDA1MjMgMDUyMTI0IDA0NDUyMiAwMDAxMDIg
+MDAwMDAwIDA0NjA0MCAwMjAwNDAKMDAwMDEwMCAwMjAwNDAgMDIwMDQwIDAzMjEyMyAwMDAy
+MDAgMDAwMDAwIDAzMDQ1NiAwMzAwNzEgMDIwMDQwCjAwMDAxMjAgMDIwMDQwIDA0NjUwMSAw
+NTExMjYgMDQyNTE0IDA0NjA0MCAwNTMxMTEgMDUxMTI0IDA1MjUwMQowMDAwMTQwIDA0NjEx
+NCAwMjAwNDAgMDIwMDQwIDAyMDA0MCAwMjAwNDAgMDIwMDQwIDAyMDA0MCAwMjAwNDAKMDAw
+MDE2MCAwMjAwNDAgMDIwMDQwIDAyMDA0MCAwMjAwNDAgMDIwMDQwIDAwMDAwMCAwMDAwMDAg
+MDA3NDAwCjAwMDAyMDAgMDQwMDAxIDAwMTAwMCAwMDEwMDAgMDAwMDA2IDAwMDAwMCAwMDAw
+MDAgMDAwMDAwIDAwMDAwMAowMDAwMjIwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAw
+MDAwMDAgMDAwMDAwIDAwMDAwMyAwMDAxNzAKMDAwMDI0MCAwMDAxNzAgMDAwMTcwIDAwMDE3
+MCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAwMDAwCjAwMDAyNjAgMDAwMDAwIDAw
+MDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMAoqCjAwMDcw
+NDAgMDAwMDAwIDAwMDAwMCAwMDAwMDEgMDAwMDAwIDAwMDAwMSAwMDAwMDcgMDAwMDAyIDAw
+MDAwNwowMDA3MDYwIDAwNjMxNyAwMDAwMDAgMDAwMDA0IDAwMDAwMCAwMDAwMTAgMDAwMDA3
+IDAwMDA0MSAwMDAwMDAKMDAwNzEwMCAwMDAwMTAgMDAwMDAwIDAxMTY3NyAwMDAwMDAgMDAw
+MDIwIDAwMDAwNyAwMDAwNDAgMDAwMDAwCjAwMDcxMjAgMDAwMDA0IDAwMDAwNCAwMDAwMDAg
+MDAwMDAyIDAwMDAwNCAwMDAwMDIgMDAwMDAxIDEyNzY2MAowMDA3MTQwIDAxMjcwMyAxNzU2
+MjMgMDExMjA1IDEyMzM3NSAwNDQzMTIgMTM3NDMwIDEzNjA0NSAwMjA0NTQKMDAwNzE2MCAx
+NDYzMzcgMTIwNzE0IDExNDc2MSAwMzYxMDEgMTc1MzcyIDEyMzI1NiAwMjI3MzcgMDAwMDAw
+CjAwMDcyMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAw
+MDAwIDAwMDAwMAowMDA3MjIwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAg
+MDAwMDAwIDAwMDAwMCAwNjc1NjAKMDAwNzI0MCAwNjQ1NjMgMDU3NTcwIDA2MTU0MSAwMDAx
+NTQgMTI3MDM2IDAyNjY3NSAwMTA0MzMgMDAwNzE3CjAwMDcyNjAgMDIzMjU0IDA1NDIxMyAx
+NDU3NDMgMTE2NzAwIDE3MzQyNSAwMTQ1NjAgMTI0NjI1IDAyMDA3MQowMDA3MzAwIDAwNDY2
+NCAxMzEwMTAgMTUyNDIwIDE2MzUwMSAxNTEwNzEgMTUwMTIwIDA1NDI2NSAwMjQ2NTYKMDAw
+NzMyMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAg
+MDAwMDAwCioKMDAwNzM2MCAwMDAwMDEgMTAwMDA0IDAwMDI2NCAwMDAwMDAgMDAwMzIwIDAw
+MDAwMCAwMDAwMDAgMDAwMDAwCjAwMDc0MDAgMDAwMzU0IDAwMDAwMCAwMDI0MDEgMDAwMDAw
+IDAwMDAwMCAwMDI0MDAgMDAwMDI1IDAwMDAwMAowMDA3NDIwIDAwMTE1NiAxNjY1MDAgMTQy
+NzY0IDEzNTA0MSAwNTcyNDEgMDQyMzY3IDAxNjYwNiAwMDAwMDAKMDAwNzQ0MCAwMDI0MDEg
+MDAwMDAwIDAwMDAwMCAwMDI0MDAgMDAwMDI1IDAwMDAwMCAwMDExNTYgMTY2NTAwCjAwMDc0
+NjAgMTQyNzY0IDEzNTA0MSAwNTcyNDEgMDQyMzY3IDAyNTU0NyAwMDAwMDAgMDAwMDAyIDAw
+MDIxNAowMDA3NTAwIDAwMDAwNSAwMDAwMDAgMDAwMDAwIDAwMDA0NCAwMDA3NzcgMDAwMDM3
+IDAwMjQwMSAwMDAwMDAKMDAwNzUyMCAwMDAwMDAgMDAyNDAwIDAwMDAyNSAwMDAwMDAgMDAx
+MTU2IDE2NjUwMCAxNDI3NjQgMTM1MDQxCjAwMDc1NDAgMDU3MjQxIDA0MjM2NyAwMTY2MDYg
+MDAwMDAwIDAwNTQwMCAwMDAwMjQgMDAwNzc3IDAwMDAzNwowMDA3NTYwIDAwMDQwMSAwMDAw
+MDAgMDAwMDAwIDAwMTQwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwNDQKMDAwNzYwMCAw
+MDAwMDAgMDAwMDAwIDAwMjQwMSAwMDAwMDAgMDAwMDAwIDAwMjQwMCAwMDAwMjUgMDAwMDAw
+CjAwMDc2MjAgMDAxMTU2IDE2NjUwMCAxNDI3NjQgMTM1MDQxIDA1NzI0MSAwNDIzNjcgMDI1
+NTQ3IDAwMDAwMAowMDA3NjQwIDAwNTQwMCAwMDAwMjQgMDAwMDAwIDAwMDAwMCAwMDA0MDEg
+MDAwMDAwIDAwMDAwMCAwMDE0MDAKMDAwNzY2MCAwMDAwMDEgMDAwMDAwIDAwMTQwMCAwMDAw
+MjQgMDAwMDAwIDAwMDAwMCAwMDA0MDEgMDAwMDAwCjAwMDc3MDAgMDAwMDAwIDAwMDQwMCAw
+MDAwMDAgMDAwMDAwIDA3NDA2MCAwMzAwNjEgMDAwMDAwIDAwMDAwMwowMDA3NzIwIDAwMDAw
+MyAwMDAwMDAgMDAwMDIxIDAwMDAwMCAwMDAwMjAgMDAwMDAwIDAwMDAwMCAwMDAwMDAKMDAw
+Nzc0MCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAgMDAwMDAwIDAwMDAwMCAwMDAwMDAg
+MDAwMDAwCjAwMDc3NjAgMDUxNTczIDAwNjA1MCAwMTA0MzMgMDAwNzE3IDAwMDAwMCAwMDAw
+MDAgMDAwMDAwIDAwMDAwMAowMDEwMDAwCgoKIyBzdHJpbmdzIC9kZXYvc2htLzEKREsyUDEy
+MTVXNgptRE9TQVRUUklCCiBMICAgICAgUzQKLjE5MCAgICBBTVZSTEUgTElWVFJBVUxMICAg
+ICAgICAgICAgICAgICAgICAgICAgCnBvc2l4X2FjbAoweDEwCgoKIyBjYXQgL3Byb2MvY3B1
+aW5mbwpwcm9jZXNzb3IgICAgICAgOiAzCnZlbmRvcl9pZCAgICAgICA6IEdlbnVpbmVJbnRl
+bApjcHUgZmFtaWx5ICAgICAgOiA2Cm1vZGVsICAgICAgICAgICA6IDMwCm1vZGVsIG5hbWUg
+ICAgICA6IEludGVsKFIpIFhlb24oUikgQ1BVICAgICAgICAgICBYMzQzMCAgQCAyLjQwR0h6
+CnN0ZXBwaW5nICAgICAgICA6IDUKbWljcm9jb2RlICAgICAgIDogMHgzCmNwdSBNSHogICAg
+ICAgICA6IDI0MDAuMDAwCmNhY2hlIHNpemUgICAgICA6IDgxOTIgS0IKcGh5c2ljYWwgaWQg
+ICAgIDogMApzaWJsaW5ncyAgICAgICAgOiA0CmNvcmUgaWQgICAgICAgICA6IDMKY3B1IGNv
+cmVzICAgICAgIDogNAphcGljaWQgICAgICAgICAgOiAzCmluaXRpYWwgYXBpY2lkICA6IDMK
+ZnB1ICAgICAgICAgICAgIDogeWVzCmZwdV9leGNlcHRpb24gICA6IHllcwpjcHVpZCBsZXZl
+bCAgICAgOiAxMQp3cCAgICAgICAgICAgICAgOiB5ZXMKZmxhZ3MgICAgICAgICAgIDogZnB1
+IHZtZSBkZSBwc2UgdHNjIG1zciBwYWUgbWNlIGN4OCBhcGljIHNlcCBtdHJyIHBnZSBtY2Eg
+Y21vdiBwYXQgcHNlMzYgY2xmbHVzaCBkdHMgbW14IGZ4c3Igc3NlIHNzZTIgc3MgaHQgc3lz
+Y2FsbCBueCByZHRzY3AgbG0gY29uc3RhbnRfdHNjIGFyY2hfcGVyZm1vbiBwZWJzIGJ0cyBu
+b3BsIHh0b3BvbG9neSB0c2NfcmVsaWFibGUgbm9uc3RvcF90c2MgYXBlcmZtcGVyZiBwbmkg
+c3NzZTMgY3gxNiBzc2U0XzEgc3NlNF8yIHgyYXBpYyBwb3BjbnQgdHNjX2RlYWRsaW5lX3Rp
+bWVyIGh5cGVydmlzb3IgbGFoZl9sbSBpZGEgZHRoZXJtIHRzY19hZGp1c3QKYnVncyAgICAg
+ICAgICAgIDoKYm9nb21pcHMgICAgICAgIDogNDgwMC4wMApjbGZsdXNoIHNpemUgICAgOiA2
+NApjYWNoZV9hbGlnbm1lbnQgOiA2NAphZGRyZXNzIHNpemVzICAgOiA0MiBiaXRzIHBoeXNp
+Y2FsLCA0OCBiaXRzIHZpcnR1YWwKcG93ZXIgbWFuYWdlbWVudDoKCgojIFRPRE86IENoZWNr
+IDxodHRwczovL2Rvd25sb2FkY2VudGVyLmludGVsLmNvbS9kb3dubG9hZC8yNTUxMi9MaW51
+eC1Qcm9jZXNzb3ItTWljcm9jb2RlLURhdGEtRmlsZT92PXQ+CgoKIyBkZiAtVApEYXRlaXN5
+c3RlbSAgICAgICAgICAgICAgIFR5cCAgICAgIDFLLUJsw7Zja2UgICBCZW51dHp0IFZlcmbD
+vGdiYXIgVmVydyUgRWluZ2Vow6RuZ3QgYXVmCnVkZXYgICAgICAgICAgICAgICAgICAgICAg
+ZGV2dG1wZnMgICAgIDEwMjQwICAgICAgICAgMCAgICAgMTAyNDAgICAgMCUgL2Rldgp0bXBm
+cyAgICAgICAgICAgICAgICAgICAgIHRtcGZzICAgICAgMzI5MzY2OCAgICAgMjU5MDggICAz
+MjY3NzYwICAgIDElIC9ydW4KL2Rldi9tYXBwZXIvdmdfdWNzLXJvb3RmcyBleHQ0ICAgICA4
+NzcxNzM1NDggNjA2ODU0NzAwIDIzMzUyMzExMiAgIDczJSAvCnRtcGZzICAgICAgICAgICAg
+ICAgICAgICAgdG1wZnMgICAgICAgICA1MTIwICAgICAgICAgMCAgICAgIDUxMjAgICAgMCUg
+L3J1bi9sb2NrCnRtcGZzICAgICAgICAgICAgICAgICAgICAgdG1wZnMgICAgICA4Njg0NDgw
+ICAgICAgICAgNCAgIDg2ODQ0NzYgICAgMSUgL3J1bi9zaG0KL2Rldi9zZGEyICAgICAgICAg
+ICAgICAgICBleHQ0ICAgICAgICA0OTk2NTYgICAgIDc4NTUyICAgIDM4NDQwOCAgIDE3JSAv
+Ym9vdApjZ3JvdXAgICAgICAgICAgICAgICAgICAgIHRtcGZzICAgICAxNjQ2ODMzNiAgICAg
+ICAgIDAgIDE2NDY4MzM2ICAgIDAlIC9zeXMvZnMvY2dyb3VwCgoKIyBjYXQgL3Byb2MvZnMv
+ZXh0NC9kbS0wL29wdGlvbnMKcm8KYmxvY2tfdmFsaWRpdHkKZGVsYWxsb2MKYmFycmllcgp1
+c2VyX3hhdHRyCmFjbApxdW90YQp1c3JxdW90YQpncnBxdW90YQpyZXN1aWQ9MApyZXNnaWQ9
+MAplcnJvcnM9cmVtb3VudC1ybwpjb21taXQ9NQptaW5fYmF0Y2hfdGltZT0wCm1heF9iYXRj
+aF90aW1lPTE1MDAwCnN0cmlwZT0wCmRhdGE9b3JkZXJlZAppbm9kZV9yZWFkYWhlYWRfYmxr
+cz0zMgppbml0X2l0YWJsZT0xMAptYXhfZGlyX3NpemVfa2I9MAo=
+--------------090307010504020900000302--
