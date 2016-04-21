@@ -1,102 +1,34 @@
-From: Greg KH <greg-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
-Subject: Re: 4.5.1: UBSAN: Undefined behaviour in
- ./arch/x86/include/asm/atomic.h:156:9
-Date: Thu, 21 Apr 2016 21:43:01 +0900
-Message-ID: <20160421124301.GB2294@kroah.com>
-References: <7d648a97-38f5-3d04-9ead-0b6e87088beb@gmail.com>
- <20160421004229.GB10917@kroah.com>
- <56e89573-3fb5-39cc-c330-e6f1c1c6c58f@gmail.com>
- <20160421104800.GA6884@kroah.com>
- <2121831c-e066-bb83-3b66-d3d3907064bf@gmail.com>
+From: Waiman Long <waiman.long@hpe.com>
+Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin()
+ called
+Date: Thu, 21 Apr 2016 14:15:24 -0400
+Message-ID: <571918BC.2060007@hpe.com>
+References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com> <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com> <20160420205801.GA24609@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: USB list <linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Martin =?utf-8?Q?MOKREJ=C5=A0?= <mmokrejs-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <2121831c-e066-bb83-3b66-d3d3907064bf-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Sender: linux-usb-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20160420205801.GA24609@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 21, 2016 at 01:17:19PM +0200, Martin MOKREJ=C5=A0 wrote:
-> Greg KH wrote:
-> > On Thu, Apr 21, 2016 at 11:18:16AM +0200, Martin MOKREJ=C5=A0 wrote=
-:
-> > > Hi Greg,
-> > >=20
-> > > thank you for your answer.
-> > >=20
-> > > Greg KH wrote:
-> > > > On Thu, Apr 21, 2016 at 12:22:49AM +0200, Martin MOKREJ=C5=A0 w=
-rote:
-> > > > > Hi,
-> > > > >   I am not certain to to forward this to, so I am trying linu=
-x-usb and ext4. Please add relevant people/lists, thank you.
-> > > > >=20
-> > > > > # dmesg | grep "UBSAN: Undefined behaviour"
-> > > > > [    2.638843] UBSAN: Undefined behaviour in drivers/usb/host=
-/ehci-hub.c:873:47
-> > > > > [    8.553620] UBSAN: Undefined behaviour in fs/ext4/mballoc.=
-c:2612:15
-> > > > > [   25.341048] UBSAN: Undefined behaviour in fs/ext4/mballoc.=
-c:1274:11
-> > > > > [   41.460542] UBSAN: Undefined behaviour in ./arch/x86/inclu=
-de/asm/atomic.h:156:9
-> > > > > #
-> > > > >=20
-> > > > > Full dmesg is attached.
-> > > > >=20
-> > > > > Hope this helps,
-> > > > > Martin
-> > > >=20
-> > > > > [    0.000000] Linux version 4.5.1-default-pciehp (root@vostr=
-o) (gcc version 5.3.0 (Gentoo 5.3.0 p1.0, pie-0.6.5) ) #1 SMP Thu Apr 1=
-4 14:17:48 CEST 2016
-> > > >=20
-> > > > Please try 4.6-rc4, a number of UBSAN issues have been fixed th=
-ere.
-> > >=20
-> > > They are still present:
-> > >=20
-> > > # dmesg | grep "UBSAN: Undefined behaviour"
-> > > [    3.113405] UBSAN: Undefined behaviour in drivers/usb/host/ehc=
-i-hub.c:877:47
-> > > [    5.678949] UBSAN: Undefined behaviour in fs/ext4/mballoc.c:26=
-19:15
-> > > [   18.345599] UBSAN: Undefined behaviour in fs/ext4/mballoc.c:12=
-81:11
-> > > [   34.544363] UBSAN: Undefined behaviour in ./arch/x86/include/a=
-sm/atomic.h:156:9
-> >=20
-> > Ah, sorry about that, turns out this is a bug in the tool, not in t=
-he
-> > code, see the thread from a few weeks ago in the linux-usb archives=
- with
-> > the subject:
-> > 	Subject: function ehci_hub_control in ehci-hub.c
-> > for all of the details.
->=20
-> Thank you. I am not a programmer so I only infer from this thread I s=
-hould disable
-> the UBSAN in .config. The kernel code is technically correct but trig=
-gers false alarm.
-> Maybe the UBSAN could have a whitelist of falsely matching locations?
->=20
-> https://www.mail-archive.com/linux-usb-u79uwXL29TY76Z2rM5mHXA@public.gmane.org/msg72438.html
+On 04/20/2016 04:58 PM, Christoph Hellwig wrote:
+> FYI, none of the Dax code even needs to ever touch the dio_count,
+> as dax I/O can't be asynchronous, and we thus don't need it to protect
+> against truncate.  I'd suggest to remove it and then end_io callback
+> from the DAX code entirely as a start and then move from there.
 
-It probably should be fixed to not report false things like this.
+Yes, it seems like we may not need to change the dio_count in 
+dax_do_io() after all. BTW, what do mean by using end_io callback as a 
+start?
 
-> Did anybody check the ext4 code or is it also just believed the UBSAN=
- complaint is
-> just broken and code changes are not necessary?
-
-I'm not an ext4 developer, I'll leave that to them  :)
-
-thanks,
-
-greg k-h
---
-To unsubscribe from this list: send the line "unsubscribe linux-usb" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers,
+Longman
