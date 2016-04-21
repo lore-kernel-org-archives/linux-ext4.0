@@ -1,34 +1,60 @@
-From: Waiman Long <waiman.long@hpe.com>
-Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin()
- called
-Date: Thu, 21 Apr 2016 14:15:24 -0400
-Message-ID: <571918BC.2060007@hpe.com>
-References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com> <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com> <20160420205801.GA24609@infradead.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 113781] kernel 4.4.1-2-ARCH, 4.4.3-1-ARCH and Fake RAID array
+ setup
+Date: Thu, 21 Apr 2016 20:06:57 +0000
+Message-ID: <bug-113781-13602-D3dGZ3uIkh@https.bugzilla.kernel.org/>
+References: <bug-113781-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160420205801.GA24609@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:58878 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751931AbcDUUHA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Apr 2016 16:07:00 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 535BE2034C
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2016 20:06:59 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 79CC820256
+	for <linux-ext4@vger.kernel.org>; Thu, 21 Apr 2016 20:06:57 +0000 (UTC)
+In-Reply-To: <bug-113781-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/20/2016 04:58 PM, Christoph Hellwig wrote:
-> FYI, none of the Dax code even needs to ever touch the dio_count,
-> as dax I/O can't be asynchronous, and we thus don't need it to protect
-> against truncate.  I'd suggest to remove it and then end_io callback
-> from the DAX code entirely as a start and then move from there.
+https://bugzilla.kernel.org/show_bug.cgi?id=113781
 
-Yes, it seems like we may not need to change the dio_count in 
-dax_do_io() after all. BTW, what do mean by using end_io callback as a 
-start?
+--- Comment #2 from Andre Hasekamp <hasecomp@aim.com> ---
+2016-04-21
 
-Cheers,
-Longman
+Archlinux is now at:
+
+Kernel 4.5.1-1
+dmraid 1.0.0.rc16.3-10
+device-mapper 2.02.149-1
+thin-provisioning-tools 0.6.1-2
+
+At this stage, I can run a linux system again from "Fake RAID array" disks
+(RAID 0) on PC 1 (decribed above).
+
+Although it is not clear what caused it, to me it is so much improvement that I
+will use "Fake RAID array" disks again. Neverthless, in the meantime, after
+having encountered the problems described, I have moved my production work to
+Archlinux installations on SSD. At the moment I have 2 PCs, each with a
+functioning linux test system on "Fake RAID array" disks. These test systems
+are not frequently used. So it may take a while before I consider these test
+systems to be reliable enough for production work.
+
+>From my point of view, you may close this bug. Should the "Fake RAID array"
+disks present problems again in the future, then I will open a new bugreport.
+
+Since the status of the current bug report is still NEW, I trust that you have
+not spent any time on it yet.
+
+Kind regards,
+Andre Hasekamp.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
