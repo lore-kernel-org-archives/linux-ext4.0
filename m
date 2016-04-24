@@ -1,31 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/4] ext4: Remove EXT4_STATE_ORDERED_MODE
-Date: Sat, 23 Apr 2016 23:48:23 -0400
-Message-ID: <20160424034822.GH20980@thunk.org>
-References: <1459354767-8693-1-git-send-email-jack@suse.cz>
- <1459354767-8693-3-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Weller.Huang@cn.bosch.com
-To: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: refuse O_DIRECT opens for mode where DIO doesn't work
+Date: Sun, 24 Apr 2016 00:27:58 -0400
+Message-ID: <1461472078-20104-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:32800 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:32830 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751985AbcDXDs0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Apr 2016 23:48:26 -0400
-Content-Disposition: inline
-In-Reply-To: <1459354767-8693-3-git-send-email-jack@suse.cz>
+	id S1751095AbcDXE2I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 Apr 2016 00:28:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 30, 2016 at 06:19:25PM +0200, Jan Kara wrote:
-> This flag is just duplicating what ext4_should_order_data() tells you
-> and is used in a single place. Furthermore it doesn't reflect changes to
-> inode data journalling flag so it may be possibly misleading. Just
-> remove it.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Certain ext4 modes (encryption, data=journal, inline data) cause
+Direct I/O to be a no-op.  Instead of making DIO fail silently, make
+the open with the O_DIRECT flag fail with EINVAL.
 
-Applied, thanks.
+This will avoid surprises to application programs, and also signal to
+xfstests not to try O_DIRECT tests for file system modes where it
+doesn't work (and could result in test failures).
 
-					- Ted
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/file.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index fa2208b..4113676 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -372,7 +372,12 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 			return -EACCES;
+ 		if (ext4_encryption_info(inode) == NULL)
+ 			return -ENOKEY;
++		if (filp->f_flags & O_DIRECT)
++			return -EINVAL;
+ 	}
++	if ((ext4_should_journal_data(inode) || ext4_has_inline_data(inode)) &&
++	    (filp->f_flags & O_DIRECT))
++		return -EINVAL;
+ 
+ 	dir = dget_parent(file_dentry(filp));
+ 	if (ext4_encrypted_inode(d_inode(dir)) &&
+-- 
+2.5.0
+
