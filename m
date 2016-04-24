@@ -1,118 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: allow readdir()'s of large empty directories to be interrupted
-Date: Sat, 23 Apr 2016 22:51:24 -0400
-Message-ID: <1461466284-8634-1-git-send-email-tytso@mit.edu>
-Cc: torvalds@linux-foundation.org, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 1/4] ext4: Fix data exposure after a crash
+Date: Sat, 23 Apr 2016 23:48:13 -0400
+Message-ID: <20160424034813.GG20980@thunk.org>
+References: <1459354767-8693-1-git-send-email-jack@suse.cz>
+ <1459354767-8693-2-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Weller.Huang@cn.bosch.com,
+	stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60936 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:32788 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751949AbcDXCvi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 23 Apr 2016 22:51:38 -0400
+	id S1751985AbcDXDsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 23 Apr 2016 23:48:20 -0400
+Content-Disposition: inline
+In-Reply-To: <1459354767-8693-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a directory has a large number of empty blocks, iterating over all
-of them can take a long time, leading to scheduler warnings and users
-getting irritated when they can't kill a process in the middle of one
-of these long-running readdir operations.  Fix this by adding checks to
-ext4_readdir() and ext4_htree_fill_tree().
+On Wed, Mar 30, 2016 at 06:19:24PM +0200, Jan Kara wrote:
+> Huang has reported that in his powerfail testing he is seeing stale
+> block contents in some of recently allocated blocks although he mounts
+> ext4 in data=ordered mode. After some investigation I have found out
+> that indeed when delayed allocation is used, we don't add inode to
+> transaction's list of inodes needing flushing before commit. Originally
+> we were doing that but commit f3b59291a69d removed the logic with a
+> flawed argument that it is not needed.
+> 
+> The problem is that although for delayed allocated blocks we write their
+> contents immediately after allocating them, there is no guarantee that
+> the IO scheduler or device doesn't reorder things and thus transaction
+> allocating blocks and attaching them to inode can reach stable storage
+> before actual block contents. Actually whenever we attach freshly
+> allocated blocks to inode using a written extent, we should add inode to
+> transaction's ordered inode list to make sure we properly wait for block
+> contents to be written before committing the transaction. So that is
+> what we do in this patch. This also handles other cases where stale data
+> exposure was possible - like filling hole via mmap in
+> data=ordered,nodelalloc mode.
+> 
+> The only exception to the above rule are extending direct IO writes where
+> blkdev_direct_IO() waits for IO to complete before increasing i_size and
+> thus stale data exposure is not possible. For now we don't complicate
+> the code with optimizing this special case since the overhead is pretty
+> low. In case this is observed to be a performance problem we can always
+> handle it using a special flag to ext4_map_blocks().
+> 
+> CC: stable@vger.kernel.org
+> Fixes: f3b59291a69d0b734be1fc8be489fef2dd846d3d
+> Reported-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+> Tested-by: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-This was reverted earlier due to a typo in the original commit where I
-experimented with using signal_pending() instead of
-fatal_signal_pending().  The test was in the wrong place if we were
-going to return signal_pending() since we would end up returning
-duplicant entries.  See 9f2394c9be47 for a more detailed explanation.
+Applied, thanks.
 
-Added fix as suggested by Linus to check for signal_pending() in
-in the filldir() functions.
-
-Reported-by: Benjamin LaHaise <bcrl@kvack.org>
-Google-Bug-Id: 27880676
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/compat.c     | 4 ++++
- fs/ext4/dir.c   | 5 +++++
- fs/ext4/namei.c | 5 +++++
- fs/readdir.c    | 4 ++++
- 4 files changed, 18 insertions(+)
-
-diff --git a/fs/compat.c b/fs/compat.c
-index a71936a..f940cb2 100644
---- a/fs/compat.c
-+++ b/fs/compat.c
-@@ -936,6 +936,8 @@ static int compat_filldir(struct dir_context *ctx, const char *name, int namlen,
- 	}
- 	dirent = buf->previous;
- 	if (dirent) {
-+		if (signal_pending(current))
-+			return -EINTR;
- 		if (__put_user(offset, &dirent->d_off))
- 			goto efault;
- 	}
-@@ -1020,6 +1022,8 @@ static int compat_filldir64(struct dir_context *ctx, const char *name,
- 	dirent = buf->previous;
- 
- 	if (dirent) {
-+		if (signal_pending(current))
-+			return -EINTR;
- 		if (__put_user_unaligned(offset, &dirent->d_off))
- 			goto efault;
- 	}
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 561d730..4173bfe 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -150,6 +150,11 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 	while (ctx->pos < inode->i_size) {
- 		struct ext4_map_blocks map;
- 
-+		if (fatal_signal_pending(current)) {
-+			err = -ERESTARTSYS;
-+			goto errout;
-+		}
-+		cond_resched();
- 		map.m_lblk = ctx->pos >> EXT4_BLOCK_SIZE_BITS(sb);
- 		map.m_len = 1;
- 		err = ext4_map_blocks(NULL, inode, &map, 0);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 48e4b89..c07422d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1107,6 +1107,11 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	}
- 
- 	while (1) {
-+		if (fatal_signal_pending(current)) {
-+			err = -ERESTARTSYS;
-+			goto errout;
-+		}
-+		cond_resched();
- 		block = dx_get_block(frame->at);
- 		ret = htree_dirblock_to_tree(dir_file, dir, block, &hinfo,
- 					     start_hash, start_minor_hash);
-diff --git a/fs/readdir.c b/fs/readdir.c
-index e69ef3b..5f2d4be 100644
---- a/fs/readdir.c
-+++ b/fs/readdir.c
-@@ -169,6 +169,8 @@ static int filldir(struct dir_context *ctx, const char *name, int namlen,
- 	}
- 	dirent = buf->previous;
- 	if (dirent) {
-+		if (signal_pending(current))
-+			return -EINTR;
- 		if (__put_user(offset, &dirent->d_off))
- 			goto efault;
- 	}
-@@ -248,6 +250,8 @@ static int filldir64(struct dir_context *ctx, const char *name, int namlen,
- 		return -EINVAL;
- 	dirent = buf->previous;
- 	if (dirent) {
-+		if (signal_pending(current))
-+			return -EINTR;
- 		if (__put_user(offset, &dirent->d_off))
- 			goto efault;
- 	}
--- 
-2.5.0
-
+						- Ted
