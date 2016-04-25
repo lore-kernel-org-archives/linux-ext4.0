@@ -1,88 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: f.s. corruption ext3, kernel 4.4.8
-Date: Mon, 25 Apr 2016 11:51:31 -0500
-Message-ID: <571E4B13.4040103@redhat.com>
-References: <CABWT5yh98_f5=Y0k7_ELHM=fn35s0Eb5D5kmDCSsFMikgmscnQ@mail.gmail.com>
- <20160425021413.GM20980@thunk.org>
- <CABWT5yi0SF1HhtWPfM36ibRja-fhaeGFfVgZz5_8Q-NX9fkkCg@mail.gmail.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Mon, 25 Apr 2016 17:14:36 +0000
+Message-ID: <1461604476.3106.12.camel@intel.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	 <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+	 <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+	 <20160420205923.GA24797@infradead.org> <1461434916.3695.7.camel@intel.com>
+	 <20160425083114.GA27556@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: Barry Kauler <bkauler@gmail.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41347 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932686AbcDYQvd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Apr 2016 12:51:33 -0400
-In-Reply-To: <CABWT5yi0SF1HhtWPfM36ibRja-fhaeGFfVgZz5_8Q-NX9fkkCg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>, "linux-nvdimm@ml01.01.org"
+	<linux-nvdimm@ml01.01.org>, "jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>, "viro@zeniv.linux.org.uk"
+	<viro@zeniv.linux.org.uk>, "axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"david@fromorbit.com" <david@fromorbit.com>, "jack@suse.cz" <jack@suse.cz>
+To: "hch@infradead.org" <hch@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160425083114.GA27556@infradead.org>
+Content-Language: en-US
+Content-ID: <80F5C603E926CF47BF71F79A2B125709@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 4/24/16 9:33 PM, Barry Kauler wrote:
-> On 4/25/16, Theodore Ts'o <tytso@mit.edu> wrote:
->> On Mon, Apr 25, 2016 at 09:46:19AM +0800, Barry Kauler wrote:
->>> I sent this direct to Greg KH yesterday morning. 24 hours later got an
->>> automated reply to send my email to one of the lists.
->>>
->>> I'm a user, not a kernel developer, gotta post this somewhere.
->>>
->>> I reckon this is urgent.
->>> I have rolled back from 4.4.8 to 4.4.7, have used heavily for 24 hours
->>> since then,
->>> no problem. So, it's the kernel, not my laptop.
->>
->> No one else has reported any problems to date, and there are only two
->> changes in ext4 code between v4.4.7 and v4.4.8, neither of which seem
->> at all likely to cause file system corruption.
->>
->> ee8516a ext4: ignore quota mount options if the quota feature is enabled
->> 321299a ext4: add lockdep annotations for i_data_sem
->>
->> If you can send us the "EXT4-fs error" message that would have been
->> logged before the file system went read-only, or the output from
->> e2fsck, that might be helpful in matching up your report from any
->> others, or to have some insight into what might have happened.
->>
->> Unfortunately, without any more information there's not much we can do
->> with your report other than to keep an ear out in case anyone else
->> complains.
->>
-> 
-> Thanks for the response.
-> 
-> My kernel is still not using EXT4_USE_FOR_EXT23
-> 
-> My config is:
-> 
-> CONFIG_EXT2_FS=y
-> CONFIG_EXT2_FS_XATTR=y
-> CONFIG_EXT2_FS_POSIX_ACL=y
-> # CONFIG_EXT2_FS_SECURITY is not set
-> CONFIG_EXT3_FS=y
-> CONFIG_EXT3_FS_POSIX_ACL=y
-> # CONFIG_EXT3_FS_SECURITY is not set
-> CONFIG_EXT4_FS=y
-> CONFIG_EXT4_FS_POSIX_ACL=y
-> # CONFIG_EXT4_FS_SECURITY is not set
-> CONFIG_EXT4_ENCRYPTION=y
-> CONFIG_EXT4_FS_ENCRYPTION=y
-> # CONFIG_EXT4_DEBUG is not set
-> 
-> ...is this deprecated?
-> 
-> Just asking, as if everyone else is using EXT4_USE_FOR_EXT23, then
-> perhaps they won't hit my problem.
+T24gTW9uLCAyMDE2LTA0LTI1IGF0IDAxOjMxIC0wNzAwLCBoY2hAaW5mcmFkZWFkLm9yZyB3cm90
+ZToNCj4gT24gU2F0LCBBcHIgMjMsIDIwMTYgYXQgMDY6MDg6MzdQTSArMDAwMCwgVmVybWEsIFZp
+c2hhbCBMIHdyb3RlOg0KPiA+IA0KPiA+IGRpcmVjdF9JTyBtaWdodCBmYWlsIHdpdGggLUVJTlZB
+TCBkdWUgdG8gbWlzYWxpZ25tZW50LCBvciAtRU5PTUVNDQo+ID4gZHVlDQo+ID4gdG8gc29tZSBh
+bGxvY2F0aW9uIGZhaWxpbmcsIGFuZCBJIHRob3VnaHQgd2Ugc2hvdWxkIHJldHVybiB0aGUNCj4g
+PiBvcmlnaW5hbA0KPiA+IC1FSU8gaW4gc3VjaCBjYXNlcyBzbyB0aGF0IHRoZSBhcHBsaWNhdGlv
+biBkb2Vzbid0IGxvc2UgdGhlDQo+ID4gaW5mb3JtYXRpb24NCj4gPiB0aGF0IHRoZSBiYWQgYmxv
+Y2sgaXMgYWN0dWFsbHkgY2F1c2luZyB0aGUgZXJyb3IuDQo+IEVJTlZBTCBpcyBhIGNvbmNlcm4g
+aGVyZS7CoMKgTm90IGR1ZSB0byB0aGUgcmlnaHQgZXJyb3IgcmVwb3J0ZWQsIGJ1dA0KPiBiZWNh
+dXNlIGl0IG1lYW5zIHlvdXIgY3VycmVudCBzY2hlbWUgaXMgZnVuZGFtZW50YWxseSBicm9rZW4g
+LSB3ZQ0KPiBuZWVkIHRvIHN1cHBvcnQgSS9PIGF0IGFueSBhbGlnbm1lbnQgZm9yIERBWCBJL08s
+IGFuZCBub3QgZmFpbCBkdWUgdG8NCj4gYWxpZ25ibWVudCBjb25jZXJuZXMgZm9yIGEgaGlnaGx5
+IHNwZWNpZmljIGRlZ3JhZGVkIGNhc2UuDQo+IA0KPiBJIHRoaW5rIHRoaXMgd2hvbGUgc2VyaWVz
+IG5lZWQgdG8gZ28gYmFjayB0byB0aGUgZHJhd2luZyBib2FyZCBhcyBJDQo+IGRvbid0IHRoaW5r
+IGl0IGNhbiBhY3R1YWxseSByZWx5IG9uIHVzaW5nIGRpcmVjdCBJL08gYXMgdGhlIEVJTw0KPiBm
+YWxsYmFjay4NCj4gDQpBZ3JlZWQgdGhhdCBEQVggSS9PIGNhbiBoYXBwZW4gd2l0aCBhbnkgc2l6
+ZS9hbGlnbm1lbnQsIGJ1dCBob3cgZWxzZSBkbw0Kd2Ugc2VuZCBhbiBJTyB0aHJvdWdoIHRoZSBk
+cml2ZXIgd2l0aG91dCBhbGlnbm1lbnQgcmVzdHJpY3Rpb25zPyBBbHNvLA0KdGhlIGdyYW51bGFy
+aXR5IGF0IHdoaWNoIHdlIHN0b3JlIGJhZGJsb2NrcyBpcyA1MTJCIHNlY3RvcnMsIHNvIGl0DQpz
+ZWVtcyBuYXR1cmFsIHRoYXQgdG8gY2xlYXIgc3VjaCBhIHNlY3RvciwgeW91J2QgZXhwZWN0IHRv
+IHNlbmQgYSB3cml0ZQ0KdG8gdGhlIHdob2xlIHNlY3Rvci4NCg0KVGhlIGV4cGVjdGVkIHVzYWdl
+IGZsb3cgaXM6DQoNCi0gQXBwbGljYXRpb24gaGl0cyBFSU8gZG9pbmcgZGF4X0lPIG9yIGxvYWQv
+c3RvcmUgaW8NCg0KLSBJdCBjaGVja3MgYmFkYmxvY2tzIGFuZCBkaXNjb3ZlcnMgaXQncyBmaWxl
+cyBoYXZlIGxvc3QgZGF0YQ0KDQotIEl0IHdyaXRlKClzIHRob3NlIHNlY3RvcnMgKHBvc3NpYmx5
+IGNvbnZlcnRlZCB0byBmaWxlIG9mZnNldHMgdXNpbmcNCmZpZW1hcCkNCsKgIMKgICogVGhpcyB0
+cmlnZ2VycyB0aGUgZmFsbGJhY2sgcGF0aCwgYnV0IGlmIHRoZSBhcHBsaWNhdGlvbiBpcyBkb2lu
+Zw0KdGhpcyBsZXZlbCBvZiByZWNvdmVyeSwgaXQgd2lsbCBrbm93IHRoZSBzZWN0b3IgaXMgYmFk
+LCBhbmQgd3JpdGUgdGhlDQplbnRpcmUgc2VjdG9yDQoNCi0gT3IgaXQgcmVwbGFjZXMgdGhlIGVu
+dGlyZSBmaWxlIGZyb20gYmFja3VwIGFsc28gdXNpbmcgd3JpdGUoKSAobm90DQptbWFwK3N0b3Jl
+cykNCsKgIMKgICogVGhpcyBqdXN0IGZyZWVzIHRoZSBmcyBibG9jaywgYW5kIHRoZSBuZXh0IHRp
+bWUgdGhlIGJsb2NrIGlzDQpyZWFsbG9jYXRlZCBieSB0aGUgZnMsIGl0IHdpbGwgbGlrZWx5IGJl
+IHplcm9lZCBmaXJzdCwgYW5kIHRoYXQgd2lsbCBiZQ0KZG9uZSB0aHJvdWdoIHRoZSBkcml2ZXIg
+YW5kIHdpbGwgY2xlYXIgZXJyb3JzDQoNCg0KSSB0aGluayBpZiB3ZSB3YW50IHRvIGtlZXAgYWxs
+b3dpbmcgYXJiaXRyYXJ5IGFsaWdubWVudHMgZm9yIHRoZQ0KZGF4X2RvX2lvIHBhdGgsIHdlJ2Qg
+bmVlZDoNCjEuIFRvIHJlcHJlc2VudCBiYWRibG9ja3MgYXQgYSBmaW5lciBncmFudWxhcml0eSAo
+bGlrZWx5IGNhY2hlIGxpbmVzKQ0KMi4gVG8gYWxsb3cgdGhlIGRyaXZlciB0byBkbyBJTyB0byBh
+ICpibG9jayBkZXZpY2UqIGF0IHN1Yi1zZWN0b3INCmdyYW51bGFyaXR5DQoNCkNhbiB3ZSBkbyB0
+aGF0Pw==
 
-Ted asked for the actual error messages; without that, there's really
-nothing to go on here.  It's hard to debug from narrative.  ;)
-
-As for ext3 - that was removed in v4.3, so it's unlikely that you are
-using the ext3 driver at this point; in 4.4 you can only be using
-the ext4 driver for an ext3 filesystem.
-
-Again, actual copies of the error messages might tell us something.  
-
-Thanks,
--Eric
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
