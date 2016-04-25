@@ -1,48 +1,113 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] e2image: ignore checksum errors
-Date: Mon, 25 Apr 2016 16:07:22 -0700
-Message-ID: <20160425230722.GB16270@birch.djwong.org>
-References: <20160419192030.GA16270@birch.djwong.org>
- <20160425160308.GB17864@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Tue, 26 Apr 2016 09:25:52 +1000
+Message-ID: <20160425232552.GD18496@dastard>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+ <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+ <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+ <20160420205923.GA24797@infradead.org>
+ <1461434916.3695.7.camel@intel.com>
+ <20160425083114.GA27556@infradead.org>
+ <1461604476.3106.12.camel@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:38839 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750784AbcDYXH3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 19:07:29 -0400
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: "hch@infradead.org" <hch@infradead.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160425160308.GB17864@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1461604476.3106.12.camel@intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 25, 2016 at 12:03:08PM -0400, Theodore Ts'o wrote:
-> On Tue, Apr 19, 2016 at 12:20:30PM -0700, Darrick J. Wong wrote:
-> > Since e2image is used to capture broken fs images for debugging,
-> > ignore checksum errors when creating the image.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Thanks, applied.
-> 
-> BTW, the "m" series in tests was originally intended to be for mke2fs
-> tests.  However, some MMP tests have already been named m_*, and it
-> seems some folks have been assuming that miscellaneous tests should be
-> named m_*.
-> 
-> We do have already a category for e2image tests, which is "i", so I've
-> renamed the test to i_bad_csum.
+On Mon, Apr 25, 2016 at 05:14:36PM +0000, Verma, Vishal L wrote:
+> On Mon, 2016-04-25 at 01:31 -0700, hch@infradead.org wrote:
+> > On Sat, Apr 23, 2016 at 06:08:37PM +0000, Verma, Vishal L wrote:
+> > >=20
+> > > direct_IO might fail with -EINVAL due to misalignment, or -ENOMEM
+> > > due
+> > > to some allocation failing, and I thought we should return the
+> > > original
+> > > -EIO in such cases so that the application doesn't lose the
+> > > information
+> > > that the bad block is actually causing the error.
+> > EINVAL is a concern here.=A0=A0Not due to the right error reported, b=
+ut
+> > because it means your current scheme is fundamentally broken - we
+> > need to support I/O at any alignment for DAX I/O, and not fail due to
+> > alignbment concernes for a highly specific degraded case.
+> >=20
+> > I think this whole series need to go back to the drawing board as I
+> > don't think it can actually rely on using direct I/O as the EIO
+> > fallback.
+> >=20
+> Agreed that DAX I/O can happen with any size/alignment, but how else do
+> we send an IO through the driver without alignment restrictions? Also,
+> the granularity at which we store badblocks is 512B sectors, so it
+> seems natural that to clear such a sector, you'd expect to send a write
+> to the whole sector.
+>=20
+> The expected usage flow is:
+>=20
+> - Application hits EIO doing dax_IO or load/store io
+>=20
+> - It checks badblocks and discovers it's files have lost data
 
-Noted.
+Lots of hand-waving here. How does the application map a bad
+"sector" to a file without scanning the entire filesystem to find
+the owner of the bad sector?
 
---D
+> - It write()s those sectors (possibly converted to file offsets using
+> fiemap)
+> =A0 =A0 * This triggers the fallback path, but if the application is do=
+ing
+> this level of recovery, it will know the sector is bad, and write the
+> entire sector
 
-> 
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Where does the application find the data that was lost to be able to
+rewrite it?
+
+> - Or it replaces the entire file from backup also using write() (not
+> mmap+stores)
+> =A0 =A0 * This just frees the fs block, and the next time the block is
+> reallocated by the fs, it will likely be zeroed first, and that will be
+> done through the driver and will clear errors
+
+There's an implicit assumption that applications will keep redundant
+copies of their data at the /application layer/ and be able to
+automatically repair it? And then there's the implicit assumption
+that it will unlink and free the entire file before writing a new
+copy, and that then assumes the the filesystem will zero blocks if
+they get reused to clear errors on that LBA sector mapping before
+they are accessible again to userspace..
+
+It seems to me that there are a number of assumptions being made
+across multiple layers here. Maybe I've missed something - can you
+point me to the design/architecture description so I can see how
+"app does data recovery itself" dance is supposed to work?
+
+Cheers,
+
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
