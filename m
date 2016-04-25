@@ -1,51 +1,89 @@
-From: "hch@infradead.org" <hch@infradead.org>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Mon, 25 Apr 2016 01:31:14 -0700
-Message-ID: <20160425083114.GA27556@infradead.org>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
- <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
- <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
- <20160420205923.GA24797@infradead.org>
- <1461434916.3695.7.camel@intel.com>
+From: Dmitry Monakhov <dmonlist@gmail.com>
+Subject: Re: [PATCH] ext4: refuse O_DIRECT opens for mode where DIO doesn't work
+Date: Mon, 25 Apr 2016 12:35:02 +0300
+Message-ID: <877ffmhvzt.fsf@openvz.org>
+References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "hch@infradead.org" <hch@infradead.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>,
-	"axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:42934 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753860AbcDYIbS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 04:31:18 -0400
-Content-Disposition: inline
-In-Reply-To: <1461434916.3695.7.camel@intel.com>
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:34377 "EHLO
+	mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753617AbcDYJfK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 05:35:10 -0400
+Received: by mail-lf0-f66.google.com with SMTP id m101so2596078lfi.1
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Apr 2016 02:35:09 -0700 (PDT)
+In-Reply-To: <1461472078-20104-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 23, 2016 at 06:08:37PM +0000, Verma, Vishal L wrote:
-> direct_IO might fail with -EINVAL due to misalignment, or -ENOMEM due
-> to some allocation failing, and I thought we should return the original
-> -EIO in such cases so that the application doesn't lose the information
-> that the bad block is actually causing the error.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-EINVAL is a concern here.  Not due to the right error reported, but
-because it means your current scheme is fundamentally broken - we
-need to support I/O at any alignment for DAX I/O, and not fail due to
-alignbment concernes for a highly specific degraded case.
+Theodore Ts'o <tytso@mit.edu> writes:
 
-I think this whole series need to go back to the drawing board as I
-don't think it can actually rely on using direct I/O as the EIO
-fallback.
+> Certain ext4 modes (encryption, data=3Djournal, inline data) cause
+> Direct I/O to be a no-op.  Instead of making DIO fail silently, make
+> the open with the O_DIRECT flag fail with EINVAL.
+>
+> This will avoid surprises to application programs, and also signal to
+> xfstests not to try O_DIRECT tests for file system modes where it
+> doesn't work (and could result in test failures).
+>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/file.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+>
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index fa2208b..4113676 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -372,7 +372,12 @@ static int ext4_file_open(struct inode * inode, stru=
+ct file * filp)
+>  			return -EACCES;
+>  		if (ext4_encryption_info(inode) =3D=3D NULL)
+>  			return -ENOKEY;
+> +		if (filp->f_flags & O_DIRECT)
+> +			return -EINVAL;
+>  	}
+> +	if ((ext4_should_journal_data(inode) || ext4_has_inline_data(inode)) &&
+> +	    (filp->f_flags & O_DIRECT))
+Hmm...
+__ext4_new_inode set EXT4_STATE_MAY_INLINE_DATA for each inode if
+ext4_has_feature_inline_data(sb) is true.
+So this may result in complain from user who want inline data
+optimization for small files, but also want O_DIRECT to works.
+IMHO it is reasonable to convert inline inodes to regular ones if user
+open it for WRITE with O_DIRECT
+> +		return -EINVAL;
+>=20=20
+>  	dir =3D dget_parent(file_dentry(filp));
+>  	if (ext4_encrypted_inode(d_inode(dir)) &&
+> --=20
+> 2.5.0
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBCgAGBQJXHeTGAAoJELhyPTmIL6kBsxsH/0KqaoRe5aYxgpzQy3t4aV93
+i6g1BCo4HYKiGkJSyApRjkyzWqopEp0aW5Z6JcysYKH/2KgoWmJK4qzifSWC/F6P
+ihmt1xBbsBO7Swtey5VBvtnSYDdBdXfl5I9P7AuCnkUxZ/KI1sAuFv9XcOqjrheH
+GoUa7GV0+owgP1REzw3YGEnbG586Tj3H4m3g+WMJCIjGWFR56+KIHt1IcUTlxaH0
+07D4euCricaBI9Y8aFTOFBW535g6MR4aU00yB45kt7b4bt8ox83UIsbaBYbDCYw9
+0p8z2sR84mpsIyqNCW4LzOvGNatGyy180ZfvQ1ClUWKcVcJHjAI9V/HteaeVL8A=
+=Vcre
+-----END PGP SIGNATURE-----
+--=-=-=--
