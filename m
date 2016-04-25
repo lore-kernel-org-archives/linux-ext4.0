@@ -1,53 +1,37 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Mon, 25 Apr 2016 11:32:08 -0400
-Message-ID: <x49r3dt7lhj.fsf@segfault.boston.devel.redhat.com>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
-	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
-	<20160420205923.GA24797@infradead.org>
-	<1461434916.3695.7.camel@intel.com>
-	<20160425083114.GA27556@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2image: ignore checksum errors
+Date: Mon, 25 Apr 2016 12:03:08 -0400
+Message-ID: <20160425160308.GB17864@thunk.org>
+References: <20160419192030.GA16270@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Verma\, Vishal L" <vishal.l.verma@intel.com>,
-	"axboe\@fb.com" <axboe@fb.com>, "jack\@suse.cz" <jack@suse.cz>,
-	"linux-nvdimm\@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"david\@fromorbit.com" <david@fromorbit.com>,
-	"linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs\@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-block\@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"linux-mm\@kvack.org" <linux-mm@kvack.org>,
-	"Wilcox\, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm\@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: "hch\@infradead.org" <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160425083114.GA27556@infradead.org> (hch@infradead.org's
-	message of "Mon, 25 Apr 2016 01:31:14 -0700")
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37132 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754683AbcDYQDN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Apr 2016 12:03:13 -0400
+Content-Disposition: inline
+In-Reply-To: <20160419192030.GA16270@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-"hch@infradead.org" <hch@infradead.org> writes:
+On Tue, Apr 19, 2016 at 12:20:30PM -0700, Darrick J. Wong wrote:
+> Since e2image is used to capture broken fs images for debugging,
+> ignore checksum errors when creating the image.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-> On Sat, Apr 23, 2016 at 06:08:37PM +0000, Verma, Vishal L wrote:
->> direct_IO might fail with -EINVAL due to misalignment, or -ENOMEM due
->> to some allocation failing, and I thought we should return the original
->> -EIO in such cases so that the application doesn't lose the information
->> that the bad block is actually causing the error.
->
-> EINVAL is a concern here.  Not due to the right error reported, but
-> because it means your current scheme is fundamentally broken - we
-> need to support I/O at any alignment for DAX I/O, and not fail due to
-> alignbment concernes for a highly specific degraded case.
->
-> I think this whole series need to go back to the drawing board as I
-> don't think it can actually rely on using direct I/O as the EIO
-> fallback.
+Thanks, applied.
 
-The only callers of dax_do_io are direct_IO methods.
+BTW, the "m" series in tests was originally intended to be for mke2fs
+tests.  However, some MMP tests have already been named m_*, and it
+seems some folks have been assuming that miscellaneous tests should be
+named m_*.
 
-Cheers,
-Jeff
+We do have already a category for e2image tests, which is "i", so I've
+renamed the test to i_bad_csum.
+
+
+						- Ted
