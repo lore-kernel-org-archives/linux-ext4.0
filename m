@@ -1,70 +1,104 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: refuse O_DIRECT opens for mode where DIO doesn't
- work
-Date: Tue, 26 Apr 2016 09:49:46 +1000
-Message-ID: <20160425234946.GB26977@dastard>
-References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
- <877ffmhvzt.fsf@openvz.org>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Mon, 25 Apr 2016 23:53:13 +0000
+Message-ID: <1461628381.1421.24.camel@intel.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	 <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+	 <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+	 <20160420205923.GA24797@infradead.org> <1461434916.3695.7.camel@intel.com>
+	 <20160425083114.GA27556@infradead.org> <1461604476.3106.12.camel@intel.com>
+	 <20160425232552.GD18496@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Dmitry Monakhov <dmonlist@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:13148 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751456AbcDYXtu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Apr 2016 19:49:50 -0400
-Content-Disposition: inline
-In-Reply-To: <877ffmhvzt.fsf@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: "david@fromorbit.com" <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160425232552.GD18496@dastard>
+Content-Language: en-US
+Content-ID: <7502BB94DF2B3F4BBDDD7D995E54F60F@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 25, 2016 at 12:35:02PM +0300, Dmitry Monakhov wrote:
-> Theodore Ts'o <tytso@mit.edu> writes:
-> 
-> > Certain ext4 modes (encryption, data=journal, inline data) cause
-> > Direct I/O to be a no-op.  Instead of making DIO fail silently, make
-> > the open with the O_DIRECT flag fail with EINVAL.
-> >
-> > This will avoid surprises to application programs, and also signal to
-> > xfstests not to try O_DIRECT tests for file system modes where it
-> > doesn't work (and could result in test failures).
-> >
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > ---
-> >  fs/ext4/file.c | 5 +++++
-> >  1 file changed, 5 insertions(+)
-> >
-> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> > index fa2208b..4113676 100644
-> > --- a/fs/ext4/file.c
-> > +++ b/fs/ext4/file.c
-> > @@ -372,7 +372,12 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
-> >  			return -EACCES;
-> >  		if (ext4_encryption_info(inode) == NULL)
-> >  			return -ENOKEY;
-> > +		if (filp->f_flags & O_DIRECT)
-> > +			return -EINVAL;
-> >  	}
-> > +	if ((ext4_should_journal_data(inode) || ext4_has_inline_data(inode)) &&
-> > +	    (filp->f_flags & O_DIRECT))
-> Hmm...
-> __ext4_new_inode set EXT4_STATE_MAY_INLINE_DATA for each inode if
-> ext4_has_feature_inline_data(sb) is true.
-> So this may result in complain from user who want inline data
-> optimization for small files, but also want O_DIRECT to works.
-> IMHO it is reasonable to convert inline inodes to regular ones if user
-> open it for WRITE with O_DIRECT
-
-Why not just transparently fall back to buffered IO if direct IO
-cannot be done? Saves people from wondering why applications fail
-on one ext4 filesystem and not another....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+T24gVHVlLCAyMDE2LTA0LTI2IGF0IDA5OjI1ICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+
+wqANCjw+DQoNCj4gPiANCj4gPiAtIEl0IGNoZWNrcyBiYWRibG9ja3MgYW5kIGRpc2NvdmVycyBp
+dCdzIGZpbGVzIGhhdmUgbG9zdCBkYXRhDQo+IExvdHMgb2YgaGFuZC13YXZpbmcgaGVyZS4gSG93
+IGRvZXMgdGhlIGFwcGxpY2F0aW9uIG1hcCBhIGJhZA0KPiAic2VjdG9yIiB0byBhIGZpbGUgd2l0
+aG91dCBzY2FubmluZyB0aGUgZW50aXJlIGZpbGVzeXN0ZW0gdG8gZmluZA0KPiB0aGUgb3duZXIg
+b2YgdGhlIGJhZCBzZWN0b3I/DQoNClllcyB0aGlzIHdhcyBoYW5kLXdhdmV5LCBidXQgd2UgdGFs
+a2VkIGFib3V0IHRoaXMgYSBiaXQgYXQgTFNGLi4NClRoZSBpZGVhIGlzIHRoYXQgYSBwZXItYmxv
+Y2stZGV2aWNlIGJhZGJsb2NrcyBsaXN0IGlzIGF2YWlsYWJsZSBhdA0KL3N5cy9ibG9jay88cG1l
+bVg+L2JhZGJsb2Nrcy4gVGhlIGFwcGxpY2F0aW9uIChvciBhIHN1aXRhYmxlIHlldC10by1iZS0N
+CndyaXR0ZW4gbGlicmFyeSBmdW5jdGlvbikgZG9lcyBhIGZpZW1hcCB0byBmaWd1cmUgb3V0IHRo
+ZSBzZWN0b3JzIGl0cw0KZmlsZXMgYXJlIHVzaW5nLCBhbmQgY29ycmVsYXRlcyB0aGUgdHdvIGxp
+c3RzLg0KV2UgY2FuIGFsc28gbG9vayBpbnRvIHByb3ZpZGluZyBhbiBlYXNpZXItdG8tdXNlIGlu
+dGVyZmFjZSBmcm9tIHRoZQ0Ka2VybmVsLCBpbiB0aGUgZm9ybSBvZiBhbiBmaWVtYXAgZmxhZyB0
+byByZXBvcnQgb25seSB0aGUgYmFkIHNlY3RvcnMsIG9yDQphIFNFRUtfQkFEIGZsYWcuLg0KVGhl
+IGFwcGxpY2F0aW9uIGRvZXNuJ3QgaGF2ZSB0byBzY2FuIHRoZSBlbnRpcmUgZmlsZXN5c3RlbSwg
+YnV0DQpwcmVzdW1hYmx5IGl0IGtub3dzIHdoYXQgZmlsZXMgaXQgJ293bnMnLCBhbmQgZG9lcyBh
+IGZpZW1hcCBmb3IgdGhvc2UuDQoNCj4gDQo+ID4gDQo+ID4gLSBJdCB3cml0ZSgpcyB0aG9zZSBz
+ZWN0b3JzIChwb3NzaWJseSBjb252ZXJ0ZWQgdG8gZmlsZSBvZmZzZXRzDQo+ID4gdXNpbmcNCj4g
+PiBmaWVtYXApDQo+ID4gwqAgwqAgKiBUaGlzIHRyaWdnZXJzIHRoZSBmYWxsYmFjayBwYXRoLCBi
+dXQgaWYgdGhlIGFwcGxpY2F0aW9uIGlzDQo+ID4gZG9pbmcNCj4gPiB0aGlzIGxldmVsIG9mIHJl
+Y292ZXJ5LCBpdCB3aWxsIGtub3cgdGhlIHNlY3RvciBpcyBiYWQsIGFuZCB3cml0ZQ0KPiA+IHRo
+ZQ0KPiA+IGVudGlyZSBzZWN0b3INCj4gV2hlcmUgZG9lcyB0aGUgYXBwbGljYXRpb24gZmluZCB0
+aGUgZGF0YSB0aGF0IHdhcyBsb3N0IHRvIGJlIGFibGUgdG8NCj4gcmV3cml0ZSBpdD8NCg0KVGhl
+IGRhdGEgdGhhdCB3YXMgbG9zdCBpcyBnb25lIC0tIHRoaXMgYXNzdW1lcyB0aGUgYXBwbGljYXRp
+b24gaGFzIHNvbWUNCmFiaWxpdHkgdG8gcmVjb3ZlciB1c2luZyBhIGpvdXJuYWwvbG9nIG9yIG90
+aGVyIHJlZHVuZGFuY3kgLSB5ZXMsIGF0IHRoZQ0KYXBwbGljYXRpb24gbGF5ZXIuIElmIGl0IGRv
+ZXNuJ3QgaGF2ZSB0aGlzIHNvcnQgb2YgY2FwYWJpbGl0eSwgdGhlIG9ubHkNCm9wdGlvbiBpcyB0
+byByZXN0b3JlIGZpbGVzIGZyb20gYSBiYWNrdXAvbWlycm9yLg0KDQo+IA0KPiA+IA0KPiA+IC0g
+T3IgaXQgcmVwbGFjZXMgdGhlIGVudGlyZSBmaWxlIGZyb20gYmFja3VwIGFsc28gdXNpbmcgd3Jp
+dGUoKSAobm90DQo+ID4gbW1hcCtzdG9yZXMpDQo+ID4gwqAgwqAgKiBUaGlzIGp1c3QgZnJlZXMg
+dGhlIGZzIGJsb2NrLCBhbmQgdGhlIG5leHQgdGltZSB0aGUgYmxvY2sgaXMNCj4gPiByZWFsbG9j
+YXRlZCBieSB0aGUgZnMsIGl0IHdpbGwgbGlrZWx5IGJlIHplcm9lZCBmaXJzdCwgYW5kIHRoYXQg
+d2lsbA0KPiA+IGJlDQo+ID4gZG9uZSB0aHJvdWdoIHRoZSBkcml2ZXIgYW5kIHdpbGwgY2xlYXIg
+ZXJyb3JzDQo+IFRoZXJlJ3MgYW4gaW1wbGljaXQgYXNzdW1wdGlvbiB0aGF0IGFwcGxpY2F0aW9u
+cyB3aWxsIGtlZXAgcmVkdW5kYW50DQo+IGNvcGllcyBvZiB0aGVpciBkYXRhIGF0IHRoZSAvYXBw
+bGljYXRpb24gbGF5ZXIvIGFuZCBiZSBhYmxlIHRvDQo+IGF1dG9tYXRpY2FsbHkgcmVwYWlyIGl0
+PyBBbmQgdGhlbiB0aGVyZSdzIHRoZSBpbXBsaWNpdCBhc3N1bXB0aW9uDQo+IHRoYXQgaXQgd2ls
+bCB1bmxpbmsgYW5kIGZyZWUgdGhlIGVudGlyZSBmaWxlIGJlZm9yZSB3cml0aW5nIGEgbmV3DQo+
+IGNvcHksIGFuZCB0aGF0IHRoZW4gYXNzdW1lcyB0aGUgdGhlIGZpbGVzeXN0ZW0gd2lsbCB6ZXJv
+IGJsb2NrcyBpZg0KPiB0aGV5IGdldCByZXVzZWQgdG8gY2xlYXIgZXJyb3JzIG9uIHRoYXQgTEJB
+IHNlY3RvciBtYXBwaW5nIGJlZm9yZQ0KPiB0aGV5IGFyZSBhY2Nlc3NpYmxlIGFnYWluIHRvIHVz
+ZXJzcGFjZS4uDQo+IA0KPiBJdCBzZWVtcyB0byBtZSB0aGF0IHRoZXJlIGFyZSBhIG51bWJlciBv
+ZiBhc3N1bXB0aW9ucyBiZWluZyBtYWRlDQo+IGFjcm9zcyBtdWx0aXBsZSBsYXllcnMgaGVyZS4g
+TWF5YmUgSSd2ZSBtaXNzZWQgc29tZXRoaW5nIC0gY2FuIHlvdQ0KPiBwb2ludCBtZSB0byB0aGUg
+ZGVzaWduL2FyY2hpdGVjdHVyZSBkZXNjcmlwdGlvbiBzbyBJIGNhbiBzZWUgaG93DQo+ICJhcHAg
+ZG9lcyBkYXRhIHJlY292ZXJ5IGl0c2VsZiIgZGFuY2UgaXMgc3VwcG9zZWQgdG8gd29yaz8NCg0K
+VGhlcmUgaXNuJ3QgYSBkb2N1bWVudCBvdGhlciB0aGFuIHRoZSBmbG93IGluIG15IGhlYWQgOikg
+LSBidXQgbWF5YmUgSQ0KY291bGQgd3JpdGUgb25lIHVwLi4NCkkgd2Fzbid0IHRoaW5raW5nIHRo
+ZSBhcHBsaWNhdGlvbiBpdHNlbGYgbWFpbnRhaW5zIGFuZCByZXN0b3JlcyBmcm9tDQpiYWNrdXAg
+Y29weSBvZiB0aGUgZmlsZS4uIFRoZSBhcHBsaWNhdGlvbiBoaXRzIGVpdGhlciBhIFNJR0JVUyBv
+ciBFSU8NCmRlcGVuZGluZyBvbiBob3cgaXQgYWNjZXNzZXMgdGhlIGRhdGEsIGFuZCBjcmFzaGVz
+IG9yIHJhaXNlcyBzb21lIGFsYXJtLg0KVGhlIHJlY292ZXJ5IGlzIHRoZW4gZG9uZSBvdXQtb2Yt
+YmFuZCwgYnkgYSBzeXNhZG1pbiBvciBzdWNoIChpLmUuDQpkZWxldGUgdGhlIGZpbGUsIHJlcGxh
+Y2Ugd2l0aCBhIGtub3duIGdvb2QgY29weSwgcmVzdGFydCBhcHBsaWNhdGlvbikuDQoNClRvIHN1
+bW1hcml6ZSwgdGhlIHR3byBjYXNlcyB3ZSB3YW50IHRvIGhhbmRsZSBhcmU6DQoxLiBBcHBsaWNh
+dGlvbiBoYXMgaW5idWlsdCByZWNvdmVyeToNCsKgIC0gaGl0cyBiYWRibG9jaw0KwqAgLSBmaWd1
+cmVzIG91dCBpdCBpcyBhYmxlIHRvIHJlY292ZXIgdGhlIGRhdGENCsKgIC0gaGFuZGxlcyBTSUdC
+VVMgb3IgRUlPDQrCoCAtIGRvZXMgYSAoc2VjdG9yIGFsaWduZWQpIHdyaXRlKCkgdG8gcmVzdG9y
+ZSB0aGUgZGF0YQ0KMi4gQXBwbGljYXRpb24gZG9lc24ndCBoYXZlIGFueSBpbmJ1aWx0IHJlY292
+ZXJ5IG1lY2hhbmlzbQ0KwqAgLSBoaXRzIGJhZGJsb2NrDQrCoCAtIGdldHMgU0lHQlVTIChvciBF
+SU8pIGFuZCBjcmFzaGVzDQrCoCAtIFN5c2FkbWluIHJlc3RvcmVzIGZpbGUgZnJvbSBiYWNrdXAN
+Cg0KQ2FzZSAxIGlzIGhhbmRsZWQgYnkgZWl0aGVyIGEgZmFsbGJhY2sgdG8gZGlyZWN0X0lPIGZy
+b20gZGF4X2RvX2lvLCBvcg0KYWx3YXlzIF9hY3R1YWxseV8gZG9pbmcgZGlyZWN0X0lPIHdoZW4g
+d2UncmUgb3BlbmVkIHdpdGggT19ESVJFQ1QgaW4NCnNwaXRlIG9mIGRheCAod2hhdCBEYW4gc3Vn
+Z2VzdGVkKS4gQ3VycmVudGx5IGlmIHdlJ3JlIG1vdW50ZWQgd2l0aCBkYXgsDQphbGwgSU8gT19E
+SVJFQ1Qgb3Igb3RoZXJ3aXNlIHdpbGwgZ28gdGhyb3VnaCBkYXhfZG9faW8uDQpDYXNlIDIgaXMg
+aGFuZGxlZCBieSBwYXRjaCA0IG9mIHRoZSBzZXJpZXM6DQrCoCDCoCBkYXg6IHVzZSBzYl9pc3N1
+ZV96ZXJvdXQgaW5zdGVhZCBvZiBjYWxsaW5nIGRheF9jbGVhcl9zZWN0b3JzDQoNCj4gDQo+IENo
+ZWVycywNCj4gDQo+IERhdmUu
