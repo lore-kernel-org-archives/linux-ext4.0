@@ -1,108 +1,70 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Mon, 25 Apr 2016 16:43:14 -0700
-Message-ID: <CAPcyv4i6iwm1iY2mQ5yRbYfRexQroUX_R0B-db4ROU837fratw@mail.gmail.com>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
-	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
-	<20160420205923.GA24797@infradead.org>
-	<1461434916.3695.7.camel@intel.com>
-	<20160425083114.GA27556@infradead.org>
-	<1461604476.3106.12.camel@intel.com>
-	<20160425232552.GD18496@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] ext4: refuse O_DIRECT opens for mode where DIO doesn't
+ work
+Date: Tue, 26 Apr 2016 09:49:46 +1000
+Message-ID: <20160425234946.GB26977@dastard>
+References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
+ <877ffmhvzt.fsf@openvz.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Verma, Vishal L" <vishal.l.verma@intel.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>, "jack@suse.cz" <jack@suse.cz>,
-	"axboe@fb.com" <axboe@fb.com>, "linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"hch@infradead.org" <hch@infradead.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160425232552.GD18496@dastard>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Dmitry Monakhov <dmonlist@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:13148 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751456AbcDYXtu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Apr 2016 19:49:50 -0400
+Content-Disposition: inline
+In-Reply-To: <877ffmhvzt.fsf@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 25, 2016 at 4:25 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Mon, Apr 25, 2016 at 05:14:36PM +0000, Verma, Vishal L wrote:
->> On Mon, 2016-04-25 at 01:31 -0700, hch@infradead.org wrote:
->> > On Sat, Apr 23, 2016 at 06:08:37PM +0000, Verma, Vishal L wrote:
->> > >
->> > > direct_IO might fail with -EINVAL due to misalignment, or -ENOMEM
->> > > due
->> > > to some allocation failing, and I thought we should return the
->> > > original
->> > > -EIO in such cases so that the application doesn't lose the
->> > > information
->> > > that the bad block is actually causing the error.
->> > EINVAL is a concern here.  Not due to the right error reported, but
->> > because it means your current scheme is fundamentally broken - we
->> > need to support I/O at any alignment for DAX I/O, and not fail due to
->> > alignbment concernes for a highly specific degraded case.
->> >
->> > I think this whole series need to go back to the drawing board as I
->> > don't think it can actually rely on using direct I/O as the EIO
->> > fallback.
->> >
->> Agreed that DAX I/O can happen with any size/alignment, but how else do
->> we send an IO through the driver without alignment restrictions? Also,
->> the granularity at which we store badblocks is 512B sectors, so it
->> seems natural that to clear such a sector, you'd expect to send a write
->> to the whole sector.
->>
->> The expected usage flow is:
->>
->> - Application hits EIO doing dax_IO or load/store io
->>
->> - It checks badblocks and discovers it's files have lost data
->
-> Lots of hand-waving here. How does the application map a bad
-> "sector" to a file without scanning the entire filesystem to find
-> the owner of the bad sector?
->
->> - It write()s those sectors (possibly converted to file offsets using
->> fiemap)
->>     * This triggers the fallback path, but if the application is doing
->> this level of recovery, it will know the sector is bad, and write the
->> entire sector
->
-> Where does the application find the data that was lost to be able to
-> rewrite it?
->
->> - Or it replaces the entire file from backup also using write() (not
->> mmap+stores)
->>     * This just frees the fs block, and the next time the block is
->> reallocated by the fs, it will likely be zeroed first, and that will be
->> done through the driver and will clear errors
->
-> There's an implicit assumption that applications will keep redundant
-> copies of their data at the /application layer/ and be able to
-> automatically repair it? And then there's the implicit assumption
-> that it will unlink and free the entire file before writing a new
-> copy, and that then assumes the the filesystem will zero blocks if
-> they get reused to clear errors on that LBA sector mapping before
-> they are accessible again to userspace..
->
-> It seems to me that there are a number of assumptions being made
-> across multiple layers here. Maybe I've missed something - can you
-> point me to the design/architecture description so I can see how
-> "app does data recovery itself" dance is supposed to work?
->
+On Mon, Apr 25, 2016 at 12:35:02PM +0300, Dmitry Monakhov wrote:
+> Theodore Ts'o <tytso@mit.edu> writes:
+> 
+> > Certain ext4 modes (encryption, data=journal, inline data) cause
+> > Direct I/O to be a no-op.  Instead of making DIO fail silently, make
+> > the open with the O_DIRECT flag fail with EINVAL.
+> >
+> > This will avoid surprises to application programs, and also signal to
+> > xfstests not to try O_DIRECT tests for file system modes where it
+> > doesn't work (and could result in test failures).
+> >
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > ---
+> >  fs/ext4/file.c | 5 +++++
+> >  1 file changed, 5 insertions(+)
+> >
+> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> > index fa2208b..4113676 100644
+> > --- a/fs/ext4/file.c
+> > +++ b/fs/ext4/file.c
+> > @@ -372,7 +372,12 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+> >  			return -EACCES;
+> >  		if (ext4_encryption_info(inode) == NULL)
+> >  			return -ENOKEY;
+> > +		if (filp->f_flags & O_DIRECT)
+> > +			return -EINVAL;
+> >  	}
+> > +	if ((ext4_should_journal_data(inode) || ext4_has_inline_data(inode)) &&
+> > +	    (filp->f_flags & O_DIRECT))
+> Hmm...
+> __ext4_new_inode set EXT4_STATE_MAY_INLINE_DATA for each inode if
+> ext4_has_feature_inline_data(sb) is true.
+> So this may result in complain from user who want inline data
+> optimization for small files, but also want O_DIRECT to works.
+> IMHO it is reasonable to convert inline inodes to regular ones if user
+> open it for WRITE with O_DIRECT
 
-Maybe I missed something, but all these assumptions are already
-present for typical block devices, i.e. sectors may go bad and a write
-may make the sector usable again.  This patch series is extending that
-out to the DAX-mmap case, but it's the same principle of "write to
-clear error" that we live with in the block-I/O path.  What
-clarification are you looking for beyond that point?
+Why not just transparently fall back to buffered IO if direct IO
+cannot be done? Saves people from wondering why applications fail
+on one ext4 filesystem and not another....
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
