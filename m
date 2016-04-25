@@ -1,73 +1,58 @@
-From: Barry Kauler <bkauler@gmail.com>
-Subject: Re: f.s. corruption ext3, kernel 4.4.8
-Date: Mon, 25 Apr 2016 10:33:17 +0800
-Message-ID: <CABWT5yi0SF1HhtWPfM36ibRja-fhaeGFfVgZz5_8Q-NX9fkkCg@mail.gmail.com>
-References: <CABWT5yh98_f5=Y0k7_ELHM=fn35s0Eb5D5kmDCSsFMikgmscnQ@mail.gmail.com>
-	<20160425021413.GM20980@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH] e2fsck: update j_tail_sequence after recovery
+Date: Mon, 25 Apr 2016 13:43:32 +0900
+Message-ID: <1461559412-4751-1-git-send-email-daeho.jeong@samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>,
+	Youngjin Gil <youngjin.gil@samsung.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f180.google.com ([209.85.161.180]:36121 "EHLO
-	mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751995AbcDYCdS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Apr 2016 22:33:18 -0400
-Received: by mail-yw0-f180.google.com with SMTP id o66so183915725ywc.3
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2016 19:33:17 -0700 (PDT)
-In-Reply-To: <20160425021413.GM20980@thunk.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:44484 "EHLO
+	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146AbcDYEmb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 00:42:31 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0O66018T2AETKN10@mailout3.samsung.com> for
+ linux-ext4@vger.kernel.org; Mon, 25 Apr 2016 13:42:29 +0900 (KST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 4/25/16, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Apr 25, 2016 at 09:46:19AM +0800, Barry Kauler wrote:
->> I sent this direct to Greg KH yesterday morning. 24 hours later got an
->> automated reply to send my email to one of the lists.
->>
->> I'm a user, not a kernel developer, gotta post this somewhere.
->>
->> I reckon this is urgent.
->> I have rolled back from 4.4.8 to 4.4.7, have used heavily for 24 hours
->> since then,
->> no problem. So, it's the kernel, not my laptop.
->
-> No one else has reported any problems to date, and there are only two
-> changes in ext4 code between v4.4.7 and v4.4.8, neither of which seem
-> at all likely to cause file system corruption.
->
-> ee8516a ext4: ignore quota mount options if the quota feature is enabled
-> 321299a ext4: add lockdep annotations for i_data_sem
->
-> If you can send us the "EXT4-fs error" message that would have been
-> logged before the file system went read-only, or the output from
-> e2fsck, that might be helpful in matching up your report from any
-> others, or to have some insight into what might have happened.
->
-> Unfortunately, without any more information there's not much we can do
-> with your report other than to keep an ear out in case anyone else
-> complains.
->
+When journal is released, s_sequence is set to j_tail_sequence.
+But, currently, even if the recovery process is successfully completed,
+the j_tail_sequence and, finally, s_sequence are never changed. By this,
+when we repeat doing power-off the device suddenly and executing e2fsck
+without full scan before mount, the s_sequence number will never change
+and, in a very rare case, newly generated journal logs will be
+surprisingly grafted to the old journal logs. In this case, out-of-date
+metadata log can be replayed on the filesystem area and the filesystem
+can be crashed unintentionally by journal recovery process. Therefore,
+we need to update j_tail_sequence after recovery process is successfully
+completed in e2fsck.
 
-Thanks for the response.
+Youngjin had repeated this test and found the problem. With our test,
+the filesystem crash occurred within 4 hours.
 
-My kernel is still not using EXT4_USE_FOR_EXT23
+Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+---
+ e2fsck/journal.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-My config is:
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index c8ac57d..83256d8 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -948,6 +948,8 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+ 		mark_buffer_dirty(journal->j_sb_buffer);
+ 	}
+ 
++	journal->j_tail_sequence = journal->j_transaction_sequence;
++
+ errout:
+ 	journal_destroy_revoke(journal);
+ 	journal_destroy_revoke_caches();
+-- 
+1.7.9.5
 
-CONFIG_EXT2_FS=y
-CONFIG_EXT2_FS_XATTR=y
-CONFIG_EXT2_FS_POSIX_ACL=y
-# CONFIG_EXT2_FS_SECURITY is not set
-CONFIG_EXT3_FS=y
-CONFIG_EXT3_FS_POSIX_ACL=y
-# CONFIG_EXT3_FS_SECURITY is not set
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_FS_POSIX_ACL=y
-# CONFIG_EXT4_FS_SECURITY is not set
-CONFIG_EXT4_ENCRYPTION=y
-CONFIG_EXT4_FS_ENCRYPTION=y
-# CONFIG_EXT4_DEBUG is not set
-
-...is this deprecated?
-
-Just asking, as if everyone else is using EXT4_USE_FOR_EXT23, then
-perhaps they won't hit my problem.
