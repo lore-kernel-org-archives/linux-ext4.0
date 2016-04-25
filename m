@@ -1,58 +1,51 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH] e2fsck: update j_tail_sequence after recovery
-Date: Mon, 25 Apr 2016 13:43:32 +0900
-Message-ID: <1461559412-4751-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>,
-	Youngjin Gil <youngjin.gil@samsung.com>
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+From: "hch@infradead.org" <hch@infradead.org>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Mon, 25 Apr 2016 01:31:14 -0700
+Message-ID: <20160425083114.GA27556@infradead.org>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+ <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+ <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+ <20160420205923.GA24797@infradead.org>
+ <1461434916.3695.7.camel@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "hch@infradead.org" <hch@infradead.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"david@fromorbit.com" <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:44484 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751146AbcDYEmb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 00:42:31 -0400
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0O66018T2AETKN10@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Mon, 25 Apr 2016 13:42:29 +0900 (KST)
+Received: from bombadil.infradead.org ([198.137.202.9]:42934 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753860AbcDYIbS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2016 04:31:18 -0400
+Content-Disposition: inline
+In-Reply-To: <1461434916.3695.7.camel@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When journal is released, s_sequence is set to j_tail_sequence.
-But, currently, even if the recovery process is successfully completed,
-the j_tail_sequence and, finally, s_sequence are never changed. By this,
-when we repeat doing power-off the device suddenly and executing e2fsck
-without full scan before mount, the s_sequence number will never change
-and, in a very rare case, newly generated journal logs will be
-surprisingly grafted to the old journal logs. In this case, out-of-date
-metadata log can be replayed on the filesystem area and the filesystem
-can be crashed unintentionally by journal recovery process. Therefore,
-we need to update j_tail_sequence after recovery process is successfully
-completed in e2fsck.
+On Sat, Apr 23, 2016 at 06:08:37PM +0000, Verma, Vishal L wrote:
+> direct_IO might fail with -EINVAL due to misalignment, or -ENOMEM due
+> to some allocation failing, and I thought we should return the original
+> -EIO in such cases so that the application doesn't lose the information
+> that the bad block is actually causing the error.
 
-Youngjin had repeated this test and found the problem. With our test,
-the filesystem crash occurred within 4 hours.
+EINVAL is a concern here.  Not due to the right error reported, but
+because it means your current scheme is fundamentally broken - we
+need to support I/O at any alignment for DAX I/O, and not fail due to
+alignbment concernes for a highly specific degraded case.
 
-Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
----
- e2fsck/journal.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index c8ac57d..83256d8 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -948,6 +948,8 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
- 		mark_buffer_dirty(journal->j_sb_buffer);
- 	}
- 
-+	journal->j_tail_sequence = journal->j_transaction_sequence;
-+
- errout:
- 	journal_destroy_revoke(journal);
- 	journal_destroy_revoke_caches();
--- 
-1.7.9.5
+I think this whole series need to go back to the drawing board as I
+don't think it can actually rely on using direct I/O as the EIO
+fallback.
 
