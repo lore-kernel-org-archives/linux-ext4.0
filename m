@@ -1,57 +1,74 @@
-From: Nikhilesh Reddy <reddyn@codeaurora.org>
-Subject: Emergency remount readonly and EFBIG errors when unlinking files
- on 3.18 android kernel
-Date: Tue, 26 Apr 2016 15:08:27 -0700
-Message-ID: <571FE6DB.8030604@codeaurora.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/2] mm, debug: report when GFP_NO{FS,IO} is used
+ explicitly from memalloc_no{fs,io}_{save,restore} context
+Date: Wed, 27 Apr 2016 08:58:45 +1000
+Message-ID: <20160426225845.GF26977@dastard>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+ <1461671772-1269-3-git-send-email-mhocko@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:48822 "EHLO
-	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752170AbcDZWIa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2016 18:08:30 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	logfs@logfs.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Michal Hocko <mhocko@suse.com>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1461671772-1269-3-git-send-email-mhocko@kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi
+On Tue, Apr 26, 2016 at 01:56:12PM +0200, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
+> 
+> THIS PATCH IS FOR TESTING ONLY AND NOT MEANT TO HIT LINUS TREE
+> 
+> It is desirable to reduce the direct GFP_NO{FS,IO} usage at minimum and
+> prefer scope usage defined by memalloc_no{fs,io}_{save,restore} API.
+> 
+> Let's help this process and add a debugging tool to catch when an
+> explicit allocation request for GFP_NO{FS,IO} is done from the scope
+> context. The printed stacktrace should help to identify the caller
+> and evaluate whether it can be changed to use a wider context or whether
+> it is called from another potentially dangerous context which needs
+> a scope protection as well.
 
-As you know Android uses emergency remount instead of doing something 
-like "umount -a" in its shutdown/reboot path.
+You're going to get a large number of these from XFS. There are call
+paths in XFs that get called both inside and outside transaction
+context, and many of them are marked with GFP_NOFS to prevent issues
+that have cropped up in the past.
 
-https://android.googlesource.com/platform/system/core/+/master/libcutils/android_reboot.c#132
+Often these are to silence lockdep warnings (e.g. commit b17cb36
+("xfs: fix missing KM_NOFS tags to keep lockdep happy")) because
+lockdep gets very unhappy about the same functions being called with
+different reclaim contexts. e.g.  directory block mapping might
+occur from readdir (no transaction context) or within transactions
+(create/unlink). hence paths like this are tagged with GFP_NOFS to
+stop lockdep emitting false positive warnings....
 
-I have seen a strange issue that sometimes occurs when there are a large 
-number of writes to an ext4 file system and an adb reboot is issued ( 
-triggering an emergency remount readonly and a reboot)
+Removing the GFP_NOFS flags in situations like this is simply going
+to restart the flood of false positive lockdep warnings we've
+silenced over the years, so perhaps lockdep needs to be made smarter
+as well...
 
-Teh issue doesnt happen all the writer processes are killed before the 
-emergency remount
+Cheers,
 
-And on disk we see that one of the files being written to has incorrect
-ext4_inode->i_blocks_lo ( which is less than the the size of the file by 
-something like 2k)
-
-When unlinking this file the vfs inode->iblocks underflows and we end up 
-with EFBIG if EXT4_FEATURE_RO_COMPAT_HUGE_FILE is not enabled in the 
-superblock.
-
-Is this a known issue?
-
-I am still trying to figure out why we have a incorrect i_blocks_lo on 
-the disk.
-
-Running fsck on the partition does fix the issue but i am trying to 
-figure out why this would happen and how to fix it.
-
-I would appreciate if you could point me in the right direction and any 
-help you can give me.
+Dave.
 
 -- 
-Thanks
-Nikhilesh Reddy
+Dave Chinner
+david@fromorbit.com
 
-Qualcomm Innovation Center, Inc.
-The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-a Linux Foundation Collaborative Project.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
