@@ -1,56 +1,87 @@
-From: Mike Marshall <hubcap@omnibond.com>
-Subject: Re: O_DIRECT as a hint, was: Re: [PATCH] ext4: refuse O_DIRECT opens
- for mode where DIO doesn't work
-Date: Tue, 26 Apr 2016 11:07:40 -0400
-Message-ID: <CAOg9mSSVy_AHiZkLwPx4nKrwXFgSZJNSW1YQiystkZ28cjHmqA@mail.gmail.com>
-References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
-	<877ffmhvzt.fsf@openvz.org>
-	<20160425234946.GB26977@dastard>
-	<20160426081451.GA25616@infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Tue, 26 Apr 2016 17:31:18 +0200
+Message-ID: <20160426153118.GI27612@quack2.suse.cz>
+References: <20160425083114.GA27556@infradead.org>
+ <1461604476.3106.12.camel@intel.com>
+ <20160425232552.GD18496@dastard>
+ <CAPcyv4i6iwm1iY2mQ5yRbYfRexQroUX_R0B-db4ROU837fratw@mail.gmail.com>
+ <20160426001157.GE18496@dastard>
+ <CAPcyv4i0qnCrzsTQT-v84OhnhjmVBFJ8gKoyu6XkuUwH0babfQ@mail.gmail.com>
+ <20160426025645.GG18496@dastard>
+ <CAPcyv4hg6O3nvD7aXuFm_GAB-1GJxqfNn=RZswj47COa9bVygA@mail.gmail.com>
+ <20160426082711.GC26977@dastard>
+ <CAPcyv4h19Cp93f+vQXapnmXLEXHE2RZGyQVo7dCnAqcmnW1GEg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Cc: Dave Chinner <david@fromorbit.com>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Dmitry Monakhov <dmonlist@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-api@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20160426081451.GA25616@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+	"Verma, Vishal L" <vishal.l.verma@intel.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"jack@suse.cz" <jack@suse.cz>, "axboe@fb.com" <axboe@fb.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4h19Cp93f+vQXapnmXLEXHE2RZGyQVo7dCnAqcmnW1GEg@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We have Orangefs users who have applications they
-can't run because the applications open with
-O_DIRECT. They are happy when I show them
-how to "pretend" to support O_DIRECT - the
-way they did it in NFS back in the 2.6 era...
+On Tue 26-04-16 07:59:10, Dan Williams wrote:
+> On Tue, Apr 26, 2016 at 1:27 AM, Dave Chinner <david@fromorbit.com> wrote:
+> > On Mon, Apr 25, 2016 at 09:18:42PM -0700, Dan Williams wrote:
+> [..]
+> > It seems to me you are focussing on code/technologies that exist
+> > today instead of trying to define an architecture that is more
+> > optimal for pmem storage systems. Yes, working code is great, but if
+> > you can't tell people how things like robust error handling and
+> > redundancy are going to work in future then it's going to take
+> > forever for everyone else to handle such errors robustly through the
+> > storage stack...
+> 
+> Precisely because higher order redundancy is built on top this baseline.
+> 
+> MD-RAID can't do it's error recovery if we don't have -EIO and
+> clear-error-on-write.  On the other hand, you're absolutely right that
+> we have a gaping hole on top of the SIGBUS recovery model, and don't
+> have a kernel layer we can interpose on top of DAX to provide some
+> semblance of redundancy.
+> 
+> In the meantime, a handful of applications with a team of full-time
+> site-reliability-engineers may be able to plug in external redundancy
+> infrastructure on top of what is defined in these patches.  For
+> everyone else, the hard problem, we need to do a lot more thinking
+> about a trap and recover solution.
 
-I was thinking of adding it to the upstream version,
-maybe as a mount option... so I like this "hint" idea...
+So we could actually implement some kind of redundancy with DAX with
+reasonable effort. We already do track dirty storage PFNs in the radix
+tree. After DAX locking patches get merged we also have a reliable way to
+write-protect them when we decide to do 'writeback' (translates to flushing
+CPU caches) for them. When we do that, we have all the infrastructure in
+place to provide 'stable pages' while some mirroring or other redundancy
+mechanism in kernel works with the data.
 
--Mike
+But as Dave said, we should do some writeup of how this is all supposed to
+work and e.g. which layer is going to be responsible for the redundancy. Do
+we want to have that in DAX code? Or just provide stable page guarantees
+from DAX and do the redundancy from device mapper? This needs more
+thought...
 
-On Tue, Apr 26, 2016 at 4:14 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Tue, Apr 26, 2016 at 09:49:46AM +1000, Dave Chinner wrote:
->> Why not just transparently fall back to buffered IO if direct IO
->> cannot be done? Saves people from wondering why applications fail
->> on one ext4 filesystem and not another....
->
-> I've been doing an audit of our direct I/O implementations, and most
-> of them does some form of transparent fallback, including some that
-> only pretend to support O_DIRECT, but do anything special for it at all,
-> while at the same time we go through greast efforts to check a file
-> system actualy supports direct I/O, leading to nasty no-op ->direct_IO
-> implementations as we even got that abstraction wrong.
->
-> At this point I wonder if we should simply treat O_DIRECT as a hint
-> and always allow it, and just let the file system optimize for it
-> (skip buffering, require alignment, relaxed Posix atomicy requirements)
-> if it is set.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
