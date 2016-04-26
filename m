@@ -1,96 +1,81 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 26 Apr 2016 10:16:22 -0700
-Message-ID: <CAPcyv4ghC3YCeZJ4UuSGjVLJ-9gmopZrkrdzZPgdJ5H9rH3fTA@mail.gmail.com>
-References: <20160425083114.GA27556@infradead.org>
-	<1461604476.3106.12.camel@intel.com>
-	<20160425232552.GD18496@dastard>
-	<CAPcyv4i6iwm1iY2mQ5yRbYfRexQroUX_R0B-db4ROU837fratw@mail.gmail.com>
-	<20160426001157.GE18496@dastard>
-	<CAPcyv4i0qnCrzsTQT-v84OhnhjmVBFJ8gKoyu6XkuUwH0babfQ@mail.gmail.com>
-	<20160426025645.GG18496@dastard>
-	<CAPcyv4hg6O3nvD7aXuFm_GAB-1GJxqfNn=RZswj47COa9bVygA@mail.gmail.com>
-	<20160426082711.GC26977@dastard>
-	<CAPcyv4h19Cp93f+vQXapnmXLEXHE2RZGyQVo7dCnAqcmnW1GEg@mail.gmail.com>
-	<20160426153118.GI27612@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Dave Chinner <david@fromorbit.com>, "Verma, Vishal L" <vishal.l.verma@intel.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>, "axboe@fb.com" <axboe@fb.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"hch@infradead.org" <hch@infradead.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>, Mike Snitzer <snitzer@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160426153118.GI27612@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] e2image: ignore checksum errors
+Date: Tue, 26 Apr 2016 15:01:45 -0600
+Message-ID: <F896D867-88C1-41BE-941D-ACD613B723FD@dilger.ca>
+References: <20160419192030.GA16270@birch.djwong.org> <20160425160308.GB17864@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_F58047F1-2267-400C-82EE-309798865F52"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:38661 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753077AbcDZVBy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Apr 2016 17:01:54 -0400
+Received: by mail-ig0-f170.google.com with SMTP id m9so24313695ige.1
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Apr 2016 14:01:54 -0700 (PDT)
+In-Reply-To: <20160425160308.GB17864@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 26, 2016 at 8:31 AM, Jan Kara <jack@suse.cz> wrote:
-> On Tue 26-04-16 07:59:10, Dan Williams wrote:
->> On Tue, Apr 26, 2016 at 1:27 AM, Dave Chinner <david@fromorbit.com> wrote:
->> > On Mon, Apr 25, 2016 at 09:18:42PM -0700, Dan Williams wrote:
->> [..]
->> > It seems to me you are focussing on code/technologies that exist
->> > today instead of trying to define an architecture that is more
->> > optimal for pmem storage systems. Yes, working code is great, but if
->> > you can't tell people how things like robust error handling and
->> > redundancy are going to work in future then it's going to take
->> > forever for everyone else to handle such errors robustly through the
->> > storage stack...
->>
->> Precisely because higher order redundancy is built on top this baseline.
->>
->> MD-RAID can't do it's error recovery if we don't have -EIO and
->> clear-error-on-write.  On the other hand, you're absolutely right that
->> we have a gaping hole on top of the SIGBUS recovery model, and don't
->> have a kernel layer we can interpose on top of DAX to provide some
->> semblance of redundancy.
->>
->> In the meantime, a handful of applications with a team of full-time
->> site-reliability-engineers may be able to plug in external redundancy
->> infrastructure on top of what is defined in these patches.  For
->> everyone else, the hard problem, we need to do a lot more thinking
->> about a trap and recover solution.
->
-> So we could actually implement some kind of redundancy with DAX with
-> reasonable effort. We already do track dirty storage PFNs in the radix
-> tree. After DAX locking patches get merged we also have a reliable way to
-> write-protect them when we decide to do 'writeback' (translates to flushing
-> CPU caches) for them. When we do that, we have all the infrastructure in
-> place to provide 'stable pages' while some mirroring or other redundancy
-> mechanism in kernel works with the data.
->
-> But as Dave said, we should do some writeup of how this is all supposed to
-> work and e.g. which layer is going to be responsible for the redundancy. Do
-> we want to have that in DAX code? Or just provide stable page guarantees
-> from DAX and do the redundancy from device mapper? This needs more
-> thought...
->
 
-[ adding Mike, since his ears are likely burning by this point ]
+--Apple-Mail=_F58047F1-2267-400C-82EE-309798865F52
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-If we had the ability to specify a range or list of ranges to
-blkdev_issue_flush() that would allow the driver level to implement
-redundancy at sync time.  And no, before someone flies off the handle,
-this isn't rehashing the same argument I lost about where to track
-dirty pfns.  Rather this relies on the radix to track dirty pfns, but
-asks the driver to do the flush operation.  In the nominal case this
-is a clflush / clwb loop or wbinvd in the pmem driver, in the
-redundancy case the pmem driver is swapped out for a driver that uses
-the flush request as a trigger point to synchronize redundant data.
 
-We want this at the driver level to take advantage of standard
-asynchronous completions, and make it administratively equivalent to
-the dm/md layering people are used to using.
+> On Apr 25, 2016, at 10:03 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> 
+> On Tue, Apr 19, 2016 at 12:20:30PM -0700, Darrick J. Wong wrote:
+>> Since e2image is used to capture broken fs images for debugging,
+>> ignore checksum errors when creating the image.
+>> 
+>> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> Thanks, applied.
+> 
+> BTW, the "m" series in tests was originally intended to be for mke2fs
+> tests.  However, some MMP tests have already been named m_*, and it
+> seems some folks have been assuming that miscellaneous tests should be
+> named m_*.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I think the "m_mmp" test is appropriately named, since it is testing
+enabling MMP at mke2fs time.  The "m_mmp_bad_{csum,magic}" tests were
+added later, and I agree they should probably be renamed "f_mmp_bad_*".
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_F58047F1-2267-400C-82EE-309798865F52
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVx/XO3Kl2rkXzB/gAQjzig//fYWKV38ojwi7mxBrv7udP4XoH5+vt3mE
+d+hvW+u+W4wanRcOeSZ8wjePu370jlisiI1Ic5uDIKdbKHE0cOci7pjCZveyq0gS
+CA5sQaijTRZFDbP2LhMSrnplvclGBDRzwPPoGFPIkTG955Ql0b4wjDB8ILfxmz7o
+Tiy2x3B09ixxQMhYkg36wwxE5jKPBeda28x0UXH3u+/FS2Q3exje3iiYzG+UtGUZ
+dRoYSZBfPZUk8C3l4WlEqfwfZXKr6UjKi5sMW/rVG+RpyduxdLAfRpKJ/pQOWMp6
+DGB+cXYLAoC9xMwlfFL0UtctAUO+UVJKpQBx2QR5ICbzdfb2xszWT5LtjLtpXfTf
+NusfWRyXtqUGUOrW95R8q+vk8cERkyZjcTLcLfvRvn+z01YW7YDoOrDic6pBuThJ
+qzuzvAVZXWf4wE4cVMlurXS4ACZac4a9Ig/sVt+NUE22h3OvkirfZ5T78k7g3Ccw
+RJOTNcUqGzBg6UyKEtDb77+ozFElRA/xb7uv6f7cgwgU2sKuOEJV1QeBDcjTuOOd
+DPPTLMIWjJsXCbz8w/8/qgpRDF5AzkYM0IJ08NjE1jM4VcK8ZpChH1dA4I8iHaHW
+5iypte/zJGEcQekIWYhU+wGwqv67W6QmSqMRi8zQSHcHvofqPumTYonUuWjWcJn7
+eecC1WtXtwk=
+=4LsU
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_F58047F1-2267-400C-82EE-309798865F52--
