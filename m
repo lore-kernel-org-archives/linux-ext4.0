@@ -1,59 +1,62 @@
-From: "hch@infradead.org" <hch@infradead.org>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 26 Apr 2016 01:33:32 -0700
-Message-ID: <20160426083332.GB364@infradead.org>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
- <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
- <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
- <20160420205923.GA24797@infradead.org>
- <1461434916.3695.7.camel@intel.com>
- <20160425083114.GA27556@infradead.org>
- <1461604476.3106.12.camel@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "hch@infradead.org" <hch@infradead.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"david@fromorbit.com" <david@fromorbit.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: [PATCH 0/2] scop GFP_NOFS api
+Date: Tue, 26 Apr 2016 13:56:10 +0200
+Message-ID: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Chris Mason <clm@fb.com>,
+	Jan Kara <jack@suse.cz>,
+	ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org,
+	logfs@logfs.org,
+	xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: <linux-mm@kvack.org>,
+	<linux-fsdevel@vger.kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1461604476.3106.12.camel@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 25, 2016 at 05:14:36PM +0000, Verma, Vishal L wrote:
-> - Application hits EIO doing dax_IO or load/store io
-> 
-> - It checks badblocks and discovers it's files have lost data
-> 
-> - It write()s those sectors (possibly converted to file offsets using
-> fiemap)
-> ?? ?? * This triggers the fallback path, but if the application is doing
-> this level of recovery, it will know the sector is bad, and write the
-> entire sector
+Hi,
+we have discussed this topic at LSF/MM this year. There was a general
+interest in the scope GFP_NOFS allocation context among some FS
+developers. For those who are not aware of the discussion or the issue
+I am trying to sort out (or at least start in that direction) please
+have a look at patch 1 which adds memalloc_nofs_{save,restore} api
+which basically copies what we have for the scope GFP_NOIO allocation
+context. I haven't converted any of the FS myself because that is way
+beyond my area of expertise but I would be happy to help with further
+changes on the MM front as well as in some more generic code paths.
 
-This sounds like a mess.
+Dave had an idea on how to further improve the reclaim context to be
+less all-or-nothing wrt. GFP_NOFS. In short he was suggesting an opaque
+and FS specific cookie set in the FS allocation context and consumed
+by the FS reclaim context to allow doing some provably save actions
+that would be skipped due to GFP_NOFS normally.  I like this idea and
+I believe we can go that direction regardless of the approach taken here.
+Many filesystems simply need to cleanup their NOFS usage first before
+diving into a more complex changes.
 
-> I think if we want to keep allowing arbitrary alignments for the
-> dax_do_io path, we'd need:
-> 1. To represent badblocks at a finer granularity (likely cache lines)
-> 2. To allow the driver to do IO to a *block device* at sub-sector
-> granularity
+The patch 2 is a debugging aid which warns about explicit allocation
+requests from the scope context. This is should help to reduce the
+direct usage of the NOFS flags to bare minimum in favor of the scope
+API. It is not aimed to be merged upstream. I would hope Andrew took it
+into mmotm tree to give it linux-next exposure and allow developers to
+do further cleanups.  There is a new kernel command line parameter which
+has to be used for the debugging to be enabled.
 
-It's not a block device if it supports DAX.  It's byte addressable
-memory masquerading as a block device.
+I think the GFP_NOIO should be seeing the same clean up.
+
+Any feedback is highly appreciated.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
