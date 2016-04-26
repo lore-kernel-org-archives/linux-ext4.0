@@ -1,87 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 26 Apr 2016 17:31:18 +0200
-Message-ID: <20160426153118.GI27612@quack2.suse.cz>
-References: <20160425083114.GA27556@infradead.org>
- <1461604476.3106.12.camel@intel.com>
- <20160425232552.GD18496@dastard>
- <CAPcyv4i6iwm1iY2mQ5yRbYfRexQroUX_R0B-db4ROU837fratw@mail.gmail.com>
- <20160426001157.GE18496@dastard>
- <CAPcyv4i0qnCrzsTQT-v84OhnhjmVBFJ8gKoyu6XkuUwH0babfQ@mail.gmail.com>
- <20160426025645.GG18496@dastard>
- <CAPcyv4hg6O3nvD7aXuFm_GAB-1GJxqfNn=RZswj47COa9bVygA@mail.gmail.com>
- <20160426082711.GC26977@dastard>
- <CAPcyv4h19Cp93f+vQXapnmXLEXHE2RZGyQVo7dCnAqcmnW1GEg@mail.gmail.com>
+From: Waiman Long <waiman.long@hpe.com>
+Subject: Re: [PATCH v3 1/2] ext4: Pass in DIO_SKIP_DIO_COUNT flag if inode_dio_begin()
+ called
+Date: Tue, 26 Apr 2016 12:32:17 -0400
+Message-ID: <571F9811.20305@hpe.com>
+References: <1460484775-33359-1-git-send-email-Waiman.Long@hpe.com> <1460484775-33359-2-git-send-email-Waiman.Long@hpe.com> <20160420205801.GA24609@infradead.org> <571918BC.2060007@hpe.com> <20160425114802.GA15856@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	"Verma, Vishal L" <vishal.l.verma@intel.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"jack@suse.cz" <jack@suse.cz>, "axboe@fb.com" <axboe@fb.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"hch@infradead.org" <hch@infradead.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4h19Cp93f+vQXapnmXLEXHE2RZGyQVo7dCnAqcmnW1GEg@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@linux.com>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20160425114802.GA15856@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 26-04-16 07:59:10, Dan Williams wrote:
-> On Tue, Apr 26, 2016 at 1:27 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Mon, Apr 25, 2016 at 09:18:42PM -0700, Dan Williams wrote:
-> [..]
-> > It seems to me you are focussing on code/technologies that exist
-> > today instead of trying to define an architecture that is more
-> > optimal for pmem storage systems. Yes, working code is great, but if
-> > you can't tell people how things like robust error handling and
-> > redundancy are going to work in future then it's going to take
-> > forever for everyone else to handle such errors robustly through the
-> > storage stack...
-> 
-> Precisely because higher order redundancy is built on top this baseline.
-> 
-> MD-RAID can't do it's error recovery if we don't have -EIO and
-> clear-error-on-write.  On the other hand, you're absolutely right that
-> we have a gaping hole on top of the SIGBUS recovery model, and don't
-> have a kernel layer we can interpose on top of DAX to provide some
-> semblance of redundancy.
-> 
-> In the meantime, a handful of applications with a team of full-time
-> site-reliability-engineers may be able to plug in external redundancy
-> infrastructure on top of what is defined in these patches.  For
-> everyone else, the hard problem, we need to do a lot more thinking
-> about a trap and recover solution.
+On 04/25/2016 07:48 AM, Christoph Hellwig wrote:
+> On Thu, Apr 21, 2016 at 02:15:24PM -0400, Waiman Long wrote:
+>> On 04/20/2016 04:58 PM, Christoph Hellwig wrote:
+>>> FYI, none of the Dax code even needs to ever touch the dio_count,
+>>> as dax I/O can't be asynchronous, and we thus don't need it to protect
+>>> against truncate.  I'd suggest to remove it and then end_io callback
+>> >from the DAX code entirely as a start and then move from there.
+>>
+>> Yes, it seems like we may not need to change the dio_count in dax_do_io()
+>> after all. BTW, what do mean by using end_io callback as a start?
+> I mean to remove both the i_dio_count manipulation, and the unessecary
+> end_io callback from dax_do_io.
 
-So we could actually implement some kind of redundancy with DAX with
-reasonable effort. We already do track dirty storage PFNs in the radix
-tree. After DAX locking patches get merged we also have a reliable way to
-write-protect them when we decide to do 'writeback' (translates to flushing
-CPU caches) for them. When we do that, we have all the infrastructure in
-place to provide 'stable pages' while some mirroring or other redundancy
-mechanism in kernel works with the data.
+Thanks for the clarification.
 
-But as Dave said, we should do some writeup of how this is all supposed to
-work and e.g. which layer is going to be responsible for the redundancy. Do
-we want to have that in DAX code? Or just provide stable page guarantees
-from DAX and do the redundancy from device mapper? This needs more
-thought...
+Since DAX I/O is always synchronous, the locking done by the caller or 
+in the dax_do_Io() for read should be enough to prevent truncation from 
+happening at the same time. So we don't need to use i_dio_count for that 
+purpose.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+However, I have not understood enough of the block IO layer to determine 
+if the end_io callback is really redundant. I am not confident enough to 
+touch the end_io callback.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+Longman
