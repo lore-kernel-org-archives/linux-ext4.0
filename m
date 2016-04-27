@@ -1,86 +1,85 @@
-From: NeilBrown <nfbrown@novell.com>
-Subject: Re: [PATCH 16/18] dax: New fault locking
-Date: Wed, 27 Apr 2016 14:27:59 +1000
-Message-ID: <87h9enwu9c.fsf@notabene.neil.brown.name>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz> <1461015341-20153-17-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v4 2/3] ext4: fix races between changing inode journal
+ mode and ext4_writepages
+Date: Wed, 27 Apr 2016 01:05:31 -0400
+Message-ID: <20160427050531.GD30021@thunk.org>
+References: <1457922900-30367-1-git-send-email-daeho.jeong@samsung.com>
+ <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
-Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>,
-	Jan Kara <jack@suse.cz>
-To: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1461015341-20153-17-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Daeho Jeong <daeho.jeong@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45892 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752323AbcD0FFg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Apr 2016 01:05:36 -0400
+Content-Disposition: inline
+In-Reply-To: <1457922900-30367-2-git-send-email-daeho.jeong@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-
-On Tue, Apr 19 2016, Jan Kara wrote:
-
-> Currently DAX page fault locking is racy.
->
-> CPU0 (write fault)		CPU1 (read fault)
->
-> __dax_fault()			__dax_fault()
->   get_block(inode, block, &bh, 0) -> not mapped
-> 				  get_block(inode, block, &bh, 0)
-> 				    -> not mapped
->   if (!buffer_mapped(&bh))
->     if (vmf->flags & FAULT_FLAG_WRITE)
->       get_block(inode, block, &bh, 1) -> allocates blocks
->   if (page) -> no
-> 				  if (!buffer_mapped(&bh))
-> 				    if (vmf->flags & FAULT_FLAG_WRITE) {
-> 				    } else {
-> 				      dax_load_hole();
-> 				    }
->   dax_insert_mapping()
->
-> And we are in a situation where we fail in dax_radix_entry() with -EIO.
->
-> Another problem with the current DAX page fault locking is that there is
-> no race-free way to clear dirty tag in the radix tree. We can always
-> end up with clean radix tree and dirty data in CPU cache.
->
-> We fix the first problem by introducing locking of exceptional radix
-> tree entries in DAX mappings acting very similarly to page lock and thus
-> synchronizing properly faults against the same mapping index. The same
-> lock can later be used to avoid races when clearing radix tree dirty
-> tag.
->
+On Mon, Mar 14, 2016 at 11:34:59AM +0900, Daeho Jeong wrote:
+> Now, in ext4, there is a race condition between changing inode journal
+> mode and ext4_writepages(). While ext4_writepages() is executed on
+> a non-journalled mode inode, the inode's journal mode could be enabled
+> by ioctl() and then, some pages dirtied after switching the journal
+> mode will be still exposed to ext4_writepages() in non-journaled mode.
+> To resolve this problem, we use fs-wide per-cpu rw semaphore by
+> Jan Kara's suggestion because we don't want to waste ext4_inode_info's
+> space for this extra rare case.
+> 
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Reviewed-by: NeilBrown <neilb@suse.com> (for the exception locking bits)
+Hi Daeho,
 
-I really like how you have structured the code - makes it fairly
-obviously correct!
+This patch is causing a regression for xfstests generic/231 when using
+a 1k block size (this case tests what happens when the blocksize <
+page size, such as if you are using a 4k blocksize on a Power PC
+system).
+
+If you have kvm-xfstests or gce-xfstests[1] installed you can
+reproduce it like this:
+
+	gce-xfstests -c 1k -C 10 generic/231
+
+(Or use kvm-xfstests if you don't want to get a GCE account).
+
+[1] http://thunk.org/gce-xfstests
+
+You will get this:
+
+BEGIN TEST 1k: Ext4 1k block Wed Apr 27 00:48:01 EDT 2016
+DEVICE: /dev/mapper/xt-vdd
+MK2FS OPTIONS: -q -b 1024
+MOUNT OPTIONS: -o block_validity
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 xfstests-201604270046 4.6.0-rc4-ext4-00010-geed525e
+MKFS_OPTIONS  -- -q -b 1024 /dev/mapper/xt-vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/mapper/xt-vdc /xt-vdc
+
+generic/231 64s ...	[00:48:03] [00:49:44] [failed, exit status 1] - output mismatch (see /results/results-1k/generic/231.out.bad)
+    --- tests/generic/231.out	2016-04-27 00:15:36.000000000 -0400
+    +++ /results/results-1k/generic/231.out.bad	2016-04-27 00:49:44.701895666 -0400
+    @@ -4,13 +4,10041 @@
+     Comparing user usage
+     Comparing group usage
+     === FSX Standard Mode, Memory Mapping, 4 Tasks ===
+    -All 20000 operations completed A-OK!
+    -All 20000 operations completed A-OK!
+    -All 20000 operations completed A-OK!
+    -All 20000 operations completed A-OK!
+    ...
+    (Run 'diff -u tests/generic/231.out /results/results-1k/generic/231.out.bad'  to see the entire diff)
+Ran: generic/231
+Failures: generic/231
+Failed 1 of 1 tests
+
+I'm going to drop patch 2 and 3 of your patch series from the ext4
+tree for now.   Could you take a closer look?
 
 Thanks,
-NeilBrown
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXID/PAAoJEDnsnt1WYoG5/wIQAKFDb1mOFeI0Ln2z9haVCtBT
-D2BwkEbPGydmbOYBKh6EK8BC01xb9RIfT5qiVDhqOtjpex3w7VitcxhaxbI93xpj
-RROhwEZI2fKmp88Kd9kpScQRC7mbASyKT0NpVCKHSahkXAektcMcJWB+6cTFUWue
-7jBuNIHz5yt5hrFnZcuIOzn5BJ0Gh8rfJBL7Ozxnz2hoXhTbK7V0sBheNQD/GmBl
-v3t97PLs9PUL0w82TtojZ49hW7TfUBMzKK6+w8TGxxgl+fuNqmSrG/3kjyWmuy9X
-VYwK3nvi3OTjVB6QkBGFCa5gairCQuwkBM8ERPoJvVRxCMhkDdznYwaFBg/n6gIi
-j1vVnOfMLgMGw0R8SIwVZPvOIyrNkZ0kNz8Rs0v56y5lgcfYQxrpScX9tgkBkf1a
-+nkegrsG9pS3t9bHyu4sFpG6O0R5q0x6UgL8nK1wW3nPWZADPo6eyO//xrQO8cHO
-s6efKQ7urJIRKVIlvBzO3slQ/txLRPO3HKJDc6Ubevv+eYWwChwfT171PIZTfyiI
-7ohIXuCqTDBfjHwfp8oaFPQuE1EJ9+g7MjZe5CyUqO0Qrt0hPOkR8WEzdjHbU1Rg
-TetGwAproG5GeDFOsqfKXYLStNQoBwP7ZWz/lzRJry79RmSF4/4frDU3VUe7QV68
-JjNvHPEjHXKKqIxrDjU8
-=le4b
------END PGP SIGNATURE-----
---=-=-=--
+						- Ted
+						
