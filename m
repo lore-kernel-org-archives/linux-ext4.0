@@ -1,39 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: O_DIRECT as a hint, was: Re: [PATCH] ext4: refuse O_DIRECT opens
- for mode where DIO doesn't work
-Date: Tue, 26 Apr 2016 23:25:26 -0400
-Message-ID: <20160427032526.GC30021@thunk.org>
-References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
- <877ffmhvzt.fsf@openvz.org>
- <20160425234946.GB26977@dastard>
- <20160426081451.GA25616@infradead.org>
- <20160427022746.GJ18496@dastard>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: Emergency remount readonly and EFBIG errors when unlinking files
+ on 3.18 android kernel
+Date: Wed, 27 Apr 2016 13:25:17 +1000
+Message-ID: <20160427032517.GK18496@dastard>
+References: <571FE6DB.8030604@codeaurora.org>
+ <20160427030736.GB30021@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	torvalds@linux-foundation.org,
-	Dmitry Monakhov <dmonlist@gmail.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Nikhilesh Reddy <reddyn@codeaurora.org>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:3327 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752685AbcD0DZW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Apr 2016 23:25:22 -0400
 Content-Disposition: inline
-In-Reply-To: <20160427022746.GJ18496@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160427030736.GB30021@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 27, 2016 at 12:27:46PM +1000, Dave Chinner wrote:
-> > At this point I wonder if we should simply treat O_DIRECT as a hint
-> > and always allow it, and just let the file system optimize for it
-> > (skip buffering, require alignment, relaxed Posix atomicy requirements)
-> > if it is set.
+On Tue, Apr 26, 2016 at 11:07:36PM -0400, Theodore Ts'o wrote:
+> On Tue, Apr 26, 2016 at 03:08:27PM -0700, Nikhilesh Reddy wrote:
+> > I would appreciate if you could point me in the right direction and any help
+> > you can give me.
 > 
-> I thought that's how most filesystems treated it, anyway. i.e.
-> anything they can't do via direct IO, they fell back to buffered IO
-> to complete (e.g. for allocation or append writes, etc). Hence why I
-> suggested the fallback rather than erroring out....
+> Well, what I'd do is create a new ioctl interface which simulates an
+> emergency ro on just the one device, and try to create a reliable
+> repro.  Eventually we'll want to add some tests for this in xfstests.
 
-No, some file systems return EINVAL on the open.  In fact that's what
-the _require_odirect test in xfstests relies upon....
+That's pretty much XFS_IOC_GOINGDOWN, controlled by xfs_io -c shutdown.
+I'd suggest that adding a new flag:
 
-    		     	     	      	     - Ted
+#define XFS_FSOP_GOING_FLAGS_EMERG_REMOUNT 0x4
+
+Would be in line with it's existing usage in xfstests for forcing
+different shutdown conditions on filesystems....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
