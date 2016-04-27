@@ -1,83 +1,64 @@
-From: Nikhilesh Reddy <reddyn@codeaurora.org>
-Subject: Re: Emergency remount readonly and EFBIG errors when unlinking files
- on 3.18 android kernel
-Date: Wed, 27 Apr 2016 10:56:35 -0700
-Message-ID: <5720FD53.6010707@codeaurora.org>
-References: <571FE6DB.8030604@codeaurora.org> <20160427030736.GB30021@thunk.org>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [PATCH 1.1/2] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
+Date: Wed, 27 Apr 2016 21:43:47 +0200
+Message-ID: <20160427194347.GA22544@dhcp22.suse.cz>
+References: <1461671772-1269-2-git-send-email-mhocko@kernel.org>
+ <1461758075-21815-1-git-send-email-mhocko@kernel.org>
+ <04798BA8-2157-4611-B4EA-B8BCBA88AEC3@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:46295 "EHLO
-	smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774AbcD0R4h (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Apr 2016 13:56:37 -0400
-In-Reply-To: <20160427030736.GB30021@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux MM <linux-mm@kvack.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel <cluster-devel@redhat.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	logfs@logfs.org, XFS Developers <xfs@oss.sgi.com>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <04798BA8-2157-4611-B4EA-B8BCBA88AEC3@dilger.ca>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi
+On Wed 27-04-16 11:41:51, Andreas Dilger wrote:
+> On Apr 27, 2016, at 5:54 AM, Michal Hocko <mhocko@kernel.org> wrote:
+[...]
+> > --- a/fs/xfs/kmem.c
+> > +++ b/fs/xfs/kmem.c
+> > @@ -80,13 +80,13 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
+> > 	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim re-entering
+> > 	 * the filesystem here and potentially deadlocking.
+> > 	 */
+> > -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> > +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> > 		noio_flag = memalloc_noio_save();
+> > 
+> > 	lflags = kmem_flags_convert(flags);
+> > 	ptr = __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
+> > 
+> > -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> > +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> > 		memalloc_noio_restore(noio_flag);
+> 
+> Not really the fault of this patch, but it brings this nasty bit of code into
+> the light.  Is all of this machinery still needed given that __vmalloc() can
+> accept GFP flags?  If yes, wouldn't it be better to fix __vmalloc() to honor
+> the GFP flags instead of working around it in the filesystem code?
 
-Thanks for your reply
-Yes the sentence below should have the *if* .. sorry about the typo
-The issue doesnt happen if all the writer processes/threads are killed 
-before the
-emergency remount
-
->
-> Note that an emergency remount is very much an emergency.  So we don't
-> do a graceful shutdown of any pending writes.  (Normally we would
-> return EBUSY if there anything that would prevent a clean remount.)
-> In the emergency remount path, we bypass all of these checks.
->
->> And on disk we see that one of the files being written to has incorrect
->> ext4_inode->i_blocks_lo ( which is less than the the size of the file by
->> something like 2k)
->>
->> When unlinking this file the vfs inode->iblocks underflows and we end up
->> with EFBIG if EXT4_FEATURE_RO_COMPAT_HUGE_FILE is not enabled in the
->> superblock.
->>
->> Is this a known issue?
->
-> No, this isn't a known issue.  I've never seen anything like this, but
-> all of the tests we do assume a forced poweroff, which we simulate
-> using dm-flakey.  We do *not* test the blunt-force-trauma which is
-> inflected on the file system structures which results from doing an
-> emergency remount.
->
-> Off by 2k really doesn't make sense.  I could see if it was off by 4k,
-> but 2k is really wierd.
-
-Just to clarify when i say off by 2k .. i meant the i_blocks count not 
-the actual size file ( which would be 2k * 512 if i am not wrong)
-
-For example we see fsck report
-Pass 1: Checking inodes, blocks, and sizes
-Inode XXX, i_blocks is 854024, should be 856072.
-
->
->> I would appreciate if you could point me in the right direction and any help
->> you can give me.
->
-> Well, what I'd do is create a new ioctl interface which simulates an
-> emergency ro on just the one device, and try to create a reliable
-> repro.  Eventually we'll want to add some tests for this in xfstests.
->
-
-Thanks so much for your suggestion.
-I will try to see if i can reliably reproduce the issue after 
-implementing the ioctl as you suggested.
-I have some issues getting the xfs tests to run on the device which i 
-have been meaning to work on .. maybe this is the time to do so.
-
-
+This is not that easy. __vmalloc can accept gfp flags but it doesn't
+honor __GFP_IO 100%. IIRC some paths like page table allocations are
+hardcoded GFP_KERNEL. Besides that I would like to have GFP_NOIO used
+via memalloc_noio_{save,restore} API as well for the similar reasons as
+GFP_NOFS - it is just easier to explain scope than particular code paths
+which might be shared.
 -- 
-Thanks
-Nikhilesh Reddy
-
-Qualcomm Innovation Center, Inc.
-The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
-a Linux Foundation Collaborative Project.
+Michal Hocko
+SUSE Labs
