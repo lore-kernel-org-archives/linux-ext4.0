@@ -1,106 +1,285 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v4 2/3] ext4: fix races between changing inode journal
- mode and ext4_writepages
-Date: Wed, 27 Apr 2016 10:30:32 -0400
-Message-ID: <20160427143032.GG30021@thunk.org>
-References: <1319414639.152111461744250568.JavaMail.weblogic@ep2mlwas01c>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "jack@suse.cz" <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48118 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751550AbcD0Oai (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Apr 2016 10:30:38 -0400
-Content-Disposition: inline
-In-Reply-To: <1319414639.152111461744250568.JavaMail.weblogic@ep2mlwas01c>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1.1/2] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
+Date: Wed, 27 Apr 2016 11:41:51 -0600
+Message-ID: <04798BA8-2157-4611-B4EA-B8BCBA88AEC3@dilger.ca>
+References: <1461671772-1269-2-git-send-email-mhocko@kernel.org> <1461758075-21815-1-git-send-email-mhocko@kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Linux MM <linux-mm@kvack.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel <cluster-devel@redhat.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	logfs@logfs.org, XFS Developers <xfs@oss.sgi.com>,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Michal Hocko <mhocko@suse.com>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <1461758075-21815-1-git-send-email-mhocko@kernel.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Apr 27, 2016 at 08:04:10AM +0000, Daeho Jeong wrote:
-> Oops, sorry about causing the regression.
-> 
-> But in the version I worked on, we passed the test case and
-> we still pass that. I executed the test case as belows.
-> 
-> kvm-xfstests -c 1k -C 10 generic/231
-> 
-> I am going to retry the test using GCE with the latest kernel version.
 
-Hi, sorry, it looks like I jumped to conclusions too hastily.
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-I let the tests finish last night and generic/231 is failing around
-10-20% of the time prior to your patch series.  I just didn't notice it
-at first because the failure happened at the very end:
+On Apr 27, 2016, at 5:54 AM, Michal Hocko <mhocko@kernel.org> wrote:
+>=20
+> From: Michal Hocko <mhocko@suse.com>
+>=20
+> xfs has defined PF_FSTRANS to declare a scope GFP_NOFS semantic quite
+> some time ago. We would like to make this concept more generic and use
+> it for other filesystems as well. Let's start by giving the flag a
+> more genric name PF_MEMALLOC_NOFS which is in line with an exiting
+> PF_MEMALLOC_NOIO already used for the same purpose for GFP_NOIO
+> contexts. Replace all PF_FSTRANS usage from the xfs code in the first
+> step before we introduce a full API for it as xfs uses the flag =
+directly
+> anyway.
+>=20
+> This patch doesn't introduce any functional change.
+>=20
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> ---
+> Hi,
+> as suggested by Dave, I have split up [1] into two parts. The first =
+one
+> addes a new PF flag which is just an alias to the existing PF_FSTRANS
+> and does all the renaming and the second one to introduce the generic
+> API which only changes the bare minimum in the xfs proper.
+>=20
+> fs/xfs/kmem.c             |  4 ++--
+> fs/xfs/kmem.h             |  2 +-
+> fs/xfs/libxfs/xfs_btree.c |  2 +-
+> fs/xfs/xfs_aops.c         |  6 +++---
+> fs/xfs/xfs_trans.c        | 12 ++++++------
+> include/linux/sched.h     |  2 ++
+> 6 files changed, 15 insertions(+), 13 deletions(-)
+>=20
+> diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
+> index 686ba6fb20dd..73f6ab59c664 100644
+> --- a/fs/xfs/kmem.c
+> +++ b/fs/xfs/kmem.c
+> @@ -80,13 +80,13 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t =
+flags)
+> 	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim =
+re-entering
+> 	 * the filesystem here and potentially deadlocking.
+> 	 */
+> -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> 		noio_flag =3D memalloc_noio_save();
+>=20
+> 	lflags =3D kmem_flags_convert(flags);
+> 	ptr =3D __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, =
+PAGE_KERNEL);
+>=20
+> -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> 		memalloc_noio_restore(noio_flag);
 
-xfstests results 201604270033 - 4.6.0-rc4-ext4
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231
-Failures: generic/231
+Not really the fault of this patch, but it brings this nasty bit of code =
+into
+the light.  Is all of this machinery still needed given that __vmalloc() =
+can
+accept GFP flags?  If yes, wouldn't it be better to fix __vmalloc() to =
+honor
+the GFP flags instead of working around it in the filesystem code?
 
-With your patches, it remains at about the same level, but when the
-tests failed caused me to assume they were the caused by your patches.
+Cheers, Andreas
 
-xfstests results 201604270044 - 4.6.0-rc4-ext4-00007-g76bee81 (Just before your patches)
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231
-Passed all 1 tests
+> 	return ptr;
+> diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
+> index d1c66e465ca5..0d83f332e5c2 100644
+> --- a/fs/xfs/kmem.h
+> +++ b/fs/xfs/kmem.h
+> @@ -50,7 +50,7 @@ kmem_flags_convert(xfs_km_flags_t flags)
+> 		lflags =3D GFP_ATOMIC | __GFP_NOWARN;
+> 	} else {
+> 		lflags =3D GFP_KERNEL | __GFP_NOWARN;
+> -		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +		if ((current->flags & PF_MEMALLOC_NOFS) || (flags & =
+KM_NOFS))
+> 			lflags &=3D ~__GFP_FS;
+> 	}
+>=20
+> diff --git a/fs/xfs/libxfs/xfs_btree.c b/fs/xfs/libxfs/xfs_btree.c
+> index a0eb18ce3ad3..326566f4a131 100644
+> --- a/fs/xfs/libxfs/xfs_btree.c
+> +++ b/fs/xfs/libxfs/xfs_btree.c
+> @@ -2540,7 +2540,7 @@ xfs_btree_split_worker(
+> 	struct xfs_btree_split_args	*args =3D container_of(work,
+> 						struct =
+xfs_btree_split_args, work);
+> 	unsigned long		pflags;
+> -	unsigned long		new_pflags =3D PF_FSTRANS;
+> +	unsigned long		new_pflags =3D PF_MEMALLOC_NOFS;
+>=20
+> 	/*
+> 	 * we are in a transaction context here, but may also be doing =
+work
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index d12dfcfd0cc8..6d816ff0b763 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+> @@ -124,7 +124,7 @@ xfs_setfilesize_trans_alloc(
+> 	 * We hand off the transaction to the completion thread now, so
+> 	 * clear the flag here.
+> 	 */
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	return 0;
+> }
+>=20
+> @@ -169,7 +169,7 @@ xfs_setfilesize_ioend(
+> 	 * thus we need to mark ourselves as being in a transaction =
+manually.
+> 	 * Similarly for freeze protection.
+> 	 */
+> -	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	__sb_writers_acquired(VFS_I(ip)->i_sb, SB_FREEZE_FS);
+>=20
+> 	/* we abort the update if there was an IO error */
+> @@ -979,7 +979,7 @@ xfs_vm_writepage(
+> 	 * Given that we do not allow direct reclaim to call us, we =
+should
+> 	 * never be called while in a filesystem transaction.
+> 	 */
+> -	if (WARN_ON_ONCE(current->flags & PF_FSTRANS))
+> +	if (WARN_ON_ONCE(current->flags & PF_MEMALLOC_NOFS))
+> 		goto redirty;
+>=20
+> 	/* Is this page beyond the end of the file? */
+> diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
+> index 748b16aff45a..1d247366c733 100644
+> --- a/fs/xfs/xfs_trans.c
+> +++ b/fs/xfs/xfs_trans.c
+> @@ -176,7 +176,7 @@ xfs_trans_reserve(
+> 	bool		rsvd =3D (tp->t_flags & XFS_TRANS_RESERVE) !=3D =
+0;
+>=20
+> 	/* Mark this thread as being in a transaction */
+> -	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	/*
+> 	 * Attempt to reserve the needed disk blocks by decrementing
+> @@ -186,7 +186,7 @@ xfs_trans_reserve(
+> 	if (blocks > 0) {
+> 		error =3D xfs_mod_fdblocks(tp->t_mountp, =
+-((int64_t)blocks), rsvd);
+> 		if (error !=3D 0) {
+> -			current_restore_flags_nested(&tp->t_pflags, =
+PF_FSTRANS);
+> +			current_restore_flags_nested(&tp->t_pflags, =
+PF_MEMALLOC_NOFS);
+> 			return -ENOSPC;
+> 		}
+> 		tp->t_blk_res +=3D blocks;
+> @@ -263,7 +263,7 @@ xfs_trans_reserve(
+> 		tp->t_blk_res =3D 0;
+> 	}
+>=20
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	return error;
+> }
+> @@ -921,7 +921,7 @@ __xfs_trans_commit(
+>=20
+> 	xfs_log_commit_cil(mp, tp, &commit_lsn, regrant);
+>=20
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	xfs_trans_free(tp);
+>=20
+> 	/*
+> @@ -951,7 +951,7 @@ __xfs_trans_commit(
+> 		if (commit_lsn =3D=3D -1 && !error)
+> 			error =3D -EIO;
+> 	}
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	xfs_trans_free_items(tp, NULLCOMMITLSN, !!error);
+> 	xfs_trans_free(tp);
+>=20
+> @@ -1005,7 +1005,7 @@ xfs_trans_cancel(
+> 		xfs_log_done(mp, tp->t_ticket, NULL, false);
+>=20
+> 	/* mark this thread as no longer being in a transaction */
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	xfs_trans_free_items(tp, NULLCOMMITLSN, dirty);
+> 	xfs_trans_free(tp);
+> diff --git a/include/linux/sched.h b/include/linux/sched.h
+> index acfc32b30704..820db8f98bfc 100644
+> --- a/include/linux/sched.h
+> +++ b/include/linux/sched.h
+> @@ -2115,6 +2115,8 @@ extern void thread_group_cputime_adjusted(struct =
+task_struct *p, cputime_t *ut,
+> #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not =
+count it as freezable */
+> #define PF_SUSPEND_TASK 0x80000000      /* this thread called =
+freeze_processes and should not be frozen */
+>=20
+> +#define PF_MEMALLOC_NOFS PF_FSTRANS	/* Transition to a more generic =
+GFP_NOFS scope semantic */
+> +
+> /*
+>  * Only the _current_ task can read/write to tsk->flags, but other
+>  * tasks can access tsk->flags in readonly mode for example
+> --
+> 2.8.0.rc3
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-xfstests results 201604270054 - 4.6.0-rc4-ext4-00008-g31cedaa (Your 1/3 patch)
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
 
-xfstests results 201604270052 - 4.6.0-rc4-ext4-00009-g46ceec9 (Your 2/3 patch)
-Failures: generic/231   <=== this is why I thought this commit was the regression
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231
+Cheers, Andreas
 
-xfstests results 201604270046 - 4.6.0-rc4-ext4-00010-geed525e (Your 3/3 patch)
-Failures: generic/231
-Failures: generic/231
-Failures: generic/231
-Failures: generic/231
-Failures: generic/231
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Passed all 1 tests
-Failures: generic/231   
 
-So enabling per-file data journalling and delalloc is definitely makes
-the problem much more visible, but it looks like it was always there.
 
-Apologies for the initial misdiagnosis....
 
-						- Ted
+
+
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVyD54HKl2rkXzB/gAQhFgA//ZYuehVpoM5drnP3bbKWtQjn+P6DN/JN+
+Tm6ZVTirAPubH6MoXJ2+c7UHpnxzIRKlauzLQkZih1i3oYUyC58bNJuSeJNmffsY
+QVqB/INiLvJhfSwzzUzJEAZBrrrMp5laltsy4fgc13GqRoeT4wY3IoTb4ZofuC9G
+ij6BiTMALIp6IkhPNk/9Ru5jBqWbcVTMHngMfeYrWRuzKOM7QO58ceqCYM4xsz7n
+QuH/685BricBeQYPxQXaaAM0Gh6LAUd4ctzWFBpJavT+oaJoG7/JLSTUoLU/2W0b
+pGJHCCWpY59eUz1AT13PGTYcCxo6+ta+PRtWX8qEuME5vrsCkfYgUHjkislp3avM
+dahSdlxRLo5Ji4kxUiKS9RATKRfh1G7ucKsUC+PIeaXjfQEGXaihjFFHj0ioHVtl
+vqVlOmxSCSXhwHbvLiwehrb2njBhtfTplbQ1YL370/c00tezhDbDMrp4q1GmuCGJ
+1ewQTTHhixNPogyV5ameP/4oq8CMCztnmGw65/54BCcORcOkgE4Vprwwvi+AOJP4
+DG5SdP+Sj4DdcOHI2MtDjvna9vGLbiINSsu76YPgltbvnQMqp+CUyK9qBoBsXNUi
+Aco5N8PaQWzKloGPDOeVzHdMBononKFf+4wtbaQ0kEUkX0bXdvkSJqxlDsK/6wnE
+05SCP6c8sd4=
+=dU5k
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F--
