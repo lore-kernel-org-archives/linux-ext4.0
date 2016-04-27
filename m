@@ -1,51 +1,86 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: O_DIRECT as a hint, was: Re: [PATCH] ext4: refuse O_DIRECT opens
- for mode where DIO doesn't work
-Date: Wed, 27 Apr 2016 13:37:46 +1000
-Message-ID: <20160427033746.GL18496@dastard>
-References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
- <877ffmhvzt.fsf@openvz.org>
- <20160425234946.GB26977@dastard>
- <20160426081451.GA25616@infradead.org>
- <20160427022746.GJ18496@dastard>
- <20160427032526.GC30021@thunk.org>
+From: NeilBrown <nfbrown@novell.com>
+Subject: Re: [PATCH 16/18] dax: New fault locking
+Date: Wed, 27 Apr 2016 14:27:59 +1000
+Message-ID: <87h9enwu9c.fsf@notabene.neil.brown.name>
+References: <1461015341-20153-1-git-send-email-jack@suse.cz> <1461015341-20153-17-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
-	Dmitry Monakhov <dmonlist-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160427032526.GC30021-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
+Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>,
+	Jan Kara <jack@suse.cz>
+To: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1461015341-20153-17-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 26, 2016 at 11:25:26PM -0400, Theodore Ts'o wrote:
-> On Wed, Apr 27, 2016 at 12:27:46PM +1000, Dave Chinner wrote:
-> > > At this point I wonder if we should simply treat O_DIRECT as a hint
-> > > and always allow it, and just let the file system optimize for it
-> > > (skip buffering, require alignment, relaxed Posix atomicy requirements)
-> > > if it is set.
-> > 
-> > I thought that's how most filesystems treated it, anyway. i.e.
-> > anything they can't do via direct IO, they fell back to buffered IO
-> > to complete (e.g. for allocation or append writes, etc). Hence why I
-> > suggested the fallback rather than erroring out....
-> 
-> No, some file systems return EINVAL on the open.  In fact that's what
-> the _require_odirect test in xfstests relies upon....
+--=-=-=
+Content-Type: text/plain
 
-Sure, but that doesn't change the fact that many of the filesystems
-that "support O_DIRECT" don't always do O_DIRECT - they
-transparently do buffered IO instead and hence are treating O_DIRECT
-as a hint once the file has been opened.
+On Tue, Apr 19 2016, Jan Kara wrote:
 
-Cheers,
+> Currently DAX page fault locking is racy.
+>
+> CPU0 (write fault)		CPU1 (read fault)
+>
+> __dax_fault()			__dax_fault()
+>   get_block(inode, block, &bh, 0) -> not mapped
+> 				  get_block(inode, block, &bh, 0)
+> 				    -> not mapped
+>   if (!buffer_mapped(&bh))
+>     if (vmf->flags & FAULT_FLAG_WRITE)
+>       get_block(inode, block, &bh, 1) -> allocates blocks
+>   if (page) -> no
+> 				  if (!buffer_mapped(&bh))
+> 				    if (vmf->flags & FAULT_FLAG_WRITE) {
+> 				    } else {
+> 				      dax_load_hole();
+> 				    }
+>   dax_insert_mapping()
+>
+> And we are in a situation where we fail in dax_radix_entry() with -EIO.
+>
+> Another problem with the current DAX page fault locking is that there is
+> no race-free way to clear dirty tag in the radix tree. We can always
+> end up with clean radix tree and dirty data in CPU cache.
+>
+> We fix the first problem by introducing locking of exceptional radix
+> tree entries in DAX mappings acting very similarly to page lock and thus
+> synchronizing properly faults against the same mapping index. The same
+> lock can later be used to avoid races when clearing radix tree dirty
+> tag.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+Reviewed-by: NeilBrown <neilb@suse.com> (for the exception locking bits)
+
+I really like how you have structured the code - makes it fairly
+obviously correct!
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXID/PAAoJEDnsnt1WYoG5/wIQAKFDb1mOFeI0Ln2z9haVCtBT
+D2BwkEbPGydmbOYBKh6EK8BC01xb9RIfT5qiVDhqOtjpex3w7VitcxhaxbI93xpj
+RROhwEZI2fKmp88Kd9kpScQRC7mbASyKT0NpVCKHSahkXAektcMcJWB+6cTFUWue
+7jBuNIHz5yt5hrFnZcuIOzn5BJ0Gh8rfJBL7Ozxnz2hoXhTbK7V0sBheNQD/GmBl
+v3t97PLs9PUL0w82TtojZ49hW7TfUBMzKK6+w8TGxxgl+fuNqmSrG/3kjyWmuy9X
+VYwK3nvi3OTjVB6QkBGFCa5gairCQuwkBM8ERPoJvVRxCMhkDdznYwaFBg/n6gIi
+j1vVnOfMLgMGw0R8SIwVZPvOIyrNkZ0kNz8Rs0v56y5lgcfYQxrpScX9tgkBkf1a
++nkegrsG9pS3t9bHyu4sFpG6O0R5q0x6UgL8nK1wW3nPWZADPo6eyO//xrQO8cHO
+s6efKQ7urJIRKVIlvBzO3slQ/txLRPO3HKJDc6Ubevv+eYWwChwfT171PIZTfyiI
+7ohIXuCqTDBfjHwfp8oaFPQuE1EJ9+g7MjZe5CyUqO0Qrt0hPOkR8WEzdjHbU1Rg
+TetGwAproG5GeDFOsqfKXYLStNQoBwP7ZWz/lzRJry79RmSF4/4frDU3VUe7QV68
+JjNvHPEjHXKKqIxrDjU8
+=le4b
+-----END PGP SIGNATURE-----
+--=-=-=--
