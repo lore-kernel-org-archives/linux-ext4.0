@@ -1,45 +1,51 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Emergency remount readonly and EFBIG errors when unlinking files
- on 3.18 android kernel
-Date: Wed, 27 Apr 2016 13:25:17 +1000
-Message-ID: <20160427032517.GK18496@dastard>
-References: <571FE6DB.8030604@codeaurora.org>
- <20160427030736.GB30021@thunk.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: O_DIRECT as a hint, was: Re: [PATCH] ext4: refuse O_DIRECT opens
+ for mode where DIO doesn't work
+Date: Wed, 27 Apr 2016 13:37:46 +1000
+Message-ID: <20160427033746.GL18496@dastard>
+References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
+ <877ffmhvzt.fsf@openvz.org>
+ <20160425234946.GB26977@dastard>
+ <20160426081451.GA25616@infradead.org>
+ <20160427022746.GJ18496@dastard>
+ <20160427032526.GC30021@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nikhilesh Reddy <reddyn@codeaurora.org>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:3327 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752685AbcD0DZW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Apr 2016 23:25:22 -0400
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+	Dmitry Monakhov <dmonlist-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20160427030736.GB30021@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160427032526.GC30021-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 26, 2016 at 11:07:36PM -0400, Theodore Ts'o wrote:
-> On Tue, Apr 26, 2016 at 03:08:27PM -0700, Nikhilesh Reddy wrote:
-> > I would appreciate if you could point me in the right direction and any help
-> > you can give me.
+On Tue, Apr 26, 2016 at 11:25:26PM -0400, Theodore Ts'o wrote:
+> On Wed, Apr 27, 2016 at 12:27:46PM +1000, Dave Chinner wrote:
+> > > At this point I wonder if we should simply treat O_DIRECT as a hint
+> > > and always allow it, and just let the file system optimize for it
+> > > (skip buffering, require alignment, relaxed Posix atomicy requirements)
+> > > if it is set.
+> > 
+> > I thought that's how most filesystems treated it, anyway. i.e.
+> > anything they can't do via direct IO, they fell back to buffered IO
+> > to complete (e.g. for allocation or append writes, etc). Hence why I
+> > suggested the fallback rather than erroring out....
 > 
-> Well, what I'd do is create a new ioctl interface which simulates an
-> emergency ro on just the one device, and try to create a reliable
-> repro.  Eventually we'll want to add some tests for this in xfstests.
+> No, some file systems return EINVAL on the open.  In fact that's what
+> the _require_odirect test in xfstests relies upon....
 
-That's pretty much XFS_IOC_GOINGDOWN, controlled by xfs_io -c shutdown.
-I'd suggest that adding a new flag:
-
-#define XFS_FSOP_GOING_FLAGS_EMERG_REMOUNT 0x4
-
-Would be in line with it's existing usage in xfstests for forcing
-different shutdown conditions on filesystems....
+Sure, but that doesn't change the fact that many of the filesystems
+that "support O_DIRECT" don't always do O_DIRECT - they
+transparently do buffered IO instead and hence are treating O_DIRECT
+as a hint once the file has been opened.
 
 Cheers,
 
 Dave.
 -- 
 Dave Chinner
-david@fromorbit.com
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
