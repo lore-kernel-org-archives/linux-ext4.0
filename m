@@ -1,77 +1,42 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/2] mm: add PF_MEMALLOC_NOFS
-Date: Wed, 27 Apr 2016 09:07:02 +1000
-Message-ID: <20160426230702.GG26977@dastard>
-References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
- <1461671772-1269-2-git-send-email-mhocko@kernel.org>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: O_DIRECT as a hint, was: Re: [PATCH] ext4: refuse O_DIRECT opens
+ for mode where DIO doesn't work
+Date: Tue, 26 Apr 2016 22:16:49 -0400
+Message-ID: <20160427021649.GA30021@thunk.org>
+References: <1461472078-20104-1-git-send-email-tytso@mit.edu>
+ <877ffmhvzt.fsf@openvz.org>
+ <20160425234946.GB26977@dastard>
+ <20160426081451.GA25616@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+	Dmitry Monakhov <dmonlist-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1461671772-1269-2-git-send-email-mhocko@kernel.org>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20160426081451.GA25616-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 26, 2016 at 01:56:11PM +0200, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
+On Tue, Apr 26, 2016 at 01:14:51AM -0700, Christoph Hellwig wrote:
+> I've been doing an audit of our direct I/O implementations, and most
+> of them does some form of transparent fallback, including some that
+> only pretend to support O_DIRECT, but do anything special for it at all,
+> while at the same time we go through greast efforts to check a file
+> system actualy supports direct I/O, leading to nasty no-op ->direct_IO
+> implementations as we even got that abstraction wrong.
 > 
-> GFP_NOFS context is used for the following 4 reasons currently
-> 	- to prevent from deadlocks when the lock held by the allocation
-> 	  context would be needed during the memory reclaim
-> 	- to prevent from stack overflows during the reclaim because
-> 	  the allocation is performed from a deep context already
-> 	- to prevent lockups when the allocation context depends on
-> 	  other reclaimers to make a forward progress indirectly
-> 	- just in case because this would be safe from the fs POV
+> At this point I wonder if we should simply treat O_DIRECT as a hint
+> and always allow it, and just let the file system optimize for it
+> (skip buffering, require alignment, relaxed Posix atomicy requirements)
+> if it is set.
 
-- silencing lockdep false positives
+That's fine with me, but there ought to be some way for a program to
+query whether a particular file / file system is one where DIO is
+supported, and if so, what the alignment requirements would be.  That
+way applications who care can get the information they need (and we
+can use it for xfstests's _require_odirect :-).
 
-> Introduce PF_MEMALLOC_NOFS task specific flag and memalloc_nofs_{save,restore}
-> API to control the scope. This is basically copying
-> memalloc_noio_{save,restore} API we have for other restricted allocation
-> context GFP_NOIO.
-> 
-> Xfs has already had a similar functionality as PF_FSTRANS so let's just
-> give it a more generic name and make it usable for others as well and
-> move the GFP_NOFS context tracking to the page allocator. Xfs has its
-> own accessor functions but let's keep them for now to reduce this patch
-> as minimum.
-
-Can you split this into two patches? The first simply does this:
-
-#define PF_MEMALLOC_NOFS PF_FSTRANS
-
-and changes only the XFS code to use PF_MEMALLOC_NOFS.
-
-The second patch can then do the rest of the mm API changes that we
-don't actually care about in XFS at all.  That way I can carry all
-the XFS changes in the XFS tree and not have to worry about when
-this stuff gets merged or conflicts with the rest of the work that
-is being done to the mm/ code and whatever tree that eventually
-lands in...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
