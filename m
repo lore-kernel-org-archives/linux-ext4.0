@@ -1,32 +1,77 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 113041] mbcache NULL pointer dereference
-Date: Wed, 27 Apr 2016 07:36:35 +0000
-Message-ID: <bug-113041-13602-W8C9oYRTFv@https.bugzilla.kernel.org/>
-References: <bug-113041-13602@https.bugzilla.kernel.org/>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [PATCH 1/2] mm: add PF_MEMALLOC_NOFS
+Date: Wed, 27 Apr 2016 09:51:02 +0200
+Message-ID: <20160427075102.GB2179@dhcp22.suse.cz>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+ <1461671772-1269-2-git-send-email-mhocko@kernel.org>
+ <20160426230702.GG26977@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:38235 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752231AbcD0Hgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Apr 2016 03:36:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 58B1D20219
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Apr 2016 07:36:37 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 9133D20225
-	for <linux-ext4@vger.kernel.org>; Wed, 27 Apr 2016 07:36:35 +0000 (UTC)
-In-Reply-To: <bug-113041-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	logfs@logfs.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20160426230702.GG26977@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=113041
+On Wed 27-04-16 09:07:02, Dave Chinner wrote:
+> On Tue, Apr 26, 2016 at 01:56:11PM +0200, Michal Hocko wrote:
+> > From: Michal Hocko <mhocko@suse.com>
+> > 
+> > GFP_NOFS context is used for the following 4 reasons currently
+> > 	- to prevent from deadlocks when the lock held by the allocation
+> > 	  context would be needed during the memory reclaim
+> > 	- to prevent from stack overflows during the reclaim because
+> > 	  the allocation is performed from a deep context already
+> > 	- to prevent lockups when the allocation context depends on
+> > 	  other reclaimers to make a forward progress indirectly
+> > 	- just in case because this would be safe from the fs POV
+> 
+> - silencing lockdep false positives
+> 
+> > Introduce PF_MEMALLOC_NOFS task specific flag and memalloc_nofs_{save,restore}
+> > API to control the scope. This is basically copying
+> > memalloc_noio_{save,restore} API we have for other restricted allocation
+> > context GFP_NOIO.
+> > 
+> > Xfs has already had a similar functionality as PF_FSTRANS so let's just
+> > give it a more generic name and make it usable for others as well and
+> > move the GFP_NOFS context tracking to the page allocator. Xfs has its
+> > own accessor functions but let's keep them for now to reduce this patch
+> > as minimum.
+> 
+> Can you split this into two patches? The first simply does this:
+> 
+> #define PF_MEMALLOC_NOFS PF_FSTRANS
+> 
+> and changes only the XFS code to use PF_MEMALLOC_NOFS.
+> 
+> The second patch can then do the rest of the mm API changes that we
+> don't actually care about in XFS at all.  That way I can carry all
+> the XFS changes in the XFS tree and not have to worry about when
+> this stuff gets merged or conflicts with the rest of the work that
+> is being done to the mm/ code and whatever tree that eventually
+> lands in...
 
---- Comment #6 from Johnny <johnny+bugzilla@appdata.biz> ---
-What's new in latest trace is that the comm is kswapd0 and not java.
+Sure I will do that
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Michal Hocko
+SUSE Labs
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
