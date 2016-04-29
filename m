@@ -1,7 +1,7 @@
 From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
-Date: Fri, 29 Apr 2016 12:27:55 -0400
-Message-ID: <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
+Subject: [PATCH v5 2/2] ext4: Make cache hits/misses per-cpu counts
+Date: Fri, 29 Apr 2016 12:27:56 -0400
+Message-ID: <1461947276-25988-3-git-send-email-Waiman.Long@hpe.com>
 References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	Dave Chinner <david@fromorbit.com>,
@@ -14,59 +14,139 @@ To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g2t4625.austin.hp.com ([15.73.212.76]:45578 "EHLO
-	g2t4625.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751980AbcD2Q2R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2016 12:28:17 -0400
-Received: from g2t4623.austin.hp.com (g2t4623.austin.hp.com [15.73.212.78])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by g2t4625.austin.hp.com (Postfix) with ESMTPS id 898DF56C3
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2016 16:28:16 +0000 (UTC)
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The purpose of the i_dio_count is to protect against truncation while
-the I/O operation is in progress. As dax_do_io() only does synchronous
-I/O, the locking performed by the caller or within dax_do_io() for
-read should be enough to protect it against truncation. There is no
-need to touch the i_dio_count.
+This patch changes the es_stats_cache_hits and es_stats_cache_misses
+statistics counts to percpu counters to reduce cacheline contention
+issues whem multiple threads are trying to update those counts
+simultaneously.
 
-Eliminating two atomic operations can sometimes give a noticeable
-improvement in I/O performance as NVDIMM is much faster than other
-disk devices.
+With a 38-threads fio I/O test with 2 shared files (on DAX-mount
+NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1 kernel,
+the aggregated bandwidths before and after the patch were:
 
-Suggested-by: Christoph Hellwig <hch@infradead.org>
+  Test          W/O patch       With patch      % change
+  ----          ---------       ----------      --------
+  Read-only     16499MB/s       17215MB/s        +4.3%
+  Read-write     4361MB/s        4794MB/s        +9.9%
+
 Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 ---
- fs/dax.c |   14 ++++++--------
- 1 files changed, 6 insertions(+), 8 deletions(-)
+ fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h |    4 ++--
+ 2 files changed, 31 insertions(+), 11 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 90322eb..1b4b500 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -253,8 +253,12 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
-  * If @flags has DIO_LOCKING set, we assume that the i_mutex is held by the
-  * caller for writes.  For reads, we take and release the i_mutex ourselves.
-  * If DIO_LOCKING is not set, the filesystem takes care of its own locking.
-- * As with do_blockdev_direct_IO(), we increment i_dio_count while the I/O
-- * is in progress.
-+ *
-+ * The do_blockdev_direct_IO() function increment i_dio_count while the I/O
-+ * is in progress. However, the dax_do_io() always does synchronous I/O. The
-+ * locking done by the caller or within dax_do_io() for read (DIO_LOCKING)
-+ * should be enough to protect against concurrent truncation. We don't really
-+ * need to touch i_dio_count here.
-  */
- ssize_t dax_do_io(struct kiocb *iocb, struct inode *inode,
- 		  struct iov_iter *iter, loff_t pos, get_block_t get_block,
-@@ -277,10 +281,6 @@ ssize_t dax_do_io(struct kiocb *iocb, struct inode *inode,
- 		}
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index e38b987..92ca56d 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -770,6 +770,15 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ }
+ 
+ /*
++ * For pure statistics count, use a large batch size to make sure that
++ * it does percpu update as much as possible.
++ */
++static inline void ext4_es_stats_inc(struct percpu_counter *fbc)
++{
++	__percpu_counter_add(fbc, 1, (1 << 30));
++}
++
++/*
+  * ext4_es_lookup_extent() looks up an extent in extent status tree.
+  *
+  * ext4_es_lookup_extent is called by ext4_map_blocks/ext4_da_map_blocks.
+@@ -825,9 +834,9 @@ out:
+ 		es->es_pblk = es1->es_pblk;
+ 		if (!ext4_es_is_referenced(es1))
+ 			ext4_es_set_referenced(es1);
+-		stats->es_stats_cache_hits++;
++		ext4_es_stats_inc(&stats->es_stats_cache_hits);
+ 	} else {
+-		stats->es_stats_cache_misses++;
++		ext4_es_stats_inc(&stats->es_stats_cache_misses);
  	}
  
--	/* Protects against truncate */
--	if (!(flags & DIO_SKIP_DIO_COUNT))
--		inode_dio_begin(inode);
+ 	read_unlock(&EXT4_I(inode)->i_es_lock);
+@@ -1113,9 +1122,9 @@ int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
+ 	seq_printf(seq, "stats:\n  %lld objects\n  %lld reclaimable objects\n",
+ 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
+ 		   percpu_counter_sum_positive(&es_stats->es_stats_shk_cnt));
+-	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
+-		   es_stats->es_stats_cache_hits,
+-		   es_stats->es_stats_cache_misses);
++	seq_printf(seq, "  %lld/%lld cache hits/misses\n",
++		   percpu_counter_sum_positive(&es_stats->es_stats_cache_hits),
++		   percpu_counter_sum_positive(&es_stats->es_stats_cache_misses));
+ 	if (inode_cnt)
+ 		seq_printf(seq, "  %d inodes on list\n", inode_cnt);
+ 
+@@ -1142,8 +1151,6 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	sbi->s_es_nr_inode = 0;
+ 	spin_lock_init(&sbi->s_es_lock);
+ 	sbi->s_es_stats.es_stats_shrunk = 0;
+-	sbi->s_es_stats.es_stats_cache_hits = 0;
+-	sbi->s_es_stats.es_stats_cache_misses = 0;
+ 	sbi->s_es_stats.es_stats_scan_time = 0;
+ 	sbi->s_es_stats.es_stats_max_scan_time = 0;
+ 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
+@@ -1153,15 +1160,26 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	if (err)
+ 		goto err1;
+ 
++	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_hits, 0, GFP_KERNEL);
++	if (err)
++		goto err2;
++
++	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_misses, 0, GFP_KERNEL);
++	if (err)
++		goto err3;
++
+ 	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
+ 	sbi->s_es_shrinker.count_objects = ext4_es_count;
+ 	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
+ 	err = register_shrinker(&sbi->s_es_shrinker);
+ 	if (err)
+-		goto err2;
++		goto err4;
+ 
+ 	return 0;
+-
++err4:
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
++err3:
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
+ err2:
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+ err1:
+@@ -1173,6 +1191,8 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ {
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
++	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
+ 	unregister_shrinker(&sbi->s_es_shrinker);
+ }
+ 
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index f7aa24f..d537868 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -69,10 +69,10 @@ struct ext4_es_tree {
+ 
+ struct ext4_es_stats {
+ 	unsigned long es_stats_shrunk;
+-	unsigned long es_stats_cache_hits;
+-	unsigned long es_stats_cache_misses;
+ 	u64 es_stats_scan_time;
+ 	u64 es_stats_max_scan_time;
++	struct percpu_counter es_stats_cache_hits;
++	struct percpu_counter es_stats_cache_misses;
+ 	struct percpu_counter es_stats_all_cnt;
+ 	struct percpu_counter es_stats_shk_cnt;
+ };
+-- 
+1.7.1
