@@ -1,72 +1,40 @@
-From: Vishal Verma <vishal.l.verma@intel.com>
-Subject: [PATCH v4 7/7] dax: fix a comment in dax_zero_page_range and dax_truncate_page
-Date: Thu, 28 Apr 2016 15:16:58 -0600
-Message-ID: <1461878218-3844-8-git-send-email-vishal.l.verma@intel.com>
-References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
-Cc: Vishal Verma <vishal.l.verma@intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
-	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Matthew Wilcox <matthew@wil.cx>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: linux-nvdimm@lists.01.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: Re: [PATCH v4 2/3] ext4: fix races between changing inode journal mode
+ and ext4_writepages
+Date: Fri, 29 Apr 2016 01:06:22 +0000 (GMT)
+Message-ID: <526058841.218421461891981863.JavaMail.weblogic@ep2mlwas06b>
+Reply-To: daeho.jeong@samsung.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+Cc: "jack@suse.cz" <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?utf-8?Q?=EC=A0=95=EB=8C=80=ED=98=B8?= <daeho.jeong@samsung.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:52687 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752571AbcD2BG1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Apr 2016 21:06:27 -0400
+Received: from epcpsbgr1.samsung.com
+ (u141.gpu120.samsung.co.kr [203.254.230.141])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0O6D01GJSF2NP6C0@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Fri, 29 Apr 2016 10:06:23 +0900 (KST)
+MIME-version: 1.0
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The distinction between PAGE_SIZE and PAGE_CACHE_SIZE was removed in
+SGkgVGVkLA0KDQpJIGZ1bGx5IHVuZGVyc3Rvb2QgeW91ciB3b3JkcyBhbmQgSSBoYXZlIGJlZW4g
+ZXhlY3V0aW5nIGdlbmVyaWMvMjMxIHRlc3QgY2FzZQ0KYWdhaW4gYW5kIGFnYWluIHdpdGggbGlu
+dXgtNC42LjAtcmM0LCBsaW51eC00LjYuMC1yYzUgYW5kIHRoZSBsYXRlc3Qgc291cmNlIGNvZGVz
+DQpvZiBleHQ0IGdpdCBzZXJ2ZXIuDQoNCkJ1dCwgd2hlbmV2ZXIgSSBleGVjdXRlIHRoZSB0ZXN0
+IGNhc2UsIGl0IGlzIGFsd2F5cyBwYXNzZWQuDQpJIHRoaW5rIHRoZSBkaWZmZXJlbmNlIG9mIHRo
+ZSB0ZXN0IHJlc3VsdHMgaXMgb3JpZ2luYXRlZCBmcm9tIHRoZSBkaWZmZXJlbmNlIGJldHdlZW4N
+CnlvdXIgdGVzdCBlbnZpcm9ubWVudCBhbmQgbWluZSwgaG93ZXZlciBJIGNhbm5vdCBmaWd1cmUg
+b3V0IHRoYXQuDQoNCkFjdHVhbGx5LCBJIGp1c3QgdXNlZCBrdm0teGZ0ZXN0cyBiZWNhdXNlIEdD
+RSBzaXRlIGNhbm5vdCBiZSBhY2Nlc3NlZCBpbg0Kb3VyIGNvbXBhbnkgYnkgc2VjdXJpdHkgcmVh
+c29ucy4NCg0KQ291bGQgeW91IHN1Z2dlc3Qgc29tZSBkaXJlY3Rpb25zIGZvciBtZT8NCg==
 
-09cbfea mm, fs: get rid of PAGE_CACHE_* and page_cache_{get,release}
-macros
-
-The comments for the above functions described a distinction between
-those, that is now redundant, so remove those paragraphs
-
-Cc: Matthew Wilcox <matthew@wil.cx>
-Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
----
- fs/dax.c | 12 ------------
- 1 file changed, 12 deletions(-)
-
-diff --git a/fs/dax.c b/fs/dax.c
-index d8c974e..b8fa85a 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1221,12 +1221,6 @@ static bool dax_range_is_aligned(struct block_device *bdev,
-  * page in a DAX file.  This is intended for hole-punch operations.  If
-  * you are truncating a file, the helper function dax_truncate_page() may be
-  * more convenient.
-- *
-- * We work in terms of PAGE_SIZE here for commonality with
-- * block_truncate_page(), but we could go down to PAGE_SIZE if the filesystem
-- * took care of disposing of the unnecessary blocks.  Even if the filesystem
-- * block size is smaller than PAGE_SIZE, we have to zero the rest of the page
-- * since the file might be mmapped.
-  */
- int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
- 							get_block_t get_block)
-@@ -1279,12 +1273,6 @@ EXPORT_SYMBOL_GPL(dax_zero_page_range);
-  *
-  * Similar to block_truncate_page(), this function can be called by a
-  * filesystem when it is truncating a DAX file to handle the partial page.
-- *
-- * We work in terms of PAGE_SIZE here for commonality with
-- * block_truncate_page(), but we could go down to PAGE_SIZE if the filesystem
-- * took care of disposing of the unnecessary blocks.  Even if the filesystem
-- * block size is smaller than PAGE_SIZE, we have to zero the rest of the page
-- * since the file might be mmapped.
-  */
- int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
- {
--- 
-2.5.5
 
