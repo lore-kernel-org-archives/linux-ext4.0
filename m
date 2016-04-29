@@ -1,109 +1,58 @@
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 2/6] statx: AFS: Return enhanced file attributes
-Date: Fri, 29 Apr 2016 13:57:51 +0100
-Message-ID: <20160429125751.23636.20998.stgit@warthog.procyon.org.uk>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	dhowells@redhat.com, linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
+From: Waiman Long <Waiman.Long@hpe.com>
+Subject: [PATCH v5 0/2] ext4: Improve parallel I/O performance on NVDIMM
+Date: Fri, 29 Apr 2016 12:27:54 -0400
+Message-ID: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>,
+	Waiman Long <Waiman.Long@hpe.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Matthew Wilcox <willy@linux.intel.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Return enhanced file attributes from the AFS filesystem.  This includes the
-following:
+v4->v5:
+ - Change patch 1 to disable i_dio_count update in do_dax_io().
 
- (1) The data version number as st_version, setting STATX_VERSION.
+v3->v4:
+ - For patch 1, add the DIO_SKIP_DIO_COUNT flag to dax_do_io() calls
+   only to address issue raised by Dave Chinner.
 
- (2) STATX_INFO_AUTOMOUNT will be set on automount directories by virtue of
-     S_AUTOMOUNT being set on the inode.  These are referrals to other
-     volumes or other cells.
+v2->v3:
+ - Remove the percpu_stats helper functions and use percpu_counters
+   instead.
 
- (3) STATX_INFO_AUTODIR on a directory that does cell lookup for
-     non-existent names and mounts them (typically mounted on /afs with -o
-     autocell).  The resulting directories are marked STATX_INFO_FABRICATED
-     as they do not actually exist in the mounted AFS directory.
+v1->v2:
+ - Remove percpu_stats_reset() which is not really needed in this
+   patchset.
+ - Move some percpu_stats* functions to the newly created
+   lib/percpu_stats.c.
+ - Add a new patch to support 64-bit statistics counts in 32-bit
+   architectures.
+ - Rearrange the patches by moving the percpu_stats patches to the
+   front followed by the ext4 patches.
 
- (4) Files, directories and symlinks accessed over AFS are marked
-     STATX_INFO_REMOTE.  Local fake directories are marked
-     STATX_INFO_FABRICATED.
+This patchset aims to improve parallel I/O performance of the ext4
+filesystem on DAX.
 
- (5) STATX_INFO_NONSYSTEM_OWNERSHIP is set as the UID and GID retrieved
-     from an AFS share may not be applicable on the system.
+Patch 1 disables update of the i_dio_count as all DAX I/Os are synchronous
+and should be protected from whatever locking was done by the filesystem
+caller or within dax_do_io() for read (DIO_LOCKING).
 
-STATX_ATIME, STATX_CTIME and STATX_BLOCKS are cleared as AFS does not
-support them.
+Patch 2 converts some ext4 statistics counts into percpu counts using
+the helper functions.
 
-Example output:
+Waiman Long (2):
+  dax: Don't touch i_dio_count in dax_do_io()
+  ext4: Make cache hits/misses per-cpu counts
 
-	[root@andromeda ~]# ./samples/statx/test-statx /afs
-	statx(/afs) = 0
-	results=7ef
-	  Size: 2048            Blocks: 0          IO Block: 4096    directory
-	Device: 00:25           Inode: 1           Links: 2
-	Access: (0777/drwxrwxrwx)  Uid:     0   Gid:     0
-	Access: 2006-05-07 00:21:15.000000000+0100
-	Modify: 2006-05-07 00:21:15.000000000+0100
-	Change: 2006-05-07 00:21:15.000000000+0100
-	IO-blocksize: blksize=4096
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/afs/inode.c |   24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
-
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 86cc7264c21c..e9958d5e267e 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -72,9 +72,9 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
- 	inode->i_uid		= vnode->status.owner;
- 	inode->i_gid		= GLOBAL_ROOT_GID;
- 	inode->i_size		= vnode->status.size;
--	inode->i_ctime.tv_sec	= vnode->status.mtime_server;
--	inode->i_ctime.tv_nsec	= 0;
--	inode->i_atime		= inode->i_mtime = inode->i_ctime;
-+	inode->i_mtime.tv_sec	= vnode->status.mtime_server;
-+	inode->i_mtime.tv_nsec	= 0;
-+	inode->i_atime		= inode->i_ctime = inode->i_mtime;
- 	inode->i_blocks		= 0;
- 	inode->i_generation	= vnode->fid.unique;
- 	inode->i_version	= vnode->status.data_version;
-@@ -375,8 +375,7 @@ error_unlock:
- /*
-  * read the attributes of an inode
-  */
--int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
--		      struct kstat *stat)
-+int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- {
- 	struct inode *inode;
- 
-@@ -385,6 +384,21 @@ int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
- 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
- 
- 	generic_fillattr(inode, stat);
-+
-+	stat->result_mask &= ~(STATX_ATIME | STATX_CTIME | STATX_BLOCKS);
-+	stat->result_mask |= STATX_VERSION | STATX_GEN;
-+	stat->version = inode->i_version;
-+	stat->gen = inode->i_generation;
-+
-+	if (test_bit(AFS_VNODE_AUTOCELL, &AFS_FS_I(inode)->flags))
-+		stat->information |= STATX_INFO_AUTODIR;
-+
-+	if (test_bit(AFS_VNODE_PSEUDODIR, &AFS_FS_I(inode)->flags))
-+		stat->information |= STATX_INFO_FABRICATED;
-+	else
-+		stat->information |= STATX_INFO_REMOTE;
-+
-+	stat->information |= STATX_INFO_NONSYSTEM_OWNERSHIP;
- 	return 0;
- }
- 
+ fs/dax.c                 |   14 ++++++--------
+ fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
+ fs/ext4/extents_status.h |    4 ++--
+ 3 files changed, 37 insertions(+), 19 deletions(-)
