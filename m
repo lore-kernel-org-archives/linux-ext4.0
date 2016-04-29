@@ -1,33 +1,40 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 06/18] dax: Remove dead zeroing code from fault handlers
-Date: Fri, 29 Apr 2016 10:48:28 -0600
-Message-ID: <20160429164828.GB5888@linux.intel.com>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <1461015341-20153-7-git-send-email-jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 42362] [ext4] possible circular locking dependency detected
+Date: Fri, 29 Apr 2016 17:39:21 +0000
+Message-ID: <bug-42362-13602-NzjR3XEKWx@https.bugzilla.kernel.org/>
+References: <bug-42362-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>, linux-nvdimm@lists.01.org,
-	Matthew Wilcox <willy@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1461015341-20153-7-git-send-email-jack@suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:41770 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751331AbcD2Rj0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Apr 2016 13:39:26 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CF4172011D
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2016 17:39:24 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 0EA922015E
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2016 17:39:22 +0000 (UTC)
+In-Reply-To: <bug-42362-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 18, 2016 at 11:35:29PM +0200, Jan Kara wrote:
-> Now that all filesystems zero out blocks allocated for a fault handler,
-> we can just remove the zeroing from the handler itself. Also add checks
-> that no filesystem returns to us unwritten or new buffer.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+https://bugzilla.kernel.org/show_bug.cgi?id=42362
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Ivan Bulatovic <combuster@archlinux.us> changed:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+         Resolution|---                         |OBSOLETE
+
+--- Comment #2 from Ivan Bulatovic <combuster@archlinux.us> ---
+No problems with 4.6.0-rc5. Too late to bisect now, so marking this as
+resolved.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
