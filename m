@@ -1,8 +1,7 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 5/6] statx: Make windows attributes available for CIFS,
- NTFS and FAT to use
-Date: Fri, 29 Apr 2016 13:58:14 +0100
-Message-ID: <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 2/6] statx: AFS: Return enhanced file attributes
+Date: Fri, 29 Apr 2016 13:57:51 +0100
+Message-ID: <20160429125751.23636.20998.stgit@warthog.procyon.org.uk>
 References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -16,157 +15,95 @@ In-Reply-To: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Make windows attributes available for CIFS, NTFS and FAT to use in the
-statx struct.  The attribute flags map directly by value to those in the
-CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and HPFS.
+Return enhanced file attributes from the AFS filesystem.  This includes the
+following:
 
-The statx struct acquires:
+ (1) The data version number as st_version, setting STATX_VERSION.
 
-	__u32	st_win_attrs;
+ (2) STATX_INFO_AUTOMOUNT will be set on automount directories by virtue of
+     S_AUTOMOUNT being set on the inode.  These are referrals to other
+     volumes or other cells.
 
-The value in this is present if STATX_WIN_ATTRS is set.
+ (3) STATX_INFO_AUTODIR on a directory that does cell lookup for
+     non-existent names and mounts them (typically mounted on /afs with -o
+     autocell).  The resulting directories are marked STATX_INFO_FABRICATED
+     as they do not actually exist in the mounted AFS directory.
 
-The defined flags in this are:
+ (4) Files, directories and symlinks accessed over AFS are marked
+     STATX_INFO_REMOTE.  Local fake directories are marked
+     STATX_INFO_FABRICATED.
 
-	STATX_WIN_ATTR_READONLY
-	STATX_WIN_ATTR_HIDDEN
-	STATX_WIN_ATTR_SYSTEM
-	STATX_WIN_ATTR_DIRECTORY
-	STATX_WIN_ATTR_ARCHIVE
-	STATX_WIN_ATTR_NORMAL
-	STATX_WIN_ATTR_TEMPORARY
-	STATX_WIN_ATTR_SPARSE_FILE
-	STATX_WIN_ATTR_REPARSE_POINT
-	STATX_WIN_ATTR_COMPRESSED
-	STATX_WIN_ATTR_OFFLINE
-	STATX_WIN_ATTR_NOT_CONTENT_INDEXED
-	STATX_WIN_ATTR_ENCRYPTED
-	STATX_WIN_ATTR_INTEGRITY_STREAM
-	STATX_WIN_ATTR_NO_SCRUB_DATA
+ (5) STATX_INFO_NONSYSTEM_OWNERSHIP is set as the UID and GID retrieved
+     from an AFS share may not be applicable on the system.
+
+STATX_ATIME, STATX_CTIME and STATX_BLOCKS are cleared as AFS does not
+support them.
+
+Example output:
+
+	[root@andromeda ~]# ./samples/statx/test-statx /afs
+	statx(/afs) = 0
+	results=7ef
+	  Size: 2048            Blocks: 0          IO Block: 4096    directory
+	Device: 00:25           Inode: 1           Links: 2
+	Access: (0777/drwxrwxrwx)  Uid:     0   Gid:     0
+	Access: 2006-05-07 00:21:15.000000000+0100
+	Modify: 2006-05-07 00:21:15.000000000+0100
+	Change: 2006-05-07 00:21:15.000000000+0100
+	IO-blocksize: blksize=4096
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/stat.c                  |    5 ++++-
- include/uapi/linux/stat.h  |   30 ++++++++++++++++++++++++++++--
- samples/statx/test-statx.c |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 63 insertions(+), 3 deletions(-)
+ fs/afs/inode.c |   24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index c2f8370dab13..1552bff154e6 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -83,6 +83,7 @@ int vfs_xgetattr_nosec(struct path *path, struct kstat *stat)
- 
- 	stat->result_mask = 0;
- 	stat->information = 0;
-+	stat->win_attrs = 0;
- 	if (inode->i_op->getattr)
- 		return inode->i_op->getattr(path->mnt, path->dentry, stat);
- 
-@@ -643,7 +644,9 @@ static long statx_set_result(struct kstat *stat, struct statx __user *buffer)
- 	    __put_user(stat->blocks,		&buffer->st_blocks	) ||
- 	    __put_user(stat->version,		&buffer->st_version	) ||
- 	    __put_user(stat->gen,		&buffer->st_gen		) ||
--	    __clear_user(&buffer->__spare1, sizeof(buffer->__spare1)))
-+	    __put_user(stat->win_attrs,		&buffer->st_win_attrs	) ||
-+	    __clear_user(&buffer->__spare1,
-+			 sizeof(buffer->__spare1) + sizeof(buffer->__spare2)))
- 		return -EFAULT;
- 
- 	return 0;
-diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-index 55ce6607dab6..64729b0785bf 100644
---- a/include/uapi/linux/stat.h
-+++ b/include/uapi/linux/stat.h
-@@ -106,7 +106,10 @@ struct statx {
- 	__u32	st_dev_major;	/* ID of device containing file [uncond] */
- 	__u32	st_dev_minor;
- 	/* 0x80 */
--	__u64	__spare1[16];	/* Spare space for future expansion */
-+	__u32	st_win_attrs;	/* Windows file attributes */
-+	__u32	__spare1[3];
-+	/* 0x90 */
-+	__u64	__spare2[14];	/* Spare space for future expansion */
- 	/* 0x100 */
- };
- 
-@@ -133,7 +136,8 @@ struct statx {
- #define STATX_BTIME		0x00000800U	/* Want/got st_btime */
- #define STATX_VERSION		0x00001000U	/* Want/got st_version */
- #define STATX_GEN		0x00002000U	/* Want/got st_gen */
--#define STATX_ALL_STATS		0x00003fffU	/* All supported stats */
-+#define STATX_WIN_ATTRS		0x00004000U	/* Want/got st_win_attrs */
-+#define STATX_ALL_STATS		0x00007fffU	/* All supported stats */
- 
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 86cc7264c21c..e9958d5e267e 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -72,9 +72,9 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_uid		= vnode->status.owner;
+ 	inode->i_gid		= GLOBAL_ROOT_GID;
+ 	inode->i_size		= vnode->status.size;
+-	inode->i_ctime.tv_sec	= vnode->status.mtime_server;
+-	inode->i_ctime.tv_nsec	= 0;
+-	inode->i_atime		= inode->i_mtime = inode->i_ctime;
++	inode->i_mtime.tv_sec	= vnode->status.mtime_server;
++	inode->i_mtime.tv_nsec	= 0;
++	inode->i_atime		= inode->i_ctime = inode->i_mtime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+ 	inode->i_version	= vnode->status.data_version;
+@@ -375,8 +375,7 @@ error_unlock:
  /*
-  * Flags to be found in st_information
-@@ -151,4 +155,26 @@ struct statx {
- #define STATX_INFO_AUTODIR		0x00000040U /* Dir provides unlisted automounts */
- #define STATX_INFO_NONSYSTEM_OWNERSHIP	0x00000080U /* File has non-system ownership details */
+  * read the attributes of an inode
+  */
+-int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+-		      struct kstat *stat)
++int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+ {
+ 	struct inode *inode;
  
-+/*
-+ * Flags to be found in st_win_attrs.
-+ *
-+ * These give information about the state of a file on a Windows filesystem
-+ * (such as. FAT, NTFS, CIFS).  These values are borrowed from the CIFS fs.
-+ */
-+#define STATX_WIN_ATTR_READONLY			0x00000001
-+#define STATX_WIN_ATTR_HIDDEN			0x00000002
-+#define STATX_WIN_ATTR_SYSTEM			0x00000004
-+#define STATX_WIN_ATTR_DIRECTORY		0x00000010
-+#define STATX_WIN_ATTR_ARCHIVE			0x00000020
-+#define STATX_WIN_ATTR_NORMAL			0x00000080
-+#define STATX_WIN_ATTR_TEMPORARY		0x00000100
-+#define STATX_WIN_ATTR_SPARSE_FILE		0x00000200
-+#define STATX_WIN_ATTR_REPARSE_POINT		0x00000400
-+#define STATX_WIN_ATTR_COMPRESSED		0x00000800
-+#define STATX_WIN_ATTR_OFFLINE			0x00001000
-+#define STATX_WIN_ATTR_NOT_CONTENT_INDEXED	0x00002000
-+#define STATX_WIN_ATTR_ENCRYPTED		0x00004000
-+#define STATX_WIN_ATTR_INTEGRITY_STREAM		0x00008000
-+#define STATX_WIN_ATTR_NO_SCRUB_DATA		0x00020000
-+
- #endif /* _UAPI_LINUX_STAT_H */
-diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
-index 38ef23c12e7d..86eac7d16c32 100644
---- a/samples/statx/test-statx.c
-+++ b/samples/statx/test-statx.c
-@@ -134,6 +134,37 @@ static void dump_statx(struct statx *stx)
- 	if (stx->st_mask & STATX_GEN)
- 		printf("Inode gen   : %xh\n", stx->st_gen);
+@@ -385,6 +384,21 @@ int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
  
-+	if (stx->st_mask & STATX_WIN_ATTRS) {
-+		unsigned char bits;
-+		int loop, byte;
+ 	generic_fillattr(inode, stat);
 +
-+		static char wattr_representation[32 + 1] =
-+			/* STATX_WIN_ATTR_ flags: */
-+			"????????"	/* 31-24	0x00000000-ff000000 */
-+			"??????N?"	/* 23-16	0x00000000-00ff0000 */
-+			"ieNocrst"	/* 15- 8	0x00000000-0000ff00 */
-+			"n?Ad?SHR"	/*  7- 0	0x00000000-000000ff */
-+			;
++	stat->result_mask &= ~(STATX_ATIME | STATX_CTIME | STATX_BLOCKS);
++	stat->result_mask |= STATX_VERSION | STATX_GEN;
++	stat->version = inode->i_version;
++	stat->gen = inode->i_generation;
 +
-+		printf("Win attrs  : %08llx (",
-+		       (unsigned long long)stx->st_win_attrs);
-+		for (byte = 32 - 8; byte >= 0; byte -= 8) {
-+			bits = stx->st_win_attrs >> byte;
-+			for (loop = 7; loop >= 0; loop--) {
-+				int bit = byte + loop;
++	if (test_bit(AFS_VNODE_AUTOCELL, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_AUTODIR;
 +
-+				if (bits & 0x80)
-+					putchar(wattr_representation[31 - bit]);
-+				else
-+					putchar('-');
-+				bits <<= 1;
-+			}
-+			if (byte)
-+				putchar(' ');
-+		}
-+		printf(")\n");
-+	}
++	if (test_bit(AFS_VNODE_PSEUDODIR, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_FABRICATED;
++	else
++		stat->information |= STATX_INFO_REMOTE;
 +
- 	if (stx->st_information) {
- 		unsigned char bits;
- 		int loop, byte;
++	stat->information |= STATX_INFO_NONSYSTEM_OWNERSHIP;
+ 	return 0;
+ }
+ 
