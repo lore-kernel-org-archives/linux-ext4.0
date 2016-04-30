@@ -1,103 +1,196 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH] direct-io: fix stale data exposure from concurrent buffered read
-Date: Sun,  1 May 2016 00:19:22 +0800
-Message-ID: <1462033162-21837-1-git-send-email-guaneryu@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <guaneryu@gmail.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:34541 "EHLO
-	mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752348AbcD3Q7S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Apr 2016 12:59:18 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [RFC][PATCH 0/6] Enhanced file stat system call
+Date: Sat, 30 Apr 2016 17:05:49 -0400
+Message-ID: <1462050349.10011.52.camel@poochiereds.net>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Direct writes inside i_size on a DIO_SKIP_HOLES filesystem are not
-allowed to allocate blocks(get_more_blocks() sets 'create' to 0 before
-calling get_bkicl() callback), if it's a sparse file, direct writes fall
-back to buffered writes to avoid stale data exposure from concurrent
-buffered read.
+On Fri, 2016-04-29 at 13:57 +0100, David Howells wrote:
+> Implement a new system call to provide enhanced file stats.=C2=A0=C2=A0=
+The patches can
+> be found here:
+>=20
+> 	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/lo=
+g/?h=3Dxstat
+>=20
+>=20
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> DESCRIPTION
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>=20
+> The first patch provides this new system call:
+>=20
+> 	long ret =3D statx(int dfd,
+> 			=C2=A0const char *filename,
+> 			=C2=A0unsigned atflag,
+> 			=C2=A0unsigned mask,
+> 			=C2=A0struct statx *buffer);
+>=20
+> This is an enhanced file stat function that provides a number of usef=
+ul
+> features, in summary:
+>=20
+> =C2=A0(1) More information: creation time, data version number, inode=
+ generation
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0number and flags.=C2=A0=C2=A0A subset o=
+f these is available through a number of
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0filesystems (such as CIFS, NFS, AFS, Ex=
+t4 and BTRFS).
+>=20
+> =C2=A0(2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those deta=
+ils of
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0interest, and allow a network fs to app=
+roximate anything not of
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0interest, without going to the server.
+>=20
+> =C2=A0(3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs t=
+o flush
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0buffers and go to the server, even if i=
+t thinks its cached attributes
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0are up to date.
+>=20
+> =C2=A0(4) Allow the filesystem to indicate what it can/cannot provide=
+: A
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0filesystem can now say it doesn't suppo=
+rt a standard stat feature if
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0that isn't available.
+>=20
+> =C2=A0(5) Make the fields a consistent size on all arches, and make t=
+hem large.
+>=20
+> =C2=A0(6) Can be extended by using more request flags and using up th=
+e padding
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0space in the statx struct.
+>=20
+> Note that no lstat() equivalent is required as that can be implemente=
+d
+> through statx() with atflag =3D=3D 0.=C2=A0=C2=A0There is also no fst=
+at() equivalent as
+> that can be implemented through statx() with filename =3D=3D NULL and=
+ the
+> relevant fd passed as dfd.
+>=20
+>=20
+> =3D=3D=3D=3D=3D=3D=3D
+> TESTING
+> =3D=3D=3D=3D=3D=3D=3D
+>=20
+> A test program is added into samples/statx/ by the first patch.
+>=20
+> David
+> ---
+> David Howells (6):
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: Add a system call to make =
+enhanced file info available
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: AFS: Return enhanced file =
+attributes
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: Ext4: Return enhanced file=
+ attributes
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: NFS: Return enhanced file =
+attributes
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: Make windows attributes av=
+ailable for CIFS, NTFS and FAT to use
+> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0statx: CIFS: Return enhanced attr=
+ibutes
+>=20
+>=20
+> =C2=A0arch/x86/entry/syscalls/syscall_32.tbl |=C2=A0=C2=A0=C2=A0=C2=A0=
+1=C2=A0
+> =C2=A0arch/x86/entry/syscalls/syscall_64.tbl |=C2=A0=C2=A0=C2=A0=C2=A0=
+1=C2=A0
+> =C2=A0fs/afs/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A024 ++-
+> =C2=A0fs/cifs/cifsfs.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A04=C2=A0
+> =C2=A0fs/cifs/cifsglob.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A08 +
+> =C2=A0fs/cifs/dir.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0fs/cifs/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0117 +++++++++---
+> =C2=A0fs/exportfs/expfs.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0|=C2=A0=C2=A0=C2=A0=C2=A04=C2=A0
+> =C2=A0fs/ext4/ext4.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0fs/ext4/file.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0fs/ext4/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A030 +++
+> =C2=A0fs/ext4/namei.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0fs/ext4/symlink.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0fs/nfs/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A041 ++++
+> =C2=A0fs/stat.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0306 =
++++++++++++++++++++++++++++++---
+> =C2=A0include/linux/fs.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A05 -
+> =C2=A0include/linux/stat.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=
+=A0=C2=A0=C2=A015 +-
+> =C2=A0include/linux/syscalls.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=
+=A04=C2=A0
+> =C2=A0include/uapi/linux/fcntl.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0include/uapi/linux/stat.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0135 +++++++++=
++++++
+> =C2=A0samples/Makefile=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=C2=A0=C2=A02=C2=A0
+> =C2=A0samples/statx/Makefile=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0=
+=C2=A010 +
+> =C2=A0samples/statx/test-statx.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=A0274 +++++++++++++++=
+++++++++++++++
+> =C2=A023 files changed, 910 insertions(+), 83 deletions(-)
+> =C2=A0create mode 100644 samples/statx/Makefile
+> =C2=A0create mode 100644 samples/statx/test-statx.c
+>=20
 
-But the detection for "writing inside i_size" is not correct, writes can
-be treated as "extending writes" wrongly, which results in block
-allocation for holes and could expose stale data. This is because we're
-checking on the fs blocks not the actual offset and i_size in bytes.
 
-For example, direct write 1FSB to a 1FSB(or smaller) sparse file on
-ext2/3/4, starting from offset 0, in this case it's writing inside
-i_size, but 'create' is non-zero, because 'sdio->block_in_file' and
-'(i_size_read(dio->inode) >> sdio->blkbits' are both zero.
+I looked over the patchset and it looks fairly straightforward to me.
 
-This can be demonstrated by running ltp-aiodio test ADSP045 many times.
-When testing on extN filesystems, I see test failures occasionally,
-buffered read could read non-zero (stale) data.
+Are there things that I'd have probably done differently? Yes, but
+nothing really sticks out to me as show-stopping and this has the
+potential to be helpful in all sorts of ways.
 
-ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 2
+I think we really ought to resist excessive bikeshedding this time
+around. With the way the interface is designed, we should be able to
+expand on it later if we want to add new attributes after the interface
+itself is merged.
 
-dio_sparse    0  TINFO  :  Dirtying free blocks
-dio_sparse    0  TINFO  :  Starting I/O tests
-non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
-non-zero read at offset 0
-dio_sparse    0  TINFO  :  Killing childrens(s)
-dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
-
-Fix it by checking on the actual offset and i_size in bytes, not the fs
-blocks where offset and i_size are in, to make sure it's really writing
-into the file. Also introduce some local variables to make the code
-easier to read a little bit.
-
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
----
- fs/direct-io.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 4720377..ca0c9bc 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -607,9 +607,12 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 	int ret;
- 	sector_t fs_startblk;	/* Into file, in filesystem-sized blocks */
- 	sector_t fs_endblk;	/* Into file, in filesystem-sized blocks */
-+	sector_t block_in_file = sdio->block_in_file;
- 	unsigned long fs_count;	/* Number of filesystem-sized blocks */
- 	int create;
--	unsigned int i_blkbits = sdio->blkbits + sdio->blkfactor;
-+	unsigned int blkbits = sdio->blkbits;
-+	unsigned int blkfactor = sdio->blkfactor;
-+	unsigned int i_blkbits = blkbits + blkfactor;
- 
- 	/*
- 	 * If there was a memory error and we've overwritten all the
-@@ -617,10 +620,9 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 	 */
- 	ret = dio->page_errors;
- 	if (ret == 0) {
--		BUG_ON(sdio->block_in_file >= sdio->final_block_in_request);
--		fs_startblk = sdio->block_in_file >> sdio->blkfactor;
--		fs_endblk = (sdio->final_block_in_request - 1) >>
--					sdio->blkfactor;
-+		BUG_ON(block_in_file >= sdio->final_block_in_request);
-+		fs_startblk = block_in_file >> blkfactor;
-+		fs_endblk = (sdio->final_block_in_request - 1) >> blkfactor;
- 		fs_count = fs_endblk - fs_startblk + 1;
- 
- 		map_bh->b_state = 0;
-@@ -638,11 +640,9 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 		 * buffer head.
- 		 */
- 		create = dio->rw & WRITE;
--		if (dio->flags & DIO_SKIP_HOLES) {
--			if (sdio->block_in_file < (i_size_read(dio->inode) >>
--							sdio->blkbits))
--				create = 0;
--		}
-+		if ((dio->flags & DIO_SKIP_HOLES) &&
-+		    ((block_in_file << blkbits) < i_size_read(dio->inode)))
-+			create = 0;
- 
- 		ret = (*sdio->get_block)(dio->inode, fs_startblk,
- 						map_bh, create);
--- 
-2.5.5
-
+Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
