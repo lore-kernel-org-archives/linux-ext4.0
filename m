@@ -1,145 +1,63 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 117421] New: e2fsprogs: mke2fs ignores sparse_super2 when also
- using extent or 64bit
-Date: Sat, 30 Apr 2016 11:08:21 +0000
-Message-ID: <bug-117421-13602@https.bugzilla.kernel.org/>
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Remarks regarding sparse_super2 feature
+Date: Sat, 30 Apr 2016 17:23:58 +0200
+Message-ID: <5724CE0E.6030407@partition-saving.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:40316 "EHLO mail.kernel.org"
+Received: from smtp4-g21.free.fr ([212.27.42.4]:13666 "EHLO smtp4-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751094AbcD3LI0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 30 Apr 2016 07:08:26 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 41143201FA
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Apr 2016 11:08:24 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 66EDA201DD
-	for <linux-ext4@vger.kernel.org>; Sat, 30 Apr 2016 11:08:22 +0000 (UTC)
+	id S1750760AbcD3PXI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 30 Apr 2016 11:23:08 -0400
+Received: from [192.168.103.118] (unknown [82.230.26.21])
+	by smtp4-g21.free.fr (Postfix) with ESMTP id 083ED19F59E
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Apr 2016 15:29:43 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=117421
+Hello,
 
-            Bug ID: 117421
-           Summary: e2fsprogs: mke2fs ignores sparse_super2 when also
-                    using extent or 64bit
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.2.8
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: kellyc@surroundbackgrounds.com
-        Regression: No
+I was looking to sparse_super2 feature and there is some points I do not 
+understand in the way it is handled on fs initialisation and resize.
 
-Package: e2fsprogs
-Version: 1.42.12-1.1
-Severity: normal
-File: /sbin/mke2fs
+In ext2fs_initialize (initialize.c), the backup superblocks field is initialised 
+at line 437, but they were used previously when checking for overhead (at line 
+407) when the second value is still ~0. Could not this lead to wrong overhead 
+computation in some cases?
+This is certainly very unlikely because of the 50 margin taken on this overhead. 
+As this is some chicken/egg problem, solution is not obvious. A way is perhaps 
+to have ext2fs_bg_has_super accepting ~0 as a group always having a backup 
+superblock (unless extending the number of groups to 64 bits, if such a number 
+of groups is reached, it will obviously be the latest so be the candidate for 
+the backup bg).
 
-When creating an ext3/ext4 filesystem the sparse_super2 option is ignored and
-defaults back to sparse_super when using extent or 64bit.
-mke2fs should respect the use of sparse_super2 when using either or both -O
-extent or -O 64bit.
+In case there is some other solution, there is same kind of problem in 
+adjust_fs_info of resize2fs.c (line 724 check for backup super block and line 
+839 updates the value).
 
+Concerning adjust_fs_info I do not understand the logic of some tests concerning 
+update of these values:
+at line 844:
+			if (old_fs->group_desc_count == 1)
+				fs->super->s_backup_bgs[0] = 1;
+			if (old_fs->group_desc_count == 1 &&
+			    fs->super->s_backup_bgs[0])
+				fs->super->s_backup_bgs[0] = last_bg;
+			else if (fs->super->s_backup_bgs[1])
+				fs->super->s_backup_bgs[1] = last_bg;
+couldn't the 2 first "if" be collapsed: if first one is true, it leads to second 
+one be true and if first one is false, second is also false. Or perhaps it means 
+it is the wrong value that is checked or initialised in second if?
 
-Normal formatting using sparse_super and works as expected creating 2 backup
-superblocks.
+For the other case (shrinking the fs) at line 856:
+			if (last_bg > 1 &&
+			    old_fs->super->s_backup_bgs[1] == old_last_bg)
+				fs->super->s_backup_bgs[1] = last_bg;
+what ensures the location where the new super block backup will be set is a free 
+block?
 
-mke2fs /dev/sdq1 -t ext4 -b 4096 -O sparse_super2
-mke2fs 1.42.12 (29-Aug-2014)
-Creating filesystem with 61049344 4k blocks and 15269888 inodes
-Filesystem UUID: cdaa09a3-dcb2-473a-9da8-7517a632db14
-Superblock backups stored on blocks:
-        32768, 61046784
+Regards,
 
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (32768 blocks): done
-Writing superblocks and filesystem accounting information: done
-
-
-
-Using extent option with sparse_super2 creates more than 2 backup superblocks.
-
-
-mke2fs /dev/sdq1 -t ext4 -b 4096 -O sparse_super2 -O extent
-mke2fs 1.42.12 (29-Aug-2014)
-Creating filesystem with 61049344 4k blocks and 15269888 inodes
-Filesystem UUID: 4634627d-bd41-4f96-923d-21746f12cf1f
-Superblock backups stored on blocks:
-        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632,  
-2654208,4096000, 7962624, 11239424, 20480000, 23887872
-
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (32768 blocks): done
-Writing superblocks and filesystem accounting information: done
-
-
-
-Using 64bit option with sparse_super2 creates more than 2 backup superblocks.
-
-
-mke2fs /dev/sdq1 -t ext4 -b 4096 -O sparse_super2 -O 64bit
-mke2fs 1.42.12 (29-Aug-2014)
-Creating filesystem with 61049344 4k blocks and 15269888 inodes
-Filesystem UUID: ef3ed24c-0183-40c9-b2de-0b8e9bb868bb
-Superblock backups stored on blocks:
-        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
-4096000, 7962624, 11239424, 20480000, 23887872
-
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (32768 blocks): done
-Writing superblocks and filesystem accounting information: done
-
-
-
-mke2fs (mkfs.ext4) should respect the sparse_super2 option when used with 64bit
-or extent.
-
-
-
-
--- System Information:
-Debian Release: 8.3
-  APT prefers stable
-  APT policy: (500, 'stable')
-Architecture: amd64 (x86_64)
-
-Kernel: Linux 4.2.8-1-pve (SMP w/24 CPU cores)
-Locale: LANG=en_US.UTF-8, LC_CTYPE=en_US.UTF-8 (charmap=UTF-8)
-Shell: /bin/sh linked to /bin/dash
-Init: systemd (via /run/systemd/system)
-
-Versions of packages e2fsprogs depends on:
-ii  e2fslibs    1.42.12-1.1
-ii  libblkid1   2.25.2-6
-ii  libc6       2.19-18+deb8u3
-ii  libcomerr2  1.42.12-1.1
-ii  libss2      1.42.12-1.1
-ii  libuuid1    2.25.2-6
-ii  util-linux  2.25.2-6
-
-
-e2fsprogs recommends no packages.
-
-Versions of packages e2fsprogs suggests:
-pn  e2fsck-static  <none>
-pn  gpart          <none>
-ii  parted         3.2-7
-
--- no debconf information
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Damien
