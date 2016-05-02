@@ -1,271 +1,282 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 5/6] statx: Make windows attributes available for CIFS, NTFS and FAT to use
-Date: Mon, 2 May 2016 16:52:12 -0600
-Message-ID: <D21EA8F8-0A7A-4275-8D4C-E9CFCC2A7293@dilger.ca>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Tue, 3 May 2016 09:04:22 +1000
+Message-ID: <20160502230422.GQ26977@dastard>
+References: <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+ <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+ <20160420205923.GA24797@infradead.org>
+ <1461434916.3695.7.camel@intel.com>
+ <20160425083114.GA27556@infradead.org>
+ <1461604476.3106.12.camel@intel.com>
+ <20160425232552.GD18496@dastard>
+ <1461628381.1421.24.camel@intel.com>
+ <20160426004155.GF18496@dastard>
+ <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: quoted-printable
+Cc: "Dan J. Williams" <dan.j.williams@intel.com>,
+	"Verma, Vishal L" <vishal.l.verma@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Apr 29, 2016, at 6:58 AM, David Howells <dhowells@redhat.com> wrote:
+On Mon, May 02, 2016 at 11:18:36AM -0400, Jeff Moyer wrote:
+> Dave Chinner <david@fromorbit.com> writes:
 >=20
-> Make windows attributes available for CIFS, NTFS and FAT to use in the
-> statx struct.  The attribute flags map directly by value to those in =
-the
-> CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and =
-HPFS.
+> > On Mon, Apr 25, 2016 at 11:53:13PM +0000, Verma, Vishal L wrote:
+> >> On Tue, 2016-04-26 at 09:25 +1000, Dave Chinner wrote:
+> > You're assuming that only the DAX aware application accesses it's
+> > files.  users, backup programs, data replicators, fileystem
+> > re-organisers (e.g.  defragmenters) etc all may access the files and
+> > they may throw errors. What then?
 >=20
-> The statx struct acquires:
+> I'm not sure how this is any different from regular storage.  If an
+> application gets EIO, it's up to the app to decide what to do with that=
+.
+
+Sure - they'll fail. But the question I'm asking is that if the
+application that owns the data is supposed to do error recovery,
+what happens when a 3rd party application hits an error? If that
+consumes the error, the the app that owns the data won't ever get a
+chance to correct the error.
+
+This is a minefield - a 3rd party app that swallows and clears DAX
+based IO errors is a data corruption vector. can yo imagine if
+*grep* did this? The model that is being promoted here effectively
+allows this sort of behaviour - I don't really think we
+should be architecting an error recovery strategy that has the
+capability to go this wrong....
+
+> >> > Where does the application find the data that was lost to be able =
+to
+> >> > rewrite it?
+> >>=20
+> >> The data that was lost is gone -- this assumes the application has s=
+ome
+> >> ability to recover using a journal/log or other redundancy - yes, at=
+ the
+> >> application layer. If it doesn't have this sort of capability, the o=
+nly
+> >> option is to restore files from a backup/mirror.
+> >
+> > So the architecture has a built in assumption that only userspace
+> > can handle data loss?
 >=20
-> 	__u32	st_win_attrs;
+> Remember that the proposed programming model completely bypasses the
+> kernel, so yes, it is expected that user-space will have to deal with
+> the problem.
 
-It seems some of these flags are duplicated with the st_information =
-field,
-and some are duplicate with FS_IOC_GETFLAGS values, and returning the =
-same
-information in multiple ways is confusing.
+No, it doesn't completely bypass the kernel - the kernel is the
+infrastructure that catches the errors in the first place, and it
+owns and controls all the metadata that corresponds to the physical
+location of that error. The only thing the kernel doesn't own is the
+*contents* of that location.
 
-If these flags are part of the CIFS protocol, and are directly usable by
-Samba then I can understand we wouldn't want to change them once in the
-kernel and then convert them back in userspace, but I'm a bit reluctant
-to have flags only for CIFS/NTFS/FAT that might also be useful for other =
-filesystems.  Would we want to be able to get translated st_win_attrs
-flags in ext4 attrs when it is being exported by Samba?
-
-> The value in this is present if STATX_WIN_ATTRS is set.
+> > What about filesytsems like NOVA, that use log structured design to
+> > provide DAX w/ update atomicity and can potentially also provide
+> > redundancy/repair through the same mechanisms? Won't pmem native
+> > filesystems with built in data protection features like this remove
+> > the need for adding all this to userspace applications?
 >=20
-> The defined flags in this are:
+> I don't think we'll /only/ support NOVA for pmem.  So we'll have to dea=
+l
+> with this for existing file systems, right?
+
+Yes, but that misses my point that it seems that the design is only
+focussed on userspace and existing filesystems and there is no
+consideration of kernel side functionality that could do transparent
+recovery....
+
+> > If so, shouldn't that be the focus of development rahter than
+> > placing the burden on userspace apps to handle storage repair
+> > situations?
 >=20
-> 	STATX_WIN_ATTR_READONLY
-> 	STATX_WIN_ATTR_HIDDEN
-> 	STATX_WIN_ATTR_SYSTEM
-> 	STATX_WIN_ATTR_DIRECTORY
+> It really depends on the programming model.  In the model Vishal is
+> talking about, either the applications themselves or the libraries they
+> link to are expected to implement the redundancies where necessary.
 
-How does this differ from (st_mode & S_IFMT) =3D=3D S_IFDIR)?
+IOWs, filesystems no longer have any control over data integrity.
+Yet it's the filesystem developers who will still be responsible for
+data integrity and when the filesystem has a data coruption event
+we'll get blamed and the filesystem gets a bad name, even though
+it's entirely the applications fault. We've seen this time and time
+again - application developers cannot be trusted to guarantee data
+integrity. yes, some apps will be fine, but do you really expect
+application devs that refuse to use fsync because it's too slow are
+going to have a different approach to integrity when it comes to
+DAX?
 
-> 	STATX_WIN_ATTR_ARCHIVE
-> 	STATX_WIN_ATTR_NORMAL
-
-How does this differ from (st_mode & S_IFMT) =3D=3D S_IFREG)?
-
-> 	STATX_WIN_ATTR_TEMPORARY
-
-How does this differ from STATX_INFO_TEMPORARY?
-
-> 	STATX_WIN_ATTR_SPARSE_FILE
-> 	STATX_WIN_ATTR_REPARSE_POINT
-> 	STATX_WIN_ATTR_COMPRESSED
-> 	STATX_WIN_ATTR_OFFLINE
-> 	STATX_WIN_ATTR_NOT_CONTENT_INDEXED
-> 	STATX_WIN_ATTR_ENCRYPTED
-
-How does this differ from STATX_INFO_ENCRYPTED?
-
-Cheers, Andreas
-
-> 	STATX_WIN_ATTR_INTEGRITY_STREAM
-> 	STATX_WIN_ATTR_NO_SCRUB_DATA
+> >> > There's an implicit assumption that applications will keep redunda=
+nt
+> >> > copies of their data at the /application layer/ and be able to
+> >> > automatically repair it?
 >=20
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> ---
+> That's one way to do things.  It really depends on the application what
+> it will do for recovery.
 >=20
-> fs/stat.c                  |    5 ++++-
-> include/uapi/linux/stat.h  |   30 ++++++++++++++++++++++++++++--
-> samples/statx/test-statx.c |   31 +++++++++++++++++++++++++++++++
-> 3 files changed, 63 insertions(+), 3 deletions(-)
+> >> > And then there's the implicit assumption that it will unlink and
+> >> > free the entire file before writing a new copy
 >=20
-> diff --git a/fs/stat.c b/fs/stat.c
-> index c2f8370dab13..1552bff154e6 100644
-> --- a/fs/stat.c
-> +++ b/fs/stat.c
-> @@ -83,6 +83,7 @@ int vfs_xgetattr_nosec(struct path *path, struct =
-kstat *stat)
+> I think Vishal was referring to restoring from backup.  cp itself will
+> truncate the file before overwriting, iirc.
+
+Which version of cp? what happens if they use --sparse and the error
+is in a zeroed region? There's so many assumptions about undefined usersp=
+ace
+environment, application and user behaviour being made here, and
+it's all being handwaved away.
+
+I'm asking for this to be defined, demonstrated and documented as a
+working model that cannot be abused and doesn't have holes the size
+of trucks in it, not handwaving...
+
+> >> To summarize, the two cases we want to handle are:
+> >> 1. Application has inbuilt recovery:
+> >> =A0 - hits badblock
+> >> =A0 - figures out it is able to recover the data
+> >> =A0 - handles SIGBUS or EIO
+> >> =A0 - does a (sector aligned) write() to restore the data
+> >
+> > The "figures out" step here is where >95% of the work we'd have to
+> > do is. And that's in filesystem and block layer code, not
+> > userspace, and userspace can't do that work in a signal handler.
+> > And it  can still fall down to the second case when the application
+> > doesn't have another copy of the data somewhere.
 >=20
-> 	stat->result_mask =3D 0;
-> 	stat->information =3D 0;
-> +	stat->win_attrs =3D 0;
-> 	if (inode->i_op->getattr)
-> 		return inode->i_op->getattr(path->mnt, path->dentry, =
-stat);
+> I read that "figures out" step as the application determining whether o=
+r
+> not it had a redundant copy.
+
+Another undocumented assumption, that doesn't simplify what needs to
+be done. Indeed, userspace can't do that until it is in SIGBUS
+context, which tends to imply applications need to do a major amount
+of work from within the signal handler....
+
+> > FWIW, we don't have a DAX enabled filesystem that can do
+> > reverse block mapping, so we're a year or two away from this being a
+> > workable production solution from the filesystem perspective. And
+> > AFAICT, it's not even on the roadmap for dm/md layers.
 >=20
-> @@ -643,7 +644,9 @@ static long statx_set_result(struct kstat *stat, =
-struct statx __user *buffer)
-> 	    __put_user(stat->blocks,		&buffer->st_blocks	=
-) ||
-> 	    __put_user(stat->version,		&buffer->st_version	=
-) ||
-> 	    __put_user(stat->gen,		&buffer->st_gen		=
-) ||
-> -	    __clear_user(&buffer->__spare1, sizeof(buffer->__spare1)))
-> +	    __put_user(stat->win_attrs,		&buffer->st_win_attrs	=
-) ||
-> +	    __clear_user(&buffer->__spare1,
-> +			 sizeof(buffer->__spare1) + =
-sizeof(buffer->__spare2)))
-> 		return -EFAULT;
+> Do we even need that?  What if we added an FIEMAP flag for determining
+> bad blocks.
+
+So you're assuming that the filesystem has been informed of the bad
+blocks and has already marked the bad regions of the file in it's
+extent list?
+
+How does that happen? What mechanism is used for the underlying
+block device to inform the filesytem that theirs a bad LBA, and how
+does the filesytem the map that to a path/file/offset with reverse
+mapping? Or is there some other magic that hasn't been explained
+happening here?
+
+> The file system could simply walk the list of extents for
+> the file and check the corresponding disk blocks.  No reverse mapping
+> required.
+
+You're expecting the filesystem to poll the block device to find bad
+sectors? Ignoring the fact this is the sort of brute force scan we
+need reverse mapping to avoid, how does the filesystem know what
+file/extent list it should be searching when the block device
+informs it there is a bad sector somewhere? i.e. what information
+does the MCE convey to the block device, and what does the block
+device pass to the filesytem so the filesystem can do one of these
+scans? If the block device is only passing LBAs or a generic "new
+bad block has been found" message, the filesystem still has to do an
+full scan of it's metadata to find the owner of the LBA(s) that have
+gone bad....
+
+Nobody is explaining these important little details - there seems to
+be an assumption that everyone "knows" how this is all going to work
+and that we have infrastructure that can make it work.
+
+Just because we might be able to present bad block information to
+userspace via FIEMAP doesn't mean that it's trivial to implement.
+THE FIEMAP flag is trivial - connecting the dots is the hard part
+and nobody is explaining to me how that is all supposed to be done.
+
+> Also note that DM/MD don't support direct_access(), either,
+> so I don't think they're relevant for this discussion.
+
+But they could for linear concatenation, which would be extremely
+useful. e.g. stitching per-node non-linear pmem into a single linear
+LBA range....
+
+
+> >> 2. Application doesn't have any inbuilt recovery mechanism
+> >> =A0 - hits badblock
+> >> =A0 - gets SIGBUS (or EIO) and crashes
+> >> =A0 - Sysadmin restores file from backup
+> >
+> > Which is no different to an existing non-DAX application getting an
+> > EIO/sigbus from current storage technologies.
+> >
+> > Except: in the existing storage stack, redundancy and correction has
+> > already had to have failed for the application to see such an error.
+> > Hence this is normally considered a DR case as there's had to be
+> > cascading failures (e.g.  multiple disk failures in a RAID) to get
+> > to this stage, not a single error in a single sector in
+> > non-redundant storage.
+> >
+> > We need some form of redundancy and correction in the PMEM stack to
+> > prevent single sector errors from taking down services until an
+> > administrator can correct the problem. I'm trying to understand
+> > where this is supposed to fit into the picture - at this point I
+> > really don't think userspace applications are going to be able to do
+> > this reliably....
 >=20
-> 	return 0;
-> diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-> index 55ce6607dab6..64729b0785bf 100644
-> --- a/include/uapi/linux/stat.h
-> +++ b/include/uapi/linux/stat.h
-> @@ -106,7 +106,10 @@ struct statx {
-> 	__u32	st_dev_major;	/* ID of device containing file [uncond] =
-*/
-> 	__u32	st_dev_minor;
-> 	/* 0x80 */
-> -	__u64	__spare1[16];	/* Spare space for future expansion */
-> +	__u32	st_win_attrs;	/* Windows file attributes */
-> +	__u32	__spare1[3];
-> +	/* 0x90 */
-> +	__u64	__spare2[14];	/* Spare space for future expansion */
-> 	/* 0x100 */
-> };
->=20
-> @@ -133,7 +136,8 @@ struct statx {
-> #define STATX_BTIME		0x00000800U	/* Want/got st_btime */
-> #define STATX_VERSION		0x00001000U	/* Want/got st_version =
-*/
-> #define STATX_GEN		0x00002000U	/* Want/got st_gen */
-> -#define STATX_ALL_STATS		0x00003fffU	/* All supported =
-stats */
-> +#define STATX_WIN_ATTRS		0x00004000U	/* Want/got =
-st_win_attrs */
-> +#define STATX_ALL_STATS		0x00007fffU	/* All supported =
-stats */
->=20
-> /*
->  * Flags to be found in st_information
-> @@ -151,4 +155,26 @@ struct statx {
-> #define STATX_INFO_AUTODIR		0x00000040U /* Dir provides =
-unlisted automounts */
-> #define STATX_INFO_NONSYSTEM_OWNERSHIP	0x00000080U /* File has =
-non-system ownership details */
->=20
-> +/*
-> + * Flags to be found in st_win_attrs.
-> + *
-> + * These give information about the state of a file on a Windows =
-filesystem
-> + * (such as. FAT, NTFS, CIFS).  These values are borrowed from the =
-CIFS fs.
-> + */
-> +#define STATX_WIN_ATTR_READONLY			0x00000001
-> +#define STATX_WIN_ATTR_HIDDEN			0x00000002
-> +#define STATX_WIN_ATTR_SYSTEM			0x00000004
-> +#define STATX_WIN_ATTR_DIRECTORY		0x00000010
-> +#define STATX_WIN_ATTR_ARCHIVE			0x00000020
-> +#define STATX_WIN_ATTR_NORMAL			0x00000080
-> +#define STATX_WIN_ATTR_TEMPORARY		0x00000100
-> +#define STATX_WIN_ATTR_SPARSE_FILE		0x00000200
-> +#define STATX_WIN_ATTR_REPARSE_POINT		0x00000400
-> +#define STATX_WIN_ATTR_COMPRESSED		0x00000800
-> +#define STATX_WIN_ATTR_OFFLINE			0x00001000
-> +#define STATX_WIN_ATTR_NOT_CONTENT_INDEXED	0x00002000
-> +#define STATX_WIN_ATTR_ENCRYPTED		0x00004000
-> +#define STATX_WIN_ATTR_INTEGRITY_STREAM		0x00008000
-> +#define STATX_WIN_ATTR_NO_SCRUB_DATA		0x00020000
-> +
-> #endif /* _UAPI_LINUX_STAT_H */
-> diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
-> index 38ef23c12e7d..86eac7d16c32 100644
-> --- a/samples/statx/test-statx.c
-> +++ b/samples/statx/test-statx.c
-> @@ -134,6 +134,37 @@ static void dump_statx(struct statx *stx)
-> 	if (stx->st_mask & STATX_GEN)
-> 		printf("Inode gen   : %xh\n", stx->st_gen);
->=20
-> +	if (stx->st_mask & STATX_WIN_ATTRS) {
-> +		unsigned char bits;
-> +		int loop, byte;
-> +
-> +		static char wattr_representation[32 + 1] =3D
-> +			/* STATX_WIN_ATTR_ flags: */
-> +			"????????"	/* 31-24	=
-0x00000000-ff000000 */
-> +			"??????N?"	/* 23-16	=
-0x00000000-00ff0000 */
-> +			"ieNocrst"	/* 15- 8	=
-0x00000000-0000ff00 */
-> +			"n?Ad?SHR"	/*  7- 0	=
-0x00000000-000000ff */
-> +			;
-> +
-> +		printf("Win attrs  : %08llx (",
-> +		       (unsigned long long)stx->st_win_attrs);
-> +		for (byte =3D 32 - 8; byte >=3D 0; byte -=3D 8) {
-> +			bits =3D stx->st_win_attrs >> byte;
-> +			for (loop =3D 7; loop >=3D 0; loop--) {
-> +				int bit =3D byte + loop;
-> +
-> +				if (bits & 0x80)
-> +					putchar(wattr_representation[31 =
-- bit]);
-> +				else
-> +					putchar('-');
-> +				bits <<=3D 1;
-> +			}
-> +			if (byte)
-> +				putchar(' ');
-> +		}
-> +		printf(")\n");
-> +	}
-> +
-> 	if (stx->st_information) {
-> 		unsigned char bits;
-> 		int loop, byte;
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Not all storage is configured into a RAID volume, and in some instances=
+,
+> the application is better positioned to recover the data (gluster/ceph,
+> for example).
 
+Right, but they still rely on the filesystem to provide data
+integrity guarantees to work correctly. While they have "node level"
+redundancy, operations within the node still need to work correctly
+and so they'd still need all the kernel/fs side functionality to
+provide them with error information (like fiemap bad blocks) on top
+of all the new error detectiona nd correction code they'd need to
+support this...
 
-Cheers, Andreas
+FWIW, the whole point of DAX on existing filesystems was to not need
+major changes to existing filesystems to support fast pmem
+operations.  i.e. to get something working quickly while pmem native
+filesytems are developed to support pmem and all it's quirks in a
+clean and efficient manner.
 
+Instead, what I'm seeing now is a trend towards forcing existing
+filesystems to support the requirements and quirks of DAX and pmem,
+without any focus on pmem native solutions. i.e. I'm hearing "we
+need major surgery to existing filesystems and block devices to make
+DAX work" rather than "how do we make this efficient for a pmem
+native solution rather than being bound to block device semantics"?
 
+Cheers,
 
+Dave.
+--=20
+Dave Chinner
+david@fromorbit.com
 
-
-
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBVyfaHHKl2rkXzB/gAQjOmg//X8Uk8jcMk6Azbc0W5XItlYzjlrefkhSt
-4wfqxBaD8MWBIdfCu+8tKrHf5TEH9rUhooHEyLxDOdcucQwCDgCQ/3F5m8rxVCUH
-Yn4twP0SE2tleD/iB/jlnq00QTHqXFA5KVac2+0CSiQplxFa+IKrDH4sRrd+ZI1/
-09D0+vvjwFXsFOusP2xFnbVYnL3Ks40Vvhtb5svIkslFP4KnV3NjEyl/s4XrZhEr
-uESsuGQC8xdUEDqduLFfxXUyjaeqHVPfYeV7mf0yCTmiJ2hlrZ7+y3BizYAhVJ6E
-gx7cuOsIUAZI68SuIDFlw7iQ+KTzhEq6uwfPGEQ1XG4XvlaspwEL6BGUu3oQXoUC
-VwAGwBZFuC/Zn2+Vk1nBr//p1Gdtgsc7q2h625PXUjlEiKA+2SNaBTxbebTEERPm
-LkAMkaMPwuiBMKlIs1VhNSrHo7ZN7MzygOekm7uCX0OCGLMqOQ1VBYLPMuJWB81J
-5eq9gu5ipQseRqTFOVVnBaXUf80CPOIRzyX5J7jOcXWgLmGeT3R/noCQCyMZ9v/z
-eia/GccBmzcgiVuxByR2CbBDT0hRfw4UyLOcsgvcC3G2NzQK7exUa0vLUbTCBvXV
-itdWIWVOwjjk1LpfwL1fbYaWL24HylPCAtt3rOAh5OfE/IY3buRvkKYJOEUNaqvm
-zDNdBYYGSRM=
-=D4vw
------END PGP SIGNATURE-----
-
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=3Dmailto:"dont@kvack.org"> email@kvack.org </a>
