@@ -1,126 +1,54 @@
-From: Boaz Harrosh <boaz@plexistor.com>
-Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Mon, 02 May 2016 20:44:01 +0300
-Message-ID: <572791E1.7000103@plexistor.com>
-References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>	<1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>	<5727753F.6090104@plexistor.com>	<CAPcyv4jWPTDbbw6uMFEEt2Kazgw+wb5Pfwroej--uQPE+AtUbA@mail.gmail.com>	<57277EDA.9000803@plexistor.com> <CAPcyv4jnz69a3S+XZgLaLojHZmpfoVXGDkJkt_1Q=8kk0gik9w@mail.gmail.com>
+From: Waiman Long <waiman.long@hpe.com>
+Subject: Re: [PATCH v5 0/2] ext4: Improve parallel I/O performance on NVDIMM
+Date: Mon, 2 May 2016 13:45:08 -0400
+Message-ID: <57279224.7030702@hpe.com>
+References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com> <57238DFC.6010108@hpe.com> <20160501172854.GA19601@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Vishal Verma <vishal.l.verma@intel.com>,
- "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
- linux-block@vger.kernel.org, Jan Kara <jack@suse.cz>,
- Matthew Wilcox <matthew@wil.cx>,
- Dave Chinner <david@fromorbit.com>,
- "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
- XFS Developers <xfs@oss.sgi.com>, Jens Axboe <axboe@fb.com>,
- Linux MM <linux-mm@kvack.org>,
- Al Viro <viro@zeniv.linux.org.uk>, Christoph Hellwig <hch@infradead.org>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>,
- Andrew Morton <akpm@linux-foundation.org>,
- linux-ext4 <linux-ext4@vger.kernel.org>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <CAPcyv4jnz69a3S+XZgLaLojHZmpfoVXGDkJkt_1Q=8kk0gik9w@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Dave Chinner <david@fromorbit.com>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bl2on0135.outbound.protection.outlook.com ([65.55.169.135]:58712
+	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753818AbcEBRpU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 May 2016 13:45:20 -0400
+In-Reply-To: <20160501172854.GA19601@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/02/2016 07:49 PM, Dan Williams wrote:
-> On Mon, May 2, 2016 at 9:22 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
->> On 05/02/2016 07:01 PM, Dan Williams wrote:
->>> On Mon, May 2, 2016 at 8:41 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
->>>> On 04/29/2016 12:16 AM, Vishal Verma wrote:
->>>>> All IO in a dax filesystem used to go through dax_do_io, which cannot
->>>>> handle media errors, and thus cannot provide a recovery path that can
->>>>> send a write through the driver to clear errors.
->>>>>
->>>>> Add a new iocb flag for DAX, and set it only for DAX mounts. In the IO
->>>>> path for DAX filesystems, use the same direct_IO path for both DAX and
->>>>> direct_io iocbs, but use the flags to identify when we are in O_DIRECT
->>>>> mode vs non O_DIRECT with DAX, and for O_DIRECT, use the conventional
->>>>> direct_IO path instead of DAX.
->>>>>
->>>>
->>>> Really? What are your thinking here?
->>>>
->>>> What about all the current users of O_DIRECT, you have just made them
->>>> 4 times slower and "less concurrent*" then "buffred io" users. Since
->>>> direct_IO path will queue an IO request and all.
->>>> (And if it is not so slow then why do we need dax_do_io at all? [Rhetorical])
->>>>
->>>> I hate it that you overload the semantics of a known and expected
->>>> O_DIRECT flag, for special pmem quirks. This is an incompatible
->>>> and unrelated overload of the semantics of O_DIRECT.
->>>
->>> I think it is the opposite situation, it us undoing the premature
->>> overloading of O_DIRECT that went in without performance numbers.
->>
->> We have tons of measurements. Is not hard to imagine the results though.
->> Specially the 1000 threads case
->>
->>> This implementation clarifies that dax_do_io() handles the lack of a
->>> page cache for buffered I/O and O_DIRECT behaves as it nominally would
->>> by sending an I/O to the driver.
->>
->>> It has the benefit of matching the
->>> error semantics of a typical block device where a buffered write could
->>> hit an error filling the page cache, but an O_DIRECT write potentially
->>> triggers the drive to remap the block.
->>>
->>
->> I fail to see how in writes the device error semantics regarding remapping of
->> blocks is any different between buffered and direct IO. As far as the block
->> device it is the same exact code path. All The big difference is higher in the
->> VFS.
->>
->> And ... So you are willing to sacrifice the 99% hotpath for the sake of the
->> 1% error path? and piggybacking on poor O_DIRECT.
->>
->> Again there are tons of O_DIRECT apps out there, why are you forcing them to
->> change if they want true pmem performance?
-> 
-> This isn't forcing them to change.  This is the path of least surprise
-> as error semantics are identical to a typical block device.  Yes, an
-> application can go faster by switching to the "buffered" / dax_do_io()
-> path it can go even faster to switch to mmap() I/O and use DAX
-> directly.  If we can later optimize the O_DIRECT path to bring it's
-> performance more in line with dax_do_io(), great, but the
-> implementation should be correct first and optimized later.
-> 
+On 05/01/2016 01:28 PM, Christoph Hellwig wrote:
+> On Fri, Apr 29, 2016 at 12:38:20PM -0400, Waiman Long wrote:
+>>  From my testing, it looked like that parallel overwrites to the same file in
+>> an ext4 filesystem on DAX can happen in parallel even if their range
+>> overlaps. It was mainly because the code will drop the i_mutex before the
+>> write. That means the overlapped blocks can get garbage. I think this is a
+>> problem, but I am not expert in the ext4 filesystem to say for sure. I would
+>> like to know your thought on that.
+> That's another issue with dax I/O pretending to be direct I/O..  Because
+> it isn't we'll need to synchronize it like buffered I/O and not like
+> direct I/O in all file systems.
 
-Why does it need to be either or. Why not both?
-And also I disagree if you are correct and dax_do_io is bad and needs fixing
-than you have broken applications. Because in current model:
+ From what I saw in the code, I think filemap_write_and_wait_range()
+should have prevented concurrent overwrites from stepping on each
+other for non-DAX I/O.  However it is essentially a no-op for DAX
+I/O and so the protection is gone.
 
-read => -EIO, write-bufferd, sync()
-gives you the same error semantics as: read => -EIO, write-direct-io
+I am planning to send out a patch to disable mutex dropping for DAX
+overwrite. There is still an issue on the read side. If journal is
+disabled and the dioread_nolock mount option is used, read will done
+without locking. Again, the filemap_write_and_wait_range() check on
+the read side will not protect against write.
 
-In fact this is what the delete, restore from backup model does today.
-Who said it uses / must direct IO. Actually I think it does not.
+Cheers,
+Longman
 
-Two things I can think of which are better:
-[1]
-Why not go deeper into the dax io loops, and for any WRITE
-failed page call bdev_rw_page() to let the pmem.c clear / relocate
-the error page.
-
-So reads return -EIO - is what you wanted no?
-writes get a memory error and retry with bdev_rw_page() to let the bdev
-relocate / clear the error - is what you wanted no?
-
-In the partial page WRITE case on bad sectors. we can carefully read-modify-write
-sector-by-sector and zero-out the bad-sectors that could not be read, what else?
-(Or enhance the bdev_rw_page() API)
-
-[2]
-Only switch to slow O_DIRECT, on presence of errors like you wanted. But I still
-hate that you overload error semantics with O_DIRECT which does not exist today
-see above
-
-Thanks
-Boaz
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
