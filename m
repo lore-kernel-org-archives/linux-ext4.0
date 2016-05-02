@@ -1,92 +1,87 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix oops on corrupted filesystem
-Date: Mon,  2 May 2016 16:51:04 +0200
-Message-ID: <1462200664-4825-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	Vegard Nossum <vegard.nossum@oracle.com>,
-	Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
+Date: Mon, 2 May 2016 07:56:06 -0700
+Message-ID: <20160502145606.GD20589@infradead.org>
+References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
+ <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nvdimm@ml01.01.org, linux-fsdevel@vger.kernel.org,
+	linux-block@vger.kernel.org, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Matthew Wilcox <matthew@wil.cx>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Jeff Moyer <jmoyer@redhat.com>
+To: Vishal Verma <vishal.l.verma@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-When filesystem is corrupted in the right way, it can happen
-ext4_mark_iloc_dirty() in ext4_orphan_add() returns error and we
-subsequently remove inode from the in-memory orphan list. However this
-deletion is done with list_del(&EXT4_I(inode)->i_orphan) and thus we
-leave i_orphan list_head with a stale content. Later we can look at this
-content causing list corruption, oops, or other issues. The reported
-trace looked like:
+> index 79defba..97a1f5f 100644
+> --- a/fs/block_dev.c
+> +++ b/fs/block_dev.c
+> @@ -167,12 +167,21 @@ blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
+>  	struct file *file = iocb->ki_filp;
+>  	struct inode *inode = bdev_file_inode(file);
+>  
+> -	if (IS_DAX(inode))
+> +	if (iocb_is_direct(iocb))
+> +		return __blockdev_direct_IO(iocb, inode, I_BDEV(inode), iter,
+> +					    offset, blkdev_get_block, NULL,
+> +					    NULL, DIO_SKIP_DIO_COUNT);
+> +	else if (iocb_is_dax(iocb))
+>  		return dax_do_io(iocb, inode, iter, offset, blkdev_get_block,
+>  				NULL, DIO_SKIP_DIO_COUNT);
+> -	return __blockdev_direct_IO(iocb, inode, I_BDEV(inode), iter, offset,
+> -				    blkdev_get_block, NULL, NULL,
+> -				    DIO_SKIP_DIO_COUNT);
+> +	else {
+> +		/*
+> +		 * If we're in the direct_IO path, either the IOCB_DIRECT or
+> +		 * IOCB_DAX flags must be set.
+> +		 */
+> +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
+> +		return -ENXIO;
+> +	}
 
-WARNING: CPU: 0 PID: 46 at lib/list_debug.c:53 __list_del_entry+0x6b/0x100()
-list_del corruption, 0000000061c1d6e0->next is LIST_POISON1
-0000000000100100)
-CPU: 0 PID: 46 Comm: ext4.exe Not tainted 4.1.0-rc4+ #250
-Stack:
- 60462947 62219960 602ede24 62219960
- 602ede24 603ca293 622198f0 602f02eb
- 62219950 6002c12c 62219900 601b4d6b
-Call Trace:
- [<6005769c>] ? vprintk_emit+0x2dc/0x5c0
- [<602ede24>] ? printk+0x0/0x94
- [<600190bc>] show_stack+0xdc/0x1a0
- [<602ede24>] ? printk+0x0/0x94
- [<602ede24>] ? printk+0x0/0x94
- [<602f02eb>] dump_stack+0x2a/0x2c
- [<6002c12c>] warn_slowpath_common+0x9c/0xf0
- [<601b4d6b>] ? __list_del_entry+0x6b/0x100
- [<6002c254>] warn_slowpath_fmt+0x94/0xa0
- [<602f4d09>] ? __mutex_lock_slowpath+0x239/0x3a0
- [<6002c1c0>] ? warn_slowpath_fmt+0x0/0xa0
- [<60023ebf>] ? set_signals+0x3f/0x50
- [<600a205a>] ? kmem_cache_free+0x10a/0x180
- [<602f4e88>] ? mutex_lock+0x18/0x30
- [<601b4d6b>] __list_del_entry+0x6b/0x100
- [<601177ec>] ext4_orphan_del+0x22c/0x2f0
- [<6012f27c>] ? __ext4_journal_start_sb+0x2c/0xa0
- [<6010b973>] ? ext4_truncate+0x383/0x390
- [<6010bc8b>] ext4_write_begin+0x30b/0x4b0
- [<6001bb50>] ? copy_from_user+0x0/0xb0
- [<601aa840>] ? iov_iter_fault_in_readable+0xa0/0xc0
- [<60072c4f>] generic_perform_write+0xaf/0x1e0
- [<600c4166>] ? file_update_time+0x46/0x110
- [<60072f0f>] __generic_file_write_iter+0x18f/0x1b0
- [<6010030f>] ext4_file_write_iter+0x15f/0x470
- [<60094e10>] ? unlink_file_vma+0x0/0x70
- [<6009b180>] ? unlink_anon_vmas+0x0/0x260
- [<6008f169>] ? free_pgtables+0xb9/0x100
- [<600a6030>] __vfs_write+0xb0/0x130
- [<600a61d5>] vfs_write+0xa5/0x170
- [<600a63d6>] SyS_write+0x56/0xe0
- [<6029fcb0>] ? __libc_waitpid+0x0/0xa0
- [<6001b698>] handle_syscall+0x68/0x90
- [<6002633d>] userspace+0x4fd/0x600
- [<6002274f>] ? save_registers+0x1f/0x40
- [<60028bd7>] ? arch_prctl+0x177/0x1b0
- [<60017bd5>] fork_handler+0x85/0x90
+DAX should not even end up in ->direct_IO.
 
-Fix the problem by using list_del_init() as we always should with
-i_orphan list.
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -300,7 +300,7 @@ xfs_file_read_iter(
+>  
+>  	XFS_STATS_INC(mp, xs_read_calls);
+>  
+> -	if (unlikely(iocb->ki_flags & IOCB_DIRECT))
+> +	if (unlikely(iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)))
+>  		ioflags |= XFS_IO_ISDIRECT;
 
-CC: stable@vger.kernel.org
-Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/namei.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+please also add a XFS_IO_ISDAX flag to propagate the information
+properly and allow tracing to display the actual I/O type.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 48e4b8907826..fdd151f91522 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2828,7 +2828,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 			 * list entries can cause panics at unmount time.
- 			 */
- 			mutex_lock(&sbi->s_orphan_lock);
--			list_del(&EXT4_I(inode)->i_orphan);
-+			list_del_init(&EXT4_I(inode)->i_orphan);
- 			mutex_unlock(&sbi->s_orphan_lock);
- 		}
- 	}
--- 
-2.6.6
+> +static inline bool iocb_is_dax(struct kiocb *iocb)
+>  {
+> +	return IS_DAX(file_inode(iocb->ki_filp)) &&
+> +		(iocb->ki_flags & IOCB_DAX);
+> +}
+> +
+> +static inline bool iocb_is_direct(struct kiocb *iocb)
+> +{
+> +	return iocb->ki_flags & IOCB_DIRECT;
+>  }
+
+No need for these helpers - especially as IOCB_DAX should never be set
+if IS_DAX is false.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
