@@ -1,109 +1,102 @@
 From: Vishal Verma <vishal@kernel.org>
 Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Mon, 02 May 2016 09:45:35 -0600
-Message-ID: <1462203935.11211.15.camel@kernel.org>
+Date: Mon, 02 May 2016 09:51:31 -0600
+Message-ID: <1462204291.11211.20.camel@kernel.org>
 References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
 	 <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
-	 <20160502145606.GD20589@infradead.org>
+	 <5727753F.6090104@plexistor.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Cc: linux-nvdimm@ml01.01.org, linux-fsdevel@vger.kernel.org,
- linux-block@vger.kernel.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
- linux-mm@kvack.org, Matthew Wilcox <matthew@wil.cx>, Ross Zwisler
- <ross.zwisler@linux.intel.com>, Dan Williams <dan.j.williams@intel.com>,
- Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>, Jens Axboe
- <axboe@fb.com>, Al Viro <viro@zeniv.linux.org.uk>, Andrew Morton
- <akpm@linux-foundation.org>,  linux-kernel@vger.kernel.org, Jeff Moyer
- <jmoyer@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>, Vishal Verma
-	 <vishal.l.verma@intel.com>
+Cc: linux-block@vger.kernel.org, Jan Kara <jack@suse.cz>, Matthew Wilcox
+	 <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com, Jens Axboe <axboe@fb.com>,
+	linux-mm@kvack.org, Al Viro <viro@zeniv.linux.org.uk>, Christoph Hellwig
+	 <hch@infradead.org>, linux-fsdevel@vger.kernel.org, Andrew Morton
+	 <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org
+To: Boaz Harrosh <boaz@plexistor.com>, Vishal Verma
+ <vishal.l.verma@intel.com>,  linux-nvdimm@lists.01.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160502145606.GD20589@infradead.org>
+In-Reply-To: <5727753F.6090104@plexistor.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2016-05-02 at 07:56 -0700, Christoph Hellwig wrote:
+On Mon, 2016-05-02 at 18:41 +0300, Boaz Harrosh wrote:
+> On 04/29/2016 12:16 AM, Vishal Verma wrote:
 > >=20
-> > index 79defba..97a1f5f 100644
-> > --- a/fs/block_dev.c
-> > +++ b/fs/block_dev.c
-> > @@ -167,12 +167,21 @@ blkdev_direct_IO(struct kiocb *iocb, struct
-> > iov_iter *iter, loff_t offset)
-> > =C2=A0	struct file *file =3D iocb->ki_filp;
-> > =C2=A0	struct inode *inode =3D bdev_file_inode(file);
-> > =C2=A0
-> > -	if (IS_DAX(inode))
-> > +	if (iocb_is_direct(iocb))
-> > +		return __blockdev_direct_IO(iocb, inode,
-> > I_BDEV(inode), iter,
-> > +					=C2=A0=C2=A0=C2=A0=C2=A0offset,
-> > blkdev_get_block, NULL,
-> > +					=C2=A0=C2=A0=C2=A0=C2=A0NULL,
-> > DIO_SKIP_DIO_COUNT);
-> > +	else if (iocb_is_dax(iocb))
-> > =C2=A0		return dax_do_io(iocb, inode, iter, offset,
-> > blkdev_get_block,
-> > =C2=A0				NULL, DIO_SKIP_DIO_COUNT);
-> > -	return __blockdev_direct_IO(iocb, inode, I_BDEV(inode),
-> > iter, offset,
-> > -				=C2=A0=C2=A0=C2=A0=C2=A0blkdev_get_block, NULL, NULL,
-> > -				=C2=A0=C2=A0=C2=A0=C2=A0DIO_SKIP_DIO_COUNT);
-> > +	else {
-> > +		/*
-> > +		=C2=A0* If we're in the direct_IO path, either the
-> > IOCB_DIRECT or
-> > +		=C2=A0* IOCB_DAX flags must be set.
-> > +		=C2=A0*/
-> > +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
-> > +		return -ENXIO;
-> > +	}
-> DAX should not even end up in ->direct_IO.
+> > All IO in a dax filesystem used to go through dax_do_io, which
+> > cannot
+> > handle media errors, and thus cannot provide a recovery path that
+> > can
+> > send a write through the driver to clear errors.
+> >=20
+> > Add a new iocb flag for DAX, and set it only for DAX mounts. In the
+> > IO
+> > path for DAX filesystems, use the same direct_IO path for both DAX
+> > and
+> > direct_io iocbs, but use the flags to identify when we are in
+> > O_DIRECT
+> > mode vs non O_DIRECT with DAX, and for O_DIRECT, use the
+> > conventional
+> > direct_IO path instead of DAX.
+> >=20
+> Really? What are your thinking here?
+>=20
+> What about all the current users of O_DIRECT, you have just made them
+> 4 times slower and "less concurrent*" then "buffred io" users. Since
+> direct_IO path will queue an IO request and all.
+> (And if it is not so slow then why do we need dax_do_io at all?
+> [Rhetorical])
+>=20
+> I hate it that you overload the semantics of a known and expected
+> O_DIRECT flag, for special pmem quirks. This is an incompatible
+> and unrelated overload of the semantics of O_DIRECT.
 
-Do you mean to say remove the last 'else' clause entirely?
-I agree that it should never be hit, which is why it is a WARN..
-But I'm happy to remove it.
+We overloaded O_DIRECT a long time ago when we made DAX piggyback on
+the same path:
+
+static inline bool io_is_direct(struct file *filp)
+{
+	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
+}
+
+Yes O_DIRECT on a DAX mounted file system will now be slower, but -
 
 >=20
 > >=20
-> > --- a/fs/xfs/xfs_file.c
-> > +++ b/fs/xfs/xfs_file.c
-> > @@ -300,7 +300,7 @@ xfs_file_read_iter(
-> > =C2=A0
-> > =C2=A0	XFS_STATS_INC(mp, xs_read_calls);
-> > =C2=A0
-> > -	if (unlikely(iocb->ki_flags & IOCB_DIRECT))
-> > +	if (unlikely(iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)))
-> > =C2=A0		ioflags |=3D XFS_IO_ISDIRECT;
-> please also add a XFS_IO_ISDAX flag to propagate the information
-> properly and allow tracing to display the actual I/O type.
+> > This allows us a recovery path in the form of opening the file with
+> > O_DIRECT and writing to it with the usual O_DIRECT semantics
+> > (sector
+> > alignment restrictions).
+> >=20
+> I understand that you want a sector aligned IO, right? for the
+> clear of errors. But I hate it that you forced all O_DIRECT IO
+> to be slow for this.
+> Can you not make dax_do_io handle media errors? At least for the
+> parts of the IO that are aligned.
+> (And your recovery path application above can use only aligned
+> =C2=A0IO to make sure)
+>=20
+> Please look for another solution. Even a special
+> IOCTL_DAX_CLEAR_ERROR
 
-Will do.
+=C2=A0- see all the versions of this series prior to this one, where we t=
+ry
+to do a fallback...
 
 >=20
-> >=20
-> > +static inline bool iocb_is_dax(struct kiocb *iocb)
-> > =C2=A0{
-> > +	return IS_DAX(file_inode(iocb->ki_filp)) &&
-> > +		(iocb->ki_flags & IOCB_DAX);
-> > +}
-> > +
-> > +static inline bool iocb_is_direct(struct kiocb *iocb)
-> > +{
-> > +	return iocb->ki_flags & IOCB_DIRECT;
-> > =C2=A0}
-> No need for these helpers - especially as IOCB_DAX should never be
-> set
-> if IS_DAX is false.
-
-Ok. So check the flags directly where needed?
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-
-> block" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at=C2=A0=C2=A0http://vger.kernel.org/majordomo-info=
-.html
+> [*"less concurrent" because of the queuing done in bdev. Note how
+> =C2=A0 pmem is not even multi-queue, and even if it was it will be much
+> =C2=A0 slower then DAX because of the code depth and all the locks and
+> task
+> =C2=A0 switches done in the block layer. In DAX the final memcpy is don=
+e
+> directly
+> =C2=A0 on the user-mode thread]
+>=20
+> Thanks
+> Boaz
+>=20
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
