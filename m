@@ -1,104 +1,92 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 13/18] dax: Make huge page handling depend of
- CONFIG_BROKEN
-Date: Mon, 2 May 2016 15:19:43 +0200
-Message-ID: <20160502131943.GG17362@quack2.suse.cz>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <1461015341-20153-14-git-send-email-jack@suse.cz>
- <20160429195340.GG5888@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160429195340.GG5888@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Subject: [PATCH] ext4: Fix oops on corrupted filesystem
+Date: Mon,  2 May 2016 16:51:04 +0200
+Message-ID: <1462200664-4825-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>,
+	Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 29-04-16 13:53:40, Ross Zwisler wrote:
-> On Mon, Apr 18, 2016 at 11:35:36PM +0200, Jan Kara wrote:
-> > Currently the handling of huge pages for DAX is racy. For example the
-> > following can happen:
-> > 
-> > CPU0 (THP write fault)			CPU1 (normal read fault)
-> > 
-> > __dax_pmd_fault()			__dax_fault()
-> >   get_block(inode, block, &bh, 0) -> not mapped
-> > 					get_block(inode, block, &bh, 0)
-> > 					  -> not mapped
-> >   if (!buffer_mapped(&bh) && write)
-> >     get_block(inode, block, &bh, 1) -> allocates blocks
-> >   truncate_pagecache_range(inode, lstart, lend);
-> > 					dax_load_hole();
-> > 
-> > This results in data corruption since process on CPU1 won't see changes
-> > into the file done by CPU0.
-> > 
-> > The race can happen even if two normal faults race however with THP the
-> > situation is even worse because the two faults don't operate on the same
-> > entries in the radix tree and we want to use these entries for
-> > serialization. So make THP support in DAX code depend on CONFIG_BROKEN
-> > for now.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/dax.c            | 2 +-
-> >  include/linux/dax.h | 2 +-
-> >  2 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/dax.c b/fs/dax.c
-> > index d7addfab2094..388327f56fa8 100644
-> > --- a/fs/dax.c
-> > +++ b/fs/dax.c
-> > @@ -707,7 +707,7 @@ int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
-> >  }
-> >  EXPORT_SYMBOL_GPL(dax_fault);
-> >  
-> > -#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-> > +#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && defined(CONFIG_BROKEN)
-> >  /*
-> >   * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
-> >   * more often than one might expect in the below function.
-> > diff --git a/include/linux/dax.h b/include/linux/dax.h
-> > index 7c45ac7ea1d1..0591f4853228 100644
-> > --- a/include/linux/dax.h
-> > +++ b/include/linux/dax.h
-> > @@ -23,7 +23,7 @@ static inline struct page *read_dax_sector(struct block_device *bdev,
-> >  }
-> >  #endif
-> >  
-> > -#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-> > +#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && defined(CONFIG_BROKEN)
-> >  int dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
-> >  				unsigned int flags, get_block_t);
-> >  int __dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
-> > -- 
-> > 2.6.6
-> 
-> Ah, sorry, I think by "make PMD depend on CONFIG_BROKEN" Dan & I meant this:
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 6725f59..b8fcb41 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -52,6 +52,7 @@ config FS_DAX_PMD
->         depends on FS_DAX
->         depends on ZONE_DEVICE
->         depends on TRANSPARENT_HUGEPAGE
-> +       depends on BROKEN
->  
->  endif # BLOCK
-> 
-> This has the benefit that you have only one place to quickly reenable PMD code
-> if/when we want to work on it.
+When filesystem is corrupted in the right way, it can happen
+ext4_mark_iloc_dirty() in ext4_orphan_add() returns error and we
+subsequently remove inode from the in-memory orphan list. However this
+deletion is done with list_del(&EXT4_I(inode)->i_orphan) and thus we
+leave i_orphan list_head with a stale content. Later we can look at this
+content causing list corruption, oops, or other issues. The reported
+trace looked like:
 
-OK, makes sense. I've changed this.
+WARNING: CPU: 0 PID: 46 at lib/list_debug.c:53 __list_del_entry+0x6b/0x100()
+list_del corruption, 0000000061c1d6e0->next is LIST_POISON1
+0000000000100100)
+CPU: 0 PID: 46 Comm: ext4.exe Not tainted 4.1.0-rc4+ #250
+Stack:
+ 60462947 62219960 602ede24 62219960
+ 602ede24 603ca293 622198f0 602f02eb
+ 62219950 6002c12c 62219900 601b4d6b
+Call Trace:
+ [<6005769c>] ? vprintk_emit+0x2dc/0x5c0
+ [<602ede24>] ? printk+0x0/0x94
+ [<600190bc>] show_stack+0xdc/0x1a0
+ [<602ede24>] ? printk+0x0/0x94
+ [<602ede24>] ? printk+0x0/0x94
+ [<602f02eb>] dump_stack+0x2a/0x2c
+ [<6002c12c>] warn_slowpath_common+0x9c/0xf0
+ [<601b4d6b>] ? __list_del_entry+0x6b/0x100
+ [<6002c254>] warn_slowpath_fmt+0x94/0xa0
+ [<602f4d09>] ? __mutex_lock_slowpath+0x239/0x3a0
+ [<6002c1c0>] ? warn_slowpath_fmt+0x0/0xa0
+ [<60023ebf>] ? set_signals+0x3f/0x50
+ [<600a205a>] ? kmem_cache_free+0x10a/0x180
+ [<602f4e88>] ? mutex_lock+0x18/0x30
+ [<601b4d6b>] __list_del_entry+0x6b/0x100
+ [<601177ec>] ext4_orphan_del+0x22c/0x2f0
+ [<6012f27c>] ? __ext4_journal_start_sb+0x2c/0xa0
+ [<6010b973>] ? ext4_truncate+0x383/0x390
+ [<6010bc8b>] ext4_write_begin+0x30b/0x4b0
+ [<6001bb50>] ? copy_from_user+0x0/0xb0
+ [<601aa840>] ? iov_iter_fault_in_readable+0xa0/0xc0
+ [<60072c4f>] generic_perform_write+0xaf/0x1e0
+ [<600c4166>] ? file_update_time+0x46/0x110
+ [<60072f0f>] __generic_file_write_iter+0x18f/0x1b0
+ [<6010030f>] ext4_file_write_iter+0x15f/0x470
+ [<60094e10>] ? unlink_file_vma+0x0/0x70
+ [<6009b180>] ? unlink_anon_vmas+0x0/0x260
+ [<6008f169>] ? free_pgtables+0xb9/0x100
+ [<600a6030>] __vfs_write+0xb0/0x130
+ [<600a61d5>] vfs_write+0xa5/0x170
+ [<600a63d6>] SyS_write+0x56/0xe0
+ [<6029fcb0>] ? __libc_waitpid+0x0/0xa0
+ [<6001b698>] handle_syscall+0x68/0x90
+ [<6002633d>] userspace+0x4fd/0x600
+ [<6002274f>] ? save_registers+0x1f/0x40
+ [<60028bd7>] ? arch_prctl+0x177/0x1b0
+ [<60017bd5>] fork_handler+0x85/0x90
 
-								Honza
+Fix the problem by using list_del_init() as we always should with
+i_orphan list.
+
+CC: stable@vger.kernel.org
+Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/namei.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 48e4b8907826..fdd151f91522 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2828,7 +2828,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 			 * list entries can cause panics at unmount time.
+ 			 */
+ 			mutex_lock(&sbi->s_orphan_lock);
+-			list_del(&EXT4_I(inode)->i_orphan);
++			list_del_init(&EXT4_I(inode)->i_orphan);
+ 			mutex_unlock(&sbi->s_orphan_lock);
+ 		}
+ 	}
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.6.6
