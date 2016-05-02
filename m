@@ -1,54 +1,88 @@
-From: Waiman Long <waiman.long@hpe.com>
-Subject: Re: [PATCH v5 0/2] ext4: Improve parallel I/O performance on NVDIMM
-Date: Mon, 2 May 2016 13:45:08 -0400
-Message-ID: <57279224.7030702@hpe.com>
-References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com> <57238DFC.6010108@hpe.com> <20160501172854.GA19601@infradead.org>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
+Date: Mon, 2 May 2016 10:53:25 -0700
+Message-ID: <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
+References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
+	<1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
+	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+	<20160420205923.GA24797@infradead.org>
+	<1461434916.3695.7.camel@intel.com>
+	<20160425083114.GA27556@infradead.org>
+	<1461604476.3106.12.camel@intel.com>
+	<20160425232552.GD18496@dastard>
+	<1461628381.1421.24.camel@intel.com>
+	<20160426004155.GF18496@dastard>
+	<x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Dave Chinner <david@fromorbit.com>,
+	"Verma, Vishal L" <vishal.l.verma@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bl2on0135.outbound.protection.outlook.com ([65.55.169.135]:58712
-	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753818AbcEBRpU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 May 2016 13:45:20 -0400
-In-Reply-To: <20160501172854.GA19601@infradead.org>
+Received: from mail-oi0-f53.google.com ([209.85.218.53]:34073 "EHLO
+	mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754659AbcEBRx0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 May 2016 13:53:26 -0400
+Received: by mail-oi0-f53.google.com with SMTP id k142so199971001oib.1
+        for <linux-ext4@vger.kernel.org>; Mon, 02 May 2016 10:53:26 -0700 (PDT)
+In-Reply-To: <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/01/2016 01:28 PM, Christoph Hellwig wrote:
-> On Fri, Apr 29, 2016 at 12:38:20PM -0400, Waiman Long wrote:
->>  From my testing, it looked like that parallel overwrites to the same file in
->> an ext4 filesystem on DAX can happen in parallel even if their range
->> overlaps. It was mainly because the code will drop the i_mutex before the
->> write. That means the overlapped blocks can get garbage. I think this is a
->> problem, but I am not expert in the ext4 filesystem to say for sure. I would
->> like to know your thought on that.
-> That's another issue with dax I/O pretending to be direct I/O..  Because
-> it isn't we'll need to synchronize it like buffered I/O and not like
-> direct I/O in all file systems.
+On Mon, May 2, 2016 at 8:18 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
+> Dave Chinner <david@fromorbit.com> writes:
+[..]
+>> We need some form of redundancy and correction in the PMEM stack to
+>> prevent single sector errors from taking down services until an
+>> administrator can correct the problem. I'm trying to understand
+>> where this is supposed to fit into the picture - at this point I
+>> really don't think userspace applications are going to be able to do
+>> this reliably....
+>
+> Not all storage is configured into a RAID volume, and in some instances,
+> the application is better positioned to recover the data (gluster/ceph,
+> for example).  It really comes down to whether applications or libraries
+> will want to implement redundancy themselves in order to get a bump in
+> performance by not going through the kernel.  And I think I know what
+> your opinion is on that front.  :-)
+>
+> Speaking of which, did you see the numbers Dan shared at LSF on how much
+> overhead there is in calling into the kernel for syncing?  Dan, can/did
+> you publish that spreadsheet somewhere?
 
- From what I saw in the code, I think filemap_write_and_wait_range()
-should have prevented concurrent overwrites from stepping on each
-other for non-DAX I/O.  However it is essentially a no-op for DAX
-I/O and so the protection is gone.
+Here it is:
 
-I am planning to send out a patch to disable mutex dropping for DAX
-overwrite. There is still an issue on the read side. If journal is
-disabled and the dioread_nolock mount option is used, read will done
-without locking. Again, the filemap_write_and_wait_range() check on
-the read side will not protect against write.
+https://docs.google.com/spreadsheets/d/1pwr9psy6vtB9DOsc2bUdXevJRz5Guf6laZ4DaZlkhoo/edit?usp=sharing
 
-Cheers,
-Longman
+On the "Filtered" tab I have some of the comparisons where:
 
+noop => don't call msync and don't flush caches in userspace
+
+persist => cache flushing only in userspace and only on individual cache lines
+
+persist_4k => cache flushing only in userspace, but flushing is
+performed in 4K aligned units
+
+msync => same granularity flushing as the 'persist' case, but the
+kernel internally promotes this to a 4K sized / aligned flush
+
+msync_0 => synthetic case where msync() returns immediately and does
+no other work
+
+The takeaway is that msync() is 9-10x slower than userspace cache management.
+
+Let me know if there are any questions and I can add an NVML developer
+to this thread...
