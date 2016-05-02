@@ -1,159 +1,346 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Mon, 02 May 2016 11:18:36 -0400
-Message-ID: <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
-References: <1459303190-20072-1-git-send-email-vishal.l.verma@intel.com>
-	<1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
-	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
-	<20160420205923.GA24797@infradead.org>
-	<1461434916.3695.7.camel@intel.com>
-	<20160425083114.GA27556@infradead.org>
-	<1461604476.3106.12.camel@intel.com> <20160425232552.GD18496@dastard>
-	<1461628381.1421.24.camel@intel.com> <20160426004155.GF18496@dastard>
+From: Boaz Harrosh <boaz@plexistor.com>
+Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
+Date: Mon, 02 May 2016 18:41:51 +0300
+Message-ID: <5727753F.6090104@plexistor.com>
+References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com> <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: "Verma\, Vishal L" <vishal.l.verma@intel.com>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-block\@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "hch\@infradead.org" <hch@infradead.org>,
-        "xfs\@oss.sgi.com" <xfs@oss.sgi.com>,
-        "linux-nvdimm\@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-        "linux-mm\@kvack.org" <linux-mm@kvack.org>,
-        "viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "axboe\@fb.com" <axboe@fb.com>,
-        "akpm\@linux-foundation.org" <akpm@linux-foundation.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4\@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "Wilcox\, Matthew R" <matthew.r.wilcox@intel.com>,
-        "jack\@suse.cz" <jack@suse.cz>
-To: Dave Chinner <david@fromorbit.com>,
-        "Dan J. Williams" <dan.j.williams@intel.com>
+Content-Transfer-Encoding: 7bit
+Cc: Jens Axboe <axboe@fb.com>, Jan Kara <jack@suse.cz>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ Matthew Wilcox <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
+ linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+ linux-block@vger.kernel.org, linux-mm@kvack.org,
+ Al Viro <viro@zeniv.linux.org.uk>,
+ Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org
+To: Vishal Verma <vishal.l.verma@intel.com>, linux-nvdimm@lists.01.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160426004155.GF18496@dastard> (Dave Chinner's message of "Tue,
-	26 Apr 2016 10:41:55 +1000")
+In-Reply-To: <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Dave Chinner <david@fromorbit.com> writes:
+On 04/29/2016 12:16 AM, Vishal Verma wrote:
+> All IO in a dax filesystem used to go through dax_do_io, which cannot
+> handle media errors, and thus cannot provide a recovery path that can
+> send a write through the driver to clear errors.
+> 
+> Add a new iocb flag for DAX, and set it only for DAX mounts. In the IO
+> path for DAX filesystems, use the same direct_IO path for both DAX and
+> direct_io iocbs, but use the flags to identify when we are in O_DIRECT
+> mode vs non O_DIRECT with DAX, and for O_DIRECT, use the conventional
+> direct_IO path instead of DAX.
+> 
 
-> On Mon, Apr 25, 2016 at 11:53:13PM +0000, Verma, Vishal L wrote:
->> On Tue, 2016-04-26 at 09:25 +1000, Dave Chinner wrote:
-> You're assuming that only the DAX aware application accesses it's
-> files.  users, backup programs, data replicators, fileystem
-> re-organisers (e.g.  defragmenters) etc all may access the files and
-> they may throw errors. What then?
+Really? What are your thinking here?
 
-I'm not sure how this is any different from regular storage.  If an
-application gets EIO, it's up to the app to decide what to do with that.
+What about all the current users of O_DIRECT, you have just made them
+4 times slower and "less concurrent*" then "buffred io" users. Since
+direct_IO path will queue an IO request and all.
+(And if it is not so slow then why do we need dax_do_io at all? [Rhetorical])
 
->> > Where does the application find the data that was lost to be able to
->> > rewrite it?
->>=20
->> The data that was lost is gone -- this assumes the application has some
->> ability to recover using a journal/log or other redundancy - yes, at the
->> application layer. If it doesn't have this sort of capability, the only
->> option is to restore files from a backup/mirror.
->
-> So the architecture has a built in assumption that only userspace
-> can handle data loss?
+I hate it that you overload the semantics of a known and expected
+O_DIRECT flag, for special pmem quirks. This is an incompatible
+and unrelated overload of the semantics of O_DIRECT.
 
-Remember that the proposed programming model completely bypasses the
-kernel, so yes, it is expected that user-space will have to deal with
-the problem.
+> This allows us a recovery path in the form of opening the file with
+> O_DIRECT and writing to it with the usual O_DIRECT semantics (sector
+> alignment restrictions).
+> 
 
-> What about filesytsems like NOVA, that use log structured design to
-> provide DAX w/ update atomicity and can potentially also provide
-> redundancy/repair through the same mechanisms? Won't pmem native
-> filesystems with built in data protection features like this remove
-> the need for adding all this to userspace applications?
+I understand that you want a sector aligned IO, right? for the
+clear of errors. But I hate it that you forced all O_DIRECT IO
+to be slow for this.
+Can you not make dax_do_io handle media errors? At least for the
+parts of the IO that are aligned.
+(And your recovery path application above can use only aligned
+ IO to make sure)
 
-I don't think we'll /only/ support NOVA for pmem.  So we'll have to deal
-with this for existing file systems, right?
+Please look for another solution. Even a special IOCTL_DAX_CLEAR_ERROR
 
-> If so, shouldn't that be the focus of development rahter than
-> placing the burden on userspace apps to handle storage repair
-> situations?
+[*"less concurrent" because of the queuing done in bdev. Note how
+  pmem is not even multi-queue, and even if it was it will be much
+  slower then DAX because of the code depth and all the locks and task
+  switches done in the block layer. In DAX the final memcpy is done directly
+  on the user-mode thread]
 
-It really depends on the programming model.  In the model Vishal is
-talking about, either the applications themselves or the libraries they
-link to are expected to implement the redundancies where necessary.
+Thanks
+Boaz
 
->> > There's an implicit assumption that applications will keep redundant
->> > copies of their data at the /application layer/ and be able to
->> > automatically repair it?
-
-That's one way to do things.  It really depends on the application what
-it will do for recovery.
-
->> > And then there's the implicit assumption that it will unlink and
->> > free the entire file before writing a new copy
-
-I think Vishal was referring to restoring from backup.  cp itself will
-truncate the file before overwriting, iirc.
-
->> To summarize, the two cases we want to handle are:
->> 1. Application has inbuilt recovery:
->> =C2=A0 - hits badblock
->> =C2=A0 - figures out it is able to recover the data
->> =C2=A0 - handles SIGBUS or EIO
->> =C2=A0 - does a (sector aligned) write() to restore the data
->
-> The "figures out" step here is where >95% of the work we'd have to
-> do is. And that's in filesystem and block layer code, not
-> userspace, and userspace can't do that work in a signal handler.
-> And it  can still fall down to the second case when the application
-> doesn't have another copy of the data somewhere.
-
-I read that "figures out" step as the application determining whether or
-not it had a redundant copy.
-
-> FWIW, we don't have a DAX enabled filesystem that can do
-> reverse block mapping, so we're a year or two away from this being a
-> workable production solution from the filesystem perspective. And
-> AFAICT, it's not even on the roadmap for dm/md layers.
-
-Do we even need that?  What if we added an FIEMAP flag for determining
-bad blocks.  The file system could simply walk the list of extents for
-the file and check the corresponding disk blocks.  No reverse mapping
-required.  Also note that DM/MD don't support direct_access(), either,
-so I don't think they're relevant for this discussion.
-
->> 2. Application doesn't have any inbuilt recovery mechanism
->> =C2=A0 - hits badblock
->> =C2=A0 - gets SIGBUS (or EIO) and crashes
->> =C2=A0 - Sysadmin restores file from backup
->
-> Which is no different to an existing non-DAX application getting an
-> EIO/sigbus from current storage technologies.
->
-> Except: in the existing storage stack, redundancy and correction has
-> already had to have failed for the application to see such an error.
-> Hence this is normally considered a DR case as there's had to be
-> cascading failures (e.g.  multiple disk failures in a RAID) to get
-> to this stage, not a single error in a single sector in
-> non-redundant storage.
->
-> We need some form of redundancy and correction in the PMEM stack to
-> prevent single sector errors from taking down services until an
-> administrator can correct the problem. I'm trying to understand
-> where this is supposed to fit into the picture - at this point I
-> really don't think userspace applications are going to be able to do
-> this reliably....
-
-Not all storage is configured into a RAID volume, and in some instances,
-the application is better positioned to recover the data (gluster/ceph,
-for example).  It really comes down to whether applications or libraries
-will want to implement redundancy themselves in order to get a bump in
-performance by not going through the kernel.  And I think I know what
-your opinion is on that front.  :-)
-
-Speaking of which, did you see the numbers Dan shared at LSF on how much
-overhead there is in calling into the kernel for syncing?  Dan, can/did
-you publish that spreadsheet somewhere?
-
-Cheers,
-Jeff
+> Cc: Matthew Wilcox <matthew@wil.cx>
+> Cc: Dan Williams <dan.j.williams@intel.com>
+> Cc: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Cc: Jeff Moyer <jmoyer@redhat.com>
+> Cc: Christoph Hellwig <hch@infradead.org>
+> Cc: Dave Chinner <david@fromorbit.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Jens Axboe <axboe@fb.com>
+> Cc: Al Viro <viro@zeniv.linux.org.uk>
+> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
+> ---
+>  drivers/block/loop.c |  2 +-
+>  fs/block_dev.c       | 17 +++++++++++++----
+>  fs/ext2/inode.c      | 16 ++++++++++++----
+>  fs/ext4/file.c       |  2 +-
+>  fs/ext4/inode.c      | 19 +++++++++++++------
+>  fs/xfs/xfs_aops.c    | 20 +++++++++++++-------
+>  fs/xfs/xfs_file.c    |  4 ++--
+>  include/linux/fs.h   | 15 ++++++++++++---
+>  mm/filemap.c         |  4 ++--
+>  9 files changed, 69 insertions(+), 30 deletions(-)
+> 
+> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+> index 80cf8ad..c0a24c3 100644
+> --- a/drivers/block/loop.c
+> +++ b/drivers/block/loop.c
+> @@ -568,7 +568,7 @@ struct switch_request {
+>  
+>  static inline void loop_update_dio(struct loop_device *lo)
+>  {
+> -	__loop_update_dio(lo, io_is_direct(lo->lo_backing_file) |
+> +	__loop_update_dio(lo, (lo->lo_backing_file->f_flags & O_DIRECT) |
+>  			lo->use_dio);
+>  }
+>  
+> diff --git a/fs/block_dev.c b/fs/block_dev.c
+> index 79defba..97a1f5f 100644
+> --- a/fs/block_dev.c
+> +++ b/fs/block_dev.c
+> @@ -167,12 +167,21 @@ blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
+>  	struct file *file = iocb->ki_filp;
+>  	struct inode *inode = bdev_file_inode(file);
+>  
+> -	if (IS_DAX(inode))
+> +	if (iocb_is_direct(iocb))
+> +		return __blockdev_direct_IO(iocb, inode, I_BDEV(inode), iter,
+> +					    offset, blkdev_get_block, NULL,
+> +					    NULL, DIO_SKIP_DIO_COUNT);
+> +	else if (iocb_is_dax(iocb))
+>  		return dax_do_io(iocb, inode, iter, offset, blkdev_get_block,
+>  				NULL, DIO_SKIP_DIO_COUNT);
+> -	return __blockdev_direct_IO(iocb, inode, I_BDEV(inode), iter, offset,
+> -				    blkdev_get_block, NULL, NULL,
+> -				    DIO_SKIP_DIO_COUNT);
+> +	else {
+> +		/*
+> +		 * If we're in the direct_IO path, either the IOCB_DIRECT or
+> +		 * IOCB_DAX flags must be set.
+> +		 */
+> +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
+> +		return -ENXIO;
+> +	}
+>  }
+>  
+>  int __sync_blockdev(struct block_device *bdev, int wait)
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 35f2b0bf..45f2b51 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -861,12 +861,20 @@ ext2_direct_IO(struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
+>  	size_t count = iov_iter_count(iter);
+>  	ssize_t ret;
+>  
+> -	if (IS_DAX(inode))
+> -		ret = dax_do_io(iocb, inode, iter, offset, ext2_get_block, NULL,
+> -				DIO_LOCKING);
+> -	else
+> +	if (iocb_is_direct(iocb))
+>  		ret = blockdev_direct_IO(iocb, inode, iter, offset,
+>  					 ext2_get_block);
+> +	else if (iocb_is_dax(iocb))
+> +		ret = dax_do_io(iocb, inode, iter, offset, ext2_get_block, NULL,
+> +				DIO_LOCKING);
+> +	else {
+> +		/*
+> +		 * If we're in the direct_IO path, either the IOCB_DIRECT or
+> +		 * IOCB_DAX flags must be set.
+> +		 */
+> +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
+> +		return -ENXIO;
+> +	}
+>  	if (ret < 0 && iov_iter_rw(iter) == WRITE)
+>  		ext2_write_failed(mapping, offset + count);
+>  	return ret;
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 2e9aa49..165a0b8 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -94,7 +94,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+>  	struct file *file = iocb->ki_filp;
+>  	struct inode *inode = file_inode(iocb->ki_filp);
+>  	struct blk_plug plug;
+> -	int o_direct = iocb->ki_flags & IOCB_DIRECT;
+> +	int o_direct = iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX);
+>  	int unaligned_aio = 0;
+>  	int overwrite = 0;
+>  	ssize_t ret;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 6d5d5c1..0b6d77a 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3410,15 +3410,22 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter,
+>  #ifdef CONFIG_EXT4_FS_ENCRYPTION
+>  	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
+>  #endif
+> -	if (IS_DAX(inode)) {
+> -		ret = dax_do_io(iocb, inode, iter, offset, get_block_func,
+> -				ext4_end_io_dio, dio_flags);
+> -	} else
+> +	if (iocb_is_direct(iocb))
+>  		ret = __blockdev_direct_IO(iocb, inode,
+>  					   inode->i_sb->s_bdev, iter, offset,
+>  					   get_block_func,
+>  					   ext4_end_io_dio, NULL, dio_flags);
+> -
+> +	else if (iocb_is_dax(iocb))
+> +		ret = dax_do_io(iocb, inode, iter, offset, get_block_func,
+> +				ext4_end_io_dio, dio_flags);
+> +	else {
+> +		/*
+> +		 * If we're in the direct_IO path, either the IOCB_DIRECT or
+> +		 * IOCB_DAX flags must be set.
+> +		 */
+> +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
+> +		return -ENXIO;
+> +	}
+>  	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
+>  						EXT4_STATE_DIO_UNWRITTEN)) {
+>  		int err;
+> @@ -3503,7 +3510,7 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter,
+>  		else
+>  			unlocked = 1;
+>  	}
+> -	if (IS_DAX(inode)) {
+> +	if (iocb_is_dax(iocb)) {
+>  		ret = dax_do_io(iocb, inode, iter, offset, ext4_dio_get_block,
+>  				NULL, unlocked ? 0 : DIO_LOCKING);
+>  	} else {
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index e49b240..8134e99 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+> @@ -1412,21 +1412,27 @@ xfs_vm_direct_IO(
+>  	struct inode		*inode = iocb->ki_filp->f_mapping->host;
+>  	dio_iodone_t		*endio = NULL;
+>  	int			flags = 0;
+> -	struct block_device	*bdev;
+> +	struct block_device     *bdev = xfs_find_bdev_for_inode(inode);
+>  
+>  	if (iov_iter_rw(iter) == WRITE) {
+>  		endio = xfs_end_io_direct_write;
+>  		flags = DIO_ASYNC_EXTEND;
+>  	}
+>  
+> -	if (IS_DAX(inode)) {
+> +	if (iocb_is_direct(iocb))
+> +		return  __blockdev_direct_IO(iocb, inode, bdev, iter, offset,
+> +				xfs_get_blocks_direct, endio, NULL, flags);
+> +	else if (iocb_is_dax(iocb))
+>  		return dax_do_io(iocb, inode, iter, offset,
+> -				 xfs_get_blocks_direct, endio, 0);
+> +				xfs_get_blocks_direct, endio, 0);
+> +	else {
+> +		/*
+> +		 * If we're in the direct_IO path, either the IOCB_DIRECT or
+> +		 * IOCB_DAX flags must be set.
+> +		 */
+> +		WARN_ONCE(1, "Kernel Bug with iocb flags\n");
+> +		return -ENXIO;
+>  	}
+> -
+> -	bdev = xfs_find_bdev_for_inode(inode);
+> -	return  __blockdev_direct_IO(iocb, inode, bdev, iter, offset,
+> -			xfs_get_blocks_direct, endio, NULL, flags);
+>  }
+>  
+>  /*
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index c2946f4..3d5d3c2 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -300,7 +300,7 @@ xfs_file_read_iter(
+>  
+>  	XFS_STATS_INC(mp, xs_read_calls);
+>  
+> -	if (unlikely(iocb->ki_flags & IOCB_DIRECT))
+> +	if (unlikely(iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)))
+>  		ioflags |= XFS_IO_ISDIRECT;
+>  	if (file->f_mode & FMODE_NOCMTIME)
+>  		ioflags |= XFS_IO_INVIS;
+> @@ -898,7 +898,7 @@ xfs_file_write_iter(
+>  	if (XFS_FORCED_SHUTDOWN(ip->i_mount))
+>  		return -EIO;
+>  
+> -	if ((iocb->ki_flags & IOCB_DIRECT) || IS_DAX(inode))
+> +	if ((iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)))
+>  		ret = xfs_file_dio_aio_write(iocb, from);
+>  	else
+>  		ret = xfs_file_buffered_aio_write(iocb, from);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 9f28130..adca1d8 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -322,6 +322,7 @@ struct writeback_control;
+>  #define IOCB_APPEND		(1 << 1)
+>  #define IOCB_DIRECT		(1 << 2)
+>  #define IOCB_HIPRI		(1 << 3)
+> +#define IOCB_DAX		(1 << 4)
+>  
+>  struct kiocb {
+>  	struct file		*ki_filp;
+> @@ -2930,9 +2931,15 @@ extern int generic_show_options(struct seq_file *m, struct dentry *root);
+>  extern void save_mount_options(struct super_block *sb, char *options);
+>  extern void replace_mount_options(struct super_block *sb, char *options);
+>  
+> -static inline bool io_is_direct(struct file *filp)
+> +static inline bool iocb_is_dax(struct kiocb *iocb)
+>  {
+> -	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
+> +	return IS_DAX(file_inode(iocb->ki_filp)) &&
+> +		(iocb->ki_flags & IOCB_DAX);
+> +}
+> +
+> +static inline bool iocb_is_direct(struct kiocb *iocb)
+> +{
+> +	return iocb->ki_flags & IOCB_DIRECT;
+>  }
+>  
+>  static inline int iocb_flags(struct file *file)
+> @@ -2940,8 +2947,10 @@ static inline int iocb_flags(struct file *file)
+>  	int res = 0;
+>  	if (file->f_flags & O_APPEND)
+>  		res |= IOCB_APPEND;
+> -	if (io_is_direct(file))
+> +	if (file->f_flags & O_DIRECT)
+>  		res |= IOCB_DIRECT;
+> +	if (IS_DAX(file_inode(file)))
+> +		res |= IOCB_DAX;
+>  	return res;
+>  }
+>  
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 3effd5c..b959acf 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -1849,7 +1849,7 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+>  	if (!count)
+>  		goto out; /* skip atime */
+>  
+> -	if (iocb->ki_flags & IOCB_DIRECT) {
+> +	if (iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)) {
+>  		struct address_space *mapping = file->f_mapping;
+>  		struct inode *inode = mapping->host;
+>  		loff_t size;
+> @@ -2719,7 +2719,7 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+>  	if (err)
+>  		goto out;
+>  
+> -	if (iocb->ki_flags & IOCB_DIRECT) {
+> +	if (iocb->ki_flags & (IOCB_DIRECT | IOCB_DAX)) {
+>  		loff_t pos, endbyte;
+>  
+>  		written = generic_file_direct_write(iocb, from, iocb->ki_pos);
+> 
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
