@@ -1,212 +1,193 @@
-From: Dan Williams <dan.j.williams@intel.com>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Mon, 2 May 2016 16:25:51 -0700
-Message-ID: <CAPcyv4jDTvSUDGTBZb0MaK_gKxMxWtMecnR_OjLzim1Sdg5Y9g@mail.gmail.com>
-References: <1459303190-20072-6-git-send-email-vishal.l.verma@intel.com>
-	<x49twj26edj.fsf@segfault.boston.devel.redhat.com>
-	<20160420205923.GA24797@infradead.org>
-	<1461434916.3695.7.camel@intel.com>
-	<20160425083114.GA27556@infradead.org>
-	<1461604476.3106.12.camel@intel.com>
-	<20160425232552.GD18496@dastard>
-	<1461628381.1421.24.camel@intel.com>
-	<20160426004155.GF18496@dastard>
-	<x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
-	<20160502230422.GQ26977@dastard>
+Date: Tue, 3 May 2016 10:42:26 +1000
+Message-ID: <20160503004226.GR26977@dastard>
+References: <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
+ <20160420205923.GA24797@infradead.org>
+ <1461434916.3695.7.camel@intel.com>
+ <20160425083114.GA27556@infradead.org>
+ <1461604476.3106.12.camel@intel.com>
+ <20160425232552.GD18496@dastard>
+ <1461628381.1421.24.camel@intel.com>
+ <20160426004155.GF18496@dastard>
+ <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
+ <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Jeff Moyer <jmoyer@redhat.com>, "Verma, Vishal L" <vishal.l.verma@intel.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	"Verma, Vishal L" <vishal.l.verma@intel.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>, "hch@infradead.org" <hch@infradead.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>, "linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>, "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>, "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>, "jack@suse.cz" <jack@suse.cz>
-To: Dave Chinner <david@fromorbit.com>
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160502230422.GQ26977@dastard>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 2, 2016 at 4:04 PM, Dave Chinner <david@fromorbit.com> wrote:
-> On Mon, May 02, 2016 at 11:18:36AM -0400, Jeff Moyer wrote:
->> Dave Chinner <david@fromorbit.com> writes:
->>
->> > On Mon, Apr 25, 2016 at 11:53:13PM +0000, Verma, Vishal L wrote:
->> >> On Tue, 2016-04-26 at 09:25 +1000, Dave Chinner wrote:
->> > You're assuming that only the DAX aware application accesses it's
->> > files.  users, backup programs, data replicators, fileystem
->> > re-organisers (e.g.  defragmenters) etc all may access the files and
->> > they may throw errors. What then?
->>
->> I'm not sure how this is any different from regular storage.  If an
->> application gets EIO, it's up to the app to decide what to do with that.
->
-> Sure - they'll fail. But the question I'm asking is that if the
-> application that owns the data is supposed to do error recovery,
-> what happens when a 3rd party application hits an error? If that
-> consumes the error, the the app that owns the data won't ever get a
-> chance to correct the error.
->
-> This is a minefield - a 3rd party app that swallows and clears DAX
-> based IO errors is a data corruption vector. can yo imagine if
-> *grep* did this? The model that is being promoted here effectively
-> allows this sort of behaviour - I don't really think we
-> should be architecting an error recovery strategy that has the
-> capability to go this wrong....
+On Mon, May 02, 2016 at 10:53:25AM -0700, Dan Williams wrote:
+> On Mon, May 2, 2016 at 8:18 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
+> > Dave Chinner <david@fromorbit.com> writes:
+> [..]
+> >> We need some form of redundancy and correction in the PMEM stack to
+> >> prevent single sector errors from taking down services until an
+> >> administrator can correct the problem. I'm trying to understand
+> >> where this is supposed to fit into the picture - at this point I
+> >> really don't think userspace applications are going to be able to do
+> >> this reliably....
+> >
+> > Not all storage is configured into a RAID volume, and in some instances,
+> > the application is better positioned to recover the data (gluster/ceph,
+> > for example).  It really comes down to whether applications or libraries
+> > will want to implement redundancy themselves in order to get a bump in
+> > performance by not going through the kernel.  And I think I know what
+> > your opinion is on that front.  :-)
+> >
+> > Speaking of which, did you see the numbers Dan shared at LSF on how much
+> > overhead there is in calling into the kernel for syncing?  Dan, can/did
+> > you publish that spreadsheet somewhere?
+> 
+> Here it is:
+> 
+> https://docs.google.com/spreadsheets/d/1pwr9psy6vtB9DOsc2bUdXevJRz5Guf6laZ4DaZlkhoo/edit?usp=sharing
+> 
+> On the "Filtered" tab I have some of the comparisons where:
 
-Since when does grep write to a file on error?
+Those numbers are really wacky - the inconsistent decimal place
+representation makes it really, really hard to read the differences
+in orders of magnitude, too. Let's take the first numbers - noop, 64
+byte ops are:
 
->
->> >> > Where does the application find the data that was lost to be able to
->> >> > rewrite it?
->> >>
->> >> The data that was lost is gone -- this assumes the application has some
->> >> ability to recover using a journal/log or other redundancy - yes, at the
->> >> application layer. If it doesn't have this sort of capability, the only
->> >> option is to restore files from a backup/mirror.
->> >
->> > So the architecture has a built in assumption that only userspace
->> > can handle data loss?
->>
->> Remember that the proposed programming model completely bypasses the
->> kernel, so yes, it is expected that user-space will have to deal with
->> the problem.
->
-> No, it doesn't completely bypass the kernel - the kernel is the
-> infrastructure that catches the errors in the first place, and it
-> owns and controls all the metadata that corresponds to the physical
-> location of that error. The only thing the kernel doesn't own is the
-> *contents* of that location.
->
->> > What about filesytsems like NOVA, that use log structured design to
->> > provide DAX w/ update atomicity and can potentially also provide
->> > redundancy/repair through the same mechanisms? Won't pmem native
->> > filesystems with built in data protection features like this remove
->> > the need for adding all this to userspace applications?
->>
->> I don't think we'll /only/ support NOVA for pmem.  So we'll have to deal
->> with this for existing file systems, right?
->
-> Yes, but that misses my point that it seems that the design is only
-> focussed on userspace and existing filesystems and there is no
-> consideration of kernel side functionality that could do transparent
-> recovery....
->
->> > If so, shouldn't that be the focus of development rahter than
->> > placing the burden on userspace apps to handle storage repair
->> > situations?
->>
->> It really depends on the programming model.  In the model Vishal is
->> talking about, either the applications themselves or the libraries they
->> link to are expected to implement the redundancies where necessary.
->
-> IOWs, filesystems no longer have any control over data integrity.
-> Yet it's the filesystem developers who will still be responsible for
-> data integrity and when the filesystem has a data coruption event
-> we'll get blamed and the filesystem gets a bad name, even though
-> it's entirely the applications fault. We've seen this time and time
-> again - application developers cannot be trusted to guarantee data
-> integrity. yes, some apps will be fine, but do you really expect
-> application devs that refuse to use fsync because it's too slow are
-> going to have a different approach to integrity when it comes to
-> DAX?
+threads		ops/s
+1		 90M
+2		310M
+4		 65M
+8		175M
+16		426M
 
-Yes, completely agree.  The applications that will implement competent
-error recovery with these mechanisms will be vanishingly small, and
-there is definite room for a kernel data-redundancy solution that
-builds on these patches.
+Why aren't these linear? And if the test is not running in an
+environment where these are controlled and linear, how valid are the
+rest of the tests and hence the comparison.
 
->
->> >> > There's an implicit assumption that applications will keep redundant
->> >> > copies of their data at the /application layer/ and be able to
->> >> > automatically repair it?
->>
->> That's one way to do things.  It really depends on the application what
->> it will do for recovery.
->>
->> >> > And then there's the implicit assumption that it will unlink and
->> >> > free the entire file before writing a new copy
->>
->> I think Vishal was referring to restoring from backup.  cp itself will
->> truncate the file before overwriting, iirc.
->
-> Which version of cp? what happens if they use --sparse and the error
-> is in a zeroed region? There's so many assumptions about undefined userspace
-> environment, application and user behaviour being made here, and
-> it's all being handwaved away.
->
-> I'm asking for this to be defined, demonstrated and documented as a
-> working model that cannot be abused and doesn't have holes the size
-> of trucks in it, not handwaving...
+> noop => don't call msync and don't flush caches in userspace
+> 
+> persist => cache flushing only in userspace and only on individual cache lines
 
-You lost me...  how are these patches abusing the existing semantics
-of -EIO and write to clear?
+So these look a lot more linear than the no-op behaviour, so I'll
+just ignore the no-op results for now.
 
->> >> To summarize, the two cases we want to handle are:
->> >> 1. Application has inbuilt recovery:
->> >>   - hits badblock
->> >>   - figures out it is able to recover the data
->> >>   - handles SIGBUS or EIO
->> >>   - does a (sector aligned) write() to restore the data
->> >
->> > The "figures out" step here is where >95% of the work we'd have to
->> > do is. And that's in filesystem and block layer code, not
->> > userspace, and userspace can't do that work in a signal handler.
->> > And it  can still fall down to the second case when the application
->> > doesn't have another copy of the data somewhere.
->>
->> I read that "figures out" step as the application determining whether or
->> not it had a redundant copy.
->
-> Another undocumented assumption, that doesn't simplify what needs to
-> be done. Indeed, userspace can't do that until it is in SIGBUS
-> context, which tends to imply applications need to do a major amount
-> of work from within the signal handler....
->
->> > FWIW, we don't have a DAX enabled filesystem that can do
->> > reverse block mapping, so we're a year or two away from this being a
->> > workable production solution from the filesystem perspective. And
->> > AFAICT, it's not even on the roadmap for dm/md layers.
->>
->> Do we even need that?  What if we added an FIEMAP flag for determining
->> bad blocks.
->
-> So you're assuming that the filesystem has been informed of the bad
-> blocks and has already marked the bad regions of the file in it's
-> extent list?
->
-> How does that happen? What mechanism is used for the underlying
-> block device to inform the filesytem that theirs a bad LBA, and how
-> does the filesytem the map that to a path/file/offset with reverse
-> mapping? Or is there some other magic that hasn't been explained
-> happening here?
+> persist_4k => cache flushing only in userspace, but flushing is
+> performed in 4K aligned units
 
-In 4.5 we added this:
+Urg, your "vs persist" percentages are all wrong. You can't have a
+"-1000%" difference, you have "persist 4k" running at 10% of the
+speed of "persist".
 
-commit 99e6608c9e7414ae4f2168df8bf8fae3eb49e41f
-Author: Vishal Verma <vishal.l.verma@intel.com>
-Date:   Sat Jan 9 08:36:51 2016 -0800
+So, with that in mind, the "persist_4k" speed is:
 
-    block: Add badblock management for gendisks
+		 ops/s		single thread
+Size		vs "persist"	4k flush rate
+  64		 10%		 834k
+ 128		 13%		 849k
+ 256		 15%		 410k(one off variation?)
+ 512		 20%		 860k
+1024		 25%		 850k
+2048		 50%		 840k
+4096		none		 836k
+8192		none		 410k
 
-    NVDIMM devices, which can behave more like DRAM rather than block
-    devices, may develop bad cache lines, or 'poison'. A block device
-    exposed by the pmem driver can then consume poison via a read (or
-    write), and cause a machine check. On platforms without machine
-    check recovery features, this would mean a crash.
+What we see here is that the CPU(s) can flush the 4k pages at a rate
+of roughly 850,000 flushes/s, whilst the 64 byte flush rate is
+around 8.8M flushes/s.  This is clearly demonstrated in the numbers
+- as the dirty object size approaches the cache flush granularity,
+the speed approaches single cacheline flush granularity speed.
 
-    The block device maintaining a runtime list of all known sectors that
-    have poison can directly avoid this, and also provide a path forward
-    to enable proper handling/recovery for DAX faults on such a device.
+Comparing 4k vs 64b flushes, we have 63 clean cache line flushes
+taking roughly the same time as 9 dirty cache line flushes. Nice
+numbers - that means a clean cache line flush has ~14% of the
+overhead of dirty cache line flush. Seems rather high - it's tens of
+CPU cycles to determine that the flush is a no-op for that
+cacheline.
 
-    Use the new badblock management interfaces to add a badblocks list to
-    gendisks.
+Fixing this seems like a hardware optimisation issue to me, but I
+still have to question how many applications are going to have such
+fine-grained random synchronous memory writes that this actually
+matters in practice? If we are doing such small writes across
+multiple different 4k pages, then TLB overhead for all the page
+faults is going to be as much of an issue as 4k cache flushes...
 
-    Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
-    Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+> msync => same granularity flushing as the 'persist' case, but the
+> kernel internally promotes this to a 4K sized / aligned flush
+
+So you're calling msync for every modification that is made? What
+application needs to do that? Anyway, page flush rates paint an
+interesting picture:
+
+	single thread		 versus
+Size	4k flush rate		persist_4k
+  64	 655k			 78%
+ 128	 655k			 81%
+ 256	 670k			163%  (* persist 4k number low) 
+ 512	 681k			 79%
+1024	 666k			 78%
+2048	 650k			 77%
+4096	 652k			 78%
+8192	 390k			 95%
+
+msync adds relatively little overhead (~20% extra overhead) compared
+to the performance loss from the 4k flush granularity change. And
+given this appears to be a worst case test scenario (and I'm sure
+msync could be improved), I don't think this demonstrates a problem
+with using msync.
+
+IMO, these numbers don't support the argument that the *msync
+model* for data integrity for DAX is flawed, unworkable, or too
+slow. What I see is a performance problem resulting from the
+overhead of flushing clean cachelines.  i.e. there's data here that
+supports the argument for reducing the overhead of flushing clean
+cachelines in the hardware and/or better tracking of dirty
+cachelines within the kernel, but not data that says the msync()
+based data integrity model is the source of the problem.
+
+i.e. separate the programming model from the performance issue, and
+we can see that the performance problem is not caused by the
+programming model - it's caused by the kernel implementation of the
+model.
+
+> The takeaway is that msync() is 9-10x slower than userspace cache management.
+
+An alternative viewpoint: that flushing clean cachelines is
+extremely expensive on Intel CPUs. ;)
+
+i.e. Same numbers, different analysis from a different PoV, and
+that gives a *completely different conclusion*.
+
+Think about it for the moment. The hardware inefficiency being
+demonstrated could be fixed/optimised in the next hardware product
+cycle(s) and so will eventually go away. OTOH, we'll be stuck with
+whatever programming model we come up with for the next 30-40 years,
+and we'll never be able to fix flaws in it because applications will
+be depending on them. Do we really want to be stuck with a pmem
+model that is designed around the flaws and deficiencies of ~1st
+generation hardware?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
