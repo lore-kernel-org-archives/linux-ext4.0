@@ -1,235 +1,182 @@
 From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 3 May 2016 11:51:59 +1000
-Message-ID: <20160503015159.GS26977@dastard>
-References: <20160420205923.GA24797@infradead.org>
- <1461434916.3695.7.camel@intel.com>
+Date: Tue, 3 May 2016 12:49:48 +1000
+Message-ID: <20160503024948.GT26977@dastard>
+References: <1461434916.3695.7.camel@intel.com>
  <20160425083114.GA27556@infradead.org>
  <1461604476.3106.12.camel@intel.com>
  <20160425232552.GD18496@dastard>
  <1461628381.1421.24.camel@intel.com>
  <20160426004155.GF18496@dastard>
  <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
- <20160502230422.GQ26977@dastard>
- <CAPcyv4jDTvSUDGTBZb0MaK_gKxMxWtMecnR_OjLzim1Sdg5Y9g@mail.gmail.com>
+ <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
+ <20160503004226.GR26977@dastard>
+ <D26BCF92-ED25-4ACA-9CC8-7B1C05A1D5FC@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	"Verma, Vishal L" <vishal.l.verma@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+Cc: "Williams, Dan J" <dan.j.williams@intel.com>,
 	"hch@infradead.org" <hch@infradead.org>,
+	"jack@suse.cz" <jack@suse.cz>, "axboe@fb.com" <axboe@fb.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
 	"linux-mm@kvack.org" <linux-mm@kvack.org>,
 	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: Dan Williams <dan.j.williams@intel.com>
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>
+To: "Rudoff, Andy" <andy.rudoff@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4jDTvSUDGTBZb0MaK_gKxMxWtMecnR_OjLzim1Sdg5Y9g@mail.gmail.com>
+In-Reply-To: <D26BCF92-ED25-4ACA-9CC8-7B1C05A1D5FC@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 02, 2016 at 04:25:51PM -0700, Dan Williams wrote:
-> On Mon, May 2, 2016 at 4:04 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Mon, May 02, 2016 at 11:18:36AM -0400, Jeff Moyer wrote:
-> >> Dave Chinner <david@fromorbit.com> writes:
-> >>
-> >> > On Mon, Apr 25, 2016 at 11:53:13PM +0000, Verma, Vishal L wrote:
-> >> >> On Tue, 2016-04-26 at 09:25 +1000, Dave Chinner wrote:
-> >> > You're assuming that only the DAX aware application accesses it's
-> >> > files.  users, backup programs, data replicators, fileystem
-> >> > re-organisers (e.g.  defragmenters) etc all may access the files and
-> >> > they may throw errors. What then?
-> >>
-> >> I'm not sure how this is any different from regular storage.  If an
-> >> application gets EIO, it's up to the app to decide what to do with that.
-> >
-> > Sure - they'll fail. But the question I'm asking is that if the
-> > application that owns the data is supposed to do error recovery,
-> > what happens when a 3rd party application hits an error? If that
-> > consumes the error, the the app that owns the data won't ever get a
-> > chance to correct the error.
-> >
-> > This is a minefield - a 3rd party app that swallows and clears DAX
-> > based IO errors is a data corruption vector. can yo imagine if
-> > *grep* did this? The model that is being promoted here effectively
-> > allows this sort of behaviour - I don't really think we
-> > should be architecting an error recovery strategy that has the
-> > capability to go this wrong....
+On Tue, May 03, 2016 at 01:26:46AM +0000, Rudoff, Andy wrote:
 > 
-> Since when does grep write to a file on error?
-
-That's precisely my point - it doesn't right now because there is no
-onus on userspace applications to correct data errors when they are
-found.
-
-However, if the accepted model becomes "userspace needs to try to correct
-errors in data automatically", the above scenario is a distinct
-possiblity. I'm not saying grep will do this - I'm taking
-the logical argument being presented to the extreme - but I'm sure
-that there will be developers that have enough knowledge to know
-they are supposed to do something with errors on pmem devices, but
-not have enough knowledge to know the correct things to do.
-
-And then the app mishandles a EINVAL error (or something like that)
-and so we end up with buggy userspace apps trying to correct
-errors in good data and causing data loss that way.
-
-Do we really want to introduce a data integrity and error recovery
-model where this sort of "bug" is a distinct possibly?
-
-> >> >> > There's an implicit assumption that applications will keep redundant
-> >> >> > copies of their data at the /application layer/ and be able to
-> >> >> > automatically repair it?
-> >>
-> >> That's one way to do things.  It really depends on the application what
-> >> it will do for recovery.
-> >>
-> >> >> > And then there's the implicit assumption that it will unlink and
-> >> >> > free the entire file before writing a new copy
-> >>
-> >> I think Vishal was referring to restoring from backup.  cp itself will
-> >> truncate the file before overwriting, iirc.
+> >> The takeaway is that msync() is 9-10x slower than userspace cache management.
 > >
-> > Which version of cp? what happens if they use --sparse and the error
-> > is in a zeroed region? There's so many assumptions about undefined userspace
-> > environment, application and user behaviour being made here, and
-> > it's all being handwaved away.
+> >An alternative viewpoint: that flushing clean cachelines is
+> >extremely expensive on Intel CPUs. ;)
 > >
-> > I'm asking for this to be defined, demonstrated and documented as a
-> > working model that cannot be abused and doesn't have holes the size
-> > of trucks in it, not handwaving...
+> >i.e. Same numbers, different analysis from a different PoV, and
+> >that gives a *completely different conclusion*.
+> >
+> >Think about it for the moment. The hardware inefficiency being
+> >demonstrated could be fixed/optimised in the next hardware product
+> >cycle(s) and so will eventually go away. OTOH, we'll be stuck with
+> >whatever programming model we come up with for the next 30-40 years,
+> >and we'll never be able to fix flaws in it because applications will
+> >be depending on them. Do we really want to be stuck with a pmem
+> >model that is designed around the flaws and deficiencies of ~1st
+> >generation hardware?
 > 
-> You lost me...  how are these patches abusing the existing semantics
-> of -EIO and write to clear?
-
-I haven't said that. I said there are assumptions about how
-userspace will handle the error, but they aren't documented
-anywhere. "copy a file using cp" is not a robust recovery solution -
-it provides no guarantees about how the bad file and regions will be
-recycled and the errors cleared. This effectively of puts it all on
-the filesystems to deal with, even though you're trying to design an
-error handling model that bypasses the filesystems and goes straight
-to userspace.
-
-If I can't understand how this is all supposed to work
-because none of it is documented, then we have no chance that the
-average admin is going to be able to understand it.
-
+> Hi Dave,
 > 
-> >> >> To summarize, the two cases we want to handle are:
-> >> >> 1. Application has inbuilt recovery:
-> >> >>   - hits badblock
-> >> >>   - figures out it is able to recover the data
-> >> >>   - handles SIGBUS or EIO
-> >> >>   - does a (sector aligned) write() to restore the data
-> >> >
-> >> > The "figures out" step here is where >95% of the work we'd have to
-> >> > do is. And that's in filesystem and block layer code, not
-> >> > userspace, and userspace can't do that work in a signal handler.
-> >> > And it  can still fall down to the second case when the application
-> >> > doesn't have another copy of the data somewhere.
-> >>
-> >> I read that "figures out" step as the application determining whether or
-> >> not it had a redundant copy.
-> >
-> > Another undocumented assumption, that doesn't simplify what needs to
-> > be done. Indeed, userspace can't do that until it is in SIGBUS
-> > context, which tends to imply applications need to do a major amount
-> > of work from within the signal handler....
-> >
-> >> > FWIW, we don't have a DAX enabled filesystem that can do
-> >> > reverse block mapping, so we're a year or two away from this being a
-> >> > workable production solution from the filesystem perspective. And
-> >> > AFAICT, it's not even on the roadmap for dm/md layers.
-> >>
-> >> Do we even need that?  What if we added an FIEMAP flag for determining
-> >> bad blocks.
-> >
-> > So you're assuming that the filesystem has been informed of the bad
-> > blocks and has already marked the bad regions of the file in it's
-> > extent list?
-> >
-> > How does that happen? What mechanism is used for the underlying
-> > block device to inform the filesytem that theirs a bad LBA, and how
-> > does the filesytem the map that to a path/file/offset with reverse
-> > mapping? Or is there some other magic that hasn't been explained
-> > happening here?
+> Not sure I agree with your completely different conclusion.  (Not sure
+> I completely disagree either, but please let me raise some practical
+> points.)
 > 
-> In 4.5 we added this:
-> 
-> commit 99e6608c9e7414ae4f2168df8bf8fae3eb49e41f
-> Author: Vishal Verma <vishal.l.verma@intel.com>
-> Date:   Sat Jan 9 08:36:51 2016 -0800
-> 
->     block: Add badblock management for gendisks
+> First of all, let's say you're completely right and flushing clean
+> cache lines is extremely expensive.  So your solution is to wait for
+> the chip to be fixed? 
 
-Yes, I know, and it doesn't answer any of the questions I just
-asked. What you just told me is that there is something that is kept
-three levels of abstraction away from a filesystem. So:
+No, I'm not saying that's the solution - I'm pointing out that if
+clean cache line flushing overhead is less of a problem in future,
+the optimisations made now will not be necessary. However, we'll be
+still stuck with the API/model that has encoded those optimisations
+as a necessary thing for applications to know about and do the
+correct thing with. I.e. we end up with a library of applications
+that are optimised for a problem that no longer exists...
 
-	- What mechanism is to be used for the underlying block
-	  device to inform the filesytem that a new bad block was
-	  added to this list? What context comes along with that
-	  notification?
-	- how does the filesystem query the bad block list without
-	  adding layering violations?
-	- when does the filesystem need to query the bad block list?
-	- how will the bad block list propagate through DM/MD
-	  layers?
-	- how does the filesytem the map the bad block to a
-	  path/file/offset without reverse mapping - does this error
-	  handling interface really imply the filesystem needs to
-	  implement brute force scans at notification time?
-	- Is the filesystem expectd to find the active application or
-	  address_space access that triggered the bad block
-	  notification to handle them correctly? (e.g. prevent a
-	  page fault from failing because we can recover from the
-	  error immediately)
-	- what exactly is the filesystem supposed to do with the bad
-	  block? e.g:
-		- is the block persistently bad until the filesystem
-		  rewrites it? Over power cycles? Will we get
-		  multiple notifications (e.g. once per boot)?
-		- Is the filesystem supposed to intercept
-		  reads/writes to bad blocks once it knows about
-		  them?
-		- how is the filesystem supposed to communicate that
-		  there is a bad block in a file back to userspace?
-		  Or is userspace supposed to infer that there's a
-		  bad block from EIO and so has to run FIEMAP to
-		  determine if the error really was due to a bad
-		  block?
-		- what happens if there is no running application
-		  that we can report the error to or will handle the
-		  error (e.g. found error by a media scrub or during
-		  boot)?
-	- if the bad block is in filesystem free space, what should
-	  the filesystem do with it?
+> Remember the model we're putting forward (which
+> we're working on documenting, because I fully agree with the lack of
+> documentation point you keep raising) requires the application to ASK
+> for the file system's permission before assuming flushing from user space
+> to persistence is allowed.
 
-What I'm failing to communicate is that having and maintaining
-things like bad block lists in a block device is the easy part of
-the problem.
+And when the filesystem says no because the fs devs don't want to
+have to deal with broken apps because app devs learn that "this is a
+go fast knob" and data integrity be damned? It's "fsync is slow so I
+won't use it" all over again...
 
-Similarly reporting a bad block flag in FIEMAP is only a few
-lines of code to implement, but that assumes the filesystem has
-already propagated the bad block information into it's internal
-extents lists.
+> Anyway, I doubt that flushing a clean cache line is extremely expensive.
+> Remember the code is building transactions to maintain a consistent
+> in-memory data structure in the face of sudden failure like powerloss.
+> So it is using the flushes to create store barriers, but not the block-
+> based store barriers we're used to in the storage world, but cache-line-
+> sized store barriers (usually multiples of cache lines, but most commonly
+> smaller than 4k of them).  So I think when you turn a cache line flush
+> into an msync(), you're seeing some dirty stuff get flushed before it
+> is time to flush it.  I'm not sure though, but certainly we could spend
+> more time testing & measuring.
 
-That's the hard part of all this: connecting the two pieces together
-in a sane, reliable, consistent and useful manner. This will form
-the user API, so we need to sort it out before applications start to
-use it. However, if I'm struggling to understand how I'm supposed to
-connecct up the parts inside a filesytem, then expecting application
-developers to be able to connect the dots in a sane manner is
-bordering on fantasy....
+Sure, but is that what Dan was testing? I don't know - he just
+presented a bunch of numbers without a description of the workload,
+posting the benchmark code, etc. hence I can only *make assumptions*
+about what the numbers mean.
+
+I'm somewhat tired of having to make assumptions because nobody is
+describing what they are doing sufficiently and then getting called
+out for it, or having to ask lots of questions because other people
+have made assumptions about how they think something is going to
+work without explaining how the dots connect together. It's a waste
+of everyone's time to be playing this ass-u-me game...
+
+The fact that nobody has been able to explain the how the overall
+model is supposed to work from physical error all the way out to
+userspace makes me think that this is all being made up on the spot.
+There are big pieces of the picture missing, and nobody seems to be
+able to communicate a clear vision of the architecture we are
+supposed to be discussing, let alone implementing...
+
+> More importantly, I think it is interesting to decide what we want the
+> pmem programming model to be long-term.  I think we want applications to
+> just map pmem, do normal stores to it, and assume they are persistent.
+> This is quite different from the 30-year-old POSIX Model where msync()
+> is required.
+
+Yes, it's different, but we still have to co-ordinate multiple
+layers of persistence (i.e. metadata that references the data).
+
+> But I think it is cleaner, easier to understand, and less
+> error-prone.  So why doesn't it work that way right now?  Because we're
+> finding it impractical.  Using write-through caching for pmem simply
+> doesn't perform well, and depending on the platform to flush the CPU
+> caches on shutdown/powerfail is not practical yet.  But I think the day
+> will come when it is practical.
+
+Right - it's also simply not practical to intercept every userspace
+store to ensure the referencing metadata is also persistent, so we
+still need synchronisation mechanisms to ensure that such state is
+acheived.  Either that, or the entire dynamic filesystem state needs
+to be stored in write-through persistent memory as well. We're a
+long, long way from that.
+
+And, please keep in mind: many application developers will not
+design for pmem because they also have to support traditional
+storage backed by page cache. If they use msync(), the app will work
+on any storage stack, but just be much, much faster on pmem+DAX. So,
+really, we have to make the msync()-only model work efficiently, so
+we may as well design for that in the first place....
+
+> So given that long-term target, the idea is for an application to ask if
+> the msync() calls are required, or if just flushing the CPU caches is
+> sufficient for persistence.  Then, we're also adding an ACPI property
+> that allows SW to discover if the caches are flushed automatically
+> on shutdown/powerloss.  Initially that will only be true for custom
+> platforms, but hopefully it can be available more broadly in the future.
+> The result will be that the programming model gets simpler as more and
+> more hardware requires less explicit flushing.
+
+That's a different problem, and one that requires a filesystem to
+also store all it's dynamic information in pmem. i.e. there's not
+point flushing pmem caches if the powerloss loses dirty metadata
+that is held in system RAM. We really need completely new
+pmem-native filesystems to make this work - it's a completely
+separate problem to whether msync() should be the API that provided
+fundamental data integrity guarantees or not.
+
+Which brings up another point: advanced new functionality
+is going to require native pmem filesystems. These are unlikely to
+be block device based, and instead will directly interface with the
+low level CPU and pmem APIs. I don't expect these to use the DAX
+infrastructure, either, because that assumes block device based
+operations. The will, however, still have to have POSIX compatible
+behaviour, and so we go full circle in expecting that an app
+written for mmap+DAX on an existing block based filesystem will work
+identically on funky new byte-addressable native pmem filesytems.
+
+Encoding cache flushing for data integrity into the userspace
+applications assumes that such future pmem-based storage will have
+identical persistence requirements to the existing hardware. This,
+to me, seems very unlikely to be the case (especially when
+considering different platforms (e.g. power, ARM)) and so, again,
+application developers are likely to have to fall back to using a
+kernel provided data integrity primitive they know they can rely on
+(i.e. msync()).....
 
 Cheers,
 
