@@ -1,114 +1,242 @@
-From: "Rudoff, Andy" <andy.rudoff@intel.com>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 3 May 2016 01:26:46 +0000
-Message-ID: <D26BCF92-ED25-4ACA-9CC8-7B1C05A1D5FC@intel.com>
-References: <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
- <20160420205923.GA24797@infradead.org> <1461434916.3695.7.camel@intel.com>
- <20160425083114.GA27556@infradead.org> <1461604476.3106.12.camel@intel.com>
- <20160425232552.GD18496@dastard> <1461628381.1421.24.camel@intel.com>
+Date: Tue, 3 May 2016 11:51:59 +1000
+Message-ID: <20160503015159.GS26977@dastard>
+References: <20160420205923.GA24797@infradead.org>
+ <1461434916.3695.7.camel@intel.com>
+ <20160425083114.GA27556@infradead.org>
+ <1461604476.3106.12.camel@intel.com>
+ <20160425232552.GD18496@dastard>
+ <1461628381.1421.24.camel@intel.com>
  <20160426004155.GF18496@dastard>
  <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
- <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
- <20160503004226.GR26977@dastard>
+ <20160502230422.GQ26977@dastard>
+ <CAPcyv4jDTvSUDGTBZb0MaK_gKxMxWtMecnR_OjLzim1Sdg5Y9g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "hch@infradead.org" <hch@infradead.org>, "jack@suse.cz" <jack@suse.cz>,
-	"axboe@fb.com" <axboe@fb.com>, "linux-kernel@vger.kernel.org"
-	<linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Moyer <jmoyer@redhat.com>,
+	"Verma, Vishal L" <vishal.l.verma@intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>, "viro@zeniv.linux.org.uk"
-	<viro@zeniv.linux.org.uk>, "linux-nvdimm@ml01.01.org"
-	<linux-nvdimm@ml01.01.org>, "linux-fsdevel@vger.kernel.org"
-	<linux-fsdevel@vger.kernel.org>, "akpm@linux-foundation.org"
-	<akpm@linux-foundation.org>, "linux-ext4@vger.kernel.org"
-	<linux-ext4@vger.kernel.org>, "Wilcox, Matthew R"
-	<matthew.r.wilcox@intel.com>
-To: Dave Chinner <david@fromorbit.com>, "Williams, Dan J"
-	<dan.j.williams@intel.com>
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160503004226.GR26977@dastard>
-Content-Language: en-US
-Content-ID: <0AF4EB11DD0E4F4EBC00F7351C1A2029@intel.com>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4jDTvSUDGTBZb0MaK_gKxMxWtMecnR_OjLzim1Sdg5Y9g@mail.gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-DQo+PiBUaGUgdGFrZWF3YXkgaXMgdGhhdCBtc3luYygpIGlzIDktMTB4IHNsb3dlciB0aGFuIHVz
-ZXJzcGFjZSBjYWNoZSBtYW5hZ2VtZW50Lg0KPg0KPkFuIGFsdGVybmF0aXZlIHZpZXdwb2ludDog
-dGhhdCBmbHVzaGluZyBjbGVhbiBjYWNoZWxpbmVzIGlzDQo+ZXh0cmVtZWx5IGV4cGVuc2l2ZSBv
-biBJbnRlbCBDUFVzLiA7KQ0KPg0KPmkuZS4gU2FtZSBudW1iZXJzLCBkaWZmZXJlbnQgYW5hbHlz
-aXMgZnJvbSBhIGRpZmZlcmVudCBQb1YsIGFuZA0KPnRoYXQgZ2l2ZXMgYSAqY29tcGxldGVseSBk
-aWZmZXJlbnQgY29uY2x1c2lvbiouDQo+DQo+VGhpbmsgYWJvdXQgaXQgZm9yIHRoZSBtb21lbnQu
-IFRoZSBoYXJkd2FyZSBpbmVmZmljaWVuY3kgYmVpbmcNCj5kZW1vbnN0cmF0ZWQgY291bGQgYmUg
-Zml4ZWQvb3B0aW1pc2VkIGluIHRoZSBuZXh0IGhhcmR3YXJlIHByb2R1Y3QNCj5jeWNsZShzKSBh
-bmQgc28gd2lsbCBldmVudHVhbGx5IGdvIGF3YXkuIE9UT0gsIHdlJ2xsIGJlIHN0dWNrIHdpdGgN
-Cj53aGF0ZXZlciBwcm9ncmFtbWluZyBtb2RlbCB3ZSBjb21lIHVwIHdpdGggZm9yIHRoZSBuZXh0
-IDMwLTQwIHllYXJzLA0KPmFuZCB3ZSdsbCBuZXZlciBiZSBhYmxlIHRvIGZpeCBmbGF3cyBpbiBp
-dCBiZWNhdXNlIGFwcGxpY2F0aW9ucyB3aWxsDQo+YmUgZGVwZW5kaW5nIG9uIHRoZW0uIERvIHdl
-IHJlYWxseSB3YW50IHRvIGJlIHN0dWNrIHdpdGggYSBwbWVtDQo+bW9kZWwgdGhhdCBpcyBkZXNp
-Z25lZCBhcm91bmQgdGhlIGZsYXdzIGFuZCBkZWZpY2llbmNpZXMgb2YgfjFzdA0KPmdlbmVyYXRp
-b24gaGFyZHdhcmU/DQoNCkhpIERhdmUsDQoNCk5vdCBzdXJlIEkgYWdyZWUgd2l0aCB5b3VyIGNv
-bXBsZXRlbHkgZGlmZmVyZW50IGNvbmNsdXNpb24uICAoTm90IHN1cmUNCkkgY29tcGxldGVseSBk
-aXNhZ3JlZSBlaXRoZXIsIGJ1dCBwbGVhc2UgbGV0IG1lIHJhaXNlIHNvbWUgcHJhY3RpY2FsDQpw
-b2ludHMuKQ0KDQpGaXJzdCBvZiBhbGwsIGxldCdzIHNheSB5b3UncmUgY29tcGxldGVseSByaWdo
-dCBhbmQgZmx1c2hpbmcgY2xlYW4NCmNhY2hlIGxpbmVzIGlzIGV4dHJlbWVseSBleHBlbnNpdmUu
-ICBTbyB5b3VyIHNvbHV0aW9uIGlzIHRvIHdhaXQgZm9yDQp0aGUgY2hpcCB0byBiZSBmaXhlZD8g
-IFJlbWVtYmVyIHRoZSBtb2RlbCB3ZSdyZSBwdXR0aW5nIGZvcndhcmQgKHdoaWNoDQp3ZSdyZSB3
-b3JraW5nIG9uIGRvY3VtZW50aW5nLCBiZWNhdXNlIEkgZnVsbHkgYWdyZWUgd2l0aCB0aGUgbGFj
-ayBvZg0KZG9jdW1lbnRhdGlvbiBwb2ludCB5b3Uga2VlcCByYWlzaW5nKSByZXF1aXJlcyB0aGUg
-YXBwbGljYXRpb24gdG8gQVNLDQpmb3IgdGhlIGZpbGUgc3lzdGVtJ3MgcGVybWlzc2lvbiBiZWZv
-cmUgYXNzdW1pbmcgZmx1c2hpbmcgZnJvbSB1c2VyIHNwYWNlDQp0byBwZXJzaXN0ZW5jZSBpcyBh
-bGxvd2VkLiAgU28gdGhhdCBkb2Vzbid0IHN0aWNrIHVzIHdpdGggMzAtNDAgeWVhcnMgb2YNCmEg
-Zmxhd2VkIG1vZGVsLiAgSSBkb24ndCB0aGluayB0aGUgbW9kZWwgaXMgd3JvbmcsIGhhdmluZyBz
-cGVudCBsb3RzIG9mDQpyZXNlYXJjaCB0aW1lIG9uIGl0LCBidXQgaWYgSSdtIGZ1bGwgb2YgY3Jh
-cCwgYWxsIHdlIGhhdmUgdG8gZG8gaXMgc3RvcA0KdGVsbGluZyB0aGUgYXBwIHRoYXQgZmx1c2hp
-bmcgZnJvbSB1c2VyIHNwYWNlIGlzIGFsbG93ZWQgYW5kIGl0IG11c3QgZ28NCmJhY2sgdG8gdXNp
-bmcgbXN5bmMoKS4gIFRoaXMgaXMgbXkgdW5kZXJzdGFuZGluZyBvZiB3aGF0IERhbiBzdWdnZXN0
-ZWQNCmF0IExTRiBhbmQgdGhpcyBpcyB3aGF0IEknbSBjdXJyZW50bHkgd3JpdGluZyB1cC4gIEJ5
-IHRoZSB3YXksIHRoZSBOVk0NCkxpYnJhcmllcyBhbHJlYWR5IGNvbnRhaW4gdGhlIGxvZ2ljIHRv
-IGFzayBpZiBmbHVzaGluZyBmcm9tIHVzZXIgc3BhY2UNCmlzIGFsbG93ZWQsIGZhbGxpbmcgYmFj
-ayB0byBtc3luYygpIGlmIG5vdC4gIEN1cnJlbnRseSB0aG9zZSBsaWJyYXJpZXMNCmNoZWNrIGZv
-ciBEQVggbWFwcGluZ3MuICBCdXQgdGhlIHBvaW50cyB5b3UgcmFpc2VkIGFib3V0IG1ldGFkYXRh
-IGNoYW5nZXMNCmhhcHBlbmluZyBkdXJpbmcgcGFnZSBmYXVsdHMgbWFkZSB1cyByZWFsaXplIHdl
-IGhhdmUgdG8gYXNrIHRoZSBmaWxlDQpzeXN0ZW0gdG8gb3B0LWluIHRvIGFsbG93aW5nIHVzZXIg
-c3BhY2UgZmx1c2hpbmcsIHNvIHRoYXQncyB3aGF0IHdlJ3JlDQpjaGFuZ2luZyB0aGUgbGlicmFy
-eSB0byBkby4gIFNlZSwgd2UgYXJlIGxpc3RlbmluZyA6LSkNCg0KQW55d2F5LCBJIGRvdWJ0IHRo
-YXQgZmx1c2hpbmcgYSBjbGVhbiBjYWNoZSBsaW5lIGlzIGV4dHJlbWVseSBleHBlbnNpdmUuDQpS
-ZW1lbWJlciB0aGUgY29kZSBpcyBidWlsZGluZyB0cmFuc2FjdGlvbnMgdG8gbWFpbnRhaW4gYSBj
-b25zaXN0ZW50DQppbi1tZW1vcnkgZGF0YSBzdHJ1Y3R1cmUgaW4gdGhlIGZhY2Ugb2Ygc3VkZGVu
-IGZhaWx1cmUgbGlrZSBwb3dlcmxvc3MuDQpTbyBpdCBpcyB1c2luZyB0aGUgZmx1c2hlcyB0byBj
-cmVhdGUgc3RvcmUgYmFycmllcnMsIGJ1dCBub3QgdGhlIGJsb2NrLQ0KYmFzZWQgc3RvcmUgYmFy
-cmllcnMgd2UncmUgdXNlZCB0byBpbiB0aGUgc3RvcmFnZSB3b3JsZCwgYnV0IGNhY2hlLWxpbmUt
-DQpzaXplZCBzdG9yZSBiYXJyaWVycyAodXN1YWxseSBtdWx0aXBsZXMgb2YgY2FjaGUgbGluZXMs
-IGJ1dCBtb3N0IGNvbW1vbmx5DQpzbWFsbGVyIHRoYW4gNGsgb2YgdGhlbSkuICBTbyBJIHRoaW5r
-IHdoZW4geW91IHR1cm4gYSBjYWNoZSBsaW5lIGZsdXNoDQppbnRvIGFuIG1zeW5jKCksIHlvdSdy
-ZSBzZWVpbmcgc29tZSBkaXJ0eSBzdHVmZiBnZXQgZmx1c2hlZCBiZWZvcmUgaXQNCmlzIHRpbWUg
-dG8gZmx1c2ggaXQuICBJJ20gbm90IHN1cmUgdGhvdWdoLCBidXQgY2VydGFpbmx5IHdlIGNvdWxk
-IHNwZW5kDQptb3JlIHRpbWUgdGVzdGluZyAmIG1lYXN1cmluZy4NCg0KTW9yZSBpbXBvcnRhbnRs
-eSwgSSB0aGluayBpdCBpcyBpbnRlcmVzdGluZyB0byBkZWNpZGUgd2hhdCB3ZSB3YW50IHRoZQ0K
-cG1lbSBwcm9ncmFtbWluZyBtb2RlbCB0byBiZSBsb25nLXRlcm0uICBJIHRoaW5rIHdlIHdhbnQg
-YXBwbGljYXRpb25zIHRvDQpqdXN0IG1hcCBwbWVtLCBkbyBub3JtYWwgc3RvcmVzIHRvIGl0LCBh
-bmQgYXNzdW1lIHRoZXkgYXJlIHBlcnNpc3RlbnQuDQpUaGlzIGlzIHF1aXRlIGRpZmZlcmVudCBm
-cm9tIHRoZSAzMC15ZWFyLW9sZCBQT1NJWCBNb2RlbCB3aGVyZSBtc3luYygpDQppcyByZXF1aXJl
-ZC4gIEJ1dCBJIHRoaW5rIGl0IGlzIGNsZWFuZXIsIGVhc2llciB0byB1bmRlcnN0YW5kLCBhbmQg
-bGVzcw0KZXJyb3ItcHJvbmUuICBTbyB3aHkgZG9lc24ndCBpdCB3b3JrIHRoYXQgd2F5IHJpZ2h0
-IG5vdz8gIEJlY2F1c2Ugd2UncmUNCmZpbmRpbmcgaXQgaW1wcmFjdGljYWwuICBVc2luZyB3cml0
-ZS10aHJvdWdoIGNhY2hpbmcgZm9yIHBtZW0gc2ltcGx5DQpkb2Vzbid0IHBlcmZvcm0gd2VsbCwg
-YW5kIGRlcGVuZGluZyBvbiB0aGUgcGxhdGZvcm0gdG8gZmx1c2ggdGhlIENQVQ0KY2FjaGVzIG9u
-IHNodXRkb3duL3Bvd2VyZmFpbCBpcyBub3QgcHJhY3RpY2FsIHlldC4gIEJ1dCBJIHRoaW5rIHRo
-ZSBkYXkNCndpbGwgY29tZSB3aGVuIGl0IGlzIHByYWN0aWNhbC4NCg0KU28gZ2l2ZW4gdGhhdCBs
-b25nLXRlcm0gdGFyZ2V0LCB0aGUgaWRlYSBpcyBmb3IgYW4gYXBwbGljYXRpb24gdG8gYXNrIGlm
-DQp0aGUgbXN5bmMoKSBjYWxscyBhcmUgcmVxdWlyZWQsIG9yIGlmIGp1c3QgZmx1c2hpbmcgdGhl
-IENQVSBjYWNoZXMgaXMNCnN1ZmZpY2llbnQgZm9yIHBlcnNpc3RlbmNlLiAgVGhlbiwgd2UncmUg
-YWxzbyBhZGRpbmcgYW4gQUNQSSBwcm9wZXJ0eQ0KdGhhdCBhbGxvd3MgU1cgdG8gZGlzY292ZXIg
-aWYgdGhlIGNhY2hlcyBhcmUgZmx1c2hlZCBhdXRvbWF0aWNhbGx5DQpvbiBzaHV0ZG93bi9wb3dl
-cmxvc3MuICBJbml0aWFsbHkgdGhhdCB3aWxsIG9ubHkgYmUgdHJ1ZSBmb3IgY3VzdG9tDQpwbGF0
-Zm9ybXMsIGJ1dCBob3BlZnVsbHkgaXQgY2FuIGJlIGF2YWlsYWJsZSBtb3JlIGJyb2FkbHkgaW4g
-dGhlIGZ1dHVyZS4NClRoZSByZXN1bHQgd2lsbCBiZSB0aGF0IHRoZSBwcm9ncmFtbWluZyBtb2Rl
-bCBnZXRzIHNpbXBsZXIgYXMgbW9yZSBhbmQNCm1vcmUgaGFyZHdhcmUgcmVxdWlyZXMgbGVzcyBl
-eHBsaWNpdCBmbHVzaGluZy4NCg0KTm93IEknbGwgZ28gYmFjayB0byB3cml0aW5nIHVwIHRoZSBi
-aWcgcGljdHVyZSBmb3IgdGhpcyBwcm9ncmFtbWluZw0KbW9kZWwgc28gSSBjYW4gYXNrIHlvdSBm
-b3IgY29tbWVudHMgb24gdGhhdCBhcyB3ZWxsLi4uDQoNCg0KLWFuZHkNCg==
+On Mon, May 02, 2016 at 04:25:51PM -0700, Dan Williams wrote:
+> On Mon, May 2, 2016 at 4:04 PM, Dave Chinner <david@fromorbit.com> wrote:
+> > On Mon, May 02, 2016 at 11:18:36AM -0400, Jeff Moyer wrote:
+> >> Dave Chinner <david@fromorbit.com> writes:
+> >>
+> >> > On Mon, Apr 25, 2016 at 11:53:13PM +0000, Verma, Vishal L wrote:
+> >> >> On Tue, 2016-04-26 at 09:25 +1000, Dave Chinner wrote:
+> >> > You're assuming that only the DAX aware application accesses it's
+> >> > files.  users, backup programs, data replicators, fileystem
+> >> > re-organisers (e.g.  defragmenters) etc all may access the files and
+> >> > they may throw errors. What then?
+> >>
+> >> I'm not sure how this is any different from regular storage.  If an
+> >> application gets EIO, it's up to the app to decide what to do with that.
+> >
+> > Sure - they'll fail. But the question I'm asking is that if the
+> > application that owns the data is supposed to do error recovery,
+> > what happens when a 3rd party application hits an error? If that
+> > consumes the error, the the app that owns the data won't ever get a
+> > chance to correct the error.
+> >
+> > This is a minefield - a 3rd party app that swallows and clears DAX
+> > based IO errors is a data corruption vector. can yo imagine if
+> > *grep* did this? The model that is being promoted here effectively
+> > allows this sort of behaviour - I don't really think we
+> > should be architecting an error recovery strategy that has the
+> > capability to go this wrong....
+> 
+> Since when does grep write to a file on error?
+
+That's precisely my point - it doesn't right now because there is no
+onus on userspace applications to correct data errors when they are
+found.
+
+However, if the accepted model becomes "userspace needs to try to correct
+errors in data automatically", the above scenario is a distinct
+possiblity. I'm not saying grep will do this - I'm taking
+the logical argument being presented to the extreme - but I'm sure
+that there will be developers that have enough knowledge to know
+they are supposed to do something with errors on pmem devices, but
+not have enough knowledge to know the correct things to do.
+
+And then the app mishandles a EINVAL error (or something like that)
+and so we end up with buggy userspace apps trying to correct
+errors in good data and causing data loss that way.
+
+Do we really want to introduce a data integrity and error recovery
+model where this sort of "bug" is a distinct possibly?
+
+> >> >> > There's an implicit assumption that applications will keep redundant
+> >> >> > copies of their data at the /application layer/ and be able to
+> >> >> > automatically repair it?
+> >>
+> >> That's one way to do things.  It really depends on the application what
+> >> it will do for recovery.
+> >>
+> >> >> > And then there's the implicit assumption that it will unlink and
+> >> >> > free the entire file before writing a new copy
+> >>
+> >> I think Vishal was referring to restoring from backup.  cp itself will
+> >> truncate the file before overwriting, iirc.
+> >
+> > Which version of cp? what happens if they use --sparse and the error
+> > is in a zeroed region? There's so many assumptions about undefined userspace
+> > environment, application and user behaviour being made here, and
+> > it's all being handwaved away.
+> >
+> > I'm asking for this to be defined, demonstrated and documented as a
+> > working model that cannot be abused and doesn't have holes the size
+> > of trucks in it, not handwaving...
+> 
+> You lost me...  how are these patches abusing the existing semantics
+> of -EIO and write to clear?
+
+I haven't said that. I said there are assumptions about how
+userspace will handle the error, but they aren't documented
+anywhere. "copy a file using cp" is not a robust recovery solution -
+it provides no guarantees about how the bad file and regions will be
+recycled and the errors cleared. This effectively of puts it all on
+the filesystems to deal with, even though you're trying to design an
+error handling model that bypasses the filesystems and goes straight
+to userspace.
+
+If I can't understand how this is all supposed to work
+because none of it is documented, then we have no chance that the
+average admin is going to be able to understand it.
+
+> 
+> >> >> To summarize, the two cases we want to handle are:
+> >> >> 1. Application has inbuilt recovery:
+> >> >>   - hits badblock
+> >> >>   - figures out it is able to recover the data
+> >> >>   - handles SIGBUS or EIO
+> >> >>   - does a (sector aligned) write() to restore the data
+> >> >
+> >> > The "figures out" step here is where >95% of the work we'd have to
+> >> > do is. And that's in filesystem and block layer code, not
+> >> > userspace, and userspace can't do that work in a signal handler.
+> >> > And it  can still fall down to the second case when the application
+> >> > doesn't have another copy of the data somewhere.
+> >>
+> >> I read that "figures out" step as the application determining whether or
+> >> not it had a redundant copy.
+> >
+> > Another undocumented assumption, that doesn't simplify what needs to
+> > be done. Indeed, userspace can't do that until it is in SIGBUS
+> > context, which tends to imply applications need to do a major amount
+> > of work from within the signal handler....
+> >
+> >> > FWIW, we don't have a DAX enabled filesystem that can do
+> >> > reverse block mapping, so we're a year or two away from this being a
+> >> > workable production solution from the filesystem perspective. And
+> >> > AFAICT, it's not even on the roadmap for dm/md layers.
+> >>
+> >> Do we even need that?  What if we added an FIEMAP flag for determining
+> >> bad blocks.
+> >
+> > So you're assuming that the filesystem has been informed of the bad
+> > blocks and has already marked the bad regions of the file in it's
+> > extent list?
+> >
+> > How does that happen? What mechanism is used for the underlying
+> > block device to inform the filesytem that theirs a bad LBA, and how
+> > does the filesytem the map that to a path/file/offset with reverse
+> > mapping? Or is there some other magic that hasn't been explained
+> > happening here?
+> 
+> In 4.5 we added this:
+> 
+> commit 99e6608c9e7414ae4f2168df8bf8fae3eb49e41f
+> Author: Vishal Verma <vishal.l.verma@intel.com>
+> Date:   Sat Jan 9 08:36:51 2016 -0800
+> 
+>     block: Add badblock management for gendisks
+
+Yes, I know, and it doesn't answer any of the questions I just
+asked. What you just told me is that there is something that is kept
+three levels of abstraction away from a filesystem. So:
+
+	- What mechanism is to be used for the underlying block
+	  device to inform the filesytem that a new bad block was
+	  added to this list? What context comes along with that
+	  notification?
+	- how does the filesystem query the bad block list without
+	  adding layering violations?
+	- when does the filesystem need to query the bad block list?
+	- how will the bad block list propagate through DM/MD
+	  layers?
+	- how does the filesytem the map the bad block to a
+	  path/file/offset without reverse mapping - does this error
+	  handling interface really imply the filesystem needs to
+	  implement brute force scans at notification time?
+	- Is the filesystem expectd to find the active application or
+	  address_space access that triggered the bad block
+	  notification to handle them correctly? (e.g. prevent a
+	  page fault from failing because we can recover from the
+	  error immediately)
+	- what exactly is the filesystem supposed to do with the bad
+	  block? e.g:
+		- is the block persistently bad until the filesystem
+		  rewrites it? Over power cycles? Will we get
+		  multiple notifications (e.g. once per boot)?
+		- Is the filesystem supposed to intercept
+		  reads/writes to bad blocks once it knows about
+		  them?
+		- how is the filesystem supposed to communicate that
+		  there is a bad block in a file back to userspace?
+		  Or is userspace supposed to infer that there's a
+		  bad block from EIO and so has to run FIEMAP to
+		  determine if the error really was due to a bad
+		  block?
+		- what happens if there is no running application
+		  that we can report the error to or will handle the
+		  error (e.g. found error by a media scrub or during
+		  boot)?
+	- if the bad block is in filesystem free space, what should
+	  the filesystem do with it?
+
+What I'm failing to communicate is that having and maintaining
+things like bad block lists in a block device is the easy part of
+the problem.
+
+Similarly reporting a bad block flag in FIEMAP is only a few
+lines of code to implement, but that assumes the filesystem has
+already propagated the bad block information into it's internal
+extents lists.
+
+That's the hard part of all this: connecting the two pieces together
+in a sane, reliable, consistent and useful manner. This will form
+the user API, so we need to sort it out before applications start to
+use it. However, if I'm struggling to understand how I'm supposed to
+connecct up the parts inside a filesytem, then expecting application
+developers to be able to connect the dots in a sane manner is
+bordering on fantasy....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
