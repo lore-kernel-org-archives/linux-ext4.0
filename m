@@ -1,41 +1,44 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-Date: Tue, 03 May 2016 16:53:02 +0100
-Message-ID: <27119.1462290782@warthog.procyon.org.uk>
-References: <E67F5D32-A06A-4C30-8DCB-EF20D86200D4@dilger.ca> <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+From: Waiman Long <waiman.long@hpe.com>
+Subject: Re: [RFC PATCH] ext4: Don't release mutex for DAX write
+Date: Tue, 3 May 2016 11:58:46 -0400
+Message-ID: <5728CAB6.4050101@hpe.com>
+References: <1462219138-44089-1-git-send-email-Waiman.Long@hpe.com> <20160503084343.GA31363@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <E67F5D32-A06A-4C30-8DCB-EF20D86200D4@dilger.ca>
-Content-ID: <27118.1462290782.1@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-bn1on0144.outbound.protection.outlook.com ([157.56.110.144]:40576
+	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S933748AbcECP7D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 May 2016 11:59:03 -0400
+In-Reply-To: <20160503084343.GA31363@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger <adilger@dilger.ca> wrote:
+On 05/03/2016 04:43 AM, Christoph Hellwig wrote:
+> As explained in another thread I really think we need to get DAX
+> to stop pretending to be direct I/O, which should also take care
+> of the locking.  The same issue also exists for ext2 and XFS so it
+> needs to be solved at a higher level.
 
-> > 	STATX_INFO_ENCRYPTED		File is encrypted
-> 
-> This flag overlaps with FS_ENCRYPT_FL that is encoded in the FS_IOC_GETFLAGS
-> attributes.  Are the FS_* flags expected to be translated into STATX_INFO_*
-> flags by each filesystem, or will they be partly duplicated in a separate
-> "st_attrs" field added in the future?
+I think the DAX code was in the DIO path because it didn't want to use 
+buffer cache at all. Taking DAX out from DIO will mean having a third 
+mode of doing I/O which is similar to DIO in certain ways, but not 
+exactly the same. There will be a certain amount of code duplication in 
+this case. Do we really want to do that?
 
-I think that most of the FS_IOC_GETFLAGS flags are sufficiently specialised
-that they aren't something the ordinary user would necessarily find to be of
-interest, so I'm not sure that mapping all of them to STATX_INFO_* flags is
-necessary.
+As for the locking problem, xfs doesn't seem to have issue as it uses a 
+rwsem in the xfs inode for synchronization. I haven't looked into the 
+ext2 code to see if there is any issue there.
 
-That said, I think STATX_INFO_ENCRYPTED *is* usefully deployed here to tell
-the user that the file or directory is encrypted and that the user will have
-to unlock or provide a key to access it.
+Cheers,
+Longman
 
-I'm also thinking that a STATX_INFO_NEED_AUTHENTICATION flag may be needed to
-indicate that the user must authenticate in some way (probably only applicable
-to network files) to be able to access the file.
 
-David
