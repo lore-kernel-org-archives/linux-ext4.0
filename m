@@ -1,193 +1,114 @@
-From: Dave Chinner <david@fromorbit.com>
+From: "Rudoff, Andy" <andy.rudoff@intel.com>
 Subject: Re: [PATCH v2 5/5] dax: handle media errors in dax_do_io
-Date: Tue, 3 May 2016 10:42:26 +1000
-Message-ID: <20160503004226.GR26977@dastard>
+Date: Tue, 3 May 2016 01:26:46 +0000
+Message-ID: <D26BCF92-ED25-4ACA-9CC8-7B1C05A1D5FC@intel.com>
 References: <x49twj26edj.fsf@segfault.boston.devel.redhat.com>
- <20160420205923.GA24797@infradead.org>
- <1461434916.3695.7.camel@intel.com>
- <20160425083114.GA27556@infradead.org>
- <1461604476.3106.12.camel@intel.com>
- <20160425232552.GD18496@dastard>
- <1461628381.1421.24.camel@intel.com>
+ <20160420205923.GA24797@infradead.org> <1461434916.3695.7.camel@intel.com>
+ <20160425083114.GA27556@infradead.org> <1461604476.3106.12.camel@intel.com>
+ <20160425232552.GD18496@dastard> <1461628381.1421.24.camel@intel.com>
  <20160426004155.GF18496@dastard>
  <x49pot4ebeb.fsf@segfault.boston.devel.redhat.com>
  <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
+ <20160503004226.GR26977@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-	"Verma, Vishal L" <vishal.l.verma@intel.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "hch@infradead.org" <hch@infradead.org>, "jack@suse.cz" <jack@suse.cz>,
+	"axboe@fb.com" <axboe@fb.com>, "linux-kernel@vger.kernel.org"
+	<linux-kernel@vger.kernel.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
 	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"hch@infradead.org" <hch@infradead.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"axboe@fb.com" <axboe@fb.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"Wilcox, Matthew R" <matthew.r.wilcox@intel.com>,
-	"jack@suse.cz" <jack@suse.cz>
-To: Dan Williams <dan.j.williams@intel.com>
+	"linux-mm@kvack.org" <linux-mm@kvack.org>, "viro@zeniv.linux.org.uk"
+	<viro@zeniv.linux.org.uk>, "linux-nvdimm@ml01.01.org"
+	<linux-nvdimm@ml01.01.org>, "linux-fsdevel@vger.kernel.org"
+	<linux-fsdevel@vger.kernel.org>, "akpm@linux-foundation.org"
+	<akpm@linux-foundation.org>, "linux-ext4@vger.kernel.org"
+	<linux-ext4@vger.kernel.org>, "Wilcox, Matthew R"
+	<matthew.r.wilcox@intel.com>
+To: Dave Chinner <david@fromorbit.com>, "Williams, Dan J"
+	<dan.j.williams@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4jfUVXoge5D+cBY1Ph=t60165sp6sF_QFZUbFv+cNcdHg@mail.gmail.com>
+In-Reply-To: <20160503004226.GR26977@dastard>
+Content-Language: en-US
+Content-ID: <0AF4EB11DD0E4F4EBC00F7351C1A2029@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 02, 2016 at 10:53:25AM -0700, Dan Williams wrote:
-> On Mon, May 2, 2016 at 8:18 AM, Jeff Moyer <jmoyer@redhat.com> wrote:
-> > Dave Chinner <david@fromorbit.com> writes:
-> [..]
-> >> We need some form of redundancy and correction in the PMEM stack to
-> >> prevent single sector errors from taking down services until an
-> >> administrator can correct the problem. I'm trying to understand
-> >> where this is supposed to fit into the picture - at this point I
-> >> really don't think userspace applications are going to be able to do
-> >> this reliably....
-> >
-> > Not all storage is configured into a RAID volume, and in some instances,
-> > the application is better positioned to recover the data (gluster/ceph,
-> > for example).  It really comes down to whether applications or libraries
-> > will want to implement redundancy themselves in order to get a bump in
-> > performance by not going through the kernel.  And I think I know what
-> > your opinion is on that front.  :-)
-> >
-> > Speaking of which, did you see the numbers Dan shared at LSF on how much
-> > overhead there is in calling into the kernel for syncing?  Dan, can/did
-> > you publish that spreadsheet somewhere?
-> 
-> Here it is:
-> 
-> https://docs.google.com/spreadsheets/d/1pwr9psy6vtB9DOsc2bUdXevJRz5Guf6laZ4DaZlkhoo/edit?usp=sharing
-> 
-> On the "Filtered" tab I have some of the comparisons where:
-
-Those numbers are really wacky - the inconsistent decimal place
-representation makes it really, really hard to read the differences
-in orders of magnitude, too. Let's take the first numbers - noop, 64
-byte ops are:
-
-threads		ops/s
-1		 90M
-2		310M
-4		 65M
-8		175M
-16		426M
-
-Why aren't these linear? And if the test is not running in an
-environment where these are controlled and linear, how valid are the
-rest of the tests and hence the comparison.
-
-> noop => don't call msync and don't flush caches in userspace
-> 
-> persist => cache flushing only in userspace and only on individual cache lines
-
-So these look a lot more linear than the no-op behaviour, so I'll
-just ignore the no-op results for now.
-
-> persist_4k => cache flushing only in userspace, but flushing is
-> performed in 4K aligned units
-
-Urg, your "vs persist" percentages are all wrong. You can't have a
-"-1000%" difference, you have "persist 4k" running at 10% of the
-speed of "persist".
-
-So, with that in mind, the "persist_4k" speed is:
-
-		 ops/s		single thread
-Size		vs "persist"	4k flush rate
-  64		 10%		 834k
- 128		 13%		 849k
- 256		 15%		 410k(one off variation?)
- 512		 20%		 860k
-1024		 25%		 850k
-2048		 50%		 840k
-4096		none		 836k
-8192		none		 410k
-
-What we see here is that the CPU(s) can flush the 4k pages at a rate
-of roughly 850,000 flushes/s, whilst the 64 byte flush rate is
-around 8.8M flushes/s.  This is clearly demonstrated in the numbers
-- as the dirty object size approaches the cache flush granularity,
-the speed approaches single cacheline flush granularity speed.
-
-Comparing 4k vs 64b flushes, we have 63 clean cache line flushes
-taking roughly the same time as 9 dirty cache line flushes. Nice
-numbers - that means a clean cache line flush has ~14% of the
-overhead of dirty cache line flush. Seems rather high - it's tens of
-CPU cycles to determine that the flush is a no-op for that
-cacheline.
-
-Fixing this seems like a hardware optimisation issue to me, but I
-still have to question how many applications are going to have such
-fine-grained random synchronous memory writes that this actually
-matters in practice? If we are doing such small writes across
-multiple different 4k pages, then TLB overhead for all the page
-faults is going to be as much of an issue as 4k cache flushes...
-
-> msync => same granularity flushing as the 'persist' case, but the
-> kernel internally promotes this to a 4K sized / aligned flush
-
-So you're calling msync for every modification that is made? What
-application needs to do that? Anyway, page flush rates paint an
-interesting picture:
-
-	single thread		 versus
-Size	4k flush rate		persist_4k
-  64	 655k			 78%
- 128	 655k			 81%
- 256	 670k			163%  (* persist 4k number low) 
- 512	 681k			 79%
-1024	 666k			 78%
-2048	 650k			 77%
-4096	 652k			 78%
-8192	 390k			 95%
-
-msync adds relatively little overhead (~20% extra overhead) compared
-to the performance loss from the 4k flush granularity change. And
-given this appears to be a worst case test scenario (and I'm sure
-msync could be improved), I don't think this demonstrates a problem
-with using msync.
-
-IMO, these numbers don't support the argument that the *msync
-model* for data integrity for DAX is flawed, unworkable, or too
-slow. What I see is a performance problem resulting from the
-overhead of flushing clean cachelines.  i.e. there's data here that
-supports the argument for reducing the overhead of flushing clean
-cachelines in the hardware and/or better tracking of dirty
-cachelines within the kernel, but not data that says the msync()
-based data integrity model is the source of the problem.
-
-i.e. separate the programming model from the performance issue, and
-we can see that the performance problem is not caused by the
-programming model - it's caused by the kernel implementation of the
-model.
-
-> The takeaway is that msync() is 9-10x slower than userspace cache management.
-
-An alternative viewpoint: that flushing clean cachelines is
-extremely expensive on Intel CPUs. ;)
-
-i.e. Same numbers, different analysis from a different PoV, and
-that gives a *completely different conclusion*.
-
-Think about it for the moment. The hardware inefficiency being
-demonstrated could be fixed/optimised in the next hardware product
-cycle(s) and so will eventually go away. OTOH, we'll be stuck with
-whatever programming model we come up with for the next 30-40 years,
-and we'll never be able to fix flaws in it because applications will
-be depending on them. Do we really want to be stuck with a pmem
-model that is designed around the flaws and deficiencies of ~1st
-generation hardware?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+DQo+PiBUaGUgdGFrZWF3YXkgaXMgdGhhdCBtc3luYygpIGlzIDktMTB4IHNsb3dlciB0aGFuIHVz
+ZXJzcGFjZSBjYWNoZSBtYW5hZ2VtZW50Lg0KPg0KPkFuIGFsdGVybmF0aXZlIHZpZXdwb2ludDog
+dGhhdCBmbHVzaGluZyBjbGVhbiBjYWNoZWxpbmVzIGlzDQo+ZXh0cmVtZWx5IGV4cGVuc2l2ZSBv
+biBJbnRlbCBDUFVzLiA7KQ0KPg0KPmkuZS4gU2FtZSBudW1iZXJzLCBkaWZmZXJlbnQgYW5hbHlz
+aXMgZnJvbSBhIGRpZmZlcmVudCBQb1YsIGFuZA0KPnRoYXQgZ2l2ZXMgYSAqY29tcGxldGVseSBk
+aWZmZXJlbnQgY29uY2x1c2lvbiouDQo+DQo+VGhpbmsgYWJvdXQgaXQgZm9yIHRoZSBtb21lbnQu
+IFRoZSBoYXJkd2FyZSBpbmVmZmljaWVuY3kgYmVpbmcNCj5kZW1vbnN0cmF0ZWQgY291bGQgYmUg
+Zml4ZWQvb3B0aW1pc2VkIGluIHRoZSBuZXh0IGhhcmR3YXJlIHByb2R1Y3QNCj5jeWNsZShzKSBh
+bmQgc28gd2lsbCBldmVudHVhbGx5IGdvIGF3YXkuIE9UT0gsIHdlJ2xsIGJlIHN0dWNrIHdpdGgN
+Cj53aGF0ZXZlciBwcm9ncmFtbWluZyBtb2RlbCB3ZSBjb21lIHVwIHdpdGggZm9yIHRoZSBuZXh0
+IDMwLTQwIHllYXJzLA0KPmFuZCB3ZSdsbCBuZXZlciBiZSBhYmxlIHRvIGZpeCBmbGF3cyBpbiBp
+dCBiZWNhdXNlIGFwcGxpY2F0aW9ucyB3aWxsDQo+YmUgZGVwZW5kaW5nIG9uIHRoZW0uIERvIHdl
+IHJlYWxseSB3YW50IHRvIGJlIHN0dWNrIHdpdGggYSBwbWVtDQo+bW9kZWwgdGhhdCBpcyBkZXNp
+Z25lZCBhcm91bmQgdGhlIGZsYXdzIGFuZCBkZWZpY2llbmNpZXMgb2YgfjFzdA0KPmdlbmVyYXRp
+b24gaGFyZHdhcmU/DQoNCkhpIERhdmUsDQoNCk5vdCBzdXJlIEkgYWdyZWUgd2l0aCB5b3VyIGNv
+bXBsZXRlbHkgZGlmZmVyZW50IGNvbmNsdXNpb24uICAoTm90IHN1cmUNCkkgY29tcGxldGVseSBk
+aXNhZ3JlZSBlaXRoZXIsIGJ1dCBwbGVhc2UgbGV0IG1lIHJhaXNlIHNvbWUgcHJhY3RpY2FsDQpw
+b2ludHMuKQ0KDQpGaXJzdCBvZiBhbGwsIGxldCdzIHNheSB5b3UncmUgY29tcGxldGVseSByaWdo
+dCBhbmQgZmx1c2hpbmcgY2xlYW4NCmNhY2hlIGxpbmVzIGlzIGV4dHJlbWVseSBleHBlbnNpdmUu
+ICBTbyB5b3VyIHNvbHV0aW9uIGlzIHRvIHdhaXQgZm9yDQp0aGUgY2hpcCB0byBiZSBmaXhlZD8g
+IFJlbWVtYmVyIHRoZSBtb2RlbCB3ZSdyZSBwdXR0aW5nIGZvcndhcmQgKHdoaWNoDQp3ZSdyZSB3
+b3JraW5nIG9uIGRvY3VtZW50aW5nLCBiZWNhdXNlIEkgZnVsbHkgYWdyZWUgd2l0aCB0aGUgbGFj
+ayBvZg0KZG9jdW1lbnRhdGlvbiBwb2ludCB5b3Uga2VlcCByYWlzaW5nKSByZXF1aXJlcyB0aGUg
+YXBwbGljYXRpb24gdG8gQVNLDQpmb3IgdGhlIGZpbGUgc3lzdGVtJ3MgcGVybWlzc2lvbiBiZWZv
+cmUgYXNzdW1pbmcgZmx1c2hpbmcgZnJvbSB1c2VyIHNwYWNlDQp0byBwZXJzaXN0ZW5jZSBpcyBh
+bGxvd2VkLiAgU28gdGhhdCBkb2Vzbid0IHN0aWNrIHVzIHdpdGggMzAtNDAgeWVhcnMgb2YNCmEg
+Zmxhd2VkIG1vZGVsLiAgSSBkb24ndCB0aGluayB0aGUgbW9kZWwgaXMgd3JvbmcsIGhhdmluZyBz
+cGVudCBsb3RzIG9mDQpyZXNlYXJjaCB0aW1lIG9uIGl0LCBidXQgaWYgSSdtIGZ1bGwgb2YgY3Jh
+cCwgYWxsIHdlIGhhdmUgdG8gZG8gaXMgc3RvcA0KdGVsbGluZyB0aGUgYXBwIHRoYXQgZmx1c2hp
+bmcgZnJvbSB1c2VyIHNwYWNlIGlzIGFsbG93ZWQgYW5kIGl0IG11c3QgZ28NCmJhY2sgdG8gdXNp
+bmcgbXN5bmMoKS4gIFRoaXMgaXMgbXkgdW5kZXJzdGFuZGluZyBvZiB3aGF0IERhbiBzdWdnZXN0
+ZWQNCmF0IExTRiBhbmQgdGhpcyBpcyB3aGF0IEknbSBjdXJyZW50bHkgd3JpdGluZyB1cC4gIEJ5
+IHRoZSB3YXksIHRoZSBOVk0NCkxpYnJhcmllcyBhbHJlYWR5IGNvbnRhaW4gdGhlIGxvZ2ljIHRv
+IGFzayBpZiBmbHVzaGluZyBmcm9tIHVzZXIgc3BhY2UNCmlzIGFsbG93ZWQsIGZhbGxpbmcgYmFj
+ayB0byBtc3luYygpIGlmIG5vdC4gIEN1cnJlbnRseSB0aG9zZSBsaWJyYXJpZXMNCmNoZWNrIGZv
+ciBEQVggbWFwcGluZ3MuICBCdXQgdGhlIHBvaW50cyB5b3UgcmFpc2VkIGFib3V0IG1ldGFkYXRh
+IGNoYW5nZXMNCmhhcHBlbmluZyBkdXJpbmcgcGFnZSBmYXVsdHMgbWFkZSB1cyByZWFsaXplIHdl
+IGhhdmUgdG8gYXNrIHRoZSBmaWxlDQpzeXN0ZW0gdG8gb3B0LWluIHRvIGFsbG93aW5nIHVzZXIg
+c3BhY2UgZmx1c2hpbmcsIHNvIHRoYXQncyB3aGF0IHdlJ3JlDQpjaGFuZ2luZyB0aGUgbGlicmFy
+eSB0byBkby4gIFNlZSwgd2UgYXJlIGxpc3RlbmluZyA6LSkNCg0KQW55d2F5LCBJIGRvdWJ0IHRo
+YXQgZmx1c2hpbmcgYSBjbGVhbiBjYWNoZSBsaW5lIGlzIGV4dHJlbWVseSBleHBlbnNpdmUuDQpS
+ZW1lbWJlciB0aGUgY29kZSBpcyBidWlsZGluZyB0cmFuc2FjdGlvbnMgdG8gbWFpbnRhaW4gYSBj
+b25zaXN0ZW50DQppbi1tZW1vcnkgZGF0YSBzdHJ1Y3R1cmUgaW4gdGhlIGZhY2Ugb2Ygc3VkZGVu
+IGZhaWx1cmUgbGlrZSBwb3dlcmxvc3MuDQpTbyBpdCBpcyB1c2luZyB0aGUgZmx1c2hlcyB0byBj
+cmVhdGUgc3RvcmUgYmFycmllcnMsIGJ1dCBub3QgdGhlIGJsb2NrLQ0KYmFzZWQgc3RvcmUgYmFy
+cmllcnMgd2UncmUgdXNlZCB0byBpbiB0aGUgc3RvcmFnZSB3b3JsZCwgYnV0IGNhY2hlLWxpbmUt
+DQpzaXplZCBzdG9yZSBiYXJyaWVycyAodXN1YWxseSBtdWx0aXBsZXMgb2YgY2FjaGUgbGluZXMs
+IGJ1dCBtb3N0IGNvbW1vbmx5DQpzbWFsbGVyIHRoYW4gNGsgb2YgdGhlbSkuICBTbyBJIHRoaW5r
+IHdoZW4geW91IHR1cm4gYSBjYWNoZSBsaW5lIGZsdXNoDQppbnRvIGFuIG1zeW5jKCksIHlvdSdy
+ZSBzZWVpbmcgc29tZSBkaXJ0eSBzdHVmZiBnZXQgZmx1c2hlZCBiZWZvcmUgaXQNCmlzIHRpbWUg
+dG8gZmx1c2ggaXQuICBJJ20gbm90IHN1cmUgdGhvdWdoLCBidXQgY2VydGFpbmx5IHdlIGNvdWxk
+IHNwZW5kDQptb3JlIHRpbWUgdGVzdGluZyAmIG1lYXN1cmluZy4NCg0KTW9yZSBpbXBvcnRhbnRs
+eSwgSSB0aGluayBpdCBpcyBpbnRlcmVzdGluZyB0byBkZWNpZGUgd2hhdCB3ZSB3YW50IHRoZQ0K
+cG1lbSBwcm9ncmFtbWluZyBtb2RlbCB0byBiZSBsb25nLXRlcm0uICBJIHRoaW5rIHdlIHdhbnQg
+YXBwbGljYXRpb25zIHRvDQpqdXN0IG1hcCBwbWVtLCBkbyBub3JtYWwgc3RvcmVzIHRvIGl0LCBh
+bmQgYXNzdW1lIHRoZXkgYXJlIHBlcnNpc3RlbnQuDQpUaGlzIGlzIHF1aXRlIGRpZmZlcmVudCBm
+cm9tIHRoZSAzMC15ZWFyLW9sZCBQT1NJWCBNb2RlbCB3aGVyZSBtc3luYygpDQppcyByZXF1aXJl
+ZC4gIEJ1dCBJIHRoaW5rIGl0IGlzIGNsZWFuZXIsIGVhc2llciB0byB1bmRlcnN0YW5kLCBhbmQg
+bGVzcw0KZXJyb3ItcHJvbmUuICBTbyB3aHkgZG9lc24ndCBpdCB3b3JrIHRoYXQgd2F5IHJpZ2h0
+IG5vdz8gIEJlY2F1c2Ugd2UncmUNCmZpbmRpbmcgaXQgaW1wcmFjdGljYWwuICBVc2luZyB3cml0
+ZS10aHJvdWdoIGNhY2hpbmcgZm9yIHBtZW0gc2ltcGx5DQpkb2Vzbid0IHBlcmZvcm0gd2VsbCwg
+YW5kIGRlcGVuZGluZyBvbiB0aGUgcGxhdGZvcm0gdG8gZmx1c2ggdGhlIENQVQ0KY2FjaGVzIG9u
+IHNodXRkb3duL3Bvd2VyZmFpbCBpcyBub3QgcHJhY3RpY2FsIHlldC4gIEJ1dCBJIHRoaW5rIHRo
+ZSBkYXkNCndpbGwgY29tZSB3aGVuIGl0IGlzIHByYWN0aWNhbC4NCg0KU28gZ2l2ZW4gdGhhdCBs
+b25nLXRlcm0gdGFyZ2V0LCB0aGUgaWRlYSBpcyBmb3IgYW4gYXBwbGljYXRpb24gdG8gYXNrIGlm
+DQp0aGUgbXN5bmMoKSBjYWxscyBhcmUgcmVxdWlyZWQsIG9yIGlmIGp1c3QgZmx1c2hpbmcgdGhl
+IENQVSBjYWNoZXMgaXMNCnN1ZmZpY2llbnQgZm9yIHBlcnNpc3RlbmNlLiAgVGhlbiwgd2UncmUg
+YWxzbyBhZGRpbmcgYW4gQUNQSSBwcm9wZXJ0eQ0KdGhhdCBhbGxvd3MgU1cgdG8gZGlzY292ZXIg
+aWYgdGhlIGNhY2hlcyBhcmUgZmx1c2hlZCBhdXRvbWF0aWNhbGx5DQpvbiBzaHV0ZG93bi9wb3dl
+cmxvc3MuICBJbml0aWFsbHkgdGhhdCB3aWxsIG9ubHkgYmUgdHJ1ZSBmb3IgY3VzdG9tDQpwbGF0
+Zm9ybXMsIGJ1dCBob3BlZnVsbHkgaXQgY2FuIGJlIGF2YWlsYWJsZSBtb3JlIGJyb2FkbHkgaW4g
+dGhlIGZ1dHVyZS4NClRoZSByZXN1bHQgd2lsbCBiZSB0aGF0IHRoZSBwcm9ncmFtbWluZyBtb2Rl
+bCBnZXRzIHNpbXBsZXIgYXMgbW9yZSBhbmQNCm1vcmUgaGFyZHdhcmUgcmVxdWlyZXMgbGVzcyBl
+eHBsaWNpdCBmbHVzaGluZy4NCg0KTm93IEknbGwgZ28gYmFjayB0byB3cml0aW5nIHVwIHRoZSBi
+aWcgcGljdHVyZSBmb3IgdGhpcyBwcm9ncmFtbWluZw0KbW9kZWwgc28gSSBjYW4gYXNrIHlvdSBm
+b3IgY29tbWVudHMgb24gdGhhdCBhcyB3ZWxsLi4uDQoNCg0KLWFuZHkNCg==
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
