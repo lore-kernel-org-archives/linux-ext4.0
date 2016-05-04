@@ -1,62 +1,74 @@
-From: Mike Christie <mchristi@redhat.com>
-Subject: Re: [PATCH 00/42] v7: separate operations from flags in the
- bio/request structs
-Date: Wed, 4 May 2016 13:04:45 -0500
-Message-ID: <572A39BD.8020405@redhat.com>
-References: <1460747777-8479-1-git-send-email-mchristi@redhat.com>
- <x49d1p2c1nx.fsf@segfault.boston.devel.redhat.com>
- <572A36BF.3070208@redhat.com>
- <x49a8k5aen2.fsf@segfault.boston.devel.redhat.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Thu, 5 May 2016 08:56:02 +1000
+Message-ID: <20160504225601.GZ26977@dastard>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-	konrad.wilk@oracle.com, drbd-dev@lists.linbit.com,
-	philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
-	linux-raid@vger.kernel.org, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34968 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753355AbcEDSEu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 May 2016 14:04:50 -0400
-In-Reply-To: <x49a8k5aen2.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 05/04/2016 12:58 PM, Jeff Moyer wrote:
-> Mike Christie <mchristi@redhat.com> writes:
+On Fri, Apr 29, 2016 at 01:57:43PM +0100, David Howells wrote:
+>  (4) File creation time (st_btime*), data version (st_version), inode
+>      generation number (st_gen).
 > 
->> On 05/03/2016 03:44 PM, Jeff Moyer wrote:
->>> Hi, Mike,
->>>
->>> That git tree doesn't seem to exist.  I did manage to apply your patch
->>> set on top of next-20160415, though.
->>>
->>> So... what testing did you do? ;-) I ran into the following problems
->>
->> I normally run xfstests and run it on my daily workstation and laptop. I
->> did not do this for every FS this time and hit a regression.
->>
->> What FS were you using?
-> 
-> I'm using xfs, scsi disk, no blk-mq, no dm.
-> 
->>> - git clone fails
->>> - yum segfaults
->>
->> In v7/v6, I missed a new submit_bio call, so I hit issues like the two
->> above. I have this fixed in the next version.
-> 
-> OK, does this mean you're posting another version, or you already did
-> and I somehow missed it?
-> 
+>      These will be returned if available whether the caller asked for them or
+>      not.  The corresponding bits in st_mask will be set or cleared as
+>      appropriate to indicate a valid value.
 
-I did not repost yet. I am still testing. Jens had me add some wrappers
-around the operation access, so because of my last screw up and the
-wrapper change affected all my patches I am redoing all my testing.
+IMO, exposing the inode generation number to anyone is a potential
+security problem because they are used in file handles.
+
+Most file handles provided by filesystems are simply an encoding of
+the inode number + generation number, plus maybe the ino+gen of the
+parent dir if the NFS server is configured to do this. This makes it
+trivial for an attacker to guess what the likely generation numbers
+are going to be for inode numbers surrounding any given inode, hence
+greatly reducing the search space for guessing valid file handles.
+
+We've known this to be a problem for a long time - file handles are
+not cryptographically secure, so exposing information like this by
+default make guessing handles successfully almost trivial for many
+filesystems.
+
+In the latest XFS filesystem format, we randomise the generation
+value during every inode allocation to make it hard to guess the
+handle of adjacent inodes from an existing ino+gen pair, or even
+from life time to life time of the same inode. We don't use a secure
+random number generator (prandom_u32()) so it's still possible to
+guess with enough trial and observation. However, it makes it
+several orders of magnitude harder to guess and requires knowledge
+of inode allocation order to guess correctly once the random number
+sequence has been deduced and so makes brute force the only real
+option for guessing a valid handle for an inode.
+
+However, this is definitely a problem for the older format where
+each cluster of inodes was initialised with the same seed at cluster
+allocation time and the generation number was simply incremented for
+each life time. Most filesystems use a similar method for seeding
+and incrementing generation numbers, so once the generation numbers
+are exposed it makes handles trivial to calculate successfully.
+
+>      If the caller didn't ask for them, then they may be approximated.  For
+>      example, NFS won't waste any time updating them from the server, unless
+>      as a byproduct of updating something requested.
+
+I would suggest that exposing them from the NFS server is something
+we most definitely don't want to do because they are the only thing
+that keeps remote users from guessing filehandles with ease....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
