@@ -1,128 +1,93 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH] direct-io: fix stale data exposure from concurrent buffered read
-Date: Thu, 05 May 2016 15:39:29 -0400
-Message-ID: <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
-References: <1462033162-21837-1-git-send-email-guaneryu@gmail.com>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Thu, 05 May 2016 15:48:16 -0400
+Message-ID: <1462477696.12332.17.camel@poochiereds.net>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+	 <20160504225601.GZ26977@dastard> <87shxxbc1e.fsf@notabene.neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>, Jan Kara <jack@suse.cz>,
-	"Theodore T'so" <tytso@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1462033162-21837-1-git-send-email-guaneryu@gmail.com> (Eryu
-	Guan's message of "Sun, 1 May 2016 00:19:22 +0800")
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: NeilBrown <nfbrown@novell.com>, Dave Chinner <david@fromorbit.com>,
+	David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <87shxxbc1e.fsf@notabene.neil.brown.name>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi, Eryu,
+On Thu, 2016-05-05 at 10:09 +1000, NeilBrown wrote:
+> On Thu, May 05 2016, Dave Chinner wrote:
+>=20
+> >=20
+> > On Fri, Apr 29, 2016 at 01:57:43PM +0100, David Howells wrote:
+> > >=20
+> > > =C2=A0(4) File creation time (st_btime*), data version (st_versio=
+n), inode
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0generation number (st_gen).
+> > >=20
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0These will be returned if available=
+ whether the caller asked for them or
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0not.=C2=A0=C2=A0The corresponding b=
+its in st_mask will be set or cleared as
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0appropriate to indicate a valid val=
+ue.
+> > IMO, exposing the inode generation number to anyone is a potential
+> > security problem because they are used in file handles.
+> "security through obscurity".=C2=A0=C2=A0We have Kerberos working rea=
+lly nicely
+> for NFS these days.=C2=A0=C2=A0Do we still care?
+>=20
+> What if the generation number were only made available to "root"?=C2=A0=
+=C2=A0Would
+> that allay your concerns?
+> Would that still be useful?
+> We already have name_to_handle_at().=C2=A0=C2=A0Exposing the generati=
+on number
+> could/should follow the same rules at that.=C2=A0=C2=A0Or maybe the e=
+xposure of
+> each field should be guided by the filesystem, depending on (for
+> example) whether it is used to provide uniqueness to the filehandle.
+>=20
+> >=20
+> >=20
+> > >=20
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0If the caller didn't ask for them, =
+then they may be approximated.=C2=A0=C2=A0For
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0example, NFS won't waste any time u=
+pdating them from the server, unless
+> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0as a byproduct of updating somethin=
+g requested.
+> > I would suggest that exposing them from the NFS server is something
+> > we most definitely don't want to do because they are the only thing
+> > that keeps remote users from guessing filehandles with ease....
+> Given that the NFS protocol does not define a "generation number"
+> attribute, I think there is no risk for them being exposed from the N=
+=46S
+> server ... except implicitly within the filehandle of course.
+>=20
+> NeilBrown
 
-Thanks for the great description of the problem!  I have some comments
-below.
 
-Eryu Guan <guaneryu@gmail.com> writes:
 
-> Direct writes inside i_size on a DIO_SKIP_HOLES filesystem are not
-> allowed to allocate blocks(get_more_blocks() sets 'create' to 0 before
-> calling get_bkicl() callback), if it's a sparse file, direct writes fall
-> back to buffered writes to avoid stale data exposure from concurrent
-> buffered read.
->
-> But the detection for "writing inside i_size" is not correct, writes can
-> be treated as "extending writes" wrongly, which results in block
-> allocation for holes and could expose stale data. This is because we're
-> checking on the fs blocks not the actual offset and i_size in bytes.
->
-> For example, direct write 1FSB to a 1FSB(or smaller) sparse file on
-> ext2/3/4, starting from offset 0, in this case it's writing inside
-> i_size, but 'create' is non-zero, because 'sdio->block_in_file' and
-> '(i_size_read(dio->inode) >> sdio->blkbits' are both zero.
->
-> This can be demonstrated by running ltp-aiodio test ADSP045 many times.
-> When testing on extN filesystems, I see test failures occasionally,
-> buffered read could read non-zero (stale) data.
->
-> ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 2
->
-> dio_sparse    0  TINFO  :  Dirtying free blocks
-> dio_sparse    0  TINFO  :  Starting I/O tests
-> non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
-> non-zero read at offset 0
-> dio_sparse    0  TINFO  :  Killing childrens(s)
-> dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
+I don't see a real attack vector here either, but OTOH is there a
+potential user of this at the moment? An earlier chunk of the patch
+description says:
 
-OK, so in this case, block_in_file is 0, i_size_read(inode) is 2048, and
-i_blkbits is 12.
+(7) Inode generation number: Useful for FUSE and userspace NFS servers
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0[Bernd Schubert].=C2=A0=C2=A0This was ask=
+ed for but later deemed unnecessary
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0with the open-by-handle capability availa=
+ble
 
-> Fix it by checking on the actual offset and i_size in bytes, not the fs
-> blocks where offset and i_size are in, to make sure it's really writing
-> into the file.
+=2E..the last bit seems to indicate that we don't really need this
+anyway, as most userland servers now work with filehandles from the
+kernel.
 
-I think this code operates on blocks for a reason: we're trying to
-determine if we'll trigger block allocation, right?  For example,
-consider a sparse file with i_size of 2k, and a write to offset 2k into
-the file, with a file system block size of 4k.  Should that have create
-set or not?
+Maybe leave it out for now? It can always be added later.
 
-Ted or Jan, can you answer that question?
-
-> Also introduce some local variables to make the code
-> easier to read a little bit.
-
-Please don't do this.  You're only making the change harder to review.
-Just submit the minimal fix.  You can submit cleanups as a follow-on.
-
-Thanks,
-Jeff
-
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
-> ---
->  fs/direct-io.c | 20 ++++++++++----------
->  1 file changed, 10 insertions(+), 10 deletions(-)
->
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index 4720377..ca0c9bc 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -607,9 +607,12 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->  	int ret;
->  	sector_t fs_startblk;	/* Into file, in filesystem-sized blocks */
->  	sector_t fs_endblk;	/* Into file, in filesystem-sized blocks */
-> +	sector_t block_in_file = sdio->block_in_file;
->  	unsigned long fs_count;	/* Number of filesystem-sized blocks */
->  	int create;
-> -	unsigned int i_blkbits = sdio->blkbits + sdio->blkfactor;
-> +	unsigned int blkbits = sdio->blkbits;
-> +	unsigned int blkfactor = sdio->blkfactor;
-> +	unsigned int i_blkbits = blkbits + blkfactor;
->  
->  	/*
->  	 * If there was a memory error and we've overwritten all the
-> @@ -617,10 +620,9 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->  	 */
->  	ret = dio->page_errors;
->  	if (ret == 0) {
-> -		BUG_ON(sdio->block_in_file >= sdio->final_block_in_request);
-> -		fs_startblk = sdio->block_in_file >> sdio->blkfactor;
-> -		fs_endblk = (sdio->final_block_in_request - 1) >>
-> -					sdio->blkfactor;
-> +		BUG_ON(block_in_file >= sdio->final_block_in_request);
-> +		fs_startblk = block_in_file >> blkfactor;
-> +		fs_endblk = (sdio->final_block_in_request - 1) >> blkfactor;
->  		fs_count = fs_endblk - fs_startblk + 1;
->  
->  		map_bh->b_state = 0;
-> @@ -638,11 +640,9 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->  		 * buffer head.
->  		 */
->  		create = dio->rw & WRITE;
-> -		if (dio->flags & DIO_SKIP_HOLES) {
-> -			if (sdio->block_in_file < (i_size_read(dio->inode) >>
-> -							sdio->blkbits))
-> -				create = 0;
-> -		}
-> +		if ((dio->flags & DIO_SKIP_HOLES) &&
-> +		    ((block_in_file << blkbits) < i_size_read(dio->inode)))
-> +			create = 0;
->  
->  		ret = (*sdio->get_block)(dio->inode, fs_startblk,
->  						map_bh, create);
+--=20
+Jeff Layton <jlayton@poochiereds.net>
