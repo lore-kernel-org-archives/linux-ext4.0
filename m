@@ -1,78 +1,72 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
-Date: Thu, 5 May 2016 17:48:12 +0200
-Message-ID: <20160505154812.GA2090@quack2.suse.cz>
-References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
- <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
- <20160505141637.GJ1970@quack2.suse.cz>
- <20160505142748.GA10157@infradead.org>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
+Date: Thu, 5 May 2016 09:24:20 -0700
+Message-ID: <CAPcyv4i1wRv56C=0uAz83ANZL=zv-LpbTuSPnMFo7baZXwWSLg@mail.gmail.com>
+References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
+	<1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+	<5727753F.6090104@plexistor.com>
+	<20160505142433.GA4557@infradead.org>
+	<CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
+	<20160505152230.GA3994@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Waiman Long <Waiman.Long@hpe.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>, dbueso@suse.com
+Content-Type: text/plain; charset=UTF-8
+Cc: Boaz Harrosh <boaz@plexistor.com>, linux-block@vger.kernel.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+	Jens Axboe <axboe@fb.com>, Linux MM <linux-mm@kvack.org>, Al Viro <viro@zeniv.linux.org.uk>,
+	linux-nvdimm <linux-nvdimm@ml01.01.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>
 To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38769 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752937AbcEEPsR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2016 11:48:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20160505142748.GA10157@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160505152230.GA3994@infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 05-05-16 07:27:48, Christoph Hellwig wrote:
-> On Thu, May 05, 2016 at 04:16:37PM +0200, Jan Kara wrote:
-> > We cannot easily do this currently - the reason is that in several places we
-> > wait for i_dio_count to drop to 0 (look for inode_dio_wait()) while
-> > holding i_mutex to wait for all outstanding DIO / DAX IO. You'd break this
-> > logic with this patch.
-> > 
-> > If we indeed put all writes under i_mutex, this problem would go away but
-> > as Dave explains in his email, we consciously do as much IO as we can
-> > without i_mutex to allow reasonable scalability of multiple writers into
-> > the same file.
-> 
-> So the above should be fine for xfs, but you're telling me that ext4
-> is doing DAX I/O without any inode lock at all?  In that case it's
-> indeed not going to work.
+On Thu, May 5, 2016 at 8:22 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Thu, May 05, 2016 at 08:15:32AM -0700, Dan Williams wrote:
+>> > Agreed - makig O_DIRECT less direct than not having it is plain stupid,
+>> > and I somehow missed this initially.
+>>
+>> Of course I disagree because like Dave argues in the msync case we
+>> should do the correct thing first and make it fast later, but also
+>> like Dave this arguing in circles is getting tiresome.
+>
+> We should do the right thing first, and make it fast later.  But this
+> proposal is not getting it right - it still does not handle errors
+> for the fast path, but magically makes it work for direct I/O by
+> in general using a less optional path for O_DIRECT.  It's getting the
+> worst of all choices.
+>
+> As far as I can tell the only sensible option is to:
+>
+>  - always try dax-like I/O first
+>  - have a custom get_user_pages + rw_bytes fallback handles bad blocks
+>    when hitting EIO
 
-By default ext4 uses i_mutex to serialize both direct (and thus dax) reads
-and writes. However with dioread_nolock mount option, we use only i_data_sem
-(ext4 local rwsem) for direct reads and overwrites. That is enough to
-guarantee ext4 metadata consistency and gives you better scalability but
-you lose write vs read and write vs write atomicity (essentially you get
-the same behavior as for XFS direct IO).
+If you're on board with more special fallbacks for dax-capable block
+devices that indeed opens up the thinking.  The O_DIRECT approach was
+meant to keep the error clearing model close to the traditional block
+device case, but yes that does constrain the implementation in
+sub-optimal ways.
 
-> > The downside of that is that overwrites and writes vs reads are not atomic
-> > wrt each other as POSIX requires. It has been that way for direct IO in XFS
-> > case for a long time, with DAX this non-conforming behavior is proliferating
-> > more. I agree that's not ideal but serializing all writes on a file is
-> > rather harsh for persistent memory as well...
-> 
-> For non-O_DIRECT I/O it's simply required..
+However, we still have the alignment problem in the rw_bytes case, how
+do we communicate to the application that only writes with a certain
+size/alignment will clear errors?  That forced alignment assumption
+was the other appeal of O_DIRECT.  Perhaps we can at least start with
+hole punching and block reallocation as the error clearing method
+while we think more about the write-to-clear case?
 
-Well, we already break write vs read atomicity for buffered IO for all
-filesystems except XFS which has its special locking. So that's not a new
-thing. I agree that also breaking write vs write atomicity for 'normal' IO
-is a new thing, in a way more serious as the corrupted result ends up being
-stored on disk, and some applications may be broken by that. So we should
-fix that.
+> And then we need to sort out the concurrent write synchronization.
+> Again there I think we absolutely have to obey Posix for the !O_DIRECT
+> case and can avoid it for O_DIRECT, similar to the existing non-DAX
+> semantics.  If we want any special additional semantics we _will_ need
+> a special O_DAX flag.
 
-I was hoping that Davidlohr would come up with a more scalable
-range-locking implementation than my original RB-tree based one and we
-could use that but that seems to be taking longer than I originally
-expected...
+Ok, makes sense.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
