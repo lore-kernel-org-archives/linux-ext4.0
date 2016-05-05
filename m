@@ -1,72 +1,61 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Thu, 5 May 2016 21:45:07 +0000
-Message-ID: <1462484695.29294.7.camel@intel.com>
-References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
-	<1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
-	<5727753F.6090104@plexistor.com> <20160505142433.GA4557@infradead.org>
-	<CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
-	<20160505152230.GA3994@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 1/2] fs/ext4: mb_find_order_for_block(): silence UBSAN
+Date: Thu, 5 May 2016 17:58:19 -0400
+Message-ID: <20160505215819.GA30122@thunk.org>
+References: <1458421925-5481-1-git-send-email-nicstange@gmail.com>
+ <1458421925-5481-2-git-send-email-nicstange@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
-	"matthew@wil.cx" <matthew@wil.cx>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Williams, Dan J" <dan.j.williams@intel.com>, "hch@infradead.org"
-	<hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160505152230.GA3994@infradead.org>
-Content-Language: en-US
-Content-ID: <70E6DC278A3EE74D9541D62DE6070F32@intel.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Nicolai Stange <nicstange@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51602 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757890AbcEEV6W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2016 17:58:22 -0400
+Content-Disposition: inline
+In-Reply-To: <1458421925-5481-2-git-send-email-nicstange@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVGh1LCAyMDE2LTA1LTA1IGF0IDA4OjIyIC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
-ZToNCj4gT24gVGh1LCBNYXkgMDUsIDIwMTYgYXQgMDg6MTU6MzJBTSAtMDcwMCwgRGFuIFdpbGxp
-YW1zIHdyb3RlOg0KPiA+IA0KPiA+ID4gDQo+ID4gPiBBZ3JlZWQgLSBtYWtpZyBPX0RJUkVDVCBs
-ZXNzIGRpcmVjdCB0aGFuIG5vdCBoYXZpbmcgaXQgaXMgcGxhaW4NCj4gPiA+IHN0dXBpZCwNCj4g
-PiA+IGFuZCBJIHNvbWVob3cgbWlzc2VkIHRoaXMgaW5pdGlhbGx5Lg0KPiA+IE9mIGNvdXJzZSBJ
-IGRpc2FncmVlIGJlY2F1c2UgbGlrZSBEYXZlIGFyZ3VlcyBpbiB0aGUgbXN5bmMgY2FzZSB3ZQ0K
-PiA+IHNob3VsZCBkbyB0aGUgY29ycmVjdCB0aGluZyBmaXJzdCBhbmQgbWFrZSBpdCBmYXN0IGxh
-dGVyLCBidXQgYWxzbw0KPiA+IGxpa2UgRGF2ZSB0aGlzIGFyZ3VpbmcgaW4gY2lyY2xlcyBpcyBn
-ZXR0aW5nIHRpcmVzb21lLg0KPiBXZSBzaG91bGQgZG8gdGhlIHJpZ2h0IHRoaW5nIGZpcnN0LCBh
-bmQgbWFrZSBpdCBmYXN0IGxhdGVyLsKgwqBCdXQgdGhpcw0KPiBwcm9wb3NhbCBpcyBub3QgZ2V0
-dGluZyBpdCByaWdodCAtIGl0IHN0aWxsIGRvZXMgbm90IGhhbmRsZSBlcnJvcnMNCj4gZm9yIHRo
-ZSBmYXN0IHBhdGgsIGJ1dCBtYWdpY2FsbHkgbWFrZXMgaXQgd29yayBmb3IgZGlyZWN0IEkvTyBi
-eQ0KPiBpbiBnZW5lcmFsIHVzaW5nIGEgbGVzcyBvcHRpb25hbCBwYXRoIGZvciBPX0RJUkVDVC7C
-oMKgSXQncyBnZXR0aW5nIHRoZQ0KPiB3b3JzdCBvZiBhbGwgY2hvaWNlcy4NCj4gDQo+IEFzIGZh
-ciBhcyBJIGNhbiB0ZWxsIHRoZSBvbmx5IHNlbnNpYmxlIG9wdGlvbiBpcyB0bzoNCj4gDQo+IMKg
-LSBhbHdheXMgdHJ5IGRheC1saWtlIEkvTyBmaXJzdA0KPiDCoC0gaGF2ZSBhIGN1c3RvbSBnZXRf
-dXNlcl9wYWdlcyArIHJ3X2J5dGVzIGZhbGxiYWNrIGhhbmRsZXMgYmFkIGJsb2Nrcw0KPiDCoMKg
-wqB3aGVuIGhpdHRpbmcgRUlPDQoNCkknbSBub3Qgc3VyZSBJIGNvbXBsZXRlbHkgdW5kZXJzdGFu
-ZCBob3cgdGhpcyB3aWxsIHdvcms/IENhbiB5b3UgZXhwbGFpbg0KYSBiaXQ/IFdvdWxkIHdlIGhh
-dmUgdG8gZXhwb3J0IHJ3X2J5dGVzIHVwIHRvIGxheWVycyBhYm92ZSB0aGUgcG1lbQ0KZHJpdmVy
-PyBXaGVyZSBkb2VzIGdldF91c2VyX3BhZ2VzIGNvbWUgaW4/DQoNCj4gDQo+IEFuZCB0aGVuIHdl
-IG5lZWQgdG8gc29ydCBvdXQgdGhlIGNvbmN1cnJlbnQgd3JpdGUgc3luY2hyb25pemF0aW9uLg0K
-PiBBZ2FpbiB0aGVyZSBJIHRoaW5rIHdlIGFic29sdXRlbHkgaGF2ZSB0byBvYmV5IFBvc2l4IGZv
-ciB0aGUgIU9fRElSRUNUDQo+IGNhc2UgYW5kIGNhbiBhdm9pZCBpdCBmb3IgT19ESVJFQ1QsIHNp
-bWlsYXIgdG8gdGhlIGV4aXN0aW5nIG5vbi1EQVgNCj4gc2VtYW50aWNzLsKgwqBJZiB3ZSB3YW50
-IGFueSBzcGVjaWFsIGFkZGl0aW9uYWwgc2VtYW50aWNzIHdlIF93aWxsXyBuZWVkDQo+IGEgc3Bl
-Y2lhbCBPX0RBWCBmbGFnLg0KPiBfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fXw0KPiBMaW51eC1udmRpbW0gbWFpbGluZyBsaXN0DQo+IExpbnV4LW52ZGltbUBs
-aXN0cy4wMS5vcmcNCj4gaHR0cHM6Ly9saXN0cy4wMS5vcmcvbWFpbG1hbi9saXN0aW5mby9saW51
-eC1udmRpbW0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18K
-eGZzIG1haWxpbmcgbGlzdAp4ZnNAb3NzLnNnaS5jb20KaHR0cDovL29zcy5zZ2kuY29tL21haWxt
-YW4vbGlzdGluZm8veGZzCg==
+On Sat, Mar 19, 2016 at 10:12:04PM +0100, Nicolai Stange wrote:
+> Currently, in mb_find_order_for_block(), there's a loop like the following:
+> 
+>   while (order <= e4b->bd_blkbits + 1) {
+>     ...
+>     bb += 1 << (e4b->bd_blkbits - order);
+>   }
+> 
+> Note that the updated bb is used in the loop's next iteration only.
+> 
+> However, at the last iteration, that is at order == e4b->bd_blkbits + 1,
+> the shift count becomes negative (c.f. C99 6.5.7(3)) and UBSAN reports
+> 
+>   UBSAN: Undefined behaviour in fs/ext4/mballoc.c:1281:11
+>   shift exponent -1 is negative
+>   [...]
+>   Call Trace:
+>    [<ffffffff818c4d35>] dump_stack+0xbc/0x117
+>    [<ffffffff818c4c79>] ? _atomic_dec_and_lock+0x169/0x169
+>    [<ffffffff819411bb>] ubsan_epilogue+0xd/0x4e
+>    [<ffffffff81941cbc>] __ubsan_handle_shift_out_of_bounds+0x1fb/0x254
+>    [<ffffffff81941ac1>] ? __ubsan_handle_load_invalid_value+0x158/0x158
+>    [<ffffffff816e93a0>] ? ext4_mb_generate_from_pa+0x590/0x590
+>    [<ffffffff816502c8>] ? ext4_read_block_bitmap_nowait+0x598/0xe80
+>    [<ffffffff816e7b7e>] mb_find_order_for_block+0x1ce/0x240
+>    [...]
+> 
+> Unless compilers start to do some fancy transformations (which at least
+> GCC 6.0.0 doesn't currently do), the issue is of cosmetic nature only: the
+> such calculated value of bb is never used again.
+> 
+> Silence UBSAN by introducing another variable, bb_incr, holding the next
+> increment to apply to bb and adjust that one by right shifting it by one
+> position per loop iteration.
+> 
+> Signed-off-by: Nicolai Stange <nicstange@gmail.com>
+
+Thanks, applied.
+
+					- Ted
