@@ -1,93 +1,62 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
- available
-Date: Thu, 05 May 2016 15:48:16 -0400
-Message-ID: <1462477696.12332.17.camel@poochiereds.net>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
-	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
-	 <20160504225601.GZ26977@dastard> <87shxxbc1e.fsf@notabene.neil.brown.name>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: [RFC 0/3] getfsmapx ioctl
+Date: Thu, 5 May 2016 12:47:54 -0700
+Message-ID: <20160505194754.GA2785@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: NeilBrown <nfbrown@novell.com>, Dave Chinner <david@fromorbit.com>,
-	David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <87shxxbc1e.fsf@notabene.neil.brown.name>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+	linux-btrfs <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Mark Fasheh <mfasheh-l3A5Bk7waGM@public.gmane.org>, Josef Bacik <jbacik-b10kYP2dOMg@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
+	Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	"Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2016-05-05 at 10:09 +1000, NeilBrown wrote:
-> On Thu, May 05 2016, Dave Chinner wrote:
->=20
-> >=20
-> > On Fri, Apr 29, 2016 at 01:57:43PM +0100, David Howells wrote:
-> > >=20
-> > > =C2=A0(4) File creation time (st_btime*), data version (st_versio=
-n), inode
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0generation number (st_gen).
-> > >=20
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0These will be returned if available=
- whether the caller asked for them or
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0not.=C2=A0=C2=A0The corresponding b=
-its in st_mask will be set or cleared as
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0appropriate to indicate a valid val=
-ue.
-> > IMO, exposing the inode generation number to anyone is a potential
-> > security problem because they are used in file handles.
-> "security through obscurity".=C2=A0=C2=A0We have Kerberos working rea=
-lly nicely
-> for NFS these days.=C2=A0=C2=A0Do we still care?
->=20
-> What if the generation number were only made available to "root"?=C2=A0=
-=C2=A0Would
-> that allay your concerns?
-> Would that still be useful?
-> We already have name_to_handle_at().=C2=A0=C2=A0Exposing the generati=
-on number
-> could/should follow the same rules at that.=C2=A0=C2=A0Or maybe the e=
-xposure of
-> each field should be guided by the filesystem, depending on (for
-> example) whether it is used to provide uniqueness to the filehandle.
->=20
-> >=20
-> >=20
-> > >=20
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0If the caller didn't ask for them, =
-then they may be approximated.=C2=A0=C2=A0For
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0example, NFS won't waste any time u=
-pdating them from the server, unless
-> > > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0as a byproduct of updating somethin=
-g requested.
-> > I would suggest that exposing them from the NFS server is something
-> > we most definitely don't want to do because they are the only thing
-> > that keeps remote users from guessing filehandles with ease....
-> Given that the NFS protocol does not define a "generation number"
-> attribute, I think there is no risk for them being exposed from the N=
-=46S
-> server ... except implicitly within the filehandle of course.
->=20
-> NeilBrown
+Hi,
 
+Building on the discussion "Exposing Extent Information to Userspace"
+at LSF, this patchset offers the userspace definition, implementation,
+and manpages for a new FS_IOC_GETFSMAPX ioctl that enables userspace
+to query the filesystem for a map of every extent in a given range of
+physical block keyspace.
 
+Note that prior to the existence of block sharing, I'd have said
+"given range of physical blocks", but now that we can return multiple
+owner:offset pairs for a given block, the block keyspace now has to
+include extra fields to uniquely identify a reverse mapping record.
 
-I don't see a real attack vector here either, but OTOH is there a
-potential user of this at the moment? An earlier chunk of the patch
-description says:
+This ioctl behaves in a similar manner to XFS_IOC_GETBMAPX -- pass in
+an array of struct getfsmapx with key and other control values in the
+first two array elements, and the kernel passes back extent
+information in the other array elements.  The particulars of how to do
+this are documented in the manpage that goes along with this set (it
+applies against man-pages.git) and example code in the other patches
+is against xfsprogs.git#for-next.
 
-(7) Inode generation number: Useful for FUSE and userspace NFS servers
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0[Bernd Schubert].=C2=A0=C2=A0This was ask=
-ed for but later deemed unnecessary
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0with the open-by-handle capability availa=
-ble
+Basically, set the lowest key for which you want records in the first
+array element; the highest key in the second; and the kernel spits out
+records in the rest of the elements.  That's similar to how GETBMAPX
+does it, but different from FIEMAP.  I added a dummy 64-bit "device
+id" per Josef's request, though I'm thinking that could be cut down to
+a simple dev_t.  I also wonder if the kernel should rewrite the low
+key with the last element returned so as to seed the next call, but
+userspace can do that too.
 
-=2E..the last bit seems to indicate that we don't really need this
-anyway, as most userland servers now work with filehandles from the
-kernel.
+The kernel-space implementation (for XFS) is buried inside the xfs
+reverse mapping patchset which is treading water at github[1].  I
+prefer not to patchbomb the whole kernel series until I've put the
+mess through better testing, but this should be enough to get the
+mailing list discussion started.
 
-Maybe leave it out for now? It can always be added later.
+Questions?  Comments?  Bike sheds?
 
---=20
-Jeff Layton <jlayton@poochiereds.net>
+--D
+
+[1] https://github.com/djwong/linux/tree/djwong-experimental
