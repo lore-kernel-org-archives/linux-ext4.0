@@ -1,43 +1,50 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix check of dqget() return value in
- ext4_ioctl_setproject()
-Date: Thu, 5 May 2016 14:52:34 +0200
-Message-ID: <20160505125234.GF1970@quack2.suse.cz>
-References: <1459256463-48543-1-git-send-email-seth.forshee@canonical.com>
- <20160422183632.GC109717@ubuntu-hedt>
+Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
+ finish while ro remounting
+Date: Thu, 5 May 2016 15:45:11 +0200
+Message-ID: <20160505134511.GH1970@quack2.suse.cz>
+References: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Seth Forshee <seth.forshee@canonical.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Kitae Lee <kitae87.lee@samsung.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49257 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51395 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752622AbcEEMwi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2016 08:52:38 -0400
+	id S1752471AbcEENpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2016 09:45:15 -0400
 Content-Disposition: inline
-In-Reply-To: <20160422183632.GC109717@ubuntu-hedt>
+In-Reply-To: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 22-04-16 13:36:32, Seth Forshee wrote:
-> On Tue, Mar 29, 2016 at 08:01:03AM -0500, Seth Forshee wrote:
-> > A failed call to dqget() returns an ERR_PTR() and not null. Fix
-> > the check in ext4_ioctl_setproject() to handle this correctly.
-> > 
-> > Fixes: 9b7365fc1c82 ("ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support")
-> > Cc: stable@vger.kernel.org # v4.5
-> > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
+On Mon 02-05-16 09:50:37, Daeho Jeong wrote:
+> We check whether a new handle can be started through
+> ext4_journal_check_start() and the function refuses to start the handle
+> when the filesystem is mounted with read-only. But now, when we remount
+> the filesystem with read-only option, already started handles are
+> allowed to be written on disk, but the subsequent metadata modification
+> using the handles are refused by ext4_journal_check_start().
 > 
-> Thought I'd check and see if this patch was forgotten, I sent it nearly
-> a month ago but the bug is still present.
+> As an example, in ext4_evict_inode(), i_size can be set to 0 using
+> a successfully started handle, but, when we remount the filesystem
+> with read-only option at that time, the subsequent ext4_truncate()
+> will be failed and the filesystem integrity will be damaged.
+> 
+> Therefore, we need to permit the metadata modification using already
+> started handles to be proceeded, even if s_flags of the filesystem is
+> set to MS_RDONLY.
+> 
+> Kitae found the problem and suggested the solution.
 
-Yeah, it seems Ted forgot to pull the fix. Ted? BTW, feel free to add
+So can you share a reproducer for this issue? Because my initial thinking
+is that checks during remount should fail the remount with EBUSY if there
+is any modification outstanding... If they don't we have a racy remount and
+fs-freezing code, which is a bug.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+								Honza
 
-									Honza
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
