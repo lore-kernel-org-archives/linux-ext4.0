@@ -1,63 +1,48 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Thu, 5 May 2016 07:24:33 -0700
-Message-ID: <20160505142433.GA4557@infradead.org>
-References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
- <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
- <5727753F.6090104@plexistor.com>
+Subject: Re: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
+Date: Thu, 5 May 2016 07:27:48 -0700
+Message-ID: <20160505142748.GA10157@infradead.org>
+References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
+ <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
+ <20160505141637.GJ1970@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Vishal Verma <vishal.l.verma@intel.com>, linux-nvdimm@ml01.01.org,
-	Jens Axboe <axboe@fb.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Matthew Wilcox <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	linux-block@vger.kernel.org, linux-mm@kvack.org,
-	Al Viro <viro@zeniv.linux.org.uk>,
+Cc: Waiman Long <Waiman.Long@hpe.com>, Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
 	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Boaz Harrosh <boaz@plexistor.com>
-Return-path: <owner-linux-mm@kvack.org>
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5727753F.6090104@plexistor.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20160505141637.GJ1970@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 02, 2016 at 06:41:51PM +0300, Boaz Harrosh wrote:
-> > All IO in a dax filesystem used to go through dax_do_io, which cannot
-> > handle media errors, and thus cannot provide a recovery path that can
-> > send a write through the driver to clear errors.
-> > 
-> > Add a new iocb flag for DAX, and set it only for DAX mounts. In the IO
-> > path for DAX filesystems, use the same direct_IO path for both DAX and
-> > direct_io iocbs, but use the flags to identify when we are in O_DIRECT
-> > mode vs non O_DIRECT with DAX, and for O_DIRECT, use the conventional
-> > direct_IO path instead of DAX.
-> > 
+On Thu, May 05, 2016 at 04:16:37PM +0200, Jan Kara wrote:
+> We cannot easily do this currently - the reason is that in several places we
+> wait for i_dio_count to drop to 0 (look for inode_dio_wait()) while
+> holding i_mutex to wait for all outstanding DIO / DAX IO. You'd break this
+> logic with this patch.
 > 
-> Really? What are your thinking here?
-> 
-> What about all the current users of O_DIRECT, you have just made them
-> 4 times slower and "less concurrent*" then "buffred io" users. Since
-> direct_IO path will queue an IO request and all.
-> (And if it is not so slow then why do we need dax_do_io at all? [Rhetorical])
-> 
-> I hate it that you overload the semantics of a known and expected
-> O_DIRECT flag, for special pmem quirks. This is an incompatible
-> and unrelated overload of the semantics of O_DIRECT.
+> If we indeed put all writes under i_mutex, this problem would go away but
+> as Dave explains in his email, we consciously do as much IO as we can
+> without i_mutex to allow reasonable scalability of multiple writers into
+> the same file.
 
-Agreed - makig O_DIRECT less direct than not having it is plain stupid,
-and I somehow missed this initially.
+So the above should be fine for xfs, but you're telling me that ext4
+is doing DAX I/O without any inode lock at all?  In that case it's
+indeed not going to work.
 
-This whole DAX story turns into a major nightmare, and I fear all our
-hodge podge tweaks to the semantics aren't helping it.
+> The downside of that is that overwrites and writes vs reads are not atomic
+> wrt each other as POSIX requires. It has been that way for direct IO in XFS
+> case for a long time, with DAX this non-conforming behavior is proliferating
+> more. I agree that's not ideal but serializing all writes on a file is
+> rather harsh for persistent memory as well...
 
-It seems like we simply need an explicit O_DAX for the read/write
-bypass if can't sort out the semantics (error, writer synchronization)
-just as we need a special flag for MMAP..
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+For non-O_DIRECT I/O it's simply required..
