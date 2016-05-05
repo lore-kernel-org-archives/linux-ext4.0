@@ -1,55 +1,55 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Thu, 5 May 2016 08:22:30 -0700
-Message-ID: <20160505152230.GA3994@infradead.org>
-References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
- <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
- <5727753F.6090104@plexistor.com>
- <20160505142433.GA4557@infradead.org>
- <CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
+ finish while ro remounting
+Date: Thu, 5 May 2016 11:44:15 -0400
+Message-ID: <20160505154415.GB10764@thunk.org>
+References: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Boaz Harrosh <boaz@plexistor.com>, linux-block@vger.kernel.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <matthew@wil.cx>,
-	Dave Chinner <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Jens Axboe <axboe@fb.com>,
-	Linux MM <linux-mm@kvack.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-nvdimm <linux-nvdimm@ml01.01.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Kitae Lee <kitae87.lee@samsung.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50282 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755463AbcEEPoS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 May 2016 11:44:18 -0400
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 05, 2016 at 08:15:32AM -0700, Dan Williams wrote:
-> > Agreed - makig O_DIRECT less direct than not having it is plain stupid,
-> > and I somehow missed this initially.
+On Mon, May 02, 2016 at 09:50:37AM +0900, Daeho Jeong wrote:
+> We check whether a new handle can be started through
+> ext4_journal_check_start() and the function refuses to start the handle
+> when the filesystem is mounted with read-only. But now, when we remount
+> the filesystem with read-only option, already started handles are
+> allowed to be written on disk, but the subsequent metadata modification
+> using the handles are refused by ext4_journal_check_start().
 > 
-> Of course I disagree because like Dave argues in the msync case we
-> should do the correct thing first and make it fast later, but also
-> like Dave this arguing in circles is getting tiresome.
+> As an example, in ext4_evict_inode(), i_size can be set to 0 using
+> a successfully started handle, but, when we remount the filesystem
+> with read-only option at that time, the subsequent ext4_truncate()
+> will be failed and the filesystem integrity will be damaged.
+> 
+> Therefore, we need to permit the metadata modification using already
+> started handles to be proceeded, even if s_flags of the filesystem is
+> set to MS_RDONLY.
+> 
+> Kitae found the problem and suggested the solution.
+> 
+> Signed-off-by: Kitae Lee <kitae87.lee@samsung.com>
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
 
-We should do the right thing first, and make it fast later.  But this
-proposal is not getting it right - it still does not handle errors
-for the fast path, but magically makes it work for direct I/O by
-in general using a less optional path for O_DIRECT.  It's getting the
-worst of all choices.
+Hmm, I'm not really comfortable with putting this hack in, since this
+is papering over the real problem, which is that Android is trying to
+use the emergency remount read-only sysrq option and this is
+fundamentally unsafe.  I'm not sure what else could break if it is
+situation normal that there is active processes busily writing to the
+file system and sysrq-u followed by reboot is the normal way the
+Android kernel does a reboot.
 
-As far as I can tell the only sensible option is to:
+A much better solution would be to change the Android userspace to
+call the FIFREEZE ioctl on each mounted file system, and then call for
+a reboot.
 
- - always try dax-like I/O first
- - have a custom get_user_pages + rw_bytes fallback handles bad blocks
-   when hitting EIO
-
-And then we need to sort out the concurrent write synchronization.
-Again there I think we absolutely have to obey Posix for the !O_DIRECT
-case and can avoid it for O_DIRECT, similar to the existing non-DAX
-semantics.  If we want any special additional semantics we _will_ need
-a special O_DAX flag.
+					- Ted
