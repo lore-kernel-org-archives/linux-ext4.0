@@ -1,54 +1,45 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4 crypto: migrate into vfs's crypto engine
-Date: Wed, 4 May 2016 21:22:48 -0700
-Message-ID: <20160505042248.GB73673@jaegeuk.gateway>
+Date: Thu, 5 May 2016 08:44:12 -0400
+Message-ID: <20160505124412.GE10776@thunk.org>
 References: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
  <20160505032022.GC10776@thunk.org>
+ <20160505042248.GB73673@jaegeuk.gateway>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Jaegeuk Kim <jaegeuk@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160505032022.GC10776@thunk.org>
+In-Reply-To: <20160505042248.GB73673@jaegeuk.gateway>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 04, 2016 at 11:20:22PM -0400, Theodore Ts'o wrote:
-> On Mon, Apr 25, 2016 at 05:15:36PM -0700, Jaegeuk Kim wrote:
-> > This patch removes the most parts of internal crypto codes.
-> > And then, it modifies and adds some ext4-specific crypt codes to use the generic
-> > facility.
-> > 
-> > Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+On Wed, May 04, 2016 at 09:22:48PM -0700, Jaegeuk Kim wrote:
 > 
-> So I just tried this patch, and one big problem with it is that it
-> breaks backwards compatibility with existing userspace code, which
-> assumes that the name of the keys are prefixed with "ext4:".  I see
-> that in fs/crypto.h you've changed it to be "fscrypto:".  Which is
-> more general, perhaps, but the problem is that it's not what the
-> existing shipping code (for example, in the Android N preview release)
-> and what e2fsprogs's e4crypto is using.
+> Got it. Let me add (*key_prefix(inode)) in fscrypt_operations so that filesystem
+> can give a specific prefix additionally.
+> Once fscrypto supports both of prefixes, does e4crypto have to set "fscrypto"?
+> The "ext4" should work all the time tho.
 
-I also worried about that before, but I thought there was no shipped
-fs_encryption-enabled product.
-Actually, f2fs has the same issue as well, since "f2fs:" was used before. :(
+Well, the question is what userspace tool should be used for the
+non-Android case?
 
-> If we want to use fscrypto: as a more general prefix, I could see
-> doing that, but we need to provide for backwards compatibility ---
-> which means that at least for ext4, we will need to look for keys
-> using both the new and old prefix, and we would also want change
-> e4crypto to set keys with both the "ext4" and the more general
-> "fscrypto" prefix.
+The other thing to consider is the cost of doing lookups in two
+keyrings all of the time.  I'm not sure how much overhead there is,
+but if it's significant, it might be time to hang a keyring off the
+superblock, and to start migrating to a model where keys are globally
+available to the file system once they get their (either implicitly
+because they are on a user's keyring, or explicitly via a new ioctl),
+and when they are removed (either implicitly because a key has been
+invalidated, or explicitly via a new ioctl), when a key gets added or
+removed from the file system global keyring, we bump a sequence
+counter so we can invalidate negative or positve dcache entries as
+appropriate.
 
-Got it. Let me add (*key_prefix(inode)) in fscrypt_operations so that filesystem
-can give a specific prefix additionally.
-Once fscrypto supports both of prefixes, does e4crypto have to set "fscrypto"?
-The "ext4" should work all the time tho.
+This goes back to the problem where the page and dentry caches are
+global and the using per-user or per-session keyrings doesn't map
+cleanly to the page and dentry caches.
 
-Thanks,
-
-> 
-> Cheers,
-> 
-> 					- Ted
+						- Ted
