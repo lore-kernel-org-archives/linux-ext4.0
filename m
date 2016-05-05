@@ -1,47 +1,48 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
- finish while ro remounting
-Date: Thu, 5 May 2016 15:45:11 +0200
-Message-ID: <20160505134511.GH1970@quack2.suse.cz>
-References: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
+Subject: Re: [PATCH v5 2/2] ext4: Make cache hits/misses per-cpu counts
+Date: Thu, 5 May 2016 16:03:29 +0200
+Message-ID: <20160505140329.GI1970@quack2.suse.cz>
+References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
+ <1461947276-25988-3-git-send-email-Waiman.Long@hpe.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Kitae Lee <kitae87.lee@samsung.com>
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51395 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752471AbcEENpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 May 2016 09:45:15 -0400
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Scott J Norton <scott.norton@hpe.com>,
+	Douglas Hatch <doug.hatch@hpe.com>,
+	Toshimitsu Kani <toshi.kani@hpe.com>
+To: Waiman Long <Waiman.Long@hpe.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1462150237-20701-1-git-send-email-daeho.jeong@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1461947276-25988-3-git-send-email-Waiman.Long@hpe.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 02-05-16 09:50:37, Daeho Jeong wrote:
-> We check whether a new handle can be started through
-> ext4_journal_check_start() and the function refuses to start the handle
-> when the filesystem is mounted with read-only. But now, when we remount
-> the filesystem with read-only option, already started handles are
-> allowed to be written on disk, but the subsequent metadata modification
-> using the handles are refused by ext4_journal_check_start().
+On Fri 29-04-16 12:27:56, Waiman Long wrote:
+> This patch changes the es_stats_cache_hits and es_stats_cache_misses
+> statistics counts to percpu counters to reduce cacheline contention
+> issues whem multiple threads are trying to update those counts
+> simultaneously.
 > 
-> As an example, in ext4_evict_inode(), i_size can be set to 0 using
-> a successfully started handle, but, when we remount the filesystem
-> with read-only option at that time, the subsequent ext4_truncate()
-> will be failed and the filesystem integrity will be damaged.
+> With a 38-threads fio I/O test with 2 shared files (on DAX-mount
+> NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1 kernel,
+> the aggregated bandwidths before and after the patch were:
 > 
-> Therefore, we need to permit the metadata modification using already
-> started handles to be proceeded, even if s_flags of the filesystem is
-> set to MS_RDONLY.
+>   Test          W/O patch       With patch      % change
+>   ----          ---------       ----------      --------
+>   Read-only     16499MB/s       17215MB/s        +4.3%
+>   Read-write     4361MB/s        4794MB/s        +9.9%
 > 
-> Kitae found the problem and suggested the solution.
+> Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 
-So can you share a reproducer for this issue? Because my initial thinking
-is that checks during remount should fail the remount with EBUSY if there
-is any modification outstanding... If they don't we have a racy remount and
-fs-freezing code, which is a bug.
+The patch looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
