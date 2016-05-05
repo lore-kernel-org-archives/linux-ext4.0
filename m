@@ -1,9 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 2/2] ext4: Make cache hits/misses per-cpu counts
-Date: Thu, 5 May 2016 16:03:29 +0200
-Message-ID: <20160505140329.GI1970@quack2.suse.cz>
+Subject: Re: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
+Date: Thu, 5 May 2016 16:16:37 +0200
+Message-ID: <20160505141637.GJ1970@quack2.suse.cz>
 References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
- <1461947276-25988-3-git-send-email-Waiman.Long@hpe.com>
+ <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -19,33 +19,41 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: Waiman Long <Waiman.Long@hpe.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1461947276-25988-3-git-send-email-Waiman.Long@hpe.com>
+In-Reply-To: <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 29-04-16 12:27:56, Waiman Long wrote:
-> This patch changes the es_stats_cache_hits and es_stats_cache_misses
-> statistics counts to percpu counters to reduce cacheline contention
-> issues whem multiple threads are trying to update those counts
-> simultaneously.
+On Fri 29-04-16 12:27:55, Waiman Long wrote:
+> The purpose of the i_dio_count is to protect against truncation while
+> the I/O operation is in progress. As dax_do_io() only does synchronous
+> I/O, the locking performed by the caller or within dax_do_io() for
+> read should be enough to protect it against truncation. There is no
+> need to touch the i_dio_count.
 > 
-> With a 38-threads fio I/O test with 2 shared files (on DAX-mount
-> NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1 kernel,
-> the aggregated bandwidths before and after the patch were:
+> Eliminating two atomic operations can sometimes give a noticeable
+> improvement in I/O performance as NVDIMM is much faster than other
+> disk devices.
 > 
->   Test          W/O patch       With patch      % change
->   ----          ---------       ----------      --------
->   Read-only     16499MB/s       17215MB/s        +4.3%
->   Read-write     4361MB/s        4794MB/s        +9.9%
-> 
+> Suggested-by: Christoph Hellwig <hch@infradead.org>
 > Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
 
-The patch looks good. You can add:
+We cannot easily do this currently - the reason is that in several places we
+wait for i_dio_count to drop to 0 (look for inode_dio_wait()) while
+holding i_mutex to wait for all outstanding DIO / DAX IO. You'd break this
+logic with this patch.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+If we indeed put all writes under i_mutex, this problem would go away but
+as Dave explains in his email, we consciously do as much IO as we can
+without i_mutex to allow reasonable scalability of multiple writers into
+the same file.
+
+The downside of that is that overwrites and writes vs reads are not atomic
+wrt each other as POSIX requires. It has been that way for direct IO in XFS
+case for a long time, with DAX this non-conforming behavior is proliferating
+more. I agree that's not ideal but serializing all writes on a file is
+rather harsh for persistent memory as well...
 
 								Honza
-
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
