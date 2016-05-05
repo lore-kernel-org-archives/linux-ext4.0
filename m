@@ -1,76 +1,55 @@
-From: Dan Williams <dan.j.williams@intel.com>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
-Date: Thu, 5 May 2016 08:15:32 -0700
-Message-ID: <CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
+Date: Thu, 5 May 2016 08:22:30 -0700
+Message-ID: <20160505152230.GA3994@infradead.org>
 References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
-	<1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
-	<5727753F.6090104@plexistor.com>
-	<20160505142433.GA4557@infradead.org>
+ <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+ <5727753F.6090104@plexistor.com>
+ <20160505142433.GA4557@infradead.org>
+ <CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Boaz Harrosh <boaz@plexistor.com>, linux-block@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Boaz Harrosh <boaz@plexistor.com>, linux-block@vger.kernel.org,
 	linux-ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Jens Axboe <axboe@fb.com>, Linux MM <linux-mm@kvack.org>, Al Viro <viro@zeniv.linux.org.uk>,
-	linux-nvdimm <linux-nvdimm@ml01.01.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Matthew Wilcox <matthew@wil.cx>,
+	Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>, Jens Axboe <axboe@fb.com>,
+	Linux MM <linux-mm@kvack.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-nvdimm <linux-nvdimm@ml01.01.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160505142433.GA4557@infradead.org>
-Sender: owner-linux-mm@kvack.org
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4gdmo5m=Arf5sp5izJfNaaAkaaMbOzud8KRcBEC8RRu1Q@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 5, 2016 at 7:24 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Mon, May 02, 2016 at 06:41:51PM +0300, Boaz Harrosh wrote:
->> > All IO in a dax filesystem used to go through dax_do_io, which cannot
->> > handle media errors, and thus cannot provide a recovery path that can
->> > send a write through the driver to clear errors.
->> >
->> > Add a new iocb flag for DAX, and set it only for DAX mounts. In the IO
->> > path for DAX filesystems, use the same direct_IO path for both DAX and
->> > direct_io iocbs, but use the flags to identify when we are in O_DIRECT
->> > mode vs non O_DIRECT with DAX, and for O_DIRECT, use the conventional
->> > direct_IO path instead of DAX.
->> >
->>
->> Really? What are your thinking here?
->>
->> What about all the current users of O_DIRECT, you have just made them
->> 4 times slower and "less concurrent*" then "buffred io" users. Since
->> direct_IO path will queue an IO request and all.
->> (And if it is not so slow then why do we need dax_do_io at all? [Rhetorical])
->>
->> I hate it that you overload the semantics of a known and expected
->> O_DIRECT flag, for special pmem quirks. This is an incompatible
->> and unrelated overload of the semantics of O_DIRECT.
->
-> Agreed - makig O_DIRECT less direct than not having it is plain stupid,
-> and I somehow missed this initially.
+On Thu, May 05, 2016 at 08:15:32AM -0700, Dan Williams wrote:
+> > Agreed - makig O_DIRECT less direct than not having it is plain stupid,
+> > and I somehow missed this initially.
+> 
+> Of course I disagree because like Dave argues in the msync case we
+> should do the correct thing first and make it fast later, but also
+> like Dave this arguing in circles is getting tiresome.
 
-Of course I disagree because like Dave argues in the msync case we
-should do the correct thing first and make it fast later, but also
-like Dave this arguing in circles is getting tiresome.
+We should do the right thing first, and make it fast later.  But this
+proposal is not getting it right - it still does not handle errors
+for the fast path, but magically makes it work for direct I/O by
+in general using a less optional path for O_DIRECT.  It's getting the
+worst of all choices.
 
-> This whole DAX story turns into a major nightmare, and I fear all our
-> hodge podge tweaks to the semantics aren't helping it.
->
-> It seems like we simply need an explicit O_DAX for the read/write
-> bypass if can't sort out the semantics (error, writer synchronization)
-> just as we need a special flag for MMAP.
+As far as I can tell the only sensible option is to:
 
-I don't see how O_DAX makes this situation better if the goal is to
-accelerate unmodified applications...
+ - always try dax-like I/O first
+ - have a custom get_user_pages + rw_bytes fallback handles bad blocks
+   when hitting EIO
 
-Vishal, at least the "delete a file with a badblock" model will still
-work for implicitly clearing errors with your changes to stop doing
-block clearing in fs/dax.c.  This combined with a new -EBADBLOCK (as
-Dave suggests) and explicit logging of I/Os that fail for this reason
-at least gives a chance to communicate errors in files to suitably
-aware applications / environments.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+And then we need to sort out the concurrent write synchronization.
+Again there I think we absolutely have to obey Posix for the !O_DIRECT
+case and can avoid it for O_DIRECT, similar to the existing non-DAX
+semantics.  If we want any special additional semantics we _will_ need
+a special O_DAX flag.
