@@ -1,59 +1,42 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
-Date: Thu, 5 May 2016 16:16:37 +0200
-Message-ID: <20160505141637.GJ1970@quack2.suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v5 0/2] ext4: Improve parallel I/O performance on NVDIMM
+Date: Thu, 5 May 2016 07:19:32 -0700
+Message-ID: <20160505141932.GA29221@infradead.org>
 References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
- <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
+ <57238DFC.6010108@hpe.com>
+ <20160501172854.GA19601@infradead.org>
+ <20160505015730.GC26977@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Waiman Long <waiman.long@hpe.com>,
+	Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Matthew Wilcox <willy@linux.intel.com>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>,
 	Scott J Norton <scott.norton@hpe.com>,
 	Douglas Hatch <doug.hatch@hpe.com>,
 	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Waiman Long <Waiman.Long@hpe.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:51561 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753613AbcEEOTf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2016 10:19:35 -0400
 Content-Disposition: inline
-In-Reply-To: <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160505015730.GC26977@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 29-04-16 12:27:55, Waiman Long wrote:
-> The purpose of the i_dio_count is to protect against truncation while
-> the I/O operation is in progress. As dax_do_io() only does synchronous
-> I/O, the locking performed by the caller or within dax_do_io() for
-> read should be enough to protect it against truncation. There is no
-> need to touch the i_dio_count.
-> 
-> Eliminating two atomic operations can sometimes give a noticeable
-> improvement in I/O performance as NVDIMM is much faster than other
-> disk devices.
-> 
-> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
+On Thu, May 05, 2016 at 11:57:30AM +1000, Dave Chinner wrote:
+> We did this intentionally. DAX IO needs to have the same parallel
+> write semantics of direct IO, because otherwise a single writer
+> prevents any IO concurrency and that's a bigger problem for DAX that
+> traditional storage due to the access speed and bandwidth available.
 
-We cannot easily do this currently - the reason is that in several places we
-wait for i_dio_count to drop to 0 (look for inode_dio_wait()) while
-holding i_mutex to wait for all outstanding DIO / DAX IO. You'd break this
-logic with this patch.
+But this is secondard - even buffered I/O would benefit from not
+having the global lock.  The difference is that Posix requires exclusive
+writers, and we can't just break those semantics because we're sitting
+on whizz bang fancy backend storage.
 
-If we indeed put all writes under i_mutex, this problem would go away but
-as Dave explains in his email, we consciously do as much IO as we can
-without i_mutex to allow reasonable scalability of multiple writers into
-the same file.
-
-The downside of that is that overwrites and writes vs reads are not atomic
-wrt each other as POSIX requires. It has been that way for direct IO in XFS
-case for a long time, with DAX this non-conforming behavior is proliferating
-more. I agree that's not ideal but serializing all writes on a file is
-rather harsh for persistent memory as well...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
