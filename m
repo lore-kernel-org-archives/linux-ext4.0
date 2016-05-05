@@ -1,42 +1,63 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v5 0/2] ext4: Improve parallel I/O performance on NVDIMM
-Date: Thu, 5 May 2016 07:19:32 -0700
-Message-ID: <20160505141932.GA29221@infradead.org>
-References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
- <57238DFC.6010108@hpe.com>
- <20160501172854.GA19601@infradead.org>
- <20160505015730.GC26977@dastard>
+Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
+Date: Thu, 5 May 2016 07:24:33 -0700
+Message-ID: <20160505142433.GA4557@infradead.org>
+References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
+ <1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+ <5727753F.6090104@plexistor.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Waiman Long <waiman.long@hpe.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:51561 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753613AbcEEOTf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 May 2016 10:19:35 -0400
+Cc: Vishal Verma <vishal.l.verma@intel.com>, linux-nvdimm@ml01.01.org,
+	Jens Axboe <axboe@fb.com>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Matthew Wilcox <matthew@wil.cx>, Dave Chinner <david@fromorbit.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-block@vger.kernel.org, linux-mm@kvack.org,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Boaz Harrosh <boaz@plexistor.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160505015730.GC26977@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <5727753F.6090104@plexistor.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 05, 2016 at 11:57:30AM +1000, Dave Chinner wrote:
-> We did this intentionally. DAX IO needs to have the same parallel
-> write semantics of direct IO, because otherwise a single writer
-> prevents any IO concurrency and that's a bigger problem for DAX that
-> traditional storage due to the access speed and bandwidth available.
+On Mon, May 02, 2016 at 06:41:51PM +0300, Boaz Harrosh wrote:
+> > All IO in a dax filesystem used to go through dax_do_io, which cannot
+> > handle media errors, and thus cannot provide a recovery path that can
+> > send a write through the driver to clear errors.
+> > 
+> > Add a new iocb flag for DAX, and set it only for DAX mounts. In the IO
+> > path for DAX filesystems, use the same direct_IO path for both DAX and
+> > direct_io iocbs, but use the flags to identify when we are in O_DIRECT
+> > mode vs non O_DIRECT with DAX, and for O_DIRECT, use the conventional
+> > direct_IO path instead of DAX.
+> > 
+> 
+> Really? What are your thinking here?
+> 
+> What about all the current users of O_DIRECT, you have just made them
+> 4 times slower and "less concurrent*" then "buffred io" users. Since
+> direct_IO path will queue an IO request and all.
+> (And if it is not so slow then why do we need dax_do_io at all? [Rhetorical])
+> 
+> I hate it that you overload the semantics of a known and expected
+> O_DIRECT flag, for special pmem quirks. This is an incompatible
+> and unrelated overload of the semantics of O_DIRECT.
 
-But this is secondard - even buffered I/O would benefit from not
-having the global lock.  The difference is that Posix requires exclusive
-writers, and we can't just break those semantics because we're sitting
-on whizz bang fancy backend storage.
+Agreed - makig O_DIRECT less direct than not having it is plain stupid,
+and I somehow missed this initially.
 
+This whole DAX story turns into a major nightmare, and I fear all our
+hodge podge tweaks to the semantics aren't helping it.
+
+It seems like we simply need an explicit O_DAX for the read/write
+bypass if can't sort out the semantics (error, writer synchronization)
+just as we need a special flag for MMAP..
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
