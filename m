@@ -1,48 +1,40 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v5 1/2] dax: Don't touch i_dio_count in dax_do_io()
-Date: Thu, 5 May 2016 07:27:48 -0700
-Message-ID: <20160505142748.GA10157@infradead.org>
-References: <1461947276-25988-1-git-send-email-Waiman.Long@hpe.com>
- <1461947276-25988-2-git-send-email-Waiman.Long@hpe.com>
- <20160505141637.GJ1970@quack2.suse.cz>
+From: tytso@mit.edu
+Subject: Re: [PATCH] ext4: Fix check of dqget() return value in
+ ext4_ioctl_setproject()
+Date: Thu, 5 May 2016 14:53:17 +0000
+Message-ID: <20160505145317.GA17625@thunk.org>
+References: <1459256463-48543-1-git-send-email-seth.forshee@canonical.com>
+ <20160422183632.GC109717@ubuntu-hedt>
+ <20160505125234.GF1970@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Waiman Long <Waiman.Long@hpe.com>, Theodore Ts'o <tytso@mit.edu>,
+Cc: Seth Forshee <seth.forshee@canonical.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160505141637.GJ1970@quack2.suse.cz>
+In-Reply-To: <20160505125234.GF1970@quack2.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 05, 2016 at 04:16:37PM +0200, Jan Kara wrote:
-> We cannot easily do this currently - the reason is that in several places we
-> wait for i_dio_count to drop to 0 (look for inode_dio_wait()) while
-> holding i_mutex to wait for all outstanding DIO / DAX IO. You'd break this
-> logic with this patch.
+On Thu, May 05, 2016 at 02:52:34PM +0200, Jan Kara wrote:
+> On Fri 22-04-16 13:36:32, Seth Forshee wrote:
+> > On Tue, Mar 29, 2016 at 08:01:03AM -0500, Seth Forshee wrote:
+> > > A failed call to dqget() returns an ERR_PTR() and not null. Fix
+> > > the check in ext4_ioctl_setproject() to handle this correctly.
+> > > 
+> > > Fixes: 9b7365fc1c82 ("ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR interface support")
+> > > Cc: stable@vger.kernel.org # v4.5
+> > > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
+> > 
+> > Thought I'd check and see if this patch was forgotten, I sent it nearly
+> > a month ago but the bug is still present.
 > 
-> If we indeed put all writes under i_mutex, this problem would go away but
-> as Dave explains in his email, we consciously do as much IO as we can
-> without i_mutex to allow reasonable scalability of multiple writers into
-> the same file.
+> Yeah, it seems Ted forgot to pull the fix. Ted? BTW, feel free to add
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-So the above should be fine for xfs, but you're telling me that ext4
-is doing DAX I/O without any inode lock at all?  In that case it's
-indeed not going to work.
+Applied, thanks.
 
-> The downside of that is that overwrites and writes vs reads are not atomic
-> wrt each other as POSIX requires. It has been that way for direct IO in XFS
-> case for a long time, with DAX this non-conforming behavior is proliferating
-> more. I agree that's not ideal but serializing all writes on a file is
-> rather harsh for persistent memory as well...
-
-For non-O_DIRECT I/O it's simply required..
+						- Ted
