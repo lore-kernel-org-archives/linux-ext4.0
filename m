@@ -1,51 +1,88 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-Date: Thu, 05 May 2016 21:04:09 +0100
-Message-ID: <2052.1462478649@warthog.procyon.org.uk>
-References: <1462477696.12332.17.camel@poochiereds.net> <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk> <20160504225601.GZ26977@dastard> <87shxxbc1e.fsf@notabene.neil.brown.name>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v4 5/7] fs: prioritize and separate direct_io from dax_io
+Date: Thu, 5 May 2016 21:39:14 +0000
+Message-ID: <1462484343.29294.1.camel@intel.com>
+References: <1461878218-3844-1-git-send-email-vishal.l.verma@intel.com>
+	<1461878218-3844-6-git-send-email-vishal.l.verma@intel.com>
+	<5727753F.6090104@plexistor.com> <20160505142433.GA4557@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: dhowells@redhat.com, NeilBrown <nfbrown@novell.com>,
-	Dave Chinner <david@fromorbit.com>,
-	linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jeff Layton <jlayton@poochiereds.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1462477696.12332.17.camel@poochiereds.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
+	"matthew@wil.cx" <matthew@wil.cx>,
+	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "hch@infradead.org" <hch@infradead.org>, "boaz@plexistor.com"
+	<boaz@plexistor.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20160505142433.GA4557@infradead.org>
+Content-Language: en-US
+Content-ID: <A85A0D742E7D4047B1D16786AE1B7AF0@intel.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-Jeff Layton <jlayton@poochiereds.net> wrote:
+On Thu, 2016-05-05 at 07:24 -0700, Christoph Hellwig wrote:
+> On Mon, May 02, 2016 at 06:41:51PM +0300, Boaz Harrosh wrote:
+> > 
+> > > 
+> > > All IO in a dax filesystem used to go through dax_do_io, which
+> > > cannot
+> > > handle media errors, and thus cannot provide a recovery path that
+> > > can
+> > > send a write through the driver to clear errors.
+> > > 
+> > > Add a new iocb flag for DAX, and set it only for DAX mounts. In
+> > > the IO
+> > > path for DAX filesystems, use the same direct_IO path for both DAX
+> > > and
+> > > direct_io iocbs, but use the flags to identify when we are in
+> > > O_DIRECT
+> > > mode vs non O_DIRECT with DAX, and for O_DIRECT, use the
+> > > conventional
+> > > direct_IO path instead of DAX.
+> > > 
+> > Really? What are your thinking here?
+> > 
+> > What about all the current users of O_DIRECT, you have just made
+> > them
+> > 4 times slower and "less concurrent*" then "buffred io" users. Since
+> > direct_IO path will queue an IO request and all.
+> > (And if it is not so slow then why do we need dax_do_io at all?
+> > [Rhetorical])
+> > 
+> > I hate it that you overload the semantics of a known and expected
+> > O_DIRECT flag, for special pmem quirks. This is an incompatible
+> > and unrelated overload of the semantics of O_DIRECT.
+> Agreed - makig O_DIRECT less direct than not having it is plain
+> stupid,
+> and I somehow missed this initially.
 
-> I don't see a real attack vector here either, but OTOH is there a
-> potential user of this at the moment?
+How is it any 'less direct'? All it does now is follow the blockdev
+O_DIRECT path. There still isn't any page cache involved..
 
-I'm not sure.  BSD stat has an st_gen, so it's possible something out t=
-here
-will use it if it exists.
-
-> An earlier chunk of the patch description says:
->=20
-> (7) Inode generation number: Useful for FUSE and userspace NFS server=
-s
-> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0[Bernd Schubert].=C2=A0=C2=A0This was a=
-sked for but later deemed unnecessary
-> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0with the open-by-handle capability avai=
-lable
->=20
-> ...the last bit seems to indicate that we don't really need this
-> anyway, as most userland servers now work with filehandles from the
-> kernel.
->=20
-> Maybe leave it out for now? It can always be added later.
-
-Yeah...  probably a good idea.
-
-David
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> This whole DAX story turns into a major nightmare, and I fear all our
+> hodge podge tweaks to the semantics aren't helping it.
+> 
+> It seems like we simply need an explicit O_DAX for the read/write
+> bypass if can't sort out the semantics (error, writer synchronization)
+> just as we need a special flag for MMAP..
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
