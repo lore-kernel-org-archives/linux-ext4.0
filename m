@@ -1,106 +1,70 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: [PATCH] direct-io: fix stale data exposure from concurrent
- buffered read
-Date: Fri, 6 May 2016 18:46:22 +0800
-Message-ID: <20160506104622.GB10350@eguan.usersys.redhat.com>
-References: <1462033162-21837-1-git-send-email-guaneryu@gmail.com>
- <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
+ finish while ro remounting
+Date: Fri, 6 May 2016 09:00:34 -0400
+Message-ID: <20160506130034.GE31860@thunk.org>
+References: <593570881.453531462514471895.JavaMail.weblogic@ep2mlwas08c>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore T'so <tytso@google.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Cc: jack@suse.cz,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?utf-8?B?7J206riw7YOc?= <kitae87.lee@samsung.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:33214 "EHLO
-	mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758368AbcEFKqc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 06:46:32 -0400
+Received: from imap.thunk.org ([74.207.234.97]:53802 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932506AbcEFNAk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 May 2016 09:00:40 -0400
 Content-Disposition: inline
-In-Reply-To: <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <593570881.453531462514471895.JavaMail.weblogic@ep2mlwas08c>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 05, 2016 at 03:39:29PM -0400, Jeff Moyer wrote:
-> Hi, Eryu,
+On Fri, May 06, 2016 at 06:01:11AM +0000, Daeho Jeong wrote:
+> > Hmm, I'm not really comfortable with putting this hack in, since this
+> > is papering over the real problem, which is that Android is trying to
+> > use the emergency remount read-only sysrq option and this is
+> > fundamentally unsafe.  I'm not sure what else could break if it is
+> > situation normal that there is active processes busily writing to the
+> > file system and sysrq-u followed by reboot is the normal way the
+> > Android kernel does a reboot.
 > 
-> Thanks for the great description of the problem!  I have some comments
-> below.
+> > A much better solution would be to change the Android userspace to
+> > call the FIFREEZE ioctl on each mounted file system, and then call for
+> > a reboot.
 > 
-> Eryu Guan <guaneryu@gmail.com> writes:
+> I agree with you. I know that current Android shutdown procedure is
+> not a safe way. But, without this patch, "even not in Android system",
+> when we trigger the emergency read-only remount while evicting inodes,
+> i_size of the inode becomes zero and the inode is not in orphan list,
+> but blocks of the inode are still allocated to the inode, because
+> ext4_truncate() will fail while stating the handle which was already started
+> by ext4_evict_inode(). This causes the filesystem inconsistency and
+> we will encounter an ext4 kernel panic in the next boot by this problem.
 > 
-> > Direct writes inside i_size on a DIO_SKIP_HOLES filesystem are not
-> > allowed to allocate blocks(get_more_blocks() sets 'create' to 0 before
-> > calling get_bkicl() callback), if it's a sparse file, direct writes fall
-> > back to buffered writes to avoid stale data exposure from concurrent
-> > buffered read.
-> >
-> > But the detection for "writing inside i_size" is not correct, writes can
-> > be treated as "extending writes" wrongly, which results in block
-> > allocation for holes and could expose stale data. This is because we're
-> > checking on the fs blocks not the actual offset and i_size in bytes.
-> >
-> > For example, direct write 1FSB to a 1FSB(or smaller) sparse file on
-> > ext2/3/4, starting from offset 0, in this case it's writing inside
-> > i_size, but 'create' is non-zero, because 'sdio->block_in_file' and
-> > '(i_size_read(dio->inode) >> sdio->blkbits' are both zero.
-> >
-> > This can be demonstrated by running ltp-aiodio test ADSP045 many times.
-> > When testing on extN filesystems, I see test failures occasionally,
-> > buffered read could read non-zero (stale) data.
-> >
-> > ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 2
-> >
-> > dio_sparse    0  TINFO  :  Dirtying free blocks
-> > dio_sparse    0  TINFO  :  Starting I/O tests
-> > non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
-> > non-zero read at offset 0
-> > dio_sparse    0  TINFO  :  Killing childrens(s)
-> > dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
-> 
-> OK, so in this case, block_in_file is 0, i_size_read(inode) is 2048, and
-> i_blkbits is 12.
-> 
-> > Fix it by checking on the actual offset and i_size in bytes, not the fs
-> > blocks where offset and i_size are in, to make sure it's really writing
-> > into the file.
-> 
-> I think this code operates on blocks for a reason: we're trying to
-> determine if we'll trigger block allocation, right?  For example,
-> consider a sparse file with i_size of 2k, and a write to offset 2k into
-> the file, with a file system block size of 4k.  Should that have create
-> set or not?
+> I think that this kind of filesystem crash can occur anywhere that
+> the same journal handle is repeatly used. During an atomic filesystem
+> operation, a part of the operation will succeed and the other one will fail.
 
-Thanks for pointing this out! I think 'create' should be 0 in this case,
-my test failed in this case, with both 4.6-rc6 stock kernel and my
-patched kernel.
+Sure, but if this were a bug, then it could happen under a normal
+crash scenario.  In this particular case, under what circumstances
+could i_size be set to zero *and* the inode is not on the orphan list
+*and* ext4_evict_inode() is getting called?
 
-I'm testing an updated patch now, hopefully it's doing the right thing.
-It's basiclly something like:
+If that could happen, then we could have problems without emergency
+unmount, and we should fix that problem.
 
-if (offset < i_size)
-	create = 0;
-else if ((block_in_file >> blkfactor) == (i_size >> (blkbits + blkfactor)) &&
-	 (i_size & ((1 << (blkbits + blkfactor)) - 1)))
-	create = 0;
+The real problem here is that we want emergency unmount to be
+completely safe, butting MS_RDONLY randomly isn't safe against file
+system corruption.  The idea is you do this only when you have no
+other choice, and the consequences would be worse --- and where you
+would be prepared to do a file system consistency check afterwards.
 
-So in addition to the (offset < i_size) check, it also checks that
-block_in_file and i_size are falling into the same fs block && i_size is
-not fs block size aligned.
+We can either fix Android userspace, or we could add a per-file system
+callback which tries (as much as possible) to make an emergency
+unmount safe.  In this particular case, it would probably involve
+setting the "file system is corrupt flag" to force a file system
+consistency check at the next reboot.  Because if you use emergency
+unmount, all bets are off, and there may be other problems....
 
-> 
-> Ted or Jan, can you answer that question?
-> 
-> > Also introduce some local variables to make the code
-> > easier to read a little bit.
-> 
-> Please don't do this.  You're only making the change harder to review.
-> Just submit the minimal fix.  You can submit cleanups as a follow-on.
-
-I think it's not a pure cleanup, it's needed as things like
-'sdio->block_in_file' are referenced multiple times in the function, and
-they are making the lines too long to read/write. Maybe I should have
-made it clear in the first place.
-
-Thanks for the review!
-
-Eryu
+	     	      	       	     	 - Ted
