@@ -1,93 +1,142 @@
-From: bfields@fieldses.org (J. Bruce Fields)
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
- available
-Date: Fri, 6 May 2016 14:29:23 -0400
-Message-ID: <20160506182923.GB13350@fieldses.org>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
- <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
- <20160504225601.GZ26977@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160504225601.GZ26977@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: guarantee already started handles to successfully finish while ro remounting
+Date: Fri, 6 May 2016 14:01:17 -0600
+Message-ID: <14935C7A-F680-4E9A-9048-DAACAE1ABAB4@dilger.ca>
+References: <593570881.453531462514471895.JavaMail.weblogic@ep2mlwas08c> <20160506130034.GE31860@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_8D60B1BB-4F87-430C-B299-B1B43B9B0BF7"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Daeho Jeong <daeho.jeong@samsung.com>, jack@suse.cz,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	=?utf-8?B?7J206riw7YOc?= <kitae87.lee@samsung.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f173.google.com ([209.85.223.173]:34531 "EHLO
+	mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758152AbcEFUBY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 16:01:24 -0400
+Received: by mail-io0-f173.google.com with SMTP id 190so124634838iow.1
+        for <linux-ext4@vger.kernel.org>; Fri, 06 May 2016 13:01:23 -0700 (PDT)
+In-Reply-To: <20160506130034.GE31860@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 05, 2016 at 08:56:02AM +1000, Dave Chinner wrote:
-> IMO, exposing the inode generation number to anyone is a potential
-> security problem because they are used in file handles.
-> 
-> Most file handles provided by filesystems are simply an encoding of
-> the inode number + generation number, plus maybe the ino+gen of the
-> parent dir if the NFS server is configured to do this. This makes it
-> trivial for an attacker to guess what the likely generation numbers
-> are going to be for inode numbers surrounding any given inode, hence
-> greatly reducing the search space for guessing valid file handles.
-> 
-> We've known this to be a problem for a long time - file handles are
-> not cryptographically secure,
 
-I once thought signing filehandles cryptographically to prevent spoofing
-would be interesting.  But once you've handed out a filehandle, it's
-hard to keep it secret.  And the server's required to respect a file's
-filehandle for the lifetime of the file, so it only has to leak once.
-So I'm no longer convinced it's worth going to that kind of trouble.
+--Apple-Mail=_8D60B1BB-4F87-430C-B299-B1B43B9B0BF7
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Just choosing the generation number randomly, OK, maybe that's a
-reasonable measure.
+On May 6, 2016, at 7:00 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> On Fri, May 06, 2016 at 06:01:11AM +0000, Daeho Jeong wrote:
+>>> Hmm, I'm not really comfortable with putting this hack in, since =
+this
+>>> is papering over the real problem, which is that Android is trying =
+to
+>>> use the emergency remount read-only sysrq option and this is
+>>> fundamentally unsafe.  I'm not sure what else could break if it is
+>>> situation normal that there is active processes busily writing to =
+the
+>>> file system and sysrq-u followed by reboot is the normal way the
+>>> Android kernel does a reboot.
+>>=20
+>>> A much better solution would be to change the Android userspace to
+>>> call the FIFREEZE ioctl on each mounted file system, and then call =
+for
+>>> a reboot.
+>>=20
+>> I agree with you. I know that current Android shutdown procedure is
+>> not a safe way. But, without this patch, "even not in Android =
+system",
+>> when we trigger the emergency read-only remount while evicting =
+inodes,
+>> i_size of the inode becomes zero and the inode is not in orphan list,
+>> but blocks of the inode are still allocated to the inode, because
+>> ext4_truncate() will fail while stating the handle which was already =
+started
+>> by ext4_evict_inode(). This causes the filesystem inconsistency and
+>> we will encounter an ext4 kernel panic in the next boot by this =
+problem.
+>>=20
+>> I think that this kind of filesystem crash can occur anywhere that
+>> the same journal handle is repeatly used. During an atomic filesystem
+>> operation, a part of the operation will succeed and the other one =
+will fail.
+>=20
+> Sure, but if this were a bug, then it could happen under a normal
+> crash scenario.  In this particular case, under what circumstances
+> could i_size be set to zero *and* the inode is not on the orphan list
+> *and* ext4_evict_inode() is getting called?
+>=20
+> If that could happen, then we could have problems without emergency
+> unmount, and we should fix that problem.
+>=20
+> The real problem here is that we want emergency unmount to be
+> completely safe, but setting MS_RDONLY randomly isn't safe against =
+file
+> system corruption.  The idea is you do this only when you have no
+> other choice, and the consequences would be worse --- and where you
+> would be prepared to do a file system consistency check afterwards.
+>=20
+> We can either fix Android userspace, or we could add a per-file system
+> callback which tries (as much as possible) to make an emergency
+> unmount safe.  In this particular case, it would probably involve
+> setting the "file system is corrupt flag" to force a file system
+> consistency check at the next reboot.  Because if you use emergency
+> unmount, all bets are off, and there may be other problems....
 
-> so exposing information like this by
-> default make guessing handles successfully almost trivial for many
-> filesystems.
-> 
-> In the latest XFS filesystem format, we randomise the generation
-> value during every inode allocation to make it hard to guess the
-> handle of adjacent inodes from an existing ino+gen pair, or even
-> from life time to life time of the same inode.
+The problem is that emergency remount-ro doesn't block in-progress =
+writes,
+since most operations only check the MS_RDONLY at the start of an =
+operation.
+It would be possible for do_emergency_remount() call ->freeze_fs() first =
+for
+all the filesystems, then doing the remount read-only (would need a =
+change to
+do_remount_ro() to allow this)?
 
-The one thing I wonder about is whether that increases the probability
-of a filehandle collision (where you accidentally generate the same
-filehandle for two different files).
+That ensures the filesystem is in a (more) consistent state when force
+remount-ro is called (i.e. which doesn't block or return an error if =
+there
+are writers on the filesystem).  I don't think this is an issue for =
+normal
+remount-ro, since there can't be any writes in progress.
 
-If the generation number is a 32-bit counter per inode number (is that
-actually the way filesystems work?), then it takes 2^32 reuses of the
-inode number to hit the same filehandle.  If you choose it randomly then
-you expect a collision after about 2^16 reuses.
+This would also avoid the need for Android to know more about the =
+internals
+of how to remount read-only, and probably help normal sysadmins too.
 
-I don't know, maybe this is still unlikely enough to be academic.
+Cheers, Andreas
 
-> We don't use a secure
-> random number generator (prandom_u32()) so it's still possible to
-> guess with enough trial and observation. However, it makes it
-> several orders of magnitude harder to guess and requires knowledge
-> of inode allocation order to guess correctly once the random number
-> sequence has been deduced and so makes brute force the only real
-> option for guessing a valid handle for an inode.
-> 
-> However, this is definitely a problem for the older format where
-> each cluster of inodes was initialised with the same seed at cluster
-> allocation time and the generation number was simply incremented for
-> each life time. Most filesystems use a similar method for seeding
-> and incrementing generation numbers, so once the generation numbers
-> are exposed it makes handles trivial to calculate successfully.
-> 
-> >      If the caller didn't ask for them, then they may be approximated.  For
-> >      example, NFS won't waste any time updating them from the server, unless
-> >      as a byproduct of updating something requested.
-> 
-> I would suggest that exposing them from the NFS server is something
-> we most definitely don't want to do because they are the only thing
-> that keeps remote users from guessing filehandles with ease....
 
-The first line of defense is not to depend on unguessable filehandles.
-(Don't export sudirectories unless you're willing to export the whole
-filesystem; and don't depend on directory permissions to keep children
-secret.)
 
---b.
+
+
+
+--Apple-Mail=_8D60B1BB-4F87-430C-B299-B1B43B9B0BF7
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVyz4DnKl2rkXzB/gAQivTg/+Jx38O4SkTMuKNUldi5gMv4uWsYTQ3y1D
+zP7awN5wCa4jYrB3rXB4pSr9Km6mlKkNWxQEBIvjo96xrkdD94+z/FyEep+Zh12J
+K8arI3Zdn0b4/5vH723UtZMm2gyI9pcsRgYB8Hyv8K+lXUqR8H1K0t7hDwER2LhU
+s2EAgmt7ceeiPdM5YWcXjh8Vq/rIAKpyPRRQAPkOYUUsgOBN90uFY8vKNr530Y0V
+kwLCg0LjGnysBKEcRVF+NrHau71mp+2/SkV3IIIQY+j+YZnQZDclZdv7PLJ6pLFL
+0ar7mmze/HTGej3hagcrsnyki02pd87iAutebRdRrnogiZSu8PERJH2Np0vgYti9
+Vhh7hyyGuSP3VBDNhALEWakDoR2FqNmVhuw41rUQBCRT2HdxfAtlFzMs8Vgi+JhC
+HVrIxb3YTwI/fCZ+vjSk3JMXb9VnhMmWczWPSWvWnykYF19xnLzebcY+XRLPPMlx
+ze6YMLuu6ZbwN8R8K9+BK8YU0iqOb0muXcS9dOG+7yYJPAhtBbJd3snejw4/5gxY
+qMSTzmuJeeZjJGKWmoWpP9DQzKTjaL98KYg0OE05LWC4KObP9UdS69nLVpKB5XMG
+FgfagXNqutScTl5JUK7u+f/Xe2R+pRJ/FnHoUiSaVFZO6x7g+HiLMeOlWr0ZAYMT
+fAeKvLa5vXA=
+=qGZZ
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_8D60B1BB-4F87-430C-B299-B1B43B9B0BF7--
