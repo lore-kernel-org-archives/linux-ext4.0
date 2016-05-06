@@ -1,59 +1,55 @@
-From: tytso@mit.edu
-Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
- finish while ro remounting
-Date: Fri, 6 May 2016 23:36:23 +0000
-Message-ID: <20160506233623.GD7303@thunk.org>
-References: <593570881.453531462514471895.JavaMail.weblogic@ep2mlwas08c>
- <20160506130034.GE31860@thunk.org>
- <14935C7A-F680-4E9A-9048-DAACAE1ABAB4@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Daeho Jeong <daeho.jeong@samsung.com>, jack@suse.cz,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?utf-8?B?7J206riw7YOc?= <kitae87.lee@samsung.com>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Filipe Brandenburger <filbranden@google.com>
+Subject: [PATCH e2fsprogs] Apply LDFLAGS when building tests in lib/e2p
+Date: Fri,  6 May 2016 16:40:03 -0700
+Message-ID: <1462578003-25315-1-git-send-email-filbranden@google.com>
+Cc: linux-ext4@vger.kernel.org, Eric Christopher <echristo@google.com>,
+	Michael Forney <forney@google.com>,
+	Filipe Brandenburger <filbranden@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55734 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758602AbcEFXg1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 May 2016 19:36:27 -0400
-Content-Disposition: inline
-In-Reply-To: <14935C7A-F680-4E9A-9048-DAACAE1ABAB4@dilger.ca>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:35648 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756722AbcEFXkK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 19:40:10 -0400
+Received: by mail-pa0-f49.google.com with SMTP id iv1so51911942pac.2
+        for <linux-ext4@vger.kernel.org>; Fri, 06 May 2016 16:40:10 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 06, 2016 at 02:01:17PM -0600, Andreas Dilger wrote:
-> 
-> The problem is that emergency remount-ro doesn't block in-progress writes,
-> since most operations only check the MS_RDONLY at the start of an operation.
-> It would be possible for do_emergency_remount() call ->freeze_fs() first for
-> all the filesystems, then doing the remount read-only (would need a change to
-> do_remount_ro() to allow this)?
+This was previously addressed by Michael Forney on commit 53904ae543591a
+but it seems the test cases from lib/e2p (tst_ostype and tst_feature)
+were missed.
 
-I thought about doing that, but that would mean that the code path
-might need to take some locks along the way, and if you have multiple
-file systems, for which one has wedged, the do_emergency_remount()
-function might end up blocking when it tries calling freeze_fs() on
-one of the file system before it managed to get to the rest of the
-file systems in the system.
+Fix them by adding the same $(ALL_LDFLAGS) to those two targets.
 
-This really goes to the question of what is do_emergency_remount()
-for.  If the goal is to minimize damage, then you want to keep things
-as simple as possible, and to not allow any emergency remounts for any
-file system to block.
+Tested by building it on a system that depends on LDFLAGS to produce
+working binaries and confirming that `make check` succeeds.
 
-If the goal is to allow the normal shutdown path to use this because
-the userspace code is too lazy to do a proper shutdown of all user
-processes, and too lazy to go through all of the mounted file systems
-and individually call FIFREEZE, then sure, we could iterate over the
-file systems and call freeze_fs() in kernel code.  But I'm not really
-sure I see the point......
+Reported-by: Eric Christopher <echristo@google.com>
+Signed-off-by: Filipe Brandenburger <filbranden@google.com>
+---
+ lib/e2p/Makefile.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> That ensures the filesystem is in a (more) consistent state when force
-> remount-ro is called (i.e. which doesn't block or return an error if there
-> are writers on the filesystem).  
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index 83f04ff5c04e..d109bf190051 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -68,12 +68,12 @@ e2p.pc: $(srcdir)/e2p.pc.in $(top_builddir)/config.status
+ tst_ostype: $(srcdir)/ostype.c
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_ostype \
+-		$(srcdir)/ostype.c $(ALL_CFLAGS)
++		$(srcdir)/ostype.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
+ 
+ tst_feature: $(srcdir)/feature.c
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_feature \
+-		$(srcdir)/feature.c $(ALL_CFLAGS)
++		$(srcdir)/feature.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
+ 
+ check::	tst_ostype tst_feature
+ 	./tst_ostype
+-- 
+2.8.0.rc3.226.g39d4020
 
-Right, but if the kernel is calling freeze_fs(), freeze_fs() might
-block, and then what would we do?
-
-				- Ted
