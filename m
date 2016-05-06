@@ -1,139 +1,149 @@
-From: NeilBrown <mr@neil.brown.name>
-Subject: Re: [PATCH 0/2] scop GFP_NOFS api
-Date: Fri, 06 May 2016 13:20:38 +1000
-Message-ID: <87poszvpmh.fsf@notabene.neil.brown.name>
-References: <1461671772-1269-1-git-send-email-mhocko@kernel.org> <8737q5ugcx.fsf@notabene.neil.brown.name> <20160430001138.GO26977@dastard> <87r3dmu4cf.fsf@notabene.neil.brown.name> <20160504010004.GX26977@dastard>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [RFC v3] [PATCH 0/18] DAX page fault locking
+Date: Thu, 5 May 2016 21:35:07 -0600
+Message-ID: <20160506033507.GA26154@linux.intel.com>
+References: <1461015341-20153-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
-Cc: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160504010004.GX26977@dastard>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>, linux-nvdimm@lists.01.org,
+	Matthew Wilcox <willy@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1461015341-20153-1-git-send-email-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
+On Mon, Apr 18, 2016 at 11:35:23PM +0200, Jan Kara wrote:
+> Hello,
+> 
+> this is my third attempt at DAX page fault locking rewrite. The patch set has
+> passed xfstests both with and without DAX mount option on ext4 and xfs for
+> me and also additional page fault beating using the new page fault stress
+> tests I have added to xfstests. So I'd be grateful if you guys could have a
+> closer look at the patches so that they can be merged. Thanks.
+> 
+> Changes since v2:
+> - lot of additional ext4 fixes and cleanups
+> - make PMD page faults depend on CONFIG_BROKEN instead of #if 0
+> - fixed page reference leak when replacing hole page with a pfn
+> - added some reviewed-by tags
+> - rebased on top of current Linus' tree
+> 
+> Changes since v1:
+> - handle wakeups of exclusive waiters properly
+> - fix cow fault races
+> - other minor stuff
+> 
+> General description
+> 
+> The basic idea is that we use a bit in an exceptional radix tree entry as
+> a lock bit and use it similarly to how page lock is used for normal faults.
+> That way we fix races between hole instantiation and read faults of the
+> same index. For now I have disabled PMD faults since there the issues with
+> page fault locking are even worse. Now that Matthew's multi-order radix tree
+> has landed, I can have a look into using that for proper locking of PMD faults
+> but first I want normal pages sorted out.
+> 
+> In the end I have decided to implement the bit locking directly in the DAX
+> code. Originally I was thinking we could provide something generic directly
+> in the radix tree code but the functions DAX needs are rather specific.
+> Maybe someone else will have a good idea how to distill some generally useful
+> functions out of what I've implemented for DAX but for now I didn't bother
+> with that.
+> 
+> 								Honza
 
-On Wed, May 04 2016, Dave Chinner wrote:
+Hey Jan,
 
-> FWIW, I don't think making evict() non-blocking is going to be worth
-> the effort here. Making memory reclaim wait on a priority ordered
-> queue while asynchronous reclaim threads run reclaim as efficiently
-> as possible and wakes waiters as it frees the memory the waiters
-> require is a model that has been proven to work in the past, and
-> this appears to me to be the model you are advocating for. I agree
-> that direct reclaim needs to die and be replaced with something
-> entirely more predictable, controllable and less prone to deadlock
-> contexts - you just need to convince the mm developers that it will
-> perform and scale better than what we have now.
->
-> In the mean time, having a slightly more fine grained GFP_NOFS
-> equivalent context will allow us to avoid the worst of the current
-> GFP_NOFS problems with very little extra code.
+I've been testing with this a bit today, and I hit the following issue with
+generic/231.  I was able to reproduce it 100% of the time with both ext4 and
+XFS.
 
-You have painted two pictures here.  The first is an ideal which does
-look a lot like the sort of outcome I was aiming for, but is more than a
-small step away.
-The second is a band-aid which would take us in exactly the wrong
-direction.  It makes an interface which people apparently find hard to
-use (or easy to misused) - the setting of __GFP_FS - and makes it more
-complex.  Certainly it would be more powerful, but I think it would also
-be more misused.
+Here's the test:
 
-So I ask myself:  can we take some small steps towards 'A' and thereby
-enable at least the functionality enabled by 'B'?
+# ./check generic/231
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 lorwyn 4.6.0-rc5+
+MKFS_OPTIONS  -- /dev/pmem0p2
+MOUNT_OPTIONS -- -o dax -o context=system_u:object_r:nfs_t:s0 /dev/pmem0p2 /mnt/xfstests_scratch
 
-A core design principle for me is to enable filesystems to take control
-of their own destiny.   They should have the information available to
-make the decisions they need to make, and the opportunity to carry them
-out.
+generic/231 28s ..../check: line 542:  1545 Segmentation fault      ./$seq > $tmp.rawout 2>&1
+ [failed, exit status 139] - output mismatch (see /root/xfstests/results//generic/231.out.bad)
+    --- tests/generic/231.out	2016-01-12 09:24:26.420085531 -0700
+    +++ /root/xfstests/results//generic/231.out.bad	2016-05-05 21:25:18.629675139 -0600
+    @@ -1,16 +1,3 @@
+     Qe output created by 231
+     === FSX Standard Mode, Memory Mapping, 1 Tasks ===
+     All 20000 operations completed A-OK!
+    -Comparing user usage
+    -Comparing group usage
+    -=== FSX Standard Mode, Memory Mapping, 4 Tasks ===
+    -All 20000 operations completed A-OK!
+    ...
+    (Run 'diff -u tests/generic/231.out /root/xfstests/results//generic/231.out.bad'  to see the entire diff)
 
-All the places where direct reclaim currently calls into filesystems
-carry the 'gfp' flags so the file system can decide what to do, with one
-exception: evict_inode.  So my first proposal would be to rectify that.
+And the log, passed through kasan_symbolize.py:
 
- - redefine .nr_cached_objects and .free_cached_objects so that, if they
-   are defined, they are responsible for s_dentry_lru and s_inode_lru.
-   e.g. super_cache_count *either* calls ->nr_cached_objects *or* makes
-   two calls to list_lru_shrink_count.  This would require exporting
-   prune_dcache_sb and prune_icache_sb but otherwise should be a fairly
-   straight forward change.
-   If nr_cached_objects were defined, super_cache_scan would no longer
-   abort without __GFP_FS - that test would be left to the filesystem.
+t mm/workingset.c:423!
+invalid opcode: 0000 [#1] SMP
+Modules linked in: nd_pmem nd_btt nd_e820 libnvdimm
+CPU: 1 PID: 1545 Comm: 231 Not tainted 4.6.0-rc5+ #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.8.2-20150714_191134- 04/01/2014
+task: ffff880505853180 ti: ffff880504f08000 task.ti: ffff880504f08000
+RIP: 0010:[<ffffffff81207b93>]  [<ffffffff81207b93>] shadow_lru_isolate+0x183/0x1a0
+RSP: 0018:ffff880504f0bbe8  EFLAGS: 00010006
+RAX: ffff880094f304b8 RBX: ffff880094f304a8 RCX: ffff880094f306b8
+RDX: 0000000000000077 RSI: 0000000000000000 RDI: ffff8800b8483000
+RBP: ffff880504f0bc10 R08: 0000000000000004 R09: 0000000000000000
+R10: ffff88009ba51ec8 R11: 0000000000000080 R12: ffff8800b8483000
+R13: ffff88009ba51eb0 R14: ffff88009ba51e98 R15: ffff8800b8483048
+FS:  00007f3332e14700(0000) GS:ffff88051a200000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f3332e2c000 CR3: 000000051425c000 CR4: 00000000000006e0
+Stack:
+ ffff8800b8483000 ffff8800b8483048 ffff880504f0bd18 ffff880094f11b78
+ ffff880094f304a8 ffff880504f0bc60 ffffffff81206c7f 0000000000000000
+ 0000000000000000 ffffffff81207a10 ffff880504f0bd10 0000000000000000
+Call Trace:
+ [<ffffffff81206c7f>] __list_lru_walk_one.isra.3+0x9f/0x150 mm/list_lru.c:223
+ [<ffffffff81206d53>] list_lru_walk_one+0x23/0x30 mm/list_lru.c:263
+ [<     inline     >] list_lru_shrink_walk include/linux/list_lru.h:170
+ [<ffffffff81207bea>] scan_shadow_nodes+0x3a/0x50 mm/workingset.c:457
+ [<     inline     >] do_shrink_slab mm/vmscan.c:344
+ [<ffffffff811ea37e>] shrink_slab.part.40+0x1fe/0x420 mm/vmscan.c:442
+ [<ffffffff811ea5c9>] shrink_slab+0x29/0x30 mm/vmscan.c:406
+ [<ffffffff811ec831>] drop_slab_node+0x31/0x60 mm/vmscan.c:460
+ [<ffffffff811ec89f>] drop_slab+0x3f/0x70 mm/vmscan.c:471
+ [<ffffffff812d8c39>] drop_caches_sysctl_handler+0x69/0xb0 fs/drop_caches.c:58
+ [<ffffffff812f2937>] proc_sys_call_handler+0xe7/0x100 fs/proc/proc_sysctl.c:543
+ [<ffffffff812f2964>] proc_sys_write+0x14/0x20 fs/proc/proc_sysctl.c:561
+ [<ffffffff81269aa7>] __vfs_write+0x37/0x120 fs/read_write.c:529
+ [<ffffffff8126a3fc>] vfs_write+0xac/0x1a0 fs/read_write.c:578
+ [<     inline     >] SYSC_write fs/read_write.c:625
+ [<ffffffff8126b8d8>] SyS_write+0x58/0xd0 fs/read_write.c:617
+ [<ffffffff81a92a3c>] entry_SYSCALL_64_fastpath+0x1f/0xbd arch/x86/entry/entry_64.S:207
+Code: 66 90 66 66 90 e8 4e 53 88 00 fa 66 66 90 66 66 90 e8 52 5c ef ff 4c 89 e7 e8 ba a1 88 00 89 d8 5b 41 5c 41 5d 41 5e 41 5f 5d c3 <0f> 0b 0f 0b 0f 0b 0f 0b 0f 0b 0f 0b 0f 0b 66 66 66 66 66 66 2e
+RIP  [<ffffffff81207b93>] shadow_lru_isolate+0x183/0x1a0 mm/workingset.c:448
+ RSP <ffff880504f0bbe8>
+---[ end trace 8e4a52e5c9e07c83 ]---
 
- - Now any filesystem that wants to can stash it's super_block pointer
-   in current->journal_info while doing memory allocations, and abort
-   any reclaim attempts (release_page, shrinker, nr_cached_objects) if
-   and only if current->journal_info == "my superblock".  This can be
-   done without the core mm code knowing any more than it already does.
+This passes 100% of the time with my baseline, which was just v4.6-rc5.
 
- - A more sophisticated filesystem might import much of the code for
-   prune_icache_sb() - either by copy/paste or by exporting some vfs
-   internals - and then store an inode pointer in current->journal_info
-   and only abort reclaim which touches that inode.
+For convenience I've pushed a working tree of what I was testing here:
 
- - if a filesystem happens to know that it will never block in any of
-   these reclaim calls, it can always allow prune_dcache_sb to run, and
-   never needs to use GFP_NOFS.  I think NFS might be close to being
-   able to do this as it flushes everything on last-close.  But that is
-   something that NFS developers can care about (or not) quite
-   independently from mm people.
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=jan_testing
 
- - Maybe some fs developer will try to enable free_cached_objects to do
-   as much work as possible for every inode, but never deadlock.  It
-   could do its own fs-specfic deadlock detection, or could queue work
-   to a work queue and wait a limited time for it.  Or something.
-   If some filesystem developer comes up with something that works
-   really well, developers of other filesystems might copy it - or not
-   as they choose.
+My setup is just a pair of PMEM ramdisks for my test device and scratch device.
+Let me know if you have any trouble reproducing this result.
 
-Maybe ->journal_info isn't perfect for this.  It is currently only safe
-for reclaim code to compare it against a known value.  It is not safe to
-dereference it to see if it points to a known value.  That could possibly be
-cleaned up, or another task_struct field could be provided for
-filesystems to track their state.  Or do you find a task_struct field
-unacceptable and there is some reason and that an explicitly passed cookie
-is superior?
+Thanks,
+- Ross
 
-My key point is that we shouldn't try to plumb some new abstraction
-through the MM code so there is a new pattern for all filesystems to
-follow.  Rather the mm/vfs should get out of the filesystems' way as much
-as possible and let them innovate independently.
-
-Thanks for your time,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXLA2GAAoJEDnsnt1WYoG5pUcQALDLvi2Udu2IeOr36ntBOmuZ
-zb6PG2vaTNZFvqSTkhQ8Jjh5UIxvgcSnJPSpOIO9jEK85fou60TABkbta9gs5BlU
-zY3rqkZFtu1wccuHIxzSIOJ5bGXcuUXlvemo7z6CBuROIin1Dja0V4adhBYF6PFy
-qBrGyEPU6QpIsqnx8ur9SBtljDjBiAhwo1rXlZhKlbGMxKiNXPxLTmrVGLLuT+xt
-XYlatMoQRbs2/hV4C7jvaKtHFToTsNLTcq1nun7WeQEkvI0ld2zi1TAJu1sLxQSv
-LbZEBp+uFPT3OeTLS3ed6WoXoNcjIs0R+yXvcFP2pYe7xu6c5ig0B6a2bM/+9/t4
-UmHHya9WMF+zL3H4Zd/F8AlTNGIPe2xNKe+2SCEAOvtfJjytdvCjQtUy8QoxIBEP
-MtvPU8JNxnhtnLPhPHD4LigTvF2uihqXS2PUc7eTrgoWjxFpUE3vb4zrQNA+C0D9
-12ItV4xhSOFmvIQJD3j27seYbz9q00Rnb/mXxG9hWhNybEXGkkLqiy4Eh0lLfvPG
-VhGLI/0YDU0dQESZrdVC9ECULcyiEY8G7sHFMhCMH9hCXLaf5ibomqLRTry1bLk9
-preYi0U2222hV/pZjSs0xA9BAeSyXQLeA0aN9u9A1SilfoMVq/id0ebbjqBCDjsP
-ilYbam7CA1GetVuDHi82
-=thI5
------END PGP SIGNATURE-----
---=-=-=--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
