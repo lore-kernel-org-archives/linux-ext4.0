@@ -1,55 +1,106 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
- finish while ro remounting
-Date: Fri, 06 May 2016 06:01:12 +0000 (GMT)
-Message-ID: <593570881.453531462514471895.JavaMail.weblogic@ep2mlwas08c>
-Reply-To: daeho.jeong@samsung.com
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: [PATCH] direct-io: fix stale data exposure from concurrent
+ buffered read
+Date: Fri, 6 May 2016 18:46:22 +0800
+Message-ID: <20160506104622.GB10350@eguan.usersys.redhat.com>
+References: <1462033162-21837-1-git-send-email-guaneryu@gmail.com>
+ <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: base64
-Cc: jack@suse.cz,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?utf-8?Q?=EC=9D=B4=EA=B8=B0=ED=83=9C?= <kitae87.lee@samsung.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore T'so <tytso@google.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:52488 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751053AbcEFGBQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 02:01:16 -0400
-Received: from epcpsbgr3.samsung.com
- (u143.gpu120.samsung.co.kr [203.254.230.143])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0O6Q023Z9RE1Z2C0@mailout1.samsung.com> for
- linux-ext4@vger.kernel.org; Fri, 06 May 2016 15:01:13 +0900 (KST)
-MIME-version: 1.0
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:33214 "EHLO
+	mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758368AbcEFKqc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 06:46:32 -0400
+Content-Disposition: inline
+In-Reply-To: <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-PiBIbW0sIEknbSBub3QgcmVhbGx5IGNvbWZvcnRhYmxlIHdpdGggcHV0dGluZyB0aGlzIGhhY2sg
-aW4sIHNpbmNlIHRoaXMNCj4gaXMgcGFwZXJpbmcgb3ZlciB0aGUgcmVhbCBwcm9ibGVtLCB3aGlj
-aCBpcyB0aGF0IEFuZHJvaWQgaXMgdHJ5aW5nIHRvDQo+IHVzZSB0aGUgZW1lcmdlbmN5IHJlbW91
-bnQgcmVhZC1vbmx5IHN5c3JxIG9wdGlvbiBhbmQgdGhpcyBpcw0KPiBmdW5kYW1lbnRhbGx5IHVu
-c2FmZS4gIEknbSBub3Qgc3VyZSB3aGF0IGVsc2UgY291bGQgYnJlYWsgaWYgaXQgaXMNCj4gc2l0
-dWF0aW9uIG5vcm1hbCB0aGF0IHRoZXJlIGlzIGFjdGl2ZSBwcm9jZXNzZXMgYnVzaWx5IHdyaXRp
-bmcgdG8gdGhlDQo+IGZpbGUgc3lzdGVtIGFuZCBzeXNycS11IGZvbGxvd2VkIGJ5IHJlYm9vdCBp
-cyB0aGUgbm9ybWFsIHdheSB0aGUNCj4gQW5kcm9pZCBrZXJuZWwgZG9lcyBhIHJlYm9vdC4NCg0K
-PiBBIG11Y2ggYmV0dGVyIHNvbHV0aW9uIHdvdWxkIGJlIHRvIGNoYW5nZSB0aGUgQW5kcm9pZCB1
-c2Vyc3BhY2UgdG8NCj4gY2FsbCB0aGUgRklGUkVFWkUgaW9jdGwgb24gZWFjaCBtb3VudGVkIGZp
-bGUgc3lzdGVtLCBhbmQgdGhlbiBjYWxsIGZvcg0KPiBhIHJlYm9vdC4NCg0KSSBhZ3JlZSB3aXRo
-IHlvdS4gSSBrbm93IHRoYXQgY3VycmVudCBBbmRyb2lkIHNodXRkb3duIHByb2NlZHVyZSBpcw0K
-bm90IGEgc2FmZSB3YXkuIEJ1dCwgd2l0aG91dCB0aGlzIHBhdGNoLCAiZXZlbiBub3QgaW4gQW5k
-cm9pZCBzeXN0ZW0iLA0Kd2hlbiB3ZSB0cmlnZ2VyIHRoZSBlbWVyZ2VuY3kgcmVhZC1vbmx5IHJl
-bW91bnQgd2hpbGUgZXZpY3RpbmcgaW5vZGVzLA0KaV9zaXplIG9mIHRoZSBpbm9kZSBiZWNvbWVz
-IHplcm8gYW5kIHRoZSBpbm9kZSBpcyBub3QgaW4gb3JwaGFuIGxpc3QsDQpidXQgYmxvY2tzIG9m
-IHRoZSBpbm9kZSBhcmUgc3RpbGwgYWxsb2NhdGVkIHRvIHRoZSBpbm9kZSwgYmVjYXVzZQ0KZXh0
-NF90cnVuY2F0ZSgpIHdpbGwgZmFpbCB3aGlsZSBzdGF0aW5nIHRoZSBoYW5kbGUgd2hpY2ggd2Fz
-IGFscmVhZHkgc3RhcnRlZA0KYnkgZXh0NF9ldmljdF9pbm9kZSgpLiBUaGlzIGNhdXNlcyB0aGUg
-ZmlsZXN5c3RlbSBpbmNvbnNpc3RlbmN5IGFuZA0Kd2Ugd2lsbCBlbmNvdW50ZXIgYW4gZXh0NCBr
-ZXJuZWwgcGFuaWMgaW4gdGhlIG5leHQgYm9vdCBieSB0aGlzIHByb2JsZW0uDQoNCkkgdGhpbmsg
-dGhhdCB0aGlzIGtpbmQgb2YgZmlsZXN5c3RlbSBjcmFzaCBjYW4gb2NjdXIgYW55d2hlcmUgdGhh
-dA0KdGhlIHNhbWUgam91cm5hbCBoYW5kbGUgaXMgcmVwZWF0bHkgdXNlZC4gRHVyaW5nIGFuIGF0
-b21pYyBmaWxlc3lzdGVtDQpvcGVyYXRpb24sIGEgcGFydCBvZiB0aGUgb3BlcmF0aW9uIHdpbGwg
-c3VjY2VlZCBhbmQgdGhlIG90aGVyIG9uZSB3aWxsIGZhaWwuDQo=
+On Thu, May 05, 2016 at 03:39:29PM -0400, Jeff Moyer wrote:
+> Hi, Eryu,
+> 
+> Thanks for the great description of the problem!  I have some comments
+> below.
+> 
+> Eryu Guan <guaneryu@gmail.com> writes:
+> 
+> > Direct writes inside i_size on a DIO_SKIP_HOLES filesystem are not
+> > allowed to allocate blocks(get_more_blocks() sets 'create' to 0 before
+> > calling get_bkicl() callback), if it's a sparse file, direct writes fall
+> > back to buffered writes to avoid stale data exposure from concurrent
+> > buffered read.
+> >
+> > But the detection for "writing inside i_size" is not correct, writes can
+> > be treated as "extending writes" wrongly, which results in block
+> > allocation for holes and could expose stale data. This is because we're
+> > checking on the fs blocks not the actual offset and i_size in bytes.
+> >
+> > For example, direct write 1FSB to a 1FSB(or smaller) sparse file on
+> > ext2/3/4, starting from offset 0, in this case it's writing inside
+> > i_size, but 'create' is non-zero, because 'sdio->block_in_file' and
+> > '(i_size_read(dio->inode) >> sdio->blkbits' are both zero.
+> >
+> > This can be demonstrated by running ltp-aiodio test ADSP045 many times.
+> > When testing on extN filesystems, I see test failures occasionally,
+> > buffered read could read non-zero (stale) data.
+> >
+> > ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 2
+> >
+> > dio_sparse    0  TINFO  :  Dirtying free blocks
+> > dio_sparse    0  TINFO  :  Starting I/O tests
+> > non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
+> > non-zero read at offset 0
+> > dio_sparse    0  TINFO  :  Killing childrens(s)
+> > dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
+> 
+> OK, so in this case, block_in_file is 0, i_size_read(inode) is 2048, and
+> i_blkbits is 12.
+> 
+> > Fix it by checking on the actual offset and i_size in bytes, not the fs
+> > blocks where offset and i_size are in, to make sure it's really writing
+> > into the file.
+> 
+> I think this code operates on blocks for a reason: we're trying to
+> determine if we'll trigger block allocation, right?  For example,
+> consider a sparse file with i_size of 2k, and a write to offset 2k into
+> the file, with a file system block size of 4k.  Should that have create
+> set or not?
 
+Thanks for pointing this out! I think 'create' should be 0 in this case,
+my test failed in this case, with both 4.6-rc6 stock kernel and my
+patched kernel.
 
+I'm testing an updated patch now, hopefully it's doing the right thing.
+It's basiclly something like:
+
+if (offset < i_size)
+	create = 0;
+else if ((block_in_file >> blkfactor) == (i_size >> (blkbits + blkfactor)) &&
+	 (i_size & ((1 << (blkbits + blkfactor)) - 1)))
+	create = 0;
+
+So in addition to the (offset < i_size) check, it also checks that
+block_in_file and i_size are falling into the same fs block && i_size is
+not fs block size aligned.
+
+> 
+> Ted or Jan, can you answer that question?
+> 
+> > Also introduce some local variables to make the code
+> > easier to read a little bit.
+> 
+> Please don't do this.  You're only making the change harder to review.
+> Just submit the minimal fix.  You can submit cleanups as a follow-on.
+
+I think it's not a pure cleanup, it's needed as things like
+'sdio->block_in_file' are referenced multiple times in the function, and
+they are making the lines too long to read/write. Maybe I should have
+made it clear in the first place.
+
+Thanks for the review!
+
+Eryu
