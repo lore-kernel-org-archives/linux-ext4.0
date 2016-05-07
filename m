@@ -1,55 +1,91 @@
-From: Filipe Brandenburger <filbranden@google.com>
-Subject: [PATCH e2fsprogs] Apply LDFLAGS when building tests in lib/e2p
-Date: Fri,  6 May 2016 16:40:03 -0700
-Message-ID: <1462578003-25315-1-git-send-email-filbranden@google.com>
-Cc: linux-ext4@vger.kernel.org, Eric Christopher <echristo@google.com>,
-	Michael Forney <forney@google.com>,
-	Filipe Brandenburger <filbranden@google.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:35648 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756722AbcEFXkK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2016 19:40:10 -0400
-Received: by mail-pa0-f49.google.com with SMTP id iv1so51911942pac.2
-        for <linux-ext4@vger.kernel.org>; Fri, 06 May 2016 16:40:10 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4 crypto: migrate into vfs's crypto engine
+Date: Fri, 6 May 2016 21:31:02 -0500
+Message-ID: <20160507023102.GB906@zzz>
+References: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This was previously addressed by Michael Forney on commit 53904ae543591a
-but it seems the test cases from lib/e2p (tst_ostype and tst_feature)
-were missed.
+Hi Jaegeuk,
 
-Fix them by adding the same $(ALL_LDFLAGS) to those two targets.
+On Mon, Apr 25, 2016 at 05:15:36PM -0700, Jaegeuk Kim wrote:
+> This patch removes the most parts of internal crypto codes.
+> And then, it modifies and adds some ext4-specific crypt codes to use the generic
+> facility.
 
-Tested by building it on a system that depends on LDFLAGS to produce
-working binaries and confirming that `make check` succeeds.
+Except for the key name prefix issue that Ted pointed out, this overall seems
+good, although I didn't read into every detail and haven't yet tested the code.
+A few comments:
 
-Reported-by: Eric Christopher <echristo@google.com>
-Signed-off-by: Filipe Brandenburger <filbranden@google.com>
----
- lib/e2p/Makefile.in | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+There are compiler errors and warnings in the function 'dx_show_leaf()', which
+is not compiled by default.
 
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 83f04ff5c04e..d109bf190051 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -68,12 +68,12 @@ e2p.pc: $(srcdir)/e2p.pc.in $(top_builddir)/config.status
- tst_ostype: $(srcdir)/ostype.c
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_ostype \
--		$(srcdir)/ostype.c $(ALL_CFLAGS)
-+		$(srcdir)/ostype.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
- 
- tst_feature: $(srcdir)/feature.c
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_feature \
--		$(srcdir)/feature.c $(ALL_CFLAGS)
-+		$(srcdir)/feature.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
- 
- check::	tst_ostype tst_feature
- 	./tst_ostype
--- 
-2.8.0.rc3.226.g39d4020
+In ext4_lookup():
+>               /*
+>                * DCACHE_ENCRYPTED_WITH_KEY is set if the dentry is
+>                * created while the directory was encrypted and we
+>                * don't have access to the key.
+>                */
+>               if (fscrypt_has_encryption_key(dir))
+>                       fscrypt_set_encrypted_dentry(dentry);
 
+Shouldn't this say "and we have access to the key"?  Or is the code wrong?
+
+In ext4_empty_dir():
+>       bool err = false;
+
+Since this is a bool it should not be called "err".  Maybe call it "empty"
+instead.
+
+In ext4_finish_bio():
+>               if (!page->mapping) {
+>                       /* The bounce data pages are unmapped. */
+>                       data_page = page;
+>                       fscrypt_pullback_bio_page(&page, false);
+>               }
+...
+>#ifdef CONFIG_EXT4_FS_ENCRYPTION
+>                       if (data_page)
+>                               fscrypt_restore_control_page(data_page);
+>#endif
+
+Does this always do the same thing as the previous code?  Does !page->mapping
+always imply that the page was involved in encrypted I/O?
+
+In ext4_encrypted_get_link():
+>       if ((cstr.len + 
+>            sizeof(struct fscrypt_symlink_data) - 1) >
+>           max_size) {
+
+Make this one line?
+
+In ext4_file_mmap()
+>               int err = fscrypt_get_encryption_info(inode);
+>               if (err)
+>                       return 0;
+
+Should the error code be propagated to the caller?
+
+In ext4_ioctl():
+>       case EXT4_IOC_GET_ENCRYPTION_POLICY: {
+>#ifdef CONFIG_EXT4_FS_ENCRYPTION
+>               struct fscrypt_policy policy;
+>               int err = 0;
+>
+>               if (!ext4_encrypted_inode(inode))
+>                       return -ENOENT;
+
+This is existing code and I do not know if it can be changed, but I feel that
+ENOENT is a not good error code here.  If the ext4_encrypted_inode() check were
+to be removed, the implementation would match f2fs and the error code would be
+ENODATA instead.
+
+- Eric
