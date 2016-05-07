@@ -1,53 +1,118 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: guarantee already started handles to successfully
- finish while ro remounting
-Date: Sat, 7 May 2016 13:47:46 -0400
-Message-ID: <20160507174746.GA2831@thunk.org>
-References: <945936769.469311462626349850.JavaMail.weblogic@ep2mlwas09a>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: Re: [PATCH] ext4 crypto: migrate into vfs's crypto engine
+Date: Sat, 7 May 2016 11:46:47 -0700
+Message-ID: <20160507184647.GC92790@jaegeuk.gateway>
+References: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
+ <20160507023102.GB906@zzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "jack@suse.cz" <jack@suse.cz>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	=?utf-8?B?7J206riw7YOc?= <kitae87.lee@samsung.com>
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56862 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750863AbcEGRrx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 May 2016 13:47:53 -0400
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <945936769.469311462626349850.JavaMail.weblogic@ep2mlwas09a>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160507023102.GB906@zzz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, May 07, 2016 at 01:05:49PM +0000, Daeho Jeong wrote:
+Hi Eric,
+
+Thank you for the review.
+
+On Fri, May 06, 2016 at 09:31:02PM -0500, Eric Biggers wrote:
+> Hi Jaegeuk,
 > 
-> Actually, we had executed power on/off test repeatedly with 10 Android
-> devices for a month. But, during the test, just this problem only happened
-> repeatedly, even if it occurred very rarely. So we had concluded that we
-> had to fix this problem certainly.
+> On Mon, Apr 25, 2016 at 05:15:36PM -0700, Jaegeuk Kim wrote:
+> > This patch removes the most parts of internal crypto codes.
+> > And then, it modifies and adds some ext4-specific crypt codes to use the generic
+> > facility.
 > 
-> However, I can see the point now. Android have misused the emergency
-> ro-remount and the filesystem crash by emergency ro-remount is not an issue.
-> I can understand the purpose of the emergency ro-remount.
+> Except for the key name prefix issue that Ted pointed out, this overall seems
+> good, although I didn't read into every detail and haven't yet tested the code.
+> A few comments:
 > 
-> I heard that the next version of Android will do full scan of ext4 filesystems
-> using e2fsck every boot-up, so the existing problem will be naturally resolved,
-> even if it might not be the right solution.
+> There are compiler errors and warnings in the function 'dx_show_leaf()', which
+> is not compiled by default.
 
-I've sent an inquiry to contacts I have in the Google Android team, to
-make sure they're aware of the potential issues, whether or not it
-gets addressed (by accident) in the next version of Android.
+Fixed.
 
-Something to consider is that it's not clear (for example) whether or
-not some other file system, such as f2fs, will do the right thing with
-such a scheme (and what kind of application data loss you might have,
-even if the file systrem checker is run at boot-up).  Or if you have a
-process which is actively writing to a SD card containing a VFAT file
-system at the time of the shutdown, whether or not it will do the
-right thing.
+> 
+> In ext4_lookup():
+> >               /*
+> >                * DCACHE_ENCRYPTED_WITH_KEY is set if the dentry is
+> >                * created while the directory was encrypted and we
+> >                * don't have access to the key.
+> >                */
+> >               if (fscrypt_has_encryption_key(dir))
+> >                       fscrypt_set_encrypted_dentry(dentry);
+> 
+> Shouldn't this say "and we have access to the key"?  Or is the code wrong?
 
-So there are some bigger issues that probably need to be considered,
-not just with ext4.
+Done.
 
-						- Ted
+> 
+> In ext4_empty_dir():
+> >       bool err = false;
+> 
+> Since this is a bool it should not be called "err".  Maybe call it "empty"
+> instead.
+
+Removed and worked around it.
+
+> 
+> In ext4_finish_bio():
+> >               if (!page->mapping) {
+> >                       /* The bounce data pages are unmapped. */
+> >                       data_page = page;
+> >                       fscrypt_pullback_bio_page(&page, false);
+> >               }
+> ...
+> >#ifdef CONFIG_EXT4_FS_ENCRYPTION
+> >                       if (data_page)
+> >                               fscrypt_restore_control_page(data_page);
+> >#endif
+> 
+> Does this always do the same thing as the previous code?  Does !page->mapping
+> always imply that the page was involved in encrypted I/O?
+
+I think so.
+
+> 
+> In ext4_encrypted_get_link():
+> >       if ((cstr.len + 
+> >            sizeof(struct fscrypt_symlink_data) - 1) >
+> >           max_size) {
+> 
+> Make this one line?
+
+Done.
+
+> 
+> In ext4_file_mmap()
+> >               int err = fscrypt_get_encryption_info(inode);
+> >               if (err)
+> >                       return 0;
+> 
+> Should the error code be propagated to the caller?
+
+This patch tries to keep existing flow as much as possible.
+
+> 
+> In ext4_ioctl():
+> >       case EXT4_IOC_GET_ENCRYPTION_POLICY: {
+> >#ifdef CONFIG_EXT4_FS_ENCRYPTION
+> >               struct fscrypt_policy policy;
+> >               int err = 0;
+> >
+> >               if (!ext4_encrypted_inode(inode))
+> >                       return -ENOENT;
+> 
+> This is existing code and I do not know if it can be changed, but I feel that
+> ENOENT is a not good error code here.  If the ext4_encrypted_inode() check were
+> to be removed, the implementation would match f2fs and the error code would be
+> ENODATA instead.
+
+ditto.
+
+> 
+> - Eric
