@@ -1,90 +1,162 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: [PATCH v2 2/2] direct-io: fix stale data exposure from concurrent buffered read
-Date: Sun,  8 May 2016 02:31:50 +0800
-Message-ID: <1462645910-23290-2-git-send-email-guaneryu@gmail.com>
-References: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
-Cc: linux-ext4@vger.kernel.org, jmoyer@redhat.com,
-	Eryu Guan <guaneryu@gmail.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Sun, 8 May 2016 01:35:43 -0700
+Message-ID: <20160508083543.GA14316@infradead.org>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20160429125743.23636.85219.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently direct writes inside i_size on a DIO_SKIP_HOLES filesystem are
-not allowed to allocate blocks(get_more_blocks() sets 'create' to 0
-before calling get_block() callback), if it's a sparse file, direct
-writes fall back to buffered writes to avoid stale data exposure from
-concurrent buffered read. But there're two cases that can result in
-stale data exposure are not correctly detected.
+> 	int ret = statx(int dfd,
+> 			const char *filename,
+> 			unsigned int flags,
+> 			unsigned int mask,
+> 			struct statx *buffer);
 
-1. The detection for "writing inside i_size" is not sufficient, writes
-can be treated as "extending writes" wrongly. For example, direct write
-1FSB to a 1FSB sparse file on ext2/3/4, starting from offset 0, in this
-case it's writing inside i_size, but 'create' is non-zero, because
-'block_in_file' and '(i_size_read(inode) >> blkbits' are both zero.
+Please move the flags and mask after the buffer, similar to how all
+the AT_ flags were added to the end for the statat calls.
 
-2. Direct writes starting from or beyong i_size (not inside i_size) also
-could trigger block allocation and expose stale data. For example,
-consider a sparse file with i_size of 2k, and a write to offset 2k or 3k
-into the file, with a filesystem block size of 4k. (Thanks to Jeff Moyer
-for pointing this case out.)
+> AT_FORCE_ATTR_SYNC can be set in flags.  This will require a network
+> filesystem to synchronise its attributes with the server.
+> 
+> AT_NO_ATTR_SYNC can be set in flags.  This will suppress synchronisation
+> with the server in a network filesystem.  The resulting values should be
+> considered approximate.
 
-The first problem can be demostrated by running ltp-aiodio test ADSP045
-many times. When testing on extN filesystems, I see test failures
-occasionally, buffered read could read non-zero (stale) data.
+And what happens if neither is set?
 
-ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 1
+> mask is a bitmask indicating the fields in struct statx that are of
+> interest to the caller.  The user should set this to STATX_BASIC_STATS to
+> get the basic set returned by stat().
 
-dio_sparse    0  TINFO  :  Dirtying free blocks
-dio_sparse    0  TINFO  :  Starting I/O tests
-non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
-non-zero read at offset 0
-dio_sparse    0  TINFO  :  Killing childrens(s)
-dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
+No a very good name for the constant.  I don't really see how this macro
+is useful to start with.  And _ALL? sure, but what's basic?
 
-The second problem can also be reproduced easily by a hacked dio_sparse
-program, which accepts an option to specify the write offset.
+> buffer points to the destination for the data.  This must be 256 bytes in
+> size.
 
-What we should really do is to disable block allocation for writes that
-could result in filling holes inside i_size.
+256 bytes or sizeof(struct statx)?  Even if they end up the same the
+latter is a much more useful value.
 
-Signed-off-by: Eryu Guan <guaneryu@gmail.com>
----
+> where st_information is local system information about the file,
 
-v2:
-- Fix the case Jeff pointed out as well
-- Update commit log
+What the heck is "local system information"?  Please define each
+newly added field in detail.
 
- fs/direct-io.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+> st_gen is
+> the inode generation number, st_btime is the file creation time, st_version
+> is the data version number (i_version),
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 9d5aff9..5c13bbf 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -632,8 +632,10 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 	map_bh->b_size = fs_count << i_blkbits;
- 
- 	/*
--	 * For writes inside i_size on a DIO_SKIP_HOLES filesystem we
--	 * forbid block creations: only overwrites are permitted.
-+	 * For writes that could fill holes inside i_size on a
-+	 * DIO_SKIP_HOLES filesystem we forbid block creations: only
-+	 * overwrites are permitted.
-+	 *
- 	 * We will return early to the caller once we see an
- 	 * unmapped buffer head returned, and the caller will fall
- 	 * back to buffered I/O.
-@@ -644,7 +646,7 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 	 */
- 	create = dio->rw & WRITE;
- 	if (dio->flags & DIO_SKIP_HOLES) {
--		if (block_in_file < (i_size_read(inode) >> blkbits))
-+		if (fs_startblk <= ((i_size_read(inode) - 1) >> i_blkbits))
- 			create = 0;
- 	}
- 
--- 
-2.5.5
+Please define semantics for st_gen and st_version.
 
+> Time fields are split into separate seconds and nanoseconds fields to make
+> packing easier and the granularities can be queried with the filesystem
+> info system call.  Note that times will be negative if before 1970; in such
+> a case, the nanosecond fields should also be negative if not zero.
+
+Please coordinate with Arnd on the timespamp format - I'd hate to have
+a different encoding than he plans for all y2028/64-bit-time_t syscalls
+to be added soon.
+
+> 	STATX_MTIME		Want/got st_mtime
+> 	STATX_CTIME		Want/got st_ctime
+> 	STATX_INO		Want/got st_ino
+> 	STATX_SIZE		Want/got st_size
+> 	STATX_BLOCKS		Want/got st_blocks
+> 	STATX_BASIC_STATS	[The stuff in the normal stat struct]
+> 	STATX_BTIME		Want/got st_btime
+> 	STATX_VERSION		Want/got st_data_version
+
+What is st_data_version?
+
+> 	STATX_GEN		Want/got st_gen
+> 	STATX_ALL_STATS		[All currently available stuff]
+
+Where does the STATS_ come from?  Why no simply _ALL?
+
+How are the semantics defined when userspace asks for fields not
+available?  I'd expect them to be ignored, but we should documentat that
+fact.
+
+> The defined bits in the st_information field give local system data on a
+> file, how it is accessed, where it is and what it does:
+
+Oh, here we get st_information.  The name sounds very wrong for these
+flags, though.
+
+> 	STATX_INFO_ENCRYPTED		File is encrypted
+
+How do you define "encrypted", and what can the user do with this
+information?
+
+> 	STATX_INFO_TEMPORARY		File is temporary
+
+How do you define "temporary", and what can the user do with this
+information?
+
+> 	STATX_INFO_FABRICATED		File was made up by filesystem
+
+How do you define "fabricated", and what can the user do with this
+information?
+
+> 	STATX_INFO_KERNEL_API		File is kernel API (eg: procfs/sysfs)
+
+How do you define "kernel API" and what can the user do with this
+information?
+
+> 	STATX_INFO_REMOTE		File is remote
+
+How do you define "remote" and what can the user do with this
+information?
+
+> 	STATX_INFO_AUTOMOUNT		Dir is automount trigger
+
+How do you define "automount trigger" and what can the user do with this
+information?
+
+> 	STATX_INFO_AUTODIR		Dir provides unlisted automounts
+
+How do you define "unlisted automount" and what can the user do with this
+information?
+
+> 	STATX_INFO_NONSYSTEM_OWNERSHIP	File has non-system ownership details
+
+How do you define "non-system ownership" and what can the user do with this
+information?
+
+> 
+> These are for the use of GUI tools that might want to mark files specially,
+> depending on what they are.
+
+So far I don't see good definition of either flag, nor a good reason
+to add.
+
+> Fields in struct statx come in a number of classes:
+
+I really disagree with all these special cases.  You should get
+what you ask for, or rather what you ask for IFF the fs can provide it.
+And we need to document for each field if it's optional if we want
+to treat it as option.  A hodge podge bag of special cases is not an
+API that a normal person can use.
+
+> The following test program can be used to test the statx system call:
+> 
+> 	samples/statx/test-statx.c
+
+Please add xfstests test cases that test all the corner cases.
+
+And please prepare a man page to document this system call properly.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
