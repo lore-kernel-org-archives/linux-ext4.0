@@ -1,32 +1,48 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH 5/6] statx: Make windows attributes available for CIFS,
- NTFS and FAT to use
-Date: Sun, 8 May 2016 01:39:21 -0700
-Message-ID: <20160508083921.GB22670@infradead.org>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
- <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v5 3/5] dax: use sb_issue_zerout instead of calling
+ dax_clear_sectors
+Date: Sun, 8 May 2016 01:52:03 -0700
+Message-ID: <20160508085203.GA10160@infradead.org>
+References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
+ <1462571591-3361-4-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-nvdimm@ml01.01.org, Matthew Wilcox <matthew.r.wilcox@intel.com>,
+	linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Jeff Moyer <jmoyer@redhat.com>, Boaz Harrosh <boaz@plexistor.com>
+To: Vishal Verma <vishal.l.verma@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160429125813.23636.49830.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <1462571591-3361-4-git-send-email-vishal.l.verma@intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 29, 2016 at 01:58:14PM +0100, David Howells wrote:
-> Make windows attributes available for CIFS, NTFS and FAT to use in the
-> statx struct.  The attribute flags map directly by value to those in the
-> CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and HPFS.
+On Fri, May 06, 2016 at 03:53:09PM -0600, Vishal Verma wrote:
+> From: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> 
+> dax_clear_sectors() cannot handle poisoned blocks.  These must be
+> zeroed using the BIO interface instead.  Convert ext2 and XFS to use
+> only sb_issue_zerout().
+> 
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> [vishal: Also remove the dax_clear_sectors function entirely]
+> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
 
-Err, no way.  Not that I disagree that some of these might be useful,
-but we should define our own set of flags, which would include the
-generic part of the IOC_GETFLAGS flags amd whatever we want to add to
-them.  And we should probably go for 64-bit flags while we're at it.
+Just to make sure:  the existing sb_issue_zerout as in 4.6-rc
+is already doing the right thing for DAX?  I've got a pending patchset
+for XFS that introduces another dax_clear_sectors users, but if it's
+already safe to use blkdev_issue_zeroout I can switch to that and avoid
+the merge conflict.
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
