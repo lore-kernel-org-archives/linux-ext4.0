@@ -1,105 +1,57 @@
-From: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-Date: Mon, 09 May 2016 13:57:32 +0100
-Message-ID: <31651.1462798652@warthog.procyon.org.uk>
-References: <20160508083543.GA14316@infradead.org> <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Mon, 09 May 2016 14:00:25 +0100
+Message-ID: <31873.1462798825@warthog.procyon.org.uk>
+References: <31651.1462798652@warthog.procyon.org.uk>
+ <20160508083543.GA14316@infradead.org>
+ <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20160508083543.GA14316-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Content-ID: <31650.1462798652.1-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+ samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+ dhowells@redhat.com, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <samba-technical-bounces@lists.samba.org>
+In-Reply-To: <31651.1462798652@warthog.procyon.org.uk>
+Content-ID: <31872.1462798825.1@warthog.procyon.org.uk>
+List-Unsubscribe: <https://lists.samba.org/mailman/options/samba-technical>,
+ <mailto:samba-technical-request@lists.samba.org?subject=unsubscribe>
+List-Archive: <http://lists.samba.org/pipermail/samba-technical/>
+List-Post: <mailto:samba-technical@lists.samba.org>
+List-Help: <mailto:samba-technical-request@lists.samba.org?subject=help>
+List-Subscribe: <https://lists.samba.org/mailman/listinfo/samba-technical>,
+ <mailto:samba-technical-request@lists.samba.org?subject=subscribe>
+Errors-To: samba-technical-bounces@lists.samba.org
+Sender: "samba-technical" <samba-technical-bounces@lists.samba.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
+David Howells <dhowells@redhat.com> wrote:
 
-> > 	int ret = statx(int dfd,
-> > 			const char *filename,
-> > 			unsigned int flags,
-> > 			unsigned int mask,
-> > 			struct statx *buffer);
-> 
-> Please move the flags and mask after the buffer, similar to how all
-> the AT_ flags were added to the end for the statat calls.
+> > > st_gen is
+> > > the inode generation number, st_btime is the file creation time, st_=
+version
+> > > is the data version number (i_version),
+> > =
 
-Sure, if you really want.
+> > Please define semantics for st_gen and st_version.
+> =
 
-> > AT_FORCE_ATTR_SYNC can be set in flags.  This will require a network
-> > filesystem to synchronise its attributes with the server.
-> > 
-> > AT_NO_ATTR_SYNC can be set in flags.  This will suppress synchronisation
-> > with the server in a network filesystem.  The resulting values should be
-> > considered approximate.
-> 
-> And what happens if neither is set?
+> I've been asked to drop st_gen for security reasons.
+> =
 
-It does what stat() does now, whatever that is for each fs.  The assumption is
-that this might be used to emulate stat() from userspace.  However, we want to
-be able to make sure we get the two behaviours above.
+> I can't offhand think of a way to define st_version (or i_version, for t=
+hat
+> matter) that would be consistent across all filesystems.  I would lean t=
+owards
+> "gets incremented monotonically by 1 for each data write operation commi=
+tted,
+> but not for any metadata operations", but I'm fairly certain this won't =
+jibe
+> with disk operations.
 
-> > mask is a bitmask indicating the fields in struct statx that are of
-> > interest to the caller.  The user should set this to STATX_BASIC_STATS to
-> > get the basic set returned by stat().
-> 
-> No a very good name for the constant.  I don't really see how this macro
-> is useful to start with.
-
-It's the bits that correspond to all the data in the the current stat struct.
-So if you want to emulate stat(), you should pass this in mask.
-
-> And _ALL? sure, but what's basic?
-
-Actually, _ALL is perhaps the less useful of the two since the bitset is not
-closed.  OTOH - anything not in _ALL won't be listed explicitly in the
-structure, but would rather consume space space.
-
-> > st_gen is
-> > the inode generation number, st_btime is the file creation time, st_version
-> > is the data version number (i_version),
-> 
-> Please define semantics for st_gen and st_version.
-
-I've been asked to drop st_gen for security reasons.
-
-I can't offhand think of a way to define st_version (or i_version, for that
-matter) that would be consistent across all filesystems.  I would lean towards
-"gets incremented monotonically by 1 for each data write operation committed,
-but not for any metadata operations", but I'm fairly certain this won't jibe
-with disk operations.  So I can leave it out for now and bring it back if we
-find a real user for it.
-
-> > Time fields are split into separate seconds and nanoseconds fields to make
-> > packing easier and the granularities can be queried with the filesystem
-> > info system call.  Note that times will be negative if before 1970; in such
-> > a case, the nanosecond fields should also be negative if not zero.
-> 
-> Please coordinate with Arnd on the timespamp format - I'd hate to have
-> a different encoding than he plans for all y2028/64-bit-time_t syscalls
-> to be added soon.
-
-I have discussed this with him previously.
-
-> > 	STATX_VERSION		Want/got st_data_version
-> 
-> What is st_data_version?
-
-Sorry, that should've been st_version.  It got renamed.
-
-> > 	STATX_GEN		Want/got st_gen
-> > 	STATX_ALL_STATS		[All currently available stuff]
-> 
-> Where does the STATS_ come from?  Why no simply _ALL?
-
-Why not STATX_ALL_STATS?
+I meant disk filesystems that we have now, not disk operations.
 
 David
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
