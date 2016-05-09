@@ -1,90 +1,255 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC v3] [PATCH 0/18] DAX page fault locking
-Date: Mon, 9 May 2016 11:38:28 +0200
-Message-ID: <20160509093828.GF11897@quack2.suse.cz>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <20160506203308.GA12506@linux.intel.com>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Mon, 09 May 2016 08:02:58 -0400
+Message-ID: <1462795378.4481.31.camel@poochiereds.net>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+	 <20160508083543.GA14316@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>,
+	David Howells <dhowells@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51865 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752459AbcEIJic (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 May 2016 05:38:32 -0400
-Content-Disposition: inline
-In-Reply-To: <20160506203308.GA12506@linux.intel.com>
+Received: from mail-qk0-f170.google.com ([209.85.220.170]:35620 "EHLO
+	mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751939AbcEIMDE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2016 08:03:04 -0400
+Received: by mail-qk0-f170.google.com with SMTP id n62so19274606qkc.2
+        for <linux-ext4@vger.kernel.org>; Mon, 09 May 2016 05:03:03 -0700 (PDT)
+In-Reply-To: <20160508083543.GA14316@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 06-05-16 14:33:08, Ross Zwisler wrote:
-> On Mon, Apr 18, 2016 at 11:35:23PM +0200, Jan Kara wrote:
-> > Hello,
-> > 
-> > this is my third attempt at DAX page fault locking rewrite. The patch set has
-> > passed xfstests both with and without DAX mount option on ext4 and xfs for
-> > me and also additional page fault beating using the new page fault stress
-> > tests I have added to xfstests. So I'd be grateful if you guys could have a
-> > closer look at the patches so that they can be merged. Thanks.
-> > 
-> > Changes since v2:
-> > - lot of additional ext4 fixes and cleanups
-> > - make PMD page faults depend on CONFIG_BROKEN instead of #if 0
-> > - fixed page reference leak when replacing hole page with a pfn
-> > - added some reviewed-by tags
-> > - rebased on top of current Linus' tree
-> > 
-> > Changes since v1:
-> > - handle wakeups of exclusive waiters properly
-> > - fix cow fault races
-> > - other minor stuff
-> > 
-> > General description
-> > 
-> > The basic idea is that we use a bit in an exceptional radix tree entry as
-> > a lock bit and use it similarly to how page lock is used for normal faults.
-> > That way we fix races between hole instantiation and read faults of the
-> > same index. For now I have disabled PMD faults since there the issues with
-> > page fault locking are even worse. Now that Matthew's multi-order radix tree
-> > has landed, I can have a look into using that for proper locking of PMD faults
-> > but first I want normal pages sorted out.
-> > 
-> > In the end I have decided to implement the bit locking directly in the DAX
-> > code. Originally I was thinking we could provide something generic directly
-> > in the radix tree code but the functions DAX needs are rather specific.
-> > Maybe someone else will have a good idea how to distill some generally useful
-> > functions out of what I've implemented for DAX but for now I didn't bother
-> > with that.
-> > 
-> > 								Honza
-> 
-> Hey Jan,
-> 
-> Another hit in testing, which may or may not be related to the last one.  The
-> BUG is a few lines off from the previous report:
-> 	kernel BUG at mm/workingset.c:423!
-> vs
-> 	kernel BUG at mm/workingset.c:435!
-> 
-> I've been able to consistently hit this one using DAX + ext4 with generic/086.
-> For some reason generic/086 always passes when run by itself, but fails
-> consistently if you run it after a set of other tests.  Here is a relatively
-> fast set that reproduces it:
+On Sun, 2016-05-08 at 01:35 -0700, Christoph Hellwig wrote:
+> >=20
+> > 	int ret =3D statx(int dfd,
+> > 			const char *filename,
+> > 			unsigned int flags,
+> > 			unsigned int mask,
+> > 			struct statx *buffer);
+>=20
+> Please move the flags and mask after the buffer, similar to how all
+> the AT_ flags were added to the end for the statat calls.
+>=20
+> > AT_FORCE_ATTR_SYNC can be set in flags.=C2=A0=C2=A0This will requir=
+e a network
+> > filesystem to synchronise its attributes with the server.
+> >=20
+> > AT_NO_ATTR_SYNC can be set in flags.=C2=A0=C2=A0This will suppress =
+synchronisation
+> > with the server in a network filesystem.=C2=A0=C2=A0The resulting v=
+alues should be
+> > considered approximate.
+>=20
+> And what happens if neither is set?
+>=20
 
-Thanks for reports! It is strange that I didn't see this happening but I've
-been testing against somewhat older base so maybe something has changed.
-Anyway the culprit seems to be that workingset tracking code messes with
-radix tree which is managed by DAX and these two were never meant to
-coexist so assertions naturally trip. In particular we should not add radix
-tree node to working-set list of nodes for eviction in
-page_cache_tree_delete() for DAX inodes. However that seems to happen in
-your case and so far I don't quite understand why...
+I'd suggest we have the documentation state that the lack of either
+flag leaves it up to the filesystem. In the case of NFS, you'd get
+"normal" attribute cache behavior, for instance which is governed by
+the ac* attributes.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+We should also note that in the case of something like AT_NO_ATTR_SYNC
+on NFS, you might _still_ end up talking to the server if the client
+has nothing in-core for that inode.
+
+> > mask is a bitmask indicating the fields in struct statx that are of
+> > interest to the caller.=C2=A0=C2=A0The user should set this to STAT=
+X_BASIC_STATS to
+> > get the basic set returned by stat().
+>=20
+> No a very good name for the constant.=C2=A0=C2=A0I don't really see h=
+ow this macro
+> is useful to start with.=C2=A0=C2=A0And _ALL? sure, but what's basic?
+>=20
+> > buffer points to the destination for the data.=C2=A0=C2=A0This must=
+ be 256 bytes in
+> > size.
+>=20
+> 256 bytes or sizeof(struct statx)?=C2=A0=C2=A0Even if they end up the=
+ same the
+> latter is a much more useful value.
+>=20
+
+ACK. We should also consider that while we have a fair bit of padding
+in this structure now, we could end up running out of space in it at
+some point. We should at least have a clear idea of how we'll handle
+such a situation.
+
+The obvious solution would be to add a new flag that says that we're
+passing in an extended statx structure. The kernel would know not to
+touch stuff in the extended part unless the flag was set. Userland
+would know that that part had not been touched by the kernel if the
+outbound flag wasn't set.
+
+
+> > where st_information is local system information about the file,
+>=20
+> What the heck is "local system information"?=C2=A0=C2=A0Please define=
+ each
+> newly added field in detail.
+>=20
+> > st_gen is
+> > the inode generation number, st_btime is the file creation time, st=
+_version
+> > is the data version number (i_version),
+>=20
+> Please define semantics for st_gen and st_version.
+>=20
+> > Time fields are split into separate seconds and nanoseconds fields =
+to make
+> > packing easier and the granularities can be queried with the filesy=
+stem
+> > info system call.=C2=A0=C2=A0Note that times will be negative if be=
+fore 1970; in such
+> > a case, the nanosecond fields should also be negative if not zero.
+>=20
+> Please coordinate with Arnd on the timespamp format - I'd hate to hav=
+e
+> a different encoding than he plans for all y2028/64-bit-time_t syscal=
+ls
+> to be added soon.
+>=20
+> > 	STATX_MTIME		Want/got st_mtime
+> > 	STATX_CTIME		Want/got st_ctime
+> > 	STATX_INO		Want/got st_ino
+> > 	STATX_SIZE		Want/got st_size
+> > 	STATX_BLOCKS		Want/got st_blocks
+> > 	STATX_BASIC_STATS	[The stuff in the normal stat struct]
+> > 	STATX_BTIME		Want/got st_btime
+> > 	STATX_VERSION		Want/got st_data_version
+>=20
+> What is st_data_version?
+>=20
+> > 	STATX_GEN		Want/got st_gen
+> > 	STATX_ALL_STATS		[All currently available stuff]
+>=20
+> Where does the STATS_ come from?=C2=A0=C2=A0Why no simply _ALL?
+>=20
+> How are the semantics defined when userspace asks for fields not
+> available?=C2=A0=C2=A0I'd expect them to be ignored, but we should do=
+cumentat that
+> fact.
+>=20
+> > The defined bits in the st_information field give local system data=
+ on a
+> > file, how it is accessed, where it is and what it does:
+>=20
+> Oh, here we get st_information.=C2=A0=C2=A0The name sounds very wrong=
+ for these
+> flags, though.
+>=20
+> > 	STATX_INFO_ENCRYPTED		File is encrypted
+>=20
+> How do you define "encrypted", and what can the user do with this
+> information?
+>=20
+> > 	STATX_INFO_TEMPORARY		File is temporary
+>=20
+> How do you define "temporary", and what can the user do with this
+> information?
+>=20
+> > 	STATX_INFO_FABRICATED		File was made up by filesystem
+>=20
+> How do you define "fabricated", and what can the user do with this
+> information?
+>=20
+> > 	STATX_INFO_KERNEL_API		File is kernel API (eg: procfs/sysfs)
+>=20
+> How do you define "kernel API" and what can the user do with this
+> information?
+>=20
+> > 	STATX_INFO_REMOTE		File is remote
+>=20
+> How do you define "remote" and what can the user do with this
+> information?
+>=20
+> > 	STATX_INFO_AUTOMOUNT		Dir is automount trigger
+>=20
+> How do you define "automount trigger" and what can the user do with t=
+his
+> information?
+>=20
+> > 	STATX_INFO_AUTODIR		Dir provides unlisted automounts
+>=20
+> How do you define "unlisted automount" and what can the user do with =
+this
+> information?
+>=20
+> > 	STATX_INFO_NONSYSTEM_OWNERSHIP	File has non-system ownership detai=
+ls
+>=20
+> How do you define "non-system ownership" and what can the user do wit=
+h this
+> information?
+>=20
+
+Good questions all around.
+
+My personal opinion is that if we have any attrs that are of
+questionable value or that don't have a clear definition, that we
+should just leave them out for now. This interface is designed to be
+extendable, so there's no need to add it all in in the first pass. We
+should focus on getting the API right and sort out the gory details of
+specific attributes on a case-by-case basis.
+
+> >=20
+> > These are for the use of GUI tools that might want to mark files sp=
+ecially,
+> > depending on what they are.
+>=20
+> So far I don't see good definition of either flag, nor a good reason
+> to add.
+>=20
+> > Fields in struct statx come in a number of classes:
+>=20
+> I really disagree with all these special cases.=C2=A0=C2=A0You should=
+ get
+> what you ask for, or rather what you ask for IFF the fs can provide i=
+t.
+> And we need to document for each field if it's optional if we want
+> to treat it as option.=C2=A0=C2=A0A hodge podge bag of special cases =
+is not an
+> API that a normal person can use.
+>=20
+
+Agreed. In fact, the required attributes might be a good place to draw
+the line on the initial submission of this patchset. Maybe just say "no
+optional attributes yet" and we'll add them in later patches?
+
+> > The following test program can be used to test the statx system cal=
+l:
+> >=20
+> > 	samples/statx/test-statx.c
+>=20
+> Please add xfstests test cases that test all the corner cases.
+>=20
+> And please prepare a man page to document this system call properly.
+
+Nothing wrong with preparing that ahead of time, but I see that as
+something that should go along with the userland submission. In fact,
+what's the plan for userland here? Should this be added to glibc or do
+would it be better/simpler to have a new library for this?
+
+Either way, what would be best for now though is to do What Neil
+suggested, and lift most of this commit log into a file under
+Documentation/.
+
+=46urthermore, it'd probably be nice to document each mask bit in the
+header file that userland will end up including. It's often the case
+that the manpage may not reflect what the currently installed kernel
+actually supports. The kernel headers are often more authoritative.
+Being able to look at the header file for would be ideal.
+
+--=20
+Jeff Layton <jlayton@poochiereds.net>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
