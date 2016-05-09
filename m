@@ -1,63 +1,82 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [PATCH v5 3/5] dax: use sb_issue_zerout instead of calling
-	dax_clear_sectors
-Date: Sun, 8 May 2016 18:46:13 +0000
-Message-ID: <1462733173.3006.7.camel@intel.com>
-References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
-	<1462571591-3361-4-git-send-email-vishal.l.verma@intel.com>
-	<20160508085203.GA10160@infradead.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Mon, 9 May 2016 11:45:43 +1000
+Message-ID: <20160509014543.GS18496@dastard>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+ <20160504225601.GZ26977@dastard>
+ <20160506182923.GB13350@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "axboe@fb.com" <axboe@fb.com>, "jack@suse.cz" <jack@suse.cz>,
-	"boaz@plexistor.com" <boaz@plexistor.com>,
-	"linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>, "Wilcox,
-	Matthew R" <matthew.r.wilcox@intel.com>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"Williams, Dan J" <dan.j.williams@intel.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>
-To: "hch@infradead.org" <hch@infradead.org>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160508085203.GA10160@infradead.org>
-Content-Language: en-US
-Content-ID: <D60809FA56FCC54089DF6F708EA1BE89@intel.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:39811 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750901AbcEIBpt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 8 May 2016 21:45:49 -0400
+Content-Disposition: inline
+In-Reply-To: <20160506182923.GB13350@fieldses.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gU3VuLCAyMDE2LTA1LTA4IGF0IDAxOjUyIC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
-ZToNCj4gT24gRnJpLCBNYXkgMDYsIDIwMTYgYXQgMDM6NTM6MDlQTSAtMDYwMCwgVmlzaGFsIFZl
-cm1hIHdyb3RlOg0KPiA+IA0KPiA+IEZyb206IE1hdHRoZXcgV2lsY294IDxtYXR0aGV3LnIud2ls
-Y294QGludGVsLmNvbT4NCj4gPiANCj4gPiBkYXhfY2xlYXJfc2VjdG9ycygpIGNhbm5vdCBoYW5k
-bGUgcG9pc29uZWQgYmxvY2tzLsKgwqBUaGVzZSBtdXN0IGJlDQo+ID4gemVyb2VkIHVzaW5nIHRo
-ZSBCSU8gaW50ZXJmYWNlIGluc3RlYWQuwqDCoENvbnZlcnQgZXh0MiBhbmQgWEZTIHRvDQo+ID4g
-dXNlDQo+ID4gb25seSBzYl9pc3N1ZV96ZXJvdXQoKS4NCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5
-OiBNYXR0aGV3IFdpbGNveCA8bWF0dGhldy5yLndpbGNveEBpbnRlbC5jb20+DQo+ID4gW3Zpc2hh
-bDogQWxzbyByZW1vdmUgdGhlIGRheF9jbGVhcl9zZWN0b3JzIGZ1bmN0aW9uIGVudGlyZWx5XQ0K
-PiA+IFNpZ25lZC1vZmYtYnk6IFZpc2hhbCBWZXJtYSA8dmlzaGFsLmwudmVybWFAaW50ZWwuY29t
-Pg0KPiBKdXN0IHRvIG1ha2Ugc3VyZTrCoMKgdGhlIGV4aXN0aW5nIHNiX2lzc3VlX3plcm91dCBh
-cyBpbiA0LjYtcmMNCj4gaXMgYWxyZWFkeSBkb2luZyB0aGUgcmlnaHQgdGhpbmcgZm9yIERBWD/C
-oMKgSSd2ZSBnb3QgYSBwZW5kaW5nDQo+IHBhdGNoc2V0DQo+IGZvciBYRlMgdGhhdCBpbnRyb2R1
-Y2VzIGFub3RoZXIgZGF4X2NsZWFyX3NlY3RvcnMgdXNlcnMsIGJ1dCBpZiBpdCdzDQo+IGFscmVh
-ZHkgc2FmZSB0byB1c2UgYmxrZGV2X2lzc3VlX3plcm9vdXQgSSBjYW4gc3dpdGNoIHRvIHRoYXQg
-YW5kDQo+IGF2b2lkDQo+IHRoZSBtZXJnZSBjb25mbGljdC4NCg0KSSBiZWxpZXZlIHNvIC0gSmFu
-IGhhcyBtb3ZlZCBhbGwgdW53cml0dGVuIGV4dGVudCBjb252ZXJzaW9ucyBvdXQgb2YNCkRBWCB3
-aXRoIGhpcyBwYXRjaCBzZXQsIGFuZCBJIGJlbGlldmUgemVyb2luZyB0aHJvdWdoIHRoZSBkcml2
-ZXIgaXMNCmFsd2F5cyBmaW5lLiBSb3NzIG9yIEphbiBjb3VsZCBjb25maXJtIHRob3VnaC7CoApf
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwp4ZnMgbWFpbGlu
-ZyBsaXN0Cnhmc0Bvc3Muc2dpLmNvbQpodHRwOi8vb3NzLnNnaS5jb20vbWFpbG1hbi9saXN0aW5m
-by94ZnMK
+[ OT, but I'll reply anyway :P ]
+
+On Fri, May 06, 2016 at 02:29:23PM -0400, J. Bruce Fields wrote:
+> On Thu, May 05, 2016 at 08:56:02AM +1000, Dave Chinner wrote:
+> > In the latest XFS filesystem format, we randomise the generation
+> > value during every inode allocation to make it hard to guess the
+> > handle of adjacent inodes from an existing ino+gen pair, or even
+> > from life time to life time of the same inode.
+> 
+> The one thing I wonder about is whether that increases the probability
+> of a filehandle collision (where you accidentally generate the same
+> filehandle for two different files).
+
+Not possible - inode number is still different between the two
+files. i.e. ino+gen makes the handle unique, not gen.
+
+> If the generation number is a 32-bit counter per inode number (is that
+> actually the way filesystems work?), then it takes 2^32 reuses of the
+> inode number to hit the same filehandle.
+
+4 billion unlink/create operations that hit the same inode number
+are going to take some time. I suspect someone will notice the load
+generated by an attmept to brute force this sort of thing ;)
+
+> If you choose it randomly then
+> you expect a collision after about 2^16 reuses.
+
+I'm pretty sure that a random search will need to, on average,
+search half the keyspace before a match is found (i.e. 2^31
+attempts, not 2^16).
+
+> > >      If the caller didn't ask for them, then they may be approximated.  For
+> > >      example, NFS won't waste any time updating them from the server, unless
+> > >      as a byproduct of updating something requested.
+> > 
+> > I would suggest that exposing them from the NFS server is something
+> > we most definitely don't want to do because they are the only thing
+> > that keeps remote users from guessing filehandles with ease....
+> 
+> The first line of defense is not to depend on unguessable filehandles.
+> (Don't export sudirectories unless you're willing to export the whole
+> filesystem; and don't depend on directory permissions to keep children
+> secret.)
+
+Defense in depth also says "don't make it easy to guess filehandles"
+because not everyone knows this is a problem. In many cases, users
+may not even know what consitutes a "filesystem" because their NFS
+server appliance only defines "exports". The underlying
+implementation may, in fact, be "everything exported from a single
+filesystem" and so the user has no choice in the matter....
+
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
