@@ -1,61 +1,53 @@
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-Subject: RE: [PATCH v21 00/22] Richacls
-Date: Tue, 10 May 2016 08:55:19 -0700
-Message-ID: <002001d1aad4$5c3bd9f0$14b38dd0$@mindspring.com>
-References: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
-	<20160510041809.GB1079@sernet.de>
-	<20160510081150.GA3411@jeremy-ThinkPad-T430s>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH v2 1/2] direct-io: cleanup get_more_blocks()
+Date: Tue, 10 May 2016 13:38:05 -0400
+Message-ID: <x49y47h6cg2.fsf@segfault.boston.devel.redhat.com>
+References: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-	'Theodore Ts'o' <tytso@mit.edu>,
-	'Andreas Gruenbacher' <agruenba@redhat.com>,
-	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-	'Trond Myklebust' <trond.myklebust@primarydata.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	'Christoph Hellwig' <hch@infradead.org>,
-	'Andreas Dilger' <adilger.kernel@dilger.ca>,
-	'Alexander Viro' <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	'Jeff Layton' <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
-	'Anna Schumaker' <anna.schumaker@netapp.com>
-To: "'Jeremy Allison'" <jra@samba.org>,
-	"'Volker Lendecke'" <Volker.Lendecke@SerNet.DE>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160510081150.GA3411@jeremy-ThinkPad-T430s>
-Content-Language: en-us
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: text/plain
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1462645910-23290-1-git-send-email-guaneryu@gmail.com> (Eryu
+	Guan's message of "Sun, 8 May 2016 02:31:49 +0800")
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> On Tue, May 10, 2016 at 06:18:10AM +0200, Volker Lendecke wrote:
-> > On Tue, May 10, 2016 at 12:02:33AM +0200, Andreas Gruenbacher wrote:
-> > > What more can I do to finally get this merged?
-> >
-> > While I am not the one to comment on kernel specifics, from a pure
-> > Samba user space perspective let me say: We need this. NOW.
-> 
-> +1 from me. This is something that many vendors need
-> and have needed for a very long time. Getting this in will allow *large*
-> amounts of existing storage to be migrated to Linux.
+Eryu Guan <guaneryu@gmail.com> writes:
 
-+1 from me also. Once this is in Ganesha will integrate with it also.
+> Save one level of indention by returning error early.
+>
+> Introduce some local variables to make the code easier to read a bit,
+> and do preparation for next patch.
+>
+> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
 
-Frank
+Hi, Eryu,
 
+I don't think you have a full appreciation of the amount of optimization
+that goes into this code.  I don't see anything wrong with what you've
+done, but I also don't want to introduce all these local variables and
+change a branch in order to find out several months down the line that
+we introduced some TPC-C regression of .5%.
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+Look, I think this is all you need for the full fix:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index 4720377..f66754e 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -639,8 +639,7 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
+ 		 */
+ 		create = dio->rw & WRITE;
+ 		if (dio->flags & DIO_SKIP_HOLES) {
+-			if (sdio->block_in_file < (i_size_read(dio->inode) >>
+-							sdio->blkbits))
++			if (fs_startblk < fs_count)
+ 				create = 0;
+ 		}
+ 
+ 
+Can you just test that?
+
+Thanks,
+Jeff
