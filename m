@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 4/5] dax: for truncate/hole-punch, do zeroing through
- the driver if possible
-Date: Tue, 10 May 2016 16:21:19 +0200
-Message-ID: <20160510142119.GN11897@quack2.suse.cz>
+Subject: Re: [PATCH v5 5/5] dax: fix a comment in dax_zero_page_range and
+ dax_truncate_page
+Date: Tue, 10 May 2016 16:29:36 +0200
+Message-ID: <20160510142936.GO11897@quack2.suse.cz>
 References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
- <1462571591-3361-5-git-send-email-vishal.l.verma@intel.com>
+ <1462571591-3361-6-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
@@ -18,45 +18,30 @@ Cc: linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Christoph Hellwig <hch@infradead.org>,
 	Jeff Moyer <jmoyer@redhat.com>,
-	Boaz Harrosh <boaz@plexistor.com>
+	Boaz Harrosh <boaz@plexistor.com>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: Vishal Verma <vishal.l.verma@intel.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1462571591-3361-5-git-send-email-vishal.l.verma@intel.com>
+In-Reply-To: <1462571591-3361-6-git-send-email-vishal.l.verma@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 06-05-16 15:53:10, Vishal Verma wrote:
-> +static bool dax_range_is_aligned(struct block_device *bdev,
-> +				 struct blk_dax_ctl *dax, unsigned int offset,
-> +				 unsigned int length)
-> +{
-> +	unsigned short sector_size = bdev_logical_block_size(bdev);
-> +
-> +	if (((u64)dax->addr + offset) % sector_size)
-> +		return false;
-> +	if (length % sector_size)
-> +		return false;
+On Fri 06-05-16 15:53:11, Vishal Verma wrote:
+> The distinction between PAGE_SIZE and PAGE_CACHE_SIZE was removed in
+> 
+> 09cbfea mm, fs: get rid of PAGE_CACHE_* and page_cache_{get,release}
+> macros
+> 
+> The comments for the above functions described a distinction between
+> those, that is now redundant, so remove those paragraphs
+> 
+> Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
 
-sector_size should better be a power of two so you can save some cycles by
-using & instead of %.
+Looks good. You can add:
 
-> @@ -1240,11 +1254,17 @@ int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
->  			.size = PAGE_SIZE,
->  		};
->  
-> -		if (dax_map_atomic(bdev, &dax) < 0)
-> -			return PTR_ERR(dax.addr);
-> -		clear_pmem(dax.addr + offset, length);
-> -		wmb_pmem();
-> -		dax_unmap_atomic(bdev, &dax);
-> +		if (dax_range_is_aligned(bdev, &dax, offset, length))
-> +			return blkdev_issue_zeroout(bdev, dax.sector,
-> +					length / bdev_logical_block_size(bdev),
-> +					GFP_NOFS, true);
-
-This is actually wrong. blkdev_issue_zeroout() expects length to be simply
-in units of 512-bytes. So you need length >> 9 here.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 -- 
