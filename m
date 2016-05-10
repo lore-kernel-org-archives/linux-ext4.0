@@ -1,15 +1,17 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 1/5] dax: fallback from pmd to pte on error
-Date: Tue, 10 May 2016 16:15:44 +0200
-Message-ID: <20160510141544.GL11897@quack2.suse.cz>
+Subject: Re: [PATCH v5 3/5] dax: use sb_issue_zerout instead of calling
+ dax_clear_sectors
+Date: Tue, 10 May 2016 16:16:41 +0200
+Message-ID: <20160510141641.GM11897@quack2.suse.cz>
 References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
- <1462571591-3361-2-git-send-email-vishal.l.verma@intel.com>
+ <1462571591-3361-4-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nvdimm@lists.01.org, Dan Williams <dan.j.williams@intel.com>,
+Cc: linux-nvdimm@lists.01.org, Matthew Wilcox <matthew.r.wilcox@intel.com>,
 	linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
 	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
 	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
 	Jens Axboe <axboe@fb.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -18,19 +20,20 @@ Cc: linux-nvdimm@lists.01.org, Dan Williams <dan.j.williams@intel.com>,
 To: Vishal Verma <vishal.l.verma@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1462571591-3361-2-git-send-email-vishal.l.verma@intel.com>
+In-Reply-To: <1462571591-3361-4-git-send-email-vishal.l.verma@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 06-05-16 15:53:07, Vishal Verma wrote:
-> From: Dan Williams <dan.j.williams@intel.com>
+On Fri 06-05-16 15:53:09, Vishal Verma wrote:
+> From: Matthew Wilcox <matthew.r.wilcox@intel.com>
 > 
-> In preparation for consulting a badblocks list in pmem_direct_access(),
-> teach dax_pmd_fault() to fallback rather than fail immediately upon
-> encountering an error.  The thought being that reducing the span of the
-> dax request may avoid the error region.
+> dax_clear_sectors() cannot handle poisoned blocks.  These must be
+> zeroed using the BIO interface instead.  Convert ext2 and XFS to use
+> only sb_issue_zerout().
 > 
-> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+> Signed-off-by: Matthew Wilcox <matthew.r.wilcox@intel.com>
+> [vishal: Also remove the dax_clear_sectors function entirely]
+> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
 
 The patch looks good. You can add:
 
