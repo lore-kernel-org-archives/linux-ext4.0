@@ -1,53 +1,109 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v2 1/2] direct-io: cleanup get_more_blocks()
-Date: Tue, 10 May 2016 13:38:05 -0400
-Message-ID: <x49y47h6cg2.fsf@segfault.boston.devel.redhat.com>
-References: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1462645910-23290-1-git-send-email-guaneryu@gmail.com> (Eryu
-	Guan's message of "Sun, 8 May 2016 02:31:49 +0800")
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Vishal Verma <vishal.l.verma@intel.com>
+Subject: [PATCH v6 0/5] dax: handling media errors (clear-on-zero only)
+Date: Tue, 10 May 2016 12:49:11 -0600
+Message-ID: <1462906156-22303-1-git-send-email-vishal.l.verma@intel.com>
+Cc: Vishal Verma <vishal.l.verma@intel.com>,
+	linux-fsdevel@vger.kernel.org,
+	linux-block@vger.kernel.org,
+	xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Boaz Harrosh <boaz@plexistor.com>
+To: linux-nvdimm@lists.01.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eryu Guan <guaneryu@gmail.com> writes:
+Until now, dax has been disabled if media errors were found on
+any device. This series attempts to address that.
 
-> Save one level of indention by returning error early.
->
-> Introduce some local variables to make the code easier to read a bit,
-> and do preparation for next patch.
->
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+The first two patches from Dan re-enable dax even when media
+errors are present.
 
-Hi, Eryu,
+The third patch from Matthew removes the zeroout path from dax
+entirely, making zeroout operations always go through the driver
+(The motivation is that if a backing device has media errors,
+and we create a sparse file on it, we don't want the initial
+zeroing to happen via dax, we want to give the block driver a
+chance to clear the errors).
 
-I don't think you have a full appreciation of the amount of optimization
-that goes into this code.  I don't see anything wrong with what you've
-done, but I also don't want to introduce all these local variables and
-change a branch in order to find out several months down the line that
-we introduced some TPC-C regression of .5%.
+Patch 4 reduces our calls to clear_pmem from dax in the
+truncate/hole-punch cases. We check if the range being truncated
+is sector aligned/sized, and if so, send blkdev_issue_zeroout
+instead of clear_pmem so that errors can be handled better by
+the driver.
 
-Look, I think this is all you need for the full fix:
+Patch 5 fixes a redundant comment in DAX and is mostly unrelated
+to the rest of this series.
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 4720377..f66754e 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -639,8 +639,7 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
- 		 */
- 		create = dio->rw & WRITE;
- 		if (dio->flags & DIO_SKIP_HOLES) {
--			if (sdio->block_in_file < (i_size_read(dio->inode) >>
--							sdio->blkbits))
-+			if (fs_startblk < fs_count)
- 				create = 0;
- 		}
- 
- 
-Can you just test that?
+This series also depends on/is based on Jan Kara's DAX Locking
+fixes series [1].
 
-Thanks,
-Jeff
+
+[1]: http://www.spinics.net/lists/linux-mm/msg105819.html
+
+v6:
+ - Use IS_ALIGNED in dax_range_is_aligned instead of open coding
+   an alignment check (Jan)
+ - Collect all Reveiwed-by tags so far.
+
+v5:
+ - Drop the patch that attempts to clear-errors-on-write till we
+   reach consensus on how to handle that.
+ - Don't pass blk_dax_ctl to direct_access, instead pass in all the
+   required arguments individually (Christoph, Dan)
+
+v4:
+ - Remove the dax->direct_IO fallbacks entirely. Instead, go through
+   the usual direct_IO path when we're in O_DIRECT, and use dax_IO
+   for other, non O_DIRECT IO. (Dan, Christoph)
+
+v3:
+ - Wrapper-ize the direct_IO fallback again and make an exception
+   for -EIOCBQUEUED (Jeff, Dan)
+ - Reduce clear_pmem usage in DAX to the minimum
+
+
+Dan Williams (2):
+  dax: fallback from pmd to pte on error
+  dax: enable dax in the presence of known media errors (badblocks)
+
+Matthew Wilcox (1):
+  dax: use sb_issue_zerout instead of calling dax_clear_sectors
+
+Vishal Verma (2):
+  dax: for truncate/hole-punch, do zeroing through the driver if
+    possible
+  dax: fix a comment in dax_zero_page_range and dax_truncate_page
+
+ Documentation/filesystems/dax.txt | 32 ++++++++++++++++
+ arch/powerpc/sysdev/axonram.c     |  2 +-
+ block/ioctl.c                     |  9 -----
+ drivers/block/brd.c               |  2 +-
+ drivers/nvdimm/pmem.c             | 10 ++++-
+ drivers/s390/block/dcssblk.c      |  2 +-
+ fs/block_dev.c                    |  2 +-
+ fs/dax.c                          | 77 +++++++++++++--------------------------
+ fs/ext2/inode.c                   |  7 ++--
+ fs/xfs/xfs_bmap_util.c            | 15 ++------
+ include/linux/blkdev.h            |  2 +-
+ include/linux/dax.h               |  1 -
+ 12 files changed, 79 insertions(+), 82 deletions(-)
+
+-- 
+2.5.5
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
