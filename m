@@ -1,47 +1,95 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 5/5] dax: fix a comment in dax_zero_page_range and
- dax_truncate_page
-Date: Tue, 10 May 2016 16:29:36 +0200
-Message-ID: <20160510142936.GO11897@quack2.suse.cz>
-References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
- <1462571591-3361-6-git-send-email-vishal.l.verma@intel.com>
+Subject: Re: [RFC v3] [PATCH 0/18] DAX page fault locking
+Date: Tue, 10 May 2016 17:28:14 +0200
+Message-ID: <20160510152814.GQ11897@quack2.suse.cz>
+References: <1461015341-20153-1-git-send-email-jack@suse.cz>
+ <20160506203308.GA12506@linux.intel.com>
+ <20160509093828.GF11897@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
-	linux-block@vger.kernel.org, xfs@oss.sgi.com,
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@fb.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Boaz Harrosh <boaz@plexistor.com>,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: Vishal Verma <vishal.l.verma@intel.com>
+	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1462571591-3361-6-git-send-email-vishal.l.verma@intel.com>
+In-Reply-To: <20160509093828.GF11897@quack2.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 06-05-16 15:53:11, Vishal Verma wrote:
-> The distinction between PAGE_SIZE and PAGE_CACHE_SIZE was removed in
+On Mon 09-05-16 11:38:28, Jan Kara wrote:
+> On Fri 06-05-16 14:33:08, Ross Zwisler wrote:
+> > On Mon, Apr 18, 2016 at 11:35:23PM +0200, Jan Kara wrote:
+> > > Hello,
+> > > 
+> > > this is my third attempt at DAX page fault locking rewrite. The patch set has
+> > > passed xfstests both with and without DAX mount option on ext4 and xfs for
+> > > me and also additional page fault beating using the new page fault stress
+> > > tests I have added to xfstests. So I'd be grateful if you guys could have a
+> > > closer look at the patches so that they can be merged. Thanks.
+> > > 
+> > > Changes since v2:
+> > > - lot of additional ext4 fixes and cleanups
+> > > - make PMD page faults depend on CONFIG_BROKEN instead of #if 0
+> > > - fixed page reference leak when replacing hole page with a pfn
+> > > - added some reviewed-by tags
+> > > - rebased on top of current Linus' tree
+> > > 
+> > > Changes since v1:
+> > > - handle wakeups of exclusive waiters properly
+> > > - fix cow fault races
+> > > - other minor stuff
+> > > 
+> > > General description
+> > > 
+> > > The basic idea is that we use a bit in an exceptional radix tree entry as
+> > > a lock bit and use it similarly to how page lock is used for normal faults.
+> > > That way we fix races between hole instantiation and read faults of the
+> > > same index. For now I have disabled PMD faults since there the issues with
+> > > page fault locking are even worse. Now that Matthew's multi-order radix tree
+> > > has landed, I can have a look into using that for proper locking of PMD faults
+> > > but first I want normal pages sorted out.
+> > > 
+> > > In the end I have decided to implement the bit locking directly in the DAX
+> > > code. Originally I was thinking we could provide something generic directly
+> > > in the radix tree code but the functions DAX needs are rather specific.
+> > > Maybe someone else will have a good idea how to distill some generally useful
+> > > functions out of what I've implemented for DAX but for now I didn't bother
+> > > with that.
+> > > 
+> > > 								Honza
+> > 
+> > Hey Jan,
+> > 
+> > Another hit in testing, which may or may not be related to the last one.  The
+> > BUG is a few lines off from the previous report:
+> > 	kernel BUG at mm/workingset.c:423!
+> > vs
+> > 	kernel BUG at mm/workingset.c:435!
+> > 
+> > I've been able to consistently hit this one using DAX + ext4 with generic/086.
+> > For some reason generic/086 always passes when run by itself, but fails
+> > consistently if you run it after a set of other tests.  Here is a relatively
+> > fast set that reproduces it:
 > 
-> 09cbfea mm, fs: get rid of PAGE_CACHE_* and page_cache_{get,release}
-> macros
-> 
-> The comments for the above functions described a distinction between
-> those, that is now redundant, so remove those paragraphs
-> 
-> Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-> Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
+> Thanks for reports! It is strange that I didn't see this happening but I've
+> been testing against somewhat older base so maybe something has changed.
+> Anyway the culprit seems to be that workingset tracking code messes with
+> radix tree which is managed by DAX and these two were never meant to
+> coexist so assertions naturally trip. In particular we should not add radix
+> tree node to working-set list of nodes for eviction in
+> page_cache_tree_delete() for DAX inodes. However that seems to happen in
+> your case and so far I don't quite understand why...
 
-Looks good. You can add:
+Somehow, I'm not able to reproduce the warnings... Anyway, I think I see
+what's going on. Can you check whether the warning goes away when you
+change the condition at the end of page_cache_tree_delete() to:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+        if (!dax_mapping(mapping) && !workingset_node_pages(node) &&
+            list_empty(&node->private_list)) {
+
+Thanks!
 
 								Honza
 -- 
