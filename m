@@ -1,72 +1,48 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
- available
-Date: Tue, 10 May 2016 09:21:05 -0400
-Message-ID: <1462886465.20038.6.camel@poochiereds.net>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
-	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
-	 <20160508083543.GA14316@infradead.org>
-	 <1462795378.4481.31.camel@poochiereds.net>
-	 <20160510070044.GA30896@infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v5 1/5] dax: fallback from pmd to pte on error
+Date: Tue, 10 May 2016 16:15:44 +0200
+Message-ID: <20160510141544.GL11897@quack2.suse.cz>
+References: <1462571591-3361-1-git-send-email-vishal.l.verma@intel.com>
+ <1462571591-3361-2-git-send-email-vishal.l.verma@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20160510070044.GA30896@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nvdimm@lists.01.org, Dan Williams <dan.j.williams@intel.com>,
+	linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+	Jeff Moyer <jmoyer@redhat.com>, Boaz Harrosh <boaz@plexistor.com>
+To: Vishal Verma <vishal.l.verma@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1462571591-3361-2-git-send-email-vishal.l.verma@intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2016-05-10 at 00:00 -0700, Christoph Hellwig wrote:
-> On Mon, May 09, 2016 at 08:02:58AM -0400, Jeff Layton wrote:
-> > > > AT_FORCE_ATTR_SYNC can be set in flags.????This will require a
-> > > > network
-> > > > filesystem to synchronise its attributes with the server.
-> > > >=20
-> > > > AT_NO_ATTR_SYNC can be set in flags.????This will suppress
-> > > > synchronisation
-> > > > with the server in a network filesystem.????The resulting
-> > > > values should be
-> > > > considered approximate.
-> > >=20
-> > > And what happens if neither is set?
-> > >=20
-> >=20
-> > I'd suggest we have the documentation state that the lack of either
-> > flag leaves it up to the filesystem. In the case of NFS, you'd get
-> > "normal" attribute cache behavior, for instance which is governed
-> > by
-> > the ac* attributes.
-> >=20
-> > We should also note that in the case of something like
-> > AT_NO_ATTR_SYNC
-> > on NFS, you might _still_ end up talking to the server if the
-> > client
-> > has nothing in-core for that inode.
->=20
-> File systems specific "legacy" defaults are a bad idea.=C2=A0=C2=A0If=
- we can't
-> describe the semantics we should not allow them, never mind making
-> the the default.=C2=A0=C2=A0I'd strongly suggest picking one of the a=
-bove flags
-> as the default behavior and only allowing the other as optional flag.
-> I suspect NO_SYNC is the better one for the flag, as otherwise people
-> will be surprised once they test their default case on a network
-> filesystem.
+On Fri 06-05-16 15:53:07, Vishal Verma wrote:
+> From: Dan Williams <dan.j.williams@intel.com>
+> 
+> In preparation for consulting a badblocks list in pmem_direct_access(),
+> teach dax_pmd_fault() to fallback rather than fail immediately upon
+> encountering an error.  The thought being that reducing the span of the
+> dax request may avoid the error region.
+> 
+> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 
-Ok, that's a good point. So basically you suggest that xstat should
-always have FORCE_SYNC semantics unless the NO_SYNC flag is set? Given
-that we don't need to worry about legacy users with this interface,
-that seems like a reasonable approach to me.
-=C2=A0
---=20
-Jeff Layton <jlayton@poochiereds.net>
+The patch looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
