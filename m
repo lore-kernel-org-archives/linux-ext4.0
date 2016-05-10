@@ -1,97 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC v3] [PATCH 0/18] DAX page fault locking
-Date: Tue, 10 May 2016 17:28:14 +0200
-Message-ID: <20160510152814.GQ11897@quack2.suse.cz>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <20160506203308.GA12506@linux.intel.com>
- <20160509093828.GF11897@quack2.suse.cz>
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+Subject: RE: [PATCH v21 00/22] Richacls
+Date: Tue, 10 May 2016 08:55:19 -0700
+Message-ID: <002001d1aad4$5c3bd9f0$14b38dd0$@mindspring.com>
+References: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
+	<20160510041809.GB1079@sernet.de>
+	<20160510081150.GA3411@jeremy-ThinkPad-T430s>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160509093828.GF11897@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+	'Theodore Ts'o' <tytso@mit.edu>,
+	'Andreas Gruenbacher' <agruenba@redhat.com>,
+	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+	'Trond Myklebust' <trond.myklebust@primarydata.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	'Christoph Hellwig' <hch@infradead.org>,
+	'Andreas Dilger' <adilger.kernel@dilger.ca>,
+	'Alexander Viro' <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+	'Jeff Layton' <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
+	'Anna Schumaker' <anna.schumaker@netapp.com>
+To: "'Jeremy Allison'" <jra@samba.org>,
+	"'Volker Lendecke'" <Volker.Lendecke@SerNet.DE>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20160510081150.GA3411@jeremy-ThinkPad-T430s>
+Content-Language: en-us
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 09-05-16 11:38:28, Jan Kara wrote:
-> On Fri 06-05-16 14:33:08, Ross Zwisler wrote:
-> > On Mon, Apr 18, 2016 at 11:35:23PM +0200, Jan Kara wrote:
-> > > Hello,
-> > > 
-> > > this is my third attempt at DAX page fault locking rewrite. The patch set has
-> > > passed xfstests both with and without DAX mount option on ext4 and xfs for
-> > > me and also additional page fault beating using the new page fault stress
-> > > tests I have added to xfstests. So I'd be grateful if you guys could have a
-> > > closer look at the patches so that they can be merged. Thanks.
-> > > 
-> > > Changes since v2:
-> > > - lot of additional ext4 fixes and cleanups
-> > > - make PMD page faults depend on CONFIG_BROKEN instead of #if 0
-> > > - fixed page reference leak when replacing hole page with a pfn
-> > > - added some reviewed-by tags
-> > > - rebased on top of current Linus' tree
-> > > 
-> > > Changes since v1:
-> > > - handle wakeups of exclusive waiters properly
-> > > - fix cow fault races
-> > > - other minor stuff
-> > > 
-> > > General description
-> > > 
-> > > The basic idea is that we use a bit in an exceptional radix tree entry as
-> > > a lock bit and use it similarly to how page lock is used for normal faults.
-> > > That way we fix races between hole instantiation and read faults of the
-> > > same index. For now I have disabled PMD faults since there the issues with
-> > > page fault locking are even worse. Now that Matthew's multi-order radix tree
-> > > has landed, I can have a look into using that for proper locking of PMD faults
-> > > but first I want normal pages sorted out.
-> > > 
-> > > In the end I have decided to implement the bit locking directly in the DAX
-> > > code. Originally I was thinking we could provide something generic directly
-> > > in the radix tree code but the functions DAX needs are rather specific.
-> > > Maybe someone else will have a good idea how to distill some generally useful
-> > > functions out of what I've implemented for DAX but for now I didn't bother
-> > > with that.
-> > > 
-> > > 								Honza
-> > 
-> > Hey Jan,
-> > 
-> > Another hit in testing, which may or may not be related to the last one.  The
-> > BUG is a few lines off from the previous report:
-> > 	kernel BUG at mm/workingset.c:423!
-> > vs
-> > 	kernel BUG at mm/workingset.c:435!
-> > 
-> > I've been able to consistently hit this one using DAX + ext4 with generic/086.
-> > For some reason generic/086 always passes when run by itself, but fails
-> > consistently if you run it after a set of other tests.  Here is a relatively
-> > fast set that reproduces it:
+> On Tue, May 10, 2016 at 06:18:10AM +0200, Volker Lendecke wrote:
+> > On Tue, May 10, 2016 at 12:02:33AM +0200, Andreas Gruenbacher wrote:
+> > > What more can I do to finally get this merged?
+> >
+> > While I am not the one to comment on kernel specifics, from a pure
+> > Samba user space perspective let me say: We need this. NOW.
 > 
-> Thanks for reports! It is strange that I didn't see this happening but I've
-> been testing against somewhat older base so maybe something has changed.
-> Anyway the culprit seems to be that workingset tracking code messes with
-> radix tree which is managed by DAX and these two were never meant to
-> coexist so assertions naturally trip. In particular we should not add radix
-> tree node to working-set list of nodes for eviction in
-> page_cache_tree_delete() for DAX inodes. However that seems to happen in
-> your case and so far I don't quite understand why...
+> +1 from me. This is something that many vendors need
+> and have needed for a very long time. Getting this in will allow *large*
+> amounts of existing storage to be migrated to Linux.
 
-Somehow, I'm not able to reproduce the warnings... Anyway, I think I see
-what's going on. Can you check whether the warning goes away when you
-change the condition at the end of page_cache_tree_delete() to:
++1 from me also. Once this is in Ganesha will integrate with it also.
 
-        if (!dax_mapping(mapping) && !workingset_node_pages(node) &&
-            list_empty(&node->private_list)) {
+Frank
 
-Thanks!
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
