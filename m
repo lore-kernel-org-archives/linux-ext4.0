@@ -1,70 +1,75 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] direct-io: fix stale data exposure from concurrent
- buffered read
-Date: Wed, 11 May 2016 18:57:15 +0200
-Message-ID: <20160511165715.GH14744@quack2.suse.cz>
-References: <1462033162-21837-1-git-send-email-guaneryu@gmail.com>
- <x49twic5m6m.fsf@segfault.boston.devel.redhat.com>
- <20160506104622.GB10350@eguan.usersys.redhat.com>
- <x49d1oz5l64.fsf@segfault.boston.devel.redhat.com>
- <20160507030400.GC10350@eguan.usersys.redhat.com>
- <x49futr72up.fsf@segfault.boston.devel.redhat.com>
+Subject: Re: [PATCH v2 1/2] direct-io: cleanup get_more_blocks()
+Date: Wed, 11 May 2016 19:05:53 +0200
+Message-ID: <20160511170553.GA7332@quack2.suse.cz>
+References: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
+ <x49y47h6cg2.fsf@segfault.boston.devel.redhat.com>
+ <20160511132312.GD10350@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eryu Guan <guaneryu@gmail.com>, Jan Kara <jack@suse.cz>,
-	Theodore T'so <tytso@google.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jeff Moyer <jmoyer@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Eryu Guan <guaneryu@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:49357 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751930AbcEKRF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2016 13:05:56 -0400
 Content-Disposition: inline
-In-Reply-To: <x49futr72up.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160511132312.GD10350@eguan.usersys.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 09-05-16 09:55:26, Jeff Moyer wrote:
-> Eryu Guan <guaneryu@gmail.com> writes:
+On Wed 11-05-16 21:23:12, Eryu Guan wrote:
+> On Tue, May 10, 2016 at 01:38:05PM -0400, Jeff Moyer wrote:
+> > Look, I think this is all you need for the full fix:
+> > 
+> > diff --git a/fs/direct-io.c b/fs/direct-io.c
+> > index 4720377..f66754e 100644
+> > --- a/fs/direct-io.c
+> > +++ b/fs/direct-io.c
+> > @@ -639,8 +639,7 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
+> >  		 */
+> >  		create = dio->rw & WRITE;
+> >  		if (dio->flags & DIO_SKIP_HOLES) {
+> > -			if (sdio->block_in_file < (i_size_read(dio->inode) >>
+> > -							sdio->blkbits))
+> > +			if (fs_startblk < fs_count)
+
+fs_count is number of blocks in the request so that is not correct...
+
+> >  				create = 0;
+> >  		}
+> >  
+> >  
+> > Can you just test that?
 > 
-> > On Fri, May 06, 2016 at 10:13:39AM -0400, Jeff Moyer wrote:
-> >> Eryu Guan <guaneryu@gmail.com> writes:
-> >> 
-> >> > On Thu, May 05, 2016 at 03:39:29PM -0400, Jeff Moyer wrote:
-> >> >> I think this code operates on blocks for a reason: we're trying to
-> >> >> determine if we'll trigger block allocation, right?  For example,
-> >> >> consider a sparse file with i_size of 2k, and a write to offset 2k into
-> >> >> the file, with a file system block size of 4k.  Should that have create
-> >> >> set or not?
-> >> >
-> >> > Thanks for pointing this out! I think 'create' should be 0 in this case,
-> >> > my test failed in this case, with both 4.6-rc6 stock kernel and my
-> >> > patched kernel.
-> >> >
-> >> > I'm testing an updated patch now, hopefully it's doing the right thing.
-> >> > It's basiclly something like:
-> >> >
-> >> > if (offset < i_size)
-> >> > 	create = 0;
-> >> > else if ((block_in_file >> blkfactor) == (i_size >> (blkbits + blkfactor)) &&
-> >> > 	 (i_size & ((1 << (blkbits + blkfactor)) - 1)))
-> >> > 	create = 0;
-> >> 
-> >> I think that can be simplified to a single check;  something like:
-> >> 
-> >> 	if (block_in_file < total_blocks_in_file)
-> >> 		create = 0;
-> >
-> > I may miss something, but this doesn't seem right to me. Still take your
-> > example, on a 4k block size & 512 sector size filesystem
+> I tested it and it did fix both of the issues for me. But it seems that
+> it's a bit overkilled, in certain case block allocation should be
+> allowed, but it still sets 'create' to 0.
 > 
-> ... where blocks are in file system block size units.  So:
+> For example, append writing 8k to a 4k sparse file (so offset is also
+> 4k), on a 4k block size filesystem, fs_startblk(1) is smaller than
+> fs_count(2), so it still sets 'create' to 0. But block allocation should
+> be allowed in this case, and both the original code and my patch do so.
 > 
-> if (fs_block_in_file < total_fs_blocks_in_file)
+> So I simplified my real fix to this (updates for comments not included):
+> 
+> diff --git a/fs/direct-io.c b/fs/direct-io.c
+> index 4720377..0cace3e 100644
+> --- a/fs/direct-io.c
+> +++ b/fs/direct-io.c
+> @@ -639,8 +639,8 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
+>                  */
+>                 create = dio->rw & WRITE;
+>                 if (dio->flags & DIO_SKIP_HOLES) {
+> -                       if (sdio->block_in_file < (i_size_read(dio->inode) >>
+> -                                                       sdio->blkbits))
+> +                       if (fs_startblk <= ((i_size_read(dio->inode) - 1) >>
+> +                                                       i_blkbits))
+>                                 create = 0;
 
-Agreed. The test should be:
-
-	if (fs_startblk < (i_size_read(dio->inode) >>
-					(sdio->blkbits + sdio->blkfactor)))
-
-Sorry for not having a look earlier.
+Yes, this is correct as far as I can tell.
 
 								Honza
 -- 
