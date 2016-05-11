@@ -1,110 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 2/2] direct-io: fix stale data exposure from
- concurrent buffered read
-Date: Wed, 11 May 2016 19:08:00 +0200
-Message-ID: <20160511170800.GB7332@quack2.suse.cz>
-References: <1462645910-23290-1-git-send-email-guaneryu@gmail.com>
- <1462645910-23290-2-git-send-email-guaneryu@gmail.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v6 4/5] dax: for truncate/hole-punch, do zeroing through
+ the driver if possible
+Date: Wed, 11 May 2016 17:47:00 +0000
+Message-ID: <1462988808.29294.26.camel@intel.com>
+References: <1462906156-22303-1-git-send-email-vishal.l.verma@intel.com>
+	 <1462906156-22303-5-git-send-email-vishal.l.verma@intel.com>
+	 <20160511081532.GB14744@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jmoyer@redhat.com
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"Williams, Dan J" <dan.j.williams@intel.com>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"boaz@plexistor.com" <boaz@plexistor.com>,
+	"david@fromorbit.com" <david@fromorbit.com>
+To: "jack@suse.cz" <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1462645910-23290-2-git-send-email-guaneryu@gmail.com>
+In-Reply-To: <20160511081532.GB14744@quack2.suse.cz>
+Content-Language: en-US
+Content-ID: <A1E995196763DE4E964EAE4A2FA3201C@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 08-05-16 02:31:50, Eryu Guan wrote:
-> Currently direct writes inside i_size on a DIO_SKIP_HOLES filesystem are
-> not allowed to allocate blocks(get_more_blocks() sets 'create' to 0
-> before calling get_block() callback), if it's a sparse file, direct
-> writes fall back to buffered writes to avoid stale data exposure from
-> concurrent buffered read. But there're two cases that can result in
-> stale data exposure are not correctly detected.
-> 
-> 1. The detection for "writing inside i_size" is not sufficient, writes
-> can be treated as "extending writes" wrongly. For example, direct write
-> 1FSB to a 1FSB sparse file on ext2/3/4, starting from offset 0, in this
-> case it's writing inside i_size, but 'create' is non-zero, because
-> 'block_in_file' and '(i_size_read(inode) >> blkbits' are both zero.
-> 
-> 2. Direct writes starting from or beyong i_size (not inside i_size) also
-> could trigger block allocation and expose stale data. For example,
-> consider a sparse file with i_size of 2k, and a write to offset 2k or 3k
-> into the file, with a filesystem block size of 4k. (Thanks to Jeff Moyer
-> for pointing this case out.)
-> 
-> The first problem can be demostrated by running ltp-aiodio test ADSP045
-> many times. When testing on extN filesystems, I see test failures
-> occasionally, buffered read could read non-zero (stale) data.
-> 
-> ADSP045: dio_sparse -a 4k -w 4k -s 2k -n 1
-> 
-> dio_sparse    0  TINFO  :  Dirtying free blocks
-> dio_sparse    0  TINFO  :  Starting I/O tests
-> non zero buffer at buf[0] => 0xffffffaa,ffffffaa,ffffffaa,ffffffaa
-> non-zero read at offset 0
-> dio_sparse    0  TINFO  :  Killing childrens(s)
-> dio_sparse    1  TFAIL  :  dio_sparse.c:191: 1 children(s) exited abnormally
-> 
-> The second problem can also be reproduced easily by a hacked dio_sparse
-> program, which accepts an option to specify the write offset.
-> 
-> What we should really do is to disable block allocation for writes that
-> could result in filling holes inside i_size.
-> 
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
-
-The patch looks good to me. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
-> 
-> v2:
-> - Fix the case Jeff pointed out as well
-> - Update commit log
-> 
->  fs/direct-io.c | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index 9d5aff9..5c13bbf 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -632,8 +632,10 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->  	map_bh->b_size = fs_count << i_blkbits;
->  
->  	/*
-> -	 * For writes inside i_size on a DIO_SKIP_HOLES filesystem we
-> -	 * forbid block creations: only overwrites are permitted.
-> +	 * For writes that could fill holes inside i_size on a
-> +	 * DIO_SKIP_HOLES filesystem we forbid block creations: only
-> +	 * overwrites are permitted.
-> +	 *
->  	 * We will return early to the caller once we see an
->  	 * unmapped buffer head returned, and the caller will fall
->  	 * back to buffered I/O.
-> @@ -644,7 +646,7 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->  	 */
->  	create = dio->rw & WRITE;
->  	if (dio->flags & DIO_SKIP_HOLES) {
-> -		if (block_in_file < (i_size_read(inode) >> blkbits))
-> +		if (fs_startblk <= ((i_size_read(inode) - 1) >> i_blkbits))
->  			create = 0;
->  	}
->  
-> -- 
-> 2.5.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+T24gV2VkLCAyMDE2LTA1LTExIGF0IDEwOjE1ICswMjAwLCBKYW4gS2FyYSB3cm90ZToNCj4gT24g
+VHVlIDEwLTA1LTE2IDEyOjQ5OjE1LCBWaXNoYWwgVmVybWEgd3JvdGU6DQo+ID4gDQo+ID4gSW4g
+dGhlIHRydW5jYXRlIG9yIGhvbGUtcHVuY2ggcGF0aCBpbiBkYXgsIHdlIGNsZWFyIG91dCBzdWIt
+cGFnZQ0KPiA+IHJhbmdlcy4NCj4gPiBJZiB0aGVzZSBzdWItcGFnZSByYW5nZXMgYXJlIHNlY3Rv
+ciBhbGlnbmVkIGFuZCBzaXplZCwgd2UgY2FuIGRvIHRoZQ0KPiA+IHplcm9pbmcgdGhyb3VnaCB0
+aGUgZHJpdmVyIGluc3RlYWQgc28gdGhhdCBlcnJvci1jbGVhcmluZyBpcyBoYW5kbGVkDQo+ID4g
+YXV0b21hdGljYWxseS4NCj4gPiANCj4gPiBGb3Igc3ViLXNlY3RvciByYW5nZXMsIHdlIHN0aWxs
+IGhhdmUgdG8gcmVseSBvbiBjbGVhcl9wbWVtIGFuZCBoYXZlDQo+ID4gdGhlDQo+ID4gcG9zc2li
+aWxpdHkgb2YgdHJpcHBpbmcgb3ZlciBlcnJvcnMuDQo+ID4gDQo+ID4gQ2M6IERhbiBXaWxsaWFt
+cyA8ZGFuLmoud2lsbGlhbXNAaW50ZWwuY29tPg0KPiA+IENjOiBSb3NzIFp3aXNsZXIgPHJvc3Mu
+endpc2xlckBsaW51eC5pbnRlbC5jb20+DQo+ID4gQ2M6IEplZmYgTW95ZXIgPGptb3llckByZWRo
+YXQuY29tPg0KPiA+IENjOiBDaHJpc3RvcGggSGVsbHdpZyA8aGNoQGluZnJhZGVhZC5vcmc+DQo+
+ID4gQ2M6IERhdmUgQ2hpbm5lciA8ZGF2aWRAZnJvbW9yYml0LmNvbT4NCj4gPiBDYzogSmFuIEth
+cmEgPGphY2tAc3VzZS5jej4NCj4gPiBSZXZpZXdlZC1ieTogQ2hyaXN0b3BoIEhlbGx3aWcgPGhj
+aEBsc3QuZGU+DQo+ID4gU2lnbmVkLW9mZi1ieTogVmlzaGFsIFZlcm1hIDx2aXNoYWwubC52ZXJt
+YUBpbnRlbC5jb20+DQo+IC4uLg0KPiANCj4gPiANCj4gPiArc3RhdGljIGJvb2wgZGF4X3Jhbmdl
+X2lzX2FsaWduZWQoc3RydWN0IGJsb2NrX2RldmljZSAqYmRldiwNCj4gPiArCQkJCcKgc3RydWN0
+IGJsa19kYXhfY3RsICpkYXgsIHVuc2lnbmVkDQo+ID4gaW50IG9mZnNldCwNCj4gPiArCQkJCcKg
+dW5zaWduZWQgaW50IGxlbmd0aCkNCj4gPiArew0KPiA+ICsJdW5zaWduZWQgc2hvcnQgc2VjdG9y
+X3NpemUgPSBiZGV2X2xvZ2ljYWxfYmxvY2tfc2l6ZShiZGV2KTsNCj4gPiArDQo+ID4gKwlpZiAo
+IUlTX0FMSUdORUQoKCh1NjQpZGF4LT5hZGRyICsgb2Zmc2V0KSwgc2VjdG9yX3NpemUpKQ0KPiBP
+bmUgbW9yZSBxdWVzdGlvbjogJ2RheCcgaXMgaW5pdGlhbGl6ZWQgaW4gZGF4X3plcm9fcGFnZV9y
+YW5nZSgpIGFuZA0KPiBkYXgtPmFkZHIgaXMgZ29pbmcgdG8gYmUgYWx3YXlzIE5VTEwgaGVyZS4g
+U28gZWl0aGVyIHlvdSBmb3Jnb3QgdG8NCj4gY2FsbA0KPiBkYXhfbWFwX2F0b21pYygpIHRvIGdl
+dCB0aGUgYWRkciBvciB0aGUgdXNlIG9mIGRheC0+YWRkciBpcyBqdXN0IGJvZ3VzDQo+ICh3aGlj
+aCBpcyB3aGF0IEkgY3VycmVudGx5IGJlbGlldmUgc2luY2UgSSBzZWUgbm8gd2F5IGhvdyB0aGUg
+YWRkcmVzcw0KPiBjb3VsZA0KPiBiZSB1bmFsaWduZWQgd2l0aCB0aGUgc2VjdG9yX3NpemUpLi4u
+DQo+IA0KDQpHb29kIGNhdGNoLCBhbmQgeW91J3JlIHJpZ2h0LiBJIGRvbid0IHRoaW5rIEkgYWN0
+dWFsbHkgZXZlbiB3YW50IHRvIHVzZQ0KZGF4LT5hZGRyIGZvciB0aGUgYWxpZ25tZW50IGNoZWNr
+IGhlcmUgLSBJIHdhbnQgdG8gY2hlY2sgaWYgd2UncmUNCmFsaWduZWQgdG8gdGhlIGJsb2NrIGRl
+dmljZSBzZWN0b3IuIEknbSB0aGlua2luZyBzb21ldGhpbmcgbGlrZToNCg0KCWlmICghSVNfQUxJ
+R05FRChvZmZzZXQsIHNlY3Rvcl9zaXplKSkNCg0KVGVjaG5pY2FsbHkgd2Ugd2FudCB0byBjaGVj
+ayBpZiBzZWN0b3IgKiBzZWN0b3Jfc2l6ZSArIG9mZnNldCBpcw0KYWxpZ25lZCwgYnV0IHRoZSBm
+aXJzdCBwYXJ0IG9mIHRoYXQgaXMgYWxyZWFkeSBhIHNlY3RvciA6KQ==
