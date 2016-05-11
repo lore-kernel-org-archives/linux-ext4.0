@@ -1,34 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/7 v4] DAX cleanups and fixes
-Date: Wed, 11 May 2016 11:58:46 +0200
-Message-ID: <1462960733-29634-1-git-send-email-jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Vishal Verma <vishal.l.verma@intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: linux-nvdimm@lists.01.org
+From: "Craske, Mark" <Mark_Craske@mentor.com>
+Subject: ext4: what are possible causes of "zero length extent" ?
+Date: Wed, 11 May 2016 10:22:28 +0000
+Message-ID: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43902 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751741AbcEKJ7W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2016 05:59:22 -0400
+Received: from relay1.mentorg.com ([192.94.38.131]:35902 "EHLO
+	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751271AbcEKKWa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2016 06:22:30 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Hello ext4 maintainers,
 
-This is another part of the series that implements new DAX page fault locking.
-This part contains easy DAX cleanups and fixes that were already reviewed and
-are rather obvious so they could be merged right away. They mostly remove
-dead unused code. The patches didn't change since the last posting of the DAX
-page fault locking series except for some added Reviewed-by tags.
+This is somewhat of a follow-on from the "ext4 filesystem bad extent error review"
+thread from 2014.
 
-Since DAX error handling patches depend on these I assume they will get merged
-through NVDIMM tree.  These patches depend on ext4 fixes from the series "ext4:
-DAX fixes". The dependency is mostly functional (these patches remove zeroing
-from DAX code and ext4 was depending on this zeroing until the above series
-fixed that) so NVDIMM tree should be merged after ext4 tree to avoid breaking
-ext4 DAX support.
+Embedded system with main SoC Freescale i.MX6(ARM cortex A9), dual CPU, running
+kernel 3.8.13.28, storage device is eMMC.
+This still suffers from "zero length extent" ext4 file system corruptions.
 
-								Honza
+I looked for upstream patches, but did not find any that explicitly fix "zero length extent"
+problems apart from "2f97486 ext4: check for zero length extent explicitly".
+That patch prevents the kernel panics but makes the affected file unreadable and
+unremovable, which can be fixed by running fsck.
+
+What are possible causes of "zero length extent", and are there upstream patches that
+actually deal with some of those?
+
+Regards,
+Mark Craske
+Mentor Graphics (UK) Ltd.
