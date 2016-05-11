@@ -1,129 +1,101 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/4] ext4: Handle transient ENOSPC properly for DAX
-Date: Wed, 11 May 2016 11:39:08 +0200
-Message-ID: <1462959551-28622-2-git-send-email-jack@suse.cz>
-References: <1462959551-28622-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
+Subject: [PATCH 5/7] dax: Remove zeroing from dax_io()
+Date: Wed, 11 May 2016 11:58:51 +0200
+Message-ID: <1462960733-29634-6-git-send-email-jack@suse.cz>
+References: <1462960733-29634-1-git-send-email-jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Vishal Verma <vishal.l.verma@intel.com>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Dan Williams <dan.j.williams@intel.com>,
 	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+To: linux-nvdimm@lists.01.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41331 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:43935 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751981AbcEKJjZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 May 2016 05:39:25 -0400
-In-Reply-To: <1462959551-28622-1-git-send-email-jack@suse.cz>
+	id S1751994AbcEKJ7Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2016 05:59:24 -0400
+In-Reply-To: <1462960733-29634-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_dax_get_blocks() was accidentally omitted fixing get blocks
-handlers to properly handle transient ENOSPC errors. Fix it now to use
-ext4_get_blocks_trans() helper which takes care of these errors.
+All the filesystems are now zeroing blocks themselves for DAX IO to avoid
+races between dax_io() and dax_fault(). Remove the zeroing code from
+dax_io() and add warning to catch the case when somebody unexpectedly
+returns new or unwritten buffer.
 
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 75 +++++++++++++++------------------------------------------
- 1 file changed, 20 insertions(+), 55 deletions(-)
+ fs/dax.c | 28 ++++++++++------------------
+ 1 file changed, 10 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 981a1fc30eaa..3e0c06028668 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3218,72 +3218,37 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
- int ext4_dax_mmap_get_block(struct inode *inode, sector_t iblock,
- 			    struct buffer_head *bh_result, int create)
- {
--	int ret, err;
--	int credits;
--	struct ext4_map_blocks map;
--	handle_t *handle = NULL;
--	int flags = 0;
-+	int ret;
- 
- 	ext4_debug("ext4_dax_mmap_get_block: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
--	map.m_lblk = iblock;
--	map.m_len = bh_result->b_size >> inode->i_blkbits;
--	credits = ext4_chunk_trans_blocks(inode, map.m_len);
--	if (create) {
--		flags |= EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_CREATE_ZERO;
--		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			return ret;
--		}
--	}
-+	if (!create)
-+		return _ext4_get_block(inode, iblock, bh_result, 0);
- 
--	ret = ext4_map_blocks(handle, inode, &map, flags);
--	if (create) {
--		err = ext4_journal_stop(handle);
--		if (ret >= 0 && err < 0)
--			ret = err;
--	}
--	if (ret <= 0)
--		goto out;
--	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
--		int err2;
-+	ret = ext4_get_block_trans(inode, iblock, bh_result,
-+				   EXT4_GET_BLOCKS_PRE_IO |
-+				   EXT4_GET_BLOCKS_CREATE_ZERO);
-+	if (ret < 0)
-+		return ret;
- 
-+	if (buffer_unwritten(bh_result)) {
- 		/*
- 		 * We are protected by i_mmap_sem so we know block cannot go
- 		 * away from under us even though we dropped i_data_sem.
- 		 * Convert extent to written and write zeros there.
--		 *
--		 * Note: We may get here even when create == 0.
- 		 */
--		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			goto out;
--		}
--
--		err = ext4_map_blocks(handle, inode, &map,
--		      EXT4_GET_BLOCKS_CONVERT | EXT4_GET_BLOCKS_CREATE_ZERO);
--		if (err < 0)
--			ret = err;
--		err2 = ext4_journal_stop(handle);
--		if (err2 < 0 && ret > 0)
--			ret = err2;
--	}
--out:
--	WARN_ON_ONCE(ret == 0 && create);
--	if (ret > 0) {
--		map_bh(bh_result, inode->i_sb, map.m_pblk);
--		/*
--		 * At least for now we have to clear BH_New so that DAX code
--		 * doesn't attempt to zero blocks again in a racy way.
--		 */
--		map.m_flags &= ~EXT4_MAP_NEW;
--		ext4_update_bh_state(bh_result, map.m_flags);
--		bh_result->b_size = map.m_len << inode->i_blkbits;
--		ret = 0;
-+		ret = ext4_get_block_trans(inode, iblock, bh_result,
-+					   EXT4_GET_BLOCKS_CONVERT |
-+					   EXT4_GET_BLOCKS_CREATE_ZERO);
-+		if (ret < 0)
-+			return ret;
- 	}
--	return ret;
-+	/*
-+	 * At least for now we have to clear BH_New so that DAX code
-+	 * doesn't attempt to zero blocks again in a racy way.
-+	 */
-+	clear_buffer_new(bh_result);
-+	return 0;
+diff --git a/fs/dax.c b/fs/dax.c
+index ccb8bc399d78..7c0036dd1570 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -119,18 +119,6 @@ int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size)
  }
- #endif
+ EXPORT_SYMBOL_GPL(dax_clear_sectors);
  
+-/* the clear_pmem() calls are ordered by a wmb_pmem() in the caller */
+-static void dax_new_buf(void __pmem *addr, unsigned size, unsigned first,
+-		loff_t pos, loff_t end)
+-{
+-	loff_t final = end - pos + first; /* The final byte of the buffer */
+-
+-	if (first > 0)
+-		clear_pmem(addr, first);
+-	if (final < size)
+-		clear_pmem(addr + final, size - final);
+-}
+-
+ static bool buffer_written(struct buffer_head *bh)
+ {
+ 	return buffer_mapped(bh) && !buffer_unwritten(bh);
+@@ -169,6 +157,9 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 	struct blk_dax_ctl dax = {
+ 		.addr = (void __pmem *) ERR_PTR(-EIO),
+ 	};
++	unsigned blkbits = inode->i_blkbits;
++	sector_t file_blks = (i_size_read(inode) + (1 << blkbits) - 1)
++								>> blkbits;
+ 
+ 	if (rw == READ)
+ 		end = min(end, i_size_read(inode));
+@@ -176,7 +167,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 	while (pos < end) {
+ 		size_t len;
+ 		if (pos == max) {
+-			unsigned blkbits = inode->i_blkbits;
+ 			long page = pos >> PAGE_SHIFT;
+ 			sector_t block = page << (PAGE_SHIFT - blkbits);
+ 			unsigned first = pos - (block << blkbits);
+@@ -192,6 +182,13 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 					bh->b_size = 1 << blkbits;
+ 				bh_max = pos - first + bh->b_size;
+ 				bdev = bh->b_bdev;
++				/*
++				 * We allow uninitialized buffers for writes
++				 * beyond EOF as those cannot race with faults
++				 */
++				WARN_ON_ONCE(
++					(buffer_new(bh) && block < file_blks) ||
++					(rw == WRITE && buffer_unwritten(bh)));
+ 			} else {
+ 				unsigned done = bh->b_size -
+ 						(bh_max - (pos - first));
+@@ -211,11 +208,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 					rc = map_len;
+ 					break;
+ 				}
+-				if (buffer_unwritten(bh) || buffer_new(bh)) {
+-					dax_new_buf(dax.addr, map_len, first,
+-							pos, end);
+-					need_wmb = true;
+-				}
+ 				dax.addr += first;
+ 				size = map_len - first;
+ 			}
 -- 
 2.6.6
 
