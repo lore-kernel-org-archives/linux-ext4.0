@@ -1,203 +1,168 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 16/18] dax: New fault locking
-Date: Wed, 11 May 2016 13:26:32 -0600
-Message-ID: <20160511192632.GA8841@linux.intel.com>
-References: <1461015341-20153-1-git-send-email-jack@suse.cz>
- <1461015341-20153-17-git-send-email-jack@suse.cz>
- <20160506041350.GA29628@linux.intel.com>
- <20160510122715.GK11897@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org, Matthew Wilcox <willy@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
+From: Vishal Verma <vishal.l.verma@intel.com>
+Subject: [PATCH v7 2/6] dax: enable dax in the presence of known media errors (badblocks)
+Date: Wed, 11 May 2016 15:08:48 -0600
+Message-ID: <1463000932-31680-3-git-send-email-vishal.l.verma@intel.com>
+References: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	linux-fsdevel@vger.kernel.org,
+	linux-block@vger.kernel.org,
+	xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.cz>,
+	Jens Axboe <axboe@fb.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	Jeff Moyer <jmoyer@redhat.com>,
+	Boaz Harrosh <boaz@plexistor.com>,
+	Vishal Verma <vishal.l.verma@intel.com>
+To: linux-nvdimm@lists.01.org
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160510122715.GK11897@quack2.suse.cz>
+In-Reply-To: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 10, 2016 at 02:27:15PM +0200, Jan Kara wrote:
-> On Thu 05-05-16 22:13:50, Ross Zwisler wrote:
-> > On Mon, Apr 18, 2016 at 11:35:39PM +0200, Jan Kara wrote:
-> > > +/*
-> > > + * Find radix tree entry at given index. If it points to a page, return with
-> > > + * the page locked. If it points to the exceptional entry, return with the
-> > > + * radix tree entry locked. If the radix tree doesn't contain given index,
-> > > + * create empty exceptional entry for the index and return with it locked.
-> > > + *
-> > > + * Note: Unlike filemap_fault() we don't honor FAULT_FLAG_RETRY flags. For
-> > > + * persistent memory the benefit is doubtful. We can add that later if we can
-> > > + * show it helps.
-> > > + */
-> > > +static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index)
-> > > +{
-> > > +	void *ret, **slot;
-> > > +
-> > > +restart:
-> > > +	spin_lock_irq(&mapping->tree_lock);
-> > > +	ret = get_unlocked_mapping_entry(mapping, index, &slot);
-> > > +	/* No entry for given index? Make sure radix tree is big enough. */
-> > > +	if (!ret) {
-> > > +		int err;
-> > > +
-> > > +		spin_unlock_irq(&mapping->tree_lock);
-> > > +		err = radix_tree_preload(
-> > > +				mapping_gfp_mask(mapping) & ~__GFP_HIGHMEM);
-> > 
-> > In the conversation about v2 of this series you said:
-> > 
-> > > Note that we take the hit for dropping the lock only if we really need to
-> > > allocate new radix tree node so about once per 64 new entries. So it is not
-> > > too bad.
-> > 
-> > I think this is incorrect.  We get here whenever we get a NULL return from
-> > __radix_tree_lookup().  I believe that this happens if we don't have a node,
-> > in which case we need an allocation, but I think it also happens in the case
-> > where we do have a node and we just have a NULL slot in that node.
-> > 
-> > For the behavior you're looking for (only preload if you need to do an
-> > allocation), you probably need to check the 'slot' we get back from
-> > get_unlocked_mapping_entry(), yea?
-> 
-> You are correct. However currently __radix_tree_lookup() doesn't return a
-> slot pointer if entry was not found so it is not easy to fix. So I'd leave
-> the code as is for now and we can later optimize the case where we don't
-> need to grow the radix tree...
+From: Dan Williams <dan.j.williams@intel.com>
 
-Ah, you're right.  Sure, that plan sounds good.
+1/ If a mapping overlaps a bad sector fail the request.
 
-> > > +/*
-> > > + * Delete exceptional DAX entry at @index from @mapping. Wait for radix tree
-> > > + * entry to get unlocked before deleting it.
-> > > + */
-> > > +int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
-> > > +{
-> > > +	void *entry;
-> > > +
-> > > +	spin_lock_irq(&mapping->tree_lock);
-> > > +	entry = get_unlocked_mapping_entry(mapping, index, NULL);
-> > > +	/*
-> > > +	 * Caller should make sure radix tree modifications don't race and
-> > > +	 * we have seen exceptional entry here before.
-> > > +	 */
-> > > +	if (WARN_ON_ONCE(!entry || !radix_tree_exceptional_entry(entry))) {
-> > 
-> > dax_delete_mapping_entry() is only called from clear_exceptional_entry().
-> > With this new code we've changed the behavior of that call path a little.
-> > 
-> > In the various places where clear_exceptional_entry() is called, the code
-> > batches up a bunch of entries in a pvec via pagevec_lookup_entries().  We
-> > don't hold the mapping->tree_lock between the time this lookup happens and the
-> > time that the entry is passed to clear_exceptional_entry(). This is why the
-> > old code did a verification that the entry passed in matched what was still
-> > currently present in the radix tree.  This was done in the DAX case via
-> > radix_tree_delete_item(), and it was open coded in clear_exceptional_entry()
-> > for the page cache case.  In both cases if the entry didn't match what was
-> > currently in the tree, we bailed without doing anything.
-> > 
-> > This new code doesn't verify against the 'entry' passed to
-> > clear_exceptional_entry(), but instead makes sure it is an exceptional entry
-> > before removing, and if not it does a WARN_ON_ONCE().
-> > 
-> > This changes things because:
-> > 
-> > a) If the exceptional entry changed, say from a plain lock entry to an actual
-> > DAX entry, we wouldn't notice, and we would just clear the latter out.  My
-> > guess is that this is fine, I just wanted to call it out.
-> > 
-> > b) If we have a non-exceptional entry here now, say because our lock entry has
-> > been swapped out for a zero page, we will WARN_ON_ONCE() and return without a
-> > removal.  I think we may want to silence the WARN_ON_ONCE(), as I believe this
-> > could happen during normal operation and we don't want to scare anyone. :)
-> 
-> So your concerns are exactly why I have added a comment to
-> dax_delete_mapping_entry() that:
-> 
-> 	/*
-> 	 * Caller should make sure radix tree modifications don't race and
-> 	 * we have seen exceptional entry here before.
-> 	 */
-> 
-> The thing is dax_delete_mapping_entry() is called only from truncate /
-> punch hole path. Those should hold i_mmap_sem for writing and thus there
-> should be no modifications of the radix tree. If anything changes, between
-> what truncate_inode_pages() (or similar functions) finds and what
-> dax_delete_mapping_entry() sees, we have a locking bug and I want to know
-> about it :). Any suggestion how I should expand the comment so that this is
-> clearer?
+2/ Do not opportunistically report more dax-capable capacity than is
+   requested when errors present.
 
-Ah, I didn't understand all that.  :)  Given a bit more context the comment
-seems fine - if anything it could be a bit more specific, and include the
-text: "dax_delete_mapping_entry() is called only from truncate / punch hole
-path. Those should hold i_mmap_sem for writing and thus there should be no
-modifications of the radix tree."  Either way - thanks for explaining.
-
-> > > +/*
-> > >   * The user has performed a load from a hole in the file.  Allocating
-> > >   * a new page in the file would cause excessive storage usage for
-> > >   * workloads with sparse files.  We allocate a page cache page instead.
-> > > @@ -307,15 +584,24 @@ EXPORT_SYMBOL_GPL(dax_do_io);
-> > >   * otherwise it will simply fall out of the page cache under memory
-> > >   * pressure without ever having been dirtied.
-> > >   */
-> > > -static int dax_load_hole(struct address_space *mapping, struct page *page,
-> > > -							struct vm_fault *vmf)
-> > > +static int dax_load_hole(struct address_space *mapping, void *entry,
-> > > +			 struct vm_fault *vmf)
-> > >  {
-> > > -	if (!page)
-> > > -		page = find_or_create_page(mapping, vmf->pgoff,
-> > > -						GFP_KERNEL | __GFP_ZERO);
-> > > -	if (!page)
-> > > -		return VM_FAULT_OOM;
-> > > +	struct page *page;
-> > > +
-> > > +	/* Hole page already exists? Return it...  */
-> > > +	if (!radix_tree_exceptional_entry(entry)) {
-> > > +		vmf->page = entry;
-> > > +		return VM_FAULT_LOCKED;
-> > > +	}
-> > >  
-> > > +	/* This will replace locked radix tree entry with a hole page */
-> > > +	page = find_or_create_page(mapping, vmf->pgoff,
-> > > +				   vmf->gfp_mask | __GFP_ZERO);
-> > 
-> > This replacement happens via page_cache_tree_insert(), correct?  In this case,
-> > who wakes up anyone waiting on the old lock entry that we just killed?  In the
-> > non-hole case we would traverse through put_locked_mapping_entry(), but I
-> > don't see that in the hole case.
-> 
-> Ha, good catch. We miss the wakeup. Fixed.
-> 
-> Attached is the diff resulting from your review of this patch. I still have
-> to hunt down that strange interaction with workingset code you've reported...
-
-At the end of this mail I've attached one small fixup for the incremental diff
-you sent.  Aside from that, I think that you've addressed all my review
-feedback, thanks!
-
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-
-I'm going to try and get more info on the working set test failure.
-
+Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+[vishal: fix a conflict with system RAM collision patches]
+[vishal: add a 'size' parameter to ->direct_access]
+Signed-off-by: Vishal Verma <vishal.l.verma@intel.com>
 ---
+ arch/powerpc/sysdev/axonram.c |  2 +-
+ block/ioctl.c                 |  9 ---------
+ drivers/block/brd.c           |  2 +-
+ drivers/nvdimm/pmem.c         | 10 +++++++++-
+ drivers/s390/block/dcssblk.c  |  2 +-
+ fs/block_dev.c                |  2 +-
+ include/linux/blkdev.h        |  2 +-
+ 7 files changed, 14 insertions(+), 15 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index f496854..c4cb69b 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -406,7 +406,7 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+diff --git a/arch/powerpc/sysdev/axonram.c b/arch/powerpc/sysdev/axonram.c
+index 0d112b9..ff75d70 100644
+--- a/arch/powerpc/sysdev/axonram.c
++++ b/arch/powerpc/sysdev/axonram.c
+@@ -143,7 +143,7 @@ axon_ram_make_request(struct request_queue *queue, struct bio *bio)
+  */
+ static long
+ axon_ram_direct_access(struct block_device *device, sector_t sector,
+-		       void __pmem **kaddr, pfn_t *pfn)
++		       void __pmem **kaddr, pfn_t *pfn, long size)
+ {
+ 	struct axon_ram_bank *bank = device->bd_disk->private_data;
+ 	loff_t offset = (loff_t)sector << AXON_RAM_SECTOR_SHIFT;
+diff --git a/block/ioctl.c b/block/ioctl.c
+index 4ff1f92..bf80bfd 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -423,15 +423,6 @@ bool blkdev_dax_capable(struct block_device *bdev)
+ 			|| (bdev->bd_part->nr_sects % (PAGE_SIZE / 512)))
+ 		return false;
  
-        init_wait(&ewait.wait);
-        ewait.wait.func = wake_exceptional_entry_func;
--       ewait.key.root = &mapping->page_tree;
-+       ewait.key.mapping = mapping;
-        ewait.key.index = index;
+-	/*
+-	 * If the device has known bad blocks, force all I/O through the
+-	 * driver / page cache.
+-	 *
+-	 * TODO: support finer grained dax error handling
+-	 */
+-	if (disk->bb && disk->bb->count)
+-		return false;
+-
+ 	return true;
+ }
+ #endif
+diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+index 51a071e..c04bd9b 100644
+--- a/drivers/block/brd.c
++++ b/drivers/block/brd.c
+@@ -381,7 +381,7 @@ static int brd_rw_page(struct block_device *bdev, sector_t sector,
  
-        for (;;) {
+ #ifdef CONFIG_BLK_DEV_RAM_DAX
+ static long brd_direct_access(struct block_device *bdev, sector_t sector,
+-			void __pmem **kaddr, pfn_t *pfn)
++			void __pmem **kaddr, pfn_t *pfn, long size)
+ {
+ 	struct brd_device *brd = bdev->bd_disk->private_data;
+ 	struct page *page;
+diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+index 5101f3a..b68f04d 100644
+--- a/drivers/nvdimm/pmem.c
++++ b/drivers/nvdimm/pmem.c
+@@ -182,14 +182,22 @@ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
+ }
+ 
+ static long pmem_direct_access(struct block_device *bdev, sector_t sector,
+-		      void __pmem **kaddr, pfn_t *pfn)
++		      void __pmem **kaddr, pfn_t *pfn, long size)
+ {
+ 	struct pmem_device *pmem = bdev->bd_disk->private_data;
+ 	resource_size_t offset = sector * 512 + pmem->data_offset;
+ 
++	if (unlikely(is_bad_pmem(&pmem->bb, sector, size)))
++		return -EIO;
+ 	*kaddr = pmem->virt_addr + offset;
+ 	*pfn = phys_to_pfn_t(pmem->phys_addr + offset, pmem->pfn_flags);
+ 
++	/*
++	 * If badblocks are present, limit known good range to the
++	 * requested range.
++	 */
++	if (unlikely(pmem->bb.count))
++		return size;
+ 	return pmem->size - pmem->pfn_pad - offset;
+ }
+ 
+diff --git a/drivers/s390/block/dcssblk.c b/drivers/s390/block/dcssblk.c
+index b839086..c45d538 100644
+--- a/drivers/s390/block/dcssblk.c
++++ b/drivers/s390/block/dcssblk.c
+@@ -884,7 +884,7 @@ fail:
+ 
+ static long
+ dcssblk_direct_access (struct block_device *bdev, sector_t secnum,
+-			void __pmem **kaddr, pfn_t *pfn)
++			void __pmem **kaddr, pfn_t *pfn, long size)
+ {
+ 	struct dcssblk_dev_info *dev_info;
+ 	unsigned long offset, dev_sz;
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index b25bb23..02c68c4 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -488,7 +488,7 @@ long bdev_direct_access(struct block_device *bdev, struct blk_dax_ctl *dax)
+ 	sector += get_start_sect(bdev);
+ 	if (sector % (PAGE_SIZE / 512))
+ 		return -EINVAL;
+-	avail = ops->direct_access(bdev, sector, &dax->addr, &dax->pfn);
++	avail = ops->direct_access(bdev, sector, &dax->addr, &dax->pfn, size);
+ 	if (!avail)
+ 		return -ERANGE;
+ 	if (avail > 0 && avail & ~PAGE_MASK)
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 669e419..55ed530 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1657,7 +1657,7 @@ struct block_device_operations {
+ 	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+ 	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+ 	long (*direct_access)(struct block_device *, sector_t, void __pmem **,
+-			pfn_t *);
++			pfn_t *, long);
+ 	unsigned int (*check_events) (struct gendisk *disk,
+ 				      unsigned int clearing);
+ 	/* ->media_changed() is DEPRECATED, use ->check_events() instead */
+-- 
+2.5.5
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
