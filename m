@@ -1,126 +1,126 @@
 From: Vishal Verma <vishal.l.verma@intel.com>
-Subject: [PATCH v7 4/6] dax: export a low-level __dax_zero_page_range helper
-Date: Wed, 11 May 2016 15:08:50 -0600
-Message-ID: <1463000932-31680-5-git-send-email-vishal.l.verma@intel.com>
-References: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-	linux-fsdevel@vger.kernel.org,
-	linux-block@vger.kernel.org,
-	xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.cz>,
-	Jens Axboe <axboe@fb.com>,
+Subject: [PATCH v7 0/6] dax: handling media errors (clear-on-zero only)
+Date: Wed, 11 May 2016 15:08:46 -0600
+Message-ID: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jens Axboe <axboe@fb.com>, Jan Kara <jack@suse.cz>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
 	Christoph Hellwig <hch@infradead.org>,
+	Vishal Verma <vishal.l.verma@intel.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	linux-block@vger.kernel.org, linux-mm@kvack.org,
 	Jeff Moyer <jmoyer@redhat.com>,
-	Boaz Harrosh <boaz@plexistor.com>
+	Boaz Harrosh <boaz@plexistor.com>, linux-fsdevel@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>, linux-ext4@vger.kernel.org,
+	Dan Williams <dan.j.williams@intel.com>
 To: linux-nvdimm@lists.01.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
-Sender: owner-linux-mm@kvack.org
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-From: Christoph Hellwig <hch@lst.de>
+Until now, dax has been disabled if media errors were found on
+any device. This series attempts to address that.
 
-This allows XFS to perform zeroing using the iomap infrastructure and
-avoid buffer heads.
+The first two patches from Dan re-enable dax even when media
+errors are present.
 
-[vishal: fix conflicts with dax-error-handling]
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/dax.c            | 35 ++++++++++++++++++++---------------
- include/linux/dax.h |  7 +++++++
- 2 files changed, 27 insertions(+), 15 deletions(-)
+The third patch from Matthew removes the zeroout path from dax
+entirely, making zeroout operations always go through the driver
+(The motivation is that if a backing device has media errors,
+and we create a sparse file on it, we don't want the initial
+zeroing to happen via dax, we want to give the block driver a
+chance to clear the errors).
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 0abbbb6..651d4b1 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -947,6 +947,23 @@ int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- }
- EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
- 
-+int __dax_zero_page_range(struct block_device *bdev, sector_t sector,
-+		unsigned int offset, unsigned int length)
-+{
-+	struct blk_dax_ctl dax = {
-+		.sector		= sector,
-+		.size		= PAGE_SIZE,
-+	};
-+
-+	if (dax_map_atomic(bdev, &dax) < 0)
-+		return PTR_ERR(dax.addr);
-+	clear_pmem(dax.addr + offset, length);
-+	wmb_pmem();
-+	dax_unmap_atomic(bdev, &dax);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(__dax_zero_page_range);
-+
- /**
-  * dax_zero_page_range - zero a range within a page of a DAX file
-  * @inode: The file being truncated
-@@ -982,23 +999,11 @@ int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
- 	bh.b_bdev = inode->i_sb->s_bdev;
- 	bh.b_size = PAGE_SIZE;
- 	err = get_block(inode, index, &bh, 0);
--	if (err < 0)
-+	if (err < 0 || !buffer_written(&bh))
- 		return err;
--	if (buffer_written(&bh)) {
--		struct block_device *bdev = bh.b_bdev;
--		struct blk_dax_ctl dax = {
--			.sector = to_sector(&bh, inode),
--			.size = PAGE_SIZE,
--		};
- 
--		if (dax_map_atomic(bdev, &dax) < 0)
--			return PTR_ERR(dax.addr);
--		clear_pmem(dax.addr + offset, length);
--		wmb_pmem();
--		dax_unmap_atomic(bdev, &dax);
--	}
--
--	return 0;
-+	return __dax_zero_page_range(bh.b_bdev, to_sector(&bh, inode),
-+			offset, length);
- }
- EXPORT_SYMBOL_GPL(dax_zero_page_range);
- 
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 7f853ff..90fbc99 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -14,12 +14,19 @@ int __dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
- 
- #ifdef CONFIG_FS_DAX
- struct page *read_dax_sector(struct block_device *bdev, sector_t n);
-+int __dax_zero_page_range(struct block_device *bdev, sector_t sector,
-+		unsigned int offset, unsigned int length);
- #else
- static inline struct page *read_dax_sector(struct block_device *bdev,
- 		sector_t n)
- {
- 	return ERR_PTR(-ENXIO);
- }
-+static inline int __dax_zero_page_range(struct block_device *bdev,
-+		sector_t sector, unsigned int offset, unsigned int length)
-+{
-+	return -ENXIO;
-+}
- #endif
- 
- #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+Patch 4 from Christoph exports a low level dax helper for zeroing
+
+Patch 5 reduces our calls to clear_pmem from dax in the
+truncate/hole-punch cases. We check if the range being truncated
+is sector aligned/sized, and if so, send blkdev_issue_zeroout
+instead of clear_pmem so that errors can be handled better by
+the driver.
+
+Patch 6 fixes a redundant comment in DAX and is mostly unrelated
+to the rest of this series.
+
+This series also depends on/is based on Jan Kara's Ext4 and DAX
+fixups series:
+http://marc.info/?l=linux-ext4&m=146295959100848&w=2
+http://marc.info/?l=linux-ext4&m=146296078001307&w=2
+
+v7:
+ - Fix the dax alignment check to only check 'offset' and 'length'
+   for alignment as that's all that is needed. (Jan)
+ - Fix the blockdev_issue_zeroout call to zero the correct sector
+ - Rebase to v4.6-rc7 + the two patch-series from Jan linked above
+ - Add a patch from Christoph's iomap series:
+   http://www.spinics.net/lists/xfs/msg39656.html
+
+v6:
+ - Use IS_ALIGNED in dax_range_is_aligned instead of open coding
+   an alignment check (Jan)
+ - Collect all Reveiwed-by tags so far.
+
+v5:
+ - Drop the patch that attempts to clear-errors-on-write till we
+   reach consensus on how to handle that.
+ - Don't pass blk_dax_ctl to direct_access, instead pass in all the
+   required arguments individually (Christoph, Dan)
+
+v4:
+ - Remove the dax->direct_IO fallbacks entirely. Instead, go through
+   the usual direct_IO path when we're in O_DIRECT, and use dax_IO
+   for other, non O_DIRECT IO. (Dan, Christoph)
+
+v3:
+ - Wrapper-ize the direct_IO fallback again and make an exception
+   for -EIOCBQUEUED (Jeff, Dan)
+ - Reduce clear_pmem usage in DAX to the minimum
+
+
+
+Christoph Hellwig (1):
+  dax: export a low-level __dax_zero_page_range helper
+
+Dan Williams (2):
+  dax: fallback from pmd to pte on error
+  dax: enable dax in the presence of known media errors (badblocks)
+
+Matthew Wilcox (1):
+  dax: use sb_issue_zerout instead of calling dax_clear_sectors
+
+Vishal Verma (2):
+  dax: for truncate/hole-punch, do zeroing through the driver if
+    possible
+  dax: fix a comment in dax_zero_page_range and dax_truncate_page
+
+ Documentation/filesystems/dax.txt |  32 ++++++++++++
+ arch/powerpc/sysdev/axonram.c     |   2 +-
+ block/ioctl.c                     |   9 ----
+ drivers/block/brd.c               |   2 +-
+ drivers/nvdimm/pmem.c             |  10 +++-
+ drivers/s390/block/dcssblk.c      |   2 +-
+ fs/block_dev.c                    |   2 +-
+ fs/dax.c                          | 104 ++++++++++++++++----------------------
+ fs/ext2/inode.c                   |   7 ++-
+ fs/xfs/xfs_bmap_util.c            |  15 ++----
+ include/linux/blkdev.h            |   2 +-
+ include/linux/dax.h               |   8 ++-
+ 12 files changed, 103 insertions(+), 92 deletions(-)
+
 -- 
 2.5.5
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
