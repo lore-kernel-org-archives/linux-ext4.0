@@ -1,48 +1,57 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Subject: Re: [PATCH v6 4/5] dax: for truncate/hole-punch, do zeroing through
- the driver if possible
-Date: Wed, 11 May 2016 18:39:59 +0000
-Message-ID: <1462991986.29294.29.camel@intel.com>
-References: <1462906156-22303-1-git-send-email-vishal.l.verma@intel.com>
-	 <1462906156-22303-5-git-send-email-vishal.l.verma@intel.com>
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Re: Remarks regarding sparse_super2 feature
+Date: Wed, 11 May 2016 20:50:32 +0200
+Message-ID: <57337EF8.5090008@partition-saving.com>
+References: <5724CE0E.6030407@partition-saving.com> <20160510232845.GC30312@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-	"hch@infradead.org" <hch@infradead.org>, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"jmoyer@redhat.com" <jmoyer@redhat.com>, "linux-mm@kvack.org"
-	<linux-mm@kvack.org>, "Williams, Dan J" <dan.j.williams@intel.com>,
-	"axboe@fb.com" <axboe@fb.com>, "akpm@linux-foundation.org"
-	<akpm@linux-foundation.org>, "linux-fsdevel@vger.kernel.org"
-	<linux-fsdevel@vger.kernel.org>, "ross.zwisler@linux.intel.com"
-	<ross.zwisler@linux.intel.com>, "linux-ext4@vger.kernel.org"
-	<linux-ext4@vger.kernel.org>, "boaz@plexistor.com" <boaz@plexistor.com>,
-	"david@fromorbit.com" <david@fromorbit.com>, "jack@suse.cz" <jack@suse.cz>
-To: "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1462906156-22303-5-git-send-email-vishal.l.verma@intel.com>
-Content-Language: en-US
-Content-ID: <5E1FB0B45FA4AB4A819E9443201F1C82@intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp4-g21.free.fr ([212.27.42.4]:61492 "EHLO smtp4-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751632AbcEKStV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 May 2016 14:49:21 -0400
+Received: from [192.168.103.118] (unknown [82.230.26.21])
+	by smtp4-g21.free.fr (Postfix) with ESMTP id 4C95219F3E9
+	for <linux-ext4@vger.kernel.org>; Wed, 11 May 2016 18:56:38 +0200 (CEST)
+In-Reply-To: <20160510232845.GC30312@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVHVlLCAyMDE2LTA1LTEwIGF0IDEyOjQ5IC0wNjAwLCBWaXNoYWwgVmVybWEgd3JvdGU6DQo+
-wqANCi4uLg0KDQo+IEBAIC0xMjQwLDExICsxMjU0LDE2IEBAIGludCBkYXhfemVyb19wYWdlX3Jh
-bmdlKHN0cnVjdCBpbm9kZSAqaW5vZGUsDQo+IGxvZmZfdCBmcm9tLCB1bnNpZ25lZCBsZW5ndGgs
-DQo+IMKgCQkJLnNpemUgPSBQQUdFX1NJWkUsDQo+IMKgCQl9Ow0KPiDCoA0KPiAtCQlpZiAoZGF4
-X21hcF9hdG9taWMoYmRldiwgJmRheCkgPCAwKQ0KPiAtCQkJcmV0dXJuIFBUUl9FUlIoZGF4LmFk
-ZHIpOw0KPiAtCQljbGVhcl9wbWVtKGRheC5hZGRyICsgb2Zmc2V0LCBsZW5ndGgpOw0KPiAtCQl3
-bWJfcG1lbSgpOw0KPiAtCQlkYXhfdW5tYXBfYXRvbWljKGJkZXYsICZkYXgpOw0KPiArCQlpZiAo
-ZGF4X3JhbmdlX2lzX2FsaWduZWQoYmRldiwgJmRheCwgb2Zmc2V0LCBsZW5ndGgpKQ0KPiArCQkJ
-cmV0dXJuIGJsa2Rldl9pc3N1ZV96ZXJvb3V0KGJkZXYsIGRheC5zZWN0b3IsDQo+ICsJCQkJCWxl
-bmd0aCA+PiA5LCBHRlBfTk9GUywgdHJ1ZSk7DQoNCkZvdW5kIGFub3RoZXIgYnVnIGhlcmUgd2hp
-bGUgdGVzdGluZy4gVGhlIHplcm9vdXQgbmVlZHMgdG8gYmUgZG9uZSBmb3INCnNlY3RvciArIChv
-ZmZzZXQgPj4gOSkuIFRoZSBhYm92ZSBqdXN0IHplcm9lZCBvdXQgdGhlIGZpcnN0IHNlY3RvciBv
-Zg0KdGhlIHBhZ2UgaXJyZXNwZWN0aXZlIG9mIG9mZnNldCwgd2hpY2ggaXMgd3Jvbmcu
+Theodore Ts'o wrote:
+> On Sat, Apr 30, 2016 at 05:23:58PM +0200, Damien Guibouret wrote:
+> 
+[...]
+> 
+> 
+>>For the other case (shrinking the fs) at line 856:
+>>			if (last_bg > 1 &&
+>>			    old_fs->super->s_backup_bgs[1] == old_last_bg)
+>>				fs->super->s_backup_bgs[1] = last_bg;
+>>what ensures the location where the new super block backup will be set is a
+>>free block?
+> 
+> 
+> This is handled by reserve_sparse2_last_group().  We have to deal this
+> sort of thing whenever we need to do things like grow the group
+> descriptors, and we will relocate data blocks as necessary to make
+> room for blocks that have to be at specific locations.  (This means we
+> have allocate new blocks for the blocks we are moving, copy the data
+> blocks, and then update the inode(s) to point the new block
+> locations.)
+> 
+> Cheers,
+> 
+> 						- Ted
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Hello,
+
+Thanks for the feedback.
+For the last point, you're right, I did not look deep enough in the remaining 
+part of the code (and it looks obvious that when shrinking the fs, there is some 
+need to reallocate blocks).
+
+Regards,
+
+Damien
