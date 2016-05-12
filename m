@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/7] dax: Allow DAX code to replace exceptional entries
-Date: Thu, 12 May 2016 18:29:17 +0200
-Message-ID: <1463070560-1979-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 3/7] dax: Define DAX lock bit for radix tree exceptional entry
+Date: Thu, 12 May 2016 18:29:16 +0200
+Message-ID: <1463070560-1979-4-git-send-email-jack@suse.cz>
 References: <1463070560-1979-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Vishal Verma <vishal.l.verma@intel.com>,
@@ -9,73 +9,68 @@ Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Dan Williams <dan.j.williams@intel.com>,
 	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: linux-nvdimm@lists.01.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47464 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751675AbcELQ3d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 May 2016 12:29:33 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1463070560-1979-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently we forbid page_cache_tree_insert() to replace exceptional radix
-tree entries for DAX inodes. However to make DAX faults race free we will
-lock radix tree entries and when hole is created, we need to replace
-such locked radix tree entry with a hole page. So modify
-page_cache_tree_insert() to allow that.
+We will use lowest available bit in the radix tree exceptional entry for
+locking of the entry. Define it. Also clean up definitions of DAX entry
+type bits in DAX exceptional entries to use defined constants instead of
+hardcoding numbers and cleanup checking of these bits to not rely on how
+other bits in the entry are set.
 
 Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/dax.h |  1 +
- mm/filemap.c        | 21 ++++++++++++++-------
- 2 files changed, 15 insertions(+), 7 deletions(-)
+ fs/dax.c            | 17 +++++++++++------
+ include/linux/dax.h |  3 +++
+ 2 files changed, 14 insertions(+), 6 deletions(-)
 
+diff --git a/fs/dax.c b/fs/dax.c
+index ef44ee2af7af..20b39588ceff 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -32,14 +32,19 @@
+ #include <linux/pfn_t.h>
+ #include <linux/sizes.h>
+ 
+-#define RADIX_DAX_MASK	0xf
+-#define RADIX_DAX_SHIFT	4
+-#define RADIX_DAX_PTE  (0x4 | RADIX_TREE_EXCEPTIONAL_ENTRY)
+-#define RADIX_DAX_PMD  (0x8 | RADIX_TREE_EXCEPTIONAL_ENTRY)
+-#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_MASK)
++/*
++ * We use lowest available bit in exceptional entry for locking, other two
++ * bits to determine entry type. In total 3 special bits.
++ */
++#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
++#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
++#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
++#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
++#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
+ #define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
+ #define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
+-		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE)))
++		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
++		RADIX_TREE_EXCEPTIONAL_ENTRY))
+ 
+ static long dax_map_atomic(struct block_device *bdev, struct blk_dax_ctl *dax)
+ {
 diff --git a/include/linux/dax.h b/include/linux/dax.h
-index d0883daa66d9..8558d3770a30 100644
+index 3be567e3ae9c..d0883daa66d9 100644
 --- a/include/linux/dax.h
 +++ b/include/linux/dax.h
-@@ -3,6 +3,7 @@
- 
- #include <linux/fs.h>
+@@ -5,6 +5,9 @@
  #include <linux/mm.h>
-+#include <linux/radix-tree.h>
  #include <asm/pgtable.h>
  
- /* We use lowest available exceptional entry bit for locking */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index f2479af09da9..dfe55c2cfb34 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -597,14 +597,21 @@ static int page_cache_tree_insert(struct address_space *mapping,
- 		if (!radix_tree_exceptional_entry(p))
- 			return -EEXIST;
- 
--		if (WARN_ON(dax_mapping(mapping)))
--			return -EINVAL;
--
--		if (shadowp)
--			*shadowp = p;
- 		mapping->nrexceptional--;
--		if (node)
--			workingset_node_shadows_dec(node);
-+		if (!dax_mapping(mapping)) {
-+			if (shadowp)
-+				*shadowp = p;
-+			if (node)
-+				workingset_node_shadows_dec(node);
-+		} else {
-+			/* DAX can replace empty locked entry with a hole */
-+			WARN_ON_ONCE(p !=
-+				(void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
-+					 RADIX_DAX_ENTRY_LOCK));
-+			/* DAX accounts exceptional entries as normal pages */
-+			if (node)
-+				workingset_node_pages_dec(node);
-+		}
- 	}
- 	radix_tree_replace_slot(slot, page);
- 	mapping->nrpages++;
++/* We use lowest available exceptional entry bit for locking */
++#define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
++
+ ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *, loff_t,
+ 		  get_block_t, dio_iodone_t, int flags);
+ int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size);
 -- 
 2.6.6
 
