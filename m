@@ -1,76 +1,68 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/7] dax: Define DAX lock bit for radix tree exceptional entry
-Date: Thu, 12 May 2016 18:29:16 +0200
-Message-ID: <1463070560-1979-4-git-send-email-jack@suse.cz>
-References: <1463070560-1979-1-git-send-email-jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Vishal Verma <vishal.l.verma@intel.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: linux-nvdimm@lists.01.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1463070560-1979-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH v7 4/6] dax: export a low-level __dax_zero_page_range
+	helper
+Date: Thu, 12 May 2016 17:06:39 +0000
+Message-ID: <1463072787.29294.38.camel@intel.com>
+References: <1463000932-31680-1-git-send-email-vishal.l.verma@intel.com>
+	<1463000932-31680-5-git-send-email-vishal.l.verma@intel.com>
+	<20160512084138.GC10306@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "hch@infradead.org" <hch@infradead.org>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	"axboe@fb.com" <axboe@fb.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+	"linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"jmoyer@redhat.com" <jmoyer@redhat.com>,
+	"boaz@plexistor.com" <boaz@plexistor.com>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"Williams, Dan J" <dan.j.williams@intel.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"hch@lst.de" <hch@lst.de>
+To: "jack@suse.cz" <jack@suse.cz>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20160512084138.GC10306@quack2.suse.cz>
+Content-Language: en-US
+Content-ID: <9CB344B4DD27584EAD3C45DE3E6E0947@intel.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-We will use lowest available bit in the radix tree exceptional entry for
-locking of the entry. Define it. Also clean up definitions of DAX entry
-type bits in DAX exceptional entries to use defined constants instead of
-hardcoding numbers and cleanup checking of these bits to not rely on how
-other bits in the entry are set.
+On Thu, 2016-05-12 at 10:41 +0200, Jan Kara wrote:
+> On Wed 11-05-16 15:08:50, Vishal Verma wrote:
+> > 
+> > From: Christoph Hellwig <hch@lst.de>
+> > 
+> > This allows XFS to perform zeroing using the iomap infrastructure
+> > and
+> > avoid buffer heads.
+> > 
+> > [vishal: fix conflicts with dax-error-handling]
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Looks good. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> BTW: You are supposed to add your Signed-off-by when forwarding
+> patches
+> like this...
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/dax.c            | 17 +++++++++++------
- include/linux/dax.h |  3 +++
- 2 files changed, 14 insertions(+), 6 deletions(-)
+Ah I didn't know. I'll add it when making the stable topic branch for
+this. Thanks!
 
-diff --git a/fs/dax.c b/fs/dax.c
-index ef44ee2af7af..20b39588ceff 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -32,14 +32,19 @@
- #include <linux/pfn_t.h>
- #include <linux/sizes.h>
- 
--#define RADIX_DAX_MASK	0xf
--#define RADIX_DAX_SHIFT	4
--#define RADIX_DAX_PTE  (0x4 | RADIX_TREE_EXCEPTIONAL_ENTRY)
--#define RADIX_DAX_PMD  (0x8 | RADIX_TREE_EXCEPTIONAL_ENTRY)
--#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_MASK)
-+/*
-+ * We use lowest available bit in exceptional entry for locking, other two
-+ * bits to determine entry type. In total 3 special bits.
-+ */
-+#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
-+#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-+#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-+#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
-+#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
- #define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
- #define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
--		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE)))
-+		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
-+		RADIX_TREE_EXCEPTIONAL_ENTRY))
- 
- static long dax_map_atomic(struct block_device *bdev, struct blk_dax_ctl *dax)
- {
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 3be567e3ae9c..d0883daa66d9 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -5,6 +5,9 @@
- #include <linux/mm.h>
- #include <asm/pgtable.h>
- 
-+/* We use lowest available exceptional entry bit for locking */
-+#define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
-+
- ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *, loff_t,
- 		  get_block_t, dio_iodone_t, int flags);
- int dax_clear_sectors(struct block_device *bdev, sector_t _sector, long _size);
--- 
-2.6.6
-
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
