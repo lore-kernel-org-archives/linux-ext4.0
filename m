@@ -1,9 +1,9 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 3/7] ext2: Avoid DAX zeroing to corrupt data
-Date: Thu, 12 May 2016 12:45:22 -0600
-Message-ID: <20160512184522.GA19851@linux.intel.com>
-References: <1462960733-29634-1-git-send-email-jack@suse.cz>
- <1462960733-29634-4-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 2/7] dax: Make huge page handling depend of CONFIG_BROKEN
+Date: Thu, 12 May 2016 12:59:58 -0600
+Message-ID: <20160512185958.GA32376@linux.intel.com>
+References: <1463070560-1979-1-git-send-email-jack@suse.cz>
+ <1463070560-1979-3-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nvdimm@lists.01.org, Ted Tso <tytso@mit.edu>,
@@ -15,131 +15,34 @@ Cc: linux-nvdimm@lists.01.org, Ted Tso <tytso@mit.edu>,
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1462960733-29634-4-git-send-email-jack@suse.cz>
+In-Reply-To: <1463070560-1979-3-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 11, 2016 at 11:58:49AM +0200, Jan Kara wrote:
-> Currently ext2 zeroes any data blocks allocated for DAX inode however it
-> still returns them as BH_New. Thus DAX code zeroes them again in
-> dax_insert_mapping() which can possibly overwrite the data that has been
-> already stored to those blocks by a racing dax_io(). Avoid marking
-> pre-zeroed buffers as new.
+On Thu, May 12, 2016 at 06:29:15PM +0200, Jan Kara wrote:
+> Currently the handling of huge pages for DAX is racy. For example the
+> following can happen:
 > 
-> Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> CPU0 (THP write fault)			CPU1 (normal read fault)
+> 
+> __dax_pmd_fault()			__dax_fault()
+>   get_block(inode, block, &bh, 0) -> not mapped
+> 					get_block(inode, block, &bh, 0)
+> 					  -> not mapped
+>   if (!buffer_mapped(&bh) && write)
+>     get_block(inode, block, &bh, 1) -> allocates blocks
+>   truncate_pagecache_range(inode, lstart, lend);
+> 					dax_load_hole();
+> 
+> This results in data corruption since process on CPU1 won't see changes
+> into the file done by CPU0.
+> 
+> The race can happen even if two normal faults race however with THP the
+> situation is even worse because the two faults don't operate on the same
+> entries in the radix tree and we want to use these entries for
+> serialization. So make THP support in DAX code depend on CONFIG_BROKEN
+> for now.
+> 
 > Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext2/inode.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index 6bd58e6ff038..1f07b758b968 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -745,11 +745,11 @@ static int ext2_get_blocks(struct inode *inode,
->  			mutex_unlock(&ei->truncate_mutex);
->  			goto cleanup;
->  		}
-> -	}
-> +	} else
-> +		set_buffer_new(bh_result);
->  
->  	ext2_splice_branch(inode, iblock, partial, indirect_blks, count);
->  	mutex_unlock(&ei->truncate_mutex);
-> -	set_buffer_new(bh_result);
->  got_it:
->  	map_bh(bh_result, inode->i_sb, le32_to_cpu(chain[depth-1].key));
->  	if (count > blocks_to_boundary)
-> -- 
-> 2.6.6
 
-Interestingly this change is causing a bunch of xfstests regressions for me
-with ext2 + DAX.  All of these tests pass without this one change.
-
-# ./check generic/075 generic/091 generic/112 generic/127 generic/231 generic/263
-FSTYP         -- ext2
-PLATFORM      -- Linux/x86_64 alara 4.6.0-rc5+
-MKFS_OPTIONS  -- /dev/pmem0p2
-MOUNT_OPTIONS -- -o dax -o context=system_u:object_r:nfs_t:s0 /dev/pmem0p2 /mnt/xfstests_scratch
-
-generic/075 2s ... [failed, exit status 1] - output mismatch (see /root/xfstests/results//generic/075.out.bad)
-    --- tests/generic/075.out	2015-10-02 10:19:36.798795839 -0600
-    +++ /root/xfstests/results//generic/075.out.bad	2016-05-12 12:40:06.558706982 -0600
-    @@ -4,15 +4,5 @@
-     -----------------------------------------------
-     fsx.0 : -d -N numops -S 0
-     -----------------------------------------------
-    -
-    ------------------------------------------------
-    -fsx.1 : -d -N numops -S 0 -x
-    ------------------------------------------------
-    ...
-    (Run 'diff -u tests/generic/075.out /root/xfstests/results//generic/075.out.bad'  to see the entire diff)
-generic/091 1s ... [failed, exit status 1] - output mismatch (see /root/xfstests/results//generic/091.out.bad)
-    --- tests/generic/091.out	2015-10-02 10:19:36.800795853 -0600
-    +++ /root/xfstests/results//generic/091.out.bad	2016-05-12 12:40:07.366712217 -0600
-    @@ -1,7 +1,110 @@
-     QA output created by 091
-     fsx -N 10000 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -R -W
-    -fsx -N 10000 -o 8192 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -R -W
-    -fsx -N 10000 -o 32768 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -R -W
-    -fsx -N 10000 -o 8192 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -R -W
-    -fsx -N 10000 -o 32768 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -R -W
-    -fsx -N 10000 -o 128000 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z -W
-    ...
-    (Run 'diff -u tests/generic/091.out /root/xfstests/results//generic/091.out.bad'  to see the entire diff)
-generic/112 2s ... [failed, exit status 1] - output mismatch (see /root/xfstests/results//generic/112.out.bad)
-    --- tests/generic/112.out	2015-10-02 10:19:36.802795866 -0600
-    +++ /root/xfstests/results//generic/112.out.bad	2016-05-12 12:40:08.601720218 -0600
-    @@ -4,15 +4,5 @@
-     -----------------------------------------------
-     fsx.0 : -A -d -N numops -S 0
-     -----------------------------------------------
-    -
-    ------------------------------------------------
-    -fsx.1 : -A -d -N numops -S 0 -x
-    ------------------------------------------------
-    ...
-    (Run 'diff -u tests/generic/112.out /root/xfstests/results//generic/112.out.bad'  to see the entire diff)
-generic/127 14s ... - output mismatch (see /root/xfstests/results//generic/127.out.bad)
-    --- tests/generic/127.out	2016-02-17 16:02:40.110656181 -0700
-    +++ /root/xfstests/results//generic/127.out.bad	2016-05-12 12:40:16.861773730 -0600
-    @@ -4,10 +4,905 @@
-     === FSX Light Mode, Memory Mapping ===
-     All 100000 operations completed A-OK!
-     === FSX Standard Mode, No Memory Mapping ===
-    -All 100000 operations completed A-OK!
-    +ltp/fsx -q -l 262144 -o 65536 -S 191110531 -N 100000 -R -W fsx_std_nommap
-    +READ BAD DATA: offset = 0xd72d, size = 0x826b, fname = /mnt/xfstests_test/fsx_std_nommap
-    +OFFSET	GOOD	BAD	RANGE
-    ...
-    (Run 'diff -u tests/generic/127.out /root/xfstests/results//generic/127.out.bad'  to see the entire diff)
-generic/231 22s ... [failed, exit status 1] - output mismatch (see /root/xfstests/results//generic/231.out.bad)
-    --- tests/generic/231.out	2016-02-17 16:02:40.120656239 -0700
-    +++ /root/xfstests/results//generic/231.out.bad	2016-05-12 12:40:19.266789311 -0600
-    @@ -1,16 +1,1802 @@
-     QA output created by 231
-     === FSX Standard Mode, Memory Mapping, 1 Tasks ===
-    -All 20000 operations completed A-OK!
-    -Comparing user usage
-    -Comparing group usage
-    -=== FSX Standard Mode, Memory Mapping, 4 Tasks ===
-    -All 20000 operations completed A-OK!
-    ...
-    (Run 'diff -u tests/generic/231.out /root/xfstests/results//generic/231.out.bad'  to see the entire diff)
-generic/263 1s ... [failed, exit status 1] - output mismatch (see /root/xfstests/results//generic/263.out.bad)
-    --- tests/generic/263.out	2015-10-02 10:19:36.807795900 -0600
-    +++ /root/xfstests/results//generic/263.out.bad	2016-05-12 12:40:19.801792777 -0600
-    @@ -1,3 +1,1429 @@
-     QA output created by 263
-     fsx -N 10000 -o 8192 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z
-    -fsx -N 10000 -o 128000 -l 500000 -r PSIZE -t BSIZE -w BSIZE -Z
-    +main: filesystem does not support fallocate mode 0, disabling!
-    +main: filesystem does not support fallocate mode FALLOC_FL_KEEP_SIZE, disabling!
-    +main: filesystem does not support fallocate mode FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, disabling!
-    +main: filesystem does not support fallocate mode FALLOC_FL_ZERO_RANGE, disabling!
-    ...
-    (Run 'diff -u tests/generic/263.out /root/xfstests/results//generic/263.out.bad'  to see the entire diff)
-Ran: generic/075 generic/091 generic/112 generic/127 generic/231 generic/263
-Failures: generic/075 generic/091 generic/112 generic/127 generic/231 generic/263
-Failed 6 of 6 tests
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
