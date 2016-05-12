@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/7] dax: Make huge page handling depend of CONFIG_BROKEN
-Date: Thu, 12 May 2016 18:29:15 +0200
-Message-ID: <1463070560-1979-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 7/7] dax: Remove i_mmap_lock protection
+Date: Thu, 12 May 2016 18:29:20 +0200
+Message-ID: <1463070560-1979-8-git-send-email-jack@suse.cz>
 References: <1463070560-1979-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Vishal Verma <vishal.l.verma@intel.com>,
@@ -9,79 +9,89 @@ Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Dan Williams <dan.j.williams@intel.com>,
 	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: linux-nvdimm@lists.01.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:47488 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752442AbcELQ3e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 May 2016 12:29:34 -0400
 In-Reply-To: <1463070560-1979-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently the handling of huge pages for DAX is racy. For example the
-following can happen:
+Currently faults are protected against truncate by filesystem specific
+i_mmap_sem and page lock in case of hole page. Cow faults are protected
+DAX radix tree entry locking. So there's no need for i_mmap_lock in DAX
+code. Remove it.
 
-CPU0 (THP write fault)			CPU1 (normal read fault)
-
-__dax_pmd_fault()			__dax_fault()
-  get_block(inode, block, &bh, 0) -> not mapped
-					get_block(inode, block, &bh, 0)
-					  -> not mapped
-  if (!buffer_mapped(&bh) && write)
-    get_block(inode, block, &bh, 1) -> allocates blocks
-  truncate_pagecache_range(inode, lstart, lend);
-					dax_load_hole();
-
-This results in data corruption since process on CPU1 won't see changes
-into the file done by CPU0.
-
-The race can happen even if two normal faults race however with THP the
-situation is even worse because the two faults don't operate on the same
-entries in the radix tree and we want to use these entries for
-serialization. So make THP support in DAX code depend on CONFIG_BROKEN
-for now.
-
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/Kconfig          | 1 +
- fs/dax.c            | 2 +-
- include/linux/dax.h | 2 +-
- 3 files changed, 3 insertions(+), 2 deletions(-)
+ fs/dax.c    | 24 +++++-------------------
+ mm/memory.c |  2 --
+ 2 files changed, 5 insertions(+), 21 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 6725f59c18e6..b8fcb416be72 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -52,6 +52,7 @@ config FS_DAX_PMD
- 	depends on FS_DAX
- 	depends on ZONE_DEVICE
- 	depends on TRANSPARENT_HUGEPAGE
-+	depends on BROKEN
- 
- endif # BLOCK
- 
 diff --git a/fs/dax.c b/fs/dax.c
-index d7addfab2094..ef44ee2af7af 100644
+index a09d19f5371e..a07202ab8f61 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -707,7 +707,7 @@ int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- }
- EXPORT_SYMBOL_GPL(dax_fault);
+@@ -830,29 +830,19 @@ static int dax_insert_mapping(struct address_space *mapping,
+ 		.sector = to_sector(bh, mapping->host),
+ 		.size = bh->b_size,
+ 	};
+-	int error;
+ 	void *ret;
+ 	void *entry = *entryp;
  
--#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-+#if defined(CONFIG_TRANSPARENT_HUGEPAGE)
- /*
-  * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
-  * more often than one might expect in the below function.
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 7c45ac7ea1d1..3be567e3ae9c 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -23,7 +23,7 @@ static inline struct page *read_dax_sector(struct block_device *bdev,
- }
- #endif
+-	i_mmap_lock_read(mapping);
+-
+-	if (dax_map_atomic(bdev, &dax) < 0) {
+-		error = PTR_ERR(dax.addr);
+-		goto out;
+-	}
++	if (dax_map_atomic(bdev, &dax) < 0)
++		return PTR_ERR(dax.addr);
+ 	dax_unmap_atomic(bdev, &dax);
  
--#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-+#if defined(CONFIG_TRANSPARENT_HUGEPAGE)
- int dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
- 				unsigned int flags, get_block_t);
- int __dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
--- 
-2.6.6
-
+ 	ret = dax_insert_mapping_entry(mapping, vmf, entry, dax.sector);
+-	if (IS_ERR(ret)) {
+-		error = PTR_ERR(ret);
+-		goto out;
+-	}
++	if (IS_ERR(ret))
++		return PTR_ERR(ret);
+ 	*entryp = ret;
+ 
+-	error = vm_insert_mixed(vma, vaddr, dax.pfn);
+- out:
+-	i_mmap_unlock_read(mapping);
+-	return error;
++	return vm_insert_mixed(vma, vaddr, dax.pfn);
+ }
+ 
+ /**
+@@ -1090,8 +1080,6 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 		truncate_pagecache_range(inode, lstart, lend);
+ 	}
+ 
+-	i_mmap_lock_read(mapping);
+-
+ 	if (!write && !buffer_mapped(&bh)) {
+ 		spinlock_t *ptl;
+ 		pmd_t entry;
+@@ -1180,8 +1168,6 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 	}
+ 
+  out:
+-	i_mmap_unlock_read(mapping);
+-
+ 	return result;
+ 
+  fallback:
+diff --git a/mm/memory.c b/mm/memory.c
+index 7f063c9ad711..f6f1c15c8682 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2486,8 +2486,6 @@ void unmap_mapping_range(struct address_space *mapping,
+ 	if (details.last_index < details.first_index)
+ 		details.last_index = ULONG_MAX;
+ 
