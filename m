@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 7/7] dax: Remove i_mmap_lock protection
-Date: Thu, 12 May 2016 18:29:20 +0200
-Message-ID: <1463070560-1979-8-git-send-email-jack@suse.cz>
-References: <1463070560-1979-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/7 v4] DAX page fault locking
+Date: Thu, 12 May 2016 18:29:13 +0200
+Message-ID: <1463070560-1979-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Vishal Verma <vishal.l.verma@intel.com>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
@@ -10,88 +9,50 @@ Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: linux-nvdimm@lists.01.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47488 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47463 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752442AbcELQ3e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 May 2016 12:29:34 -0400
-In-Reply-To: <1463070560-1979-1-git-send-email-jack@suse.cz>
+	id S1751693AbcELQ3d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 May 2016 12:29:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently faults are protected against truncate by filesystem specific
-i_mmap_sem and page lock in case of hole page. Cow faults are protected
-DAX radix tree entry locking. So there's no need for i_mmap_lock in DAX
-code. Remove it.
+Hello,
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/dax.c    | 24 +++++-------------------
- mm/memory.c |  2 --
- 2 files changed, 5 insertions(+), 21 deletions(-)
+this is my fourth attempt at DAX page fault locking rewrite. The patch set has
+passed xfstests both with and without DAX mount option on ext4 and xfs for
+me (including new xfstests for stressing DAX mmap behavior). Also all tests
+are passing for Ross now. All the patches except for PMD fault handling ones
+got reviewed by Ross so I think they are in a reasonably good shape. For now
+I'm not aware of any outstanding issues so can we merge the patches through
+NVDIMM tree please?
 
-diff --git a/fs/dax.c b/fs/dax.c
-index a09d19f5371e..a07202ab8f61 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -830,29 +830,19 @@ static int dax_insert_mapping(struct address_space *mapping,
- 		.sector = to_sector(bh, mapping->host),
- 		.size = bh->b_size,
- 	};
--	int error;
- 	void *ret;
- 	void *entry = *entryp;
- 
--	i_mmap_lock_read(mapping);
--
--	if (dax_map_atomic(bdev, &dax) < 0) {
--		error = PTR_ERR(dax.addr);
--		goto out;
--	}
-+	if (dax_map_atomic(bdev, &dax) < 0)
-+		return PTR_ERR(dax.addr);
- 	dax_unmap_atomic(bdev, &dax);
- 
- 	ret = dax_insert_mapping_entry(mapping, vmf, entry, dax.sector);
--	if (IS_ERR(ret)) {
--		error = PTR_ERR(ret);
--		goto out;
--	}
-+	if (IS_ERR(ret))
-+		return PTR_ERR(ret);
- 	*entryp = ret;
- 
--	error = vm_insert_mixed(vma, vaddr, dax.pfn);
-- out:
--	i_mmap_unlock_read(mapping);
--	return error;
-+	return vm_insert_mixed(vma, vaddr, dax.pfn);
- }
- 
- /**
-@@ -1090,8 +1080,6 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 		truncate_pagecache_range(inode, lstart, lend);
- 	}
- 
--	i_mmap_lock_read(mapping);
--
- 	if (!write && !buffer_mapped(&bh)) {
- 		spinlock_t *ptl;
- 		pmd_t entry;
-@@ -1180,8 +1168,6 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 	}
- 
-  out:
--	i_mmap_unlock_read(mapping);
--
- 	return result;
- 
-  fallback:
-diff --git a/mm/memory.c b/mm/memory.c
-index 7f063c9ad711..f6f1c15c8682 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2486,8 +2486,6 @@ void unmap_mapping_range(struct address_space *mapping,
- 	if (details.last_index < details.first_index)
- 		details.last_index = ULONG_MAX;
- 
+Changes since v3:
+- split patch set into three - ext4 bits, cleanups & easy fixes, this part
+- fixed missed wakeups on exceptional entry locks (Ross)
+- fixed misaccounting of number of used entries in a radix tree node
+- fixed bad interaction with workingset code
+- other minor changes based on review comments
+
+Changes since v2:
+- lot of additional ext4 fixes and cleanups
+- make PMD page faults depend on CONFIG_BROKEN instead of #if 0
+- fixed page reference leak when replacing hole page with a pfn
+- added some reviewed-by tags
+- rebased on top of current Linus' tree
+
+Changes since v1:
+- handle wakeups of exclusive waiters properly
+- fix cow fault races
+- other minor stuff
+
+General description
+
+The basic idea is that we use a bit in an exceptional radix tree entry as
+a lock bit and use it similarly to how page lock is used for normal faults.
+That way we fix races between hole instantiation and read faults of the
+same index. For now I have disabled PMD faults since there the issues with
+page fault locking are even worse. Now that Matthew's multi-order radix tree
+has landed, I can have a look into using that for proper locking of PMD faults
+but first I want normal pages sorted out.
+
+								Honza
