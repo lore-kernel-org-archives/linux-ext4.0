@@ -1,14 +1,11 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 5/7] dax: New fault locking
-Date: Thu, 12 May 2016 13:36:24 -0600
-Message-ID: <20160512193624.GA20719@linux.intel.com>
-References: <1463070560-1979-1-git-send-email-jack@suse.cz>
- <1463070560-1979-6-git-send-email-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/4] ext4: DAX fixes
+Date: Fri, 13 May 2016 01:24:19 -0400
+Message-ID: <20160513052419.GD5862@thunk.org>
+References: <1462959551-28622-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-nvdimm@lists.01.org, Ted Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-nvdimm@ml01.01.org,
 	Vishal Verma <vishal.l.verma@intel.com>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Dan Williams <dan.j.williams@intel.com>,
@@ -16,80 +13,48 @@ Cc: linux-nvdimm@lists.01.org, Ted Tso <tytso@mit.edu>,
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1463070560-1979-6-git-send-email-jack@suse.cz>
+In-Reply-To: <1462959551-28622-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 12, 2016 at 06:29:18PM +0200, Jan Kara wrote:
-> Currently DAX page fault locking is racy.
->=20
-> CPU0 (write fault)		CPU1 (read fault)
->=20
-> __dax_fault()			__dax_fault()
->   get_block(inode, block, &bh, 0) -> not mapped
-> 				  get_block(inode, block, &bh, 0)
-> 				    -> not mapped
->   if (!buffer_mapped(&bh))
->     if (vmf->flags & FAULT_FLAG_WRITE)
->       get_block(inode, block, &bh, 1) -> allocates blocks
->   if (page) -> no
-> 				  if (!buffer_mapped(&bh))
-> 				    if (vmf->flags & FAULT_FLAG_WRITE) {
-> 				    } else {
-> 				      dax_load_hole();
-> 				    }
->   dax_insert_mapping()
->=20
-> And we are in a situation where we fail in dax_radix_entry() with -EI=
-O.
->=20
-> Another problem with the current DAX page fault locking is that there=
- is
-> no race-free way to clear dirty tag in the radix tree. We can always
-> end up with clean radix tree and dirty data in CPU cache.
->=20
-> We fix the first problem by introducing locking of exceptional radix
-> tree entries in DAX mappings acting very similarly to page lock and t=
-hus
-> synchronizing properly faults against the same mapping index. The sam=
-e
-> lock can later be used to avoid races when clearing radix tree dirty
-> tag.
->=20
-> Reviewed-by: NeilBrown <neilb@suse.com>
-> Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
-<>
-> @@ -897,13 +1166,10 @@ int __dax_pmd_fault(struct vm_area_struct *vma=
-, unsigned long address,
->  		 * the write to insert a dirty entry.
->  		 */
->  		if (write) {
-> -			error =3D dax_radix_entry(mapping, pgoff, dax.sector,
-> -					true, true);
-> -			if (error) {
-> -				dax_pmd_dbg(&bh, address,
-> -						"PMD radix insertion failed");
-> -				goto fallback;
-> -			}
-> +			/*
-> +			 * We should insert radix-tree entry and dirty it here.
-> +			 * For now this is broken...
-> +			 */
+On Wed, May 11, 2016 at 11:39:07AM +0200, Jan Kara wrote:
+> Hi!
+> 
+> These are ext4 patches that were originally part of my DAX locking patch
+> series. They stand on their own so I'm submitting them independently and since
+> they are non-trivial, I'd like them to be merged through ext4 tree.  The rest
+> of the DAX locking series depends on these patches so whichever tree is going
+> to merge them will have to pull the ext4 tree to get these patches.  They
+> didn't change since the last posting of the DAX locking series (except for
+> minor fixup due to patch reordering).
+> 
+> Ted, can you please queue these patches for the coming merge window? Thanks!
 
-With this change the 'error' variable in __dax_pmd_fault() is now unuse=
-d,
-resulting in a compiler warning.
+Queued and I'm running tests before I push them out.  The patches
+passed the smoke tests[1], and the full tests should be running for the
+next seven hours or so at:   http://104.197.222.91
 
-fs/dax.c: In function =E2=80=98__dax_pmd_fault=E2=80=99:
-fs/dax.c:1019:6: warning: unused variable =E2=80=98error=E2=80=99 [-Wun=
-used-variable]
-  int error, result =3D 0;
-        ^
+I'm also doing a DAX run which should done in a half an hour or so.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+    	       	     	       	      	      - Ted
+
+[1] CMDLINE: smoke
+FSTESTVER: e2fsprogs	v1.43-WIP-2015-05-18-64-g2334bd3 (Sat, 5 Sep 2015 22:21:35 -0400)
+FSTESTVER: fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
+FSTESTVER: quota		67fd9cc (Mon, 4 Apr 2016 00:32:39 -0400)
+FSTESTVER: xfsprogs	v4.3.0 (Mon, 23 Nov 2015 15:24:24 +1100)
+FSTESTVER: xfstests-bld	ccae8d1 (Tue, 26 Apr 2016 00:42:18 -0400)
+FSTESTVER: xfstests	linux-v3.8-1010-g97dd2d8 (Wed, 27 Apr 2016 00:04:44 -0400)
+FSTESTVER: kernel	4.6.0-rc4-ext4-00022-gaacd0c8 #282 SMP Fri May 13 00:52:07 EDT 2016 x86_64
+FSTESTCFG: "4k"
+FSTESTSET: "-g quick"
+FSTESTEXC: ""
+FSTESTOPT: "aex"
+MNTOPTS: ""
+CPUS: "2"
+MEM: "7497.07"
+MEM: 7680 MB (Max capacity)
+BEGIN TEST 4k: Ext4 4k block Fri May 13 01:05:52 EDT 2016
+Passed all 158 tests
+
+
