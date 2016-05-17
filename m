@@ -1,94 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH] ext4: add lazyinit stats support
-Date: Mon, 16 May 2016 23:22:35 -0500
-Message-ID: <43a7d624-5fd1-a3a5-5f18-a84ebde86f1f@redhat.com>
+Date: Tue, 17 May 2016 00:45:07 -0400
+Message-ID: <20160517044507.GW7799@thunk.org>
 References: <1463456488-93466-1-git-send-email-wangshilong1991@gmail.com>
  <e7de9f2f-6a12-026c-c9fb-2e676fdc37e4@redhat.com>
  <CAP9B-Q=7BUzkODy_PAsWi3YT3pYBcqMDWPR6kR6pCqFMDa_tzA@mail.gmail.com>
+ <43a7d624-5fd1-a3a5-5f18-a84ebde86f1f@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, adilger@dilger.ca,
+Content-Type: text/plain; charset=us-ascii
+Cc: Wang Shilong <wangshilong1991@gmail.com>,
+	linux-ext4@vger.kernel.org, adilger@dilger.ca,
 	Shuichi Ihara <sihara@ddn.com>
-To: Wang Shilong <wangshilong1991@gmail.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54587 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:32860 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752641AbcEQEWi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2016 00:22:38 -0400
-In-Reply-To: <CAP9B-Q=7BUzkODy_PAsWi3YT3pYBcqMDWPR6kR6pCqFMDa_tzA@mail.gmail.com>
+	id S1751979AbcEQEpO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2016 00:45:14 -0400
+Content-Disposition: inline
+In-Reply-To: <43a7d624-5fd1-a3a5-5f18-a84ebde86f1f@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 5/16/16 11:14 PM, Wang Shilong wrote:
-> On Tue, May 17, 2016 at 11:59 AM, Eric Sandeen <sandeen@redhat.com> wrote:
->> On 5/16/16 10:41 PM, Wang Shilong wrote:
->>> From: Wang Shilong <wshilong@ddn.com>
->>>
->>> Somtimes, we need figure out progress of Lazyinit
->>> in the background, this patch try to add stats support
->>> for it, output is something like:
->>>
->>> $ cat /sys/fs/ext4/vda/lazyinit_stats
->>> groups_finished: 80
->>> groups_total: 80
->>
->> A few thoughts:
->>
->> If this goes in, it should be documented in
->> Documentation/fs/ext4.txt, as well.
->>
->> I suppose it might be nice, but when do you think this
->> might be needed in real life?
+On Mon, May 16, 2016 at 11:22:35PM -0500, Eric Sandeen wrote:
 > 
-> In our performances benchmarking, we want to wait
-> Lazyinit finished before starting really benchmarking sometimes.
-> (Since Lazyinit thread trigger some write background here)
-> 
-> but there is no way to see what is progress of lazyinit.
-> and we can only make sure there is no write from Device
-> counter...
+> Sure thing; I'm still on the fence about usefulness, because if
+> anyone really cares to wait for it to hit zero, they probably
+> should have just changed their mkfs options to disable lazyinit.
 
-In that case you should just specify no lazyinit at mkfs time :)
+Indeed, if you're going to stall your test startup until lazyinit is
+done, it will be faster to let mke2fs initialize the inode table
+blocks, since lazyinit deliberately rate limits how much I/O it sends
+down to the disk in order to avoid impacting user latencies.  So i'd
+recommend "mke2fs -E lazy_itable_init=0,lazy_journal_init=0" instead
+of patching the kernel and then waiting for lazy itable init to
+complete.  I think you'll be happier with how long this takes.
 
->> Also: sysfs is technically supposed to be one value per
->> file, and (I think) just a number, no text.  At least,
->> that's what every other ext4 device sysfs file has today,
->> so this should follow that precedent.
->>
->> And as far as I can tell, "groups total" is the total
->> uninit groups at mount time, not total  in the filesystem,
->> so this would change on a remount? I think that's unexpected,
->> and not very useful.
-> 
-> Yeah, From our usage, we need know progress of lazyiniting.
-> So after remoutning, 'total' will be dynamically changed.
-> 
-> We could store 'total' in superblock etc, but IMO it is
-> a bit overhead here.
+BTW, if you care about 99.9 percentile (long tail) latency as a
+performance metric, it's a good idea to disable lazy inode table init
+and just let mke2fs take its own sweet time.  This is what we do
+inside Google, since we care very much about long tail latencies on a
+number of our workloads.
 
-Agreed.
+Cheers,
 
->>
->> Simply printing the remaining uninitialized block group
->> count might be enough, i.e.:
->>
->> $ cat /sys/fs/ext4/vda/lazyinit_remaining
->> 42
-> 
-> Yup, this works fine for me.
-> 
-> Thank you for your coments!
-
-Sure thing; I'm still on the fence about usefulness, because if
-anyone really cares to wait for it to hit zero, they probably
-should have just changed their mkfs options to disable lazyinit.
-
-But if you simply print remaining groups I think it is a very
-simple and low-risk patch, so I wouldn't NAK it, either.
-
--Eric
-
->>
->> -Eric
-
+						- Ted
