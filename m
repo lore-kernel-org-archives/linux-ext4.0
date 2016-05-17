@@ -1,59 +1,80 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: add lazyinit stats support
-Date: Tue, 17 May 2016 02:13:23 -0400
-Message-ID: <20160517061323.GY7799@thunk.org>
-References: <1463456488-93466-1-git-send-email-wangshilong1991@gmail.com>
- <e7de9f2f-6a12-026c-c9fb-2e676fdc37e4@redhat.com>
- <CAP9B-Q=7BUzkODy_PAsWi3YT3pYBcqMDWPR6kR6pCqFMDa_tzA@mail.gmail.com>
- <43a7d624-5fd1-a3a5-5f18-a84ebde86f1f@redhat.com>
- <20160517044507.GW7799@thunk.org>
- <71C04976-407D-4B88-9EFD-923636E69ACB@ddn.com>
+From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+Subject: Re: [PATCH 3/7] ext2: Avoid DAX zeroing to corrupt data
+Date: Tue, 17 May 2016 06:52:47 +0000
+Message-ID: <1463467967.3069.3.camel@intel.com>
+References: <1462960733-29634-1-git-send-email-jack@suse.cz>
+	 <1462960733-29634-4-git-send-email-jack@suse.cz>
+	 <20160512184522.GA19851@linux.intel.com>
+	 <20160516152206.GC21714@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Wang Shilong <wangshilong1991@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"adilger@dilger.ca" <adilger@dilger.ca>
-To: Shuichi Ihara <sihara@ddn.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33062 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752809AbcEQGN2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2016 02:13:28 -0400
-Content-Disposition: inline
-In-Reply-To: <71C04976-407D-4B88-9EFD-923636E69ACB@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Williams, Dan J" <dan.j.williams@intel.com>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	"tytso@mit.edu" <tytso@mit.edu>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"jack@suse.cz" <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160516152206.GC21714@quack2.suse.cz>
+Content-Language: en-US
+Content-ID: <A7906A4624913C4BAF7960087A12C048@intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 17, 2016 at 05:36:57AM +0000, Shuichi Ihara wrote:
-> Sure, disabling layzinit is an option, but our single disk size is
-> more than 60TB to make several petabyte system with Lustre.
-> It takes time in a long while to be completion of mkfs without
-> layzinit and we can't do anything until mkfs is done.  layzinit is
-> still help, we can mount filesystem and do something (create Lustre
-> and testing from client, etc) in parallel under lazyinit is running
-> behind.
-
-Ah, I'm used to doing single disk benchmarks where in the interests of
-getting numbers which are as reproducible as possible, I always run
-the performance benchmarks on a freshly initialized file system, and
-so I don't want to do anything between when the file system is
-initialized and when the workload is started --- or if I'm going to be
-running a test on an aged file system, I'll have a standardized file
-system aging tool with a fixed random seed, and/or a file system image
-which I'll dd into place so that the starting point for the
-performance evaluation is exactly the same for each benchmark run.
-
-It didn't occur to me that you might want to be using the file system
-while lazy init was taking place, and then later on, doing the
-performance benchmarks on a used, randomly dirtied file system.  Hence
-my assumption that the benmarking shell script[1] would not be doing
-anything at all while it waited for lazy init to be finished.
-
-[1] In the interests of keeping the results as consistent as possible,
-I tend to have benchmarking scripts that do all of the workload setup
-and test running and data collection done in an automated fashion, so
-I can kick off a benchmarking run and come back the next day (or after
-the weekend) with all of the results collected.
-
-	    	       	    	  - Ted
+T24gTW9uLCAyMDE2LTA1LTE2IGF0IDE3OjIyICswMjAwLCBKYW4gS2FyYSB3cm90ZToNCj4gT24g
+VGh1IDEyLTA1LTE2IDEyOjQ1OjIyLCBSb3NzIFp3aXNsZXIgd3JvdGU6DQo+ID4gDQo+ID4gT24g
+V2VkLCBNYXkgMTEsIDIwMTYgYXQgMTE6NTg6NDlBTSArMDIwMCwgSmFuIEthcmEgd3JvdGU6DQo+
+ID4gPiANCj4gPiA+IEN1cnJlbnRseSBleHQyIHplcm9lcyBhbnkgZGF0YSBibG9ja3MgYWxsb2Nh
+dGVkIGZvciBEQVggaW5vZGUNCj4gPiA+IGhvd2V2ZXIgaXQNCj4gPiA+IHN0aWxsIHJldHVybnMg
+dGhlbSBhcyBCSF9OZXcuIFRodXMgREFYIGNvZGUgemVyb2VzIHRoZW0gYWdhaW4gaW4NCj4gPiA+
+IGRheF9pbnNlcnRfbWFwcGluZygpIHdoaWNoIGNhbiBwb3NzaWJseSBvdmVyd3JpdGUgdGhlIGRh
+dGEgdGhhdA0KPiA+ID4gaGFzIGJlZW4NCj4gPiA+IGFscmVhZHkgc3RvcmVkIHRvIHRob3NlIGJs
+b2NrcyBieSBhIHJhY2luZyBkYXhfaW8oKS4gQXZvaWQNCj4gPiA+IG1hcmtpbmcNCj4gPiA+IHBy
+ZS16ZXJvZWQgYnVmZmVycyBhcyBuZXcuDQo+ID4gPiANCj4gPiA+IFJldmlld2VkLWJ5OiBSb3Nz
+IFp3aXNsZXIgPHJvc3Muendpc2xlckBsaW51eC5pbnRlbC5jb20+DQo+ID4gPiBTaWduZWQtb2Zm
+LWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6Pg0KPiA+ID4gLS0tDQo+ID4gPiDCoGZzL2V4dDIv
+aW5vZGUuYyB8IDQgKystLQ0KPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCsp
+LCAyIGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvZXh0Mi9pbm9k
+ZS5jIGIvZnMvZXh0Mi9pbm9kZS5jDQo+ID4gPiBpbmRleCA2YmQ1OGU2ZmYwMzguLjFmMDdiNzU4
+Yjk2OCAxMDA2NDQNCj4gPiA+IC0tLSBhL2ZzL2V4dDIvaW5vZGUuYw0KPiA+ID4gKysrIGIvZnMv
+ZXh0Mi9pbm9kZS5jDQo+ID4gPiBAQCAtNzQ1LDExICs3NDUsMTEgQEAgc3RhdGljIGludCBleHQy
+X2dldF9ibG9ja3Moc3RydWN0IGlub2RlDQo+ID4gPiAqaW5vZGUsDQo+ID4gPiDCoAkJCW11dGV4
+X3VubG9jaygmZWktPnRydW5jYXRlX211dGV4KTsNCj4gPiA+IMKgCQkJZ290byBjbGVhbnVwOw0K
+PiA+ID4gwqAJCX0NCj4gPiA+IC0JfQ0KPiA+ID4gKwl9IGVsc2UNCj4gPiA+ICsJCXNldF9idWZm
+ZXJfbmV3KGJoX3Jlc3VsdCk7DQo+ID4gPiDCoA0KPiA+ID4gwqAJZXh0Ml9zcGxpY2VfYnJhbmNo
+KGlub2RlLCBpYmxvY2ssIHBhcnRpYWwsDQo+ID4gPiBpbmRpcmVjdF9ibGtzLCBjb3VudCk7DQo+
+ID4gPiDCoAltdXRleF91bmxvY2soJmVpLT50cnVuY2F0ZV9tdXRleCk7DQo+ID4gPiAtCXNldF9i
+dWZmZXJfbmV3KGJoX3Jlc3VsdCk7DQo+ID4gPiDCoGdvdF9pdDoNCj4gPiA+IMKgCW1hcF9iaChi
+aF9yZXN1bHQsIGlub2RlLT5pX3NiLCBsZTMyX3RvX2NwdShjaGFpbltkZXB0aC0NCj4gPiA+IDFd
+LmtleSkpOw0KPiA+ID4gwqAJaWYgKGNvdW50ID4gYmxvY2tzX3RvX2JvdW5kYXJ5KQ0KPiA+ID4g
+LS3CoA0KPiA+ID4gMi42LjYNCj4gPiBJbnRlcmVzdGluZ2x5IHRoaXMgY2hhbmdlIGlzIGNhdXNp
+bmcgYSBidW5jaCBvZiB4ZnN0ZXN0cw0KPiA+IHJlZ3Jlc3Npb25zIGZvciBtZQ0KPiA+IHdpdGgg
+ZXh0MiArIERBWC7CoMKgQWxsIG9mIHRoZXNlIHRlc3RzIHBhc3Mgd2l0aG91dCB0aGlzIG9uZSBj
+aGFuZ2UuDQo+IEdvb2QgY2F0Y2guIEF0dGFjaGVkIHBhdGNoIGZpeGVzIHRoaXMgaXNzdWUgZm9y
+IG1lLiBQcmVmZXJhYmx5IGl0DQo+IHNob3VsZCBiZQ0KPiBtZXJnZWQgYmVmb3JlIHRoZSBhYm92
+ZSBleHQyIGNoYW5nZS4NCj4gDQo+IAkJCQkJCQkJSG9uemENCg0KSGV5IEphbiwNCg0KSW4gbXkg
+cGF0Y2ggMyBvZiB0aGUgZXJyb3IgaGFuZGxpbmcgc2VyaWVzLCBJIGhhdmU6DQoNCi3CoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBlcnIgPSBkYXhfY2xlYXJfc2VjdG9ycyhpbm9kZS0+aV9z
+Yi0+c19iZGV2LA0KLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgbGUzMl90b19jcHUoY2hhaW5bZGVwdGgtMV0ua2V5KSA8PA0KLcKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgKGlub2RlLT5pX2Jsa2JpdHMgLSA5KSwNCi3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEgPDwgaW5vZGUtPmlfYmxrYml0cyk7
+DQorwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZXJyID0gc2JfaXNzdWVfemVyb291dChp
+bm9kZS0+aV9zYiwNCivCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoGxlMzJfdG9fY3B1KGNoYWluW2RlcHRoLTFdLmtleSksIDEsIEdG
+UF9OT0ZTKTsNCg0KRG9lcyB0aGlzIG1lYW4gSSBoYXZlIHRvIGNoYW5nZSB0byBzZW5kIHRoZSBz
+Yl9pc3N1ZV96ZXJvb3V0IGZvcg0KJ2NvdW50JyBibG9ja3MuLiBpLmUuDQoNCi3CoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqBlcnIgPSBkYXhfY2xlYXJfc2VjdG9ycyhpbm9kZS0+aV9zYi0+
+c19iZGV2LA0KLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgbGUzMl90b19jcHUoY2hhaW5bZGVwdGgtMV0ua2V5KSA8PA0KLcKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+KGlub2RlLT5pX2Jsa2JpdHMgLSA5KSwNCi3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEgPDwgaW5vZGUtPmlfYmxrYml0cyk7DQor
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZXJyID0gc2JfaXNzdWVfemVyb291dChpbm9k
+ZS0+aV9zYiwNCivCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoGxlMzJfdG9fY3B1KGNoYWluW2RlcHRoLTFdLmtleSksIGNvdW50LCBH
+RlBfTk9GUyk7DQoNCklmIHNvLCBJJ2xsIHVwZGF0ZSBteSBzZXJpZXMgdG9tb3Jyb3cgdG8gaW5j
+bHVkZSBpbiBib3RoIG9mIHRoZXNlIGNoYW5nZXMuDQoNClRoYW5rcywNCgktVmlzaGFs
