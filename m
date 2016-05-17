@@ -1,80 +1,135 @@
-From: "Verma, Vishal L" <vishal.l.verma@intel.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 3/7] ext2: Avoid DAX zeroing to corrupt data
-Date: Tue, 17 May 2016 06:52:47 +0000
-Message-ID: <1463467967.3069.3.camel@intel.com>
+Date: Tue, 17 May 2016 09:19:50 +0200
+Message-ID: <20160517071950.GA31991@quack2.suse.cz>
 References: <1462960733-29634-1-git-send-email-jack@suse.cz>
-	 <1462960733-29634-4-git-send-email-jack@suse.cz>
-	 <20160512184522.GA19851@linux.intel.com>
-	 <20160516152206.GC21714@quack2.suse.cz>
+ <1462960733-29634-4-git-send-email-jack@suse.cz>
+ <20160512184522.GA19851@linux.intel.com>
+ <20160516152206.GC21714@quack2.suse.cz>
+ <1463467967.3069.3.camel@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"jack@suse.cz" <jack@suse.cz>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"Williams, Dan J" <dan.j.williams@intel.com>,
 	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
 	"tytso@mit.edu" <tytso@mit.edu>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"jack@suse.cz" <jack@suse.cz>
+To: "Verma, Vishal L" <vishal.l.verma@intel.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20160516152206.GC21714@quack2.suse.cz>
-Content-Language: en-US
-Content-ID: <A7906A4624913C4BAF7960087A12C048@intel.com>
+Content-Disposition: inline
+In-Reply-To: <1463467967.3069.3.camel@intel.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gTW9uLCAyMDE2LTA1LTE2IGF0IDE3OjIyICswMjAwLCBKYW4gS2FyYSB3cm90ZToNCj4gT24g
-VGh1IDEyLTA1LTE2IDEyOjQ1OjIyLCBSb3NzIFp3aXNsZXIgd3JvdGU6DQo+ID4gDQo+ID4gT24g
-V2VkLCBNYXkgMTEsIDIwMTYgYXQgMTE6NTg6NDlBTSArMDIwMCwgSmFuIEthcmEgd3JvdGU6DQo+
-ID4gPiANCj4gPiA+IEN1cnJlbnRseSBleHQyIHplcm9lcyBhbnkgZGF0YSBibG9ja3MgYWxsb2Nh
-dGVkIGZvciBEQVggaW5vZGUNCj4gPiA+IGhvd2V2ZXIgaXQNCj4gPiA+IHN0aWxsIHJldHVybnMg
-dGhlbSBhcyBCSF9OZXcuIFRodXMgREFYIGNvZGUgemVyb2VzIHRoZW0gYWdhaW4gaW4NCj4gPiA+
-IGRheF9pbnNlcnRfbWFwcGluZygpIHdoaWNoIGNhbiBwb3NzaWJseSBvdmVyd3JpdGUgdGhlIGRh
-dGEgdGhhdA0KPiA+ID4gaGFzIGJlZW4NCj4gPiA+IGFscmVhZHkgc3RvcmVkIHRvIHRob3NlIGJs
-b2NrcyBieSBhIHJhY2luZyBkYXhfaW8oKS4gQXZvaWQNCj4gPiA+IG1hcmtpbmcNCj4gPiA+IHBy
-ZS16ZXJvZWQgYnVmZmVycyBhcyBuZXcuDQo+ID4gPiANCj4gPiA+IFJldmlld2VkLWJ5OiBSb3Nz
-IFp3aXNsZXIgPHJvc3Muendpc2xlckBsaW51eC5pbnRlbC5jb20+DQo+ID4gPiBTaWduZWQtb2Zm
-LWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6Pg0KPiA+ID4gLS0tDQo+ID4gPiDCoGZzL2V4dDIv
-aW5vZGUuYyB8IDQgKystLQ0KPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCsp
-LCAyIGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvZXh0Mi9pbm9k
-ZS5jIGIvZnMvZXh0Mi9pbm9kZS5jDQo+ID4gPiBpbmRleCA2YmQ1OGU2ZmYwMzguLjFmMDdiNzU4
-Yjk2OCAxMDA2NDQNCj4gPiA+IC0tLSBhL2ZzL2V4dDIvaW5vZGUuYw0KPiA+ID4gKysrIGIvZnMv
-ZXh0Mi9pbm9kZS5jDQo+ID4gPiBAQCAtNzQ1LDExICs3NDUsMTEgQEAgc3RhdGljIGludCBleHQy
-X2dldF9ibG9ja3Moc3RydWN0IGlub2RlDQo+ID4gPiAqaW5vZGUsDQo+ID4gPiDCoAkJCW11dGV4
-X3VubG9jaygmZWktPnRydW5jYXRlX211dGV4KTsNCj4gPiA+IMKgCQkJZ290byBjbGVhbnVwOw0K
-PiA+ID4gwqAJCX0NCj4gPiA+IC0JfQ0KPiA+ID4gKwl9IGVsc2UNCj4gPiA+ICsJCXNldF9idWZm
-ZXJfbmV3KGJoX3Jlc3VsdCk7DQo+ID4gPiDCoA0KPiA+ID4gwqAJZXh0Ml9zcGxpY2VfYnJhbmNo
-KGlub2RlLCBpYmxvY2ssIHBhcnRpYWwsDQo+ID4gPiBpbmRpcmVjdF9ibGtzLCBjb3VudCk7DQo+
-ID4gPiDCoAltdXRleF91bmxvY2soJmVpLT50cnVuY2F0ZV9tdXRleCk7DQo+ID4gPiAtCXNldF9i
-dWZmZXJfbmV3KGJoX3Jlc3VsdCk7DQo+ID4gPiDCoGdvdF9pdDoNCj4gPiA+IMKgCW1hcF9iaChi
-aF9yZXN1bHQsIGlub2RlLT5pX3NiLCBsZTMyX3RvX2NwdShjaGFpbltkZXB0aC0NCj4gPiA+IDFd
-LmtleSkpOw0KPiA+ID4gwqAJaWYgKGNvdW50ID4gYmxvY2tzX3RvX2JvdW5kYXJ5KQ0KPiA+ID4g
-LS3CoA0KPiA+ID4gMi42LjYNCj4gPiBJbnRlcmVzdGluZ2x5IHRoaXMgY2hhbmdlIGlzIGNhdXNp
-bmcgYSBidW5jaCBvZiB4ZnN0ZXN0cw0KPiA+IHJlZ3Jlc3Npb25zIGZvciBtZQ0KPiA+IHdpdGgg
-ZXh0MiArIERBWC7CoMKgQWxsIG9mIHRoZXNlIHRlc3RzIHBhc3Mgd2l0aG91dCB0aGlzIG9uZSBj
-aGFuZ2UuDQo+IEdvb2QgY2F0Y2guIEF0dGFjaGVkIHBhdGNoIGZpeGVzIHRoaXMgaXNzdWUgZm9y
-IG1lLiBQcmVmZXJhYmx5IGl0DQo+IHNob3VsZCBiZQ0KPiBtZXJnZWQgYmVmb3JlIHRoZSBhYm92
-ZSBleHQyIGNoYW5nZS4NCj4gDQo+IAkJCQkJCQkJSG9uemENCg0KSGV5IEphbiwNCg0KSW4gbXkg
-cGF0Y2ggMyBvZiB0aGUgZXJyb3IgaGFuZGxpbmcgc2VyaWVzLCBJIGhhdmU6DQoNCi3CoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBlcnIgPSBkYXhfY2xlYXJfc2VjdG9ycyhpbm9kZS0+aV9z
-Yi0+c19iZGV2LA0KLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgbGUzMl90b19jcHUoY2hhaW5bZGVwdGgtMV0ua2V5KSA8PA0KLcKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgKGlub2RlLT5pX2Jsa2JpdHMgLSA5KSwNCi3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEgPDwgaW5vZGUtPmlfYmxrYml0cyk7
-DQorwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZXJyID0gc2JfaXNzdWVfemVyb291dChp
-bm9kZS0+aV9zYiwNCivCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoGxlMzJfdG9fY3B1KGNoYWluW2RlcHRoLTFdLmtleSksIDEsIEdG
-UF9OT0ZTKTsNCg0KRG9lcyB0aGlzIG1lYW4gSSBoYXZlIHRvIGNoYW5nZSB0byBzZW5kIHRoZSBz
-Yl9pc3N1ZV96ZXJvb3V0IGZvcg0KJ2NvdW50JyBibG9ja3MuLiBpLmUuDQoNCi3CoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqBlcnIgPSBkYXhfY2xlYXJfc2VjdG9ycyhpbm9kZS0+aV9zYi0+
-c19iZGV2LA0KLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgbGUzMl90b19jcHUoY2hhaW5bZGVwdGgtMV0ua2V5KSA8PA0KLcKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-KGlub2RlLT5pX2Jsa2JpdHMgLSA5KSwNCi3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEgPDwgaW5vZGUtPmlfYmxrYml0cyk7DQor
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZXJyID0gc2JfaXNzdWVfemVyb291dChpbm9k
-ZS0+aV9zYiwNCivCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoGxlMzJfdG9fY3B1KGNoYWluW2RlcHRoLTFdLmtleSksIGNvdW50LCBH
-RlBfTk9GUyk7DQoNCklmIHNvLCBJJ2xsIHVwZGF0ZSBteSBzZXJpZXMgdG9tb3Jyb3cgdG8gaW5j
-bHVkZSBpbiBib3RoIG9mIHRoZXNlIGNoYW5nZXMuDQoNClRoYW5rcywNCgktVmlzaGFs
+On Tue 17-05-16 06:52:47, Verma, Vishal L wrote:
+> On Mon, 2016-05-16 at 17:22 +0200, Jan Kara wrote:
+> > On Thu 12-05-16 12:45:22, Ross Zwisler wrote:
+> > >=20
+> > > On Wed, May 11, 2016 at 11:58:49AM +0200, Jan Kara wrote:
+> > > >=20
+> > > > Currently ext2 zeroes any data blocks allocated for DAX inode
+> > > > however it
+> > > > still returns them as BH_New. Thus DAX code zeroes them again i=
+n
+> > > > dax_insert_mapping() which can possibly overwrite the data that
+> > > > has been
+> > > > already stored to those blocks by a racing dax_io(). Avoid
+> > > > marking
+> > > > pre-zeroed buffers as new.
+> > > >=20
+> > > > Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > > > ---
+> > > > =A0fs/ext2/inode.c | 4 ++--
+> > > > =A01 file changed, 2 insertions(+), 2 deletions(-)
+> > > >=20
+> > > > diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> > > > index 6bd58e6ff038..1f07b758b968 100644
+> > > > --- a/fs/ext2/inode.c
+> > > > +++ b/fs/ext2/inode.c
+> > > > @@ -745,11 +745,11 @@ static int ext2_get_blocks(struct inode
+> > > > *inode,
+> > > > =A0			mutex_unlock(&ei->truncate_mutex);
+> > > > =A0			goto cleanup;
+> > > > =A0		}
+> > > > -	}
+> > > > +	} else
+> > > > +		set_buffer_new(bh_result);
+> > > > =A0
+> > > > =A0	ext2_splice_branch(inode, iblock, partial,
+> > > > indirect_blks, count);
+> > > > =A0	mutex_unlock(&ei->truncate_mutex);
+> > > > -	set_buffer_new(bh_result);
+> > > > =A0got_it:
+> > > > =A0	map_bh(bh_result, inode->i_sb, le32_to_cpu(chain[depth-
+> > > > 1].key));
+> > > > =A0	if (count > blocks_to_boundary)
+> > > > --=A0
+> > > > 2.6.6
+> > > Interestingly this change is causing a bunch of xfstests
+> > > regressions for me
+> > > with ext2 + DAX.=A0=A0All of these tests pass without this one ch=
+ange.
+> > Good catch. Attached patch fixes this issue for me. Preferably it
+> > should be
+> > merged before the above ext2 change.
+> >=20
+> > 								Honza
+>=20
+> Hey Jan,
+>=20
+> In my patch 3 of the error handling series, I have:
+>=20
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0err =3D dax_clear_secto=
+rs(inode->i_sb->s_bdev,
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0le32_to_cpu(chain[depth-1].key) <<
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0(inode->i_blkbits - 9),
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A01 << inode->i_blkbits);
+> +=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0err =3D sb_issue_zeroou=
+t(inode->i_sb,
+> +=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0le32_to_cpu(chain[depth-1].key), 1, GFP_NOFS);
+>=20
+> Does this mean I have to change to send the sb_issue_zeroout for
+> 'count' blocks.. i.e.
+
+Yes, I've noticed the conflict today as well.
+
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0err =3D dax_clear_secto=
+rs(inode->i_sb->s_bdev,
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0le32_to_cpu(chain[depth-1].key) <<
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0(inode->i_blkbits - 9),
+> -=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A01 << inode->i_blkbits);
+> +=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0err =3D sb_issue_zeroou=
+t(inode->i_sb,
+> +=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
+=A0=A0=A0=A0=A0=A0=A0=A0le32_to_cpu(chain[depth-1].key), count, GFP_NOF=
+S);
+>=20
+> If so, I'll update my series tomorrow to include in both of these cha=
+nges.
+
+I'd prefer these two to stay separate commits (they are really
+independent).  Since you already depend on other patches from the DAX
+cleanup series, just add this patch to the list of dependencies and bas=
+e
+your change on that... Hmm?
+
+								Honza
+--=20
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
