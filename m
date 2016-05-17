@@ -1,58 +1,16 @@
-From: Shuichi Ihara <sihara@ddn.com>
-Subject: Re: [PATCH] ext4: add lazyinit stats support
-Date: Tue, 17 May 2016 05:36:57 +0000
-Message-ID: <71C04976-407D-4B88-9EFD-923636E69ACB@ddn.com>
-References: <1463456488-93466-1-git-send-email-wangshilong1991@gmail.com>
- <e7de9f2f-6a12-026c-c9fb-2e676fdc37e4@redhat.com>
- <CAP9B-Q=7BUzkODy_PAsWi3YT3pYBcqMDWPR6kR6pCqFMDa_tzA@mail.gmail.com>
- <43a7d624-5fd1-a3a5-5f18-a84ebde86f1f@redhat.com>
- <20160517044507.GW7799@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Wang Shilong <wangshilong1991@gmail.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"adilger@dilger.ca" <adilger@dilger.ca>
-To: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>
+From: renwu@sh-opticom.com
+Subject: (unknown)
+Date: Tue, 17 May 2016 13:51:57 +0800 (CST)
+Message-ID: <20160517055157.80D222F4B23@mail.jv.com.cn>
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from legacy.ddn.com ([64.47.133.206]:53104 "EHLO legacy.ddn.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751095AbcEQFmV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 May 2016 01:42:21 -0400
-In-Reply-To: <20160517044507.GW7799@thunk.org>
-Content-Language: en-US
-Content-ID: <5362927431E381468D1EE2395EB02A3D@ddn.com>
+Received: from [118.126.11.146] ([118.126.11.146]:51849 "EHLO mail.jv.com.cn"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754317AbcEQGHO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2016 02:07:14 -0400
+Received: from ntydhm (unknown [111.177.187.100])
+	by mail.jv.com.cn (Postfix) with ESMTP id 80D222F4B23
+	for <linux-ext4@vger.kernel.org>; Tue, 17 May 2016 13:51:57 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-U3VyZSwgZGlzYWJsaW5nIGxheXppbml0IGlzIGFuIG9wdGlvbiwgYnV0IG91ciBzaW5nbGUgZGlz
-ayBzaXplIGlzIG1vcmUgdGhhbiA2MFRCIHRvIG1ha2Ugc2V2ZXJhbCBwZXRhYnl0ZSBzeXN0ZW0g
-d2l0aCBMdXN0cmUuDQpJdCB0YWtlcyB0aW1lIGluIGEgbG9uZyB3aGlsZSB0byBiZSBjb21wbGV0
-aW9uIG9mIG1rZnMgd2l0aG91dCBsYXl6aW5pdCBhbmQgd2UgY2FuJ3QgZG8gYW55dGhpbmcgdW50
-aWwgbWtmcyBpcyBkb25lLg0KbGF5emluaXQgaXMgc3RpbGwgaGVscCwgd2UgY2FuIG1vdW50IGZp
-bGVzeXN0ZW0gYW5kIGRvIHNvbWV0aGluZyAoY3JlYXRlIEx1c3RyZSBhbmQgdGVzdGluZyBmcm9t
-IGNsaWVudCwgZXRjKSBpbiBwYXJhbGxlbCB1bmRlciBsYXp5aW5pdCBpcyBydW5uaW5nIGJlaGlu
-ZC4NCg0KDQpTbywgd2Ugc3RpbGwgd2FudCB0byBzZWUgaG93IGxhenlpbml0IGlzIGdvaW5nIGFu
-ZCBrbm93IGVzdGltYXRpb24gb2YgZmluaXNoIGl0IHRvIGRvIHJlYWxseSBwZXJmb3JtYW5jZSBp
-bnRlbnNpdmUgdGVzdGluZyBhZnRlciBsYXp5aW5pdCBmaW5pc2hlZC4NCg0KVGhhbmtzDQpJaGFy
-YSANCg0KT24gNS8xNy8xNiwgMTo0NSBQTSwgIlRoZW9kb3JlIFRzJ28iIDx0eXRzb0BtaXQuZWR1
-PiB3cm90ZToNCg0KPk9uIE1vbiwgTWF5IDE2LCAyMDE2IGF0IDExOjIyOjM1UE0gLTA1MDAsIEVy
-aWMgU2FuZGVlbiB3cm90ZToNCj4+IA0KPj4gU3VyZSB0aGluZzsgSSdtIHN0aWxsIG9uIHRoZSBm
-ZW5jZSBhYm91dCB1c2VmdWxuZXNzLCBiZWNhdXNlIGlmDQo+PiBhbnlvbmUgcmVhbGx5IGNhcmVz
-IHRvIHdhaXQgZm9yIGl0IHRvIGhpdCB6ZXJvLCB0aGV5IHByb2JhYmx5DQo+PiBzaG91bGQgaGF2
-ZSBqdXN0IGNoYW5nZWQgdGhlaXIgbWtmcyBvcHRpb25zIHRvIGRpc2FibGUgbGF6eWluaXQuDQo+
-DQo+SW5kZWVkLCBpZiB5b3UncmUgZ29pbmcgdG8gc3RhbGwgeW91ciB0ZXN0IHN0YXJ0dXAgdW50
-aWwgbGF6eWluaXQgaXMNCj5kb25lLCBpdCB3aWxsIGJlIGZhc3RlciB0byBsZXQgbWtlMmZzIGlu
-aXRpYWxpemUgdGhlIGlub2RlIHRhYmxlDQo+YmxvY2tzLCBzaW5jZSBsYXp5aW5pdCBkZWxpYmVy
-YXRlbHkgcmF0ZSBsaW1pdHMgaG93IG11Y2ggSS9PIGl0IHNlbmRzDQo+ZG93biB0byB0aGUgZGlz
-ayBpbiBvcmRlciB0byBhdm9pZCBpbXBhY3RpbmcgdXNlciBsYXRlbmNpZXMuICBTbyBpJ2QNCj5y
-ZWNvbW1lbmQgIm1rZTJmcyAtRSBsYXp5X2l0YWJsZV9pbml0PTAsbGF6eV9qb3VybmFsX2luaXQ9
-MCIgaW5zdGVhZA0KPm9mIHBhdGNoaW5nIHRoZSBrZXJuZWwgYW5kIHRoZW4gd2FpdGluZyBmb3Ig
-bGF6eSBpdGFibGUgaW5pdCB0bw0KPmNvbXBsZXRlLiAgSSB0aGluayB5b3UnbGwgYmUgaGFwcGll
-ciB3aXRoIGhvdyBsb25nIHRoaXMgdGFrZXMuDQo+DQo+QlRXLCBpZiB5b3UgY2FyZSBhYm91dCA5
-OS45IHBlcmNlbnRpbGUgKGxvbmcgdGFpbCkgbGF0ZW5jeSBhcyBhDQo+cGVyZm9ybWFuY2UgbWV0
-cmljLCBpdCdzIGEgZ29vZCBpZGVhIHRvIGRpc2FibGUgbGF6eSBpbm9kZSB0YWJsZSBpbml0DQo+
-YW5kIGp1c3QgbGV0IG1rZTJmcyB0YWtlIGl0cyBvd24gc3dlZXQgdGltZS4gIFRoaXMgaXMgd2hh
-dCB3ZSBkbw0KPmluc2lkZSBHb29nbGUsIHNpbmNlIHdlIGNhcmUgdmVyeSBtdWNoIGFib3V0IGxv
-bmcgdGFpbCBsYXRlbmNpZXMgb24gYQ0KPm51bWJlciBvZiBvdXIgd29ya2xvYWRzLg0KPg0KPkNo
-ZWVycywNCj4NCj4JCQkJCQktIFRlZA0K
