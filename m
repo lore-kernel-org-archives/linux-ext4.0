@@ -1,36 +1,42 @@
-From: David Sterba <dsterba@suse.cz>
-Subject: Re: [PATCH] fs: Add MODULE_SOFTDEP declarations for hard-coded
- crypto drivers
-Date: Tue, 17 May 2016 16:59:47 +0200
-Message-ID: <20160517145947.GT511@twin.jikos.cz>
-References: <20160517133631.GF7555@decadent.org.uk>
-Reply-To: dsterba@suse.cz
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118041] My tricky script involving zram and device mapper hangs
+ on "mount"
+Date: Tue, 17 May 2016 16:27:24 +0000
+Message-ID: <bug-118041-13602-ORyYGKzzKU@https.bugzilla.kernel.org/>
+References: <bug-118041-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-To: Ben Hutchings <ben@decadent.org.uk>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160517133631.GF7555@decadent.org.uk>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:48732 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751443AbcEQQ11 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 May 2016 12:27:27 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 5A55B20351
+	for <linux-ext4@vger.kernel.org>; Tue, 17 May 2016 16:27:26 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 2973620328
+	for <linux-ext4@vger.kernel.org>; Tue, 17 May 2016 16:27:25 +0000 (UTC)
+In-Reply-To: <bug-118041-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 17, 2016 at 02:36:31PM +0100, Ben Hutchings wrote:
-> This helps initramfs builders and other tools to find the full
-> dependencies of a module.
-> 
-> References: https://bugs.debian.org/819725
-> Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
-> ---
-> --- a/fs/btrfs/super.c
-> +++ b/fs/btrfs/super.c
-> @@ -2456,3 +2456,4 @@ late_initcall(init_btrfs_fs);
->  module_exit(exit_btrfs_fs)
->  
->  MODULE_LICENSE("GPL");
-> +MODULE_SOFTDEP("pre: crypto-crc32c");
+https://bugzilla.kernel.org/show_bug.cgi?id=118041
 
-Acked-by: David Sterba <dsterba@suse.com>
+Navin <navinp1912@gmail.com> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |navinp1912@gmail.com
+
+--- Comment #1 from Navin <navinp1912@gmail.com> ---
+What is cryptie4-ff ? it is linear or raid setup for dmsetup.
+What is hashed_update.
+Seems like only part of the script is posted. 
+Can you please get a working standalone independent script ?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
