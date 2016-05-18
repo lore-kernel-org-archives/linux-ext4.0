@@ -1,68 +1,48 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
- kernels >= 4.3
-Date: Wed, 18 May 2016 16:02:34 +0000
-Message-ID: <bug-118401-13602-y8cHFktNi8@https.bugzilla.kernel.org/>
-References: <bug-118401-13602@https.bugzilla.kernel.org/>
+From: Kamran Khan <krkhan@inspirated.com>
+Subject: Re: Difference in jbd2 behavior between CentOS and Ubuntu while unmounting
+Date: Wed, 18 May 2016 12:01:43 -0700
+Message-ID: <CAN0j2-duVA45Vr40rza-PLcwhx6z+KHAGT9Wj+dCGWwwmp9qdQ@mail.gmail.com>
+References: <CAN0j2-ek1iJ_a8ii+sg+kTdjcmZD6jVUHO9SJBbbhfD+5s_CGw@mail.gmail.com>
+	<32a9cbf4-4e2d-335c-0603-9639b30e2863@redhat.com>
+	<CAN0j2-cp1odcT44ZoeFDGHMF519F2b9Ffa5vc8PJyJfSLcj5-Q@mail.gmail.com>
+	<782fe069-c14f-4bae-609e-bbad554cb657@redhat.com>
+	<20160518061834.GA4502@birch.djwong.org>
+	<20160518141240.GB1710@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:44330 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752523AbcERQCi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 May 2016 12:02:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id CE7AA20376
-	for <linux-ext4@vger.kernel.org>; Wed, 18 May 2016 16:02:36 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 8A67E2035D
-	for <linux-ext4@vger.kernel.org>; Wed, 18 May 2016 16:02:34 +0000 (UTC)
-In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+Received: from mail-vk0-f51.google.com ([209.85.213.51]:34918 "EHLO
+	mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753505AbcERTBo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2016 15:01:44 -0400
+Received: by mail-vk0-f51.google.com with SMTP id f66so73934333vkh.2
+        for <linux-ext4@vger.kernel.org>; Wed, 18 May 2016 12:01:44 -0700 (PDT)
+In-Reply-To: <20160518141240.GB1710@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=118401
+On Wed, May 18, 2016 at 7:12 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Try the following to see if someone process is playing namespace games
+>
+> find /proc -name mounts | xargs grep /dev/sda3
+>
+> (replace /dev/sda3 with the device that you think is unmounted).
+>
+> When you find the process, kill it.  (Or try doing a service XXX
+> restart assuming that the device has been unmounted in the "normal"
+> mount namespace.)
 
-Theodore Tso <tytso@mit.edu> changed:
+That did the trick! systemd-udevd was the culprit. Somehow it wasn't
+appearing in lsof/fuser outputs but had the block device listed in its
+mounts.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Killed it and the block device was released for further operations.
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-This is not an ext4 issue.
-
-It could be a problem with how the kernel was configured.   It could be a
-hardware issue; it could be many things.  But the problem seems to be that the
-root device is not getting detected, so this is before the file system gets
-involved.
-
-Part of the problem is that hardware support issues are one of the things that
-take a quite a lot of time to try to resolve remotely, especially if the user
-doesn't know how to get the necessary debugging information, and upstream
-developers are all volunteers when it comes to giving support to random end
-users.   Normally this is work that gets done by distributions, especially if
-they are getting paid support $$$.   But they don't want to support anything
-other than their standard kernel.
-
-You can find kernel folks who also have a particular hardware, or something
-similar, and they will help on a volunteer basis.  The problem is while many of
-us will have Thinkpads (for example), many fewer kernel developers are likely
-to have come across an All-in-one Lenovo A740 desktop.
-
-This sort of problem is much better handled by someone who knows how to get the
-necessary debugging information (the kernel configuration used to build the
-kernel image you are trying to use, and the kernel dmesg messages during the
-boot process, etc.).  So if you are near a local Linux User's Group, that might
-be a good place to try to ask for help.
-
-I will say that my Haswell-based Lenovo Thinkpad T540p works just fine with
-upstream kernels, so my guess is that it's mostly a kernel configuration issue,
-possibly combined with needing to make changes in the BIOS settings.  So
-there's a good chance this isn't a kernel bug at all.
-
+Thanks!!
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Kamran.
+
+http://inspirated.com/
