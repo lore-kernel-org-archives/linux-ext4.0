@@ -1,67 +1,65 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: dax-misc branch for linux-next
-Date: Wed, 18 May 2016 13:34:22 +1000
-Message-ID: <20160518133422.6dfbad0b@canb.auug.org.au>
-References: <1463510194.29294.77.camel@intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Difference in jbd2 behavior between CentOS and Ubuntu while
+ unmounting
+Date: Tue, 17 May 2016 23:18:34 -0700
+Message-ID: <20160518061834.GA4502@birch.djwong.org>
+References: <CAN0j2-ek1iJ_a8ii+sg+kTdjcmZD6jVUHO9SJBbbhfD+5s_CGw@mail.gmail.com>
+ <32a9cbf4-4e2d-335c-0603-9639b30e2863@redhat.com>
+ <CAN0j2-cp1odcT44ZoeFDGHMF519F2b9Ffa5vc8PJyJfSLcj5-Q@mail.gmail.com>
+ <782fe069-c14f-4bae-609e-bbad554cb657@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Williams, Dan J" <dan.j.williams@intel.com>, <hch@infradead.org>,
-	<jack@suse.cz>, <linux-nvdimm@lists.01.org>, <tytso@mit.edu>,
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-To: "Verma, Vishal L" <vishal.l.verma@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1463510194.29294.77.camel@intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Kamran Khan <krkhan@inspirated.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:51998 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750925AbcERGSl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2016 02:18:41 -0400
+Content-Disposition: inline
+In-Reply-To: <782fe069-c14f-4bae-609e-bbad554cb657@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Vishal,
+On Tue, May 17, 2016 at 09:41:07PM -0500, Eric Sandeen wrote:
+> On 5/17/16 9:35 PM, Kamran Khan wrote:
+> > Yup, the kernel versions are drastically different. It's 3.10 vs 4.2.
+> > 
+> > The problem on 3.10 though is, while jbd2 holds on to the unmounted
+> > device I cannot even rmmod jbd2 or ext4 *even if no other ext
+> > filesystems are mounted*. That lock makes it all but impossible to do
+> > anything with the block device.
+> 
+> You may as well try Centos7.2, at least, there are 50+ updates to
+> jbd2 & ext4 since 7.1.  If it still persists we can dig further.
 
-On Tue, 17 May 2016 18:36:47 +0000 "Verma, Vishal L" <vishal.l.verma@in=
-tel.com> wrote:
->
-> I understand this is a bit out of the norm, but:
->=20
-> Could you please merge
->=20
-> 	https://git.kernel.org/cgit/linux/kernel/git/nvdimm/nvdimm.git=C2=A0=
-dax-misc
->=20
-> into linux-next for some coverage.
->=20
-> It is a bit late to the ready-before-merge-window deadline, due to
-> having to coordinate dependencies between trees/patchsets. I'm hoping=
- to
-> send a pull request for this later in the merge window (once ext4 is
-> merged).
+Just to throw some gasoline on this fire, I hit the same set of symptoms
+a couple of weeks ago while trying to umount /home on 4.5.0 + Ubuntu 16.04.
+Ted mused that it could be some process running in a funny mount namespace.
+Or systemd dragons.  Or something.
 
-Added from today.
+<shrug> I rebooted and haven't seen it since, tho...
 
-Thanks for adding your subsystem tree as a participant of linux-next.  =
-As
-you may know, this is not a judgement of your code.  The purpose of
-linux-next is for integration testing and to lower the impact of
-conflicts between subsystems in the next merge window.=20
+--D
 
-You will need to ensure that the patches/commits in your tree/series ha=
-ve
-been:
-     * submitted under GPL v2 (or later) and include the Contributor's
-        Signed-off-by,
-     * posted to the relevant mailing list,
-     * reviewed by you (or another maintainer of your subsystem tree),
-     * successfully unit tested, and=20
-     * destined for the current or next Linux merge window.
-
-Basically, this should be just what you would send to Linus (or ask him
-to fetch).  It is allowed to be rebased if you deem it necessary.
-
---=20
-Cheers,
-Stephen Rothwell=20
-sfr@canb.auug.org.au
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -Eric
+> 
+> > On Tue, May 17, 2016 at 7:17 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+> >> On 5/17/16 7:46 PM, Kamran Khan wrote:
+> >>> I'm trying to understand the difference in jbd2 behavior across Ubuntu
+> >>> 14.04 and Centos 7.1. Will appreciate any help.
+> >>
+> >> For starters, what kernel versions are those?  (I know what centos
+> >> is, "3.10.0" with updates, which I can check out, but I have no idea
+> >> what might be in the Ubuntu distro)
+> >>
+> >> -Eric
+> > 
+> > 
+> > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
