@@ -1,48 +1,37 @@
-From: Kamran Khan <krkhan@inspirated.com>
-Subject: Re: Difference in jbd2 behavior between CentOS and Ubuntu while unmounting
-Date: Wed, 18 May 2016 12:01:43 -0700
-Message-ID: <CAN0j2-duVA45Vr40rza-PLcwhx6z+KHAGT9Wj+dCGWwwmp9qdQ@mail.gmail.com>
-References: <CAN0j2-ek1iJ_a8ii+sg+kTdjcmZD6jVUHO9SJBbbhfD+5s_CGw@mail.gmail.com>
-	<32a9cbf4-4e2d-335c-0603-9639b30e2863@redhat.com>
-	<CAN0j2-cp1odcT44ZoeFDGHMF519F2b9Ffa5vc8PJyJfSLcj5-Q@mail.gmail.com>
-	<782fe069-c14f-4bae-609e-bbad554cb657@redhat.com>
-	<20160518061834.GA4502@birch.djwong.org>
-	<20160518141240.GB1710@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Thu, 19 May 2016 08:40:50 +0000
+Message-ID: <bug-118401-13602-KjwMOj9Xs2@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vk0-f51.google.com ([209.85.213.51]:34918 "EHLO
-	mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753505AbcERTBo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2016 15:01:44 -0400
-Received: by mail-vk0-f51.google.com with SMTP id f66so73934333vkh.2
-        for <linux-ext4@vger.kernel.org>; Wed, 18 May 2016 12:01:44 -0700 (PDT)
-In-Reply-To: <20160518141240.GB1710@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:40221 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752002AbcESIky (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 May 2016 04:40:54 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id F3C7420222
+	for <linux-ext4@vger.kernel.org>; Thu, 19 May 2016 08:40:52 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 4C48220219
+	for <linux-ext4@vger.kernel.org>; Thu, 19 May 2016 08:40:51 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 18, 2016 at 7:12 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> Try the following to see if someone process is playing namespace games
->
-> find /proc -name mounts | xargs grep /dev/sda3
->
-> (replace /dev/sda3 with the device that you think is unmounted).
->
-> When you find the process, kill it.  (Or try doing a service XXX
-> restart assuming that the device has been unmounted in the "normal"
-> mount namespace.)
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-That did the trick! systemd-udevd was the culprit. Somehow it wasn't
-appearing in lsof/fuser outputs but had the block device listed in its
-mounts.
+--- Comment #2 from Kevin Brubeck Unhammer <unhammer+dill@mm.st> ---
+Created attachment 216681
+  --> https://bugzilla.kernel.org/attachment.cgi?id=216681&action=edit
+kernel config 4.3.0-040300-generic
 
-Killed it and the block device was released for further operations.
+config of lowest tested not-booting kernel version
 
-Thanks!!
 -- 
-Kamran.
-
-http://inspirated.com/
+You are receiving this mail because:
+You are watching the assignee of the bug.
