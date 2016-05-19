@@ -1,54 +1,67 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
- kernels >= 4.3
-Date: Thu, 19 May 2016 08:56:04 +0000
-Message-ID: <bug-118401-13602-bp2vSBgVzI@https.bugzilla.kernel.org/>
-References: <bug-118401-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/7] dax: New fault locking
+Date: Thu, 19 May 2016 11:27:02 +0200
+Message-ID: <20160519092702.GB19697@quack2.suse.cz>
+References: <1463070560-1979-1-git-send-email-jack@suse.cz>
+ <1463070560-1979-6-git-send-email-jack@suse.cz>
+ <20160512193624.GA20719@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-nvdimm@lists.01.org,
+	Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Vishal Verma <vishal.l.verma@intel.com>,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-fsdevel@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:41417 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:47931 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752344AbcESI4J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2016 04:56:09 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 7787520225
-	for <linux-ext4@vger.kernel.org>; Thu, 19 May 2016 08:56:07 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 3C01B20219
-	for <linux-ext4@vger.kernel.org>; Thu, 19 May 2016 08:56:05 +0000 (UTC)
-In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+	id S932677AbcESJ1F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 May 2016 05:27:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20160512193624.GA20719@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D118401
+On Thu 12-05-16 13:36:24, Ross Zwisler wrote:
+> On Thu, May 12, 2016 at 06:29:18PM +0200, Jan Kara wrote:
+> > @@ -897,13 +1166,10 @@ int __dax_pmd_fault(struct vm_area_struct *v=
+ma, unsigned long address,
+> >  		 * the write to insert a dirty entry.
+> >  		 */
+> >  		if (write) {
+> > -			error =3D dax_radix_entry(mapping, pgoff, dax.sector,
+> > -					true, true);
+> > -			if (error) {
+> > -				dax_pmd_dbg(&bh, address,
+> > -						"PMD radix insertion failed");
+> > -				goto fallback;
+> > -			}
+> > +			/*
+> > +			 * We should insert radix-tree entry and dirty it here.
+> > +			 * For now this is broken...
+> > +			 */
+>=20
+> With this change the 'error' variable in __dax_pmd_fault() is now unu=
+sed,
+> resulting in a compiler warning.
+>=20
+> fs/dax.c: In function =E2=80=98__dax_pmd_fault=E2=80=99:
+> fs/dax.c:1019:6: warning: unused variable =E2=80=98error=E2=80=99 [-W=
+unused-variable]
+>   int error, result =3D 0;
+>         ^
 
---- Comment #5 from Kevin Brubeck Unhammer <unhammer+dill@mm.st> ---
-Thanks for taking the time to comment :)
+I didn't want to respin the patch set because of this but I'll send a f=
+ixup
+patch for it.
 
-https://help.ubuntu.com/community/Kernel/Compile says /boot/config* are=
- the
-kernel configurations used to create the .deb's of the kernel's (which =
-I got
-from http://kernel.ubuntu.com/~kernel-ppa/mainline/), so I attached tho=
-se at
-least. Maybe there's something relevant in the change from 4.2.8 to 4.3=
- (that
-didn't change back in 4.6)?
-
-I did find some tips on https://wiki.archlinux.org/index.php/Boot_debug=
-ging and
-http://elinux.org/Kernel_Debugging_Tips =E2=80=93 I'll try to figure ou=
-t how to get a
-detailed log of the failing boot, and see if there are other kernel ima=
-ges that
-might work.
-
+								Honza
 --=20
-You are receiving this mail because:
-You are watching the assignee of the bug.--
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+--
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
 the body of a message to majordomo@vger.kernel.org
