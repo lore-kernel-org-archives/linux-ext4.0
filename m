@@ -1,36 +1,87 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-Date: Mon, 23 May 2016 10:33:33 +0100
-Message-ID: <25305.1463996013@warthog.procyon.org.uk>
-References: <20160523082230.GA21308@infradead.org> <20160510070421.GB30896@infradead.org> <6897.1462868755@warthog.procyon.org.uk> <20160512091141.GA22420@infradead.org> <3204439.9qcmCY96fi@wuerfel>
+From: "Craske, Mark" <Mark_Craske@mentor.com>
+Subject: RE: ext4: what are possible causes of "zero length extent" ?
+Date: Mon, 23 May 2016 10:48:35 +0000
+Message-ID: <FE37120F1498264DADC12DBE98488214965A2601@EU-MBX-01.mgc.mentorg.com>
+References: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: dhowells@redhat.com, Arnd Bergmann <arnd@arndb.de>,
-	linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-	linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160523082230.GA21308@infradead.org>
-Content-ID: <25304.1463996013.1@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from relay1.mentorg.com ([192.94.38.131]:35354 "EHLO
+	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751890AbcEWKsj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2016 06:48:39 -0400
+In-Reply-To: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> wrote:
+Hello Ted and Andreas,
 
-> Honestly I think this really matters on the amount of 'emulation' we
-> need - if it's just adding a new flag that can be trivially generated
-> in the syscall stub in userland that's probably fine, but if we have
-> actually differing semantics (like the stat weak attributes) I'd rather
-> have a properly documented syscall.  If we otherwise need to rewrite
-> whole structures I'd much rather do that in kernel space.
+We are still getting instances of "zero length extent" ext4 file system=
+ corruptions.
+Are there any know causes, and are any of those fixes by upstream kerne=
+l patches?
 
-I very much agree.
+Regards,
+Mark Craske
+Embedded Software Engineer
+Linux Transportation Solutions=20
 
-> And to get back to stat: if would be really useful to coordinate the
-> new one with glibc so that we don't end up with two different stat
-> structures again like we do for a lot of platforms at the moment.
+Mentor Graphics (UK) Ltd., Rivergate,=A0Newbury Business Park, London R=
+oad, Newbury, RG14 2QB, UK
+=A0
+Tel: +44 (0)1635 81 1436
+Mobile : +44 (0)7900 008 230
+E-mail : Mark_Craske@mentor.com
+Yahoo-IM: mcraske_uk=A0=A0 Skype: mcraske_uk
 
-I've tried reaching out to them and others, but no one responded.
-
-David
+> -----Original Message-----
+> From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-
+> owner@vger.kernel.org] On Behalf Of Craske, Mark
+> Sent: 11 May 2016 11:22
+> To: linux-ext4@vger.kernel.org; Theodore Ts'o; Andreas Dilger
+> Subject: ext4: what are possible causes of "zero length extent" ?
+>=20
+> Hello ext4 maintainers,
+>=20
+> This is somewhat of a follow-on from the "ext4 filesystem bad extent =
+error
+> review"
+> thread from 2014.
+>=20
+> Embedded system with main SoC Freescale i.MX6(ARM cortex A9), dual CP=
+U,
+> running kernel 3.8.13.28, storage device is eMMC.
+> This still suffers from "zero length extent" ext4 file system corrupt=
+ions.
+>=20
+> I looked for upstream patches, but did not find any that explicitly f=
+ix "zero
+> length extent"
+> problems apart from "2f97486 ext4: check for zero length extent expli=
+citly".
+> That patch prevents the kernel panics but makes the affected file unr=
+eadable
+> and unremovable, which can be fixed by running fsck.
+>=20
+> What are possible causes of "zero length extent", and are there upstr=
+eam
+> patches that actually deal with some of those?
+>=20
+> Regards,
+> Mark Craske
+> Mentor Graphics (UK) Ltd.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
