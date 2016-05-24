@@ -1,59 +1,53 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] generic/250: ignore xfs_io IO errors when writing to dmerror device
-Date: Tue, 24 May 2016 21:24:36 +0800
-Message-ID: <1464096276-28407-1-git-send-email-eguan@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Tue, 24 May 2016 14:37:23 +0000
+Message-ID: <bug-118401-13602-g6eHUpi4JY@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:43178 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755867AbcEXOh3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2016 10:37:29 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id EAE5520351
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:37:27 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id D5D24203AC
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:37:23 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When testing with data=journal ext4, direct write to dmerror device
-doesn't return EIO, because ext4 turns direct write to buffered write in
-data=journal mode and all data is written to journal buffer. The write
-only fails later when commiting journal and error messages can be seen
-in dmesg.
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-As the test is checking on the md5 checksum of the test file, it's ok to
-ignore the IO error returned by xfs_io, as long as the checksums match
-the golden image.
+--- Comment #7 from Theodore Tso <tytso@mit.edu> ---
+The ext4 file system will happily mount file systems that are intended for ext2
+and ext3.   That is, ext4 supports a superset of the features supported by the
+ext2 and ext3 file system implementations.    
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
+The CONFIG_EXT4_USE_FOR_EXT23 (before ext3 dropped was dropped) and
+CONFIG_EXT4_USE_FOR_EXT2 (after the ext3 driver was dropped) merely determines
+whether or not ext4 claims to be the ext2 or ext3 drivers.   This matters only
+if the file system type is explicitly used in the mount command (e.g., "mount
+-t ext3 ...") or if you are mounting a non-root file system in /etc/fstab.  
+Now, the distribution is doing something wierd with initramfs, so it's possible
+this is the cause of the issue, but when the kernel is mounting the root file
+system it will try using all of the file systems available to it to try to
+mount it.
 
-Not returning errors to userspace properly is kind of an ext4 bug in journal
-mode, but ext4 always behaves this way. So I think instead of fixing ext4, this
-is the easiest way to make generic/250 work with journal mode ext4.
+Furthermore the error message of not being able to find the file system with
+the specific UUID isn't the error message in the boot logs that would indicate
+that the problem was that the initramfs was trying to mount with ext3 and
+failed to find it.
+Still, if you want to try compiling with CONFIG_EXT4_USE_FOR_EXT2, that
+certainly wouldn't hurt and would probably help once you get the system
+working.
 
- tests/generic/250     | 3 ++-
- tests/generic/250.out | 1 -
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/tests/generic/250 b/tests/generic/250
-index 6d15de2..891b8b0 100755
---- a/tests/generic/250
-+++ b/tests/generic/250
-@@ -83,7 +83,8 @@ echo "CoW and unmount"
- $XFS_IO_PROG -f -c "pwrite -S 0x63 $bufsize 1" $testdir/file2 >> $seqres.full
- sync
- _dmerror_load_error_table
--$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 >> $seqres.full
-+$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 \
-+	>> $seqres.full 2>&1
- _dmerror_load_working_table
- _dmerror_unmount
- _dmerror_mount
-diff --git a/tests/generic/250.out b/tests/generic/250.out
-index 710c80e..0ff87d0 100644
---- a/tests/generic/250.out
-+++ b/tests/generic/250.out
-@@ -4,7 +4,6 @@ Create the original files
- Compare files
- ec8bb3b24d5b0f1b5bdf8c8f0f541ee6  SCRATCH_MNT/test-250/file2
- CoW and unmount
--pwrite64: Input/output error
- Compare files
- 3ed86318f4ff8da26c1c2a6e3041f9be  SCRATCH_MNT/test-250/file2
- Check for damage
 -- 
-2.5.5
+You are receiving this mail because:
+You are watching the assignee of the bug.
