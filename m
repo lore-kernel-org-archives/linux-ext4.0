@@ -1,41 +1,81 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
- kernels >= 4.3
-Date: Tue, 24 May 2016 17:46:34 +0000
-Message-ID: <bug-118401-13602-GdMOCZzrs5@https.bugzilla.kernel.org/>
-References: <bug-118401-13602@https.bugzilla.kernel.org/>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] generic/250: ignore xfs_io IO errors when writing to
+ dmerror device
+Date: Tue, 24 May 2016 11:21:36 -0700
+Message-ID: <20160524182136.GA4592@birch.djwong.org>
+References: <1464096276-28407-1-git-send-email-eguan@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:52257 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751790AbcEXRqj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2016 13:46:39 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 9F6192034F
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 17:46:37 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id D2B7520381
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 17:46:34 +0000 (UTC)
-In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1464096276-28407-1-git-send-email-eguan@redhat.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=118401
+On Tue, May 24, 2016 at 09:24:36PM +0800, Eryu Guan wrote:
+> When testing with data=journal ext4, direct write to dmerror device
+> doesn't return EIO, because ext4 turns direct write to buffered write in
+> data=journal mode and all data is written to journal buffer. The write
+> only fails later when commiting journal and error messages can be seen
+> in dmesg.
+> 
+> As the test is checking on the md5 checksum of the test file, it's ok to
+> ignore the IO error returned by xfs_io, as long as the checksums match
+> the golden image.
+> 
+> Signed-off-by: Eryu Guan <eguan@redhat.com>
+> ---
+> 
+> Not returning errors to userspace properly is kind of an ext4 bug in journal
+> mode, but ext4 always behaves this way. So I think instead of fixing ext4, this
+> is the easiest way to make generic/250 work with journal mode ext4.
 
---- Comment #8 from Navin <navinp1912@gmail.com> ---
-Thanks for the information and looks like it has nothing to do with code,
-atleast i could simulate the ALERT UUID= with a wrong hex char in kernel
-command line  root=UUID and i get the same error. 
+/me wonders why _require_odirect doesn't _notrun in situations where we
+*know* ahead of time that we're not going to get O_DIRECT semantics, but
+whatever.  It's no big deal if we shuffle the -EIO message to seqres.full.
 
-Also OP already tried with  CONFIG_EXT4_USE_FOR_EXT2 and it doesn't work for
-him as per the diff in this .configs.
+>  tests/generic/250     | 3 ++-
+>  tests/generic/250.out | 1 -
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tests/generic/250 b/tests/generic/250
+> index 6d15de2..891b8b0 100755
+> --- a/tests/generic/250
+> +++ b/tests/generic/250
+> @@ -83,7 +83,8 @@ echo "CoW and unmount"
 
-output of command blkid  from the initramfs shell would definitely help in
-figuring out more about this problem.
+Er... that should be 'echo "Write and unmount"', oops, sorry about that.
+There's no COW going on here.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--D
+
+>  $XFS_IO_PROG -f -c "pwrite -S 0x63 $bufsize 1" $testdir/file2 >> $seqres.full
+>  sync
+>  _dmerror_load_error_table
+> -$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 >> $seqres.full
+> +$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 \
+> +	>> $seqres.full 2>&1
+>  _dmerror_load_working_table
+>  _dmerror_unmount
+>  _dmerror_mount
+> diff --git a/tests/generic/250.out b/tests/generic/250.out
+> index 710c80e..0ff87d0 100644
+> --- a/tests/generic/250.out
+> +++ b/tests/generic/250.out
+> @@ -4,7 +4,6 @@ Create the original files
+>  Compare files
+>  ec8bb3b24d5b0f1b5bdf8c8f0f541ee6  SCRATCH_MNT/test-250/file2
+>  CoW and unmount
+> -pwrite64: Input/output error
+>  Compare files
+>  3ed86318f4ff8da26c1c2a6e3041f9be  SCRATCH_MNT/test-250/file2
+>  Check for damage
+> -- 
+> 2.5.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
