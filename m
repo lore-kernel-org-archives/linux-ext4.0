@@ -1,93 +1,94 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v3] direct-io: fix direct write stale data exposure from concurrent buffered read
-Date: Tue, 24 May 2016 12:41:13 -0400
-Message-ID: <x49iny31k9i.fsf@segfault.boston.devel.redhat.com>
-References: <1463156728-13357-1-git-send-email-guaneryu@gmail.com>
-	<x49h9e1991u.fsf@segfault.boston.devel.redhat.com>
+From: Gernot Hillier <gernot.hillier@siemens.com>
+Subject: unexpected sync delays in dpkg for small pre-allocated files on ext4
+Date: Tue, 24 May 2016 19:07:41 +0200
+Message-ID: <57448A5D.4050805@siemens.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: viro@ZenIV.linux.org.uk, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Eryu Guan <guaneryu@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43189 "EHLO mx1.redhat.com"
+Received: from gecko.sbs.de ([194.138.37.40]:51293 "EHLO gecko.sbs.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755636AbcEXQlQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2016 12:41:16 -0400
-In-Reply-To: <x49h9e1991u.fsf@segfault.boston.devel.redhat.com> (Jeff Moyer's
-	message of "Fri, 13 May 2016 13:12:13 -0400")
+	id S1751856AbcEXRPj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2016 13:15:39 -0400
+Received: from mail1.sbs.de (mail1.sbs.de [192.129.41.35])
+	by gecko.sbs.de (8.15.2/8.15.2) with ESMTPS id u4OH7fEp022055
+	(version=TLSv1.2 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 19:07:41 +0200
+Received: from linux-mf4q.internal.hillier.de ([146.254.78.80])
+	by mail1.sbs.de (8.15.2/8.15.2) with ESMTP id u4OH7fSj004221
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 19:07:41 +0200
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jeff Moyer <jmoyer@redhat.com> writes:
+Hi there!
 
-> Eryu Guan <guaneryu@gmail.com> writes:
->
->> What we should really do is to disable block allocation for writes that
->> could result in filling holes inside i_size.
->>
->> Reviewed-by: Jan Kara <jack@suse.cz>
->> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
->
-> This looks good to me, Eryu, and it passes the aio/dio test cases in
-> xfstests and libaio.  Thanks a lot!
->
-> Al, can you take this through your tree?
+We experience strange delays with kernel 4.1.18 during dpkg package
+installation on an ext4 filesystem after switching from Ubuntu 14.04 to
+16.04. We can reproduce the issue with kernel 4.6. Installation of the
+same package takes 2s with ext3 and 31s with ext4 on the same partition.
 
-No response from Al.  Andrew, would you mind grabbing this?
+Hardware is an Intel-based server with Supermicro X8DTH board and
+Seagate ST973451SS disks connected to an LSI SAS2008 controller (PCI
+0x1000:0x0072, mpt2sas driver).
 
-Thanks,
-Jeff
+We could track this down to the introduction of fallocate() in recent
+dpkg versions and derived the following synthetic test case. First
+sync_file_range() call takes ~5ms, 2nd call ~15ms.
 
-> Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
->
->
->> ---
->>
->> v3:
->> - Kill unnecessary cleanup patch
->> - Update comments a bit accordingly
->>
->> v2:
->> - Fix the case Jeff pointed out as well
->> - Update commit log
->>
->>  fs/direct-io.c | 14 +++++++-------
->>  1 file changed, 7 insertions(+), 7 deletions(-)
->>
->> diff --git a/fs/direct-io.c b/fs/direct-io.c
->> index 4720377..62921ce 100644
->> --- a/fs/direct-io.c
->> +++ b/fs/direct-io.c
->> @@ -627,11 +627,11 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->>  		map_bh->b_size = fs_count << i_blkbits;
->>  
->>  		/*
->> -		 * For writes inside i_size on a DIO_SKIP_HOLES filesystem we
->> -		 * forbid block creations: only overwrites are permitted.
->> -		 * We will return early to the caller once we see an
->> -		 * unmapped buffer head returned, and the caller will fall
->> -		 * back to buffered I/O.
->> +		 * For writes that could fill holes inside i_size on a
->> +		 * DIO_SKIP_HOLES filesystem we forbid block creations: only
->> +		 * overwrites are permitted. We will return early to the caller
->> +		 * once we see an unmapped buffer head returned, and the caller
->> +		 * will fall back to buffered I/O.
->>  		 *
->>  		 * Otherwise the decision is left to the get_blocks method,
->>  		 * which may decide to handle it or also return an unmapped
->> @@ -639,8 +639,8 @@ static int get_more_blocks(struct dio *dio, struct dio_submit *sdio,
->>  		 */
->>  		create = dio->rw & WRITE;
->>  		if (dio->flags & DIO_SKIP_HOLES) {
->> -			if (sdio->block_in_file < (i_size_read(dio->inode) >>
->> -							sdio->blkbits))
->> +			if (fs_startblk <= ((i_size_read(dio->inode) - 1) >>
->> +							i_blkbits))
->>  				create = 0;
->>  		}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	fd = open("test1.txt", 0xc1);
+	ret = fallocate(fd, 0, 0, 20);
+	ret = write(fd, "hallo", 6);
+	ret = sync_file_range(fd, 0, 0, 2);
+	ret = close(fd);
+
+	fd = open("test2.txt", 0xc1);
+	ret = fallocate(fd, 0, 0, 20);
+	ret = write(fd, "hallo", 6);
+	ret = sync_file_range(fd, 0, 0, 2);
+	ret = close(fd);
+
+The delay is caused by sb_issue_zeroout() in ext4_ext_zeroout(), called
+by ext4_ext_convert_to_initialized().
+
+Ftrace function_graph snippet with important events (recorded with
+kernel 4.6):
+
+  7)          |      ext4_ext_map_blocks() {
+[...]
+  7)          |        /* ext4_ext_handle_unwritten_extents: ... */
+  7)          |        /* ext4_ext_convert_to_initialized_enter: ... */
+  7)          |        ext4_ext_zeroout() {
+  7)          |          ext4_issue_zeroout() {
+
+[... CPU switches to kworker, then to <idle> ...]
+[... 14 ms later, we continue...]
+
+  3)          |  /* irq_handler_entry: irq=25 name=mpt2sas0-msix0 */
+  3)          |  /* irq_handler_exit: irq=25 ret=handled */
+  7)          |  /* softirq_raise: vec=4 [action=BLOCK] */
+  7)          |  /* softirq_entry: vec=4 [action=BLOCK] */
+  7)          |  /* block_rq_complete: 8,16 W () 114969912 + 8 [0] */
+[...]
+  7) * 14 ms  |          } /* ext4_issue_zeroout */
+
+ANY of the following changes reduce the sync_file_range() runtime to <<
+1 ms:
+
+ * do not use fallocate()
+ * fallocate() for more than extent_max_zeroout_kb, e.g. 40 kB
+ * echo 0 > /sys/fs/ext4/sdb2/extent_max_zeroout_kb
+ * use ext3 instead of ext4
+ * mount ext4 with -o dioread_nolock
+
+To me, the problem looks comparable to
+https://bugzilla.kernel.org/show_bug.cgi?id=56821 (even if we don't see
+a full hang and there's no RAID involved for us), so a closer look on
+the SCSI layer or driver might be the next step?
+
+Any suggestions how to continue analysis are greatly appreciated!
+
+-- 
+Gernot Hillier, Siemens AG
+Corporate Technology, Corporate Competence Center Embedded Linux
+
