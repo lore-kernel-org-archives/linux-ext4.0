@@ -1,94 +1,59 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
- kernels >= 4.3
-Date: Tue, 24 May 2016 13:07:59 +0000
-Message-ID: <bug-118401-13602-xe3X6XPlS9@https.bugzilla.kernel.org/>
-References: <bug-118401-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:37819 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755137AbcEXNIE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2016 09:08:04 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id D817420425
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 13:08:00 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 95A552041C
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 13:07:59 +0000 (UTC)
-In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eryu Guan <eguan@redhat.com>
+Subject: [PATCH] generic/250: ignore xfs_io IO errors when writing to dmerror device
+Date: Tue, 24 May 2016 21:24:36 +0800
+Message-ID: <1464096276-28407-1-git-send-email-eguan@redhat.com>
+Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=118401
+When testing with data=journal ext4, direct write to dmerror device
+doesn't return EIO, because ext4 turns direct write to buffered write in
+data=journal mode and all data is written to journal buffer. The write
+only fails later when commiting journal and error messages can be seen
+in dmesg.
 
-Navin <navinp1912@gmail.com> changed:
+As the test is checking on the md5 checksum of the test file, it's ok to
+ignore the IO error returned by xfs_io, as long as the checksums match
+the golden image.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |navinp1912@gmail.com
+Signed-off-by: Eryu Guan <eguan@redhat.com>
+---
 
---- Comment #6 from Navin <navinp1912@gmail.com> ---
+Not returning errors to userspace properly is kind of an ext4 bug in journal
+mode, but ext4 always behaves this way. So I think instead of fixing ext4, this
+is the easiest way to make generic/250 work with journal mode ext4.
 
-https://ext4.wiki.kernel.org/index.php/UpgradeToExt4
-says in section 
-"Converting an ext3 filesystem to ext4"
+ tests/generic/250     | 3 ++-
+ tests/generic/250.out | 1 -
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Note: The ext3 driver will be removed from the kernel in 4.3.
-
-
-Your root filesystem is ext3 .
-
-Maybe your second image drop is says root image is not found due to the above.
-
-Your options are like
-
-1) Convert your data to ext4 
-
-2) Enable the ext3 filesystem driver explicitly in your menuconfig /xconfig
-After saving your .config diff with the older non-working configuration should
-look like  ie added EXT3_FS and build a kernel
--# CONFIG_EXT3_FS is not set
-+CONFIG_EXT3_FS=y
-+CONFIG_EXT3_FS_POSIX_ACL=y
-+CONFIG_EXT3_FS_SECURITY=y
-
-3) Convert your data to ext2 and then try with the current non-working kernels.
-
-
-
-
-
-
-
-The first file in diff is working (4.2) and the second file is non working .
-
-# CONFIG_EXT2_FS is not set
- # CONFIG_EXT3_FS is not set
- CONFIG_EXT4_FS=y
--CONFIG_EXT4_USE_FOR_EXT23=y
-+CONFIG_EXT4_USE_FOR_EXT2=y
- CONFIG_EXT4_FS_POSIX_ACL=y
- CONFIG_EXT4_FS_SECURITY=y
- CONFIG_EXT4_ENCRYPTION=m
- # CONFIG_DEBUG_BLOCK_EXT_DEVT is not set
-
-Looks like you have removed in EXT23 in your config and used it as EXT2 .
-
-This is for first file as (4.2.) and 4.6 as the second file (.config).
-
- # CONFIG_EXT2_FS is not set
- # CONFIG_EXT3_FS is not set
- CONFIG_EXT4_FS=y
--CONFIG_EXT4_USE_FOR_EXT23=y
-+CONFIG_EXT4_USE_FOR_EXT2=y
- CONFIG_EXT4_FS_POSIX_ACL=y
- CONFIG_EXT4_FS_SECURITY=y
- CONFIG_EXT4_ENCRYPTION=m
-
+diff --git a/tests/generic/250 b/tests/generic/250
+index 6d15de2..891b8b0 100755
+--- a/tests/generic/250
++++ b/tests/generic/250
+@@ -83,7 +83,8 @@ echo "CoW and unmount"
+ $XFS_IO_PROG -f -c "pwrite -S 0x63 $bufsize 1" $testdir/file2 >> $seqres.full
+ sync
+ _dmerror_load_error_table
+-$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 >> $seqres.full
++$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 \
++	>> $seqres.full 2>&1
+ _dmerror_load_working_table
+ _dmerror_unmount
+ _dmerror_mount
+diff --git a/tests/generic/250.out b/tests/generic/250.out
+index 710c80e..0ff87d0 100644
+--- a/tests/generic/250.out
++++ b/tests/generic/250.out
+@@ -4,7 +4,6 @@ Create the original files
+ Compare files
+ ec8bb3b24d5b0f1b5bdf8c8f0f541ee6  SCRATCH_MNT/test-250/file2
+ CoW and unmount
+-pwrite64: Input/output error
+ Compare files
+ 3ed86318f4ff8da26c1c2a6e3041f9be  SCRATCH_MNT/test-250/file2
+ Check for damage
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.5.5
