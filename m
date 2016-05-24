@@ -1,87 +1,94 @@
-From: "Craske, Mark" <Mark_Craske@mentor.com>
-Subject: RE: ext4: what are possible causes of "zero length extent" ?
-Date: Mon, 23 May 2016 10:48:35 +0000
-Message-ID: <FE37120F1498264DADC12DBE98488214965A2601@EU-MBX-01.mgc.mentorg.com>
-References: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Tue, 24 May 2016 13:07:59 +0000
+Message-ID: <bug-118401-13602-xe3X6XPlS9@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relay1.mentorg.com ([192.94.38.131]:35354 "EHLO
-	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751890AbcEWKsj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2016 06:48:39 -0400
-In-Reply-To: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
-Content-Language: en-US
+Received: from mail.kernel.org ([198.145.29.136]:37819 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755137AbcEXNIE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2016 09:08:04 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id D817420425
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 13:08:00 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 95A552041C
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 13:07:59 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Ted and Andreas,
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-We are still getting instances of "zero length extent" ext4 file system=
- corruptions.
-Are there any know causes, and are any of those fixes by upstream kerne=
-l patches?
+Navin <navinp1912@gmail.com> changed:
 
-Regards,
-Mark Craske
-Embedded Software Engineer
-Linux Transportation Solutions=20
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |navinp1912@gmail.com
 
-Mentor Graphics (UK) Ltd., Rivergate,=A0Newbury Business Park, London R=
-oad, Newbury, RG14 2QB, UK
-=A0
-Tel: +44 (0)1635 81 1436
-Mobile : +44 (0)7900 008 230
-E-mail : Mark_Craske@mentor.com
-Yahoo-IM: mcraske_uk=A0=A0 Skype: mcraske_uk
+--- Comment #6 from Navin <navinp1912@gmail.com> ---
 
-> -----Original Message-----
-> From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-
-> owner@vger.kernel.org] On Behalf Of Craske, Mark
-> Sent: 11 May 2016 11:22
-> To: linux-ext4@vger.kernel.org; Theodore Ts'o; Andreas Dilger
-> Subject: ext4: what are possible causes of "zero length extent" ?
->=20
-> Hello ext4 maintainers,
->=20
-> This is somewhat of a follow-on from the "ext4 filesystem bad extent =
-error
-> review"
-> thread from 2014.
->=20
-> Embedded system with main SoC Freescale i.MX6(ARM cortex A9), dual CP=
-U,
-> running kernel 3.8.13.28, storage device is eMMC.
-> This still suffers from "zero length extent" ext4 file system corrupt=
-ions.
->=20
-> I looked for upstream patches, but did not find any that explicitly f=
-ix "zero
-> length extent"
-> problems apart from "2f97486 ext4: check for zero length extent expli=
-citly".
-> That patch prevents the kernel panics but makes the affected file unr=
-eadable
-> and unremovable, which can be fixed by running fsck.
->=20
-> What are possible causes of "zero length extent", and are there upstr=
-eam
-> patches that actually deal with some of those?
->=20
-> Regards,
-> Mark Craske
-> Mentor Graphics (UK) Ltd.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in the
-> body of a message to majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+https://ext4.wiki.kernel.org/index.php/UpgradeToExt4
+says in section 
+"Converting an ext3 filesystem to ext4"
+
+Note: The ext3 driver will be removed from the kernel in 4.3.
+
+
+Your root filesystem is ext3 .
+
+Maybe your second image drop is says root image is not found due to the above.
+
+Your options are like
+
+1) Convert your data to ext4 
+
+2) Enable the ext3 filesystem driver explicitly in your menuconfig /xconfig
+After saving your .config diff with the older non-working configuration should
+look like  ie added EXT3_FS and build a kernel
+-# CONFIG_EXT3_FS is not set
++CONFIG_EXT3_FS=y
++CONFIG_EXT3_FS_POSIX_ACL=y
++CONFIG_EXT3_FS_SECURITY=y
+
+3) Convert your data to ext2 and then try with the current non-working kernels.
+
+
+
+
+
+
+
+The first file in diff is working (4.2) and the second file is non working .
+
+# CONFIG_EXT2_FS is not set
+ # CONFIG_EXT3_FS is not set
+ CONFIG_EXT4_FS=y
+-CONFIG_EXT4_USE_FOR_EXT23=y
++CONFIG_EXT4_USE_FOR_EXT2=y
+ CONFIG_EXT4_FS_POSIX_ACL=y
+ CONFIG_EXT4_FS_SECURITY=y
+ CONFIG_EXT4_ENCRYPTION=m
+ # CONFIG_DEBUG_BLOCK_EXT_DEVT is not set
+
+Looks like you have removed in EXT23 in your config and used it as EXT2 .
+
+This is for first file as (4.2.) and 4.6 as the second file (.config).
+
+ # CONFIG_EXT2_FS is not set
+ # CONFIG_EXT3_FS is not set
+ CONFIG_EXT4_FS=y
+-CONFIG_EXT4_USE_FOR_EXT23=y
++CONFIG_EXT4_USE_FOR_EXT2=y
+ CONFIG_EXT4_FS_POSIX_ACL=y
+ CONFIG_EXT4_FS_SECURITY=y
+ CONFIG_EXT4_ENCRYPTION=m
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
