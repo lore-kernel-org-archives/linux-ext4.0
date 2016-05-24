@@ -1,77 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118511] Corruption of VM qcow2 image file on EXT4 with crypto
- enabled
-Date: Wed, 25 May 2016 17:45:44 +0000
-Message-ID: <bug-118511-13602-uoMtlifVDx@https.bugzilla.kernel.org/>
-References: <bug-118511-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: unexpected sync delays in dpkg for small pre-allocated files on
+ ext4
+Date: Tue, 24 May 2016 19:13:28 -0400
+Message-ID: <20160524231328.GB387@thunk.org>
+References: <57448A5D.4050805@siemens.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Gernot Hillier <gernot.hillier@siemens.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:55619 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:58668 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752253AbcEYRps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 May 2016 13:45:48 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C23DC2040F
-	for <linux-ext4@vger.kernel.org>; Wed, 25 May 2016 17:45:46 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id E0B2F203F1
-	for <linux-ext4@vger.kernel.org>; Wed, 25 May 2016 17:45:44 +0000 (UTC)
-In-Reply-To: <bug-118511-13602@https.bugzilla.kernel.org/>
+	id S1752041AbcEZAow (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2016 20:44:52 -0400
+Content-Disposition: inline
+In-Reply-To: <57448A5D.4050805@siemens.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=118511
-
---- Comment #2 from ass3mbler@gmail.com ---
-Hi Navin,
-
-thank you a lot for your help, I'll upgrade the kernel to the v4.6 today's
-night to see if it gets better!
-
-I have some doubt about a real out-of-memory condition since the Hypervisor has
-8GB of RAM, the Guest is hard-limited to 4GB and the only other "big" process
-running on the Hypervisor is a simple (mostly idle) opensshd server instance...
-so I really hope that the patch will solve the issue.
-
-I'll let you know very shortly, thank you again for your precious help and best
-regards,
-
-Andrew
-
-
-
-(In reply to Navin from comment #1)
-> Can you check the memory state of Host/Hypervisor if is full around the
-> range [596476,596478.]  so that 596477.535490 when ext4_bio_write_page is
-> not able to get memory ? 
+On Tue, May 24, 2016 at 07:07:41PM +0200, Gernot Hillier wrote:
 > 
-> If your hypervisor is using encryption then this patch may help (already
-> present in 4.6 mainline)
-> 
-> https://patchwork.ozlabs.org/patch/602204/
-> 
-> If that doesn't work then ,You need to your system stats logged and check
-> and check when ENOMEM is returned. It could genuinely out of memory or there
-> could be something wrong with code.
-> 
-> Hypervisor/Host cannot write/commit/allocate buffers because it is out of
-> memory. 
-> 
-> Hence your guest is in a transient state where the change are not committed
-> and most probably journal is aborted.
-> 
-> 
-> [[Hypervisor]]
-> [596477.535490] ext4_bio_write_page: ret = -12
-> 
-> http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.
-> h#L15
-> 
->  15 #define ENOMEM          12      /* Out of memory */
+> To me, the problem looks comparable to
+> https://bugzilla.kernel.org/show_bug.cgi?id=56821 (even if we don't see
+> a full hang and there's no RAID involved for us), so a closer look on
+> the SCSI layer or driver might be the next step?
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+What I would suggest is to create a small test case which compares the
+time it takes to allocate 1 megabyte of memory, zero it, and then
+write one megabytes of zeros using the write(2) system call.  Then try
+writing one megabytes of zero using the BLKZEROOUT ioctl.
+
+I'm pretty sure you'll see same issue with BLKZEROOUT ioctl, but at
+this point, we'll be able to send bug reports to the SCSI and block
+layer developers with something that makes this very clear that it has
+nothing to do with ext4.
+
+This way we can also do some differential diagnosis; given that I'm
+not seeing this complaint from most people, I suspect it will be a
+matter of adding some specific devices to a blacklist (so that even
+though the SCSI device claims to support WRITE SAME, we need to
+disable it because it has a really lousy implementation of the SCSI
+WRITE SAME command).
+
+Cheers,
+
+					- Ted
+
+
