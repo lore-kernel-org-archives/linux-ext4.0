@@ -1,52 +1,63 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
- kernels >= 4.3
-Date: Tue, 24 May 2016 14:37:23 +0000
-Message-ID: <bug-118401-13602-g6eHUpi4JY@https.bugzilla.kernel.org/>
-References: <bug-118401-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 118511] Corruption of VM qcow2 image file on EXT4 with crypto
+ enabled
+Date: Tue, 24 May 2016 14:50:49 +0000
+Message-ID: <bug-118511-13602-PIWBKwFAHC@https.bugzilla.kernel.org/>
+References: <bug-118511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:43178 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:44008 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755867AbcEXOh3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 May 2016 10:37:29 -0400
+	id S1754170AbcEXOux (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 May 2016 10:50:53 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id EAE5520351
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:37:27 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id D5D24203AC
-	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:37:23 +0000 (UTC)
-In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+	by mail.kernel.org (Postfix) with ESMTP id BF829203AC
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:50:51 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id DD2B820351
+	for <linux-ext4@vger.kernel.org>; Tue, 24 May 2016 14:50:49 +0000 (UTC)
+In-Reply-To: <bug-118511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=118401
+https://bugzilla.kernel.org/show_bug.cgi?id=118511
 
---- Comment #7 from Theodore Tso <tytso@mit.edu> ---
-The ext4 file system will happily mount file systems that are intended for ext2
-and ext3.   That is, ext4 supports a superset of the features supported by the
-ext2 and ext3 file system implementations.    
+Navin <navinp1912@gmail.com> changed:
 
-The CONFIG_EXT4_USE_FOR_EXT23 (before ext3 dropped was dropped) and
-CONFIG_EXT4_USE_FOR_EXT2 (after the ext3 driver was dropped) merely determines
-whether or not ext4 claims to be the ext2 or ext3 drivers.   This matters only
-if the file system type is explicitly used in the mount command (e.g., "mount
--t ext3 ...") or if you are mounting a non-root file system in /etc/fstab.  
-Now, the distribution is doing something wierd with initramfs, so it's possible
-this is the cause of the issue, but when the kernel is mounting the root file
-system it will try using all of the file systems available to it to try to
-mount it.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |navinp1912@gmail.com
 
-Furthermore the error message of not being able to find the file system with
-the specific UUID isn't the error message in the boot logs that would indicate
-that the problem was that the initramfs was trying to mount with ext3 and
-failed to find it.
-Still, if you want to try compiling with CONFIG_EXT4_USE_FOR_EXT2, that
-certainly wouldn't hurt and would probably help once you get the system
-working.
+--- Comment #1 from Navin <navinp1912@gmail.com> ---
+Can you check the memory state of Host/Hypervisor if is full around the range
+[596476,596478.]  so that 596477.535490 when ext4_bio_write_page is not able to
+get memory ? 
+
+If your hypervisor is using encryption then this patch may help (already
+present in 4.6 mainline)
+
+https://patchwork.ozlabs.org/patch/602204/
+
+If that doesn't work then ,You need to your system stats logged and check and
+check when ENOMEM is returned. It could genuinely out of memory or there could
+be something wrong with code.
+
+Hypervisor/Host cannot write/commit/allocate buffers because it is out of
+memory. 
+
+Hence your guest is in a transient state where the change are not committed and
+most probably journal is aborted.
+
+
+[[Hypervisor]]
+[596477.535490] ext4_bio_write_page: ret = -12
+
+http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L15
+
+ 15 #define ENOMEM          12      /* Out of memory */
 
 -- 
 You are receiving this mail because:
