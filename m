@@ -1,93 +1,77 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH] generic/250: ignore xfs_io IO errors when writing to
- dmerror device
-Date: Wed, 25 May 2016 12:43:07 +0800
-Message-ID: <20160525044307.GV5140@eguan.usersys.redhat.com>
-References: <1464096276-28407-1-git-send-email-eguan@redhat.com>
- <20160524182136.GA4592@birch.djwong.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118511] Corruption of VM qcow2 image file on EXT4 with crypto
+ enabled
+Date: Wed, 25 May 2016 17:45:44 +0000
+Message-ID: <bug-118511-13602-uoMtlifVDx@https.bugzilla.kernel.org/>
+References: <bug-118511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160524182136.GA4592@birch.djwong.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:55619 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752253AbcEYRps (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 May 2016 13:45:48 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C23DC2040F
+	for <linux-ext4@vger.kernel.org>; Wed, 25 May 2016 17:45:46 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id E0B2F203F1
+	for <linux-ext4@vger.kernel.org>; Wed, 25 May 2016 17:45:44 +0000 (UTC)
+In-Reply-To: <bug-118511-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 24, 2016 at 11:21:36AM -0700, Darrick J. Wong wrote:
-> On Tue, May 24, 2016 at 09:24:36PM +0800, Eryu Guan wrote:
-> > When testing with data=journal ext4, direct write to dmerror device
-> > doesn't return EIO, because ext4 turns direct write to buffered write in
-> > data=journal mode and all data is written to journal buffer. The write
-> > only fails later when commiting journal and error messages can be seen
-> > in dmesg.
-> > 
-> > As the test is checking on the md5 checksum of the test file, it's ok to
-> > ignore the IO error returned by xfs_io, as long as the checksums match
-> > the golden image.
-> > 
-> > Signed-off-by: Eryu Guan <eguan@redhat.com>
-> > ---
-> > 
-> > Not returning errors to userspace properly is kind of an ext4 bug in journal
-> > mode, but ext4 always behaves this way. So I think instead of fixing ext4, this
-> > is the easiest way to make generic/250 work with journal mode ext4.
-> 
-> /me wonders why _require_odirect doesn't _notrun in situations where we
-> *know* ahead of time that we're not going to get O_DIRECT semantics, but
-> whatever.  It's no big deal if we shuffle the -EIO message to seqres.full.
+https://bugzilla.kernel.org/show_bug.cgi?id=118511
 
-I think that's because direct write falls back to buffered write
-silently on journal mode ext4, so the _require_odirect check returns
-pass.
+--- Comment #2 from ass3mbler@gmail.com ---
+Hi Navin,
 
-> 
-> >  tests/generic/250     | 3 ++-
-> >  tests/generic/250.out | 1 -
-> >  2 files changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/tests/generic/250 b/tests/generic/250
-> > index 6d15de2..891b8b0 100755
-> > --- a/tests/generic/250
-> > +++ b/tests/generic/250
-> > @@ -83,7 +83,8 @@ echo "CoW and unmount"
-> 
-> Er... that should be 'echo "Write and unmount"', oops, sorry about that.
-> There's no COW going on here.
+thank you a lot for your help, I'll upgrade the kernel to the v4.6 today's
+night to see if it gets better!
 
-I can fix that in v2 :)
+I have some doubt about a real out-of-memory condition since the Hypervisor has
+8GB of RAM, the Guest is hard-limited to 4GB and the only other "big" process
+running on the Hypervisor is a simple (mostly idle) opensshd server instance...
+so I really hope that the patch will solve the issue.
 
-Thanks,
-Eryu
+I'll let you know very shortly, thank you again for your precious help and best
+regards,
+
+Andrew
+
+
+
+(In reply to Navin from comment #1)
+> Can you check the memory state of Host/Hypervisor if is full around the
+> range [596476,596478.]  so that 596477.535490 when ext4_bio_write_page is
+> not able to get memory ? 
 > 
-> --D
+> If your hypervisor is using encryption then this patch may help (already
+> present in 4.6 mainline)
 > 
-> >  $XFS_IO_PROG -f -c "pwrite -S 0x63 $bufsize 1" $testdir/file2 >> $seqres.full
-> >  sync
-> >  _dmerror_load_error_table
-> > -$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 >> $seqres.full
-> > +$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 \
-> > +	>> $seqres.full 2>&1
-> >  _dmerror_load_working_table
-> >  _dmerror_unmount
-> >  _dmerror_mount
-> > diff --git a/tests/generic/250.out b/tests/generic/250.out
-> > index 710c80e..0ff87d0 100644
-> > --- a/tests/generic/250.out
-> > +++ b/tests/generic/250.out
-> > @@ -4,7 +4,6 @@ Create the original files
-> >  Compare files
-> >  ec8bb3b24d5b0f1b5bdf8c8f0f541ee6  SCRATCH_MNT/test-250/file2
-> >  CoW and unmount
-> > -pwrite64: Input/output error
-> >  Compare files
-> >  3ed86318f4ff8da26c1c2a6e3041f9be  SCRATCH_MNT/test-250/file2
-> >  Check for damage
-> > -- 
-> > 2.5.5
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe fstests" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> https://patchwork.ozlabs.org/patch/602204/
+> 
+> If that doesn't work then ,You need to your system stats logged and check
+> and check when ENOMEM is returned. It could genuinely out of memory or there
+> could be something wrong with code.
+> 
+> Hypervisor/Host cannot write/commit/allocate buffers because it is out of
+> memory. 
+> 
+> Hence your guest is in a transient state where the change are not committed
+> and most probably journal is aborted.
+> 
+> 
+> [[Hypervisor]]
+> [596477.535490] ext4_bio_write_page: ret = -12
+> 
+> http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.
+> h#L15
+> 
+>  15 #define ENOMEM          12      /* Out of memory */
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
