@@ -1,39 +1,93 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH v3] direct-io: fix direct write stale data exposure from concurrent buffered read
-Date: Tue, 24 May 2016 15:39:54 -0400
-Message-ID: <x49eg8r1bzp.fsf@segfault.boston.devel.redhat.com>
-References: <1463156728-13357-1-git-send-email-guaneryu@gmail.com>
-	<20160524122455.4fc3d250b17fcd776dc15968@linux-foundation.org>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] generic/250: ignore xfs_io IO errors when writing to
+ dmerror device
+Date: Wed, 25 May 2016 12:43:07 +0800
+Message-ID: <20160525044307.GV5140@eguan.usersys.redhat.com>
+References: <1464096276-28407-1-git-send-email-eguan@redhat.com>
+ <20160524182136.GA4592@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Eryu Guan <guaneryu@gmail.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, viro@ZenIV.linux.org.uk
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20160524122455.4fc3d250b17fcd776dc15968@linux-foundation.org>
-	(Andrew Morton's message of "Tue, 24 May 2016 12:24:55 -0700")
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160524182136.GA4592@birch.djwong.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Andrew Morton <akpm@linux-foundation.org> writes:
+On Tue, May 24, 2016 at 11:21:36AM -0700, Darrick J. Wong wrote:
+> On Tue, May 24, 2016 at 09:24:36PM +0800, Eryu Guan wrote:
+> > When testing with data=journal ext4, direct write to dmerror device
+> > doesn't return EIO, because ext4 turns direct write to buffered write in
+> > data=journal mode and all data is written to journal buffer. The write
+> > only fails later when commiting journal and error messages can be seen
+> > in dmesg.
+> > 
+> > As the test is checking on the md5 checksum of the test file, it's ok to
+> > ignore the IO error returned by xfs_io, as long as the checksums match
+> > the golden image.
+> > 
+> > Signed-off-by: Eryu Guan <eguan@redhat.com>
+> > ---
+> > 
+> > Not returning errors to userspace properly is kind of an ext4 bug in journal
+> > mode, but ext4 always behaves this way. So I think instead of fixing ext4, this
+> > is the easiest way to make generic/250 work with journal mode ext4.
+> 
+> /me wonders why _require_odirect doesn't _notrun in situations where we
+> *know* ahead of time that we're not going to get O_DIRECT semantics, but
+> whatever.  It's no big deal if we shuffle the -EIO message to seqres.full.
 
-> On Sat, 14 May 2016 00:25:28 +0800 Eryu Guan <guaneryu@gmail.com> wrote:
->
->> Currently direct writes inside i_size on a DIO_SKIP_HOLES filesystem are
->> not allowed to allocate blocks(get_more_blocks() sets 'create' to 0
->> before calling get_block() callback), if it's a sparse file, direct
->> writes fall back to buffered writes to avoid stale data exposure from
->> concurrent buffered read. But there're two cases that can result in
->> stale data exposure are not correctly detected.
->> 
->> 1. The detection for "writing inside i_size" is not sufficient, writes
->> can be treated as "extending writes" wrongly. For example, direct write
->> 1FSB to a 1FSB sparse file on ext2/3/4, starting from offset 0, in this
->> case it's writing inside i_size, but 'create' is non-zero, because
->> 'block_in_file' and '(i_size_read(inode) >> blkbits' are both zero.
->
-> um, what is an "FSB"?
+I think that's because direct write falls back to buffered write
+silently on journal mode ext4, so the _require_odirect check returns
+pass.
 
-File System Block, as opposed to a block device block.  :)
+> 
+> >  tests/generic/250     | 3 ++-
+> >  tests/generic/250.out | 1 -
+> >  2 files changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/tests/generic/250 b/tests/generic/250
+> > index 6d15de2..891b8b0 100755
+> > --- a/tests/generic/250
+> > +++ b/tests/generic/250
+> > @@ -83,7 +83,8 @@ echo "CoW and unmount"
+> 
+> Er... that should be 'echo "Write and unmount"', oops, sorry about that.
+> There's no COW going on here.
 
--Jeff
+I can fix that in v2 :)
+
+Thanks,
+Eryu
+> 
+> --D
+> 
+> >  $XFS_IO_PROG -f -c "pwrite -S 0x63 $bufsize 1" $testdir/file2 >> $seqres.full
+> >  sync
+> >  _dmerror_load_error_table
+> > -$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 >> $seqres.full
+> > +$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $bufsize 0 $filesize" $testdir/file2 \
+> > +	>> $seqres.full 2>&1
+> >  _dmerror_load_working_table
+> >  _dmerror_unmount
+> >  _dmerror_mount
+> > diff --git a/tests/generic/250.out b/tests/generic/250.out
+> > index 710c80e..0ff87d0 100644
+> > --- a/tests/generic/250.out
+> > +++ b/tests/generic/250.out
+> > @@ -4,7 +4,6 @@ Create the original files
+> >  Compare files
+> >  ec8bb3b24d5b0f1b5bdf8c8f0f541ee6  SCRATCH_MNT/test-250/file2
+> >  CoW and unmount
+> > -pwrite64: Input/output error
+> >  Compare files
+> >  3ed86318f4ff8da26c1c2a6e3041f9be  SCRATCH_MNT/test-250/file2
+> >  Check for damage
+> > -- 
+> > 2.5.5
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe fstests" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
