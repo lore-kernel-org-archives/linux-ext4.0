@@ -1,52 +1,72 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: unexpected sync delays in dpkg for small pre-allocated files on
- ext4
-Date: Thu, 26 May 2016 00:02:17 -0700
-Message-ID: <20160526070217.GA12151@infradead.org>
-References: <57448A5D.4050805@siemens.com>
- <20160526022020.GG26977@dastard>
+From: Filipe Brandenburger <filbranden@google.com>
+Subject: Re: [PATCH e2fsprogs] Apply LDFLAGS when building tests in lib/e2p
+Date: Thu, 26 May 2016 10:47:54 -0700
+Message-ID: <CADU+-uBOXVHUUX4f3xjJmzdDpLwUGNao2R9pKSunMsUKoaqfxw@mail.gmail.com>
+References: <1462578003-25315-1-git-send-email-filbranden@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Gernot Hillier <gernot.hillier@siemens.com>,
-	linux-ext4@vger.kernel.org, guillem@debian.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org, Eric Christopher <echristo@google.com>,
+	Michael Forney <forney@google.com>,
+	Filipe Brandenburger <filbranden@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:55300 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750762AbcEZHCU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 May 2016 03:02:20 -0400
-Content-Disposition: inline
-In-Reply-To: <20160526022020.GG26977@dastard>
+Received: from mail-vk0-f43.google.com ([209.85.213.43]:34432 "EHLO
+	mail-vk0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750727AbcEZRr4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 May 2016 13:47:56 -0400
+Received: by mail-vk0-f43.google.com with SMTP id c189so112124100vkb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 26 May 2016 10:47:56 -0700 (PDT)
+In-Reply-To: <1462578003-25315-1-git-send-email-filbranden@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 26, 2016 at 12:20:20PM +1000, Dave Chinner wrote:
-> Stupid question: why is dpkg using fallocate() for such small ranges
-> like that? I can't think of a more inefficient way to do small IO -
-> using delayed allocation is far more optimal from a layout,
-> overhead, latency and IO perspective than the above forced
-> allocation pseudo-synchronous write behaviour.
+Hi Ted,
 
-Below is the commit adding it.  Guillem, can you explain what fallocate
-in the dpkg is supposed to help with?  The way it's it does fallocate
-before writes that aren't spare it looks actively harmful for any 
-Linux file system.
+Can you please include this patch in upstream e2fsprogs git repo?
 
-commit 87b0b20b86407baf1deb4e91b3fd839e01228ac8
-Author: Guillem Jover <guillem@debian.org>
-Date:   Tue Jul 15 21:00:52 2014 +0200
+This is a complement for 53904ae543591a which added LDFLAGS to the
+test cases but seemed to miss these two...
 
-    dpkg: Try to preallocate the disk size for extracted files
-        
-    This might help in avoiding filesystem fragmentation, and possibly
-    improve performance on some filesystems.
-		    
-    We use the system specific methods if available, and possibly
-    improve performance on some filesystems.
+Thank you!
+Filipe
 
-    We use the system specific methods if available, and only use
-    posix_fallocate() if nothing else is available, because on some systems
-    its semantics are counter to what we want to obtain here, as the libc
-    library will fallback to manually writing '\0' to each block to force
-    the preallocation, instead of just failing and leaving the application
-    to do so if desired.
+
+On Fri, May 6, 2016 at 4:40 PM, Filipe Brandenburger
+<filbranden@google.com> wrote:
+> This was previously addressed by Michael Forney on commit 53904ae543591a
+> but it seems the test cases from lib/e2p (tst_ostype and tst_feature)
+> were missed.
+>
+> Fix them by adding the same $(ALL_LDFLAGS) to those two targets.
+>
+> Tested by building it on a system that depends on LDFLAGS to produce
+> working binaries and confirming that `make check` succeeds.
+>
+> Reported-by: Eric Christopher <echristo@google.com>
+> Signed-off-by: Filipe Brandenburger <filbranden@google.com>
+> ---
+>  lib/e2p/Makefile.in | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+> index 83f04ff5c04e..d109bf190051 100644
+> --- a/lib/e2p/Makefile.in
+> +++ b/lib/e2p/Makefile.in
+> @@ -68,12 +68,12 @@ e2p.pc: $(srcdir)/e2p.pc.in $(top_builddir)/config.status
+>  tst_ostype: $(srcdir)/ostype.c
+>         $(E) "  LD $@"
+>         $(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_ostype \
+> -               $(srcdir)/ostype.c $(ALL_CFLAGS)
+> +               $(srcdir)/ostype.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
+>
+>  tst_feature: $(srcdir)/feature.c
+>         $(E) "  LD $@"
+>         $(Q) $(CC) -DTEST_PROGRAM -I$(top_srcdir)/lib -o tst_feature \
+> -               $(srcdir)/feature.c $(ALL_CFLAGS)
+> +               $(srcdir)/feature.c $(ALL_CFLAGS) $(ALL_LDFLAGS)
+>
+>  check::        tst_ostype tst_feature
+>         ./tst_ostype
+> --
+> 2.8.0.rc3.226.g39d4020
+>
