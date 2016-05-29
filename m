@@ -1,21 +1,41 @@
-From: program12@uscombat.info
-Subject: Hello
-Date: Sun, 29 May 2016 00:44:16 +0000
-Message-ID: <996714.7733.bm__23207.5679618449$1464483164$gmane$org@smtp113.mail.ne1.yahoo.com>
-Reply-To: cplkristibakar@outlook.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-To: Recipients <program12@uscombat.info>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/2] e2fsck: always fix invalid extra field in timestamps if time_t is 32-bits
+Date: Sun, 29 May 2016 01:08:11 -0400
+Message-ID: <1464498492-1597-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm14-vm6.bullet.mail.ne1.yahoo.com ([98.138.91.107]:59005 "EHLO
-	nm14-vm6.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752158AbcE2Avo convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 May 2016 20:51:44 -0400
-Content-Description: Mail message body
+Received: from imap.thunk.org ([74.207.234.97]:43708 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751051AbcE2FIT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 May 2016 01:08:19 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-I am Kristi and i saw your contact through google page of your country which impress me and i feel we can be friends to share ideals and reason together for good,if not bad then let us know more about each other and i hope there will be no problem for us to be friend with no bad intention.You can also reply me through email(cplkristibakar@outlook.com) so that i can share details about myself, i will be waiting to hear from you soon. 
+Systems with 32-bit time_t's can be used past 2038, so we should
+always modify dates with extra_time=3.  (On systems with 64-bit
+time_t's we will fix these dates before the year 2242.)
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ e2fsck/pass1.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 799158e..c924d31 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -512,7 +512,9 @@ static void check_inode_extra_space(e2fsck_t ctx, struct problem_context *pctx)
+ 	 * If the inode's extended atime (ctime, crtime, mtime) is stored in
+ 	 * the old, invalid format, repair it.
+ 	 */
+-	if (sizeof(time_t) > 4 && ctx->now < EXT4_EXTRA_NEGATIVE_DATE_CUTOFF &&
++	if (((sizeof(time_t) <= 4) ||
++	     ((sizeof(time_t) > 4) &&
++	      ctx->now < EXT4_EXTRA_NEGATIVE_DATE_CUTOFF)) &&
+ 	    (CHECK_INODE_EXTRA_NEGATIVE_EPOCH(inode, atime) ||
+ 	     CHECK_INODE_EXTRA_NEGATIVE_EPOCH(inode, ctime) ||
+ 	     CHECK_INODE_EXTRA_NEGATIVE_EPOCH(inode, crtime) ||
+-- 
+2.5.0
+
