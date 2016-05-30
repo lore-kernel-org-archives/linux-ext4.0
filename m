@@ -1,38 +1,47 @@
 From: Jun He <jhe@cs.wisc.edu>
-Subject: [PATCH] Allow extents equal to max_zeroout to be zero-ed
-Date: Mon, 30 May 2016 13:23:47 -0500
-Message-ID: <1464632627-37583-1-git-send-email-jhe@cs.wisc.edu>
+Subject: [PATCH] EXT4: Avoid zeroout-ing and writting the same space
+Date: Mon, 30 May 2016 13:12:23 -0500
+Message-ID: <1464631943-37365-1-git-send-email-jhe@cs.wisc.edu>
 Cc: tytso@mit.edu, Jun He <jhe@cs.wisc.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sabe.cs.wisc.edu ([128.105.6.20]:40896 "EHLO sabe.cs.wisc.edu"
+Received: from sabe.cs.wisc.edu ([128.105.6.20]:40908 "EHLO sabe.cs.wisc.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161330AbcE3SYL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 May 2016 14:24:11 -0400
+	id S1161859AbcE3TAA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 May 2016 15:00:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just to be consistent with the rest of the code: if size == max_zeroout,
-then allow it to be zero-ed.
+When splitting unwritten extent into two extents, currently ext4
+zeroout the whole second extent, which contains the requested
+space. The requested space will soon be written with data. The
+zeroout of requested space is unncessary, causing more traffic
+to disk.
 
 Signed-off-by: Jun He <jhe@cs.wisc.edu>
 ---
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/extents.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2a2eef9..dc0b04c 100644
+index 2a2eef9..2bba31c 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3609,7 +3609,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 				goto out;
- 			split_map.m_lblk = map->m_lblk;
- 			split_map.m_len = allocated;
--		} else if (map->m_lblk - ee_block + map->m_len < max_zeroout) {
-+		} else if (map->m_lblk - ee_block + map->m_len <= max_zeroout) {
- 			/* case 2 */
- 			if (map->m_lblk != ee_block) {
- 				zero_ex.ee_block = ex->ee_block;
+@@ -3597,11 +3597,11 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	split_map.m_len = map->m_len;
+
+ 	if (max_zeroout && (allocated > map->m_len)) {
+-		if (allocated <= max_zeroout) {
++		if (allocated - map->m_len <= max_zeroout) {
+ 			/* case 3 */
+ 			zero_ex.ee_block =
+-					 cpu_to_le32(map->m_lblk);
+-			zero_ex.ee_len = cpu_to_le16(allocated);
++			    cpu_to_le32(map->m_lblk + map->m_len);
++			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
+ 			ext4_ext_store_pblock(&zero_ex,
+ 				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
+ 			err = ext4_ext_zeroout(inode, &zero_ex);
 --
 1.9.1
 
