@@ -1,47 +1,51 @@
 From: Jun He <jhe@cs.wisc.edu>
-Subject: [PATCH] EXT4: Avoid zeroout-ing and writting the same space
-Date: Mon, 30 May 2016 13:12:23 -0500
-Message-ID: <1464631943-37365-1-git-send-email-jhe@cs.wisc.edu>
-Cc: tytso@mit.edu, Jun He <jhe@cs.wisc.edu>
+Subject: Re: unexpected sync delays in dpkg for small pre-allocated files on
+ ext4
+Date: Mon, 30 May 2016 14:04:47 -0500
+Message-ID: <20160530190447.GA99050@wifi-808.cs.wisc.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sabe.cs.wisc.edu ([128.105.6.20]:40908 "EHLO sabe.cs.wisc.edu"
+Received: from sabe.cs.wisc.edu ([128.105.6.20]:40913 "EHLO sabe.cs.wisc.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161859AbcE3TAA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 May 2016 15:00:00 -0400
+	id S1161631AbcE3TEy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 May 2016 15:04:54 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When splitting unwritten extent into two extents, currently ext4
-zeroout the whole second extent, which contains the requested
-space. The requested space will soon be written with data. The
-zeroout of requested space is unncessary, causing more traffic
-to disk.
+> On Tue, May 24, 2016 at 07:07:41PM +0200, Gernot Hillier wrote:
+> > 
+> > To me, the problem looks comparable to
+> > https://bugzilla.kernel.org/show_bug.cgi?id=56821 (even if we don't see
+> > a full hang and there's no RAID involved for us), so a closer look on
+> > the SCSI layer or driver might be the next step?
+> 
+> What I would suggest is to create a small test case which compares the
+> time it takes to allocate 1 megabyte of memory, zero it, and then
+> write one megabytes of zeros using the write(2) system call.  Then try
+> writing one megabytes of zero using the BLKZEROOUT ioctl.
+> 
+> I'm pretty sure you'll see same issue with BLKZEROOUT ioctl, but at
+> this point, we'll be able to send bug reports to the SCSI and block
+> layer developers with something that makes this very clear that it has
+> nothing to do with ext4.
+> 
+> This way we can also do some differential diagnosis; given that I'm
+> not seeing this complaint from most people, I suspect it will be a
+> matter of adding some specific devices to a blacklist (so that even
+> though the SCSI device claims to support WRITE SAME, we need to
+> disable it because it has a really lousy implementation of the SCSI
+> WRITE SAME command).
+> 
+> Cheers,
+> 
+> - Ted
 
-Signed-off-by: Jun He <jhe@cs.wisc.edu>
----
- fs/ext4/extents.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2a2eef9..2bba31c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3597,11 +3597,11 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	split_map.m_len = map->m_len;
-
- 	if (max_zeroout && (allocated > map->m_len)) {
--		if (allocated <= max_zeroout) {
-+		if (allocated - map->m_len <= max_zeroout) {
- 			/* case 3 */
- 			zero_ex.ee_block =
--					 cpu_to_le32(map->m_lblk);
--			zero_ex.ee_len = cpu_to_le16(allocated);
-+			    cpu_to_le32(map->m_lblk + map->m_len);
-+			zero_ex.ee_len = cpu_to_le16(allocated - map->m_len);
- 			ext4_ext_store_pblock(&zero_ex,
- 				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
- 			err = ext4_ext_zeroout(inode, &zero_ex);
---
-1.9.1
+I just want to add that I once experienced a similar problem: huge delay
+with fallocate() and a SSD. It turns out block layer zeroouts extents by 
+discarding them (blkdev_issue_zeroout()), and the Intel SSD is VERY slow
+at discarding.
 
