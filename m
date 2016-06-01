@@ -1,74 +1,81 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: unexpected sync delays in dpkg for small pre-allocated files on
- ext4
-Date: Wed, 1 Jun 2016 10:12:18 -0400
-Message-ID: <20160601141218.GE5357@thunk.org>
-References: <57448A5D.4050805@siemens.com>
- <20160524231328.GB387@thunk.org>
- <574BF988.5050202@siemens.com>
- <20160531002152.GQ26977@dastard>
- <574EAE69.5040003@siemens.com>
- <574EE05A.9070302@siemens.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Wed, 01 Jun 2016 15:26:21 +0000
+Message-ID: <bug-118401-13602-WHKkuMLJHF@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-scsi@vger.kernel.org,
-	MPT-FusionLinux.pdl@broadcom.com, linux-ext4@vger.kernel.org,
-	sathya.prakash@broadcom.com, chaitra.basappa@broadcom.com,
-	suganath-prabu.subramani@broadcom.com
-To: Gernot Hillier <gernot.hillier@siemens.com>
-Return-path: <linux-scsi-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <574EE05A.9070302@siemens.com>
-Sender: linux-scsi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:33110 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161662AbcFAP0Z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2016 11:26:25 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id ED592203EB
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Jun 2016 15:26:23 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id 04440203C3
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Jun 2016 15:26:23 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 01, 2016 at 03:17:14PM +0200, Gernot Hillier wrote:
-> I repeated the discussed tests and found comparable results on this machine:
-> 
-> - 3 seconds dpkg install time on ext3 vs. 80 seconds for ext4
->   on same partition for same package
-> - 40 ms for fallocate+write+sync_file_range for writing a few bytes
-> - 15 ms for write+fdatasync vs. 45 ms for BLKZEROOUT on raw device
-> 
-> So this seems to be not bound to one specific disk+controller setup, but
-> it still can't be a common problem affecting many people as then we
-> would see more reports about it...
+https://bugzilla.kernel.org/show_bug.cgi?id=3D118401
 
-OK, so let's try to get common baseline, shall we?  I'm using as my
-test package:
+--- Comment #10 from Kevin Brubeck Unhammer <unhammer+dill@mm.st> ---
+Sorry for the late reply =E2=80=93 I still haven't been able to get key=
+board working in
+initramfs, so not much more useful information :(
 
-http://debug.mirrors.debian.org/debian-debug/pool/main/e/e2fsprogs/e2fsprogs-dbgsym_1.43-2_amd64.deb
 
-% ls -s /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb
-1108 /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb
-% md5sum /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb
-148ee631f46ed2e05a17faf36cc9d630  /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb
+I did try running blkid from an initramfs script:
 
-# dpkg --purge e2fsprogs-dbgsym
-(Reading database ... 322967 files and directories currently installed.)
-Removing e2fsprogs-dbgsym (1.43-3) ...
 
-# /usr/bin/time dpkg --force-depends -i /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb 
-Selecting previously unselected package e2fsprogs-dbgsym.
-(Reading database ... 322947 files and directories currently installed.)
-Preparing to unpack .../e2fsprogs-dbgsym_1.43-3_amd64.deb ...
-Unpacking e2fsprogs-dbgsym (1.43-3) ...
-Setting up e2fsprogs-dbgsym (1.43-3) ...
-0.21user 0.19system 0:00.54elapsed 74%CPU (0avgtext+0avgdata 73188maxresident)k
-0inputs+10168outputs (0major+24935minor)pagefaults 0swaps
+$ cat /etc/initramfs-tools/scripts/init-premount/kbu-blkid
+#!/bin/sh
+PREREQ=3D""
+prereqs()
+{
+     echo "$PREREQ"
+}
+case $1 in
+prereqs)
+     prereqs
+     exit 0
+     ;;
+esac
+echo "KBU"
+blkid
+echo "/KBU"
+$ sudo  update-initramfs -u
+update-initramfs: Generating /boot/initrd.img-4.6.0-040600rc6-generic
 
-Something else would be useful is to make sure /tmp is a tmpfs mounted
-file system (so you don't get any I/O's caused by /tmp), and then do:
 
-# dpkg --purge e2fsprogs-dbgsym
-# btrace /dev/sda3 > /tmp/btrace.out &
-# /usr/bin/time dpkg --force-depends -i /tmp/e2fsprogs-dbgsym_1.43-3_amd64.deb
-# kill %btrace
+but that just shows
 
-Replace /dev/sda3 with the device name of your root partition, and
-then send us the compressed btrace.out file, which might give us a
-clue about what is going on.
+   running /scripts/init-premount ... KBU
+   /KBU
 
-Cheers,
+as if the "blkid" command had no output. Is there something more useful=
+ I could
+put in there?=20
 
-					- Ted
+Would it be useful at all to compile a kernel with debug symbols as in
+https://wiki.ubuntu.com/Kernel/BuildYourOwnKernel#Debug_Symbols or if I=
+ change
+some other configuration options? (I don't really know what I should ch=
+ange
+though, since CONFIG_EXT4_USE_FOR_EXT2 is already tested as per the con=
+fig
+diff).
+
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
