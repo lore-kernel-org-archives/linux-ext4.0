@@ -1,53 +1,86 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1
- kernel
-Date: Fri, 3 Jun 2016 13:58:44 +0200
-Message-ID: <20160603115844.GB2470@quack2.suse.cz>
-References: <20160531140922.GM5140@eguan.usersys.redhat.com>
- <20160531154017.GC5357@thunk.org>
- <20160601063822.GH10350@eguan.usersys.redhat.com>
- <20160601165800.GI10350@eguan.usersys.redhat.com>
- <20160602085840.GH19636@quack2.suse.cz>
- <20160602121750.GC32574@quack2.suse.cz>
- <20160603101612.GJ10350@eguan.usersys.redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Fri, 03 Jun 2016 19:03:03 +0000
+Message-ID: <bug-118401-13602-QDxutwZ6In@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-	Eryu Guan <eguan@redhat.com>, linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33642 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:54942 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751727AbcFCL6r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Jun 2016 07:58:47 -0400
-Content-Disposition: inline
-In-Reply-To: <20160603101612.GJ10350@eguan.usersys.redhat.com>
+	id S1752272AbcFCTDJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jun 2016 15:03:09 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 686E720279
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Jun 2016 19:03:08 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id C6C4420272
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Jun 2016 19:03:05 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 03-06-16 18:16:12, Eryu Guan wrote:
-> On Thu, Jun 02, 2016 at 02:17:50PM +0200, Jan Kara wrote:
-> > 
-> > So I was trying but I could not reproduce the hang either. Can you find out
-> > which page is jbd2 thread waiting for and dump page->index, page->flags and
-> > also bh->b_state, bh->b_blocknr of all 4 buffer heads attached to it via
-> > page->private? Maybe that will shed some light...
-> 
-> I'm using crash on live system when the hang happens, so I got the page
-> address from "bt -f"
-> 
->  #6 [ffff880212343b40] wait_on_page_bit at ffffffff8119009e
->     ffff880212343b48: ffffea0002c23600 000000000000000d 
->     ffff880212343b58: 0000000000000000 0000000000000000 
->     ffff880212343b68: ffff880213251480 ffffffff810cd000 
->     ffff880212343b78: ffff88021ff27218 ffff88021ff27218 
->     ffff880212343b88: 00000000c1b4a75a ffff880212343c68 
->     ffff880212343b98: ffffffff811901bf
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-Thanks for debugging! In the end I was able to reproduce the issue on my
-UML instance as well and I'm debugging what's going on.
+--- Comment #17 from Kevin Brubeck Unhammer <unhammer+dill@mm.st> ---
+Created attachment 218851
+  --> https://bugzilla.kernel.org/attachment.cgi?id=218851&action=edit
+phone-image of initramfs-script w/ahci, scsi dmesg's, 4.6
 
-								Honza
+$ cat /etc/initramfs-tools/scripts/init-premount/kbu-blkid 
+#!/bin/sh
+PREREQ=""
+prereqs()
+{
+     echo "$PREREQ"
+}
+
+case $1 in
+prereqs)
+     prereqs
+     exit 0
+     ;;
+esac
+
+echo "KBU"
+echo 'cat /proc/partitions # gives:'
+      cat /proc/partitions
+echo '/sbin/blkid # gives:'
+      /sbin/blkid
+echo 'cat /proc/cmdline # gives:'
+      cat /proc/cmdline
+echo 'dmesg | grep -i blocks # gives:'
+      dmesg | grep -i blocks
+echo 'dmesg | grep -i ahci # gives:'
+      dmesg | grep -i ahci
+echo 'dmesg | grep -i scsi # gives:'
+      dmesg | grep -i scsi
+echo 'dmesg | grep -i sata # gives:'
+      dmesg | grep -i sata
+echo 'dmesg | grep -i  ata[0-4] # gives:'
+      dmesg | grep -i  ata[0-4]
+echo 'cat /proc/scsi/scsi # gives:'
+      cat /proc/scsi/scsi
+echo "/KBU"
+
+$ cat /etc/initramfs-tools/modules 
+# List of modules that you want to include in your initramfs.
+# They will be loaded at boot time in the order below.
+#
+# Syntax:  module_name [args ...]
+#
+# You must run update-initramfs(8) to effect this change.
+#
+# Examples:
+#
+# raid1
+# sd_mod
+ahci
+libahci
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
