@@ -1,162 +1,67 @@
-From: Waiman Long <Waiman.Long@hpe.com>
-Subject: [PATCH 2/3] ext4: Make cache hits/misses per-cpu counts
-Date: Fri,  3 Jun 2016 18:28:16 -0400
-Message-ID: <1464992897-34063-3-git-send-email-Waiman.Long@hpe.com>
-References: <1464992897-34063-1-git-send-email-Waiman.Long@hpe.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>,
-	Waiman Long <Waiman.Long@hpe.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1464992897-34063-1-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Sat, 04 Jun 2016 06:28:04 +0000
+Message-ID: <bug-118401-13602-mEy9tVmvOc@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:47149 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750748AbcFDG2K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Jun 2016 02:28:10 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 81EEF201B9
+	for <linux-ext4@vger.kernel.org>; Sat,  4 Jun 2016 06:28:07 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 2B4F02021A
+	for <linux-ext4@vger.kernel.org>; Sat,  4 Jun 2016 06:28:05 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch changes the es_stats_cache_hits and es_stats_cache_misses
-statistics counts to percpu counters to reduce cacheline contention
-issues whem multiple threads are trying to update those counts
-simultaneously.
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-With a 38-threads fio I/O test with 2 shared files (on DAX-mount ext4
-formatted NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1
-kernel, the aggregated bandwidths before and after the patch were:
+--- Comment #21 from Navin <navinp1912@gmail.com> ---
+Can youou have ahci modules present in your initramfs ?
 
-  Test          W/O patch       With patch      % change
-  ----          ---------       ----------      --------
-  Read-only     16031MB/s       16663MB/s        +3.9%
-  Read-write     1040MB/s        1077MB/s        +3.6%
+Mine returns like 
+1) lsinitramfs  /boot/initrd.img-4.7.0-rc1+  | grep -i ahci
 
-With a 38-threads parallel read/write fio test on 38 separated files
-on the same system, the aggregated bandwidths before and after the
-patch were:
+lib/modules/4.7.0-rc1+/kernel/drivers/ata/ahci_platform.ko
+lib/modules/4.7.0-rc1+/kernel/drivers/ata/ahci.ko
+lib/modules/4.7.0-rc1+/kernel/drivers/ata/libahci.ko
+lib/modules/4.7.0-rc1+/kernel/drivers/ata/libahci_platform.ko
+lib/modules/4.7.0-rc1+/kernel/drivers/ata/acard-ahci.ko
 
-  Test          W/O patch       With patch      % change
-  ----          ---------       ----------      --------
-  Read-only     21984MB/s       24716MB/s        +12.4%
-  Read-write     4263MB/s        4452MB/s         +4.4%
+2) If the above returns that it is present and loaded confirmed by grep -i ahci
+/proc/modules from your initramfs
 
-Signed-off-by: Waiman Long <Waiman.Long@hpe.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents_status.c |   38 +++++++++++++++++++++++++++++---------
- fs/ext4/extents_status.h |    4 ++--
- 2 files changed, 31 insertions(+), 11 deletions(-)
+ grep -i ahci /proc/modules 
+ahci 36864 2 - Live 0xffffffffc0044000
+libahci 32768 1 ahci, Live 0xffffffffc0015000
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 37e0592..3037715 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -770,6 +770,15 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- }
- 
- /*
-+ * For pure statistics count, use a large batch size to make sure that
-+ * it does percpu update as much as possible.
-+ */
-+static inline void ext4_es_stats_inc(struct percpu_counter *fbc)
-+{
-+	__percpu_counter_add(fbc, 1, (1 << 30));
-+}
-+
-+/*
-  * ext4_es_lookup_extent() looks up an extent in extent status tree.
-  *
-  * ext4_es_lookup_extent is called by ext4_map_blocks/ext4_da_map_blocks.
-@@ -825,9 +834,9 @@ out:
- 		es->es_pblk = es1->es_pblk;
- 		if (!ext4_es_is_referenced(es1))
- 			ext4_es_set_referenced(es1);
--		stats->es_stats_cache_hits++;
-+		ext4_es_stats_inc(&stats->es_stats_cache_hits);
- 	} else {
--		stats->es_stats_cache_misses++;
-+		ext4_es_stats_inc(&stats->es_stats_cache_misses);
- 	}
- 
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
-@@ -1113,9 +1122,9 @@ int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
- 	seq_printf(seq, "stats:\n  %lld objects\n  %lld reclaimable objects\n",
- 		   percpu_counter_sum_positive(&es_stats->es_stats_all_cnt),
- 		   percpu_counter_sum_positive(&es_stats->es_stats_shk_cnt));
--	seq_printf(seq, "  %lu/%lu cache hits/misses\n",
--		   es_stats->es_stats_cache_hits,
--		   es_stats->es_stats_cache_misses);
-+	seq_printf(seq, "  %lld/%lld cache hits/misses\n",
-+		   percpu_counter_sum_positive(&es_stats->es_stats_cache_hits),
-+		   percpu_counter_sum_positive(&es_stats->es_stats_cache_misses));
- 	if (inode_cnt)
- 		seq_printf(seq, "  %d inodes on list\n", inode_cnt);
- 
-@@ -1142,8 +1151,6 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- 	sbi->s_es_nr_inode = 0;
- 	spin_lock_init(&sbi->s_es_lock);
- 	sbi->s_es_stats.es_stats_shrunk = 0;
--	sbi->s_es_stats.es_stats_cache_hits = 0;
--	sbi->s_es_stats.es_stats_cache_misses = 0;
- 	sbi->s_es_stats.es_stats_scan_time = 0;
- 	sbi->s_es_stats.es_stats_max_scan_time = 0;
- 	err = percpu_counter_init(&sbi->s_es_stats.es_stats_all_cnt, 0, GFP_KERNEL);
-@@ -1153,15 +1160,26 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- 	if (err)
- 		goto err1;
- 
-+	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_hits, 0, GFP_KERNEL);
-+	if (err)
-+		goto err2;
-+
-+	err = percpu_counter_init(&sbi->s_es_stats.es_stats_cache_misses, 0, GFP_KERNEL);
-+	if (err)
-+		goto err3;
-+
- 	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
- 	sbi->s_es_shrinker.count_objects = ext4_es_count;
- 	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
- 	err = register_shrinker(&sbi->s_es_shrinker);
- 	if (err)
--		goto err2;
-+		goto err4;
- 
- 	return 0;
--
-+err4:
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
-+err3:
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
- err2:
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
- err1:
-@@ -1173,6 +1191,8 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- {
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_hits);
-+	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
- 	unregister_shrinker(&sbi->s_es_shrinker);
- }
- 
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index f7aa24f..d537868 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -69,10 +69,10 @@ struct ext4_es_tree {
- 
- struct ext4_es_stats {
- 	unsigned long es_stats_shrunk;
--	unsigned long es_stats_cache_hits;
--	unsigned long es_stats_cache_misses;
- 	u64 es_stats_scan_time;
- 	u64 es_stats_max_scan_time;
-+	struct percpu_counter es_stats_cache_hits;
-+	struct percpu_counter es_stats_cache_misses;
- 	struct percpu_counter es_stats_all_cnt;
- 	struct percpu_counter es_stats_shk_cnt;
- };
+If  (1) and (2) work as expected like described ie they are loaded and present.
+
+Please post the output of (1) and (2) what it returns in your case.
+
+3)
+Then maybe something related to irq like described in 
+
+https://bugzilla.kernel.org/show_bug.cgi?id=111211
+
+where comment 7 says "It works with 'pci=routeirq' parameter" in kernel command
+line.
+
+I asked for this because your 4.2 dmesg showed something like 
+
+[    0.716610] ahci 0000:00:1f.2: version 3.0
+[    0.716620] ahci 0000:00:1f.2: can't find IRQ for PCI INT B; probably buggy
+MP table
+
 -- 
-1.7.1
+You are receiving this mail because:
+You are watching the assignee of the bug.
