@@ -1,59 +1,43 @@
-From: Hannes Reinecke <hare@suse.de>
-Subject: Re: [PATCH 42/45] block, fs, drivers: remove REQ_OP compat defs and
- related code
-Date: Mon, 6 Jun 2016 08:53:04 +0200
-Message-ID: <57551DD0.9090703@suse.de>
-References: <1465155145-10812-1-git-send-email-mchristi@redhat.com>
- <1465155145-10812-43-git-send-email-mchristi@redhat.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 118401] Lenovo A740 gave up waiting for root device with
+ kernels >= 4.3
+Date: Mon, 06 Jun 2016 07:27:01 +0000
+Message-ID: <bug-118401-13602-QgPwIRc87C@https.bugzilla.kernel.org/>
+References: <bug-118401-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: mchristi@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, konrad.wilk@oracle.com,
-	drbd-dev@lists.linbit.com, philipp.reisner@linbit.com,
-	lars.ellenberg@linbit.com, linux-raid@vger.kernel.org,
-	dm-devel@redhat.com, linux-fsdevel@vger.kernel.org,
-	linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
-	linux-mtd@lists.infradead.org, target-devel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, osd-dev@open-osd.org, xfs@oss.sgi.com,
-	ocfs2-devel@oss.oracle.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1465155145-10812-43-git-send-email-mchristi@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:55539 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751655AbcFFH1G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Jun 2016 03:27:06 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id CFA1F200EC
+	for <linux-ext4@vger.kernel.org>; Mon,  6 Jun 2016 07:27:04 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id C4AE220122
+	for <linux-ext4@vger.kernel.org>; Mon,  6 Jun 2016 07:27:02 +0000 (UTC)
+In-Reply-To: <bug-118401-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/05/2016 09:32 PM, mchristi@redhat.com wrote:
-> From: Mike Christie <mchristi@redhat.com>
->=20
-> This patch drops the compat definition of req_op where it matches
-> the rq_flag_bits definitions, and drops the related old and compat
-> code that allowed users to set either the op or flags for the operati=
-on.
->=20
-> We also then store the operation in the bi_rw/cmd_flags field similar
-> to how we used to store the bio ioprio where it sat in the upper bits
-> of the field.
->=20
-> Signed-off-by: Mike Christie <mchristi@redhat.com>
-> ---
->  drivers/scsi/sd.c           |  2 +-
->  include/linux/bio.h         |  3 ---
->  include/linux/blk_types.h   | 52 +++++++++++++++++------------------=
-----------
->  include/linux/blkdev.h      | 14 ++++++++----
->  include/linux/fs.h          | 37 +++++++++++++-------------------
->  include/trace/events/f2fs.h |  1 -
->  6 files changed, 46 insertions(+), 63 deletions(-)
->=20
-Reviewed-by: Hannes Reinecke <hare@suse.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=118401
 
-Cheers,
+--- Comment #30 from Kevin Brubeck Unhammer <unhammer+dill@mm.st> ---
+Created attachment 219181
+  --> https://bugzilla.kernel.org/attachment.cgi?id=219181&action=edit
+phone-image initramfs 4.7
 
-Hannes
---=20
-Dr. Hannes Reinecke		   Teamlead Storage & Networking
-hare@suse.de			               +49 911 74053 688
-SUSE LINUX GmbH, Maxfeldstr. 5, 90409 N=FCrnberg
-GF: F. Imend=F6rffer, J. Smithard, J. Guild, D. Upmanyu, G. Norton
-HRB 21284 (AG N=FCrnberg)
+This was without ahci/libahci in /etc/initramfs-tools/modules. Doesn't seem too
+different from attachemnt 219081 except that /proc/scsi/scsi doesn't exist
+(though maybe it's created after modprobing; haven't tried 4.7 with
+ahci/libahci in /etc/initramfs-tools/modules yet).
+
+Thanks so much for your help Navin; getting in touch with the ide/ahci list
+now.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
