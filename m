@@ -1,87 +1,60 @@
-From: Lin Feng <linf@chinanetcenter.com>
-Subject: Re: [PATCH] ext4: mballoc.c: fix ac_g_ex and ac_f_ex misuse bug in
- EXT4_MB_HINT_TRY_GOAL path
-Date: Mon, 06 Jun 2016 10:23:43 +0800
-Message-ID: <5754DEAF.7010705@chinanetcenter.com>
-References: <1464868898-31336-1-git-send-email-linf@chinanetcenter.com>
+From: Hannes Reinecke <hare@suse.de>
+Subject: Re: [PATCH 01/45] block/fs/drivers: remove rw argument from submit_bio
+Date: Mon, 6 Jun 2016 08:12:42 +0200
+Message-ID: <5755145A.3070500@suse.de>
+References: <1465155145-10812-1-git-send-email-mchristi@redhat.com>
+	<1465155145-10812-2-git-send-email-mchristi@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.chinanetcenter.com ([123.103.13.31]:43654 "EHLO
-	chinanetcenter.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752030AbcFFCZL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jun 2016 22:25:11 -0400
-In-Reply-To: <1464868898-31336-1-git-send-email-linf@chinanetcenter.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: mchristi@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, konrad.wilk@oracle.com,
+	drbd-dev@lists.linbit.com, philipp.reisner@linbit.com,
+	lars.ellenberg@linbit.com, linux-raid@vger.kernel.org,
+	dm-devel@redhat.com,
+	linux-fsdevel@vger.kernel.org, linux-bcache@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-scsi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	osd-dev@open-osd.org, xfs@oss.sgi.com, ocfs2-devel@oss.oracle.com
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <1465155145-10812-2-git-send-email-mchristi@redhat.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On 06/05/2016 09:31 PM, mchristi@redhat.com wrote:
+> From: Mike Christie <mchristi@redhat.com>
+> =
 
-Am I missing something or it's not important at all?
+> This has callers of submit_bio/submit_bio_wait set the bio->bi_rw
+> instead of passing it in. This makes that use the same as
+> generic_make_request and how we set the other bio fields.
+> =
 
-Other things:
-[linfeng@localhost ext4]$ grep EXT4_MB_HINT_MERGE ./* -rHn
-./ext4.h:111:#define EXT4_MB_HINT_MERGE        0x0001
-./mballoc.c:1871:    } else if (max > 0 && (ac->ac_flags & EXT4_MB_HINT_MERGE)) {
-
-EXT4_MB_HINT_MERGE is only tested once and nowhere teaches how to use it.
-IIUC it also should be folded into EXT4_MB_HINT_TRY_GOAL path or simply skip
-EXT4_MB_HINT_MERGE test at -L1871.
-
-thanks,
-linfeng
-
-
-On 06/02/2016 08:01 PM, Lin Feng wrote:
-> Descriptions:
-> ext4 block allocation core stack:
-> ext4_mb_new_blocks
->    ext4_mb_normalize_request
->    ext4_mb_regular_allocator
->      ext4_mb_find_by_goal
->        mb_find_extent(e4b, ac->ac_g_ex.fe_start, ac->ac_g_ex.fe_len, &ex);
->
-> The start block searching hint for merging(use EXT4_MB_HINT_TRY_GOAL flag)
-> set in ext4_mb_normalize_request is stored in ac_f_ex, while in
-> EXT4_MB_HINT_TRY_GOAL path which falls in ext4_mb_find_by_goal always use
-> ac_g_ex as a hint and the hint set in ext4_mb_normalize_request is never
-> use.
->
-> We could hit this bug by writing a sparse file from backward mode and the
-> file may get fragments even if the physical blocks in the hole is free,
-> which is expected to be merged into a single extent.
->
-> Signed-off-by: Lin Feng <linf@chinanetcenter.com>
+> Signed-off-by: Mike Christie <mchristi@redhat.com>
 > ---
->   fs/ext4/mballoc.c | 8 ++++----
->   1 file changed, 4 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index c1ab3ec..e31fc63 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3198,15 +3198,15 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
->   	if (ar->pright && (ar->lright == (start + size))) {
->   		/* merge to the right */
->   		ext4_get_group_no_and_offset(ac->ac_sb, ar->pright - size,
-> -						&ac->ac_f_ex.fe_group,
-> -						&ac->ac_f_ex.fe_start);
-> +						&ac->ac_g_ex.fe_group,
-> +						&ac->ac_g_ex.fe_start);
->   		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
->   	}
->   	if (ar->pleft && (ar->lleft + 1 == start)) {
->   		/* merge to the left */
->   		ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
-> -						&ac->ac_f_ex.fe_group,
-> -						&ac->ac_f_ex.fe_start);
-> +						&ac->ac_g_ex.fe_group,
-> +						&ac->ac_g_ex.fe_start);
->   		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
->   	}
->
->
+Reviewed-by: Hannes Reinecke <hare@suse.com>
 
+Cheers,
+
+Hannes
+-- =
+
+Dr. Hannes Reinecke		   Teamlead Storage & Networking
+hare@suse.de			               +49 911 74053 688
+SUSE LINUX GmbH, Maxfeldstr. 5, 90409 N=FCrnberg
+GF: F. Imend=F6rffer, J. Smithard, J. Guild, D. Upmanyu, G. Norton
+HRB 21284 (AG N=FCrnberg)
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
