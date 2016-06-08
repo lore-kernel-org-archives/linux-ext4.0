@@ -1,130 +1,164 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: mballoc.c: fix ac_g_ex and ac_f_ex misuse bug in EXT4_MB_HINT_TRY_GOAL path
-Date: Tue, 7 Jun 2016 15:01:46 -0600
-Message-ID: <D4F0CA1E-2075-4EBE-A945-A56F6B7D6808@dilger.ca>
-References: <1464868898-31336-1-git-send-email-linf@chinanetcenter.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_849E16F1-5A5B-4191-A515-D6BAD97160D2"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Lin Feng <linf@chinanetcenter.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: optimize ext4_should_retry_alloc() to improve ENOSPC performance
+Date: Tue,  7 Jun 2016 22:36:58 -0400
+Message-ID: <1465353418-12897-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33714 "EHLO
-	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932843AbcFGVBz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jun 2016 17:01:55 -0400
-Received: by mail-it0-f67.google.com with SMTP id u203so15190564itc.0
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jun 2016 14:01:54 -0700 (PDT)
-In-Reply-To: <1464868898-31336-1-git-send-email-linf@chinanetcenter.com>
+Received: from imap.thunk.org ([74.207.234.97]:54230 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752023AbcFHChD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jun 2016 22:37:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+If there are pending blocks to be released after a commit, retrying
+the allocation after a journal commit has no hope of helping.  So
+track how many pending deleted blocks there might be, and don't retry
+if there are no pending blocks.
 
---Apple-Mail=_849E16F1-5A5B-4191-A515-D6BAD97160D2
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Reported-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/balloc.c    |  9 ++++++++-
+ fs/ext4/ext4.h      |  1 +
+ fs/ext4/ext4_jbd2.h | 10 +++++++++-
+ fs/ext4/fsync.c     |  5 +++--
+ fs/ext4/mballoc.c   | 12 ++++++++++--
+ 5 files changed, 31 insertions(+), 6 deletions(-)
 
-On Jun 2, 2016, at 6:01 AM, Lin Feng <linf@chinanetcenter.com> wrote:
->=20
-> Descriptions:
-> ext4 block allocation core stack:
-> ext4_mb_new_blocks
->  ext4_mb_normalize_request
->  ext4_mb_regular_allocator
->    ext4_mb_find_by_goal
->      mb_find_extent(e4b, ac->ac_g_ex.fe_start, ac->ac_g_ex.fe_len, =
-&ex);
->=20
-> The start block searching hint for merging(use EXT4_MB_HINT_TRY_GOAL =
-flag)
-> set in ext4_mb_normalize_request is stored in ac_f_ex, while in
-> EXT4_MB_HINT_TRY_GOAL path which falls in ext4_mb_find_by_goal always =
-use
-> ac_g_ex as a hint and the hint set in ext4_mb_normalize_request is =
-never
-> use.
->=20
-> We could hit this bug by writing a sparse file from backward mode and =
-the
-> file may get fragments even if the physical blocks in the hole is =
-free,
-> which is expected to be merged into a single extent.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 3020fd7..371ac63 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -603,7 +603,14 @@ int ext4_claim_free_clusters(struct ext4_sb_info *sbi,
+  */
+ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ {
+-	if (!ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
++	unsigned int pending_blocks;
++
++	spin_lock(&EXT4_SB(sb)->s_md_lock);
++	pending_blocks = EXT4_SB(sb)->s_mb_free_pending;
++	spin_unlock(&EXT4_SB(sb)->s_md_lock);
++
++	if (pending_blocks == 0 ||
++	    !ext4_has_free_clusters(EXT4_SB(sb), 1, 0) ||
+ 	    (*retries)++ > 3 ||
+ 	    !EXT4_SB(sb)->s_journal)
+ 		return 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b84aa1c..96c73e6 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1430,6 +1430,7 @@ struct ext4_sb_info {
+ 	unsigned short *s_mb_offsets;
+ 	unsigned int *s_mb_maxs;
+ 	unsigned int s_group_info_size;
++	unsigned int s_mb_free_pending;
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 09c1ef3..b1d52c1 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -175,6 +175,13 @@ struct ext4_journal_cb_entry {
+  * There is no guaranteed calling order of multiple registered callbacks on
+  * the same transaction.
+  */
++static inline void _ext4_journal_callback_add(handle_t *handle,
++			struct ext4_journal_cb_entry *jce)
++{
++	/* Add the jce to transaction's private list */
++	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
++}
++
+ static inline void ext4_journal_callback_add(handle_t *handle,
+ 			void (*func)(struct super_block *sb,
+ 				     struct ext4_journal_cb_entry *jce,
+@@ -187,10 +194,11 @@ static inline void ext4_journal_callback_add(handle_t *handle,
+ 	/* Add the jce to transaction's private list */
+ 	jce->jce_func = func;
+ 	spin_lock(&sbi->s_md_lock);
+-	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
++	_ext4_journal_callback_add(handle, jce);
+ 	spin_unlock(&sbi->s_md_lock);
+ }
+ 
++
+ /**
+  * ext4_journal_callback_del: delete a registered callback
+  * @handle: active journal transaction handle on which callback was registered
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 8850254..7ee4abd 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -106,10 +106,10 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	}
+ 
+ 	if (!journal) {
+-		ret = generic_file_fsync(file, start, end, datasync);
++		ret = __generic_file_fsync(file, start, end, datasync);
+ 		if (!ret && !hlist_empty(&inode->i_dentry))
+ 			ret = ext4_sync_parent(inode);
+-		goto out;
++		goto issue_flush;
+ 	}
+ 
+ 	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+@@ -140,6 +140,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 		needs_barrier = true;
+ 	ret = jbd2_complete_transaction(journal, commit_tid);
+ 	if (needs_barrier) {
++	issue_flush:
+ 		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+ 		if (!ret)
+ 			ret = err;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c1ab3ec..77249e1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2627,6 +2627,7 @@ int ext4_mb_init(struct super_block *sb)
+ 
+ 	spin_lock_init(&sbi->s_md_lock);
+ 	spin_lock_init(&sbi->s_bal_lock);
++	sbi->s_mb_free_pending = 0;
+ 
+ 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+ 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+@@ -2814,6 +2815,9 @@ static void ext4_free_data_callback(struct super_block *sb,
+ 	/* we expect to find existing buddy because it's pinned */
+ 	BUG_ON(err != 0);
+ 
++	spin_lock(&EXT4_SB(sb)->s_md_lock);
++	EXT4_SB(sb)->s_mb_free_pending -= entry->efd_count;
++	spin_unlock(&EXT4_SB(sb)->s_md_lock);
+ 
+ 	db = e4b.bd_info;
+ 	/* there are blocks to put in buddy to make them really free */
+@@ -4583,6 +4587,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ {
+ 	ext4_group_t group = e4b->bd_group;
+ 	ext4_grpblk_t cluster;
++	ext4_grpblk_t clusters = new_entry->efd_count;
+ 	struct ext4_free_data *entry;
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+@@ -4649,8 +4654,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		}
+ 	}
+ 	/* Add the extent to transaction's private list */
+-	ext4_journal_callback_add(handle, ext4_free_data_callback,
+-				  &new_entry->efd_jce);
++	new_entry->efd_jce.jce_func = ext4_free_data_callback;
++	spin_lock(&sbi->s_md_lock);
++	_ext4_journal_callback_add(handle, &new_entry->efd_jce);
++	sbi->s_mb_free_pending += clusters;
++	spin_unlock(&sbi->s_md_lock);
+ 	return 0;
+ }
+ 
+-- 
+2.5.0
 
-This looks reasonable.  Do you have any kind of test case that shows the
-effect of the change (e.g. fragmentation counts per file before/after)?
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-> Signed-off-by: Lin Feng <linf@chinanetcenter.com>
-> ---
-> fs/ext4/mballoc.c | 8 ++++----
-> 1 file changed, 4 insertions(+), 4 deletions(-)
->=20
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index c1ab3ec..e31fc63 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3198,15 +3198,15 @@ ext4_mb_normalize_request(struct =
-ext4_allocation_context *ac,
-> 	if (ar->pright && (ar->lright =3D=3D (start + size))) {
-> 		/* merge to the right */
-> 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pright - =
-size,
-> -						&ac->ac_f_ex.fe_group,
-> -						&ac->ac_f_ex.fe_start);
-> +						&ac->ac_g_ex.fe_group,
-> +						&ac->ac_g_ex.fe_start);
-> 		ac->ac_flags |=3D EXT4_MB_HINT_TRY_GOAL;
-> 	}
-> 	if (ar->pleft && (ar->lleft + 1 =3D=3D start)) {
-> 		/* merge to the left */
-> 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
-> -						&ac->ac_f_ex.fe_group,
-> -						&ac->ac_f_ex.fe_start);
-> +						&ac->ac_g_ex.fe_group,
-> +						&ac->ac_g_ex.fe_start);
-> 		ac->ac_flags |=3D EXT4_MB_HINT_TRY_GOAL;
-> 	}
->=20
-> --
-> 1.9.3
->=20
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_849E16F1-5A5B-4191-A515-D6BAD97160D2
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBV1c2PHKl2rkXzB/gAQjdNRAAjSOvwDKENQgbftJuo9Stxu7L1yyt24AF
-TmXUbpXwX+gjfgcpxaVLapykEJHUW7JSpBfDDdnwPwgBCRdyfzq7xpEQXqv5gxJn
-AyRB9/GNNe9hnPa5mwWh4i868Ya4T/0NJFMbtwKH3RQD9qwvwzEBdqc6sEe+ITYw
-bgfOwQXZKZWwKaRq2PS4W6YkE6UEuVliQpakpzTvlCoEOUQBB0aE3TxbnHpF6hU/
-W0ZKRFm7vLdDtLc1fcl1ySLhDta1janoEguEFAJAoUsaDshOFzPZA7vb8YfE57ha
-At6pE07EwYAqEf15GthCbW8v8Bk2ryuesUsWEd+AJzylSUuEDAqQNzrAFL8SOqgS
-h3QgK45znlgZBEjL0DcKUuo6NBXcppXi0ctbcDaDVOlLiY/NoXNyg59IzTUO/xu7
-079lT4wfOQ0GZmTJAyIWE73Ias4BB4kW2F//0j8Lh2tRA12K3PbNJ6BClohGiRlF
-tzF2fpFUE5cZdnBuk+bSQGDLGc4cO5Bsojo6CW1p93pxJSXzmzBzWlXoOKou/7Ik
-1zGquYMo1evqdveJyz9dI7OJ8rm5gucOIvYQwUjgVOdxNnlGbb/HJYcRoDyK5rEF
-9Z++Zdu5zjtnXlXFR+O2iQTGbDkO3tD1vjU2Q7gT3lw0MjTNVXZ3mi08ELkXuW3k
-IYm+yybIEMc=
-=/xj4
------END PGP SIGNATURE-----
-
---Apple-Mail=_849E16F1-5A5B-4191-A515-D6BAD97160D2--
