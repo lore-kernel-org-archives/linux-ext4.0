@@ -1,63 +1,141 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: respect the nobarrier mount option in nojournal
- mode
-Date: Tue, 7 Jun 2016 22:23:10 -0500
-Message-ID: <8421f4bf-a49c-572c-c8db-29709a17eee6@redhat.com>
-References: <1465354031-15429-1-git-send-email-tytso@mit.edu>
+From: Lin Feng <linf@chinanetcenter.com>
+Subject: Re: [PATCH] ext4: mballoc.c: fix ac_g_ex and ac_f_ex misuse bug in
+ EXT4_MB_HINT_TRY_GOAL path
+Date: Wed, 08 Jun 2016 14:08:21 +0800
+Message-ID: <5757B655.6080803@chinanetcenter.com>
+References: <1464868898-31336-1-git-send-email-linf@chinanetcenter.com> <D4F0CA1E-2075-4EBE-A945-A56F6B7D6808@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59099 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161052AbcFHDXS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jun 2016 23:23:18 -0400
-In-Reply-To: <1465354031-15429-1-git-send-email-tytso@mit.edu>
+Received: from mail.chinanetcenter.com ([123.103.13.31]:53941 "EHLO
+	chinanetcenter.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751477AbcFHGJM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2016 02:09:12 -0400
+In-Reply-To: <D4F0CA1E-2075-4EBE-A945-A56F6B7D6808@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 6/7/16 9:47 PM, Theodore Ts'o wrote:
-> Also, if we are going to issue the barrier, we should do this after we
-> write out the parent directories if necessary.
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  fs/ext4/fsync.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-> index 8850254..011863e 100644
-> --- a/fs/ext4/fsync.c
-> +++ b/fs/ext4/fsync.c
-> @@ -106,9 +106,11 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
->  	}
->  
->  	if (!journal) {
-> -		ret = generic_file_fsync(file, start, end, datasync);
-> +		ret = __generic_file_fsync(file, start, end, datasync);
->  		if (!ret && !hlist_empty(&inode->i_dentry))
->  			ret = ext4_sync_parent(inode);
-> +		if (journal->j_flags & JBD2_BARRIER)
-> +			goto issue_flush;
+Hi Andreas,
 
-So in the "if (!journal)" case you test journal->j_flags?
+Thanks for your reply and review.
 
-Confused...
+On 06/08/2016 05:01 AM, Andreas Dilger wrote:
+> On Jun 2, 2016, at 6:01 AM, Lin Feng <linf@chinanetcenter.com> wrote:
+>>
+>> Descriptions:
+>> ext4 block allocation core stack:
+>> ext4_mb_new_blocks
+>>   ext4_mb_normalize_request
+>>   ext4_mb_regular_allocator
+>>     ext4_mb_find_by_goal
+>>       mb_find_extent(e4b, ac->ac_g_ex.fe_start, ac->ac_g_ex.fe_len, &ex);
+>>
+>> The start block searching hint for merging(use EXT4_MB_HINT_TRY_GOAL flag)
+>> set in ext4_mb_normalize_request is stored in ac_f_ex, while in
+>> EXT4_MB_HINT_TRY_GOAL path which falls in ext4_mb_find_by_goal always use
+>> ac_g_ex as a hint and the hint set in ext4_mb_normalize_request is never
+>> use.
+>>
+>> We could hit this bug by writing a sparse file from backward mode and the
+>> file may get fragments even if the physical blocks in the hole is free,
+>> which is expected to be merged into a single extent.
+>
+> This looks reasonable.  Do you have any kind of test case that shows the
+> effect of the change (e.g. fragmentation counts per file before/after)?
 
--Eric
+I found this bug by fiddling the block allocation policy for ext4.
 
->  		goto out;
->  	}
->  
-> @@ -140,6 +142,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
->  		needs_barrier = true;
->  	ret = jbd2_complete_transaction(journal, commit_tid);
->  	if (needs_barrier) {
-> +	issue_flush:
->  		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
->  		if (!ret)
->  			ret = err;
-> 
+In order to see the effect of this patch, we could do the following:
+
+On a fresh created ext4 fs, make a new topdir called b to hash the test to some 
+blockgroup relatively empty, trying to not to be effected by original physical 
+fragments. Then write a new file in backward mode.
+
+steps:
+1. mkdir b && cd b
+
+2. before this patch:
+[root@CentOS6 b]# rm dat -f && sync && sleep 2 && dd if=/dev/zero of=dat bs=4k 
+count=256 seek=511 conv=notrunc && sync && sleep 2 && dd if=/dev/zero of=dat 
+bs=4k count=254 seek=257 conv=notrunc && sync && filefrag -vv dat
+256+0 records in
+256+0 records out
+1048576 bytes (1.0 MB) copied, 0.000825721 s, 1.3 GB/s
+254+0 records in
+254+0 records out
+1040384 bytes (1.0 MB) copied, 0.000766912 s, 1.4 GB/s
+Filesystem type is: ef53
+File size of dat is 3141632 (767 blocks, blocksize 4096)
+  ext logical physical expected length flags
+    0     257     9512             254
+    1     511   557056     9766    256 eof
+dat: 2 extents found
+
+3. after this patch:
+[root@CentOS6 b]# rm dat -f && sync && sleep 2 && dd if=/dev/zero of=dat bs=4k 
+count=256 seek=511 conv=notrunc && sync && sleep 2 && dd if=/dev/zero of=dat 
+bs=4k count=254 seek=257 conv=notrunc && sync && filefrag -vv dat
+256+0 records in
+256+0 records out
+1048576 bytes (1.0 MB) copied, 0.000856416 s, 1.2 GB/s
+254+0 records in
+254+0 records out
+1040384 bytes (1.0 MB) copied, 0.000669862 s, 1.6 GB/s
+Filesystem type is: ef53
+File size of dat is 3141632 (767 blocks, blocksize 4096)
+  ext logical physical expected length flags
+    0     257   556802             510 eof
+dat: 1 extent found
+
+thanks,
+linfeng
+>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+>
+>> Signed-off-by: Lin Feng <linf@chinanetcenter.com>
+>> ---
+>> fs/ext4/mballoc.c | 8 ++++----
+>> 1 file changed, 4 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index c1ab3ec..e31fc63 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -3198,15 +3198,15 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+>> 	if (ar->pright && (ar->lright == (start + size))) {
+>> 		/* merge to the right */
+>> 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pright - size,
+>> -						&ac->ac_f_ex.fe_group,
+>> -						&ac->ac_f_ex.fe_start);
+>> +						&ac->ac_g_ex.fe_group,
+>> +						&ac->ac_g_ex.fe_start);
+>> 		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
+>> 	}
+>> 	if (ar->pleft && (ar->lleft + 1 == start)) {
+>> 		/* merge to the left */
+>> 		ext4_get_group_no_and_offset(ac->ac_sb, ar->pleft + 1,
+>> -						&ac->ac_f_ex.fe_group,
+>> -						&ac->ac_f_ex.fe_start);
+>> +						&ac->ac_g_ex.fe_group,
+>> +						&ac->ac_g_ex.fe_start);
+>> 		ac->ac_flags |= EXT4_MB_HINT_TRY_GOAL;
+>> 	}
+>>
+>> --
+>> 1.9.3
+>>
+>>
+>
+>
+> Cheers, Andreas
+>
+>
+>
+>
+>
 
