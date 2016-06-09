@@ -1,1332 +1,1429 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH 01/21] fs: Replace CURRENT_TIME_SEC with current_fs_time()
-Date: Wed,  8 Jun 2016 22:04:45 -0700
-Message-ID: <1465448705-25055-2-git-send-email-deepa.kernel@gmail.com>
-References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
+From: Nikola Pajkovsky <nikola.pajkovsky@gooddata.com>
+Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1 kernel
+Date: Thu, 09 Jun 2016 09:23:29 +0200
+Message-ID: <87oa7a6d1q.fsf@gooddata.com>
+References: <20160531140922.GM5140@eguan.usersys.redhat.com>
+	<20160531154017.GC5357@thunk.org>
+	<20160601063822.GH10350@eguan.usersys.redhat.com>
+	<20160601165800.GI10350@eguan.usersys.redhat.com>
+	<20160602085840.GH19636@quack2.suse.cz>
+	<20160602121750.GC32574@quack2.suse.cz>
+	<20160603101612.GJ10350@eguan.usersys.redhat.com>
+	<20160603115844.GB2470@quack2.suse.cz>
+	<20160608125631.GA19589@quack2.suse.cz>
+	<pan$6abef$45fa540$7a7a0c36$ef55c356@applied-asynchrony.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, Bob Copeland <me@bobcopeland.com>,
- David Howells <dhowells@redhat.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
- linux-afs@lists.infradead.org, y2038@lists.linaro.org,
- codalist@coda.cs.cmu.edu, Christoph Hellwig <hch@infradead.org>,
- coda@cs.cmu.edu, linux-ext4@vger.kernel.org,
- Evgeniy Dushistov <dushistov@mail.ru>, Arnd Bergmann <arnd@arndb.de>,
- Al Viro <viro@zeniv.linux.org.uk>, Thomas Gleixner <tglx@linutronix.de>,
- OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Jan Harkes <jaharkes@cs.cmu.edu>,
- Theodore Ts'o <tytso@mit.edu>, Artem Bityutskiy <dedekind1@gmail.com>,
- "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
- Adrian Hunter <adrian.hunter@intel.com>, Jan Kara <jack@suse.com>,
- linux-mtd@lists.infradead.org, Linus Torvalds <torvalds@linux-foundation.org>,
- linux-karma-devel@lists.sourceforge.net
-To: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-In-Reply-To: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+To: Holger =?utf-8?Q?Hoffst=C3=A4tte?= <holger@applied-asynchrony.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wm0-f42.google.com ([74.125.82.42]:35101 "EHLO
+	mail-wm0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751433AbcFIHXd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2016 03:23:33 -0400
+Received: by mail-wm0-f42.google.com with SMTP id v199so93844838wmv.0
+        for <linux-ext4@vger.kernel.org>; Thu, 09 Jun 2016 00:23:32 -0700 (PDT)
+In-Reply-To: <pan$6abef$45fa540$7a7a0c36$ef55c356@applied-asynchrony.com>
+	("Holger =?utf-8?Q?Hoffst=C3=A4tte=22's?= message of "Wed, 8 Jun 2016
+ 14:23:49 +0000
+	(UTC)")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-CURRENT_TIME_SEC is not y2038 safe. current_fs_time() will
-be transitioned to use 64 bit time along with vfs in a
-separate patch.
-There is no plan to transistion CURRENT_TIME_SEC to use
-y2038 safe time interfaces.
+Holger Hoffst=C3=A4tte <holger@applied-asynchrony.com> writes:
 
-current_fs_time() will also be extended to use superblock
-range checking parameters when range checking is introduced.
+> On Wed, 08 Jun 2016 14:56:31 +0200, Jan Kara wrote:
+> (snip)
+>> Attached patch fixes the issue for me. I'll submit it once a full xf=
+stests
+>> run finishes for it (which may take a while as our server room is cu=
+rrently
+>> moving to a different place).
+>>=20
+>> 								Honza
+>> --=20
+>> Jan Kara <jack@suse.com>
+>> SUSE Labs, CR
+>> From 3a120841a5d9a6c42bf196389467e9e663cf1cf8 Mon Sep 17 00:00:00 20=
+01
+>> From: Jan Kara <jack@suse.cz>
+>> Date: Wed, 8 Jun 2016 10:01:45 +0200
+>> Subject: [PATCH] ext4: Fix deadlock during page writeback
+>>=20
+>> Commit 06bd3c36a733 (ext4: fix data exposure after a crash) uncovere=
+d a
+>> deadlock in ext4_writepages() which was previously much harder to hi=
+t.
+>> After this commit xfstest generic/130 reproduces the deadlock on sma=
+ll
+>> filesystems.
+>
+> Since you marked this for -stable, just a heads-up that the previous =
+patch
+> for the data exposure was rejected from -stable (see [1]) because it
+> has the mismatching "!IS_NOQUOTA(inode) &&" line, which didn't exist
+> until 4.6. I removed it locally but Greg probably wants an official p=
+atch.
+>
+> So both this and the previous patch need to be submitted.
+>
+> [1] http://permalink.gmane.org/gmane.linux.kernel.stable/18074{4,5,6}
 
-This works because alloc_super() fills in the the s_time_gran
-in super block to NSEC_PER_SEC.
+I'm just wondering if the Jan's patch is not related to blocked
+processes in following trace. It very hard to hit it and I don't have
+any reproducer.
 
-Also note that filesystem specific times like the birthtime,
-creation time that were using same interfaces to obtain time
-retain same logistics.
+kernel: INFO: task jbd2/vdc-8:4710 blocked for more than 120 seconds. s=
+everity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: jbd2/vdc-8      D 0000000000000002     0  4710      2 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88273a373b38 0000000000000046 ffff88273a373ae8 ffff88273a37=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273c76c7e0 ffff88273e32=
+2b20 severity=3Dwarning
+kernel: ffff88273a373b38 ffff88277f092c40 ffff88273c76c7e0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffff8121021e>] __wait_on_buffer+0x2e/0x30 severity=3Dwarn=
+ing
+kernel: [<ffffffffa01180a1>] jbd2_journal_commit_transaction+0x861/0x16=
+e0 [jbd2] severity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011d847>] kjournald2+0x127/0x340 [jbd2] severity=3Dw=
+arning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011d720>] ? jbd2_journal_clear_features+0x90/0x90 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffff8108b31e>] kthread+0xce/0xf0 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: [<ffffffff81618c58>] ret_from_fork+0x58/0x90 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: INFO: task postmaster:25406 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 000000000000000f     0 25406  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff882485e5f9a8 0000000000000086 ffff882485e5f958 ffff882485e5=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882657c9d640 ffff88273e3b=
+8000 severity=3Dwarning
+kernel: ffff882485e5f9a8 ffff88277f3d2c40 ffff882657c9d640 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81210a9a>] ? __getblk_gfp+0x3a/0x80 severity=3Dwarnin=
+g
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0146c08>] ext4_reserve_inode_write+0x78/0xa0 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0146c82>] ext4_mark_inode_dirty+0x52/0x240 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffffa0146eba>] ext4_dirty_inode+0x4a/0x70 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120644a>] __mark_inode_dirty+0x3a/0x290 severity=3Dw=
+arning
+kernel: [<ffffffff811f6f91>] update_time+0x81/0xc0 severity=3Dwarning
+kernel: [<ffffffff811f7068>] file_update_time+0x98/0xe0 severity=3Dwarn=
+ing
+kernel: [<ffffffff811630b2>] __generic_file_write_iter+0x162/0x390 seve=
+rity=3Dwarning
+kernel: [<ffffffffa013deb9>] ext4_file_write_iter+0x119/0x430 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffff811dbf22>] new_sync_write+0x92/0xd0 severity=3Dwarnin=
+g
+kernel: [<ffffffff811dc43e>] vfs_write+0xce/0x180 severity=3Dwarning
+kernel: [<ffffffff811dca86>] SyS_write+0x56/0xd0 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task kworker/u36:2:20256 blocked for more than 120 second=
+s. severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: kworker/u36:2   D 0000000000000002     0 20256      2 0x0000008=
+0 severity=3Dinfo
+kernel: Workqueue: writeback bdi_writeback_workfn (flush-253:32) severi=
+ty=3Dinfo
+kernel: ffff881b4ef83448 0000000000000046 ffff881b4ef833f8 ffff881b4ef8=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273a238e60 ffff88273e32=
+2b20 severity=3Dwarning
+kernel: ffff881b4ef83418 ffff88277f092c40 ffff88273a238e60 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa0175f37>] ? mb_mark_used+0x297/0x350 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81210a9a>] ? __getblk_gfp+0x3a/0x80 severity=3Dwarnin=
+g
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa013c61a>] ? ext4_read_block_bitmap+0x3a/0x60 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0177139>] ext4_mb_mark_diskspace_used+0x79/0x320 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa017f341>] ext4_mb_new_blocks+0x331/0x510 [ext4] seve=
+rity=3Dwarning
+kernel: [<ffffffffa01722d7>] ext4_ext_map_blocks+0x877/0xae0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffff8116f9e1>] ? release_pages+0x1e1/0x250 severity=3Dwar=
+ning
+kernel: [<ffffffffa0143fc6>] ext4_map_blocks+0x176/0x4b0 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffffa01449c4>] ? mpage_prepare_extent_to_map+0x304/0x350 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0144591>] mpage_map_one_extent+0x71/0x1a0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffffa01484ab>] mpage_map_and_submit_extent+0x4b/0x220 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa01746a4>] ? __ext4_journal_start_sb+0x74/0x100 [ext4=
+] severity=3Dwarning
+kernel: [<ffffffffa0148b4b>] ext4_writepages+0x4cb/0x630 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffff812c37e5>] ? blk_mq_flush_plug_list+0x135/0x150 sever=
+ity=3Dwarning
+kernel: [<ffffffff810a4073>] ? set_next_entity+0x93/0xa0 severity=3Dwar=
+ning
+kernel: [<ffffffff8116cb20>] do_writepages+0x20/0x40 severity=3Dwarning
+kernel: [<ffffffff81205990>] __writeback_single_inode+0x40/0x220 severi=
+ty=3Dwarning
+kernel: [<ffffffff810ad72f>] ? wake_up_bit+0x2f/0x40 severity=3Dwarning
+kernel: [<ffffffff81206c44>] writeback_sb_inodes+0x2b4/0x3c0 severity=3D=
+warning
+kernel: [<ffffffff811deef1>] ? put_super+0x31/0x40 severity=3Dwarning
+kernel: [<ffffffff81206dee>] __writeback_inodes_wb+0x9e/0xd0 severity=3D=
+warning
+kernel: [<ffffffff81207063>] wb_writeback+0x243/0x2d0 severity=3Dwarnin=
+g
+kernel: [<ffffffff812071eb>] wb_do_writeback+0xfb/0x1e0 severity=3Dwarn=
+ing
+kernel: [<ffffffff81207340>] bdi_writeback_workfn+0x70/0x210 severity=3D=
+warning
+kernel: [<ffffffff810848c3>] process_one_work+0x143/0x4b0 severity=3Dwa=
+rning
+kernel: [<ffffffff81085a33>] worker_thread+0x123/0x520 severity=3Dwarni=
+ng
+kernel: [<ffffffff81614095>] ? __schedule+0x375/0x750 severity=3Dwarnin=
+g
+kernel: [<ffffffff81085910>] ? maybe_create_worker+0x130/0x130 severity=
+=3Dwarning
+kernel: [<ffffffff8108b31e>] kthread+0xce/0xf0 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: [<ffffffff81618c58>] ret_from_fork+0x58/0x90 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: INFO: task postmaster:14855 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 0000000000000009     0 14855  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8822bf3877b8 0000000000000082 ffff8822bf387768 ffff8822bf38=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8825d71f5640 ffff88273e39=
+1cc0 severity=3Dwarning
+kernel: ffff8822bf387788 ffff88277f252c40 ffff8825d71f5640 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff8120f780>] ? bh_lru_install+0x170/0x1a0 severity=3Dwa=
+rning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa013c61a>] ? ext4_read_block_bitmap+0x3a/0x60 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa01771ab>] ext4_mb_mark_diskspace_used+0xeb/0x320 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa017f341>] ext4_mb_new_blocks+0x331/0x510 [ext4] seve=
+rity=3Dwarning
+kernel: [<ffffffffa01722d7>] ext4_ext_map_blocks+0x877/0xae0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffff8116f9e1>] ? release_pages+0x1e1/0x250 severity=3Dwar=
+ning
+kernel: [<ffffffffa0143fc6>] ext4_map_blocks+0x176/0x4b0 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffffa01449c4>] ? mpage_prepare_extent_to_map+0x304/0x350 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0144591>] mpage_map_one_extent+0x71/0x1a0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffffa01484ab>] mpage_map_and_submit_extent+0x4b/0x220 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa0148b4b>] ext4_writepages+0x4cb/0x630 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffff81193472>] ? handle_mm_fault+0xb2/0x1a0 severity=3Dwa=
+rning
+kernel: [<ffffffff8116cb20>] do_writepages+0x20/0x40 severity=3Dwarning
+kernel: [<ffffffff81160a69>] __filemap_fdatawrite_range+0x59/0x60 sever=
+ity=3Dwarning
+kernel: [<ffffffff81160b1a>] filemap_write_and_wait_range+0xaa/0x100 se=
+verity=3Dwarning
+kernel: [<ffffffffa013eac3>] ext4_sync_file+0xf3/0x260 [ext4] severity=3D=
+warning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14856 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 0000000000000006     0 14856  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88262affb8a8 0000000000000086 ffff88262affb858 ffff88262aff=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266aab1cc0 ffff88273e32=
+64a0 severity=3Dwarning
+kernel: ffff88225c97d6a0 ffff88277f192c40 ffff88266aab1cc0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa011576e>] ? start_this_handle+0x28e/0x520 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa01406d4>] __ext4_new_inode+0x3a4/0x1110 [ext4] sever=
+ity=3Dwarning
+kernel: [<ffffffff8123c960>] ? __dquot_initialize+0x30/0x1e0 severity=3D=
+warning
+kernel: [<ffffffffa0150bbb>] ext4_create+0xab/0x170 [ext4] severity=3Dw=
+arning
+kernel: [<ffffffff811e9118>] vfs_create+0xd8/0x100 severity=3Dwarning
+kernel: [<ffffffff811e982e>] lookup_open+0x13e/0x1d0 severity=3Dwarning
+kernel: [<ffffffff811ed006>] do_last+0x416/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff811e77a9>] ? putname+0x29/0x40 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff8110f3e6>] ? __audit_syscall_exit+0x246/0x2f0 severit=
+y=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14857 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 0000000000000010     0 14857  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff880748203df8 0000000000000082 ffff8826a94e67c8 ffff88074820=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266aab5640 ffff88273e3b=
+8e60 severity=3Dwarning
+kernel: ffff880748203e08 00000000023bc691 ffff882737c2e800 ffff88074820=
+3e38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14859 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 0000000000000001     0 14859  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8820d2017c38 0000000000000082 ffff882700000000 ffff8820d201=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882657c99cc0 ffff88273e32=
+1cc0 severity=3Dwarning
+kernel: ffff882657c99cc0 ffff8826feadc068 ffff882657c99cc0 ffff8826fead=
+c06c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ecfec>] do_last+0x3fc/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff816165b6>] ? mutex_lock+0x16/0x40 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff8110f3e6>] ? __audit_syscall_exit+0x246/0x2f0 severit=
+y=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14860 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 000000000000000e     0 14860  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8820d22fbdf8 0000000000000086 ffff8826947ba4d8 ffff8820d22f=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266a93e4a0 ffff88273e39=
+64a0 severity=3Dwarning
+kernel: ffff8820d22fbe08 00000000023bc691 ffff882737c2e800 ffff8820d22f=
+be38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14861 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 0000000000000007     0 14861  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88041dfdfc38 0000000000000082 0000000000000000 ffff88041dfd=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266a939cc0 ffff88273e39=
+0000 severity=3Dwarning
+kernel: ffff88281ffd8d80 ffff8826feadc068 ffff88266a939cc0 ffff8826fead=
+c06c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ecfec>] do_last+0x3fc/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: INFO: task postmaster:14868 blocked for more than 120 seconds. =
+severity=3Derr
+kernel:      Not tainted 3.18.21-1.el6.gdc.x86_64 #1 severity=3Derr
+kernel: "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables thi=
+s message. severity=3Derr
+kernel: postmaster      D 000000000000000a     0 14868  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8821bd68fdf8 0000000000000086 ffff88269980e7c8 ffff8821bd68=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273dd68e60 ffff88273e39=
+2b20 severity=3Dwarning
+kernel: ffff8821bd68fe08 00000000023bc691 ffff882737c2e800 ffff8821bd68=
+fe38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: SysRq : Show Blocked State severity=3Dinfo
+kernel:  task                        PC stack   pid father severity=3Di=
+nfo
+kernel: jbd2/vdc-8      D 0000000000000002     0  4710      2 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88273a373b38 0000000000000046 ffff88273a373ae8 ffff88273a37=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273c76c7e0 ffff88273e32=
+2b20 severity=3Dwarning
+kernel: ffff88273a373b38 ffff88277f092c40 ffff88273c76c7e0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffff8121021e>] __wait_on_buffer+0x2e/0x30 severity=3Dwarn=
+ing
+kernel: [<ffffffffa01180a1>] jbd2_journal_commit_transaction+0x861/0x16=
+e0 [jbd2] severity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011d847>] kjournald2+0x127/0x340 [jbd2] severity=3Dw=
+arning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011d720>] ? jbd2_journal_clear_features+0x90/0x90 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffff8108b31e>] kthread+0xce/0xf0 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: [<ffffffff81618c58>] ret_from_fork+0x58/0x90 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: postmaster      D 000000000000000f     0 25406  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff882485e5f9a8 0000000000000086 ffff882485e5f958 ffff882485e5=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882657c9d640 ffff88273e3b=
+8000 severity=3Dwarning
+kernel: ffff882485e5f9a8 ffff88277f3d2c40 ffff882657c9d640 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81210a9a>] ? __getblk_gfp+0x3a/0x80 severity=3Dwarnin=
+g
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0146c08>] ext4_reserve_inode_write+0x78/0xa0 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0146c82>] ext4_mark_inode_dirty+0x52/0x240 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffffa0146eba>] ext4_dirty_inode+0x4a/0x70 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120644a>] __mark_inode_dirty+0x3a/0x290 severity=3Dw=
+arning
+kernel: [<ffffffff811f6f91>] update_time+0x81/0xc0 severity=3Dwarning
+kernel: [<ffffffff811f7068>] file_update_time+0x98/0xe0 severity=3Dwarn=
+ing
+kernel: [<ffffffff811630b2>] __generic_file_write_iter+0x162/0x390 seve=
+rity=3Dwarning
+kernel: [<ffffffffa013deb9>] ext4_file_write_iter+0x119/0x430 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffff811dbf22>] new_sync_write+0x92/0xd0 severity=3Dwarnin=
+g
+kernel: [<ffffffff811dc43e>] vfs_write+0xce/0x180 severity=3Dwarning
+kernel: [<ffffffff811dca86>] SyS_write+0x56/0xd0 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000b     0 26139  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff882451267e28 0000000000000082 ffff882737404020 ffff88245126=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882641ea8e60 ffff88273e39=
+3980 severity=3Dwarning
+kernel: 0000000000000003 ffff8826feadc068 ffff882641ea8e60 ffff8826fead=
+c06c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616694>] __mutex_lock_killable_slowpath+0xb4/0x140 =
+severity=3Dwarning
+kernel: [<ffffffff81616762>] mutex_lock_killable+0x42/0x50 severity=3Dw=
+arning
+kernel: [<ffffffff811efc77>] iterate_dir+0x77/0x140 severity=3Dwarning
+kernel: [<ffffffff8110e0cc>] ? __audit_syscall_entry+0xac/0x110 severit=
+y=3Dwarning
+kernel: [<ffffffff811efef1>] SyS_getdents+0xb1/0x100 severity=3Dwarning
+kernel: [<ffffffff811effd0>] ? SyS_old_readdir+0x90/0x90 severity=3Dwar=
+ning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: kworker/u36:2   D 0000000000000002     0 20256      2 0x0000008=
+0 severity=3Dinfo
+kernel: Workqueue: writeback bdi_writeback_workfn (flush-253:32) severi=
+ty=3Dinfo
+kernel: ffff881b4ef83448 0000000000000046 ffff881b4ef833f8 ffff881b4ef8=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273a238e60 ffff88273e32=
+2b20 severity=3Dwarning
+kernel: ffff881b4ef83418 ffff88277f092c40 ffff88273a238e60 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa0175f37>] ? mb_mark_used+0x297/0x350 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81210a9a>] ? __getblk_gfp+0x3a/0x80 severity=3Dwarnin=
+g
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa013c61a>] ? ext4_read_block_bitmap+0x3a/0x60 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0177139>] ext4_mb_mark_diskspace_used+0x79/0x320 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa017f341>] ext4_mb_new_blocks+0x331/0x510 [ext4] seve=
+rity=3Dwarning
+kernel: [<ffffffffa01722d7>] ext4_ext_map_blocks+0x877/0xae0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffff8116f9e1>] ? release_pages+0x1e1/0x250 severity=3Dwar=
+ning
+kernel: [<ffffffffa0143fc6>] ext4_map_blocks+0x176/0x4b0 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffffa01449c4>] ? mpage_prepare_extent_to_map+0x304/0x350 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0144591>] mpage_map_one_extent+0x71/0x1a0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffffa01484ab>] mpage_map_and_submit_extent+0x4b/0x220 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa01746a4>] ? __ext4_journal_start_sb+0x74/0x100 [ext4=
+] severity=3Dwarning
+kernel: [<ffffffffa0148b4b>] ext4_writepages+0x4cb/0x630 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffff812c37e5>] ? blk_mq_flush_plug_list+0x135/0x150 sever=
+ity=3Dwarning
+kernel: [<ffffffff810a4073>] ? set_next_entity+0x93/0xa0 severity=3Dwar=
+ning
+kernel: [<ffffffff8116cb20>] do_writepages+0x20/0x40 severity=3Dwarning
+kernel: [<ffffffff81205990>] __writeback_single_inode+0x40/0x220 severi=
+ty=3Dwarning
+kernel: [<ffffffff810ad72f>] ? wake_up_bit+0x2f/0x40 severity=3Dwarning
+kernel: [<ffffffff81206c44>] writeback_sb_inodes+0x2b4/0x3c0 severity=3D=
+warning
+kernel: [<ffffffff811deef1>] ? put_super+0x31/0x40 severity=3Dwarning
+kernel: [<ffffffff81206dee>] __writeback_inodes_wb+0x9e/0xd0 severity=3D=
+warning
+kernel: [<ffffffff81207063>] wb_writeback+0x243/0x2d0 severity=3Dwarnin=
+g
+kernel: [<ffffffff812071eb>] wb_do_writeback+0xfb/0x1e0 severity=3Dwarn=
+ing
+kernel: [<ffffffff81207340>] bdi_writeback_workfn+0x70/0x210 severity=3D=
+warning
+kernel: [<ffffffff810848c3>] process_one_work+0x143/0x4b0 severity=3Dwa=
+rning
+kernel: [<ffffffff81085a33>] worker_thread+0x123/0x520 severity=3Dwarni=
+ng
+kernel: [<ffffffff81614095>] ? __schedule+0x375/0x750 severity=3Dwarnin=
+g
+kernel: [<ffffffff81085910>] ? maybe_create_worker+0x130/0x130 severity=
+=3Dwarning
+kernel: [<ffffffff8108b31e>] kthread+0xce/0xf0 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: [<ffffffff81618c58>] ret_from_fork+0x58/0x90 severity=3Dwarning
+kernel: [<ffffffff8108b250>] ? kthread_freezable_should_stop+0x70/0x70 =
+severity=3Dwarning
+kernel: postmaster      D 0000000000000009     0 14855  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8822bf3877b8 0000000000000082 ffff8822bf387768 ffff8822bf38=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8825d71f5640 ffff88273e39=
+1cc0 severity=3Dwarning
+kernel: ffff8822bf387788 ffff88277f252c40 ffff8825d71f5640 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff8120f780>] ? bh_lru_install+0x170/0x1a0 severity=3Dwa=
+rning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa013c61a>] ? ext4_read_block_bitmap+0x3a/0x60 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa01771ab>] ext4_mb_mark_diskspace_used+0xeb/0x320 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa017f341>] ext4_mb_new_blocks+0x331/0x510 [ext4] seve=
+rity=3Dwarning
+kernel: [<ffffffffa01722d7>] ext4_ext_map_blocks+0x877/0xae0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffff8116f9e1>] ? release_pages+0x1e1/0x250 severity=3Dwar=
+ning
+kernel: [<ffffffffa0143fc6>] ext4_map_blocks+0x176/0x4b0 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffffa01449c4>] ? mpage_prepare_extent_to_map+0x304/0x350 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0144591>] mpage_map_one_extent+0x71/0x1a0 [ext4] sev=
+erity=3Dwarning
+kernel: [<ffffffffa01484ab>] mpage_map_and_submit_extent+0x4b/0x220 [ex=
+t4] severity=3Dwarning
+kernel: [<ffffffffa0148b4b>] ext4_writepages+0x4cb/0x630 [ext4] severit=
+y=3Dwarning
+kernel: [<ffffffff81193472>] ? handle_mm_fault+0xb2/0x1a0 severity=3Dwa=
+rning
+kernel: [<ffffffff8116cb20>] do_writepages+0x20/0x40 severity=3Dwarning
+kernel: [<ffffffff81160a69>] __filemap_fdatawrite_range+0x59/0x60 sever=
+ity=3Dwarning
+kernel: [<ffffffff81160b1a>] filemap_write_and_wait_range+0xaa/0x100 se=
+verity=3Dwarning
+kernel: [<ffffffffa013eac3>] ext4_sync_file+0xf3/0x260 [ext4] severity=3D=
+warning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000006     0 14856  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88262affb8a8 0000000000000086 ffff88262affb858 ffff88262aff=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266aab1cc0 ffff88273e32=
+64a0 severity=3Dwarning
+kernel: ffff88225c97d6a0 ffff88277f192c40 ffff88266aab1cc0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa011576e>] ? start_this_handle+0x28e/0x520 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa01406d4>] __ext4_new_inode+0x3a4/0x1110 [ext4] sever=
+ity=3Dwarning
+kernel: [<ffffffff8123c960>] ? __dquot_initialize+0x30/0x1e0 severity=3D=
+warning
+kernel: [<ffffffffa0150bbb>] ext4_create+0xab/0x170 [ext4] severity=3Dw=
+arning
+kernel: [<ffffffff811e9118>] vfs_create+0xd8/0x100 severity=3Dwarning
+kernel: [<ffffffff811e982e>] lookup_open+0x13e/0x1d0 severity=3Dwarning
+kernel: [<ffffffff811ed006>] do_last+0x416/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff811e77a9>] ? putname+0x29/0x40 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff8110f3e6>] ? __audit_syscall_exit+0x246/0x2f0 severit=
+y=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000010     0 14857  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff880748203df8 0000000000000082 ffff8826a94e67c8 ffff88074820=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266aab5640 ffff88273e3b=
+8e60 severity=3Dwarning
+kernel: ffff880748203e08 00000000023bc691 ffff882737c2e800 ffff88074820=
+3e38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000001     0 14859  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8820d2017c38 0000000000000082 ffff882700000000 ffff8820d201=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882657c99cc0 ffff88273e32=
+1cc0 severity=3Dwarning
+kernel: ffff882657c99cc0 ffff8826feadc068 ffff882657c99cc0 ffff8826fead=
+c06c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ecfec>] do_last+0x3fc/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff816165b6>] ? mutex_lock+0x16/0x40 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff8110f3e6>] ? __audit_syscall_exit+0x246/0x2f0 severit=
+y=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000e     0 14860  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8820d22fbdf8 0000000000000086 ffff8826947ba4d8 ffff8820d22f=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266a93e4a0 ffff88273e39=
+64a0 severity=3Dwarning
+kernel: ffff8820d22fbe08 00000000023bc691 ffff882737c2e800 ffff8820d22f=
+be38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000007     0 14861  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88041dfdfc38 0000000000000082 0000000000000000 ffff88041dfd=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88266a939cc0 ffff88273e39=
+0000 severity=3Dwarning
+kernel: ffff88281ffd8d80 ffff8826feadc068 ffff88266a939cc0 ffff8826fead=
+c06c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ecfec>] do_last+0x3fc/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000a     0 14868  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8821bd68fdf8 0000000000000086 ffff88269980e7c8 ffff8821bd68=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273dd68e60 ffff88273e39=
+2b20 severity=3Dwarning
+kernel: ffff8821bd68fe08 00000000023bc691 ffff882737c2e800 ffff8821bd68=
+fe38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000001     0 14869  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff880ed01d3df8 0000000000000082 ffff8826995ed418 ffff880ed01d=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88273dd6d640 ffff88273e32=
+1cc0 severity=3Dwarning
+kernel: ffff880ed01d3e08 00000000023bc691 ffff882737c2e800 ffff880ed01d=
+3e38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000b     0 14905  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff8824d12979a8 0000000000000086 ffff8824d1297958 ffff8824d129=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8826317f3980 ffff88273e39=
+3980 severity=3Dwarning
+kernel: 000000000000008d ffff88277f2d2c40 ffff8826317f3980 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81210a9a>] ? __getblk_gfp+0x3a/0x80 severity=3Dwarnin=
+g
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0146c08>] ext4_reserve_inode_write+0x78/0xa0 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0146c82>] ext4_mark_inode_dirty+0x52/0x240 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffffa0146eba>] ext4_dirty_inode+0x4a/0x70 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120644a>] __mark_inode_dirty+0x3a/0x290 severity=3Dw=
+arning
+kernel: [<ffffffff811f6f91>] update_time+0x81/0xc0 severity=3Dwarning
+kernel: [<ffffffff811fcc63>] ? mntput+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811f7068>] file_update_time+0x98/0xe0 severity=3Dwarn=
+ing
+kernel: [<ffffffff811e6925>] ? terminate_walk+0x35/0x40 severity=3Dwarn=
+ing
+kernel: [<ffffffff811630b2>] __generic_file_write_iter+0x162/0x390 seve=
+rity=3Dwarning
+kernel: [<ffffffffa013deb9>] ext4_file_write_iter+0x119/0x430 [ext4] se=
+verity=3Dwarning
+kernel: [<ffffffff81170c3b>] ? invalidate_mapping_pages+0x8b/0x210 seve=
+rity=3Dwarning
+kernel: [<ffffffff811dbf22>] new_sync_write+0x92/0xd0 severity=3Dwarnin=
+g
+kernel: [<ffffffff811dc43e>] vfs_write+0xce/0x180 severity=3Dwarning
+kernel: [<ffffffff811dca86>] SyS_write+0x56/0xd0 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000000     0 14910  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff882641f7bdf8 0000000000000086 ffff8802a90d7398 ffff882641f7=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8800db8c0000 ffffffff81c1=
+b4c0 severity=3Dwarning
+kernel: ffff882641f7be08 00000000023bc691 ffff882737c2e800 ffff882641f7=
+be38 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffffa011db45>] jbd2_log_wait_commit+0xe5/0x170 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff810ad240>] ? woken_wake_function+0x20/0x20 severity=3D=
+warning
+kernel: [<ffffffffa011de47>] jbd2_complete_transaction+0x57/0x90 [jbd2]=
+ severity=3Dwarning
+kernel: [<ffffffffa013ebcd>] ext4_sync_file+0x1fd/0x260 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffff8120cf91>] vfs_fsync_range+0x21/0x30 severity=3Dwarni=
+ng
+kernel: [<ffffffff8120cfbc>] vfs_fsync+0x1c/0x20 severity=3Dwarning
+kernel: [<ffffffff8120d1ad>] do_fsync+0x3d/0x70 severity=3Dwarning
+kernel: [<ffffffff8120d210>] SyS_fsync+0x10/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: smokerd plugin  D 0000000000000009     0 15001  29979 0x0000008=
+4 severity=3Dinfo
+kernel: ffff88264c437b48 0000000000000082 ffff88264c437af8 ffff88264c43=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8825d71f1cc0 ffff88273e39=
+1cc0 severity=3Dwarning
+kernel: ffff8803362adc98 ffff88277f252c40 ffff8825d71f1cc0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa0116cbf>] ? jbd2_journal_dirty_metadata+0xff/0x250 [=
+jbd2] severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa014cb7f>] ext4_orphan_add+0xbf/0x2e0 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffffa0146cb8>] ? ext4_mark_inode_dirty+0x88/0x240 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0151d3a>] ext4_unlink+0x2aa/0x2d0 [ext4] severity=3D=
+warning
+kernel: [<ffffffff811e8bc3>] vfs_unlink+0xd3/0x140 severity=3Dwarning
+kernel: [<ffffffff811ebd06>] do_unlinkat+0x2d6/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000007     0 15029  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88206081f8a8 0000000000000086 ffff88206081f858 ffff88206081=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8825ab41ab20 ffff88273e39=
+0000 severity=3Dwarning
+kernel: ffff88277ec03700 ffff88277f1d2c40 ffff8825ab41ab20 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa011576e>] ? start_this_handle+0x28e/0x520 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa0140ada>] __ext4_new_inode+0x7aa/0x1110 [ext4] sever=
+ity=3Dwarning
+kernel: [<ffffffff8123c960>] ? __dquot_initialize+0x30/0x1e0 severity=3D=
+warning
+kernel: [<ffffffff8115fece>] ? find_get_entry+0x1e/0xa0 severity=3Dwarn=
+ing
+kernel: [<ffffffffa0150bbb>] ext4_create+0xab/0x170 [ext4] severity=3Dw=
+arning
+kernel: [<ffffffff811e9118>] vfs_create+0xd8/0x100 severity=3Dwarning
+kernel: [<ffffffff811e982e>] lookup_open+0x13e/0x1d0 severity=3Dwarning
+kernel: [<ffffffff811ed006>] do_last+0x416/0x820 severity=3Dwarning
+kernel: [<ffffffff811ed4d4>] path_openat+0xc4/0x480 severity=3Dwarning
+kernel: [<ffffffff811ed9ca>] do_filp_open+0x4a/0xa0 severity=3Dwarning
+kernel: [<ffffffff811e77a9>] ? putname+0x29/0x40 severity=3Dwarning
+kernel: [<ffffffff811fa64c>] ? __alloc_fd+0xac/0x150 severity=3Dwarning
+kernel: [<ffffffff811db9ea>] do_sys_open+0x11a/0x230 severity=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811dbb3e>] SyS_open+0x1e/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000000     0 15175  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88057229bb48 0000000000000086 ffff88057229baf8 ffff88057229=
+8010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88245105c7e0 ffffffff81c1=
+b4c0 severity=3Dwarning
+kernel: ffff88057229bb38 ffff88277f012c40 ffff88245105c7e0 ffffffff8161=
+4e10 severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161469c>] io_schedule+0x8c/0xd0 severity=3Dwarning
+kernel: [<ffffffff81614e3c>] bit_wait_io+0x2c/0x50 severity=3Dwarning
+kernel: [<ffffffff81614bc5>] __wait_on_bit+0x65/0x90 severity=3Dwarning
+kernel: [<ffffffffa0116cbf>] ? jbd2_journal_dirty_metadata+0xff/0x250 [=
+jbd2] severity=3Dwarning
+kernel: [<ffffffff81614e10>] ? bit_wait_timeout+0x70/0x70 severity=3Dwa=
+rning
+kernel: [<ffffffff81614d18>] out_of_line_wait_on_bit+0x78/0x90 severity=
+=3Dwarning
+kernel: [<ffffffff810ad2c0>] ? wake_atomic_t_function+0x40/0x40 severit=
+y=3Dwarning
+kernel: [<ffffffffa011676d>] do_get_write_access+0x1fd/0x4e0 [jbd2] sev=
+erity=3Dwarning
+kernel: [<ffffffffa0116ba1>] jbd2_journal_get_write_access+0x31/0x50 [j=
+bd2] severity=3Dwarning
+kernel: [<ffffffffa0174403>] __ext4_journal_get_write_access+0x43/0x90 =
+[ext4] severity=3Dwarning
+kernel: [<ffffffffa014cb7f>] ext4_orphan_add+0xbf/0x2e0 [ext4] severity=
+=3Dwarning
+kernel: [<ffffffffa0146cb8>] ? ext4_mark_inode_dirty+0x88/0x240 [ext4] =
+severity=3Dwarning
+kernel: [<ffffffffa0151d3a>] ext4_unlink+0x2aa/0x2d0 [ext4] severity=3D=
+warning
+kernel: [<ffffffff811e8bc3>] vfs_unlink+0xd3/0x140 severity=3Dwarning
+kernel: [<ffffffff811ebd06>] do_unlinkat+0x2d6/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000003     0 15823  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff880424173db8 0000000000000086 ffff880424173de8 ffff88042417=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882254f49cc0 ffff88273e32=
+3980 severity=3Dwarning
+kernel: ffff880424173dd8 ffff8826e845acb8 ffff882254f49cc0 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000007     0 15855  25395 0x0000008=
+0 severity=3Dinfo
+kernel: ffff88266a8c3db8 0000000000000086 ffff88266a8c3de8 ffff88266a8c=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff8820f680c7e0 ffff88273e39=
+0000 severity=3Dwarning
+kernel: ffff88266a8c3dd8 ffff8826e845acb8 ffff8820f680c7e0 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000006     0 16102  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff8820d23e7db8 0000000000000086 ffff8820d23e7de8 ffff8820d23e=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff881b4d6147e0 ffff88273e32=
+64a0 severity=3Dwarning
+kernel: ffff8820d23e7dd8 ffff8826e845acb8 ffff881b4d6147e0 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000c     0 16227  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff881b4d8efdb8 0000000000000082 ffff881b4d8efde8 ffff881b4d8e=
+c010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88220a8fe4a0 ffff88273e39=
+47e0 severity=3Dwarning
+kernel: ffff881b4d8efdd8 ffff8826e845acb8 ffff88220a8fe4a0 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000d     0 16658  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff88251e143db8 0000000000000082 ffff88251e143de8 ffff88251e14=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88265b268000 ffff88273e39=
+5640 severity=3Dwarning
+kernel: ffff88251e143dd8 ffff8826e845acb8 ffff88265b268000 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 0000000000000003     0 24648  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff88266abb3db8 0000000000000086 ffff88266abb3de8 ffff88266abb=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882254f4ab20 ffff88273e32=
+3980 severity=3Dwarning
+kernel: ffff88266abb3dd8 ffff8826e845acb8 ffff882254f4ab20 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: bash            D 0000000000000004     0 25435  25434 0x0000008=
+4 severity=3Dinfo
+kernel: ffff88265b2c3e28 0000000000000086 ffff882737404020 ffff88265b2c=
+0010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff88217e4764a0 ffff88273e32=
+47e0 severity=3Dwarning
+kernel: 0000000000000003 ffff88270bfe3c78 ffff88217e4764a0 ffff88270bfe=
+3c7c severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616694>] __mutex_lock_killable_slowpath+0xb4/0x140 =
+severity=3Dwarning
+kernel: [<ffffffff81616762>] mutex_lock_killable+0x42/0x50 severity=3Dw=
+arning
+kernel: [<ffffffff811efc77>] iterate_dir+0x77/0x140 severity=3Dwarning
+kernel: [<ffffffff8110e0cc>] ? __audit_syscall_entry+0xac/0x110 severit=
+y=3Dwarning
+kernel: [<ffffffff811efef1>] SyS_getdents+0xb1/0x100 severity=3Dwarning
+kernel: [<ffffffff811effd0>] ? SyS_old_readdir+0x90/0x90 severity=3Dwar=
+ning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
+kernel: postmaster      D 000000000000000b     0 27811  25395 0x0000008=
+4 severity=3Dinfo
+kernel: ffff8822bf0e7db8 0000000000000086 ffff8822bf0e7de8 ffff8822bf0e=
+4010 severity=3Dwarning
+kernel: 0000000000012c40 0000000000012c40 ffff882739808000 ffff88273e39=
+3980 severity=3Dwarning
+kernel: ffff8822bf0e7dd8 ffff8826e845acb8 ffff882739808000 ffff8826e845=
+acbc severity=3Dwarning
+kernel: Call Trace: severity=3Dwarning
+kernel: [<ffffffff816145c9>] schedule+0x29/0x70 severity=3Dwarning
+kernel: [<ffffffff8161472e>] schedule_preempt_disabled+0xe/0x10 severit=
+y=3Dwarning
+kernel: [<ffffffff81616535>] __mutex_lock_slowpath+0x95/0x100 severity=3D=
+warning
+kernel: [<ffffffff816165c3>] mutex_lock+0x23/0x40 severity=3Dwarning
+kernel: [<ffffffff811ebb58>] do_unlinkat+0x128/0x320 severity=3Dwarning
+kernel: [<ffffffff81021c8c>] ? do_audit_syscall_entry+0x6c/0x70 severit=
+y=3Dwarning
+kernel: [<ffffffff81021dc3>] ? syscall_trace_enter_phase1+0x133/0x150 s=
+everity=3Dwarning
+kernel: [<ffffffff811ebd66>] SyS_unlink+0x16/0x20 severity=3Dwarning
+kernel: [<ffffffff81618d09>] system_call_fastpath+0x12/0x17 severity=3D=
+warning
 
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: Artem Bityutskiy <dedekind1@gmail.com>
-Cc: Adrian Hunter <adrian.hunter@intel.com>
-Cc: linux-mtd@lists.infradead.org
-Cc: Evgeniy Dushistov <dushistov@mail.ru>
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Cc: Jan Kara <jack@suse.com>
-Cc: linux-ext4@vger.kernel.org
-Cc: David Howells <dhowells@redhat.com>
-Cc: linux-afs@lists.infradead.org
-Cc: "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jan Harkes <jaharkes@cs.cmu.edu>
-Cc: coda@cs.cmu.edu
-Cc: codalist@coda.cs.cmu.edu
-Cc: Bob Copeland <me@bobcopeland.com>
-Cc: linux-karma-devel@lists.sourceforge.net
-Cc: Christoph Hellwig <hch@infradead.org>
----
- fs/affs/amigaffs.c      |  6 +++---
- fs/affs/inode.c         |  2 +-
- fs/afs/inode.c          |  3 +--
- fs/bfs/dir.c            | 18 ++++++++++--------
- fs/coda/dir.c           |  2 +-
- fs/coda/file.c          |  2 +-
- fs/coda/inode.c         |  2 +-
- fs/ext2/acl.c           |  2 +-
- fs/ext2/dir.c           |  6 +++---
- fs/ext2/ialloc.c        |  2 +-
- fs/ext2/inode.c         |  4 ++--
- fs/ext2/ioctl.c         |  5 +++--
- fs/ext2/namei.c         |  6 +++---
- fs/ext2/super.c         |  2 +-
- fs/ext2/xattr.c         |  2 +-
- fs/fat/dir.c            |  2 +-
- fs/fat/file.c           |  4 ++--
- fs/fat/inode.c          |  2 +-
- fs/fat/namei_msdos.c    | 13 +++++++------
- fs/fat/namei_vfat.c     | 10 +++++-----
- fs/hfs/catalog.c        |  8 ++++----
- fs/hfs/dir.c            |  2 +-
- fs/hfs/inode.c          |  2 +-
- fs/hfsplus/catalog.c    |  8 ++++----
- fs/hfsplus/dir.c        |  6 +++---
- fs/hfsplus/inode.c      |  2 +-
- fs/hfsplus/ioctl.c      |  2 +-
- fs/jffs2/acl.c          |  2 +-
- fs/jffs2/fs.c           |  2 +-
- fs/minix/bitmap.c       |  2 +-
- fs/minix/dir.c          | 12 +++++++-----
- fs/minix/itree_common.c |  4 ++--
- fs/minix/namei.c        |  4 ++--
- fs/omfs/dir.c           |  4 ++--
- fs/omfs/inode.c         |  2 +-
- fs/reiserfs/inode.c     |  2 +-
- fs/reiserfs/ioctl.c     |  4 ++--
- fs/reiserfs/namei.c     | 14 +++++++-------
- fs/reiserfs/stree.c     |  6 ++----
- fs/reiserfs/super.c     |  2 +-
- fs/reiserfs/xattr.c     |  2 +-
- fs/reiserfs/xattr_acl.c |  2 +-
- fs/sysv/dir.c           |  6 +++---
- fs/sysv/ialloc.c        |  2 +-
- fs/sysv/itree.c         |  4 ++--
- fs/sysv/namei.c         |  4 ++--
- fs/ufs/dir.c            |  6 +++---
- fs/ufs/ialloc.c         |  8 +++++---
- fs/ufs/inode.c          |  6 +++---
- fs/ufs/namei.c          |  6 +++---
- 50 files changed, 118 insertions(+), 113 deletions(-)
-
-diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
-index d6c7a51..015b62c 100644
---- a/fs/affs/amigaffs.c
-+++ b/fs/affs/amigaffs.c
-@@ -58,7 +58,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
- 	mark_buffer_dirty_inode(dir_bh, dir);
- 	affs_brelse(dir_bh);
- 
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	dir->i_version++;
- 	mark_inode_dirty(dir);
- 
-@@ -112,7 +112,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
- 
- 	affs_brelse(bh);
- 
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	dir->i_version++;
- 	mark_inode_dirty(dir);
- 
-@@ -313,7 +313,7 @@ affs_remove_header(struct dentry *dentry)
- 	else
- 		clear_nlink(inode);
- 	affs_unlock_link(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- 
- done:
-diff --git a/fs/affs/inode.c b/fs/affs/inode.c
-index 0fdb0f5..cdd6d64 100644
---- a/fs/affs/inode.c
-+++ b/fs/affs/inode.c
-@@ -309,7 +309,7 @@ affs_new_inode(struct inode *dir)
- 	inode->i_gid     = current_fsgid();
- 	inode->i_ino     = block;
- 	set_nlink(inode, 1);
--	inode->i_mtime   = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime   = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	atomic_set(&AFFS_I(inode)->i_opencnt, 0);
- 	AFFS_I(inode)->i_blkcnt = 0;
- 	AFFS_I(inode)->i_lc = NULL;
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 86cc726..ce3374b 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -178,8 +178,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
- 	set_nlink(inode, 2);
- 	inode->i_uid		= GLOBAL_ROOT_UID;
- 	inode->i_gid		= GLOBAL_ROOT_GID;
--	inode->i_ctime.tv_sec	= get_seconds();
--	inode->i_ctime.tv_nsec	= 0;
-+	inode->i_ctime		= current_fs_time(sb);
- 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
- 	inode->i_blocks		= 0;
- 	inode->i_version	= 0;
-diff --git a/fs/bfs/dir.c b/fs/bfs/dir.c
-index 34a5bc2..fcbb2a4 100644
---- a/fs/bfs/dir.c
-+++ b/fs/bfs/dir.c
-@@ -97,7 +97,7 @@ static int bfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 	set_bit(ino, info->si_imap);
- 	info->si_freei--;
- 	inode_init_owner(inode, dir, mode);
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(s);
- 	inode->i_blocks = 0;
- 	inode->i_op = &bfs_file_inops;
- 	inode->i_fop = &bfs_file_operations;
-@@ -154,7 +154,8 @@ static int bfs_link(struct dentry *old, struct inode *dir,
- 						struct dentry *new)
- {
- 	struct inode *inode = d_inode(old);
--	struct bfs_sb_info *info = BFS_SB(inode->i_sb);
-+	struct super_block *s = inode->i_sb;
-+	struct bfs_sb_info *info = BFS_SB(s);
- 	int err;
- 
- 	mutex_lock(&info->bfs_lock);
-@@ -165,7 +166,7 @@ static int bfs_link(struct dentry *old, struct inode *dir,
- 		return err;
- 	}
- 	inc_nlink(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(s);
- 	mark_inode_dirty(inode);
- 	ihold(inode);
- 	d_instantiate(new, inode);
-@@ -194,7 +195,7 @@ static int bfs_unlink(struct inode *dir, struct dentry *dentry)
- 	}
- 	de->ino = 0;
- 	mark_buffer_dirty_inode(bh, dir);
--	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
-+	dir->i_ctime = dir->i_mtime = current_fs_time(dir->i_sb);
- 	mark_inode_dirty(dir);
- 	inode->i_ctime = dir->i_ctime;
- 	inode_dec_link_count(inode);
-@@ -249,10 +250,10 @@ static int bfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			goto end_rename;
- 	}
- 	old_de->ino = 0;
--	old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
-+	old_dir->i_ctime = old_dir->i_mtime = current_fs_time(old_dir->i_sb);
- 	mark_inode_dirty(old_dir);
- 	if (new_inode) {
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = current_fs_time(new_dir->i_sb);
- 		inode_dec_link_count(new_inode);
- 	}
- 	mark_buffer_dirty_inode(old_bh, old_dir);
-@@ -278,6 +279,7 @@ static int bfs_add_entry(struct inode *dir, const unsigned char *name,
- {
- 	struct buffer_head *bh;
- 	struct bfs_dirent *de;
-+	struct super_block *s = dir->i_sb;
- 	int block, sblock, eblock, off, pos;
- 	int i;
- 
-@@ -300,9 +302,9 @@ static int bfs_add_entry(struct inode *dir, const unsigned char *name,
- 				pos = (block - sblock) * BFS_BSIZE + off;
- 				if (pos >= dir->i_size) {
- 					dir->i_size += BFS_DIRENT_SIZE;
--					dir->i_ctime = CURRENT_TIME_SEC;
-+					dir->i_ctime = current_fs_time(s);
- 				}
--				dir->i_mtime = CURRENT_TIME_SEC;
-+				dir->i_mtime = current_fs_time(s);
- 				mark_inode_dirty(dir);
- 				de->ino = cpu_to_le16((u16)ino);
- 				for (i = 0; i < BFS_NAMELEN; i++)
-diff --git a/fs/coda/dir.c b/fs/coda/dir.c
-index 6fb8672..4f97929 100644
---- a/fs/coda/dir.c
-+++ b/fs/coda/dir.c
-@@ -109,7 +109,7 @@ static inline void coda_dir_update_mtime(struct inode *dir)
- 	/* optimistically we can also act as if our nose bleeds. The
- 	 * granularity of the mtime is coarse anyways so we might actually be
- 	 * right most of the time. Note: we only do this for directories. */
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- #endif
- }
- 
-diff --git a/fs/coda/file.c b/fs/coda/file.c
-index f47c748..8643545 100644
---- a/fs/coda/file.c
-+++ b/fs/coda/file.c
-@@ -75,7 +75,7 @@ coda_file_write_iter(struct kiocb *iocb, struct iov_iter *to)
- 	ret = vfs_iter_write(cfi->cfi_container, to, &iocb->ki_pos);
- 	coda_inode->i_size = file_inode(host_file)->i_size;
- 	coda_inode->i_blocks = (coda_inode->i_size + 511) >> 9;
--	coda_inode->i_mtime = coda_inode->i_ctime = CURRENT_TIME_SEC;
-+	coda_inode->i_mtime = coda_inode->i_ctime = current_fs_time(coda_inode->i_sb);
- 	inode_unlock(coda_inode);
- 	file_end_write(host_file);
- 	return ret;
-diff --git a/fs/coda/inode.c b/fs/coda/inode.c
-index 57e81cb..3894447 100644
---- a/fs/coda/inode.c
-+++ b/fs/coda/inode.c
-@@ -271,7 +271,7 @@ int coda_setattr(struct dentry *de, struct iattr *iattr)
- 
- 	memset(&vattr, 0, sizeof(vattr)); 
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	coda_iattr_to_vattr(iattr, &vattr);
- 	vattr.va_type = C_VNON; /* cannot set type */
- 
-diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-index 42f1d18..3b1a030 100644
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -194,7 +194,7 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 				if (error < 0)
- 					return error;
- 				else {
--					inode->i_ctime = CURRENT_TIME_SEC;
-+					inode->i_ctime = current_fs_time(inode->i_sb);
- 					mark_inode_dirty(inode);
- 					if (error == 0)
- 						acl = NULL;
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 19efd11..3fa63ab 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -471,7 +471,7 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
- 	err = ext2_commit_chunk(page, pos, len);
- 	ext2_put_page(page);
- 	if (update_times)
--		dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+		dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(dir);
- }
-@@ -561,7 +561,7 @@ got_it:
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	ext2_set_de_type (de, inode);
- 	err = ext2_commit_chunk(page, pos, rec_len);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(dir);
- 	/* OFFSET_CACHE */
-@@ -610,7 +610,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
- 		pde->rec_len = ext2_rec_len_to_disk(to - from);
- 	dir->inode = 0;
- 	err = ext2_commit_chunk(page, pos, to - from);
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
- 	EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(inode);
- out:
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index efe5fb2..13d88a2 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -551,7 +551,7 @@ got:
- 
- 	inode->i_ino = ino;
- 	inode->i_blocks = 0;
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_flags =
- 		ext2_mask_flags(mode, EXT2_I(dir)->i_flags & EXT2_FL_INHERITED);
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index fcbe586..f5f655c 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -594,7 +594,7 @@ static void ext2_splice_branch(struct inode *inode,
- 	if (where->bh)
- 		mark_buffer_dirty_inode(where->bh, inode);
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- }
- 
-@@ -1236,7 +1236,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
- 	__ext2_truncate_blocks(inode, newsize);
- 	dax_sem_up_write(EXT2_I(inode));
- 
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(inode->i_sb);
- 	if (inode_needs_sync(inode)) {
- 		sync_mapping_buffers(inode->i_mapping);
- 		sync_inode_metadata(inode, 1);
-diff --git a/fs/ext2/ioctl.c b/fs/ext2/ioctl.c
-index b386af2..1cbb75b 100644
---- a/fs/ext2/ioctl.c
-+++ b/fs/ext2/ioctl.c
-@@ -21,6 +21,7 @@ long ext2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
- 	struct ext2_inode_info *ei = EXT2_I(inode);
-+	struct super_block *sb = inode->i_sb;
- 	unsigned int flags;
- 	unsigned short rsv_window_size;
- 	int ret;
-@@ -79,7 +80,7 @@ long ext2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		ei->i_flags = flags;
- 
- 		ext2_set_inode_flags(inode);
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = current_fs_time(sb);
- 		inode_unlock(inode);
- 
- 		mark_inode_dirty(inode);
-@@ -103,7 +104,7 @@ setflags_out:
- 		}
- 
- 		inode_lock(inode);
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = current_fs_time(sb);
- 		inode->i_generation = generation;
- 		inode_unlock(inode);
- 
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index d446203..7109cb3 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -221,7 +221,7 @@ static int ext2_link (struct dentry * old_dentry, struct inode * dir,
- 	if (err)
- 		return err;
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	inode_inc_link_count(inode);
- 	ihold(inode);
- 
-@@ -372,7 +372,7 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 		if (!new_de)
- 			goto out_dir;
- 		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = current_fs_time(new_inode->i_sb);
- 		if (dir_de)
- 			drop_nlink(new_inode);
- 		inode_dec_link_count(new_inode);
-@@ -388,7 +388,7 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 	 * Like most other Unix systems, set the ctime for inodes on a
-  	 * rename.
- 	 */
--	old_inode->i_ctime = CURRENT_TIME_SEC;
-+	old_inode->i_ctime = current_fs_time(old_inode->i_sb);
- 	mark_inode_dirty(old_inode);
- 
- 	ext2_delete_entry (old_de, old_page);
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 1d93795..3ead2de 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -1543,7 +1543,7 @@ out:
- 	if (inode->i_size < off+len-towrite)
- 		i_size_write(inode, off+len-towrite);
- 	inode->i_version++;
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
- }
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 1a5e3bf..8ff1494 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -691,7 +691,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 
- 	/* Update the inode. */
- 	EXT2_I(inode)->i_file_acl = new_bh ? new_bh->b_blocknr : 0;
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(sb);
- 	if (IS_SYNC(inode)) {
- 		error = sync_inode_metadata(inode, 1);
- 		/* In case sync failed due to ENOSPC the inode was actually
-diff --git a/fs/fat/dir.c b/fs/fat/dir.c
-index 663e428..eb0ecb0 100644
---- a/fs/fat/dir.c
-+++ b/fs/fat/dir.c
-@@ -1071,7 +1071,7 @@ int fat_remove_entries(struct inode *dir, struct fat_slot_info *sinfo)
- 		}
- 	}
- 
--	dir->i_mtime = dir->i_atime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_atime = current_fs_time(sb);
- 	if (IS_DIRSYNC(dir))
- 		(void)fat_sync_inode(dir);
- 	else
-diff --git a/fs/fat/file.c b/fs/fat/file.c
-index f701856..1f9f172 100644
---- a/fs/fat/file.c
-+++ b/fs/fat/file.c
-@@ -194,7 +194,7 @@ static int fat_cont_expand(struct inode *inode, loff_t size)
- 	if (err)
- 		goto out;
- 
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- 	if (IS_SYNC(inode)) {
- 		int err2;
-@@ -297,7 +297,7 @@ static int fat_free(struct inode *inode, int skip)
- 		MSDOS_I(inode)->i_logstart = 0;
- 	}
- 	MSDOS_I(inode)->i_attrs |= ATTR_ARCH;
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(sb);
- 	if (wait) {
- 		err = fat_sync_inode(inode);
- 		if (err) {
-diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-index 3bcf579..7dd9af7 100644
---- a/fs/fat/inode.c
-+++ b/fs/fat/inode.c
-@@ -237,7 +237,7 @@ static int fat_write_end(struct file *file, struct address_space *mapping,
- 	if (err < len)
- 		fat_write_failed(mapping, pos + len);
- 	if (!(err < 0) && !(MSDOS_I(inode)->i_attrs & ATTR_ARCH)) {
--		inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_mtime = inode->i_ctime = current_fs_time(inode->i_sb);
- 		MSDOS_I(inode)->i_attrs |= ATTR_ARCH;
- 		mark_inode_dirty(inode);
- 	}
-diff --git a/fs/fat/namei_msdos.c b/fs/fat/namei_msdos.c
-index b7e2b33..c54888f 100644
---- a/fs/fat/namei_msdos.c
-+++ b/fs/fat/namei_msdos.c
-@@ -283,7 +283,7 @@ static int msdos_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 		goto out;
- 	}
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(sb);
- 	err = msdos_add_entry(dir, msdos_name, 0, is_hid, 0, &ts, &sinfo);
- 	if (err)
- 		goto out;
-@@ -330,7 +330,7 @@ static int msdos_rmdir(struct inode *dir, struct dentry *dentry)
- 	drop_nlink(dir);
- 
- 	clear_nlink(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(sb);
- 	fat_detach(inode);
- out:
- 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
-@@ -364,7 +364,7 @@ static int msdos_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- 		goto out;
- 	}
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(sb);
- 	cluster = fat_alloc_new_dir(dir, &ts);
- 	if (cluster < 0) {
- 		err = cluster;
-@@ -416,7 +416,7 @@ static int msdos_unlink(struct inode *dir, struct dentry *dentry)
- 	if (err)
- 		goto out;
- 	clear_nlink(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(sb);
- 	fat_detach(inode);
- out:
- 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
-@@ -481,7 +481,8 @@ static int do_msdos_rename(struct inode *old_dir, unsigned char *old_name,
- 				mark_inode_dirty(old_inode);
- 
- 			old_dir->i_version++;
--			old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME_SEC;
-+			old_dir->i_ctime = old_dir->i_mtime =
-+				current_fs_time(old_dir->i_sb);
- 			if (IS_DIRSYNC(old_dir))
- 				(void)fat_sync_inode(old_dir);
- 			else
-@@ -490,7 +491,7 @@ static int do_msdos_rename(struct inode *old_dir, unsigned char *old_name,
- 		}
- 	}
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(new_inode->i_sb);
- 	if (new_inode) {
- 		if (err)
- 			goto out;
-diff --git a/fs/fat/namei_vfat.c b/fs/fat/namei_vfat.c
-index 7092584..cad8666 100644
---- a/fs/fat/namei_vfat.c
-+++ b/fs/fat/namei_vfat.c
-@@ -777,7 +777,7 @@ static int vfat_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 
- 	mutex_lock(&MSDOS_SB(sb)->s_lock);
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(sb);
- 	err = vfat_add_entry(dir, &dentry->d_name, 0, 0, &ts, &sinfo);
- 	if (err)
- 		goto out;
-@@ -821,7 +821,7 @@ static int vfat_rmdir(struct inode *dir, struct dentry *dentry)
- 	drop_nlink(dir);
- 
- 	clear_nlink(inode);
--	inode->i_mtime = inode->i_atime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = current_fs_time(sb);
- 	fat_detach(inode);
- 	dentry->d_time = dir->i_version;
- out:
-@@ -847,7 +847,7 @@ static int vfat_unlink(struct inode *dir, struct dentry *dentry)
- 	if (err)
- 		goto out;
- 	clear_nlink(inode);
--	inode->i_mtime = inode->i_atime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = current_fs_time(sb);
- 	fat_detach(inode);
- 	dentry->d_time = dir->i_version;
- out:
-@@ -866,7 +866,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- 
- 	mutex_lock(&MSDOS_SB(sb)->s_lock);
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(sb);
- 	cluster = fat_alloc_new_dir(dir, &ts);
- 	if (cluster < 0) {
- 		err = cluster;
-@@ -931,7 +931,7 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		}
- 	}
- 
--	ts = CURRENT_TIME_SEC;
-+	ts = current_fs_time(sb);
- 	if (new_inode) {
- 		if (is_dir) {
- 			err = fat_dir_empty(new_inode);
-diff --git a/fs/hfs/catalog.c b/fs/hfs/catalog.c
-index 98cde8b..0fabf66 100644
---- a/fs/hfs/catalog.c
-+++ b/fs/hfs/catalog.c
-@@ -125,7 +125,7 @@ int hfs_cat_create(u32 cnid, struct inode *dir, struct qstr *str, struct inode *
- 		goto err1;
- 
- 	dir->i_size++;
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(dir);
- 	hfs_find_exit(&fd);
- 	return 0;
-@@ -261,7 +261,7 @@ int hfs_cat_delete(u32 cnid, struct inode *dir, struct qstr *str)
- 	}
- 
- 	dir->i_size--;
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(dir);
- 	res = 0;
- out:
-@@ -321,7 +321,7 @@ int hfs_cat_move(u32 cnid, struct inode *src_dir, struct qstr *src_name,
- 	if (err)
- 		goto out;
- 	dst_dir->i_size++;
--	dst_dir->i_mtime = dst_dir->i_ctime = CURRENT_TIME_SEC;
-+	dst_dir->i_mtime = dst_dir->i_ctime = current_fs_time(dst_dir->i_sb);
- 	mark_inode_dirty(dst_dir);
- 
- 	/* finally remove the old entry */
-@@ -333,7 +333,7 @@ int hfs_cat_move(u32 cnid, struct inode *src_dir, struct qstr *src_name,
- 	if (err)
- 		goto out;
- 	src_dir->i_size--;
--	src_dir->i_mtime = src_dir->i_ctime = CURRENT_TIME_SEC;
-+	src_dir->i_mtime = src_dir->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(src_dir);
- 
- 	type = entry.type;
-diff --git a/fs/hfs/dir.c b/fs/hfs/dir.c
-index 163190e..d64c536 100644
---- a/fs/hfs/dir.c
-+++ b/fs/hfs/dir.c
-@@ -268,7 +268,7 @@ static int hfs_remove(struct inode *dir, struct dentry *dentry)
- 	if (res)
- 		return res;
- 	clear_nlink(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	hfs_delete_inode(inode);
- 	mark_inode_dirty(inode);
- 	return 0;
-diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
-index 8eed66a..b30b6d2 100644
---- a/fs/hfs/inode.c
-+++ b/fs/hfs/inode.c
-@@ -193,7 +193,7 @@ struct inode *hfs_new_inode(struct inode *dir, struct qstr *name, umode_t mode)
- 	inode->i_uid = current_fsuid();
- 	inode->i_gid = current_fsgid();
- 	set_nlink(inode, 1);
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	HFS_I(inode)->flags = 0;
- 	HFS_I(inode)->rsrc_inode = NULL;
- 	HFS_I(inode)->fs_blocks = 0;
-diff --git a/fs/hfsplus/catalog.c b/fs/hfsplus/catalog.c
-index fb707e8..b2f9093 100644
---- a/fs/hfsplus/catalog.c
-+++ b/fs/hfsplus/catalog.c
-@@ -303,7 +303,7 @@ int hfsplus_create_cat(u32 cnid, struct inode *dir,
- 	dir->i_size++;
- 	if (S_ISDIR(inode->i_mode))
- 		hfsplus_subfolders_inc(dir);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	hfsplus_mark_inode_dirty(dir, HFSPLUS_I_CAT_DIRTY);
- 
- 	hfs_find_exit(&fd);
-@@ -400,7 +400,7 @@ int hfsplus_delete_cat(u32 cnid, struct inode *dir, struct qstr *str)
- 	dir->i_size--;
- 	if (type == HFSPLUS_FOLDER)
- 		hfsplus_subfolders_dec(dir);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	hfsplus_mark_inode_dirty(dir, HFSPLUS_I_CAT_DIRTY);
- 
- 	if (type == HFSPLUS_FILE || type == HFSPLUS_FOLDER) {
-@@ -469,7 +469,7 @@ int hfsplus_rename_cat(u32 cnid,
- 	dst_dir->i_size++;
- 	if (type == HFSPLUS_FOLDER)
- 		hfsplus_subfolders_inc(dst_dir);
--	dst_dir->i_mtime = dst_dir->i_ctime = CURRENT_TIME_SEC;
-+	dst_dir->i_mtime = dst_dir->i_ctime = current_fs_time(dst_dir->i_sb);
- 
- 	/* finally remove the old entry */
- 	err = hfsplus_cat_build_key(sb, src_fd.search_key,
-@@ -486,7 +486,7 @@ int hfsplus_rename_cat(u32 cnid,
- 	src_dir->i_size--;
- 	if (type == HFSPLUS_FOLDER)
- 		hfsplus_subfolders_dec(src_dir);
--	src_dir->i_mtime = src_dir->i_ctime = CURRENT_TIME_SEC;
-+	src_dir->i_mtime = src_dir->i_ctime = current_fs_time(sb);
- 
- 	/* remove old thread entry */
- 	hfsplus_cat_build_key_with_cnid(sb, src_fd.search_key, cnid);
-diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
-index 42e1286..f5b40db 100644
---- a/fs/hfsplus/dir.c
-+++ b/fs/hfsplus/dir.c
-@@ -347,7 +347,7 @@ static int hfsplus_link(struct dentry *src_dentry, struct inode *dst_dir,
- 	inc_nlink(inode);
- 	hfsplus_instantiate(dst_dentry, inode, cnid);
- 	ihold(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- 	sbi->file_count++;
- 	hfsplus_mark_mdb_dirty(dst_dir->i_sb);
-@@ -406,7 +406,7 @@ static int hfsplus_unlink(struct inode *dir, struct dentry *dentry)
- 			hfsplus_delete_inode(inode);
- 	} else
- 		sbi->file_count--;
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- out:
- 	mutex_unlock(&sbi->vh_mutex);
-@@ -427,7 +427,7 @@ static int hfsplus_rmdir(struct inode *dir, struct dentry *dentry)
- 	if (res)
- 		goto out;
- 	clear_nlink(inode);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	hfsplus_delete_inode(inode);
- 	mark_inode_dirty(inode);
- out:
-diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
-index ef9fefe..d0f0ee2 100644
---- a/fs/hfsplus/inode.c
-+++ b/fs/hfsplus/inode.c
-@@ -369,7 +369,7 @@ struct inode *hfsplus_new_inode(struct super_block *sb, umode_t mode)
- 	inode->i_uid = current_fsuid();
- 	inode->i_gid = current_fsgid();
- 	set_nlink(inode, 1);
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 
- 	hip = HFSPLUS_I(inode);
- 	INIT_LIST_HEAD(&hip->open_dir_list);
-diff --git a/fs/hfsplus/ioctl.c b/fs/hfsplus/ioctl.c
-index 32a49e2..7b4820b 100644
---- a/fs/hfsplus/ioctl.c
-+++ b/fs/hfsplus/ioctl.c
-@@ -122,7 +122,7 @@ static int hfsplus_ioctl_setflags(struct file *file, int __user *user_flags)
- 	else
- 		hip->userflags &= ~HFSPLUS_FLG_NODUMP;
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- 
- out_unlock_inode:
-diff --git a/fs/jffs2/acl.c b/fs/jffs2/acl.c
-index bc2693d..f8c7308 100644
---- a/fs/jffs2/acl.c
-+++ b/fs/jffs2/acl.c
-@@ -242,7 +242,7 @@ int jffs2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 
- 				attr.ia_valid = ATTR_MODE | ATTR_CTIME;
- 				attr.ia_mode = mode;
--				attr.ia_ctime = CURRENT_TIME_SEC;
-+				attr.ia_ctime = current_fs_time(inode->i_sb);
- 				rc = jffs2_do_setattr(inode, &attr);
- 				if (rc < 0)
- 					return rc;
-diff --git a/fs/jffs2/fs.c b/fs/jffs2/fs.c
-index ae2ebb2..2ce4091 100644
---- a/fs/jffs2/fs.c
-+++ b/fs/jffs2/fs.c
-@@ -472,7 +472,7 @@ struct inode *jffs2_new_inode (struct inode *dir_i, umode_t mode, struct jffs2_r
- 	inode->i_mode = jemode_to_cpu(ri->mode);
- 	i_gid_write(inode, je16_to_cpu(ri->gid));
- 	i_uid_write(inode, je16_to_cpu(ri->uid));
--	inode->i_atime = inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_atime = inode->i_ctime = inode->i_mtime = current_fs_time(sb);
- 	ri->atime = ri->mtime = ri->ctime = cpu_to_je32(I_SEC(inode->i_mtime));
- 
- 	inode->i_blocks = 0;
-diff --git a/fs/minix/bitmap.c b/fs/minix/bitmap.c
-index 742942a..0e72667 100644
---- a/fs/minix/bitmap.c
-+++ b/fs/minix/bitmap.c
-@@ -253,7 +253,7 @@ struct inode *minix_new_inode(const struct inode *dir, umode_t mode, int *error)
- 	}
- 	inode_init_owner(inode, dir, mode);
- 	inode->i_ino = j;
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	inode->i_blocks = 0;
- 	memset(&minix_i(inode)->u, 0, sizeof(minix_i(inode)->u));
- 	insert_inode_hash(inode);
-diff --git a/fs/minix/dir.c b/fs/minix/dir.c
-index 31dcd51..d86a1aa 100644
---- a/fs/minix/dir.c
-+++ b/fs/minix/dir.c
-@@ -274,7 +274,7 @@ got_it:
- 		de->inode = inode->i_ino;
- 	}
- 	err = dir_commit_chunk(page, pos, sbi->s_dirsize);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(dir);
- out_put:
- 	dir_put_page(page);
-@@ -290,7 +290,8 @@ int minix_delete_entry(struct minix_dir_entry *de, struct page *page)
- 	struct inode *inode = page->mapping->host;
- 	char *kaddr = page_address(page);
- 	loff_t pos = page_offset(page) + (char*)de - kaddr;
--	struct minix_sb_info *sbi = minix_sb(inode->i_sb);
-+	struct super_block *sb = inode->i_sb;
-+	struct minix_sb_info *sbi = minix_sb(sb);
- 	unsigned len = sbi->s_dirsize;
- 	int err;
- 
-@@ -306,7 +307,7 @@ int minix_delete_entry(struct minix_dir_entry *de, struct page *page)
- 		unlock_page(page);
- 	}
- 	dir_put_page(page);
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- 	return err;
- }
-@@ -412,7 +413,8 @@ void minix_set_link(struct minix_dir_entry *de, struct page *page,
- 	struct inode *inode)
- {
- 	struct inode *dir = page->mapping->host;
--	struct minix_sb_info *sbi = minix_sb(dir->i_sb);
-+	struct super_block *sb = dir->i_sb;
-+	struct minix_sb_info *sbi = minix_sb(sb);
- 	loff_t pos = page_offset(page) +
- 			(char *)de-(char*)page_address(page);
- 	int err;
-@@ -430,7 +432,7 @@ void minix_set_link(struct minix_dir_entry *de, struct page *page,
- 		unlock_page(page);
- 	}
- 	dir_put_page(page);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(dir);
- }
- 
-diff --git a/fs/minix/itree_common.c b/fs/minix/itree_common.c
-index a731cab..89d9288 100644
---- a/fs/minix/itree_common.c
-+++ b/fs/minix/itree_common.c
-@@ -124,7 +124,7 @@ static inline int splice_branch(struct inode *inode,
- 
- 	/* We are done with atomic stuff, now do the rest of housekeeping */
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 
- 	/* had we spliced it onto indirect block? */
- 	if (where->bh)
-@@ -343,7 +343,7 @@ do_indirects:
- 		}
- 		first_whole++;
- 	}
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- }
- 
-diff --git a/fs/minix/namei.c b/fs/minix/namei.c
-index 2887d1d..547fc16 100644
---- a/fs/minix/namei.c
-+++ b/fs/minix/namei.c
-@@ -106,7 +106,7 @@ static int minix_link(struct dentry * old_dentry, struct inode * dir,
- {
- 	struct inode *inode = d_inode(old_dentry);
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	inode_inc_link_count(inode);
- 	ihold(inode);
- 	return add_nondir(dentry, inode);
-@@ -219,7 +219,7 @@ static int minix_rename(struct inode * old_dir, struct dentry *old_dentry,
- 		if (!new_de)
- 			goto out_dir;
- 		minix_set_link(new_de, new_page, old_inode);
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = current_fs_time(new_inode->i_sb);
- 		if (dir_de)
- 			drop_nlink(new_inode);
- 		inode_dec_link_count(new_inode);
-diff --git a/fs/omfs/dir.c b/fs/omfs/dir.c
-index c8cbf3b..ce3e6eb 100644
---- a/fs/omfs/dir.c
-+++ b/fs/omfs/dir.c
-@@ -143,7 +143,7 @@ static int omfs_add_link(struct dentry *dentry, struct inode *inode)
- 	mark_buffer_dirty(bh);
- 	brelse(bh);
- 
--	dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_ctime = current_fs_time(dir->i_sb);
- 
- 	/* mark affected inodes dirty to rebuild checksums */
- 	mark_inode_dirty(dir);
-@@ -395,7 +395,7 @@ static int omfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (err)
- 		goto out;
- 
--	old_inode->i_ctime = CURRENT_TIME_SEC;
-+	old_inode->i_ctime = current_fs_time(old_inode->i_sb);
- 	mark_inode_dirty(old_inode);
- out:
- 	return err;
-diff --git a/fs/omfs/inode.c b/fs/omfs/inode.c
-index 3d935c8..0f0b65e 100644
---- a/fs/omfs/inode.c
-+++ b/fs/omfs/inode.c
-@@ -49,7 +49,7 @@ struct inode *omfs_new_inode(struct inode *dir, umode_t mode)
- 	inode_init_owner(inode, NULL, mode);
- 	inode->i_mapping->a_ops = &omfs_aops;
- 
--	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_atime = inode->i_mtime = inode->i_ctime = current_fs_time(inode->i_sb);
- 	switch (mode & S_IFMT) {
- 	case S_IFDIR:
- 		inode->i_op = &omfs_dir_inops;
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index 825455d..a70378d 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -2005,7 +2005,7 @@ int reiserfs_new_inode(struct reiserfs_transaction_handle *th,
- 	if (S_ISLNK(inode->i_mode))
- 		inode->i_flags &= ~(S_IMMUTABLE | S_APPEND);
- 
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	inode->i_size = i_size;
- 	inode->i_blocks = 0;
- 	inode->i_bytes = 0;
-diff --git a/fs/reiserfs/ioctl.c b/fs/reiserfs/ioctl.c
-index 2f1ddc9..30faa08 100644
---- a/fs/reiserfs/ioctl.c
-+++ b/fs/reiserfs/ioctl.c
-@@ -94,7 +94,7 @@ long reiserfs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			}
- 			sd_attrs_to_i_attrs(flags, inode);
- 			REISERFS_I(inode)->i_attrs = flags;
--			inode->i_ctime = CURRENT_TIME_SEC;
-+			inode->i_ctime = current_fs_time(inode->i_sb);
- 			mark_inode_dirty(inode);
- setflags_out:
- 			mnt_drop_write_file(filp);
-@@ -115,7 +115,7 @@ setflags_out:
- 			err = -EFAULT;
- 			goto setversion_out;
- 		}
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = current_fs_time(inode->i_sb);
- 		mark_inode_dirty(inode);
- setversion_out:
- 		mnt_drop_write_file(filp);
-diff --git a/fs/reiserfs/namei.c b/fs/reiserfs/namei.c
-index 8a36696..d9e54b4 100644
---- a/fs/reiserfs/namei.c
-+++ b/fs/reiserfs/namei.c
-@@ -570,7 +570,7 @@ static int reiserfs_add_entry(struct reiserfs_transaction_handle *th,
- 	}
- 
- 	dir->i_size += paste_size;
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	if (!S_ISDIR(inode->i_mode) && visible)
- 		/* reiserfs_mkdir or reiserfs_rename will do that by itself */
- 		reiserfs_update_sd(th, dir);
-@@ -963,7 +963,7 @@ static int reiserfs_rmdir(struct inode *dir, struct dentry *dentry)
- 			       inode->i_nlink);
- 
- 	clear_nlink(inode);
--	inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = dir->i_ctime = dir->i_mtime = current_fs_time(inode->i_sb);
- 	reiserfs_update_sd(&th, inode);
- 
- 	DEC_DIR_INODE_NLINK(dir)
-@@ -1067,11 +1067,11 @@ static int reiserfs_unlink(struct inode *dir, struct dentry *dentry)
- 		inc_nlink(inode);
- 		goto end_unlink;
- 	}
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	reiserfs_update_sd(&th, inode);
- 
- 	dir->i_size -= (de.de_entrylen + DEH_SIZE);
--	dir->i_ctime = dir->i_mtime = CURRENT_TIME_SEC;
-+	dir->i_ctime = dir->i_mtime = current_fs_time(dir->i_sb);
- 	reiserfs_update_sd(&th, dir);
- 
- 	if (!savelink)
-@@ -1246,7 +1246,7 @@ static int reiserfs_link(struct dentry *old_dentry, struct inode *dir,
- 		return err ? err : retval;
- 	}
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	reiserfs_update_sd(&th, inode);
- 
- 	ihold(inode);
-@@ -1567,14 +1567,14 @@ static int reiserfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	mark_de_hidden(old_de.de_deh + old_de.de_entry_num);
- 	journal_mark_dirty(&th, old_de.de_bh);
--	ctime = CURRENT_TIME_SEC;
-+	ctime = current_fs_time(old_dir->i_sb);
- 	old_dir->i_ctime = old_dir->i_mtime = ctime;
- 	new_dir->i_ctime = new_dir->i_mtime = ctime;
- 	/*
- 	 * thanks to Alex Adriaanse <alex_a@caltech.edu> for patch
- 	 * which adds ctime update of renamed object
- 	 */
--	old_inode->i_ctime = ctime;
-+	old_inode->i_ctime = current_fs_time(old_inode->i_sb);
- 
- 	if (new_dentry_inode) {
- 		/* adjust link number of the victim */
-diff --git a/fs/reiserfs/stree.c b/fs/reiserfs/stree.c
-index 5feacd6..7aebba07 100644
---- a/fs/reiserfs/stree.c
-+++ b/fs/reiserfs/stree.c
-@@ -1987,8 +1987,7 @@ int reiserfs_do_truncate(struct reiserfs_transaction_handle *th,
- 			pathrelse(&s_search_path);
- 
- 			if (update_timestamps) {
--				inode->i_mtime = CURRENT_TIME_SEC;
--				inode->i_ctime = CURRENT_TIME_SEC;
-+				inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
- 			}
- 			reiserfs_update_sd(th, inode);
- 
-@@ -2012,8 +2011,7 @@ int reiserfs_do_truncate(struct reiserfs_transaction_handle *th,
- update_and_out:
- 	if (update_timestamps) {
- 		/* this is truncate, not file closing */
--		inode->i_mtime = CURRENT_TIME_SEC;
--		inode->i_ctime = CURRENT_TIME_SEC;
-+		inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
- 	}
- 	reiserfs_update_sd(th, inode);
- 
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index c72c16c..dd58cf9 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -2512,7 +2512,7 @@ out:
- 	if (inode->i_size < off + len - towrite)
- 		i_size_write(inode, off + len - towrite);
- 	inode->i_version++;
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
- }
-diff --git a/fs/reiserfs/xattr.c b/fs/reiserfs/xattr.c
-index a33812a..ada620b 100644
---- a/fs/reiserfs/xattr.c
-+++ b/fs/reiserfs/xattr.c
-@@ -456,7 +456,7 @@ static void update_ctime(struct inode *inode)
- 	    timespec_equal(&inode->i_ctime, &now))
- 		return;
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- }
- 
-diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-index dbed42f..cf826f6 100644
---- a/fs/reiserfs/xattr_acl.c
-+++ b/fs/reiserfs/xattr_acl.c
-@@ -277,7 +277,7 @@ __reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 	if (error == -ENODATA) {
- 		error = 0;
- 		if (type == ACL_TYPE_ACCESS) {
--			inode->i_ctime = CURRENT_TIME_SEC;
-+			inode->i_ctime = current_fs_time(inode->i_sb);
- 			mark_inode_dirty(inode);
- 		}
- 	}
-diff --git a/fs/sysv/dir.c b/fs/sysv/dir.c
-index 2661b77..d4f60f4 100644
---- a/fs/sysv/dir.c
-+++ b/fs/sysv/dir.c
-@@ -215,7 +215,7 @@ got_it:
- 	memset (de->name + namelen, 0, SYSV_DIRSIZE - namelen - 2);
- 	de->inode = cpu_to_fs16(SYSV_SB(inode->i_sb), inode->i_ino);
- 	err = dir_commit_chunk(page, pos, SYSV_DIRSIZE);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	mark_inode_dirty(dir);
- out_page:
- 	dir_put_page(page);
-@@ -239,7 +239,7 @@ int sysv_delete_entry(struct sysv_dir_entry *de, struct page *page)
- 	de->inode = 0;
- 	err = dir_commit_chunk(page, pos, SYSV_DIRSIZE);
- 	dir_put_page(page);
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- 	return err;
- }
-@@ -337,7 +337,7 @@ void sysv_set_link(struct sysv_dir_entry *de, struct page *page,
- 	de->inode = cpu_to_fs16(SYSV_SB(inode->i_sb), inode->i_ino);
- 	err = dir_commit_chunk(page, pos, SYSV_DIRSIZE);
- 	dir_put_page(page);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	mark_inode_dirty(dir);
- }
- 
-diff --git a/fs/sysv/ialloc.c b/fs/sysv/ialloc.c
-index f9db4eb..8d2ea17 100644
---- a/fs/sysv/ialloc.c
-+++ b/fs/sysv/ialloc.c
-@@ -164,7 +164,7 @@ struct inode * sysv_new_inode(const struct inode * dir, umode_t mode)
- 	dirty_sb(sb);
- 	inode_init_owner(inode, dir, mode);
- 	inode->i_ino = fs16_to_cpu(sbi, ino);
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	inode->i_blocks = 0;
- 	memset(SYSV_I(inode)->i_data, 0, sizeof(SYSV_I(inode)->i_data));
- 	SYSV_I(inode)->i_dir_start_lookup = 0;
-diff --git a/fs/sysv/itree.c b/fs/sysv/itree.c
-index 2fde40a..2654a3d 100644
---- a/fs/sysv/itree.c
-+++ b/fs/sysv/itree.c
-@@ -178,7 +178,7 @@ static inline int splice_branch(struct inode *inode,
- 	*where->p = where->key;
- 	write_unlock(&pointers_lock);
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 
- 	/* had we spliced it onto indirect block? */
- 	if (where->bh)
-@@ -418,7 +418,7 @@ do_indirects:
- 		}
- 		n++;
- 	}
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(inode->i_sb);
- 	if (IS_SYNC(inode))
- 		sysv_sync_inode (inode);
- 	else
-diff --git a/fs/sysv/namei.c b/fs/sysv/namei.c
-index 90b60c0..028100d 100644
---- a/fs/sysv/namei.c
-+++ b/fs/sysv/namei.c
-@@ -120,7 +120,7 @@ static int sysv_link(struct dentry * old_dentry, struct inode * dir,
- {
- 	struct inode *inode = d_inode(old_dentry);
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	inode_inc_link_count(inode);
- 	ihold(inode);
- 
-@@ -240,7 +240,7 @@ static int sysv_rename(struct inode * old_dir, struct dentry * old_dentry,
- 		if (!new_de)
- 			goto out_dir;
- 		sysv_set_link(new_de, new_page, old_inode);
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = current_fs_time(new_inode->i_sb);
- 		if (dir_de)
- 			drop_nlink(new_inode);
- 		inode_dec_link_count(new_inode);
-diff --git a/fs/ufs/dir.c b/fs/ufs/dir.c
-index 57dcced..2f9a600 100644
---- a/fs/ufs/dir.c
-+++ b/fs/ufs/dir.c
-@@ -100,7 +100,7 @@ void ufs_set_link(struct inode *dir, struct ufs_dir_entry *de,
- 	err = ufs_commit_chunk(page, pos, len);
- 	ufs_put_page(page);
- 	if (update_times)
--		dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+		dir->i_mtime = dir->i_ctime = current_fs_time(dir->i_sb);
- 	mark_inode_dirty(dir);
- }
- 
-@@ -395,7 +395,7 @@ got_it:
- 	ufs_set_de_type(sb, de, inode->i_mode);
- 
- 	err = ufs_commit_chunk(page, pos, rec_len);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	dir->i_mtime = dir->i_ctime = current_fs_time(sb);
- 
- 	mark_inode_dirty(dir);
- 	/* OFFSET_CACHE */
-@@ -545,7 +545,7 @@ int ufs_delete_entry(struct inode *inode, struct ufs_dir_entry *dir,
- 		pde->d_reclen = cpu_to_fs16(sb, to - from);
- 	dir->d_ino = 0;
- 	err = ufs_commit_chunk(page, pos, to - from);
--	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-+	inode->i_ctime = inode->i_mtime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- out:
- 	ufs_put_page(page);
-diff --git a/fs/ufs/ialloc.c b/fs/ufs/ialloc.c
-index fd0203c..6cbf2e3 100644
---- a/fs/ufs/ialloc.c
-+++ b/fs/ufs/ialloc.c
-@@ -176,6 +176,7 @@ struct inode *ufs_new_inode(struct inode *dir, umode_t mode)
- 	struct ufs_cg_private_info * ucpi;
- 	struct ufs_cylinder_group * ucg;
- 	struct inode * inode;
-+	struct timespec ts;
- 	unsigned cg, bit, i, j, start;
- 	struct ufs_inode_info *ufsi;
- 	int err = -ENOSPC;
-@@ -290,7 +291,7 @@ cg_found:
- 	inode_init_owner(inode, dir, mode);
- 	inode->i_blocks = 0;
- 	inode->i_generation = 0;
--	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_atime = inode->i_ctime = current_fs_time(sb);
- 	ufsi->i_flags = UFS_I(dir)->i_flags;
- 	ufsi->i_lastfrag = 0;
- 	ufsi->i_shadow = 0;
-@@ -323,8 +324,9 @@ cg_found:
- 		lock_buffer(bh);
- 		ufs2_inode = (struct ufs2_inode *)bh->b_data;
- 		ufs2_inode += ufs_inotofsbo(inode->i_ino);
--		ufs2_inode->ui_birthtime = cpu_to_fs64(sb, CURRENT_TIME.tv_sec);
--		ufs2_inode->ui_birthnsec = cpu_to_fs32(sb, CURRENT_TIME.tv_nsec);
-+		ts = current_fs_time(sb);
-+		ufs2_inode->ui_birthtime = cpu_to_fs64(sb, ts.tv_sec);
-+		ufs2_inode->ui_birthnsec = cpu_to_fs32(sb, ts.tv_nsec);
- 		mark_buffer_dirty(bh);
- 		unlock_buffer(bh);
- 		if (sb->s_flags & MS_SYNCHRONOUS)
-diff --git a/fs/ufs/inode.c b/fs/ufs/inode.c
-index 9f49431..f0c6fb5 100644
---- a/fs/ufs/inode.c
-+++ b/fs/ufs/inode.c
-@@ -293,7 +293,7 @@ ufs_inode_getfrag(struct inode *inode, unsigned index,
- 
- 	if (new)
- 		*new = 1;
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(sb);
- 	if (IS_SYNC(inode))
- 		ufs_sync_inode (inode);
- 	mark_inode_dirty(inode);
-@@ -375,7 +375,7 @@ ufs_inode_getblock(struct inode *inode, u64 ind_block,
- 	mark_buffer_dirty(bh);
- 	if (IS_SYNC(inode))
- 		sync_dirty_buffer(bh);
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(sb);
- 	mark_inode_dirty(inode);
- out:
- 	brelse (bh);
-@@ -1185,7 +1185,7 @@ static int ufs_truncate(struct inode *inode, loff_t size)
- 	truncate_setsize(inode, size);
- 
- 	__ufs_truncate_blocks(inode);
--	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_mtime = inode->i_ctime = current_fs_time(inode->i_sb);
- 	mark_inode_dirty(inode);
- out:
- 	UFSD("EXIT: err %d\n", err);
-diff --git a/fs/ufs/namei.c b/fs/ufs/namei.c
-index a1559f7..eea9b7a 100644
---- a/fs/ufs/namei.c
-+++ b/fs/ufs/namei.c
-@@ -153,7 +153,7 @@ static int ufs_link (struct dentry * old_dentry, struct inode * dir,
- 	struct inode *inode = d_inode(old_dentry);
- 	int error;
- 
--	inode->i_ctime = CURRENT_TIME_SEC;
-+	inode->i_ctime = current_fs_time(inode->i_sb);
- 	inode_inc_link_count(inode);
- 	ihold(inode);
- 
-@@ -279,7 +279,7 @@ static int ufs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		if (!new_de)
- 			goto out_dir;
- 		ufs_set_link(new_dir, new_de, new_page, old_inode, 1);
--		new_inode->i_ctime = CURRENT_TIME_SEC;
-+		new_inode->i_ctime = current_fs_time(new_inode->i_sb);
- 		if (dir_de)
- 			drop_nlink(new_inode);
- 		inode_dec_link_count(new_inode);
-@@ -295,7 +295,7 @@ static int ufs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	 * Like most other Unix systems, set the ctime for inodes on a
-  	 * rename.
- 	 */
--	old_inode->i_ctime = CURRENT_TIME_SEC;
-+	old_inode->i_ctime = current_fs_time(old_inode->i_sb);
- 
- 	ufs_delete_entry(old_dir, old_de, old_page);
- 	mark_inode_dirty(old_inode);
--- 
-1.9.1
-
-
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+--=20
+Nikola
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
