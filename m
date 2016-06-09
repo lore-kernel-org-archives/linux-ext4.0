@@ -1,55 +1,50 @@
-From: Gustavo Zacarias <gustavo@zacarias.com.ar>
-Subject: [PATCH e2fsprogs] fuse2fs: might need librt
-Date: Thu,  9 Jun 2016 07:57:31 -0300
-Message-ID: <1465469851-2074-1-git-send-email-gustavo@zacarias.com.ar>
-Cc: Gustavo Zacarias <gustavo@zacarias.com.ar>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.zacarias.com.ar ([176.9.42.171]:38044 "EHLO
-	www.zacarias.com.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752336AbcFILDo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2016 07:03:44 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Bob Copeland <me@bobcopeland.com>
+Subject: Re: [PATCH 01/21] fs: Replace CURRENT_TIME_SEC with current_fs_time()
+Date: Thu, 9 Jun 2016 08:31:10 -0400
+Message-ID: <20160609123110.GB31287@localhost>
+References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
+ <1465448705-25055-2-git-send-email-deepa.kernel@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Arnd Bergmann <arnd@arndb.de>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	y2038@lists.linaro.org, Artem Bityutskiy <dedekind1@gmail.com>,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	linux-mtd@lists.infradead.org,
+	Evgeniy Dushistov <dushistov@mail.ru>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	David Howells <dhowells@redhat.com>,
+	linux-afs@lists.infradead.org,
+	"Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>, Jan Harkes <jaharkes@cs.cmu.edu>,
+	coda@cs.cmu.edu, codalist@coda.cs.cmu.edu,
+	linux-karma-devel@lists.sourceforge.net,
+	Christoph Hellwig <hch@infradead.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1465448705-25055-2-git-send-email-deepa.kernel@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-It uses clock_gettime() which in older glibc versions is in librt.
+On Wed, Jun 08, 2016 at 10:04:45PM -0700, Deepa Dinamani wrote:
+> CURRENT_TIME_SEC is not y2038 safe. current_fs_time() will
+> be transitioned to use 64 bit time along with vfs in a
+> separate patch.
+> There is no plan to transistion CURRENT_TIME_SEC to use
+> y2038 safe time interfaces.
 
-Signed-off-by: Gustavo Zacarias <gustavo@zacarias.com.ar>
----
- configure.ac     | 5 +++++
- misc/Makefile.in | 3 ++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
+[...]
 
-diff --git a/configure.ac b/configure.ac
-index 67d7231..a387dfd 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1162,6 +1162,11 @@ if test "$ac_cv_func_dlopen" = yes ; then
- fi
- AC_SUBST(MAGIC_LIB)
- dnl
-+dnl Check to see if librt is required for clock_gettime() (glibc < 2.17)
-+dnl
-+AC_CHECK_LIB(rt, clock_gettime, [CLOCK_GETTIME_LIB=-lrt])
-+AC_SUBST(CLOCK_GETTIME_LIB)
-+dnl
- dnl Check to see if the FUSE library is -lfuse or -losxfuse
- dnl
- FUSE_CMT=
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 43e3c7e..070a6e3 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -387,7 +387,8 @@ fuse2fs: $(FUSE2FS_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
- 		$(LIBEXT2FS)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o fuse2fs $(FUSE2FS_OBJS) $(LIBS) \
--		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL)
-+		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL) \
-+		$(CLOCK_GETTIME_LIB)
- 
- journal.o: $(srcdir)/../debugfs/journal.c
- 	$(E) "	CC $@"
+> Cc: Bob Copeland <me@bobcopeland.com>
+
+OMFS parts look sane, thanks.
+
 -- 
-2.7.3
-
+Bob Copeland %% http://bobcopeland.com/
