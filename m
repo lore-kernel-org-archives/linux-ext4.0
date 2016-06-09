@@ -1,45 +1,55 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] ext4: Pass DIO_SKIP_DIO_COUNT to dax_do_io
-Date: Thu, 9 Jun 2016 02:02:26 -0700
-Message-ID: <20160609090226.GB16921@infradead.org>
-References: <1464992897-34063-1-git-send-email-Waiman.Long@hpe.com>
- <1464992897-34063-4-git-send-email-Waiman.Long@hpe.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	Scott J Norton <scott.norton@hpe.com>,
-	Douglas Hatch <doug.hatch@hpe.com>,
-	Toshimitsu Kani <toshi.kani@hpe.com>
-To: Waiman Long <Waiman.Long@hpe.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1464992897-34063-4-git-send-email-Waiman.Long@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Gustavo Zacarias <gustavo@zacarias.com.ar>
+Subject: [PATCH e2fsprogs] fuse2fs: might need librt
+Date: Thu,  9 Jun 2016 07:57:31 -0300
+Message-ID: <1465469851-2074-1-git-send-email-gustavo@zacarias.com.ar>
+Cc: Gustavo Zacarias <gustavo@zacarias.com.ar>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.zacarias.com.ar ([176.9.42.171]:38044 "EHLO
+	www.zacarias.com.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752336AbcFILDo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2016 07:03:44 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 03, 2016 at 06:28:17PM -0400, Waiman Long wrote:
-> Since all the DAX I/Os are synchronous, there is no need to update
-> the DIO count in dax_do_io() when the count has already been updated
-> or the i_rwsem lock (read or write) has or will be taken.
-> 
-> This patch passes in the DIO_SKIP_DIO_COUNT flag to dax_do_io() to
-> disable two unneeded atomic operations that can slow thing down in
-> fast storages like NVDIMM.
-> 
-> With a 38-threads fio I/O test with 2 shared files (on DAX-mount ext4
-> formatted NVDIMM) running on a 4-socket Haswell-EX server with 4.6-rc1
-> kernel, the aggregated bandwidths before and after the patch were:
+It uses clock_gettime() which in older glibc versions is in librt.
 
-Please do the right thing and remove the code to call inode_dio_begin /
-inode_dio_end entirely.  There is nothing ext4 specific about the dax
-code being synchronous.  Together with my previous suggestion
-that also allows dropping the flags argument.
+Signed-off-by: Gustavo Zacarias <gustavo@zacarias.com.ar>
+---
+ configure.ac     | 5 +++++
+ misc/Makefile.in | 3 ++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-Then as a next step remove the end_io argument and just call it in
-the callers which is perfectly safe again as dax is synchronous.
+diff --git a/configure.ac b/configure.ac
+index 67d7231..a387dfd 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1162,6 +1162,11 @@ if test "$ac_cv_func_dlopen" = yes ; then
+ fi
+ AC_SUBST(MAGIC_LIB)
+ dnl
++dnl Check to see if librt is required for clock_gettime() (glibc < 2.17)
++dnl
++AC_CHECK_LIB(rt, clock_gettime, [CLOCK_GETTIME_LIB=-lrt])
++AC_SUBST(CLOCK_GETTIME_LIB)
++dnl
+ dnl Check to see if the FUSE library is -lfuse or -losxfuse
+ dnl
+ FUSE_CMT=
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 43e3c7e..070a6e3 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -387,7 +387,8 @@ fuse2fs: $(FUSE2FS_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
+ 		$(LIBEXT2FS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o fuse2fs $(FUSE2FS_OBJS) $(LIBS) \
+-		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL)
++		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL) \
++		$(CLOCK_GETTIME_LIB)
+ 
+ journal.o: $(srcdir)/../debugfs/journal.c
+ 	$(E) "	CC $@"
+-- 
+2.7.3
+
