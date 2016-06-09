@@ -1,70 +1,69 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH 01/21] fs: Replace CURRENT_TIME_SEC with current_fs_time()
-Date: Thu, 9 Jun 2016 12:15:03 -0700
-Message-ID: <CA+55aFzomEx82xuREb23K12g7XqDAZgrwYHWhOpgQVp1hk3oQw@mail.gmail.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [PATCH 01/21] fs: Replace CURRENT_TIME_SEC with
+	current_fs_time()
+Date: Thu, 9 Jun 2016 13:41:10 -0700
+Message-ID: <CABeXuvqO6NsZdabHHiVWRYDNc0qB+jNRAiytR=ZyBV0DUSTEZw@mail.gmail.com>
 References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
- <1465448705-25055-2-git-send-email-deepa.kernel@gmail.com> <20160609073507.GA2790@quack2.suse.cz>
+ <1465448705-25055-2-git-send-email-deepa.kernel@gmail.com>
+ <20160609073507.GA2790@quack2.suse.cz>
+ <CA+55aFzomEx82xuREb23K12g7XqDAZgrwYHWhOpgQVp1hk3oQw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Deepa Dinamani <deepa.kernel@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Arnd Bergmann <arnd@arndb.de>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	Al Viro <viro@zeniv.linux.org.uk>, y2038@lists.linaro.org,
-	Artem Bityutskiy <dedekind1@gmail.com>,
-	Adrian Hunter <adrian.hunter@intel.com>,
-	linux-mtd <linux-mtd@lists.infradead.org>,
-	Evgeniy Dushistov <dushistov@mail.ru>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Jan Kara <jack@suse.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	David Howells <dhowells@redhat.com>,
-	linux-afs@lists.infradead.org,
-	"Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
-	codalist@coda.cs.cmu.edu, Bob Copeland <me@bobcopeland.com>,
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f66.google.com ([209.85.218.66]:35704 "EHLO
-	mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750810AbcFITPF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jun 2016 15:15:05 -0400
-In-Reply-To: <20160609073507.GA2790@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Jan Kara <jack@suse.cz>, Bob Copeland <me@bobcopeland.com>,
+ Adrian Hunter <adrian.hunter@intel.com>, David Howells <dhowells@redhat.com>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, linux-afs@lists.infradead.org,
+ y2038@lists.linaro.org, codalist@coda.cs.cmu.edu,
+ Christoph Hellwig <hch@infradead.org>, coda@cs.cmu.edu,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Evgeniy Dushistov <dushistov@mail.ru>, Arnd Bergmann <arnd@arndb.de>,
+ Al Viro <viro@zeniv.linux.org.uk>, Thomas Gleixner <tglx@linutronix.de>,
+ OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Jan Harkes <jaharkes@cs.cmu.edu>,
+ Theodore Ts'o <tytso@mit.edu>, Artem Bityutskiy <dedekind1@gmail.com>,
+ "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ Jan Kara <jack@suse.com>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ linux-mtd <linux-mtd@lists.in
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <CA+55aFzomEx82xuREb23K12g7XqDAZgrwYHWhOpgQVp1hk3oQw@mail.gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 9, 2016 at 12:35 AM, Jan Kara <jack@suse.cz> wrote:
->
-> You create line longer than 80 characters for affs and reiserfs. Please
-> wrap those lines properly.
-
-No, please do *NOT* do things like that.
-
-These kind of mechanical patches should
-
- (a) be as mechanical as possible (and see elsewhere about why I think
-'sb' should be 'inode' and the patch should have been 95% automated
-with a trivial script thanks to that change)
-
- (b) be made as easy to verify visually as possible.
-
-That (b) means that a conversion should *not* add whitespace fixups or
-add other non-mechanical cleanups, because it's a *lot* easier to see
-that a conversion like
-
--       inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
-+       inode->i_mtime = inode->i_ctime = current_fs_time(inode);
-
-makes no other changes, but if you start doing line-splitting or other
-transformations (add new variables etc to get at 'sb'), suddenly you
-have to verify the patch at a completely different level.
-
-In other words, it's actually really important to make these kinds of
-bulk changes be very very obvious. Including to the point of making
-them visually easier to scan as a patch by not making any other
-changes.
-
-              Linus
+T24gVGh1LCBKdW4gOSwgMjAxNiBhdCAxMjoxNSBQTSwgTGludXMgVG9ydmFsZHMKPHRvcnZhbGRz
+QGxpbnV4LWZvdW5kYXRpb24ub3JnPiB3cm90ZToKPiBPbiBUaHUsIEp1biA5LCAyMDE2IGF0IDEy
+OjM1IEFNLCBKYW4gS2FyYSA8amFja0BzdXNlLmN6PiB3cm90ZToKPj4KPj4gWW91IGNyZWF0ZSBs
+aW5lIGxvbmdlciB0aGFuIDgwIGNoYXJhY3RlcnMgZm9yIGFmZnMgYW5kIHJlaXNlcmZzLiBQbGVh
+c2UKPj4gd3JhcCB0aG9zZSBsaW5lcyBwcm9wZXJseS4KPgo+IE5vLCBwbGVhc2UgZG8gKk5PVCog
+ZG8gdGhpbmdzIGxpa2UgdGhhdC4KPgo+IFRoZXNlIGtpbmQgb2YgbWVjaGFuaWNhbCBwYXRjaGVz
+IHNob3VsZAo+Cj4gIChhKSBiZSBhcyBtZWNoYW5pY2FsIGFzIHBvc3NpYmxlIChhbmQgc2VlIGVs
+c2V3aGVyZSBhYm91dCB3aHkgSSB0aGluawo+ICdzYicgc2hvdWxkIGJlICdpbm9kZScgYW5kIHRo
+ZSBwYXRjaCBzaG91bGQgaGF2ZSBiZWVuIDk1JSBhdXRvbWF0ZWQKPiB3aXRoIGEgdHJpdmlhbCBz
+Y3JpcHQgdGhhbmtzIHRvIHRoYXQgY2hhbmdlKQo+Cj4gIChiKSBiZSBtYWRlIGFzIGVhc3kgdG8g
+dmVyaWZ5IHZpc3VhbGx5IGFzIHBvc3NpYmxlLgo+Cj4gVGhhdCAoYikgbWVhbnMgdGhhdCBhIGNv
+bnZlcnNpb24gc2hvdWxkICpub3QqIGFkZCB3aGl0ZXNwYWNlIGZpeHVwcyBvcgo+IGFkZCBvdGhl
+ciBub24tbWVjaGFuaWNhbCBjbGVhbnVwcywgYmVjYXVzZSBpdCdzIGEgKmxvdCogZWFzaWVyIHRv
+IHNlZQo+IHRoYXQgYSBjb252ZXJzaW9uIGxpa2UKPgo+IC0gICAgICAgaW5vZGUtPmlfbXRpbWUg
+PSBpbm9kZS0+aV9jdGltZSA9IENVUlJFTlRfVElNRV9TRUM7Cj4gKyAgICAgICBpbm9kZS0+aV9t
+dGltZSA9IGlub2RlLT5pX2N0aW1lID0gY3VycmVudF9mc190aW1lKGlub2RlKTsKPgo+IG1ha2Vz
+IG5vIG90aGVyIGNoYW5nZXMsIGJ1dCBpZiB5b3Ugc3RhcnQgZG9pbmcgbGluZS1zcGxpdHRpbmcg
+b3Igb3RoZXIKPiB0cmFuc2Zvcm1hdGlvbnMgKGFkZCBuZXcgdmFyaWFibGVzIGV0YyB0byBnZXQg
+YXQgJ3NiJyksIHN1ZGRlbmx5IHlvdQo+IGhhdmUgdG8gdmVyaWZ5IHRoZSBwYXRjaCBhdCBhIGNv
+bXBsZXRlbHkgZGlmZmVyZW50IGxldmVsLgo+Cj4gSW4gb3RoZXIgd29yZHMsIGl0J3MgYWN0dWFs
+bHkgcmVhbGx5IGltcG9ydGFudCB0byBtYWtlIHRoZXNlIGtpbmRzIG9mCj4gYnVsayBjaGFuZ2Vz
+IGJlIHZlcnkgdmVyeSBvYnZpb3VzLiBJbmNsdWRpbmcgdG8gdGhlIHBvaW50IG9mIG1ha2luZwo+
+IHRoZW0gdmlzdWFsbHkgZWFzaWVyIHRvIHNjYW4gYXMgYSBwYXRjaCBieSBub3QgbWFraW5nIGFu
+eSBvdGhlcgo+IGNoYW5nZXMuCgpUaGFua3MgZm9yIHRoZSBndWlkZWxpbmVzLgpPbmx5IHBhdGNo
+ZXMgMSBhbmQgNCBhcmUgbWVjaGFuaWNhbC4KQWxsIG90aGVycyBuZWVkIHNvbWUga2luZCBvZiBp
+bnNwZWN0aW9uLyB2ZXJpZmljYXRpb24uCkkgd2lsbCBrZWVwIHRoZXNlIGluIG1pbmQgZm9yIHVw
+ZGF0aW5nIDEgYW5kIDQuCgotRGVlcGEKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX18KWTIwMzggbWFpbGluZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcK
+aHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21haWxtYW4vbGlzdGluZm8veTIwMzgK
