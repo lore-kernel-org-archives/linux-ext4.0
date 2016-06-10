@@ -1,37 +1,65 @@
-From: pavi1729 <pavitra1729@gmail.com>
-Subject: K3.18-lts : ext4/namei.c: hash used un-initialized
-Date: Fri, 10 Jun 2016 12:06:04 +0530
-Message-ID: <CAMf7+LitG79FTMdsyAO_xLMGpaZgM02LkEaRJ1EZpu-W+SbU2Q@mail.gmail.com>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1
+ kernel
+Date: Fri, 10 Jun 2016 16:37:36 +0800
+Message-ID: <20160610083736.GL10350@eguan.usersys.redhat.com>
+References: <20160531140922.GM5140@eguan.usersys.redhat.com>
+ <20160531154017.GC5357@thunk.org>
+ <20160601063822.GH10350@eguan.usersys.redhat.com>
+ <20160601165800.GI10350@eguan.usersys.redhat.com>
+ <20160602085840.GH19636@quack2.suse.cz>
+ <20160602121750.GC32574@quack2.suse.cz>
+ <20160603101612.GJ10350@eguan.usersys.redhat.com>
+ <20160603115844.GB2470@quack2.suse.cz>
+ <20160608125631.GA19589@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vk0-f42.google.com ([209.85.213.42]:34804 "EHLO
-	mail-vk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752596AbcFJGgH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2016 02:36:07 -0400
-Received: by mail-vk0-f42.google.com with SMTP id e4so85528167vkb.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Jun 2016 23:36:06 -0700 (PDT)
+Received: from mail-pf0-f174.google.com ([209.85.192.174]:35175 "EHLO
+	mail-pf0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750975AbcFJIho (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2016 04:37:44 -0400
+Received: by mail-pf0-f174.google.com with SMTP id c2so21678591pfa.2
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Jun 2016 01:37:44 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20160608125631.GA19589@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Wed, Jun 08, 2016 at 02:56:31PM +0200, Jan Kara wrote:
+> On Fri 03-06-16 13:58:44, Jan Kara wrote:
+> > On Fri 03-06-16 18:16:12, Eryu Guan wrote:
+> > > On Thu, Jun 02, 2016 at 02:17:50PM +0200, Jan Kara wrote:
+> > > > 
+> > > > So I was trying but I could not reproduce the hang either. Can you find out
+> > > > which page is jbd2 thread waiting for and dump page->index, page->flags and
+> > > > also bh->b_state, bh->b_blocknr of all 4 buffer heads attached to it via
+> > > > page->private? Maybe that will shed some light...
+> > > 
+> > > I'm using crash on live system when the hang happens, so I got the page
+> > > address from "bt -f"
+> > > 
+> > >  #6 [ffff880212343b40] wait_on_page_bit at ffffffff8119009e
+> > >     ffff880212343b48: ffffea0002c23600 000000000000000d 
+> > >     ffff880212343b58: 0000000000000000 0000000000000000 
+> > >     ffff880212343b68: ffff880213251480 ffffffff810cd000 
+> > >     ffff880212343b78: ffff88021ff27218 ffff88021ff27218 
+> > >     ffff880212343b88: 00000000c1b4a75a ffff880212343c68 
+> > >     ffff880212343b98: ffffffff811901bf
+> > 
+> > Thanks for debugging! In the end I was able to reproduce the issue on my
+> > UML instance as well and I'm debugging what's going on.
+> 
+> Attached patch fixes the issue for me. I'll submit it once a full xfstests
+> run finishes for it (which may take a while as our server room is currently
+> moving to a different place).
 
-LINK: http://lxr.free-electrons.com/source/fs/ext4/namei.c?v=3.18#L664
+(Sorry for the late reply, I was on holiday yesterday)
 
-static struct dx_frame *
-664 dx_probe(const struct qstr *d_name, struct inode *dir,
-665          struct dx_hash_info *hinfo, struct dx_frame *frame_in)
-666 {
-...
-...
-690         if (d_name)
-691                 ext4fs_dirhash(d_name->name, d_name->len, hinfo);
-692         hash = hinfo->hash;
-
-Wont 'hash' abve be un-initialized if 'd_name' is NULL OR is 'd_name'
-guaranteed to be not NULL
-in this call.
+Thanks for the fix! I'll give it a test as well.
 
 Thanks,
-Pavi
+Eryu
