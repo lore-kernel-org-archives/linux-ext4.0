@@ -1,65 +1,52 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1
- kernel
-Date: Fri, 10 Jun 2016 16:37:36 +0800
-Message-ID: <20160610083736.GL10350@eguan.usersys.redhat.com>
-References: <20160531140922.GM5140@eguan.usersys.redhat.com>
- <20160531154017.GC5357@thunk.org>
- <20160601063822.GH10350@eguan.usersys.redhat.com>
- <20160601165800.GI10350@eguan.usersys.redhat.com>
- <20160602085840.GH19636@quack2.suse.cz>
- <20160602121750.GC32574@quack2.suse.cz>
- <20160603101612.GJ10350@eguan.usersys.redhat.com>
- <20160603115844.GB2470@quack2.suse.cz>
- <20160608125631.GA19589@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: respect the nobarrier mount option in nojournal mode
+Date: Fri, 10 Jun 2016 14:44:50 -0400
+Message-ID: <1465584290-2101-1-git-send-email-tytso@mit.edu>
+References: <8421f4bf-a49c-572c-c8db-29709a17eee6@redhat.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f174.google.com ([209.85.192.174]:35175 "EHLO
-	mail-pf0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750975AbcFJIho (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jun 2016 04:37:44 -0400
-Received: by mail-pf0-f174.google.com with SMTP id c2so21678591pfa.2
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Jun 2016 01:37:44 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20160608125631.GA19589@quack2.suse.cz>
+Received: from imap.thunk.org ([74.207.234.97]:38258 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751951AbcFJSoz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Jun 2016 14:44:55 -0400
+In-Reply-To: <8421f4bf-a49c-572c-c8db-29709a17eee6@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 08, 2016 at 02:56:31PM +0200, Jan Kara wrote:
-> On Fri 03-06-16 13:58:44, Jan Kara wrote:
-> > On Fri 03-06-16 18:16:12, Eryu Guan wrote:
-> > > On Thu, Jun 02, 2016 at 02:17:50PM +0200, Jan Kara wrote:
-> > > > 
-> > > > So I was trying but I could not reproduce the hang either. Can you find out
-> > > > which page is jbd2 thread waiting for and dump page->index, page->flags and
-> > > > also bh->b_state, bh->b_blocknr of all 4 buffer heads attached to it via
-> > > > page->private? Maybe that will shed some light...
-> > > 
-> > > I'm using crash on live system when the hang happens, so I got the page
-> > > address from "bt -f"
-> > > 
-> > >  #6 [ffff880212343b40] wait_on_page_bit at ffffffff8119009e
-> > >     ffff880212343b48: ffffea0002c23600 000000000000000d 
-> > >     ffff880212343b58: 0000000000000000 0000000000000000 
-> > >     ffff880212343b68: ffff880213251480 ffffffff810cd000 
-> > >     ffff880212343b78: ffff88021ff27218 ffff88021ff27218 
-> > >     ffff880212343b88: 00000000c1b4a75a ffff880212343c68 
-> > >     ffff880212343b98: ffffffff811901bf
-> > 
-> > Thanks for debugging! In the end I was able to reproduce the issue on my
-> > UML instance as well and I'm debugging what's going on.
-> 
-> Attached patch fixes the issue for me. I'll submit it once a full xfstests
-> run finishes for it (which may take a while as our server room is currently
-> moving to a different place).
+Also, if we are going to issue the barrier, we should do this after we
+write out the parent directories if necessary.
 
-(Sorry for the late reply, I was on holiday yesterday)
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/fsync.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-Thanks for the fix! I'll give it a test as well.
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 8850254..5c43725 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -106,9 +106,11 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 	}
+ 
+ 	if (!journal) {
+-		ret = generic_file_fsync(file, start, end, datasync);
++		ret = __generic_file_fsync(file, start, end, datasync);
+ 		if (!ret && !hlist_empty(&inode->i_dentry))
+ 			ret = ext4_sync_parent(inode);
++		if (test_opt(inode->i_sb, BARRIER))
++			goto issue_flush;
+ 		goto out;
+ 	}
+ 
+@@ -140,6 +142,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 		needs_barrier = true;
+ 	ret = jbd2_complete_transaction(journal, commit_tid);
+ 	if (needs_barrier) {
++	issue_flush:
+ 		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+ 		if (!ret)
+ 			ret = err;
+-- 
+2.5.0
 
-Thanks,
-Eryu
