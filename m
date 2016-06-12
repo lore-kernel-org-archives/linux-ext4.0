@@ -1,67 +1,71 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH 01/21] fs: Replace CURRENT_TIME_SEC with
-	current_fs_time()
-Date: Sat, 11 Jun 2016 22:55:52 +0200
-Message-ID: <6859475.Y26Py76amW@wuerfel>
-References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
- <3091973.UMxUogx2eG@wuerfel>
- <CABeXuvp9MV720nFVHfEOdL0q11xadKezThpsh+5wd1O5KYk6Yg@mail.gmail.com>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1
+ kernel
+Date: Sun, 12 Jun 2016 11:28:23 +0800
+Message-ID: <20160612032823.GM10350@eguan.usersys.redhat.com>
+References: <20160531140922.GM5140@eguan.usersys.redhat.com>
+ <20160531154017.GC5357@thunk.org>
+ <20160601063822.GH10350@eguan.usersys.redhat.com>
+ <20160601165800.GI10350@eguan.usersys.redhat.com>
+ <20160602085840.GH19636@quack2.suse.cz>
+ <20160602121750.GC32574@quack2.suse.cz>
+ <20160603101612.GJ10350@eguan.usersys.redhat.com>
+ <20160603115844.GB2470@quack2.suse.cz>
+ <20160608125631.GA19589@quack2.suse.cz>
+ <20160610083736.GL10350@eguan.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Jan Kara <jack@suse.cz>, Bob Copeland <me@bobcopeland.com>,
- Adrian Hunter <adrian.hunter@intel.com>, David Howells <dhowells@redhat.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>, linux-afs@lists.infradead.org,
- y2038@lists.linaro.org, Christoph Hellwig <hch@infradead.org>, coda@cs.cmu.edu,
- linux-ext4@vger.kernel.org, Evgeniy Dushistov <dushistov@mail.ru>,
- Al Viro <viro@zeniv.linux.org.uk>, Thomas Gleixner <tglx@linutronix.de>,
- OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Jan Harkes <jaharkes@cs.cmu.edu>,
- Theodore Ts'o <tytso@mit.edu>, Artem Bityutskiy <dedekind1@gmail.com>,
- "Tigran A. Aivazian" <tigran@aivazian.fsnet.co.uk>,
- Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
- Jan Kara <jack@suse.com>,
- Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
- linux-mtd <linux-mtd@lists.infradead.org>,
- Linus Torvalds <torvalds@linux-foundation.org>,
- linux-karma
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <CABeXuvp9MV720nFVHfEOdL0q11xadKezThpsh+5wd1O5KYk6Yg@mail.gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f180.google.com ([209.85.192.180]:35108 "EHLO
+	mail-pf0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752555AbcFLD2a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jun 2016 23:28:30 -0400
+Received: by mail-pf0-f180.google.com with SMTP id c2so35143095pfa.2
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Jun 2016 20:28:29 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20160610083736.GL10350@eguan.usersys.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gRnJpZGF5LCBKdW5lIDEwLCAyMDE2IDEwOjAzOjE0IFBNIENFU1QgRGVlcGEgRGluYW1hbmkg
-d3JvdGU6Cj4gT24gRnJpLCBKdW4gMTAsIDIwMTYgYXQgMzoyMSBQTSwgQXJuZCBCZXJnbWFubiA8
-YXJuZEBhcm5kYi5kZT4gd3JvdGU6Cgo+ID4KPiA+IEluIGFuIGVhcmxpZXIgdmVyc2lvbiwgeW91
-IGhhZCBhIHNtYWxsIG9wdGltaXphdGlvbiB0bwo+ID4gdXNlIGt0aW1lX2dldF9yZWFsX3NlY29u
-ZHMoKSBpbnN0ZWFkIG9mIGN1cnJlbnRfa2VybmVsX3RpbWUoKQo+ID4gd2hlbiB0aGUgZ3JhbnVs
-YXJpdHkgaXMgc2Vjb25kcy4KPiA+Cj4gPiBEbyB5b3Ugc3RpbGwgcGxhbiB0byBzZW5kIHRoYXQg
-b25lLCBvciBkaWQgeW91IGRlY2lkZSB3ZSBkb24ndAo+ID4gbmVlZCBpdD8KPiAKPiBJIHdhcyBh
-Y3R1YWxseSBwbGFubmluZyB0byB1c2UgZ2V0X3NlY29uZHMoKSBpbnN0ZWFkIG9mIGN1cnJlbnRf
-a2VybmVsX3RpbWUoKS4KPiBBbmQsIHRyYW5zaXRpb24gYm90aCBhbG9uZyB3aXRoIHZmcyB0byB5
-MjAzOCBzYWZlIGFwaXMuCj4gRGlmZmVyZW5jZSBiZXR3ZWVuIGt0aW1lX2dldF9yZWFsX3NlY29u
-ZHMoKSBhbmQgY3VycmVudF9rZXJuZWxfdGltZTY0KCkKPiBpcyBub3QgbXVjaCBiZWNhdXNlIHRo
-ZXkgYm90aCByZXF1aXJlIHNlcXVlbmNlIGNvdW50ZXIuCj4gCj4gSXQgZGlkbid0IG1ha2Ugc2Vu
-c2UgdG8gbWUgdG8gb3B0aW1pemUgY3VycmVudF9mc190aW1lKCkgZm9yIHNlY29uZHMKPiBvbmx5
-LCBhbmQgbm90IG9wdGltaXplIGZvciAxbnMgZ3JhbnVsYXJpdHkgYWxzby4KCkFoLCB5b3UgYXJl
-IHJpZ2h0OiBhZGRpbmcgYW5vdGhlciBjaGVjayBmb3Igc2Vjb25kIGdyYW51bGFyaXR5IHdvdWxk
-CnByb2JhYmx5IGNvc3QgbW9yZSB0aGFuIGl0IHdvdWxkIHNhdmUsIHNpbmNlIHdlIGFscmVhZHkg
-ZG9uJ3QgY2FsY3VsYXRlCnRoZSBleGFjdCBuYW5vc2Vjb25kcyBidXQganVzdCB1c2UgdGhlIHRp
-bWVzdGFtcCBvZiB0aGUgbGFzdCB0aW1lcgp0aWNrLgoKPiBJIHBsYW4gdG8gbWFrZSBjaGFuZ2Vz
-IHRvIHRoZSBmdW5jdGlvbiBkZXBlbmRpbmcgb24gaG93IHdlIGVuZCB1cAo+IHVzaW5nIHRpbWVz
-cGVjX3RydW5jKCkgYWZ0ZXIgdGhlIGFkZGl0aW9uIG9mIHJhbmdlIGNoZWNraW5nLgoKTWFrZXMg
-c2Vuc2UuIEkgZ3Vlc3Mgd2UgY2FuIHNraXAgdGhlIHJhbmdlIGNoZWNraW5nIGZvcgpjdXJyZW50
-X2ZzX3RpbWUoKSBpZiB3ZSBlbmQgdXAgbm90IGFsbG93aW5nIHdyaXRhYmxlIG1vdW50cyBvbgpm
-aWxlIHN5c3RlbXMgdGhhdCBjYW5ub3QgcmVwcmVzZW50IHRoZSBjdXJyZW50IHRpbWUsIGJ1dCB3
-ZQpkbyB3YW50IHRoZSByYW5nZSBjaGVja2luZyBmb3IgdGhlIG90aGVyIHVzZXJzIG9mCnRpbWVz
-cGVjX3RydW5jKCkuCgoJQXJuZAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX18KWTIwMzggbWFpbGluZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0
-cHM6Ly9saXN0cy5saW5hcm8ub3JnL21haWxtYW4vbGlzdGluZm8veTIwMzgK
+On Fri, Jun 10, 2016 at 04:37:36PM +0800, Eryu Guan wrote:
+> On Wed, Jun 08, 2016 at 02:56:31PM +0200, Jan Kara wrote:
+> > On Fri 03-06-16 13:58:44, Jan Kara wrote:
+> > > On Fri 03-06-16 18:16:12, Eryu Guan wrote:
+> > > > On Thu, Jun 02, 2016 at 02:17:50PM +0200, Jan Kara wrote:
+> > > > > 
+> > > > > So I was trying but I could not reproduce the hang either. Can you find out
+> > > > > which page is jbd2 thread waiting for and dump page->index, page->flags and
+> > > > > also bh->b_state, bh->b_blocknr of all 4 buffer heads attached to it via
+> > > > > page->private? Maybe that will shed some light...
+> > > > 
+> > > > I'm using crash on live system when the hang happens, so I got the page
+> > > > address from "bt -f"
+> > > > 
+> > > >  #6 [ffff880212343b40] wait_on_page_bit at ffffffff8119009e
+> > > >     ffff880212343b48: ffffea0002c23600 000000000000000d 
+> > > >     ffff880212343b58: 0000000000000000 0000000000000000 
+> > > >     ffff880212343b68: ffff880213251480 ffffffff810cd000 
+> > > >     ffff880212343b78: ffff88021ff27218 ffff88021ff27218 
+> > > >     ffff880212343b88: 00000000c1b4a75a ffff880212343c68 
+> > > >     ffff880212343b98: ffffffff811901bf
+> > > 
+> > > Thanks for debugging! In the end I was able to reproduce the issue on my
+> > > UML instance as well and I'm debugging what's going on.
+> > 
+> > Attached patch fixes the issue for me. I'll submit it once a full xfstests
+> > run finishes for it (which may take a while as our server room is currently
+> > moving to a different place).
+> 
+> (Sorry for the late reply, I was on holiday yesterday)
+> 
+> Thanks for the fix! I'll give it a test as well.
+
+I tested this patch with xfstests on x86_64 and ppc64 hosts, all results
+look fine, no regression found. Test configurations are: 4k/2k/1k block
+size ext4/3/2 and data=journal|writeback ext4.
+
+Thanks,
+Eryu
