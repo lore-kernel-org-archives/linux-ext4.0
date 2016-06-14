@@ -1,71 +1,65 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: xfstests generic/130 hang with non-4k block size ext4 on 4.7-rc1
- kernel
-Date: Sun, 12 Jun 2016 11:28:23 +0800
-Message-ID: <20160612032823.GM10350@eguan.usersys.redhat.com>
-References: <20160531140922.GM5140@eguan.usersys.redhat.com>
- <20160531154017.GC5357@thunk.org>
- <20160601063822.GH10350@eguan.usersys.redhat.com>
- <20160601165800.GI10350@eguan.usersys.redhat.com>
- <20160602085840.GH19636@quack2.suse.cz>
- <20160602121750.GC32574@quack2.suse.cz>
- <20160603101612.GJ10350@eguan.usersys.redhat.com>
- <20160603115844.GB2470@quack2.suse.cz>
- <20160608125631.GA19589@quack2.suse.cz>
- <20160610083736.GL10350@eguan.usersys.redhat.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [Y2038] [PATCH 02/21] fs: ext4: Use current_fs_time() for inode timestamps
+Date: Tue, 14 Jun 2016 10:55:39 -0700
+Message-ID: <CABeXuvp6ob-KC=y3FoEFQGEGXbDf2hCD07o_3ZW7Mxta4_x70Q@mail.gmail.com>
+References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
+ <1465448705-25055-3-git-send-email-deepa.kernel@gmail.com>
+ <CA+55aFx7ES7D_9uVL3T1htJj6onQP2Z2TrDqTG+Qd9AuHnVf-g@mail.gmail.com> <3299877.khhcQSIs8Z@wuerfel>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Cc: y2038@lists.linaro.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Thomas Gleixner <tglx@linutronix.de>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f180.google.com ([209.85.192.180]:35108 "EHLO
-	mail-pf0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752555AbcFLD2a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jun 2016 23:28:30 -0400
-Received: by mail-pf0-f180.google.com with SMTP id c2so35143095pfa.2
-        for <linux-ext4@vger.kernel.org>; Sat, 11 Jun 2016 20:28:29 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20160610083736.GL10350@eguan.usersys.redhat.com>
+Received: from mail-io0-f195.google.com ([209.85.223.195]:34564 "EHLO
+	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932218AbcFNRzl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2016 13:55:41 -0400
+In-Reply-To: <3299877.khhcQSIs8Z@wuerfel>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 10, 2016 at 04:37:36PM +0800, Eryu Guan wrote:
-> On Wed, Jun 08, 2016 at 02:56:31PM +0200, Jan Kara wrote:
-> > On Fri 03-06-16 13:58:44, Jan Kara wrote:
-> > > On Fri 03-06-16 18:16:12, Eryu Guan wrote:
-> > > > On Thu, Jun 02, 2016 at 02:17:50PM +0200, Jan Kara wrote:
-> > > > > 
-> > > > > So I was trying but I could not reproduce the hang either. Can you find out
-> > > > > which page is jbd2 thread waiting for and dump page->index, page->flags and
-> > > > > also bh->b_state, bh->b_blocknr of all 4 buffer heads attached to it via
-> > > > > page->private? Maybe that will shed some light...
-> > > > 
-> > > > I'm using crash on live system when the hang happens, so I got the page
-> > > > address from "bt -f"
-> > > > 
-> > > >  #6 [ffff880212343b40] wait_on_page_bit at ffffffff8119009e
-> > > >     ffff880212343b48: ffffea0002c23600 000000000000000d 
-> > > >     ffff880212343b58: 0000000000000000 0000000000000000 
-> > > >     ffff880212343b68: ffff880213251480 ffffffff810cd000 
-> > > >     ffff880212343b78: ffff88021ff27218 ffff88021ff27218 
-> > > >     ffff880212343b88: 00000000c1b4a75a ffff880212343c68 
-> > > >     ffff880212343b98: ffffffff811901bf
-> > > 
-> > > Thanks for debugging! In the end I was able to reproduce the issue on my
-> > > UML instance as well and I'm debugging what's going on.
-> > 
-> > Attached patch fixes the issue for me. I'll submit it once a full xfstests
-> > run finishes for it (which may take a while as our server room is currently
-> > moving to a different place).
-> 
-> (Sorry for the late reply, I was on holiday yesterday)
-> 
-> Thanks for the fix! I'll give it a test as well.
+On Fri, Jun 10, 2016 at 3:19 PM, Arnd Bergmann <arnd@arndb.de> wrote:
+> On Thursday, June 9, 2016 11:45:01 AM CEST Linus Torvalds wrote:
+>> On Wed, Jun 8, 2016 at 10:04 PM, Deepa Dinamani <deepa.kernel@gmail.com> wrote:
+>> > CURRENT_TIME_SEC and CURRENT_TIME are not y2038 safe.
+>> > current_fs_time() will be transitioned to be y2038 safe
+>> > along with vfs.
+>> >
+>> > current_fs_time() returns timestamps according to the
+>> > granularities set in the super_block.
+>>
+>> All existing users and all the ones in this patch (and the others too,
+>> although I didn't go through them very carefully) really would prefer
+>> just passing in the inode directly, rather than the superblock.
+>>
+>> So I don't want to add more users of this broken interface.  It was a
+>> mistake to use the superblock. The fact that the time granularity
+>> exists there is pretty much irrelevant. If every single user wants to
+>> use an inode pointer, then that is what the function should get.
+>
+> I guess it would help to give the function a new name in the process,
+> if only to avoid possible conflicts. That new name of course needs to
+> be at least as intuitive as the old one. How about
+>
+> struct timespec fs_timestamp(struct inode *);
 
-I tested this patch with xfstests on x86_64 and ppc64 hosts, all results
-look fine, no regression found. Test configurations are: 4k/2k/1k block
-size ext4/3/2 and data=journal|writeback ext4.
+Would moving the function to fs/ directory (filesystems.c/ super.c /
+inode.c) and calling it current_time() or fs_current_time() make
+sense?
+The declaration is already part of fs.h.
 
-Thanks,
-Eryu
+This is actually a vfs function.
+And, the time functions it uses are already exported.
+Leaving it in the time.c by renaming to current_time() would be
+confusing in spite of
+the struct inode* argument.
+
+-Deepa
