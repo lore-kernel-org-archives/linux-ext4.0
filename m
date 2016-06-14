@@ -1,65 +1,80 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: Re: [Y2038] [PATCH 02/21] fs: ext4: Use current_fs_time() for inode timestamps
-Date: Tue, 14 Jun 2016 10:55:39 -0700
-Message-ID: <CABeXuvp6ob-KC=y3FoEFQGEGXbDf2hCD07o_3ZW7Mxta4_x70Q@mail.gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH 02/21] fs: ext4: Use current_fs_time() for inode
+	timestamps
+Date: Tue, 14 Jun 2016 22:59:09 +0200
+Message-ID: <67050321.8oB9X0ocRn@wuerfel>
 References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
- <1465448705-25055-3-git-send-email-deepa.kernel@gmail.com>
- <CA+55aFx7ES7D_9uVL3T1htJj6onQP2Z2TrDqTG+Qd9AuHnVf-g@mail.gmail.com> <3299877.khhcQSIs8Z@wuerfel>
+ <3299877.khhcQSIs8Z@wuerfel>
+ <CABeXuvp6ob-KC=y3FoEFQGEGXbDf2hCD07o_3ZW7Mxta4_x70Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: y2038@lists.linaro.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Thomas Gleixner <tglx@linutronix.de>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:34564 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932218AbcFNRzl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2016 13:55:41 -0400
-In-Reply-To: <3299877.khhcQSIs8Z@wuerfel>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, y2038@lists.linaro.org,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, Al Viro <viro@zeniv.linux.org.uk>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ Thomas Gleixner <tglx@linutronix.de>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Linus Torvalds <torvalds@linux-foundation.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>,
+ John Stultz <john.stultz@linaro.org>
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <CABeXuvp6ob-KC=y3FoEFQGEGXbDf2hCD07o_3ZW7Mxta4_x70Q@mail.gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 10, 2016 at 3:19 PM, Arnd Bergmann <arnd@arndb.de> wrote:
-> On Thursday, June 9, 2016 11:45:01 AM CEST Linus Torvalds wrote:
->> On Wed, Jun 8, 2016 at 10:04 PM, Deepa Dinamani <deepa.kernel@gmail.com> wrote:
->> > CURRENT_TIME_SEC and CURRENT_TIME are not y2038 safe.
->> > current_fs_time() will be transitioned to be y2038 safe
->> > along with vfs.
->> >
->> > current_fs_time() returns timestamps according to the
->> > granularities set in the super_block.
->>
->> All existing users and all the ones in this patch (and the others too,
->> although I didn't go through them very carefully) really would prefer
->> just passing in the inode directly, rather than the superblock.
->>
->> So I don't want to add more users of this broken interface.  It was a
->> mistake to use the superblock. The fact that the time granularity
->> exists there is pretty much irrelevant. If every single user wants to
->> use an inode pointer, then that is what the function should get.
->
-> I guess it would help to give the function a new name in the process,
-> if only to avoid possible conflicts. That new name of course needs to
-> be at least as intuitive as the old one. How about
->
-> struct timespec fs_timestamp(struct inode *);
-
-Would moving the function to fs/ directory (filesystems.c/ super.c /
-inode.c) and calling it current_time() or fs_current_time() make
-sense?
-The declaration is already part of fs.h.
-
-This is actually a vfs function.
-And, the time functions it uses are already exported.
-Leaving it in the time.c by renaming to current_time() would be
-confusing in spite of
-the struct inode* argument.
-
--Deepa
+T24gVHVlc2RheSwgSnVuZSAxNCwgMjAxNiAxMDo1NTozOSBBTSBDRVNUIERlZXBhIERpbmFtYW5p
+IHdyb3RlOgo+IE9uIEZyaSwgSnVuIDEwLCAyMDE2IGF0IDM6MTkgUE0sIEFybmQgQmVyZ21hbm4g
+PGFybmRAYXJuZGIuZGU+IHdyb3RlOgo+ID4gT24gVGh1cnNkYXksIEp1bmUgOSwgMjAxNiAxMTo0
+NTowMSBBTSBDRVNUIExpbnVzIFRvcnZhbGRzIHdyb3RlOgo+ID4+IE9uIFdlZCwgSnVuIDgsIDIw
+MTYgYXQgMTA6MDQgUE0sIERlZXBhIERpbmFtYW5pIDxkZWVwYS5rZXJuZWxAZ21haWwuY29tPiB3
+cm90ZToKPiA+PiA+IENVUlJFTlRfVElNRV9TRUMgYW5kIENVUlJFTlRfVElNRSBhcmUgbm90IHky
+MDM4IHNhZmUuCj4gPj4gPiBjdXJyZW50X2ZzX3RpbWUoKSB3aWxsIGJlIHRyYW5zaXRpb25lZCB0
+byBiZSB5MjAzOCBzYWZlCj4gPj4gPiBhbG9uZyB3aXRoIHZmcy4KPiA+PiA+Cj4gPj4gPiBjdXJy
+ZW50X2ZzX3RpbWUoKSByZXR1cm5zIHRpbWVzdGFtcHMgYWNjb3JkaW5nIHRvIHRoZQo+ID4+ID4g
+Z3JhbnVsYXJpdGllcyBzZXQgaW4gdGhlIHN1cGVyX2Jsb2NrLgo+ID4+Cj4gPj4gQWxsIGV4aXN0
+aW5nIHVzZXJzIGFuZCBhbGwgdGhlIG9uZXMgaW4gdGhpcyBwYXRjaCAoYW5kIHRoZSBvdGhlcnMg
+dG9vLAo+ID4+IGFsdGhvdWdoIEkgZGlkbid0IGdvIHRocm91Z2ggdGhlbSB2ZXJ5IGNhcmVmdWxs
+eSkgcmVhbGx5IHdvdWxkIHByZWZlcgo+ID4+IGp1c3QgcGFzc2luZyBpbiB0aGUgaW5vZGUgZGly
+ZWN0bHksIHJhdGhlciB0aGFuIHRoZSBzdXBlcmJsb2NrLgo+ID4+Cj4gPj4gU28gSSBkb24ndCB3
+YW50IHRvIGFkZCBtb3JlIHVzZXJzIG9mIHRoaXMgYnJva2VuIGludGVyZmFjZS4gIEl0IHdhcyBh
+Cj4gPj4gbWlzdGFrZSB0byB1c2UgdGhlIHN1cGVyYmxvY2suIFRoZSBmYWN0IHRoYXQgdGhlIHRp
+bWUgZ3JhbnVsYXJpdHkKPiA+PiBleGlzdHMgdGhlcmUgaXMgcHJldHR5IG11Y2ggaXJyZWxldmFu
+dC4gSWYgZXZlcnkgc2luZ2xlIHVzZXIgd2FudHMgdG8KPiA+PiB1c2UgYW4gaW5vZGUgcG9pbnRl
+ciwgdGhlbiB0aGF0IGlzIHdoYXQgdGhlIGZ1bmN0aW9uIHNob3VsZCBnZXQuCj4gPgo+ID4gSSBn
+dWVzcyBpdCB3b3VsZCBoZWxwIHRvIGdpdmUgdGhlIGZ1bmN0aW9uIGEgbmV3IG5hbWUgaW4gdGhl
+IHByb2Nlc3MsCj4gPiBpZiBvbmx5IHRvIGF2b2lkIHBvc3NpYmxlIGNvbmZsaWN0cy4gVGhhdCBu
+ZXcgbmFtZSBvZiBjb3Vyc2UgbmVlZHMgdG8KPiA+IGJlIGF0IGxlYXN0IGFzIGludHVpdGl2ZSBh
+cyB0aGUgb2xkIG9uZS4gSG93IGFib3V0Cj4gPgo+ID4gc3RydWN0IHRpbWVzcGVjIGZzX3RpbWVz
+dGFtcChzdHJ1Y3QgaW5vZGUgKik7Cj4gCj4gV291bGQgbW92aW5nIHRoZSBmdW5jdGlvbiB0byBm
+cy8gZGlyZWN0b3J5IChmaWxlc3lzdGVtcy5jLyBzdXBlci5jIC8KPiBpbm9kZS5jKSBhbmQgY2Fs
+bGluZyBpdCBjdXJyZW50X3RpbWUoKSBvciBmc19jdXJyZW50X3RpbWUoKSBtYWtlCj4gc2Vuc2U/
+Cj4gVGhlIGRlY2xhcmF0aW9uIGlzIGFscmVhZHkgcGFydCBvZiBmcy5oLgo+Cj4gVGhpcyBpcyBh
+Y3R1YWxseSBhIHZmcyBmdW5jdGlvbi4KPiBBbmQsIHRoZSB0aW1lIGZ1bmN0aW9ucyBpdCB1c2Vz
+IGFyZSBhbHJlYWR5IGV4cG9ydGVkLgo+IExlYXZpbmcgaXQgaW4gdGhlIHRpbWUuYyBieSByZW5h
+bWluZyB0byBjdXJyZW50X3RpbWUoKSB3b3VsZCBiZQo+IGNvbmZ1c2luZyBpbiBzcGl0ZSBvZgo+
+IHRoZSBzdHJ1Y3QgaW5vZGUqIGFyZ3VtZW50LgoKSSd2ZSBsb29rZWQgdXAgdGhlIG9yaWdpbmFs
+IHBhdGNoIHRoYXQgaW50cm9kdWNlZCBjdXJyZW50X2ZzX3RpbWUKYXQgaHR0cDovL21hcmMuaW5m
+by8/bD1saW51eC1rZXJuZWwmbT0xMTAxMzQxMTExMjUwMTImdz0zCgpGcm9tIHRoZSBwYXRjaCwg
+aXQncyBjbGVhciB0aGF0IGN1cnJlbnRfZnNfdGltZSB3YXMgaW50ZW50aW9uYWxseQphZGRlZCB0
+byB0aGUgc2FtZSBmaWxlIGFzIGN1cnJlbnRfa2VybmVsX3RpbWUoKSBzbyBpdCBjb3VsZCBiZQpp
+bmxpbmVkIHRoZXJlLCBidXQgYm90aCBmdW5jdGlvbnMgaGF2ZSBzaW5jZSBiZWVuIG1vdmVkIHRv
+IGRpZmZlcmVudApmaWxlcy4KCkkgYWdyZWUgbW92aW5nIGJvdGggdGltZXNwZWNfdHJ1bmMgYW5k
+IGN1cnJlbnRfZnNfdGltZSBpbnRvCmZzL2lub2RlLmMgb3IgZnMvYXR0ci5jIHNlZW1zIGFwcHJv
+cHJpYXRlIHRoZW4sIG9yIHdlIGNvdWxkIG1vdmUKY3VycmVudF9mc190aW1lKCkgaW50byBrZXJu
+ZWwvdGltZS90aW1la2VlcGluZy5jIGFuZCBtYXJrCmN1cnJlbnRfa2VybmVsX3RpbWU2NCgpIGlu
+bGluZSBhZ2Fpbi4KCldoZW4gSm9obiBTdHVsdHogbW92ZWQgdGhpcyBmdW5jdGlvbiBpbiAyYzZi
+NDdkZTE3YzcgKCJDbGVhbnVwCm5vbi1hcmNoIHh0aW1lIHVzZXMsIHVzZSBnZXRfc2Vjb25kcygp
+IG9yIGN1cnJlbnRfa2VybmVsX3RpbWUoKS4iKSwKaGUgZXZpZGVudGx5IGRpZCBub3QgY29uc2lk
+ZXIgdGhlICJpbmxpbmUiIGJlaGF2aW9yIGltcG9ydGFudAp0aGVyZSwgbm8gaWRlYSBpZiB0aGlz
+IGlzIGV2ZW4gbWVhc3VyYWJsZS4KCglBcm5kCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8u
+b3JnCmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
