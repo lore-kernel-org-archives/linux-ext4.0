@@ -1,53 +1,217 @@
-From: Calvin Owens <calvinowens@fb.com>
-Subject: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
-Date: Wed, 15 Jun 2016 16:49:39 -0400
-Message-ID: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] ext4: avoid modifying checksum fields directly during
+ checksum verification
+Date: Wed, 15 Jun 2016 14:57:05 -0700
+Message-ID: <20160615215705.GB5724@birch.djwong.org>
+References: <1465971173-5612-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: <linux-ext4@vger.kernel.org>, <calvinowens@fb.com>,
-	<kernel-team@fb.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	Youngjin Gil <youngjin.gil@samsung.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:54576 "EHLO
-	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751907AbcFOUt5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Jun 2016 16:49:57 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:22707 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751921AbcFOV5Q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2016 17:57:16 -0400
 Content-Disposition: inline
+In-Reply-To: <1465971173-5612-1-git-send-email-daeho.jeong@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+On Wed, Jun 15, 2016 at 03:12:53PM +0900, Daeho Jeong wrote:
+> We temporally change checksum fields in buffers of some types of
+> metadata into '0' for verifying the checksum values. By doing this
+> without locking the buffer, some metadata's checksums, which are
+> being committed or written back to the storage, could be damaged.
+> In our test, several metadata blocks were found with damaged metadata
+> checksum value during recovery process. When we only verify the
+> checksum value, we have to avoid modifying checksum fields directly.
 
-I'm hitting the following warning on a 4.0 kernel:
+/me wonders how it is we end up writing a block to disk while the
+checksum is being calculated?
 
-  WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
-  CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
-  Call Trace: 
-  [<ffffffff8176af8e>] dump_stack+0x4d/0x63
-  [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
-  [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
-  [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
-  [<ffffffff811d248b>] evict+0xbb/0x190 
-  [<ffffffff811d2d6d>] iput+0x17d/0x1e0
-  [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
-  [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
-  [<ffffffff811b952a>] __fput+0x17a/0x210
-  [<ffffffff811b960e>] ____fput+0xe/0x10
-  [<ffffffff81086dbf>] task_work_run+0xbf/0x100 
-  [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
-  [<ffffffff81771529>] int_signal+0x12/0x17
+Is something verifying the block at the same time the journal is
+writing the same block out via replay?  Or even just a regular commit?
+If that's the case, then yes, you're right, we can't touch a single
+bit on a metadata block without a transaction protecting it.  Oops.
 
-Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
-this in 3.11. The check was entirely removed in 4.6.
+Or is something prepping the block to get logged at the same time the
+journal is writing it?  I'm confused, I wouldn't have thought jbd2
+would allow further changes to a block after a transaction finishes,
+at least not without making a private copy of that block...
 
-Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
-see if I can reproduce it on upstream, but since the check got removed I
-was wondering if there was post-4.0 work that makes it obsolete?
+...but as far as the patch goes, it looks good enough to fix the
+corruption-on-replay bug.
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks,
-Calvin
+--D
 
---
-https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=822dbba
-https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=600be30
+> 
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
+> ---
+>  fs/ext4/inode.c |   38 ++++++++++++++++++++++----------------
+>  fs/ext4/namei.c |    9 ++++-----
+>  fs/ext4/super.c |   18 +++++++++---------
+>  fs/ext4/xattr.c |   13 +++++++------
+>  4 files changed, 42 insertions(+), 36 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 971892d..5ca71aa 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -51,25 +51,31 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
+>  			      struct ext4_inode_info *ei)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> -	__u16 csum_lo;
+> -	__u16 csum_hi = 0;
+>  	__u32 csum;
+> +	__u16 dummy_csum = 0;
+> +	int offset = offsetof(struct ext4_inode, i_checksum_lo);
+> +	unsigned int csum_size = sizeof(dummy_csum);
+>  
+> -	csum_lo = le16_to_cpu(raw->i_checksum_lo);
+> -	raw->i_checksum_lo = 0;
+> -	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+> -	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
+> -		csum_hi = le16_to_cpu(raw->i_checksum_hi);
+> -		raw->i_checksum_hi = 0;
+> -	}
+> +	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw, offset);
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, csum_size);
+> +	offset += csum_size;
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
+> +			   EXT4_GOOD_OLD_INODE_SIZE - offset);
+>  
+> -	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
+> -			   EXT4_INODE_SIZE(inode->i_sb));
+> -
+> -	raw->i_checksum_lo = cpu_to_le16(csum_lo);
+> -	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+> -	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
+> -		raw->i_checksum_hi = cpu_to_le16(csum_hi);
+> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+> +		offset = offsetof(struct ext4_inode, i_checksum_hi);
+> +		csum = ext4_chksum(sbi, csum, (__u8 *)raw +
+> +				   EXT4_GOOD_OLD_INODE_SIZE,
+> +				   offset - EXT4_GOOD_OLD_INODE_SIZE);
+> +		if (EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
+> +			csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
+> +					   csum_size);
+> +			offset += csum_size;
+> +			csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
+> +					   EXT4_INODE_SIZE(inode->i_sb) -
+> +					   offset);
+> +		}
+> +	}
+>  
+>  	return csum;
+>  }
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index ec811bb..4a918f8 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -420,15 +420,14 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	__u32 csum;
+> -	__le32 save_csum;
+>  	int size;
+> +	__u32 dummy_csum = 0;
+> +	int offset = offsetof(struct dx_tail, dt_checksum);
+>  
+>  	size = count_offset + (count * sizeof(struct dx_entry));
+> -	save_csum = t->dt_checksum;
+> -	t->dt_checksum = 0;
+>  	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
+> -	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
+> -	t->dt_checksum = save_csum;
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)t, offset);
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
+>  
+>  	return cpu_to_le32(csum);
+>  }
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index de02a9e..b6cb89a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2058,23 +2058,25 @@ failed:
+>  static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
+>  				   struct ext4_group_desc *gdp)
+>  {
+> -	int offset;
+> +	int offset = offsetof(struct ext4_group_desc, bg_checksum);
+>  	__u16 crc = 0;
+>  	__le32 le_group = cpu_to_le32(block_group);
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  
+>  	if (ext4_has_metadata_csum(sbi->s_sb)) {
+>  		/* Use new metadata_csum algorithm */
+> -		__le16 save_csum;
+>  		__u32 csum32;
+> +		__u16 dummy_csum = 0;
+>  
+> -		save_csum = gdp->bg_checksum;
+> -		gdp->bg_checksum = 0;
+>  		csum32 = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&le_group,
+>  				     sizeof(le_group));
+> -		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp,
+> -				     sbi->s_desc_size);
+> -		gdp->bg_checksum = save_csum;
+> +		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp, offset);
+> +		csum32 = ext4_chksum(sbi, csum32, (__u8 *)&dummy_csum,
+> +				     sizeof(dummy_csum));
+> +		offset += sizeof(dummy_csum);
+> +		if (offset < sbi->s_desc_size)
+> +			csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp + offset,
+> +					     sbi->s_desc_size - offset);
+>  
+>  		crc = csum32 & 0xFFFF;
+>  		goto out;
+> @@ -2084,8 +2086,6 @@ static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
+>  	if (!ext4_has_feature_gdt_csum(sb))
+>  		return 0;
+>  
+> -	offset = offsetof(struct ext4_group_desc, bg_checksum);
+> -
+>  	crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
+>  	crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
+>  	crc = crc16(crc, (__u8 *)gdp, offset);
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 0441e05..988b379 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -121,17 +121,18 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	__u32 csum;
+> -	__le32 save_csum;
+>  	__le64 dsk_block_nr = cpu_to_le64(block_nr);
+> +	__u32 dummy_csum = 0;
+> +	int offset = offsetof(struct ext4_xattr_header, h_checksum);
+>  
+> -	save_csum = hdr->h_checksum;
+> -	hdr->h_checksum = 0;
+>  	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&dsk_block_nr,
+>  			   sizeof(dsk_block_nr));
+> -	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
+> -			   EXT4_BLOCK_SIZE(inode->i_sb));
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)hdr, offset);
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
+> +	offset += sizeof(dummy_csum);
+> +	csum = ext4_chksum(sbi, csum, (__u8 *)hdr + offset,
+> +			   EXT4_BLOCK_SIZE(inode->i_sb) - offset);
+>  
+> -	hdr->h_checksum = save_csum;
+>  	return cpu_to_le32(csum);
+>  }
+>  
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
