@@ -1,193 +1,65 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH] ext4: avoid modifying checksum fields directly during checksum
- verification
-Date: Wed, 15 Jun 2016 15:12:53 +0900
-Message-ID: <1465971173-5612-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>,
-	Youngjin Gil <youngjin.gil@samsung.com>
-To: tytso@mit.edu, darrick.wong@oracle.com, linux-ext4@vger.kernel.org
+From: Omar Sandoval <osandov@osandov.com>
+Subject: [RFC PATCH] coredump: avoid ext4 auto_da_alloc for core file
+Date: Wed, 15 Jun 2016 10:42:05 -0700
+Message-ID: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	kernel-team@fb.com
+To: Al Viro <viro@zeniv.linux.org.uk>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout3.samsung.com ([203.254.224.33]:53414 "EHLO
-	mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751519AbcFOGKx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2016 02:10:53 -0400
-Received: from epcpsbgr5.samsung.com
- (u145.gpu120.samsung.co.kr [203.254.230.145])
- by mailout3.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
- 64bit (built May  5 2014))
- with ESMTP id <0O8S00M6JUHZCK30@mailout3.samsung.com> for
- linux-ext4@vger.kernel.org; Wed, 15 Jun 2016 15:10:47 +0900 (KST)
+Received: from mail-pf0-f178.google.com ([209.85.192.178]:35582 "EHLO
+	mail-pf0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932114AbcFORmR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2016 13:42:17 -0400
+Received: by mail-pf0-f178.google.com with SMTP id c2so10882369pfa.2
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Jun 2016 10:42:17 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We temporally change checksum fields in buffers of some types of
-metadata into '0' for verifying the checksum values. By doing this
-without locking the buffer, some metadata's checksums, which are
-being committed or written back to the storage, could be damaged.
-In our test, several metadata blocks were found with damaged metadata
-checksum value during recovery process. When we only verify the
-checksum value, we have to avoid modifying checksum fields directly.
+From: Omar Sandoval <osandov@fb.com>
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
+Someone at Facebook reported that their coredumps were much faster when
+using a pipe helper than when dumping directly to a file, which doesn't
+make much sense. It turns out that this difference is because in
+do_coredump(), we truncate the core file and thus trigger the ext4
+auto_da_alloc heuristic. We can't use O_TRUNC because we might bail out
+of do_coredump() in certain conditions, so instead, avoid truncating
+when the file is already empty. In cases where we're actually
+overwriting a core file, this won't help, but the common case will be
+much better.
+
+Signed-off-by: Omar Sandoval <osandov@fb.com>
 ---
- fs/ext4/inode.c |   38 ++++++++++++++++++++++----------------
- fs/ext4/namei.c |    9 ++++-----
- fs/ext4/super.c |   18 +++++++++---------
- fs/ext4/xattr.c |   13 +++++++------
- 4 files changed, 42 insertions(+), 36 deletions(-)
+Hi, Al and Ted,
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 971892d..5ca71aa 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -51,25 +51,31 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
- 			      struct ext4_inode_info *ei)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	__u16 csum_lo;
--	__u16 csum_hi = 0;
- 	__u32 csum;
-+	__u16 dummy_csum = 0;
-+	int offset = offsetof(struct ext4_inode, i_checksum_lo);
-+	unsigned int csum_size = sizeof(dummy_csum);
- 
--	csum_lo = le16_to_cpu(raw->i_checksum_lo);
--	raw->i_checksum_lo = 0;
--	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
--	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
--		csum_hi = le16_to_cpu(raw->i_checksum_hi);
--		raw->i_checksum_hi = 0;
--	}
-+	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw, offset);
-+	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, csum_size);
-+	offset += csum_size;
-+	csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
-+			   EXT4_GOOD_OLD_INODE_SIZE - offset);
- 
--	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
--			   EXT4_INODE_SIZE(inode->i_sb));
--
--	raw->i_checksum_lo = cpu_to_le16(csum_lo);
--	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
--	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
--		raw->i_checksum_hi = cpu_to_le16(csum_hi);
-+	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-+		offset = offsetof(struct ext4_inode, i_checksum_hi);
-+		csum = ext4_chksum(sbi, csum, (__u8 *)raw +
-+				   EXT4_GOOD_OLD_INODE_SIZE,
-+				   offset - EXT4_GOOD_OLD_INODE_SIZE);
-+		if (EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-+			csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
-+					   csum_size);
-+			offset += csum_size;
-+			csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
-+					   EXT4_INODE_SIZE(inode->i_sb) -
-+					   offset);
+This is probably the wrong solution to the problem I described in the
+commit message. Do you guys have any better ideas? Something like
+0eab928221ba ("ext4: Don't treat a truncation of a zero-length file as
+replace-via-truncate") would also work, but that apparently wasn't
+right, as it was reverted in 5534fb5bb35a ("ext4: Fix the alloc on close
+after a truncate hueristic").
+
+Thanks.
+
+ fs/coredump.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/coredump.c b/fs/coredump.c
+index 281b768000e6..9da7357773f0 100644
+--- a/fs/coredump.c
++++ b/fs/coredump.c
+@@ -741,8 +741,10 @@ void do_coredump(const siginfo_t *siginfo)
+ 			goto close_fail;
+ 		if (!(cprm.file->f_mode & FMODE_CAN_WRITE))
+ 			goto close_fail;
+-		if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
+-			goto close_fail;
++		if (i_size_read(file_inode(cprm.file)) != 0) {
++			if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
++				goto close_fail;
 +		}
-+	}
+ 	}
  
- 	return csum;
- }
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ec811bb..4a918f8 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -420,15 +420,14 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	__u32 csum;
--	__le32 save_csum;
- 	int size;
-+	__u32 dummy_csum = 0;
-+	int offset = offsetof(struct dx_tail, dt_checksum);
- 
- 	size = count_offset + (count * sizeof(struct dx_entry));
--	save_csum = t->dt_checksum;
--	t->dt_checksum = 0;
- 	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
--	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
--	t->dt_checksum = save_csum;
-+	csum = ext4_chksum(sbi, csum, (__u8 *)t, offset);
-+	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
- 
- 	return cpu_to_le32(csum);
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index de02a9e..b6cb89a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2058,23 +2058,25 @@ failed:
- static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
- 				   struct ext4_group_desc *gdp)
- {
--	int offset;
-+	int offset = offsetof(struct ext4_group_desc, bg_checksum);
- 	__u16 crc = 0;
- 	__le32 le_group = cpu_to_le32(block_group);
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (ext4_has_metadata_csum(sbi->s_sb)) {
- 		/* Use new metadata_csum algorithm */
--		__le16 save_csum;
- 		__u32 csum32;
-+		__u16 dummy_csum = 0;
- 
--		save_csum = gdp->bg_checksum;
--		gdp->bg_checksum = 0;
- 		csum32 = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&le_group,
- 				     sizeof(le_group));
--		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp,
--				     sbi->s_desc_size);
--		gdp->bg_checksum = save_csum;
-+		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp, offset);
-+		csum32 = ext4_chksum(sbi, csum32, (__u8 *)&dummy_csum,
-+				     sizeof(dummy_csum));
-+		offset += sizeof(dummy_csum);
-+		if (offset < sbi->s_desc_size)
-+			csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp + offset,
-+					     sbi->s_desc_size - offset);
- 
- 		crc = csum32 & 0xFFFF;
- 		goto out;
-@@ -2084,8 +2086,6 @@ static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
- 	if (!ext4_has_feature_gdt_csum(sb))
- 		return 0;
- 
--	offset = offsetof(struct ext4_group_desc, bg_checksum);
--
- 	crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
- 	crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
- 	crc = crc16(crc, (__u8 *)gdp, offset);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 0441e05..988b379 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -121,17 +121,18 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	__u32 csum;
--	__le32 save_csum;
- 	__le64 dsk_block_nr = cpu_to_le64(block_nr);
-+	__u32 dummy_csum = 0;
-+	int offset = offsetof(struct ext4_xattr_header, h_checksum);
- 
--	save_csum = hdr->h_checksum;
--	hdr->h_checksum = 0;
- 	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&dsk_block_nr,
- 			   sizeof(dsk_block_nr));
--	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
--			   EXT4_BLOCK_SIZE(inode->i_sb));
-+	csum = ext4_chksum(sbi, csum, (__u8 *)hdr, offset);
-+	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
-+	offset += sizeof(dummy_csum);
-+	csum = ext4_chksum(sbi, csum, (__u8 *)hdr + offset,
-+			   EXT4_BLOCK_SIZE(inode->i_sb) - offset);
- 
--	hdr->h_checksum = save_csum;
- 	return cpu_to_le32(csum);
- }
- 
+ 	/* get us an unshared descriptor table; almost always a no-op */
 -- 
-1.7.9.5
+2.8.3
 
