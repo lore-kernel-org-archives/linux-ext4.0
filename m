@@ -1,68 +1,136 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
-Date: Thu, 16 Jun 2016 10:33:04 +0200
-Message-ID: <20160616083304.GD22835@quack2.suse.cz>
-References: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	kernel-team@fb.com
-To: Calvin Owens <calvinowens@fb.com>
+Subject: [PATCH 3/4] jbd2: Move lockdep tracking to journal_s
+Date: Thu, 16 Jun 2016 12:42:15 +0200
+Message-ID: <1466073736-30447-4-git-send-email-jack@suse.cz>
+References: <1466073736-30447-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
+	Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60772 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:43327 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751276AbcFPIdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jun 2016 04:33:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
+	id S1751323AbcFPKmX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Jun 2016 06:42:23 -0400
+In-Reply-To: <1466073736-30447-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Calvin,
+Currently lockdep map is tracked in each journal handle. To be able to
+expand lockdep support to cover also other cases where we depend on
+transaction commit and where handle is not available, move lockdep map
+into struct journal_s. Since this makes the lockdep map shared for all
+handles, we have to use rwsem_acquire_read() for acquisitions now.
 
-On Wed 15-06-16 16:49:39, Calvin Owens wrote:
-> I'm hitting the following warning on a 4.0 kernel:
-> 
->   WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
->   CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
->   Call Trace: 
->   [<ffffffff8176af8e>] dump_stack+0x4d/0x63
->   [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
->   [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
->   [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
->   [<ffffffff811d248b>] evict+0xbb/0x190 
->   [<ffffffff811d2d6d>] iput+0x17d/0x1e0
->   [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
->   [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
->   [<ffffffff811b952a>] __fput+0x17a/0x210
->   [<ffffffff811b960e>] ____fput+0xe/0x10
->   [<ffffffff81086dbf>] task_work_run+0xbf/0x100 
->   [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
->   [<ffffffff81771529>] int_signal+0x12/0x17
-> 
-> Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
-> this in 3.11. The check was entirely removed in 4.6.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/journal.c     |  4 ++++
+ fs/jbd2/transaction.c | 11 +++--------
+ include/linux/jbd2.h  | 16 ++++++++++++----
+ 3 files changed, 19 insertions(+), 12 deletions(-)
 
-OK, so this is the warning:
-
-WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
-
-It was removed in 4.6 since we maintained i_ioend_count only to be able to
-do this check and it didn't trigger for a long time. So it is interesting
-that it actually triggered for you with 4.0.
-
-> Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
-> see if I can reproduce it on upstream, but since the check got removed I
-> was wondering if there was post-4.0 work that makes it obsolete?
-
-It would be great. I'm attaching a revert and an additional debug patch. If
-you can run with these two on the latest kernel (or even just apply the debug
-patch on top of 4.0) and reproduce the issue with it, I would be grateful.
-
-Also if you reproduce the issue, please send me also your System.map so that
-I can map the address of the function where ioend was created. Thanks!
-
-									Honza
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index b31852f76f46..208e4058040b 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1091,6 +1091,7 @@ static void jbd2_stats_proc_exit(journal_t *journal)
+ 
+ static journal_t * journal_init_common (void)
+ {
++	static struct lock_class_key jbd2_trans_commit_key;
+ 	journal_t *journal;
+ 	int err;
+ 
+@@ -1126,6 +1127,9 @@ static journal_t * journal_init_common (void)
+ 
+ 	spin_lock_init(&journal->j_history_lock);
+ 
++	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
++			 &jbd2_trans_commit_key, 0);
++
+ 	return journal;
+ }
+ 
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 41249538c047..c0065040c5be 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -382,13 +382,11 @@ repeat:
+ 	read_unlock(&journal->j_state_lock);
+ 	current->journal_info = handle;
+ 
+-	lock_map_acquire(&handle->h_lockdep_map);
++	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
+ 	jbd2_journal_free_transaction(new_transaction);
+ 	return 0;
+ }
+ 
+-static struct lock_class_key jbd2_handle_key;
+-
+ /* Allocate a new handle.  This should probably be in a slab... */
+ static handle_t *new_handle(int nblocks)
+ {
+@@ -398,9 +396,6 @@ static handle_t *new_handle(int nblocks)
+ 	handle->h_buffer_credits = nblocks;
+ 	handle->h_ref = 1;
+ 
+-	lockdep_init_map(&handle->h_lockdep_map, "jbd2_handle",
+-						&jbd2_handle_key, 0);
+-
+ 	return handle;
+ }
+ 
+@@ -672,7 +667,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+ 	if (need_to_start)
+ 		jbd2_log_start_commit(journal, tid);
+ 
+-	lock_map_release(&handle->h_lockdep_map);
++	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
+ 	handle->h_buffer_credits = nblocks;
+ 	ret = start_this_handle(journal, handle, gfp_mask);
+ 	return ret;
+@@ -1750,7 +1745,7 @@ int jbd2_journal_stop(handle_t *handle)
+ 			wake_up(&journal->j_wait_transaction_locked);
+ 	}
+ 
+-	lock_map_release(&handle->h_lockdep_map);
++	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
+ 
+ 	if (wait_for_commit)
+ 		err = jbd2_log_wait_commit(journal, tid);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index efb232c5f668..f6232b28eadc 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -491,10 +491,6 @@ struct jbd2_journal_handle
+ 
+ 	unsigned long		h_start_jiffies;
+ 	unsigned int		h_requested_credits;
+-
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-	struct lockdep_map	h_lockdep_map;
+-#endif
+ };
+ 
+ 
+@@ -1035,6 +1031,18 @@ struct journal_s
+ 
+ 	/* Precomputed journal UUID checksum for seeding other checksums */
+ 	__u32 j_csum_seed;
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++	/*
++	 * Lockdep entity to track transaction commit dependencies. Handles
++	 * hold this "lock" for read, when we wait for commit, we acquire the
++	 * "lock" for writing. This matches the properties of jbd2 journalling
++	 * where the running transaction has to wait for all handles to be
++	 * dropped to commit that transaction and also acquiring a handle may
++	 * require transaction commit to finish.
++	 */
++	struct lockdep_map	j_trans_commit_map;
++#endif
+ };
+ 
+ /* journal feature predicate functions */
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.6.6
+
