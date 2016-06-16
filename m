@@ -1,217 +1,52 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: avoid modifying checksum fields directly during
- checksum verification
-Date: Wed, 15 Jun 2016 14:57:05 -0700
-Message-ID: <20160615215705.GB5724@birch.djwong.org>
+From: =?UTF-8?B?RGFlaG8gSmVvbmc=?= <daeho.jeong@samsung.com>
+Subject: =?UTF-8?B?UmU6IFtQQVRDSF0gZXh0NDogYXZvaWQgbW9kaWZ5aW5nIGNo?=
+ =?UTF-8?B?ZWNrc3VtIGZpZWxkcyBkaXJlY3RseSBkdXJpbmcgY2hlY2tz?=
+ =?UTF-8?B?dW0gdmVyaWZpY2F0aW9u?=
+Date: Thu, 16 Jun 2016 00:08:46 +0000
+Message-ID: <1254354083.481464.1466035726062.JavaMail.weblogic@ep1ml102b>
 References: <1465971173-5612-1-git-send-email-daeho.jeong@samsung.com>
+ <CGME20160615215745epcas1p311ceb996b59406165c213da4de9196c4@epcas1p3.samsung.com>
+Reply-To: daeho.jeong@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Youngjin Gil <youngjin.gil@samsung.com>
-To: Daeho Jeong <daeho.jeong@samsung.com>
+Content-Type: multipart/related;
+ boundary="----=_Part_481463_1469210527.1466035726061"
+Cc: =?UTF-8?B?dHl0c29AbWl0LmVkdQ==?= <tytso@mit.edu>,
+	=?UTF-8?B?bGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmc=?=
+	<linux-ext4@vger.kernel.org>,
+	=?UTF-8?B?eWVvbmdqaW4gZ2ls?= <youngjin.gil@samsung.com>
+To: =?UTF-8?B?RGFycmljayBKLiBXb25n?= <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:22707 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751921AbcFOV5Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2016 17:57:16 -0400
-Content-Disposition: inline
-In-Reply-To: <1465971173-5612-1-git-send-email-daeho.jeong@samsung.com>
+Received: from mailout2.samsung.com ([203.254.224.25]:42922 "EHLO
+	mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932456AbcFPAIs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2016 20:08:48 -0400
+Received: from epcas1p3.samsung.com (unknown [182.195.41.47])
+ by mailout2.samsung.com
+ (Oracle Communications Messaging Server 7.0.5.31.0 64bit (built May  5 2014))
+ with ESMTP id <0O8U02F0X8EM6Q10@mailout2.samsung.com> for
+ linux-ext4@vger.kernel.org; Thu, 16 Jun 2016 09:08:46 +0900 (KST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 15, 2016 at 03:12:53PM +0900, Daeho Jeong wrote:
-> We temporally change checksum fields in buffers of some types of
-> metadata into '0' for verifying the checksum values. By doing this
-> without locking the buffer, some metadata's checksums, which are
-> being committed or written back to the storage, could be damaged.
-> In our test, several metadata blocks were found with damaged metadata
-> checksum value during recovery process. When we only verify the
-> checksum value, we have to avoid modifying checksum fields directly.
+------=_Part_481463_1469210527.1466035726061
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="utf-8"
 
-/me wonders how it is we end up writing a block to disk while the
-checksum is being calculated?
-
-Is something verifying the block at the same time the journal is
-writing the same block out via replay?  Or even just a regular commit?
-If that's the case, then yes, you're right, we can't touch a single
-bit on a metadata block without a transaction protecting it.  Oops.
-
-Or is something prepping the block to get logged at the same time the
-journal is writing it?  I'm confused, I wouldn't have thought jbd2
-would allow further changes to a block after a transaction finishes,
-at least not without making a private copy of that block...
-
-...but as far as the patch goes, it looks good enough to fix the
-corruption-on-replay bug.
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-> 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
-> ---
->  fs/ext4/inode.c |   38 ++++++++++++++++++++++----------------
->  fs/ext4/namei.c |    9 ++++-----
->  fs/ext4/super.c |   18 +++++++++---------
->  fs/ext4/xattr.c |   13 +++++++------
->  4 files changed, 42 insertions(+), 36 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 971892d..5ca71aa 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -51,25 +51,31 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
->  			      struct ext4_inode_info *ei)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> -	__u16 csum_lo;
-> -	__u16 csum_hi = 0;
->  	__u32 csum;
-> +	__u16 dummy_csum = 0;
-> +	int offset = offsetof(struct ext4_inode, i_checksum_lo);
-> +	unsigned int csum_size = sizeof(dummy_csum);
->  
-> -	csum_lo = le16_to_cpu(raw->i_checksum_lo);
-> -	raw->i_checksum_lo = 0;
-> -	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> -	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-> -		csum_hi = le16_to_cpu(raw->i_checksum_hi);
-> -		raw->i_checksum_hi = 0;
-> -	}
-> +	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw, offset);
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, csum_size);
-> +	offset += csum_size;
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
-> +			   EXT4_GOOD_OLD_INODE_SIZE - offset);
->  
-> -	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
-> -			   EXT4_INODE_SIZE(inode->i_sb));
-> -
-> -	raw->i_checksum_lo = cpu_to_le16(csum_lo);
-> -	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> -	    EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi))
-> -		raw->i_checksum_hi = cpu_to_le16(csum_hi);
-> +	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-> +		offset = offsetof(struct ext4_inode, i_checksum_hi);
-> +		csum = ext4_chksum(sbi, csum, (__u8 *)raw +
-> +				   EXT4_GOOD_OLD_INODE_SIZE,
-> +				   offset - EXT4_GOOD_OLD_INODE_SIZE);
-> +		if (EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-> +			csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
-> +					   csum_size);
-> +			offset += csum_size;
-> +			csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
-> +					   EXT4_INODE_SIZE(inode->i_sb) -
-> +					   offset);
-> +		}
-> +	}
->  
->  	return csum;
->  }
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index ec811bb..4a918f8 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -420,15 +420,14 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	__u32 csum;
-> -	__le32 save_csum;
->  	int size;
-> +	__u32 dummy_csum = 0;
-> +	int offset = offsetof(struct dx_tail, dt_checksum);
->  
->  	size = count_offset + (count * sizeof(struct dx_entry));
-> -	save_csum = t->dt_checksum;
-> -	t->dt_checksum = 0;
->  	csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)dirent, size);
-> -	csum = ext4_chksum(sbi, csum, (__u8 *)t, sizeof(struct dx_tail));
-> -	t->dt_checksum = save_csum;
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)t, offset);
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
->  
->  	return cpu_to_le32(csum);
->  }
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index de02a9e..b6cb89a 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2058,23 +2058,25 @@ failed:
->  static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
->  				   struct ext4_group_desc *gdp)
->  {
-> -	int offset;
-> +	int offset = offsetof(struct ext4_group_desc, bg_checksum);
->  	__u16 crc = 0;
->  	__le32 le_group = cpu_to_le32(block_group);
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  
->  	if (ext4_has_metadata_csum(sbi->s_sb)) {
->  		/* Use new metadata_csum algorithm */
-> -		__le16 save_csum;
->  		__u32 csum32;
-> +		__u16 dummy_csum = 0;
->  
-> -		save_csum = gdp->bg_checksum;
-> -		gdp->bg_checksum = 0;
->  		csum32 = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&le_group,
->  				     sizeof(le_group));
-> -		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp,
-> -				     sbi->s_desc_size);
-> -		gdp->bg_checksum = save_csum;
-> +		csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp, offset);
-> +		csum32 = ext4_chksum(sbi, csum32, (__u8 *)&dummy_csum,
-> +				     sizeof(dummy_csum));
-> +		offset += sizeof(dummy_csum);
-> +		if (offset < sbi->s_desc_size)
-> +			csum32 = ext4_chksum(sbi, csum32, (__u8 *)gdp + offset,
-> +					     sbi->s_desc_size - offset);
->  
->  		crc = csum32 & 0xFFFF;
->  		goto out;
-> @@ -2084,8 +2086,6 @@ static __le16 ext4_group_desc_csum(struct super_block *sb, __u32 block_group,
->  	if (!ext4_has_feature_gdt_csum(sb))
->  		return 0;
->  
-> -	offset = offsetof(struct ext4_group_desc, bg_checksum);
-> -
->  	crc = crc16(~0, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
->  	crc = crc16(crc, (__u8 *)&le_group, sizeof(le_group));
->  	crc = crc16(crc, (__u8 *)gdp, offset);
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 0441e05..988b379 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -121,17 +121,18 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  	__u32 csum;
-> -	__le32 save_csum;
->  	__le64 dsk_block_nr = cpu_to_le64(block_nr);
-> +	__u32 dummy_csum = 0;
-> +	int offset = offsetof(struct ext4_xattr_header, h_checksum);
->  
-> -	save_csum = hdr->h_checksum;
-> -	hdr->h_checksum = 0;
->  	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&dsk_block_nr,
->  			   sizeof(dsk_block_nr));
-> -	csum = ext4_chksum(sbi, csum, (__u8 *)hdr,
-> -			   EXT4_BLOCK_SIZE(inode->i_sb));
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)hdr, offset);
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum, sizeof(dummy_csum));
-> +	offset += sizeof(dummy_csum);
-> +	csum = ext4_chksum(sbi, csum, (__u8 *)hdr + offset,
-> +			   EXT4_BLOCK_SIZE(inode->i_sb) - offset);
->  
-> -	hdr->h_checksum = save_csum;
->  	return cpu_to_le32(csum);
->  }
->  
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+SGkgRGFycmljaywNCg0KwqANCj4gSXPCoHNvbWV0aGluZ8KgdmVyaWZ5aW5nwqB0aGXCoGJsb2Nr
+wqBhdMKgdGhlwqBzYW1lwqB0aW1lwqB0aGXCoGpvdXJuYWzCoGlzDQo+IHdyaXRpbmfCoHRoZcKg
+c2FtZcKgYmxvY2vCoG91dMKgdmlhwqByZXBsYXk/wqDCoE9ywqBldmVuwqBqdXN0wqBhwqByZWd1
+bGFywqBjb21taXQ/DQo+IElmwqB0aGF0J3PCoHRoZcKgY2FzZSzCoHRoZW7CoHllcyzCoHlvdSdy
+ZcKgcmlnaHQswqB3ZcKgY2FuJ3TCoHRvdWNowqBhwqBzaW5nbGUNCj4gYml0wqBvbsKgYcKgbWV0
+YWRhdGHCoGJsb2NrwqB3aXRob3V0wqBhwqB0cmFuc2FjdGlvbsKgcHJvdGVjdGluZ8KgaXQuwqDC
+oE9vcHMuDQoNCg0KQXMgZmFyIGFzIEkga25vdywgaWYgeW91IHdhbnQgdG8gbW9kaWZ5IGEgbWV0
+YWRhdGEgYmxvY2ssIHlvdSBoYXZlIHRvDQpnZXQgd3JpdGUgYWNjZXNzIGZvciBhIG1ldGFkYXRh
+IGJsb2NrIGluIGFkdmFuY2UgaW4gb3JkZXIgdG8gbm90aWZ5DQp5b3VyIGludGVudGlvbiB0byBq
+YmQyIGpvdXJuYWxpbmcgbW9kdWxlIHNvIHRoYXQgamJkMiBjYW4gY29udHJvbCBhbGwNCnRoZSBt
+b2RpZmljYXRpb25zIHRvIHRoZSBtZXRhZGF0YSBibG9jayBhbmQgaXQgY2FuIG1ha2UgYSBjb3Bp
+ZWQNCnZlcnNpb24gb2YgdGhlIG1ldGFkYXRhIGJsb2NrIHdpdGggY29weWluZyBvdXQgdGhlIG9y
+aWdpbmFsIG1ldGFkYXRhDQpibG9jayBpZiBuZWNlc3NhcnkuDQoNCkhvd2V2ZXIsIGlmIHdlIHRv
+dWNoIGEgbWV0YWRhdGEgYmxvY2sgd2l0aG91dCBqYmQyJ3MgYXBwcm92YWwsIGpiZDIgZG9lc24n
+dA0Ka25vdyBhYm91dCB3aGF0IHdlIGFyZSBkb2luZyBhbmQgaXQgY2Fubm90IGRvIGFueXRoaW5n
+IGZvciB1cy4gU28sIHdlIGNhbg0KbW9kaWZ5IHRoZSBjb250ZW50IG9mIHRoZSBtZXRhZGF0YSBi
+bG9jayBldmVuIGJlaW5nIHdyaXR0ZW4gYmFjay4NCg==
+------=_Part_481463_1469210527.1466035726061--
