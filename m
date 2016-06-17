@@ -1,195 +1,41 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: PROBLEM: incorrect data block bitmap after running resize2fs and e2fsck
-Date: Fri, 17 Jun 2016 09:25:24 -0600
-Message-ID: <7B51A758-2F9E-4020-BF55-31D234E1EFD9@dilger.ca>
-References: <1466175303.22666.10.camel@wijtemans.nl>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org
-To: Lars Wijtemans <lars@wijtemans.nl>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f52.google.com ([209.85.214.52]:38892 "EHLO
-	mail-it0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751105AbcFQPZ2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2016 11:25:28 -0400
-Received: by mail-it0-f52.google.com with SMTP id h190so71044337ith.1
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jun 2016 08:25:28 -0700 (PDT)
-In-Reply-To: <1466175303.22666.10.camel@wijtemans.nl>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] jbd2: make journal y2038 safe
+Date: Fri, 17 Jun 2016 17:39:00 +0200
+Message-ID: <20160617153916.444842-1-arnd@arndb.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Jan Kara <jack@suse.com>
+Return-path: <y2038-bounces@lists.linaro.org>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Ted has just released 1.43.1 that fixes a number of problems with 1.42.13. 
-
-You might also consider trying 1.42.13 if you haven't enabled any of the new features in 1.43 (data checksums, inline data, etc.). 
-
-Cheers, Andreas
-
-> On Jun 17, 2016, at 08:55, Lars Wijtemans <lars@wijtemans.nl> wrote:
-> 
-> After shrinking an ext4 filesystem with resize2fs and running e2fsck
-> afterwards, total free blocks count is wrong. Blocks which are "not in
-> use" according to debugfs are in fact found to be used by the icheck
-> command of debugfs. Subsequent runs of e2fsck report no problems with
-> this filesystem.
-> 
-> 
-> == System information
-> Linux 4.5.6-200.fc23.x86_64
-> e2fsprogs 1.42.13 (17-May-2015)
-> 
-> 
-> == What led to the problem
-> I wanted to shrink an ext4 filesystem. The filesystem was created a
-> while ago (probably with the -E resize=xyz option) and has been resized
-> before.
-> It is layered like this: GPT partition | RAID | LUKS | LVM | ext4
-> 
-> (21694432 MiB total size at this point)
-> 
-> # e2fsck -f /dev/mapper/foo
-> No filesystem problems were found.
-> 
-> # resize2fs -P /dev/mapper/foo
-> (20248275 MiB)
-> 
-> # resize2fs /dev/mapper/foo 21693408M
-> # e2fsck -nf /dev/mapper/foo
-> (No filesystem problems were found)
-> 
-> # resize2fs -p /dev/mapper/foo 21170144M
-> # resize2fs -p /dev/mapper/foo 20645856M
-> # e2fsck -nf /dev/mapper/foo
-> There were a lot of "Free blocks count wrong" wrong messages. Some
-> searching on the internet let me to believe this was to be expected, so
-> I re-ran with the "preen" option.
-> 
-> # e2fsck -fp /dev/mapper/foo
-> (This completed without any meaningful output)
-> 
-> The filesystem contained about 19 TiB of data. After mounting, df
-> showed only 13 TiB in use. I immediately re-mounted in read-only mode.
-> Walking the filesystem still shows a total 19.2 TiB of data that seems
-> to be uncorrupted (check ongoing).
-> Subsequent runs of e2fsck do not find any problems.
-> 
-> 
-> == Going from here...
-> I am concerned that writing to this filesystem will result in data
-> loss, since a lot of blocks are (incorrectly) marked as free. It also
-> seems like something e2fsck should be able to fix, since the files are
-> accessible without problems in read-only mode. I can even imagine
-> fixing this through debugfs, by checking whether a block is used by a
-> file and, if so, mark it as such.
-> 
-> What I would like to do is
-> 1) figure out why e2fsck is not able to detect/fix this by itself,
-> hopefully resulting in an improvement in e2fsck and
-> 2) (manually) restore the filesystem to a usable state (within about
-> two weeks).
-> 
-> I'm not familiar with ext4 internals, so any help here is appreciated.
-> 
-> 
-> # df --block-size=4096 /data
-> Filesystem                     4K-blocks       Used  Available Use%
-> /dev/mapper/vg_datagroup-bulk 5282123045 3385286984 1666833796  68%
-> 
-> # du --block-size=4096 --summarize --one-file-system /data
-> 
-> 
-> # debugfs /dev/mapper/foo -R "testb 1 5285339135" > /tmp/testb.txt
-> Block 1 marked in use
-> [...]
-> Block 32768 not in use
-> [...]
-> 
-> # grep " not in use" /tmp/testb.txt | wc -l
-> 1896836061
-> 
-> # grep " marked in use" /tmp/testb.txt | wc -l
-> 3388503074
-> 
-> # grep " not in use" /tmp/testb.txt | shuf -n 100 | \
->   awk '{print $2}' | tr '\n' " "
-> 265503904 1397137951 924616805 [...]
-> 
-> These blocks should not have any files associated with them.
-> 
-> # debugfs /dev/mapper/foo -R "icheck 265503904 1397137951 [...]"
-> debugfs 1.42.13 (17-May-2015)
-> Block    Inode number
-> 265503904    9569537
-> 1397137951    8697
-> 924616805    4764587
-> 920525308    11513483
-> 4032323069    <block not found>
-> 814305093    1539116
-> 246137426    26227968
-> 456159649    21
-> 277352417    2861448
-> [...]
-> 
-> 
-> # dumpe2fs -h /dev/mapper/foo
-> dumpe2fs 1.42.13 (17-May-2015)
-> Filesystem volume name:   bulk
-> Last mounted on:          /data
-> Filesystem UUID:          dc0f67cf-85a4-421f-8387-0fb2de7f03ff
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr dir_index filetype
-> meta_bg extent 64bit flex_bg sparse_super large_file huge_file
-> uninit_bg dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash 
-> Default mount options:    user_xattr acl
-> Filesystem state:         clean
-> Errors behavior:          Remount read-only
-> Filesystem OS type:       Linux
-> Inode count:              41291776
-> Block count:              5285339136
-> Reserved block count:     229998169
-> Free blocks:              1896836061
-> Free inodes:              9341404
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Group descriptor size:    64
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         256
-> Inode blocks per group:   16
-> RAID stride:              128
-> RAID stripe width:        768
-> First meta block group:   1956
-> Flex block group size:    4096
-> Filesystem created:       Sun Sep  7 13:05:00 2014
-> Last mount time:          Thu Jun 16 10:38:57 2016
-> Last write time:          Thu Jun 16 10:39:41 2016
-> Mount count:              1
-> Maximum mount count:      20
-> Last checked:             Thu Jun 16 09:55:23 2016
-> Check interval:           1382400 (2 weeks, 2 days)
-> Next check after:         Sat Jul  2 09:55:23 2016
-> Lifetime writes:          44 TB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:              256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   half_md4
-> Directory Hash Seed:      656e1be4-f041-41c8-a3e8-63827db144bd
-> Journal backup:           inode blocks
-> Journal features:         journal_incompat_revoke journal_64bit
-> Journal size:             1024M
-> Journal length:           262144
-> Journal sequence:         0x00192c59
-> Journal start:            0
-> Bad blocks: 2639100416, 2639100417, [...]
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+VGhlIGpiZDIgam91cm5hbCBzdG9yZXMgdGhlIGNvbW1pdCB0aW1lIGluIDY0LWJpdCBzZWNvbmRz
+IGFuZCAzMi1iaXQKbmFub3NlY29uZHMsIHdoaWNoIGF2b2lkcyBhbiBvdmVyZmxvdyBpbiAyMDM4
+LCBidXQgaXQgZ2V0cyB0aGUgbnVtYmVycwpmcm9tIGN1cnJlbnRfa2VybmVsX3RpbWUoKSwgd2hp
+Y2ggdXNlcyAnbG9uZycgc2Vjb25kcyBvbiAzMi1iaXQKYXJjaGl0ZWN0dXJlcy4KClRoaXMgc2lt
+cGx5IGNoYW5nZXMgdGhlIGNvZGUgdG8gY2FsbCBjdXJyZW50X2tlcm5lbF90aW1lNjQoKSBzbwp3
+ZSB1c2UgNjQtYml0IHNlY29uZHMgY29uc2lzdGVudGx5LgoKU2lnbmVkLW9mZi1ieTogQXJuZCBC
+ZXJnbWFubiA8YXJuZEBhcm5kYi5kZT4KLS0tCiBmcy9qYmQyL2NvbW1pdC5jIHwgMiArLQogMSBm
+aWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEv
+ZnMvamJkMi9jb21taXQuYyBiL2ZzL2piZDIvY29tbWl0LmMKaW5kZXggOGY3ZDEzMzljOTczLi41
+YmI1NjVmOTk4OWMgMTAwNjQ0Ci0tLSBhL2ZzL2piZDIvY29tbWl0LmMKKysrIGIvZnMvamJkMi9j
+b21taXQuYwpAQCAtMTI0LDcgKzEyNCw3IEBAIHN0YXRpYyBpbnQgam91cm5hbF9zdWJtaXRfY29t
+bWl0X3JlY29yZChqb3VybmFsX3QgKmpvdXJuYWwsCiAJc3RydWN0IGNvbW1pdF9oZWFkZXIgKnRt
+cDsKIAlzdHJ1Y3QgYnVmZmVyX2hlYWQgKmJoOwogCWludCByZXQ7Ci0Jc3RydWN0IHRpbWVzcGVj
+IG5vdyA9IGN1cnJlbnRfa2VybmVsX3RpbWUoKTsKKwlzdHJ1Y3QgdGltZXNwZWM2NCBub3cgPSBj
+dXJyZW50X2tlcm5lbF90aW1lNjQoKTsKIAogCSpjYmggPSBOVUxMOwogCi0tIAoyLjkuMAoKX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIwMzggbWFpbGlu
+ZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21h
+aWxtYW4vbGlzdGluZm8veTIwMzgK
