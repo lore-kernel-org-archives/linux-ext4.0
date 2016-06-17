@@ -1,75 +1,41 @@
-From: Calvin Owens <calvinowens@fb.com>
-Subject: Re: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
-Date: Fri, 17 Jun 2016 13:40:33 -0400
-Message-ID: <20160617174033.GC72696@calvinowens-mba.dhcp.thefacebook.com>
-References: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
- <20160616083304.GD22835@quack2.suse.cz>
+From: Lars Wijtemans <lars@wijtemans.nl>
+Subject: Re: PROBLEM: [SOLVED] incorrect data block bitmap after running
+ resize2fs and e2fsck
+Date: Fri, 17 Jun 2016 19:58:50 +0200
+Message-ID: <1466186330.5128.5.camel@wijtemans.nl>
+References: <1466175303.22666.10.camel@wijtemans.nl>
+	 <7B51A758-2F9E-4020-BF55-31D234E1EFD9@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: <linux-ext4@vger.kernel.org>, <kernel-team@fb.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:53687 "EHLO
-	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932469AbcFQRk4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Jun 2016 13:40:56 -0400
-Content-Disposition: inline
-In-Reply-To: <20160616083304.GD22835@quack2.suse.cz>
+Received: from vs2.de.wijtemans.nl ([78.47.216.174]:50311 "EHLO
+	vs2.de.wijtemans.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751807AbcFQR6z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2016 13:58:55 -0400
+In-Reply-To: <7B51A758-2F9E-4020-BF55-31D234E1EFD9@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thursday 06/16 at 10:33 +0200, Jan Kara wrote:
-> Hi Calvin,
-> 
-> On Wed 15-06-16 16:49:39, Calvin Owens wrote:
-> > I'm hitting the following warning on a 4.0 kernel:
-> > 
-> >   WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
-> >   CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
-> >   Call Trace: 
-> >   [<ffffffff8176af8e>] dump_stack+0x4d/0x63
-> >   [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
-> >   [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
-> >   [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
-> >   [<ffffffff811d248b>] evict+0xbb/0x190 
-> >   [<ffffffff811d2d6d>] iput+0x17d/0x1e0
-> >   [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
-> >   [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
-> >   [<ffffffff811b952a>] __fput+0x17a/0x210
-> >   [<ffffffff811b960e>] ____fput+0xe/0x10
-> >   [<ffffffff81086dbf>] task_work_run+0xbf/0x100 
-> >   [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
-> >   [<ffffffff81771529>] int_signal+0x12/0x17
-> > 
-> > Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
-> > this in 3.11. The check was entirely removed in 4.6.
-> 
-> OK, so this is the warning:
-> 
-> WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
-> 
-> It was removed in 4.6 since we maintained i_ioend_count only to be able to
-> do this check and it didn't trigger for a long time. So it is interesting
-> that it actually triggered for you with 4.0.
-> 
-> > Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
-> > see if I can reproduce it on upstream, but since the check got removed I
-> > was wondering if there was post-4.0 work that makes it obsolete?
-> 
-> It would be great. I'm attaching a revert and an additional debug patch. If
-> you can run with these two on the latest kernel (or even just apply the debug
-> patch on top of 4.0) and reproduce the issue with it, I would be grateful.
+Thank you so much! Running e2fsck 1.43.1 seems to have fixed this in
+the right way. That was an oversight on my part.
 
-Forgot to attach the patches? Or did my mailserver eat them? :)
+Regards, Lars-----Original Message-----
+=46rom: Andreas Dilger <adilger@dilger.ca>
+Date: Fri, 17 Jun 2016 09:25:24 -0600
 
-Thanks,
-Calvin
+Ted has just released 1.43.1 that fixes a number of problems with
+1.42.13.=C2=A0
 
-> Also if you reproduce the issue, please send me also your System.map so that
-> I can map the address of the function where ioend was created. Thanks!
-> 
-> 									Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+You might also consider trying 1.42.13 if you haven't enabled any of
+the new features in 1.43 (data checksums, inline data, etc.).=C2=A0
+
+Cheers, Andreas
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
