@@ -1,41 +1,75 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] jbd2: make journal y2038 safe
-Date: Fri, 17 Jun 2016 17:39:00 +0200
-Message-ID: <20160617153916.444842-1-arnd@arndb.de>
+From: Calvin Owens <calvinowens@fb.com>
+Subject: Re: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
+Date: Fri, 17 Jun 2016 13:40:33 -0400
+Message-ID: <20160617174033.GC72696@calvinowens-mba.dhcp.thefacebook.com>
+References: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
+ <20160616083304.GD22835@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Jan Kara <jack@suse.com>
-Return-path: <y2038-bounces@lists.linaro.org>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+Cc: <linux-ext4@vger.kernel.org>, <kernel-team@fb.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:53687 "EHLO
+	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932469AbcFQRk4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jun 2016 13:40:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20160616083304.GD22835@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-VGhlIGpiZDIgam91cm5hbCBzdG9yZXMgdGhlIGNvbW1pdCB0aW1lIGluIDY0LWJpdCBzZWNvbmRz
-IGFuZCAzMi1iaXQKbmFub3NlY29uZHMsIHdoaWNoIGF2b2lkcyBhbiBvdmVyZmxvdyBpbiAyMDM4
-LCBidXQgaXQgZ2V0cyB0aGUgbnVtYmVycwpmcm9tIGN1cnJlbnRfa2VybmVsX3RpbWUoKSwgd2hp
-Y2ggdXNlcyAnbG9uZycgc2Vjb25kcyBvbiAzMi1iaXQKYXJjaGl0ZWN0dXJlcy4KClRoaXMgc2lt
-cGx5IGNoYW5nZXMgdGhlIGNvZGUgdG8gY2FsbCBjdXJyZW50X2tlcm5lbF90aW1lNjQoKSBzbwp3
-ZSB1c2UgNjQtYml0IHNlY29uZHMgY29uc2lzdGVudGx5LgoKU2lnbmVkLW9mZi1ieTogQXJuZCBC
-ZXJnbWFubiA8YXJuZEBhcm5kYi5kZT4KLS0tCiBmcy9qYmQyL2NvbW1pdC5jIHwgMiArLQogMSBm
-aWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEv
-ZnMvamJkMi9jb21taXQuYyBiL2ZzL2piZDIvY29tbWl0LmMKaW5kZXggOGY3ZDEzMzljOTczLi41
-YmI1NjVmOTk4OWMgMTAwNjQ0Ci0tLSBhL2ZzL2piZDIvY29tbWl0LmMKKysrIGIvZnMvamJkMi9j
-b21taXQuYwpAQCAtMTI0LDcgKzEyNCw3IEBAIHN0YXRpYyBpbnQgam91cm5hbF9zdWJtaXRfY29t
-bWl0X3JlY29yZChqb3VybmFsX3QgKmpvdXJuYWwsCiAJc3RydWN0IGNvbW1pdF9oZWFkZXIgKnRt
-cDsKIAlzdHJ1Y3QgYnVmZmVyX2hlYWQgKmJoOwogCWludCByZXQ7Ci0Jc3RydWN0IHRpbWVzcGVj
-IG5vdyA9IGN1cnJlbnRfa2VybmVsX3RpbWUoKTsKKwlzdHJ1Y3QgdGltZXNwZWM2NCBub3cgPSBj
-dXJyZW50X2tlcm5lbF90aW1lNjQoKTsKIAogCSpjYmggPSBOVUxMOwogCi0tIAoyLjkuMAoKX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIwMzggbWFpbGlu
-ZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21h
-aWxtYW4vbGlzdGluZm8veTIwMzgK
+On Thursday 06/16 at 10:33 +0200, Jan Kara wrote:
+> Hi Calvin,
+> 
+> On Wed 15-06-16 16:49:39, Calvin Owens wrote:
+> > I'm hitting the following warning on a 4.0 kernel:
+> > 
+> >   WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
+> >   CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
+> >   Call Trace: 
+> >   [<ffffffff8176af8e>] dump_stack+0x4d/0x63
+> >   [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
+> >   [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
+> >   [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
+> >   [<ffffffff811d248b>] evict+0xbb/0x190 
+> >   [<ffffffff811d2d6d>] iput+0x17d/0x1e0
+> >   [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
+> >   [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
+> >   [<ffffffff811b952a>] __fput+0x17a/0x210
+> >   [<ffffffff811b960e>] ____fput+0xe/0x10
+> >   [<ffffffff81086dbf>] task_work_run+0xbf/0x100 
+> >   [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
+> >   [<ffffffff81771529>] int_signal+0x12/0x17
+> > 
+> > Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
+> > this in 3.11. The check was entirely removed in 4.6.
+> 
+> OK, so this is the warning:
+> 
+> WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+> 
+> It was removed in 4.6 since we maintained i_ioend_count only to be able to
+> do this check and it didn't trigger for a long time. So it is interesting
+> that it actually triggered for you with 4.0.
+> 
+> > Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
+> > see if I can reproduce it on upstream, but since the check got removed I
+> > was wondering if there was post-4.0 work that makes it obsolete?
+> 
+> It would be great. I'm attaching a revert and an additional debug patch. If
+> you can run with these two on the latest kernel (or even just apply the debug
+> patch on top of 4.0) and reproduce the issue with it, I would be grateful.
+
+Forgot to attach the patches? Or did my mailserver eat them? :)
+
+Thanks,
+Calvin
+
+> Also if you reproduce the issue, please send me also your System.map so that
+> I can map the address of the function where ioend was created. Thanks!
+> 
+> 									Honza
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
