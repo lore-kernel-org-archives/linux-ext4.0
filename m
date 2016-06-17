@@ -1,99 +1,45 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH] jbd2: wake up j_wait_done_commit before commit callback
-Date: Fri, 17 Jun 2016 19:05:01 +0900
-Message-ID: <CAP9B-Qk8-AUUZwPpbQ4xdrNxcQzOL2R5_ZT2W_NdAYPQNfPx3A@mail.gmail.com>
-References: <1466048728-4325-1-git-send-email-wangshilong1991@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2] ext4: optimize ext4_should_retry_alloc() to improve
+ ENOSPC performance
+Date: Fri, 17 Jun 2016 12:10:07 +0200
+Message-ID: <20160617101007.GA26350@quack2.suse.cz>
+References: <1465353418-12897-1-git-send-email-tytso@mit.edu>
+ <1465354006-15091-1-git-send-email-tytso@mit.edu>
+ <20160616192000.GE2106@quack2.suse.cz>
+ <017458DB-A479-4462-BB81-30C321F593B4@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Wang Shilong <wshilong@ddn.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f67.google.com ([209.85.215.67]:33638 "EHLO
-	mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753279AbcFQKFE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2016 06:05:04 -0400
-Received: by mail-lf0-f67.google.com with SMTP id l188so7584644lfe.0
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jun 2016 03:05:03 -0700 (PDT)
-In-Reply-To: <1466048728-4325-1-git-send-email-wangshilong1991@gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:44281 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752059AbcFQKSL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jun 2016 06:18:11 -0400
+Content-Disposition: inline
+In-Reply-To: <017458DB-A479-4462-BB81-30C321F593B4@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 16, 2016 at 12:45 PM, Wang Shilong
-<wangshilong1991@gmail.com> wrote:
-> From: Wang Shilong <wshilong@ddn.com>
->
-> Lustre register some callbacks in ext4 to keep data consistency,
-> we see millons callbacks possibility on MDS for metadata operations.
->
-> If there are many commit callbacks which might take some cpu
-> time, we can mark commit done before we call commit callback.
-> this can relax some thread waiting for commit finished, for example
-> transaction throttle in end transaction.
+On Thu 16-06-16 14:11:28, Andreas Dilger wrote:
+> On Jun 16, 2016, at 1:20 PM, Jan Kara <jack@suse.cz> wrote:
+> > 
+> > Well, since ext4_mb_free_metadata() is the only user of
+> > ext4_journal_callback_add(), ext4_journal_callback_add() won't have any
+> > user after your patch. Maybe we could just stop playing these abstraction
+> > games nobody currently uses and just implement a helper function to add
+> > freeing callback to the transaction list including increment of the pending
+> > counter.
+> 
+> We use the journal callback for Lustre servers.  Please don't remove it.
 
-This patch might not be correct before patch:
-[PATCH -v2] ext4: optimize ext4_should_retry_alloc() to improve ENOSPC
-performance
+I didn't really mean to rewrite the callback infrastructure. I just meant
+to change the helper function to fit in-tree users. If Lustre needs to do
+something else, it is free to have its own helper function which attaches
+callbacks to the transaction's list.
 
-Because some thread might assume transaction commit can free some
-metadata space, and in that case transaction callback need done before
-we mark transaction done.
-
-But Lustre just use commit callback to confirm transaction is done and data
-is in a consistent state.
-
-After Ted's patch, Lustre is only user for commit callback, it is fine to
-apply this optimizations.
-
-Regards,
-Shilong
->
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
-> ---
->  fs/jbd2/commit.c |   12 ++++++++----
->  1 files changed, 8 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 7007809..a9cf5a4 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -379,6 +379,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
->         tid_t first_tid;
->         int update_tail;
->         int csum_size = 0;
-> +       int need_free = 0;
->         LIST_HEAD(io_bufs);
->         LIST_HEAD(log_bufs);
->
-> @@ -1100,9 +1101,6 @@ restart_loop:
->
->         write_unlock(&journal->j_state_lock);
->
-> -       if (journal->j_commit_callback)
-> -               journal->j_commit_callback(journal, commit_transaction);
-> -
->         trace_jbd2_end_commit(journal, commit_transaction);
->         jbd_debug(1, "JBD2: commit %d complete, head %d\n",
->                   journal->j_commit_sequence, journal->j_tail_sequence);
-> @@ -1114,12 +1112,18 @@ restart_loop:
->         if (commit_transaction->t_checkpoint_list == NULL &&
->             commit_transaction->t_checkpoint_io_list == NULL) {
->                 __jbd2_journal_drop_transaction(journal, commit_transaction);
-> -               jbd2_journal_free_transaction(commit_transaction);
-> +               need_free = 1;
->         }
->         spin_unlock(&journal->j_list_lock);
->         write_unlock(&journal->j_state_lock);
->         wake_up(&journal->j_wait_done_commit);
->
-> +       if (journal->j_commit_callback)
-> +               journal->j_commit_callback(journal, commit_transaction);
-> +
-> +       if (need_free)
-> +               jbd2_journal_free_transaction(commit_transaction);
-> +
->         /*
->          * Calculate overall stats
->          */
-> --
-> 1.7.1
->
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
