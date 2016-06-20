@@ -1,49 +1,80 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [patch] ext4: underflow in alignment check
-Date: Mon, 20 Jun 2016 18:02:04 +0200
-Message-ID: <20160620160204.GG6882@quack2.suse.cz>
-References: <20160616070709.GC23129@mwanda>
+From: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Subject: Re: [PATCH v2 00/24] Delete CURRENT_TIME and
+	CURRENT_TIME_SEC macros
+Date: Mon, 20 Jun 2016 11:03:01 -0700
+Message-ID: <CA+55aFzK2K-7UeQRsWR7ooNHMMbtMFRAF60byR1Gvmbf9XWhbA@mail.gmail.com>
+References: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160616070709.GC23129@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Dave Kleikamp <shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Adrian Hunter <adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Chris Mason <clm-b10kYP2dOMg@public.gmane.org>,
+	"adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org" <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	buchino-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, Thomas Gleixner <tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org>, "Yan,
+	Zheng" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, jejb-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
+	Paul Moore <paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org>,
+	Linux SCSI List <linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org, Ilya Dryomov <idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Changman Lee <cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+	Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>, Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>,
+	sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, John Stultz <john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>,
+	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, David Sterba <dsterba-IBi9RG/b67k@public.gmane.org>,
+	Jaegeuk Kim <jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, ceph-devel <ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Linux NFS Mailing List
+To: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+In-Reply-To: <1466382443-11063-1-git-send-email-deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
+List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
+Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
+Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 16-06-16 10:07:09, Dan Carpenter wrote:
-> My static checker complains that this can underflow if arg is negative
-> which is true.
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+On Sun, Jun 19, 2016 at 5:26 PM, Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+> The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
 
-How come? (1 << 30) fits even into 32-bit signed type. So where's the
-problem?
+This version now looks ok to me.
 
-								Honza
+I do have a comment (or maybe just a RFD) for future work.
 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index b1a3471..a2a17e9 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1576,7 +1576,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->  	} else if (token == Opt_min_batch_time) {
->  		sbi->s_min_batch_time = arg;
->  	} else if (token == Opt_inode_readahead_blks) {
-> -		if (arg && (arg > (1 << 30) || !is_power_of_2(arg))) {
-> +		if (arg && (arg > (1U << 30) || !is_power_of_2(arg))) {
->  			ext4_msg(sb, KERN_ERR,
->  				 "EXT4-fs: inode_readahead_blks must be "
->  				 "0 or a power of 2 smaller than 2^31");
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+It does strike me that once we actually change over the inode times to
+use timespec64, the calling conventions are going to be fairly
+horrendous on most 32-bit architectures.
+
+Gcc handles 8-byte structure returns (on most architectures) by
+returning them as two 32-bit registers (%edx:%eax on x86). But once it
+is timespec64, that will no longer be the case, and the calling
+convention will end up using a pointer to the local stack instead.
+
+So for 32-bit code generation, we *may* want to introduce a new model of doing
+
+    set_inode_time(inode, ATTR_ATIME | ATTR_MTIME);
+
+which basically just does
+
+    inode->i_atime = inode->i_mtime = current_time(inode);
+
+but with a much easier calling convention on 32-bit architectures.
+
+But that is entirely orthogonal to this patch-set, and should be seen
+as a separate issue.
+
+And maybe it doesn't end up helping anyway, but I do think those
+"simple" direct assignments will really generate pretty disgusting
+code on 32-bit architectures.
+
+That whole
+
+    inode->i_atime = inode->i_mtime = CURRENT_TIME;
+
+model really made a lot more sense back in the ancient days when inode
+times were just simply 32-bit seconds (not even timeval structures).
+
+                  Linus
