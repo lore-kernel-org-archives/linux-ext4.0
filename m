@@ -1,55 +1,132 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: [patch] ext4: underflow in alignment check
-Date: Tue, 21 Jun 2016 16:06:44 +0300
-Message-ID: <20160621130644.GO32247@mwanda>
-References: <20160616070709.GC23129@mwanda>
- <20160620160204.GG6882@quack2.suse.cz>
- <20160620195325.GM32247@mwanda>
- <20160621074353.GB3750@quack2.suse.cz>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [Y2038] [PATCH v2 00/24] Delete CURRENT_TIME and CURRENT_TIME_SEC macros
+Date: Tue, 21 Jun 2016 17:00:37 +0200
+Message-ID: <4953017.3z0GqUlq8o@wuerfel>
+References: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com> <CA+55aFzK2K-7UeQRsWR7ooNHMMbtMFRAF60byR1Gvmbf9XWhbA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	kernel-janitors@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160621074353.GB3750@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+	Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	Dave Kleikamp <shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Adrian Hunter <adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+	Chris Mason <clm-b10kYP2dOMg@public.gmane.org>,
+	"adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org" <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	buchino-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, Thomas Gleixner <tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org>,
+	"Yan, Zheng" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, jejb-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
+	Paul Moore <paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org>,
+	Linux SCSI List <linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Ilya Dryomov <idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	"linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Changman Lee <cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+	Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>, sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org,
+	John Stultz <john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>,
+	Al Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	David Sterba <dsterba-IBi9RG/b67k@public.gmane.org>,
+	Jaegeuk Kim <jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+	ceph-devel <ceph-devel@v
+To: y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <CA+55aFzK2K-7UeQRsWR7ooNHMMbtMFRAF60byR1Gvmbf9XWhbA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 21, 2016 at 09:43:53AM +0200, Jan Kara wrote:
-> On Mon 20-06-16 22:53:26, Dan Carpenter wrote:
-> > On Mon, Jun 20, 2016 at 06:02:04PM +0200, Jan Kara wrote:
-> > > On Thu 16-06-16 10:07:09, Dan Carpenter wrote:
-> > > > My static checker complains that this can underflow if arg is negative
-> > > > which is true.
-> > > > 
-> > > > Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> > > 
-> > > How come? (1 << 30) fits even into 32-bit signed type. So where's the
-> > > problem?
-> > 
-> > Bad changelog...  I was talking about a different issue.  I was casting
-> > it to unsigned to take advantage of type promototion.  Assume we have:
-> > 
-> > int arg = 1 << 31;
-> > 
-> > (arg > (1 << 30)) // <-- this is false
-> > (arg > (1U << 30)) // <-- this is true so there is no underflow.
+On Monday, June 20, 2016 11:03:01 AM CEST you wrote:
+> On Sun, Jun 19, 2016 at 5:26 PM, Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+> > The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
+
+> Gcc handles 8-byte structure returns (on most architectures) by
+> returning them as two 32-bit registers (%edx:%eax on x86). But once it
+> is timespec64, that will no longer be the case, and the calling
+> convention will end up using a pointer to the local stack instead.
+
+I guess we already have that today, as the implementation of
+current_fs_time() is
+
+static inline struct timespec64 tk_xtime(struct timekeeper *tk)
+{
+        struct timespec64 ts;
+
+        ts.tv_sec = tk->xtime_sec;
+        ts.tv_nsec = (long)(tk->tkr_mono.xtime_nsec >> tk->tkr_mono.shift);
+        return ts;
+}
+extern struct timespec64 current_kernel_time64(void);
+struct timespec64 current_kernel_time64(void)
+{
+        struct timekeeper *tk = &tk_core.timekeeper;
+        struct timespec64 now;
+        unsigned long seq;
+
+        do {
+                seq = read_seqcount_begin(&tk_core.seq);
+
+                now = tk_xtime(tk);
+        } while (read_seqcount_retry(&tk_core.seq, seq));
+
+        return now;
+}
+static inline struct timespec current_kernel_time(void)
+{
+        struct timespec64 now = current_kernel_time64();
+
+        return timespec64_to_timespec(now);
+}
+extern struct timespec current_fs_time(struct super_block *sb);
+struct timespec current_fs_time(struct super_block *sb)
+{       
+        struct timespec now = current_kernel_time();
+        return timespec_trunc(now, sb->s_time_gran);
+}       
+
+We can surely do a little better than this, independent of the
+conversion in Deepa's patch set.
+
+> So for 32-bit code generation, we *may* want to introduce a new model of doing
 > 
-> I see, but match_int() - or more precisely match_number() returns -ERANGE
-> when the number is > INT_MAX, subsequently we check whether the number is <
-> 0 (Opt_inode_readahead_blks has flag MOPT_GTE0 set) and bail out if yes. So
-> at the place you are modifying we are sure the number is in [0, INT_MAX].
-> So the condition (arg > (1 << 30)) is pointless - just defensive
-> programming in case we decide e.g. to upgrade the type of 'arg' to long - but
-> not wrong...
+>     set_inode_time(inode, ATTR_ATIME | ATTR_MTIME);
+> 
+> which basically just does
+> 
+>     inode->i_atime = inode->i_mtime = current_time(inode);
+> 
+> but with a much easier calling convention on 32-bit architectures.
+> 
+> But that is entirely orthogonal to this patch-set, and should be seen
+> as a separate issue.
 
-Ah.  Smatch wasn't able to figure out that MOPT_GTE0 was set.
+I've played around with that, but found it hard to avoid going
+through memory other than going all the way to the tk_xtime()
+access to copy both tk->xtime_sec and the nanoseconds into
+the inode fields.
 
-Thanks for reviewing this.
+Without that, the set_inode_time() implementation ends up
+being more expensive than
+inode->i_atime = inode->i_ctime = inode->i_mtime = current_time(inode);
+because we still copy through the stack but also have
+a couple of conditional branches that we don't have at the
+moment.
 
-regards,
-dan carpenter
+At the moment, the triple assignment becomes (here on ARM)
+
+   c:   4668            mov     r0, sp
+  12:   f7ff fffe       bl      0 <current_kernel_time64>
+  3e:   f107 0520       add.w   r5, r7, #32
+                        12: R_ARM_THM_CALL      current_kernel_time64
+  16:   f106 0410       add.w   r4, r6, #16
+  1a:   e89d 000f       ldmia.w sp, {r0, r1, r2, r3} # load from stack
+  1e:   e885 000f       stmia.w r5, {r0, r1, r2, r3} # store into i_atime
+  22:   e884 000f       stmia.w r4, {r0, r1, r2, r3} #            i_ctime
+  26:   e886 000f       stmia.w r6, {r0, r1, r2, r3} #            i_mtime
+
+and a slightly more verbose version of the same thing on x86
+(storing only 12 bytes instead of 16 is cheaper there, while
+ARM does a store-multiple to copy the entire structure).
+
+        Arnd
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
