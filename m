@@ -1,51 +1,82 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH v2 06/24] fs: ext4: Use current_time() for inode
-	timestamps
-Date: Wed, 22 Jun 2016 15:40:06 +0200
-Message-ID: <14013437.bAvQTZLQL2@wuerfel>
+Subject: Re: [Y2038] [PATCH v2 00/24] Delete CURRENT_TIME and CURRENT_TIME_SEC
+ macros
+Date: Wed, 22 Jun 2016 17:49:48 +0200
+Message-ID: <5119217.EGiBXE3Be4@wuerfel>
 References: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com>
- <1466382443-11063-7-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: tytso@mit.edu, y2038@lists.linaro.org, linux-kernel@vger.kernel.org,
- Andreas Dilger <adilger.kernel@dilger.ca>, viro@zeniv.linux.org.uk,
- linux-fsdevel@vger.kernel.org, tglx@linutronix.de, linux-ext4@vger.kernel.org,
- torvalds@linux-foundation.org
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <1466382443-11063-7-git-send-email-deepa.kernel@gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: shaggy@kernel.org, jfs-discussion@lists.sourceforge.net,
+ trond.myklebust@primarydata.com, adrian.hunter@intel.com, clm@fb.com,
+ adilger.kernel@dilger.ca, Deepa Dinamani <deepa.kernel@gmail.com>,
+ sfrench@samba.org, jejb@linux.vnet.ibm.com, paul@paul-moore.com,
+ linux-scsi@vger.kernel.org, cm224.lee@samsung.com, mfasheh@suse.com,
+ linux-nfs@vger.kernel.org, john.stultz@linaro.org, viro@zeniv.linux.org.uk,
+ dsterba@suse.com, jaegeuk@kernel.org, ceph-devel@vger.kernel.org,
+ jlbec@evilplan.org, sramars@cisco.com, elder@kernel.org, tytso@mit.edu,
+ sage@redhat.com, martin.petersen@oracle.com, gregkh@linuxfoundation.org,
+ hiralpat@cisco.com, linux-kernel@vger.kernel.org, eparis@redhat.com,
+ linux-f2fs-devel@lists.sourceforge.net, zyan@redhat.com,
+ linux-audit@redhat.com, linux-btrfs@vger.kernel.org, jack@suse.com,
+ linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
+ torvalds@lin
+To: y2038@lists.linaro.org, tglx@linutronix.de, linux-ext4@vger.kernel.org,
+ jbacik@fb.com
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+In-Reply-To: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gU3VuZGF5LCBKdW5lIDE5LCAyMDE2IDU6Mjc6MDUgUE0gQ0VTVCBEZWVwYSBEaW5hbWFuaSB3
-cm90ZToKPiBAQCAtMzcyNyw2ICszNzI3LDcgQEAgc3RhdGljIGludCBleHQ0X2Nyb3NzX3JlbmFt
-ZShzdHJ1Y3QgaW5vZGUgKm9sZF9kaXIsIHN0cnVjdCBkZW50cnkgKm9sZF9kZW50cnksCj4gICAg
-ICAgICB9Owo+ICAgICAgICAgdTggbmV3X2ZpbGVfdHlwZTsKPiAgICAgICAgIGludCByZXR2YWw7
-Cj4gKyAgICAgICBzdHJ1Y3QgdGltZXNwZWMgY3RpbWU7Cj4gIAo+ICAgICAgICAgaWYgKChleHQ0
-X2VuY3J5cHRlZF9pbm9kZShvbGRfZGlyKSB8fAo+ICAgICAgICAgICAgICBleHQ0X2VuY3J5cHRl
-ZF9pbm9kZShuZXdfZGlyKSkgJiYKPiBAQCAtMzgyOSw4ICszODMwLDkgQEAgc3RhdGljIGludCBl
-eHQ0X2Nyb3NzX3JlbmFtZShzdHJ1Y3QgaW5vZGUgKm9sZF9kaXIsIHN0cnVjdCBkZW50cnkgKm9s
-ZF9kZW50cnksCj4gICAgICAgICAgKiBMaWtlIG1vc3Qgb3RoZXIgVW5peCBzeXN0ZW1zLCBzZXQg
-dGhlIGN0aW1lIGZvciBpbm9kZXMgb24gYQo+ICAgICAgICAgICogcmVuYW1lLgo+ICAgICAgICAg
-ICovCj4gLSAgICAgICBvbGQuaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShvbGQu
-aW5vZGUpOwo+IC0gICAgICAgbmV3Lmlub2RlLT5pX2N0aW1lID0gZXh0NF9jdXJyZW50X3RpbWUo
-bmV3Lmlub2RlKTsKPiArICAgICAgIGN0aW1lID0gY3VycmVudF90aW1lKG9sZC5pbm9kZSk7Cj4g
-KyAgICAgICBvbGQuaW5vZGUtPmlfY3RpbWUgPSBjdGltZTsKPiArICAgICAgIG5ldy5pbm9kZS0+
-aV9jdGltZSA9IGN0aW1lOwo+ICAgICAgICAgZXh0NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwg
-b2xkLmlub2RlKTsKPiAgICAgICAgIGV4dDRfbWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIG5ldy5p
-bm9kZSk7Cj4gIAoKQWRkaW5nIGEgbG9jYWwgdmFyaWFibGUgaGVyZSBsb29rcyBsaWtlIGl0IGlz
-IGdvaW5nIHRvIGNhdXNlIHVzIHRyb3VibGUgd2hlbiB3ZQpjaGFuZ2UgdGhlIHJldHVybiB0eXBl
-IG9mIGN1cnJlbnRfdGltZSgpIHRvIHRpbWVzcGVjNjQuCgpJJ2Qgd3JpdGUgdGhpcyBhcwoKCW5l
-dy5pbm9kZS0+aV9jdGltZSA9IG9sZC5pbm9kZS0+aV9jdGltZTsKCmluc3RlYWQuCgoJQXJuZApf
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpZMjAzOCBtYWls
-aW5nIGxpc3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xpc3RzLmxpbmFyby5vcmcv
-bWFpbG1hbi9saXN0aW5mby95MjAzOAo=
+On Sunday, June 19, 2016 5:26:59 PM CEST Deepa Dinamani wrote:
+> The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
+> The macros are not y2038 safe. There is no plan to transition them into being
+> y2038 safe.
+> ktime_get_* api's can be used in their place. And, these are y2038 safe.
+> 
+> Thanks to Arnd Bergmann for all the guidance and discussions.
+> 
+> Patches 2-4 were mostly generated using coccinelle scripts.
+> 
+> All filesystem timestamps use current_fs_time() for right granularity as
+> mentioned in the respective commit texts of patches. This has a changed
+> signature, renamed to current_time() and moved to the fs/inode.c.
+> 
+> This series also serves as a preparatory series to transition vfs to 64 bit
+> timestamps as outlined here: https://lkml.org/lkml/2016/2/12/104 .
+> 
+> As per Linus's suggestion in https://lkml.org/lkml/2016/5/24/663 , all the
+> inode timestamp changes have been squashed into a single patch. Also,
+> current_time() now is used as a single generic vfs filesystem timestamp api.
+> It also takes struct inode* as argument instead of struct super_block*.
+> Posting all patches together in a bigger series so that the big picture is
+> clear.
+> 
+> As per the suggestion in https://lwn.net/Articles/672598/, CURRENT_TIME macro
+> bug fixes are being handled in a series separate from transitioning vfs to use.
+
+I've looked in detail at all the patches in this version now, and while
+overall everything is fine, I found that two patches cannot be part of the
+series because of the dependency on the patch that John already took (adding
+time64_to_tm), but I think that's ok because we just need to change over
+all the users of CURRENT_TIME and CURRENT_TIME_SEC that assign to inode
+timestamps in order to prepare for the type change, the other ones
+can be changed later.
+
+I also found a few things that could be done differently to make the
+later conversion slightly easier, but it's also possible that I missed
+part of your bigger plan for those files, and none of them seem important.
+
+	Arnd
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
