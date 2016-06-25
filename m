@@ -1,341 +1,238 @@
-From: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v3 00/24] Delete CURRENT_TIME_SEC and replace
-	current_fs_time()
-Date: Sat, 25 Jun 2016 14:37:24 -0700
-Message-ID: <1466890668-23400-1-git-send-email-deepa.kernel@gmail.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: [PATCH v3 07/24] fs: ext4: Use current_time() for inode
+	timestamps
+Date: Sat, 25 Jun 2016 14:37:31 -0700
+Message-ID: <1466890668-23400-8-git-send-email-deepa.kernel@gmail.com>
+References: <1466890668-23400-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org,
-	adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org,
-	idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, arnd-r2nGTMty4D4@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org,
-	john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-	dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org, gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org,
-	adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org, eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org,
-	linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org,
-	jack-IBi9RG/b67k@public.gmane.org, linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org, torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
-	anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29Tb/PtFMR13I2A@public.gmane.org
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
-List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
-Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
-Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: tytso@mit.edu, arnd@arndb.de, y2038@lists.linaro.org,
+ Andreas Dilger <adilger.kernel@dilger.ca>, viro@zeniv.linux.org.uk,
+ tglx@linutronix.de, linux-ext4@vger.kernel.org, torvalds@linux-foundation.org
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <1466890668-23400-1-git-send-email-deepa.kernel@gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-The series is aimed at getting rid of CURRENT_TIME, CURRENT_TIME_SEC macros
-and replacing current_fs_time() with current_time().
-The macros are not y2038 safe. There is no plan to transition them into being
-y2038 safe.
-ktime_get_* api's can be used in their place. And, these are y2038 safe.
-
-CURRENT_TIME will be deleted after 4.8 rc1 as there is a dependency function
-time64_to_tm() for one of the CURRENT_TIME occurance.
-
-Thanks to Arnd Bergmann for all the guidance and discussions.
-
-Patches 3-5 were mostly generated using coccinelle.
-
-All filesystem timestamps use current_fs_time() for right granularity as
-mentioned in the respective commit texts of patches. This has a changed
-signature, renamed to current_time() and moved to the fs/inode.c.
-
-This series also serves as a preparatory series to transition vfs to 64 bit
-timestamps as outlined here: https://lkml.org/lkml/2016/2/12/104 .
-
-As per Linus's suggestion in https://lkml.org/lkml/2016/5/24/663 , all the
-inode timestamp changes have been squashed into a single patch. Also,
-current_time() now is used as a single generic vfs filesystem timestamp api.
-It also takes struct inode* as argument instead of struct super_block*.
-Posting all patches together in a bigger series so that the big picture is
-clear.
-
-As per the suggestion in https://lwn.net/Articles/672598/, CURRENT_TIME macro
-bug fixes are being handled in a series separate from transitioning vfs to use.
-
-Changes since v2:
-* Fix buildbot error for uninitalized sb in inode.
-* Minor fixes according to Arnd's comments.
-* Leave out the fnic and deletion of CURRENT_TIME to be submitted after 4.8 rc1.
-
-Deepa Dinamani (24):
-  vfs: Add current_time() api
-  fs: proc: Delete inode time initializations in proc_alloc_inode()
-  fs: Replace CURRENT_TIME with current_time() for inode timestamps
-  fs: Replace CURRENT_TIME_SEC with current_time() for inode timestamps
-  fs: Replace current_fs_time() with current_time()
-  fs: jfs: Replace CURRENT_TIME_SEC by current_time()
-  fs: ext4: Use current_time() for inode timestamps
-  fs: ubifs: Replace CURRENT_TIME_SEC with current_time
-  fs: btrfs: Use ktime_get_real_ts for root ctime
-  fs: udf: Replace CURRENT_TIME with current_time()
-  fs: cifs: Replace CURRENT_TIME by current_time()
-  fs: cifs: Replace CURRENT_TIME with ktime_get_real_ts()
-  fs: cifs: Replace CURRENT_TIME by get_seconds
-  fs: f2fs: Use ktime_get_real_seconds for sit_info times
-  drivers: staging: lustre: Replace CURRENT_TIME with current_time()
-  fs: ocfs2: Use time64_t to represent orphan scan times
-  fs: ocfs2: Replace CURRENT_TIME with ktime_get_real_seconds()
-  audit: Use timespec64 to represent audit timestamps
-  fs: nfs: Make nfs boot time y2038 safe
-  block: Replace CURRENT_TIME with ktime_get_real_ts
-  libceph: Replace CURRENT_TIME with ktime_get_real_ts
-  fs: ceph: Replace current_fs_time for request stamp
-  time: Delete current_fs_time() function
-  time: Delete CURRENT_TIME_SEC
-
- arch/powerpc/platforms/cell/spufs/inode.c          |  2 +-
- arch/s390/hypfs/inode.c                            |  4 +--
- drivers/block/rbd.c                                |  2 +-
- drivers/char/sonypi.c                              |  2 +-
- drivers/infiniband/hw/qib/qib_fs.c                 |  2 +-
- drivers/misc/ibmasm/ibmasmfs.c                     |  2 +-
- drivers/oprofile/oprofilefs.c                      |  2 +-
- drivers/platform/x86/sony-laptop.c                 |  2 +-
- drivers/staging/lustre/lustre/llite/llite_lib.c    | 16 ++++++------
- drivers/staging/lustre/lustre/llite/namei.c        |  4 +--
- drivers/staging/lustre/lustre/mdc/mdc_reint.c      |  6 ++---
- .../lustre/lustre/obdclass/linux/linux-obdo.c      |  6 ++---
- drivers/staging/lustre/lustre/obdclass/obdo.c      |  6 ++---
- drivers/staging/lustre/lustre/osc/osc_io.c         |  2 +-
- drivers/usb/core/devio.c                           | 18 +++++++-------
- drivers/usb/gadget/function/f_fs.c                 |  8 +++---
- drivers/usb/gadget/legacy/inode.c                  |  2 +-
- fs/9p/vfs_inode.c                                  |  2 +-
- fs/adfs/inode.c                                    |  2 +-
- fs/affs/amigaffs.c                                 |  6 ++---
- fs/affs/inode.c                                    |  2 +-
- fs/attr.c                                          |  2 +-
- fs/autofs4/inode.c                                 |  2 +-
- fs/autofs4/root.c                                  |  6 ++---
- fs/bad_inode.c                                     |  2 +-
- fs/bfs/dir.c                                       | 14 +++++------
- fs/binfmt_misc.c                                   |  2 +-
- fs/btrfs/file.c                                    |  6 ++---
- fs/btrfs/inode.c                                   | 22 ++++++++--------
- fs/btrfs/ioctl.c                                   |  8 +++---
- fs/btrfs/root-tree.c                               |  3 ++-
- fs/btrfs/transaction.c                             |  4 +--
- fs/btrfs/xattr.c                                   |  2 +-
- fs/ceph/file.c                                     |  4 +--
- fs/ceph/inode.c                                    |  2 +-
- fs/ceph/mds_client.c                               |  4 ++-
- fs/ceph/xattr.c                                    |  2 +-
- fs/cifs/cifsencrypt.c                              |  4 ++-
- fs/cifs/cifssmb.c                                  | 10 ++++----
- fs/cifs/file.c                                     |  4 +--
- fs/cifs/inode.c                                    | 28 +++++++++++----------
- fs/coda/dir.c                                      |  2 +-
- fs/coda/file.c                                     |  2 +-
- fs/coda/inode.c                                    |  2 +-
- fs/configfs/inode.c                                |  6 ++---
- fs/debugfs/inode.c                                 |  2 +-
- fs/devpts/inode.c                                  |  6 ++---
- fs/efivarfs/inode.c                                |  2 +-
- fs/exofs/dir.c                                     |  6 ++---
- fs/exofs/inode.c                                   |  4 +--
- fs/exofs/namei.c                                   |  6 ++---
- fs/ext2/acl.c                                      |  2 +-
- fs/ext2/dir.c                                      |  6 ++---
- fs/ext2/ialloc.c                                   |  2 +-
- fs/ext2/inode.c                                    |  4 +--
- fs/ext2/ioctl.c                                    |  4 +--
- fs/ext2/namei.c                                    |  6 ++---
- fs/ext2/super.c                                    |  2 +-
- fs/ext2/xattr.c                                    |  2 +-
- fs/ext4/acl.c                                      |  2 +-
- fs/ext4/ext4.h                                     |  6 -----
- fs/ext4/extents.c                                  | 10 ++++----
- fs/ext4/ialloc.c                                   |  2 +-
- fs/ext4/inline.c                                   |  4 +--
- fs/ext4/inode.c                                    |  6 ++---
- fs/ext4/ioctl.c                                    |  8 +++---
- fs/ext4/namei.c                                    | 24 ++++++++++--------
- fs/ext4/super.c                                    |  2 +-
- fs/ext4/xattr.c                                    |  2 +-
- fs/f2fs/dir.c                                      |  8 +++---
- fs/f2fs/file.c                                     |  8 +++---
- fs/f2fs/inline.c                                   |  2 +-
- fs/f2fs/namei.c                                    | 12 ++++-----
- fs/f2fs/segment.c                                  |  2 +-
- fs/f2fs/segment.h                                  |  5 ++--
- fs/f2fs/xattr.c                                    |  2 +-
- fs/fat/dir.c                                       |  2 +-
- fs/fat/file.c                                      |  6 ++---
- fs/fat/inode.c                                     |  2 +-
- fs/fat/namei_msdos.c                               | 12 ++++-----
- fs/fat/namei_vfat.c                                | 10 ++++----
- fs/fuse/control.c                                  |  2 +-
- fs/fuse/dir.c                                      |  2 +-
- fs/gfs2/bmap.c                                     |  8 +++---
- fs/gfs2/dir.c                                      | 12 ++++-----
- fs/gfs2/inode.c                                    |  8 +++---
- fs/gfs2/quota.c                                    |  2 +-
- fs/gfs2/xattr.c                                    |  8 +++---
- fs/hfs/catalog.c                                   |  8 +++---
- fs/hfs/dir.c                                       |  2 +-
- fs/hfs/inode.c                                     |  2 +-
- fs/hfsplus/catalog.c                               |  8 +++---
- fs/hfsplus/dir.c                                   |  6 ++---
- fs/hfsplus/inode.c                                 |  2 +-
- fs/hfsplus/ioctl.c                                 |  2 +-
- fs/hugetlbfs/inode.c                               | 10 ++++----
- fs/inode.c                                         | 29 +++++++++++++++++++---
- fs/jffs2/acl.c                                     |  2 +-
- fs/jffs2/fs.c                                      |  2 +-
- fs/jfs/acl.c                                       |  2 +-
- fs/jfs/inode.c                                     |  2 +-
- fs/jfs/ioctl.c                                     |  2 +-
- fs/jfs/jfs_inode.c                                 |  2 +-
- fs/jfs/namei.c                                     | 24 +++++++++---------
- fs/jfs/super.c                                     |  2 +-
- fs/jfs/xattr.c                                     |  2 +-
- fs/kernfs/inode.c                                  |  2 +-
- fs/libfs.c                                         | 14 +++++------
- fs/locks.c                                         |  2 +-
- fs/logfs/dir.c                                     |  6 ++---
- fs/logfs/file.c                                    |  2 +-
- fs/logfs/inode.c                                   |  4 +--
- fs/logfs/readwrite.c                               |  4 +--
- fs/minix/bitmap.c                                  |  2 +-
- fs/minix/dir.c                                     |  6 ++---
- fs/minix/itree_common.c                            |  4 +--
- fs/minix/namei.c                                   |  4 +--
- fs/nfs/client.c                                    |  2 +-
- fs/nfs/netns.h                                     |  2 +-
- fs/nfs/nfs4proc.c                                  | 10 +++++---
- fs/nfs/nfs4xdr.c                                   |  2 +-
- fs/nfsd/blocklayout.c                              |  2 +-
- fs/nilfs2/dir.c                                    |  6 ++---
- fs/nilfs2/inode.c                                  |  4 +--
- fs/nilfs2/ioctl.c                                  |  2 +-
- fs/nilfs2/namei.c                                  |  6 ++---
- fs/nsfs.c                                          |  2 +-
- fs/ntfs/inode.c                                    |  2 +-
- fs/ntfs/mft.c                                      |  2 +-
- fs/ocfs2/acl.c                                     |  2 +-
- fs/ocfs2/alloc.c                                   |  2 +-
- fs/ocfs2/aops.c                                    |  2 +-
- fs/ocfs2/cluster/heartbeat.c                       |  2 +-
- fs/ocfs2/dir.c                                     |  4 +--
- fs/ocfs2/dlmfs/dlmfs.c                             |  4 +--
- fs/ocfs2/file.c                                    | 12 ++++-----
- fs/ocfs2/inode.c                                   |  2 +-
- fs/ocfs2/journal.c                                 |  4 +--
- fs/ocfs2/move_extents.c                            |  2 +-
- fs/ocfs2/namei.c                                   | 16 ++++++------
- fs/ocfs2/ocfs2.h                                   |  2 +-
- fs/ocfs2/refcounttree.c                            |  4 +--
- fs/ocfs2/super.c                                   |  2 +-
- fs/ocfs2/xattr.c                                   |  2 +-
- fs/omfs/dir.c                                      |  4 +--
- fs/omfs/inode.c                                    |  2 +-
- fs/openpromfs/inode.c                              |  2 +-
- fs/orangefs/file.c                                 |  2 +-
- fs/orangefs/inode.c                                |  2 +-
- fs/orangefs/namei.c                                | 10 ++++----
- fs/pipe.c                                          |  2 +-
- fs/posix_acl.c                                     |  2 +-
- fs/proc/base.c                                     |  2 +-
- fs/proc/inode.c                                    |  3 +--
- fs/proc/proc_sysctl.c                              |  2 +-
- fs/proc/self.c                                     |  2 +-
- fs/proc/thread_self.c                              |  2 +-
- fs/pstore/inode.c                                  |  2 +-
- fs/ramfs/inode.c                                   |  6 ++---
- fs/reiserfs/inode.c                                |  2 +-
- fs/reiserfs/ioctl.c                                |  4 +--
- fs/reiserfs/namei.c                                | 12 ++++-----
- fs/reiserfs/stree.c                                |  8 +++---
- fs/reiserfs/super.c                                |  2 +-
- fs/reiserfs/xattr.c                                |  6 ++---
- fs/reiserfs/xattr_acl.c                            |  2 +-
- fs/sysv/dir.c                                      |  6 ++---
- fs/sysv/ialloc.c                                   |  2 +-
- fs/sysv/itree.c                                    |  4 +--
- fs/sysv/namei.c                                    |  4 +--
- fs/tracefs/inode.c                                 |  2 +-
- fs/ubifs/dir.c                                     | 10 ++++----
- fs/ubifs/file.c                                    | 12 ++++-----
- fs/ubifs/ioctl.c                                   |  2 +-
- fs/ubifs/misc.h                                    | 10 --------
- fs/ubifs/sb.c                                      | 14 ++++++++---
- fs/ubifs/xattr.c                                   |  6 ++---
- fs/udf/ialloc.c                                    |  2 +-
- fs/udf/inode.c                                     |  4 +--
- fs/udf/namei.c                                     | 20 +++++++--------
- fs/udf/super.c                                     |  9 ++++---
- fs/ufs/dir.c                                       |  6 ++---
- fs/ufs/ialloc.c                                    |  8 +++---
- fs/ufs/inode.c                                     |  6 ++---
- fs/ufs/namei.c                                     |  6 ++---
- fs/xfs/xfs_acl.c                                   |  2 +-
- fs/xfs/xfs_inode.c                                 |  2 +-
- fs/xfs/xfs_iops.c                                  |  2 +-
- fs/xfs/xfs_trans_inode.c                           |  2 +-
- include/linux/audit.h                              |  4 +--
- include/linux/fs.h                                 |  2 +-
- include/linux/time.h                               |  1 -
- ipc/mqueue.c                                       | 18 +++++++-------
- kernel/audit.c                                     | 10 ++++----
- kernel/audit.h                                     |  2 +-
- kernel/auditsc.c                                   |  6 ++---
- kernel/bpf/inode.c                                 |  2 +-
- kernel/time/time.c                                 | 14 -----------
- mm/shmem.c                                         | 20 +++++++--------
- net/ceph/messenger.c                               |  6 +++--
- net/ceph/osd_client.c                              |  4 +--
- net/sunrpc/rpc_pipe.c                              |  2 +-
- security/inode.c                                   |  2 +-
- security/selinux/selinuxfs.c                       |  2 +-
- 204 files changed, 536 insertions(+), 518 deletions(-)
-
--- 
-1.9.1
-
-Cc: adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org
-Cc: adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
-Cc: anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org
-Cc: ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: clm-b10kYP2dOMg@public.gmane.org
-Cc: cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org
-Cc: dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
-Cc: dsterba-IBi9RG/b67k@public.gmane.org
-Cc: elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
-Cc: eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-Cc: gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org
-Cc: idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
-Cc: jack-IBi9RG/b67k@public.gmane.org
-Cc: jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
-Cc: jbacik-b10kYP2dOMg@public.gmane.org
-Cc: jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-Cc: jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org
-Cc: john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org
-Cc: linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-Cc: linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-Cc: linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org
-Cc: linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
-Cc: mfasheh-IBi9RG/b67k@public.gmane.org
-Cc: ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
-Cc: paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org
-Cc: sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-Cc: sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org
-Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
-Cc: trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org
-Cc: zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+Q1VSUkVOVF9USU1FX1NFQyBhbmQgQ1VSUkVOVF9USU1FIGFyZSBub3QgeTIwMzggc2FmZS4KY3Vy
+cmVudF90aW1lKCkgd2lsbCBiZSB0cmFuc2l0aW9uZWQgdG8gYmUgeTIwMzggc2FmZQphbG9uZyB3
+aXRoIHZmcy4KCmN1cnJlbnRfdGltZSgpIHJldHVybnMgdGltZXN0YW1wcyBhY2NvcmRpbmcgdG8g
+dGhlCmdyYW51bGFyaXRpZXMgc2V0IGluIHRoZSBzdXBlcl9ibG9jay4KVGhlIGdyYW51bGFyaXR5
+IGNoZWNrIGluIGV4dDRfY3VycmVudF90aW1lKCkgdG8gY2FsbApjdXJyZW50X3RpbWUoKSBvciBD
+VVJSRU5UX1RJTUVfU0VDIGlzIG5vdCByZXF1aXJlZC4KVXNlIGN1cnJlbnRfdGltZSgpIGRpcmVj
+dGx5IHRvIG9idGFpbiB0aW1lc3RhbXBzCnVuY29uZGl0aW9uYWxseSwgYW5kIHJlbW92ZSBleHQ0
+X2N1cnJlbnRfdGltZSgpLgoKUXVvdGEgZmlsZXMgYXJlIGFzc3VtZWQgdG8gYmUgb24gdGhlIHNh
+bWUgZmlsZXN5c3RlbS4KSGVuY2UsIHVzZSBjdXJyZW50X3RpbWUoKSBmb3IgdGhlc2UgZmlsZXMg
+YXMgd2VsbC4KClNpZ25lZC1vZmYtYnk6IERlZXBhIERpbmFtYW5pIDxkZWVwYS5rZXJuZWxAZ21h
+aWwuY29tPgpDYzogIlRoZW9kb3JlIFRzJ28iIDx0eXRzb0BtaXQuZWR1PgpDYzogQW5kcmVhcyBE
+aWxnZXIgPGFkaWxnZXIua2VybmVsQGRpbGdlci5jYT4KQ2M6IGxpbnV4LWV4dDRAdmdlci5rZXJu
+ZWwub3JnCi0tLQogZnMvZXh0NC9hY2wuYyAgICAgfCAgMiArLQogZnMvZXh0NC9leHQ0LmggICAg
+fCAgNiAtLS0tLS0KIGZzL2V4dDQvZXh0ZW50cy5jIHwgMTAgKysrKystLS0tLQogZnMvZXh0NC9p
+YWxsb2MuYyAgfCAgMiArLQogZnMvZXh0NC9pbmxpbmUuYyAgfCAgNCArKy0tCiBmcy9leHQ0L2lu
+b2RlLmMgICB8ICA2ICsrKy0tLQogZnMvZXh0NC9pb2N0bC5jICAgfCAgOCArKysrLS0tLQogZnMv
+ZXh0NC9uYW1laS5jICAgfCAyNCArKysrKysrKysrKysrLS0tLS0tLS0tLS0KIGZzL2V4dDQveGF0
+dHIuYyAgIHwgIDIgKy0KIDkgZmlsZXMgY2hhbmdlZCwgMzAgaW5zZXJ0aW9ucygrKSwgMzQgZGVs
+ZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9hY2wuYyBiL2ZzL2V4dDQvYWNsLmMKaW5k
+ZXggYzY2MDFhNC4uNzMzZTJmMjQgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvYWNsLmMKKysrIGIvZnMv
+ZXh0NC9hY2wuYwpAQCAtMTk3LDcgKzE5Nyw3IEBAIF9fZXh0NF9zZXRfYWNsKGhhbmRsZV90ICpo
+YW5kbGUsIHN0cnVjdCBpbm9kZSAqaW5vZGUsIGludCB0eXBlLAogCQkJaWYgKGVycm9yIDwgMCkK
+IAkJCQlyZXR1cm4gZXJyb3I7CiAJCQllbHNlIHsKLQkJCQlpbm9kZS0+aV9jdGltZSA9IGV4dDRf
+Y3VycmVudF90aW1lKGlub2RlKTsKKwkJCQlpbm9kZS0+aV9jdGltZSA9IGN1cnJlbnRfdGltZShp
+bm9kZSk7CiAJCQkJZXh0NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgaW5vZGUpOwogCQkJCWlm
+IChlcnJvciA9PSAwKQogCQkJCQlhY2wgPSBOVUxMOwpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9leHQ0
+LmggYi9mcy9leHQ0L2V4dDQuaAppbmRleCBiODRhYTFjLi4xNGU1Y2Y0IDEwMDY0NAotLS0gYS9m
+cy9leHQ0L2V4dDQuaAorKysgYi9mcy9leHQ0L2V4dDQuaApAQCAtMTUyMywxMiArMTUyMyw2IEBA
+IHN0YXRpYyBpbmxpbmUgc3RydWN0IGV4dDRfaW5vZGVfaW5mbyAqRVhUNF9JKHN0cnVjdCBpbm9k
+ZSAqaW5vZGUpCiAJcmV0dXJuIGNvbnRhaW5lcl9vZihpbm9kZSwgc3RydWN0IGV4dDRfaW5vZGVf
+aW5mbywgdmZzX2lub2RlKTsKIH0KIAotc3RhdGljIGlubGluZSBzdHJ1Y3QgdGltZXNwZWMgZXh0
+NF9jdXJyZW50X3RpbWUoc3RydWN0IGlub2RlICppbm9kZSkKLXsKLQlyZXR1cm4gKGlub2RlLT5p
+X3NiLT5zX3RpbWVfZ3JhbiA8IE5TRUNfUEVSX1NFQykgPwotCQljdXJyZW50X2ZzX3RpbWUoaW5v
+ZGUtPmlfc2IpIDogQ1VSUkVOVF9USU1FX1NFQzsKLX0KLQogc3RhdGljIGlubGluZSBpbnQgZXh0
+NF92YWxpZF9pbnVtKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHVuc2lnbmVkIGxvbmcgaW5vKQog
+ewogCXJldHVybiBpbm8gPT0gRVhUNF9ST09UX0lOTyB8fApkaWZmIC0tZ2l0IGEvZnMvZXh0NC9l
+eHRlbnRzLmMgYi9mcy9leHQ0L2V4dGVudHMuYwppbmRleCAyYTJlZWY5Li4yNTg0MzE3IDEwMDY0
+NAotLS0gYS9mcy9leHQ0L2V4dGVudHMuYworKysgYi9mcy9leHQ0L2V4dGVudHMuYwpAQCAtNDcy
+Miw3ICs0NzIyLDcgQEAgcmV0cnk6CiAJCW1hcC5tX2xibGsgKz0gcmV0OwogCQltYXAubV9sZW4g
+PSBsZW4gPSBsZW4gLSByZXQ7CiAJCWVwb3MgPSAobG9mZl90KW1hcC5tX2xibGsgPDwgaW5vZGUt
+PmlfYmxrYml0czsKLQkJaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9kZSk7
+CisJCWlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIAkJaWYgKG5ld19zaXpl
+KSB7CiAJCQlpZiAoZXBvcyA+IG5ld19zaXplKQogCQkJCWVwb3MgPSBuZXdfc2l6ZTsKQEAgLTQ4
+NTAsNyArNDg1MCw3IEBAIHN0YXRpYyBsb25nIGV4dDRfemVyb19yYW5nZShzdHJ1Y3QgZmlsZSAq
+ZmlsZSwgbG9mZl90IG9mZnNldCwKIAkJfQogCQkvKiBOb3cgcmVsZWFzZSB0aGUgcGFnZXMgYW5k
+IHplcm8gYmxvY2sgYWxpZ25lZCBwYXJ0IG9mIHBhZ2VzICovCiAJCXRydW5jYXRlX3BhZ2VjYWNo
+ZV9yYW5nZShpbm9kZSwgc3RhcnQsIGVuZCAtIDEpOwotCQlpbm9kZS0+aV9tdGltZSA9IGlub2Rl
+LT5pX2N0aW1lID0gZXh0NF9jdXJyZW50X3RpbWUoaW5vZGUpOworCQlpbm9kZS0+aV9tdGltZSA9
+IGlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIAogCQlyZXQgPSBleHQ0X2Fs
+bG9jX2ZpbGVfYmxvY2tzKGZpbGUsIGxibGssIG1heF9ibG9ja3MsIG5ld19zaXplLAogCQkJCQkg
+ICAgIGZsYWdzLCBtb2RlKTsKQEAgLTQ4NzUsNyArNDg3NSw3IEBAIHN0YXRpYyBsb25nIGV4dDRf
+emVyb19yYW5nZShzdHJ1Y3QgZmlsZSAqZmlsZSwgbG9mZl90IG9mZnNldCwKIAkJZ290byBvdXRf
+ZGlvOwogCX0KIAotCWlub2RlLT5pX210aW1lID0gaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJl
+bnRfdGltZShpbm9kZSk7CisJaW5vZGUtPmlfbXRpbWUgPSBpbm9kZS0+aV9jdGltZSA9IGN1cnJl
+bnRfdGltZShpbm9kZSk7CiAJaWYgKG5ld19zaXplKSB7CiAJCWV4dDRfdXBkYXRlX2lub2RlX3Np
+emUoaW5vZGUsIG5ld19zaXplKTsKIAl9IGVsc2UgewpAQCAtNTU3NCw3ICs1NTc0LDcgQEAgaW50
+IGV4dDRfY29sbGFwc2VfcmFuZ2Uoc3RydWN0IGlub2RlICppbm9kZSwgbG9mZl90IG9mZnNldCwg
+bG9mZl90IGxlbikKIAl1cF93cml0ZSgmRVhUNF9JKGlub2RlKS0+aV9kYXRhX3NlbSk7CiAJaWYg
+KElTX1NZTkMoaW5vZGUpKQogCQlleHQ0X2hhbmRsZV9zeW5jKGhhbmRsZSk7Ci0JaW5vZGUtPmlf
+bXRpbWUgPSBpbm9kZS0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGlub2RlKTsKKwlpbm9k
+ZS0+aV9tdGltZSA9IGlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIAlleHQ0
+X21hcmtfaW5vZGVfZGlydHkoaGFuZGxlLCBpbm9kZSk7CiAKIG91dF9zdG9wOgpAQCAtNTY4NCw3
+ICs1Njg0LDcgQEAgaW50IGV4dDRfaW5zZXJ0X3JhbmdlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGxv
+ZmZfdCBvZmZzZXQsIGxvZmZfdCBsZW4pCiAJLyogRXhwYW5kIGZpbGUgdG8gYXZvaWQgZGF0YSBs
+b3NzIGlmIHRoZXJlIGlzIGVycm9yIHdoaWxlIHNoaWZ0aW5nICovCiAJaW5vZGUtPmlfc2l6ZSAr
+PSBsZW47CiAJRVhUNF9JKGlub2RlKS0+aV9kaXNrc2l6ZSArPSBsZW47Ci0JaW5vZGUtPmlfbXRp
+bWUgPSBpbm9kZS0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGlub2RlKTsKKwlpbm9kZS0+
+aV9tdGltZSA9IGlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIAlyZXQgPSBl
+eHQ0X21hcmtfaW5vZGVfZGlydHkoaGFuZGxlLCBpbm9kZSk7CiAJaWYgKHJldCkKIAkJZ290byBv
+dXRfc3RvcDsKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaWFsbG9jLmMgYi9mcy9leHQ0L2lhbGxvYy5j
+CmluZGV4IDFlNGIwYjcuLjhiM2Q1OGYgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvaWFsbG9jLmMKKysr
+IGIvZnMvZXh0NC9pYWxsb2MuYwpAQCAtMTAzOSw3ICsxMDM5LDcgQEAgZ290OgogCS8qIFRoaXMg
+aXMgdGhlIG9wdGltYWwgSU8gc2l6ZSAoZm9yIHN0YXQpLCBub3QgdGhlIGZzIGJsb2NrIHNpemUg
+Ki8KIAlpbm9kZS0+aV9ibG9ja3MgPSAwOwogCWlub2RlLT5pX210aW1lID0gaW5vZGUtPmlfYXRp
+bWUgPSBpbm9kZS0+aV9jdGltZSA9IGVpLT5pX2NydGltZSA9Ci0JCQkJCQkgICAgICAgZXh0NF9j
+dXJyZW50X3RpbWUoaW5vZGUpOworCQkJCQkJICAgICAgIGN1cnJlbnRfdGltZShpbm9kZSk7CiAK
+IAltZW1zZXQoZWktPmlfZGF0YSwgMCwgc2l6ZW9mKGVpLT5pX2RhdGEpKTsKIAllaS0+aV9kaXJf
+c3RhcnRfbG9va3VwID0gMDsKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW5saW5lLmMgYi9mcy9leHQ0
+L2lubGluZS5jCmluZGV4IGZmNzUzOGMuLjgyZmQ1MjQgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvaW5s
+aW5lLmMKKysrIGIvZnMvZXh0NC9pbmxpbmUuYwpAQCAtMTAyOCw3ICsxMDI4LDcgQEAgc3RhdGlj
+IGludCBleHQ0X2FkZF9kaXJlbnRfdG9faW5saW5lKGhhbmRsZV90ICpoYW5kbGUsCiAJICogaGFw
+cGVuIGlzIHRoYXQgdGhlIHRpbWVzIGFyZSBzbGlnaHRseSBvdXQgb2YgZGF0ZQogCSAqIGFuZC9v
+ciBkaWZmZXJlbnQgZnJvbSB0aGUgZGlyZWN0b3J5IGNoYW5nZSB0aW1lLgogCSAqLwotCWRpci0+
+aV9tdGltZSA9IGRpci0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGRpcik7CisJZGlyLT5p
+X210aW1lID0gZGlyLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGRpcik7CiAJZXh0NF91cGRhdGVf
+ZHhfZmxhZyhkaXIpOwogCWRpci0+aV92ZXJzaW9uKys7CiAJZXh0NF9tYXJrX2lub2RlX2RpcnR5
+KGhhbmRsZSwgZGlyKTsKQEAgLTE5NzEsNyArMTk3MSw3IEBAIG91dDoKIAlpZiAoaW5vZGUtPmlf
+bmxpbmspCiAJCWV4dDRfb3JwaGFuX2RlbChoYW5kbGUsIGlub2RlKTsKIAotCWlub2RlLT5pX210
+aW1lID0gaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9kZSk7CisJaW5vZGUt
+PmlfbXRpbWUgPSBpbm9kZS0+aV9jdGltZSA9IGN1cnJlbnRfdGltZShpbm9kZSk7CiAJZXh0NF9t
+YXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgaW5vZGUpOwogCWlmIChJU19TWU5DKGlub2RlKSkKIAkJ
+ZXh0NF9oYW5kbGVfc3luYyhoYW5kbGUpOwpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9pbm9kZS5jIGIv
+ZnMvZXh0NC9pbm9kZS5jCmluZGV4IGFlNDQ5MTYuLmRjMjcyZmYgMTAwNjQ0Ci0tLSBhL2ZzL2V4
+dDQvaW5vZGUuYworKysgYi9mcy9leHQ0L2lub2RlLmMKQEAgLTM5OTEsNyArMzk5MSw3IEBAIGlu
+dCBleHQ0X3B1bmNoX2hvbGUoc3RydWN0IGlub2RlICppbm9kZSwgbG9mZl90IG9mZnNldCwgbG9m
+Zl90IGxlbmd0aCkKIAlpZiAoSVNfU1lOQyhpbm9kZSkpCiAJCWV4dDRfaGFuZGxlX3N5bmMoaGFu
+ZGxlKTsKIAotCWlub2RlLT5pX210aW1lID0gaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRf
+dGltZShpbm9kZSk7CisJaW5vZGUtPmlfbXRpbWUgPSBpbm9kZS0+aV9jdGltZSA9IGN1cnJlbnRf
+dGltZShpbm9kZSk7CiAJZXh0NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgaW5vZGUpOwogb3V0
+X3N0b3A6CiAJZXh0NF9qb3VybmFsX3N0b3AoaGFuZGxlKTsKQEAgLTQxNDUsNyArNDE0NSw3IEBA
+IG91dF9zdG9wOgogCWlmIChpbm9kZS0+aV9ubGluaykKIAkJZXh0NF9vcnBoYW5fZGVsKGhhbmRs
+ZSwgaW5vZGUpOwogCi0JaW5vZGUtPmlfbXRpbWUgPSBpbm9kZS0+aV9jdGltZSA9IGV4dDRfY3Vy
+cmVudF90aW1lKGlub2RlKTsKKwlpbm9kZS0+aV9tdGltZSA9IGlub2RlLT5pX2N0aW1lID0gY3Vy
+cmVudF90aW1lKGlub2RlKTsKIAlleHQ0X21hcmtfaW5vZGVfZGlydHkoaGFuZGxlLCBpbm9kZSk7
+CiAJZXh0NF9qb3VybmFsX3N0b3AoaGFuZGxlKTsKIApAQCAtNTEyMCw3ICs1MTIwLDcgQEAgaW50
+IGV4dDRfc2V0YXR0cihzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIHN0cnVjdCBpYXR0ciAqYXR0cikK
+IAkJCSAqIHVwZGF0ZSBjL210aW1lIGluIHNocmluayBjYXNlIGJlbG93CiAJCQkgKi8KIAkJCWlm
+ICghc2hyaW5rKSB7Ci0JCQkJaW5vZGUtPmlfbXRpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9k
+ZSk7CisJCQkJaW5vZGUtPmlfbXRpbWUgPSBjdXJyZW50X3RpbWUoaW5vZGUpOwogCQkJCWlub2Rl
+LT5pX2N0aW1lID0gaW5vZGUtPmlfbXRpbWU7CiAJCQl9CiAJCQlkb3duX3dyaXRlKCZFWFQ0X0ko
+aW5vZGUpLT5pX2RhdGFfc2VtKTsKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW9jdGwuYyBiL2ZzL2V4
+dDQvaW9jdGwuYwppbmRleCAyOGNjNDEyLi5iYjJkM2RjIDEwMDY0NAotLS0gYS9mcy9leHQ0L2lv
+Y3RsLmMKKysrIGIvZnMvZXh0NC9pb2N0bC5jCkBAIC0xNTUsNyArMTU1LDcgQEAgc3RhdGljIGxv
+bmcgc3dhcF9pbm9kZV9ib290X2xvYWRlcihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLAogCiAJc3dh
+cF9pbm9kZV9kYXRhKGlub2RlLCBpbm9kZV9ibCk7CiAKLQlpbm9kZS0+aV9jdGltZSA9IGlub2Rl
+X2JsLT5pX2N0aW1lID0gZXh0NF9jdXJyZW50X3RpbWUoaW5vZGUpOworCWlub2RlLT5pX2N0aW1l
+ID0gaW5vZGVfYmwtPmlfY3RpbWUgPSBjdXJyZW50X3RpbWUoaW5vZGUpOwogCiAJc3Bpbl9sb2Nr
+KCZzYmktPnNfbmV4dF9nZW5fbG9jayk7CiAJaW5vZGUtPmlfZ2VuZXJhdGlvbiA9IHNiaS0+c19u
+ZXh0X2dlbmVyYXRpb24rKzsKQEAgLTI3NCw3ICsyNzQsNyBAQCBzdGF0aWMgaW50IGV4dDRfaW9j
+dGxfc2V0ZmxhZ3Moc3RydWN0IGlub2RlICppbm9kZSwKIAl9CiAKIAlleHQ0X3NldF9pbm9kZV9m
+bGFncyhpbm9kZSk7Ci0JaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9kZSk7
+CisJaW5vZGUtPmlfY3RpbWUgPSBjdXJyZW50X3RpbWUoaW5vZGUpOwogCiAJZXJyID0gZXh0NF9t
+YXJrX2lsb2NfZGlydHkoaGFuZGxlLCBpbm9kZSwgJmlsb2MpOwogZmxhZ3NfZXJyOgpAQCAtMzcz
+LDcgKzM3Myw3IEBAIHN0YXRpYyBpbnQgZXh0NF9pb2N0bF9zZXRwcm9qZWN0KHN0cnVjdCBmaWxl
+ICpmaWxwLCBfX3UzMiBwcm9qaWQpCiAJCX0KIAl9CiAJRVhUNF9JKGlub2RlKS0+aV9wcm9qaWQg
+PSBrcHJvamlkOwotCWlub2RlLT5pX2N0aW1lID0gZXh0NF9jdXJyZW50X3RpbWUoaW5vZGUpOwor
+CWlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIG91dF9kaXJ0eToKIAlyYyA9
+IGV4dDRfbWFya19pbG9jX2RpcnR5KGhhbmRsZSwgaW5vZGUsICZpbG9jKTsKIAlpZiAoIWVycikK
+QEAgLTUwNSw3ICs1MDUsNyBAQCBsb25nIGV4dDRfaW9jdGwoc3RydWN0IGZpbGUgKmZpbHAsIHVu
+c2lnbmVkIGludCBjbWQsIHVuc2lnbmVkIGxvbmcgYXJnKQogCQl9CiAJCWVyciA9IGV4dDRfcmVz
+ZXJ2ZV9pbm9kZV93cml0ZShoYW5kbGUsIGlub2RlLCAmaWxvYyk7CiAJCWlmIChlcnIgPT0gMCkg
+ewotCQkJaW5vZGUtPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9kZSk7CisJCQlpbm9k
+ZS0+aV9jdGltZSA9IGN1cnJlbnRfdGltZShpbm9kZSk7CiAJCQlpbm9kZS0+aV9nZW5lcmF0aW9u
+ID0gZ2VuZXJhdGlvbjsKIAkJCWVyciA9IGV4dDRfbWFya19pbG9jX2RpcnR5KGhhbmRsZSwgaW5v
+ZGUsICZpbG9jKTsKIAkJfQpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9uYW1laS5jIGIvZnMvZXh0NC9u
+YW1laS5jCmluZGV4IDY1NjljNmIuLjA5YzgyOGUgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvbmFtZWku
+YworKysgYi9mcy9leHQ0L25hbWVpLmMKQEAgLTE5NDAsNyArMTk0MCw3IEBAIHN0YXRpYyBpbnQg
+YWRkX2RpcmVudF90b19idWYoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0IGV4dDRfZmlsZW5hbWUg
+KmZuYW1lLAogCSAqIGhhcHBlbiBpcyB0aGF0IHRoZSB0aW1lcyBhcmUgc2xpZ2h0bHkgb3V0IG9m
+IGRhdGUKIAkgKiBhbmQvb3IgZGlmZmVyZW50IGZyb20gdGhlIGRpcmVjdG9yeSBjaGFuZ2UgdGlt
+ZS4KIAkgKi8KLQlkaXItPmlfbXRpbWUgPSBkaXItPmlfY3RpbWUgPSBleHQ0X2N1cnJlbnRfdGlt
+ZShkaXIpOworCWRpci0+aV9tdGltZSA9IGRpci0+aV9jdGltZSA9IGN1cnJlbnRfdGltZShkaXIp
+OwogCWV4dDRfdXBkYXRlX2R4X2ZsYWcoZGlyKTsKIAlkaXItPmlfdmVyc2lvbisrOwogCWV4dDRf
+bWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIGRpcik7CkBAIC0yOTg5LDcgKzI5ODksNyBAQCBzdGF0
+aWMgaW50IGV4dDRfcm1kaXIoc3RydWN0IGlub2RlICpkaXIsIHN0cnVjdCBkZW50cnkgKmRlbnRy
+eSkKIAkgKiByZWNvdmVyeS4gKi8KIAlpbm9kZS0+aV9zaXplID0gMDsKIAlleHQ0X29ycGhhbl9h
+ZGQoaGFuZGxlLCBpbm9kZSk7Ci0JaW5vZGUtPmlfY3RpbWUgPSBkaXItPmlfY3RpbWUgPSBkaXIt
+PmlfbXRpbWUgPSBleHQ0X2N1cnJlbnRfdGltZShpbm9kZSk7CisJaW5vZGUtPmlfY3RpbWUgPSBk
+aXItPmlfY3RpbWUgPSBkaXItPmlfbXRpbWUgPSBjdXJyZW50X3RpbWUoaW5vZGUpOwogCWV4dDRf
+bWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIGlub2RlKTsKIAlleHQ0X2RlY19jb3VudChoYW5kbGUs
+IGRpcik7CiAJZXh0NF91cGRhdGVfZHhfZmxhZyhkaXIpOwpAQCAtMzA1MiwxMyArMzA1MiwxMyBA
+QCBzdGF0aWMgaW50IGV4dDRfdW5saW5rKHN0cnVjdCBpbm9kZSAqZGlyLCBzdHJ1Y3QgZGVudHJ5
+ICpkZW50cnkpCiAJcmV0dmFsID0gZXh0NF9kZWxldGVfZW50cnkoaGFuZGxlLCBkaXIsIGRlLCBi
+aCk7CiAJaWYgKHJldHZhbCkKIAkJZ290byBlbmRfdW5saW5rOwotCWRpci0+aV9jdGltZSA9IGRp
+ci0+aV9tdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGRpcik7CisJZGlyLT5pX2N0aW1lID0gZGly
+LT5pX210aW1lID0gY3VycmVudF90aW1lKGRpcik7CiAJZXh0NF91cGRhdGVfZHhfZmxhZyhkaXIp
+OwogCWV4dDRfbWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIGRpcik7CiAJZHJvcF9ubGluayhpbm9k
+ZSk7CiAJaWYgKCFpbm9kZS0+aV9ubGluaykKIAkJZXh0NF9vcnBoYW5fYWRkKGhhbmRsZSwgaW5v
+ZGUpOwotCWlub2RlLT5pX2N0aW1lID0gZXh0NF9jdXJyZW50X3RpbWUoaW5vZGUpOworCWlub2Rl
+LT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKIAlleHQ0X21hcmtfaW5vZGVfZGlydHko
+aGFuZGxlLCBpbm9kZSk7CiAKIGVuZF91bmxpbms6CkBAIC0zMjU3LDcgKzMyNTcsNyBAQCByZXRy
+eToKIAlpZiAoSVNfRElSU1lOQyhkaXIpKQogCQlleHQ0X2hhbmRsZV9zeW5jKGhhbmRsZSk7CiAK
+LQlpbm9kZS0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGlub2RlKTsKKwlpbm9kZS0+aV9j
+dGltZSA9IGN1cnJlbnRfdGltZShpbm9kZSk7CiAJZXh0NF9pbmNfY291bnQoaGFuZGxlLCBpbm9k
+ZSk7CiAJaWhvbGQoaW5vZGUpOwogCkBAIC0zMzg0LDcgKzMzODQsNyBAQCBzdGF0aWMgaW50IGV4
+dDRfc2V0ZW50KGhhbmRsZV90ICpoYW5kbGUsIHN0cnVjdCBleHQ0X3JlbmFtZW50ICplbnQsCiAJ
+CWVudC0+ZGUtPmZpbGVfdHlwZSA9IGZpbGVfdHlwZTsKIAllbnQtPmRpci0+aV92ZXJzaW9uKys7
+CiAJZW50LT5kaXItPmlfY3RpbWUgPSBlbnQtPmRpci0+aV9tdGltZSA9Ci0JCWV4dDRfY3VycmVu
+dF90aW1lKGVudC0+ZGlyKTsKKwkJY3VycmVudF90aW1lKGVudC0+ZGlyKTsKIAlleHQ0X21hcmtf
+aW5vZGVfZGlydHkoaGFuZGxlLCBlbnQtPmRpcik7CiAJQlVGRkVSX1RSQUNFKGVudC0+YmgsICJj
+YWxsIGV4dDRfaGFuZGxlX2RpcnR5X21ldGFkYXRhIik7CiAJaWYgKCFlbnQtPmlubGluZWQpIHsK
+QEAgLTM2NTUsNyArMzY1NSw3IEBAIHN0YXRpYyBpbnQgZXh0NF9yZW5hbWUoc3RydWN0IGlub2Rl
+ICpvbGRfZGlyLCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LAogCSAqIExpa2UgbW9zdCBvdGhl
+ciBVbml4IHN5c3RlbXMsIHNldCB0aGUgY3RpbWUgZm9yIGlub2RlcyBvbiBhCiAJICogcmVuYW1l
+LgogCSAqLwotCW9sZC5pbm9kZS0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKG9sZC5pbm9k
+ZSk7CisJb2xkLmlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKG9sZC5pbm9kZSk7CiAJZXh0
+NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgb2xkLmlub2RlKTsKIAogCWlmICghd2hpdGVvdXQp
+IHsKQEAgLTM2NjcsOSArMzY2Nyw5IEBAIHN0YXRpYyBpbnQgZXh0NF9yZW5hbWUoc3RydWN0IGlu
+b2RlICpvbGRfZGlyLCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LAogCiAJaWYgKG5ldy5pbm9k
+ZSkgewogCQlleHQ0X2RlY19jb3VudChoYW5kbGUsIG5ldy5pbm9kZSk7Ci0JCW5ldy5pbm9kZS0+
+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKG5ldy5pbm9kZSk7CisJCW5ldy5pbm9kZS0+aV9j
+dGltZSA9IGN1cnJlbnRfdGltZShuZXcuaW5vZGUpOwogCX0KLQlvbGQuZGlyLT5pX2N0aW1lID0g
+b2xkLmRpci0+aV9tdGltZSA9IGV4dDRfY3VycmVudF90aW1lKG9sZC5kaXIpOworCW9sZC5kaXIt
+PmlfY3RpbWUgPSBvbGQuZGlyLT5pX210aW1lID0gY3VycmVudF90aW1lKG9sZC5kaXIpOwogCWV4
+dDRfdXBkYXRlX2R4X2ZsYWcob2xkLmRpcik7CiAJaWYgKG9sZC5kaXJfYmgpIHsKIAkJcmV0dmFs
+ID0gZXh0NF9yZW5hbWVfZGlyX2ZpbmlzaChoYW5kbGUsICZvbGQsIG5ldy5kaXItPmlfaW5vKTsK
+QEAgLTM3MjcsNiArMzcyNyw3IEBAIHN0YXRpYyBpbnQgZXh0NF9jcm9zc19yZW5hbWUoc3RydWN0
+IGlub2RlICpvbGRfZGlyLCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LAogCX07CiAJdTggbmV3
+X2ZpbGVfdHlwZTsKIAlpbnQgcmV0dmFsOworCXN0cnVjdCB0aW1lc3BlYyBjdGltZTsKIAogCWlm
+ICgoZXh0NF9lbmNyeXB0ZWRfaW5vZGUob2xkX2RpcikgfHwKIAkgICAgIGV4dDRfZW5jcnlwdGVk
+X2lub2RlKG5ld19kaXIpKSAmJgpAQCAtMzgyOSw4ICszODMwLDkgQEAgc3RhdGljIGludCBleHQ0
+X2Nyb3NzX3JlbmFtZShzdHJ1Y3QgaW5vZGUgKm9sZF9kaXIsIHN0cnVjdCBkZW50cnkgKm9sZF9k
+ZW50cnksCiAJICogTGlrZSBtb3N0IG90aGVyIFVuaXggc3lzdGVtcywgc2V0IHRoZSBjdGltZSBm
+b3IgaW5vZGVzIG9uIGEKIAkgKiByZW5hbWUuCiAJICovCi0Jb2xkLmlub2RlLT5pX2N0aW1lID0g
+ZXh0NF9jdXJyZW50X3RpbWUob2xkLmlub2RlKTsKLQluZXcuaW5vZGUtPmlfY3RpbWUgPSBleHQ0
+X2N1cnJlbnRfdGltZShuZXcuaW5vZGUpOworCWN0aW1lID0gY3VycmVudF90aW1lKG9sZC5pbm9k
+ZSk7CisJb2xkLmlub2RlLT5pX2N0aW1lID0gY3RpbWU7CisJbmV3Lmlub2RlLT5pX2N0aW1lID0g
+Y3RpbWU7CiAJZXh0NF9tYXJrX2lub2RlX2RpcnR5KGhhbmRsZSwgb2xkLmlub2RlKTsKIAlleHQ0
+X21hcmtfaW5vZGVfZGlydHkoaGFuZGxlLCBuZXcuaW5vZGUpOwogCmRpZmYgLS1naXQgYS9mcy9l
+eHQ0L3hhdHRyLmMgYi9mcy9leHQ0L3hhdHRyLmMKaW5kZXggZTc5YmQzMi4uYTQzMzVjNSAxMDA2
+NDQKLS0tIGEvZnMvZXh0NC94YXR0ci5jCisrKyBiL2ZzL2V4dDQveGF0dHIuYwpAQCAtMTI1Myw3
+ICsxMjUzLDcgQEAgZXh0NF94YXR0cl9zZXRfaGFuZGxlKGhhbmRsZV90ICpoYW5kbGUsIHN0cnVj
+dCBpbm9kZSAqaW5vZGUsIGludCBuYW1lX2luZGV4LAogCX0KIAlpZiAoIWVycm9yKSB7CiAJCWV4
+dDRfeGF0dHJfdXBkYXRlX3N1cGVyX2Jsb2NrKGhhbmRsZSwgaW5vZGUtPmlfc2IpOwotCQlpbm9k
+ZS0+aV9jdGltZSA9IGV4dDRfY3VycmVudF90aW1lKGlub2RlKTsKKwkJaW5vZGUtPmlfY3RpbWUg
+PSBjdXJyZW50X3RpbWUoaW5vZGUpOwogCQlpZiAoIXZhbHVlKQogCQkJZXh0NF9jbGVhcl9pbm9k
+ZV9zdGF0ZShpbm9kZSwgRVhUNF9TVEFURV9OT19FWFBBTkQpOwogCQllcnJvciA9IGV4dDRfbWFy
+a19pbG9jX2RpcnR5KGhhbmRsZSwgaW5vZGUsICZpcy5pbG9jKTsKLS0gCjEuOS4xCgpfX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpZMjAzOCBtYWlsaW5nIGxp
+c3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xpc3RzLmxpbmFyby5vcmcvbWFpbG1h
+bi9saXN0aW5mby95MjAzOAo=
