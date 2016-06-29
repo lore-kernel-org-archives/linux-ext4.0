@@ -1,170 +1,189 @@
 From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: [PATCH] Fix filesystem deadlock while reading corrupted xattr block
-Date: Tue, 28 Jun 2016 12:42:46 +0200
-Message-ID: <1467110566-8389-1-git-send-email-cmaiolino@redhat.com>
+Subject: Re: [PATCH] Fix filesystem deadlock while reading corrupted xattr
+ block
+Date: Wed, 29 Jun 2016 10:36:55 +0200
+Message-ID: <20160629083655.GD22634@redhat.com>
+References: <1467110566-8389-1-git-send-email-cmaiolino@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38328 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37395 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752932AbcF1Kmw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Jun 2016 06:42:52 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	id S1751168AbcF2IhA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Jun 2016 04:37:00 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 4BBEB63146
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jun 2016 10:42:51 +0000 (UTC)
-Received: from zion.usersys.redhat.com (unused [10.10.51.63] (may be forged))
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5SAgoIK023247
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jun 2016 06:42:50 -0400
+	by mx1.redhat.com (Postfix) with ESMTPS id EB704C05FBCE
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2016 08:36:59 +0000 (UTC)
+Received: from redhat.com (unused [10.10.50.36] (may be forged))
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5T8auhI007678
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Jun 2016 04:36:59 -0400
+Content-Disposition: inline
+In-Reply-To: <1467110566-8389-1-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This bug can be reproducible with fsfuzzer, although, I couldn't reproduce it
-100% of my tries, it is quite easily reproducible.
+On Tue, Jun 28, 2016 at 12:42:46PM +0200, Carlos Maiolino wrote:
 
-During the deletion of an inode, ext2_xattr_delete_inode() does not check if the
-block pointed by EXT2_I(inode)->i_file_acl is a valid data block, this might
-lead to a deadlock, when i_file_acl == 1, and the filesystem block size is 1024.
+I apologize, I should have mentioned in the $SUBJ it is an EXT2 patch.
 
-In that situation, ext2_xattr_delete_inode, will load the superblock's buffer
-head (instead of a valid i_file_acl block), and then lock that buffer head,
-which, ext2_sync_super will also try to lock, making the filesystem deadlock in
-the following stack trace:
 
-root     17180  0.0  0.0 113660   660 pts/0    D+   07:08   0:00 rmdir
-/media/test/dir1
+> This bug can be reproducible with fsfuzzer, although, I couldn't reproduce it
+> 100% of my tries, it is quite easily reproducible.
+> 
+> During the deletion of an inode, ext2_xattr_delete_inode() does not check if the
+> block pointed by EXT2_I(inode)->i_file_acl is a valid data block, this might
+> lead to a deadlock, when i_file_acl == 1, and the filesystem block size is 1024.
+> 
+> In that situation, ext2_xattr_delete_inode, will load the superblock's buffer
+> head (instead of a valid i_file_acl block), and then lock that buffer head,
+> which, ext2_sync_super will also try to lock, making the filesystem deadlock in
+> the following stack trace:
+> 
+> root     17180  0.0  0.0 113660   660 pts/0    D+   07:08   0:00 rmdir
+> /media/test/dir1
+> 
+> [<ffffffff8125da9f>] __sync_dirty_buffer+0xaf/0x100
+> [<ffffffff8125db03>] sync_dirty_buffer+0x13/0x20
+> [<ffffffffa03f0d57>] ext2_sync_super+0xb7/0xc0 [ext2]
+> [<ffffffffa03f10b9>] ext2_error+0x119/0x130 [ext2]
+> [<ffffffffa03e9d93>] ext2_free_blocks+0x83/0x350 [ext2]
+> [<ffffffffa03f3d03>] ext2_xattr_delete_inode+0x173/0x190 [ext2]
+> [<ffffffffa03ee9e9>] ext2_evict_inode+0xc9/0x130 [ext2]
+> [<ffffffff8123fd23>] evict+0xb3/0x180
+> [<ffffffff81240008>] iput+0x1b8/0x240
+> [<ffffffff8123c4ac>] d_delete+0x11c/0x150
+> [<ffffffff8122fa7e>] vfs_rmdir+0xfe/0x120
+> [<ffffffff812340ee>] do_rmdir+0x17e/0x1f0
+> [<ffffffff81234dd6>] SyS_rmdir+0x16/0x20
+> [<ffffffff81838cf2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> Fix this by using the same approach ext4 uses to test data blocks validity,
+> implementing ext2_data_block_valid.
+> 
+> An another possibility when the superblock is very corrupted, is that i_file_acl
+> is 1, block_count is 1 and first_data_block is 0. For such situations, we might
+> have i_file_acl pointing to a 'valid' block, but still step over the superblock.
+> The approach I used was to also test if the superblock is not in the range
+> described by ext2_data_block_valid() arguments
+> 
+> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
+> ---
+>  fs/ext2/balloc.c | 21 +++++++++++++++++++++
+>  fs/ext2/ext2.h   |  3 +++
+>  fs/ext2/inode.c  | 10 ++++++++++
+>  fs/ext2/xattr.c  |  9 +++++++++
+>  4 files changed, 43 insertions(+)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 9f9992b..4c40c07 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -1194,6 +1194,27 @@ static int ext2_has_free_blocks(struct ext2_sb_info *sbi)
+>  }
+>  
+>  /*
+> + * Returns 1 if the passed-in block region is valid; 0 if some part overlaps
+> + * with filesystem metadata blocksi.
+> + */
+> +int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
+> +			  unsigned int count)
+> +{
+> +	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
+> +	    (start_blk + count < start_blk) ||
+> +	    (start_blk > le32_to_cpu(sbi->s_es->s_blocks_count)))
+> +		return 0;
+> +
+> +	/* Ensure we do not step over superblock */
+> +	if ((start_blk <= sbi->s_sb_block) &&
+> +	    (start_blk + count >= sbi->s_sb_block))
+> +		return 0;
+> +
+> +
+> +	return 1;
+> +}
+> +
+> +/*
+>   * ext2_new_blocks() -- core block(s) allocation function
+>   * @inode:		file inode
+>   * @goal:		given target block(filesystem wide)
+> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> index 170939f..3fb9368 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -367,6 +367,7 @@ struct ext2_inode {
+>   */
+>  #define	EXT2_VALID_FS			0x0001	/* Unmounted cleanly */
+>  #define	EXT2_ERROR_FS			0x0002	/* Errors detected */
+> +#define	EFSCORRUPTED			EUCLEAN	/* Filesystem is corrupted */
+>  
+>  /*
+>   * Mount flags
+> @@ -739,6 +740,8 @@ extern unsigned long ext2_bg_num_gdb(struct super_block *sb, int group);
+>  extern ext2_fsblk_t ext2_new_block(struct inode *, unsigned long, int *);
+>  extern ext2_fsblk_t ext2_new_blocks(struct inode *, unsigned long,
+>  				unsigned long *, int *);
+> +extern int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
+> +				 unsigned int count);
+>  extern void ext2_free_blocks (struct inode *, unsigned long,
+>  			      unsigned long);
+>  extern unsigned long ext2_count_free_blocks (struct super_block *);
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index fcbe586..d5c7d09 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1389,6 +1389,16 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
+>  	ei->i_frag_size = raw_inode->i_fsize;
+>  	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl);
+>  	ei->i_dir_acl = 0;
+> +
+> +	if (ei->i_file_acl &&
+> +	    !ext2_data_block_valid(EXT2_SB(sb), ei->i_file_acl, 1)) {
+> +		ext2_error(sb, "ext2_iget", "bad extended attribute block %u",
+> +			   ei->i_file_acl);
+> +		brelse(bh);
+> +		ret = -EFSCORRUPTED;
+> +		goto bad_inode;
+> +	}
+> +
+>  	if (S_ISREG(inode->i_mode))
+>  		inode->i_size |= ((__u64)le32_to_cpu(raw_inode->i_size_high)) << 32;
+>  	else
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 1a5e3bf..b7f896f 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -759,10 +759,19 @@ void
+>  ext2_xattr_delete_inode(struct inode *inode)
+>  {
+>  	struct buffer_head *bh = NULL;
+> +	struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
+>  
+>  	down_write(&EXT2_I(inode)->xattr_sem);
+>  	if (!EXT2_I(inode)->i_file_acl)
+>  		goto cleanup;
+> +
+> +	if (!ext2_data_block_valid(sbi, EXT2_I(inode)->i_file_acl, 0)) {
+> +		ext2_error(inode->i_sb, "ext2_xattr_delete_inode",
+> +			"inode %ld: xattr block %d is out of data blocks range",
+> +			inode->i_ino, EXT2_I(inode)->i_file_acl);
+> +		goto cleanup;
+> +	}
+> +
+>  	bh = sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
+>  	if (!bh) {
+>  		ext2_error(inode->i_sb, "ext2_xattr_delete_inode",
+> -- 
+> 2.4.11
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-[<ffffffff8125da9f>] __sync_dirty_buffer+0xaf/0x100
-[<ffffffff8125db03>] sync_dirty_buffer+0x13/0x20
-[<ffffffffa03f0d57>] ext2_sync_super+0xb7/0xc0 [ext2]
-[<ffffffffa03f10b9>] ext2_error+0x119/0x130 [ext2]
-[<ffffffffa03e9d93>] ext2_free_blocks+0x83/0x350 [ext2]
-[<ffffffffa03f3d03>] ext2_xattr_delete_inode+0x173/0x190 [ext2]
-[<ffffffffa03ee9e9>] ext2_evict_inode+0xc9/0x130 [ext2]
-[<ffffffff8123fd23>] evict+0xb3/0x180
-[<ffffffff81240008>] iput+0x1b8/0x240
-[<ffffffff8123c4ac>] d_delete+0x11c/0x150
-[<ffffffff8122fa7e>] vfs_rmdir+0xfe/0x120
-[<ffffffff812340ee>] do_rmdir+0x17e/0x1f0
-[<ffffffff81234dd6>] SyS_rmdir+0x16/0x20
-[<ffffffff81838cf2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-Fix this by using the same approach ext4 uses to test data blocks validity,
-implementing ext2_data_block_valid.
-
-An another possibility when the superblock is very corrupted, is that i_file_acl
-is 1, block_count is 1 and first_data_block is 0. For such situations, we might
-have i_file_acl pointing to a 'valid' block, but still step over the superblock.
-The approach I used was to also test if the superblock is not in the range
-described by ext2_data_block_valid() arguments
-
-Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
----
- fs/ext2/balloc.c | 21 +++++++++++++++++++++
- fs/ext2/ext2.h   |  3 +++
- fs/ext2/inode.c  | 10 ++++++++++
- fs/ext2/xattr.c  |  9 +++++++++
- 4 files changed, 43 insertions(+)
-
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 9f9992b..4c40c07 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -1194,6 +1194,27 @@ static int ext2_has_free_blocks(struct ext2_sb_info *sbi)
- }
- 
- /*
-+ * Returns 1 if the passed-in block region is valid; 0 if some part overlaps
-+ * with filesystem metadata blocksi.
-+ */
-+int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
-+			  unsigned int count)
-+{
-+	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
-+	    (start_blk + count < start_blk) ||
-+	    (start_blk > le32_to_cpu(sbi->s_es->s_blocks_count)))
-+		return 0;
-+
-+	/* Ensure we do not step over superblock */
-+	if ((start_blk <= sbi->s_sb_block) &&
-+	    (start_blk + count >= sbi->s_sb_block))
-+		return 0;
-+
-+
-+	return 1;
-+}
-+
-+/*
-  * ext2_new_blocks() -- core block(s) allocation function
-  * @inode:		file inode
-  * @goal:		given target block(filesystem wide)
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 170939f..3fb9368 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -367,6 +367,7 @@ struct ext2_inode {
-  */
- #define	EXT2_VALID_FS			0x0001	/* Unmounted cleanly */
- #define	EXT2_ERROR_FS			0x0002	/* Errors detected */
-+#define	EFSCORRUPTED			EUCLEAN	/* Filesystem is corrupted */
- 
- /*
-  * Mount flags
-@@ -739,6 +740,8 @@ extern unsigned long ext2_bg_num_gdb(struct super_block *sb, int group);
- extern ext2_fsblk_t ext2_new_block(struct inode *, unsigned long, int *);
- extern ext2_fsblk_t ext2_new_blocks(struct inode *, unsigned long,
- 				unsigned long *, int *);
-+extern int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
-+				 unsigned int count);
- extern void ext2_free_blocks (struct inode *, unsigned long,
- 			      unsigned long);
- extern unsigned long ext2_count_free_blocks (struct super_block *);
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index fcbe586..d5c7d09 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1389,6 +1389,16 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
- 	ei->i_frag_size = raw_inode->i_fsize;
- 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl);
- 	ei->i_dir_acl = 0;
-+
-+	if (ei->i_file_acl &&
-+	    !ext2_data_block_valid(EXT2_SB(sb), ei->i_file_acl, 1)) {
-+		ext2_error(sb, "ext2_iget", "bad extended attribute block %u",
-+			   ei->i_file_acl);
-+		brelse(bh);
-+		ret = -EFSCORRUPTED;
-+		goto bad_inode;
-+	}
-+
- 	if (S_ISREG(inode->i_mode))
- 		inode->i_size |= ((__u64)le32_to_cpu(raw_inode->i_size_high)) << 32;
- 	else
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 1a5e3bf..b7f896f 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -759,10 +759,19 @@ void
- ext2_xattr_delete_inode(struct inode *inode)
- {
- 	struct buffer_head *bh = NULL;
-+	struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
- 
- 	down_write(&EXT2_I(inode)->xattr_sem);
- 	if (!EXT2_I(inode)->i_file_acl)
- 		goto cleanup;
-+
-+	if (!ext2_data_block_valid(sbi, EXT2_I(inode)->i_file_acl, 0)) {
-+		ext2_error(inode->i_sb, "ext2_xattr_delete_inode",
-+			"inode %ld: xattr block %d is out of data blocks range",
-+			inode->i_ino, EXT2_I(inode)->i_file_acl);
-+		goto cleanup;
-+	}
-+
- 	bh = sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
- 	if (!bh) {
- 		ext2_error(inode->i_sb, "ext2_xattr_delete_inode",
 -- 
-2.4.11
-
+Carlos
