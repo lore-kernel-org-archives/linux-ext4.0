@@ -1,78 +1,64 @@
-From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Subject: Re: [Y2038] [PATCH v3 00/24] Delete CURRENT_TIME_SEC
-	and replace current_fs_time()
-Date: Wed, 29 Jun 2016 21:48:02 +0200
-Message-ID: <4878160.cRxJJ9CCsj@wuerfel>
-References: <1466890668-23400-1-git-send-email-deepa.kernel@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org,
-	clm-b10kYP2dOMg@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
-	sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org, paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org,
-	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
-	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-	dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org, gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	jack-IBi9RG/b67k@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, torvalds@linux-foundation.
-To: y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org
-Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-In-Reply-To: <1466890668-23400-1-git-send-email-deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
-List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
-Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
-Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: [PATCH] ext4: check for extents that wrap around
+Date: Thu, 30 Jun 2016 00:34:48 +0200
+Message-ID: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
+Cc: Phil Turnbull <phil.turnbull@oracle.com>,
+	linux-ext4@vger.kernel.org, Eryu Guan <guaneryu@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:34268 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751483AbcF2Wey (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2016 18:34:54 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Saturday, June 25, 2016 2:37:24 PM CEST Deepa Dinamani wrote:
-> The series is aimed at getting rid of CURRENT_TIME, CURRENT_TIME_SEC macros
-> and replacing current_fs_time() with current_time().
-> The macros are not y2038 safe. There is no plan to transition them into being
-> y2038 safe.
-> ktime_get_* api's can be used in their place. And, these are y2038 safe.
-> 
-> CURRENT_TIME will be deleted after 4.8 rc1 as there is a dependency function
-> time64_to_tm() for one of the CURRENT_TIME occurance.
-> 
-> Thanks to Arnd Bergmann for all the guidance and discussions.
-> 
-> Patches 3-5 were mostly generated using coccinelle.
-> 
-> All filesystem timestamps use current_fs_time() for right granularity as
-> mentioned in the respective commit texts of patches. This has a changed
-> signature, renamed to current_time() and moved to the fs/inode.c.
-> 
-> This series also serves as a preparatory series to transition vfs to 64 bit
-> timestamps as outlined here: https://lkml.org/lkml/2016/2/12/104 .
-> 
-> As per Linus's suggestion in https://lkml.org/lkml/2016/5/24/663 , all the
-> inode timestamp changes have been squashed into a single patch. Also,
-> current_time() now is used as a single generic vfs filesystem timestamp api.
-> It also takes struct inode* as argument instead of struct super_block*.
-> Posting all patches together in a bigger series so that the big picture is
-> clear.
-> 
-> As per the suggestion in https://lwn.net/Articles/672598/, CURRENT_TIME macro
-> bug fixes are being handled in a series separate from transitioning vfs to use.
-> 
+An extent with lblock = 4294967295 and len = 1 will pass the
+ext4_valid_extent() test:
 
-Everything in this version looks good to me. Please add
+	ext4_lblk_t last = lblock + len - 1;
 
-Reviewed-by: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+	if (len == 0 || lblock > last)
+		return 0;
 
-and send a pull request to Al Viro, based on the latest linux-4.7-rc release.
+since last = 4294967295 + 1 - 1 = 4294967295. This would later trigger
+the BUG_ON(es->es_lblk + es->es_len < es->es_lblk) in ext4_es_end().
 
-	Arnd
+We can simplify it by removing the - 1 altogether and changing the test
+to use lblock + len <= lblock, since now if len = 0, then lblock + 0 ==
+lblock and it fails, and if len > 0 then lblock + len > lblock in order
+to pass (i.e. it doesn't overflow).
+
+Fixes: 5946d0893 ("ext4: check for overlapping extents in ext4_valid_extent_entries()")
+Fixes: 2f974865f ("ext4: check for zero length extent explicitly")
+Cc: Eryu Guan <guaneryu@gmail.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Phil Turnbull <phil.turnbull@oracle.com>
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+---
+ fs/ext4/extents.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2a2eef9..2f258c6 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -381,9 +381,13 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
+ 	ext4_fsblk_t block = ext4_ext_pblock(ext);
+ 	int len = ext4_ext_get_actual_len(ext);
+ 	ext4_lblk_t lblock = le32_to_cpu(ext->ee_block);
+-	ext4_lblk_t last = lblock + len - 1;
+ 
+-	if (len == 0 || lblock > last)
++	/*
++	 * We allow neither:
++	 *  - zero length
++	 *  - overflow/wrap-around
++	 */
++	if (lblock + len <= lblock)
+ 		return 0;
+ 	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
+ }
+-- 
+1.9.1
+
