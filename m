@@ -1,70 +1,78 @@
-From: Omar Sandoval <osandov@osandov.com>
-Subject: Re: [RFC PATCH] coredump: avoid ext4 auto_da_alloc for core file
-Date: Wed, 29 Jun 2016 11:34:44 -0700
-Message-ID: <20160629183444.GA3030@vader>
-References: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
+From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+Subject: Re: [Y2038] [PATCH v3 00/24] Delete CURRENT_TIME_SEC
+	and replace current_fs_time()
+Date: Wed, 29 Jun 2016 21:48:02 +0200
+Message-ID: <4878160.cRxJJ9CCsj@wuerfel>
+References: <1466890668-23400-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	kernel-team@fb.com
-To: Al Viro <viro@zeniv.linux.org.uk>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org,
+	clm-b10kYP2dOMg@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
+	Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org,
+	sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org, paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org,
+	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
+	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jlbec-aKy9MeLSZ9dg9hUCZPvPmw@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
+	dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org, gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	jack-IBi9RG/b67k@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, torvalds@linux-foundation.
+To: y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org
+Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+In-Reply-To: <1466890668-23400-1-git-send-email-deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
+List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
+Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
+Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 15, 2016 at 10:42:05AM -0700, Omar Sandoval wrote:
-> From: Omar Sandoval <osandov@fb.com>
+On Saturday, June 25, 2016 2:37:24 PM CEST Deepa Dinamani wrote:
+> The series is aimed at getting rid of CURRENT_TIME, CURRENT_TIME_SEC macros
+> and replacing current_fs_time() with current_time().
+> The macros are not y2038 safe. There is no plan to transition them into being
+> y2038 safe.
+> ktime_get_* api's can be used in their place. And, these are y2038 safe.
 > 
-> Someone at Facebook reported that their coredumps were much faster when
-> using a pipe helper than when dumping directly to a file, which doesn't
-> make much sense. It turns out that this difference is because in
-> do_coredump(), we truncate the core file and thus trigger the ext4
-> auto_da_alloc heuristic. We can't use O_TRUNC because we might bail out
-> of do_coredump() in certain conditions, so instead, avoid truncating
-> when the file is already empty. In cases where we're actually
-> overwriting a core file, this won't help, but the common case will be
-> much better.
+> CURRENT_TIME will be deleted after 4.8 rc1 as there is a dependency function
+> time64_to_tm() for one of the CURRENT_TIME occurance.
 > 
-> Signed-off-by: Omar Sandoval <osandov@fb.com>
-> ---
-> Hi, Al and Ted,
+> Thanks to Arnd Bergmann for all the guidance and discussions.
 > 
-> This is probably the wrong solution to the problem I described in the
-> commit message. Do you guys have any better ideas? Something like
-> 0eab928221ba ("ext4: Don't treat a truncation of a zero-length file as
-> replace-via-truncate") would also work, but that apparently wasn't
-> right, as it was reverted in 5534fb5bb35a ("ext4: Fix the alloc on close
-> after a truncate hueristic").
+> Patches 3-5 were mostly generated using coccinelle.
 > 
-> Thanks.
-
-Ping, any thoughts on this?
-
->  fs/coredump.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
+> All filesystem timestamps use current_fs_time() for right granularity as
+> mentioned in the respective commit texts of patches. This has a changed
+> signature, renamed to current_time() and moved to the fs/inode.c.
 > 
-> diff --git a/fs/coredump.c b/fs/coredump.c
-> index 281b768000e6..9da7357773f0 100644
-> --- a/fs/coredump.c
-> +++ b/fs/coredump.c
-> @@ -741,8 +741,10 @@ void do_coredump(const siginfo_t *siginfo)
->  			goto close_fail;
->  		if (!(cprm.file->f_mode & FMODE_CAN_WRITE))
->  			goto close_fail;
-> -		if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
-> -			goto close_fail;
-> +		if (i_size_read(file_inode(cprm.file)) != 0) {
-> +			if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
-> +				goto close_fail;
-> +		}
->  	}
->  
->  	/* get us an unshared descriptor table; almost always a no-op */
-> -- 
-> 2.8.3
+> This series also serves as a preparatory series to transition vfs to 64 bit
+> timestamps as outlined here: https://lkml.org/lkml/2016/2/12/104 .
+> 
+> As per Linus's suggestion in https://lkml.org/lkml/2016/5/24/663 , all the
+> inode timestamp changes have been squashed into a single patch. Also,
+> current_time() now is used as a single generic vfs filesystem timestamp api.
+> It also takes struct inode* as argument instead of struct super_block*.
+> Posting all patches together in a bigger series so that the big picture is
+> clear.
+> 
+> As per the suggestion in https://lwn.net/Articles/672598/, CURRENT_TIME macro
+> bug fixes are being handled in a series separate from transitioning vfs to use.
 > 
 
--- 
-Omar
+Everything in this version looks good to me. Please add
+
+Reviewed-by: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+
+and send a pull request to Al Viro, based on the latest linux-4.7-rc release.
+
+	Arnd
