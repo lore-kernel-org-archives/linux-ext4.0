@@ -1,38 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Thu, 30 Jun 2016 11:05:48 -0400
-Message-ID: <20160630150548.GC2028@thunk.org>
-References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-2-git-send-email-jack@suse.cz>
+Subject: Refreshed rootfs.img for kvm-xfstests
+Date: Thu, 30 Jun 2016 11:28:16 -0400
+Message-ID: <20160630152816.GA2784@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39924 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932072AbcF3P2V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2016 11:28:21 -0400
 Content-Disposition: inline
-In-Reply-To: <1466073736-30447-2-git-send-email-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 16, 2016 at 12:42:13PM +0200, Jan Kara wrote:
-> Commit 06bd3c36a733 (ext4: fix data exposure after a crash) uncovered a
-> deadlock in ext4_writepages() which was previously much harder to hit.
-> After this commit xfstest generic/130 reproduces the deadlock on small
-> filesystems.
-> 
-> The problem happens when ext4_do_update_inode() sets LARGE_FILE feature
-> and marks current inode handle as synchronous. That subsequently results
-> in ext4_journal_stop() called from ext4_writepages() to block waiting for
-> transaction commit while still holding page locks, reference to io_end,
-> and some prepared bio in mpd structure each of which can possibly block
-> transaction commit from completing and thus results in deadlock.
+There is an updated rootfs.img file available at:
 
-Would it be safe to submit the bio *after* calling
-ext4_journal_stop()?  It looks like that would be safe, and I'd prefer
-to minimize the time that a handle is open since that can really
-impact performance when trying to close all existing handles when we
-are starting commit processing.  It looks to me like this would be
-safe in terms of avoiding deadlocks, yes?
+    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+
+It includes the latest updates from the xfstests-dev upstream.  This
+image also includes the dbench binary which enables generic/241.
+There is also support for testing the virtio-rng kernel driver (not
+for file system testing).
+
+The gce-xfstests driver has been updated to support the latest gcloud
+SDK and Debian releases.  For more information about this test
+framework, please see:
+
+    http://thunk.org/gce-xfstests
+
+Finally, it is now possible to build tar.gz file with all of the
+xfstests-bld test runner infrastructure using "./gen-image
+--out-tar=rootfs.tar.gz".  This can be used for those people who want
+to run xfstests on bare hardware without using KVM.  This also allows
+xfstests-bld to be built on a Debian armhf build server, and then
+create a tar.gz file that can be used to run a chroot environment on
+an Android device.  (This requires using an external drive attached to
+a USB C hub, with a special kernel which forces SELinux in Permissive
+mode.  More documentation and automation will hopefully follow.)
+
+Cheers,
 
 						- Ted
+
+
