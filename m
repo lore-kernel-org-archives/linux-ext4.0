@@ -1,152 +1,149 @@
-From: =?utf-8?B?VG9tw6HFoQ==?= Trnka <ttrnka@mail.muni.cz>
-Subject: Corrupted inode timestamps on v4.4+?
-Date: Thu, 30 Jun 2016 13:35:18 +0200
-Message-ID: <1690728.35imogO4tp@mintaka.ncbr.muni.cz>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v23 00/22] Richacls (Core and Ext4)
+Date: Thu, 30 Jun 2016 15:46:51 +0200
+Message-ID: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from arethusa2.fi.muni.cz ([147.251.49.7]:57493 "EHLO
-	arethusa2.fi.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751575AbcF3Lnr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Jun 2016 07:43:47 -0400
-Received: from mintaka.ncbr.muni.cz (mintaka.ncbr.muni.cz [147.251.90.24])
-	by arethusa2.fi.muni.cz (Postfix) with ESMTPSA id 1843C1E0F12
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Jun 2016 13:35:19 +0200 (CEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>, Andreas Gruenbacher <agruenba@redhat.com>,
+	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+	Christoph Hellwig <hch@infradead.org>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, linux-fsdevel@vger.kernel.org,
+	Jeff Layton <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+Here is another update of the richacl patches.  Changes since the last posting
+(https://lwn.net/Articles/689151/):
 
-I have noticed some files on my workstation home FS (ext4) having very=20
-suspicious timestamp values. This has probably started happening in Apr=
-il when=20
-the machine was running v4.4.3, but the last occurence is from a week a=
-go on=20
-v4.5.6.
+ * Rebase on top of 4.7-rc5+ because of commit 999653786d "nfsd: check
+   permissions when setting ACLs".
 
-The corruption looks like nonsensical atime and/or mtime seconds values=
- (see=20
-below). At the same time, the nanosecond portion of a corrupted time is=
- always=20
-zero. In fact, the nanoseconds for mtime are all zeros for all of the a=
-ffected=20
-files, even if the seconds part of mtime looks OK.
-
-I can't confidently claim this is an ext4 bug, but it seems likely (the=
-re were=20
-no HW failures, power cuts, oopses etc. and fsck found no errors). I wo=
-uld be=20
-glad to debug this further, but currently I have no idea how to reprodu=
-ce the=20
-corruption. Any hints are welcome.
-
-Best regards,
-Tom=C3=A1=C5=A1 Trnka
-
-debugfs:  stat Administrace/pip/pip-krb5-storage.pcap =20
-Inode: 38933641   Type: regular    Mode:  0644   Flags: 0x80000=20
-Generation: 2251791665    Version: 0x00000000:00000001=20
-User: 395845   Group:  2001   Size: 802806=20
-=46ile ACL: 0    Directory ACL: 0=20
-Links: 1   Blockcount: 1568=20
-=46ragment:  Address: 0    Number: 0    Size: 0=20
-ctime: 0x572335f2:32d79df0 -- Fri Apr 29 12:22:42 2016=20
-atime: 0xf9b65000:00000000 -- Thu Oct  5 09:00:16 2102=20
-mtime: 0x57233597:00000000 -- Fri Apr 29 12:21:11 2016=20
-crtime: 0x572335f2:1d9f6f84 -- Fri Apr 29 12:22:42 2016=20
-Size of extra inode fields: 32=20
-Extended attributes stored in inode body: =20
- selinux =3D "unconfined_u:object_r:user_home_t:s0\000" (37)=20
-EXTENTS:=20
-(0-195):155943077-155943272=20
-
-debugfs:  inode_dump Administrace/pip/pip-krb5-storage.pcap=20
-0000  a481 450a f63f 0c00 0050 b6f9 f235 2357  ..E..?...P...5#W=20
-0020  9735 2357 0000 0000 d107 0100 2006 0000  .5#W........ ...=20
-0040  0000 0800 0100 0000 0af3 0100 0400 0000  ................=20
-0060  0000 0000 0000 0000 c400 0000 a580 4b09  ..............K.=20
-0100  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-*=20
-0140  0000 0000 319d 3786 0000 0000 0000 0000  ....1.7.........=20
-0160  0000 0000 0000 0000 0600 0000 0000 0000  ................=20
-0200  2000 0000 f09d d732 0000 0000 0000 0000   ......2........=20
-0220  f235 2357 846f 9f1d 0000 0000 0000 0000  .5#W.o..........=20
-0240  0000 02ea 0706 3400 0000 0000 2500 0000  ......4.....%...=20
-0260  0000 0000 7365 6c69 6e75 7800 0000 0000  ....selinux.....=20
-0300  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-0320  0000 0000 0000 0000 756e 636f 6e66 696e  ........unconfin=20
-0340  6564 5f75 3a6f 626a 6563 745f 723a 7573  ed_u:object_r:us=20
-0360  6572 5f68 6f6d 655f 743a 7330 0000 0000  er_home_t:s0....=20
-
-debugfs:  stat tmp/RDP-log.csv =20
-Inode: 39191637   Type: regular    Mode:  0755   Flags: 0x80000=20
-Generation: 2606527817    Version: 0x00000000:00000001=20
-User: 395845   Group:  2001   Size: 749186=20
-=46ile ACL: 166150131    Directory ACL: 0=20
-Links: 1   Blockcount: 1472=20
-=46ragment:  Address: 0    Number: 0    Size: 0=20
-ctime: 0x53c77ea3:78c876a4 -- Thu Jul 17 09:43:31 2014=20
-atime: 0x5773d316:494a0854 -- Wed Jun 29 15:54:30 2016=20
-mtime: 0x987df1f8:00000000 -- Fri Jan 27 01:06:16 2051=20
-crtime: 0x53c77ea0:4e193034 -- Thu Jul 17 09:43:28 2014=20
-Size of extra inode fields: 32=20
-EXTENTS:=20
-(0-182):11657216-11657398=20
-
-debugfs:  inode_dump tmp/RDP-log.csv=20
-0000  ed81 450a 826e 0b00 16d3 7357 a37e c753  ..E..n....sW.~.S=20
-0020  f8f1 7d98 0000 0000 d107 0100 c005 0000  ..}.............=20
-0040  0000 0800 0100 0000 0af3 0100 0400 0000  ................=20
-0060  0000 0000 0000 0000 b700 0000 00e0 b100  ................=20
-0100  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-*=20
-0140  0000 0000 4975 5c9b f33f e709 0000 0000  ....Iu\..?......=20
-0160  0000 0000 0000 0000 0600 0000 0000 0000  ................=20
-0200  2000 0000 a476 c878 0000 0000 5408 4a49   ....v.x....T.JI=20
-0220  a07e c753 3430 194e 0000 0000 0000 0000  .~.S40.N........=20
-0240  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-*=20
-
-debugfs:  stat openmpi/kraken16.xml =20
-Inode: 48117428   Type: regular    Mode:  0640   Flags: 0x80000=20
-Generation: 3888286010    Version: 0x00000000:00000001=20
-User: 395845   Group:  2001   Size: 32693=20
-=46ile ACL: 0    Directory ACL: 0=20
-Links: 1   Blockcount: 64=20
-=46ragment:  Address: 0    Number: 0    Size: 0=20
-ctime: 0x5763eb3c:45901c0c -- Fri Jun 17 14:21:16 2016=20
-atime: 0x82779900:00000000 -- Fri May 13 07:07:12 2039=20
-mtime: 0x5763eb07:00000000 -- Fri Jun 17 14:20:23 2016=20
-crtime: 0x5763eb3c:42b3ae24 -- Fri Jun 17 14:21:16 2016=20
-Size of extra inode fields: 32=20
-Extended attributes stored in inode body: =20
- selinux =3D "unconfined_u:object_r:user_home_t:s0\000" (37)=20
-EXTENTS:=20
-(0-7):192521632-192521639
-
-debugfs:  inode_dump openmpi/kraken16.xml =20
-0000  a081 450a b57f 0000 0099 7782 3ceb 6357  ..E.......w.<.cW=20
-0020  07eb 6357 0000 0000 d107 0100 4000 0000  ..cW........@...=20
-0040  0000 0800 0100 0000 0af3 0100 0400 0000  ................=20
-0060  0000 0000 0000 0000 0800 0000 a0a5 790b  ..............y.=20
-0100  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-*=20
-0140  0000 0000 3a89 c2e7 0000 0000 0000 0000  ....:...........=20
-0160  0000 0000 0000 0000 0600 0000 0000 0000  ................=20
-0200  2000 0000 0c1c 9045 0000 0000 0000 0000   ......E........=20
-0220  3ceb 6357 24ae b342 0000 0000 0000 0000  <.cW$..B........=20
-0240  0000 02ea 0706 3400 0000 0000 2500 0000  ......4.....%...=20
-0260  0000 0000 7365 6c69 6e75 7800 0000 0000  ....selinux.....=20
-0300  0000 0000 0000 0000 0000 0000 0000 0000  ................=20
-0320  0000 0000 0000 0000 756e 636f 6e66 696e  ........unconfin=20
-0340  6564 5f75 3a6f 626a 6563 745f 723a 7573  ed_u:object_r:us=20
-0360  6572 5f68 6f6d 655f 743a 7330 0000 0000  er_home_t:s0....
+ * Introduce set_richacl() similar to set_posix_acl() and use it in nfsd
+   to avoid going through the richacl xattr representation.
 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+	richacl-2016-06-30
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+What more needs to be done to get this initial set of patches merged?
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (20):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Permission check algorithm
+  posix_acl: Improve xattr fixup code
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/9p/acl.c                                     |   8 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   1 +
+ fs/attr.c                                       |  81 ++-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |   5 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 134 ++++
+ fs/ext4/richacl.h                               |  40 ++
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  43 +-
+ fs/jffs2/acl.c                                  |   6 +-
+ fs/namei.c                                      | 152 +++-
+ fs/nfs/nfs3acl.c                                |  14 +-
+ fs/posix_acl.c                                  |  69 +-
+ fs/richacl.c                                    | 915 ++++++++++++++++++++++++
+ fs/richacl_xattr.c                              | 222 ++++++
+ fs/xattr.c                                      |  29 +-
+ include/linux/acl.h                             |  15 +
+ include/linux/fs.h                              |  67 +-
+ include/linux/posix_acl.h                       |  21 +-
+ include/linux/richacl.h                         | 211 ++++++
+ include/linux/richacl_xattr.h                   |  31 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 ++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 35 files changed, 2209 insertions(+), 160 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
+-- 
+2.5.5
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
