@@ -1,33 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/4] jbd2: Move lockdep tracking to journal_s
-Date: Thu, 30 Jun 2016 11:40:05 -0400
-Message-ID: <20160630154005.GE2028@thunk.org>
+Subject: Re: [PATCH 4/4] jbd2: Track more dependencies on transaction commit
+Date: Thu, 30 Jun 2016 11:45:04 -0400
+Message-ID: <20160630154504.GF2028@thunk.org>
 References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-4-git-send-email-jack@suse.cz>
+ <1466073736-30447-5-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40256 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40408 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932430AbcF3PkK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Jun 2016 11:40:10 -0400
+	id S1752161AbcF3PpM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2016 11:45:12 -0400
 Content-Disposition: inline
-In-Reply-To: <1466073736-30447-4-git-send-email-jack@suse.cz>
+In-Reply-To: <1466073736-30447-5-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 16, 2016 at 12:42:15PM +0200, Jan Kara wrote:
-> Currently lockdep map is tracked in each journal handle. To be able to
-> expand lockdep support to cover also other cases where we depend on
-> transaction commit and where handle is not available, move lockdep map
-> into struct journal_s. Since this makes the lockdep map shared for all
-> handles, we have to use rwsem_acquire_read() for acquisitions now.
+On Thu, Jun 16, 2016 at 12:42:16PM +0200, Jan Kara wrote:
+> So far we were tracking only dependency on transaction commit due to
+> starting a new handle (which may require commit to start a new
+> transaction). Now add tracking also for other cases where we wait for
+> transaction commit. This way lockdep can catch deadlocks e. g. because we
+> call jbd2_journal_stop() for a synchronous handle with some locks held
+> which rank below transaction start.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks, applied.  I added documentation for j_trans_commit_map to keep
-the kbuild checker happy.
+Thanks, applied.
 
 						- Ted
