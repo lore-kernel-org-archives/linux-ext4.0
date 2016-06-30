@@ -1,49 +1,135 @@
-From: Volker Lendecke <Volker.Lendecke@SerNet.DE>
-Subject: Re: [PATCH v23 00/22] Richacls (Core and Ext4)
-Date: Thu, 30 Jun 2016 16:11:28 +0200
-Message-ID: <20160630141128.GB17201@sernet.de>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
-Reply-To: Volker.Lendecke@SerNet.DE
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, linux-cifs@vger.kernel.org,
-	linux-api@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	Jeff Layton <jlayton@poochiereds.net>, linux-ext4@vger.kernel.org,
-	Anna Schumaker <anna.schumaker@netapp.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-Content-Disposition: inline
-In-Reply-To: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v3] ext4: optimize ext4_should_retry_alloc() to improve ENOSPC performance
+Date: Thu, 30 Jun 2016 11:00:31 -0400
+Message-ID: <1467298831-8649-1-git-send-email-tytso@mit.edu>
+References: <20160617101007.GA26350@quack2.suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39412 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932199AbcF3PBe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2016 11:01:34 -0400
+In-Reply-To: <20160617101007.GA26350@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 30, 2016 at 03:46:51PM +0200, Andreas Gruenbacher wrote:
-> What more needs to be done to get this initial set of patches merged?
+If there are no pending blocks to be released after a commit, forcing
+a journal commit has no hope of helping.  It's possible that a commit
+had just completed, so if there are now free blocks available for
+allocation, it's worth retrying the commit.
 
-Bind Christoph to some tree in the Harz hills, so that he can't reject
-them? :-)
+Reported-by: Chao Yu <yuchao0@huawei.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/balloc.c    |  4 +++-
+ fs/ext4/ext4.h      |  1 +
+ fs/ext4/ext4_jbd2.h | 10 +++++++++-
+ fs/ext4/mballoc.c   | 12 ++++++++++--
+ 4 files changed, 23 insertions(+), 4 deletions(-)
 
-Christoph, is there anything realistic that can be done to get over
-your concerns?
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 3020fd7..0b8105b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -610,7 +610,9 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ 
+ 	jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+ 
+-	jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
++	smp_mb();
++	if (EXT4_SB(sb)->s_mb_free_pending)
++		jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+ 	return 1;
+ }
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b84aa1c..96c73e6 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1430,6 +1430,7 @@ struct ext4_sb_info {
+ 	unsigned short *s_mb_offsets;
+ 	unsigned int *s_mb_maxs;
+ 	unsigned int s_group_info_size;
++	unsigned int s_mb_free_pending;
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 09c1ef3..b1d52c1 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -175,6 +175,13 @@ struct ext4_journal_cb_entry {
+  * There is no guaranteed calling order of multiple registered callbacks on
+  * the same transaction.
+  */
++static inline void _ext4_journal_callback_add(handle_t *handle,
++			struct ext4_journal_cb_entry *jce)
++{
++	/* Add the jce to transaction's private list */
++	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
++}
++
+ static inline void ext4_journal_callback_add(handle_t *handle,
+ 			void (*func)(struct super_block *sb,
+ 				     struct ext4_journal_cb_entry *jce,
+@@ -187,10 +194,11 @@ static inline void ext4_journal_callback_add(handle_t *handle,
+ 	/* Add the jce to transaction's private list */
+ 	jce->jce_func = func;
+ 	spin_lock(&sbi->s_md_lock);
+-	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
++	_ext4_journal_callback_add(handle, jce);
+ 	spin_unlock(&sbi->s_md_lock);
+ }
+ 
++
+ /**
+  * ext4_journal_callback_del: delete a registered callback
+  * @handle: active journal transaction handle on which callback was registered
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c1ab3ec..77249e1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2627,6 +2627,7 @@ int ext4_mb_init(struct super_block *sb)
+ 
+ 	spin_lock_init(&sbi->s_md_lock);
+ 	spin_lock_init(&sbi->s_bal_lock);
++	sbi->s_mb_free_pending = 0;
+ 
+ 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+ 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+@@ -2814,6 +2815,9 @@ static void ext4_free_data_callback(struct super_block *sb,
+ 	/* we expect to find existing buddy because it's pinned */
+ 	BUG_ON(err != 0);
+ 
++	spin_lock(&EXT4_SB(sb)->s_md_lock);
++	EXT4_SB(sb)->s_mb_free_pending -= entry->efd_count;
++	spin_unlock(&EXT4_SB(sb)->s_md_lock);
+ 
+ 	db = e4b.bd_info;
+ 	/* there are blocks to put in buddy to make them really free */
+@@ -4583,6 +4587,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ {
+ 	ext4_group_t group = e4b->bd_group;
+ 	ext4_grpblk_t cluster;
++	ext4_grpblk_t clusters = new_entry->efd_count;
+ 	struct ext4_free_data *entry;
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+@@ -4649,8 +4654,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		}
+ 	}
+ 	/* Add the extent to transaction's private list */
+-	ext4_journal_callback_add(handle, ext4_free_data_callback,
+-				  &new_entry->efd_jce);
++	new_entry->efd_jce.jce_func = ext4_free_data_callback;
++	spin_lock(&sbi->s_md_lock);
++	_ext4_journal_callback_add(handle, &new_entry->efd_jce);
++	sbi->s_mb_free_pending += clusters;
++	spin_unlock(&sbi->s_md_lock);
+ 	return 0;
+ }
+ 
+-- 
+2.5.0
 
-Volker
-
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
