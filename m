@@ -1,64 +1,77 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: [PATCH] ext4: check for extents that wrap around
-Date: Thu, 30 Jun 2016 00:34:48 +0200
-Message-ID: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
-Cc: Phil Turnbull <phil.turnbull@oracle.com>,
-	linux-ext4@vger.kernel.org, Eryu Guan <guaneryu@gmail.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
+Date: Thu, 30 Jun 2016 09:00:32 +0200
+Message-ID: <20160630070032.GA19671@quack2.suse.cz>
+References: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
+ <20160616083304.GD22835@quack2.suse.cz>
+ <20160617174033.GC72696@calvinowens-mba.dhcp.thefacebook.com>
+ <20160617180434.GA427@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	kernel-team@fb.com
+To: Calvin Owens <calvinowens@fb.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:34268 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751483AbcF2Wey (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Jun 2016 18:34:54 -0400
+Received: from mx2.suse.de ([195.135.220.15]:53519 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750969AbcF3HAg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2016 03:00:36 -0400
+Content-Disposition: inline
+In-Reply-To: <20160617180434.GA427@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-An extent with lblock = 4294967295 and len = 1 will pass the
-ext4_valid_extent() test:
+On Fri 17-06-16 20:04:34, Jan Kara wrote:
+> On Fri 17-06-16 13:40:33, Calvin Owens wrote:
+> > On Thursday 06/16 at 10:33 +0200, Jan Kara wrote:
+> > > Hi Calvin,
+> > > 
+> > > On Wed 15-06-16 16:49:39, Calvin Owens wrote:
+> > > > I'm hitting the following warning on a 4.0 kernel:
+> > > > 
+> > > >   WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
+> > > >   CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
+> > > >   Call Trace: 
+> > > >   [<ffffffff8176af8e>] dump_stack+0x4d/0x63
+> > > >   [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
+> > > >   [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
+> > > >   [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
+> > > >   [<ffffffff811d248b>] evict+0xbb/0x190 
+> > > >   [<ffffffff811d2d6d>] iput+0x17d/0x1e0
+> > > >   [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
+> > > >   [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
+> > > >   [<ffffffff811b952a>] __fput+0x17a/0x210
+> > > >   [<ffffffff811b960e>] ____fput+0xe/0x10
+> > > >   [<ffffffff81086dbf>] task_work_run+0xbf/0x100 
+> > > >   [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
+> > > >   [<ffffffff81771529>] int_signal+0x12/0x17
+> > > > 
+> > > > Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
+> > > > this in 3.11. The check was entirely removed in 4.6.
+> > > 
+> > > OK, so this is the warning:
+> > > 
+> > > WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+> > > 
+> > > It was removed in 4.6 since we maintained i_ioend_count only to be able to
+> > > do this check and it didn't trigger for a long time. So it is interesting
+> > > that it actually triggered for you with 4.0.
+> > > 
+> > > > Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
+> > > > see if I can reproduce it on upstream, but since the check got removed I
+> > > > was wondering if there was post-4.0 work that makes it obsolete?
+> > > 
+> > > It would be great. I'm attaching a revert and an additional debug patch. If
+> > > you can run with these two on the latest kernel (or even just apply the debug
+> > > patch on top of 4.0) and reproduce the issue with it, I would be grateful.
+> > 
+> > Forgot to attach the patches? Or did my mailserver eat them? :)
+> 
+> Sorry, probably forgot to attach. Here they are.
 
-	ext4_lblk_t last = lblock + len - 1;
+Any luck with the patch?
 
-	if (len == 0 || lblock > last)
-		return 0;
-
-since last = 4294967295 + 1 - 1 = 4294967295. This would later trigger
-the BUG_ON(es->es_lblk + es->es_len < es->es_lblk) in ext4_es_end().
-
-We can simplify it by removing the - 1 altogether and changing the test
-to use lblock + len <= lblock, since now if len = 0, then lblock + 0 ==
-lblock and it fails, and if len > 0 then lblock + len > lblock in order
-to pass (i.e. it doesn't overflow).
-
-Fixes: 5946d0893 ("ext4: check for overlapping extents in ext4_valid_extent_entries()")
-Fixes: 2f974865f ("ext4: check for zero length extent explicitly")
-Cc: Eryu Guan <guaneryu@gmail.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Phil Turnbull <phil.turnbull@oracle.com>
-Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
----
- fs/ext4/extents.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2a2eef9..2f258c6 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -381,9 +381,13 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- 	ext4_fsblk_t block = ext4_ext_pblock(ext);
- 	int len = ext4_ext_get_actual_len(ext);
- 	ext4_lblk_t lblock = le32_to_cpu(ext->ee_block);
--	ext4_lblk_t last = lblock + len - 1;
- 
--	if (len == 0 || lblock > last)
-+	/*
-+	 * We allow neither:
-+	 *  - zero length
-+	 *  - overflow/wrap-around
-+	 */
-+	if (lblock + len <= lblock)
- 		return 0;
- 	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
- }
+									Honza
 -- 
-1.9.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
