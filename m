@@ -1,41 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: make journal y2038 safe
-Date: Thu, 30 Jun 2016 11:49:38 -0400
-Message-ID: <20160630154938.GG2028@thunk.org>
-References: <20160617153916.444842-1-arnd@arndb.de>
- <20160619155347.GB2734@quack2.suse.cz>
+Subject: Re: [PATCH] ext4: check for extents that wrap around
+Date: Thu, 30 Jun 2016 11:54:52 -0400
+Message-ID: <20160630155452.GH2028@thunk.org>
+References: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
- Jan Kara <jack@suse.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <y2038-bounces@lists.linaro.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Phil Turnbull <phil.turnbull@oracle.com>,
+	linux-ext4@vger.kernel.org, Eryu Guan <guaneryu@gmail.com>
+To: Vegard Nossum <vegard.nossum@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40704 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752346AbcF3Pyy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 30 Jun 2016 11:54:54 -0400
 Content-Disposition: inline
-In-Reply-To: <20160619155347.GB2734@quack2.suse.cz>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gU3VuLCBKdW4gMTksIDIwMTYgYXQgMDU6NTM6NDdQTSArMDIwMCwgSmFuIEthcmEgd3JvdGU6
-Cj4gT24gRnJpIDE3LTA2LTE2IDE3OjM5OjAwLCBBcm5kIEJlcmdtYW5uIHdyb3RlOgo+ID4gVGhl
-IGpiZDIgam91cm5hbCBzdG9yZXMgdGhlIGNvbW1pdCB0aW1lIGluIDY0LWJpdCBzZWNvbmRzIGFu
-ZCAzMi1iaXQKPiA+IG5hbm9zZWNvbmRzLCB3aGljaCBhdm9pZHMgYW4gb3ZlcmZsb3cgaW4gMjAz
-OCwgYnV0IGl0IGdldHMgdGhlIG51bWJlcnMKPiA+IGZyb20gY3VycmVudF9rZXJuZWxfdGltZSgp
-LCB3aGljaCB1c2VzICdsb25nJyBzZWNvbmRzIG9uIDMyLWJpdAo+ID4gYXJjaGl0ZWN0dXJlcy4K
-PiA+IAo+ID4gVGhpcyBzaW1wbHkgY2hhbmdlcyB0aGUgY29kZSB0byBjYWxsIGN1cnJlbnRfa2Vy
-bmVsX3RpbWU2NCgpIHNvCj4gPiB3ZSB1c2UgNjQtYml0IHNlY29uZHMgY29uc2lzdGVudGx5Lgo+
-ID4gCj4gPiBTaWduZWQtb2ZmLWJ5OiBBcm5kIEJlcmdtYW5uIDxhcm5kQGFybmRiLmRlPgo+IAo+
-IFRoZSBwYXRjaCBsb29rcyBnb29kLiBZb3UgY2FuIGFkZDoKPiAKPiBSZXZpZXdlZC1ieTogSmFu
-IEthcmEgPGphY2tAc3VzZS5jej4KCkFwcGxpZWQsIHRoYW5rcy4KCgkJCQkJLSBUZWQKX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIwMzggbWFpbGluZyBs
-aXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21haWxt
-YW4vbGlzdGluZm8veTIwMzgK
+On Thu, Jun 30, 2016 at 12:34:48AM +0200, Vegard Nossum wrote:
+> An extent with lblock = 4294967295 and len = 1 will pass the
+> ext4_valid_extent() test:
+> 
+> 	ext4_lblk_t last = lblock + len - 1;
+> 
+> 	if (len == 0 || lblock > last)
+> 		return 0;
+> 
+> since last = 4294967295 + 1 - 1 = 4294967295. This would later trigger
+> the BUG_ON(es->es_lblk + es->es_len < es->es_lblk) in ext4_es_end().
+> 
+> We can simplify it by removing the - 1 altogether and changing the test
+> to use lblock + len <= lblock, since now if len = 0, then lblock + 0 ==
+> lblock and it fails, and if len > 0 then lblock + len > lblock in order
+> to pass (i.e. it doesn't overflow).
+> 
+> Fixes: 5946d0893 ("ext4: check for overlapping extents in ext4_valid_extent_entries()")
+> Fixes: 2f974865f ("ext4: check for zero length extent explicitly")
+> Cc: Eryu Guan <guaneryu@gmail.com>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Phil Turnbull <phil.turnbull@oracle.com>
+> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+
+Thanks, applied.
+
+						- Ted
