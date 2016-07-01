@@ -1,134 +1,121 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: [RFC PATCH] ext4: validate number of meta clusters in group
-Date: Fri, 1 Jul 2016 15:06:41 +0200
-Message-ID: <57766AE1.1040508@oracle.com>
+From: "Craske, Mark" <Mark_Craske@mentor.com>
+Subject: RE: ext4: what are possible causes of "zero length extent" ?
+Date: Fri, 1 Jul 2016 14:08:09 +0000
+Message-ID: <FE37120F1498264DADC12DBE98488214990390F4@EU-MBX-01.mgc.mentorg.com>
+References: <FE37120F1498264DADC12DBE984882149659843D@EU-MBX-01.mgc.mentorg.com>
+ <FE37120F1498264DADC12DBE98488214965A2601@EU-MBX-01.mgc.mentorg.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------040407080308090806000206"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from relay1.mentorg.com ([192.94.38.131]:60815 "EHLO
+	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751981AbcGAOvI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Jul 2016 10:51:08 -0400
+In-Reply-To: <FE37120F1498264DADC12DBE98488214965A2601@EU-MBX-01.mgc.mentorg.com>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------040407080308090806000206
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Hello Ted and Andreas,
 
-Hi,
+Is https://github.com/torvalds/linux/commit/d2dc317d564a46dfc683978a2e5=
+a4f91434e9711
+"ext4: fix data corruption caused by unwritten and delayed extents"
+a fix for one of the causes of "zero length extent"?
 
-I've found that sbi->s_es->s_reserved_gdt_blocks is not validated before
-being used, so e.g. a value of 25600 will overflow the buffer head and
-corrupt random kernel memory (I've observed 20+ different stack traces
-due to this bug! many of them long after the code has finished).
+Regards,
+Mark Craske
+Embedded Software Engineer
+Linux Transportation Solutions=20
 
-The following patch fixes it for me:
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 3020fd7..1ea5054 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -208,6 +208,9 @@ static int ext4_init_block_bitmap(struct super_block 
-*sb,
-  	memset(bh->b_data, 0, sb->s_blocksize);
-
-  	bit_max = ext4_num_base_meta_clusters(sb, block_group);
-+	if ((bit_max >> 3) >= bh->b_size)
-+		return -EFSCORRUPTED;
-+
-  	for (bit = 0; bit < bit_max; bit++)
-  		ext4_set_bit(bit, bh->b_data);
-
-However, I think there are potentially more bugs later in this function
-where offsets are not validated so it needs to be reviewed carefully.
-
-Another question is whether we should do the validation earlier, e.g. in
-ext4_fill_super(). I'm not too familiar with the code, but maybe
-something like the attached patch would be better? It does seem to fix
-the issue as well.
+Mentor Graphics (UK) Ltd., Rivergate,=A0Newbury Business Park, London R=
+oad, Newbury, RG14 2QB, UK
+=A0
+Tel: +44 (0)1635 81 1436
+Mobile : +44 (0)7900 008 230
+E-mail : Mark_Craske@mentor.com
+Yahoo-IM: mcraske_uk=A0=A0 Skype: mcraske_uk
 
 
-Vegard
-
---------------040407080308090806000206
-Content-Type: text/x-patch;
- name="0001-ext4-validate-number-of-base-meta-clusters-in-group.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="0001-ext4-validate-number-of-base-meta-clusters-in-group.pat";
- filename*1="ch"
-
->From efcee80eb78816a4d495224ffc624adf04217044 Mon Sep 17 00:00:00 2001
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Date: Fri, 1 Jul 2016 15:03:39 +0200
-Subject: [PATCH] ext4: validate number of base meta clusters in group
-
----
- fs/ext4/balloc.c |  4 +---
- fs/ext4/ext4.h   |  2 ++
- fs/ext4/super.c  | 10 ++++++++++
- 3 files changed, 13 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 3020fd7..ec03f01 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -22,8 +22,6 @@
- 
- #include <trace/events/ext4.h>
- 
--static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
--					    ext4_group_t block_group);
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-  */
-@@ -817,7 +815,7 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
-  * This function returns the number of file system metadata clusters at
-  * the beginning of a block group, including the reserved gdt blocks.
-  */
--static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-+unsigned ext4_num_base_meta_clusters(struct super_block *sb,
- 				     ext4_group_t block_group)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b84aa1ca..e492b0b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2270,6 +2270,8 @@ extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
- extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
- extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
- 			ext4_group_t group);
-+extern unsigned ext4_num_base_meta_clusters(struct super_block *sb,
-+				     ext4_group_t block_group);
- extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 					 ext4_fsblk_t goal,
- 					 unsigned int flags,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 563555e..b5a9d28 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3641,6 +3641,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 	sbi->s_groups_count = blocks_count;
-+
-+	for (i = 0; i < sbi->s_groups_count; ++i) {
-+		int bit_max = ext4_num_base_meta_clusters(sb, i);
-+		if ((bit_max >> 3) >= sb->s_blocksize) {
-+			ext4_msg(sb, KERN_WARNING, "meta cluster base for "
-+				"group %u exceeds block size", i);
-+			goto failed_mount;
-+		}
-+	}
-+
- 	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
- 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
--- 
-1.9.1
-
-
---------------040407080308090806000206--
+> -----Original Message-----
+> From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-
+> owner@vger.kernel.org] On Behalf Of Craske, Mark
+> Sent: 23 May 2016 11:49
+> To: linux-ext4@vger.kernel.org; Theodore Ts'o; Andreas Dilger
+> Subject: RE: ext4: what are possible causes of "zero length extent" ?
+>=20
+> Hello Ted and Andreas,
+>=20
+> We are still getting instances of "zero length extent" ext4 file syst=
+em
+> corruptions.
+> Are there any know causes, and are any of those fixes by upstream ker=
+nel
+> patches?
+>=20
+> Regards,
+> Mark Craske
+> Embedded Software Engineer
+> Linux Transportation Solutions
+>=20
+> Mentor Graphics (UK) Ltd., Rivergate,=A0Newbury Business Park, London=
+ Road,
+> Newbury, RG14 2QB, UK
+>=20
+> Tel: +44 (0)1635 81 1436
+> Mobile : +44 (0)7900 008 230
+> E-mail : Mark_Craske@mentor.com
+> Yahoo-IM: mcraske_uk=A0=A0 Skype: mcraske_uk
+>=20
+> > -----Original Message-----
+> > From: linux-ext4-owner@vger.kernel.org [mailto:linux-ext4-
+> > owner@vger.kernel.org] On Behalf Of Craske, Mark
+> > Sent: 11 May 2016 11:22
+> > To: linux-ext4@vger.kernel.org; Theodore Ts'o; Andreas Dilger
+> > Subject: ext4: what are possible causes of "zero length extent" ?
+> >
+> > Hello ext4 maintainers,
+> >
+> > This is somewhat of a follow-on from the "ext4 filesystem bad exten=
+t
+> > error review"
+> > thread from 2014.
+> >
+> > Embedded system with main SoC Freescale i.MX6(ARM cortex A9), dual
+> > CPU, running kernel 3.8.13.28, storage device is eMMC.
+> > This still suffers from "zero length extent" ext4 file system corru=
+ptions.
+> >
+> > I looked for upstream patches, but did not find any that explicitly
+> > fix "zero length extent"
+> > problems apart from "2f97486 ext4: check for zero length extent exp=
+licitly".
+> > That patch prevents the kernel panics but makes the affected file
+> > unreadable and unremovable, which can be fixed by running fsck.
+> >
+> > What are possible causes of "zero length extent", and are there
+> > upstream patches that actually deal with some of those?
+> >
+> > Regards,
+> > Mark Craske
+> > Mentor Graphics (UK) Ltd.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4"
+> > in the body of a message to majordomo@vger.kernel.org More
+> majordomo
+> > info at http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
