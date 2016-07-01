@@ -1,47 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: check for extents that wrap around
-Date: Thu, 30 Jun 2016 11:54:52 -0400
-Message-ID: <20160630155452.GH2028@thunk.org>
-References: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
+Date: Fri, 1 Jul 2016 11:09:50 +0200
+Message-ID: <20160701090950.GB22922@quack2.suse.cz>
+References: <1466073736-30447-1-git-send-email-jack@suse.cz>
+ <1466073736-30447-2-git-send-email-jack@suse.cz>
+ <20160630150548.GC2028@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Phil Turnbull <phil.turnbull@oracle.com>,
-	linux-ext4@vger.kernel.org, Eryu Guan <guaneryu@gmail.com>
-To: Vegard Nossum <vegard.nossum@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40704 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752346AbcF3Pyy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 30 Jun 2016 11:54:54 -0400
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Eryu Guan <eguan@redhat.com>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1467239688-2588-1-git-send-email-vegard.nossum@oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160630150548.GC2028@thunk.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 30, 2016 at 12:34:48AM +0200, Vegard Nossum wrote:
-> An extent with lblock = 4294967295 and len = 1 will pass the
-> ext4_valid_extent() test:
+On Thu 30-06-16 11:05:48, Ted Tso wrote:
+> On Thu, Jun 16, 2016 at 12:42:13PM +0200, Jan Kara wrote:
+> > Commit 06bd3c36a733 (ext4: fix data exposure after a crash) uncovered a
+> > deadlock in ext4_writepages() which was previously much harder to hit.
+> > After this commit xfstest generic/130 reproduces the deadlock on small
+> > filesystems.
+> > 
+> > The problem happens when ext4_do_update_inode() sets LARGE_FILE feature
+> > and marks current inode handle as synchronous. That subsequently results
+> > in ext4_journal_stop() called from ext4_writepages() to block waiting for
+> > transaction commit while still holding page locks, reference to io_end,
+> > and some prepared bio in mpd structure each of which can possibly block
+> > transaction commit from completing and thus results in deadlock.
 > 
-> 	ext4_lblk_t last = lblock + len - 1;
-> 
-> 	if (len == 0 || lblock > last)
-> 		return 0;
-> 
-> since last = 4294967295 + 1 - 1 = 4294967295. This would later trigger
-> the BUG_ON(es->es_lblk + es->es_len < es->es_lblk) in ext4_es_end().
-> 
-> We can simplify it by removing the - 1 altogether and changing the test
-> to use lblock + len <= lblock, since now if len = 0, then lblock + 0 ==
-> lblock and it fails, and if len > 0 then lblock + len > lblock in order
-> to pass (i.e. it doesn't overflow).
-> 
-> Fixes: 5946d0893 ("ext4: check for overlapping extents in ext4_valid_extent_entries()")
-> Fixes: 2f974865f ("ext4: check for zero length extent explicitly")
-> Cc: Eryu Guan <guaneryu@gmail.com>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Phil Turnbull <phil.turnbull@oracle.com>
-> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+> Would it be safe to submit the bio *after* calling
+> ext4_journal_stop()?  It looks like that would be safe, and I'd prefer
+> to minimize the time that a handle is open since that can really
+> impact performance when trying to close all existing handles when we
+> are starting commit processing.  It looks to me like this would be
+> safe in terms of avoiding deadlocks, yes?
 
-Thanks, applied.
+But it is not safe - the bio contains pages, those pages have PageWriteback
+set and if the inode is part of the running transaction,
+ext4_journal_stop() will wait for transaction commit which will wait for
+all outstanding writeback on the inode, which will deadlock on those pages
+which are part of our unsubmitted bio. So the ordering really has to be the
+way it is...
 
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
