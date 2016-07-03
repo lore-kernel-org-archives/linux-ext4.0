@@ -1,66 +1,61 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: Re: [PATCH] ext4: don't call ext4_should_journal_data() on the
- journal inode
-Date: Sun, 3 Jul 2016 09:05:05 +0200
-Message-ID: <5778B921.9060603@oracle.com>
-References: <1467495762-25353-1-git-send-email-vegard.nossum@oracle.com>
- <20160703051505.GA17739@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 121371] New: fsck created undeletable directory
+Date: Sun, 03 Jul 2016 15:41:50 +0000
+Message-ID: <bug-121371-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43258 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750801AbcGCHFP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Jul 2016 03:05:15 -0400
-In-Reply-To: <20160703051505.GA17739@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:57654 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752639AbcGCPly (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 3 Jul 2016 11:41:54 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 11CE1202F2
+	for <linux-ext4@vger.kernel.org>; Sun,  3 Jul 2016 15:41:52 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 7ED76202B8
+	for <linux-ext4@vger.kernel.org>; Sun,  3 Jul 2016 15:41:50 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/03/2016 07:15 AM, Theodore Ts'o wrote:
-> On Sat, Jul 02, 2016 at 11:42:42PM +0200, Vegard Nossum wrote:
->> Certain combinations of mount options in the superblock will cause
->> set_journal_csum_feature_set() in ext4_fill_super() to fail after the
->> journal has been created. When iput() is called on the journal inode,
->> we will hit the BUG() in ext4_should_journal_data(). We can prevent
->> this by only calling ext4_should_journal_data() if we already know
->> that it's not the journal inode.
->
-> Which mount options?  Can you please give a reproducer?
+https://bugzilla.kernel.org/show_bug.cgi?id=121371
 
-Unfortunately I can't share the reproducer, but...
-s->mount_opt = 0xa882c020, which seems like it is:
+            Bug ID: 121371
+           Summary: fsck created undeletable directory
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.6.3
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: iamgrief@gmail.com
+        Regression: No
 
-EXT4_MOUNT_ERRORS_RO
-EXT4_MOUNT_XATTR_USER
-EXT4_MOUNT_POSIX_ACL
-EXT4_MOUNT_BARRIER
-EXT4_MOUNT_JOURNAL_CHECKSUM
-EXT4_MOUNT_DELALLOC
-EXT4_MOUNT_BLOCK_VALIDITY
-EXT4_MOUNT_INIT_INODE_TABLE
+Now I have two directories which cannot be deleted or moved even by root. I
+cannot neither change ownership nor permission of these directories as well.
 
-At mount time, this ends up calling
+I've removed everything else from that partition, leaveing only these two
+directories, run zerofree, compressed an image and uploaded it to dropbox.
 
-jbd2_journal_clear_features(JBD2_FEATURE_COMPAT_CHECKSUM, 0, 
-JBD2_FEATURE_INCOMPAT_CSUM_V3 | JBD2_FEATURE_INCOMPAT_CSUM_V2)
-jbd2_journal_set_features(0, 0, JBD2_FEATURE_INCOMPAT_CSUM_V3) = 0 // fails
-jbd2_journal_clear_features(0x0, 0x0, JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)
+You can check that with the following:
 
-The reason the set_features() call ends up calling is because
-journal->j_format_version == 1.
+cd /tmp
+wget https://dl.dropboxusercontent.com/u/22701362/broken.tar.xz
+tar xvf broken.tar.xz
+mkdir test
+sudo mount broken.iso test
+cd test
 
-Maybe the "mount options" thing was a bit misleading and we should
-rather say "Certain combinations of mount options
-(EXT4_MOUNT_JOURNAL_CHECKSUM), journal format (v1), and superblock
-features (EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) [...]" in the changelog.
+More details are here:
+http://askubuntu.com/questions/794262/undeletable-directory-in-lostfound
 
-Does that make more sense?
-
-Hope this helps,
-
-
-Vegard
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
