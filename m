@@ -1,85 +1,64 @@
-From: Pranay Srivastava <pranjas@gmail.com>
-Subject: Re: [PATCH 1/1]ext4: Fix WARN_ON_ONCE when marking buffer dirty
-Date: Mon, 4 Jul 2016 12:39:05 +0530
-Message-ID: <CA+aCy1HhYFwsME0Zo1p1UJddz0WzDZPWMeK6D4rLv5Fp9-igkQ@mail.gmail.com>
-References: <1467285150-15977-1-git-send-email-pranjas@gmail.com> <1467285150-15977-2-git-send-email-pranjas@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: don't call ext4_should_journal_data() on the
+ journal inode
+Date: Mon, 4 Jul 2016 10:08:38 +0200
+Message-ID: <20160704080838.GB5200@quack2.suse.cz>
+References: <1467495762-25353-1-git-send-email-vegard.nossum@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Pranay Kr. Srivastava" <pranjas@gmail.com>
-To: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:36644 "EHLO
-	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752492AbcGDHJI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jul 2016 03:09:08 -0400
-In-Reply-To: <1467285150-15977-2-git-send-email-pranjas@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Vegard Nossum <vegard.nossum@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1467495762-25353-1-git-send-email-vegard.nossum@oracle.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 30, 2016 at 4:42 PM, Pranay Kr. Srivastava
-<pranjas@gmail.com> wrote:
-> Signed-off-by: Pranay Kr. Srivastava <pranjas@gmail.com>
+On Sat 02-07-16 23:42:42, Vegard Nossum wrote:
+> Certain combinations of mount options in the superblock will cause
+> set_journal_csum_feature_set() in ext4_fill_super() to fail after the
+> journal has been created. When iput() is called on the journal inode,
+> we will hit the BUG() in ext4_should_journal_data(). We can prevent
+> this by only calling ext4_should_journal_data() if we already know
+> that it's not the journal inode.
+> 
+> Fixes: 2d859db3e4 ("ext4: fix data corruption in inodes with journalled data")
+> Fixes: 2b405bfa84 ("ext4: fix data=journal fast mount/umount hang")
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+
+The patch looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
 > ---
->  fs/ext4/super.c | 30 ++++++++++++++++--------------
->  1 file changed, 16 insertions(+), 14 deletions(-)
->
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3822a5a..8f10715 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4327,20 +4327,6 @@ static int ext4_commit_super(struct super_block *sb, int sync)
->
->         if (!sbh || block_device_ejected(sb))
->                 return error;
-> -       if (buffer_write_io_error(sbh)) {
-> -               /*
-> -                * Oh, dear.  A previous attempt to write the
-> -                * superblock failed.  This could happen because the
-> -                * USB device was yanked out.  Or it could happen to
-> -                * be a transient write error and maybe the block will
-> -                * be remapped.  Nothing we can do but to retry the
-> -                * write and hope for the best.
-> -                */
-> -               ext4_msg(sb, KERN_ERR, "previous I/O error to "
-> -                      "superblock detected");
-> -               clear_buffer_write_io_error(sbh);
-> -               set_buffer_uptodate(sbh);
-> -       }
->         /*
->          * If the file system is mounted read-only, don't update the
->          * superblock write time.  This avoids updating the superblock
-> @@ -4371,7 +4357,23 @@ static int ext4_commit_super(struct super_block *sb, int sync)
->                                 &EXT4_SB(sb)->s_freeinodes_counter));
->         BUFFER_TRACE(sbh, "marking dirty");
->         ext4_superblock_csum_set(sb);
-> +       lock_buffer(sbh);
-> +       if (buffer_write_io_error(sbh)) {
-> +               /*
-> +                * Oh, dear.  A previous attempt to write the
-> +                * superblock failed.  This could happen because the
-> +                * USB device was yanked out.  Or it could happen to
-> +                * be a transient write error and maybe the block will
-> +                * be remapped.  Nothing we can do but to retry the
-> +                * write and hope for the best.
-> +                */
-> +               ext4_msg(sb, KERN_ERR, "previous I/O error to "
-> +                      "superblock detected");
-> +               clear_buffer_write_io_error(sbh);
-> +               set_buffer_uptodate(sbh);
-> +       }
->         mark_buffer_dirty(sbh);
-> +       unlock_buffer(sbh);
->         if (sync) {
->                 error = __sync_dirty_buffer(sbh,
->                         test_opt(sb, BARRIER) ? WRITE_FUA : WRITE_SYNC);
-> --
+>  fs/ext4/inode.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 91b66db..2591236 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -207,9 +207,9 @@ void ext4_evict_inode(struct inode *inode)
+>  		 * Note that directories do not have this problem because they
+>  		 * don't use page cache.
+>  		 */
+> -		if (ext4_should_journal_data(inode) &&
+> -		    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode)) &&
+> -		    inode->i_ino != EXT4_JOURNAL_INO) {
+> +		if (inode->i_ino != EXT4_JOURNAL_INO &&
+> +		    ext4_should_journal_data(inode) &&
+> +		    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
+>  			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+>  			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
+>  
+> -- 
 > 1.9.1
->
-
-Can this be reviewed as well please.
-
-
+> 
 -- 
-        ---P.K.S
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
