@@ -1,79 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] coredump: avoid ext4 auto_da_alloc for core file
-Date: Sun, 3 Jul 2016 22:24:55 -0400
-Message-ID: <20160704022455.GA28883@thunk.org>
-References: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
- <20160629183444.GA3030@vader>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: Re: [PATCH] quota: fix generic/244 on 32-bit platforms
+Date: Mon, 4 Jul 2016 00:26:44 -0500
+Message-ID: <b6738cc5-8814-4896-d91a-f2c6e786b6ec@sandeen.net>
+References: <1467591116-16880-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, kernel-team@fb.com
-To: Omar Sandoval <osandov@osandov.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160629183444.GA3030@vader>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 8bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>, fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <1467591116-16880-1-git-send-email-tytso@mit.edu>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 29, 2016 at 11:34:44AM -0700, Omar Sandoval wrote:
-> > Someone at Facebook reported that their coredumps were much faster when
-> > using a pipe helper than when dumping directly to a file, which doesn't
-> > make much sense. It turns out that this difference is because in
-> > do_coredump(), we truncate the core file and thus trigger the ext4
-> > auto_da_alloc heuristic. We can't use O_TRUNC because we might bail out
-> > of do_coredump() in certain conditions, so instead, avoid truncating
-> > when the file is already empty. In cases where we're actually
-> > overwriting a core file, this won't help, but the common case will be
-> > much better.
-> > 
-> > Signed-off-by: Omar Sandoval <osandov@fb.com>
-> > ---
-> > Hi, Al and Ted,
-> > 
-> > This is probably the wrong solution to the problem I described in the
-> > commit message. Do you guys have any better ideas? Something like
-> > 0eab928221ba ("ext4: Don't treat a truncation of a zero-length file as
-> > replace-via-truncate") would also work, but that apparently wasn't
-> > right, as it was reverted in 5534fb5bb35a ("ext4: Fix the alloc on close
-> > after a truncate hueristic").
 
-Does this fix things for you?
 
-						- Ted
+On 7/3/16 7:11 PM, Theodore Ts'o wrote:
+> The test program src/test-nextquota.c relies on atoi() to convert a
+> string to an *unsigned* int.  If the string represents an integer
+> which is greater than INT_MAX, it is undefined how atoi(3) works, and
+> it turns out that:
+> 
+>        uint id = atoi("2147483649");
+> 
+> results in id == 2147483649 on x86_64, and id == 2147483647 on a
+> 32-bit x86 platform.
+> 
+> So use strtoul(3) instead, which is portable and technically correct.
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: Eric Sandeen <sandeen@redhat.com>
 
->From bf21c027d84ded545d2c08fa01fd184d29641458 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Sun, 3 Jul 2016 22:20:49 -0400
-Subject: [PATCH] ext4: in ext4_setattr(), only call ext4_truncate() if there is no data to drop
+Yup, thanks.  I bet that wasn't fun to track down, sorry.  :(
 
-If there are no blocks associated with the inode (and no inline data),
-there's no point calling ext4_truncate().  This avoids setting the
-replace-via-truncate hueristic if there is an attempt to truncate a
-file which is already zero-length --- which is something that happens
-in the core dumping code, in case there is an already existing core
-file.  In the comon case, there is not a previous core file, so by not
-enabling the replace-via-truncate hueristic, we can speed up core
-dumps.
+Though wouldn't it be more correct to cast it to a (uint) ?
 
-Reported-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+But with or without that change this should work with the
+test script, so
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 44ee5d9..cd757f8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5171,7 +5171,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		 * in data=journal mode to make pages freeable.
- 		 */
- 		truncate_pagecache(inode, inode->i_size);
--		if (shrink)
-+		if (shrink && (inode->i_blocks || ext4_has_inline_data(inode)))
- 			ext4_truncate(inode);
- 		up_write(&EXT4_I(inode)->i_mmap_sem);
- 	}
--- 
-2.5.0
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
+Thanks,
+-Eric
+
+> ---
+>  src/test-nextquota.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+> diff --git a/src/test-nextquota.c b/src/test-nextquota.c
+> index a2bbad9..6eec1f9 100644
+> --- a/src/test-nextquota.c
+> +++ b/src/test-nextquota.c
+> @@ -74,6 +74,7 @@ int main(int argc, char *argv[])
+>  	int verbose = 0;
+>  	uint id = 0, idflag = 0;
+>  	char *device = NULL;
+> +	char *tmp;
+>  	struct nextdqblk dqb;
+>  	struct fs_disk_quota xqb;
+>  
+> @@ -92,7 +93,11 @@ int main(int argc, char *argv[])
+>  			typeflag++;
+>  			break;
+>  		case 'i':
+> -			id = atoi(optarg);
+> +			id = (int) strtoul(optarg, &tmp, 0);
+> +			if (*tmp) {
+> +				fprintf(stderr, "Bad id: %s\n", optarg);
+> +				exit(1);
+> +			}
+>  			idflag++;
+>  			break;
+>  		case 'd':
+> 
