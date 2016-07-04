@@ -1,41 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] coredump: avoid ext4 auto_da_alloc for core file
-Date: Mon, 4 Jul 2016 11:11:37 -0400
-Message-ID: <20160704151137.GE29557@thunk.org>
-References: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
- <20160629183444.GA3030@vader>
- <20160704022455.GA28883@thunk.org>
+Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
+Date: Mon, 4 Jul 2016 11:20:43 -0400
+Message-ID: <20160704152043.GA15193@thunk.org>
+References: <1466073736-30447-1-git-send-email-jack@suse.cz>
+ <1466073736-30447-2-git-send-email-jack@suse.cz>
+ <20160630150548.GC2028@thunk.org>
+ <20160701090950.GB22922@quack2.suse.cz>
+ <20160701165339.GB6075@thunk.org>
+ <20160701174041.GA30040@quack2.suse.cz>
+ <20160701212634.GA14277@thunk.org>
+ <20160704140012.GG5200@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, kernel-team@fb.com
-To: Omar Sandoval <osandov@osandov.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
+	stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160704022455.GA28883@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20160704140012.GG5200@quack2.suse.cz>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jul 03, 2016 at 10:24:55PM -0400, Theodore Ts'o wrote:
-> From bf21c027d84ded545d2c08fa01fd184d29641458 Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Sun, 3 Jul 2016 22:20:49 -0400
-> Subject: [PATCH] ext4: in ext4_setattr(), only call ext4_truncate() if there is no data to drop
-> 
-> If there are no blocks associated with the inode (and no inline data),
-> there's no point calling ext4_truncate().  This avoids setting the
-> replace-via-truncate hueristic if there is an attempt to truncate a
-> file which is already zero-length --- which is something that happens
-> in the core dumping code, in case there is an already existing core
-> file.  In the comon case, there is not a previous core file, so by not
-> enabling the replace-via-truncate hueristic, we can speed up core
-> dumps.
-> 
-> Reported-by: Omar Sandoval <osandov@fb.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+On Mon, Jul 04, 2016 at 04:00:12PM +0200, Jan Kara wrote:
+> OK, but we do all the block mappings, page locking etc. while the handle is
+> started so it is not exactly a really short lived handle. The patch adds
+> there a submission of a bio (we have the IO plugged so it will just add the
+> bio to the list of submitted bios), unlock locked pages, drop refcount to
+> ioend (unless IO is already completed, only refcount update is done, if IO
+> is completed we defer any real work to workqueue anyway). So although we
+> add some work which is done while the handle is still running, it is not
+> that much.
 
-This patch is buggy; when I tried running regression tests, it failed
-early.  So you probably want to skip this.
+Good point that the block device is plugged.  Ultimately I suspect the
+way to fix the scalability problem will be move to dioread nolock as
+the default, and use separate transaction to map the blocks using the
+uninitialized flags, and then do a separate transaction to convert
+them afterwards.
 
-					- Ted
-					
+						- Ted
