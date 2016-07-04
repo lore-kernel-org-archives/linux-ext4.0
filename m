@@ -1,69 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Mon, 4 Jul 2016 16:00:12 +0200
-Message-ID: <20160704140012.GG5200@quack2.suse.cz>
-References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-2-git-send-email-jack@suse.cz>
- <20160630150548.GC2028@thunk.org>
- <20160701090950.GB22922@quack2.suse.cz>
- <20160701165339.GB6075@thunk.org>
- <20160701174041.GA30040@quack2.suse.cz>
- <20160701212634.GA14277@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Eryu Guan <eguan@redhat.com>, stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160701212634.GA14277@thunk.org>
-Sender: stable-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] quota: fix generic/244 on 32-bit platforms
+Date: Mon,  4 Jul 2016 10:09:48 -0400
+Message-ID: <1467641388-26577-1-git-send-email-tytso@mit.edu>
+Cc: sandeen@redhat.com,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 01-07-16 17:26:34, Ted Tso wrote:
-> On Fri, Jul 01, 2016 at 07:40:41PM +0200, Jan Kara wrote:
-> > 
-> > So we are waiting for transaction commit to finish with unsubmitted pages
-> > that already have PageWriteback set (and also potentially other pages that
-> > are locked and we didn't prepare them for writing because the block mapping
-> > we got was too short). Now JBD2 goes on trying to do the transaction
-> > commit:
-> 
-> Ah, I see, so this is only an issue in those cases where the handle is
-> synchronous.  Is this the only case where there is a concern?  (e.g.,
-> could we test handle->h_sync and stop the handle early if h_sync
-> is not set?)  This would put the uninit->init conversion into
-> potentially a separate transaction, but that should be OK.
+The test program src/test-nextquota.c relies on atoi() to convert a
+string to an *unsigned* int.  If the string represents an integer
+which is greater than INT_MAX, it is undefined how atoi(3) works, and
+it turns out that:
 
-So checking handle->h_sync is possible and it would handle the problem as
-well AFAICS. However I find it rather hacky to rely on the fact that
-ext4_journal_stop() can block only when handle->h_sync is set.
+       uint id = atoi("2147483649");
 
-With uninit->init conversion changes you likely mean
-ext4_put_io_end_defer() is run while the handle is still running - that is
-true but any real work is done from a workqueue so my patch doesn't really
-change in which transaction uninit->init conversion happens.
+results in id == 2147483649 on x86_64, and id == 2147483647 on a
+32-bit x86 platform.
 
-> The reason why I'm pushing so hard here is that long running handles
-> is a major contributor to ext4 haveing poor CPU scalability numbers,
-> since we can end up having lots of threads waiting on the last
-> transaction to complete.  So keeping transactions small and fast is a
-> big deal.
+So use strtoul(3) instead, which is portable and technically correct.
 
-OK, but we do all the block mappings, page locking etc. while the handle is
-started so it is not exactly a really short lived handle. The patch adds
-there a submission of a bio (we have the IO plugged so it will just add the
-bio to the list of submitted bios), unlock locked pages, drop refcount to
-ioend (unless IO is already completed, only refcount update is done, if IO
-is completed we defer any real work to workqueue anyway). So although we
-add some work which is done while the handle is still running, it is not
-that much.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-If you have some tests which show how the transaction wait time increased,
-I could be convinced the hack is worth it. But so far I don't think that
-messing with handle->h_sync is warranted.
+v2: cast to uint instead of int
 
-								Honza
+ src/test-nextquota.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/test-nextquota.c b/src/test-nextquota.c
+index a2bbad9..3baa296 100644
+--- a/src/test-nextquota.c
++++ b/src/test-nextquota.c
+@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
+ 	int verbose = 0;
+ 	uint id = 0, idflag = 0;
+ 	char *device = NULL;
++	char *tmp;
+ 	struct nextdqblk dqb;
+ 	struct fs_disk_quota xqb;
+ 
+@@ -92,7 +93,11 @@ int main(int argc, char *argv[])
+ 			typeflag++;
+ 			break;
+ 		case 'i':
+-			id = atoi(optarg);
++			id = (uint) strtoul(optarg, &tmp, 0);
++			if (*tmp) {
++				fprintf(stderr, "Bad id: %s\n", optarg);
++				exit(1);
++			}
+ 			idflag++;
+ 			break;
+ 		case 'd':
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.5.0
