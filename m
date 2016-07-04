@@ -1,122 +1,74 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Mon, 4 Jul 2016 17:51:07 +0200
-Message-ID: <20160704155107.GB12022@quack2.suse.cz>
-References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-2-git-send-email-jack@suse.cz>
- <20160630150548.GC2028@thunk.org>
- <20160701090950.GB22922@quack2.suse.cz>
- <20160701165339.GB6075@thunk.org>
- <20160701174041.GA30040@quack2.suse.cz>
- <20160701212634.GA14277@thunk.org>
- <20160704141435.GA29557@thunk.org>
+From: Meelis Roos <mroos@linux.ee>
+Subject: Re: 4.7-rc6, ext4, sparc64: Unable to handle kernel paging request
+ at ...
+Date: Mon, 4 Jul 2016 20:04:02 +0300 (EEST)
+Message-ID: <alpine.LRH.2.20.1607042002200.17692@math.ut.ee>
+References: <alpine.LRH.2.20.1607041429380.6651@math.ut.ee> <CADxRZqy42TR9Y1yKM=yCQnAwyCYoU-mR2SEMT3wcSLO-NHbiSg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Eryu Guan <eguan@redhat.com>, stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160704141435.GA29557@thunk.org>
-Sender: stable-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: Linux Kernel list <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, sparclinux@vger.kernel.org
+To: Anatoly Pugachev <matorola@gmail.com>
+Return-path: <sparclinux-owner@vger.kernel.org>
+In-Reply-To: <CADxRZqy42TR9Y1yKM=yCQnAwyCYoU-mR2SEMT3wcSLO-NHbiSg@mail.gmail.com>
+Sender: sparclinux-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 04-07-16 10:14:35, Ted Tso wrote:
-> This is what I'm currently testing; do you have objections to this?
+> > Just got this on bootup of my Sun T2000:
+> >...
+> > I have not seen it before, this includes 4.6.0 4.6.0-08907-g7639dad
+> > 4.7.0-rc1-00094-g6b15d66 4.7.0-rc4-00014-g67016f6.
+> >
+> > It is not reproducible, did not appear on next reboot of the same
+> > kernel.
+> 
+> mine T5120 boots ok 4.7.0-rc6, rootfs being on ext4 .
 
-Meh, I don't like it but it should work... Did you see any improvement with
-your change or are you just operating on the assumption that you want as
-few code while the handle is running as possible?
+My T5120 and many other sparc64 machines also boot fine, most of them 
+using ext4, others ext3 with ext4 driver.
 
-Can you maybe ajust dd a comment that we stop !h_sync handles early to make
-them run as shortly as possible to improve scalability?
+However, I also got a very similar oops from T1000:
 
-								Honza
+[   55.251101] Unable to handle kernel paging request at virtual address 00000000fe42a000
+[   55.251348] tsk->{mm,active_mm}->context = 0000000000000083
+[   55.251533] tsk->{mm,active_mm}->pgd = ffff8001f6224000
+[   55.251719]               \|/ ____ \|/
+                             "@'/ .. \`@"
+                             /_| \__/ |_\
+                                \__U_/
+[   55.252038] systemd-udevd(268): Oops [#1]
+[   55.252274] CPU: 9 PID: 268 Comm: systemd-udevd Not tainted 4.7.0-rc6 #26
+[   55.252367] task: ffff8001f6064380 ti: ffff8001f620c000 task.ti: ffff8001f620c000
+[   55.252497] TSTATE: 0000000811001604 TPC: 0000000000649380 TNPC: 0000000000649384 Y: 00000000    Not tainted
+[   55.252651] TPC: <__radix_tree_lookup+0x60/0x1a0>
+[   55.252783] g0: ffff8001fd6f7f00 g1: 00000000fe42b231 g2: 0000000000000001 g3: 00000000e0019bb0
+[   55.252791] g4: ffff8001f6064380 g5: ffff8001fefe4000 g6: ffff8001f620c000 g7: 0000000000000000
+[   55.252798] o0: ffff8001fe3f1940 o1: 0000000000000295 o2: 000000000000028d o3: 0000000000000010
+[   55.252815] o4: 0000000000000000 o5: 0000000000000040 sp: ffff8001f620f0d1 ret_pc: ffff8001fe35d488
+[   55.252822] RPC: <0xffff8001fe35d488>
+[   55.252830] l0: 0000000000000329 l1: 0000000000000008 l2: ffff8001fe3f1948 l3: ffff8001f620fa40
+[   55.252837] l4: 0000000000906b60 l5: 0000000000001300 l6: 0000000003ffffff l7: 0000000000000008
+[   55.252844] i0: ffff8001fe3f1948 i1: 0000000000000295 i2: 0000000000000000 i3: 0000000000000000
+[   55.252852] i4: 00000000fe42b230 i5: 000000000000000a i6: ffff8001f620f181 i7: 00000000004ecbcc
+[   55.252871] I7: <__do_page_cache_readahead+0x6c/0x280>
+[   55.252875] Call Trace:
+[   55.252890]  [00000000004ecbcc] __do_page_cache_readahead+0x6c/0x280
+[   55.252912]  [00000000004e0be0] filemap_fault+0x2a0/0x540
+[   55.252925]  [00000000005bb95c] ext4_filemap_fault+0x1c/0x40
+[   55.252937]  [00000000005057d8] __do_fault+0x58/0x100
+[   55.252948]  [000000000050a638] handle_mm_fault+0xc58/0x1300
+[   55.252969]  [000000000044d7d8] do_sparc64_fault+0x4d8/0x7c0
+[   55.252982]  [0000000000407bf0] sparc64_realfault_common+0x10/0x20
+[   55.252987] Disabling lock debugging due to kernel taint
+[   55.253002] Caller[00000000004ecbcc]: __do_page_cache_readahead+0x6c/0x280
+[   55.253018] Caller[00000000004e0be0]: filemap_fault+0x2a0/0x540
+[   55.253029] Caller[00000000005bb95c]: ext4_filemap_fault+0x1c/0x40
+[   55.253039] Caller[00000000005057d8]: __do_fault+0x58/0x100
+[   55.253049] Caller[000000000050a638]: handle_mm_fault+0xc58/0x1300
+[   55.253063] Caller[000000000044d7d8]: do_sparc64_fault+0x4d8/0x7c0
+[   55.253073] Caller[0000000000407bf0]: sparc64_realfault_common+0x10/0x20
+[   55.253089] Caller[0000000070038494]: 0x70038494
+[   55.253117] Instruction DUMP: 80a06001  0267ffec  b8087ffe <fa0f0000> 9e10001c  bb36501d  ba0f603f  83376000  82006004
 
-> It will make it harder if we ever want to teach lockdep how to notice
-> problems like this, but we don't at the moment, and it will make a
-> scalability difference in the common case...
-> 
-> 						- Ted
-> 
-> From 646caa9c8e196880b41cd3e3d33a2ebc752bdb85 Mon Sep 17 00:00:00 2001
-> From: Jan Kara <jack@suse.cz>
-> Date: Mon, 4 Jul 2016 10:14:01 -0400
-> Subject: [PATCH] ext4: fix deadlock during page writeback
-> 
-> Commit 06bd3c36a733 (ext4: fix data exposure after a crash) uncovered a
-> deadlock in ext4_writepages() which was previously much harder to hit.
-> After this commit xfstest generic/130 reproduces the deadlock on small
-> filesystems.
-> 
-> The problem happens when ext4_do_update_inode() sets LARGE_FILE feature
-> and marks current inode handle as synchronous. That subsequently results
-> in ext4_journal_stop() called from ext4_writepages() to block waiting for
-> transaction commit while still holding page locks, reference to io_end,
-> and some prepared bio in mpd structure each of which can possibly block
-> transaction commit from completing and thus results in deadlock.
-> 
-> Fix the problem by releasing page locks, io_end reference, and
-> submitting prepared bio before calling ext4_journal_stop().
-> 
-> [ Changed to defer the call to ext4_journal_stop() only if the handle
->   is synchronous.  --tytso ]
-> 
-> Reported-and-tested-by: Eryu Guan <eguan@redhat.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 29 ++++++++++++++++++++++++++---
->  1 file changed, 26 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 44ee5d9..321a31c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2754,13 +2754,36 @@ retry:
->  				done = true;
->  			}
->  		}
-> -		ext4_journal_stop(handle);
-> +		/*
-> +		 * Caution: If the handle is synchronous,
-> +		 * ext4_journal_stop() can wait for transaction commit
-> +		 * to finish which may depend on writeback of pages to
-> +		 * complete or on page lock to be released.  In that
-> +		 * case, we have to wait until after after we have
-> +		 * submitted all the IO, released page locks we hold,
-> +		 * and dropped io_end reference (for extent conversion
-> +		 * to be able to complete) before stopping the handle.
-> +		 */
-> +		if (!ext4_handle_valid(handle) || handle->h_sync == 0) {
-> +			ext4_journal_stop(handle);
-> +			handle = NULL;
-> +		}
->  		/* Submit prepared bio */
->  		ext4_io_submit(&mpd.io_submit);
->  		/* Unlock pages we didn't use */
->  		mpage_release_unused_pages(&mpd, give_up_on_write);
-> -		/* Drop our io_end reference we got from init */
-> -		ext4_put_io_end(mpd.io_submit.io_end);
-> +		/*
-> +		 * Drop our io_end reference we got from init. We have
-> +		 * to be careful and use deferred io_end finishing if
-> +		 * we are still holding the transaction as we can
-> +		 * release the last reference to io_end which may end
-> +		 * up doing unwritten extent conversion.
-> +		 */
-> +		if (handle) {
-> +			ext4_put_io_end_defer(mpd.io_submit.io_end);
-> +			ext4_journal_stop(handle);
-> +		} else
-> +			ext4_put_io_end(mpd.io_submit.io_end);
->  
->  		if (ret == -ENOSPC && sbi->s_journal) {
->  			/*
-> -- 
-> 2.5.0
-> 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Meelis Roos (mroos@linux.ee)
