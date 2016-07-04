@@ -1,74 +1,73 @@
-From: Meelis Roos <mroos@linux.ee>
-Subject: Re: 4.7-rc6, ext4, sparc64: Unable to handle kernel paging request
- at ...
-Date: Mon, 4 Jul 2016 20:04:02 +0300 (EEST)
-Message-ID: <alpine.LRH.2.20.1607042002200.17692@math.ut.ee>
-References: <alpine.LRH.2.20.1607041429380.6651@math.ut.ee> <CADxRZqy42TR9Y1yKM=yCQnAwyCYoU-mR2SEMT3wcSLO-NHbiSg@mail.gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: [4.7-rc4] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280
+ drop_nlink+0x3e/0x50
+Date: Tue, 5 Jul 2016 09:46:33 +1000
+Message-ID: <20160704234633.GE27480@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Linux Kernel list <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, sparclinux@vger.kernel.org
-To: Anatoly Pugachev <matorola@gmail.com>
-Return-path: <sparclinux-owner@vger.kernel.org>
-In-Reply-To: <CADxRZqy42TR9Y1yKM=yCQnAwyCYoU-mR2SEMT3wcSLO-NHbiSg@mail.gmail.com>
-Sender: sparclinux-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:30688 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752371AbcGDXqg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jul 2016 19:46:36 -0400
+Received: from dave by dastard with local (Exim 4.80)
+	(envelope-from <david@fromorbit.com>)
+	id 1bKDZR-0006y5-Mi
+	for linux-ext4@vger.kernel.org; Tue, 05 Jul 2016 09:46:33 +1000
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> > Just got this on bootup of my Sun T2000:
-> >...
-> > I have not seen it before, this includes 4.6.0 4.6.0-08907-g7639dad
-> > 4.7.0-rc1-00094-g6b15d66 4.7.0-rc4-00014-g67016f6.
-> >
-> > It is not reproducible, did not appear on next reboot of the same
-> > kernel.
-> 
-> mine T5120 boots ok 4.7.0-rc6, rootfs being on ext4 .
+Hi folks,
 
-My T5120 and many other sparc64 machines also boot fine, most of them 
-using ext4, others ext3 with ext4 driver.
+I just got this warning on boot from a test VM running an ext3
+root filesystem:
 
-However, I also got a very similar oops from T1000:
+[   14.874951] ------------[ cut here ]------------
+[   14.876447] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280 drop_nlink+0x3e/0x50
+[   14.878520] Modules linked in:
+[   14.880065] CPU: 10 PID: 3359 Comm: mv Not tainted 4.7.0-rc4-dgc+ #821
+[   14.883062] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Debian-1.8.2-1 04/01/2014
+[   14.886648]  0000000000000000 ffff8800bad63c90 ffffffff817f1321 0000000000000000
+[   14.888942]  0000000000000000 ffff8800bad63cd0 ffffffff810b3531 000001183750906c
+[   14.891613]  ffff8800bb3095b0 ffff8800bad63d48 ffff88033750906c 0000000000000000
+[   14.893635] Call Trace:
+[   14.894096]  [<ffffffff817f1321>] dump_stack+0x63/0x82
+[   14.895387]  [<ffffffff810b3531>] __warn+0xd1/0xf0
+[   14.896709]  [<ffffffff810b361d>] warn_slowpath_null+0x1d/0x20
+[   14.898421]  [<ffffffff8121339e>] drop_nlink+0x3e/0x50
+[   14.899737]  [<ffffffff812d7d7b>] ext4_dec_count.isra.26+0x1b/0x30
+[   14.901360]  [<ffffffff812dd8a2>] ext4_rename+0x4d2/0x880
+[   14.903025]  [<ffffffff8177bde8>] ? security_capable+0x48/0x60
+[   14.904524]  [<ffffffff812ddc6d>] ext4_rename2+0x1d/0x30
+[   14.905833]  [<ffffffff8120676d>] vfs_rename+0x5fd/0x900
+[   14.907163]  [<ffffffff81209738>] SyS_rename+0x398/0x3b0
+[   14.908496]  [<ffffffff81e3c2f2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
+[   14.910251] ---[ end trace b59a7c09fe84eaba ]---
 
-[   55.251101] Unable to handle kernel paging request at virtual address 00000000fe42a000
-[   55.251348] tsk->{mm,active_mm}->context = 0000000000000083
-[   55.251533] tsk->{mm,active_mm}->pgd = ffff8001f6224000
-[   55.251719]               \|/ ____ \|/
-                             "@'/ .. \`@"
-                             /_| \__/ |_\
-                                \__U_/
-[   55.252038] systemd-udevd(268): Oops [#1]
-[   55.252274] CPU: 9 PID: 268 Comm: systemd-udevd Not tainted 4.7.0-rc6 #26
-[   55.252367] task: ffff8001f6064380 ti: ffff8001f620c000 task.ti: ffff8001f620c000
-[   55.252497] TSTATE: 0000000811001604 TPC: 0000000000649380 TNPC: 0000000000649384 Y: 00000000    Not tainted
-[   55.252651] TPC: <__radix_tree_lookup+0x60/0x1a0>
-[   55.252783] g0: ffff8001fd6f7f00 g1: 00000000fe42b231 g2: 0000000000000001 g3: 00000000e0019bb0
-[   55.252791] g4: ffff8001f6064380 g5: ffff8001fefe4000 g6: ffff8001f620c000 g7: 0000000000000000
-[   55.252798] o0: ffff8001fe3f1940 o1: 0000000000000295 o2: 000000000000028d o3: 0000000000000010
-[   55.252815] o4: 0000000000000000 o5: 0000000000000040 sp: ffff8001f620f0d1 ret_pc: ffff8001fe35d488
-[   55.252822] RPC: <0xffff8001fe35d488>
-[   55.252830] l0: 0000000000000329 l1: 0000000000000008 l2: ffff8001fe3f1948 l3: ffff8001f620fa40
-[   55.252837] l4: 0000000000906b60 l5: 0000000000001300 l6: 0000000003ffffff l7: 0000000000000008
-[   55.252844] i0: ffff8001fe3f1948 i1: 0000000000000295 i2: 0000000000000000 i3: 0000000000000000
-[   55.252852] i4: 00000000fe42b230 i5: 000000000000000a i6: ffff8001f620f181 i7: 00000000004ecbcc
-[   55.252871] I7: <__do_page_cache_readahead+0x6c/0x280>
-[   55.252875] Call Trace:
-[   55.252890]  [00000000004ecbcc] __do_page_cache_readahead+0x6c/0x280
-[   55.252912]  [00000000004e0be0] filemap_fault+0x2a0/0x540
-[   55.252925]  [00000000005bb95c] ext4_filemap_fault+0x1c/0x40
-[   55.252937]  [00000000005057d8] __do_fault+0x58/0x100
-[   55.252948]  [000000000050a638] handle_mm_fault+0xc58/0x1300
-[   55.252969]  [000000000044d7d8] do_sparc64_fault+0x4d8/0x7c0
-[   55.252982]  [0000000000407bf0] sparc64_realfault_common+0x10/0x20
-[   55.252987] Disabling lock debugging due to kernel taint
-[   55.253002] Caller[00000000004ecbcc]: __do_page_cache_readahead+0x6c/0x280
-[   55.253018] Caller[00000000004e0be0]: filemap_fault+0x2a0/0x540
-[   55.253029] Caller[00000000005bb95c]: ext4_filemap_fault+0x1c/0x40
-[   55.253039] Caller[00000000005057d8]: __do_fault+0x58/0x100
-[   55.253049] Caller[000000000050a638]: handle_mm_fault+0xc58/0x1300
-[   55.253063] Caller[000000000044d7d8]: do_sparc64_fault+0x4d8/0x7c0
-[   55.253073] Caller[0000000000407bf0]: sparc64_realfault_common+0x10/0x20
-[   55.253089] Caller[0000000070038494]: 0x70038494
-[   55.253117] Instruction DUMP: 80a06001  0267ffec  b8087ffe <fa0f0000> 9e10001c  bb36501d  ba0f603f  83376000  82006004
+It's from the root device:
 
+16 0 8:1 / / rw,relatime shared:1 - ext3 /dev/root rw,errors=remount-ro,data=ordered
+
+It happened during boot after I had to forcible terminate the VM
+from the host due to it becoming unresponsive while testing XFS code
+changes on a test filesystem. The mount messages were:
+
+[    3.187990] EXT4-fs (sda1): mounting ext3 file system using the ext4 subsystem
+[    3.191331] EXT4-fs (sda1): INFO: recovery required on readonly filesystem
+[    3.193546] EXT4-fs (sda1): write access will be enabled during recovery
+[    3.448499] EXT4-fs (sda1): orphan cleanup on readonly fs
+[    3.450334] EXT4-fs (sda1): 1 orphan inode deleted
+[    3.451762] EXT4-fs (sda1): recovery complete
+[    3.462121] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
+
+It's a 10GB fs, 85% full. I can't reproduce it and I've got no more
+information in the logs about the problem....
+
+Cheers,
+
+Dave.
 -- 
-Meelis Roos (mroos@linux.ee)
+Dave Chinner
+david@fromorbit.com
