@@ -1,68 +1,178 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [4.7-rc4] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280
- drop_nlink+0x3e/0x50
-Date: Tue, 5 Jul 2016 00:45:24 -0400
-Message-ID: <20160705044524.GE15193@thunk.org>
-References: <20160704234633.GE27480@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53526 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751097AbcGEEp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jul 2016 00:45:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20160704234633.GE27480@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH] xfstests, ext4: add project quota attribute tests
+Date: Tue,  5 Jul 2016 15:56:31 +0900
+Message-ID: <1467701791-14626-1-git-send-email-wangshilong1991@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, sihara@ddn.com,
+	lixi@ddn.com, wshilong@ddn.com
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 05, 2016 at 09:46:33AM +1000, Dave Chinner wrote:
-> Hi folks,
-> 
-> I just got this warning on boot from a test VM running an ext3
-> root filesystem:
-> 
-> [   14.874951] ------------[ cut here ]------------
-> [   14.876447] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280 drop_nlink+0x3e/0x50
-> [   14.878520] Modules linked in:
-> [   14.880065] CPU: 10 PID: 3359 Comm: mv Not tainted 4.7.0-rc4-dgc+ #821
-> [   14.883062] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Debian-1.8.2-1 04/01/2014
-> [   14.886648]  0000000000000000 ffff8800bad63c90 ffffffff817f1321 0000000000000000
-> [   14.888942]  0000000000000000 ffff8800bad63cd0 ffffffff810b3531 000001183750906c
-> [   14.891613]  ffff8800bb3095b0 ffff8800bad63d48 ffff88033750906c 0000000000000000
-> [   14.893635] Call Trace:
-> [   14.894096]  [<ffffffff817f1321>] dump_stack+0x63/0x82
-> [   14.895387]  [<ffffffff810b3531>] __warn+0xd1/0xf0
-> [   14.896709]  [<ffffffff810b361d>] warn_slowpath_null+0x1d/0x20
-> [   14.898421]  [<ffffffff8121339e>] drop_nlink+0x3e/0x50
-> [   14.899737]  [<ffffffff812d7d7b>] ext4_dec_count.isra.26+0x1b/0x30
-> [   14.901360]  [<ffffffff812dd8a2>] ext4_rename+0x4d2/0x880
-> [   14.903025]  [<ffffffff8177bde8>] ? security_capable+0x48/0x60
-> [   14.904524]  [<ffffffff812ddc6d>] ext4_rename2+0x1d/0x30
-> [   14.905833]  [<ffffffff8120676d>] vfs_rename+0x5fd/0x900
-> [   14.907163]  [<ffffffff81209738>] SyS_rename+0x398/0x3b0
-> [   14.908496]  [<ffffffff81e3c2f2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
-> [   14.910251] ---[ end trace b59a7c09fe84eaba ]---
+From: Wang Shilong <wshilong@ddn.com>
 
-Thanks for the report.  I'm pretty sure what happened is that the file
-system was corrupted, but ext4_rename() does't have a check to make
-sure i_links_count of the destination inode is non-zero (and to call
-ext4_error() to flag the fs corruption if it is zero).  Specifically,
-I suspect what happened is that there was a file with two hard links,
-but a i_link_count of 1.  Both links were in the dentry cache, and
-then the first link got deleted, leaving the second link still in the
-dentry cache, but with a link count of 0.
+Some basic project quota inferface tests.
 
-How the file system got corrupted is of course a different question,
-but I assume it happened when the VM was forcibly terminated
-beforehand.  How is the root device configured in terms of qemu device
-cacheing?  I don't think we have any corruption after crash problems
-at this point (at least I haven't noticed any of the dm-flaky tests
-failing recently), so my first suspicion is would be how qemu is
-configured.
+1. ioctl with/without project.
+2. project inherit attribute.
+3. Link accross project should fail
+4. change project ignores quota
 
-Cheers,
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ tests/ext4/030     | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/030.out |  11 ++++++
+ tests/ext4/group   |   1 +
+ 3 files changed, 124 insertions(+)
+ create mode 100755 tests/ext4/030
+ create mode 100644 tests/ext4/030.out
 
-						- Ted
+diff --git a/tests/ext4/030 b/tests/ext4/030
+new file mode 100755
+index 0000000..06b3de8
+--- /dev/null
++++ b/tests/ext4/030
+@@ -0,0 +1,112 @@
++#! /bin/bash
++# FS QA Test No. 030
++#
++# Test Project quota attr function
++#
++#-----------------------------------------------------------------------
++# Copyright 2016 (C) Wang Shilong<wshilong@ddn.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++
++seqfull=$0
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++
++_cleanup()
++{
++    rm -f $tmp.*
++}
++
++trap "_cleanup ; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/attr
++
++# real QA test starts here
++_supported_fs ext4
++_supported_os Linux
++
++_require_scratch
++_require_chattr
++_require_attrs
++
++rm -f $seqres.full
++
++echo "+ create scratch fs"
++_scratch_mkfs_ext4 > /dev/null 2>&1
++
++echo "+ mount fs image"
++_scratch_mount
++
++function attr_test()
++{
++	#basic test with/without project
++	touch $SCRATCH_MNT/foo
++	lsattr -p $SCRATCH_MNT/foo | _filter_scratch | _filter_spaces
++	chattr -p 1 $SCRATCH_MNT/foo 2>&1 \
++				| _filter_scratch | _filter_spaces
++	mkdir $SCRATCH_MNT/dir
++	chattr +P $SCRATCH_MNT/dir | _filter_scratch | _filter_spaces
++	chattr -P $SCRATCH_MNT/dir | _filter_scratch | _filter_spaces
++
++	[ $1 -eq 0 ] && return
++
++	#default project without inherit
++	chattr -p 123456 $SCRATCH_MNT/dir | _filter_scratch | _filter_spaces
++	lsattr -p $SCRATCH_MNT/dir | _filter_scratch | _filter_spaces
++	touch $SCRATCH_MNT/dir/foo
++	lsattr -p $SCRATCH_MNT/dir/foo | _filter_scratch | _filter_spaces
++
++	#test project inherit with inherit attribute
++	chattr +P $SCRATCH_MNT/dir
++	touch $SCRATCH_MNT/dir/foo1
++	lsattr -p $SCRATCH_MNT/dir/foo1 | _filter_scratch | _filter_spaces
++
++	#Link accross project should fail
++	mkdir $SCRATCH_MNT/dir1
++	chattr +P $SCRATCH_MNT/dir1
++	chattr -p 654321 $SCRATCH_MNT/dir1 | _filter_scratch | _filter_spaces
++	ln $SCRATCH_MNT/dir/foo1 $SCRATCH_MNT/dir1/foo1 2>&1 \
++		| _filter_scratch | _filter_spaces
++
++	#mv accross different projects should work
++	mv $SCRATCH_MNT/dir/foo1 $SCRATCH_MNT/dir1/foo1
++	lsattr -p $SCRATCH_MNT/dir1/foo1 | _filter_scratch | _filter_spaces
++
++	#change project ignores quota
++	quotaon $SCRATCH_MNT
++	setquota -P 654321 0 0 0 1 $SCRATCH_MNT/
++	chattr -p 123456 $SCRATCH_MNT/dir1/foo1 | _filter_scratch | _filter_spaces
++	lsattr -p $SCRATCH_MNT/dir1/foo1 | _filter_scratch | _filter_spaces
++}
++#init without project quota enabled
++attr_test 0
++
++#enable project quota feature
++_scratch_unmount >/dev/null 2>&1
++tune2fs -O quota,project $SCRATCH_DEV >/dev/null 2>&1
++_scratch_mount
++
++rm -rf $SCRATCH_MNT/dir
++attr_test 1
+diff --git a/tests/ext4/030.out b/tests/ext4/030.out
+new file mode 100644
+index 0000000..035d3c1
+--- /dev/null
++++ b/tests/ext4/030.out
+@@ -0,0 +1,11 @@
++QA output created by 030
+++ create scratch fs
+++ mount fs image
++ 0 --------------e---- SCRATCH_MNT/foo
++chattr: Operation not supported while setting project on SCRATCH_MNT/foo
++ 0 --------------e---- SCRATCH_MNT/foo
++ 0 --------------e---- SCRATCH_MNT/dir/foo
++123456 --------------e---P SCRATCH_MNT/dir/foo1
++ln: failed to create hard link 'SCRATCH_MNT/dir1/foo1' => 'SCRATCH_MNT/dir/foo1': Invalid cross-device link
++654321 --------------e---P SCRATCH_MNT/dir1/foo1
++123456 --------------e---P SCRATCH_MNT/dir1/foo1
+diff --git a/tests/ext4/group b/tests/ext4/group
+index bbdbe1d..f9c9ec3 100644
+--- a/tests/ext4/group
++++ b/tests/ext4/group
+@@ -24,6 +24,7 @@
+ 019 fuzzers
+ 020 auto quick ioctl rw
+ 021 auto quick
++030 auto quick
+ 271 auto rw quick
+ 301 aio auto ioctl rw stress
+ 302 aio auto ioctl rw stress
+-- 
+2.7.4
