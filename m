@@ -1,48 +1,33 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH] quota: fix coredump if projid file dose not exist
-Date: Tue,  5 Jul 2016 16:00:40 +0900
-Message-ID: <1467702040-14764-1-git-send-email-wangshilong1991@gmail.com>
-Cc: linux-ext4@vger.kernel.org, sihara@ddn.com, lixi@ddn.com,
-	Wang Shilong <wshilong@ddn.com>
-To: jack@suse.cz
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] xfstests, ext4: add project quota attribute tests
+Date: Tue, 5 Jul 2016 02:43:04 -0700
+Message-ID: <20160705094304.GA30163@infradead.org>
+References: <1467701791-14626-1-git-send-email-wangshilong1991@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	sihara@ddn.com, lixi@ddn.com, wshilong@ddn.com
+To: Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pa0-f66.google.com ([209.85.220.66]:34779 "EHLO
-	mail-pa0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751830AbcGEH7k (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jul 2016 03:59:40 -0400
-Received: by mail-pa0-f66.google.com with SMTP id us13so17754736pab.1
-        for <linux-ext4@vger.kernel.org>; Tue, 05 Jul 2016 00:59:40 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:34880 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751070AbcGEJnG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jul 2016 05:43:06 -0400
+Content-Disposition: inline
+In-Reply-To: <1467701791-14626-1-git-send-email-wangshilong1991@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wshilong@ddn.com>
+On Tue, Jul 05, 2016 at 03:56:31PM +0900, Wang Shilong wrote:
+> From: Wang Shilong <wshilong@ddn.com>
+> 
+> Some basic project quota inferface tests.
+> 
+> 1. ioctl with/without project.
+> 2. project inherit attribute.
+> 3. Link accross project should fail
+> 4. change project ignores quota
 
-if '/etc/projid' dose not exist,@project_file will
-be NULL pointer, fclose will cause coredump, add
-check in endprent().
-
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
- quotasys.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/quotasys.c b/quotasys.c
-index c78e02c..d04f25a 100644
---- a/quotasys.c
-+++ b/quotasys.c
-@@ -98,8 +98,10 @@ void setprent(void)
- /* Close /etc/projid file */
- void endprent(void)
- {
--	fclose(project_file);
--	project_file = NULL;
-+	if (project_file) {
-+		fclose(project_file);
-+		project_file = NULL;
-+	}
- }
- 
- /* Get next entry in /etc/projid */
--- 
-2.7.4
-
+These looks pretty generic.  Aren't there any XFS tests that can be made
+generic now that ext4 supports project quotas?  Even if not these new
+test should be made generic and added to the generic group.
