@@ -1,48 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] xfstests, ext4: add project quota attribute tests
-Date: Tue, 5 Jul 2016 10:35:15 -0400
-Message-ID: <20160705143515.GF15193@thunk.org>
-References: <1467701791-14626-1-git-send-email-wangshilong1991@gmail.com>
- <20160705094304.GA30163@infradead.org>
+Subject: Re: [RFC PATCH] coredump: avoid ext4 auto_da_alloc for core file
+Date: Tue, 5 Jul 2016 10:37:14 -0400
+Message-ID: <20160705143714.GG15193@thunk.org>
+References: <5cdda475417b2719dced162cce89a283153cb818.1466012020.git.osandov@fb.com>
+ <ae759802-f111-2c11-769e-e24e5dda4a5b@fb.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Wang Shilong <wangshilong1991@gmail.com>, fstests@vger.kernel.org,
-	linux-ext4@vger.kernel.org, sihara@ddn.com, lixi@ddn.com,
-	wshilong@ddn.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Omar Sandoval <osandov@osandov.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	kernel-team@fb.com
+To: Josef Bacik <jbacik@fb.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35146 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754753AbcGEOhQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jul 2016 10:37:16 -0400
 Content-Disposition: inline
-In-Reply-To: <20160705094304.GA30163@infradead.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <ae759802-f111-2c11-769e-e24e5dda4a5b@fb.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 05, 2016 at 02:43:04AM -0700, Christoph Hellwig wrote:
-> On Tue, Jul 05, 2016 at 03:56:31PM +0900, Wang Shilong wrote:
-> > From: Wang Shilong <wshilong@ddn.com>
+On Tue, Jul 05, 2016 at 09:42:13AM -0400, Josef Bacik wrote:
+> > diff --git a/fs/coredump.c b/fs/coredump.c
+> > index 281b768000e6..9da7357773f0 100644
+> > --- a/fs/coredump.c
+> > +++ b/fs/coredump.c
+> > @@ -741,8 +741,10 @@ void do_coredump(const siginfo_t *siginfo)
+> >  			goto close_fail;
+> >  		if (!(cprm.file->f_mode & FMODE_CAN_WRITE))
+> >  			goto close_fail;
+> > -		if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
+> > -			goto close_fail;
+> > +		if (i_size_read(file_inode(cprm.file)) != 0) {
+> > +			if (do_truncate(cprm.file->f_path.dentry, 0, 0, cprm.file))
+> > +				goto close_fail;
+> > +		}
+> >  	}
 > > 
-> > Some basic project quota inferface tests.
+> >  	/* get us an unshared descriptor table; almost always a no-op */
 > > 
-> > 1. ioctl with/without project.
-> > 2. project inherit attribute.
-> > 3. Link accross project should fail
-> > 4. change project ignores quota
 > 
-> These looks pretty generic.  Aren't there any XFS tests that can be made
-> generic now that ext4 supports project quotas?  Even if not these new
-> test should be made generic and added to the generic group.
+> Omar, this probably breaks the case where we do
+> fallocate(FALLOC_FL_KEEP_SIZE), the i_size will be 0 but there will be
+> blocks to truncate.  Probably want to check i_blocks or something.  Thanks,
 
-Last I checked there were some patches which I thought either Eric or
-you were working on to change xfsprogs so it would be willing to try
-to manipulate project quotas on non-xfs file systems?
+Sure, but this is in the coredump code; do we care there?  What are
+the odds that someone will have fallocated blocks beyond i_size in a
+file named "core"?  And if so, it's not like it's going to make the
+coredump invalid or non-useful in any way.
 
-I had some *extremely* hacky patches which were just enough to test
-project quotas, but then I gave up on them after quotatools learned
-how to work with project quotas.  I believe the presumption though was
-that it would be easier to teach xfsprogs to work with ext4 than to
-change xfstests to use quotatools?
-
-Does anyone know what the status of the "real" patches to xfsprogs
-that were (hopefuly) going to be clean enough to try to push them
-upstream?
-
-					- Ted
+      	       	     	 	  	      - Ted
