@@ -1,65 +1,68 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Mon, 4 Jul 2016 23:38:24 -0400
-Message-ID: <20160705033824.GD15193@thunk.org>
-References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-2-git-send-email-jack@suse.cz>
- <20160630150548.GC2028@thunk.org>
- <20160701090950.GB22922@quack2.suse.cz>
- <20160701165339.GB6075@thunk.org>
- <20160701174041.GA30040@quack2.suse.cz>
- <20160701212634.GA14277@thunk.org>
- <20160704141435.GA29557@thunk.org>
- <20160704155107.GB12022@quack2.suse.cz>
+Subject: Re: [4.7-rc4] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280
+ drop_nlink+0x3e/0x50
+Date: Tue, 5 Jul 2016 00:45:24 -0400
+Message-ID: <20160705044524.GE15193@thunk.org>
+References: <20160704234633.GE27480@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52856 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:53526 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753602AbcGEDi3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Jul 2016 23:38:29 -0400
+	id S1751097AbcGEEp1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jul 2016 00:45:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20160704155107.GB12022@quack2.suse.cz>
+In-Reply-To: <20160704234633.GE27480@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 04, 2016 at 05:51:07PM +0200, Jan Kara wrote:
-> On Mon 04-07-16 10:14:35, Ted Tso wrote:
-> > This is what I'm currently testing; do you have objections to this?
+On Tue, Jul 05, 2016 at 09:46:33AM +1000, Dave Chinner wrote:
+> Hi folks,
 > 
-> Meh, I don't like it but it should work... Did you see any improvement with
-> your change or are you just operating on the assumption that you want as
-> few code while the handle is running as possible?
+> I just got this warning on boot from a test VM running an ext3
+> root filesystem:
+> 
+> [   14.874951] ------------[ cut here ]------------
+> [   14.876447] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280 drop_nlink+0x3e/0x50
+> [   14.878520] Modules linked in:
+> [   14.880065] CPU: 10 PID: 3359 Comm: mv Not tainted 4.7.0-rc4-dgc+ #821
+> [   14.883062] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Debian-1.8.2-1 04/01/2014
+> [   14.886648]  0000000000000000 ffff8800bad63c90 ffffffff817f1321 0000000000000000
+> [   14.888942]  0000000000000000 ffff8800bad63cd0 ffffffff810b3531 000001183750906c
+> [   14.891613]  ffff8800bb3095b0 ffff8800bad63d48 ffff88033750906c 0000000000000000
+> [   14.893635] Call Trace:
+> [   14.894096]  [<ffffffff817f1321>] dump_stack+0x63/0x82
+> [   14.895387]  [<ffffffff810b3531>] __warn+0xd1/0xf0
+> [   14.896709]  [<ffffffff810b361d>] warn_slowpath_null+0x1d/0x20
+> [   14.898421]  [<ffffffff8121339e>] drop_nlink+0x3e/0x50
+> [   14.899737]  [<ffffffff812d7d7b>] ext4_dec_count.isra.26+0x1b/0x30
+> [   14.901360]  [<ffffffff812dd8a2>] ext4_rename+0x4d2/0x880
+> [   14.903025]  [<ffffffff8177bde8>] ? security_capable+0x48/0x60
+> [   14.904524]  [<ffffffff812ddc6d>] ext4_rename2+0x1d/0x30
+> [   14.905833]  [<ffffffff8120676d>] vfs_rename+0x5fd/0x900
+> [   14.907163]  [<ffffffff81209738>] SyS_rename+0x398/0x3b0
+> [   14.908496]  [<ffffffff81e3c2f2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
+> [   14.910251] ---[ end trace b59a7c09fe84eaba ]---
 
-I haven't had a chance to try to benchmark it yet.  I've working at
-home over the long (US) holiday weekend, and the high core-count
-servers I need are on the internal work network, and it's pain to
-access them from home.
+Thanks for the report.  I'm pretty sure what happened is that the file
+system was corrupted, but ext4_rename() does't have a check to make
+sure i_links_count of the destination inode is non-zero (and to call
+ext4_error() to flag the fs corruption if it is zero).  Specifically,
+I suspect what happened is that there was a file with two hard links,
+but a i_link_count of 1.  Both links were in the dentry cache, and
+then the first link got deleted, leaving the second link still in the
+dentry cache, but with a link count of 0.
 
-I've just been tired of seeing the sort of analysis that can be found
-at papers like:
-
-https://www.usenix.org/system/files/conference/fast14/fast14-paper_kang.pdf
-
-(And there's a ATC 2016 paper which shows that things haven't gotten
-any better as well.)
-
-Given that our massive lock bottlenecks come from the j_list_lock and
-j_state_lock, and that most of the contention happens when we are
-closing down a transaction for a commit, there is a pretty direct
-correlation between handle lifetimes and the contention statistics on
-the journal spinlocks.  Enough so that I've instrumented the handle
-type and handle line number in the jbd2_handle_stats tracepoint, and
-work to push down on the handle hold times have definitely helped our
-contention numbers.
-
-So I do have experimental evidence that reducing code while the handle
-is running does matter in general.  I just don't have it for this
-specific case yet....
+How the file system got corrupted is of course a different question,
+but I assume it happened when the VM was forcibly terminated
+beforehand.  How is the root device configured in terms of qemu device
+cacheing?  I don't think we have any corruption after crash problems
+at this point (at least I haven't noticed any of the dm-flaky tests
+failing recently), so my first suspicion is would be how qemu is
+configured.
 
 Cheers,
 
-							- Ted
+						- Ted
