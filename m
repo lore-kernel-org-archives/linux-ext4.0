@@ -1,45 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Mon, 4 Jul 2016 22:43:30 -0400
-Message-ID: <20160705024330.GB15193@thunk.org>
-References: <1466073736-30447-1-git-send-email-jack@suse.cz>
- <1466073736-30447-2-git-send-email-jack@suse.cz>
- <20160630150548.GC2028@thunk.org>
- <20160701090950.GB22922@quack2.suse.cz>
- <20160701165339.GB6075@thunk.org>
- <20160701174041.GA30040@quack2.suse.cz>
- <20160701212634.GA14277@thunk.org>
- <20160704140012.GG5200@quack2.suse.cz>
- <20160704152043.GA15193@thunk.org>
- <20160704154709.GA12022@quack2.suse.cz>
+From: Pranay Srivastava <pranjas@gmail.com>
+Subject: Re: [PATCH 1/1]ext4: Fix WARN_ON_ONCE when marking buffer dirty
+Date: Tue, 5 Jul 2016 08:57:51 +0530
+Message-ID: <CA+aCy1Gkf+cdmbVwEoHhdMdbwuL2pcDvN_ZED24aJdL_YhU=BA@mail.gmail.com>
+References: <1467285150-15977-1-git-send-email-pranjas@gmail.com>
+ <1467285150-15977-2-git-send-email-pranjas@gmail.com> <20160704142938.GB29557@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160704154709.GA12022@quack2.suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	"Pranay Kr. Srivastava" <pranjas@gmail.com>,
+	adilger.kernel@dilger.ca, linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wm0-f43.google.com ([74.125.82.43]:38072 "EHLO
+	mail-wm0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751589AbcGED1y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Jul 2016 23:27:54 -0400
+In-Reply-To: <20160704142938.GB29557@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 04, 2016 at 05:47:09PM +0200, Jan Kara wrote:
-> > Good point that the block device is plugged.  Ultimately I suspect the
-> > way to fix the scalability problem will be move to dioread nolock as
-> > the default, and use separate transaction to map the blocks using the
-> > uninitialized flags, and then do a separate transaction to convert
-> > them afterwards.
-> 
-> This is what already happens currently - we only reserve a handle for
-> conversion during writeback but that reservation fluently moves between
-> running transactions until a point where the reserved handle is started -
-> then the handle is pinned to the currently running transaction - and this
-> happens only in the completion handler after IO is completed.
+On Mon, Jul 4, 2016 at 7:59 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Thu, Jun 30, 2016 at 02:12:30PM +0300, Pranay Kr. Srivastava wrote:
+>> Signed-off-by: Pranay Kr. Srivastava <pranjas@gmail.com>
+>
+> The description for why the change is being made should go in the
+> commit.  (No need to put the description in a separate cover letter.)
+> I ended up rewriting the commit description as follows, to make it
+> much more understandable:
+>
+>     ext4: Fix WARN_ON_ONCE in ext4_commit_super()
+>
+>     If there are racing calls to ext4_commit_super() it's possible for
+>     another writeback of the superblock to result in the buffer being
+>     marked with an error after we check if the buffer is marked as
+>     having a write error and the buffer up-to-date flag is set again.
+>     If that happens mark_buffer_dirty() can end up throwing a
+>     WARN_ON_ONCE.
+>
+>     Fix this by moving this check to write before we call
+>     write_buffer_dirty(), and keeping the buffer locked during this
+>     whole sequence.
+>
+>     Signed-off-by: Pranay Kr. Srivastava <pranjas@gmail.com>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>
+> Note that the one-line summary needs to carry as much information as
+> possible so someone who is scanning the commits using git log
+> --oneline has a chance of understanding it.  This means the high-level
+> *why* of the commit, not a summary of what the changes in the C code.
+> Also note the increased context of when the misbehaviour could occur
+> in the commit description, which was missing in the cover letter.
+>
+> When I'm processing patches, if I'm in a hurry, patches that require
+> extra work or which aren't Obviously Right, sometimes get deferred by
+> a few days.  This patch fell in that category.
+>
+> Adding to the commit descrtipion additional context and/or
+> instructions for how to reproduce the problem you are trying to
+> remediate will often make life much easier for me, and accelerate how
+> quickly I'll get to your patch.
+>
+> Cheers,
+>
+>                                                         - Ted
 
-Yes, but dioread_nolock only works with block size == page size.  What
-we need to do is to make it work for all block sizes, then make
-dioread_nolock the default, and then remove the old direct I/O write
-path....
+Thank you Theodore Sir. Points duly noted, I'll take care from now on
+while sending
+patches.
 
 
-					- Ted
+-- 
+        ---P.K.S
