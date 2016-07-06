@@ -1,35 +1,63 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: mbcache: fix to detect failure of register_shrinker
-Date: Tue, 5 Jul 2016 16:16:25 -0400
-Message-ID: <20160705201625.GA18568@thunk.org>
-References: <1463411798-2597-1-git-send-email-chao@kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Chao Yu <yuchao0@huawei.com>
-To: Chao Yu <chao@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41566 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751105AbcGEUQe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jul 2016 16:16:34 -0400
-Content-Disposition: inline
-In-Reply-To: <1463411798-2597-1-git-send-email-chao@kernel.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH] ext4: validate s_reserved_gdt_blocks on mount
+Date: Tue,  5 Jul 2016 20:03:11 -0400
+Message-ID: <1467763391-11096-1-git-send-email-tytso@mit.edu>
+References: <20160702074903.GA4914@birch.djwong.org>
+Cc: vegard.nossum@oracle.com, Theodore Ts'o <tytso@mit.edu>,
+	stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20160702074903.GA4914@birch.djwong.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 16, 2016 at 11:16:38PM +0800, Chao Yu wrote:
-> From: Chao Yu <yuchao0@huawei.com>
-> 
-> register_shrinker in mb_cache_create may fail due to no memory. This
-> patch fixes to do the check of return value of register_shrinker and
-> handle the error case, otherwise mb_cache_create may return with no
-> error, but losing the inner shrinker.
-> 
-> Signed-off-by: Chao Yu <yuchao0@huawei.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+If s_reserved_gdt_blocks is extremely large, it's possible for
+ext4_init_block_bitmap(), which is called when ext4 sets up an
+uninitialized block bitmap, to corrupt random kernel memory.  Add the
+same checks which e2fsck has --- it must never be larger than
+blocksize / sizeof(__u32) --- and then add a backup check in
+ext4_init_block_bitmap() in case the superblock gets modified after
+the file system is mounted.
 
-Applied, thanks.  (Apologies for the delay; this patch slipped through
-the cracks.)
+Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/balloc.c | 3 +++
+ fs/ext4/super.c  | 7 +++++++
+ 2 files changed, 10 insertions(+)
 
-					- Ted
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 0b8105b..799a92b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -208,6 +208,9 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+ 	memset(bh->b_data, 0, sb->s_blocksize);
+ 
+ 	bit_max = ext4_num_base_meta_clusters(sb, block_group);
++	if ((bit_max >> 3) >= bh->b_size)
++		return -EFSCORRUPTED;
++
+ 	for (bit = 0; bit < bit_max; bit++)
+ 		ext4_set_bit(bit, bh->b_data);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 5664ee6..13c49af7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3416,6 +3416,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 
++	if (le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) > (blocksize / 4)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Number of reserved GDT blocks insanely large: %d",
++			 le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks));
++		goto failed_mount;
++	}
++
+ 	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
+ 		err = bdev_dax_supported(sb, blocksize);
+ 		if (err)
+-- 
+2.5.0
