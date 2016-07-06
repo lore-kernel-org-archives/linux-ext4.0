@@ -1,80 +1,157 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] ext4: Fix deadlock during page writeback
-Date: Wed, 6 Jul 2016 08:35:10 -0400
-Message-ID: <20160706123510.GP15193@thunk.org>
-References: <1466073736-30447-2-git-send-email-jack@suse.cz>
- <20160630150548.GC2028@thunk.org>
- <20160701090950.GB22922@quack2.suse.cz>
- <20160701165339.GB6075@thunk.org>
- <20160701174041.GA30040@quack2.suse.cz>
- <20160701212634.GA14277@thunk.org>
- <20160704141435.GA29557@thunk.org>
- <20160704155107.GB12022@quack2.suse.cz>
- <20160705033824.GD15193@thunk.org>
- <20160706075116.GB14067@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v3] ext4: optimize ext4_should_retry_alloc() to improve
+ ENOSPC performance
+Date: Wed, 6 Jul 2016 14:43:46 +0200
+Message-ID: <20160706124346.GJ14067@quack2.suse.cz>
+References: <20160617101007.GA26350@quack2.suse.cz>
+ <1467298831-8649-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
-	stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:45775 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753932AbcGFMnt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Jul 2016 08:43:49 -0400
 Content-Disposition: inline
-In-Reply-To: <20160706075116.GB14067@quack2.suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1467298831-8649-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 06, 2016 at 09:51:16AM +0200, Jan Kara wrote:
+On Thu 30-06-16 11:00:31, Ted Tso wrote:
+> If there are no pending blocks to be released after a commit, forcing
+> a journal commit has no hope of helping.  It's possible that a commit
+> had just completed, so if there are now free blocks available for
+> allocation, it's worth retrying the commit.
 > 
-> Yeah, JBD2 scalability sucks. I suspect you are conflating two issues here
-> though. One issue is j_list_lock and j_state_lock contention - that is
-> exposed by starting handles often, doing lots of operations with buffers
-> etc. This is what the above paper shows. Another issue is that while a
-> transaction is preparing for commit, we have to wait for all outstanding
-> handles against that transaction and while we do that, we have no running
-> transaction and the whole journalling machinery is stalled. For this
-> problem, the time each handle runs is essential. This is what you've likely
-> seen in your testing.
+> Reported-by: Chao Yu <yuchao0@huawei.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-You're right, I'm conflating two separate issues.  The
-j_{list,state}_lock contention is the more obvious of the two, but
-it's separate from the issue of the journalling machinery being
-stalled on j_wait_transaction_locked.  
+The patch looks good now. Feel free to add:
 
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+I'd just remove ext4_journal_callback_add() function since it is unused now
+and if Lustre uses it, it can easily replicate it.
+
+								Honza
+> ---
+>  fs/ext4/balloc.c    |  4 +++-
+>  fs/ext4/ext4.h      |  1 +
+>  fs/ext4/ext4_jbd2.h | 10 +++++++++-
+>  fs/ext4/mballoc.c   | 12 ++++++++++--
+>  4 files changed, 23 insertions(+), 4 deletions(-)
 > 
-> Reducing j_list_lock and j_state_lock contention is IMO doable, although
-> the low hanging fruit is probably eaten these days ;). 
-
-Yeah, most of the low hanging fruit has been grabbed already, which is
-why I tend to focus more on the 2nd issue these days.  The main thing
-which is left would be splitting j_list_lock so there are separate
-locks for each of the different lists (t_buffers, t_forget,
-t_shadow_list, t_reserved_list, etc.)  What makes this tricky is that
-when we are moving blocks from one list to another, we need to have
-both lists locked, and so this means rearchitecting a large amount of
-the locking in fs/jbd2/transaction.c, and of course, worrying about
-lock rank issues.
-
-
-> Fixing the second problem is harder as that is inherent problem with
-> block-level journalling.  I suspect we could allow starting another
-> transaction while the previous one is in "preparing for commit"
-> phase but that would lead to two transactions getting updates at one
-> point in time which JBD2 currently does not expect.
-
-Starting another transaction while we are waiting for earlier
-transaction to lock down is going to be problematic, since while there
-are still handles active on the first transaction, they could still be
-modifying metadata blocks.  And while that's happening, we can't allow
-any new handles associated with the second transaction to start
-modifying metadata blocks.
-
-If there was some way for all of the currently open handles to
-guarantee that they won't call get_write_access() on any new blocks,
-maybe.  But if you look at truncate for example, that gets messy ---
-and we could get most of the benefit by simply making truncate be a
-two part operation, where it identifies all of the blocks it needs to
-modify and makes sure they are in memory *before* it calls
-start_this_handle.  And then this falls into the general design
-principle of keeping the run time of handles as short as possible.
-
-	     	     	     	     	     - Ted
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 3020fd7..0b8105b 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -610,7 +610,9 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+>  
+>  	jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+>  
+> -	jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+> +	smp_mb();
+> +	if (EXT4_SB(sb)->s_mb_free_pending)
+> +		jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+>  	return 1;
+>  }
+>  
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b84aa1c..96c73e6 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1430,6 +1430,7 @@ struct ext4_sb_info {
+>  	unsigned short *s_mb_offsets;
+>  	unsigned int *s_mb_maxs;
+>  	unsigned int s_group_info_size;
+> +	unsigned int s_mb_free_pending;
+>  
+>  	/* tunables */
+>  	unsigned long s_stripe;
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index 09c1ef3..b1d52c1 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -175,6 +175,13 @@ struct ext4_journal_cb_entry {
+>   * There is no guaranteed calling order of multiple registered callbacks on
+>   * the same transaction.
+>   */
+> +static inline void _ext4_journal_callback_add(handle_t *handle,
+> +			struct ext4_journal_cb_entry *jce)
+> +{
+> +	/* Add the jce to transaction's private list */
+> +	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
+> +}
+> +
+>  static inline void ext4_journal_callback_add(handle_t *handle,
+>  			void (*func)(struct super_block *sb,
+>  				     struct ext4_journal_cb_entry *jce,
+> @@ -187,10 +194,11 @@ static inline void ext4_journal_callback_add(handle_t *handle,
+>  	/* Add the jce to transaction's private list */
+>  	jce->jce_func = func;
+>  	spin_lock(&sbi->s_md_lock);
+> -	list_add_tail(&jce->jce_list, &handle->h_transaction->t_private_list);
+> +	_ext4_journal_callback_add(handle, jce);
+>  	spin_unlock(&sbi->s_md_lock);
+>  }
+>  
+> +
+>  /**
+>   * ext4_journal_callback_del: delete a registered callback
+>   * @handle: active journal transaction handle on which callback was registered
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index c1ab3ec..77249e1 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2627,6 +2627,7 @@ int ext4_mb_init(struct super_block *sb)
+>  
+>  	spin_lock_init(&sbi->s_md_lock);
+>  	spin_lock_init(&sbi->s_bal_lock);
+> +	sbi->s_mb_free_pending = 0;
+>  
+>  	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+>  	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+> @@ -2814,6 +2815,9 @@ static void ext4_free_data_callback(struct super_block *sb,
+>  	/* we expect to find existing buddy because it's pinned */
+>  	BUG_ON(err != 0);
+>  
+> +	spin_lock(&EXT4_SB(sb)->s_md_lock);
+> +	EXT4_SB(sb)->s_mb_free_pending -= entry->efd_count;
+> +	spin_unlock(&EXT4_SB(sb)->s_md_lock);
+>  
+>  	db = e4b.bd_info;
+>  	/* there are blocks to put in buddy to make them really free */
+> @@ -4583,6 +4587,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  {
+>  	ext4_group_t group = e4b->bd_group;
+>  	ext4_grpblk_t cluster;
+> +	ext4_grpblk_t clusters = new_entry->efd_count;
+>  	struct ext4_free_data *entry;
+>  	struct ext4_group_info *db = e4b->bd_info;
+>  	struct super_block *sb = e4b->bd_sb;
+> @@ -4649,8 +4654,11 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+>  		}
+>  	}
+>  	/* Add the extent to transaction's private list */
+> -	ext4_journal_callback_add(handle, ext4_free_data_callback,
+> -				  &new_entry->efd_jce);
+> +	new_entry->efd_jce.jce_func = ext4_free_data_callback;
+> +	spin_lock(&sbi->s_md_lock);
+> +	_ext4_journal_callback_add(handle, &new_entry->efd_jce);
+> +	sbi->s_mb_free_pending += clusters;
+> +	spin_unlock(&sbi->s_md_lock);
+>  	return 0;
+>  }
+>  
+> -- 
+> 2.5.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
