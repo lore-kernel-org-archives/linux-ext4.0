@@ -1,82 +1,97 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] ext4: verify extent header depth
-Date: Thu, 7 Jul 2016 00:23:44 +0200
-Message-ID: <577D84F0.8060700@oracle.com>
+Date: Wed, 6 Jul 2016 15:28:54 -0700
+Message-ID: <20160706222853.GA5207@birch.djwong.org>
 References: <1467840431-24550-1-git-send-email-vegard.nossum@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Vegard Nossum <vegard.nossum@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18578 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755811AbcGFWXy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2016 18:23:54 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:42471 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755693AbcGFW3s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2016 18:29:48 -0400
+Content-Disposition: inline
 In-Reply-To: <1467840431-24550-1-git-send-email-vegard.nossum@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/06/2016 11:27 PM, Vegard Nossum wrote:
+On Wed, Jul 06, 2016 at 11:27:11PM +0200, Vegard Nossum wrote:
 > According to the wiki [1], eh_depth cannot be larger than 5:
->
->      Depth of this extent node in the extent tree. 0 = this extent node
->      points to data blocks; otherwise, this extent node points to other
->      extent nodes. The extent tree can be at most 5 levels deep: a logical
->      block number can be at most 2^32, and the smallest n that satisfies
->      4*(((blocksize - 12)/12)^n) >= 2^32 is 5.
->
+> 
+>     Depth of this extent node in the extent tree. 0 = this extent node
+>     points to data blocks; otherwise, this extent node points to other
+>     extent nodes. The extent tree can be at most 5 levels deep: a logical
+>     block number can be at most 2^32, and the smallest n that satisfies
+>     4*(((blocksize - 12)/12)^n) >= 2^32 is 5.
+> 
 > [1]: https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Extent_Tree
->
+> 
 > Without this, we can end up trying to reserve too much space for the
 > transaction in case of malicious corruption (here, eh_depth = 65280):
->
->      JBD2: ext4.exe wants too many credits credits:195849 rsv_credits:0 max:256
->      ------------[ cut here ]------------
->      WARNING: CPU: 0 PID: 50 at fs/jbd2/transaction.c:293 start_this_handle+0x569/0x580
- >      CPU: 0 PID: 50 Comm: ext4.exe Not tainted 4.7.0-rc5+ #508
+> 
+>     JBD2: ext4.exe wants too many credits credits:195849 rsv_credits:0 max:256
+>     ------------[ cut here ]------------
+>     WARNING: CPU: 0 PID: 50 at fs/jbd2/transaction.c:293 start_this_handle+0x569/0x580
+>     CPU: 0 PID: 50 Comm: ext4.exe Not tainted 4.7.0-rc5+ #508
+>     Stack:
+>      604a8947 625badd8 0002fd09 00000000
+>      60078643 00000000 62623910 601bf9bc
+>      62623970 6002fc84 626239b0 900000125
+>     Call Trace:
+>      [<6001c2dc>] show_stack+0xdc/0x1a0
+>      [<601bf9bc>] dump_stack+0x2a/0x2e
+>      [<6002fc84>] __warn+0x114/0x140
+>      [<6002fdff>] warn_slowpath_null+0x1f/0x30
+>      [<60165829>] start_this_handle+0x569/0x580
+>      [<60165d4e>] jbd2__journal_start+0x11e/0x220
+>      [<60146690>] __ext4_journal_start_sb+0x60/0xa0
+>      [<60120a81>] ext4_truncate+0x131/0x3a0
+>      [<60123677>] ext4_setattr+0x757/0x840
+>      [<600d5d0f>] notify_change+0x16f/0x2a0
+>      [<600b2b16>] do_truncate+0x76/0xc0
+>      [<600c3e56>] path_openat+0x806/0x1300
+>      [<600c55c9>] do_filp_open+0x89/0xf0
+>      [<600b4074>] do_sys_open+0x134/0x1e0
+>      [<600b4140>] SyS_open+0x20/0x30
+>      [<6001ea68>] handle_syscall+0x88/0x90
+>      [<600295fd>] userspace+0x3fd/0x500
+>      [<6001ac55>] fork_handler+0x85/0x90
+> 
+>     ---[ end trace 08b0b88b6387a244 ]---
+> 
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+> ---
+>  fs/ext4/extents.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 30de10a..b584ddd 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -476,6 +476,10 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+>  		error_msg = "invalid extent entries";
+>  		goto corrupted;
+>  	}
+> +	if (unlikely(depth > 5)) {
+> +		error_msg = "too large eh_depth";
+> +		goto corrupted;
+> +	}
 
-I'm guessing this would also fix another warning I saw earlier:
+Seems reasonable,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-WARNING: CPU: 0 PID: 50 at mm/page_alloc.c:3584 
-__alloc_pages_nodemask+0x3c9/0xd20
-CPU: 0 PID: 50 Comm: ext4.exe Not tainted 4.7.0-rc3 #1
-Stack:
-  62629550 6005c7c2 03800000 600801f9
-  00000000 600760ce 62629560 601dbff1
-  626295c0 6002beb4 800000074786574 900000e00
-Call Trace:
-  [<6001834b>] show_stack+0xdb/0x1a0
-  [<601dbff1>] dump_stack+0x2a/0x39
-  [<6002beb4>] __warn+0x114/0x140
-  [<6002c02f>] warn_slowpath_null+0x1f/0x30
-  [<600801f9>] __alloc_pages_nodemask+0x3c9/0xd20
-  [<60080e3c>] alloc_kmem_pages+0x1c/0x20
-  [<60096fea>] kmalloc_order+0x1a/0x60
-  [<600af518>] __kmalloc+0x1a8/0x1f0
-  [<6014dd09>] ext4_find_extent+0x3a9/0x420
-  [<60152df3>] ext4_ext_map_blocks+0x73/0x28d0
-  [<6011fc22>] ext4_map_blocks+0x612/0x980
-  [<6012002c>] _ext4_get_block+0x9c/0x150
-  [<60120120>] ext4_get_block+0x40/0x50
-  [<600edc2a>] generic_block_bmap+0x3a/0x40
-  [<6011bd4f>] ext4_bmap+0xcf/0x190
-  [<600d430a>] bmap+0x1a/0x30
-  [<6018bd41>] jbd2_journal_bmap+0x31/0xa0
-  [<6018c0c5>] jbd2_journal_init_inode+0x135/0x220
-  [<60143945>] ext4_fill_super+0x3085/0x4b60
-  [<600b794b>] mount_bdev+0x1fb/0x230
-  [<6013a865>] ext4_mount+0x45/0x50
-  [<600b7bd3>] mount_fs+0x33/0x210
-  [<600d9834>] vfs_kern_mount+0x74/0x170
-  [<600db34b>] do_mount+0x26b/0x10c0
-  [<600dc6a0>] SyS_mount+0xc0/0x130
+--D
 
-...since this is ext4_find_extent() doing
-
-depth = ext_depth(inode)
-path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 2), GFP_NOFS);
-
-
-Vegard
+>  	/* Verify checksum on non-root extent tree nodes */
+>  	if (ext_depth(inode) != depth &&
+>  	    !ext4_extent_block_csum_verify(inode, eh)) {
+> -- 
+> 1.9.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
