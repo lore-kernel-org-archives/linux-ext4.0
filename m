@@ -1,90 +1,99 @@
-From: Nikolay Borisov <kernel@kyup.com>
-Subject: Re: ext4 crash in 4.4.10
-Date: Wed, 6 Jul 2016 14:08:28 +0300
-Message-ID: <577CE6AC.8090707@kyup.com>
-References: <57513FAF.5030800@kyup.com> <20160603091936.GA2470@quack2.suse.cz>
- <577A2317.2070609@kyup.com> <20160706102224.GH14067@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC] weirdness in ext4_sync_file()
+Date: Wed, 6 Jul 2016 14:00:49 +0200
+Message-ID: <20160706120049.GI14067@quack2.suse.cz>
+References: <20160624043604.GU14480@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-	SiteGround Operations <operations@siteground.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f45.google.com ([74.125.82.45]:35935 "EHLO
-	mail-wm0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750937AbcGFLIc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2016 07:08:32 -0400
-Received: by mail-wm0-f45.google.com with SMTP id f126so169339498wma.1
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Jul 2016 04:08:31 -0700 (PDT)
-In-Reply-To: <20160706102224.GH14067@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160624043604.GU14480@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
-
-On 07/06/2016 01:22 PM, Jan Kara wrote:
-> On Mon 04-07-16 11:49:27, Nikolay Borisov wrote:
->> Hello again Jan, 
->>
->> On 06/03/2016 12:19 PM, Jan Kara wrote:
->>> Hi,
-[SNIP]
->> The crash again points to test_bit in info_idq_free.  I followed
->> your advise to search for the address and here is what I got: 
->>
->> crash> search -m ffffffff00000000 d9c01f11
->>
->> ffff88000181e030: d9c01927d9c01f11 
->> ffff880996894680: ffffffffd9c01f11 
->> ffff881d5019b858: ffffffffd9c01f11 
->> ffff881d5019b998: ffffffffd9c01f11 - <stack frame of crash_kexec>
->> ffff881d5019bbe8: ffffffffd9c01f11 - <stack frame of page_fault)
->> ffffffff8181e030: d9c01927d9c01f11
->>
->> So two of the values are in the stack frames of function involved, 
->> in the crash so I'd say they are of no interest. What's interesting
->> is that ffffffff8181e030 seems to be quota_magics: 
->>
->> readelf -s vmlinux-4.4.10-clouder1 | grep ffffffff8181e030
->> 15605: ffffffff8181e030    12 OBJECT  LOCAL  DEFAULT    4 quota_magics.24849
->>
->> #define V2_INITQMAGICS {\
->>         0xd9c01f11,     /* USRQUOTA */\
->>         0xd9c01927,     /* GRPQUOTA */\
->>         0xd9c03f14,     /* PRJQUOTA */\
->> }
->>
->> So it seems that somehow the USRQUOTA magic values overwrites
->> the dquot pointer. Looking at the code I'm not entirely 
->> sure how this can happen though.
+On Fri 24-06-16 05:36:05, Al Viro wrote:
+> Could somebody explain when would the second part of that test _not_ be true?
 > 
-> This is indeed interesting. Can you dump full struct ext4_inode * of the inode
-> for which dquot_free_inode() was crashing? Command
+>                 if (!ret && !hlist_empty(&inode->i_dentry))
+>                         ret = ext4_sync_parent(inode);
 > 
-> kmem -s ffff880996894680
+> inode is that of an opened file; how could it possibly _not_ have a dentry
+> alias?  Is that code actually supposed to check if the sucker is not
+> unlinked?
 
-Unfortunately I can't use that command, since my kernel is not compiled
-with SLUB_DEBUG. However, I was able to retrieve the contents of both
-ext4_inode_info and inode and they seem to be in some semi-freed state.
-I've put the contents of the ext4_inode_info and containing inode here:
+Yes, that's what the test was supposed to do I believe.
 
-http://pastie.org/private/c1ptyg8abgzqbphmb9mng
+> If so, it's not what we are actually checking - pinned dentry remains
+> positive (and unhashed) after unlink(2).  What's more, the loop in
+> ext4_sync_parent() is vulnerable to races with rmdir(2) - if you get
+> unlink and rmdir of ancestors between
+>
+>                 next = igrab(d_inode(dentry->d_parent));
+> and
+>                 inode = next;
+>                 ret = sync_mapping_buffers(inode->i_mapping);
+>                 if (ret)
+>                         break;
+>                 ret = sync_inode_metadata(inode, 1);
+>                 if (ret)
+>                         break;
+> you are risking interesting things done in the middle of rmdir and/or
+> unlink; that might be actually safe, but in that case it's worth a comment
+> explaining that.
 
-I also verified that those struct indeed look legitimate since the
-inode->i_sb is indeed the superblock pointer of the fs which crashed.
-And the i_dquot member of the ext4_inode_info holds the USRQUOTA magic
-value:
+You are right and it should be harmless. I'm now testing the patch below.
+Thanks for your comments.
 
-i_dquot = {0xffffffffd9c01f11, 0x0, 0x0},
+>From 3dbea3e4e58d9ad81f38e8f89f9f569daef5a800 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 6 Jul 2016 13:55:58 +0200
+Subject: [PATCH] ext4: Cleanup ext4_sync_parent()
+
+A condition !hlist_empty(&inode->i_dentry) is always true for open file.
+Just remove it. Also ext4_sync_parent() could use some explanation why
+races with rmdir() are not an issue - add a comment explaining that.
+
+Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/fsync.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 8850254136ae..9b9335796fbc 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -61,6 +61,13 @@ static int ext4_sync_parent(struct inode *inode)
+ 			break;
+ 		iput(inode);
+ 		inode = next;
++		/*
++		 * The directory inode may have gone through rmdir by now. But
++		 * the inode itself and its blocks are still allocated (we hold
++		 * a reference to the inode so it didn't go through
++		 * ext4_evict_inode()) and so we are safe to flush metadata
++		 * blocks and the inode.
++		 */
+ 		ret = sync_mapping_buffers(inode->i_mapping);
+ 		if (ret)
+ 			break;
+@@ -107,7 +114,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 
+ 	if (!journal) {
+ 		ret = generic_file_fsync(file, start, end, datasync);
+-		if (!ret && !hlist_empty(&inode->i_dentry))
++		if (!ret)
+ 			ret = ext4_sync_parent(inode);
+ 		goto out;
+ 	}
+-- 
+2.6.6
 
 
 
-> 
-> should show you that this address is part of an object in ext4_inode_cache
-> (please verify that) and give you pointer to the beginning of the object
-> which is ext4_inode... Thanks!
-> 
-> 								Honza
-> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
