@@ -1,268 +1,83 @@
-From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v23 13/22] vfs: Cache richacl in struct inode
-Date: Wed, 06 Jul 2016 14:57:05 -0400
-Message-ID: <1467831425.2908.16.camel@redhat.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
-	 <1467294433-3222-14-git-send-email-agruenba@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1467294433-3222-14-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: [PATCH] ext4: verify extent header depth
+Date: Wed,  6 Jul 2016 23:27:11 +0200
+Message-ID: <1467840431-24550-1-git-send-email-vegard.nossum@oracle.com>
+Cc: linux-ext4@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:29603 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755848AbcGFV1W (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2016 17:27:22 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
-> Cache richacls in struct inode so that this doesn't have to be done
-> individually in each filesystem.=C2=A0=C2=A0This is similar to POSIX =
-ACLs.
->=20
-> Signed-off-by: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-> ---
-> =C2=A0fs/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0| 13 +++++---
-> =C2=A0fs/richacl.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0| 81 +++++++++++++++++++++++++++++++++++++++++++++=
-++++
-> =C2=A0include/linux/fs.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0|=C2=A0=C2=
-=A05 ++-
-> =C2=A0include/linux/richacl.h | 11 +++++++
-> =C2=A04 files changed, 105 insertions(+), 5 deletions(-)
->=20
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 40c03a7..7dbb09c 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -181,8 +181,11 @@ int inode_init_always(struct super_block *sb, st=
-ruct inode *inode)
-> =C2=A0	inode->i_private =3D NULL;
-> =C2=A0	inode->i_mapping =3D mapping;
-> =C2=A0	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing =
-*/
-> -#ifdef CONFIG_FS_POSIX_ACL
-> -	inode->i_acl =3D inode->i_default_acl =3D ACL_NOT_CACHED;
-> +#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
-> +	inode->i_acl =3D ACL_NOT_CACHED;
-> +# if defined(CONFIG_FS_POSIX_ACL)
-> +	inode->i_default_acl =3D ACL_NOT_CACHED;
-> +# endif
-> =C2=A0#endif
-> =C2=A0
-> =C2=A0#ifdef CONFIG_FSNOTIFY
-> @@ -238,17 +241,19 @@ void __destroy_inode(struct inode *inode)
-> =C2=A0		atomic_long_dec(&inode->i_sb->s_remove_count);
-> =C2=A0	}
-> =C2=A0
-> -#ifdef CONFIG_FS_POSIX_ACL
-> +#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
-> =C2=A0	if (inode->i_acl && !is_uncached_acl(inode->i_acl))
-> =C2=A0		base_acl_put(inode->i_acl);
-> +# if defined(CONFIG_FS_POSIX_ACL)
-> =C2=A0	if (inode->i_default_acl && !is_uncached_acl(inode->i_default_=
-acl))
-> =C2=A0		base_acl_put(inode->i_default_acl);
-> +# endif
-> =C2=A0#endif
-> =C2=A0	this_cpu_dec(nr_inodes);
-> =C2=A0}
-> =C2=A0EXPORT_SYMBOL(__destroy_inode);
-> =C2=A0
-> -#ifdef CONFIG_FS_POSIX_ACL
-> +#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
-> =C2=A0struct base_acl *__get_cached_acl(struct base_acl **p)
-> =C2=A0{
-> =C2=A0	struct base_acl *base_acl;
-> diff --git a/fs/richacl.c b/fs/richacl.c
-> index 8971ead..b2a03c1 100644
-> --- a/fs/richacl.c
-> +++ b/fs/richacl.c
-> @@ -20,6 +20,87 @@
-> =C2=A0#include=20
-> =C2=A0#include=20
-> =C2=A0
-> +void set_cached_richacl(struct inode *inode, struct richacl *acl)
-> +{
-> +	struct base_acl *old;
-> +
-> +	old =3D xchg(&inode->i_acl, &richacl_get(acl)->a_base);
-> +	if (!is_uncached_acl(old))
-> +		base_acl_put(old);
-> +}
-> +EXPORT_SYMBOL_GPL(set_cached_richacl);
-> +
-> +void forget_cached_richacl(struct inode *inode)
-> +{
-> +	__forget_cached_acl(&inode->i_acl);
-> +}
-> +EXPORT_SYMBOL_GPL(forget_cached_richacl);
-> +
-> +struct richacl *get_richacl(struct inode *inode)
-> +{
-> +	struct base_acl *sentinel, *base_acl;
-> +	struct richacl *acl;
-> +
-> +	if (!IS_RICHACL(inode))
-> +		return NULL;
-> +
-> +	/*
-> +	=C2=A0* The sentinel is used to detect when another operation like
-> +	=C2=A0* set_cached_richacl() or forget_cached_richacl() races with
-> +	=C2=A0* get_richacl().
-> +	=C2=A0* It is guaranteed that is_uncached_acl(sentinel) is true.
-> +	=C2=A0*/
-> +
-> +	base_acl =3D __get_cached_acl(&inode->i_acl);
-> +	if (!is_uncached_acl(base_acl))
-> +		return richacl(base_acl);
-> +
-> +	sentinel =3D uncached_acl_sentinel(current);
-> +
-> +	/*
-> +	=C2=A0* If the ACL isn't being read yet, set our sentinel.=C2=A0=C2=
-=A0Otherwise, the
-> +	=C2=A0* current value of the ACL will not be ACL_NOT_CACHED and so =
-our own
-> +	=C2=A0* sentinel will not be set; another task will update the cach=
-e.=C2=A0=C2=A0We
-> +	=C2=A0* could wait for that other task to complete its job, but it'=
-s easier
-> +	=C2=A0* to just call ->get_acl to fetch the ACL ourself.=C2=A0=C2=A0=
-(This is going to
-> +	=C2=A0* be an unlikely race.)
-> +	=C2=A0*/
-> +	if (cmpxchg(&inode->i_acl, ACL_NOT_CACHED, sentinel) !=3D ACL_NOT_C=
-ACHED)
-> +		/* fall through */ ;
-> +
+According to the wiki [1], eh_depth cannot be larger than 5:
 
-So you do the same thing regardless of the outcome of the above? Why
-bother with the if at all here? Just do the cmpxchg and toss out the
-result.
+    Depth of this extent node in the extent tree. 0 = this extent node
+    points to data blocks; otherwise, this extent node points to other
+    extent nodes. The extent tree can be at most 5 levels deep: a logical
+    block number can be at most 2^32, and the smallest n that satisfies
+    4*(((blocksize - 12)/12)^n) >= 2^32 is 5.
 
-> +	/*
-> +	=C2=A0* Normally, the ACL returned by ->get_richacl will be cached.
-> +	=C2=A0* A filesystem can prevent that by calling
-> +	=C2=A0* forget_cached_richacl(inode) in ->get_richacl.
-> +	=C2=A0*
-> +	=C2=A0* If the filesystem doesn't have a ->get_richacl function at =
-all,
-> +	=C2=A0* we'll just create the negative cache entry.
-> +	=C2=A0*/
-> +	if (!inode->i_op->get_richacl) {
-> +		set_cached_richacl(inode, NULL);
-> +		return NULL;
-> +	}
-> +
-> +	acl =3D inode->i_op->get_richacl(inode);
-> +	if (IS_ERR(acl)) {
-> +		/*
-> +		=C2=A0* Remove our sentinel so that we don't block future attempts
-> +		=C2=A0* to cache the ACL.
-> +		=C2=A0*/
-> +		cmpxchg(&inode->i_acl, sentinel, ACL_NOT_CACHED);
-> +		return acl;
-> +	}
-> +
+[1]: https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Extent_Tree
 
-So this is sort of icky: only the task that sets the sentinel can set
-the cached acl.
+Without this, we can end up trying to reserve too much space for the
+transaction in case of malicious corruption (here, eh_depth = 65280):
 
-You could have one task set the sentinel, call get_richacl and fail, bu=
-t then a concurrent task also issues a get_richacl and succeeds. That t=
-ask will get its acl, but it doesn't end up getting cached and subseque=
-nt callers then have to reissue the request. It would be good if the fi=
-rst successful fetch of the acl sets it in the cache.
+    JBD2: ext4.exe wants too many credits credits:195849 rsv_credits:0 max:256
+    ------------[ cut here ]------------
+    WARNING: CPU: 0 PID: 50 at fs/jbd2/transaction.c:293 start_this_handle+0x569/0x580
+    CPU: 0 PID: 50 Comm: ext4.exe Not tainted 4.7.0-rc5+ #508
+    Stack:
+     604a8947 625badd8 0002fd09 00000000
+     60078643 00000000 62623910 601bf9bc
+     62623970 6002fc84 626239b0 900000125
+    Call Trace:
+     [<6001c2dc>] show_stack+0xdc/0x1a0
+     [<601bf9bc>] dump_stack+0x2a/0x2e
+     [<6002fc84>] __warn+0x114/0x140
+     [<6002fdff>] warn_slowpath_null+0x1f/0x30
+     [<60165829>] start_this_handle+0x569/0x580
+     [<60165d4e>] jbd2__journal_start+0x11e/0x220
+     [<60146690>] __ext4_journal_start_sb+0x60/0xa0
+     [<60120a81>] ext4_truncate+0x131/0x3a0
+     [<60123677>] ext4_setattr+0x757/0x840
+     [<600d5d0f>] notify_change+0x16f/0x2a0
+     [<600b2b16>] do_truncate+0x76/0xc0
+     [<600c3e56>] path_openat+0x806/0x1300
+     [<600c55c9>] do_filp_open+0x89/0xf0
+     [<600b4074>] do_sys_open+0x134/0x1e0
+     [<600b4140>] SyS_open+0x20/0x30
+     [<6001ea68>] handle_syscall+0x88/0x90
+     [<600295fd>] userspace+0x3fd/0x500
+     [<6001ac55>] fork_handler+0x85/0x90
 
-That said, getting the acl could be pretty expensive with some filesyst=
-ems. NFS or CIFS are going to have to do an on the wire call to fetch t=
-hem, for instance. I think it would be better to have concurrent caller=
-s wait for the first caller's result instead of issuing parallel get_ri=
-chacl requests.
+    ---[ end trace 08b0b88b6387a244 ]---
 
-> +	/*
-> +	=C2=A0* Cache the result, but only if our sentinel is still in plac=
-e.
-> +	=C2=A0*/
-> +	richacl_get(acl);
-> +	if (unlikely(cmpxchg(&inode->i_acl, sentinel, &acl->a_base) !=3D se=
-ntinel))
-> +		richacl_put(acl);
-> +	return acl;
-> +}
-> +EXPORT_SYMBOL_GPL(get_richacl);
-> +
-> =C2=A0/**
-> =C2=A0 * richacl_alloc=C2=A0=C2=A0-=C2=A0=C2=A0allocate a richacl
-> =C2=A0 * @count:	number of entries
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index ac96bda..4d72a6d 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -589,6 +589,7 @@ struct base_acl {
-> =C2=A0	};
-> =C2=A0};
-> =C2=A0struct posix_acl;
-> +struct richacl;
-> =C2=A0#define ACL_NOT_CACHED ((void *)(-1))
-> =C2=A0
-> =C2=A0static inline struct base_acl *
-> @@ -619,9 +620,11 @@ struct inode {
-> =C2=A0	kgid_t			i_gid;
-> =C2=A0	unsigned int		i_flags;
-> =C2=A0
-> -#if defined(CONFIG_FS_POSIX_ACL)
-> +#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
-> =C2=A0	struct base_acl		*i_acl;
-> +# if defined(CONFIG_FS_POSIX_ACL)
-> =C2=A0	struct base_acl		*i_default_acl;
-> +# endif
-> =C2=A0#endif
-> =C2=A0
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+---
+ fs/ext4/extents.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-Oh, so if we compile in richacls and not posix acls, we shrink the
-inode by a pointer. Nice!
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 30de10a..b584ddd 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -476,6 +476,10 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+ 		error_msg = "invalid extent entries";
+ 		goto corrupted;
+ 	}
++	if (unlikely(depth > 5)) {
++		error_msg = "too large eh_depth";
++		goto corrupted;
++	}
+ 	/* Verify checksum on non-root extent tree nodes */
+ 	if (ext_depth(inode) != depth &&
+ 	    !ext4_extent_block_csum_verify(inode, eh)) {
+-- 
+1.9.1
 
-> =C2=A0	const struct inode_operations	*i_op;
-> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-> index 35a5bcb..3e05c94 100644
-> --- a/include/linux/richacl.h
-> +++ b/include/linux/richacl.h
-> @@ -70,6 +70,17 @@ richacl_put(struct richacl *acl)
-> =C2=A0	base_acl_put(&acl->a_base);
-> =C2=A0}
-> =C2=A0
-> +static inline struct richacl *
-> +richacl(struct base_acl *base_acl)
-> +{
-> +	BUILD_BUG_ON(offsetof(struct richacl, a_base) !=3D 0);
-> +	return container_of(base_acl, struct richacl, a_base);
-> +}
-> +
-> +extern void set_cached_richacl(struct inode *, struct richacl *);
-> +extern void forget_cached_richacl(struct inode *);
-> +extern struct richacl *get_richacl(struct inode *);
-> +
-> =C2=A0/**
-> =C2=A0 * richace_is_owner=C2=A0=C2=A0-=C2=A0=C2=A0check if @ace is an=
- OWNER@ entry
-> =C2=A0 */
-
---=20
-Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
