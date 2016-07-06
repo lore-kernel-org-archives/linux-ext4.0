@@ -1,55 +1,59 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Cleanup ext4_sync_parent()
-Date: Wed,  6 Jul 2016 15:54:22 +0200
-Message-ID: <1467813262-22165-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
-	Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: [PATCH] ext4: fix reference counting bug on block allocation error
+Date: Wed,  6 Jul 2016 15:57:32 +0200
+Message-ID: <1467813452-26763-1-git-send-email-vegard.nossum@oracle.com>
+Cc: linux-ext4@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52681 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754173AbcGFNy3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Jul 2016 09:54:29 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:36540 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754078AbcGFN5r (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Jul 2016 09:57:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A condition !hlist_empty(&inode->i_dentry) is always true for open file.
-Just remove it. Also ext4_sync_parent() could use some explanation why
-races with rmdir() are not an issue - add a comment explaining that.
+If we hit this error when mounted with errors=continue or
+errors=remount-ro:
 
-Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
-Signed-off-by: Jan Kara <jack@suse.cz>
+    EXT4-fs error (device loop0): ext4_mb_mark_diskspace_used:2940: comm ext4.exe: Allocating blocks 5090-6081 which overlap fs metadata
+
+then ext4_mb_new_blocks() will call ext4_mb_release_context() and try to
+continue. However, ext4_mb_release_context() is the wrong thing to call
+here since we are still actually using the allocation context.
+
+Instead, handle it the same way that we handle other errors, except that
+we retry the allocation instead of immediately returning an error (if we
+were mounted with errors=continue, then ext4_mb_mark_diskspace_used()
+should have fixed the original error and will either succeed or give a
+different error; if we were mounted with errors=remount-ro, then it will
+not be able to fix the original error and will raise a different error).
+
+Fixes: 8556e8f3b6 ("ext4: Don't allow new groups to be added during block allocation")
+Cc: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
 ---
- fs/ext4/fsync.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 8850254136ae..9b9335796fbc 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -61,6 +61,13 @@ static int ext4_sync_parent(struct inode *inode)
- 			break;
- 		iput(inode);
- 		inode = next;
-+		/*
-+		 * The directory inode may have gone through rmdir by now. But
-+		 * the inode itself and its blocks are still allocated (we hold
-+		 * a reference to the inode so it didn't go through
-+		 * ext4_evict_inode()) and so we are safe to flush metadata
-+		 * blocks and the inode.
-+		 */
- 		ret = sync_mapping_buffers(inode->i_mapping);
- 		if (ret)
- 			break;
-@@ -107,7 +114,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 
- 	if (!journal) {
- 		ret = generic_file_fsync(file, start, end, datasync);
--		if (!ret && !hlist_empty(&inode->i_dentry))
-+		if (!ret)
- 			ret = ext4_sync_parent(inode);
- 		goto out;
- 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c1ab3ec..0370f76 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4514,11 +4514,7 @@ repeat:
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+ 		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_clstrs);
+ 		if (*errp == -EAGAIN) {
+-			/*
+-			 * drop the reference that we took
+-			 * in ext4_mb_use_best_found
+-			 */
+-			ext4_mb_release_context(ac);
++			ext4_discard_allocated_blocks(ac);
+ 			ac->ac_b_ex.fe_group = 0;
+ 			ac->ac_b_ex.fe_start = 0;
+ 			ac->ac_b_ex.fe_len = 0;
 -- 
-2.6.6
+1.9.1
 
