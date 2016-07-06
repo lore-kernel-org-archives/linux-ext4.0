@@ -1,39 +1,65 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Ext4: fix project quota accounting without quota limits
- enabled.
-Date: Tue, 5 Jul 2016 21:34:09 -0400
-Message-ID: <20160706013409.GL15193@thunk.org>
-References: <1467701890-14687-1-git-send-email-wangshilong1991@gmail.com>
+Subject: Re: Fix filesystem deadlock while reading corrupted xattr block
+Date: Tue, 5 Jul 2016 22:55:49 -0400
+Message-ID: <20160706025549.GA20420@thunk.org>
+References: <1467110566-8389-1-git-send-email-cmaiolino@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, lixi@ddn.com, sihara@ddn.com,
-	wshilong@ddn.com
-To: Wang Shilong <wangshilong1991@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Carlos Maiolino <cmaiolino@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45656 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46530 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751252AbcGFBeU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 Jul 2016 21:34:20 -0400
+	id S1751111AbcGFCz4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 Jul 2016 22:55:56 -0400
 Content-Disposition: inline
-In-Reply-To: <1467701890-14687-1-git-send-email-wangshilong1991@gmail.com>
+In-Reply-To: <1467110566-8389-1-git-send-email-cmaiolino@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 05, 2016 at 03:58:10PM +0900, Wang Shilong wrote:
-> From: Wang Shilong <wshilong@ddn.com>
+On Tue, Jun 28, 2016 at 12:42:46PM +0200, Carlos Maiolino wrote:
+> This bug can be reproducible with fsfuzzer, although, I couldn't reproduce it
+> 100% of my tries, it is quite easily reproducible.
 > 
-> Steps to reproduce:
->   #mkfs.ext4 /dev/sda4 -O quota,project
->   #mount /dev/sda4 /mnt/test
->   #touch /mnt/test/file
->   #chattr -p 123 /mnt/test/file
->   #quota -v -P 123
+> During the deletion of an inode, ext2_xattr_delete_inode() does not check if the
+> block pointed by EXT2_I(inode)->i_file_acl is a valid data block, this might
+> lead to a deadlock, when i_file_acl == 1, and the filesystem block size is 1024.
 > 
-> Problems is we should always transfer quota accounting whatver
-> quota limits enabled.
+> In that situation, ext2_xattr_delete_inode, will load the superblock's buffer
+> head (instead of a valid i_file_acl block), and then lock that buffer head,
+> which, ext2_sync_super will also try to lock, making the filesystem deadlock in
+> the following stack trace:
 > 
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> root     17180  0.0  0.0 113660   660 pts/0    D+   07:08   0:00 rmdir
+> /media/test/dir1
+> 
+> [<ffffffff8125da9f>] __sync_dirty_buffer+0xaf/0x100
+> [<ffffffff8125db03>] sync_dirty_buffer+0x13/0x20
+> [<ffffffffa03f0d57>] ext2_sync_super+0xb7/0xc0 [ext2]
+> [<ffffffffa03f10b9>] ext2_error+0x119/0x130 [ext2]
+> [<ffffffffa03e9d93>] ext2_free_blocks+0x83/0x350 [ext2]
+> [<ffffffffa03f3d03>] ext2_xattr_delete_inode+0x173/0x190 [ext2]
+> [<ffffffffa03ee9e9>] ext2_evict_inode+0xc9/0x130 [ext2]
+> [<ffffffff8123fd23>] evict+0xb3/0x180
+> [<ffffffff81240008>] iput+0x1b8/0x240
+> [<ffffffff8123c4ac>] d_delete+0x11c/0x150
+> [<ffffffff8122fa7e>] vfs_rmdir+0xfe/0x120
+> [<ffffffff812340ee>] do_rmdir+0x17e/0x1f0
+> [<ffffffff81234dd6>] SyS_rmdir+0x16/0x20
+> [<ffffffff81838cf2>] entry_SYSCALL_64_fastpath+0x1a/0xa4
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> Fix this by using the same approach ext4 uses to test data blocks validity,
+> implementing ext2_data_block_valid.
+> 
+> An another possibility when the superblock is very corrupted, is that i_file_acl
+> is 1, block_count is 1 and first_data_block is 0. For such situations, we might
+> have i_file_acl pointing to a 'valid' block, but still step over the superblock.
+> The approach I used was to also test if the superblock is not in the range
+> described by ext2_data_block_valid() arguments
+> 
+> Signed-off-by: Carlos Maiolino <cmaiolino@redhat.com>
 
-Thanks, applied.
+Thanks, applied.  I'll carry this patch in the ext4 tree.
 
-					- Ted
+		       	     	  	       	    - Ted
