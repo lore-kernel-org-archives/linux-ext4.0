@@ -1,63 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: validate s_reserved_gdt_blocks on mount
-Date: Tue,  5 Jul 2016 20:03:11 -0400
-Message-ID: <1467763391-11096-1-git-send-email-tytso@mit.edu>
-References: <20160702074903.GA4914@birch.djwong.org>
-Cc: vegard.nossum@oracle.com, Theodore Ts'o <tytso@mit.edu>,
-	stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20160702074903.GA4914@birch.djwong.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH RESEND] e2fsck: update j_tail_sequence after recovery
+Date: Wed, 06 Jul 2016 09:10:39 +0900
+Message-ID: <1467763839-10311-1-git-send-email-daeho.jeong@samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>,
+	Youngjin Gil <youngjin.gil@samsung.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:39950 "EHLO
+	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750840AbcGFAIM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Jul 2016 20:08:12 -0400
+Received: from epcpsbgr2.samsung.com
+ (u142.gpu120.samsung.co.kr [203.254.230.142])
+ by mailout1.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0O9V003DF9PMGS50@mailout1.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 06 Jul 2016 09:08:10 +0900 (KST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-If s_reserved_gdt_blocks is extremely large, it's possible for
-ext4_init_block_bitmap(), which is called when ext4 sets up an
-uninitialized block bitmap, to corrupt random kernel memory.  Add the
-same checks which e2fsck has --- it must never be larger than
-blocksize / sizeof(__u32) --- and then add a backup check in
-ext4_init_block_bitmap() in case the superblock gets modified after
-the file system is mounted.
+When journal is released, s_sequence is set to j_tail_sequence.
+But, currently, even if the recovery process is successfully completed,
+the j_tail_sequence and, finally, s_sequence are never changed. By this,
+when we repeat doing power-off the device suddenly and executing e2fsck
+without full scan before mount, the s_sequence number will never change
+and, in a very rare case, newly generated journal logs will be
+surprisingly grafted to the old journal logs. In this case, out-of-date
+metadata log can be replayed on the filesystem area and the filesystem
+can be crashed unintentionally by journal recovery process. Therefore,
+we need to update j_tail_sequence after recovery process is successfully
+completed in e2fsck.
 
-Reported-by: Vegard Nossum <vegard.nossum@oracle.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
+Youngjin had repeated this test and found the problem. With our test,
+the filesystem crash occurred within 4 hours.
+
+Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
 ---
- fs/ext4/balloc.c | 3 +++
- fs/ext4/super.c  | 7 +++++++
- 2 files changed, 10 insertions(+)
+ e2fsck/journal.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 0b8105b..799a92b 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -208,6 +208,9 @@ static int ext4_init_block_bitmap(struct super_block *sb,
- 	memset(bh->b_data, 0, sb->s_blocksize);
- 
- 	bit_max = ext4_num_base_meta_clusters(sb, block_group);
-+	if ((bit_max >> 3) >= bh->b_size)
-+		return -EFSCORRUPTED;
-+
- 	for (bit = 0; bit < bit_max; bit++)
- 		ext4_set_bit(bit, bh->b_data);
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5664ee6..13c49af7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3416,6 +3416,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index c8ac57d..83256d8 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -948,6 +948,8 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+ 		mark_buffer_dirty(journal->j_sb_buffer);
  	}
  
-+	if (le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) > (blocksize / 4)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Number of reserved GDT blocks insanely large: %d",
-+			 le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks));
-+		goto failed_mount;
-+	}
++	journal->j_tail_sequence = journal->j_transaction_sequence;
 +
- 	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
- 		err = bdev_dax_supported(sb, blocksize);
- 		if (err)
+ errout:
+ 	journal_destroy_revoke(journal);
+ 	journal_destroy_revoke_caches();
 -- 
-2.5.0
+1.7.9.5
+
