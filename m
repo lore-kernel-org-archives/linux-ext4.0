@@ -1,343 +1,209 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: add project quota mount options
-Date: Thu, 7 Jul 2016 12:15:47 -0600
-Message-ID: <E7AC1134-CDB5-4C28-B3B6-E9B79F01E591@dilger.ca>
-References: <1467875386-28092-1-git-send-email-wangshilong1991@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_2C06686B-B139-4C6D-B433-879BC33502B2"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org, Shuichi Ihara <sihara@ddn.com>,
-	lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
-To: Wang Shilong <wangshilong1991@gmail.com>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: Re: [RFC PATCH] ext4: validate number of meta clusters in group
+Date: Thu, 7 Jul 2016 22:10:40 +0200
+Message-ID: <577EB740.10502@oracle.com>
+References: <57766AE1.1040508@oracle.com>
+ <20160702074903.GA4914@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------020804070408000007080700"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36862 "EHLO
-	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751193AbcGGSPz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2016 14:15:55 -0400
-Received: by mail-it0-f66.google.com with SMTP id h190so4073325ith.3
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Jul 2016 11:15:54 -0700 (PDT)
-In-Reply-To: <1467875386-28092-1-git-send-email-wangshilong1991@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:34383 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751193AbcGGUKu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2016 16:10:50 -0400
+In-Reply-To: <20160702074903.GA4914@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------020804070408000007080700
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
 
---Apple-Mail=_2C06686B-B139-4C6D-B433-879BC33502B2
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+On 07/02/2016 09:49 AM, Darrick J. Wong wrote:
+> On Fri, Jul 01, 2016 at 03:06:41PM +0200, Vegard Nossum wrote:
+>> Hi,
+>>
+>> I've found that sbi->s_es->s_reserved_gdt_blocks is not validated before
+>> being used, so e.g. a value of 25600 will overflow the buffer head and
+>> corrupt random kernel memory (I've observed 20+ different stack traces
+>> due to this bug! many of them long after the code has finished).
+>
+> This function merely initializes a bitmap block once ext4 decides to start
+> using the block group, which could be a long time after mount...
+>
+>> The following patch fixes it for me:
+>>
+>> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+>> index 3020fd7..1ea5054 100644
+>> --- a/fs/ext4/balloc.c
+>> +++ b/fs/ext4/balloc.c
+>> @@ -208,6 +208,9 @@ static int ext4_init_block_bitmap(struct super_block
+>> *sb,
+>>   	memset(bh->b_data, 0, sb->s_blocksize);
+>>
+>>   	bit_max = ext4_num_base_meta_clusters(sb, block_group);
+>> +	if ((bit_max >> 3) >= bh->b_size)
+>> +		return -EFSCORRUPTED;
+>> +
+>>   	for (bit = 0; bit < bit_max; bit++)
+>>   		ext4_set_bit(bit, bh->b_data);
+>>
+>> However, I think there are potentially more bugs later in this function
+>> where offsets are not validated so it needs to be reviewed carefully.
+>>
+>> Another question is whether we should do the validation earlier, e.g. in
+>> ext4_fill_super(). I'm not too familiar with the code, but maybe
+>> something like the attached patch would be better? It does seem to fix
+>> the issue as well.
+>
+> ...whereas superblock fields such as s_reserved_gdt_blocks ought to be
+> checked (and -EFSCORRUPTED'ed) at mount time.  Since we know that BG 0
+> has everything (superblock, old school gdt tables, inodes), maybe we
+> should make mount check that ext4_num_base_meta_clusters() >
+> NBBY * fs->block_size?
+>
+> (Kinda surprised ext4 doesn't already do this...)
 
-On Jul 7, 2016, at 1:09 AM, Wang Shilong <wangshilong1991@gmail.com> =
-wrote:
->=20
-> From: Wang Shilong <wshilong@ddn.com>
->=20
-> add prjquota, prjjquota, offprjjquota mount options
-> for project quota.
->=20
-> These kind of mount options are used for old
-> quota design, and we can use quotas like these
-> way:
->=20
-> # mkfs.ext4 /dev/sda
-> # mount /dev/sda -o prjquota /mnt/test
-> # quotacheck -p /mnt/test
-> # quotaon /mnt/test
->=20
-> This new mount options are also useful to unify
-> some generic tests for xfs and ext4.
->=20
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
-> ---
-> fs/ext4/ext4.h   |  1 +
-> fs/ext4/ialloc.c |  4 ++--
-> fs/ext4/inode.c  |  7 ++-----
-> fs/ext4/ioctl.c  |  6 ++++--
-> fs/ext4/super.c  | 43 +++++++++++++++++++++++++++++++++----------
-> 5 files changed, 42 insertions(+), 19 deletions(-)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index b84aa1c..315838a 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1129,6 +1129,7 @@ struct ext4_inode_info {
-> #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control =
-Lists */
-> #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc =
-mapping */
-> #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
-> +#define EXT4_MOUNT_PRJQUOTA		0x40000 /* "old" project quota =
-*/
-> #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set =
-*/
-> #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
-> #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 3da4cf8..f7209fc 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -802,8 +802,8 @@ struct inode *__ext4_new_inode(handle_t *handle, =
-struct inode *dir,
-> 	} else
-> 		inode_init_owner(inode, dir, mode);
->=20
-> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, =
-EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> -	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
-> +	if ((EXT4_HAS_RO_COMPAT_FEATURE(sb, =
-EXT4_FEATURE_RO_COMPAT_PROJECT) ||
-> +	     test_opt(sb, PRJQUOTA)) && ext4_test_inode_flag(dir, =
-EXT4_INODE_PROJINHERIT))
+I ran into a second problem (this time it was num_clusters_in_group()
+returning a bogus value) with the same symptoms (random memory
+corruptions), the new attached patch fixes both problems by checking the
+values at mount time.
 
-(style) line over 80 columns
-
-It might be easier to change the code to enable the PRJQUOTA mount =
-option
-when EXT4_FEATURE_RO_COMPAT_PROJECT is in the superblock, and then check
-only test_opt(sb, PRJQUOTA) in the code instead of checking both.
-
-Cheers, Andreas
-
-> 		ei->i_projid =3D EXT4_I(dir)->i_projid;
-> 	else
-> 		ei->i_projid =3D make_kprojid(&init_user_ns, =
-EXT4_DEF_PROJID);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f7140ca..c407f9b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4385,7 +4385,8 @@ static inline void ext4_iget_extra_inode(struct =
-inode *inode,
->=20
-> int ext4_get_projid(struct inode *inode, kprojid_t *projid)
-> {
-> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, =
-EXT4_FEATURE_RO_COMPAT_PROJECT))
-> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, =
-EXT4_FEATURE_RO_COMPAT_PROJECT)
-> +	     && !test_opt(inode->i_sb, PRJQUOTA))
-> 		return -EOPNOTSUPP;
-> 	*projid =3D EXT4_I(inode)->i_projid;
-> 	return 0;
-> @@ -4856,10 +4857,6 @@ static int ext4_do_update_inode(handle_t =
-*handle,
-> 		}
-> 	}
->=20
-> -	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> -			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> -	       i_projid !=3D EXT4_DEF_PROJID);
-> -
-> 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> 	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
-> 		raw_inode->i_projid =3D cpu_to_le32(i_projid);
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index b5a39b0..6062a81 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -311,7 +311,8 @@ static int ext4_ioctl_setproject(struct file =
-*filp, __u32 projid)
-> 	struct dquot *transfer_to[MAXQUOTAS] =3D { };
->=20
-> 	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> -			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-> +			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> +	    !test_opt(sb, PRJQUOTA)) {
-> 		if (projid !=3D EXT4_DEF_PROJID)
-> 			return -EOPNOTSUPP;
-> 		else
-> @@ -849,7 +850,8 @@ encryption_policy_out:
-> 		fa.fsx_xflags =3D ext4_iflags_to_xflags(ei->i_flags & =
-EXT4_FL_USER_VISIBLE);
->=20
-> 		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> -				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-> +				EXT4_FEATURE_RO_COMPAT_PROJECT) ||
-> +		    test_opt(inode->i_sb, PRJQUOTA)) {
-> 			fa.fsx_projid =3D =
-(__u32)from_kprojid(&init_user_ns,
-> 				EXT4_I(inode)->i_projid);
-> 		}
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3822a5a..93a776f 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1184,10 +1184,10 @@ enum {
-> 	Opt_journal_path, Opt_journal_checksum, =
-Opt_journal_async_commit,
-> 	Opt_abort, Opt_data_journal, Opt_data_ordered, =
-Opt_data_writeback,
-> 	Opt_data_err_abort, Opt_data_err_ignore, =
-Opt_test_dummy_encryption,
-> -	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, =
-Opt_offgrpjquota,
-> -	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
-> -	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
-> -	Opt_usrquota, Opt_grpquota, Opt_i_version, Opt_dax,
-> +	Opt_usrjquota, Opt_grpjquota, Opt_prjjquota, Opt_offusrjquota,
-> +	Opt_offgrpjquota, Opt_offprjjquota, Opt_jqfmt_vfsold, =
-Opt_jqfmt_vfsv0,
-> +	 Opt_jqfmt_vfsv1, Opt_quota, Opt_noquota, Opt_barrier, =
-Opt_nobarrier,
-> +	Opt_err, Opt_usrquota, Opt_grpquota, Opt_prjquota, =
-Opt_i_version, Opt_dax,
-> 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
-> 	Opt_lazytime, Opt_nolazytime,
-> 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
-> @@ -1240,6 +1240,8 @@ static const match_table_t tokens =3D {
-> 	{Opt_usrjquota, "usrjquota=3D%s"},
-> 	{Opt_offgrpjquota, "grpjquota=3D"},
-> 	{Opt_grpjquota, "grpjquota=3D%s"},
-> +	{Opt_prjjquota, "prjjquota=3D%s"},
-> +	{Opt_offprjjquota, "prjjquota=3D"},
-> 	{Opt_jqfmt_vfsold, "jqfmt=3Dvfsold"},
-> 	{Opt_jqfmt_vfsv0, "jqfmt=3Dvfsv0"},
-> 	{Opt_jqfmt_vfsv1, "jqfmt=3Dvfsv1"},
-> @@ -1250,6 +1252,7 @@ static const match_table_t tokens =3D {
-> 	{Opt_barrier, "barrier=3D%u"},
-> 	{Opt_barrier, "barrier"},
-> 	{Opt_nobarrier, "nobarrier"},
-> +	{Opt_prjquota, "prjquota"},
-> 	{Opt_i_version, "i_version"},
-> 	{Opt_dax, "dax"},
-> 	{Opt_stripe, "stripe=3D%u"},
-> @@ -1466,12 +1469,17 @@ static const struct mount_opts {
-> 							MOPT_SET | =
-MOPT_Q},
-> 	{Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
-> 							MOPT_SET | =
-MOPT_Q},
-> +	{Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
-> +							MOPT_SET | =
-MOPT_Q},
-> 	{Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
-> -		       EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
-> +		       EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
-> +		       MOPT_CLEAR | MOPT_Q},
-> 	{Opt_usrjquota, 0, MOPT_Q},
-> 	{Opt_grpjquota, 0, MOPT_Q},
-> +	{Opt_prjjquota, 0, MOPT_Q},
-> 	{Opt_offusrjquota, 0, MOPT_Q},
-> 	{Opt_offgrpjquota, 0, MOPT_Q},
-> +	{Opt_offprjjquota, 0, MOPT_Q},
-> 	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
-> 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
-> 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
-> @@ -1495,10 +1503,14 @@ static int handle_mount_opt(struct super_block =
-*sb, char *opt, int token,
-> 		return set_qf_name(sb, USRQUOTA, &args[0]);
-> 	else if (token =3D=3D Opt_grpjquota)
-> 		return set_qf_name(sb, GRPQUOTA, &args[0]);
-> +	else if (token =3D=3D Opt_prjjquota)
-> +		return set_qf_name(sb, PRJQUOTA, &args[0]);
-> 	else if (token =3D=3D Opt_offusrjquota)
-> 		return clear_qf_name(sb, USRQUOTA);
-> 	else if (token =3D=3D Opt_offgrpjquota)
-> 		return clear_qf_name(sb, GRPQUOTA);
-> +	else if (token =3D=3D Opt_offprjjquota)
-> +		return clear_qf_name(sb, PRJQUOTA);
-> #endif
-> 	switch (token) {
-> 	case Opt_noacl:
-> @@ -1757,19 +1769,26 @@ static int parse_options(char *options, struct =
-super_block *sb,
-> 	}
-> #ifdef CONFIG_QUOTA
-> 	if (ext4_has_feature_quota(sb) &&
-> -	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
-> -		ext4_msg(sb, KERN_INFO, "Quota feature enabled, usrquota =
-and grpquota "
-> +	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA) ||
-> +	     test_opt(sb, PRJQUOTA))) {
-> +		ext4_msg(sb, KERN_INFO, "Quota feature enabled, =
-usrquota,grpquota,prjquota "
-> 			 "mount options ignored.");
-> 		clear_opt(sb, USRQUOTA);
-> 		clear_opt(sb, GRPQUOTA);
-> -	} else if (sbi->s_qf_names[USRQUOTA] || =
-sbi->s_qf_names[GRPQUOTA]) {
-> +		clear_opt(sb, PRJQUOTA);
-> +	} else if (sbi->s_qf_names[USRQUOTA] || =
-sbi->s_qf_names[GRPQUOTA] ||
-> +		   sbi->s_qf_names[PRJQUOTA]) {
-> 		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
-> 			clear_opt(sb, USRQUOTA);
->=20
-> 		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
-> 			clear_opt(sb, GRPQUOTA);
->=20
-> -		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
-> +		if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
-> +			clear_opt(sb, GRPQUOTA);
-> +
-> +		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA) ||
-> +		    test_opt(sb, PRJQUOTA)) {
-> 			ext4_msg(sb, KERN_ERR, "old and new quota "
-> 					"format mixing");
-> 			return 0;
-> @@ -1829,6 +1848,9 @@ static inline void =
-ext4_show_quota_options(struct seq_file *seq,
->=20
-> 	if (sbi->s_qf_names[GRPQUOTA])
-> 		seq_show_option(seq, "grpjquota", =
-sbi->s_qf_names[GRPQUOTA]);
-> +
-> +	if (sbi->s_qf_names[PRJQUOTA])
-> +		seq_show_option(seq, "prjjquota", =
-sbi->s_qf_names[PRJQUOTA]);
-> #endif
-> }
->=20
-> @@ -4992,7 +5014,8 @@ static int ext4_mark_dquot_dirty(struct dquot =
-*dquot)
->=20
-> 	/* Are we journaling quotas? */
-> 	if (ext4_has_feature_quota(sb) ||
-> -	    sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-> +	    sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA] ||
-> +	    sbi->s_qf_names[PRJQUOTA]) {
-> 		dquot_mark_dquot_dirty(dquot);
-> 		return ext4_write_dquot(dquot);
-> 	} else {
-> --
-> 2.7.4
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm using (bit_max >> 3) >= sb->s_blocksize which should be equivalent
+to what you suggested (num_clusters() > NBBY * fs->block_size).
 
 
-Cheers, Andreas
+Vegard
 
-
-
-
-
-
---Apple-Mail=_2C06686B-B139-4C6D-B433-879BC33502B2
+--------------020804070408000007080700
+Content-Type: text/x-patch;
+ name="0001-ext4-validate-number-of-clusters-in-group.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+ filename*0="0001-ext4-validate-number-of-clusters-in-group.patch"
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+>From 2e2fc0c40d604e88748bba8d440763249c55b391 Mon Sep 17 00:00:00 2001
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Date: Fri, 1 Jul 2016 15:03:39 +0200
+Subject: [PATCH] ext4: validate number of clusters in group
 
-iQIVAwUBV36cVXKl2rkXzB/gAQj+YxAAv05GLwgaTVYLqoZJdPvzv6Xsst2XmXIu
-hUNoAVudWWrgDv6O8jruUDJm9/9NrcqqCAyjEirDncgJjJMwpK9SHpZvwUB88G+Z
-FEy1Ezzq7yOs9egt/rEtPcCUJsUdAJb82admc94SIN0Gsy0+MFdLCWdFfzvqiAhY
-JBTdtm0RT/0zaYMI+R9a+JUmCV3Q2bhYtUwEaYucw55zjkpMLs/bmwXiSlkvVzEq
-g/vh6Xs5qH8yYYvNqU8goDbVVKUPENwXIJfeclSrbCLXUpXK247bOu0dGe/8NmU9
-zUG+EGQNc4zuMARA6ujOFT9D/lpEtV8GYK54VtBQwBKrOh9QdqM11JnkmB0OomTy
-OxrrBeOK0+VDrViX275cR86IVASnb5eKl257roe0xUUs/BYrlmwx4cola2NBMelc
-GKzAlf9dzEN2CJfjtuJIbcV6l0W3iuA5jiel5IuD/aDk8GhTHg6Kkp1MbuEUguWO
-SsOoz59efNWv8ekhhuvOCnTLY8eftAwtXILg2qmbam6Y4ScYSF0X4mhaUFmQUNf4
-rUn3ylySbajLQqbnJPfTf6NaBJrQCYC/2wBAxwWNwKReJkmj27kjuJfbHd/q2l0R
-PA3LNsNzCysYLxSx61g2xa6K6TXUGt6pJppsDB5jCMN8rQm3kc5wUj4bDAQOvELh
-FPSUDwa6+5Q=
-=Z6x7
------END PGP SIGNATURE-----
+I've found that sbi->s_es->s_reserved_gdt_blocks is not validated before
+being used, so e.g. a value of 25600 will overflow the buffer head and
+corrupt random kernel memory (I've observed 20+ different stack traces
+due to these bugs, many of them long after the code has finished).
 
---Apple-Mail=_2C06686B-B139-4C6D-B433-879BC33502B2--
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+---
+ fs/ext4/balloc.c | 12 +++++-------
+ fs/ext4/ext4.h   |  4 ++++
+ fs/ext4/super.c  | 19 +++++++++++++++++++
+ 3 files changed, 28 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 3020fd7..5a5c679 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -22,8 +22,6 @@
+ 
+ #include <trace/events/ext4.h>
+ 
+-static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+-					    ext4_group_t block_group);
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+  */
+@@ -155,8 +153,8 @@ static unsigned ext4_num_overhead_clusters(struct super_block *sb,
+ 	return num_clusters;
+ }
+ 
+-static unsigned int num_clusters_in_group(struct super_block *sb,
+-					  ext4_group_t block_group)
++unsigned int ext4_num_clusters_in_group(struct super_block *sb,
++					ext4_group_t block_group)
+ {
+ 	unsigned int blocks;
+ 
+@@ -237,7 +235,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
+ 	 * the blocksize * 8 ( which is the size of bitmap ), set rest
+ 	 * of the block bitmap to 1
+ 	 */
+-	ext4_mark_bitmap_end(num_clusters_in_group(sb, block_group),
++	ext4_mark_bitmap_end(ext4_num_clusters_in_group(sb, block_group),
+ 			     sb->s_blocksize * 8, bh->b_data);
+ 	ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
+ 	ext4_group_desc_csum_set(sb, block_group, gdp);
+@@ -251,7 +249,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
+ 				       ext4_group_t block_group,
+ 				       struct ext4_group_desc *gdp)
+ {
+-	return num_clusters_in_group(sb, block_group) - 
++	return ext4_num_clusters_in_group(sb, block_group) -
+ 		ext4_num_overhead_clusters(sb, block_group, gdp);
+ }
+ 
+@@ -817,7 +815,7 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+  * This function returns the number of file system metadata clusters at
+  * the beginning of a block group, including the reserved gdt blocks.
+  */
+-static unsigned ext4_num_base_meta_clusters(struct super_block *sb,
++unsigned ext4_num_base_meta_clusters(struct super_block *sb,
+ 				     ext4_group_t block_group)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b84aa1ca..c325c95 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2270,6 +2270,10 @@ extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
+ extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
+ extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
+ 			ext4_group_t group);
++extern unsigned ext4_num_base_meta_clusters(struct super_block *sb,
++					    ext4_group_t block_group);
++extern unsigned int ext4_num_clusters_in_group(struct super_block *sb,
++					       ext4_group_t block_group);
+ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 					 ext4_fsblk_t goal,
+ 					 unsigned int flags,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 563555e..05ec0a7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3641,6 +3641,25 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 	sbi->s_groups_count = blocks_count;
++
++	for (i = 0; i < sbi->s_groups_count; ++i) {
++		int bit_max;
++
++		bit_max = ext4_num_base_meta_clusters(sb, i);
++		if ((bit_max >> 3) >= sb->s_blocksize) {
++			ext4_msg(sb, KERN_WARNING, "meta cluster base for "
++				"group %u exceeds block size", i);
++			goto failed_mount;
++		}
++
++		bit_max = ext4_num_clusters_in_group(sb, i);
++		if ((bit_max >> 3) >= sb->s_blocksize) {
++			ext4_msg(sb, KERN_WARNING, "clusters in "
++				"group %u exceeds block size", i);
++			goto failed_mount;
++		}
++	}
++
+ 	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
+ 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+-- 
+1.9.1
+
+
+--------------020804070408000007080700--
