@@ -1,115 +1,267 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 121631] New: generic/299 test failures in nojournal test case
-Date: Thu, 07 Jul 2016 15:28:23 +0000
-Message-ID: <bug-121631-13602@https.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: add project quota mount options
+Date: Thu, 7 Jul 2016 11:06:10 -0500
+Message-ID: <b7ac32ea-b70d-0dc1-4b3e-f4f47dbad737@redhat.com>
+References: <1467875386-28092-1-git-send-email-wangshilong1991@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
+To: Wang Shilong <wangshilong1991@gmail.com>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:60370 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43620 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751826AbcGGP2i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jul 2016 11:28:38 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4B67F2014A
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Jul 2016 15:28:26 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 4BDF020145
-	for <linux-ext4@vger.kernel.org>; Thu,  7 Jul 2016 15:28:24 +0000 (UTC)
+	id S1751364AbcGGQHT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jul 2016 12:07:19 -0400
+In-Reply-To: <1467875386-28092-1-git-send-email-wangshilong1991@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=121631
+On 7/7/16 2:09 AM, Wang Shilong wrote:
+> From: Wang Shilong <wshilong@ddn.com>
+> 
+> add prjquota, prjjquota, offprjjquota mount options
+> for project quota.
+> 
+> These kind of mount options are used for old
+> quota design, and we can use quotas like these
+> way:
+> 
+>  # mkfs.ext4 /dev/sda
+>  # mount /dev/sda -o prjquota /mnt/test
+>  # quotacheck -p /mnt/test
+>  # quotaon /mnt/test
+> 
+> This new mount options are also useful to unify
+> some generic tests for xfs and ext4.
 
-            Bug ID: 121631
-           Summary: generic/299 test failures in nojournal test case
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.7-rc6
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: enwlinux@gmail.com
-        Regression: No
+Thanks, I definitely think this makes sense for symmetry, at least.
 
-Created attachment 222371
-  --> https://bugzilla.kernel.org/attachment.cgi?id=222371&action=edit
-xfstest generic/299 modified to improve failure reproducibility
+The new mount options should also be documented in
+Documentation/filesystems/ext4.txt as well as the ext4(5) manpage
+in e2fsprogs.
 
-In my test environment, generic/299 fails in the nojournal test case with
-a good degree of repeatability when run with recent versions of the
-xfstests-bld test appliance.  It's possible this is the result of a latent
-aio/dio write / truncate race, as discussed in recent ext4 concalls.
+But speaking of documentation, is the whole "old vs new" quota
+behavior well-documented somewhere?  I'm afraid I've lost the
+thread on all that.  mount -o usrquota vs. mount -o usrjquota
+vs tune2fs vs mkfs vs. oh my!  ;)
 
-Using xfstests-bld from 28 June 2016 (commit 1c6de6467ef3) with the latest
-x86-64 root file system image for the test appliance (posted on 30 June 2016)
-and running a 4.7-rc6 kernel, generic/299 failed in the nojournal test case in
-6 out of 10 trials in my test environment.  I've not observed failures in the
-other test cases included in xfstests-bld.
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> ---
+>  fs/ext4/ext4.h   |  1 +
+>  fs/ext4/ialloc.c |  4 ++--
+>  fs/ext4/inode.c  |  7 ++-----
+>  fs/ext4/ioctl.c  |  6 ++++--
+>  fs/ext4/super.c  | 43 +++++++++++++++++++++++++++++++++----------
+>  5 files changed, 42 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b84aa1c..315838a 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1129,6 +1129,7 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+>  #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+>  #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+> +#define EXT4_MOUNT_PRJQUOTA		0x40000 /* "old" project quota */
+>  #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+>  #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+>  #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 3da4cf8..f7209fc 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -802,8 +802,8 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  	} else
+>  		inode_init_owner(inode, dir, mode);
+>  
+> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> -	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
+> +	if ((EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) ||
+> +	     test_opt(sb, PRJQUOTA)) && ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
+>  		ei->i_projid = EXT4_I(dir)->i_projid;
+>  	else
+>  		ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f7140ca..c407f9b 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4385,7 +4385,8 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
+>  
+>  int ext4_get_projid(struct inode *inode, kprojid_t *projid)
+>  {
+> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
+> +	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT)
+> +	     && !test_opt(inode->i_sb, PRJQUOTA))
 
-The error message produced by generic/299 is:
+I wonder if this should be encapsulated in an ext4_prjquota_enabled() or something;
+not that big of a deal but it gets repeated a few times, now.
 
-     failed: '/root/xfstests/bin/fio /tmp/25773.fio'
-     (see /results/results-nojournal/generic/299.full for details)
+>  		return -EOPNOTSUPP;
+>  	*projid = EXT4_I(inode)->i_projid;
+>  	return 0;
+> @@ -4856,10 +4857,6 @@ static int ext4_do_update_inode(handle_t *handle,
+>  		}
+>  	}
+>  
+> -	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> -			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> -	       i_projid != EXT4_DEF_PROJID);
+> -
 
-299.full contains a failure message from fio indicating that the checksum
-it's reading in the test's aio-dio-verifier thread isn't what it expects
-(this example from a run with the test appliance on 4.7-rc6):
+Why was this removed vs. adding the mount option test?
 
-     verify: bad magic header 0, wanted acca at file /vdc/aio-dio-verifier
-     offset 577712128, length 4096
+>  	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+>  	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
+>  		raw_inode->i_projid = cpu_to_le32(i_projid);
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index b5a39b0..6062a81 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -311,7 +311,8 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+>  	struct dquot *transfer_to[MAXQUOTAS] = { };
+>  
+>  	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> -			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> +			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	    !test_opt(sb, PRJQUOTA)) {
+>  		if (projid != EXT4_DEF_PROJID)
+>  			return -EOPNOTSUPP;
+>  		else
+> @@ -849,7 +850,8 @@ encryption_policy_out:
+>  		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
+>  
+>  		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> -				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> +				EXT4_FEATURE_RO_COMPAT_PROJECT) ||
+> +		    test_opt(inode->i_sb, PRJQUOTA)) {
+>  			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
+>  				EXT4_I(inode)->i_projid);
+>  		}
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3822a5a..93a776f 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1184,10 +1184,10 @@ enum {
+>  	Opt_journal_path, Opt_journal_checksum, Opt_journal_async_commit,
+>  	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+>  	Opt_data_err_abort, Opt_data_err_ignore, Opt_test_dummy_encryption,
+> -	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+> -	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
+> -	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+> -	Opt_usrquota, Opt_grpquota, Opt_i_version, Opt_dax,
+> +	Opt_usrjquota, Opt_grpjquota, Opt_prjjquota, Opt_offusrjquota,
+> +	Opt_offgrpjquota, Opt_offprjjquota, Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0,
+> +	 Opt_jqfmt_vfsv1, Opt_quota, Opt_noquota, Opt_barrier, Opt_nobarrier,
 
-There are no direct indications of kernel failure - no messages in dmesg, etc.
+small whitespace damage at the beginning of that line.
 
-The value of the bad magic header varies from run to run, but always looks
-like the data written by the direct_aio random writer threads.  I modified
-the fio profile in the test to use a fixed verification pattern (0xFFFFFFF)
-in the verification thread to make it easier to see damage in the
-aio-dio-verifier file.  When the modified test fails, examining the block
-at the offset noted in the error message reveals that the 4K block at that
-location contains data similar to that found in the direct_aio.<n>.0 files.
-There's no occurrence of the fixed verification pattern in that block at all.
+> +	Opt_err, Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version, Opt_dax,
+>  	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
+>  	Opt_lazytime, Opt_nolazytime,
+>  	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+> @@ -1240,6 +1240,8 @@ static const match_table_t tokens = {
+>  	{Opt_usrjquota, "usrjquota=%s"},
+>  	{Opt_offgrpjquota, "grpjquota="},
+>  	{Opt_grpjquota, "grpjquota=%s"},
+> +	{Opt_prjjquota, "prjjquota=%s"},
+> +	{Opt_offprjjquota, "prjjquota="},
+>  	{Opt_jqfmt_vfsold, "jqfmt=vfsold"},
+>  	{Opt_jqfmt_vfsv0, "jqfmt=vfsv0"},
+>  	{Opt_jqfmt_vfsv1, "jqfmt=vfsv1"},
+> @@ -1250,6 +1252,7 @@ static const match_table_t tokens = {
+>  	{Opt_barrier, "barrier=%u"},
+>  	{Opt_barrier, "barrier"},
+>  	{Opt_nobarrier, "nobarrier"},
+> +	{Opt_prjquota, "prjquota"},
+>  	{Opt_i_version, "i_version"},
+>  	{Opt_dax, "dax"},
+>  	{Opt_stripe, "stripe=%u"},
+> @@ -1466,12 +1469,17 @@ static const struct mount_opts {
+>  							MOPT_SET | MOPT_Q},
+>  	{Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
+>  							MOPT_SET | MOPT_Q},
+> +	{Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
+> +							MOPT_SET | MOPT_Q},
+>  	{Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
+> -		       EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
+> +		       EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
+> +		       MOPT_CLEAR | MOPT_Q},
+>  	{Opt_usrjquota, 0, MOPT_Q},
+>  	{Opt_grpjquota, 0, MOPT_Q},
+> +	{Opt_prjjquota, 0, MOPT_Q},
+>  	{Opt_offusrjquota, 0, MOPT_Q},
+>  	{Opt_offgrpjquota, 0, MOPT_Q},
+> +	{Opt_offprjjquota, 0, MOPT_Q},
+>  	{Opt_jqfmt_vfsold, QFMT_VFS_OLD, MOPT_QFMT},
+>  	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+>  	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
+> @@ -1495,10 +1503,14 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  		return set_qf_name(sb, USRQUOTA, &args[0]);
+>  	else if (token == Opt_grpjquota)
+>  		return set_qf_name(sb, GRPQUOTA, &args[0]);
+> +	else if (token == Opt_prjjquota)
+> +		return set_qf_name(sb, PRJQUOTA, &args[0]);
+>  	else if (token == Opt_offusrjquota)
+>  		return clear_qf_name(sb, USRQUOTA);
+>  	else if (token == Opt_offgrpjquota)
+>  		return clear_qf_name(sb, GRPQUOTA);
+> +	else if (token == Opt_offprjjquota)
+> +		return clear_qf_name(sb, PRJQUOTA);
+>  #endif
+>  	switch (token) {
+>  	case Opt_noacl:
+> @@ -1757,19 +1769,26 @@ static int parse_options(char *options, struct super_block *sb,
+>  	}
+>  #ifdef CONFIG_QUOTA
+>  	if (ext4_has_feature_quota(sb) &&
+> -	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
+> -		ext4_msg(sb, KERN_INFO, "Quota feature enabled, usrquota and grpquota "
+> +	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA) ||
+> +	     test_opt(sb, PRJQUOTA))) {
+> +		ext4_msg(sb, KERN_INFO, "Quota feature enabled, usrquota,grpquota,prjquota "
+>  			 "mount options ignored.");
+>  		clear_opt(sb, USRQUOTA);
+>  		clear_opt(sb, GRPQUOTA);
+> -	} else if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+> +		clear_opt(sb, PRJQUOTA);
+> +	} else if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA] ||
+> +		   sbi->s_qf_names[PRJQUOTA]) {
+>  		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+>  			clear_opt(sb, USRQUOTA);
+>  
+>  		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+>  			clear_opt(sb, GRPQUOTA);
+>  
+> -		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
+> +		if (test_opt(sb, PRJQUOTA) && sbi->s_qf_names[PRJQUOTA])
+> +			clear_opt(sb, GRPQUOTA);
+> +
+> +		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA) ||
+> +		    test_opt(sb, PRJQUOTA)) {
+>  			ext4_msg(sb, KERN_ERR, "old and new quota "
+>  					"format mixing");
+>  			return 0;
+> @@ -1829,6 +1848,9 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+>  
+>  	if (sbi->s_qf_names[GRPQUOTA])
+>  		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
+> +
+> +	if (sbi->s_qf_names[PRJQUOTA])
+> +		seq_show_option(seq, "prjjquota", sbi->s_qf_names[PRJQUOTA]);
+>  #endif
+>  }
+>  
+> @@ -4992,7 +5014,8 @@ static int ext4_mark_dquot_dirty(struct dquot *dquot)
+>  
+>  	/* Are we journaling quotas? */
+>  	if (ext4_has_feature_quota(sb) ||
+> -	    sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+> +	    sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA] ||
+> +	    sbi->s_qf_names[PRJQUOTA]) {
+>  		dquot_mark_dquot_dirty(dquot);
+>  		return ext4_write_dquot(dquot);
+>  	} else {
+> 
 
-It's possible that the parallel truncation activity on the direct_aio
-files is triggering a race where the aio-dio-verifier is picking up and
-writing to blocks that have been recently truncated from the direct_aio files,
-but ongoing writes from the direct_aio threads are then applied to those
-truncated blocks before the verification thread reads them.
-
-I've been able to reproduce this failure on kernels as far back as I've
-tried using the test appliance - to version 3.16.
-
-My test system is an Intel NUC (5i7RYB) equipped with a dual core, dual
-threaded i7-5557U processor, 16 GB of DDR3 SDRAM clocked at 1866 MHz, and
-a 500 GB SATA (6 Gb/sec) SSD.  It's installed with a fully updated Debian 8.
-
-And regarding fio:
-
-I first observed generic/299 nojournal failures during 4.6-rc1 regression
-testing after upgrading to a new version of the test appliance.  It used a
-more recent version of fio - fio-2.6.8-ge698 rather than fio-2.1.3.  Further
-testing made it clear that the change in fio version lead to the appearance
-of the test failure.
-
-I was able to bisect the change in fio's behavior to commit f8b0bd1036 -
-"verify: fix a bug with verify_async".  This fixed a race that made async
-verify threads unreliable.
-
-Getting a clean bisection did require modifications to the test because
-the failure rate declined as the bisection proceeded, leading to an
-inconclusive result the first time through.  I commented out the
-buffered aio-dio-verifier thread in the fio profile, and the code that
-attempted to fallocate all the available space, and then got a clean
-bisection.  The modified test may make it easier for others to reproduce
-the failure;  Ted has reported that he can't see it.  I've attached the
-modified test as I used it below.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
