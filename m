@@ -1,64 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: always pre-allocate max depth for path
-Date: Thu, 7 Jul 2016 12:39:00 -0400
-Message-ID: <20160707163900.GC19871@thunk.org>
-References: <55AFDADC-DF82-41FC-8C5C-A0E3D97EF51A@intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 121371] fsck created undeletable directory
+Date: Thu, 07 Jul 2016 17:13:53 +0000
+Message-ID: <bug-121371-13602-avOJcJx0B8@https.bugzilla.kernel.org/>
+References: <bug-121371-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "Faccini, Bruno" <bruno.faccini@intel.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58512 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:45114 "EHLO mail.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751035AbcGGQjG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jul 2016 12:39:06 -0400
-Content-Disposition: inline
-In-Reply-To: <55AFDADC-DF82-41FC-8C5C-A0E3D97EF51A@intel.com>
+	id S1752496AbcGGRUN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 Jul 2016 13:20:13 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 6047F20165
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jul 2016 17:13:55 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id BD1CC20145
+	for <linux-ext4@vger.kernel.org>; Thu,  7 Jul 2016 17:13:53 +0000 (UTC)
+In-Reply-To: <bug-121371-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 23, 2016 at 11:52:29AM +0000, Faccini, Bruno wrote:
-> From: Bruno Faccini <bruno.faccini@intel.com>
-> 
-> I have first found this way to fix holes in previous ext4 layers versions
-> where an array of struct ext4_ext_path had been allocated with an arbitrary
-> evaluated size and finally could overrun upon ext_depth() growth outside
-> i_data_sem protection. But it seems it can still help with recent ext4
-> version, to avoid re-allocation need and overhead when it can be allocated
-> to max possible extent depth (ie, 5 presently) at first time and for a low
-> cost regarding its memory foot-print, it should also avoid further invalid
-> dereference by underlying callers sharing same ppath (with present
-> inter-routines path re-use scheme), and also upon re-allocation error.
-> 
-> Signed-off-by: Bruno Faccini <bruno.faccini@intel.com>
-> Cc: Andreas Dilger <adilger@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
+https://bugzilla.kernel.org/show_bug.cgi?id=121371
 
-Since this came up on the ext4 call, let me give a quick update about
-my concerns about this patch.
+Navin <navinp1912@gmail.com> changed:
 
-The problem with the max possible extent depth assumption is that this
-assumes non-pathological trees.  Unfortunately, at the moment we don't
-dont ever shrink the extent tree as we delete entries from the tree,
-and we aren't obeying the requirements of a formal B+ tree, which is
-that all nodes (except for a trivial tree consiting of a single leaf
-node at the root) must be at least half-full.  So while it is highly
-unlikely, it is possible to create highly pathological trees that
-could potentially be deeper than five deep.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |navinp1912@gmail.com
 
-They are extremely unlikely to happen in practice, granted, but if we
-are relying on this to prevent array bound overflow attacks, a
-malicious attacker could potentially be very happy to arrange such as
-situation.
+--- Comment #6 from Navin <navinp1912@gmail.com> ---
+Grief , your inode or directory content is empty. It is corrupted also. I got
+this after fixing your #1589030 with debugfs and changing fields 
+directory permissions, flags to 0x1000 from your invalid value and also
+changing the modify time stamp to current value from 2032.
 
-So at least in the short run, we may be better off finding all of the
-places where we drop i_data_sem after we've allocated the struct path
-array, and after we grab it again for writing, double check to see if
-we need to reallocate it.  For performance reasons I'm happy always
-allocating an extra array element or two to minimize the need to do
-the reallocation, but for correctness's sake it would be good if we
-could easily test the code path where we need to do a reallocation, as
-well as demonstrate that we do the right thing if the reallocation
-fails...
+I think this is a case where your inode field values has been corrupted or
+overwritten due to some error/failure accidently. Fixing that or opening in
+debugfs write mode solves the problem.  
 
-					- Ted
+Please close this as it doesn't seem to be related to ext4 . If you can
+reproduce this using a test case from standard utilities or other ways
+accessing API's please submit the test case/code. You could go ahead and
+dd/write a byte that changes some struct field in the ext4 and when broken.iso
+is loaded it displays errors for one/few inodes. Unless done properly with
+valid values , it is not supported i guess.
+
+
+
+./1/plexus-component-annotations-1.5.5.jar.sha1:
+total 8
+drw-rw--w- 2 47469 268482890 4096 Nov 13  2014 .
+drwxrwxr-x 3 47433     47433 4096 Jan 13 17:02 ..
+
+./2:
+total 12
+drwxrwxrwx 3 root root 4096 Jul  7 22:31 .
+drwxr-xr-x 5 root root 4096 Jul  3 20:21 ..
+drwxrwxrwx 2 root root 4096 Jul  7 21:48 #1589030
+
+./2/#1589030:
+total 8
+drwxrwxrwx 2 root root 4096 Jul  7 21:48 .
+drwxrwxrwx 3 root root 4096 Jul  7 22:31 ..
+
+./lost+found:
+total 8
+drwx------ 2 root root 4096 Jul  7 20:44 .
+drwxr-xr-x 5 root root 4096 Jul  3 20:21 ..
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
