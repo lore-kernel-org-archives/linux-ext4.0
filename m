@@ -1,101 +1,73 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Cannot umount ext4 fs, no user-space procs using the fs, lsof
- points to jbd2
-Date: Thu, 7 Jul 2016 22:39:07 -0400
-Message-ID: <20160708023907.GD19871@thunk.org>
-References: <CAN0j2-cmXW3wNmjDaKxD9Xd5O+rgyxGevjhFYquiTx92CBRT7w@mail.gmail.com>
+Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
+Date: Thu, 7 Jul 2016 22:46:54 -0400
+Message-ID: <20160708024654.GE19871@thunk.org>
+References: <1467786171-21127-1-git-send-email-wangshilong1991@gmail.com>
+ <20160706233533.GK27480@dastard>
+ <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
+ <20160708005127.GK12670@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Kamran Khan <krkhan@inspirated.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40200 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753487AbcGHCjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 Jul 2016 22:39:12 -0400
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+	Wang Shilong <wangshilong1991@gmail.com>,
+	fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAN0j2-cmXW3wNmjDaKxD9Xd5O+rgyxGevjhFYquiTx92CBRT7w@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160708005127.GK12670@dastard>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 07, 2016 at 04:38:39PM -0700, Kamran Khan wrote:
-> Hi,
+On Fri, Jul 08, 2016 at 10:51:27AM +1000, Dave Chinner wrote:
+> On Wed, Jul 06, 2016 at 09:47:28PM -0500, Eric Sandeen wrote:
+> > On 7/6/16 6:35 PM, Dave Chinner wrote:
+> > 
+> > ...
+> > 
+> > >> +_require_scratch
+> > >> +_require_chattr
+> > >> +_require_test_lsattr
+> > >> +_require_quota
+> > > 
+> > > needs  _require_prjquota, and that function needs to be modified to
+> > > detect for both XFS and ext4 support.
+> > 
+> > I think that if there is desire to test both xfs and non-xfs userspace
+> > with project quota, then we need to differentiate between "e2fsprogs
+> > and linux-quota and the kernel all support it" and "xfsprogs and
+> > the kernel both support it" don't we?
 > 
-> I am unmounting an ext4 filesystem (Ubuntu 16.04), fuser shows that no
-> user-space processes are holding a handle to it:
+> Well, it should be just "linux-quota and kernel". ext4 needs to
+> have the same mount option behaviour for project quota as it does
+> for all other types of quota, not be dependent on mkfs....
+
+Project quota for ext4 is an optional thing, and if nothing else, we
+need to have a separate feature flag for legacy file systems that were
+created before we started supporting project quota.  So if you want to
+support project quota you *will* need to have a version of e2fsck that
+understands project quota, and a version of mke2fs that knows how to
+request that project quota be enabled, etc., etc.
+
+So while it might be *nice* if ext4 could support project quota
+without being dependent on having a specific version of mke2fs and
+e2fsck installed, it's just simply not possible....
+
+> > IOWs if the test uses setquota/repquota, chattr, mkfs, and fsck to
+> > work with project quota, then that's a different set of requirements
+> > from a test using xfs_io, xfs_quota, etc.
 > 
-> > root@kakhan-ubuntu:/# fuser -vm /oldroot
-> >                      USER        PID ACCESS COMMAND
-> > /oldroot:            root     kernel mount /oldroot
+> _require_linux_prjquota
+> _require_xfs_prjquota
 > 
-> lsof gives this:
-> 
-> > root@kakhan-ubuntu:/# lsof | grep sda
-> > jbd2/sda1  368                  root  cwd       DIR               0,20      340          2 /
-> > jbd2/sda1  368                  root  rtd       DIR               0,20      340          2 /
-> > jbd2/sda1  368                  root  txt   unknown                                        /proc/368/exe
+> But that said, both ext4 and xfs need to work for both
+> configurations, and they should all be using the common xfstests
+> quota infrastructure....
 
-This is the jbd2 kernel thread for /dev/sda1; there is one of these
-for each mounted file system, and the thread will automatically exit
-with the relevant file system is umounted: unmount /dev/sda1.
-
-For example:
-
-# ps augxww | grep jbd2
-root       319  0.0  0.0      0     0 ?        S    Jul02   0:45 [jbd2/sda3-8]
-root      1284  0.0  0.0      0     0 ?        S    Jul02   0:00 [jbd2/dm-9-8]
-root      1286  0.0  0.0      0     0 ?        S    Jul02   0:03 [jbd2/dm-8-8]
-root      1303  0.0  0.0      0     0 ?        S    Jul02   0:01 [jbd2/dm-1-8]
-root      1314  0.0  0.0      0     0 ?        S    Jul02   0:00 [jbd2/dm-10-8]
-root      1334  0.0  0.0      0     0 ?        S    Jul02   0:00 [jbd2/dm-0-8]
-root      7338  0.0  0.0  12748  2180 pts/3    S+   22:32   0:00 grep jbd2
-
-# lsof -p 319
-COMMAND   PID USER   FD      TYPE DEVICE SIZE/OFF NODE NAME
-jbd2/sda3 319 root  cwd       DIR    8,3     4096    2 /
-jbd2/sda3 319 root  rtd       DIR    8,3     4096    2 /
-jbd2/sda3 319 root  txt   unknown                      /proc/319/exe
-
-# lsof -p 1284
-COMMAND    PID USER   FD      TYPE DEVICE SIZE/OFF NODE NAME
-jbd2/dm-9 1284 root  cwd       DIR    8,3     4096    2 /
-jbd2/dm-9 1284 root  rtd       DIR    8,3     4096    2 /
-jbd2/dm-9 1284 root  txt   unknown                      /proc/1284/exe
-
-# ls -l /dev/mapper/lambda-android
-0 lrwxrwxrwx. 1 root root 7 Jul  2 23:02 /dev/mapper/lambda-android -> ../dm-9
-# umount /dev/mapper/lambda-android
-
-# ps augxww | grep jbd2
-root       319  0.0  0.0      0     0 ?        S    Jul02   0:45 [jbd2/sda3-8]
-root      1286  0.0  0.0      0     0 ?        S    Jul02   0:03 [jbd2/dm-8-8]
-root      1303  0.0  0.0      0     0 ?        S    Jul02   0:01 [jbd2/dm-1-8]
-root      1314  0.0  0.0      0     0 ?        S    Jul02   0:00 [jbd2/dm-10-8]
-root      1334  0.0  0.0      0     0 ?        S    Jul02   0:00 [jbd2/dm-0-8]
-root      7469  0.0  0.0  12748  2184 pts/3    S+   22:35   0:00 grep jbd2
-
-So there's nothing wrong with the fact that you see a jbd2 thread for
-/dev/sda1, and that's not the reason why you are having trouble unmounting /oldroot.
-
-> I am unable to unmount the filesystem:
-> 
-> > root@kakhan-ubuntu:/# umount /oldroot
-> > umount: /oldroot: target is busy
-> >         (In some cases useful info about processes that
-> >          use the device is found by lsof(8) or fuser(1).)
-> 
-> Can anyone please provide some pointers on how should I proceed with
-> unmounting the filesystem?
-
-This is more of a VFS question than an ext4 question, and
-unfortunately fuser and lsof are not the only reliable ways if a file
-system is still busy.
-
-You might want to try searching /proc/.../mounts for any potential
-mountpoints on top of /oldroot that might be left over from a process
-which created a separate namespace, and hence wasn't affected by the
-umount of /oldroot/proc, or /oldroot/sys, etc.
-
-Cheers,
+Agreed, but we want xfstests to be able to support systems where
+linux-quota (aka quotatools) and/or e2fsprogs and/or the kernel
+haven't been upgraded to support project quota, don't we?  If for no
+other reason than to be kind to the poor souls who have to support
+RHEL 6.  :-)
 
 						- Ted
