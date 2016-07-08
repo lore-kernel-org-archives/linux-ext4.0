@@ -1,74 +1,87 @@
-From: Kamran Khan <krkhan@inspirated.com>
-Subject: Cannot umount ext4 fs, no user-space procs using the fs, lsof points
- to jbd2
-Date: Thu, 7 Jul 2016 16:38:39 -0700
-Message-ID: <CAN0j2-cmXW3wNmjDaKxD9Xd5O+rgyxGevjhFYquiTx92CBRT7w@mail.gmail.com>
+From: Calvin Owens <calvinowens@fb.com>
+Subject: Re: WARNING at fs/ext4/inode.c ext4_evict_inode() triggers on 4.0
+Date: Thu, 7 Jul 2016 17:24:12 -0700
+Message-ID: <8035af0a-ed5e-e1ad-8252-faf611344692@fb.com>
+References: <20160615204939.GA52455@calvinowens-mba.dhcp.thefacebook.com>
+ <20160616083304.GD22835@quack2.suse.cz>
+ <20160617174033.GC72696@calvinowens-mba.dhcp.thefacebook.com>
+ <20160617180434.GA427@quack2.suse.cz> <20160630070032.GA19671@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <kernel-team@fb.com>,
+	calvinowens <calvinowens@fb.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33853 "EHLO
-	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752095AbcGGXil (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2016 19:38:41 -0400
-Received: by mail-it0-f66.google.com with SMTP id u186so72957ita.1
-        for <linux-ext4@vger.kernel.org>; Thu, 07 Jul 2016 16:38:40 -0700 (PDT)
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:41644 "EHLO
+	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753451AbcGHAY0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Jul 2016 20:24:26 -0400
+In-Reply-To: <20160630070032.GA19671@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On 06/30/2016 12:00 AM, Jan Kara wrote:
+> On Fri 17-06-16 20:04:34, Jan Kara wrote:
+>> On Fri 17-06-16 13:40:33, Calvin Owens wrote:
+>>> On Thursday 06/16 at 10:33 +0200, Jan Kara wrote:
+>>>> Hi Calvin,
+>>>>
+>>>> On Wed 15-06-16 16:49:39, Calvin Owens wrote:
+>>>>> I'm hitting the following warning on a 4.0 kernel:
+>>>>>
+>>>>>   WARNING: CPU: 15 PID: 1005611 at fs/ext4/inode.c:233 ext4_evict_inode+0x4be/0x4d0()
+>>>>>   CPU: 15 PID: 1005611 Comm: rocksdb:bg0 Not tainted 4.0.9-60_fbk10_rc1_3974_g796b9b6 #1
+>>>>>   Call Trace:
+>>>>>   [<ffffffff8176af8e>] dump_stack+0x4d/0x63
+>>>>>   [<ffffffff8106c4dc>] warn_slowpath_common+0x8c/0xd0
+>>>>>   [<ffffffff8106c5da>] warn_slowpath_null+0x1a/0x20
+>>>>>   [<ffffffff81242c0e>] ext4_evict_inode+0x4be/0x4d0
+>>>>>   [<ffffffff811d248b>] evict+0xbb/0x190
+>>>>>   [<ffffffff811d2d6d>] iput+0x17d/0x1e0
+>>>>>   [<ffffffff811ce0e0>] __dentry_kill+0x190/0x1e0
+>>>>>   [<ffffffff811ce2d1>] dput+0x1a1/0x1f0
+>>>>>   [<ffffffff811b952a>] __fput+0x17a/0x210
+>>>>>   [<ffffffff811b960e>] ____fput+0xe/0x10
+>>>>>   [<ffffffff81086dbf>] task_work_run+0xbf/0x100
+>>>>>   [<ffffffff81002bcc>] do_notify_resume+0x7c/0x90
+>>>>>   [<ffffffff81771529>] int_signal+0x12/0x17
+>>>>>
+>>>>> Commit 822dbba ("ext4: fix warning in ext4_evict_inode()") proportedly fixed
+>>>>> this in 3.11. The check was entirely removed in 4.6.
+>>>>
+>>>> OK, so this is the warning:
+>>>>
+>>>> WARN_ON(atomic_read(&EXT4_I(inode)->i_ioend_count));
+>>>>
+>>>> It was removed in 4.6 since we maintained i_ioend_count only to be able to
+>>>> do this check and it didn't trigger for a long time. So it is interesting
+>>>> that it actually triggered for you with 4.0.
+>>>>
+>>>>> Is it interesting to you that this triggers on 4.0? I can revert 600be30 and
+>>>>> see if I can reproduce it on upstream, but since the check got removed I
+>>>>> was wondering if there was post-4.0 work that makes it obsolete?
+>>>>
+>>>> It would be great. I'm attaching a revert and an additional debug patch. If
+>>>> you can run with these two on the latest kernel (or even just apply the debug
+>>>> patch on top of 4.0) and reproduce the issue with it, I would be grateful.
+>>>
+>>> Forgot to attach the patches? Or did my mailserver eat them? :)
+>>
+>> Sorry, probably forgot to attach. Here they are.
+>
+> Any luck with the patch?
 
-I am unmounting an ext4 filesystem (Ubuntu 16.04), fuser shows that no
-user-space processes are holding a handle to it:
+No luck at all :/
 
-> root@kakhan-ubuntu:/# fuser -vm /oldroot
->                      USER        PID ACCESS COMMAND
-> /oldroot:            root     kernel mount /oldroot
+Whatever triggers this is extraordinarily rare, and I haven't been able to pin it
+down: I see the WARN from 1-2 random hosts each day across all of FB's servers.
 
-lsof gives this:
+I'll keep at it and let you know if I get anything, hopefully soon.
 
-> root@kakhan-ubuntu:/# lsof | grep sda
-> jbd2/sda1  368                  root  cwd       DIR               0,20      340          2 /
-> jbd2/sda1  368                  root  rtd       DIR               0,20      340          2 /
-> jbd2/sda1  368                  root  txt   unknown                                        /proc/368/exe
+Thanks,
+Calvin
 
-If I look into /proc/../mounts I see lots of kernel specific processes
-which have /dev/sda1 listed in their mounts:
+> 									Honza
+>
 
-> root@kakhan-ubuntu:/# find /proc -name mounts | xargs grep /dev/sda1
-> /proc/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/1/task/1/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/1/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/2/task/2/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/2/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/3/task/3/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/3/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/5/task/5/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/5/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> /proc/7/task/7/mounts:/dev/sda1 /oldroot ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
-> # and whole bunch of others ...)
-
-I am unable to unmount the filesystem:
-
-> root@kakhan-ubuntu:/# umount /oldroot
-> umount: /oldroot: target is busy
->         (In some cases useful info about processes that
->          use the device is found by lsof(8) or fuser(1).)
-
-Can anyone please provide some pointers on how should I proceed with
-unmounting the filesystem?
-
-(Context: I copied binaries into a tmpfs and did a pivot_root to it,
-i.e., the opposite of what happens from initramfs during boot. I
-killed all the userspace processes holding a handle to the oldroot.
-This issue is different than the one I faced a couple of months ago
-during the same exercise on CentOS [1], where systemd-udevd needed a
-restart to release the handle to the old filesystem. In this case
-there's no userspace procs accessing the mountpoint.)
-
-[1] http://permalink.gmane.org/gmane.comp.file-systems.ext4/53314
-
--- 
-Kamran.
-
-http://inspirated.com/
