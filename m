@@ -1,91 +1,69 @@
 From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: BUG: failure at fs/ext4/mballoc.c:3214/ext4_mb_normalize_request()!
-Date: Sat, 9 Jul 2016 13:12:34 +0200
-Message-ID: <5780DC22.7060405@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: [PATCH] ext4: short-cut orphan cleanup on error
+Date: Sun, 10 Jul 2016 00:50:04 +0200
+Message-ID: <1468104604-18997-1-git-send-email-vegard.nossum@oracle.com>
+Cc: linux-ext4@vger.kernel.org,
+	Vegard Nossum <vegard.nossum@oracle.com>,
+	Jan Kara <jack@suse.cz>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:33207 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:17385 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750747AbcGILMl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Jul 2016 07:12:41 -0400
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u69BCdYc032333
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Sat, 9 Jul 2016 11:12:39 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-	by userv0022.oracle.com (8.14.4/8.13.8) with ESMTP id u69BCdGB031287
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-ext4@vger.kernel.org>; Sat, 9 Jul 2016 11:12:39 GMT
-Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
-	by userv0121.oracle.com (8.13.8/8.13.8) with ESMTP id u69BCc1n007048
-	for <linux-ext4@vger.kernel.org>; Sat, 9 Jul 2016 11:12:39 GMT
+	with ESMTP id S1756855AbcGIWuP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Jul 2016 18:50:15 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+If we encounter a filesystem error during orphan cleanup, we should stop.
+Otherwise, we may end up in an infinite loop where the same inode is
+processed again and again.
 
-While fuzzing ext4 with AFL I've run into this crash:
+    EXT4-fs (loop0): warning: checktime reached, running e2fsck is recommended
+    EXT4-fs error (device loop0): ext4_mb_generate_buddy:758: group 2, block bitmap and bg descriptor inconsistent: 6117 vs 0 free clusters
+    Aborting journal on device loop0-8.
+    EXT4-fs (loop0): Remounting filesystem read-only
+    EXT4-fs error (device loop0) in ext4_free_blocks:4895: Journal has aborted
+    EXT4-fs error (device loop0) in ext4_do_update_inode:4893: Journal has aborted
+    EXT4-fs error (device loop0) in ext4_do_update_inode:4893: Journal has aborted
+    EXT4-fs error (device loop0) in ext4_ext_remove_space:3068: IO failure
+    EXT4-fs error (device loop0) in ext4_ext_truncate:4667: Journal has aborted
+    EXT4-fs error (device loop0) in ext4_orphan_del:2927: Journal has aborted
+    EXT4-fs error (device loop0) in ext4_do_update_inode:4893: Journal has aborted
+    EXT4-fs (loop0): Inode 16 (00000000618192a0): orphan list check failed!
+    [...]
+    EXT4-fs (loop0): Inode 16 (0000000061819748): orphan list check failed!
+    [...]
+    EXT4-fs (loop0): Inode 16 (0000000061819bf0): orphan list check failed!
+    [...]
 
-BUG: failure at fs/ext4/mballoc.c:3214/ext4_mb_normalize_request()!
-Kernel panic - not syncing: BUG!
-CPU: 0 PID: 50 Comm: ext4.exe Not tainted 4.7.0-rc5+ #577
-Stack:
-  604a8947 00000043 02400050 60078643
-  601cbcf0 61e3c800 61e237b0 601bfb3c
-  61e238d0 60077d0e 61e23af0 61e3c800
-Call Trace:
-  [<6001c2dc>] show_stack+0xdc/0x1a0
-  [<601bfb3c>] dump_stack+0x2a/0x2e
-  [<60077d0e>] panic+0x15c/0x310
-  [<601492ba>] ext4_mb_normalize_request+0x55a/0x7c0
-  [<601508d4>] ext4_mb_new_blocks+0x5f4/0x970
-  [<6014375e>] ext4_ext_map_blocks+0x131e/0x1bb0
-  [<6011b815>] ext4_map_blocks+0x135/0x780
-  [<6011fc53>] ext4_writepages+0x6d3/0xdd0
-  [<6008626c>] do_writepages+0x1c/0x40
-  [<60078eec>] __filemap_fdatawrite_range+0x7c/0xb0
-  [<6007968c>] filemap_write_and_wait_range+0x2c/0x80
-  [<601150db>] ext4_sync_file+0x6b/0x330
-  [<600e9dbc>] vfs_fsync_range+0x3c/0xd0
-  [<600e9e96>] do_fsync+0x46/0x80
-  [<600e9f25>] SyS_fdatasync+0x15/0x20
+See-also: c9eb13a9105 ("ext4: fix hang when processing corrupted orphaned inode list")
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+---
+ fs/ext4/super.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-This is:
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 05ec0a7..b92802d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2284,6 +2284,16 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 	while (es->s_last_orphan) {
+ 		struct inode *inode;
+ 
++		/*
++		 * We may have encountered an error during cleanup; if
++		 * so, skip the rest.
++		 */
++		if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
++			jbd_debug(1, "Skipping orphan recovery on fs with errors.\n");
++			es->s_last_orphan = 0;
++			break;
++		}
++
+ 		inode = ext4_orphan_get(sb, le32_to_cpu(es->s_last_orphan));
+ 		if (IS_ERR(inode)) {
+ 			es->s_last_orphan = 0;
+-- 
+1.9.1
 
-         BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-
-The problem is that size == 64 and EXT_BLOCKS_PER_GROUP() == 6.
-
-The size of 64 comes from the call to i_size_read() which returns
-0x10000 -- the filesystem block size is 1024: 64 << 10 == 0x10000.
-
-I'm wondering what the best way to fix this is. I'm tempted to just do
-something like this, limiting the size to not cross a block group boundary:
-
-@@ -3185,7 +3211,9 @@ ext4_mb_normalize_request(struct 
-ext4_allocation_context *ac,
-                          (unsigned long) ac->ac_o_ex.fe_logical);
-                 BUG();
-         }
--       BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-+       BUG_ON(size <= 0);
-+       if (start + size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb))
-+               size = EXT4_BLOCKS_PER_GROUP(ac->ac_sb) - start;
-
-         /* now prepare goal request */
-
-That incidentally does seem to fix the problem, but I'm a bit scared
-that I'm just papering over some underlying bug since I can't say I
-fully understand whether any of the other code is supposed to prevent
-this condition in the first place.
-
-The problem is easy to reproduce so I can add debugging printks or test
-patches or whatever.
-
-If the hunk above seems reasonable I can submit a proper patch.
-
-
-Vegard
