@@ -1,31 +1,31 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [4.7-rc4] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280
- drop_nlink+0x3e/0x50
-Date: Sun, 10 Jul 2016 11:25:15 -0400
-Message-ID: <20160710152515.GH26097@thunk.org>
-References: <20160704234633.GE27480@dastard>
- <20160705044524.GE15193@thunk.org>
- <20160710001416.GA1922@dastard>
+From: MRS LUCIA DENIS <hams_me@yahoo.co.id>
+Subject: Attention My Dear,  Your first payment of $7000 usd Is about to
+ send today through western union transfer You are advise to Contact
+ Mr.Larry Martin with your full information.such as reply here ((
+ w.office41@kimo.com ))  Your name...... Your country..... Your phone
+ number.. Your adders......  Contacting Mr.Larry Martin To Enable him to
+ send your First Payment of $7000 usd today.For more information Mr.Larry
+ Martin through Telephone number:+229 68721040 and Email ((
+ w.office41@kimo.com )) he will your payment from total fund ($3.700,000
+ million )until the fund is is Completed transfer to you,so call Mr.Larry
+ Martin to enable him speed up your fund $7000 usd immediately  Best Regards
+ MRS LUCIA DENIS
+Date: Sun, 10 Jul 2016 16:54:38 +0000 (UTC)
+Message-ID: <2004570077.394438.1468169678079.JavaMail.yahoo@mail.yahoo.com>
+References: <2004570077.394438.1468169678079.JavaMail.yahoo.ref@mail.yahoo.com>
+Reply-To: MRS LUCIA DENIS <w.office41@kimo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54054 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757170AbcGJPZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Jul 2016 11:25:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20160710001416.GA1922@dastard>
+Received: from nm35-vm1.bullet.mail.sg3.yahoo.com ([106.10.151.44]:49948 "EHLO
+	nm35-vm1.bullet.mail.sg3.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750946AbcGJRCm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Jul 2016 13:02:42 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry if I offended your sense of non-newbieness :-), but I didn't
-know how your root file system and qemu was configured, and I did find
-a potential place where a corrupted file system could lead to exact
-symptoms that you reported.  Hence the reason that I made the
-assumption that I did.
 
-Cheers,
 
-					- Ted
