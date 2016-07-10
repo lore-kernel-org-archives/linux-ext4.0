@@ -1,42 +1,31 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 121371] fsck created undeletable directory
-Date: Sun, 10 Jul 2016 13:58:56 +0000
-Message-ID: <bug-121371-13602-sRliJaaQ5g@https.bugzilla.kernel.org/>
-References: <bug-121371-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [4.7-rc4] WARNING: CPU: 10 PID: 3359 at fs/inode.c:280
+ drop_nlink+0x3e/0x50
+Date: Sun, 10 Jul 2016 11:25:15 -0400
+Message-ID: <20160710152515.GH26097@thunk.org>
+References: <20160704234633.GE27480@dastard>
+ <20160705044524.GE15193@thunk.org>
+ <20160710001416.GA1922@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:33488 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:54054 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757186AbcGJN7A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Jul 2016 09:59:00 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 4F3222020F
-	for <linux-ext4@vger.kernel.org>; Sun, 10 Jul 2016 13:58:59 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id 9A8722021F
-	for <linux-ext4@vger.kernel.org>; Sun, 10 Jul 2016 13:58:56 +0000 (UTC)
-In-Reply-To: <bug-121371-13602@https.bugzilla.kernel.org/>
+	id S1757170AbcGJPZY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Jul 2016 11:25:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20160710001416.GA1922@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=121371
+Sorry if I offended your sense of non-newbieness :-), but I didn't
+know how your root file system and qemu was configured, and I did find
+a potential place where a corrupted file system could lead to exact
+symptoms that you reported.  Hence the reason that I made the
+assumption that I did.
 
-Grief <iamgrief@gmail.com> changed:
+Cheers,
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|REOPENED                    |RESOLVED
-         Resolution|---                         |INVALID
-
---- Comment #7 from Grief <iamgrief@gmail.com> ---
-Navin, thank you for finding the time to look and answer! I'll follow your
-advice and close this. But in this case, I'd like to understand, isn't it the
-bug of fsck that it didn't fix that? 
-Also, I'll give debugfs a try, however, I've never used it before.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+					- Ted
