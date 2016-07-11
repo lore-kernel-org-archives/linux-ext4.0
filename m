@@ -1,31 +1,41 @@
-From: MRS LUCIA DENIS <hams_me@yahoo.co.id>
-Subject: Attention My Dear,  Your first payment of $7000 usd Is about to
- send today through western union transfer You are advise to Contact
- Mr.Larry Martin with your full information.such as reply here ((
- w.office41@kimo.com ))  Your name...... Your country..... Your phone
- number.. Your adders......  Contacting Mr.Larry Martin To Enable him to
- send your First Payment of $7000 usd today.For more information Mr.Larry
- Martin through Telephone number:+229 68721040 and Email ((
- w.office41@kimo.com )) he will your payment from total fund ($3.700,000
- million )until the fund is is Completed transfer to you,so call Mr.Larry
- Martin to enable him speed up your fund $7000 usd immediately  Best Regards
- MRS LUCIA DENIS
-Date: Sun, 10 Jul 2016 16:54:38 +0000 (UTC)
-Message-ID: <2004570077.394438.1468169678079.JavaMail.yahoo@mail.yahoo.com>
-References: <2004570077.394438.1468169678079.JavaMail.yahoo.ref@mail.yahoo.com>
-Reply-To: MRS LUCIA DENIS <w.office41@kimo.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [RFC PATCH] ext4: validate number of meta clusters in group
+Date: Sun, 10 Jul 2016 22:51:53 -0400
+Message-ID: <20160711025153.GO26097@thunk.org>
+References: <57766AE1.1040508@oracle.com>
+ <20160702074903.GA4914@birch.djwong.org>
+ <577EB740.10502@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Vegard Nossum <vegard.nossum@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nm35-vm1.bullet.mail.sg3.yahoo.com ([106.10.151.44]:49948 "EHLO
-	nm35-vm1.bullet.mail.sg3.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750946AbcGJRCm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 10 Jul 2016 13:02:42 -0400
+Received: from imap.thunk.org ([74.207.234.97]:58386 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757265AbcGKCwA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 10 Jul 2016 22:52:00 -0400
+Content-Disposition: inline
+In-Reply-To: <577EB740.10502@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Jul 07, 2016 at 10:10:40PM +0200, Vegard Nossum wrote:
+> 
+> I ran into a second problem (this time it was num_clusters_in_group()
+> returning a bogus value) with the same symptoms (random memory
+> corruptions), the new attached patch fixes both problems by checking the
+> values at mount time.
 
+Can you give me a dumpe2fs -h of a file system that is causing
+num_clusters_in_group() to be bogus?
 
+I want to make sure I'm checking that correct base values, insteda of
+doing a brute force loop over all of the block groups and calling
+ext4_num_clusters_in_group() and ext4_num_base_meta_clusters() for all
+block groups.
+
+Thanks!!
+
+					- Ted
