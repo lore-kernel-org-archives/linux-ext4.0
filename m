@@ -1,96 +1,78 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: add project quota mount options
-Date: Mon, 11 Jul 2016 17:29:30 +0200
-Message-ID: <20160711152930.GA9334@quack2.suse.cz>
-References: <1467875386-28092-1-git-send-email-wangshilong1991@gmail.com>
- <b7ac32ea-b70d-0dc1-4b3e-f4f47dbad737@redhat.com>
- <20160708031002.GF19871@thunk.org>
+Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
+Date: Mon, 11 Jul 2016 18:15:56 +0200
+Message-ID: <20160711161556.GB9334@quack2.suse.cz>
+References: <1467786171-21127-1-git-send-email-wangshilong1991@gmail.com>
+ <20160706233533.GK27480@dastard>
+ <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
+ <20160708005127.GK12670@dastard>
+ <20160708024654.GE19871@thunk.org>
+ <77863b4a-95e6-4100-79c2-5cbcaf0872e7@sandeen.net>
+ <20160708050228.GH19871@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <david@fromorbit.com>,
 	Wang Shilong <wangshilong1991@gmail.com>,
-	linux-ext4@vger.kernel.org, sihara@ddn.com, lixi@ddn.com,
-	Wang Shilong <wshilong@ddn.com>
+	fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38197 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030735AbcGKP3n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 Jul 2016 11:29:43 -0400
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160708031002.GF19871@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160708050228.GH19871@thunk.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 07-07-16 23:10:02, Ted Tso wrote:
-> On Thu, Jul 07, 2016 at 11:06:10AM -0500, Eric Sandeen wrote:
-> > > add prjquota, prjjquota, offprjjquota mount options
-> > > for project quota.
-> > > 
-> > > These kind of mount options are used for old
-> > > quota design, and we can use quotas like these
-> > > way:
-> > > 
-> > >  # mkfs.ext4 /dev/sda
-> > >  # mount /dev/sda -o prjquota /mnt/test
-> > >  # quotacheck -p /mnt/test
-> > >  # quotaon /mnt/test
-> > > 
-> > > This new mount options are also useful to unify
-> > > some generic tests for xfs and ext4.
+On Fri 08-07-16 01:02:28, Ted Tso wrote:
+> On Thu, Jul 07, 2016 at 10:19:27PM -0500, Eric Sandeen wrote:
+> > I don't know how we got to the point where we have 2 parallel
+> > quota infrastructures, it's an unfortunate mess IMHO.  :(
 > 
-> I think we want to really think about whether we want to support this
-> mode.  Right now we have so *many* different permutations of quota
-> that it's a whole lot more than "old" vs "new".  We have different
-> versions of the quota files, "journaled quota", "first class quota"
-> (where the quota files are hidden), etc.
-> 
-> For user quota and project quota, we do need to support the older
-> quota systems, where usrquota and grpquota are in fact no-ops as far
-> as the kernel is concerned, and are only used as a signal to some init
-> files so they know how to run quotacheck and to the quotatools
-> userspace tools, and where quotaon is used to pass the quota files to
-> the file system using the quotactl system call.
-> 
-> Then there is the "journalled quota" system, where filenames are
-> passed via the mount options usrjquota= and grpjquota= and where quota
-> updates are done using data journal mode.  In this mode, at least in
-> theory, you don't need to run quotacheck, so the fact that usrquota
-> and grpquota mount options aren't present don't matter as far as the
-> init scripts are concerned.  (Although if they get corrupted, good
-> luck to you.)
+> Actually, I've been staring at the quotatools source code and it's
+> even more complicated than that.  There are newer quotactl
+> subcommands, such as Q_XGETQSTAT and Q_XGETQSTATV, which currently
+> quotatools only tries using if it thinks the quota format (which in
+> this sense seems to be system API, not the actual quota file format
+> --- these two concepts seem to have been overloaded at some point) is
+> "xfs".
 
-When you use "journalled quota" mode, you still need to run quotacheck
-after e2fsck fixes anything or when quota files get corrupted due to bugs,
-HW errors, etc. Also quotaon(8) still uses mount options to determine on
-which filesystems it should turn on quotas in this mode.
+quota-tools currently assume that certain quotactl(8) calls are fine only
+for certain quota formats. And this has been long true - since its
+beginning, XFS and VFS quota stacks were pretty independent including
+supported quotactl calls. Only recently (about year and half ago) I have
+added necessary plumbing so that "XFS quotactls" and "VFS quotactls" can be
+used independently of the underlying filesystem. The distinction still
+remained in quota-tools because there was no real need in unifying them and
+we still have to keep knowing about the distinction so that quota-tools can
+work with older kernels.
 
-> With both of the above systems, there are three possible quota
-> formats: old, v0, and v1.  I never remember the details of the
-> differences between them, but IIRC there are differences in terms of
-> the width (e.g., number of bits) used for the uids, gids, and number
-> of blocks and files.
+> Currently quotatools only assumes the "xfs" quota format should be
+> used for "xfs" and "gfs" --- but it works for other file systems,
+> including ext4 as well.  As a result, there's certain information,
+> such as whether ext4 is doing limits enforcement as well as quota
+> tracking, which is *not* being exposed to the user.  I suspect one of
+> the reasons for this is the tests in quotatools for which kernel
+> interfaces are present are fairly primitive, and in fact there are
+> some comments in quotasys.c which makes references to behaviours of
+> certain specific Red Hat kernel versions to decide which interfaces
+> are available.  :-(
 
-This is correct.
+No, the reason is that until recently there was no kernel interface
+to convey this information to userspace for VFS based quotas and nobody
+complained :). If there is some functionality you miss in quota-tools, then
+I can have a look at implementing it. E.g. reporting whether only tracking
+or also enforcement is enabled is relatively simple to add.
+ 
+> And if we just did the simple thing to enable use of the "new" (aka
+> "xfs", although this is ***massive*** misnomer) quota format in
+> quotatools, it would break if the latest quota tools were ever
+> compiled on older Enterprise Linux systems.
 
-> OK, so if you look at the above, the test matrix is at six: journaled
-> vs. non-journaled quota files, old vs v0 vs v1.  And this doesn't take
-> into account whether or not project quota is enabled or not.  I propose
-> that we ***not*** support any of this for project quota.
-> 
-> The mode that I *do* suggest supporting for project quota for ext4
-> requires that you create a file system using -O quota, which enables
-> "internal quotas", which is sometimes also referred to as "first class
-> quotas".  In this mode, the quota files become hidden files so
-> userspace can't screw them up or otherwise corrupt them.  The quota
-> files are journalled, and are checked and consistency corrected by
-> e2fsck.  This is *much* faster than having quotacheck do a separate
-> user-space walk of the entire file system, which is slow, and subject
-> to files being hidden underneath mountpoints, etc., etc.
-
-Completely agreed. Old modes of operation for project quota were actually
-originally implemented but we never merged that code exactly because we
-didn't find legacy mode of operation useful for project quotas.
+What would you like to achieve with this? There is 'QF_META' format which
+is different from 'QF_XFS' format basically only in the set of quotactls
+used. As I said above it might be nice to separate kernel-api from the
+underlying-quota-format but in reality these two were bound together in
+older kernels so they are not really independent.
 
 								Honza
 -- 
