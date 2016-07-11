@@ -1,455 +1,506 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v23 06/22] richacl: In-memory representation and helper functions
-Date: Mon, 11 Jul 2016 12:11:56 +0200
-Message-ID: <CAHc6FU6B-3R=DZ08aMSxr2065sENHAi2V-VAeEqO8kFmpiOgHQ@mail.gmail.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-7-git-send-email-agruenba@redhat.com> <1467718448.3800.16.camel@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] quota: add project support for quotacheck
+Date: Mon, 11 Jul 2016 12:35:20 +0200
+Message-ID: <20160711103520.GJ12410@quack2.suse.cz>
+References: <1467875446-28147-1-git-send-email-wangshilong1991@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1467718448.3800.16.camel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, sihara@ddn.com,
+	lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
+To: Wang Shilong <wangshilong1991@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:43089 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933713AbcGKKfY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Jul 2016 06:35:24 -0400
+Content-Disposition: inline
+In-Reply-To: <1467875446-28147-1-git-send-email-wangshilong1991@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 5, 2016 at 1:34 PM, Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
-> On Thu, 2016-06-30 at 15:46 +0200, Andreas Gruenbacher wrote:
->> A richacl consists of an NFSv4 acl and an owner, group, and other mask.
->> These three masks correspond to the owner, group, and other file
->> permission bits, but they contain NFSv4 permissions instead of POSIX
->> permissions.
->>
->> Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
->> owning group (GROUP@), everyone (EVERYONE@), or to a specific uid or
->> gid.
->>
->> As in the standard POSIX file permission model, each process is the
->> owner, group, or other file class.  A richacl grants a requested access
->> only if the NFSv4 acl in the richacl grants the access (according to the
->> NFSv4 permission check algorithm), and the file mask that applies to the
->> process includes the requested permissions.
->>
->> Signed-off-by: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->> Reviewed-by: J. Bruce Fields <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->> ---
->>  fs/Makefile                  |   1 +
->>  fs/richacl.c                 |  65 ++++++++++++++++
->>  include/linux/richacl.h      | 179 +++++++++++++++++++++++++++++++++++++++++++
->>  include/uapi/linux/Kbuild    |   1 +
->>  include/uapi/linux/richacl.h |  99 ++++++++++++++++++++++++
->>  5 files changed, 345 insertions(+)
->>  create mode 100644 fs/richacl.c
->>  create mode 100644 include/linux/richacl.h
->>  create mode 100644 include/uapi/linux/richacl.h
->>
->> diff --git a/fs/Makefile b/fs/Makefile
->> index 85b6e13..2b3e6f1 100644
->> --- a/fs/Makefile
->> +++ b/fs/Makefile
->> @@ -49,6 +49,7 @@ obj-$(CONFIG_COREDUMP)              += coredump.o
->>  obj-$(CONFIG_SYSCTL)         += drop_caches.o
->>
->>  obj-$(CONFIG_FHANDLE)                += fhandle.o
->> +obj-$(CONFIG_FS_RICHACL)     += richacl.o
->>
->>  obj-y                                += quota/
->>
->> diff --git a/fs/richacl.c b/fs/richacl.c
->> new file mode 100644
->> index 0000000..bcc6591
->> --- /dev/null
->> +++ b/fs/richacl.c
->> @@ -0,0 +1,65 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->> + *
->> + * This program is free software; you can redistribute it and/or modify it
->> + * under the terms of the GNU General Public License as published by the
->> + * Free Software Foundation; either version 2, or (at your option) any
->> + * later version.
->> + *
->> + * This program is distributed in the hope that it will be useful, but
->> + * WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * General Public License for more details.
->> + */
->> +
->> +#include
->> +#include
->> +#include
->> +#include
->> +#include
->> +
->> +/**
->> + * richacl_alloc  -  allocate a richacl
->> + * @count:   number of entries
->> + */
->> +struct richacl *
->> +richacl_alloc(int count, gfp_t gfp)
->> +{
->> +     size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
->> +     struct richacl *acl = kzalloc(size, gfp);
->> +
->> +     if (acl) {
->> +             atomic_set(&acl->a_refcount, 1);
->> +             acl->a_count = count;
->> +     }
->> +     return acl;
->> +}
->> +EXPORT_SYMBOL_GPL(richacl_alloc);
->> +
->
-> I imagine we could have a lot of these at any given time. It might be
-> nice to consider how to do this with dedicated slabcaches for better
-> packing, but I think that would add to the complexity, unfortunately.
+On Thu 07-07-16 16:10:46, Wang Shilong wrote:
+> From: Wang Shilong <wshilong@ddn.com>
+> 
+> With prjquota mount option supported, quotacheck should be
+> aware of ext4 project quota.
+> 
+> This patch add support for it.
+> 
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
 
-The objects are variable in size, so that wouldn't work.
+Thanks for the patch but I don't think it is needed. Project quota is
+supported only when stored in ext4 hidden inode. As such quotacheck has no
+business (and no way) in changing it. What is the problem you are trying to
+address?
 
->> +/**
->> + * richacl_clone  -  create a copy of a richacl
->> + */
->> +struct richacl *
->> +richacl_clone(const struct richacl *acl, gfp_t gfp)
->> +{
->> +     int count = acl->a_count;
->> +     size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
->> +     struct richacl *dup = kmalloc(size, gfp);
->> +
->> +     if (dup) {
->> +             memcpy(dup, acl, size);
->> +             atomic_set(&dup->a_refcount, 1);
->> +     }
->> +     return dup;
->> +}
->> +
->> +/**
->> + * richace_copy  -  copy an acl entry
->> + */
->> +void
->> +richace_copy(struct richace *to, const struct richace *from)
->> +{
->> +     memcpy(to, from, sizeof(struct richace));
->> +}
->> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
->> new file mode 100644
->> index 0000000..edb8480
->> --- /dev/null
->> +++ b/include/linux/richacl.h
->> @@ -0,0 +1,179 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->> + *
->> + * This program is free software; you can redistribute it and/or modify it
->> + * under the terms of the GNU General Public License as published by the
->> + * Free Software Foundation; either version 2, or (at your option) any
->> + * later version.
->> + *
->> + * This program is distributed in the hope that it will be useful, but
->> + * WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * General Public License for more details.
->> + */
->> +
->> +#ifndef __RICHACL_H
->> +#define __RICHACL_H
->> +
->> +#include
->> +
->> +struct richace {
->> +     unsigned short  e_type;
->> +     unsigned short  e_flags;
->> +     unsigned int    e_mask;
->> +     union {
->> +             kuid_t          uid;
->> +             kgid_t          gid;
->> +             unsigned int    special;
->> +     } e_id;
->> +};
->> +
->> +struct richacl {
->> +     atomic_t        a_refcount;
->> +     unsigned int    a_owner_mask;
->> +     unsigned int    a_group_mask;
->> +     unsigned int    a_other_mask;
->> +     unsigned short  a_count;
->> +     unsigned short  a_flags;
->> +     struct richace  a_entries[0];
->> +};
->> +
->> +#define richacl_for_each_entry(_ace, _acl)                   \
->> +     for (_ace = (_acl)->a_entries;                          \
->> +          _ace != (_acl)->a_entries + (_acl)->a_count;       \
->> +          _ace++)
->> +
->> +#define richacl_for_each_entry_reverse(_ace, _acl)           \
->> +     for (_ace = (_acl)->a_entries + (_acl)->a_count - 1;    \
->> +          _ace != (_acl)->a_entries - 1;                     \
->> +          _ace--)
->> +
->> +/**
->> + * richacl_get  -  grab another reference to a richacl handle
->> + */
->> +static inline struct richacl *
->> +richacl_get(struct richacl *acl)
->> +{
->> +     if (acl)
->> +             atomic_inc(&acl->a_refcount);
->> +     return acl;
->> +}
->> +
->> +/**
->> + * richacl_put  -  free a richacl handle
->> + */
->> +static inline void
->> +richacl_put(struct richacl *acl)
->> +{
->> +     if (acl && atomic_dec_and_test(&acl->a_refcount))
->> +             kfree(acl);
->> +}
->> +
->> +/**
->> + * richace_is_owner  -  check if @ace is an OWNER@ entry
->> + */
->> +static inline bool
->> +richace_is_owner(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_OWNER_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_group  -  check if @ace is a GROUP@ entry
->> + */
->> +static inline bool
->> +richace_is_group(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_GROUP_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_everyone  -  check if @ace is an EVERYONE@ entry
->> + */
->> +static inline bool
->> +richace_is_everyone(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_EVERYONE_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_unix_user  -  check if @ace applies to a specific user
->> + */
->> +static inline bool
->> +richace_is_unix_user(const struct richace *ace)
->> +{
->> +     return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            !(ace->e_flags & RICHACE_IDENTIFIER_GROUP);
->> +}
->> +
->> +/**
->> + * richace_is_unix_group  -  check if @ace applies to a specific group
->> + */
->> +static inline bool
->> +richace_is_unix_group(const struct richace *ace)
->> +{
->> +     return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            (ace->e_flags & RICHACE_IDENTIFIER_GROUP);
->> +}
->> +
->> +/**
->> + * richace_is_inherit_only  -  check if @ace is for inheritance only
->> + *
->> + * ACEs with the %RICHACE_INHERIT_ONLY_ACE flag set have no effect during
->> + * permission checking.
->> + */
->> +static inline bool
->> +richace_is_inherit_only(const struct richace *ace)
->> +{
->> +     return ace->e_flags & RICHACE_INHERIT_ONLY_ACE;
->> +}
->> +
->> +/**
->> + * richace_is_inheritable  -  check if @ace is inheritable
->> + */
->> +static inline bool
->> +richace_is_inheritable(const struct richace *ace)
->> +{
->> +     return ace->e_flags & (RICHACE_FILE_INHERIT_ACE |
->> +                            RICHACE_DIRECTORY_INHERIT_ACE);
->> +}
->> +
->> +/**
->> + * richace_is_allow  -  check if @ace is an %ALLOW type entry
->> + */
->> +static inline bool
->> +richace_is_allow(const struct richace *ace)
->> +{
->> +     return ace->e_type == RICHACE_ACCESS_ALLOWED_ACE_TYPE;
->> +}
->> +
->> +/**
->> + * richace_is_deny  -  check if @ace is a %DENY type entry
->> + */
->> +static inline bool
->> +richace_is_deny(const struct richace *ace)
->> +{
->> +     return ace->e_type == RICHACE_ACCESS_DENIED_ACE_TYPE;
->> +}
->> +
->> +/**
->> + * richace_is_same_identifier  -  are both identifiers the same?
->> + */
->> +static inline bool
->> +richace_is_same_identifier(const struct richace *a, const struct richace *b)
->> +{
->> +     return !((a->e_flags ^ b->e_flags) &
->> +              (RICHACE_SPECIAL_WHO | RICHACE_IDENTIFIER_GROUP)) &&
->> +            !memcmp(&a->e_id, &b->e_id, sizeof(a->e_id));
->> +}
->> +
->> +extern struct richacl *richacl_alloc(int, gfp_t);
->> +extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
->> +extern void richace_copy(struct richace *, const struct richace *);
->> +
->> +#endif /* __RICHACL_H */
->> diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
->> index 8bdae34..abeaa98 100644
->> --- a/include/uapi/linux/Kbuild
->> +++ b/include/uapi/linux/Kbuild
->> @@ -355,6 +355,7 @@ header-y += reboot.h
->>  header-y += reiserfs_fs.h
->>  header-y += reiserfs_xattr.h
->>  header-y += resource.h
->> +header-y += richacl.h
->>  header-y += rfkill.h
->>  header-y += rio_mport_cdev.h
->>  header-y += romfs_fs.h
->> diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
->> new file mode 100644
->> index 0000000..08856f8
->> --- /dev/null
->> +++ b/include/uapi/linux/richacl.h
->> @@ -0,0 +1,99 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->> + *
->> + * This file is free software; you can redistribute it and/or
->> + * modify it under the terms of the GNU Lesser General Public
->> + * License as published by the Free Software Foundation; either
->> + * version 2.1 of the License, or (at your option) any later version.
->> + *
->> + * This file is distributed in the hope that it will be useful,
->> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * Lesser General Public License for more details.
->> + */
->> +
->> +#ifndef __UAPI_RICHACL_H
->> +#define __UAPI_RICHACL_H
->> +
->> +/* a_flags values */
->> +#define RICHACL_WRITE_THROUGH                        0x40
->> +#define RICHACL_MASKED                               0x80
->> +
->> +/* e_type values */
->> +#define RICHACE_ACCESS_ALLOWED_ACE_TYPE              0x0000
->> +#define RICHACE_ACCESS_DENIED_ACE_TYPE               0x0001
->> +
->> +/* e_flags bitflags */
->> +#define RICHACE_FILE_INHERIT_ACE             0x0001
->> +#define RICHACE_DIRECTORY_INHERIT_ACE                0x0002
->> +#define RICHACE_NO_PROPAGATE_INHERIT_ACE     0x0004
->> +#define RICHACE_INHERIT_ONLY_ACE             0x0008
->> +#define RICHACE_IDENTIFIER_GROUP             0x0040
->> +#define RICHACE_SPECIAL_WHO                  0x4000
->> +
->> +/* e_mask bitflags */
->> +#define RICHACE_READ_DATA                    0x00000001
->> +#define RICHACE_LIST_DIRECTORY                       0x00000001
->> +#define RICHACE_WRITE_DATA                   0x00000002
->> +#define RICHACE_ADD_FILE                     0x00000002
->> +#define RICHACE_APPEND_DATA                  0x00000004
->> +#define RICHACE_ADD_SUBDIRECTORY             0x00000004
->> +#define RICHACE_READ_NAMED_ATTRS             0x00000008
->> +#define RICHACE_WRITE_NAMED_ATTRS            0x00000010
->> +#define RICHACE_EXECUTE                              0x00000020
->> +#define RICHACE_DELETE_CHILD                 0x00000040
->> +#define RICHACE_READ_ATTRIBUTES                      0x00000080
->> +#define RICHACE_WRITE_ATTRIBUTES             0x00000100
->> +#define RICHACE_WRITE_RETENTION                      0x00000200
->> +#define RICHACE_WRITE_RETENTION_HOLD         0x00000400
->> +#define RICHACE_DELETE                               0x00010000
->> +#define RICHACE_READ_ACL                     0x00020000
->> +#define RICHACE_WRITE_ACL                    0x00040000
->> +#define RICHACE_WRITE_OWNER                  0x00080000
->> +#define RICHACE_SYNCHRONIZE                  0x00100000
->> +
->> +/* e_id values */
->> +#define RICHACE_OWNER_SPECIAL_ID             0
->> +#define RICHACE_GROUP_SPECIAL_ID             1
->> +#define RICHACE_EVERYONE_SPECIAL_ID          2
->> +
->> +#define RICHACL_VALID_FLAGS (                                        \
->> +     RICHACL_WRITE_THROUGH |                                 \
->> +     RICHACL_MASKED )
->> +
->> +#define RICHACE_VALID_FLAGS (                                        \
->> +     RICHACE_FILE_INHERIT_ACE |                              \
->> +     RICHACE_DIRECTORY_INHERIT_ACE |                         \
->> +     RICHACE_NO_PROPAGATE_INHERIT_ACE |                      \
->> +     RICHACE_INHERIT_ONLY_ACE |                              \
->> +     RICHACE_IDENTIFIER_GROUP |                              \
->> +     RICHACE_SPECIAL_WHO )
->> +
->> +#define RICHACE_INHERITANCE_FLAGS (                          \
->> +     RICHACE_FILE_INHERIT_ACE |                              \
->> +     RICHACE_DIRECTORY_INHERIT_ACE |                         \
->> +     RICHACE_NO_PROPAGATE_INHERIT_ACE |                      \
->> +     RICHACE_INHERIT_ONLY_ACE )
->> +
->> +/* Valid RICHACE_* flags for directories and non-directories */
->> +#define RICHACE_VALID_MASK (                                 \
->> +     RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |            \
->> +     RICHACE_WRITE_DATA | RICHACE_ADD_FILE |                 \
->> +     RICHACE_APPEND_DATA | RICHACE_ADD_SUBDIRECTORY |        \
->> +     RICHACE_READ_NAMED_ATTRS |                              \
->> +     RICHACE_WRITE_NAMED_ATTRS |                             \
->> +     RICHACE_EXECUTE |                                       \
->> +     RICHACE_DELETE_CHILD |                                  \
->> +     RICHACE_READ_ATTRIBUTES |                               \
->> +     RICHACE_WRITE_ATTRIBUTES |                              \
->> +     RICHACE_WRITE_RETENTION |                               \
->> +     RICHACE_WRITE_RETENTION_HOLD |                          \
->> +     RICHACE_DELETE |                                        \
->> +     RICHACE_READ_ACL |                                      \
->> +     RICHACE_WRITE_ACL |                                     \
->> +     RICHACE_WRITE_OWNER |                                   \
->> +     RICHACE_SYNCHRONIZE )
->> +
->> +#endif /* __UAPI_RICHACL_H */
->
-> Reviewed-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-
-Thanks,
-Andreas
+								Honza
+> ---
+>  mntopt.h     |   2 +
+>  quota.h      |   3 +-
+>  quotacheck.c | 161 ++++++++++++++++++++++++++++++++++++++++++++++-------------
+>  quotacheck.h |  17 +++++++
+>  quotaio_v2.h |   2 +-
+>  quotasys.c   |  10 ++++
+>  6 files changed, 159 insertions(+), 36 deletions(-)
+> 
+> diff --git a/mntopt.h b/mntopt.h
+> index f31abb7..b055f7a 100644
+> --- a/mntopt.h
+> +++ b/mntopt.h
+> @@ -32,6 +32,8 @@
+>  #define MNTOPT_USRJQUOTA	"usrjquota"	/* enforce user quota */
+>  #define MNTOPT_GRPQUOTA		"grpquota"	/* enforce group quota */
+>  #define MNTOPT_GRPJQUOTA	"grpjquota"	/* enforce group quota */
+> +#define MNTOPT_PRJQUOTA		"prjquota"	/* enforce group quota */
+> +#define MNTOPT_PRJJQUOTA	"prjjquota"	/* enforce group quota */
+>  #define MNTOPT_RSQUASH		"rsquash"	/* root as ordinary user */
+>  #define MNTOPT_BIND		"bind"		/* binded mount */
+>  #define MNTOPT_LOOP		"loop"		/* loopback mount */
+> diff --git a/quota.h b/quota.h
+> index 3628614..094130a 100644
+> --- a/quota.h
+> +++ b/quota.h
+> @@ -30,7 +30,8 @@ typedef int64_t qsize_t;	/* Type in which we store size limitations */
+>   */
+>  #define INITQMAGICS {\
+>  	0xd9c01f11,	/* USRQUOTA */\
+> -	0xd9c01927	/* GRPQUOTA */\
+> +	0xd9c01927,	/* GRPQUOTA */\
+> +	0xd9c03f14	/* PRJQUOTA */\
+>  }
+>  
+>  /* Size of blocks in which are counted size limits in generic utility parts */
+> diff --git a/quotacheck.c b/quotacheck.c
+> index 6f34cff..d895f77 100644
+> --- a/quotacheck.c
+> +++ b/quotacheck.c
+> @@ -61,7 +61,7 @@ struct dirs {
+>  static dev_t cur_dev;			/* Device we are working on */
+>  static int files_done, dirs_done;
+>  int flags, fmt = -1, cfmt;	/* Options from command line; Quota format to use spec. by user; Actual format to check */
+> -static int uwant, gwant, ucheck, gcheck;	/* Does user want to check user/group quota; Do we check user/group quota? */
+> +static int uwant, gwant, pwant, ucheck, gcheck, pcheck;	/* Does user want to check quotas; Do we check quotas? */
+>  static char *mntpoint;			/* Mountpoint to check */
+>  char *progname;
+>  struct util_dqinfo old_info[MAXQUOTAS];	/* Loaded infos */
+> @@ -179,16 +179,18 @@ struct dquot *add_dquot(qid_t id, int type)
+>  /*
+>   * Add a number of blocks and inodes to a quota.
+>   */
+> -static void add_to_quota(int type, ino_t i_num, uid_t i_uid, gid_t i_gid, mode_t i_mode,
+> -			 nlink_t i_nlink, loff_t i_space, int need_remember)
+> +static void add_to_quota(int type, ino_t i_num, uid_t i_uid, gid_t i_gid, __u32 prjid,
+> +			 mode_t i_mode, nlink_t i_nlink, loff_t i_space, int need_remember)
+>  {
+>  	qid_t wanted;
+>  	struct dquot *lptr;
+>  
+>  	if (type == USRQUOTA)
+>  		wanted = i_uid;
+> -	else
+> +	else if (type == PRJQUOTA)
+>  		wanted = i_gid;
+> +	else
+> +		wanted = prjid;
+>  
+>  	if ((lptr = lookup_dquot(wanted, type)) == NODQUOT)
+>  		lptr = add_dquot(wanted, type);
+> @@ -293,9 +295,10 @@ static inline void blit(const char *msg)
+>  
+>  static void usage(void)
+>  {
+> -	printf(_("Utility for checking and repairing quota files.\n%s [-gucbfinvdmMR] [-F <quota-format>] filesystem|-a\n\n\
+> +	printf(_("Utility for checking and repairing quota files.\n%s [-gupcbfinvdmMR] [-F <quota-format>] filesystem|-a\n\n\
+>  -u, --user                check user files\n\
+>  -g, --group               check group files\n\
+> +-p, --project             check group files\n\
+>  -c, --create-files        create new quota files\n\
+>  -b, --backup              create backups of old quota files\n\
+>  -f, --force               force check even if quotas are enabled\n\
+> @@ -327,6 +330,7 @@ static void parse_options(int argcnt, char **argstr)
+>  		{ "debug", 0, NULL, 'd' },
+>  		{ "user", 0, NULL, 'u' },
+>  		{ "group", 0, NULL, 'g' },
+> +		{ "group", 0, NULL, 'p' },
+>  		{ "interactive", 0, NULL, 'i' },
+>  		{ "use-first-dquot", 0, NULL, 'n' },
+>  		{ "force", 0, NULL, 'f' },
+> @@ -338,7 +342,7 @@ static void parse_options(int argcnt, char **argstr)
+>  		{ NULL, 0, NULL, 0 }
+>  	};
+>  
+> -	while ((ret = getopt_long(argcnt, argstr, "VhbcvugidnfF:mMRa", long_opts, NULL)) != -1) {
+> +	while ((ret = getopt_long(argcnt, argstr, "VhbcvugpidnfF:mMRa", long_opts, NULL)) != -1) {
+>    	        switch (ret) {
+>  		  case 'b':
+>    		          flags |= FL_BACKUPS;
+> @@ -349,6 +353,9 @@ static void parse_options(int argcnt, char **argstr)
+>  		  case 'u':
+>  			  uwant = 1;
+>  			  break;
+> +		  case 'p':
+> +			  pwant = 1;
+> +			  break;
+>  		  case 'd':
+>  			  flags |= FL_DEBUG;
+>  			  setlinebuf(stderr);
+> @@ -394,7 +401,7 @@ static void parse_options(int argcnt, char **argstr)
+>  			usage();
+>  		}
+>  	}
+> -	if (!(uwant | gwant))
+> +	if (!(uwant | gwant | pwant))
+>  		uwant = 1;
+>  	if ((argcnt == optind && !(flags & FL_ALL)) || (argcnt > optind && flags & FL_ALL)) {
+>  		fputs(_("Bad number of arguments.\n"), stderr);
+> @@ -415,12 +422,14 @@ static int ext2_direct_scan(const char *device)
+>  	ext2_filsys fs;
+>  	errcode_t error;
+>  	ext2_inode_scan scan;
+> -	struct ext2_inode inode;
+> +	struct ext2_inode *inode;
+> +	int inode_size;
+>  	int inode_buffer_blocks = 0;
+>  	ext2fs_inode_bitmap inode_used_map;
+>  	ext2fs_inode_bitmap inode_dir_map;
+>  	uid_t uid;
+>  	gid_t gid;
+> +	u32 projid = 0;
+>  
+>  	if ((error = ext2fs_open(device, 0, 0, 0, unix_io_manager, &fs))) {
+>  		errstr(_("error (%d) while opening %s\n"), (int)error, device);
+> @@ -441,38 +450,53 @@ static int ext2_direct_scan(const char *device)
+>  		errstr(_("error (%d) while opening inode scan\n"), (int)error);
+>  		return -1;
+>  	}
+> +	inode_size = EXT2_INODE_SIZE(fs->super);
+> +	inode = e2fsck_allocate_memory(ctx, inode_size, "scratch inode");
+> +	if (!inode) {
+> +		errstr(_("error (%d) while allocating inode\n"), -ENOMEM);
+> +		return -1;
+> +	}
+>  
+> -	if ((error = ext2fs_get_next_inode(scan, &i_num, &inode))) {
+> +	if ((error = ext2fs_get_next_inode_full(scan, &i_num, inode, inode_size))) {
+>  		errstr(_("error (%d) while starting inode scan\n"), (int)error);
+>  		return -1;
+>  	}
+>  
+>  	while (i_num) {
+> +		/* keep off project quota inode here ? */
+>  		if ((i_num == EXT2_ROOT_INO ||
+>  		     i_num >= EXT2_FIRST_INO(fs->super)) &&
+> -		    inode.i_links_count) {
+> +		    inode->i_links_count) {
+>  			debug(FL_DEBUG, _("Found i_num %ld, blocks %ld\n"), (long)i_num, (long)inode.i_blocks);
+>  			if (flags & FL_VERBOSE)
+>  				blit(NULL);
+> -			uid = inode.i_uid | (inode.i_uid_high << 16);
+> -			gid = inode.i_gid | (inode.i_gid_high << 16);
+> -			if (inode.i_uid_high | inode.i_gid_high)
+> +			uid = inode->i_uid | (inode->i_uid_high << 16);
+> +			gid = inode->i_gid | (inode->i_gid_high << 16);
+> +			if (inode->i_uid_high | inode->i_gid_high)
+>  				debug(FL_DEBUG, _("High uid detected.\n"));
+> +			inode_size = EXT2_GOOD_OLD_INODE_SIZE +
+> +					inode->i_extra_isize;
+> +			if (inode_includes(inode_size, i_projid))
+> +				projid = inode->i_projid;
+>  			if (ucheck)
+> -				add_to_quota(USRQUOTA, i_num, uid, gid,
+> -					     inode.i_mode, inode.i_links_count,
+> -					     ((loff_t)inode.i_blocks) << 9, 0);
+> +				add_to_quota(USRQUOTA, i_num, uid, gid, projid,
+> +					     inode->i_mode, inode->i_links_count,
+> +					     ((loff_t)inode->i_blocks) << 9, 0);
+>  			if (gcheck)
+> -				add_to_quota(GRPQUOTA, i_num, uid, gid,
+> -					     inode.i_mode, inode.i_links_count,
+> -					     ((loff_t)inode.i_blocks) << 9, 0);
+> -			if (S_ISDIR(inode.i_mode))
+> +				add_to_quota(GRPQUOTA, i_num, uid, gid, projid,
+> +					     inode->i_mode, inode->i_links_count,
+> +					     ((loff_t)inode->i_blocks) << 9, 0);
+> +			if (pcheck)
+> +				add_to_quota(PRJQUOTA, i_num, uid, gid, projid,
+> +					     inode->i_mode, inode->i_links_count,
+> +					     ((loff_t)inode->i_blocks) << 9, 0);
+> +			if (S_ISDIR(inode->i_mode))
+>  				dirs_done++;
+>  			else
+>  				files_done++;
+>  		}
+>  
+> -		if ((error = ext2fs_get_next_inode(scan, &i_num, &inode))) {
+> +		if ((error = ext2fs_get_next_inode_full(scan, &i_num, inode, inode_size))) {
+>  			errstr(_("Something weird happened while scanning. Error %d\n"), (int)error);
+>  			return -1;
+>  		}
+> @@ -481,6 +505,29 @@ static int ext2_direct_scan(const char *device)
+>  }
+>  #endif
+>  
+> +static int fgetproject(const char *name, unsigned long *project)
+> +{
+> +#ifndef FS_IOC_FSGETXATTR
+> +	errno = EOPNOTSUPP;
+> +	return -1;
+> +#else
+> +	int fd, r, save_errno = 0;
+> +	struct fsxattr fsx;
+> +
+> +	fd = open (name, O_RDONLY);
+> +	if (fd == -1)
+> +		return -1;
+> +	r = ioctl (fd, FS_IOC_FSGETXATTR, &fsx);
+> +	if (r == 0)
+> +		*project = fsx.fsx_projid;
+> +	save_errno = errno;
+> +	close (fd);
+> +	if (save_errno)
+> +		errno = save_errno;
+> +	return r;
+> +#endif
+> +}
+> +
+>  /*
+>   * Scan a directory with the readdir systemcall. Stat the files and add the sizes
+>   * of the files to the appropriate quotas. When we find a dir we recursivly call
+> @@ -493,6 +540,7 @@ static int scan_dir(const char *pathname)
+>  	struct dirent *de;
+>  	struct stat st;
+>  	loff_t qspace;
+> +	unsigned long projid;
+>  	DIR *dp;
+>  	int ret;
+>  
+> @@ -500,13 +548,20 @@ static int scan_dir(const char *pathname)
+>  		errstr(_("Cannot stat directory %s: %s\n"), pathname, strerror(errno));
+>  		goto out;
+>  	}
+> +
+> +	if (fgetproject(pathname, &projid)) 
+> +		projid = 0;
+> +
+>  	qspace = getqsize(pathname, &st);
+>  	if (ucheck)
+> -		add_to_quota(USRQUOTA, st.st_ino, st.st_uid, st.st_gid, st.st_mode,
+> -			     st.st_nlink, qspace, 0);
+> +		add_to_quota(USRQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +			     st.st_mode, st.st_nlink, qspace, 0);
+>  	if (gcheck)
+> -		add_to_quota(GRPQUOTA, st.st_ino, st.st_uid, st.st_gid, st.st_mode,
+> -			     st.st_nlink, qspace, 0);
+> +		add_to_quota(GRPQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +			     st.st_mode, st.st_nlink, qspace, 0);
+> +	if (pcheck)
+> +		add_to_quota(PRJQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +			     st.st_mode, st.st_nlink, qspace, 0);
+>  
+>  	if ((dp = opendir(pathname)) == (DIR *) NULL)
+>  		die(2, _("\nCan open directory %s: %s\n"), pathname, strerror(errno));
+> @@ -541,13 +596,18 @@ static int scan_dir(const char *pathname)
+>  			dir_stack = new_dir;
+>  		}
+>  		else {
+> +			if (fgetproject(de->d_name, &projid)) 
+> +				projid = 0;
+>  			qspace = getqsize(de->d_name, &st);
+>  			if (ucheck)
+> -				add_to_quota(USRQUOTA, st.st_ino, st.st_uid, st.st_gid, st.st_mode,
+> -					     st.st_nlink, qspace, 1);
+> +				add_to_quota(USRQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +					     st.st_mode, st.st_nlink, qspace, 1);
+>  			if (gcheck)
+> -				add_to_quota(GRPQUOTA, st.st_ino, st.st_uid, st.st_gid, st.st_mode,
+> -					     st.st_nlink, qspace, 1);
+> +				add_to_quota(GRPQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +					     st.st_mode, st.st_nlink, qspace, 1);
+> +			if (pcheck)
+> +				add_to_quota(PRJQUOTA, st.st_ino, st.st_uid, st.st_gid, projid,
+> +					     st.st_mode, st.st_nlink, qspace, 1);
+>  			debug(FL_DEBUG, _("\tAdding %s size %lld ino %d links %d uid %u gid %u\n"), de->d_name,
+>  			      (long long)st.st_size, (int)st.st_ino, (int)st.st_nlink, (int)st.st_uid, (int)st.st_gid);
+>  			files_done++;
+> @@ -930,7 +990,10 @@ static int check_dir(struct mount_entry *mnt)
+>  	if (gcheck)
+>  		if (process_file(mnt, GRPQUOTA) < 0)
+>  			gcheck = 0;
+> -	if (!ucheck && !gcheck)	/* Nothing to check? */
+> +	if (pcheck)
+> +		if (process_file(mnt, PRJQUOTA) < 0)
+> +			pcheck = 0;
+> +	if (!ucheck && !gcheck && !pcheck)	/* Nothing to check? */
+>  		return 0;
+>  	if (!(flags & FL_NOREMOUNT)) {
+>  		/* Now we try to remount fs read-only to prevent races when scanning filesystem */
+> @@ -959,7 +1022,8 @@ Please stop all programs writing to filesystem or use -m flag to force checking.
+>  start_scan:
+>  	debug(FL_VERBOSE | FL_DEBUG, _("Scanning %s [%s] "), mnt->me_devname, mnt->me_dir);
+>  #if defined(EXT2_DIRECT)
+> -	if (!strcmp(mnt->me_type, MNTTYPE_EXT2) || !strcmp(mnt->me_type, MNTTYPE_EXT3) || !strcmp(mnt->me_type, MNTTYPE_NEXT3)) {
+> +	if (!strcmp(mnt->me_type, MNTTYPE_EXT2) || !strcmp(mnt->me_type, MNTTYPE_EXT3) ||
+> +	    !strcmp(mnt->me_type, MNTTYPE_NEXT3) || !strcmp(mnt->me_type, MNTTYPE_EXT4)) {
+>  		if ((failed = ext2_direct_scan(mnt->me_devname)) < 0)
+>  			goto out;
+>  	}
+> @@ -975,13 +1039,21 @@ start_scan:
+>  	dirs_done++;
+>  	if (flags & FL_VERBOSE || flags & FL_DEBUG)
+>  		fputs(_("done\n"), stdout);
+> +	/* skip this for project quota */
+>  	if (ucheck) {
+>  		failed |= sub_quota_file(mnt, USRQUOTA, USRQUOTA);
+>  		failed |= sub_quota_file(mnt, USRQUOTA, GRPQUOTA);
+> +		failed |= sub_quota_file(mnt, USRQUOTA, PRJQUOTA);
+>  	}
+>  	if (gcheck) {
+>  		failed |= sub_quota_file(mnt, GRPQUOTA, USRQUOTA);
+>  		failed |= sub_quota_file(mnt, GRPQUOTA, GRPQUOTA);
+> +		failed |= sub_quota_file(mnt, GRPQUOTA, PRJQUOTA);
+> +	}
+> +	if (pcheck) {
+> +		failed |= sub_quota_file(mnt, PRJQUOTA, USRQUOTA);
+> +		failed |= sub_quota_file(mnt, PRJQUOTA, GRPQUOTA);
+> +		failed |= sub_quota_file(mnt, PRJQUOTA, PRJQUOTA);
+>  	}
+>  	debug(FL_DEBUG | FL_VERBOSE, _("Checked %d directories and %d files\n"), dirs_done,
+>  	      files_done);
+> @@ -994,6 +1066,8 @@ start_scan:
+>  		failed |= dump_to_file(mnt, USRQUOTA);
+>  	if (gcheck)
+>  		failed |= dump_to_file(mnt, GRPQUOTA);
+> +	if (pcheck)
+> +		failed |= dump_to_file(mnt, PRJQUOTA);
+>  out:
+>  	remove_list();
+>  	return failed;
+> @@ -1022,13 +1096,20 @@ static int detect_filename_format(struct mount_entry *mnt, int type)
+>  		else if ((option = str_hasmntopt(mnt->me_opts, MNTOPT_QUOTA)))
+>  			option += strlen(MNTOPT_QUOTA);
+>  	}
+> -	else {
+> +	else if (type == USRQUOTA){
+>  		if ((option = str_hasmntopt(mnt->me_opts, MNTOPT_GRPQUOTA)))
+>  			option += strlen(MNTOPT_GRPQUOTA);
+>  		else if ((option = str_hasmntopt(mnt->me_opts, MNTOPT_GRPJQUOTA))) {
+>  			journal = 1;
+>  			option += strlen(MNTOPT_GRPJQUOTA);
+>  		}
+> +	} else {
+> +		if ((option = str_hasmntopt(mnt->me_opts, MNTOPT_PRJQUOTA)))
+> +			option += strlen(MNTOPT_PRJQUOTA);
+> +		else if ((option = str_hasmntopt(mnt->me_opts, MNTOPT_PRJJQUOTA))) {
+> +			journal = 1;
+> +			option += strlen(MNTOPT_PRJJQUOTA);
+> +		}
+>  	}
+>  	if (!option)
+>  		die(2, _("Cannot find quota option on filesystem %s with quotas!\n"), mnt->me_dir);
+> @@ -1154,10 +1235,21 @@ static int check_all(void)
+>  			gcheck = 1;
+>  		else
+>  			gcheck = 0;
+> -		if (!ucheck && !gcheck)
+> +		if (pwant && me_hasquota(mnt, PRJQUOTA))
+> +			pcheck = 1;
+> +		else
+> +			pcheck = 0;
+> +		if (!ucheck && !gcheck && !pcheck)
+>  			continue;
+>  		if (cfmt == -1) {
+> -			cfmt = detect_filename_format(mnt, ucheck ? USRQUOTA : GRPQUOTA);
+> +			int qtype;
+> +			if (ucheck)
+> +				qtype = USRQUOTA;
+> +			else if (gcheck)
+> +				qtype = GRPQUOTA;
+> +			else
+> +				qtype = PRJQUOTA;
+> +			cfmt = detect_filename_format(mnt, qtype);
+>  			if (cfmt == -1) {
+>  				errstr(_("Cannot guess format from filename on %s. Please specify format on commandline.\n"),
+>  					mnt->me_devname);
+> @@ -1170,6 +1262,7 @@ static int check_all(void)
+>  		if (flags & (FL_VERBOSE | FL_DEBUG) &&
+>  		    !str_hasmntopt(mnt->me_opts, MNTOPT_USRJQUOTA) &&
+>  		    !str_hasmntopt(mnt->me_opts, MNTOPT_GRPJQUOTA) &&
+> +		    !str_hasmntopt(mnt->me_opts, MNTOPT_PRJJQUOTA) &&
+>  		    !warned &&
+>  		    (!strcmp(mnt->me_type, MNTTYPE_EXT3) ||
+>  		     !strcmp(mnt->me_type, MNTTYPE_EXT4) ||
+> diff --git a/quotacheck.h b/quotacheck.h
+> index 0abdaaa..4d5456b 100644
+> --- a/quotacheck.h
+> +++ b/quotacheck.h
+> @@ -35,6 +35,23 @@ extern size_t malloc_mem = 0;
+>  extern size_t free_mem = 0;
+>  #endif
+>  
+> +#if !defined(FS_IOC_FSGETXATTR)
+> +#define FS_IOC_FSGETXATTR		_IOR('X', 31, struct fsxattr)
+> +#define FS_IOC_FSSETXATTR		_IOW('X', 32, struct fsxattr)
+> +
+> +/*
+> + * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
+> + */
+> +struct fsxattr {
+> +	__u32		fsx_xflags;	/* xflags field value (get/set) */
+> +	__u32		fsx_extsize;	/* extsize field value (get/set)*/
+> +	__u32		fsx_nextents;	/* nextents field value (get)	*/
+> +	__u32		fsx_projid;	/* project identifier (get/set) */
+> +	unsigned char	fsx_pad[12];
+> +};
+> +#endif
+> +
+> +
+>  void *xmalloc(size_t size);
+>  void debug(int df, char *fmtstr, ...) __attribute__ ((__format__ (__printf__, 2, 3)));
+>  int ask_yn(char *q, int def);
+> diff --git a/quotaio_v2.h b/quotaio_v2.h
+> index 197bb65..3b5bad1 100644
+> --- a/quotaio_v2.h
+> +++ b/quotaio_v2.h
+> @@ -11,7 +11,7 @@
+>  #include "quota.h"
+>  
+>  #define V2_DQINFOOFF	sizeof(struct v2_disk_dqheader)	/* Offset of info header in file */
+> -#define INIT_V2_VERSIONS { 1, 1}
+> +#define INIT_V2_VERSIONS { 1, 1, 1}
+>  
+>  struct v2_disk_dqheader {
+>  	u_int32_t dqh_magic;	/* Magic number identifying file */
+> diff --git a/quotasys.c b/quotasys.c
+> index c78e02c..8560dca 100644
+> --- a/quotasys.c
+> +++ b/quotasys.c
+> @@ -783,6 +783,8 @@ static int hasquota(const char *dev, struct mntent *mnt, int type, int flags)
+>  		return QF_VFSUNKNOWN;
+>  	if ((type == GRPQUOTA) && (hasmntopt(mnt, MNTOPT_GRPQUOTA) || hasmntoptarg(mnt->mnt_opts, MNTOPT_GRPJQUOTA)))
+>  		return QF_VFSUNKNOWN;
+> +	if ((type == PRJQUOTA) && (hasmntopt(mnt, MNTOPT_PRJQUOTA) || hasmntoptarg(mnt->mnt_opts, MNTOPT_PRJJQUOTA)))
+> +		return QF_VFSUNKNOWN;
+>  	if ((type == USRQUOTA) && hasmntopt(mnt, MNTOPT_QUOTA))
+>  		return QF_VFSUNKNOWN;
+>  	return -1;
+> @@ -862,6 +864,14 @@ int get_qf_name(struct mount_entry *mnt, int type, int fmt, int flags, char **fi
+>  			has_quota_file_definition = 1;
+>  			pathname++;
+>  		}
+> +	} else if (type == PRJQUOTA && (option = str_hasmntopt(mnt->me_opts, MNTOPT_PRJQUOTA))) {
+> +		if (*(pathname = option + strlen(MNTOPT_PRJQUOTA)) == '=')
+> +			has_quota_file_definition = 1;
+> +	} else if (type == PRJQUOTA && (option = hasmntoptarg(mnt->me_opts, MNTOPT_PRJJQUOTA))) {
+> +		pathname = option;
+> +		has_quota_file_definition = 1;
+> +		sstrncpy(qfullname, mnt->me_dir, sizeof(qfullname));
+> +		sstrncat(qfullname, "/", sizeof(qfullname));
+>  	}
+>  	else
+>  		return -1;
+> -- 
+> 2.7.4
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
