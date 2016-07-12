@@ -1,50 +1,58 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v23 17/22] richacl: Automatic Inheritance
-Date: Tue, 12 Jul 2016 22:28:15 +0200
-Message-ID: <CAHc6FU6k+eZ1Ozc8wofDBNOAHZzvXXWMAs1NJNTbd9Ntbqqsqw@mail.gmail.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-18-git-send-email-agruenba@redhat.com> <1468324560.7798.14.camel@redhat.com>
- <20160712191142.GE449@fieldses.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
+Date: Wed, 13 Jul 2016 09:03:56 +1000
+Message-ID: <20160712230356.GJ1922@dastard>
+References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
+ <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
+ <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
+ <20160712164324.GC11020@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-	linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
-	LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20160712191142.GE449-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Zhangfei Gao <zhangfei.gao@gmail.com>, kvm@vger.kernel.org,
+	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <target-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160712164324.GC11020@thunk.org>
+Sender: target-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 12, 2016 at 9:11 PM, J. Bruce Fields <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org> wrote:
-> On Tue, Jul 12, 2016 at 07:56:00AM -0400, Jeff Layton wrote:
->> Barf. AI seems like a trainwreck waiting to happen. What are the
->> chances that userland is going to get this right?
->
-> This is just taken from Windows, so presumably Samba should do the right
-> thing (with one workaround required--see the discussion of PROTECTED in
-> the changelog).
->
->> Still, I do applaud the fact that you're just doing the bare minimum in
->> kernel to support userland apps that want this. Thanks for not trying
->> to push the propagation of the changed ACEs into the kernel.
->
-> Agreed.  But, again, this is just what Windows does.  (I wonder whether
-> there's an OS that's actually tried do any sort of atomic propagation.)
+On Tue, Jul 12, 2016 at 12:43:24PM -0400, Theodore Ts'o wrote:
+> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
+> > Some update:
+> > 
+> > If test with ext2, no problem in iblock.
+> > If test with ext4, ext4_mb_generate_buddy reported error in the
+> > removing files after reboot.
+> > 
+> > 
+> > root@(none)$ rm test
+> > [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
+> > , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
+> > [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
+> > ere's a risk of filesystem corruption in case of system crash.
+> > 
+> > Any special notes of using ext4 in qemu?
+> 
+> Ext4 has more runtime consistency checking than ext2.  So just because
+> ext4 complains doesn't mean that there isn't a problem with the file
+> system; it just means that ext4 is more likely to notice before you
+> lose user data.
+> 
+> So if you test with ext2, try running e2fsck afterwards, to make sure
+> the file system is consistent.
+> 
+> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
+> anything like this in a very long time, I suspect the problemb is with
+> your SCSI code, and not with ext4.
 
-NetWare's NSS filesystem did have automatic propagation, but I think
-that was implemented by composing the permissions along the path to a
-file at access time.
+It's the same error I reported yesterday for ext3 on 4.7-rc6 when
+rebooting a VM after it hung.
 
-Andreas
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
