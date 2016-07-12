@@ -1,136 +1,67 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v23 20/22] vfs: Add richacl permission checking
-Date: Tue, 12 Jul 2016 08:13:54 -0400
-Message-ID: <1468325634.7798.24.camel@redhat.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
-	 <1467294433-3222-21-git-send-email-agruenba@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
+Date: Tue, 12 Jul 2016 16:32:02 +0200
+Message-ID: <20160712143202.GA2629@quack2.suse.cz>
+References: <1467786171-21127-1-git-send-email-wangshilong1991@gmail.com>
+ <20160706233533.GK27480@dastard>
+ <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
+ <20160708005127.GK12670@dastard>
+ <20160708024654.GE19871@thunk.org>
+ <77863b4a-95e6-4100-79c2-5cbcaf0872e7@sandeen.net>
+ <20160708050228.GH19871@thunk.org>
+ <20160711161556.GB9334@quack2.suse.cz>
+ <20160711171242.GA21285@thunk.org>
+ <20160712105908.GE16460@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-To: Andreas Gruenbacher <agruenba@redhat.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1467294433-3222-21-git-send-email-agruenba@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@sandeen.net>,
+	Dave Chinner <david@fromorbit.com>,
+	Wang Shilong <wangshilong1991@gmail.com>,
+	fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160712105908.GE16460@quack2.suse.cz>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
-> Hook the richacl permission checking function into the vfs.
->=20
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> ---
-> =C2=A0fs/namei.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++=
-+++++--
-> =C2=A01 file changed, 52 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 7a822d0..48c9958 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -34,6 +34,7 @@
-> =C2=A0#include=20
-> =C2=A0#include=20
-> =C2=A0#include=20
-> +#include=20
-> =C2=A0#include=20
-> =C2=A0#include=20
-> =C2=A0#include=20
-> @@ -256,7 +257,43 @@ void putname(struct filename *name)
-> =C2=A0		__putname(name);
-> =C2=A0}
-> =C2=A0
-> -static int check_acl(struct inode *inode, int mask)
-> +static int check_richacl(struct inode *inode, int mask)
-> +{
-> +#ifdef CONFIG_FS_RICHACL
-> +	if (mask & MAY_NOT_BLOCK) {
-> +		struct base_acl *base_acl;
-> +
-> +		base_acl =3D rcu_dereference(inode->i_acl);
-> +		if (!base_acl)
-> +			goto no_acl;
-> +		/* no ->get_richacl() calls in RCU mode... */
-> +		if (is_uncached_acl(base_acl))
-> +			return -ECHILD;
-> +		return richacl_permission(inode, richacl(base_acl),
-> +					=C2=A0=C2=A0mask & ~MAY_NOT_BLOCK);
-> +	} else {
-> +		struct richacl *acl;
-> +
-> +		acl =3D get_richacl(inode);
-> +		if (IS_ERR(acl))
-> +			return PTR_ERR(acl);
-> +		if (acl) {
-> +			int error =3D richacl_permission(inode, acl, mask);
-> +			richacl_put(acl);
-> +			return error;
-> +		}
-> +	}
-> +no_acl:
-> +#endif
+On Tue 12-07-16 12:59:08, Jan Kara wrote:
+> On Mon 11-07-16 13:12:42, Ted Tso wrote:
+> > On Mon, Jul 11, 2016 at 06:15:56PM +0200, Jan Kara wrote:
+> > > 
+> > > What would you like to achieve with this? There is 'QF_META' format which
+> > > is different from 'QF_XFS' format basically only in the set of quotactls
+> > > used. As I said above it might be nice to separate kernel-api from the
+> > > underlying-quota-format but in reality these two were bound together in
+> > > older kernels so they are not really independent.
+> > 
+> > The main reason why I noticed is with the new (err, "latest") ext4
+> > quota (enabled via mke2fs -t ext4 -O quota) implementation, we enable
+> > quota tracking at mount time.  (This may be true with journalled quota
+> > as well, actually).  But we don't actually enable quota *enforcement*
+> > until quotaon is given.
+> 
+> Yes.
+> 
+> > The problem is that quotaon -p prints the status of whether or not
+> > quota *tracking* is enabled, and with the new ext4 quota, quota
+> > tracking is *always* enabled.  So quota -p doesn't report anything
+> > useful for new ext4 quota systems, and when I started to look at how
+> > to change things, that's when I noticed that we weren't using the new
+> > quotactl commands with ext4 even though they worked, and that the new
+> > quotactl implementation had more functionality than the older ones.
+> 
+> OK. But with XFS you'd notice that quotaon -p also returns 'on' whenever
+> the accounting is turned on. So ext4 and xfs behave in the same way.
+> Arguably it would be more useful if quotaon -p reported 'off', 'accounting',
+> 'enforcement'. Maybe I'll do that.
 
-nit: Can you move the above to a static inline or something that become=
-s a noop when the config var is turned off?
+This is now done and push out to quota-tools repository. When XGETSTAT
+quotactl is available, 'quotaon -pva' will report whether the quota is
+enabled only for accounting or also enforced.
 
-> +	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-> +		=C2=A0=C2=A0=C2=A0=C2=A0MAY_CHMOD | MAY_SET_TIMES)) {
-> +		/* File permission bits cannot grant this. */
-> +		return -EACCES;
-> +	}
-> +	return -EAGAIN;
-> +}
-> +
-> +static int check_posix_acl(struct inode *inode, int mask)
-> =C2=A0{
-> =C2=A0#ifdef CONFIG_FS_POSIX_ACL
-> =C2=A0	if (mask & MAY_NOT_BLOCK) {
-> @@ -294,11 +331,24 @@ static int acl_permission_check(struct inode *i=
-node, int mask)
-> =C2=A0{
-> =C2=A0	unsigned int mode =3D inode->i_mode;
-> =C2=A0
-> +	/*
-> +	=C2=A0* With POSIX ACLs, the (mode & S_IRWXU) bits exactly match th=
-e owner
-> +	=C2=A0* permissions, and we can skip checking posix acls for the ow=
-ner.
-> +	=C2=A0* With richacls, the owner may be granted fewer permissions t=
-han the
-> +	=C2=A0* mode bits seem to suggest (for example, append but not writ=
-e), and
-> +	=C2=A0* we always need to check the richacl.
-> +	=C2=A0*/
-> +
-> +	if (IS_RICHACL(inode)) {
-> +		int error =3D check_richacl(inode, mask);
-> +		if (error !=3D -EAGAIN)
-> +			return error;
-> +	}
-> =C2=A0	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
-> =C2=A0		mode >>=3D 6;
-> =C2=A0	else {
-> =C2=A0		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
-> -			int error =3D check_acl(inode, mask);
-> +			int error =3D check_posix_acl(inode, mask);
-> =C2=A0			if (error !=3D -EAGAIN)
-> =C2=A0				return error;
-> =C2=A0		}
-
-Looks fine other than the nit above:
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
