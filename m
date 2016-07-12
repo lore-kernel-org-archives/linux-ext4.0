@@ -1,88 +1,159 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
-Date: Tue, 12 Jul 2016 12:59:08 +0200
-Message-ID: <20160712105908.GE16460@quack2.suse.cz>
-References: <1467786171-21127-1-git-send-email-wangshilong1991@gmail.com>
- <20160706233533.GK27480@dastard>
- <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
- <20160708005127.GK12670@dastard>
- <20160708024654.GE19871@thunk.org>
- <77863b4a-95e6-4100-79c2-5cbcaf0872e7@sandeen.net>
- <20160708050228.GH19871@thunk.org>
- <20160711161556.GB9334@quack2.suse.cz>
- <20160711171242.GA21285@thunk.org>
+From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v23 14/22] richacl: Update the file masks in chmod()
+Date: Tue, 12 Jul 2016 07:36:56 -0400
+Message-ID: <1468323416.7798.7.camel@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+	 <1467294433-3222-15-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <david@fromorbit.com>,
-	Wang Shilong <wangshilong1991@gmail.com>,
-	fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60566 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750816AbcGLK7M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Jul 2016 06:59:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20160711171242.GA21285@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+	Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1467294433-3222-15-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 11-07-16 13:12:42, Ted Tso wrote:
-> On Mon, Jul 11, 2016 at 06:15:56PM +0200, Jan Kara wrote:
-> > 
-> > What would you like to achieve with this? There is 'QF_META' format which
-> > is different from 'QF_XFS' format basically only in the set of quotactls
-> > used. As I said above it might be nice to separate kernel-api from the
-> > underlying-quota-format but in reality these two were bound together in
-> > older kernels so they are not really independent.
-> 
-> The main reason why I noticed is with the new (err, "latest") ext4
-> quota (enabled via mke2fs -t ext4 -O quota) implementation, we enable
-> quota tracking at mount time.  (This may be true with journalled quota
-> as well, actually).  But we don't actually enable quota *enforcement*
-> until quotaon is given.
+On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
+> Doing a chmod() sets the file mode, which includes the file permissio=
+n
+> bits.=C2=A0=C2=A0When a file has a richacl, the permissions that the =
+richacl
+> grants need to be limited to what the new file permission bits allow.
+>=20
+> This is done by setting the file masks in the richacl to what the fil=
+e
+> permission bits map to.=C2=A0=C2=A0The richacl access check algorithm=
+ takes the
+> file masks into account, which ensures that the richacl cannot grant =
+too
+> many permissions.
+>=20
+> It is possible to explicitly add permissions to the file masks which =
+go
+> beyond what the file permission bits can grant (like the
+> RICHACE_WRITE_ACL permission).=C2=A0=C2=A0The POSIX.1 standard calls =
+this an
+> alternate file access control mechanism.=C2=A0=C2=A0A subsequent chmo=
+d() would
+> ensure that those permissions are disabled again.
+>=20
+> Signed-off-by: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> Reviewed-by: J. Bruce Fields <bfields-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> ---
+> =C2=A0fs/richacl.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0| 71 +++++++++++++++++++++++++++++++++++++++++++++=
+++++
+> =C2=A0include/linux/richacl.h |=C2=A0=C2=A01 +
+> =C2=A02 files changed, 72 insertions(+)
+>=20
+> diff --git a/fs/richacl.c b/fs/richacl.c
+> index b2a03c1..ba110a6 100644
+> --- a/fs/richacl.c
+> +++ b/fs/richacl.c
+> @@ -547,3 +547,74 @@ out:
+> =C2=A0	return denied ? -EACCES : 0;
+> =C2=A0}
+> =C2=A0EXPORT_SYMBOL_GPL(richacl_permission);
+> +
+> +/**
+> + * __richacl_chmod=C2=A0=C2=A0-=C2=A0=C2=A0update the file masks to =
+reflect the new mode
+> + * @acl:	access control list
+> + * @mode:	new file permission bits including the file type
+> + *
+> + * Return a copy of @acl where the file masks have been replaced by =
+the file
+> + * masks corresponding to the file permission bits in @mode, or retu=
+rns @acl
+> + * itself if the file masks are already up to date.=C2=A0=C2=A0Takes=
+ over a reference
+> + * to @acl.
+> + */
+> +static struct richacl *
+> +__richacl_chmod(struct richacl *acl, umode_t mode)
+> +{
+> +	unsigned int x =3D S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
+> +	unsigned int owner_mask, group_mask, other_mask;
+> +	struct richacl *clone;
+> +
+> +	owner_mask =3D richacl_mode_to_mask(mode >> 6) & ~x;
+> +	group_mask =3D richacl_mode_to_mask(mode >> 3) & ~x;
+> +	other_mask =3D richacl_mode_to_mask(mode)=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0& ~x;
+> +
+> +	if (acl->a_owner_mask =3D=3D owner_mask &&
+> +	=C2=A0=C2=A0=C2=A0=C2=A0acl->a_group_mask =3D=3D group_mask &&
+> +	=C2=A0=C2=A0=C2=A0=C2=A0acl->a_other_mask =3D=3D other_mask &&
+> +	=C2=A0=C2=A0=C2=A0=C2=A0(acl->a_flags & RICHACL_MASKED) &&
+> +	=C2=A0=C2=A0=C2=A0=C2=A0(acl->a_flags & RICHACL_WRITE_THROUGH))
+> +		return acl;
+> +
+> +	clone =3D richacl_clone(acl, GFP_KERNEL);
+> +	richacl_put(acl);
+> +	if (!clone)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	clone->a_flags |=3D (RICHACL_WRITE_THROUGH | RICHACL_MASKED);
+> +	clone->a_owner_mask =3D owner_mask;
+> +	clone->a_group_mask =3D group_mask;
+> +	clone->a_other_mask =3D other_mask;
+> +
+> +	return clone;
+> +}
+> +
+> +/**
+> + * richacl_chmod=C2=A0=C2=A0-=C2=A0=C2=A0filesystem chmod helper
+> + * @inode:	inode whose file permission bits to change
+> + * @mode:	new file permission bits including the file type
+> + *
+> + * Helper for filesystems to use to perform a chmod on the richacl o=
+f an inode.
+> + */
+> +int
+> +richacl_chmod(struct inode *inode, umode_t mode)
+> +{
+> +	struct richacl *acl;
+> +	int retval;
+> +
+> +	if (S_ISLNK(mode))
+> +		return -EOPNOTSUPP;
+> +	if (!inode->i_op->set_richacl)
+> +		return -EOPNOTSUPP;
+> +	acl =3D get_richacl(inode);
+> +	if (IS_ERR_OR_NULL(acl))
+> +		return PTR_ERR(acl);
+> +	acl =3D __richacl_chmod(acl, mode);
+> +	if (IS_ERR(acl))
+> +		return PTR_ERR(acl);
+> +	retval =3D inode->i_op->set_richacl(inode, acl);
+> +	richacl_put(acl);
+> +
+> +	return retval;
+> +}
+> +EXPORT_SYMBOL(richacl_chmod);
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 3e05c94..db82fab 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -190,5 +190,6 @@ extern unsigned int richacl_mode_to_mask(umode_t)=
+;
+> =C2=A0extern unsigned int richacl_want_to_mask(unsigned int);
+> =C2=A0extern void richacl_compute_max_masks(struct richacl *);
+> =C2=A0extern int richacl_permission(struct inode *, const struct rich=
+acl *, int);
+> +extern int richacl_chmod(struct inode *, umode_t);
+> =C2=A0
+> =C2=A0#endif /* __RICHACL_H */
 
-Yes.
-
-> The problem is that quotaon -p prints the status of whether or not
-> quota *tracking* is enabled, and with the new ext4 quota, quota
-> tracking is *always* enabled.  So quota -p doesn't report anything
-> useful for new ext4 quota systems, and when I started to look at how
-> to change things, that's when I noticed that we weren't using the new
-> quotactl commands with ext4 even though they worked, and that the new
-> quotactl implementation had more functionality than the older ones.
-
-OK. But with XFS you'd notice that quotaon -p also returns 'on' whenever
-the accounting is turned on. So ext4 and xfs behave in the same way.
-Arguably it would be more useful if quotaon -p reported 'off', 'accounting',
-'enforcement'. Maybe I'll do that.
-
-> BTW, I've seriously been thinking about changing the default so that
-> if you use mke2fs -O quota, quota enforcement is also enabled by
-> default at mount time, and we use a mount option to disable quota
-> enforcement.  If we then added a way of selectively enabling and
-> disabling quota enforcement via quota-tools, then we would be bringing
-> behaivour of how ext4 quota works to like how xfs treats quota.  The
-> question I have is how to do this in a way that isn't surprising for
-> people who are used to the old behaviour --- but mke2fs -O quota is
-> still relatively new, so maybe we could get away with it without
-> having to add more superblock flags.
-
-So currently if you use quotaon(8) it will turn on/off only enforcement in
-ext4 (accounting is always on when the feature is enabled) - don't get
-confused with 'quotaon -p' output - that tests something different.
-
-Speaking of automatic enabling of quota enforcement: I wanted to keep the
-old behavior where no enforcement happens until you run quotaon(8) which is
-how things traditionally worked for ext2/3/4. That's why things default to
-having enforcement off. If we want to make things more consistent with XFS,
-one option I can see is that when e.g. 'usrquota' mount option is set, then
-user quota enforcement will be turned on. That is essentially how XFS
-works (including the mount option name). What do you think?
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Acked-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
