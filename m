@@ -1,64 +1,47 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
-Date: Tue, 12 Jul 2016 12:15:47 -0400
-Message-ID: <20160712161547.GB11020@thunk.org>
-References: <1467786171-21127-1-git-send-email-wangshilong1991@gmail.com>
- <20160706233533.GK27480@dastard>
- <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
- <20160708005127.GK12670@dastard>
- <20160708024654.GE19871@thunk.org>
- <77863b4a-95e6-4100-79c2-5cbcaf0872e7@sandeen.net>
- <20160708050228.GH19871@thunk.org>
- <20160711161556.GB9334@quack2.suse.cz>
- <20160711171242.GA21285@thunk.org>
- <20160712105908.GE16460@quack2.suse.cz>
+Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
+Date: Tue, 12 Jul 2016 12:43:24 -0400
+Message-ID: <20160712164324.GC11020@thunk.org>
+References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
+ <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
+ <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <david@fromorbit.com>,
-	Wang Shilong <wangshilong1991@gmail.com>,
-	fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	sihara@ddn.com, lixi@ddn.com, Wang Shilong <wshilong@ddn.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: kvm@vger.kernel.org, qemu-devel@nongnu.org,
+	target-devel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Zhangfei Gao <zhangfei.gao@gmail.com>
+Return-path: <target-devel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160712105908.GE16460@quack2.suse.cz>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
+Sender: target-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 12, 2016 at 12:59:08PM +0200, Jan Kara wrote:
-> OK. But with XFS you'd notice that quotaon -p also returns 'on' whenever
-> the accounting is turned on. So ext4 and xfs behave in the same way.
-> Arguably it would be more useful if quotaon -p reported 'off', 'accounting',
-> 'enforcement'. Maybe I'll do that.
+On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
+> Some update:
+> 
+> If test with ext2, no problem in iblock.
+> If test with ext4, ext4_mb_generate_buddy reported error in the
+> removing files after reboot.
+> 
+> 
+> root@(none)$ rm test
+> [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
+> , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
+> [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
+> ere's a risk of filesystem corruption in case of system crash.
+> 
+> Any special notes of using ext4 in qemu?
 
-That would be good, since at the moment to determine whether or not
-quota enforcement is enabled or not.
+Ext4 has more runtime consistency checking than ext2.  So just because
+ext4 complains doesn't mean that there isn't a problem with the file
+system; it just means that ext4 is more likely to notice before you
+lose user data.
 
-> Speaking of automatic enabling of quota enforcement: I wanted to keep the
-> old behavior where no enforcement happens until you run quotaon(8) which is
-> how things traditionally worked for ext2/3/4. That's why things default to
-> having enforcement off. If we want to make things more consistent with XFS,
-> one option I can see is that when e.g. 'usrquota' mount option is set, then
-> user quota enforcement will be turned on. That is essentially how XFS
-> works (including the mount option name). What do you think?
+So if you test with ext2, try running e2fsck afterwards, to make sure
+the file system is consistent.
 
-That seems reasonable.  The only concern is that it might be confusing
-for people who are using older, legacy quota setups, but given that
-usrquota would cause enforcing plus accounting to be enabled, it
-shouldn't cause a problem.
+Given that I'm reguarly testing ext4 using kvm, and I haven't seen
+anything like this in a very long time, I suspect the problemb is with
+your SCSI code, and not with ext4.
 
-I think aligning with XFS so that the user experience for quota should
-be as identical as possible regardless of which file system is being
-used makes a lot of sense, especially since you've been adding a bunch
-of the plumbing for quotactl to make this possible.
-
-On the kernel side this means that teaching ext4 so that if the
-usrquota monut option is specified, quota enforcing will be enabled.
-We should make the necessary changes in kernel and possily quota-tools
-so that quotaoff can also disable quota enforcing (just like with
-XFS).
-
-Does that sound like a plan?
-
-          				- Ted
+				- Ted
