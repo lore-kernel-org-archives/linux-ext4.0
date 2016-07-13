@@ -1,49 +1,49 @@
-From: Matthias Dahl <ml_linux-kernel@binary-island.eu>
-Subject: state of ext4 encryption
-Date: Wed, 13 Jul 2016 20:40:42 +0200
-Message-ID: <d938b36d643ed1a14a7c9dead66cbd30@mail.ud19.udmedia.de>
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+Subject: RE: [PATCH v23 08/22] richacl: Compute maximum file masks from an acl
+Date: Wed, 13 Jul 2016 12:38:50 -0700
+Message-ID: <018b01d1dd3e$2f868170$8e938450$@mindspring.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com> <1467294433-3222-9-git-send-email-agruenba@redhat.com> <1467728537.3800.32.camel@redhat.com> <014101d1d6df$e059fd20$a10df760$@mindspring.com> <CAHc6FU5oeaCxgZPFeNSHDfSjnVKe9km14R4s5RoBhJXPaL7ymQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ud19.udmedia.de ([194.117.254.59]:45472 "EHLO
-	mail.ud19.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751236AbcGMSrb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Jul 2016 14:47:31 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain;
+	charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: "'Jeff Layton'" <jlayton@redhat.com>,
+	"'Alexander Viro'" <viro@zeniv.linux.org.uk>,
+	"'Christoph Hellwig'" <hch@infradead.org>,
+	"'Theodore Ts'o'" <tytso@mit.edu>,
+	"'Andreas Dilger'" <adilger.kernel@dilger.ca>,
+	"'J. Bruce Fields'" <bfields@fieldses.org>,
+	"'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+	"'Anna Schumaker'" <anna.schumaker@netapp.com>,
+	"'Dave Chinner'" <david@fromorbit.com>,
+	"'linux-ext4'" <linux-ext4@vger.kernel.org>,
+	"'XFS Developers'" <xfs@oss.sgi.com>,
+	"'LKML'" <linux-kernel@vger.kernel.org>,
+	"'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
+	"'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
+	<linux-cifs@vger.kernel.org>,
+	"'Linux API'" <linux-api@vger.kernel.org>
+To: "'Andreas Gruenbacher'" <agruenba@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAHc6FU5oeaCxgZPFeNSHDfSjnVKe9km14R4s5RoBhJXPaL7ymQ@mail.gmail.com>
+Content-Language: en-us
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+> > Hmm, but does that result in examining the whole ACL for most access
+> checks, at least for files where most of the accesses are by the owner, or a
+> member of a specific group (with perhaps a ton of special case users added
+> on the end)?
+> 
+> I don't understand -- what does this algorithm have to do with access checks?
 
-I am currently setting up a new machine and I am looking into encryption
-to be able to better deal with faulty disks (e.g. sending them in for
-warranty or throwing them away) without having to worry that private
-and/or business data is still readable to anyone when wiping them is no
-longer possible (e.g. defects, relocated sectors, ...).
+Oh, sorry, misread the patch... got caught up looking at a tree and not seeing the forest...
 
-So, dm-crypt is causing me some unfortunate headaches at this point and
-thus I am considering the ext4 fs encryption.
+Frank
 
-To make a long story short: I could not find any recent updates on what
-state it is currently considered to be in? Is it ready to be used or is
-it still too early?
 
-I heard rumors that Android N will possibly already replace dm-crypt w/
-ext4's fs encryption? Is that true? That would naturally show quite a
-sign of confidence. ;-)
 
-And last but not least: I guess full fs encryption (as-in: everything
-from the root down) will be rather problematic?
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
-Since I currently have to make do with a crappy webmail interface until
-I have the new machine up, I am not subscribed to the list and would ask
-to be cc'd.
-
-Thanks,
-Matthias
-
--- 
-Dipl.-Inf. (FH) Matthias Dahl | Software Engineer | binary-island.eu
-  services: custom software [desktop, mobile, web], server administration
