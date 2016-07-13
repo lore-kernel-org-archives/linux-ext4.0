@@ -1,75 +1,139 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v23 08/22] richacl: Compute maximum file masks from an acl
-Date: Wed, 13 Jul 2016 14:34:31 +0200
-Message-ID: <CAHc6FU5oeaCxgZPFeNSHDfSjnVKe9km14R4s5RoBhJXPaL7ymQ@mail.gmail.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
-	<1467294433-3222-9-git-send-email-agruenba@redhat.com>
-	<1467728537.3800.32.camel@redhat.com>
-	<014101d1d6df$e059fd20$a10df760$@mindspring.com>
+From: Gernot Hillier <gernot.hillier@siemens.com>
+Subject: Re: unexpected sync delays in dpkg for small pre-allocated files on
+ ext4
+Date: Wed, 13 Jul 2016 15:57:18 +0200
+Message-ID: <578648BE.8020708@siemens.com>
+References: <57448A5D.4050805@siemens.com> <20160524231328.GB387@thunk.org>
+ <574BF988.5050202@siemens.com> <20160531002152.GQ26977@dastard>
+ <574EAE69.5040003@siemens.com> <574EE05A.9070302@siemens.com>
+ <20160601141218.GE5357@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, Jeff Layton <jlayton@redhat.com>,
-	linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Anna Schumaker <anna.schumaker@netapp.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <014101d1d6df$e059fd20$a10df760$@mindspring.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Cc: SCHILD HENNING Z003BPMR <henning.schild@siemens.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Dave Chinner <david@fromorbit.com>, linux-scsi@vger.kernel.org,
+	MPT-FusionLinux.pdl@broadcom.com, linux-ext4@vger.kernel.org,
+	sathya.prakash@broadcom.com, chaitra.basappa@broadcom.com,
+	suganath-prabu.subramani@broadcom.com
+Return-path: <linux-scsi-owner@vger.kernel.org>
+In-Reply-To: <20160601141218.GE5357@thunk.org>
+Sender: linux-scsi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Frank,
+Dear Ted,
 
-On Tue, Jul 5, 2016 at 7:08 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> > + * Note: functions like richacl_allowed_to_who(),
->> > +richacl_group_class_allowed(),
->> > + * and richacl_compute_max_masks() iterate through the entire acl in
->> > +reverse
->> > + * order as an optimization.
->> > + *
->> > + * In the standard algorithm, aces are considered in forward order.
->> > +When a
->> > + * process matches an ace, the permissions in the ace are either
->> > +allowed or
->> > + * denied depending on the ace type.  Once a permission has been
->> > +allowed or
->> > + * denied, it is no longer considered in further aces.
->> > + *
->> > + * By iterating through the acl in reverse order, we can compute the
->> > +same
->> > + * result without having to keep track of which permissions have been
->> > +allowed
->> > + * and denied already.
->> > + */
->> >
+On 01.06.2016 16:12, Theodore Ts'o wrote:
+> On Wed, Jun 01, 2016 at 03:17:14PM +0200, Gernot Hillier wrote:
+>> I repeated the discussed tests and found comparable results on this machine:
 >>
->> Clever!
->
-> Hmm, but does that result in examining the whole ACL for most access checks, at least for files where most of the accesses are by the owner, or a member of a specific group (with perhaps a ton of special case users added on the end)?
+>> - 3 seconds dpkg install time on ext3 vs. 80 seconds for ext4
+>>   on same partition for same package
+>> - 40 ms for fallocate+write+sync_file_range for writing a few bytes
+>> - 15 ms for write+fdatasync vs. 45 ms for BLKZEROOUT on raw device
+>>
+>> So this seems to be not bound to one specific disk+controller setup, but
+>> it still can't be a common problem affecting many people as then we
+>> would see more reports about it...
 
-I don't understand -- what does this algorithm have to do with access checks?
+Sorry for 2nd follow-up and the long delay (caused by vacation +
+illness), but we went over the whole discussion again and can now likely
+confirm your assumption of a bad SCSI WRITE SAME implementation on our
+hardware.
 
-Thanks,
-Andreas
+We found that by issuing "echo 0 >
+/sys/devices/.../scsi_disk/0:0:0:0/max_write_same_blocks" we can also
+fix our issue, reducing dpkg installation time for e.g. linux-headers
+from minutes to seconds.
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Did you already have time to look into my old btrace from June, 2nd, did
+it help somehow?
+
+If not, please find updated btraces from two machines, for slow and fast
+case, on each one below.
+
+Does this provide enough details to blacklist our devices for SCSI WRITE
+SAME?
+
+> OK, so let's try to get common baseline, shall we?  I'm using as my
+> test package:
+> 
+> http://debug.mirrors.debian.org/debian-debug/pool/main/e/e2fsprogs/e2fsprogs-dbgsym_1.43-2_amd64.deb
+
+This time, I decided to use a test package with a bit more files to make
+the issue more obvious:
+
+http://snapshot.debian.org/archive/debian/20160712T042309Z/pool/main/m/manpages/manpages_4.06-1_all.deb
+
+# md5sum manpages_4.06-1_all.deb
+251aadf9a0117cac8248343a9f09d74b  manpages_4.06-1_all.deb
+
+On machine 1, a Supermicro X8DTH board with Xeon E5520 CPU, equipped
+with a SEAGATE ST973451SS disk connected to an LSI SAS2008 controller
+(mpt3sas.ko):
+
+(If you do this at home, please note that this will overwrite your local
+manpages, so you need to go back to original package afterwards!)
+
+# /usr/bin/time dpkg --no-triggers --force-depends --unpack
+manpages_4.06-1_all.deb
+[...]
+0.13user 0.07system 0:03.38elapsed 6%CPU (0avgtext+0avgdata
+15132maxresident)k
+0inputs+4040outputs (0major+6066minor)pagefaults 0swaps
+
+# echo 0 >
+/sys/devices/pci0000:00/0000:00:09.0/0000:05:00.0/host0/port-0:0/end_device-0:0/target0:0:0/0:0:0:0/scsi_disk/0:0:0:0/max_write_same_blocks
+
+# /usr/bin/time dpkg --no-triggers --force-depends --unpack
+manpages_4.06-1_all.deb
+[...]
+0.11user 0.08system 0:00.55elapsed 35%CPU (0avgtext+0avgdata
+15168maxresident)k
+0inputs+4056outputs (0major+6219minor)pagefaults 0swaps
+
+So disabling SCSI WRITE SAME reduced installation time for a package
+with ~300 files from 3.5 s to 1 s.
+
+On machine 2, a Supermicro X9DR3-F board with Xeon E5-2620, SEAGATE
+ST300MM0006 disk connected to an Intel C606 SAS controller, default
+installation time for manpages_4.06-1_all.deb was 9s, dropping to 1s
+after "echo 0 > .../max_write_same_blocks".
+
+For "real" packages like linux-headers, disabling SCSI WRITE SAME
+reduced installation time from minutes to seconds.
+
+(For sure, I repeated those measurements several times with switching
+back and forth between both cases, rebooting etc.)
+
+I followed your instructions, assured that btrace output ends up on
+tmpfs and recorded four new btraces. As installation of manpages.deb
+results in a 350k btrace (40k compressed), I decided to provide URLs
+instead of attachments this time:
+
+https://github.com/gernot-h/slow-dpkg/blob/master/btrace-machine1-write_same.out.bz2?raw=true
+-> btrace for default (slow) case on machine1 (i.e. after reboot or
+   "echo 65535 > .../max_write_same_blocks"
+
+https://github.com/gernot-h/slow-dpkg/blob/master/btrace-machine1-no_write_same.out.bz2?raw=true
+-> btrace for fast case on machine1 (i.e. after "echo 0 >
+   .../max_write_same_blocks"
+
+https://github.com/gernot-h/slow-dpkg/blob/master/btrace-machine2-write_same.out.bz2?raw=true
+-> btrace for default (slow) case on machine2 (i.e. after reboot or
+   "echo 65535 > .../max_write_same_blocks"
+
+https://github.com/gernot-h/slow-dpkg/blob/master/btrace-machine2-no_write_same.out.bz2?raw=true
+-> btrace for fast case on machine1 (i.e. after "echo 0 >
+   .../max_write_same_blocks"
+
+Thanks again and please let me know if you need any additional traces,
+test results, measurements, bug report, etc.!
+
+-- 
+With kind regards,
+Gernot Hillier
+
+Siemens AG, Corporate Technology
+Corporate Competence Center Embedded Linux
+
