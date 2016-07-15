@@ -1,89 +1,65 @@
-From: Zhangfei Gao <zhangfei.gao@gmail.com>
-Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
-Date: Fri, 15 Jul 2016 15:55:20 +0800
-Message-ID: <CAMj5Bkhr3aLTRtb58xsZGwZWchFb95bdZ8NbiLEfG=vmoObxkQ@mail.gmail.com>
-References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
- <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
- <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
- <20160712164324.GC11020@thunk.org> <20160712230356.GJ1922@dastard>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: kernel BUG at fs/ext4/inode.c:3709! (Re: open bugs found by fuzzing)
+Date: Fri, 15 Jul 2016 15:39:19 +0200
+Message-ID: <5788E787.106@oracle.com>
+References: <5787FFBA.70406@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>, kvm@vger.kernel.org,
-	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <kvm-owner@vger.kernel.org>
-In-Reply-To: <20160712230356.GJ1922@dastard>
-Sender: kvm-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Ildar Muslukhov <ildarm@google.com>,
+	Jaegeuk Kim <jaegeuk@kernel.org>
+To: linux-ext4@vger.kernel.org, Michael Halcrow <mhalcrow@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:37441 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752769AbcGONj1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jul 2016 09:39:27 -0400
+In-Reply-To: <5787FFBA.70406@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Dear Dave
+On 07/14/2016 11:10 PM, Vegard Nossum wrote:
+> 3. kernel BUG at fs/ext4/inode.c:3709!
+> http://139.162.151.198/f/ext4/5bdefda69f39b2f2c56d9b67d5b7d9e2cc8dfd5f
 
-On Wed, Jul 13, 2016 at 7:03 AM, Dave Chinner <david@fromorbit.com> wrote:
-> On Tue, Jul 12, 2016 at 12:43:24PM -0400, Theodore Ts'o wrote:
->> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
->> > Some update:
->> >
->> > If test with ext2, no problem in iblock.
->> > If test with ext4, ext4_mb_generate_buddy reported error in the
->> > removing files after reboot.
->> >
->> >
->> > root@(none)$ rm test
->> > [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
->> > , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
->> > [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
->> > ere's a risk of filesystem corruption in case of system crash.
->> >
->> > Any special notes of using ext4 in qemu?
->>
->> Ext4 has more runtime consistency checking than ext2.  So just because
->> ext4 complains doesn't mean that there isn't a problem with the file
->> system; it just means that ext4 is more likely to notice before you
->> lose user data.
->>
->> So if you test with ext2, try running e2fsck afterwards, to make sure
->> the file system is consistent.
->>
->> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
->> anything like this in a very long time, I suspect the problemb is with
->> your SCSI code, and not with ext4.
->
-> It's the same error I reported yesterday for ext3 on 4.7-rc6 when
-> rebooting a VM after it hung.
+I don't see any evidence of memory corruption here, so this one seems
+pretty straightforward: we have an encrypted orphan inode and when we
+try to truncate it during the orphan list cleanup it results in a BUG
+because we haven't loaded the encryption key for it.
 
+The inode in question has ->i_ino == 16 so I don't think this has
+anything to do with special inodes.
 
-Any link of this error?
+Something quick and dirty like this does solve the BUG_ON() for me, but
+it looks a lot like papering over an underlying bug:
 
-Now I still can not get conclusion of which part cause this error?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5a6277d..794b33a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3735,9 +3735,11 @@ static int __ext4_block_zero_page_range(handle_t 
+*handle,
+  		if (S_ISREG(inode->i_mode) &&
+  		    ext4_encrypted_inode(inode)) {
+  			/* We expect the key to be set. */
+-			BUG_ON(!fscrypt_has_encryption_key(inode));
+-			BUG_ON(blocksize != PAGE_SIZE);
+-			WARN_ON_ONCE(fscrypt_decrypt_page(page));
++		        if (list_empty(&EXT4_I(inode)->i_orphan)) {
++				BUG_ON(!fscrypt_has_encryption_key(inode));
++				BUG_ON(blocksize != PAGE_SIZE);
++				WARN_ON_ONCE(fscrypt_decrypt_page(page));
++			}
+  		}
+  	}
+  	if (ext4_should_journal_data(inode)) {
 
-1. No problem
-a. Using with virtio-scsi, and test via files with ext4 filesystem, no problem.
+I'm a bit puzzled that we're actually creating a mapping and trying to
+decrypt here in the first place, since if this is an orphan inode that
+is being recovered at mount time it means that we know _for sure_ that
+there is no existing memory mappings and we're truncating it to 0.
 
- /work/qemu.git/aarch64-softmmu/qemu-system-aarch64 \
-    -enable-kvm -nographic -kernel Image \
-    -global virtio-blk-device.scsi=on -device virtio-scsi-device,id=scsi \
-    -drive file=ext4_oe64.img,id=coreimg,cache=none,if=none,format=raw \
-    -device scsi-hd,drive=coreimg \
-    -m 512 -M virt -cpu host \
-    -append "earlyprintk console=ttyAMA0 mem=512M"
-
-ext4_oe64.img is ext4 file system.
-
-b. Use vhost-scsi & target, ramdisk as backstore, ext4 filesystem,
-also no problem.
+Anyway, adding some Ccs.
 
 
-2. Has problem
-a. Using vhost-scsi & target, iblock, with sas disk & u-disk as
-backstore, ext4, both has issue.
-it only prove the issue is not in driver (sas & u-disk) itself.
-
-
-Looks the issue is in vhost-scsi & target.
-Still in checking how to narrow down.
-
-Any suggestion?
-
-
-Thanks
+Vegard
