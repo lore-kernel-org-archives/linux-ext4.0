@@ -1,48 +1,64 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH v2] xfstests, generic: add project quota attribute tests
-Date: Fri, 15 Jul 2016 10:15:31 +0900
-Message-ID: <CAP9B-Qn0R1geR41BH-Eg6sqYUid734ar6Nq4sYyjK5PCrWFzAg@mail.gmail.com>
-References: <20160706233533.GK27480@dastard> <d0018d66-cb32-16df-b46e-5c418cc4bfae@sandeen.net>
- <20160708005127.GK12670@dastard> <20160708024654.GE19871@thunk.org>
- <77863b4a-95e6-4100-79c2-5cbcaf0872e7@sandeen.net> <20160708050228.GH19871@thunk.org>
- <20160711161556.GB9334@quack2.suse.cz> <20160711171242.GA21285@thunk.org>
- <20160712105908.GE16460@quack2.suse.cz> <20160712161547.GB11020@thunk.org> <20160714131331.GB13151@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4 crypto: migrate into vfs's crypto engine
+Date: Thu, 14 Jul 2016 22:45:26 -0400
+Message-ID: <20160715024526.GA26465@thunk.org>
+References: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
+ <20160507185250.GD92790@jaegeuk.gateway>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Eric Sandeen <sandeen@sandeen.net>,
-	Dave Chinner <david@fromorbit.com>, fstests@vger.kernel.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
-	Wang Shilong <wshilong@ddn.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20160714131331.GB13151@quack2.suse.cz>
-Sender: fstests-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160507185250.GD92790@jaegeuk.gateway>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 14, 2016 at 10:13 PM, Jan Kara <jack@suse.cz> wrote:
-> On Tue 12-07-16 12:15:47, Ted Tso wrote:
+On Sat, May 07, 2016 at 11:52:50AM -0700, Jaegeuk Kim wrote:
+> 
+> From 593e56e680f962c5e9cc57afa19bda4c654bd841 Mon Sep 17 00:00:00 2001
+> From: Jaegeuk Kim <jaegeuk@kernel.org>
+> Date: Wed, 10 Feb 2016 16:26:25 -0800
+> Subject: [PATCH] ext4 crypto: migrate into vfs's crypto engine
+> 
+> This patch removes the most parts of internal crypto codes.
+> And then, it modifies and adds some ext4-specific crypt codes to use the generic
+> facility.
+> 
+> Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
 
->> Does that sound like a plan?
->
-> Yes. quotaoff will already disable only enforcement for ext4 with hidden
-> quota files so there's no need to change anything there. We just need to
-> add kernel support for enabling quota enforcement based on mount option.
-> Attached patch should do that - I still need to test whether it doesn't
-> break anything so don't apply it yet, just have a look whether it looks
-> sane to you.
+I've added this patch to the ext4.git tree.  I will also include the
+following MAINTAINERS file update.
 
-I sent a similar patch weeks ago.
-http://marc.info/?l=linux-ext4&m=146787897927183&w=2
+Thanks,
 
-and also quota tools to support it:
+							- Ted
+							
+commit 598c7d7abc832e35677b851f6afb93141c09993b
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Jul 14 22:44:13 2016 -0400
 
-http://marc.info/?l=linux-ext4&m=146787899027184&w=2
+    MAINTAINRES: fs-crypto maintainers update
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+    Cc: Jaegeuk Kim <jaegeuk@kernel.org>
 
-
->
->                                                                 Honza
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 7304d2e..b2234f8 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -4925,6 +4925,13 @@ F:	Documentation/filesystems/caching/
+ F:	fs/fscache/
+ F:	include/linux/fscache*.h
+ 
++FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
++M:	Theodore Y. Ts'o <tytso@mit.edu>
++M:	Jaegeuk Kim <jaegeuk@kernel.org>
++S:	Supported
++F:	fs/crypto/
++F:	include/linux/fscrypto.h
++
+ F2FS FILE SYSTEM
+ M:	Jaegeuk Kim <jaegeuk@kernel.org>
+ M:	Changman Lee <cm224.lee@samsung.com>
