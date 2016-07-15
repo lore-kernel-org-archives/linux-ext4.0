@@ -1,68 +1,57 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: Re: [PATCH v2] ext4 crypto: migrate into vfs's crypto engine
-Date: Thu, 14 Jul 2016 19:53:30 -0700
-Message-ID: <20160715025330.GA44979@jaegeuk>
-References: <1461629736-16523-1-git-send-email-jaegeuk@kernel.org>
- <20160507185250.GD92790@jaegeuk.gateway>
- <20160715024526.GA26465@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix reference counting bug on block allocation
+ error
+Date: Thu, 14 Jul 2016 23:01:55 -0400
+Message-ID: <20160715030155.GB26465@thunk.org>
+References: <1467813452-26763-1-git-send-email-vegard.nossum@oracle.com>
+ <577E3B53.3070502@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Vegard Nossum <vegard.nossum@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54804 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751641AbcGODCC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Jul 2016 23:02:02 -0400
 Content-Disposition: inline
-In-Reply-To: <20160715024526.GA26465@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <577E3B53.3070502@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 14, 2016 at 10:45:26PM -0400, Theodore Ts'o wrote:
-> On Sat, May 07, 2016 at 11:52:50AM -0700, Jaegeuk Kim wrote:
-> > 
-> > From 593e56e680f962c5e9cc57afa19bda4c654bd841 Mon Sep 17 00:00:00 2001
-> > From: Jaegeuk Kim <jaegeuk@kernel.org>
-> > Date: Wed, 10 Feb 2016 16:26:25 -0800
-> > Subject: [PATCH] ext4 crypto: migrate into vfs's crypto engine
-> > 
-> > This patch removes the most parts of internal crypto codes.
-> > And then, it modifies and adds some ext4-specific crypt codes to use the generic
-> > facility.
-> > 
-> > Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+On Thu, Jul 07, 2016 at 01:21:55PM +0200, Vegard Nossum wrote:
 > 
-> I've added this patch to the ext4.git tree.  I will also include the
-> following MAINTAINERS file update.
+> The attached new patch just returns on error instead of trying to fix
+> the problem.
 
-Got it, thank you.
+The issue with your v2 patch is that we end up returning EAGAIN to
+userspace, which is confusing.  So I've fixed up your patch by adding
+the following changes.
 
-> 
-> Thanks,
-> 
-> 							- Ted
-> 							
-> commit 598c7d7abc832e35677b851f6afb93141c09993b
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Thu Jul 14 22:44:13 2016 -0400
-> 
->     MAINTAINRES: fs-crypto maintainers update
->     
->     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
->     Cc: Jaegeuk Kim <jaegeuk@kernel.org>
-> 
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 7304d2e..b2234f8 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -4925,6 +4925,13 @@ F:	Documentation/filesystems/caching/
->  F:	fs/fscache/
->  F:	include/linux/fscache*.h
->  
-> +FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
-> +M:	Theodore Y. Ts'o <tytso@mit.edu>
-> +M:	Jaegeuk Kim <jaegeuk@kernel.org>
-> +S:	Supported
-> +F:	fs/crypto/
-> +F:	include/linux/fscrypto.h
-> +
->  F2FS FILE SYSTEM
->  M:	Jaegeuk Kim <jaegeuk@kernel.org>
->  M:	Changman Lee <cm224.lee@samsung.com>
+Thanks,
+
+					- Ted
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5399b88..1156216 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2943,7 +2943,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		ext4_error(sb, "Allocating blocks %llu-%llu which overlap "
+ 			   "fs metadata", block, block+len);
+ 		/* File system mounted not to panic on error
+-		 * Fix the bitmap and repeat the block allocation
++		 * Fix the bitmap and return EFSCORRUPTED
+ 		 * We leak some of the blocks here.
+ 		 */
+ 		ext4_lock_group(sb, ac->ac_b_ex.fe_group);
+@@ -2952,7 +2952,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+ 		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+ 		if (!err)
+-			err = -EAGAIN;
++			err = -EFSCORRUPTED;
+ 		goto out_err;
+ 	}
+ 
