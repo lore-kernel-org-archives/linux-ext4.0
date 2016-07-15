@@ -1,31 +1,89 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: verify extent header depth
-Date: Fri, 15 Jul 2016 00:22:48 -0400
-Message-ID: <20160715042248.GD26465@thunk.org>
-References: <1467840431-24550-1-git-send-email-vegard.nossum@oracle.com>
- <20160707005447.GA19871@thunk.org>
+From: Zhangfei Gao <zhangfei.gao@gmail.com>
+Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
+Date: Fri, 15 Jul 2016 15:55:20 +0800
+Message-ID: <CAMj5Bkhr3aLTRtb58xsZGwZWchFb95bdZ8NbiLEfG=vmoObxkQ@mail.gmail.com>
+References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
+ <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
+ <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
+ <20160712164324.GC11020@thunk.org> <20160712230356.GJ1922@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
-To: Vegard Nossum <vegard.nossum@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55858 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750705AbcGOEWv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 Jul 2016 00:22:51 -0400
-Content-Disposition: inline
-In-Reply-To: <20160707005447.GA19871@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Theodore Ts'o" <tytso@mit.edu>, kvm@vger.kernel.org,
+	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <kvm-owner@vger.kernel.org>
+In-Reply-To: <20160712230356.GJ1922@dastard>
+Sender: kvm-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 06, 2016 at 08:54:47PM -0400, Theodore Ts'o wrote:
-> So we could arbitrarily limit eh_depth to say, 32 levels, or some
-> such.  That will prevent the malicious corruption, while also making
-> it very difficult for the malicious fallocate/punch hole workload
-> scenario to be triggered.
+Dear Dave
 
-I've decided to apply your patch with the limit raised to 32.  That
-should be enough to prevent the malicious corruption cases.
+On Wed, Jul 13, 2016 at 7:03 AM, Dave Chinner <david@fromorbit.com> wrote:
+> On Tue, Jul 12, 2016 at 12:43:24PM -0400, Theodore Ts'o wrote:
+>> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
+>> > Some update:
+>> >
+>> > If test with ext2, no problem in iblock.
+>> > If test with ext4, ext4_mb_generate_buddy reported error in the
+>> > removing files after reboot.
+>> >
+>> >
+>> > root@(none)$ rm test
+>> > [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
+>> > , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
+>> > [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
+>> > ere's a risk of filesystem corruption in case of system crash.
+>> >
+>> > Any special notes of using ext4 in qemu?
+>>
+>> Ext4 has more runtime consistency checking than ext2.  So just because
+>> ext4 complains doesn't mean that there isn't a problem with the file
+>> system; it just means that ext4 is more likely to notice before you
+>> lose user data.
+>>
+>> So if you test with ext2, try running e2fsck afterwards, to make sure
+>> the file system is consistent.
+>>
+>> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
+>> anything like this in a very long time, I suspect the problemb is with
+>> your SCSI code, and not with ext4.
+>
+> It's the same error I reported yesterday for ext3 on 4.7-rc6 when
+> rebooting a VM after it hung.
 
-       	  	    	    		  - Ted
+
+Any link of this error?
+
+Now I still can not get conclusion of which part cause this error?
+
+1. No problem
+a. Using with virtio-scsi, and test via files with ext4 filesystem, no problem.
+
+ /work/qemu.git/aarch64-softmmu/qemu-system-aarch64 \
+    -enable-kvm -nographic -kernel Image \
+    -global virtio-blk-device.scsi=on -device virtio-scsi-device,id=scsi \
+    -drive file=ext4_oe64.img,id=coreimg,cache=none,if=none,format=raw \
+    -device scsi-hd,drive=coreimg \
+    -m 512 -M virt -cpu host \
+    -append "earlyprintk console=ttyAMA0 mem=512M"
+
+ext4_oe64.img is ext4 file system.
+
+b. Use vhost-scsi & target, ramdisk as backstore, ext4 filesystem,
+also no problem.
+
+
+2. Has problem
+a. Using vhost-scsi & target, iblock, with sas disk & u-disk as
+backstore, ext4, both has issue.
+it only prove the issue is not in driver (sas & u-disk) itself.
+
+
+Looks the issue is in vhost-scsi & target.
+Still in checking how to narrow down.
+
+Any suggestion?
+
+
+Thanks
