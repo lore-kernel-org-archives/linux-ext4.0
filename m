@@ -1,47 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Refreshed rootfs.img for kvm-xfstests
-Date: Sun, 17 Jul 2016 10:05:52 -0400
-Message-ID: <20160717140552.GA11276@thunk.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
+Date: Mon, 18 Jul 2016 11:53:41 +1000
+Message-ID: <20160718015341.GB1922@dastard>
+References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
+ <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
+ <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
+ <20160712164324.GC11020@thunk.org>
+ <20160712230356.GJ1922@dastard>
+ <CAMj5Bkhr3aLTRtb58xsZGwZWchFb95bdZ8NbiLEfG=vmoObxkQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35640 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994AbcGQOF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 Jul 2016 10:05:56 -0400
+Cc: Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
+	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Zhangfei Gao <zhangfei.gao@gmail.com>
+Return-path: <kvm-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAMj5Bkhr3aLTRtb58xsZGwZWchFb95bdZ8NbiLEfG=vmoObxkQ@mail.gmail.com>
+Sender: kvm-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-There is an updated rootfs.img file available at:
+On Fri, Jul 15, 2016 at 03:55:20PM +0800, Zhangfei Gao wrote:
+> Dear Dave
+> 
+> On Wed, Jul 13, 2016 at 7:03 AM, Dave Chinner <david@fromorbit.com> wrote:
+> > On Tue, Jul 12, 2016 at 12:43:24PM -0400, Theodore Ts'o wrote:
+> >> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
+> >> > Some update:
+> >> >
+> >> > If test with ext2, no problem in iblock.
+> >> > If test with ext4, ext4_mb_generate_buddy reported error in the
+> >> > removing files after reboot.
+> >> >
+> >> >
+> >> > root@(none)$ rm test
+> >> > [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
+> >> > , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
+> >> > [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
+> >> > ere's a risk of filesystem corruption in case of system crash.
+> >> >
+> >> > Any special notes of using ext4 in qemu?
+> >>
+> >> Ext4 has more runtime consistency checking than ext2.  So just because
+> >> ext4 complains doesn't mean that there isn't a problem with the file
+> >> system; it just means that ext4 is more likely to notice before you
+> >> lose user data.
+> >>
+> >> So if you test with ext2, try running e2fsck afterwards, to make sure
+> >> the file system is consistent.
+> >>
+> >> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
+> >> anything like this in a very long time, I suspect the problemb is with
+> >> your SCSI code, and not with ext4.
+> >
+> > It's the same error I reported yesterday for ext3 on 4.7-rc6 when
+> > rebooting a VM after it hung.
+> 
+> 
+> Any link of this error?
 
-    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+http://article.gmane.org/gmane.comp.file-systems.ext4/53792
 
-It includes the latest updates from the xfstests-dev upstream.
+Cheers,
 
-There is a new set of more nicely formatted, but more importantly,
-better organized and expanded documentation for xfstests-bld,
-kvm-xfstests, and gce-xfstests.  The new documentation is formatted in
-Markdown, and can be browsed starting at:
-
-https://github.com/tytso/xfstests-bld/blob/master/README.md
-
-This release also includes an updated armhf chroot distribution,
-armhf_root_fs.tar.gz.  This was previously released in the testing
-subdirectory, but it is now built as an synchrnoized part of the
-kvm-xfstests root_fs.img release process.  Very rough instructions for
-using this tarball can be found here:
-
-https://github.com/tytso/xfstests-bld/blob/master/Documentation/android-xfstests.md
-
-If there is anyone who is interested and has time to look into
-creating an automated test runner for armhf_root_fs.tar.gz, ala
-kvm-xfstests and gce-xfstests, but using the Android adb and fastboot
-utilities to control the Android device, please let me know.  I'd love
-to find a volunteer interested in working on this project!
-
-   	  	    	       	  	     	  - Ted
-
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
