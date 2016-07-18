@@ -1,135 +1,293 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Enable quota enforcement based on mount options
-Date: Mon, 18 Jul 2016 13:25:57 +0200
-Message-ID: <1468841157-8083-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43947 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750969AbcGRL0D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jul 2016 07:26:03 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 2/2] dax: remote unused fault wrappers
+Date: Mon, 18 Jul 2016 14:03:59 +0200
+Message-ID: <20160718120359.GC6782@quack2.suse.cz>
+References: <20160714214049.20075-1-ross.zwisler@linux.intel.com>
+ <20160714214049.20075-2-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
+ linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20160714214049.20075-2-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-When quota information is stored in quota files, we enable only quota
-accounting on mount and enforcement is enabled only in response to
-Q_QUOTAON quotactl. To make ext4 behavior consistent with XFS, we add a
-possibility to enable quota enforcement on mount by specifying
-corresponding quota mount option (usrquota, grpquota, prjquota).
+On Thu 14-07-16 15:40:49, Ross Zwisler wrote:
+> Remove the unused wrappers dax_fault() and dax_pmd_fault().  After this
+> removal, rename __dax_fault() and __dax_pmd_fault() to dax_fault() and
+> dax_pmd_fault() respectively, and update all callers.
+> 
+> The dax_fault() and dax_pmd_fault() wrappers were initially intended to
+> capture some filesystem independent functionality around page faults
+> (calling sb_start_pagefault() & sb_end_pagefault(), updating file
+> mtime and ctime).  However, the following commits:
+> 
+> commit 5726b27b09cc ("ext2: Add locking for DAX faults")
+> commit ea3d7209ca01 ("ext4: fix races between page faults and hole punching")
+> 
+> Added locking to the ext2 and ext4 filesystems after these common
+> operations but before __dax_fault() and __dax_pmd_fault() were called.
+> This means that these wrappers are no longer used, and are unlikely to be
+> used in the future.  XFS has had locking analogous to what was recently
+> added to ext2 and ext4 since DAX support was initially introduced by:
+> 
+> commit 6b698edeeef0 ("xfs: add DAX file operations support")
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h  | 12 +++++++++---
- fs/ext4/super.c | 34 ++++++++++++++++++++++++----------
- 2 files changed, 33 insertions(+), 13 deletions(-)
+The patch looks good. You can add:
 
-The patch passed xfstests both with old style and new style quotas and some
-targetted manual tests so here we go... Ted please merge the patch if you
-agree with it.
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b84aa1ca480a..224cb832e2dc 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1129,9 +1129,15 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
--#define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
--#define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
--#define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
-+#define EXT4_MOUNT_QUOTA		0x40000 /* Some quota option set */
-+#define EXT4_MOUNT_USRQUOTA		0x80000 /* "old" user quota,
-+						 * enable enforcement for hidden
-+						 * quota files */
-+#define EXT4_MOUNT_GRPQUOTA		0x100000 /* "old" group quota, enable
-+						  * enforcement for hidden quota
-+						  * files */
-+#define EXT4_MOUNT_PRJQUOTA		0x200000 /* Enable project quota
-+						  * enforcement */
- #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
- #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
- #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3822a5aedc61..a03232634cd5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1187,7 +1187,7 @@ enum {
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
- 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
--	Opt_usrquota, Opt_grpquota, Opt_i_version, Opt_dax,
-+	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version, Opt_dax,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
- 	Opt_lazytime, Opt_nolazytime,
- 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
-@@ -1247,6 +1247,7 @@ static const match_table_t tokens = {
- 	{Opt_noquota, "noquota"},
- 	{Opt_quota, "quota"},
- 	{Opt_usrquota, "usrquota"},
-+	{Opt_prjquota, "prjquota"},
- 	{Opt_barrier, "barrier=%u"},
- 	{Opt_barrier, "barrier"},
- 	{Opt_nobarrier, "nobarrier"},
-@@ -1466,8 +1467,11 @@ static const struct mount_opts {
- 							MOPT_SET | MOPT_Q},
- 	{Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
- 							MOPT_SET | MOPT_Q},
-+	{Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
-+							MOPT_SET | MOPT_Q},
- 	{Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
--		       EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
-+		       EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
-+							MOPT_CLEAR | MOPT_Q},
- 	{Opt_usrjquota, 0, MOPT_Q},
- 	{Opt_grpjquota, 0, MOPT_Q},
- 	{Opt_offusrjquota, 0, MOPT_Q},
-@@ -1756,13 +1760,17 @@ static int parse_options(char *options, struct super_block *sb,
- 			return 0;
- 	}
- #ifdef CONFIG_QUOTA
--	if (ext4_has_feature_quota(sb) &&
--	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
--		ext4_msg(sb, KERN_INFO, "Quota feature enabled, usrquota and grpquota "
--			 "mount options ignored.");
--		clear_opt(sb, USRQUOTA);
--		clear_opt(sb, GRPQUOTA);
--	} else if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-+	/*
-+	 * We do the test below only for project quotas. 'usrquota' and
-+	 * 'grpquota' mount options are allowed even without quota feature
-+	 * to support legacy quotas in quota files.
-+	 */
-+	if (test_opt(sb, PRJQUOTA) && !ext4_has_feature_project(sb)) {
-+		ext4_msg(sb, KERN_ERR, "Project quota feature not enabled. "
-+			 "Cannot enable project quota enforcement.");
-+		return 0;
-+	}
-+	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
- 		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
- 			clear_opt(sb, USRQUOTA);
- 
-@@ -5129,12 +5137,18 @@ static int ext4_enable_quotas(struct super_block *sb)
- 		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
- 		le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
- 	};
-+	bool quota_mopt[EXT4_MAXQUOTAS] = {
-+		test_opt(sb, USRQUOTA),
-+		test_opt(sb, GRPQUOTA),
-+		test_opt(sb, PRJQUOTA),
-+	};
- 
- 	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
- 	for (type = 0; type < EXT4_MAXQUOTAS; type++) {
- 		if (qf_inums[type]) {
- 			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
--						DQUOT_USAGE_ENABLED);
-+				DQUOT_USAGE_ENABLED |
-+				(quota_mopt[type] ? DQUOT_LIMITS_ENABLED : 0));
- 			if (err) {
- 				ext4_warning(sb,
- 					"Failed to enable quota tracking "
+								Honza
+
+> diff --git a/fs/dax.c b/fs/dax.c
+> index e207f8f..432b9e6 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -819,16 +819,16 @@ static int dax_insert_mapping(struct address_space *mapping,
+>  }
+>  
+>  /**
+> - * __dax_fault - handle a page fault on a DAX file
+> + * dax_fault - handle a page fault on a DAX file
+>   * @vma: The virtual memory area where the fault occurred
+>   * @vmf: The description of the fault
+>   * @get_block: The filesystem method used to translate file offsets to blocks
+>   *
+>   * When a page fault occurs, filesystems may call this helper in their
+> - * fault handler for DAX files. __dax_fault() assumes the caller has done all
+> + * fault handler for DAX files. dax_fault() assumes the caller has done all
+>   * the necessary locking for the page fault to proceed successfully.
+>   */
+> -int __dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+> +int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+>  			get_block_t get_block)
+>  {
+>  	struct file *file = vma->vm_file;
+> @@ -913,33 +913,6 @@ int __dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+>  		return VM_FAULT_SIGBUS | major;
+>  	return VM_FAULT_NOPAGE | major;
+>  }
+> -EXPORT_SYMBOL(__dax_fault);
+> -
+> -/**
+> - * dax_fault - handle a page fault on a DAX file
+> - * @vma: The virtual memory area where the fault occurred
+> - * @vmf: The description of the fault
+> - * @get_block: The filesystem method used to translate file offsets to blocks
+> - *
+> - * When a page fault occurs, filesystems may call this helper in their
+> - * fault handler for DAX files.
+> - */
+> -int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+> -	      get_block_t get_block)
+> -{
+> -	int result;
+> -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
+> -
+> -	if (vmf->flags & FAULT_FLAG_WRITE) {
+> -		sb_start_pagefault(sb);
+> -		file_update_time(vma->vm_file);
+> -	}
+> -	result = __dax_fault(vma, vmf, get_block);
+> -	if (vmf->flags & FAULT_FLAG_WRITE)
+> -		sb_end_pagefault(sb);
+> -
+> -	return result;
+> -}
+>  EXPORT_SYMBOL_GPL(dax_fault);
+>  
+>  #if defined(CONFIG_TRANSPARENT_HUGEPAGE)
+> @@ -967,7 +940,16 @@ static void __dax_dbg(struct buffer_head *bh, unsigned long address,
+>  
+>  #define dax_pmd_dbg(bh, address, reason)	__dax_dbg(bh, address, reason, "dax_pmd")
+>  
+> -int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> +/**
+> + * dax_pmd_fault - handle a PMD fault on a DAX file
+> + * @vma: The virtual memory area where the fault occurred
+> + * @vmf: The description of the fault
+> + * @get_block: The filesystem method used to translate file offsets to blocks
+> + *
+> + * When a page fault occurs, filesystems may call this helper in their
+> + * pmd_fault handler for DAX files.
+> + */
+> +int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		pmd_t *pmd, unsigned int flags, get_block_t get_block)
+>  {
+>  	struct file *file = vma->vm_file;
+> @@ -1119,7 +1101,7 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		 *
+>  		 * The PMD path doesn't have an equivalent to
+>  		 * dax_pfn_mkwrite(), though, so for a read followed by a
+> -		 * write we traverse all the way through __dax_pmd_fault()
+> +		 * write we traverse all the way through dax_pmd_fault()
+>  		 * twice.  This means we can just skip inserting a radix tree
+>  		 * entry completely on the initial read and just wait until
+>  		 * the write to insert a dirty entry.
+> @@ -1148,33 +1130,6 @@ int __dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  	result = VM_FAULT_FALLBACK;
+>  	goto out;
+>  }
+> -EXPORT_SYMBOL_GPL(__dax_pmd_fault);
+> -
+> -/**
+> - * dax_pmd_fault - handle a PMD fault on a DAX file
+> - * @vma: The virtual memory area where the fault occurred
+> - * @vmf: The description of the fault
+> - * @get_block: The filesystem method used to translate file offsets to blocks
+> - *
+> - * When a page fault occurs, filesystems may call this helper in their
+> - * pmd_fault handler for DAX files.
+> - */
+> -int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> -			pmd_t *pmd, unsigned int flags, get_block_t get_block)
+> -{
+> -	int result;
+> -	struct super_block *sb = file_inode(vma->vm_file)->i_sb;
+> -
+> -	if (flags & FAULT_FLAG_WRITE) {
+> -		sb_start_pagefault(sb);
+> -		file_update_time(vma->vm_file);
+> -	}
+> -	result = __dax_pmd_fault(vma, address, pmd, flags, get_block);
+> -	if (flags & FAULT_FLAG_WRITE)
+> -		sb_end_pagefault(sb);
+> -
+> -	return result;
+> -}
+>  EXPORT_SYMBOL_GPL(dax_pmd_fault);
+>  #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
+>  
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 868c023..5efeefe 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -51,7 +51,7 @@ static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  	}
+>  	down_read(&ei->dax_sem);
+>  
+> -	ret = __dax_fault(vma, vmf, ext2_get_block);
+> +	ret = dax_fault(vma, vmf, ext2_get_block);
+>  
+>  	up_read(&ei->dax_sem);
+>  	if (vmf->flags & FAULT_FLAG_WRITE)
+> @@ -72,7 +72,7 @@ static int ext2_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+>  	}
+>  	down_read(&ei->dax_sem);
+>  
+> -	ret = __dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block);
+> +	ret = dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block);
+>  
+>  	up_read(&ei->dax_sem);
+>  	if (flags & FAULT_FLAG_WRITE)
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index df44c87..6664f9c 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -202,7 +202,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  	if (IS_ERR(handle))
+>  		result = VM_FAULT_SIGBUS;
+>  	else
+> -		result = __dax_fault(vma, vmf, ext4_dax_get_block);
+> +		result = dax_fault(vma, vmf, ext4_dax_get_block);
+>  
+>  	if (write) {
+>  		if (!IS_ERR(handle))
+> @@ -237,7 +237,7 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+>  	if (IS_ERR(handle))
+>  		result = VM_FAULT_SIGBUS;
+>  	else
+> -		result = __dax_pmd_fault(vma, addr, pmd, flags,
+> +		result = dax_pmd_fault(vma, addr, pmd, flags,
+>  					 ext4_dax_get_block);
+>  
+>  	if (write) {
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 47fc632..1b3dc9dd 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -1551,7 +1551,7 @@ xfs_filemap_page_mkwrite(
+>  	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+>  
+>  	if (IS_DAX(inode)) {
+> -		ret = __dax_mkwrite(vma, vmf, xfs_get_blocks_dax_fault);
+> +		ret = dax_mkwrite(vma, vmf, xfs_get_blocks_dax_fault);
+>  	} else {
+>  		ret = block_page_mkwrite(vma, vmf, xfs_get_blocks);
+>  		ret = block_page_mkwrite_return(ret);
+> @@ -1585,7 +1585,7 @@ xfs_filemap_fault(
+>  		 * changes to xfs_get_blocks_direct() to map unwritten extent
+>  		 * ioend for conversion on read-only mappings.
+>  		 */
+> -		ret = __dax_fault(vma, vmf, xfs_get_blocks_dax_fault);
+> +		ret = dax_fault(vma, vmf, xfs_get_blocks_dax_fault);
+>  	} else
+>  		ret = filemap_fault(vma, vmf);
+>  	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+> @@ -1622,7 +1622,7 @@ xfs_filemap_pmd_fault(
+>  	}
+>  
+>  	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+> -	ret = __dax_pmd_fault(vma, addr, pmd, flags, xfs_get_blocks_dax_fault);
+> +	ret = dax_pmd_fault(vma, addr, pmd, flags, xfs_get_blocks_dax_fault);
+>  	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+>  
+>  	if (flags & FAULT_FLAG_WRITE)
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index 43d5f0b..9c6dc77 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -14,7 +14,6 @@ ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *,
+>  int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
+>  int dax_truncate_page(struct inode *, loff_t from, get_block_t);
+>  int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
+> -int __dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
+>  int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+>  void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+>  				   pgoff_t index, bool wake_all);
+> @@ -46,19 +45,15 @@ static inline int __dax_zero_page_range(struct block_device *bdev,
+>  #if defined(CONFIG_TRANSPARENT_HUGEPAGE)
+>  int dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
+>  				unsigned int flags, get_block_t);
+> -int __dax_pmd_fault(struct vm_area_struct *, unsigned long addr, pmd_t *,
+> -				unsigned int flags, get_block_t);
+>  #else
+>  static inline int dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+>  				pmd_t *pmd, unsigned int flags, get_block_t gb)
+>  {
+>  	return VM_FAULT_FALLBACK;
+>  }
+> -#define __dax_pmd_fault dax_pmd_fault
+>  #endif
+>  int dax_pfn_mkwrite(struct vm_area_struct *, struct vm_fault *);
+>  #define dax_mkwrite(vma, vmf, gb)	dax_fault(vma, vmf, gb)
+> -#define __dax_mkwrite(vma, vmf, gb)	__dax_fault(vma, vmf, gb)
+>  
+>  static inline bool vma_is_dax(struct vm_area_struct *vma)
+>  {
+> -- 
+> 2.9.0
+> 
+> 
 -- 
-2.6.6
-
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
