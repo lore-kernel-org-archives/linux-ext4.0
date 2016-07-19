@@ -1,133 +1,134 @@
-From: Zhangfei Gao <zhangfei.gao@gmail.com>
-Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
-Date: Tue, 19 Jul 2016 16:21:43 +0800
-Message-ID: <CAMj5BkicJhB1Bk6q_ZT_nMKSPWf1XEGchtnGnMPFy=O_0x91hA@mail.gmail.com>
-References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
- <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
- <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
- <20160712164324.GC11020@thunk.org> <CAMj5BkgTycMbfQpUVAV17ahYT1sGm6w3YDtpz0E--vN=tF55xA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: kvm@vger.kernel.org, qemu-devel@nongnu.org,
-	target-devel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <target-devel-owner@vger.kernel.org>
-In-Reply-To: <CAMj5BkgTycMbfQpUVAV17ahYT1sGm6w3YDtpz0E--vN=tF55xA@mail.gmail.com>
-Sender: target-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: improve ext4lazyinit scalability
+Date: Tue, 19 Jul 2016 16:30:32 +0400
+Message-ID: <1468931432-1568-1-git-send-email-dmonakhov@openvz.org>
+Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:5635 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753047AbcGSNKS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Jul 2016 09:10:18 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 19, 2016 at 3:56 PM, Zhangfei Gao <zhangfei.gao@gmail.com> wrote:
-> Dear Ted
->
-> On Wed, Jul 13, 2016 at 12:43 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
->>> Some update:
->>>
->>> If test with ext2, no problem in iblock.
->>> If test with ext4, ext4_mb_generate_buddy reported error in the
->>> removing files after reboot.
->>>
->>>
->>> root@(none)$ rm test
->>> [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
->>> , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
->>> [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
->>> ere's a risk of filesystem corruption in case of system crash.
->>>
->>> Any special notes of using ext4 in qemu?
->>
->> Ext4 has more runtime consistency checking than ext2.  So just because
->> ext4 complains doesn't mean that there isn't a problem with the file
->> system; it just means that ext4 is more likely to notice before you
->> lose user data.
->>
->> So if you test with ext2, try running e2fsck afterwards, to make sure
->> the file system is consistent.
->>
->> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
->> anything like this in a very long time, I suspect the problemb is with
->> your SCSI code, and not with ext4.
->>
->
-> Do you know what's the possible reason of this error.
->
-> Have tried 4.7-rc2, same issue exist.
-> It can be reproduced by fileio and iblock as backstore.
-> It is easier to happen in qemu like this process:
-> qemu-> mount-> dd xx -> umout -> mount -> rm xx, then the error may
-> happen, no need to reboot.
->
-> ramdisk can not cause error just because it just malloc and memcpy,
-> while not going to blk layer.
->
-> Also tried creating one file in /tmp, used as fileio, also can reproduce.
-> So no real device is based.
->
-> like:
-> cd /tmp
-> dd if=/dev/zero of=test bs=1M count=1024; sync;
-> targetcli
-> #targetcli
-> (targetcli) /> cd backstores/fileio
-> (targetcli) /> create name=file_backend file_or_dev=/tmp/test size=1G
-> (targetcli) /> cd /vhost
-> (targetcli) /> create wwn=naa.60014052cc816bf4
-> (targetcli) /> cd naa.60014052cc816bf4/tpgt1/luns
-> (targetcli) /> create /backstores/fileio/file_backend
-> (targetcli) /> cd /
-> (targetcli) /> saveconfig
-> (targetcli) /> exit
->
-> /work/qemu.git/aarch64-softmmu/qemu-system-aarch64 \
->     -enable-kvm -nographic -kernel Image \
->     -device vhost-scsi-pci,wwpn=naa.60014052cc816bf4 \
->     -m 512 -M virt -cpu host \
->     -append "earlyprintk console=ttyAMA0 mem=512M"
->
-> in qemu:
-> mkfs.ext4 /dev/sda
-> mount /dev/sda /mnt/
-> sync; date; dd if=/dev/zero of=/mnt/test bs=1M count=100; sync; date;
->
-> using dd test, then some error happen.
-> log like:
-> oot@(none)$ sync; date; dd if=/dev/zero of=test bs=1M count=100; sync;; date;
-> [ 1789.917963] sbc_parse_cdb cdb[0]=0x35
-> [ 1789.922000] fd_execute_sync_cache immed=0
-> Tue Jul 19 07:26:12 UTC 2016
-> [  200.712879] EXT4-fs error (device sda) [ 1790.191770] sbc_parse_cdb
-> cdb[0]=0x2a
-> in ext4_reserve_inode_write:5362[ 1790.198382]  fd_execute_rw
-> : Corrupt filesystem
-> [  200.729001] EXT4-fs error (device sda) [ 1790.207843] sbc_parse_cdb
-> cdb[0]=0x2a
-> in ext4_reserve_inode_write:5362[ 1790.214495]  fd_execute_rw
-> : Corrupt filesystem
->
-> Looks like the error usually happens after SYCHRONIZE CACHE, but not
-> for sure it is always happen after sync cache.
->
-It is not always happen after SYCHRONIZE CACHE
+ext4lazyinit is global thread. This thread performs itable initalization under
 
-Just tried in qemu: mount-> dd xx -> umount -> mount -> rm xx
-ram based, (/tmp/test), no reboot.
+It basically does followes:
+ext4_lazyinit_thread
+  ->mutex_lock(&eli->li_list_mtx);
+  ->ext4_run_li_request(elr)
+    ->ext4_init_inode_table-> Do a lot of IO if list is large
 
-root@(none)$ cd /mnt
-root@(none)$ ls
-[  301.444966]  sbc_parse_cdb cdb[0]=0x28
-[  301.449003]  fd_execute_rw
-lost+found  test
-root@(none)$ rm test
-[  304.281920]  sbc_parse_cdb cdb[0]=0x28
-[  304.285955]  fd_execute_rw
-[  118.002338] EXT4-fs error (device sda):[  304.290685] gzf sbc_parse_cdb cdb[0
-]=0x28
- ext4_mb_generate_buddy:758: gro[  304.296737] gzf fd_execute_rw
-up 3, block bitmap and bg descri[  304.304099]  sbc_parse_cdb cdb[0]=0x28
-ptor inconsistent: 21504 vs 2143[  304.309322]  fd_execute_rw
-9 free clusters
-[  118.015903] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). The
-re's a risk of filesystem corruption in case of system crash.
-root@(none)$
+And when new mounts/umount arrives they have to block on ->li_list_mtx
+because  lazy_thread holds it during full walk procedure.
+ext4_fill_super
+ ->ext4_register_li_request
+   ->mutex_lock(&ext4_li_info->li_list_mtx);
+   ->list_add(&elr->lr_request, &ext4_li_info >li_request_list);
+In my case mount takes 40minutes on server with 36 * 4Tb HDD.
+Convenient user may face this in case of very slow dev ( /dev/mmcblkXXX)
+Even more. I one of filesystem was frozen lazyinit_thread will simply blocks
+on sb_start_write() so other mount/umounts will suck forever.
 
-Thanks
+This patch changes logic like follows:
+- grap ->s_umount read sem before process new li_request after that it is safe
+  to drop list_mtx because all callers of li_remove_requers are holds ->s_umount
+  for write.
+- li_thread skip frozen SB's
+
+Locking:
+Locking order is asserted by umout path like follows: s_umount ->li_list_mtx
+so the only way to to grab ->s_mount inside li_thread is via down_read_trylock
+
+xfstests:ext4/022 message-id:1468931005-774-1-git-send-email-dmonakhov@openvz.org
+#PSBM-49658
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+---
+ fs/ext4/super.c | 53 ++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 36 insertions(+), 17 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3822a5a..0ee193f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2635,7 +2635,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 	sb = elr->lr_super;
+ 	ngroups = EXT4_SB(sb)->s_groups_count;
+ 
+-	sb_start_write(sb);
+ 	for (group = elr->lr_next_group; group < ngroups; group++) {
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		if (!gdp) {
+@@ -2662,8 +2661,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+ 		elr->lr_next_group = group + 1;
+ 	}
+-	sb_end_write(sb);
+-
+ 	return ret;
+ }
+ 
+@@ -2713,9 +2710,9 @@ static struct task_struct *ext4_lazyinit_task;
+ static int ext4_lazyinit_thread(void *arg)
+ {
+ 	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
+-	struct list_head *pos, *n;
+ 	struct ext4_li_request *elr;
+ 	unsigned long next_wakeup, cur;
++	LIST_HEAD(request_list);
+ 
+ 	BUG_ON(NULL == eli);
+ 
+@@ -2728,21 +2725,43 @@ cont_thread:
+ 			mutex_unlock(&eli->li_list_mtx);
+ 			goto exit_thread;
+ 		}
+-
+-		list_for_each_safe(pos, n, &eli->li_request_list) {
+-			elr = list_entry(pos, struct ext4_li_request,
+-					 lr_request);
+-
+-			if (time_after_eq(jiffies, elr->lr_next_sched)) {
+-				if (ext4_run_li_request(elr) != 0) {
+-					/* error, remove the lazy_init job */
+-					ext4_remove_li_request(elr);
+-					continue;
++		list_splice_init(&eli->li_request_list, &request_list);
++		while (!list_empty(&request_list)) {
++			int err = 0;
++			int progress = 0;
++
++			elr = list_entry(request_list.next,
++					 struct ext4_li_request, lr_request);
++			list_move(request_list.next, &eli->li_request_list);
++			if (time_before(jiffies, elr->lr_next_sched)) {
++				if (time_before(elr->lr_next_sched, next_wakeup))
++					next_wakeup = elr->lr_next_sched;
++				continue;
++			}
++			if (down_read_trylock(&elr->lr_super->s_umount)) {
++				if (sb_start_write_trylock(elr->lr_super)) {
++					progress = 1;
++					/* We holds sb->s_umount, sb can not
++					 * be removed from the list, it is
++					 * now safe to drop li_list_mtx
++					 */
++					mutex_unlock(&eli->li_list_mtx);
++					err = ext4_run_li_request(elr);
++					sb_end_write(elr->lr_super);
++					mutex_lock(&eli->li_list_mtx);
+ 				}
++				up_read((&elr->lr_super->s_umount));
++			}
++			/* error, remove the lazy_init job */
++			if (err) {
++				ext4_remove_li_request(elr);
++				continue;
++			}
++			if (!progress) {
++				elr->lr_next_sched = jiffies +
++					(prandom_u32()
++					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
+ 			}
