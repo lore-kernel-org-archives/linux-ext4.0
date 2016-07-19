@@ -1,57 +1,72 @@
-From: Johannes Stezenbach <js@sig21.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Mon, 18 Jul 2016 16:17:23 +0200
-Message-ID: <20160718141723.GA8809@sig21.net>
-References: <20160718105707.GA4253@sig21.net>
- <20160718133843.GA26664@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 124651] ext4 bugon panic when I mmap a file
+Date: Tue, 19 Jul 2016 01:39:03 +0000
+Message-ID: <bug-124651-13602-8p0nfiWBQP@https.bugzilla.kernel.org/>
+References: <bug-124651-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160718133843.GA26664@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:54356 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751492AbcGSBjJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Jul 2016 21:39:09 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id 148932022D
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jul 2016 01:39:06 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id E141C20220
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Jul 2016 01:39:03 +0000 (UTC)
+In-Reply-To: <bug-124651-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 18, 2016 at 09:38:43AM -0400, Theodore Ts'o wrote:
-> On Mon, Jul 18, 2016 at 12:57:07PM +0200, Johannes Stezenbach wrote:
-> > 
-> > I'm running 4.7.0-rc7 with ext4 on lvm on dm-crypt on SSD
-> > and out of the blue on idle machine the following error
-> > message appeared:
-> > 
-> > [373851.683131] EXT4-fs (dm-3): error count since last fsck: 1
-> > [373851.683151] EXT4-fs (dm-3): initial error at time 1468438194: dx_probe:740: inode 22288562
-> > [373851.683158] EXT4-fs (dm-3): last error at time 1468438194: dx_probe:740: inode 22288562
-> > 
-> > inode 22288562 is a directory with ~800 small files in it,
-> > but AFAICT nothing was accessing it, no cron job running etc.
-> > No further error message was logged.  Accessing the directory
-> > and the files in it also gives no further errors.
-> 
-> Yes, thes messages gets printed once a day in case there was a file
-> system corruption detected earlier.  The problem is people
-> unfortunately run with their file systems set to errors=continue,
-> which I sometimes refer to as the "don't worry, be happy" option.  The
-[snip]
+https://bugzilla.kernel.org/show_bug.cgi?id=3D124651
 
-I've not willingly done this, but I recently upgraded to a bigger
-SSD and so created new file system, and the mount option for errors=
-isn't specified so it uses the default from superblock, and
-mkfs.ext4 has defaulted to "Errors behavior: Continue"
-according to dumpe2fs -h.  I'm using Debian sid FWIW, just checked
-the source of e2fsprogs-1.43.1 and found:
+--- Comment #2 from wangguang <35445233@qq.com> ---
+fs/ext4/inode.c:2263=EF=BC=9Ampage_prepare_extent_to_map=EF=BC=9A
 
-#define EXT2_ERRORS_DEFAULT             EXT2_ERRORS_CONTINUE
+          2261=EF=BC=9A        lblk =3D ((ext4_lblk_t)page->index) <<
+                (PAGE_CACHE_SHIFT - blkbits);
+          2263=EF=BC=9A        head =3D page_buffers(page);
 
 
-During reboot after crash I saw the usual "Clearing orphaned inode"
-messages scroll by, however they did not make it into systemd journal.
-So I suspect if there were any other fsck errors during boot
-they were lost, too, thanks to systemd-fsck.
 
-Thanks for your detailed reply.
+EXT4 BUG_ON page_buffers() because a page goes to writeback without
+buffer-heads attached.
 
+I think unmap_page_range set the page dirty again Cause the problem=E3=80=
+=82
 
-Johannes
+I can recurrent the bug by:
+=EF=BC=881=EF=BC=89 mmap a file=20
+ addr =3D (char *)mmap(NULL, MAPLEN, PROT_READ|PROT_WRITE, MAP_SHARED, =
+fd, 0);
+ memset(addr, 'i', MAPLEN);
+=EF=BC=882=EF=BC=89 return err at
+ext4_writepages->mpage_map_and_submit_extent->mpage_map_one_extent  Cau=
+se the
+log:
+        ext4_msg(sb, KERN_CRIT,
+                 "Delayed block allocation failed for "
+                 "inode %lu at logical offset %llu with"
+                 " max blocks %u with error %d",
+                 inode->i_ino,
+                 (unsigned long long)map->m_lblk,
+                 (unsigned)map->m_len, -err);
+
+(3=EF=BC=89 Unmap case warning:
+WARNING: at fs/buffer.c:661 __set_page_dirty+0xaa/0xc0()
+
+(4) wait for sync=EF=BC=8Cthen bugon
+
+see the attachment please.
+
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
