@@ -1,34 +1,108 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 124651] ext4 bugon panic when I mmap a file
-Date: Tue, 19 Jul 2016 01:40:44 +0000
-Message-ID: <bug-124651-13602-TwJyLk4R6H@https.bugzilla.kernel.org/>
-References: <bug-124651-13602@https.bugzilla.kernel.org/>
+From: Zhangfei Gao <zhangfei.gao@gmail.com>
+Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
+Date: Tue, 19 Jul 2016 15:56:55 +0800
+Message-ID: <CAMj5BkgTycMbfQpUVAV17ahYT1sGm6w3YDtpz0E--vN=tF55xA@mail.gmail.com>
+References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
+ <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
+ <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com> <20160712164324.GC11020@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:54480 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751492AbcGSBkr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Jul 2016 21:40:47 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 45FC62024C
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Jul 2016 01:40:46 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-	by mail.kernel.org (Postfix) with ESMTP id ED4B920220
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Jul 2016 01:40:44 +0000 (UTC)
-In-Reply-To: <bug-124651-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: kvm@vger.kernel.org, qemu-devel@nongnu.org,
+	target-devel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <kvm-owner@vger.kernel.org>
+In-Reply-To: <20160712164324.GC11020@thunk.org>
+Sender: kvm-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=124651
+Dear Ted
 
---- Comment #4 from wangguang <35445233@qq.com> ---
-Created attachment 224261
-  --> https://bugzilla.kernel.org/attachment.cgi?id=224261&action=edit
-systemstap file
+On Wed, Jul 13, 2016 at 12:43 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Jul 12, 2016 at 03:14:38PM +0800, Zhangfei Gao wrote:
+>> Some update:
+>>
+>> If test with ext2, no problem in iblock.
+>> If test with ext4, ext4_mb_generate_buddy reported error in the
+>> removing files after reboot.
+>>
+>>
+>> root@(none)$ rm test
+>> [   21.006549] EXT4-fs error (device sda): ext4_mb_generate_buddy:758: group 18
+>> , block bitmap and bg descriptor inconsistent: 26464 vs 25600 free clusters
+>> [   21.008249] JBD2: Spotted dirty metadata buffer (dev = sda, blocknr = 0). Th
+>> ere's a risk of filesystem corruption in case of system crash.
+>>
+>> Any special notes of using ext4 in qemu?
+>
+> Ext4 has more runtime consistency checking than ext2.  So just because
+> ext4 complains doesn't mean that there isn't a problem with the file
+> system; it just means that ext4 is more likely to notice before you
+> lose user data.
+>
+> So if you test with ext2, try running e2fsck afterwards, to make sure
+> the file system is consistent.
+>
+> Given that I'm reguarly testing ext4 using kvm, and I haven't seen
+> anything like this in a very long time, I suspect the problemb is with
+> your SCSI code, and not with ext4.
+>
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Do you know what's the possible reason of this error.
+
+Have tried 4.7-rc2, same issue exist.
+It can be reproduced by fileio and iblock as backstore.
+It is easier to happen in qemu like this process:
+qemu-> mount-> dd xx -> umout -> mount -> rm xx, then the error may
+happen, no need to reboot.
+
+ramdisk can not cause error just because it just malloc and memcpy,
+while not going to blk layer.
+
+Also tried creating one file in /tmp, used as fileio, also can reproduce.
+So no real device is based.
+
+like:
+cd /tmp
+dd if=/dev/zero of=test bs=1M count=1024; sync;
+targetcli
+#targetcli
+(targetcli) /> cd backstores/fileio
+(targetcli) /> create name=file_backend file_or_dev=/tmp/test size=1G
+(targetcli) /> cd /vhost
+(targetcli) /> create wwn=naa.60014052cc816bf4
+(targetcli) /> cd naa.60014052cc816bf4/tpgt1/luns
+(targetcli) /> create /backstores/fileio/file_backend
+(targetcli) /> cd /
+(targetcli) /> saveconfig
+(targetcli) /> exit
+
+/work/qemu.git/aarch64-softmmu/qemu-system-aarch64 \
+    -enable-kvm -nographic -kernel Image \
+    -device vhost-scsi-pci,wwpn=naa.60014052cc816bf4 \
+    -m 512 -M virt -cpu host \
+    -append "earlyprintk console=ttyAMA0 mem=512M"
+
+in qemu:
+mkfs.ext4 /dev/sda
+mount /dev/sda /mnt/
+sync; date; dd if=/dev/zero of=/mnt/test bs=1M count=100; sync; date;
+
+using dd test, then some error happen.
+log like:
+oot@(none)$ sync; date; dd if=/dev/zero of=test bs=1M count=100; sync;; date;
+[ 1789.917963] sbc_parse_cdb cdb[0]=0x35
+[ 1789.922000] fd_execute_sync_cache immed=0
+Tue Jul 19 07:26:12 UTC 2016
+[  200.712879] EXT4-fs error (device sda) [ 1790.191770] sbc_parse_cdb
+cdb[0]=0x2a
+in ext4_reserve_inode_write:5362[ 1790.198382]  fd_execute_rw
+: Corrupt filesystem
+[  200.729001] EXT4-fs error (device sda) [ 1790.207843] sbc_parse_cdb
+cdb[0]=0x2a
+in ext4_reserve_inode_write:5362[ 1790.214495]  fd_execute_rw
+: Corrupt filesystem
+
+Looks like the error usually happens after SYCHRONIZE CACHE, but not
+for sure it is always happen after sync cache.
+
+Thanks
