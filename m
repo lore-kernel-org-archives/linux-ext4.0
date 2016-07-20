@@ -1,40 +1,68 @@
-From: Ankur Tank <Ankur.Tank@LntTechservices.com>
-Subject: [ext4] How to simulate aborted journal error
-Date: Tue, 19 Jul 2016 16:17:46 +0000
-Message-ID: <f04dc82eca5849cb999e5d28d1694a1a@POCITMSXMB04.LntUniverse.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "artfri2@gmail.com" <artfri2@gmail.com>
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH] ext4: reinforce check of i_dtime when clearing high fields of
+ uid and gid
+Date: Wed, 20 Jul 2016 18:30:41 +0900
+Message-ID: <1469007041-28528-1-git-send-email-daeho.jeong@samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>,
+	Hobin Woo <hobin.woo@samsung.com>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.ltindia.com ([203.199.60.171]:48998 "EHLO
-	mailout2.ltindia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752519AbcGSQ2T convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jul 2016 12:28:19 -0400
-Content-Language: en-US
+Received: from mailout4.samsung.com ([203.254.224.34]:35683 "EHLO
+	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751615AbcGTJ2A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jul 2016 05:28:00 -0400
+Received: from epcpsbgr3.samsung.com
+ (u143.gpu120.samsung.co.kr [203.254.230.143])
+ by mailout4.samsung.com (Oracle Communications Messaging Server 7.0.5.31.0
+ 64bit (built May  5 2014))
+ with ESMTP id <0OAL01YAUWYLOK00@mailout4.samsung.com> for
+ linux-ext4@vger.kernel.org; Wed, 20 Jul 2016 18:27:57 +0900 (KST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Experts,
+Now, ext4_do_update_inode() clears high 16-bit fields of uid/gid
+of deleted and evicted inode to fix up interoperability with old
+kernels. However, it checks only i_dtime of an inode to determine
+whether the inode was deleted and evicted, and this is very risky,
+because i_dtime can be used for the pointer maintaining orphan inode
+list, too. We need to further check whether the i_dtime is being
+used for the orphan inode list even if the i_dtime is not NULL.
 
-We are using BeagleBoneBlack based custom board,
+We found that high 16-bit fields of uid/gid of inode are unintentionally
+and permanently cleared when the inode truncation is just triggered,
+but not finished, and the inode metadata, whose high uid/gid bits are
+cleared, is written on disk, and the sudden power-off follows that
+in order.
 
-During firmware upgrade testing I got following errors
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+Signed-off-by: Hobin Woo <hobin.woo@samsung.com>
+---
+ fs/ext4/inode.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-[  194.912834] EXT4-fs error (device mmcblk0p15): ext4_journal_check_start:56: Detected aborted journal
-[  194.922558] EXT4-fs (mmcblk0p15): Remounting filesystem read-only
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f7140ca..bb5aede 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4785,14 +4785,14 @@ static int ext4_do_update_inode(handle_t *handle,
+  * Fix up interoperability with old kernels. Otherwise, old inodes get
+  * re-used with the upper 16 bits of the uid/gid intact
+  */
+-		if (!ei->i_dtime) {
++		if (ei->i_dtime && list_empty(&ei->i_orphan)) {
++			raw_inode->i_uid_high = 0;
++			raw_inode->i_gid_high = 0;
++		} else {
+ 			raw_inode->i_uid_high =
+ 				cpu_to_le16(high_16_bits(i_uid));
+ 			raw_inode->i_gid_high =
+ 				cpu_to_le16(high_16_bits(i_gid));
+-		} else {
+-			raw_inode->i_uid_high = 0;
+-			raw_inode->i_gid_high = 0;
+ 		}
+ 	} else {
+ 		raw_inode->i_uid_low = cpu_to_le16(fs_high2lowuid(i_uid));
+-- 
+1.7.9.5
 
-Rebooting the board recovered this error but for testing I want to simulate this error and then in my upgrade scripts I want to handle that error case.
-is there a way to simulate above error ?
-
-Thank you,
-
-Regards,
-Ankur
-
-L&T Technology Services Ltd
-
-www.LntTechservices.com<http://www.lnttechservices.com/>
-
-This Email may contain confidential or privileged information for the intended recipient (s). If you are not the intended recipient, please do not use or disseminate the information, notify the sender and delete it from your system.
