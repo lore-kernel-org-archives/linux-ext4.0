@@ -1,89 +1,78 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: Refreshed rootfs.img for kvm-xfstests
-Date: Thu, 21 Jul 2016 16:22:39 -0400
-Message-ID: <20160721202238.GA1514@localhost.localdomain>
-References: <20160717140552.GA11276@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 61601] rootflags=noatime causes kernel panic when booting
+ without initrd.
+Date: Fri, 22 Jul 2016 14:05:07 +0000
+Message-ID: <bug-61601-13602-LCCV9kMMkY@https.bugzilla.kernel.org/>
+References: <bug-61601-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:32882 "EHLO
-	mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753892AbcGUUTc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jul 2016 16:19:32 -0400
-Received: by mail-qt0-f196.google.com with SMTP id j37so4290593qta.0
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jul 2016 13:19:32 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <20160717140552.GA11276@thunk.org>
+Received: from mail.kernel.org ([198.145.29.136]:60558 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751130AbcGVOFL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jul 2016 10:05:11 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id ACAB720555
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2016 14:05:09 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+	by mail.kernel.org (Postfix) with ESMTP id AD0E520546
+	for <linux-ext4@vger.kernel.org>; Fri, 22 Jul 2016 14:05:07 +0000 (UTC)
+In-Reply-To: <bug-61601-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Theodore Ts'o <tytso@mit.edu>:
-> There is an updated rootfs.img file available at:
-> 
->     https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
-> 
-> It includes the latest updates from the xfstests-dev upstream.
-> 
-> There is a new set of more nicely formatted, but more importantly,
-> better organized and expanded documentation for xfstests-bld,
-> kvm-xfstests, and gce-xfstests.  The new documentation is formatted in
-> Markdown, and can be browsed starting at:
-> 
-> https://github.com/tytso/xfstests-bld/blob/master/README.md
-> 
-> This release also includes an updated armhf chroot distribution,
-> armhf_root_fs.tar.gz.  This was previously released in the testing
-> subdirectory, but it is now built as an synchrnoized part of the
-> kvm-xfstests root_fs.img release process.  Very rough instructions for
-> using this tarball can be found here:
-> 
-> https://github.com/tytso/xfstests-bld/blob/master/Documentation/android-xfstests.md
+https://bugzilla.kernel.org/show_bug.cgi?id=3D61601
 
-I've tested this version of the ARM test appliance using the 4k test config
-on a Pandaboard with a 4.7-rc7 kernel, and have discovered a few problems with
-the file system image as discussed in today's concall (the upshot was that the
-build process might be failing somewhere along the way and producing an
-incomplete image):
+J=C3=A1nos T=C3=B3th F. <janos666@mailbox.hu> changed:
 
-Several files needed to run the appliance are missing from /root - test-env,
-test-conf, /conf (and its contents), and runtests.sh.  Copying them in
-from xfstests-bld solved that.
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+                 CC|                            |janos666@mailbox.hu
 
-/usr/bin/awk points to an executable in Ted's home directory.  Relinking to
-/usr/bin/gawk fixed things up well enough.
+--- Comment #18 from J=C3=A1nos T=C3=B3th F. <janos666@mailbox.hu> ---
+I ran into this problem recently with kernel 4.5.5 when I tried copy-pa=
+sting
+all my mount options of / from fstab to the kernel cmdline as rootflags=
+ after I
+learned the space_cache=3DV2 mount option of Btrfs does not activate th=
+e new
+cache properly during the fstab-based RW remount of / when the kernel m=
+ounted
+it RO with default options including space_cache V1 (at least based on =
+the
+kernel log messages but this should probably be investigated further if=
+ RO/RW
+has anything to do with this, or if it's enough to do the initial mount=
+ with
+this cache V2 option for a single time when the old space cache v1 shou=
+ld be
+invalidated and a new v2 type cache must be created or these have to st=
+ay for
+consecutive reboots).
 
-With these changes, I was able to get a complete 4k run with some
-discrepancies relative to my ARM baseline:
+This might be Gentoo-specific but I also noticed localmount won't re-mo=
+unt my /
+with the fstab options when I have this cache rootflag in my kernel cmd=
+line.
+Thus, I have to manually re-mount / with noatime if I wish to have that=
+ option
+together with cache V2.
 
-As reported in the output log produced by runtests.sh, it appears that the
-quota user tools are not installed; quota-related xfstests were not run,
-and the tools are missing from /root/xfstests/bin where they are found on the
-x86_64 image.
+I also realized this bug would pretty much be the only reason for me to=
+ keep a
+/ entry in my fstab (to apply noatime). But more precisely, my current =
+fstab
+entry is useless anyway (noatime isn't applied anyway when I specify RW=
+ and
+rootflags in the kernel cmdline).
 
-Several tests using dm failed involving the error and flakey targets.  Some
-succeeded in my baseline, and some are new since the baseline.  They need
-a closer look to see what's going on - there's no immediate evidence the
-root fs image is responsible.
-
-Otherwise, this is an easy and convenient way to run the test appliance on
-ARM.  Thanks!
-
-Eric
-
-> 
-> If there is anyone who is interested and has time to look into
-> creating an automated test runner for armhf_root_fs.tar.gz, ala
-> kvm-xfstests and gce-xfstests, but using the Android adb and fastboot
-> utilities to control the Android device, please let me know.  I'd love
-> to find a volunteer interested in working on this project!
-> 
->    	  	    	       	  	     	  - Ted
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=20
+You are receiving this mail because:
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
