@@ -1,437 +1,287 @@
-From: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH v24 21/22] ext4: Add richacl support
-Date: Mon, 25 Jul 2016 16:09:18 +0200
-Message-ID: <1469455759-6141-22-git-send-email-agruenba@redhat.com>
-References: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
-	"Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
-	"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-	Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
-	Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
-	Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
-	Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-To: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1469455759-6141-1-git-send-email-agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 145201] New: @!!~++1-888-348-1766 Mcafee Antivirus Technical
+ Support Phone Number
+Date: Mon, 25 Jul 2016 16:24:38 +0000
+Message-ID: <bug-145201-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:46768 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752743AbcGYQYm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 Jul 2016 12:24:42 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+	by mail.kernel.org (Postfix) with ESMTP id C0BCB20544
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2016 16:24:40 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+	by mail.kernel.org (Postfix) with ESMTP id 3E6A4203DB
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2016 16:24:39 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=145201
 
-Support the richacl permission model in ext4.  The richacls are stored
-in "system.richacl" xattrs.  Richacls need to be enabled by tune2fs or
-at file system create time.
+            Bug ID: 145201
+           Summary: @!!~++1-888-348-1766 Mcafee Antivirus Technical
+                    Support Phone Number
+           Product: File System
+           Version: 2.5
+    Kernel Version: tech suppoet, help line, customer service, customer
+                    care
+          Hardware: Alpha
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext2
+          Assignee: fs_ext2@kernel-bugs.osdl.org
+          Reporter: devrajput2101@gmail.com
+        Regression: No
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Signed-off-by: Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Reviewed-by: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
----
- fs/ext4/Kconfig     |  11 +++++
- fs/ext4/Makefile    |   1 +
- fs/ext4/file.c      |   3 ++
- fs/ext4/ialloc.c    |  11 ++++-
- fs/ext4/inode.c     |   5 +-
- fs/ext4/namei.c     |   5 ++
- fs/ext4/richacl.c   | 134 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/richacl.h   |  40 ++++++++++++++++
- fs/ext4/xattr.c     |   7 +++
- include/linux/acl.h |  15 ++++++
- 10 files changed, 228 insertions(+), 4 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
- create mode 100644 include/linux/acl.h
+@!!~++1-888-348-1766 Mcafee Antivirus Technical Support Phone Number
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index b46e9fc..4e21c18 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -22,6 +22,17 @@ config EXT3_FS_POSIX_ACL
- 	  This config option is here only for backward compatibility. ext3
- 	  filesystem is now handled by the ext4 driver.
- 
-+config EXT4_FS_RICHACL
-+	bool "Ext4 Rich Access Control Lists"
-+	depends on EXT4_FS
-+	select FS_RICHACL
-+	help
-+	  Richacls are an implementation of NFSv4 ACLs, extended by file masks
-+	  to cleanly integrate into the POSIX file permission model.  To learn
-+	  more about them, see http://www.bestbits.at/richacl/.
-+
-+	  If you don't know what Richacls are, say N.
-+
- config EXT3_FS_SECURITY
- 	bool "Ext3 Security Labels"
- 	depends on EXT3_FS
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index f52cf54..1fb7f11 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -14,3 +14,4 @@ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
- ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
- ext4-$(CONFIG_EXT4_FS_ENCRYPTION)	+= crypto_policy.o crypto.o \
- 		crypto_key.o crypto_fname.o
-+ext4-$(CONFIG_EXT4_FS_RICHACL) 		+= richacl.o
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index df44c87..6e7b4b9 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -30,6 +30,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- /*
-  * Called when an inode is released. Note that this is different
-@@ -717,6 +718,8 @@ const struct inode_operations ext4_file_inode_operations = {
- 	.removexattr	= generic_removexattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- 	.fiemap		= ext4_fiemap,
- };
- 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 3da4cf8..5bd382a 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -27,6 +27,7 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- 
-@@ -729,6 +730,14 @@ out:
- 	return ret;
- }
- 
-+static inline int
-+ext4_new_acl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	if (IS_RICHACL(dir))
-+		return ext4_init_richacl(handle, inode, dir);
-+	return ext4_init_acl(handle, inode, dir);
-+}
-+
- /*
-  * There are two policies for allocating an inode.  If the new inode is
-  * a directory, then a forward search is made for a block group with both
-@@ -1093,7 +1102,7 @@ got:
- 	if (err)
- 		goto fail_drop;
- 
--	err = ext4_init_acl(handle, inode, dir);
-+	err = ext4_new_acl(handle, inode, dir);
- 	if (err)
- 		goto fail_free_drop;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f7140ca..7b8d96f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -37,10 +37,10 @@
- #include <linux/printk.h>
- #include <linux/slab.h>
- #include <linux/bitops.h>
-+#include <linux/acl.h>
- 
- #include "ext4_jbd2.h"
- #include "xattr.h"
--#include "acl.h"
- #include "truncate.h"
- 
- #include <trace/events/ext4.h>
-@@ -5183,8 +5183,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		ext4_orphan_del(NULL, inode);
- 
- 	if (!rc && (ia_valid & ATTR_MODE))
--		rc = posix_acl_chmod(inode, inode->i_mode);
--
-+		rc = acl_chmod(inode);
- err_out:
- 	ext4_std_error(inode->i_sb, error);
- 	if (!error)
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index ec4c399..09e36b7 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -38,6 +38,7 @@
- 
- #include "xattr.h"
- #include "acl.h"
-+#include "richacl.h"
- 
- #include <trace/events/ext4.h>
- /*
-@@ -3893,6 +3894,8 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.removexattr	= generic_removexattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- 	.fiemap         = ext4_fiemap,
- };
- 
-@@ -3904,4 +3907,6 @@ const struct inode_operations ext4_special_inode_operations = {
- 	.removexattr	= generic_removexattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-+	.get_richacl	= ext4_get_richacl,
-+	.set_richacl	= ext4_set_richacl,
- };
-diff --git a/fs/ext4/richacl.c b/fs/ext4/richacl.c
-new file mode 100644
-index 0000000..0c316ff
---- /dev/null
-+++ b/fs/ext4/richacl.c
-@@ -0,0 +1,134 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C) 2015  Red Hat, Inc.
-+ * Author: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-+ * 	   Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/fs.h>
-+#include <linux/richacl_xattr.h>
-+
-+#include "ext4.h"
-+#include "ext4_jbd2.h"
-+#include "xattr.h"
-+#include "acl.h"
-+#include "richacl.h"
-+
-+struct richacl *
-+ext4_get_richacl(struct inode *inode)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	void *value = NULL;
-+	struct richacl *acl = NULL;
-+	int retval;
-+
-+	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
-+	if (retval > 0) {
-+		value = kmalloc(retval, GFP_NOFS);
-+		if (!value)
-+			return ERR_PTR(-ENOMEM);
-+		retval = ext4_xattr_get(inode, name_index, "", value, retval);
-+	}
-+	if (retval > 0)
-+		acl = richacl_from_xattr(&init_user_ns, value, retval, -EIO);
-+	else if (retval != -ENODATA && retval != -ENOSYS)
-+		acl = ERR_PTR(retval);
-+	kfree(value);
-+
-+	return acl;
-+}
-+
-+static int
-+__ext4_remove_richacl(handle_t *handle, struct inode *inode)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	int retval;
-+
-+	retval = ext4_xattr_set_handle(handle, inode, name_index, "",
-+				       NULL, 0, 0);
-+	if (!retval)
-+		set_cached_richacl(inode, NULL);
-+	return retval;
-+}
-+
-+static int
-+__ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
-+{
-+	const int name_index = EXT4_XATTR_INDEX_RICHACL;
-+	umode_t mode = inode->i_mode;
-+	int retval, size;
-+	void *value;
-+
-+	if (richacl_equiv_mode(acl, &mode) == 0) {
-+		inode->i_ctime = ext4_current_time(inode);
-+		inode->i_mode = mode;
-+		ext4_mark_inode_dirty(handle, inode);
-+		return __ext4_remove_richacl(handle, inode);
-+	}
-+
-+	mode &= ~S_IRWXUGO;
-+	mode |= richacl_masks_to_mode(acl);
-+
-+	size = richacl_xattr_size(acl);
-+	value = kmalloc(size, GFP_NOFS);
-+	if (!value)
-+		return -ENOMEM;
-+	richacl_to_xattr(&init_user_ns, acl, value, size);
-+	inode->i_mode = mode;
-+	retval = ext4_xattr_set_handle(handle, inode, name_index, "",
-+				       value, size, 0);
-+	kfree(value);
-+	if (retval)
-+		return retval;
-+
-+	set_cached_richacl(inode, acl);
-+
-+	return 0;
-+}
-+
-+int
-+ext4_set_richacl(struct inode *inode, struct richacl *acl)
-+{
-+	handle_t *handle;
-+	int retval, retries = 0;
-+
-+retry:
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
-+				    ext4_jbd2_credits_xattr(inode));
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	if (acl)
-+		retval = __ext4_set_richacl(handle, inode, acl);
-+	else
-+		retval = __ext4_remove_richacl(handle, inode);
-+
-+	ext4_journal_stop(handle);
-+	if (retval == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+	return retval;
-+}
-+
-+int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	struct richacl *acl = richacl_create(&inode->i_mode, dir);
-+	int error;
-+
-+	error = PTR_ERR(acl);
-+	if (!IS_ERR_OR_NULL(acl)) {
-+		error = __ext4_set_richacl(handle, inode, acl);
-+		richacl_put(acl);
-+	}
-+	return error;
-+}
-diff --git a/fs/ext4/richacl.h b/fs/ext4/richacl.h
-new file mode 100644
-index 0000000..6fe9a92
---- /dev/null
-+++ b/fs/ext4/richacl.h
-@@ -0,0 +1,40 @@
-+/*
-+ * Copyright IBM Corporation, 2010
-+ * Copyright (C)  2015 Red Hat, Inc.
-+ * Author Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ *
-+ */
-+
-+#ifndef __FS_EXT4_RICHACL_H
-+#define __FS_EXT4_RICHACL_H
-+
-+#include <linux/richacl.h>
-+
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+
-+extern struct richacl *ext4_get_richacl(struct inode *);
-+extern int ext4_set_richacl(struct inode *, struct richacl *);
-+
-+extern int ext4_init_richacl(handle_t *, struct inode *, struct inode *);
-+
-+#else  /* CONFIG_EXT4_FS_RICHACL */
-+
-+#define ext4_get_richacl NULL
-+#define ext4_set_richacl NULL
-+
-+static inline int
-+ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
-+{
-+	return 0;
-+}
-+
-+#endif  /* CONFIG_EXT4_FS_RICHACL */
-+#endif  /* __FS_EXT4_RICHACL_H */
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index e79bd32..e5ca483 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -55,6 +55,7 @@
- #include <linux/slab.h>
- #include <linux/mbcache.h>
- #include <linux/quotaops.h>
-+#include <linux/richacl_xattr.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "xattr.h"
-@@ -97,6 +98,9 @@ static const struct xattr_handler *ext4_xattr_handler_map[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	[EXT4_XATTR_INDEX_RICHACL]           = &richacl_xattr_handler,
-+#endif
- };
- 
- const struct xattr_handler *ext4_xattr_handlers[] = {
-@@ -109,6 +113,9 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- #ifdef CONFIG_EXT4_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	&richacl_xattr_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/include/linux/acl.h b/include/linux/acl.h
-new file mode 100644
-index 0000000..3c3b5ce
---- /dev/null
-+++ b/include/linux/acl.h
-@@ -0,0 +1,15 @@
-+#ifndef __LINUX_ACL_H
-+#define __LINUX_ACL_H
-+
-+#include <linux/posix_acl.h>
-+#include <linux/richacl.h>
-+
-+static inline int
-+acl_chmod(struct inode *inode)
-+{
-+	if (IS_RICHACL(inode))
-+		return richacl_chmod(inode, inode->i_mode);
-+	return posix_acl_chmod(inode, inode->i_mode);
-+}
-+
-+#endif
+
+
++1888-348-1766 Mcafee antivirus technical support phone number
+
++1888-348-1766 Mcafee antivirus technical support phone number
+
+Call us 1-888-348-1766  Mcafee antivirus Technical Support For
+
+ Mcafee antivirus Issue : 1888-348-1766 Mcafee antivirus 
+
++1888-348-1766 Customer Support Number, Mcafee antivirus Technical Helpline
+Number USA, Mcafee antivirus support phone number united states +1888-348-1766
+Mcafee antivirus +1888-348-1766 Customer Support , Mcafee antivirus technical
+Support phone number USA, Mcafee antivirus support phone number united states
++1888-348-1766 Mcafee antivirus +1888-348-1766 Customer Support Number Mcafee
+antivirus technical Support phone number USA, Mcafee antivirus support phone
+number united states +1888-348-1766 +1888-348-1766 Mcafee antivirus tech
+support number , .Mcafee antivirus technical support phone numberMcafee
+antivirus Toll Free - 1888-348-1766 Mcafee antivirus 360 Technical Support
+Number, Mcafee antivirus help desk phone number Just Call, +1888-348-1766 for
+all type help related Mcafee antivirus Issue support telephone number,Mcafee
+antivirus support phone number,Mcafee antivirus support phone number,Mcafee
+antivirus help phone number, Mcafee antivirus technical support number.Mcafee
+antivirus support number, Mcafee antivirus phone number, Mcafee antivirus tech
+support number, Mcafee antivirus customer support number, Mcafee antivirus
+customer support phone number, Mcafee antivirus 360 customer service phone
+number, Mcafee antivirus customer service phone number, Mcafee antivirus
+support phone number Mcafee antivirus help number-Mcafee antivirus Helpline
+Number; Mcafee antivirus help phone number-Mcafee antivirus Helpline Number,
+Mcafee antivirus Tech Support Toll free Number, Mcafee antivirus Support
+Telephone Number, Mcafee antivirus 360 Tech Support Telephone number, Mcafee
+antivirus Tech Support contact number, Mcafee antivirus support contact number,
+Mcafee antivirus technical support contact number, Mcafee antivirus help desk
+phone number.Mcafee antivirus support phone number. Just Call-1888-348-1766-:
+Mcafee antivirus password cusaztomer support phone number. Mcafee antivirus
+technical support, Mcafee antivirus Customer Service Phone Number, Mcafee
+antivirus Customer Service Number, Mcafee antivirus Customer Support Phone
+Number, Mcafee antivirus Customer Support Number, Mcafee antivirus Customer
+Service Helpline Number, Mcafee antivirus Customer Care Number, Mcafee
+antivirus support team phone number. Mcafee antivirus customer support phone
+number. Call,@(+1888-348-1766)@-: Mcafee antivirus help number-Mcafee antivirus
+Helpline Number; Mcafee antivirus help phone number, Mcafee antivirus Helpline
+Number, Mcafee antivirus Tech Support Toll free Number, Mcafee antivirus
+Support Telephone Number, Mcafee antivirus Tech Support Telephone number,
+Mcafee antivirus Tech Support contact number, Mcafee antivirus support contact
+number, Mcafee antivirus technical support contact number, Mcafee antivirus
+support phone number, Mcafee antivirus support phone number. Mcafee antivirus
+customer support phone number.. Mcafee antivirus technical support phone
+number. Mcafee antivirus +1888-348-1766 Customer Support Number Mcafee
+antivirus technical Support phone number USA, Mcafee antivirus support phone
+number united states +1888-348-1766 +1888-348-1766@@@ Mcafee antivirus tech
+support number , .Mcafee antivirus technical support phone numberMcafee
+antivirus Toll Free - 1888-348-1766 Mcafee antivirus Technical Support Number,
+Mcafee antivirus help desk phone number Just Call, +1888-348-1766 for all type
+help related Mcafee antivirus Issue support telephone number,Mcafee antivirus
+support phone number,Mcafee antivirus support phone number,Mcafee antivirus
+help phone number, Mcafee antivirus technical support number.Mcafee antivirus
+support number, Mcafee antivirus phone number, Mcafee antivirus tech support
+number, Mcafee antivirus customer support number, Mcafee antivirus customer
+support phone number, Mcafee antivirus customer service phone number, Mcafee
+antivirus customer service phone number, Mcafee antivirus support phone number
+Mcafee antivirus help number-Mcafee antivirus Helpline Number; Mcafee antivirus
+help phone number-Mcafee antivirus Helpline Number, Mcafee antivirus Tech
+Support Toll free Number, Mcafee antivirus Support Telephone Number, Mcafee
+antivirus Tech Support Telephone number, Mcafee antivirus Tech Support contact
+number, Mcafee antivirus support contact number, Mcafee antivirus technical
+support contact number, Mcafee antivirus help desk phone number.Mcafee
+antivirus 360 tech support phone number. Mcafee customer service number Mcafee
+customer service phone number Mcafee contact number Mcafee phone number Mcafee
+number au Mcafee support number aus Mcafee antivirus phone number Mcafee
+support phone number Mcafee tech support number Mcafee security phone number
+Mcafee telephone number Mcafee phone number Mcafee phone number customer
+service usa Mcafee customer support phone number Mcafee antivirus customer
+service number Mcafee antivirus customer service phone number phone number for
+Mcafee Mcafee contact number Mcafee antivirus contact number Mcafee customer
+service number Mcafee antivirus support phone number Mcafee support phone
+number aus Mcafee customer support number au Mcafee security contact number
+canada Mcafee customer service phone number usa Mcafee 888 number Mcafee
+technical support phone number Mcafee antivirus contact phone number Mcafee
+technical support number Mcafee antivirus support number Mcafee tech support
+phone number Mcafee contact phone number Mcafee customer support phone number
+Mcafee phone number support phone number for Mcafee antivirus customer service
+phone number for Mcafee security Mcafee help number phone number for Mcafee
+antivirus Mcafee help phone number phone number for Mcafee customer service
+Mcafee security customer service phone number Mcafee security phone number
+customer service Mcafee contact number for customer service Mcafee antivirus
+telephone number Mcafee contact phone number Mcafee antivirus phone support
+number Mcafee technical support phone number Mcafee security telephone number
+contact number for Mcafee Mcafee 1888 number Mcafee help phone number Mcafee
+support number Mcafee telephone number Mcafee customer care number Mcafee
+security contact phone number Mcafee antivirus technical support phone number
+Mcafee tech support phone number phone number for Mcafee support Mcafee toll
+free number Mcafee antivirus tech support number Mcafee account contact number
+Mcafee phone number customer service Mcafee antivirus tech support phone number
+Mcafee antivirus help phone number Mcafee telephone number customer service
+Mcafee antivirus phone number customer service Mcafee support telephone number
+Mcafee tech support number Mcafee security support phone number Mcafee helpline
+number telephone number for Mcafee customer service Mcafee antivirus customer
+support phone number Mcafee support telephone number phone number for Mcafee
+customer support Mcafee number Mcafee customer service telephone number Mcafee
+internet security customer service phone number Mcafee antivirus customer
+support number contact number for Mcafee Mcafee internet security phone number
+customer service telephone number for Mcafee phone number for Mcafee internet
+security contact number for Mcafee antivirus Mcafee account phone number phone
+number for Mcafee Mcafee antivirus telephone number customer service Mcafee.com
+phone number Mcafee support contact number Mcafee phone support number customer
+service number for Mcafee antivirus Mcafee com support phone number Mcafee
+internet security phone number Mcafee phone number support Mcafee phone number
+customer support Mcafee contact support number Mcafee internet security
+customer service number Mcafee antivirus help number contact Mcafee antivirus
+customer service phone number Mcafee customer support number Mcafee service
+number Mcafee customer service telephone number telephone number for Mcafee
+antivirus customer service Mcafee hotline number Mcafee security help phone
+number Mcafee antivirus toll free number Mcafee account customer service phone
+number phone number for Mcafee antivirus support Mcafee symantec phone number
+Mcafee.com customer service phone number Mcafee 888 phone number Mcafee phone
+support number customer service number for Mcafee symantec Mcafee customer
+service phone number Mcafee internet security support phone number Mcafee
+helpline phone number Mcafee security customer services phone number Mcafee
+customer care phone number Mcafee 1888 support number Mcafee virus contact
+number phone number for Mcafee symantec Mcafee antivirus support telephone
+number Mcafee symantec support phone number Mcafee internet security contact
+phone number Mcafee virus phone number Mcafee internet security help phone
+number Mcafee renewal phone number telephone number for Mcafee security Mcafee
+1-888 number Mcafee antivirus 888 number Mcafee internet security contact
+number phone number Mcafee antivirus contact number for Mcafee security Mcafee
+antivirus customer service telephone number Mcafee help desk phone number
+Mcafee antivirus customer care number Mcafee security customer service number
+phone number to Mcafee antivirus Mcafee virus customer service phone number
+contact phone number for Mcafee internet security customer service Mcafee
+antivirus phone number Mcafee toll free number Mcafee customer service toll
+free number Mcafee utilities customer service phone number phone number for
+Mcafee by symantec Mcafee antivirus 1888 number Mcafee internet security tech
+support phone number Mcafee antivirus customer support telephone number Mcafee
+by symantec phone number Mcafee internet security telephone number Mcafee help
+desk number Mcafee customer service phone number usa Mcafee contact number
+Mcafee security number Mcafee renewal contact number Mcafee symantec customer
+service phone number Mcafee antivirus helpline number Mcafee protection phone
+number Mcafee computer security phone number telephone number for Mcafee
+antivirus Mcafee symantec contact number telephone number for Mcafee internet
+security Mcafee customer service number usa Mcafee antivirus number Mcafee
+software phone number Mcafee phone number Mcafee software contact number Mcafee
+contact number Mcafee antivirus contact number Mcafee internet contact number
+Mcafee internet security support number Mcafee internet phone number Mcafee
+symantec telephone number Mcafee contact number Mcafee technical support number
+usa Mcafee contact number Mcafee antivirus customer service phone number usa
+Mcafee internet security contact number Mcafee customer service phone number
+canada Mcafee anti virus phone number Mcafee phone number Mcafee phone number
+Mcafee customer service number Mcafee customer service phone number Mcafee
+telephone number Mcafee tech support number usa Mcafee security contact number
+Mcafee antivirus toll free number contact number for Mcafee internet security
+Mcafee antivirus phone number customer service us Mcafee customer service phone
+number Mcafee toll free number Mcafee support phone number usa Mcafee sales
+phone number Mcafee customer service phone number usa Mcafee phone number
+canada Mcafee phone number customer services Mcafee helpline number Mcafee
+antivirus contact number canada Mcafee phone number Mcafee antivirus customer
+service phone number us what is the phone number for Mcafee customer service
+Mcafee contact number Mcafee customer service phone number Mcafee support phone
+number usa Mcafee toll free number usa Mcafee contact phone number Mcafee
+antivirus phone number Mcafee antivirus customer service phone number Mcafee
+support phone number Mcafee support phone number canada Mcafee technical
+support phone number canada Mcafee abrasives phone number Mcafee security phone
+contact number Mcafee internet security customer service phone number Mcafee
+telephone number Mcafee canada phone number Mcafee security telephone number
+Mcafee antivirus contact number us Mcafee phone number Mcafee phone number
+Mcafee antivirus customer care number Mcafee customer service phone number
+canada Mcafee internet security number Mcafee software customer service number
+Mcafee internet security telephone number Mcafee anti virus contact number
+Mcafee virus protection phone number Mcafee virus protection contact number
+Mcafee antivirus phone number Mcafee antivirus help desk phone number Mcafee
+tech support phone number us Mcafee helpline phone number Mcafee internet
+security contact phone number Mcafee customer care number usa Mcafee antivirus
+contact number Mcafee customer support phone number canada Mcafee department
+number Mcafee antivirus contact number Mcafee antivirus customer service phone
+number canada Mcafee customer support number usa number for Mcafee antivirus
+Mcafee support number Mcafee support number Mcafee contact number Mcafee
+symantec phone number Mcafee contact number Mcafee contact number canada Mcafee
+antivirus toll free number usa Mcafee internet security contact phone number
+Mcafee contact number usa Mcafee antivirus canada contact phone number Mcafee
+support number usa Mcafee support phone number Mcafee customer care number
+Mcafee contact phone number Mcafee number Mcafee internet security toll free
+number phone number for Mcafee antivirus Mcafee cinema phone number Mcafee
+support number canada Mcafee number Mcafee support number Calling Mcafee
+Support(+(1-888-348-1766)))customer service phone number,Mcafee antivirus tech
+support number Mcafee customer service number 1888-348-1766 Mcafee call center
+1888-348-1766 Mcafee customer service email address 1888-348-1766 Mcafee
+customer care no 1888-348-1766 Mcafee antivirus technical support phone number
+1888-348-1766 Mcafee antivirus tech support phone number 1888-348-1766 Mcafee
+antivirus customer service phone number 1888-348-1766 Mcafee technical support
+phone number 1888-348-1766 symantec technical support phone number
+1888-348-1766 Mcafee technical support phone number 1888-348-1766 Mcafee
+customer service telephone number 1888-348-1766 ?Mcafee antivirus phone number
+1888-348-1766 Mcafee antivirus customer service phone number 1888-348-1766
+Mcafee antivirus customer service helpdesk Mcafee antivirus phone number
+1888-348-1766 Mcafee phone number cancel subscription 1888-348-1766 Mcafee
+technical support phone number 1888-348-1766 Mcafee 888 phone number
+1888-348-1766 Mcafee toll free customer care number sbi toll free customer care
+number Mcafee toll free customer care number toll free customer care number
+Mcafee toll free customer care number icici toll free customer care number
+flipkart toll free customer care number vodafone toll free customer care number
+Mcafee technical support phone number Mcafee technical support number Mcafee
+technical support number symantec technical support number Mcafee antivirus
+technical support number Mcafee locations Mcafee online support Mcafee helpdesk
+phone number Mcafee customer care Mcafee tech support phone number Mcafee tech
+support phone number Mcafee antivirus tech support phone number Mcafee
+locations Mcafee helpdesk phone number service Mcafee com Mcafee login Mcafee
+technical support phone number Mcafee customer service Mcafee helpdesk phone
+number Mcafee support telephone number Mcafee support phone number Mcafee
+antivirus support phone number Mcafee support phone number Mcafee locations
+Mcafee customer service Mcafee customer care Mcafee helpdesk phone number
+Mcafee customer support phone number Mcafee customer support phone number
+Mcafee antivirus customer support phone number Mcafee antivirus customer
+service phone number Mcafee antivirus technical support phone number Mcafee
+antivirus tech support phone number Mcafee antivirus phone number Mcafee
+security center phone number Mcafee support telephone number Mcafee technical
+support phone number symantec technical support phone number Mcafee tech
+support phone number apple technical support phone number usa microsoft
+technical support phone number usa Mcafee technical support phone number usa
+Mcafee technical support phone number usa lenovo technical support phone number
+usa epson technical support phone number usa Mcafee technical support phone
+number call Mcafee support chat with Mcafee support Mcafee customer support
+Mcafee antivirus customer service number Mcafee address Mcafee call center
+Mcafee helpline Mcafee helpdesk Mcafee support site Mcafee telephone number for
+customer support Mcafee customer service contact number Mcafee customer care
+Mcafee toll free number Mcafee security contact number contact Mcafee Mcafee
+headquarters Mcafee customer service chat Mcafee customer service telephone
+number Mcafee helpdesk phone number Mcafee customer support Mcafee customer
+service Mcafee login Mcafee locations Mcafee customer service number Mcafee
+locations Mcafee customer service email address Mcafee support site Mcafee
+technical support phone number Mcafee technical support live chat Mcafee
+technical support email address Mcafee technical support number Mcafee
+technical support number symantec technical support number Mcafee antivirus
+technical support number Mcafee customer support phone number Mcafee customer
+support number Mcafee customer support number Mcafee antivirus customer support
+number Mcafee locations Mcafee helpdesk phone number Mcafee support phone
+number Mcafee customer service helpdesk Mcafee technical support phone number
+Mcafee tech support phone number Mcafee tech support number Mcafee tech support
+number
+
 -- 
-2.5.5
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+You are receiving this mail because:
+You are watching the assignee of the bug.
