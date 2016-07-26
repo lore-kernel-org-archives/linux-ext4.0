@@ -1,203 +1,149 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 145361] New: 1-877-288-2779 ICLOUD TECH SUPPORT NUMBER ICLOUD
- HELP DESK NUMBER USA
-Date: Mon, 25 Jul 2016 16:27:28 +0000
-Message-ID: <bug-145361-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:47834 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752169AbcGYQ1b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Jul 2016 12:27:31 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id C71222054D
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2016 16:27:29 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 828B7203DB
-	for <linux-ext4@vger.kernel.org>; Mon, 25 Jul 2016 16:27:28 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 00/33] ext4: support of huge pages
+Date: Tue, 26 Jul 2016 03:35:02 +0300
+Message-ID: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>
+Return-path: <linux-block-owner@vger.kernel.org>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=145361
+Here's the first version of my patchset which intended to bring huge pages
+to ext4. It's not yet ready for applying or serious use, but good enough
+to show the approach.
 
-            Bug ID: 145361
-           Summary: 1-877-288-2779 ICLOUD TECH SUPPORT NUMBER ICLOUD HELP
-                    DESK NUMBER USA
-           Product: File System
-           Version: 2.5
-    Kernel Version: LINUX
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext2
-          Assignee: fs_ext2@kernel-bugs.osdl.org
-          Reporter: mark.gamma.a@gmail.com
-        Regression: No
+The basics are the same as with tmpfs[1] which is in -mm tree and ext4
+built on of it. The main difference is that we need to handle read out
+from and write-back to backing storage.
 
-Created attachment 226161
-  --> https://bugzilla.kernel.org/attachment.cgi?id=226161&action=edit
-1-877-288-2779 ICLOUD TECH SUPPORT NUMBER ICLOUD HELP DESK NUMBER USA
-Alphasoft.....MAIL$$ 1 877 288 2779:::ICLOUD MAIL technical support phone
-number++customer support number@@@@@@@@@ ICLOUD MAIL cus
+Head page links buffers for whole huge page. Dirty/writeback tracking
+happens on per-hugepage level.
 
-1-877-288-2779 ICLOUD TECH SUPPORT NUMBER ICLOUD HELP DESK NUMBER USA
-Alphasoft.....MAIL$$ 1 877 288 2779:::ICLOUD MAIL technical support phone
-number++customer support number@@@@@@@@@
-ICLOUD MAIL customer11-877- 288-2779 ICLOUD MAIL TECHNICAL SUPPORT HELPLINE
-PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER
-SUPPORT PHONE NUMBER11-877- 288-2779 ICLOUD MAIL TECHNICAL SUPPORT HELPLINE
-PHONE NUMBER CUSTOMER SUPPORT toll free
-NUMBER SUPPORT PHONE NUMBER11-877- 288-2779 ICLOUD MAIL TECHNICAL SUPPORT
-HELPLINE PHONE NUMBER CUSTOMER SUPPORT
-toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779 ICLOUD ICLOUD MAIL
-TECHNICAL SUPPORT HELPLINE PHONE NUMBER CUSTOMER
-SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779 ICLOUD MAIL
-TECHNICAL SUPPORT HELPLINE PHONE NUMBER
-CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779 ICLOUD
-MAIL TECHNICAL SUPPORT HELPLINE PHONE
-NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779
-ICLOUD MAIL TECHNICAL SUPPORT HELPLINE
-PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877-
-288-2779 ICLOUD MAIL TECHNICAL SUPPORT
-HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE
-NUMBER11-877- 288-2779 ICLOUD MAIL TECHNICAL
-SUPPORT HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE
-NUMBER11-877- 288-2779 ICLOUD MAIL
-TECHNICAL SUPPORT HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER
-SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD
-ICLOUD MAIL TECHNICAL SUPPORT HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll free
-NUMBER SUPPORT PHONE NUMBER11-877- 288-
-2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll
-free NUMBER SUPPORT PHONE NUMBER11-
-877-288- 2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE PHONE NUMBER CUSTOMER
-SUPPORT toll free NUMBER SUPPORT PHONE
-NUMBER11-877- 288-2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE PHONE NUMBER
-CUSTOMER SUPPORT toll free NUMBER SUPPORT
+We read out whole huge page at once. It required bumping BIO_MAX_PAGES to
+512 to get it work on x86-64, which is hack. I'm not sure how to handle it
+properly.
 
-ICLOUD PHONE NUMBER11-877- 288-2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE PHONE
-NUMBER CUSTOMER SUPPORT toll free NUMBER
-SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE
-PHONE NUMBER CUSTOMER SUPPORT toll free
-NUMBER SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD MAIL TECHNICAL SUPPORT
-HELPLINE PHONE NUMBER CUSTOMER SUPPORT
-toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD MAIL TECHNICAL
-SUPPORT HELPLINE PHONE NUMBER CUSTOMER
-SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD MAIL
-TECHNICAL SUPPORT HELPLINE PHONE NUMBER
-CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877- 288-2779ICLOUD
-MAIL TECHNICAL SUPPORT HELPLINE PHONE
-NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877-
-288-2779ICLOUD MAIL TECHNICAL SUPPORT HELPLINE
-PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER11-877-
-288-2779ICLOUD MAIL TECHNICAL SUPPORT
-HELPLINE PHONE NUMBER CUSTOMER SUPPORT toll free NUMBER SUPPORT PHONE NUMBER
-CANNON+MAIL+SUPPORT+NUMBER$$$$ 1-8-0-0-7-9-0-9-1-8-6~~ ~~## ICLOUD MAIL TECH
-SUPPORT NUMBER~~1-8-0-0-7-9-0-9-1-8-6~~+++
-((U.S.A))Call @@@++ USA 1-877- 288-2779 ICLOUD p.r.i.n.t.e.r t.e.c.h
-s.u.p.p.o.r.t p.h.o.n.e n.u.m.b.e.r u.s.a. C.a.l.l ICLOUD h.e.l.p d.e.s.k
-n.u.m.b.e.r n.u.m.b.e.r C.a.n.a.d.a ICLOUD s.u.p.p.o.r.t p.h.o.n.e n.u.m.b.r
-usa USA 1 1-877- 288-2779 ICLOUD p.r.i.n.t.e.r t.e.c.h s.u.p.p.o.r.t
-p.h.o.n.e n.u.m.b.e.r u.s.a. C.a.l.l ICLOUD h.e.l.p d.e.s.k n.u.m.b.e.r
-n.u.m.b.e.r C.a.n.a.d.a ICLOUD s.u.p.p.o.r.t p.h.o.n.e n.u.m.b.r usa canada 1-
-1877-288- 2288 USA, ICLOUD MAIL Tech Support phone number,ICLOUD technical
-support phone number 1 1-877- 288-2779 .ICLOUD Tech Support
-Number ICLOUD Tech ICLOUD tech support, ICLOUD tech support number, ICLOUD tech
-support phone number, ICLOUD technical support, ICLOUD technical support
-number, ICLOUD technical support phone number, ICLOUD tech support number,
-ICLOUD support number, ICLOUD Tech support phone number, ICLOUD support
-phone number, ICLOUD technical support phone number, ICLOUD technical support
-number,Support Phone Number for ICLOUD MAIL Phone Number for
-ICLOUD CustomerService Technical Support Telephone Number ICLOUD MAIL support
-number ICLOUD ICLOUD MAIL tech support number ICLOUD ICLOUD MAIL
-technical support number ICLOUD ICLOUD MAIL technical support phone number
-ICLOUD ICLOUD MAIL customer service number ICLOUD ICLOUD internet security
-technical support ICLOUD technical support phone number ICLOUD ICLOUD tech
-support phone number ICLOUD ICLOUD customer support phone number I-877- 288-
-2288 ICLOUD ICLOUD MAIL support phone number ICLOUD ICLOUD support phone ICLOUD
-tech support ICLOUD customer support ICLOUD phone support ICLOUD support
-number ICLOUD ICLOUD technical support ICLOUD MAIL customer support phone
-number ICLOUD ICLOUD MAIL tech support phone number ICLOUD contact ICLOUD
-support ICLOUD MAIL technical support phone number ~!~1-877- 288-2779++ ICLOUD
-ICLOUD phone number ICLOUD tech support ICLOUD support ticket ICLOUD
-customer support number ICLOUD ICLOUD tech support number ICLOUD ICLOUD
-technical support number ICLOUD ICLOUD support center ICLOUD telephone support
-call ICLOUD
-support ICLOUD MAIL support support ICLOUD ICLOUD billing support ICLOUD MAIL
-technical support number ICLOUD support ICLOUD MAIL ICLOUD online support
-ICLOUD
-contact support ICLOUD MAIL support number ICLOUD ICLOUD MAIL customer support
-number ICLOUD ICLOUD MAIL tech support number ICLOUD support for ICLOUD
-ICLOUD phone number ICLOUD ICLOUD customer service phone number ICLOUD ICLOUD
-contact phone number ICLOUD ICLOUD MAIL phone number ICLOUD ICLOUD MAIL
-customer service phone number ICLOUD phone number ICLOUD for ICLOUD customer
-service ICLOUD software phone number ICLOUD phone number ICLOUD for ICLOUD
-ICLOUD
-customer service telephone number ICLOUD ICLOUD helpline phone number ICLOUD
-ICLOUD contact number ICLOUD ICLOUD customer service number ICLOUD ICLOUD
-customer
-service phone number ~!~1-877- 288-2779++ ICLOUD us ICLOUD customer service
-phone number ICLOUD usa ICLOUD telephone number ICLOUD ICLOUD phone
-number ICLOUD usa ICLOUD MAIL contact number ICLOUD ICLOUD number ICLOUD ICLOUD
-contact number ICLOUD usa ICLOUD MAIL helpline number ICLOUD ICLOUD helpline
-number
-ICLOUD ICLOUD customer number ICLOUD ICLOUD MAIL customer service number ICLOUD
-ICLOUD contact telephone number ICLOUD contact number ICLOUD for ICLOUD ICLOUD
-software contact number ICLOUD ICLOUD toll free number ICLOUD ICLOUD telephone
-number ICLOUD uk ICLOUD registration number ICLOUD ICLOUD toll free number
-ICLOUD usa ICLOUD
-customer service ICLOUD software customer service contact ICLOUD customer
-service ICLOUD customer service phone ICLOUD MAIL customer service ICLOUD
-service ICLOUD MAIL technical support ICLOUD MAIL customer support ICLOUD
-technical support reviews telephone ICLOUD MAIL ICLOUD tech support phone
-number ICLOUD ICLOUD MAIL tech support phone number ICLOUD ICLOUD MAIL customer
-service ICLOUD technical support phone number ICLOUD ICLOUD MAIL free
-MAIL support ICLOUD customer service billing ICLOUD customer service email
-address ICLOUD customer service reviews contact ICLOUD customer service ICLOUD
-tech support number ICLOUD usa ICLOUD MAIL support number ICLOUD ICLOUD MAIL
-contact number ICLOUD ICLOUD customer service phone number ICLOUD ICLOUD
-technical support usa ICLOUD technical support number ICLOUD ICLOUD tech
-support phone ICLOUD tech support number ICLOUD ICLOUD customer service
-telephone
-number ICLOUD ICLOUD MAIL customer support number ICLOUD ICLOUD MAIL phone
-number ICLOUD ICLOUD MAIL online support ICLOUD customer service number ICLOUD
-ICLOUD tech support center ICLOUD customer service ICLOUD software customer
-service ICLOUD customer care number ICLOUD usa ICLOUD customer number ICLOUD
-ICLOUD
-customer support number ICLOUD ICLOUD customer care number ICLOUD ICLOUD
-customer care toll free number ICLOUD ICLOUD tech support ICLOUD technical
-support ICLOUD
-MAIL support ICLOUD MAIL tech support ICLOUD support center ICLOUD.com customer
-service ICLOUD MAIL customer care number ICLOUD ICLOUD customer care
-ICLOUD phone number ICLOUD phone number ICLOUD for ICLOUD customer service
-ICLOUD phone support ICLOUD phone number ICLOUD tech support ICLOUD support
-phone
-number ICLOUD contact ICLOUD by phone ICLOUD contact phone number ICLOUD ICLOUD
-helpline phone number ICLOUD ICLOUD MAIL phone ICLOUD MAIL for phone ICLOUD
-contact number ICLOUD ICLOUD contact support contact ICLOUD MAIL ICLOUD contact
-number ICLOUD usa ICLOUD toll free number ICLOUD ICLOUD telephone number ICLOUD
-ICLOUD
-toll free number ICLOUD usa ICLOUD MAIL support services technical support for
-MAIL ICLOUD ICLOUD customer service phone number ICLOUD usa ICLOUD MAIL
-customer care number ICLOUD usa ICLOUD customer care number ICLOUD ICLOUD
-customer care center ICLOUD customer support ICLOUD customer support phone
-ICLOUD
-customer help ICLOUD customer &amp; technical support ICLOUD customer portal
-ICLOUD customer care phone number ICLOUD usa ICLOUD customer care email ICLOUD
-helpline ICLOUD tech support contact ICLOUD customer care toll free ICLOUD MAIL
-customer service number ICLOUD ICLOUD MAIL protection norton MAIL
-customer service number ICLOUD ICLOUD software customer service number ICLOUD
-ICLOUD hotline customer service phone number ICLOUD ICLOUD customer service
-phone number ICLOUD us how to contact ICLOUD by email ICLOUD free phone support
-ICLOUD MAIL technical support number ICLOUD ICLOUD MAIL technical
-support help desk phone number ICLOUD ICLOUD technical support number ICLOUD
-toll free number ICLOUD ICLOUD MAIL customer support phone number ICLOUD ICLOUD
+Readahead doesn't play with huge pages well too: 128k max readahead window,
+assumption on page size, PageReadahead() to track hit/miss.
+I've got it to allocate huge pages, but it doesn't provide any readahead as
+such. I don't know how to do this right.
+
+Unlike tmpfs, ext4 makes use of tags in radix-tree. The approach I used
+for tmpfs -- 512 entries in radix-tree per-hugepages -- doesn't work well
+if we want to have coherent view on tags. So the first 8 patches of the
+patchset converts tmpfs to use multi-order entries in radix-tree.
+The same infrastructure used for ext4.
+
+Writeback works for simple cases, but xfstests manages to trigger BUG_ON()
+eventually. That's what I work on currently. My understanding of writeback
+process is still rather limited and any help would be appreciated.
+
+For now I try to make xfstests run smoothly on filesystem with huge=always
+and 4k block size. Once it will be done, I'll widen testing to 1k blocks,
+encryption and bigalloc.
+
+Any comments?
+
+[1] http://lkml.kernel.org/r/1465222029-45942-1-git-send-email-kirill.shutemov@linux.intel.com
+
+TODO:
+  - stabilize writeback;
+  - make ext4_move_extents() work with huge pages (split them?);
+  - check if memory reclaim process is adequate for huge pages with
+    backing storage (unnecessary split_huge_page() ?);
+  - handle shadow entries properly;
+  - encryption, 1k blocks, bigalloc, ...
+Kirill A. Shutemov (27):
+  mm, shmem: swich huge tmpfs to multi-order radix-tree entries
+  Revert "radix-tree: implement radix_tree_maybe_preload_order()"
+  page-flags: relax page flag poliry for PG_error and PG_writeback
+  mm, rmap: account file thp pages
+  thp: allow splitting non-shmem file-backed THPs
+  truncate: make sure invalidate_mapping_pages() can discard huge pages
+  filemap: allocate huge page in page_cache_read(), if allowed
+  filemap: handle huge pages in do_generic_file_read()
+  filemap: allocate huge page in pagecache_get_page(), if allowed
+  filemap: handle huge pages in filemap_fdatawait_range()
+  HACK: readahead: alloc huge pages, if allowed
+  HACK: block: bump BIO_MAX_PAGES
+  mm: make write_cache_pages() work on huge pages
+  thp: introduce hpage_size() and hpage_mask()
+  fs: make block_read_full_page() be able to read huge page
+  fs: make block_write_{begin,end}() be able to handle huge pages
+  fs: make block_page_mkwrite() aware about huge pages
+  truncate: make truncate_inode_pages_range() aware about huge pages
+  ext4: make ext4_mpage_readpages() hugepage-aware
+  ext4: make ext4_writepage() work on huge pages
+  ext4: handle huge pages in ext4_page_mkwrite()
+  ext4: handle huge pages in __ext4_block_zero_page_range()
+  ext4: handle huge pages in ext4_da_write_end()
+  ext4: relax assert in ext4_da_page_release_reservation()
+  WIP: ext4: handle writeback with huge pages
+  mm, fs, ext4: expand use of page_mapping() and page_to_pgoff()
+  ext4, vfs: add huge= mount option
+
+Matthew Wilcox (6):
+  tools: Add WARN_ON_ONCE
+  radix tree test suite: Allow GFP_ATOMIC allocations to fail
+  radix-tree: Add radix_tree_join
+  radix-tree: Add radix_tree_split
+  radix-tree: Add radix_tree_split_preload()
+  radix-tree: Handle multiorder entries being deleted by
+    replace_clear_tags
+
+ drivers/base/node.c                   |   6 +
+ fs/buffer.c                           |  89 ++++---
+ fs/ext4/ext4.h                        |   5 +
+ fs/ext4/inode.c                       | 106 +++++---
+ fs/ext4/page-io.c                     |  11 +-
+ fs/ext4/readpage.c                    |  38 ++-
+ fs/ext4/super.c                       |  19 ++
+ fs/proc/meminfo.c                     |   4 +
+ fs/proc/task_mmu.c                    |   5 +-
+ include/linux/bio.h                   |   2 +-
+ include/linux/buffer_head.h           |   9 +-
+ include/linux/fs.h                    |   5 +
+ include/linux/huge_mm.h               |  16 ++
+ include/linux/mm.h                    |   1 +
+ include/linux/mmzone.h                |   2 +
+ include/linux/page-flags.h            |   8 +-
+ include/linux/pagemap.h               |  22 +-
+ include/linux/radix-tree.h            |  10 +-
+ lib/radix-tree.c                      | 357 ++++++++++++++++++--------
+ mm/filemap.c                          | 458 +++++++++++++++++++++++-----------
+ mm/huge_memory.c                      |  51 +++-
+ mm/khugepaged.c                       |  26 +-
+ mm/memory.c                           |   4 +-
+ mm/page-writeback.c                   |  19 +-
+ mm/page_alloc.c                       |   5 +
+ mm/readahead.c                        |  16 +-
+ mm/rmap.c                             |  12 +-
+ mm/shmem.c                            |  36 +--
+ mm/truncate.c                         | 106 +++++++-
+ mm/vmstat.c                           |   2 +
+ tools/include/asm/bug.h               |  11 +
+ tools/testing/radix-tree/Makefile     |   2 +-
+ tools/testing/radix-tree/linux.c      |   7 +-
+ tools/testing/radix-tree/linux/bug.h  |   2 +-
+ tools/testing/radix-tree/linux/gfp.h  |  24 +-
+ tools/testing/radix-tree/linux/slab.h |   5 -
+ tools/testing/radix-tree/multiorder.c |  82 ++++++
+ tools/testing/radix-tree/test.h       |   9 +
+ 38 files changed, 1162 insertions(+), 430 deletions(-)
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.8.1
+
