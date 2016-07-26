@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 19/33] mm: make write_cache_pages() work on huge pages
-Date: Tue, 26 Jul 2016 03:35:21 +0300
-Message-ID: <1469493335-3622-20-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 12/33] truncate: make sure invalidate_mapping_pages() can discard huge pages
+Date: Tue, 26 Jul 2016 03:35:14 +0300
+Message-ID: <1469493335-3622-13-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,95 +25,44 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We writeback whole huge page a time. Let's adjust iteration this way.
+invalidate_inode_page() has expectation about page_count() of the page
+-- if it's not 2 (one to caller, one to radix-tree), it will not be
+dropped. That condition almost never met for THPs -- tail pages are
+pinned to the pagevec.
+
+Let's drop them, before calling invalidate_inode_page().
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/mm.h      |  1 +
- include/linux/pagemap.h |  1 +
- mm/page-writeback.c     | 17 ++++++++++++-----
- 3 files changed, 14 insertions(+), 5 deletions(-)
+ mm/truncate.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 08ed53eeedd5..b68d77912313 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1054,6 +1054,7 @@ struct address_space *page_file_mapping(struct page *page)
-  */
- static inline pgoff_t page_index(struct page *page)
- {
-+	page = compound_head(page);
- 	if (unlikely(PageSwapCache(page)))
- 		return page_private(page);
- 	return page->index;
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index d9cf4e0f35dc..24e14ef1cfe5 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -518,6 +518,7 @@ static inline void wait_on_page_locked(struct page *page)
-  */
- static inline void wait_on_page_writeback(struct page *page)
- {
-+	page = compound_head(page);
- 	if (PageWriteback(page))
- 		wait_on_page_bit(page, PG_writeback);
- }
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 573d138fa7a5..48409726d226 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2246,7 +2246,7 @@ retry:
- 			 * mapping. However, page->index will not change
- 			 * because we have a reference on the page.
- 			 */
--			if (page->index > end) {
-+			if (page_to_pgoff(page) > end) {
- 				/*
- 				 * can't be range_cyclic (1st pass) because
- 				 * end == -1 in that case.
-@@ -2255,7 +2255,12 @@ retry:
- 				break;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index a01cce450a26..ce904e4b1708 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -504,10 +504,21 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
+ 				/* 'end' is in the middle of THP */
+ 				if (index ==  round_down(end, HPAGE_PMD_NR))
+ 					continue;
++				/*
++				 * invalidate_inode_page() expects
++				 * page_count(page) == 2 to drop page from page
++				 * cache -- drop tail pages references.
++				 */
++				get_page(page);
++				pagevec_release(&pvec);
  			}
  
--			done_index = page->index;
-+			done_index = page_to_pgoff(page);
-+			if (PageTransCompound(page)) {
-+				index = round_up(index + 1, HPAGE_PMD_NR);
-+				i += HPAGE_PMD_NR -
-+					done_index % HPAGE_PMD_NR - 1;
-+			}
- 
- 			lock_page(page);
- 
-@@ -2267,7 +2272,7 @@ retry:
- 			 * even if there is now a new, dirty page at the same
- 			 * pagecache address.
- 			 */
--			if (unlikely(page->mapping != mapping)) {
-+			if (unlikely(page_mapping(page) != mapping)) {
- continue_unlock:
- 				unlock_page(page);
- 				continue;
-@@ -2305,7 +2310,8 @@ continue_unlock:
- 					 * not be suitable for data integrity
- 					 * writeout).
- 					 */
--					done_index = page->index + 1;
-+					done_index = compound_head(page)->index
-+						+ hpage_nr_pages(page);
- 					done = 1;
- 					break;
- 				}
-@@ -2317,7 +2323,8 @@ continue_unlock:
- 			 * keep going until we have written all the pages
- 			 * we tagged for writeback prior to entering this loop.
- 			 */
--			if (--wbc->nr_to_write <= 0 &&
-+			wbc->nr_to_write -= hpage_nr_pages(page);
-+			if (wbc->nr_to_write <= 0 &&
- 			    wbc->sync_mode == WB_SYNC_NONE) {
- 				done = 1;
- 				break;
+ 			ret = invalidate_inode_page(page);
+ 			unlock_page(page);
++
++			if (PageTransHuge(page))
++				put_page(page);
++
+ 			/*
+ 			 * Invalidation is a hint that the page is no longer
+ 			 * of interest and try to speed up its reclaim.
 -- 
 2.8.1
 
