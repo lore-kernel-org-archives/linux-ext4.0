@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 15/33] filemap: allocate huge page in pagecache_get_page(), if allowed
-Date: Tue, 26 Jul 2016 03:35:17 +0300
-Message-ID: <1469493335-3622-16-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 09/33] page-flags: relax page flag poliry for PG_error and PG_writeback
+Date: Tue, 26 Jul 2016 03:35:11 +0300
+Message-ID: <1469493335-3622-10-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,63 +25,37 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Write path allocate pages using pagecache_get_page(). We should be able
-to allocate huge pages there, if it's allowed. As usually, fallback to
-small pages, if failed.
+These flags are in use for filesystems with backing storage.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/filemap.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ include/linux/page-flags.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 566c7e6ca423..ad73b99c5ba7 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1274,13 +1274,16 @@ repeat:
+diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
+index 74e4dda91238..de90abb7c84e 100644
+--- a/include/linux/page-flags.h
++++ b/include/linux/page-flags.h
+@@ -253,7 +253,7 @@ static inline int TestClearPage##uname(struct page *page) { return 0; }
+ 	TESTSETFLAG_FALSE(uname) TESTCLEARFLAG_FALSE(uname)
  
- no_page:
- 	if (!page && (fgp_flags & FGP_CREAT)) {
-+		pgoff_t hoffset;
- 		int err;
- 		if ((fgp_flags & FGP_WRITE) && mapping_cap_account_dirty(mapping))
- 			gfp_mask |= __GFP_WRITE;
- 		if (fgp_flags & FGP_NOFS)
- 			gfp_mask &= ~__GFP_FS;
+ __PAGEFLAG(Locked, locked, PF_NO_TAIL)
+-PAGEFLAG(Error, error, PF_NO_COMPOUND) TESTCLEARFLAG(Error, error, PF_NO_COMPOUND)
++PAGEFLAG(Error, error, PF_NO_TAIL) TESTCLEARFLAG(Error, error, PF_NO_TAIL)
+ PAGEFLAG(Referenced, referenced, PF_HEAD)
+ 	TESTCLEARFLAG(Referenced, referenced, PF_HEAD)
+ 	__SETPAGEFLAG(Referenced, referenced, PF_HEAD)
+@@ -293,8 +293,8 @@ PAGEFLAG(OwnerPriv1, owner_priv_1, PF_ANY)
+  * Only test-and-set exist for PG_writeback.  The unconditional operators are
+  * risky: they bypass page accounting.
+  */
+-TESTPAGEFLAG(Writeback, writeback, PF_NO_COMPOUND)
+-	TESTSCFLAG(Writeback, writeback, PF_NO_COMPOUND)
++TESTPAGEFLAG(Writeback, writeback, PF_NO_TAIL)
++	TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
+ PAGEFLAG(MappedToDisk, mappedtodisk, PF_NO_TAIL)
  
--		page = __page_cache_alloc(gfp_mask);
-+		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
-+no_huge:	if (!page)
-+			page = __page_cache_alloc(gfp_mask);
- 		if (!page)
- 			return NULL;
- 
-@@ -1291,14 +1294,24 @@ no_page:
- 		if (fgp_flags & FGP_ACCESSED)
- 			__SetPageReferenced(page);
- 
--		err = add_to_page_cache_lru(page, mapping, offset,
-+		if (PageTransHuge(page))
-+			hoffset = round_down(offset, HPAGE_PMD_NR);
-+		else
-+			hoffset = offset;
-+
-+		err = add_to_page_cache_lru(page, mapping, hoffset,
- 				gfp_mask & GFP_RECLAIM_MASK);
- 		if (unlikely(err)) {
- 			put_page(page);
-+			if (PageTransHuge(page)) {
-+				page = NULL;
-+				goto no_huge;
-+			}
- 			page = NULL;
- 			if (err == -EEXIST)
- 				goto repeat;
- 		}
-+		page += offset - hoffset;
- 	}
- 
- 	return page;
+ /* PG_readahead is only used for reads; PG_reclaim is only for writes */
 -- 
 2.8.1
 
