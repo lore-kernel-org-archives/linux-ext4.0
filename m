@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 12/33] truncate: make sure invalidate_mapping_pages() can discard huge pages
-Date: Tue, 26 Jul 2016 03:35:14 +0300
-Message-ID: <1469493335-3622-13-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 27/33] ext4: handle huge pages in ext4_page_mkwrite()
+Date: Tue, 26 Jul 2016 03:35:29 +0300
+Message-ID: <1469493335-3622-28-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,44 +25,41 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-invalidate_inode_page() has expectation about page_count() of the page
--- if it's not 2 (one to caller, one to radix-tree), it will not be
-dropped. That condition almost never met for THPs -- tail pages are
-pinned to the pagevec.
-
-Let's drop them, before calling invalidate_inode_page().
+Trivial: remove assumption on page size.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/truncate.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/ext4/inode.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index a01cce450a26..ce904e4b1708 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -504,10 +504,21 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
- 				/* 'end' is in the middle of THP */
- 				if (index ==  round_down(end, HPAGE_PMD_NR))
- 					continue;
-+				/*
-+				 * invalidate_inode_page() expects
-+				 * page_count(page) == 2 to drop page from page
-+				 * cache -- drop tail pages references.
-+				 */
-+				get_page(page);
-+				pagevec_release(&pvec);
- 			}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f585f9160a96..45822097d8c2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5646,7 +5646,7 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
  
- 			ret = invalidate_inode_page(page);
- 			unlock_page(page);
+ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	loff_t size;
+ 	unsigned long len;
+ 	int ret;
+@@ -5682,10 +5682,10 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 		goto out;
+ 	}
+ 
+-	if (page->index == size >> PAGE_SHIFT)
+-		len = size & ~PAGE_MASK;
+-	else
+-		len = PAGE_SIZE;
++	len = hpage_size(page);
++	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
++		len = size & ~hpage_mask(page);
 +
-+			if (PageTransHuge(page))
-+				put_page(page);
-+
- 			/*
- 			 * Invalidation is a hint that the page is no longer
- 			 * of interest and try to speed up its reclaim.
+ 	/*
+ 	 * Return if we have all the buffers mapped. This avoids the need to do
+ 	 * journal_start/journal_stop which can block and take a long time
 -- 
 2.8.1
 
