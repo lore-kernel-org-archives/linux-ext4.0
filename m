@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 29/33] ext4: handle huge pages in ext4_da_write_end()
-Date: Tue, 26 Jul 2016 03:35:31 +0300
-Message-ID: <1469493335-3622-30-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 30/33] ext4: relax assert in ext4_da_page_release_reservation()
+Date: Tue, 26 Jul 2016 03:35:32 +0300
+Message-ID: <1469493335-3622-31-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,47 +25,27 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Call ext4_da_should_update_i_disksize() for head page with offset
-relative to head page.
+For huge pages 'stop' must be within HPAGE_PMD_SIZE.
+Let's use hpage_size() in the BUG_ON().
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3df2cea763ce..744bba046268 100644
+index 744bba046268..2e22f62f007b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2998,7 +2998,6 @@ static int ext4_da_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
--	unsigned long start, end;
- 	int write_mode = (int)(unsigned long)fsdata;
+@@ -1550,7 +1550,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	int num_clusters;
+ 	ext4_fsblk_t lblk;
  
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC)
-@@ -3006,8 +3005,6 @@ static int ext4_da_write_end(struct file *file,
- 				      len, copied, page, fsdata);
+-	BUG_ON(stop > PAGE_SIZE || stop < length);
++	BUG_ON(stop > hpage_size(page) || stop < length);
  
- 	trace_ext4_da_write_end(inode, pos, len, copied);
--	start = pos & (PAGE_SIZE - 1);
--	end = start + copied - 1;
- 
- 	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -3016,8 +3013,10 @@ static int ext4_da_write_end(struct file *file,
- 	 */
- 	new_i_size = pos + copied;
- 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
-+		struct page *head = compound_head(page);
-+		unsigned long end = (pos & ~hpage_mask(head)) + copied - 1;
- 		if (ext4_has_inline_data(inode) ||
--		    ext4_da_should_update_i_disksize(page, end)) {
-+		    ext4_da_should_update_i_disksize(head, end)) {
- 			ext4_update_i_disksize(inode, new_i_size);
- 			/* We need to mark inode dirty even if
- 			 * new_i_size is less that inode->i_size
+ 	head = page_buffers(page);
+ 	bh = head;
 -- 
 2.8.1
 
