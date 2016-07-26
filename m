@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 20/33] thp: introduce hpage_size() and hpage_mask()
-Date: Tue, 26 Jul 2016 03:35:22 +0300
-Message-ID: <1469493335-3622-21-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 11/33] thp: allow splitting non-shmem file-backed THPs
+Date: Tue, 26 Jul 2016 03:35:13 +0300
+Message-ID: <1469493335-3622-12-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,49 +25,26 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Introduce new helpers which return size/mask of the page:
-HPAGE_PMD_SIZE/HPAGE_PMD_MASK if the page is PageTransHuge() and
-PAGE_SIZE/PAGE_MASK otherwise.
+split_huge_page() is ready to handle file-backed huge pages, we only
+need to remove one guarding VM_BUG_ON_PAGE().
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/huge_mm.h | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ mm/huge_memory.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
-index 6f14de45b5ce..de2789b4402c 100644
---- a/include/linux/huge_mm.h
-+++ b/include/linux/huge_mm.h
-@@ -138,6 +138,20 @@ static inline int hpage_nr_pages(struct page *page)
- 	return 1;
- }
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index c1444a99a583..7f1271c38cb9 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -2004,7 +2004,6 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
  
-+static inline int hpage_size(struct page *page)
-+{
-+	if (unlikely(PageTransHuge(page)))
-+		return HPAGE_PMD_SIZE;
-+	return PAGE_SIZE;
-+}
-+
-+static inline unsigned long hpage_mask(struct page *page)
-+{
-+	if (unlikely(PageTransHuge(page)))
-+		return HPAGE_PMD_MASK;
-+	return PAGE_MASK;
-+}
-+
- extern int do_huge_pmd_numa_page(struct fault_env *fe, pmd_t orig_pmd);
+ 	VM_BUG_ON_PAGE(is_huge_zero_page(page), page);
+ 	VM_BUG_ON_PAGE(!PageLocked(page), page);
+-	VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
+ 	VM_BUG_ON_PAGE(!PageCompound(page), page);
  
- extern struct page *huge_zero_page;
-@@ -163,6 +177,8 @@ void put_huge_zero_page(void);
- #define HPAGE_PMD_SIZE ({ BUILD_BUG(); 0; })
- 
- #define hpage_nr_pages(x) 1
-+#define hpage_size(x) PAGE_SIZE
-+#define hpage_mask(x) PAGE_MASK
- 
- #define transparent_hugepage_enabled(__vma) 0
- 
+ 	if (PageAnon(head)) {
 -- 
 2.8.1
 
