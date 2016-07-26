@@ -1,34 +1,46 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Mon, 25 Jul 2016 21:55:06 -0700 (PDT)
-Message-ID: <alpine.DEB.2.20.12.1607252154570.8973@trent.utfs.org>
-References: <20160718105707.GA4253@sig21.net> <20160718133843.GA26664@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCHv1, RFC 00/33] ext4: support of huge pages
+Date: Tue, 26 Jul 2016 13:29:38 -0400
+Message-ID: <20160726172938.GA9284@thunk.org>
+References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Johannes Stezenbach <js@sig21.net>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from trent.utfs.org ([94.185.90.103]:34020 "EHLO trent.utfs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403AbcGZFFH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Jul 2016 01:05:07 -0400
-In-Reply-To: <20160718133843.GA26664@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 18 Jul 2016, Theodore Ts'o wrote:
-> system corruption detected earlier.  The problem is people
-> unfortunately run with their file systems set to errors=continue,
+On Tue, Jul 26, 2016 at 03:35:02AM +0300, Kirill A. Shutemov wrote:
+> Here's the first version of my patchset which intended to bring huge pages
+> to ext4. It's not yet ready for applying or serious use, but good enough
+> to show the approach.
 
-The first thing I do after creating an ext4 fs is to set this to 
-errors=remount-ro :-)
+Thanks.  The major issues I noticed when doing a quick scan of the
+patches you've already mentioned here.  I'll try to take a closer look
+in the next week or so when I have time.
 
-Isn't "remount-ro" was XFS is doing when it detects an error? Are
-there plans to switch the default for ext4 to that? I never understood why 
-errors=continue was the default, thanks for explaining that.
+One random question --- in the huge=always approach, how much
+additional work would be needed to support file systems with a 64k
+block size on a system with 4k pages?
 
-Christian.
--- 
-BOFH excuse #339:
+					- Ted
 
-manager in the cable duct
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
