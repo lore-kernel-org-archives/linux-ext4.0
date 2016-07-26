@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 09/33] page-flags: relax page flag poliry for PG_error and PG_writeback
-Date: Tue, 26 Jul 2016 03:35:11 +0300
-Message-ID: <1469493335-3622-10-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 33/33] ext4, vfs: add huge= mount option
+Date: Tue, 26 Jul 2016 03:35:35 +0300
+Message-ID: <1469493335-3622-34-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,37 +25,133 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-These flags are in use for filesystems with backing storage.
+The same four values as in tmpfs case.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/page-flags.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h  |  5 +++++
+ fs/ext4/inode.c | 26 +++++++++++++++++++++-----
+ fs/ext4/super.c | 19 +++++++++++++++++++
+ 3 files changed, 45 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index 74e4dda91238..de90abb7c84e 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -253,7 +253,7 @@ static inline int TestClearPage##uname(struct page *page) { return 0; }
- 	TESTSETFLAG_FALSE(uname) TESTCLEARFLAG_FALSE(uname)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ea31931386ec..feece2d1f646 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1123,6 +1123,11 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
++#define EXT4_MOUNT_HUGE_MODE		0x6000000 /* Huge support mode: */
++#define EXT4_MOUNT_HUGE_NEVER		0x0000000
++#define EXT4_MOUNT_HUGE_ALWAYS		0x2000000
++#define EXT4_MOUNT_HUGE_WITHIN_SIZE	0x4000000
++#define EXT4_MOUNT_HUGE_ADVISE		0x6000000
+ #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7c53e490849f..9219734fc7cd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4348,7 +4348,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ void ext4_set_inode_flags(struct inode *inode)
+ {
+ 	unsigned int flags = EXT4_I(inode)->i_flags;
+-	unsigned int new_fl = 0;
++	unsigned int mask, new_fl = 0;
  
- __PAGEFLAG(Locked, locked, PF_NO_TAIL)
--PAGEFLAG(Error, error, PF_NO_COMPOUND) TESTCLEARFLAG(Error, error, PF_NO_COMPOUND)
-+PAGEFLAG(Error, error, PF_NO_TAIL) TESTCLEARFLAG(Error, error, PF_NO_TAIL)
- PAGEFLAG(Referenced, referenced, PF_HEAD)
- 	TESTCLEARFLAG(Referenced, referenced, PF_HEAD)
- 	__SETPAGEFLAG(Referenced, referenced, PF_HEAD)
-@@ -293,8 +293,8 @@ PAGEFLAG(OwnerPriv1, owner_priv_1, PF_ANY)
-  * Only test-and-set exist for PG_writeback.  The unconditional operators are
-  * risky: they bypass page accounting.
-  */
--TESTPAGEFLAG(Writeback, writeback, PF_NO_COMPOUND)
--	TESTSCFLAG(Writeback, writeback, PF_NO_COMPOUND)
-+TESTPAGEFLAG(Writeback, writeback, PF_NO_TAIL)
-+	TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
- PAGEFLAG(MappedToDisk, mappedtodisk, PF_NO_TAIL)
+ 	if (flags & EXT4_SYNC_FL)
+ 		new_fl |= S_SYNC;
+@@ -4360,10 +4360,26 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+-		new_fl |= S_DAX;
+-	inode_set_flags(inode, new_fl,
+-			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
++	if (S_ISREG(inode->i_mode)) {
++		if (test_opt(inode->i_sb, DAX))
++			new_fl |= S_DAX;
++		switch (test_opt(inode->i_sb, HUGE_MODE)) {
++		case EXT4_MOUNT_HUGE_NEVER:
++			break;
++		case EXT4_MOUNT_HUGE_ALWAYS:
++			new_fl |= S_HUGE_ALWAYS;
++			break;
++		case EXT4_MOUNT_HUGE_WITHIN_SIZE:
++			new_fl |= S_HUGE_WITHIN_SIZE;
++			break;
++		case EXT4_MOUNT_HUGE_ADVISE:
++			new_fl |= S_HUGE_ADVISE;
++			break;
++		}
++	}
++	mask = S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME |
++		S_DIRSYNC | S_DAX | S_HUGE_MODE;
++	inode_set_flags(inode, new_fl, mask);
+ }
  
- /* PG_readahead is only used for reads; PG_reclaim is only for writes */
+ /* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1c593aa0218e..0c6ae81f6c1c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1275,6 +1275,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum,
++	Opt_huge_never, Opt_huge_always, Opt_huge_within_size, Opt_huge_advise,
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1354,6 +1355,10 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
+ 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
++	{Opt_huge_never, "huge=never"},
++	{Opt_huge_always, "huge=always"},
++	{Opt_huge_within_size, "huge=within_size"},
++	{Opt_huge_advise, "huge=advise"},
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+@@ -1472,6 +1477,11 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+ #define MOPT_NO_EXT3	0x0200
+ #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
+ #define MOPT_STRING	0x0400
++#ifdef CONFIG_TRANSPARENT_HUGE_PAGECACHE
++#define MOPT_HUGE	0x1000
++#else
++#define MOPT_HUGE	MOPT_NOSUPPORT
++#endif
+ 
+ static const struct mount_opts {
+ 	int	token;
+@@ -1556,6 +1566,10 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
++	{Opt_huge_never, EXT4_MOUNT_HUGE_NEVER, MOPT_HUGE},
++	{Opt_huge_always, EXT4_MOUNT_HUGE_ALWAYS, MOPT_HUGE},
++	{Opt_huge_within_size, EXT4_MOUNT_HUGE_WITHIN_SIZE, MOPT_HUGE},
++	{Opt_huge_advise, EXT4_MOUNT_HUGE_ADVISE, MOPT_HUGE},
+ 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
+ 	{Opt_err, 0, 0}
+ };
+@@ -1637,6 +1651,11 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		} else
+ 			return -1;
+ 	}
++	if (MOPT_HUGE != MOPT_NOSUPPORT && m->flags & MOPT_HUGE) {
++		sbi->s_mount_opt &= ~EXT4_MOUNT_HUGE_MODE;
++		sbi->s_mount_opt |= m->mount_opt;
++		return 1;
++	}
+ 	if (m->flags & MOPT_CLEAR_ERR)
+ 		clear_opt(sb, ERRORS_MASK);
+ 	if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
 -- 
 2.8.1
 
