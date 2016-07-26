@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv1, RFC 30/33] ext4: relax assert in ext4_da_page_release_reservation()
-Date: Tue, 26 Jul 2016 03:35:32 +0300
-Message-ID: <1469493335-3622-31-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv1, RFC 15/33] filemap: allocate huge page in pagecache_get_page(), if allowed
+Date: Tue, 26 Jul 2016 03:35:17 +0300
+Message-ID: <1469493335-3622-16-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,27 +25,63 @@ In-Reply-To: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages 'stop' must be within HPAGE_PMD_SIZE.
-Let's use hpage_size() in the BUG_ON().
+Write path allocate pages using pagecache_get_page(). We should be able
+to allocate huge pages there, if it's allowed. As usually, fallback to
+small pages, if failed.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/filemap.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 744bba046268..2e22f62f007b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1550,7 +1550,7 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	int num_clusters;
- 	ext4_fsblk_t lblk;
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 566c7e6ca423..ad73b99c5ba7 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1274,13 +1274,16 @@ repeat:
  
--	BUG_ON(stop > PAGE_SIZE || stop < length);
-+	BUG_ON(stop > hpage_size(page) || stop < length);
+ no_page:
+ 	if (!page && (fgp_flags & FGP_CREAT)) {
++		pgoff_t hoffset;
+ 		int err;
+ 		if ((fgp_flags & FGP_WRITE) && mapping_cap_account_dirty(mapping))
+ 			gfp_mask |= __GFP_WRITE;
+ 		if (fgp_flags & FGP_NOFS)
+ 			gfp_mask &= ~__GFP_FS;
  
- 	head = page_buffers(page);
- 	bh = head;
+-		page = __page_cache_alloc(gfp_mask);
++		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
++no_huge:	if (!page)
++			page = __page_cache_alloc(gfp_mask);
+ 		if (!page)
+ 			return NULL;
+ 
+@@ -1291,14 +1294,24 @@ no_page:
+ 		if (fgp_flags & FGP_ACCESSED)
+ 			__SetPageReferenced(page);
+ 
+-		err = add_to_page_cache_lru(page, mapping, offset,
++		if (PageTransHuge(page))
++			hoffset = round_down(offset, HPAGE_PMD_NR);
++		else
++			hoffset = offset;
++
++		err = add_to_page_cache_lru(page, mapping, hoffset,
+ 				gfp_mask & GFP_RECLAIM_MASK);
+ 		if (unlikely(err)) {
+ 			put_page(page);
++			if (PageTransHuge(page)) {
++				page = NULL;
++				goto no_huge;
++			}
+ 			page = NULL;
+ 			if (err == -EEXIST)
+ 				goto repeat;
+ 		}
++		page += offset - hoffset;
+ 	}
+ 
+ 	return page;
 -- 
 2.8.1
 
