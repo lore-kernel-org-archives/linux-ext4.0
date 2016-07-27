@@ -1,130 +1,119 @@
-From: Kaho Ng <ngkaho1234@gmail.com>
-Subject: [PATCH] ext4: remove old feature helpers
-Date: Thu, 28 Jul 2016 01:51:40 +0800
-Message-ID: <20160727175140.15742-1-ngkaho1234@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Kaho Ng <ngkaho1234@gmail.com>
-To: tytso@mit.edu
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Wed, 27 Jul 2016 15:10:39 -0600
+Message-ID: <20160727211039.GA20278@linux.intel.com>
+References: <20160727120745.GI6860@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:35695 "EHLO
-	mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757190AbcG0RwJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2016 13:52:09 -0400
-Received: by mail-pf0-f193.google.com with SMTP id h186so2181524pfg.2
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2016 10:52:08 -0700 (PDT)
+Received: from mga09.intel.com ([134.134.136.24]:56753 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751817AbcG0VLM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2016 17:11:12 -0400
+Content-Disposition: inline
+In-Reply-To: <20160727120745.GI6860@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use the ext4_{has,set,clear}_feature_* helpers to replace the old
-feature helpers.
+On Wed, Jul 27, 2016 at 02:07:45PM +0200, Jan Kara wrote:
+> Hi,
+> 
+> when testing my latest changes to DXA fault handling code I have hit the
+> following interesting race between the fault and write path (I'll show
+> function names for ext4 but xfs has the same issue AFAICT).
+> 
+> We have a file 'f' which has a hole at offset 0.
+> 
+> Process 0				Process 1
+> 
+> data = mmap('f');
+> read data[0]
+>   -> fault, we map a hole page
+> 
+> 					pwrite('f', buf, len, 0)
+> 					  -> ext4_file_write_iter
+> 					    inode_lock(inode);
+> 					    __generic_file_write_iter()
+> 					      generic_file_direct_write()
+> 						invalidate_inode_pages2_range()
+> 						  - drops hole page from
+> 						    the radix tree
+> 						ext4_direct_IO()
+> 						  dax_do_io()
+> 						    - allocates block for
+> 						      offset 0
+> data[0] = 1
+>   -> page_mkwrite fault
+>     -> ext4_dax_fault()
+>       down_read(&EXT4_I(inode)->i_mmap_sem);
+>       __dax_fault()
+> 	grab_mapping_entry()
+> 	  - creates locked radix tree entry
+> 	- maps block into PTE
+> 	put_locked_mapping_entry()
+> 
+> 						invalidate_inode_pages2_range()
+> 						  - removes dax entry from
+> 						    the radix tree
+> 
+> So we have just lost information that block 0 is mapped and needs flushing
+> caches.
+> 
+> Also the fact that the consistency of data as viewed by mmap and
+> dax_do_io() relies on invalidate_inode_pages2_range() is somewhat
+> unexpected to me and we should document it somewhere.
+> 
+> The question is how to best fix this. I see three options:
+> 
+> 1) Lock out faults during writes via exclusive i_mmap_sem. That is rather
+> harsh but should work - we call filemap_write_and_wait() in
+> generic_file_direct_write() so we flush out all caches for the relevant
+> area before dropping radix tree entries.
+> 
+> 2) Call filemap_write_and_wait() after we return from ->direct_IO before we
+> call invalidate_inode_pages2_range() and hold i_mmap_sem exclusively only
+> for those two calls. Lock hold time will be shorter than 1) but it will
+> require additional flush and we'd probably have to stop using
+> generic_file_direct_write() for DAX writes to allow for all this special
+> hackery.
+> 
+> 3) Remodel dax_do_io() to work more like buffered IO and use radix tree
+> entry locks to protect against similar races. That has likely better
+> scalability than 1) but may be actually slower in the uncontended case (due
+> to all the radix tree operations).
+> 
+> Any opinions on this?
 
-Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
----
- fs/ext4/ext4.h   | 20 --------------------
- fs/ext4/ialloc.c |  2 +-
- fs/ext4/inode.c  |  7 +++----
- fs/ext4/ioctl.c  |  6 ++----
- 4 files changed, 6 insertions(+), 29 deletions(-)
+Can we just skip the two calls to invalidate_inode_pages2_range() in
+generic_file_direct_write() for DAX I/O?
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931..81a298c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1636,26 +1636,6 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
-  * Feature set definitions
-  */
- 
--/* Use the ext4_{has,set,clear}_feature_* helpers; these will be removed */
--#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
--	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
--#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
--	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
--#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
--	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
--#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
--#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
--#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
--#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
--#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
--#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
--	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
--
- #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
- #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
- #define EXT4_FEATURE_COMPAT_HAS_JOURNAL		0x0004
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9e66cd1..170421e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -802,7 +802,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	} else
- 		inode_init_owner(inode, dir, mode);
- 
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-+	if (ext4_has_feature_project(sb) &&
- 	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
- 		ei->i_projid = EXT4_I(dir)->i_projid;
- 	else
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3131747..3265dc8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4414,7 +4414,7 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
- 
- int ext4_get_projid(struct inode *inode, kprojid_t *projid)
- {
--	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
-+	if (!ext4_has_feature_project(inode->i_sb))
- 		return -EOPNOTSUPP;
- 	*projid = EXT4_I(inode)->i_projid;
- 	return 0;
-@@ -4481,7 +4481,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
- 	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
- 	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
--	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-+	if (ext4_has_feature_project(sb) &&
- 	    EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
- 	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
- 		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
-@@ -4885,8 +4885,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 		}
- 	}
- 
--	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
--			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-+	BUG_ON(!ext4_has_feature_project(inode->i_sb) &&
- 	       i_projid != EXT4_DEF_PROJID);
- 
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 10686fd..ef4430b 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -310,8 +310,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
- 	struct ext4_inode *raw_inode;
- 	struct dquot *transfer_to[MAXQUOTAS] = { };
- 
--	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
--			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+	if (!ext4_has_feature_project(sb)) {
- 		if (projid != EXT4_DEF_PROJID)
- 			return -EOPNOTSUPP;
- 		else
-@@ -842,8 +841,7 @@ resizefs_out:
- 		ext4_get_inode_flags(ei);
- 		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
- 
--		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
--				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		if (ext4_has_feature_project(inode->i_sb)) {
- 			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
- 				EXT4_I(inode)->i_projid);
- 		}
--- 
-2.9.0
+These calls are there for the direct I/O path because for direct I/O there is
+a failure scenario where we have clean pages in the page cache which are stale
+compared to the newly written data on media.  If we read from these clean
+pages instead of reading from media, we get data corruption.
 
+This failure case doesn't exist for DAX - we don't care if there are radix
+tree entries for the data region that the ->direct_IO() call is about to
+write.
+
+Similarly, for DAX I don't think we actually need to do the
+filemap_write_and_wait_range() call in generic_file_direct_write() either.
+It's a similar scenario - for direct I/O we are trying to make sure that any
+dirty data in the page cache is written out to media before the ->direct_IO()
+call happens.  For DAX I don't think we care.  If a user does an mmap() write
+which creates a dirty radix tree entry, then does a write(), we should be able
+to happily overwrite the old data with the new without flushing, and just
+leave the dirty radix tree entry in place.
+
+I realize this adds even more special case DAX code to mm/filemap.c, but if we
+can avoid the race without adding any more locking (and by simplifying our
+logic), it seems like it's worth it to me.
+
+Does this break in some way I'm not seeing?
+
+- Ross
