@@ -1,139 +1,101 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Thu, 28 Jul 2016 08:19:49 +1000
-Message-ID: <20160727221949.GU16044@dastard>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com>
+Subject: Re: [4.7-rc6 ext3 corruption] ext4_mb_generate_buddy:758: group 27,
+ block bitmap and bg descriptor inconsistent:
+Date: Thu, 28 Jul 2016 09:57:28 +1000
+Message-ID: <20160727235728.GV16044@dastard>
+References: <20160712054137.GI1922@dastard>
+ <20160727154843.GB1659@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-nvdimm@lists.01.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:64224 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758277AbcG0X5d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2016 19:57:33 -0400
 Content-Disposition: inline
-In-Reply-To: <20160727211039.GA20278@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160727154843.GB1659@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 27, 2016 at 03:10:39PM -0600, Ross Zwisler wrote:
-> On Wed, Jul 27, 2016 at 02:07:45PM +0200, Jan Kara wrote:
-> > Hi,
-> > 
-> > when testing my latest changes to DXA fault handling code I have hit the
-> > following interesting race between the fault and write path (I'll show
-> > function names for ext4 but xfs has the same issue AFAICT).
-
-The XFS update I just pushed to Linus contains a rework of the XFS
-DAX IO path. It no longer shares the XFS direct IO path, so it
-doesn't contain any of the direct IO warts anymore.
-
-> > We have a file 'f' which has a hole at offset 0.
-> > 
-> > Process 0				Process 1
-> > 
-> > data = mmap('f');
-> > read data[0]
-> >   -> fault, we map a hole page
-> > 
-> > 					pwrite('f', buf, len, 0)
-> > 					  -> ext4_file_write_iter
-> > 					    inode_lock(inode);
-> > 					    __generic_file_write_iter()
-> > 					      generic_file_direct_write()
-> > 						invalidate_inode_pages2_range()
-> > 						  - drops hole page from
-> > 						    the radix tree
-> > 						ext4_direct_IO()
-> > 						  dax_do_io()
-> > 						    - allocates block for
-> > 						      offset 0
-> > data[0] = 1
-> >   -> page_mkwrite fault
-> >     -> ext4_dax_fault()
-> >       down_read(&EXT4_I(inode)->i_mmap_sem);
-> >       __dax_fault()
-> > 	grab_mapping_entry()
-> > 	  - creates locked radix tree entry
-> > 	- maps block into PTE
-> > 	put_locked_mapping_entry()
-> > 
-> > 						invalidate_inode_pages2_range()
-> > 						  - removes dax entry from
-> > 						    the radix tree
-
-In XFS, we don't call __generic_file_write_iter or
-generic_file_direct_write(), and xfs_file_dax_write() does not have
-this trailing call to invalidate_inode_pages2_range() anymore. It's
-DAX - there's nothing to invalidate, right?
-
-So I think Christoph just (accidentally) removed this race condition
-from XFS....
-
-> > So we have just lost information that block 0 is mapped and needs flushing
-> > caches.
-> > 
-> > Also the fact that the consistency of data as viewed by mmap and
-> > dax_do_io() relies on invalidate_inode_pages2_range() is somewhat
-> > unexpected to me and we should document it somewhere.
-
-I don't think it does - what, in DAX, is incoherent? If anything,
-it's the data in the direct IO buffer, not the view the mmap will
-see. i.e. the post-write invalidate is to ensure that applications
-that have mmapped the file see the data written by direct IO. That's
-not necessary with DAX.
-
-> > The question is how to best fix this. I see three options:
-> > 
-> > 1) Lock out faults during writes via exclusive i_mmap_sem. That is rather
-> > harsh but should work - we call filemap_write_and_wait() in
-> > generic_file_direct_write() so we flush out all caches for the relevant
-> > area before dropping radix tree entries.
-
-We don't call filemap_write_and_wait() in xfs_file_dax_write()
-anymore, either. It's DAX - we don't need to flush anything to read
-the correct data, and there's nothing cached that becomes stale when
-we overwrite the destination memory.
-
-[snip]
-
-> > Any opinions on this?
+On Wed, Jul 27, 2016 at 05:48:43PM +0200, Jan Kara wrote:
+> Hi!
 > 
-> Can we just skip the two calls to invalidate_inode_pages2_range() in
-> generic_file_direct_write() for DAX I/O?
+> On Tue 12-07-16 15:41:37, Dave Chinner wrote:
+> > Just rebooted a 4.7-rc6 test VM, and the root filesystem had the
+> > journal abort a couple of seconds after mount while the system was
+> > still booting:
+> > 
+> > [    3.043543] EXT4-fs (sda1): mounting ext3 file system using the ext4 subsystem
+> > [    3.045027] EXT4-fs (sda1): INFO: recovery required on readonly filesystem
+> > [    3.046008] EXT4-fs (sda1): write access will be enabled during recovery
+> > [    3.120052] EXT4-fs (sda1): recovery complete
+> > [    3.121746] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
+> > [    3.122778] VFS: Mounted root (ext3 filesystem) readonly on device 8:1.
+> > .....
+> > [    5.263329] EXT4-fs error (device sda1): ext4_mb_generate_buddy:758: group 27, block bitmap and bg descriptor inconsistent: 4197 vs 4196 free clusters
+> > [    5.266343] Aborting journal on device sda1-8.
+> > [    5.267939] EXT4-fs (sda1): Remounting filesystem read-only
+> > [    5.269129] EXT4-fs error (device sda1) in ext4_free_blocks:4904: Journal has aborted
+> > [    5.271431] EXT4-fs error (device sda1) in ext4_do_update_inode:4891: Journal has aborted
+> > [    5.273720] EXT4-fs error (device sda1) in ext4_truncate:4150: IO failure
+> > [    5.275917] EXT4-fs error (device sda1) in ext4_orphan_del:2923: Journal has aborted
+> > [    5.278325] EXT4-fs error (device sda1) in ext4_do_update_inode:4891: Journal has aborted
+> > 
+> > The root filesystem checked clean three reboots before this
+> > occurred. e2fsck output on ro mounted fs:
+> > 
+> > # e2fsck /dev/sda1
+> > e2fsck 1.43-WIP (18-May-2015)
+> > /dev/sda1: recovering journal
+> > Superblock last mount time is in the future.
+> >         (by less than a day, probably due to the hardware clock being incorrectly set)
+> > /dev/sda1 contains a file system with errors, check forced.
+> > Pass 1: Checking inodes, blocks, and sizes
+> > Pass 2: Checking directory structure
+> > Pass 3: Checking directory connectivity
+> > Pass 4: Checking reference counts
+> > Pass 5: Checking group summary information
+> > Free blocks count wrong (542319, counted=546517).
+> > Fix<y>? yes
+> > Inode bitmap differences:  -219131
+> > Fix<y>? yes
+> > Free inodes count wrong for group #27 (6720, counted=6721).
+> > Fix<y>? yes
+> > Directories count wrong for group #27 (9, counted=8).
+> > Fix<y>? yes
+> > Free inodes count wrong (341015, counted=341018).
+> > Fix<y>? yes
+> > 
+> > /dev/sda1: ***** FILE SYSTEM WAS MODIFIED *****
+> > /dev/sda1: ***** REBOOT LINUX *****
+> > /dev/sda1: 283606/624624 files (3.1% non-contiguous), 1949574/2496091 blocks
+> > #
+> 
+> Hum, interesting. So 'Free blocks count wrong' and 'Free inodes count
+> wrong' messages are harmless - those entries and updated only
+> opportunistically and on mount and generally do not have to match on live
+> filesystem. The other three errors regarding inode and directory count are
+> a fallout from aborted inode deletion. Most importantly there is *no
+> problem* whatsoever with block bitmaps. So it was either some memory glitch
+> (bitflip in the counter or the bitmap) or there is some race and bb_free
+> can get out of sync with the bitmap and I don't see how that could happen
+> especially so early after mount... Strange.
 
-The first invalidate is still there in XFS. The comment above it
-in the new XFS code says:
+Don't think bitflips from memory glitches are likely - the VM is
+running on a machine with ECC ram. Some other kernel memory
+corruption that affects the page cache also seems unlikely, because
+it onyl happened after hanging the kernel hard due to XFS failures
+on other filesystems and storage devices and having to effectively
+"cold reboot" the VM from the qemu console (oops in a kworker thread
+is now a Real Bad Thing to do to the system, it appears).
 
-	/*
-	 * Yes, even DAX files can have page cache attached to them:  A zeroed
-	 * page is inserted into the pagecache when we have to serve a write
-	 * fault on a hole.  It should never be dirtied and can simply be
-	 * dropped from the pagecache once we get real data for the page.
-	 */
-	if (mapping->nrpages) {
-		ret = invalidate_inode_pages2(mapping);
-		WARN_ON_ONCE(ret);
-	}
-
-
-> Similarly, for DAX I don't think we actually need to do the
-> filemap_write_and_wait_range() call in generic_file_direct_write() either.
-> It's a similar scenario - for direct I/O we are trying to make sure that any
-> dirty data in the page cache is written out to media before the ->direct_IO()
-> call happens.  For DAX I don't think we care.  If a user does an mmap() write
-> which creates a dirty radix tree entry, then does a write(), we should be able
-> to happily overwrite the old data with the new without flushing, and just
-> leave the dirty radix tree entry in place.
-
-Yup, that's pretty much how XFS treats DAX now - it's not direct IO,
-but it's not buffered IO, either...
-
-I don't think there's a problem that needs to be fixed in the DAX
-code - the issue is all about the surrounding IO context. i.e
-whether do_dax_io() is automatically coherent with mmap or not
-because mmap directly exposes the CPU cache coherent memory
-do_dax_io() modifies.
+It is strange that these showed up around 4.7-rc4, and the last I
+wacky hang-cold reboot-ext3 in bad state issue I encountered was in
+4.7-rc6. I haven't seen problems since, but that's not to say
+they've gone away...
 
 Cheers,
 
