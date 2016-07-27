@@ -1,75 +1,130 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
-Date: Wed, 27 Jul 2016 17:56:08 +0200
-Message-ID: <20160727155608.GC1659@quack2.suse.cz>
-References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
- <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
- <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
- <20160712164324.GC11020@thunk.org>
- <CAMj5BkgTycMbfQpUVAV17ahYT1sGm6w3YDtpz0E--vN=tF55xA@mail.gmail.com>
- <CAMj5BkicJhB1Bk6q_ZT_nMKSPWf1XEGchtnGnMPFy=O_0x91hA@mail.gmail.com>
- <CAMj5BkifLL=3C5f0VZKhpNmi81em8P5VNupr7d7_aD=uo2Hwow@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Nicholas Bellinger <nab@linux-iscsi.org>, kvm@vger.kernel.org,
-	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	virtualization@lists.linux-foundation.org
-To: Zhangfei Gao <zhangfei.gao@gmail.com>
+From: Kaho Ng <ngkaho1234@gmail.com>
+Subject: [PATCH] ext4: remove old feature helpers
+Date: Thu, 28 Jul 2016 01:51:40 +0800
+Message-ID: <20160727175140.15742-1-ngkaho1234@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Kaho Ng <ngkaho1234@gmail.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54042 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753296AbcG0P4N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Jul 2016 11:56:13 -0400
-Content-Disposition: inline
-In-Reply-To: <CAMj5BkifLL=3C5f0VZKhpNmi81em8P5VNupr7d7_aD=uo2Hwow@mail.gmail.com>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:35695 "EHLO
+	mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757190AbcG0RwJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jul 2016 13:52:09 -0400
+Received: by mail-pf0-f193.google.com with SMTP id h186so2181524pfg.2
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Jul 2016 10:52:08 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Use the ext4_{has,set,clear}_feature_* helpers to replace the old
+feature helpers.
 
-On Wed 27-07-16 15:58:55, Zhangfei Gao wrote:
-> Hi, Michael
-> 
-> I have met ext4 error when using vhost_scsi on arm64 platform, and
-> suspect it is vhost_scsi issue.
-> 
-> Ext4 error when testing virtio_scsi & vhost_scsi
-> 
-> 
-> No issue:
-> 1. virtio_scsi, ext4
-> 2. vhost_scsi & virtio_scsi, ext2
-> 3.  Instead of vhost, also tried loopback and no problem.
-> Using loopback, host can use the new block device, while vhost is used
-> by guest (qemu).
-> http://www.linux-iscsi.org/wiki/Tcm_loop
-> Test directly in host, not find ext4 error.
-> 
-> 
-> 
-> Have issue:
-> 1. vhost_scsi & virtio_scsi, ext4
-> a. iblock
-> b, fileio, file located in /tmp (ram), no device based.
-> 
-> 2, Have tried 4.7-r2 and 4.5-rc1 on D02 board, both have issue.
-> Since I need kvm specific patch for D02, so it may not freely to switch
-> to older version.
-> 
-> 3. Also test with ext4, disabling journal
-> mkfs.ext4 -O ^has_journal /dev/sda
-> 
-> 
-> Do you have any suggestion?
+Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
+---
+ fs/ext4/ext4.h   | 20 --------------------
+ fs/ext4/ialloc.c |  2 +-
+ fs/ext4/inode.c  |  7 +++----
+ fs/ext4/ioctl.c  |  6 ++----
+ 4 files changed, 6 insertions(+), 29 deletions(-)
 
-So can you mount the filesystem with errors=remount-ro to avoid clobbering
-the fs after the problem happens? And then run e2fsck on the problematic
-filesystem and send the output here?
-
-								Honza
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ea31931..81a298c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1636,26 +1636,6 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+  * Feature set definitions
+  */
+ 
+-/* Use the ext4_{has,set,clear}_feature_* helpers; these will be removed */
+-#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+-#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+-	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+-#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
+-#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
+-#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
+-#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
+-	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
+-
+ #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+ #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+ #define EXT4_FEATURE_COMPAT_HAS_JOURNAL		0x0004
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9e66cd1..170421e 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -802,7 +802,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	} else
+ 		inode_init_owner(inode, dir, mode);
+ 
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
++	if (ext4_has_feature_project(sb) &&
+ 	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
+ 		ei->i_projid = EXT4_I(dir)->i_projid;
+ 	else
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3131747..3265dc8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4414,7 +4414,7 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
+ 
+ int ext4_get_projid(struct inode *inode, kprojid_t *projid)
+ {
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
++	if (!ext4_has_feature_project(inode->i_sb))
+ 		return -EOPNOTSUPP;
+ 	*projid = EXT4_I(inode)->i_projid;
+ 	return 0;
+@@ -4481,7 +4481,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+ 	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+ 	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
++	if (ext4_has_feature_project(sb) &&
+ 	    EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+ 	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
+ 		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
+@@ -4885,8 +4885,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		}
+ 	}
+ 
+-	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
++	BUG_ON(!ext4_has_feature_project(inode->i_sb) &&
+ 	       i_projid != EXT4_DEF_PROJID);
+ 
+ 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 10686fd..ef4430b 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -310,8 +310,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	struct ext4_inode *raw_inode;
+ 	struct dquot *transfer_to[MAXQUOTAS] = { };
+ 
+-	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+-			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++	if (!ext4_has_feature_project(sb)) {
+ 		if (projid != EXT4_DEF_PROJID)
+ 			return -EOPNOTSUPP;
+ 		else
+@@ -842,8 +841,7 @@ resizefs_out:
+ 		ext4_get_inode_flags(ei);
+ 		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
+ 
+-		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+-				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++		if (ext4_has_feature_project(inode->i_sb)) {
+ 			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
+ 				EXT4_I(inode)->i_projid);
+ 		}
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.9.0
+
