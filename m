@@ -1,63 +1,87 @@
-From: Andrea Arcangeli <aarcange@redhat.com>
-Subject: Re: [PATCHv1, RFC 00/33] ext4: support of huge pages
-Date: Wed, 27 Jul 2016 16:09:38 +0200
-Message-ID: <20160727140938.lsvn6c7pwbodkeio@redhat.com>
-References: <1469493335-3622-1-git-send-email-kirill.shutemov@linux.intel.com>
- <20160726172938.GA9284@thunk.org>
- <20160726191212.GA11776@node.shutemov.name>
- <20160727091723.GG6860@quack2.suse.cz>
- <20160727103335.GE11776@node.shutemov.name>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [4.7-rc6 ext3 corruption] ext4_mb_generate_buddy:758: group 27,
+ block bitmap and bg descriptor inconsistent:
+Date: Wed, 27 Jul 2016 17:48:43 +0200
+Message-ID: <20160727154843.GB1659@quack2.suse.cz>
+References: <20160712054137.GI1922@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-Return-path: <linux-block-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:53514 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751918AbcG0Psq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Jul 2016 11:48:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20160727103335.GE11776@node.shutemov.name>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160712054137.GI1922@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Hi!
 
-On Wed, Jul 27, 2016 at 01:33:35PM +0300, Kirill A. Shutemov wrote:
-> I guess you can get work 64k blocks with 4k pages if you *always* allocate
-> order-4 pages for page cache of the filesystem. But I don't think it's
-> sustainable. It's significant pressure on buddy allocator and compaction.
+On Tue 12-07-16 15:41:37, Dave Chinner wrote:
+> Just rebooted a 4.7-rc6 test VM, and the root filesystem had the
+> journal abort a couple of seconds after mount while the system was
+> still booting:
+> 
+> [    3.043543] EXT4-fs (sda1): mounting ext3 file system using the ext4 subsystem
+> [    3.045027] EXT4-fs (sda1): INFO: recovery required on readonly filesystem
+> [    3.046008] EXT4-fs (sda1): write access will be enabled during recovery
+> [    3.120052] EXT4-fs (sda1): recovery complete
+> [    3.121746] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
+> [    3.122778] VFS: Mounted root (ext3 filesystem) readonly on device 8:1.
+> .....
+> [    5.263329] EXT4-fs error (device sda1): ext4_mb_generate_buddy:758: group 27, block bitmap and bg descriptor inconsistent: 4197 vs 4196 free clusters
+> [    5.266343] Aborting journal on device sda1-8.
+> [    5.267939] EXT4-fs (sda1): Remounting filesystem read-only
+> [    5.269129] EXT4-fs error (device sda1) in ext4_free_blocks:4904: Journal has aborted
+> [    5.271431] EXT4-fs error (device sda1) in ext4_do_update_inode:4891: Journal has aborted
+> [    5.273720] EXT4-fs error (device sda1) in ext4_truncate:4150: IO failure
+> [    5.275917] EXT4-fs error (device sda1) in ext4_orphan_del:2923: Journal has aborted
+> [    5.278325] EXT4-fs error (device sda1) in ext4_do_update_inode:4891: Journal has aborted
+> 
+> The root filesystem checked clean three reboots before this
+> occurred. e2fsck output on ro mounted fs:
+> 
+> # e2fsck /dev/sda1
+> e2fsck 1.43-WIP (18-May-2015)
+> /dev/sda1: recovering journal
+> Superblock last mount time is in the future.
+>         (by less than a day, probably due to the hardware clock being incorrectly set)
+> /dev/sda1 contains a file system with errors, check forced.
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Free blocks count wrong (542319, counted=546517).
+> Fix<y>? yes
+> Inode bitmap differences:  -219131
+> Fix<y>? yes
+> Free inodes count wrong for group #27 (6720, counted=6721).
+> Fix<y>? yes
+> Directories count wrong for group #27 (9, counted=8).
+> Fix<y>? yes
+> Free inodes count wrong (341015, counted=341018).
+> Fix<y>? yes
+> 
+> /dev/sda1: ***** FILE SYSTEM WAS MODIFIED *****
+> /dev/sda1: ***** REBOOT LINUX *****
+> /dev/sda1: 283606/624624 files (3.1% non-contiguous), 1949574/2496091 blocks
+> #
 
-Agreed.
+Hum, interesting. So 'Free blocks count wrong' and 'Free inodes count
+wrong' messages are harmless - those entries and updated only
+opportunistically and on mount and generally do not have to match on live
+filesystem. The other three errors regarding inode and directory count are
+a fallout from aborted inode deletion. Most importantly there is *no
+problem* whatsoever with block bitmaps. So it was either some memory glitch
+(bitflip in the counter or the bitmap) or there is some race and bb_free
+can get out of sync with the bitmap and I don't see how that could happen
+especially so early after mount... Strange.
 
-To guarantee compaction to succeed for a certain percentage of the RAM
-kernelcore= would need to be used, but the bigger the movable zone is,
-the bigger the imbalance will be, because the memory used by the
-kernel cannot use the RAM that is in the movable zone. If the movable
-zone is too big, early OOM failures may materialize where the kernel
-hits OOM despite there's plenty of free memory in the movable zone.
-So it's not ideal.
-
-> I guess the right approach would a mechanism to scatter one block to
-> multiple order-0 pages. At least for fallback.
-
-That would be ideal to avoid having to mess with kernelcore=, because
-no matter what direct compaction does (and current direction
-compaction defaults wouldn't be aggressive enough anyway), without
-kernelcore= the THP (or order4) allocation can fail at times.
-
-THP always requires a fallback so that a compaction failure isn't
-fatal and it can actually be fixed up later by khugepaged as more free
-memory becomes available at runtime.
-
-Thanks,
-Andrea
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
