@@ -1,54 +1,87 @@
-From: Johannes Stezenbach <js@sig21.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Wed, 27 Jul 2016 13:58:43 +0200
-Message-ID: <20160727115843.GA23786@sig21.net>
-References: <20160718105707.GA4253@sig21.net>
- <20160718133843.GA26664@thunk.org>
- <20160718141723.GA8809@sig21.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Subtle races between DAX mmap fault and write path
+Date: Wed, 27 Jul 2016 14:07:45 +0200
+Message-ID: <20160727120745.GI6860@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+	xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dan Williams <dan.j.williams@intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160718141723.GA8809@sig21.net>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 18, 2016 at 04:17:23PM +0200, Johannes Stezenbach wrote:
-> On Mon, Jul 18, 2016 at 09:38:43AM -0400, Theodore Ts'o wrote:
-> > On Mon, Jul 18, 2016 at 12:57:07PM +0200, Johannes Stezenbach wrote:
-> > > 
-> > > I'm running 4.7.0-rc7 with ext4 on lvm on dm-crypt on SSD
-> > > and out of the blue on idle machine the following error
-> > > message appeared:
-> > > 
-> > > [373851.683131] EXT4-fs (dm-3): error count since last fsck: 1
-> > > [373851.683151] EXT4-fs (dm-3): initial error at time 1468438194: dx_probe:740: inode 22288562
-> > > [373851.683158] EXT4-fs (dm-3): last error at time 1468438194: dx_probe:740: inode 22288562
-> > > 
-> > > inode 22288562 is a directory with ~800 small files in it,
-> > > but AFAICT nothing was accessing it, no cron job running etc.
-> > > No further error message was logged.  Accessing the directory
-> > > and the files in it also gives no further errors.
+Hi,
 
-FWIW, now with 4.7.0 and errors=remount-ro it just happened again
-during git update (actually "repo sync -ld" of AOSP/cm
-repository).  Again a directory with 321 small files.
-ls on ro fs after the error listed the directory without problems.
-Fsck fixed wrong inode and wrong free block count.
-ls after fsck still listed the directory and "git status"
-reported it as clean.
+when testing my latest changes to DXA fault handling code I have hit the
+following interesting race between the fault and write path (I'll show
+function names for ext4 but xfs has the same issue AFAICT).
 
-[72173.126740] EXT4-fs error (device dm-3): dx_probe:740: inode #12327817: comm git: Directory index failed checksum
-[72173.131346] Aborting journal on device dm-3-8.
-[72173.135884] EXT4-fs (dm-3): Remounting filesystem read-only
+We have a file 'f' which has a hole at offset 0.
 
-Since I upgraded the RAM from 4G to 8G not long ago I
-suspect it could be the root of the issue, although
-this RAM was taken from another machine (which I had
-upgraded from 4G to 12G and now downgraded to 8G) where it
-worked for ~2 years, also with AOSP stuff.  Sigh...
+Process 0				Process 1
 
+data = mmap('f');
+read data[0]
+  -> fault, we map a hole page
 
-Johannes
+					pwrite('f', buf, len, 0)
+					  -> ext4_file_write_iter
+					    inode_lock(inode);
+					    __generic_file_write_iter()
+					      generic_file_direct_write()
+						invalidate_inode_pages2_range()
+						  - drops hole page from
+						    the radix tree
+						ext4_direct_IO()
+						  dax_do_io()
+						    - allocates block for
+						      offset 0
+data[0] = 1
+  -> page_mkwrite fault
+    -> ext4_dax_fault()
+      down_read(&EXT4_I(inode)->i_mmap_sem);
+      __dax_fault()
+	grab_mapping_entry()
+	  - creates locked radix tree entry
+	- maps block into PTE
+	put_locked_mapping_entry()
+
+						invalidate_inode_pages2_range()
+						  - removes dax entry from
+						    the radix tree
+
+So we have just lost information that block 0 is mapped and needs flushing
+caches.
+
+Also the fact that the consistency of data as viewed by mmap and
+dax_do_io() relies on invalidate_inode_pages2_range() is somewhat
+unexpected to me and we should document it somewhere.
+
+The question is how to best fix this. I see three options:
+
+1) Lock out faults during writes via exclusive i_mmap_sem. That is rather
+harsh but should work - we call filemap_write_and_wait() in
+generic_file_direct_write() so we flush out all caches for the relevant
+area before dropping radix tree entries.
+
+2) Call filemap_write_and_wait() after we return from ->direct_IO before we
+call invalidate_inode_pages2_range() and hold i_mmap_sem exclusively only
+for those two calls. Lock hold time will be shorter than 1) but it will
+require additional flush and we'd probably have to stop using
+generic_file_direct_write() for DAX writes to allow for all this special
+hackery.
+
+3) Remodel dax_do_io() to work more like buffered IO and use radix tree
+entry locks to protect against similar races. That has likely better
+scalability than 1) but may be actually slower in the uncontended case (due
+to all the radix tree operations).
+
+Any opinions on this?
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
