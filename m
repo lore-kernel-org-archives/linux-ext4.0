@@ -1,195 +1,163 @@
-From: Zhangfei Gao <zhangfei.gao@gmail.com>
-Subject: Re: ext4 error when testing virtio-scsi & vhost-scsi
-Date: Thu, 28 Jul 2016 09:29:35 +0800
-Message-ID: <CAMj5BkgqYq4feie3HVpp673JyFq+SEXRn2YiaO=v_v9RqW_pBw@mail.gmail.com>
-References: <CAMj5BkiVGQ4dAUY+wi-+O4qRdVS6YPiUP2BpsiE5y0r+2AhLgw@mail.gmail.com>
- <CAMj5BkiKC2m3PLHvoDWwyj9BQZ-Bg5mD0f1J0kZcpwroH+rR1g@mail.gmail.com>
- <CAMj5BkgSXjD+_GB_VPgizowyyJ1uYxLiKd7ehQmEdVvnuY55cA@mail.gmail.com>
- <20160712164324.GC11020@thunk.org> <CAMj5BkgTycMbfQpUVAV17ahYT1sGm6w3YDtpz0E--vN=tF55xA@mail.gmail.com>
- <CAMj5BkicJhB1Bk6q_ZT_nMKSPWf1XEGchtnGnMPFy=O_0x91hA@mail.gmail.com>
- <CAMj5BkifLL=3C5f0VZKhpNmi81em8P5VNupr7d7_aD=uo2Hwow@mail.gmail.com> <20160727155608.GC1659@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Thu, 28 Jul 2016 10:10:33 +0200
+Message-ID: <20160728081033.GC4094@quack2.suse.cz>
+References: <20160727120745.GI6860@quack2.suse.cz>
+ <20160727211039.GA20278@linux.intel.com>
+ <20160727221949.GU16044@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Nicholas Bellinger <nab@linux-iscsi.org>, kvm@vger.kernel.org,
-	qemu-devel@nongnu.org, target-devel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	virtualization@lists.linux-foundation.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <kvm-owner@vger.kernel.org>
-In-Reply-To: <20160727155608.GC1659@quack2.suse.cz>
-Sender: kvm-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20160727221949.GU16044@dastard>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hi, Jan
+On Thu 28-07-16 08:19:49, Dave Chinner wrote:
+> On Wed, Jul 27, 2016 at 03:10:39PM -0600, Ross Zwisler wrote:
+> > On Wed, Jul 27, 2016 at 02:07:45PM +0200, Jan Kara wrote:
+> > > Hi,
+> > > 
+> > > when testing my latest changes to DXA fault handling code I have hit the
+> > > following interesting race between the fault and write path (I'll show
+> > > function names for ext4 but xfs has the same issue AFAICT).
+> 
+> The XFS update I just pushed to Linus contains a rework of the XFS
+> DAX IO path. It no longer shares the XFS direct IO path, so it
+> doesn't contain any of the direct IO warts anymore.
 
-On Wed, Jul 27, 2016 at 11:56 PM, Jan Kara <jack@suse.cz> wrote:
-> Hi!
->
-> On Wed 27-07-16 15:58:55, Zhangfei Gao wrote:
->> Hi, Michael
->>
->> I have met ext4 error when using vhost_scsi on arm64 platform, and
->> suspect it is vhost_scsi issue.
->>
->> Ext4 error when testing virtio_scsi & vhost_scsi
->>
->>
->> No issue:
->> 1. virtio_scsi, ext4
->> 2. vhost_scsi & virtio_scsi, ext2
->> 3.  Instead of vhost, also tried loopback and no problem.
->> Using loopback, host can use the new block device, while vhost is used
->> by guest (qemu).
->> http://www.linux-iscsi.org/wiki/Tcm_loop
->> Test directly in host, not find ext4 error.
->>
->>
->>
->> Have issue:
->> 1. vhost_scsi & virtio_scsi, ext4
->> a. iblock
->> b, fileio, file located in /tmp (ram), no device based.
->>
->> 2, Have tried 4.7-r2 and 4.5-rc1 on D02 board, both have issue.
->> Since I need kvm specific patch for D02, so it may not freely to switch
->> to older version.
->>
->> 3. Also test with ext4, disabling journal
->> mkfs.ext4 -O ^has_journal /dev/sda
->>
->>
->> Do you have any suggestion?
->
-> So can you mount the filesystem with errors=remount-ro to avoid clobbering
-> the fs after the problem happens? And then run e2fsck on the problematic
-> filesystem and send the output here?
->
+Ah, OK. I knew Christoph rewrote it but forgot to check your tree when
+looking into this bug.
 
-Tested twice, log pasted.
-Both using fileio, located in host ramfs /tmp
-Before e2fsck, umount /dev/sda
+> > > We have a file 'f' which has a hole at offset 0.
+> > > 
+> > > Process 0				Process 1
+> > > 
+> > > data = mmap('f');
+> > > read data[0]
+> > >   -> fault, we map a hole page
+> > > 
+> > > 					pwrite('f', buf, len, 0)
+> > > 					  -> ext4_file_write_iter
+> > > 					    inode_lock(inode);
+> > > 					    __generic_file_write_iter()
+> > > 					      generic_file_direct_write()
+> > > 						invalidate_inode_pages2_range()
+> > > 						  - drops hole page from
+> > > 						    the radix tree
+> > > 						ext4_direct_IO()
+> > > 						  dax_do_io()
+> > > 						    - allocates block for
+> > > 						      offset 0
+> > > data[0] = 1
+> > >   -> page_mkwrite fault
+> > >     -> ext4_dax_fault()
+> > >       down_read(&EXT4_I(inode)->i_mmap_sem);
+> > >       __dax_fault()
+> > > 	grab_mapping_entry()
+> > > 	  - creates locked radix tree entry
+> > > 	- maps block into PTE
+> > > 	put_locked_mapping_entry()
+> > > 
+> > > 						invalidate_inode_pages2_range()
+> > > 						  - removes dax entry from
+> > > 						    the radix tree
+> 
+> In XFS, we don't call __generic_file_write_iter or
+> generic_file_direct_write(), and xfs_file_dax_write() does not have
+> this trailing call to invalidate_inode_pages2_range() anymore. It's
+> DAX - there's nothing to invalidate, right?
+> 
+> So I think Christoph just (accidentally) removed this race condition
+> from XFS....
 
-1.
-root@(none)$ mount -o errors=remount-ro /dev/sda /mnt
-[   22.812053] EXT4-fs (sda): mounted filesystem with ordered data
-mode. Opts: errors=remount-ro
-$ rm /mnt/test
-[  108.388905] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[  108.406930] Aborting journal on device sda-8.
-[  108.414120] EXT4-fs (sda): Remounting filesystem read-only
-[  108.414847] EXT4-fs error (device sda) in ext4_dirty_inode:5487: IO failure
-[  108.423571] EXT4-fs error (device sda) in ext4_free_blocks:4904:
-Journal has aborted
-[  108.431919] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[  108.440269] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[  108.448568] EXT4-fs error (device sda) in
-ext4_ext_remove_space:3058: IO failure
-[  108.456917] EXT4-fs error (device sda) in ext4_ext_truncate:4657:
-Corrupt filesystem
-[  108.465267] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[  108.473567] EXT4-fs error (device sda) in ext4_truncate:4150: IO failure
-[  108.481917] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-root@(none)$ e2fsck /dev/sda
-e2fsck 1.42.9 (28-Dec-2013)
-/dev/sda is mounted.
-e2fsck: Cannot continue, aborting.
+So with current XFS code what prevents the following:
 
+Process 0				Process 1
 
-root@(none)$ umount /mnt
-[  260.756250] EXT4-fs error (device sda): ext4_put_super:837:
-Couldn't clean up the journal
-root@(none)$ umount /mnt           e2fsck /dev/sda
-e2fsck 1.42.9 (28-Dec-2013)
-ext2fs_open2: Bad magic number in super-block
-e2fsck: Superblock invalid, trying backup blocks...
-Superblock needs_recovery flag is clear, but journal has data.
-Recovery flag not set in backup superblock, so running journal anyway.
-/dev/sda: recovering journal
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong for group #1 (32703, counted=8127).
-Fix<y>? yes
-Free blocks count wrong for group #2 (32768, counted=31744).
-Fix<y>? yes
-Free blocks count wrong (249509, counted=223909).
-Fix<y>? yes
-Free inodes count wrong for group #0 (8181, counted=8180).
-Fix<y>? yes
-Free inodes count wrong (65525, counted=65524).
-Fix<y>? yes
+data = mmap('f');
+					pwrite('f', buf, len, 0)
+					  -> xfs_file_dax_write
+					    xfs_rw_ilock(ip, XFS_IOLOCK_EXCL);
+					    invalidate_inode_pages2()
+					      - drops hole page from the
+					        radix tree
+					    xfs_rw_ilock_demote(ip, XFS_IOLOCK_EXCL);
+read data[0]
+  -> fault
+    -> xfs_filemap_fault
+      xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+      dax_fault()
+	- installs hole in the radix tree and PTE
 
-/dev/sda: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/sda: 12/65536 files (8.3% non-contiguous), 38235/262144 blocks
-root@(none)$
+					    dax_do_io()
+					      - allocates block for offset 0
 
-2.
+And now Process 0 doesn't see the data Process 1 has written until fault on
+that address is triggered again for some reason.
 
- root@(none)$ rm /mnt/test
-[   71.021484] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[   71.044959] Aborting journal on device sda-8.
-[   71.052152] EXT4-fs (sda): Remounting filesystem read-only
-[   71.052833] EXT4-fs error (device sda) in ext4_dirty_inode:5487: IO failure
-[   71.061600] EXT4-fs error (device sda) in ext4_free_blocks:4904:
-Journal has aborted
-[   71.069948] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[   71.078296] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[   71.086597] EXT4-fs error (device sda) in
-ext4_ext_remove_space:3058: IO failure
-[   71.094946] EXT4-fs error (device sda) in ext4_ext_truncate:4657:
-Corrupt filesystem
-[   71.103296] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-[   71.111595] EXT4-fs error (device sda) in ext4_truncate:4150: IO failure
-[   71.119946] EXT4-fs error (device sda) in
-ext4_reserve_inode_write:5362: Corrupt filesystem
-root@(none)$ e2fsck /dev/sda
-e2fsck 1.42.9 (28-Dec-2013)
-/dev/sda is mounted.
-e2fsck: Cannot continue, aborting.
+Heck, looking at the code in xfs_file_dax_write() you call
+invalidate_inode_pages2() which clears the *whole* radix tree. So you have
+just lost the dirtiness information for the whole file and thus fsync(2)
+will not flush any data written via mmap.
 
+> > > So we have just lost information that block 0 is mapped and needs flushing
+> > > caches.
+> > > 
+> > > Also the fact that the consistency of data as viewed by mmap and
+> > > dax_do_io() relies on invalidate_inode_pages2_range() is somewhat
+> > > unexpected to me and we should document it somewhere.
+> 
+> I don't think it does - what, in DAX, is incoherent? If anything,
+> it's the data in the direct IO buffer, not the view the mmap will
+> see. i.e. the post-write invalidate is to ensure that applications
+> that have mmapped the file see the data written by direct IO. That's
+> not necessary with DAX.
 
-root@(none)$ umou nt /mnt/
-[   92.103221] EXT4-fs error (device sda): ext4_put_super:837:
-Couldn't clean up the journal
-root@(none)$ umount /mnt/            e2fsck /dev/sda
-e2fsck 1.42.9 (28-Dec-2013)
-ext2fs_open2: Bad magic number in super-block
-e2fsck: Superblock invalid, trying backup blocks...
-Superblock needs_recovery flag is clear, but journal has data.
-Recovery flag not set in backup superblock, so running journal anyway.
-/dev/sda: recovering journal
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong for group #1 (32703, counted=8127).
-Fix<y>? yes
-Free blocks count wrong for group #2 (32768, counted=31744).
-Fix<y>? yes
-Free blocks count wrong (249509, counted=223909).
-Fix<y>? yes
-Free inodes count wrong for group #0 (8181, counted=8180).
-Fix<y>? yes
-Free inodes count wrong (65525, counted=65524).
-Fix<y>? yes
+The coherency issues are very similar to direct IO because of hole pages.
+Generally we need to maintain coherency between what is pointed to from page
+tables and what is really backing file data (as viewed by inode's extent
+tree). So whenever block allocation / deallocation happens for the file, we
+may need to update page tables which map this offset as well. For
+deallocation (truncate, punch hole, ...) we take care of this under
+protection of MMAPLOCK so things are fine. For allocation we currently
+don't use this serialization mechanism.
 
-/dev/sda: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/sda: 12/65536 files (8.3% non-contiguous), 38235/262144 blocks
-root@(none)$
+> > > The question is how to best fix this. I see three options:
+> > > 
+> > > 1) Lock out faults during writes via exclusive i_mmap_sem. That is rather
+> > > harsh but should work - we call filemap_write_and_wait() in
+> > > generic_file_direct_write() so we flush out all caches for the relevant
+> > > area before dropping radix tree entries.
+> 
+> We don't call filemap_write_and_wait() in xfs_file_dax_write()
+> anymore, either. It's DAX - we don't need to flush anything to read
+> the correct data, and there's nothing cached that becomes stale when
+> we overwrite the destination memory.
 
+So DAX doesn't need flushing to maintain consistent view of the data but it
+does need flushing to make sure fsync(2) results in data written via mmap
+to reach persistent storage. Look at the following example: Assume you
+write via mmap to offsets 0-1023 in the page and via write(2) to offsets
+1024-2048 in the page. Then after write(2) you still may have data in
+volatile caches for the page for offsets 0-1023. So your write(2) either
+has to keep the corresponding entry in the radix tree dirty (and currently
+XFS's call to invalidate_inode_pages2() in xfs_file_dax_write() doesn't do
+this) or you have to flush the page via filemap_write_and_wait().
 
-Thanks
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
