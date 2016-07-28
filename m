@@ -1,130 +1,96 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Thu, 28 Jul 2016 10:47:54 +0200
-Message-ID: <20160728084754.GD4094@quack2.suse.cz>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-nvdimm@lists.01.org, xfs@oss.sgi.com,
-	linux-ext4@vger.kernel.org, Dan Williams <dan.j.williams@intel.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20160727211039.GA20278@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "George Spelvin" <linux@sciencehorizons.net>
+Subject: badblocks(8) bug with 3-byte and random patterns
+Date: 28 Jul 2016 07:23:13 -0400
+Message-ID: <20160728112313.21399.qmail@ns.sciencehorizons.net>
+Cc: jack@suse.cz, linux@sciencehorizons.net
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns.sciencehorizons.net ([71.41.210.147]:18375 "HELO
+	ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757236AbcG1LXP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jul 2016 07:23:15 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 27-07-16 15:10:39, Ross Zwisler wrote:
-> On Wed, Jul 27, 2016 at 02:07:45PM +0200, Jan Kara wrote:
-> > Hi,
-> > 
-> > when testing my latest changes to DXA fault handling code I have hit the
-> > following interesting race between the fault and write path (I'll show
-> > function names for ext4 but xfs has the same issue AFAICT).
-> > 
-> > We have a file 'f' which has a hole at offset 0.
-> > 
-> > Process 0				Process 1
-> > 
-> > data = mmap('f');
-> > read data[0]
-> >   -> fault, we map a hole page
-> > 
-> > 					pwrite('f', buf, len, 0)
-> > 					  -> ext4_file_write_iter
-> > 					    inode_lock(inode);
-> > 					    __generic_file_write_iter()
-> > 					      generic_file_direct_write()
-> > 						invalidate_inode_pages2_range()
-> > 						  - drops hole page from
-> > 						    the radix tree
-> > 						ext4_direct_IO()
-> > 						  dax_do_io()
-> > 						    - allocates block for
-> > 						      offset 0
-> > data[0] = 1
-> >   -> page_mkwrite fault
-> >     -> ext4_dax_fault()
-> >       down_read(&EXT4_I(inode)->i_mmap_sem);
-> >       __dax_fault()
-> > 	grab_mapping_entry()
-> > 	  - creates locked radix tree entry
-> > 	- maps block into PTE
-> > 	put_locked_mapping_entry()
-> > 
-> > 						invalidate_inode_pages2_range()
-> > 						  - removes dax entry from
-> > 						    the radix tree
-> > 
-> > So we have just lost information that block 0 is mapped and needs flushing
-> > caches.
-> > 
-> > Also the fact that the consistency of data as viewed by mmap and
-> > dax_do_io() relies on invalidate_inode_pages2_range() is somewhat
-> > unexpected to me and we should document it somewhere.
-> > 
-> > The question is how to best fix this. I see three options:
-> > 
-> > 1) Lock out faults during writes via exclusive i_mmap_sem. That is rather
-> > harsh but should work - we call filemap_write_and_wait() in
-> > generic_file_direct_write() so we flush out all caches for the relevant
-> > area before dropping radix tree entries.
-> > 
-> > 2) Call filemap_write_and_wait() after we return from ->direct_IO before we
-> > call invalidate_inode_pages2_range() and hold i_mmap_sem exclusively only
-> > for those two calls. Lock hold time will be shorter than 1) but it will
-> > require additional flush and we'd probably have to stop using
-> > generic_file_direct_write() for DAX writes to allow for all this special
-> > hackery.
-> > 
-> > 3) Remodel dax_do_io() to work more like buffered IO and use radix tree
-> > entry locks to protect against similar races. That has likely better
-> > scalability than 1) but may be actually slower in the uncontended case (due
-> > to all the radix tree operations).
-> > 
-> > Any opinions on this?
-> 
-> Can we just skip the two calls to invalidate_inode_pages2_range() in
-> generic_file_direct_write() for DAX I/O?
-> 
-> These calls are there for the direct I/O path because for direct I/O there is
-> a failure scenario where we have clean pages in the page cache which are stale
-> compared to the newly written data on media.  If we read from these clean
-> pages instead of reading from media, we get data corruption.
-> 
-> This failure case doesn't exist for DAX - we don't care if there are radix
-> tree entries for the data region that the ->direct_IO() call is about to
-> write.
-> 
-> Similarly, for DAX I don't think we actually need to do the
-> filemap_write_and_wait_range() call in generic_file_direct_write() either.
-> It's a similar scenario - for direct I/O we are trying to make sure that any
-> dirty data in the page cache is written out to media before the ->direct_IO()
-> call happens.  For DAX I don't think we care.  If a user does an mmap() write
-> which creates a dirty radix tree entry, then does a write(), we should be able
-> to happily overwrite the old data with the new without flushing, and just
-> leave the dirty radix tree entry in place.
+This is one basic code bug with multiple symptoms, but the first one
+I'll describe is a performance bug that affects every mode including
+read-only.  A simplified version of the main test loop in test_ro(),
+which is duplicated in test_rw() and test_nd(), is:
 
-See my email to Dave for details but to put it shortly, write(2) which
-allocates block has to make sure hole page for that offset is unmapped from
-page tables and freed so at least one invalidate_inode_pages2_range() call
-is necessary even for DAX. And because that call will currently remove also
-dirty radix tree entries, flushing is currently necessary as well. If we
-modified invalidate_inode_pages2_range() to keep dirty radix tree entries
-(which makes sense because invalidate_inode_pages2_range() does not discard
-dirty pages in the first place), flushing won't be necessary. That is true.
+	try = blocks_at_once;
+	currently_testing = first_block;
+	while (currently_testing < last_block)
+	{
+		if (currently_testing + try > last_block)
+			try = last_block - currently_testing;
+		got = do_read (dev, blkbuf, try, block_size, currently_testing);
+		if (got == 0 && try == 1)
+			bb_count += bb_output(currently_testing++, READ_ERROR);
+		currently_testing += got;
+		if (got != try) {
+			try = 1;
+			if (recover_block == ~0U)
+				recover_block = currently_testing - got +
+					blocks_at_once;
+			continue;
+		} else if (currently_testing == recover_block) {
+			try = blocks_at_once;
+			recover_block = ~0;
+		}
+	}
 
-> I realize this adds even more special case DAX code to mm/filemap.c, but
-> if we can avoid the race without adding any more locking (and by
-> simplifying our logic), it seems like it's worth it to me.
+Suppose we are testing with the default parameters of blocks_at_once = 64,
+and there is an error reading block 63.
 
-Well, we could always decouple DAX write path from the direct IO write
-path. XFS already did this and if the generic DIO path won't be suitable for
-DAX on ext4, we can do the same for it.
+The first do_read() will return got = 63.  Because try = 64, this will
+result in recover_block being set to 64 (it's always set to a multiple
+of blocks_at_once), and the read of block 63 being retried with try = 1.
 
-									Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+When the retry also fails, currently_testing will be incremented
+to 64, but the (got != try) branch will be taken again, and the
+(currently_testing == recover_block) condition will never be tested.
+
+The result is that currenty_testing advances past recover_block, try is
+never reset to blocks_at_once, and the remaining test is performed with
+try = 1.  This really hurts performance.
+
+
+A second problem is that, in test_rw(), the memcmp() loop is after the
+continue above, so corruption preceding a read error is not detected.
+(This can be fixed by just deleting the "continue" in that branch.)
+
+
+The third problem is the really bad one, which started me on this bug hunt.
+
+When badblocks(8) is run with a pattern length which does not divide
+the block_size (for a typical power-of-2 block size, that means "-w -t
+0x123456" or "-w -t random"), then the pattern_fill() creates a pattern
+buffer in which the various blocks are not identical.
+
+The problem is that the memcmp() code in the above loop compares the
+block just read off disk to the *beginning* of the pattern buffer.
+If the blocks in the pattern buffer aren't all the same, this can result
+in a false CORRUPTION_ERROR.
+
+Particularly bad, if the scan gets stuck in the preceding try = 1
+mode, then it will start spamming spurious CORRUPTION_ERROR on most
+of the remaining blocks on the disk.  Only 1/3 or 1/blocks_at_once of
+the blocks read will be compared successfully.  This results in quite
+useless badblocks output: it's slow *and* wrong.
+
+
+A *fourth* bug, if anyone cares, is that test_ro() only allocates *one*
+block worth of pattern buffer when using the -t flag, so again doesn't
+work right if the pattern length does not divide the block length.
+(More specifically, it doesn't match what test_rw() writes.)
+
+
+And a *fifth* bug... in test_ro(), if a bad block was detected on a
+previous pass, try is decreased to ensure the read stops before next_bad,
+but it's never increased again.  Again, severe performance loss.
+
+
+This isn't the world's most subtle code, but fixing it requires some
+pretty major surgery and I worry I'll exacerbate the cruftiness of
+the code.  Would the Poor Bloody Maintainer like to express any wishes
+on the subject?
