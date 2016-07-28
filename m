@@ -1,114 +1,152 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [4.7-rc6 ext3 BUG] kernel BUG at fs/ext4/xattr.c:1331
-Date: Thu, 28 Jul 2016 15:54:32 +0200
-Message-ID: <20160728135432.GA19398@quack2.suse.cz>
-References: <20160718022356.GC1922@dastard>
- <20160718030256.GD1922@dastard>
- <83e3076d-4f84-705d-5259-b3ac1aaf90b7@redhat.com>
- <20160718052447.GE1922@dastard>
+Subject: Re: [PATCH] ext4: Enable quota enforcement based on mount options
+Date: Thu, 28 Jul 2016 16:04:11 +0200
+Message-ID: <20160728140411.GB19398@quack2.suse.cz>
+References: <1468841157-8083-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59761 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60825 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758471AbcG1Nyf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Jul 2016 09:54:35 -0400
+	id S1757694AbcG1OEO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Jul 2016 10:04:14 -0400
 Content-Disposition: inline
-In-Reply-To: <20160718052447.GE1922@dastard>
+In-Reply-To: <1468841157-8083-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 18-07-16 15:24:47, Dave Chinner wrote:
-> On Sun, Jul 17, 2016 at 09:07:16PM -0700, Eric Sandeen wrote:
-> > On 7/17/16 8:02 PM, Dave Chinner wrote:
-> > > # rm !$
-> > > rm /mnt/scratch/fsr_test_file.27768.14.6
-> > > #
-> > > 
-> > > And, by removing an attribute, I can successfully remove the file.
-> > > So this definitely looks like a corner case xattr handling issue in
-> > > ext3/4.
-> > 
-> > I told xfs/227 that it could run on ext3 and ran it, but this
-> > didn't reproduce for me.
-> > 
-> > Can you provide a dumpe2fs -h for the root fs, this might depend on
-> > inode size etc.
+On Mon 18-07-16 13:25:57, Jan Kara wrote:
+> When quota information is stored in quota files, we enable only quota
+> accounting on mount and enforcement is enabled only in response to
+> Q_QUOTAON quotactl. To make ext4 behavior consistent with XFS, we add a
+> possibility to enable quota enforcement on mount by specifying
+> corresponding quota mount option (usrquota, grpquota, prjquota).
 > 
-> # dumpe2fs -h /dev/sda1
-> dumpe2fs 1.43-WIP (18-May-2015)
-> Filesystem volume name:   <none>
-> Last mounted on:          /
-> Filesystem UUID:          b21615e5-fe8a-4ffc-ab80-c24cdc8b740a
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery sparse_super large_file
-> Filesystem flags:         signed_directory_hash 
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              624624
-> Block count:              2496091
-> Reserved block count:     124804
-> Free blocks:              567319
-> Free inodes:              352653
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      609
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         8112
-> Inode blocks per group:   507
-> Filesystem created:       Thu Mar 25 18:10:55 2010
-> Last mount time:          Tue Jul 19 01:21:57 2016
-> Last write time:          Tue Jul 19 01:21:57 2016
-> Mount count:              10
-> Maximum mount count:      27
-> Last checked:             Mon Jul 18 21:59:01 2016
-> Check interval:           15552000 (6 months)
-> Next check after:         Sat Jan 14 22:59:01 2017
-> Lifetime writes:          13 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> First orphan inode:       219355
-> Default directory hash:   half_md4
-> Directory Hash Seed:      740ffa95-af8d-4e89-b68c-5e768a27ece3
-> Journal backup:           inode blocks
-> Journal features:         journal_incompat_revoke
-> Journal size:             128M
-> Journal length:           32768
-> Journal sequence:         0x01c975b5
-> Journal start:            12
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks for report! So I see at least part of what happened: Your filesystem
-was created with 'extra inode size' 28 and likely your inodes were created
-with this amount of space reserved in the extended attribute area of the
-inode because you still created them with some older kernel (but that means
-that it had to be a kernel prior to commit 8b4953e13f4c which landed in
-4.4-rc5 because newer kernels would automatically reserve 32-bytes in the
-inode, not 28 as specified by the superblock).
-
-The above mentioned commit has added project ID to the inode so new kernels
-now ask for 32 bytes in the extended attribute area. So when you tried to
-modify the inode with newer kernel, we were trying to shift extended
-attributes around to make space for those additional 4 bytes. So that makes
-it clear why Eric was not able to reproduce the issue.
-
-I've tried creating file with an old kernel and deleting it with a new one
-and the bugon indeed triggers. Going through ext4_expand_extra_isize_ea() I
-see so many bugs that it's not nice. I guess we should add some inode size
-expansion tests...
+Ping Ted?
 
 								Honza
+> ---
+>  fs/ext4/ext4.h  | 12 +++++++++---
+>  fs/ext4/super.c | 34 ++++++++++++++++++++++++----------
+>  2 files changed, 33 insertions(+), 13 deletions(-)
+> 
+> The patch passed xfstests both with old style and new style quotas and some
+> targetted manual tests so here we go... Ted please merge the patch if you
+> agree with it.
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b84aa1ca480a..224cb832e2dc 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1129,9 +1129,15 @@ struct ext4_inode_info {
+>  #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
+>  #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+>  #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+> -#define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+> -#define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+> -#define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+> +#define EXT4_MOUNT_QUOTA		0x40000 /* Some quota option set */
+> +#define EXT4_MOUNT_USRQUOTA		0x80000 /* "old" user quota,
+> +						 * enable enforcement for hidden
+> +						 * quota files */
+> +#define EXT4_MOUNT_GRPQUOTA		0x100000 /* "old" group quota, enable
+> +						  * enforcement for hidden quota
+> +						  * files */
+> +#define EXT4_MOUNT_PRJQUOTA		0x200000 /* Enable project quota
+> +						  * enforcement */
+>  #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+>  #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+>  #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3822a5aedc61..a03232634cd5 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1187,7 +1187,7 @@ enum {
+>  	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+>  	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
+>  	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
+> -	Opt_usrquota, Opt_grpquota, Opt_i_version, Opt_dax,
+> +	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version, Opt_dax,
+>  	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
+>  	Opt_lazytime, Opt_nolazytime,
+>  	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
+> @@ -1247,6 +1247,7 @@ static const match_table_t tokens = {
+>  	{Opt_noquota, "noquota"},
+>  	{Opt_quota, "quota"},
+>  	{Opt_usrquota, "usrquota"},
+> +	{Opt_prjquota, "prjquota"},
+>  	{Opt_barrier, "barrier=%u"},
+>  	{Opt_barrier, "barrier"},
+>  	{Opt_nobarrier, "nobarrier"},
+> @@ -1466,8 +1467,11 @@ static const struct mount_opts {
+>  							MOPT_SET | MOPT_Q},
+>  	{Opt_grpquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_GRPQUOTA,
+>  							MOPT_SET | MOPT_Q},
+> +	{Opt_prjquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_PRJQUOTA,
+> +							MOPT_SET | MOPT_Q},
+>  	{Opt_noquota, (EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA |
+> -		       EXT4_MOUNT_GRPQUOTA), MOPT_CLEAR | MOPT_Q},
+> +		       EXT4_MOUNT_GRPQUOTA | EXT4_MOUNT_PRJQUOTA),
+> +							MOPT_CLEAR | MOPT_Q},
+>  	{Opt_usrjquota, 0, MOPT_Q},
+>  	{Opt_grpjquota, 0, MOPT_Q},
+>  	{Opt_offusrjquota, 0, MOPT_Q},
+> @@ -1756,13 +1760,17 @@ static int parse_options(char *options, struct super_block *sb,
+>  			return 0;
+>  	}
+>  #ifdef CONFIG_QUOTA
+> -	if (ext4_has_feature_quota(sb) &&
+> -	    (test_opt(sb, USRQUOTA) || test_opt(sb, GRPQUOTA))) {
+> -		ext4_msg(sb, KERN_INFO, "Quota feature enabled, usrquota and grpquota "
+> -			 "mount options ignored.");
+> -		clear_opt(sb, USRQUOTA);
+> -		clear_opt(sb, GRPQUOTA);
+> -	} else if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+> +	/*
+> +	 * We do the test below only for project quotas. 'usrquota' and
+> +	 * 'grpquota' mount options are allowed even without quota feature
+> +	 * to support legacy quotas in quota files.
+> +	 */
+> +	if (test_opt(sb, PRJQUOTA) && !ext4_has_feature_project(sb)) {
+> +		ext4_msg(sb, KERN_ERR, "Project quota feature not enabled. "
+> +			 "Cannot enable project quota enforcement.");
+> +		return 0;
+> +	}
+> +	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+>  		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+>  			clear_opt(sb, USRQUOTA);
+>  
+> @@ -5129,12 +5137,18 @@ static int ext4_enable_quotas(struct super_block *sb)
+>  		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum),
+>  		le32_to_cpu(EXT4_SB(sb)->s_es->s_prj_quota_inum)
+>  	};
+> +	bool quota_mopt[EXT4_MAXQUOTAS] = {
+> +		test_opt(sb, USRQUOTA),
+> +		test_opt(sb, GRPQUOTA),
+> +		test_opt(sb, PRJQUOTA),
+> +	};
+>  
+>  	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
+>  	for (type = 0; type < EXT4_MAXQUOTAS; type++) {
+>  		if (qf_inums[type]) {
+>  			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
+> -						DQUOT_USAGE_ENABLED);
+> +				DQUOT_USAGE_ENABLED |
+> +				(quota_mopt[type] ? DQUOT_LIMITS_ENABLED : 0));
+>  			if (err) {
+>  				ext4_warning(sb,
+>  					"Failed to enable quota tracking "
+> -- 
+> 2.6.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
