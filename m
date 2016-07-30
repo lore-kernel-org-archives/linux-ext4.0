@@ -1,131 +1,57 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Fri, 29 Jul 2016 17:53:07 -0700
-Message-ID: <CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com>
- <20160727221949.GU16044@dastard> <20160728081033.GC4094@quack2.suse.cz>
- <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard>
+From: Vegard Nossum <vegard.nossum@oracle.com>
+Subject: Open bugs found by fuzzing as of 2016-07-30
+Date: Sat, 30 Jul 2016 15:04:43 +0200
+Message-ID: <579CA5EB.1070707@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160730001249.GE16044@dastard>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:47209 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919AbcG3NEs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Jul 2016 09:04:48 -0400
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u6UD4l7k004644
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jul 2016 13:04:47 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+	by aserv0021.oracle.com (8.13.8/8.13.8) with ESMTP id u6UD4lsQ004232
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jul 2016 13:04:47 GMT
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id u6UD4jUM001438
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Jul 2016 13:04:46 GMT
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 29, 2016 at 5:12 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
-> On Fri, Jul 29, 2016 at 07:44:25AM -0700, Dan Williams wrote:
->> On Thu, Jul 28, 2016 at 7:21 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
->> > On Thu, Jul 28, 2016 at 10:10:33AM +0200, Jan Kara wrote:
->> >> On Thu 28-07-16 08:19:49, Dave Chinner wrote:
->> [..]
->> >> So DAX doesn't need flushing to maintain consistent view of the data but it
->> >> does need flushing to make sure fsync(2) results in data written via mmap
->> >> to reach persistent storage.
->> >
->> > I thought this all changed with the removal of the pcommit
->> > instruction and wmb_pmem() going away.  Isn't it now a platform
->> > requirement now that dirty cache lines over persistent memory ranges
->> > are either guaranteed to be flushed to persistent storage on power
->> > fail or when required by REQ_FLUSH?
->>
->> No, nothing automates cache flushing.  The path of a write is:
->>
->> cpu-cache -> cpu-write-buffer -> bus -> imc -> imc-write-buffer -> media
->>
->> The ADR mechanism and the wpq-flush facility flush data thorough the
->> imc (integrated memory controller) to media.  dax_do_io() gets writes
->> to the imc, but we still need a posted-write-buffer flush mechanism to
->> guarantee data makes it out to media.
->
-> So what you are saying is that on and ADR machine, we have these
-> domains w.r.t. power fail:
->
-> cpu-cache -> cpu-write-buffer -> bus -> imc -> imc-write-buffer -> media
->
-> |-------------volatile-------------------|-----persistent--------------|
->
-> because anything that gets to the IMC is guaranteed to be flushed to
-> stable media on power fail.
->
-> But on a posted-write-buffer system, we have this:
->
-> cpu-cache -> cpu-write-buffer -> bus -> imc -> imc-write-buffer -> media
->
-> |-------------volatile-------------------------------------------|--persistent--|
->
-> IOWs, only things already posted to the media via REQ_FLUSH are
-> considered stable on persistent media.  What happens in this case
-> when power fails during a media update? Incomplete writes?
+Hi,
 
-Yes, power failure during a media update will end up with incomplete
-writes on an 8-byte boundary.
+It's been two weeks since I posted the first list of bugs found using
+AFL: https://www.spinics.net/lists/linux-ext4/msg53022.html
 
->
->> > Or have we somehow ended up with the fucked up situation where
->> > dax_do_io() writes are (effectively) immediately persistent and
->> > untracked by internal infrastructure, whilst mmap() writes
->> > require internal dirty tracking and fsync() to flush caches via
->> > writeback?
->>
->> dax_do_io() writes are not immediately persistent.  They bypass the
->> cpu-cache and cpu-write-bufffer and are ready to be flushed to media
->> by REQ_FLUSH or power-fail on an ADR system.
->
-> IOWs, on an ADR system  write is /effectively/ immediately persistent
-> because if power fails ADR guarantees it will be flushed to stable
-> media, while on a posted write system it is volatile and will be
-> lost. Right?
+With a bunch of ext4 patches going into 4.8 we're down from 15 to 6
+with current linus/master:
 
-Right.
+1. general protection fault: 0000 [#1] KASAN
+http://139.162.151.198/f/ext4/57be666646a37e9821d52bc64846a3b3b785ee7a
 
->
-> If so, that's even worse than just having mmap/write behave
-> differently - now writes will behave differently depending on the
-> specific hardware installed. I think this makes it even more
-> important for the DAX code to hide this behaviour from the
-> fielsystems by treating everything as volatile.
+2. kernel BUG at fs/buffer.c:3061!
+http://139.162.151.198/f/ext4/7df880da89c82579c15ca8bc786a3467ca9c47f7
 
-The symmetry does sound appealing...
+3. kernel BUG at fs/ext4/inode.c:3738!
+http://139.162.151.198/f/ext4/5bdefda69f39b2f2c56d9b67d5b7d9e2cc8dfd5f
+(discussion: https://www.spinics.net/lists/linux-ext4/msg53032.html)
 
-> If we track the dirty blocks from write in the radix tree like we
-> for mmap, then we can just use a normal memcpy() in dax_do_io(),
-> getting rid of the slow cache bypass that is currently run. Radix
-> tree updates are much less expensive than a slow memcpy of large
-> amounts of data, ad fsync can then take care of persistence, just
-> like we do for mmap.
+4. kernel BUG at fs/ext4/mballoc.c:3191!
+http://139.162.151.198/f/ext4/34284738d67f0405325b2c43211c56020b9d0211
 
-If we go this route to increase the amount of dirty-data tracking in
-the radix it raises the priority of one of the items on the backlog;
-namely, determine the crossover point where wbinvd of the entire cache
-is faster than a clflush / clwb loop.
+5. kernel BUG at fs/jbd2/commit.c:825!
+http://139.162.151.198/f/ext4/3143febf7925bd1ea398bd1a775551133bd69ffd
 
-> We should just make the design assumption that all persistent memory
-> is volatile, track where we dirty it in all paths, and use the
-> fastest volatile memcpy primitives available to us in the IO path.
-> We'll end up with a faster fastpath that if we use CPU cache bypass
-> copies, dax_do_io() and mmap will be coherent and synchronised, and
-> fsync() will have the same requirements and overhead regardless of
-> the way the application modifies the pmem or the hardware platform
-> used to implement the pmem.
+6. WARNING: CPU: 0 PID: 58 at fs/ext4/ext4.h:2748 
+ext4_block_bitmap_csum_set+0x358/0x600
+http://139.162.151.198/f/ext4/9628c19aff0bbaaae4149a03486305c7f6cd7523
 
-I like the direction, I'd still want to measure where/whether it's
-actually faster given the writes may have evicted hot data, and the
-amortized cost of the cache flushing loop.
+
+Vegard
