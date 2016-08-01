@@ -1,117 +1,113 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Sun, 31 Jul 2016 21:39:38 -0700
-Message-ID: <CAPcyv4jN5OvbPMA07w0vjBCBrGH-j2YsCjfvB3b6S6JJ_zUA=Q@mail.gmail.com>
+Date: Mon, 1 Aug 2016 11:46:45 +1000
+Message-ID: <20160801014645.GI16044@dastard>
 References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com>
- <20160727221949.GU16044@dastard> <20160728081033.GC4094@quack2.suse.cz>
- <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard>
- <CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
- <20160801014645.GI16044@dastard> <86k2g15gh8.fsf@hiro.keithp.com>
- <20160801040737.GJ16044@dastard>
+	<20160727211039.GA20278@linux.intel.com>
+	<20160727221949.GU16044@dastard>
+	<20160728081033.GC4094@quack2.suse.cz>
+	<20160729022152.GZ16044@dastard>
+	<CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+	<20160730001249.GE16044@dastard>
+	<CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160801040737.GJ16044@dastard>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Jan Kara <jack@suse.cz>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+	XFS Developers <xfs@oss.sgi.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jul 31, 2016 at 9:07 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
-> On Sun, Jul 31, 2016 at 08:13:23PM -0700, Keith Packard wrote:
->> Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> writes:
->>
->> > So we'd see that from the point of view of a torn single sector
->> > write. Ok, so we better limit DAX to CRC enabled filesystems to
->> > ensure these sorts of events are always caught by the filesystem.
->>
->> Which is the same lack of guarantee that we already get on rotating
->> media. Flash media seems to work harder to provide sector atomicity; I
->> guess that's a feature?
->
-> No, that's not the case. Existing sector based storage guarantees
-> atomic sector writes - rotating or solid state. I haven't seen one a
-> corruption caused by a torn sector write in 15 years.  BTT layer was
-> written for pmem to provide this guarantee, but you can't use DAX
-> through that layer.
->
-> In XFS, the only place we really care about torn sector writes in
-> the journal - we have CRCs there to detect such problems and CRC
-> enabled filesystems will prevent recovery of checkpoints containing
-> torn writes. Non-CRC enable filesystems just warn and continue on
-> their merry way (compatibility reasons - older kernels don't emit
-> CRCs in log writes), so we really do need to restrict DAX to CRC
-> enabled filesystems.
->
->> The alternative is to hide metadata behind a translation layer, and
->> while that can be done for lame file systems,
->
-> No. These "lame" filesystems just need to use their existing
-> metadata buffering layer to hide this and the journalling subsystem
-> should protects against torn metadata writes.
->
->> I'd like to see the raw
->> hardware capabilities exposed and then make free software that
->> constructs a reliable system on top of that.
->
-> Not as easy as it sounds.  A couple of weeks ago I tried converting
-> the XFS journal to use DAX to avoid the IO layer and resultant
-> memcpy(), and I found out that there's a major problem with using
-> DAX for metadata access on existing filesystems: pmem is not
-> physically contiguous. I found that out the hard way - the ramdisk
-> is DAX capable, but each 4k page ithat is allocated to it has a
-> different memory address.
->
-> Filesystems are designed around the fact that the block address
-> space they are working with is contiguous - that sector N and sector
-> N+1 can be accessed in the same IO. This is not true for
-> direct access of pmem - while the sectors might be logically
-> contiguous, the physical memory that is directly accessed is not.
-> i.e. when we cross a page boundary, the next page could be on a
-> different node, on a different device (e.g.  RAID0), etc.
-> Traditional remapping devices (i.e. DM, md, etc) hide the physical
-> discontiguities from the filesystem - the present a contiguous LBA
-> and remap/split/combine under the covers where the filesystem is not
-> aware of it at all.
->
-> The reason this is important is that if the filesystem has metadata
-> constructs larger than a single page it can't use DAX to access them
-> as a single object because they may lay across a physical
-> discontiguity in the memory map.  Filesystems aren't usually exposed
-> to this - sectors of a block device are indexed by "Logical Block
-> Address" for good reason - the LBA address space is supposed to hide
-> the physical layout of the storage from the layer above the block
-> device.
->
-> OTOH, DAX directly exposes the physical layout to the filesytem.
-> And because it's DAX-based pmem and not cached struct pages, we
-> can't run vm_map_ram() to virtually map the range we need to see as
-> a contiguous range, as we do in XFS for large objects such as directory
-> blocks and log buffers. For other large objects such as inode
-> clusters, we can directly map each page as the objects within the
-> clusters are page aligned and never overlap page boundaries, but
-> that only works for inode and dquot buffers. Hence DAX as it stands
-> makes it extremely difficult to "retrofit" DAX into all aspects of
-> existing fileystems because exposing physical discontiguities breaks
-> code that assumes they don't exist.
+On Fri, Jul 29, 2016 at 05:53:07PM -0700, Dan Williams wrote:
+> On Fri, Jul 29, 2016 at 5:12 PM, Dave Chinner <david@fromorbit.com> wrote:
+....
+> > So what you are saying is that on and ADR machine, we have these
+> > domains w.r.t. power fail:
+> >
+> > cpu-cache -> cpu-write-buffer -> bus -> imc -> imc-write-buffer -> media
+> >
+> > |-------------volatile-------------------|-----persistent--------------|
+> >
+> > because anything that gets to the IMC is guaranteed to be flushed to
+> > stable media on power fail.
+> >
+> > But on a posted-write-buffer system, we have this:
+> >
+> > cpu-cache -> cpu-write-buffer -> bus -> imc -> imc-write-buffer -> media
+> >
+> > |-------------volatile-------------------------------------------|--persistent--|
+> >
+> > IOWs, only things already posted to the media via REQ_FLUSH are
+> > considered stable on persistent media.  What happens in this case
+> > when power fails during a media update? Incomplete writes?
+> 
+> Yes, power failure during a media update will end up with incomplete
+> writes on an 8-byte boundary.
 
-On this specific point about page remapping, the administrator can
-configure struct pages for pmem and you can detect whether they are
-present in the filesystem with pfn_t_has_page().  I.e. you could
-require pages be present for XFS, if that helps...
+So we'd see that from the point of view of a torn single sector
+write. Ok, so we better limit DAX to CRC enabled filesystems to
+ensure these sorts of events are always caught by the filesystem.
+
+> >> > Or have we somehow ended up with the fucked up situation where
+> >> > dax_do_io() writes are (effectively) immediately persistent and
+> >> > untracked by internal infrastructure, whilst mmap() writes
+> >> > require internal dirty tracking and fsync() to flush caches via
+> >> > writeback?
+> >>
+> >> dax_do_io() writes are not immediately persistent.  They bypass the
+> >> cpu-cache and cpu-write-bufffer and are ready to be flushed to media
+> >> by REQ_FLUSH or power-fail on an ADR system.
+> >
+> > IOWs, on an ADR system  write is /effectively/ immediately persistent
+> > because if power fails ADR guarantees it will be flushed to stable
+> > media, while on a posted write system it is volatile and will be
+> > lost. Right?
+> 
+> Right.
+
+Thanks for the clarification.
+
+> > If we track the dirty blocks from write in the radix tree like we
+> > for mmap, then we can just use a normal memcpy() in dax_do_io(),
+> > getting rid of the slow cache bypass that is currently run. Radix
+> > tree updates are much less expensive than a slow memcpy of large
+> > amounts of data, ad fsync can then take care of persistence, just
+> > like we do for mmap.
+> 
+> If we go this route to increase the amount of dirty-data tracking in
+> the radix it raises the priority of one of the items on the backlog;
+> namely, determine the crossover point where wbinvd of the entire cache
+> is faster than a clflush / clwb loop.
+
+Actually, I'd look at it from the other persepctive - at what point
+does fine-grained dirty tracking run faster than the brute force
+flush? If the gains are only marginal, then we need to question
+whether fine grained tracking is worth the complexity at all...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
