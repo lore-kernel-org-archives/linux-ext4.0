@@ -1,94 +1,85 @@
-From: Keith Packard <keithp@keithp.com>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Sun, 31 Jul 2016 20:13:23 -0700
-Message-ID: <86k2g15gh8.fsf@hiro.keithp.com>
-References: <20160727120745.GI6860@quack2.suse.cz>
-	<20160727211039.GA20278@linux.intel.com>
-	<20160727221949.GU16044@dastard>
-	<20160728081033.GC4094@quack2.suse.cz>
-	<20160729022152.GZ16044@dastard>
-	<CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
-	<20160730001249.GE16044@dastard>
-	<CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
-	<20160801014645.GI16044@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: xattr index for hurd
+Date: Sun, 31 Jul 2016 23:42:28 -0400
+Message-ID: <20160801034228.GE12853@thunk.org>
+References: <a3ef36c5-cd3b-5fc2-e9fc-eb7e823f0510@outlook.com>
+ <BLU175-W270CF93954CBCB94CA36CC9360@phx.gbl>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============6893870862725997970=="
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	XFS Developers <xfs@oss.sgi.com>, Jan Kara <jack@suse.cz>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Dave Chinner <david@fromorbit.com>, Dan Williams <dan.j.williams@intel.com>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <20160801014645.GI16044@dastard>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
-
---===============6893870862725997970==
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
-
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-Dave Chinner <david@fromorbit.com> writes:
-
-> So we'd see that from the point of view of a torn single sector
-> write. Ok, so we better limit DAX to CRC enabled filesystems to
-> ensure these sorts of events are always caught by the filesystem.
-
-Which is the same lack of guarantee that we already get on rotating
-media. Flash media seems to work harder to provide sector atomicity; I
-guess that's a feature?
-
-The alternative is to hide metadata behind a translation layer, and
-while that can be done for lame file systems, I'd like to see the raw
-hardware capabilities exposed and then make free software that
-constructs a reliable system on top of that.
-
-=2D-=20
-=2Dkeith
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIVAwUBV56+VNsiGmkAAAARAQhpyQ/9HRHbTruM/IlU4qAsCUYnMtOVj6TrHBFj
-hSLmYzGF0grZqzxiVMpwlS9SlfC0kj4nK8VPt0Zw7zXUji89CrzMBCf3mD/i0hyh
-lNOmKgaLOnV9Zm6MJH2PXsqEmJLHrcfyKF7OxucGmk4f0ofqlSh+TaGlXl82Yp0b
-3SHg5G0/zewGUWjS46LmPdhhQhyot1IDi4i/KLMUynd6mkTubLCl7rx1NG98meiz
-/+dcayUuZXZpTrnvZ081xPJhedCapcGbxPc5FtMJy0lsaQxTAUqhTO+5GM/CY+mI
-NuD4UUBhCjo9kR1P9e25Z1BUMnNubIC6zToY6OqYpuWY/9j99nO/XKiJ6szaa/Kf
-MvUkXEeCU4RapjBqxUHYOugmWjyrsW3NXdlh/NestCq/DROF3GnDn9rtL+9AGnKJ
-oCaHxgeeqqyZ09jZ+NewkgpwRu+WMsxx5eITVQ/hD5CvXU2mfUb6C2K7G7dS/X3R
-HzXZk6SXz0NwrmN8SPaExVIybg5su6FzxKyvgVaBKnjXYluhm39O4Z7aQIB4pVyA
-cE1AGvYJiiEF1M5UJbf7qT19MXiAA3fYQ9U4ba5m9W5kyuCJGEY8DOVGkNtsV30q
-7vqFCo5San6Xz8bzPmi8C/9Hucd2ZKRf+EpBm/mH3TBazryzi3fqCbUhTkTHdq1F
-KXOEb/PQztQ=
-=em4e
------END PGP SIGNATURE-----
---=-=-=--
-
-
---===============6893870862725997970==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: LastAvengers <lastavengers@outlook.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33148 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751291AbcHADnW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 31 Jul 2016 23:43:22 -0400
 Content-Disposition: inline
+In-Reply-To: <BLU175-W270CF93954CBCB94CA36CC9360@phx.gbl>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+On Mon, Jul 18, 2016 at 08:36:51AM +0000, LastAvengers wrote:
+>     To Jan, Theodore and Andreas:
+> 
+>       Hello, I get your emails from Linux's maintainer list, I am a
+>       GSoC student of the Hurd project[1].
+> 
+>     My project is implement xattr support for hurd's ext2 filesystem.
+>       For storing hurd-specific data using 
+> 
+>     xattr, we want to use a new xattr namespace "gnu.". Can you
+>       reserve the index 10 for us to use in hurd?
+> 
+>     (As index 1-9 has already used in ext4's xattr).
 
---===============6893870862725997970==--
+I will merge the following patch (see below).
+
+Two comments: it's not just the translator field; you'll want to also
+move the author field out of the core inode field as well.  Secondly,
+I would suggest you use the textual representation of the namespace to
+be "hurd."
+
+To the extent that one accepts the argument that an operating system
+that uses KDE for its desktop, X11 for its windowing system, Linux for
+its kernel, and GNU for its userspace utilities "GNU/Linux" (and not
+everyone does), it's clear that an xattr namespace that will be used
+only by the Hurd kernel should be called "hurd".  After all, a
+"GNU/Linux" system wouldn't need to use this new xattr namespace that
+you are proposing to implement.
+
+Best wishes,
+
+						- Ted
+
+commit 3b5e45dd0af7c94affb8d93950def32d6820e5ed
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Jul 31 23:38:36 2016 -0400
+
+    ext4: reserve xattr index for the Hurd
+    
+    The Hurd is using inode fields which restricts it from using more
+    advanced ext4 file system features, due to design choices made over a
+    decade ago.  By giving the Hurd an extended attribute index field we
+    allow it to move the translator and author fields out of the core
+    inode fields, and hopefully we can get rid of ugly hacks such as
+    EXT4_OS_HURD and EXT4_MOUNT2_HURD_COMPAT somday.
+    
+    For more information please see:
+          https://summerofcode.withgoogle.com/projects/#5869799859027968
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 69dd3e6..a92e783 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -24,6 +24,7 @@
+ #define EXT4_XATTR_INDEX_SYSTEM			7
+ #define EXT4_XATTR_INDEX_RICHACL		8
+ #define EXT4_XATTR_INDEX_ENCRYPTION		9
++#define EXT4_XATTR_INDEX_HURD			10 /* Reserved for Hurd */
+ 
+ struct ext4_xattr_header {
+ 	__le32	h_magic;	/* magic number for identification */
