@@ -1,58 +1,78 @@
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Subject: Re: Open bugs found by fuzzing as of 2016-07-30
-Date: Mon, 1 Aug 2016 09:33:37 +0200
-Message-ID: <579EFB51.6090602@oracle.com>
-References: <579CA5EB.1070707@oracle.com> <20160801045521.GF12853@thunk.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Mon, 1 Aug 2016 17:39:06 +1000
+Message-ID: <20160801073906.GK16044@dastard>
+References: <20160727221949.GU16044@dastard>
+ <20160728081033.GC4094@quack2.suse.cz>
+ <20160729022152.GZ16044@dastard>
+ <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+ <20160730001249.GE16044@dastard>
+ <CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
+ <20160801014645.GI16044@dastard> <86k2g15gh8.fsf@hiro.keithp.com>
+ <20160801040737.GJ16044@dastard>
+ <CAPcyv4jN5OvbPMA07w0vjBCBrGH-j2YsCjfvB3b6S6JJ_zUA=Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18457 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750740AbcHAHei (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Aug 2016 03:34:38 -0400
-In-Reply-To: <20160801045521.GF12853@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4jN5OvbPMA07w0vjBCBrGH-j2YsCjfvB3b6S6JJ_zUA=Q@mail.gmail.com>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On 08/01/2016 06:55 AM, Theodore Ts'o wrote:
-> On Sat, Jul 30, 2016 at 03:04:43PM +0200, Vegard Nossum wrote:
->> Hi,
->>
->> It's been two weeks since I posted the first list of bugs found using
->> AFL: https://www.spinics.net/lists/linux-ext4/msg53022.html
->>
->> With a bunch of ext4 patches going into 4.8 we're down from 15 to 6
->> with current linus/master...
->
-> Does this patch bring things down further?  I expect it should at the
-> very list address
->
->> 6. WARNING: CPU: 0 PID: 58 at fs/ext4/ext4.h:2748
->> ext4_block_bitmap_csum_set+0x358/0x600
->> http://139.162.151.198/f/ext4/9628c19aff0bbaaae4149a03486305c7f6cd7523
->
-> ... and possibly others.
+On Sun, Jul 31, 2016 at 09:39:38PM -0700, Dan Williams wrote:
+> On Sun, Jul 31, 2016 at 9:07 PM, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> wrote:
+> > OTOH, DAX directly exposes the physical layout to the filesytem.
+> > And because it's DAX-based pmem and not cached struct pages, we
+> > can't run vm_map_ram() to virtually map the range we need to see as
+> > a contiguous range, as we do in XFS for large objects such as directory
+> > blocks and log buffers. For other large objects such as inode
+> > clusters, we can directly map each page as the objects within the
+> > clusters are page aligned and never overlap page boundaries, but
+> > that only works for inode and dquot buffers. Hence DAX as it stands
+> > makes it extremely difficult to "retrofit" DAX into all aspects of
+> > existing fileystems because exposing physical discontiguities breaks
+> > code that assumes they don't exist.
+> 
+> On this specific point about page remapping, the administrator can
+> configure struct pages for pmem and you can detect whether they are
+> present in the filesystem with pfn_t_has_page().  I.e. you could
+> require pages be present for XFS, if that helps...
 
-I applied the patch, but I didn't see any of the bugs go away,
-unfortunately.
+It's kinda silly to require struct pages for the entire pmem device
+if they are only needed for accessing a (comparitively) small amount
+of metadata.
 
-IIRC there were still bugs in ext4_init_block_bitmap() where the
-ext4_set_bit() calls for the block bitmap + inode bitmap + inode table
-were writing beyond the end of bh->b_data. I think tmp < start or
-something and then the ext4_set_bit() calls actually end up writing
-into the superblock itself, causing either ext4_inode_table() or
-sbi->s_itb_per_group to start returning bogus values and further corrupt
-things. I'll have another look, maybe add some printks.
+Besides, now that I look at it more deeply, we can't use virtually
+mapped pmem for the log buffers.  We can't allocate memory at the
+point in time where we work out what LBA in the log we need to map
+to physical pmem for the current log write.  Hence calls to
+vm_map_ram() can't be used, and so that rules out using mapped page
+based pmem for log buffers.
 
-> If there are any remaining of these bugs where the superblock is
-> sufficiently corrupt that dumpe2fs refuses to print anything, could
-> you print a hex dump of the superblock (located at offset 1024) so we
-> could see what is going on?
+I'll probably have to rewrite the xlog_write() engine completely to
+be able to handle discontiguous pages in the iclog buffers before we
+can consider mapping them via DAX now, and I'm really not sure it's
+worth the effort. I'd much prefer to spend time designing a native
+pmem filesystem....
 
-I've added the hex dumps and updated the pages.
+Cheers,
 
-
-Vegard
+Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
