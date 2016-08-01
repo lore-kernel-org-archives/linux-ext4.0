@@ -1,88 +1,94 @@
-From: Boaz Harrosh <boaz-/8YdC2HfS5554TAoqtyWWQ@public.gmane.org>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Mon, 01 Aug 2016 13:13:45 +0300
-Message-ID: <579F20D9.80107@plexistor.com>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com> <20160727221949.GU16044@dastard>
- <20160728081033.GC4094@quack2.suse.cz> <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [4.7-rc6 ext3 BUG] kernel BUG at fs/ext4/xattr.c:1331
+Date: Mon, 1 Aug 2016 14:19:30 +0200
+Message-ID: <20160801121930.GB19431@quack2.suse.cz>
+References: <20160718022356.GC1922@dastard>
+ <20160718030256.GD1922@dastard>
+ <83e3076d-4f84-705d-5259-b3ac1aaf90b7@redhat.com>
+ <20160718052447.GE1922@dastard>
+ <20160728135432.GA19398@quack2.suse.cz>
+ <20160729002112.GX16044@dastard>
+ <20160729064210.GA3611@quack2.suse.cz>
+ <20160801030909.GD12853@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160730001249.GE16044@dastard>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:54821 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752342AbcHAMTd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Aug 2016 08:19:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20160801030909.GD12853@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 07/30/2016 03:12 AM, Dave Chinner wrote:
-<>
+On Sun 31-07-16 23:09:09, Ted Tso wrote:
+> On Fri, Jul 29, 2016 at 08:42:10AM +0200, Jan Kara wrote:
+> > 
+> > I have written some fixes, working on testing them... So hopefully I can
+> > submit them later today or next week.
 > 
-> If we track the dirty blocks from write in the radix tree like we
-> for mmap, then we can just use a normal memcpy() in dax_do_io(),
-> getting rid of the slow cache bypass that is currently run. Radix
-> tree updates are much less expensive than a slow memcpy of large
-> amounts of data, ad fsync can then take care of persistence, just
-> like we do for mmap.
+> How complicated are the fixes?  This should work as a temporary
+> workaround and it going to be very simple to backport.
+
+Relatively simple but there are still some bugs lurking - I have the
+original issue fixed but I have implemented xfstests which stress the inode
+expansion code in various ways and so far they are still able to crash the
+kernel... Tomorrow I will be looking more into it and hopefully will be
+able to finish the fixes.
+
+Regarding your patch - I think it's a reasonable band-aid although I'll
+have to backport proper fixes to 4.4 anyway (it's a base of our next
+enterprise release), which is where i_projid got introduced as well, so
+eventually we will have proper stable fixes for all relevant kernels
+anyway.
+
+								Honza
+
+> commit e92d5b1cf6af642bc5018562e58044fd771f82bf
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Sun Jul 31 23:08:28 2016 -0400
 > 
-
-No! 
-
-mov_nt instructions, That "slow cache bypass that is currently run" above
-is actually faster then cached writes by 20%, and if you add the dirty
-tracking and cl_flush instructions it becomes x2 slower in the most
-optimal case and 3 times slower in the DAX case.
-
-The network guys have noticed the mov_nt instructions superior performance
-for years before we pushed DAX into the tree. look for users of copy_from_iter_nocache
-and the comments when they where introduced, those where used before DAX, and
-nothing at all to do with persistence.
-
-So what you are suggesting is fine only 3 times slower in the current
-implementation.
-
-> We should just make the design assumption that all persistent memory
-> is volatile, track where we dirty it in all paths, and use the
-> fastest volatile memcpy primitives available to us in the IO path.
-
-The "fastest volatile memcpy primitives available" is what we do
-today with the mov_nt instructions.
-
-> We'll end up with a faster fastpath that if we use CPU cache bypass
-> copies, dax_do_io() and mmap will be coherent and synchronised, and
-> fsync() will have the same requirements and overhead regardless of
-> the way the application modifies the pmem or the hardware platform
-> used to implement the pmem.
+>     ext4: suppress inode growth for file systems w/o project quota
+>     
+>     We have not added a new "extra" inode field in a very long time, and
+>     the code to deal with moving the extended attributes down to make room
+>     for the extra inode fields has bitrotted and can cause kernel BUGS.
+>     
+>     Very few people will likely use project quotas (and those that do will
+>     likely be creating a new file system from scratch) so as a temporary
+>     pallative until we are sure the inode expansion code is all sane,
+>     let's not try to expand the inode "extra" fields if the project
+>     feature has not been enabled.
+>     
+>     Cc: stable@vger.kernel.org # v4.4+
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > 
-
-I measured, there is tests running in our labs every night, your
-suggestion on an ADR system is 3 times slower to reach persistence.
-
-Is why I was pushing for MMAP_PMEM_AWARE, because a smart mmap application
-from user-mode uses mov_nt anyway because it wants that 20% gain regardless
-of what the Kernel will do. Then it calls fsync() and the Kernel will burn
-x2 more CPU, just for the sake of burning CPU, because the data is already
-persistent at the get go.
-
-> Cheers,
-> Dave.
-
-As you, I do not care for DAX very much, but please lets keep the physical
-facts strait
-
-Cheers indeed
-Boaz
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index c13a4e4..e2622ba 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -3968,6 +3968,17 @@ no_journal:
+>  	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
+>  		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
+>  						     EXT4_GOOD_OLD_INODE_SIZE;
+> +		/*
+> +		 * This is a temporary hack; we have not added a new
+> +		 * "extra" inode field in a long time, and the code to
+> +		 * expand the inode structure has bitrotted and can
+> +		 * cause kernel BUG's.  If the file system does not
+> +		 * have the project feature, let's not try to expand
+> +		 * the inode's extra size as a temporary pallitive
+> +		 * until we can fix up the inode expansion code.
+> +		 */
+> +		if (!ext4_has_feature_project(sb))
+> +			sbi->s_want_extra_isize -= sizeof(__le32);
+>  		if (ext4_has_feature_extra_isize(sb)) {
+>  			if (sbi->s_want_extra_isize <
+>  			    le16_to_cpu(es->s_want_extra_isize))
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
