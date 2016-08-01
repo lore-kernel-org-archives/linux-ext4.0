@@ -1,78 +1,94 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [4.7-rc6 ext3 BUG] kernel BUG at fs/ext4/xattr.c:1331
-Date: Sun, 31 Jul 2016 23:09:09 -0400
-Message-ID: <20160801030909.GD12853@thunk.org>
-References: <20160718022356.GC1922@dastard>
- <20160718030256.GD1922@dastard>
- <83e3076d-4f84-705d-5259-b3ac1aaf90b7@redhat.com>
- <20160718052447.GE1922@dastard>
- <20160728135432.GA19398@quack2.suse.cz>
- <20160729002112.GX16044@dastard>
- <20160729064210.GA3611@quack2.suse.cz>
+From: Keith Packard <keithp@keithp.com>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Sun, 31 Jul 2016 20:13:23 -0700
+Message-ID: <86k2g15gh8.fsf@hiro.keithp.com>
+References: <20160727120745.GI6860@quack2.suse.cz>
+	<20160727211039.GA20278@linux.intel.com>
+	<20160727221949.GU16044@dastard>
+	<20160728081033.GC4094@quack2.suse.cz>
+	<20160729022152.GZ16044@dastard>
+	<CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+	<20160730001249.GE16044@dastard>
+	<CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
+	<20160801014645.GI16044@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33088 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377AbcHADJ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 31 Jul 2016 23:09:56 -0400
+Content-Type: multipart/mixed; boundary="===============6893870862725997970=="
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	XFS Developers <xfs@oss.sgi.com>, Jan Kara <jack@suse.cz>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Dave Chinner <david@fromorbit.com>, Dan Williams <dan.j.williams@intel.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <20160801014645.GI16044@dastard>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+--===============6893870862725997970==
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
+
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+Dave Chinner <david@fromorbit.com> writes:
+
+> So we'd see that from the point of view of a torn single sector
+> write. Ok, so we better limit DAX to CRC enabled filesystems to
+> ensure these sorts of events are always caught by the filesystem.
+
+Which is the same lack of guarantee that we already get on rotating
+media. Flash media seems to work harder to provide sector atomicity; I
+guess that's a feature?
+
+The alternative is to hide metadata behind a translation layer, and
+while that can be done for lame file systems, I'd like to see the raw
+hardware capabilities exposed and then make free software that
+constructs a reliable system on top of that.
+
+=2D-=20
+=2Dkeith
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIVAwUBV56+VNsiGmkAAAARAQhpyQ/9HRHbTruM/IlU4qAsCUYnMtOVj6TrHBFj
+hSLmYzGF0grZqzxiVMpwlS9SlfC0kj4nK8VPt0Zw7zXUji89CrzMBCf3mD/i0hyh
+lNOmKgaLOnV9Zm6MJH2PXsqEmJLHrcfyKF7OxucGmk4f0ofqlSh+TaGlXl82Yp0b
+3SHg5G0/zewGUWjS46LmPdhhQhyot1IDi4i/KLMUynd6mkTubLCl7rx1NG98meiz
+/+dcayUuZXZpTrnvZ081xPJhedCapcGbxPc5FtMJy0lsaQxTAUqhTO+5GM/CY+mI
+NuD4UUBhCjo9kR1P9e25Z1BUMnNubIC6zToY6OqYpuWY/9j99nO/XKiJ6szaa/Kf
+MvUkXEeCU4RapjBqxUHYOugmWjyrsW3NXdlh/NestCq/DROF3GnDn9rtL+9AGnKJ
+oCaHxgeeqqyZ09jZ+NewkgpwRu+WMsxx5eITVQ/hD5CvXU2mfUb6C2K7G7dS/X3R
+HzXZk6SXz0NwrmN8SPaExVIybg5su6FzxKyvgVaBKnjXYluhm39O4Z7aQIB4pVyA
+cE1AGvYJiiEF1M5UJbf7qT19MXiAA3fYQ9U4ba5m9W5kyuCJGEY8DOVGkNtsV30q
+7vqFCo5San6Xz8bzPmi8C/9Hucd2ZKRf+EpBm/mH3TBazryzi3fqCbUhTkTHdq1F
+KXOEb/PQztQ=
+=em4e
+-----END PGP SIGNATURE-----
+--=-=-=--
+
+
+--===============6893870862725997970==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <20160729064210.GA3611@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 29, 2016 at 08:42:10AM +0200, Jan Kara wrote:
-> 
-> I have written some fixes, working on testing them... So hopefully I can
-> submit them later today or next week.
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
 
-How complicated are the fixes?  This should work as a temporary
-workaround and it going to be very simple to backport.
-
-	       	  	      	   	  - Ted
-					  
-
-commit e92d5b1cf6af642bc5018562e58044fd771f82bf
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Jul 31 23:08:28 2016 -0400
-
-    ext4: suppress inode growth for file systems w/o project quota
-    
-    We have not added a new "extra" inode field in a very long time, and
-    the code to deal with moving the extended attributes down to make room
-    for the extra inode fields has bitrotted and can cause kernel BUGS.
-    
-    Very few people will likely use project quotas (and those that do will
-    likely be creating a new file system from scratch) so as a temporary
-    pallative until we are sure the inode expansion code is all sane,
-    let's not try to expand the inode "extra" fields if the project
-    feature has not been enabled.
-    
-    Cc: stable@vger.kernel.org # v4.4+
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c13a4e4..e2622ba 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3968,6 +3968,17 @@ no_journal:
- 	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
- 		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
- 						     EXT4_GOOD_OLD_INODE_SIZE;
-+		/*
-+		 * This is a temporary hack; we have not added a new
-+		 * "extra" inode field in a long time, and the code to
-+		 * expand the inode structure has bitrotted and can
-+		 * cause kernel BUG's.  If the file system does not
-+		 * have the project feature, let's not try to expand
-+		 * the inode's extra size as a temporary pallitive
-+		 * until we can fix up the inode expansion code.
-+		 */
-+		if (!ext4_has_feature_project(sb))
-+			sbi->s_want_extra_isize -= sizeof(__le32);
- 		if (ext4_has_feature_extra_isize(sb)) {
- 			if (sbi->s_want_extra_isize <
- 			    le16_to_cpu(es->s_want_extra_isize))
+--===============6893870862725997970==--
