@@ -1,133 +1,116 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Mon, 1 Aug 2016 14:07:37 +1000
-Message-ID: <20160801040737.GJ16044@dastard>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com>
- <20160727221949.GU16044@dastard>
- <20160728081033.GC4094@quack2.suse.cz>
- <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard>
- <CAPcyv4gLTkx4ne7pWuMSqfFpLoOBx=TowvcWXw9UGUxn=jd-Tg@mail.gmail.com>
- <20160801014645.GI16044@dastard> <86k2g15gh8.fsf@hiro.keithp.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Open bugs found by fuzzing as of 2016-07-30
+Date: Mon, 1 Aug 2016 00:55:21 -0400
+Message-ID: <20160801045521.GF12853@thunk.org>
+References: <579CA5EB.1070707@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- XFS Developers <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Keith Packard <keithp-aN4HjG94KOLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Vegard Nossum <vegard.nossum@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33310 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750857AbcHAFi3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 1 Aug 2016 01:38:29 -0400
 Content-Disposition: inline
-In-Reply-To: <86k2g15gh8.fsf-6d7jPg3SX/+z9DMzp4kqnw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <579CA5EB.1070707@oracle.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 31, 2016 at 08:13:23PM -0700, Keith Packard wrote:
-> Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org> writes:
+On Sat, Jul 30, 2016 at 03:04:43PM +0200, Vegard Nossum wrote:
+> Hi,
 > 
-> > So we'd see that from the point of view of a torn single sector
-> > write. Ok, so we better limit DAX to CRC enabled filesystems to
-> > ensure these sorts of events are always caught by the filesystem.
+> It's been two weeks since I posted the first list of bugs found using
+> AFL: https://www.spinics.net/lists/linux-ext4/msg53022.html
 > 
-> Which is the same lack of guarantee that we already get on rotating
-> media. Flash media seems to work harder to provide sector atomicity; I
-> guess that's a feature?
+> With a bunch of ext4 patches going into 4.8 we're down from 15 to 6
+> with current linus/master...
 
-No, that's not the case. Existing sector based storage guarantees
-atomic sector writes - rotating or solid state. I haven't seen one a
-corruption caused by a torn sector write in 15 years.  BTT layer was
-written for pmem to provide this guarantee, but you can't use DAX
-through that layer.
+Does this patch bring things down further?  I expect it should at the
+very list address
 
-In XFS, the only place we really care about torn sector writes in
-the journal - we have CRCs there to detect such problems and CRC
-enabled filesystems will prevent recovery of checkpoints containing
-torn writes. Non-CRC enable filesystems just warn and continue on
-their merry way (compatibility reasons - older kernels don't emit
-CRCs in log writes), so we really do need to restrict DAX to CRC
-enabled filesystems.
+> 6. WARNING: CPU: 0 PID: 58 at fs/ext4/ext4.h:2748
+> ext4_block_bitmap_csum_set+0x358/0x600
+> http://139.162.151.198/f/ext4/9628c19aff0bbaaae4149a03486305c7f6cd7523
 
-> The alternative is to hide metadata behind a translation layer, and
-> while that can be done for lame file systems,
+... and possibly others.
 
-No. These "lame" filesystems just need to use their existing
-metadata buffering layer to hide this and the journalling subsystem
-should protects against torn metadata writes.
+If there are any remaining of these bugs where the superblock is
+sufficiently corrupt that dumpe2fs refuses to print anything, could
+you print a hex dump of the superblock (located at offset 1024) so we
+could see what is going on?
 
-> I'd like to see the raw
-> hardware capabilities exposed and then make free software that
-> constructs a reliable system on top of that.
+					- Ted
 
-Not as easy as it sounds.  A couple of weeks ago I tried converting
-the XFS journal to use DAX to avoid the IO layer and resultant
-memcpy(), and I found out that there's a major problem with using
-DAX for metadata access on existing filesystems: pmem is not
-physically contiguous. I found that out the hard way - the ramdisk
-is DAX capable, but each 4k page ithat is allocated to it has a
-different memory address.
+commit 0a8bffdacb178a43a1be61270f22517de76ee8f8
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Mon Aug 1 00:51:02 2016 -0400
 
-Filesystems are designed around the fact that the block address
-space they are working with is contiguous - that sector N and sector
-N+1 can be accessed in the same IO. This is not true for
-direct access of pmem - while the sectors might be logically
-contiguous, the physical memory that is directly accessed is not.
-i.e. when we cross a page boundary, the next page could be on a
-different node, on a different device (e.g.  RAID0), etc.
-Traditional remapping devices (i.e. DM, md, etc) hide the physical
-discontiguities from the filesystem - the present a contiguous LBA
-and remap/split/combine under the covers where the filesystem is not
-aware of it at all.
+    ext4: validate that metadata blocks do not overlap superblock
+    
+    A number of fuzzing failures seem to be caused by allocation bitmaps
+    or other metadata blocks being pointed at the superblock.
+    
+    This can cause kernel BUG or WARNings once the superblock is
+    overwritten, so validate the group descriptor blocks to make sure this
+    doesn't happen.
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-The reason this is important is that if the filesystem has metadata
-constructs larger than a single page it can't use DAX to access them
-as a single object because they may lay across a physical
-discontiguity in the memory map.  Filesystems aren't usually exposed
-to this - sectors of a block device are indexed by "Logical Block
-Address" for good reason - the LBA address space is supposed to hide
-the physical layout of the storage from the layer above the block
-device.
-
-OTOH, DAX directly exposes the physical layout to the filesytem.
-And because it's DAX-based pmem and not cached struct pages, we
-can't run vm_map_ram() to virtually map the range we need to see as
-a contiguous range, as we do in XFS for large objects such as directory
-blocks and log buffers. For other large objects such as inode
-clusters, we can directly map each page as the objects within the
-clusters are page aligned and never overlap page boundaries, but
-that only works for inode and dquot buffers. Hence DAX as it stands
-makes it extremely difficult to "retrofit" DAX into all aspects of
-existing fileystems because exposing physical discontiguities breaks
-code that assumes they don't exist.
-
-I've been saying this from the start: we can't make use of all the
-capabilities of pmem with existing filesystems and DAX.  DAX is
-supposed to be a *stopgap measure* until pmem native solutions are
-built and mature. Finding limitations like the above only serve to
-highlight the fact DAX on ext4/XFS is only a partial solution.
-
-The real problem is, as always, a lack of resources to implement
-everything we want to be able to do. Building a new filesystem is
-hard, takes a long time, and all the people we have that might be
-able to do it are fully occupied by maintaining and enhancing the
-existing Linux filesystems to support things like DAX or other
-functionality that users want (e.g. rmap, reflink, copy offload,
-etc).
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e2622ba..2942fda 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2211,6 +2211,7 @@ void ext4_group_desc_csum_set(struct super_block *sb, __u32 block_group,
+ 
+ /* Called at mount-time, super-block is locked */
+ static int ext4_check_descriptors(struct super_block *sb,
++				  ext4_fsblk_t sb_block,
+ 				  ext4_group_t *first_not_zeroed)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -2241,6 +2242,11 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			grp = i;
+ 
+ 		block_bitmap = ext4_block_bitmap(sb, gdp);
++		if (block_bitmap == sb_block) {
++			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
++				 "Block bitmap for group %u overlaps "
++				 "superblock", i);
++		}
+ 		if (block_bitmap < first_block || block_bitmap > last_block) {
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+ 			       "Block bitmap for group %u not in group "
+@@ -2248,6 +2254,11 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			return 0;
+ 		}
+ 		inode_bitmap = ext4_inode_bitmap(sb, gdp);
++		if (inode_bitmap == sb_block) {
++			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
++				 "Inode bitmap for group %u overlaps "
++				 "superblock", i);
++		}
+ 		if (inode_bitmap < first_block || inode_bitmap > last_block) {
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+ 			       "Inode bitmap for group %u not in group "
+@@ -2255,6 +2266,11 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			return 0;
+ 		}
+ 		inode_table = ext4_inode_table(sb, gdp);
++		if (inode_table == sb_block) {
++			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
++				 "Inode table for group %u overlaps "
++				 "superblock", i);
++		}
+ 		if (inode_table < first_block ||
+ 		    inode_table + sbi->s_itb_per_group - 1 > last_block) {
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+@@ -3757,7 +3773,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			goto failed_mount2;
+ 		}
+ 	}
+-	if (!ext4_check_descriptors(sb, &first_not_zeroed)) {
++	if (!ext4_check_descriptors(sb, logical_sb_block, &first_not_zeroed)) {
+ 		ext4_msg(sb, KERN_ERR, "group descriptors corrupted!");
+ 		ret = -EFSCORRUPTED;
+ 		goto failed_mount2;
