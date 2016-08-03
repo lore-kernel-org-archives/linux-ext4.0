@@ -1,34 +1,41 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 76261] ext4_da_writepages err -30 after remount ro during
- shutdown
-Date: Wed, 03 Aug 2016 03:14:16 +0000
-Message-ID: <bug-76261-13602-dK844G4if3@https.bugzilla.kernel.org/>
-References: <bug-76261-13602@https.bugzilla.kernel.org/>
+From: Greg KH <greg@kroah.com>
+Subject: Re: Open bugs found by fuzzing as of 2016-07-30
+Date: Wed, 3 Aug 2016 07:43:59 +0200
+Message-ID: <20160803054359.GB6711@kroah.com>
+References: <579CA5EB.1070707@oracle.com>
+ <09df1f58-ed4c-6887-e112-bbc68d9ec1d6@gmail.com>
+ <579CFF1B.40201@oracle.com>
+ <20160731043727.GB12853@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Vegard Nossum <vegard.nossum@oracle.com>,
+	nborisov <n.borisov.lkml@gmail.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:56720 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754374AbcHCDOT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Aug 2016 23:14:19 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 8F26C203A1
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Aug 2016 03:14:17 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 72B2D20389
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Aug 2016 03:14:16 +0000 (UTC)
-In-Reply-To: <bug-76261-13602@https.bugzilla.kernel.org/>
+Received: from out5-smtp.messagingengine.com ([66.111.4.29]:51158 "EHLO
+	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932068AbcHCGVh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Aug 2016 02:21:37 -0400
+Content-Disposition: inline
+In-Reply-To: <20160731043727.GB12853@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=76261
+On Sun, Jul 31, 2016 at 12:37:27AM -0400, Theodore Ts'o wrote:
+> On Sat, Jul 30, 2016 at 09:25:15PM +0200, Vegard Nossum wrote:
+> > 
+> > It seems that most of them are indeed tagged for stable; for the patches
+> > I submitted or reported for, it looks like the only one without a stable
+> > tag is a warning about large memory allocations -- commit
+> > 7bc9491645118c9461bd21099c31755ff6783593.
+> 
+> ... and that's an oversight.  Commit 7bc949164511 ("ext4: verify
+> extent header depth") should have been marked for stable.  I've added
+> stable@vger.kernel.org to the cc.  Could you please it to the stable
+> kernels?  Many thanks!!
 
---- Comment #18 from kun.chen <kun.chen@mediatek.com> ---
-Finally my customer defer this issue, so I don't have platform to collect the
-debug info anymore
+Now queued up, thanks.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+greg k-h
