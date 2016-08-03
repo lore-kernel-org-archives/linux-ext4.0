@@ -1,212 +1,475 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 01/11] ext4: Fix xattr shifting when expanding inodes
-Date: Wed, 3 Aug 2016 17:25:58 -0600
-Message-ID: <4FEAD03B-D92D-4DB6-8144-9202DE1A9DA9@dilger.ca>
-References: <1470220795-17045-1-git-send-email-jack@suse.cz> <1470220795-17045-2-git-send-email-jack@suse.cz>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_593C3ACE-E041-402B-A1A9-CAB142A8BC7E"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Ted Tso <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33381 "EHLO
-	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933200AbcHCXlf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Aug 2016 19:41:35 -0400
-Received: by mail-it0-f68.google.com with SMTP id d65so17354708ith.0
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Aug 2016 16:41:21 -0700 (PDT)
-In-Reply-To: <1470220795-17045-2-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Mike Christie <mchristi@redhat.com>
+Subject: Re: [PATCH 37/45] drivers: use req op accessor
+Date: Wed, 3 Aug 2016 18:47:47 -0500
+Message-ID: <87fbe31f-27b3-ff7a-e381-34fc1aad337e@redhat.com>
+References: <1465155145-10812-1-git-send-email-mchristi@redhat.com>
+	<1465155145-10812-38-git-send-email-mchristi@redhat.com>
+	<CAOxpaSUMsgfTYsL0bL6VCnwxz7bpgpKO-ZfC5J8dFG9PN-hzvg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------E67039756464BB48DF8C2F48"
+Cc: linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
+	XFS Developers <xfs@oss.sgi.com>, ocfs2-devel@oss.oracle.com,
+	linux-scsi@vger.kernel.org, konrad.wilk@oracle.com,
+	LKML <linux-kernel@vger.kernel.org>, philipp.reisner@linbit.com,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-raid@vger.kernel.org, dm-devel@redhat.com,
+	target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
+	osd-dev@open-osd.org, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	lars.ellenberg@linbit.com, linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-btrfs@vger.kernel.org, drbd-dev@lists.linbit.com
+To: Ross Zwisler <zwisler@gmail.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Dave Chinner <david@fromorbit.com>, axboe@fb.com
+Return-path: <xfs-bounces@oss.sgi.com>
+In-Reply-To: <CAOxpaSUMsgfTYsL0bL6VCnwxz7bpgpKO-ZfC5J8dFG9PN-hzvg@mail.gmail.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Errors-To: xfs-bounces@oss.sgi.com
+Sender: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+This is a multi-part message in MIME format.
+--------------E67039756464BB48DF8C2F48
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+On 08/03/2016 05:33 PM, Ross Zwisler wrote:
+> On Sun, Jun 5, 2016 at 1:32 PM,  <mchristi@redhat.com> wrote:
+>> From: Mike Christie <mchristi@redhat.com>
+>>
+>> The req operation REQ_OP is separated from the rq_flag_bits
+>> definition. This converts the block layer drivers to
+>> use req_op to get the op from the request struct.
+>>
+>> Signed-off-by: Mike Christie <mchristi@redhat.com>
+>> ---
+>>  drivers/block/loop.c              |  6 +++---
+>>  drivers/block/mtip32xx/mtip32xx.c |  2 +-
+>>  drivers/block/nbd.c               |  2 +-
+>>  drivers/block/rbd.c               |  4 ++--
+>>  drivers/block/xen-blkfront.c      |  8 +++++---
+>>  drivers/ide/ide-floppy.c          |  2 +-
+>>  drivers/md/dm.c                   |  2 +-
+>>  drivers/mmc/card/block.c          |  7 +++----
+>>  drivers/mmc/card/queue.c          |  6 ++----
+> 
+> Dave Chinner reported a deadlock with XFS + DAX, which I reproduced
+> and bisected to this commit:
+> 
+> commit c2df40dfb8c015211ec55f4b1dd0587f875c7b34
+> Author: Mike Christie <mchristi@redhat.com>
+> Date:   Sun Jun 5 14:32:17 2016 -0500
+> drivers: use req op accessor
+> 
+> Here are the steps to reproduce the deadlock with a BRD ramdisk:
+> 
+> mkfs.xfs -f /dev/ram0
+> mount -o dax /dev/ram0 /mnt/scratch
+
+When using ramdisks, we need the attached patch like in your other bug
+report. I think it will fix some hangs people are seeing.
+
+I do not think that it should cause the failure to run issue you saw
+when doing generic/008 and ext2.
 
 
---Apple-Mail=_593C3ACE-E041-402B-A1A9-CAB142A8BC7E
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Aug 3, 2016, at 4:39 AM, Jan Kara <jack@suse.cz> wrote:
->=20
-> The code in ext4_expand_extra_isize_ea() treated new_extra_isize
-> argument sometimes as the desired target i_extra_isize and sometimes =
-as
-> the amount by which we need to grow current i_extra_isize. These =
-happen
-> to coincide when i_extra_isize is 0 which used to be the common case =
-and
-> so nobody noticed this until recently when we added i_projid to the
-> inode and so i_extra_isize now needs to grow from 28 to 32 bytes.
->=20
-> The result of these bugs was that we sometimes unnecessarily decided =
-to
-> move xattrs out of inode even if there was enough space and we often
-> ended up corrupting in-inode xattrs because arguments to
-> ext4_xattr_shift_entries() were just wrong. This could demonstrate
-> itself as BUG_ON in ext4_xattr_shift_entries() triggering.
->=20
-> Fix the problem by introducing new isize_diff variable and use it =
-where
-> appropriate.
->=20
-> CC: <stable@vger.kernel.org> # 4.4.x-
-> Reported-by: Dave Chinner <david@fromorbit.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
-> fs/ext4/xattr.c | 27 ++++++++++++++-------------
-> 1 file changed, 14 insertions(+), 13 deletions(-)
->=20
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 39e9cfb1b371..cb1d7b4482de 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1353,11 +1353,13 @@ int ext4_expand_extra_isize_ea(struct inode =
-*inode, int new_extra_isize,
-> 	size_t min_offs, free;
-> 	int total_ino;
-> 	void *base, *start, *end;
-> -	int extra_isize =3D 0, error =3D 0, tried_min_extra_isize =3D 0;
-> +	int error =3D 0, tried_min_extra_isize =3D 0;
-> 	int s_min_extra_isize =3D =
-le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
-> +	int isize_diff;	/* How much do we need to grow i_extra_isize */
->=20
-> 	down_write(&EXT4_I(inode)->xattr_sem);
-> retry:
-> +	isize_diff =3D new_extra_isize - EXT4_I(inode)->i_extra_isize;
-> 	if (EXT4_I(inode)->i_extra_isize >=3D new_extra_isize) {
-
-Not a big deal, but either the isize_diff calculation could be moved
-after the "if () {}" block, or the condition could be changed to:
-
-	if (isize_diff <=3D 0) {
-
-since isize_diff is otherwise unused if this condition is true.
-
-You can add my
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-Cheers, Andreas
-
-> 		up_write(&EXT4_I(inode)->xattr_sem);
-> 		return 0;
-> @@ -1382,7 +1384,7 @@ retry:
-> 		goto cleanup;
->=20
-> 	free =3D ext4_xattr_free_space(last, &min_offs, base, =
-&total_ino);
-> -	if (free >=3D new_extra_isize) {
-> +	if (free >=3D isize_diff) {
-> 		entry =3D IFIRST(header);
-> 		ext4_xattr_shift_entries(entry,	=
-EXT4_I(inode)->i_extra_isize
-> 				- new_extra_isize, (void *)raw_inode +
-> @@ -1414,7 +1416,7 @@ retry:
-> 		end =3D bh->b_data + bh->b_size;
-> 		min_offs =3D end - base;
-> 		free =3D ext4_xattr_free_space(first, &min_offs, base, =
-NULL);
-> -		if (free < new_extra_isize) {
-> +		if (free < isize_diff) {
-> 			if (!tried_min_extra_isize && s_min_extra_isize) =
-{
-> 				tried_min_extra_isize++;
-> 				new_extra_isize =3D s_min_extra_isize;
-> @@ -1428,7 +1430,7 @@ retry:
-> 		free =3D inode->i_sb->s_blocksize;
-> 	}
->=20
-> -	while (new_extra_isize > 0) {
-> +	while (isize_diff > 0) {
-> 		size_t offs, size, entry_size;
-> 		struct ext4_xattr_entry *small_entry =3D NULL;
-> 		struct ext4_xattr_info i =3D {
-> @@ -1459,7 +1461,7 @@ retry:
-> 			EXT4_XATTR_SIZE(le32_to_cpu(last->e_value_size)) =
-+
-> 					=
-EXT4_XATTR_LEN(last->e_name_len);
-> 			if (total_size <=3D free && total_size < =
-min_total_size) {
-> -				if (total_size < new_extra_isize) {
-> +				if (total_size < isize_diff) {
-> 					small_entry =3D last;
-> 				} else {
-> 					entry =3D last;
-> @@ -1516,20 +1518,19 @@ retry:
-> 			goto cleanup;
->=20
-> 		entry =3D IFIRST(header);
-> -		if (entry_size + EXT4_XATTR_SIZE(size) >=3D =
-new_extra_isize)
-> -			shift_bytes =3D new_extra_isize;
-> +		if (entry_size + EXT4_XATTR_SIZE(size) >=3D isize_diff)
-> +			shift_bytes =3D isize_diff;
-> 		else
-> 			shift_bytes =3D entry_size + size;
-> 		/* Adjust the offsets and shift the remaining entries =
-ahead */
-> -		ext4_xattr_shift_entries(entry, =
-EXT4_I(inode)->i_extra_isize -
-> -			shift_bytes, (void *)raw_inode +
-> -			EXT4_GOOD_OLD_INODE_SIZE + extra_isize + =
-shift_bytes,
-> +		ext4_xattr_shift_entries(entry, -shift_bytes,
-> +			(void *)raw_inode + EXT4_GOOD_OLD_INODE_SIZE +
-> +			EXT4_I(inode)->i_extra_isize + shift_bytes,
-> 			(void *)header, total_ino - entry_size,
-> 			inode->i_sb->s_blocksize);
->=20
-> -		extra_isize +=3D shift_bytes;
-> -		new_extra_isize -=3D shift_bytes;
-> -		EXT4_I(inode)->i_extra_isize =3D extra_isize;
-> +		isize_diff -=3D shift_bytes;
-> +		EXT4_I(inode)->i_extra_isize +=3D shift_bytes;
->=20
-> 		i.name =3D b_entry_name;
-> 		i.value =3D buffer;
-> --
-> 2.6.6
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_593C3ACE-E041-402B-A1A9-CAB142A8BC7E
+--------------E67039756464BB48DF8C2F48
+Content-Type: text/x-patch;
+ name="convert-rw_page.patch"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+ filename="convert-rw_page.patch"
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+index 3022dad..9fbbeba 100644
+--- a/drivers/block/brd.c
++++ b/drivers/block/brd.c
+@@ -300,20 +300,20 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
+  * Process a single bvec of a bio.
+  */
+ static int brd_do_bvec(struct brd_device *brd, struct page *page,
+-			unsigned int len, unsigned int off, int rw,
++			unsigned int len, unsigned int off, int op,
+ 			sector_t sector)
+ {
+ 	void *mem;
+ 	int err = 0;
+ 
+-	if (rw != READ) {
++	if (op_is_write(op)) {
+ 		err = copy_to_brd_setup(brd, sector, len);
+ 		if (err)
+ 			goto out;
+ 	}
+ 
+ 	mem = kmap_atomic(page);
+-	if (rw == READ) {
++	if (!op_is_write(op)) {
+ 		copy_from_brd(mem + off, brd, sector, len);
+ 		flush_dcache_page(page);
+ 	} else {
+@@ -330,7 +330,6 @@ static blk_qc_t brd_make_request(struct request_queue *q, struct bio *bio)
+ {
+ 	struct block_device *bdev = bio->bi_bdev;
+ 	struct brd_device *brd = bdev->bd_disk->private_data;
+-	int rw;
+ 	struct bio_vec bvec;
+ 	sector_t sector;
+ 	struct bvec_iter iter;
+@@ -347,14 +346,12 @@ static blk_qc_t brd_make_request(struct request_queue *q, struct bio *bio)
+ 		goto out;
+ 	}
+ 
+-	rw = bio_data_dir(bio);
+-
+ 	bio_for_each_segment(bvec, bio, iter) {
+ 		unsigned int len = bvec.bv_len;
+ 		int err;
+ 
+ 		err = brd_do_bvec(brd, bvec.bv_page, len,
+-					bvec.bv_offset, rw, sector);
++					bvec.bv_offset, bio_op(bio), sector);
+ 		if (err)
+ 			goto io_error;
+ 		sector += len >> SECTOR_SHIFT;
+@@ -369,11 +366,11 @@ io_error:
+ }
+ 
+ static int brd_rw_page(struct block_device *bdev, sector_t sector,
+-		       struct page *page, int rw)
++		       struct page *page, int op, int op_flags)
+ {
+ 	struct brd_device *brd = bdev->bd_disk->private_data;
+-	int err = brd_do_bvec(brd, page, PAGE_SIZE, 0, rw, sector);
+-	page_endio(page, rw & WRITE, err);
++	int err = brd_do_bvec(brd, page, PAGE_SIZE, 0, op, sector);
++	page_endio(page, op, err);
+ 	return err;
+ }
+ 
+diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
+index 7454cf1..f0e126c 100644
+--- a/drivers/block/zram/zram_drv.c
++++ b/drivers/block/zram/zram_drv.c
+@@ -843,15 +843,15 @@ static void zram_bio_discard(struct zram *zram, u32 index,
+ }
+ 
+ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
+-			int offset, int rw)
++			int offset, int op)
+ {
+ 	unsigned long start_time = jiffies;
+ 	int ret;
+ 
+-	generic_start_io_acct(rw, bvec->bv_len >> SECTOR_SHIFT,
++	generic_start_io_acct(op, bvec->bv_len >> SECTOR_SHIFT,
+ 			&zram->disk->part0);
+ 
+-	if (rw == READ) {
++	if (!op_is_write(op)) {
+ 		atomic64_inc(&zram->stats.num_reads);
+ 		ret = zram_bvec_read(zram, bvec, index, offset);
+ 	} else {
+@@ -859,10 +859,10 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
+ 		ret = zram_bvec_write(zram, bvec, index, offset);
+ 	}
+ 
+-	generic_end_io_acct(rw, &zram->disk->part0, start_time);
++	generic_end_io_acct(op, &zram->disk->part0, start_time);
+ 
+ 	if (unlikely(ret)) {
+-		if (rw == READ)
++		if (!op_is_write(op))
+ 			atomic64_inc(&zram->stats.failed_reads);
+ 		else
+ 			atomic64_inc(&zram->stats.failed_writes);
+@@ -873,7 +873,7 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
+ 
+ static void __zram_make_request(struct zram *zram, struct bio *bio)
+ {
+-	int offset, rw;
++	int offset;
+ 	u32 index;
+ 	struct bio_vec bvec;
+ 	struct bvec_iter iter;
+@@ -888,7 +888,6 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
+ 		return;
+ 	}
+ 
+-	rw = bio_data_dir(bio);
+ 	bio_for_each_segment(bvec, bio, iter) {
+ 		int max_transfer_size = PAGE_SIZE - offset;
+ 
+@@ -903,15 +902,18 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
+ 			bv.bv_len = max_transfer_size;
+ 			bv.bv_offset = bvec.bv_offset;
+ 
+-			if (zram_bvec_rw(zram, &bv, index, offset, rw) < 0)
++			if (zram_bvec_rw(zram, &bv, index, offset,
++					 bio_op(bio)) < 0)
+ 				goto out;
+ 
+ 			bv.bv_len = bvec.bv_len - max_transfer_size;
+ 			bv.bv_offset += max_transfer_size;
+-			if (zram_bvec_rw(zram, &bv, index + 1, 0, rw) < 0)
++			if (zram_bvec_rw(zram, &bv, index + 1, 0,
++					 bio_op(bio)) < 0)
+ 				goto out;
+ 		} else
+-			if (zram_bvec_rw(zram, &bvec, index, offset, rw) < 0)
++			if (zram_bvec_rw(zram, &bvec, index, offset,
++					 bio_op(bio)) < 0)
+ 				goto out;
+ 
+ 		update_position(&index, &offset, &bvec);
+@@ -968,7 +970,7 @@ static void zram_slot_free_notify(struct block_device *bdev,
+ }
+ 
+ static int zram_rw_page(struct block_device *bdev, sector_t sector,
+-		       struct page *page, int rw)
++		       struct page *page, int op, int op_flags)
+ {
+ 	int offset, err = -EIO;
+ 	u32 index;
+@@ -992,7 +994,7 @@ static int zram_rw_page(struct block_device *bdev, sector_t sector,
+ 	bv.bv_len = PAGE_SIZE;
+ 	bv.bv_offset = 0;
+ 
+-	err = zram_bvec_rw(zram, &bv, index, offset, rw);
++	err = zram_bvec_rw(zram, &bv, index, offset, op);
+ put_zram:
+ 	zram_meta_put(zram);
+ out:
+@@ -1005,7 +1007,7 @@ out:
+ 	 * (e.g., SetPageError, set_page_dirty and extra works).
+ 	 */
+ 	if (err == 0)
+-		page_endio(page, rw, 0);
++		page_endio(page, op, 0);
+ 	return err;
+ }
+ 
+diff --git a/drivers/nvdimm/btt.c b/drivers/nvdimm/btt.c
+index 9dce03f..6a6208d 100644
+--- a/drivers/nvdimm/btt.c
++++ b/drivers/nvdimm/btt.c
+@@ -1133,11 +1133,11 @@ static int btt_write_pg(struct btt *btt, struct bio_integrity_payload *bip,
+ 
+ static int btt_do_bvec(struct btt *btt, struct bio_integrity_payload *bip,
+ 			struct page *page, unsigned int len, unsigned int off,
+-			int rw, sector_t sector)
++			int op, sector_t sector)
+ {
+ 	int ret;
+ 
+-	if (rw == READ) {
++	if (!op_is_write(op)) {
+ 		ret = btt_read_pg(btt, bip, page, off, sector, len);
+ 		flush_dcache_page(page);
+ 	} else {
+@@ -1155,7 +1155,7 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
+ 	struct bvec_iter iter;
+ 	unsigned long start;
+ 	struct bio_vec bvec;
+-	int err = 0, rw;
++	int err = 0;
+ 	bool do_acct;
+ 
+ 	/*
+@@ -1170,7 +1170,6 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
+ 	}
+ 
+ 	do_acct = nd_iostat_start(bio, &start);
+-	rw = bio_data_dir(bio);
+ 	bio_for_each_segment(bvec, bio, iter) {
+ 		unsigned int len = bvec.bv_len;
+ 
+@@ -1181,11 +1180,12 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
+ 		BUG_ON(len % btt->sector_size);
+ 
+ 		err = btt_do_bvec(btt, bip, bvec.bv_page, len, bvec.bv_offset,
+-				rw, iter.bi_sector);
++				  bio_op(bio), iter.bi_sector);
+ 		if (err) {
+ 			dev_info(&btt->nd_btt->dev,
+ 					"io error in %s sector %lld, len %d,\n",
+-					(rw == READ) ? "READ" : "WRITE",
++					(op_is_write(bio_op(bio))) ? "WRITE" :
++					"READ",
+ 					(unsigned long long) iter.bi_sector, len);
+ 			bio->bi_error = err;
+ 			break;
+@@ -1200,12 +1200,12 @@ out:
+ }
+ 
+ static int btt_rw_page(struct block_device *bdev, sector_t sector,
+-		struct page *page, int rw)
++		struct page *page, int op, int op_flags)
+ {
+ 	struct btt *btt = bdev->bd_disk->private_data;
+ 
+-	btt_do_bvec(btt, NULL, page, PAGE_SIZE, 0, rw, sector);
+-	page_endio(page, rw & WRITE, 0);
++	btt_do_bvec(btt, NULL, page, PAGE_SIZE, 0, op, sector);
++	page_endio(page, op, 0);
+ 	return 0;
+ }
+ 
+diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+index b511099..6a7b97d 100644
+--- a/drivers/nvdimm/pmem.c
++++ b/drivers/nvdimm/pmem.c
+@@ -67,7 +67,7 @@ static void pmem_clear_poison(struct pmem_device *pmem, phys_addr_t offset,
+ }
+ 
+ static int pmem_do_bvec(struct pmem_device *pmem, struct page *page,
+-			unsigned int len, unsigned int off, int rw,
++			unsigned int len, unsigned int off, int op,
+ 			sector_t sector)
+ {
+ 	int rc = 0;
+@@ -79,7 +79,7 @@ static int pmem_do_bvec(struct pmem_device *pmem, struct page *page,
+ 	if (unlikely(is_bad_pmem(&pmem->bb, sector, len)))
+ 		bad_pmem = true;
+ 
+-	if (rw == READ) {
++	if (!op_is_write(op)) {
+ 		if (unlikely(bad_pmem))
+ 			rc = -EIO;
+ 		else {
+@@ -134,7 +134,7 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
+ 	do_acct = nd_iostat_start(bio, &start);
+ 	bio_for_each_segment(bvec, bio, iter) {
+ 		rc = pmem_do_bvec(pmem, bvec.bv_page, bvec.bv_len,
+-				bvec.bv_offset, bio_data_dir(bio),
++				bvec.bv_offset, bio_op(bio),
+ 				iter.bi_sector);
+ 		if (rc) {
+ 			bio->bi_error = rc;
+@@ -152,12 +152,12 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
+ }
+ 
+ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
+-		       struct page *page, int rw)
++		       struct page *page, int op, int op_flags)
+ {
+ 	struct pmem_device *pmem = bdev->bd_queue->queuedata;
+ 	int rc;
+ 
+-	rc = pmem_do_bvec(pmem, page, PAGE_SIZE, 0, rw, sector);
++	rc = pmem_do_bvec(pmem, page, PAGE_SIZE, 0, op, sector);
+ 
+ 	/*
+ 	 * The ->rw_page interface is subtle and tricky.  The core
+@@ -166,7 +166,7 @@ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
+ 	 * caused by double completion.
+ 	 */
+ 	if (rc == 0)
+-		page_endio(page, rw & WRITE, 0);
++		page_endio(page, op, 0);
+ 
+ 	return rc;
+ }
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index ada42cf..e790ced 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -416,7 +416,8 @@ int bdev_read_page(struct block_device *bdev, sector_t sector,
+ 	result = blk_queue_enter(bdev->bd_queue, false);
+ 	if (result)
+ 		return result;
+-	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page, READ);
++	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page,
++			      REQ_OP_READ, 0);
+ 	blk_queue_exit(bdev->bd_queue);
+ 	return result;
+ }
+@@ -445,7 +446,7 @@ int bdev_write_page(struct block_device *bdev, sector_t sector,
+ 			struct page *page, struct writeback_control *wbc)
+ {
+ 	int result;
+-	int rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE;
++	int op_flags = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0;
+ 	const struct block_device_operations *ops = bdev->bd_disk->fops;
+ 
+ 	if (!ops->rw_page || bdev_get_integrity(bdev))
+@@ -455,7 +456,8 @@ int bdev_write_page(struct block_device *bdev, sector_t sector,
+ 		return result;
+ 
+ 	set_page_writeback(page);
+-	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page, rw);
++	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page,
++			      REQ_OP_WRITE, op_flags);
+ 	if (result)
+ 		end_page_writeback(page);
+ 	else
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index adf3307..3652408 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1673,7 +1673,8 @@ struct blk_dax_ctl {
+ struct block_device_operations {
+ 	int (*open) (struct block_device *, fmode_t);
+ 	void (*release) (struct gendisk *, fmode_t);
+-	int (*rw_page)(struct block_device *, sector_t, struct page *, int rw);
++	int (*rw_page)(struct block_device *, sector_t, struct page *,
++		       int op, int op_flags);
+ 	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+ 	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
+ 	long (*direct_access)(struct block_device *, sector_t, void **, pfn_t *,
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 81363b8..4578637 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -510,7 +510,7 @@ static inline void wait_on_page_writeback(struct page *page)
+ extern void end_page_writeback(struct page *page);
+ void wait_for_stable_page(struct page *page);
+ 
+-void page_endio(struct page *page, int rw, int err);
++void page_endio(struct page *page, int op, int err);
+ 
+ /*
+  * Add an arbitrary waiter to a page's wait queue
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 3083ded..daef091 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -887,9 +887,9 @@ EXPORT_SYMBOL(end_page_writeback);
+  * After completing I/O on a page, call this routine to update the page
+  * flags appropriately
+  */
+-void page_endio(struct page *page, int rw, int err)
++void page_endio(struct page *page, int op, int err)
+ {
+-	if (rw == READ) {
++	if (!op_is_write(op)) {
+ 		if (!err) {
+ 			SetPageUptodate(page);
+ 		} else {
+@@ -897,7 +897,7 @@ void page_endio(struct page *page, int rw, int err)
+ 			SetPageError(page);
+ 		}
+ 		unlock_page(page);
+-	} else { /* rw == WRITE */
++	} else {
+ 		if (err) {
+ 			SetPageError(page);
+ 			if (page->mapping)
 
-iQIVAwUBV6J9h3Kl2rkXzB/gAQgDJg/+K34oBotCjsI3ihMKE0NEsL6klpRsruvg
-TIXllotLWiyIQWgcTN6b3VF9GcogpmF/68Y+UA37puzdl0nuN3cROVnQrjf7/w6z
-eR1yev/spA4Ie3yzEdMylYGjtiAgwJ5O+Jf2xPlDWgfmD/GnpxdGRxvRHufwMTGX
-CHpR7uzKEhaJ1inKFkFzxUjYB/FbLfBiPyS3gzgtbOSqNM/5JVT/qFCthct7X1TW
-tlbFOMr2uYZjLqWgSE5cVdB6pNE22jAuQiyE89Kk6SET95nLXlDIuPx4qVdsLGgY
-5GxIPK1KE4BOEfLy+kX4vvEQEsSGl0HhwgdDkZ99UvF5YVKvpqQMIZUQg8fOH5A+
-M+Zxz0T0h5hkqD2ZtXHaCnM07Q9tCxWfkJY697+q/bgTCvNEL31QuV81eYt796AL
-o+Hbe6sshYZOyfHiyUYM8Rn75Z7jWhUDJjJCFbhDNhwwAX+lLjH987S2FJLnRhzq
-LKsaLlOpeRXkXkTD96RI6rZQ+lhCtVSAvOq4kqlSqd6nUddem/gALsivmFKmLLG6
-1KspY5ZMzF8jS58SiGHAe09fXhhidA4hfu9xMbVQix7v9zwrW3cuxRQJFFi1dfGi
-7nSGYbHqOtot1m+UK7Ad5U510tDPTZui0x6TIFWUakieTl1ZbyFtlcj9Umi2umYn
-jU0iE2lNlqo=
-=aYAG
------END PGP SIGNATURE-----
+--------------E67039756464BB48DF8C2F48
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
---Apple-Mail=_593C3ACE-E041-402B-A1A9-CAB142A8BC7E--
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
+
+--------------E67039756464BB48DF8C2F48--
