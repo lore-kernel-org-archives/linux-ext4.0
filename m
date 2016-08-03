@@ -1,103 +1,99 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 04/11] ext4: Avoid deadlock when expanding inode size
-Date: Wed,  3 Aug 2016 12:39:48 +0200
-Message-ID: <1470220795-17045-5-git-send-email-jack@suse.cz>
+Subject: [PATCH 07/11] ext4: Remove checks for e_value_block
+Date: Wed,  3 Aug 2016 12:39:51 +0200
+Message-ID: <1470220795-17045-8-git-send-email-jack@suse.cz>
 References: <1470220795-17045-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.cz>, stable@vger.kernel.org#4.4.x-
+	Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52212 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52254 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757563AbcHCKkZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Aug 2016 06:40:25 -0400
+	id S1757546AbcHCKkd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Aug 2016 06:40:33 -0400
 In-Reply-To: <1470220795-17045-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When we need to move xattrs into external xattr block, we call
-ext4_xattr_block_set() from ext4_expand_extra_isize_ea(). That may end
-up calling ext4_mark_inode_dirty() again which will recurse back into
-the inode expansion code leading to deadlocks.
+Currently we don't support xattrs with e_value_block set. We don't allow
+them to pass initial xattr check so there's no point for checking for
+this later. Since these tests were untested, bugs were creeping in and
+not all places which should have checked were checking e_value_block
+anyway.
 
-Protect from recursion using EXT4_STATE_NO_EXPAND inode flag and move
-its management into ext4_expand_extra_isize_ea() since its manipulation
-is safe there (due to xattr_sem) from possible races with
-ext4_xattr_set_handle() which plays with it as well.
-
-CC: <stable@vger.kernel.org> # 4.4.x-
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |  2 --
- fs/ext4/xattr.c | 19 +++++++++++++------
- 2 files changed, 13 insertions(+), 8 deletions(-)
+ fs/ext4/xattr.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3131747199e1..c6ea25a190f8 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5466,8 +5466,6 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 						      sbi->s_want_extra_isize,
- 						      iloc, handle);
- 			if (ret) {
--				ext4_set_inode_state(inode,
--						     EXT4_STATE_NO_EXPAND);
- 				if (mnt_count !=
- 					le16_to_cpu(sbi->s_es->s_mnt_count)) {
- 					ext4_warning(inode->i_sb,
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index c893f00b6dc0..2eb935ca5d9e 100644
+index f845cb7c6623..1447860b61ec 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -1358,12 +1358,14 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	int isize_diff;	/* How much do we need to grow i_extra_isize */
+@@ -643,7 +643,7 @@ static size_t ext4_xattr_free_space(struct ext4_xattr_entry *last,
+ 				    size_t *min_offs, void *base, int *total)
+ {
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_size) {
+ 			size_t offs = le16_to_cpu(last->e_value_offs);
+ 			if (offs < *min_offs)
+ 				*min_offs = offs;
+@@ -663,7 +663,7 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+ 	/* Compute min_offs and last. */
+ 	last = s->first;
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_size) {
+ 			size_t offs = le16_to_cpu(last->e_value_offs);
+ 			if (offs < min_offs)
+ 				min_offs = offs;
+@@ -671,7 +671,7 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+ 	}
+ 	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
+ 	if (!s->not_found) {
+-		if (!s->here->e_value_block && s->here->e_value_size) {
++		if (s->here->e_value_size) {
+ 			size_t size = le32_to_cpu(s->here->e_value_size);
+ 			free += EXT4_XATTR_SIZE(size);
+ 		}
+@@ -693,7 +693,7 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+ 		s->here->e_name_len = name_len;
+ 		memcpy(s->here->e_name, i->name, name_len);
+ 	} else {
+-		if (!s->here->e_value_block && s->here->e_value_size) {
++		if (s->here->e_value_size) {
+ 			void *first_val = s->base + min_offs;
+ 			size_t offs = le16_to_cpu(s->here->e_value_offs);
+ 			void *val = s->base + offs;
+@@ -727,8 +727,7 @@ ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
+ 			last = s->first;
+ 			while (!IS_LAST_ENTRY(last)) {
+ 				size_t o = le16_to_cpu(last->e_value_offs);
+-				if (!last->e_value_block &&
+-				    last->e_value_size && o < offs)
++				if (last->e_value_size && o < offs)
+ 					last->e_value_offs =
+ 						cpu_to_le16(o + size);
+ 				last = EXT4_XATTR_NEXT(last);
+@@ -1327,7 +1326,7 @@ static void ext4_xattr_shift_entries(struct ext4_xattr_entry *entry,
  
- 	down_write(&EXT4_I(inode)->xattr_sem);
-+	/*
-+	 * Set EXT4_STATE_NO_EXPAND to avoid recursion when marking inode dirty
-+	 */
-+	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
- retry:
- 	isize_diff = new_extra_isize - EXT4_I(inode)->i_extra_isize;
--	if (EXT4_I(inode)->i_extra_isize >= new_extra_isize) {
--		up_write(&EXT4_I(inode)->xattr_sem);
--		return 0;
--	}
-+	if (EXT4_I(inode)->i_extra_isize >= new_extra_isize)
-+		goto out;
- 
- 	header = IHDR(inode, raw_inode);
- 	entry = IFIRST(header);
-@@ -1392,8 +1394,7 @@ retry:
- 				(void *)header, total_ino,
- 				inode->i_sb->s_blocksize);
- 		EXT4_I(inode)->i_extra_isize = new_extra_isize;
--		error = 0;
--		goto cleanup;
-+		goto out;
+ 	/* Adjust the value offsets of the entries */
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_size) {
+ 			new_offs = le16_to_cpu(last->e_value_offs) +
+ 							value_offs_shift;
+ 			BUG_ON(new_offs + le32_to_cpu(last->e_value_size)
+@@ -1726,7 +1725,7 @@ static inline void ext4_xattr_hash_entry(struct ext4_xattr_header *header,
+ 		       *name++;
  	}
  
- 	/*
-@@ -1553,6 +1554,8 @@ retry:
- 		kfree(bs);
- 	}
- 	brelse(bh);
-+out:
-+	ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
- 	up_write(&EXT4_I(inode)->xattr_sem);
- 	return 0;
- 
-@@ -1564,6 +1567,10 @@ cleanup:
- 	kfree(is);
- 	kfree(bs);
- 	brelse(bh);
-+	/*
-+	 * We deliberately leave EXT4_STATE_NO_EXPAND set here since inode
-+	 * size expansion failed.
-+	 */
- 	up_write(&EXT4_I(inode)->xattr_sem);
- 	return error;
- }
+-	if (entry->e_value_block == 0 && entry->e_value_size != 0) {
++	if (entry->e_value_size != 0) {
+ 		__le32 *value = (__le32 *)((char *)header +
+ 			le16_to_cpu(entry->e_value_offs));
+ 		for (n = (le32_to_cpu(entry->e_value_size) +
 -- 
 2.6.6
 
