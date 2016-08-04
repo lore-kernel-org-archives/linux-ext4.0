@@ -1,187 +1,186 @@
-From: kbuild test robot <lkp@intel.com>
-Subject: Re: [PATCH 1/1] mm/block: convert rw_page users to bio op use
-Date: Fri, 5 Aug 2016 01:50:28 +0800
-Message-ID: <201608050158.hllBWy4G%fengguang.wu@intel.com>
-References: <1470331056-796-1-git-send-email-mchristi@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: improve ext4lazyinit scalability
+Date: Thu, 4 Aug 2016 20:20:16 +0200
+Message-ID: <20160804182016.GC12861@quack2.suse.cz>
+References: <1468931432-1568-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="4Ckj6UjgE2iN1+kY"
-Cc: kbuild-all@01.org, ross.zwisler@linux.intel.com,
-	linux-ext4@vger.kernel.org, linux-block@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, david@fromorbit.com,
-	minchan@kernel.org, ngupta@vflare.org, vishal.l.verma@intel.com,
-	axboe@kernel.dk, Mike Christie <mchristi@redhat.com>
-To: Mike Christie <mchristi@redhat.com>
-Return-path: <linux-block-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1470331056-796-1-git-send-email-mchristi@redhat.com>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-
---4Ckj6UjgE2iN1+kY
 Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Dmitry Monakhov <dmonakhov@openvz.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:48797 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756664AbcHDSUT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Aug 2016 14:20:19 -0400
 Content-Disposition: inline
+In-Reply-To: <1468931432-1568-1-git-send-email-dmonakhov@openvz.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Mike,
+Hi Dmitry!
 
-[auto build test ERROR on linus/master]
-[also build test ERROR on next-20160804]
-[cannot apply to v4.7]
-[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+Some spelling fixes below:
 
-url:    https://github.com/0day-ci/linux/commits/Mike-Christie/mm-block-convert-rw_page-users-to-bio-op-use/20160805-012041
-config: i386-tinyconfig (attached as .config)
-compiler: gcc-6 (Debian 6.1.1-9) 6.1.1 20160705
-reproduce:
-        # save the attached .config to linux build tree
-        make ARCH=i386 
+On Tue 19-07-16 16:30:32, Dmitry Monakhov wrote:
+> ext4lazyinit is global thread. This thread performs itable initalization
+> under
+        ^^ li_list_mtx mutex.
 
-All errors (new ones prefixed by >>):
+> It basically does followes:
+                    ^^^^ following
 
-   mm/filemap.c: In function 'page_endio':
->> mm/filemap.c:892:7: error: implicit declaration of function 'op_is_write' [-Werror=implicit-function-declaration]
-     if (!op_is_write(op)) {
-          ^~~~~~~~~~~
-   cc1: some warnings being treated as errors
+> ext4_lazyinit_thread
+>   ->mutex_lock(&eli->li_list_mtx);
+>   ->ext4_run_li_request(elr)
+>     ->ext4_init_inode_table-> Do a lot of IO if list is large
+						^^ the
 
-vim +/op_is_write +892 mm/filemap.c
+> And when new mounts/umount arrives they have to block on ->li_list_mtx
+               ^^^^ mount      ^^ arrive
 
-   886	/*
-   887	 * After completing I/O on a page, call this routine to update the page
-   888	 * flags appropriately
-   889	 */
-   890	void page_endio(struct page *page, int op, int err)
-   891	{
- > 892		if (!op_is_write(op)) {
-   893			if (!err) {
-   894				SetPageUptodate(page);
-   895			} else {
+> because  lazy_thread holds it during full walk procedure.
+> ext4_fill_super
+>  ->ext4_register_li_request
+>    ->mutex_lock(&ext4_li_info->li_list_mtx);
+>    ->list_add(&elr->lr_request, &ext4_li_info >li_request_list);
+> In my case mount takes 40minutes on server with 36 * 4Tb HDD.
+> Convenient user may face this in case of very slow dev ( /dev/mmcblkXXX)
+   ^^^ Common?
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+> Even more. I one of filesystem was frozen lazyinit_thread will simply blocks
+             ^^ If     ^^^ filesystems				    block ^^
 
---4Ckj6UjgE2iN1+kY
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
+> on sb_start_write() so other mount/umounts will suck forever.
+					^^ umount ^^^ be stuck
 
-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
+> This patch changes logic like follows:
+> - grap ->s_umount read sem before process new li_request after that it is safe
+    ^^ grab                         ^^ processing         ^^^^. After
+>   to drop list_mtx because all callers of li_remove_requers are holds ->s_umount
+            ^^ li_list_mtx                   ^^ li_remove_request  ^^ holding
+>   for write.
+> - li_thread skip frozen SB's
+              ^^ skips
 
---4Ckj6UjgE2iN1+kY--
+> Locking:
+> Locking order is asserted by umout path like follows: s_umount ->li_list_mtx
+                               ^^ umount
+
+> so the only way to to grab ->s_mount inside li_thread is via down_read_trylock
+                  ^^^^^ should be just one 'to'
+
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
+
+> ---
+>  fs/ext4/super.c | 53 ++++++++++++++++++++++++++++++++++++-----------------
+>  1 file changed, 36 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 3822a5a..0ee193f 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2635,7 +2635,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+>  	sb = elr->lr_super;
+>  	ngroups = EXT4_SB(sb)->s_groups_count;
+>  
+> -	sb_start_write(sb);
+>  	for (group = elr->lr_next_group; group < ngroups; group++) {
+>  		gdp = ext4_get_group_desc(sb, group, NULL);
+>  		if (!gdp) {
+> @@ -2662,8 +2661,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+>  		elr->lr_next_sched = jiffies + elr->lr_timeout;
+>  		elr->lr_next_group = group + 1;
+>  	}
+> -	sb_end_write(sb);
+> -
+>  	return ret;
+>  }
+>  
+> @@ -2713,9 +2710,9 @@ static struct task_struct *ext4_lazyinit_task;
+>  static int ext4_lazyinit_thread(void *arg)
+>  {
+>  	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
+> -	struct list_head *pos, *n;
+>  	struct ext4_li_request *elr;
+>  	unsigned long next_wakeup, cur;
+> +	LIST_HEAD(request_list);
+>  
+>  	BUG_ON(NULL == eli);
+>  
+> @@ -2728,21 +2725,43 @@ cont_thread:
+>  			mutex_unlock(&eli->li_list_mtx);
+>  			goto exit_thread;
+>  		}
+> -
+> -		list_for_each_safe(pos, n, &eli->li_request_list) {
+> -			elr = list_entry(pos, struct ext4_li_request,
+> -					 lr_request);
+> -
+> -			if (time_after_eq(jiffies, elr->lr_next_sched)) {
+> -				if (ext4_run_li_request(elr) != 0) {
+> -					/* error, remove the lazy_init job */
+> -					ext4_remove_li_request(elr);
+> -					continue;
+> +		list_splice_init(&eli->li_request_list, &request_list);
+
+Do you really need this temporary list? You could as well iterate through
+the original list if you fetch the next entry after you reacquire
+li_list_mtx and before you remove current entry from the list...
+
+> +		while (!list_empty(&request_list)) {
+> +			int err = 0;
+> +			int progress = 0;
+> +
+> +			elr = list_entry(request_list.next,
+> +					 struct ext4_li_request, lr_request);
+> +			list_move(request_list.next, &eli->li_request_list);
+> +			if (time_before(jiffies, elr->lr_next_sched)) {
+> +				if (time_before(elr->lr_next_sched, next_wakeup))
+> +					next_wakeup = elr->lr_next_sched;
+> +				continue;
+> +			}
+> +			if (down_read_trylock(&elr->lr_super->s_umount)) {
+> +				if (sb_start_write_trylock(elr->lr_super)) {
+> +					progress = 1;
+> +					/* We holds sb->s_umount, sb can not
+						^^ hold
+
+Also we use the following comment style in ext4:
+
+/*
+ * text here
+ * text here
+ */
+
+> +					 * be removed from the list, it is
+> +					 * now safe to drop li_list_mtx
+> +					 */
+> +					mutex_unlock(&eli->li_list_mtx);
+> +					err = ext4_run_li_request(elr);
+> +					sb_end_write(elr->lr_super);
+> +					mutex_lock(&eli->li_list_mtx);
+>  				}
+> +				up_read((&elr->lr_super->s_umount));
+> +			}
+> +			/* error, remove the lazy_init job */
+> +			if (err) {
+> +				ext4_remove_li_request(elr);
+> +				continue;
+> +			}
+> +			if (!progress) {
+> +				elr->lr_next_sched = jiffies +
+> +					(prandom_u32()
+> +					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
+>  			}
+> -
+> -			if (time_before(elr->lr_next_sched, next_wakeup))
+> -				next_wakeup = elr->lr_next_sched;
+>  		}
+>  		mutex_unlock(&eli->li_list_mtx);
+
+Otherwise the patch looks good to me.
+
+									Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
