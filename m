@@ -1,429 +1,187 @@
-From: Mike Christie <mchristi@redhat.com>
-Subject: [PATCH 1/1] mm/block: convert rw_page users to bio op use
-Date: Thu,  4 Aug 2016 12:17:36 -0500
-Message-ID: <1470331056-796-1-git-send-email-mchristi@redhat.com>
-Cc: Mike Christie <mchristi@redhat.com>
-To: ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	david@fromorbit.com, minchan@kernel.org, ngupta@vflare.org,
-	vishal.l.verma@intel.com, axboe@kernel.dk
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46552 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934006AbcHDRRk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Aug 2016 13:17:40 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: kbuild test robot <lkp@intel.com>
+Subject: Re: [PATCH 1/1] mm/block: convert rw_page users to bio op use
+Date: Fri, 5 Aug 2016 01:50:28 +0800
+Message-ID: <201608050158.hllBWy4G%fengguang.wu@intel.com>
+References: <1470331056-796-1-git-send-email-mchristi@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="4Ckj6UjgE2iN1+kY"
+Cc: kbuild-all@01.org, ross.zwisler@linux.intel.com,
+	linux-ext4@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, david@fromorbit.com,
+	minchan@kernel.org, ngupta@vflare.org, vishal.l.verma@intel.com,
+	axboe@kernel.dk, Mike Christie <mchristi@redhat.com>
+To: Mike Christie <mchristi@redhat.com>
+Return-path: <linux-block-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1470331056-796-1-git-send-email-mchristi@redhat.com>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This fixes a regression from
-4e1b2d52a80d79296a5d899d73249748dea71a53
-block, fs, drivers: remove REQ_OP compat defs and related code
 
-The rw_page users were not converted to use bio/req ops. As a result
-bdev_write_page is not passing down REQ_OP_WRITE and the IOs will
-be sent down as reads.
+--4Ckj6UjgE2iN1+kY
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Signed-off-by: Mike Christie <mchristi@redhat.com>
+Hi Mike,
+
+[auto build test ERROR on linus/master]
+[also build test ERROR on next-20160804]
+[cannot apply to v4.7]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+
+url:    https://github.com/0day-ci/linux/commits/Mike-Christie/mm-block-convert-rw_page-users-to-bio-op-use/20160805-012041
+config: i386-tinyconfig (attached as .config)
+compiler: gcc-6 (Debian 6.1.1-9) 6.1.1 20160705
+reproduce:
+        # save the attached .config to linux build tree
+        make ARCH=i386 
+
+All errors (new ones prefixed by >>):
+
+   mm/filemap.c: In function 'page_endio':
+>> mm/filemap.c:892:7: error: implicit declaration of function 'op_is_write' [-Werror=implicit-function-declaration]
+     if (!op_is_write(op)) {
+          ^~~~~~~~~~~
+   cc1: some warnings being treated as errors
+
+vim +/op_is_write +892 mm/filemap.c
+
+   886	/*
+   887	 * After completing I/O on a page, call this routine to update the page
+   888	 * flags appropriately
+   889	 */
+   890	void page_endio(struct page *page, int op, int err)
+   891	{
+ > 892		if (!op_is_write(op)) {
+   893			if (!err) {
+   894				SetPageUptodate(page);
+   895			} else {
+
 ---
- drivers/block/brd.c           | 17 +++++++----------
- drivers/block/zram/zram_drv.c | 28 +++++++++++++++-------------
- drivers/nvdimm/btt.c          | 18 +++++++++---------
- drivers/nvdimm/pmem.c         | 12 ++++++------
- fs/block_dev.c                |  8 +++++---
- fs/mpage.c                    |  2 +-
- include/linux/blkdev.h        |  3 ++-
- include/linux/pagemap.h       |  2 +-
- mm/filemap.c                  |  6 +++---
- 9 files changed, 49 insertions(+), 47 deletions(-)
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
-diff --git a/drivers/block/brd.c b/drivers/block/brd.c
-index 3022dad..9fbbeba 100644
---- a/drivers/block/brd.c
-+++ b/drivers/block/brd.c
-@@ -300,20 +300,20 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
-  * Process a single bvec of a bio.
-  */
- static int brd_do_bvec(struct brd_device *brd, struct page *page,
--			unsigned int len, unsigned int off, int rw,
-+			unsigned int len, unsigned int off, int op,
- 			sector_t sector)
- {
- 	void *mem;
- 	int err = 0;
- 
--	if (rw != READ) {
-+	if (op_is_write(op)) {
- 		err = copy_to_brd_setup(brd, sector, len);
- 		if (err)
- 			goto out;
- 	}
- 
- 	mem = kmap_atomic(page);
--	if (rw == READ) {
-+	if (!op_is_write(op)) {
- 		copy_from_brd(mem + off, brd, sector, len);
- 		flush_dcache_page(page);
- 	} else {
-@@ -330,7 +330,6 @@ static blk_qc_t brd_make_request(struct request_queue *q, struct bio *bio)
- {
- 	struct block_device *bdev = bio->bi_bdev;
- 	struct brd_device *brd = bdev->bd_disk->private_data;
--	int rw;
- 	struct bio_vec bvec;
- 	sector_t sector;
- 	struct bvec_iter iter;
-@@ -347,14 +346,12 @@ static blk_qc_t brd_make_request(struct request_queue *q, struct bio *bio)
- 		goto out;
- 	}
- 
--	rw = bio_data_dir(bio);
--
- 	bio_for_each_segment(bvec, bio, iter) {
- 		unsigned int len = bvec.bv_len;
- 		int err;
- 
- 		err = brd_do_bvec(brd, bvec.bv_page, len,
--					bvec.bv_offset, rw, sector);
-+					bvec.bv_offset, bio_op(bio), sector);
- 		if (err)
- 			goto io_error;
- 		sector += len >> SECTOR_SHIFT;
-@@ -369,11 +366,11 @@ io_error:
- }
- 
- static int brd_rw_page(struct block_device *bdev, sector_t sector,
--		       struct page *page, int rw)
-+		       struct page *page, int op, int op_flags)
- {
- 	struct brd_device *brd = bdev->bd_disk->private_data;
--	int err = brd_do_bvec(brd, page, PAGE_SIZE, 0, rw, sector);
--	page_endio(page, rw & WRITE, err);
-+	int err = brd_do_bvec(brd, page, PAGE_SIZE, 0, op, sector);
-+	page_endio(page, op, err);
- 	return err;
- }
- 
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 7454cf1..f0e126c 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -843,15 +843,15 @@ static void zram_bio_discard(struct zram *zram, u32 index,
- }
- 
- static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
--			int offset, int rw)
-+			int offset, int op)
- {
- 	unsigned long start_time = jiffies;
- 	int ret;
- 
--	generic_start_io_acct(rw, bvec->bv_len >> SECTOR_SHIFT,
-+	generic_start_io_acct(op, bvec->bv_len >> SECTOR_SHIFT,
- 			&zram->disk->part0);
- 
--	if (rw == READ) {
-+	if (!op_is_write(op)) {
- 		atomic64_inc(&zram->stats.num_reads);
- 		ret = zram_bvec_read(zram, bvec, index, offset);
- 	} else {
-@@ -859,10 +859,10 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
- 		ret = zram_bvec_write(zram, bvec, index, offset);
- 	}
- 
--	generic_end_io_acct(rw, &zram->disk->part0, start_time);
-+	generic_end_io_acct(op, &zram->disk->part0, start_time);
- 
- 	if (unlikely(ret)) {
--		if (rw == READ)
-+		if (!op_is_write(op))
- 			atomic64_inc(&zram->stats.failed_reads);
- 		else
- 			atomic64_inc(&zram->stats.failed_writes);
-@@ -873,7 +873,7 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
- 
- static void __zram_make_request(struct zram *zram, struct bio *bio)
- {
--	int offset, rw;
-+	int offset;
- 	u32 index;
- 	struct bio_vec bvec;
- 	struct bvec_iter iter;
-@@ -888,7 +888,6 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
- 		return;
- 	}
- 
--	rw = bio_data_dir(bio);
- 	bio_for_each_segment(bvec, bio, iter) {
- 		int max_transfer_size = PAGE_SIZE - offset;
- 
-@@ -903,15 +902,18 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
- 			bv.bv_len = max_transfer_size;
- 			bv.bv_offset = bvec.bv_offset;
- 
--			if (zram_bvec_rw(zram, &bv, index, offset, rw) < 0)
-+			if (zram_bvec_rw(zram, &bv, index, offset,
-+					 bio_op(bio)) < 0)
- 				goto out;
- 
- 			bv.bv_len = bvec.bv_len - max_transfer_size;
- 			bv.bv_offset += max_transfer_size;
--			if (zram_bvec_rw(zram, &bv, index + 1, 0, rw) < 0)
-+			if (zram_bvec_rw(zram, &bv, index + 1, 0,
-+					 bio_op(bio)) < 0)
- 				goto out;
- 		} else
--			if (zram_bvec_rw(zram, &bvec, index, offset, rw) < 0)
-+			if (zram_bvec_rw(zram, &bvec, index, offset,
-+					 bio_op(bio)) < 0)
- 				goto out;
- 
- 		update_position(&index, &offset, &bvec);
-@@ -968,7 +970,7 @@ static void zram_slot_free_notify(struct block_device *bdev,
- }
- 
- static int zram_rw_page(struct block_device *bdev, sector_t sector,
--		       struct page *page, int rw)
-+		       struct page *page, int op, int op_flags)
- {
- 	int offset, err = -EIO;
- 	u32 index;
-@@ -992,7 +994,7 @@ static int zram_rw_page(struct block_device *bdev, sector_t sector,
- 	bv.bv_len = PAGE_SIZE;
- 	bv.bv_offset = 0;
- 
--	err = zram_bvec_rw(zram, &bv, index, offset, rw);
-+	err = zram_bvec_rw(zram, &bv, index, offset, op);
- put_zram:
- 	zram_meta_put(zram);
- out:
-@@ -1005,7 +1007,7 @@ out:
- 	 * (e.g., SetPageError, set_page_dirty and extra works).
- 	 */
- 	if (err == 0)
--		page_endio(page, rw, 0);
-+		page_endio(page, op, 0);
- 	return err;
- }
- 
-diff --git a/drivers/nvdimm/btt.c b/drivers/nvdimm/btt.c
-index 9dce03f..6a6208d 100644
---- a/drivers/nvdimm/btt.c
-+++ b/drivers/nvdimm/btt.c
-@@ -1133,11 +1133,11 @@ static int btt_write_pg(struct btt *btt, struct bio_integrity_payload *bip,
- 
- static int btt_do_bvec(struct btt *btt, struct bio_integrity_payload *bip,
- 			struct page *page, unsigned int len, unsigned int off,
--			int rw, sector_t sector)
-+			int op, sector_t sector)
- {
- 	int ret;
- 
--	if (rw == READ) {
-+	if (!op_is_write(op)) {
- 		ret = btt_read_pg(btt, bip, page, off, sector, len);
- 		flush_dcache_page(page);
- 	} else {
-@@ -1155,7 +1155,7 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
- 	struct bvec_iter iter;
- 	unsigned long start;
- 	struct bio_vec bvec;
--	int err = 0, rw;
-+	int err = 0;
- 	bool do_acct;
- 
- 	/*
-@@ -1170,7 +1170,6 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
- 	}
- 
- 	do_acct = nd_iostat_start(bio, &start);
--	rw = bio_data_dir(bio);
- 	bio_for_each_segment(bvec, bio, iter) {
- 		unsigned int len = bvec.bv_len;
- 
-@@ -1181,11 +1180,12 @@ static blk_qc_t btt_make_request(struct request_queue *q, struct bio *bio)
- 		BUG_ON(len % btt->sector_size);
- 
- 		err = btt_do_bvec(btt, bip, bvec.bv_page, len, bvec.bv_offset,
--				rw, iter.bi_sector);
-+				  bio_op(bio), iter.bi_sector);
- 		if (err) {
- 			dev_info(&btt->nd_btt->dev,
- 					"io error in %s sector %lld, len %d,\n",
--					(rw == READ) ? "READ" : "WRITE",
-+					(op_is_write(bio_op(bio))) ? "WRITE" :
-+					"READ",
- 					(unsigned long long) iter.bi_sector, len);
- 			bio->bi_error = err;
- 			break;
-@@ -1200,12 +1200,12 @@ out:
- }
- 
- static int btt_rw_page(struct block_device *bdev, sector_t sector,
--		struct page *page, int rw)
-+		struct page *page, int op, int op_flags)
- {
- 	struct btt *btt = bdev->bd_disk->private_data;
- 
--	btt_do_bvec(btt, NULL, page, PAGE_SIZE, 0, rw, sector);
--	page_endio(page, rw & WRITE, 0);
-+	btt_do_bvec(btt, NULL, page, PAGE_SIZE, 0, op, sector);
-+	page_endio(page, op, 0);
- 	return 0;
- }
- 
-diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-index b511099..6a7b97d 100644
---- a/drivers/nvdimm/pmem.c
-+++ b/drivers/nvdimm/pmem.c
-@@ -67,7 +67,7 @@ static void pmem_clear_poison(struct pmem_device *pmem, phys_addr_t offset,
- }
- 
- static int pmem_do_bvec(struct pmem_device *pmem, struct page *page,
--			unsigned int len, unsigned int off, int rw,
-+			unsigned int len, unsigned int off, int op,
- 			sector_t sector)
- {
- 	int rc = 0;
-@@ -79,7 +79,7 @@ static int pmem_do_bvec(struct pmem_device *pmem, struct page *page,
- 	if (unlikely(is_bad_pmem(&pmem->bb, sector, len)))
- 		bad_pmem = true;
- 
--	if (rw == READ) {
-+	if (!op_is_write(op)) {
- 		if (unlikely(bad_pmem))
- 			rc = -EIO;
- 		else {
-@@ -134,7 +134,7 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
- 	do_acct = nd_iostat_start(bio, &start);
- 	bio_for_each_segment(bvec, bio, iter) {
- 		rc = pmem_do_bvec(pmem, bvec.bv_page, bvec.bv_len,
--				bvec.bv_offset, bio_data_dir(bio),
-+				bvec.bv_offset, bio_op(bio),
- 				iter.bi_sector);
- 		if (rc) {
- 			bio->bi_error = rc;
-@@ -152,12 +152,12 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
- }
- 
- static int pmem_rw_page(struct block_device *bdev, sector_t sector,
--		       struct page *page, int rw)
-+		       struct page *page, int op, int op_flags)
- {
- 	struct pmem_device *pmem = bdev->bd_queue->queuedata;
- 	int rc;
- 
--	rc = pmem_do_bvec(pmem, page, PAGE_SIZE, 0, rw, sector);
-+	rc = pmem_do_bvec(pmem, page, PAGE_SIZE, 0, op, sector);
- 
- 	/*
- 	 * The ->rw_page interface is subtle and tricky.  The core
-@@ -166,7 +166,7 @@ static int pmem_rw_page(struct block_device *bdev, sector_t sector,
- 	 * caused by double completion.
- 	 */
- 	if (rc == 0)
--		page_endio(page, rw & WRITE, 0);
-+		page_endio(page, op, 0);
- 
- 	return rc;
- }
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 2033a3f..7ef1737 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -416,7 +416,8 @@ int bdev_read_page(struct block_device *bdev, sector_t sector,
- 	result = blk_queue_enter(bdev->bd_queue, false);
- 	if (result)
- 		return result;
--	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page, READ);
-+	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page,
-+			      REQ_OP_READ, 0);
- 	blk_queue_exit(bdev->bd_queue);
- 	return result;
- }
-@@ -445,7 +446,7 @@ int bdev_write_page(struct block_device *bdev, sector_t sector,
- 			struct page *page, struct writeback_control *wbc)
- {
- 	int result;
--	int rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE;
-+	int op_flags = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0;
- 	const struct block_device_operations *ops = bdev->bd_disk->fops;
- 
- 	if (!ops->rw_page || bdev_get_integrity(bdev))
-@@ -455,7 +456,8 @@ int bdev_write_page(struct block_device *bdev, sector_t sector,
- 		return result;
- 
- 	set_page_writeback(page);
--	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page, rw);
-+	result = ops->rw_page(bdev, sector + get_start_sect(bdev), page,
-+			      REQ_OP_WRITE, op_flags);
- 	if (result)
- 		end_page_writeback(page);
- 	else
-diff --git a/fs/mpage.c b/fs/mpage.c
-index 2ca1f39..7a09c55 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -50,7 +50,7 @@ static void mpage_end_io(struct bio *bio)
- 
- 	bio_for_each_segment_all(bv, bio, i) {
- 		struct page *page = bv->bv_page;
--		page_endio(page, bio_data_dir(bio), bio->bi_error);
-+		page_endio(page, bio_op(bio), bio->bi_error);
- 	}
- 
- 	bio_put(bio);
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index adf3307..3652408 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -1673,7 +1673,8 @@ struct blk_dax_ctl {
- struct block_device_operations {
- 	int (*open) (struct block_device *, fmode_t);
- 	void (*release) (struct gendisk *, fmode_t);
--	int (*rw_page)(struct block_device *, sector_t, struct page *, int rw);
-+	int (*rw_page)(struct block_device *, sector_t, struct page *,
-+		       int op, int op_flags);
- 	int (*ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
- 	int (*compat_ioctl) (struct block_device *, fmode_t, unsigned, unsigned long);
- 	long (*direct_access)(struct block_device *, sector_t, void **, pfn_t *,
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 81363b8..4578637 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -510,7 +510,7 @@ static inline void wait_on_page_writeback(struct page *page)
- extern void end_page_writeback(struct page *page);
- void wait_for_stable_page(struct page *page);
- 
--void page_endio(struct page *page, int rw, int err);
-+void page_endio(struct page *page, int op, int err);
- 
- /*
-  * Add an arbitrary waiter to a page's wait queue
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 3083ded..daef091 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -887,9 +887,9 @@ EXPORT_SYMBOL(end_page_writeback);
-  * After completing I/O on a page, call this routine to update the page
-  * flags appropriately
-  */
--void page_endio(struct page *page, int rw, int err)
-+void page_endio(struct page *page, int op, int err)
- {
--	if (rw == READ) {
-+	if (!op_is_write(op)) {
- 		if (!err) {
- 			SetPageUptodate(page);
- 		} else {
-@@ -897,7 +897,7 @@ void page_endio(struct page *page, int rw, int err)
- 			SetPageError(page);
- 		}
- 		unlock_page(page);
--	} else { /* rw == WRITE */
-+	} else {
- 		if (err) {
- 			SetPageError(page);
- 			if (page->mapping)
--- 
-2.7.2
+--4Ckj6UjgE2iN1+kY
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename=".config.gz"
+Content-Transfer-Encoding: base64
 
+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
+
+--4Ckj6UjgE2iN1+kY--
