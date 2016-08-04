@@ -1,186 +1,158 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: improve ext4lazyinit scalability
-Date: Thu, 4 Aug 2016 20:20:16 +0200
-Message-ID: <20160804182016.GC12861@quack2.suse.cz>
-References: <1468931432-1568-1-git-send-email-dmonakhov@openvz.org>
+From: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Thu, 4 Aug 2016 18:40:42 +0000
+Message-ID: <1470335997.8908.128.camel@hpe.com>
+References: <20160727120745.GI6860@quack2.suse.cz>
+ <20160727211039.GA20278@linux.intel.com> <20160727221949.GU16044@dastard>
+ <20160728081033.GC4094@quack2.suse.cz> <20160729022152.GZ16044@dastard>
+ <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+ <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
+ <20160802002144.GL16044@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48797 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756664AbcHDSUT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Aug 2016 14:20:19 -0400
-Content-Disposition: inline
-In-Reply-To: <1468931432-1568-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+To: "david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, "boaz-/8YdC2HfS5554TAoqtyWWQ@public.gmane.org"
+ <boaz-/8YdC2HfS5554TAoqtyWWQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20160802002144.GL16044@dastard>
+Content-Language: en-US
+Content-ID: <E38C7A131EA18342B740CA18083E487C-mmYPd6ayCNGroOM5E8FhRbjFIynDaujOfM0AETQt39g@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Dmitry!
-
-Some spelling fixes below:
-
-On Tue 19-07-16 16:30:32, Dmitry Monakhov wrote:
-> ext4lazyinit is global thread. This thread performs itable initalization
-> under
-        ^^ li_list_mtx mutex.
-
-> It basically does followes:
-                    ^^^^ following
-
-> ext4_lazyinit_thread
->   ->mutex_lock(&eli->li_list_mtx);
->   ->ext4_run_li_request(elr)
->     ->ext4_init_inode_table-> Do a lot of IO if list is large
-						^^ the
-
-> And when new mounts/umount arrives they have to block on ->li_list_mtx
-               ^^^^ mount      ^^ arrive
-
-> because  lazy_thread holds it during full walk procedure.
-> ext4_fill_super
->  ->ext4_register_li_request
->    ->mutex_lock(&ext4_li_info->li_list_mtx);
->    ->list_add(&elr->lr_request, &ext4_li_info >li_request_list);
-> In my case mount takes 40minutes on server with 36 * 4Tb HDD.
-> Convenient user may face this in case of very slow dev ( /dev/mmcblkXXX)
-   ^^^ Common?
-
-> Even more. I one of filesystem was frozen lazyinit_thread will simply blocks
-             ^^ If     ^^^ filesystems				    block ^^
-
-> on sb_start_write() so other mount/umounts will suck forever.
-					^^ umount ^^^ be stuck
-
-> This patch changes logic like follows:
-> - grap ->s_umount read sem before process new li_request after that it is safe
-    ^^ grab                         ^^ processing         ^^^^. After
->   to drop list_mtx because all callers of li_remove_requers are holds ->s_umount
-            ^^ li_list_mtx                   ^^ li_remove_request  ^^ holding
->   for write.
-> - li_thread skip frozen SB's
-              ^^ skips
-
-> Locking:
-> Locking order is asserted by umout path like follows: s_umount ->li_list_mtx
-                               ^^ umount
-
-> so the only way to to grab ->s_mount inside li_thread is via down_read_trylock
-                  ^^^^^ should be just one 'to'
-
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-
-> ---
->  fs/ext4/super.c | 53 ++++++++++++++++++++++++++++++++++++-----------------
->  1 file changed, 36 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3822a5a..0ee193f 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2635,7 +2635,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
->  	sb = elr->lr_super;
->  	ngroups = EXT4_SB(sb)->s_groups_count;
->  
-> -	sb_start_write(sb);
->  	for (group = elr->lr_next_group; group < ngroups; group++) {
->  		gdp = ext4_get_group_desc(sb, group, NULL);
->  		if (!gdp) {
-> @@ -2662,8 +2661,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
->  		elr->lr_next_sched = jiffies + elr->lr_timeout;
->  		elr->lr_next_group = group + 1;
->  	}
-> -	sb_end_write(sb);
-> -
->  	return ret;
->  }
->  
-> @@ -2713,9 +2710,9 @@ static struct task_struct *ext4_lazyinit_task;
->  static int ext4_lazyinit_thread(void *arg)
->  {
->  	struct ext4_lazy_init *eli = (struct ext4_lazy_init *)arg;
-> -	struct list_head *pos, *n;
->  	struct ext4_li_request *elr;
->  	unsigned long next_wakeup, cur;
-> +	LIST_HEAD(request_list);
->  
->  	BUG_ON(NULL == eli);
->  
-> @@ -2728,21 +2725,43 @@ cont_thread:
->  			mutex_unlock(&eli->li_list_mtx);
->  			goto exit_thread;
->  		}
-> -
-> -		list_for_each_safe(pos, n, &eli->li_request_list) {
-> -			elr = list_entry(pos, struct ext4_li_request,
-> -					 lr_request);
-> -
-> -			if (time_after_eq(jiffies, elr->lr_next_sched)) {
-> -				if (ext4_run_li_request(elr) != 0) {
-> -					/* error, remove the lazy_init job */
-> -					ext4_remove_li_request(elr);
-> -					continue;
-> +		list_splice_init(&eli->li_request_list, &request_list);
-
-Do you really need this temporary list? You could as well iterate through
-the original list if you fetch the next entry after you reacquire
-li_list_mtx and before you remove current entry from the list...
-
-> +		while (!list_empty(&request_list)) {
-> +			int err = 0;
-> +			int progress = 0;
-> +
-> +			elr = list_entry(request_list.next,
-> +					 struct ext4_li_request, lr_request);
-> +			list_move(request_list.next, &eli->li_request_list);
-> +			if (time_before(jiffies, elr->lr_next_sched)) {
-> +				if (time_before(elr->lr_next_sched, next_wakeup))
-> +					next_wakeup = elr->lr_next_sched;
-> +				continue;
-> +			}
-> +			if (down_read_trylock(&elr->lr_super->s_umount)) {
-> +				if (sb_start_write_trylock(elr->lr_super)) {
-> +					progress = 1;
-> +					/* We holds sb->s_umount, sb can not
-						^^ hold
-
-Also we use the following comment style in ext4:
-
-/*
- * text here
- * text here
- */
-
-> +					 * be removed from the list, it is
-> +					 * now safe to drop li_list_mtx
-> +					 */
-> +					mutex_unlock(&eli->li_list_mtx);
-> +					err = ext4_run_li_request(elr);
-> +					sb_end_write(elr->lr_super);
-> +					mutex_lock(&eli->li_list_mtx);
->  				}
-> +				up_read((&elr->lr_super->s_umount));
-> +			}
-> +			/* error, remove the lazy_init job */
-> +			if (err) {
-> +				ext4_remove_li_request(elr);
-> +				continue;
-> +			}
-> +			if (!progress) {
-> +				elr->lr_next_sched = jiffies +
-> +					(prandom_u32()
-> +					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
->  			}
-> -
-> -			if (time_before(elr->lr_next_sched, next_wakeup))
-> -				next_wakeup = elr->lr_next_sched;
->  		}
->  		mutex_unlock(&eli->li_list_mtx);
-
-Otherwise the patch looks good to me.
-
-									Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+T24gVHVlLCAyMDE2LTA4LTAyIGF0IDEwOjIxICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+
+IE9uIE1vbiwgQXVnIDAxLCAyMDE2IGF0IDAxOjEzOjQ1UE0gKzAzMDAsIEJvYXogSGFycm9zaCB3
+cm90ZToNCj4gPiANCj4gPiBPbiAwNy8zMC8yMDE2IDAzOjEyIEFNLCBEYXZlIENoaW5uZXIgd3Jv
+dGU6DQo+ID4gPD4NCj4gPiA+IElmIHdlIHRyYWNrIHRoZSBkaXJ0eSBibG9ja3MgZnJvbSB3cml0
+ZSBpbiB0aGUgcmFkaXggdHJlZSBsaWtlIHdlDQo+ID4gPiBmb3IgbW1hcCwgdGhlbiB3ZSBjYW4g
+anVzdCB1c2UgYSBub3JtYWwgbWVtY3B5KCkgaW4gZGF4X2RvX2lvKCksDQo+ID4gPiBnZXR0aW5n
+IHJpZCBvZiB0aGUgc2xvdyBjYWNoZSBieXBhc3MgdGhhdCBpcyBjdXJyZW50bHkgcnVuLiBSYWRp
+eA0KPiA+ID4gdHJlZSB1cGRhdGVzIGFyZSBtdWNoIGxlc3MgZXhwZW5zaXZlIHRoYW4gYSBzbG93
+IG1lbWNweSBvZiBsYXJnZQ0KPiA+ID4gYW1vdW50cyBvZiBkYXRhLCBhZCBmc3luYyBjYW4gdGhl
+biB0YWtlIGNhcmUgb2YgcGVyc2lzdGVuY2UsIGp1c3QNCj4gPiA+IGxpa2Ugd2UgZG8gZm9yIG1t
+YXAuDQo+ID4gPiANCj4gPg0KPiA+IE5vIcKgDQo+ID4gDQo+ID4gbW92X250IGluc3RydWN0aW9u
+cywgVGhhdCAic2xvdyBjYWNoZSBieXBhc3MgdGhhdCBpcyBjdXJyZW50bHkgcnVuIiBhYm92ZQ0K
+PiA+IGlzIGFjdHVhbGx5IGZhc3RlciB0aGVuIGNhY2hlZCB3cml0ZXMgYnkgMjAlLCBhbmQgaWYg
+eW91IGFkZCB0aGUgZGlydHkNCj4gPiB0cmFja2luZyBhbmQgY2xfZmx1c2ggaW5zdHJ1Y3Rpb25z
+IGl0IGJlY29tZXMgeDIgc2xvd2VyIGluIHRoZSBtb3N0DQo+ID4gb3B0aW1hbCBjYXNlIGFuZCAz
+IHRpbWVzIHNsb3dlciBpbiB0aGUgREFYIGNhc2UuDQo+DQo+IElPV3MsIHdlJ2QgZXhwZWN0IHdy
+aXRpbmcgdG8gYSBmaWxlIHdpdGggREFYIHRvIGJlIGZhc3RlciB0aGFuIHdoZW4NCj4gYnVmZmVy
+ZWQgdGhyb3VnaCB0aGUgcGFnZSBjYWNoZSBhbmQgZnN5bmMoKWQsIHJpZ2h0Pw0KPg0KPiBUaGUg
+bnVtYmVycyBJIGdldCBzYXkgb3RoZXJ3aXNlLiBGaWxlc3lzdGVtIG9uIDhHQiBwbWVtIGJsb2Nr
+IGRldmljZToNCj4gDQo+ICQgc3VkbyBta2ZzLnhmcyAtZiAvZGV2L3BtZW0xDQo+IG1ldGEtZGF0
+YT0vZGV2L3BtZW0xwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBpc2l6ZT01MTLCoMKgwqDCoGFn
+Y291bnQ9NCwgYWdzaXplPTUyNDI4OCBibGtzDQo+IMKgwqDCoMKgwqDCoMKgwqDCoD3CoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc2VjdHN6PTQwOTbCoMKgYXR0
+cj0yLCBwcm9qaWQzMmJpdD0xDQo+IMKgwqDCoMKgwqDCoMKgwqDCoD3CoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgY3JjPTHCoMKgwqDCoMKgwqDCoMKgZmlub2J0
+PTEsIHNwYXJzZT0wLCBybWFwYnQ9MCwNCj4gcmVmbGluaz0wDQo+IGRhdGHCoMKgwqDCoMKgPcKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBic2l6ZT00MDk2wqDC
+oMKgYmxvY2tzPTIwOTcxNTIsIGltYXhwY3Q9MjUNCj4gwqDCoMKgwqDCoMKgwqDCoMKgPcKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBzdW5pdD0wwqDCoMKgwqDC
+oMKgc3dpZHRoPTAgYmxrcw0KPiBuYW1pbmfCoMKgwqA9dmVyc2lvbiAywqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoGJzaXplPTQwOTbCoMKgwqBhc2NpaS1jaT0wIGZ0eXBlPTENCj4gbG9nwqDC
+oMKgwqDCoMKgPWludGVybmFsIGxvZ8KgwqDCoMKgwqDCoMKgwqDCoMKgwqBic2l6ZT00MDk2wqDC
+oMKgYmxvY2tzPTI1NjAsIHZlcnNpb249Mg0KPiDCoMKgwqDCoMKgwqDCoMKgwqA9wqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHNlY3Rzej00MDk2wqDCoHN1bml0
+PTEgYmxrcywgbGF6eS1jb3VudD0xDQo+IHJlYWx0aW1lID1ub25lwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqBleHRzej00MDk2wqDCoMKgYmxvY2tzPTAsIHJ0ZXh0ZW50cz0w
+DQo+IA0KPiBUZXN0IGNvbW1hbmQgdGhhdCB3cml0ZXMgMUdCIHRvIHRoZSBmaWxlc3lzdGVtOg0K
+PiANCj4gJCBzdWRvIHRpbWUgeGZzX2lvIC1mIC1jICJwd3JpdGUgMCAxZyIgLWMgInN5bmMiIC9t
+bnQvc2NyYXRjaC9mb28NCj4gd3JvdGUgMTA3Mzc0MTgyNC8xMDczNzQxODI0IGJ5dGVzIGF0IG9m
+ZnNldCAwDQo+IDEgR2lCLCAyNjIxNDQgb3BzOyAwOjAwOjAxLjAwICg4ODAuMDQwIE1pQi9zZWMg
+YW5kIDIyNTI5MC4zMzE3IG9wcy9zZWMpDQo+IDAuMDJ1c2VyIDEuMTNzeXN0ZW0gMDowMi4yN2Vs
+YXBzZWQgNTElQ1BVICgwYXZndGV4dCswYXZnZGF0YQ0KPiAyMzQ0bWF4cmVzaWRlbnQpaw0KPiAw
+aW5wdXRzKzBvdXRwdXRzICgwbWFqb3IrMTA5bWlub3IpcGFnZWZhdWx0cyAwc3dhcHMNCj4gDQo+
+IFJlc3VsdHM6DQo+IA0KPiAJwqDCoMKgwqBwd3JpdGUgQi9XIChNaUIvcykJCQlydW50aW1lDQo+
+IHJ1bglubyBEQVgJCURBWAkJbm8gREFYCQlEQQ0KPiBYDQo+IMKgMQk4ODAuMDQwCQkyMzYuMzUy
+CQkyLjI3cwkJDQo+IDQuMzRzDQo+IMKgMgk4NTcuMDk0CQkyNTcuMjk3CQkyLjE4cwkJDQo+IDMu
+OTlzDQo+IMKgMwk4NjUuODIwCQkyMzYuMDg3CQkyLjEzcwkJDQo+IDQuMzRzDQo+IA0KPiBJdCBp
+cyBxdWl0ZSBjbGVhciB0aGF0ICpEQVggaXMgbXVjaCBzbG93ZXIqIHRoYW4gbm9ybWFsIGJ1ZmZl
+cmVkDQo+IElPIHRocm91Z2ggdGhlIHBhZ2UgY2FjaGUgZm9sbG93ZWQgYnkgYSBmc3luYygpLg0K
+PiANCj4gU3RvcCBhbmQgdGhpbmsgd2h5IHRoYXQgbWlnaHQgYmUuIFdlJ3JlIG9ubHkgZG9pbmcg
+b25lIGNvcHkgd2l0aA0KPiBEQVgsIHNvIHdoeSBpcyB0aGUgcHdyaXRlKCkgc3BlZWQgNHggbG93
+ZXIgdGhhbiBmb3IgYSBjb3B5IGludG8gdGhlDQo+IHBhZ2UgY2FjaGU/IFdlJ3JlIG5vdCBjb3B5
+aW5nIDR4IHRoZSBkYXRhIGhlcmUuIFdlJ3JlIGNvcHlpbmcgaXQNCj4gb25jZS4gQnV0IHRoZXJl
+J3MgYW5vdGhlciB1bmNhY2hlZCB3cml0ZSB0byBlYWNoIHBhZ2UgZHVyaW5nDQo+IGFsbG9jYXRp
+b24gdG8gemVybyBlYWNoIGJsb2NrIGZpcnN0LCBzbyB3ZSdyZSBhY3R1YWxseSBkb2luZyB0d28N
+Cj4gdW5jYWNoZWQgd3JpdGVzIHRvIHRoZSBwYWdlLiBBbmQgd2UncmUgZG9pbmcgYW4gYWxsb2Nh
+dGlvbiBwZXIgcGFnZQ0KPiB3aXRoIERBWCwgd2hlcmVhcyB3ZSdyZSB1c2luZyBkZWxheWVkIGFs
+bG9jYXRpb24gaW4gdGhlIGJ1ZmZlcmVkIElPDQo+IGNhc2Ugd2hpY2ggaGFzIG11Y2ggbGVzcyBv
+dmVyaGVhZC4NCj4gDQo+IFRoZSBvbmx5IHRoaW5nIHdlIGNhbiBkbyBoZXJlIHRvIHNwZWVkIHRo
+ZSBEQVggY2FzZSB1cCBpcyBkbyBjYWNoZWQNCj4gbWVtY3B5IHNvIHRoYXQgdGhlIGRhdGEgY29w
+eSBhZnRlciB6ZXJvaW5nIHJ1bnMgYXQgTDEgY2FjaGUgc3BlZWQNCj4gKGkuZS4gNTB4IGZhc3Rl
+ciB0aGFuIGl0IGN1cnJlbnRseSBkb2VzKS4NCj4gDQo+IExldCdzIHRha2UgdGhlIGFsbG9jYXRp
+b24gb3V0IG9mIGl0LCBlaD8gTGV0J3MgZG8gb3ZlcndyaXRlIGluc3RlYWQsDQo+IGZzeW5jIGlu
+IHRoZSBidWZmZXJlZCBJbyBjYXNlLCBubyBmc3luYyBmb3IgREFYOg0KPiANCj4gCcKgwqDCoMKg
+cHdyaXRlIEIvVyAoTWlCL3MpCQkJcnVudGltZQ0KPiBydW4Jbm8gREFYCQlEQVgJCW5vIERBWAkJ
+REENCj4gWA0KPiDCoDEJMTExOQkJMTEyNQkJMS44NXMJCTAuOTNzDQo+IMKgMgkxMTEzCQkxMTIx
+CQkxLjgzcwkJMC45MXMNCj4gwqAzCTExMjgJCTEwNzgJCTEuODBzCQkwLjk0cw0KPiANCj4gU28s
+IHB3cml0ZSBzcGVlZHMgYXJlIG5vIGRpZmZlcmVudCBmb3IgREFYIHZzIHBhZ2UgY2FjaGUgSU8u
+IEFsc28sDQo+IG5vdyB3ZSBjYW4gc2VlIHRoZSBvdmVyaGVhZCBvZiB3cml0ZWJhY2sgLSBhIHNl
+Y29uZCBkYXRhIGNvcHkgdG8NCj4gdGhlIHBtZW0gZm9yIHRoZSBJTyBkdXJpbmcgZnN5bmMuIElm
+IEkgdGFrZSB0aGUgZnN5bmMoKSBhd2F5IGZyb20NCj4gdGhlIGJ1ZmZlcmVkIElPLCB0aGUgcnVu
+dGltZSBkcm9wcyB0byAwLjg5LTAuOTFzLCB3aGljaCBpcyBpZGVudGljYWwNCj4gdG8gdGhlIERB
+WCBjb2RlLiBHaXZlbiB0aGUgREFYIGNvZGUgaGFzIGEgc2hvcnQgSU8gcGF0aCB0aGFuDQo+IGJ1
+ZmZlcmVkIElPLCBpdCdzIG5vdCBzaG93aW5nIGFueSBhZHZhbnRhZ2Ugc3BlZWQgZm9yIHVzaW5n
+IHVuY2FjaGVkDQo+IElPLi4uLg0KPg0KPiBMZXQncyBnbyBiYWNrIHRvIHRoZSBhbGxvY2F0aW9u
+IGNhc2UsIGJ1dCB0aGlzIHRpbWUgdGFrZSBhZHZhbnRhZ2UNCj4gb2YgdGhlIG5ldyBpb21hcCBi
+YXNlZCBJbyBwYXRoIGluIFhGUyB0byBhbW9ydGlzZSB0aGUgREFYIGFsbG9jYXRpb24NCj4gb3Zl
+cmhlYWQgYnkgdXNpbmcgYSAxNk1CIElPIHNpemUgaW5zdGVhZCBvZiA0azoNCj4gDQo+ICQgc3Vk
+byB0aW1lIHhmc19pbyAtZiAtYyAicHdyaXRlIDAgMWcgLWIgMTZtIiAtYyBzeW5jIC9tbnQvc2Ny
+YXRjaC9mb28NCj4gDQo+IA0KPiAJwqDCoMKgwqBwd3JpdGUgQi9XIChNaUIvcykJCQlydW50aW1l
+DQo+IHJ1bglubyBEQVgJCURBWAkJbm8gREFYCQlEQQ0KPiBYDQo+IMKgMQkxMzQ0CQkxMDI4CQkx
+LjYzcwkJMS4wM3MNCj4gwqAyCTE0MTAJCcKgOTgwCQkxLjYycwkJMS4wNnMNCj4gwqAzCTEzOTkJ
+CTEwMzIJCTEuNzJzCQkwLjk5cw0KPiANCj4gU28sIHB3cml0ZSBiYW5kd2lkdGggb2YgdGhlIGNv
+cHkgaW50byB0aGUgcGFnZSBjYWNoZSBpcyBzdGlsbCBtdWNoDQo+IGhpZ2hlciB0aGFuIHRoYXQg
+b2YgdGhlIERBWCBwYXRoLCBidXQgbm93IHRoZSBhbGxvY2F0aW9uIG92ZXJoZWFkDQo+IGlzIG1p
+bmltaXNlZCBhbmQgaGVuY2UgdGhlIGRvdWJsZSBjb3B5IGluIHRoZSBidWZmZXJlZCBJTyB3cml0
+ZWJhY2sNCj4gcGF0aCBzaG93cyB1cC4gRm9yIGNvbXBsZXRlbmVzcywgbGV0cyBqdXN0IHJ1biB0
+aGUgb3ZlcndyaXRlIGNhc2UNCj4gaGVyZSB3aGljaCBpcyBlZmZlY3RpdmVseSBqdXN0IGNvbXBl
+dGluZ8KgwqBtZW1jcHkgaW1wbGVtZW50YXRpb25zLA0KPiBmc3luYyBmb3IgYnVmZmVyZWQsIG5v
+IGZzeW5jIGZvciBEQVg6DQo+IA0KPiAJwqDCoMKgwqBwd3JpdGUgQi9XIChNaUIvcykJCQlydW50
+aW1lDQo+IHJ1bglubyBEQVgJCURBWAkJbm8gREFYCQlEQQ0KPiBYDQo+IMKgMQkxNzkxCQkxNzI3
+CQkxLjUzcwkJMC41OXMNCj4gwqAyCTE3NjgJCTE3MjYJCTEuNTdzCQkwLjU5cw0KPiDCoDMJMTc5
+OQkJMTcyOQkJMS41NXMJCTAuNTlzDQo+IA0KPiBBZ2FpbiwgcnVudGltZSBzaG93cyB0aGUgb3Zl
+cmhlYWQgb2YgdGhlIGRvdWJsZSBjb3B5IGluIHRoZSBidWZmZXJlZA0KPiBJTy93cml0ZWJhY2sg
+cGF0aC4gSXQgYWxzbyBzaG93cyB0aGUgb3ZlcmhlYWQgaW4gdGhlIERBWCBwYXRoIG9mIHRoZQ0K
+PiBhbGxvY2F0aW9uIHplcm9pbmcgdnMgb3ZlcndyaXRlLiBJZiBJIGRyb3AgdGhlIGZzeW5jIGZy
+b20gdGhlDQo+IGJ1ZmZlcmVkIElPIHBhdGgsIGJhbmR3aWR0aCByZW1haW5zIHRoZSBzYW1lIGJ1
+dCBydW50aW1lIGRyb3BzIHRvDQo+IDAuNTUtMC41N3MsIHNvIGFnYWluIHRoZSBidWZmZXJlZCBJ
+TyB3cml0ZSBwYXRoIGlzIGZhc3RlciB0aGFuIERBWA0KPiB3aGlsZSBkb2luZyBtb3JlIHdvcmsu
+DQo+IA0KPiBJT3dzLCB0aGUgb3ZlcmhlYWQgb2YgZGlydHkgcGFnZSB0cmFja2luZyBpbiB0aGUg
+cGFnZSBjYWNoZSBtYXBwaW5nDQo+IHRyZWUgaXMgbm90IHNpZ25pZmljYW50IGluIHRlcm1zIG9m
+IHdyaXRlKCkgcGVyZm9ybWFuY2UuIEhlbmNlDQo+IEkgZmFpbCB0byBzZWUgd2h5IGl0IHNob3Vs
+ZCBiZSBzaWduaWZpY2FudCBpbiB0aGUgREFYIHBhdGggLSBpdCB3aWxsDQo+IHByb2JhYmx5IGhh
+dmUgbGVzcyBvdmVyaGVhZCBiZWNhdXNlIHdlIGhhdmUgbGVzcyB0byBhY2NvdW50IGZvciBpbg0K
+PiB0aGUgREFYIHdyaXRlIHBhdGguIFRoZSBvbmx5IHBlcmZvcm1hbmNlIHBlbmFsdHkgZm9yIGRp
+cnR5IHRyYWNraW5nDQo+IGlzIGluIHRoZSBmc3luYyB3cml0ZWJhY2sgcGF0aCBpdHNlbGYsIGFu
+ZCB0aGF0IGEgc2VwYXJhdGUgaXNzdWUNCj4gZm9yIG9wdGltaXNhdGlvbi4NCg0KSSBtb3N0bHkg
+YWdyZWUgd2l0aCB0aGUgYW5hbHlzaXMsIGJ1dCBJIGhhdmUgYSBmZXcgY29tbWVudHMgYWJvdXQg
+dGhlIHVzZSBvZg0KY2FjaGVkIC8gdW5jYWNoZWQgKG1vdm50KSBjb3B5IHRvIFBNRU0uDQoNCkkg
+ZG8gbm90IHRoaW5rIHRoZSB0ZXN0IHJlc3VsdHMgYXJlIHJlbGV2YW50IG9uIHRoaXMgcG9pbnQg
+YmVjYXVzZSBib3RoDQpidWZmZXJlZCBhbmQgZGF4IHdyaXRlKCkgcGF0aHMgdXNlIHVuY2FjaGVk
+IGNvcHkgdG8gYXZvaWQgY2xmbHVzaC4gwqBUaGUNCmJ1ZmZlcmVkIHBhdGggdXNlcyBjYWNoZWQg
+Y29weSB0byB0aGUgcGFnZSBjYWNoZSBhbmQgdGhlbiB1c2UgdW5jYWNoZWQgY29weSB0bw0KUE1F
+TSB2aWEgd3JpdGViYWNrLiDCoFRoZXJlZm9yZSwgdGhlIGJ1ZmZlcmVkIElPIHBhdGggYWxzbyBi
+ZW5lZml0cyBmcm9tIHVzaW5nDQp1bmNhY2hlZCBjb3B5IHRvIGF2b2lkIGNsZmx1c2guDQoNCkNh
+Y2hlZCBjb3B5IChyZXEgbW92cSkgaXMgc2xpZ2h0bHkgZmFzdGVyIHRoYW4gdW5jYWNoZWQgY29w
+eSwgYW5kIHNob3VsZCBiZQ0KdXNlZCBmb3Igd3JpdGluZyB0byB0aGUgcGFnZSBjYWNoZS4gwqBG
+b3Igd3JpdGluZyB0byBQTUVNLCBob3dldmVyLCBhZGRpdGlvbmFsDQpjbGZsdXNoIGNhbiBiZSBl
+eHBlbnNpdmUsIGFuZCBhbGxvY2F0aW5nIGNhY2hlbGluZXMgZm9yIFBNRU0gbGVhZHMgdG8gZXZp
+Y3QNCmFwcGxpY2F0aW9uJ3MgY2FjaGVsaW5lcy4NCg0KVGhhbmtzLA0KLVRvc2hpCl9fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCkxpbnV4LW52ZGltbSBtYWls
+aW5nIGxpc3QKTGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRwczovL2xpc3RzLjAxLm9yZy9t
+YWlsbWFuL2xpc3RpbmZvL2xpbnV4LW52ZGltbQo=
