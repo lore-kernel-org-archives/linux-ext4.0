@@ -1,68 +1,117 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] New: free space lossage on busy system with bigalloc
- enabled and 128KB cluster
-Date: Thu, 04 Aug 2016 19:47:41 +0000
-Message-ID: <bug-151491-13602@https.bugzilla.kernel.org/>
+From: Mike Christie <mchristi@redhat.com>
+Subject: Re: [PATCH 1/1] mm/block: convert rw_page users to bio op use
+Date: Thu, 4 Aug 2016 14:59:01 -0500
+Message-ID: <57A39E85.6000606@redhat.com>
+References: <201608050158.hllBWy4G%fengguang.wu@intel.com>
+ <38523086-1436-fdbf-bd89-9f31ad134bed@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42910 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934012AbcHDT4J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Aug 2016 15:56:09 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id 64D27204EA
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2016 19:47:43 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id 36A1E2049C
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Aug 2016 19:47:42 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: kbuild-all@01.org, ross.zwisler@linux.intel.com,
+	linux-ext4@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, david@fromorbit.com,
+	minchan@kernel.org, ngupta@vflare.org, vishal.l.verma@intel.com
+To: Jens Axboe <axboe@kernel.dk>, kbuild test robot <lkp@intel.com>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <38523086-1436-fdbf-bd89-9f31ad134bed@kernel.dk>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
+On 08/04/2016 02:27 PM, Jens Axboe wrote:
+> On 08/04/2016 11:50 AM, kbuild test robot wrote:
+>> Hi Mike,
+>>
+>> [auto build test ERROR on linus/master]
+>> [also build test ERROR on next-20160804]
+>> [cannot apply to v4.7]
+>> [if your patch is applied to the wrong git tree, please drop us a note
+>> to help improve the system]
+>>
+>> url:   
+>> https://github.com/0day-ci/linux/commits/Mike-Christie/mm-block-convert-rw_page-users-to-bio-op-use/20160805-012041
+>>
+>> config: i386-tinyconfig (attached as .config)
+>> compiler: gcc-6 (Debian 6.1.1-9) 6.1.1 20160705
+>> reproduce:
+>>         # save the attached .config to linux build tree
+>>         make ARCH=i386
+>>
+>> All errors (new ones prefixed by >>):
+>>
+>>    mm/filemap.c: In function 'page_endio':
+>>>> mm/filemap.c:892:7: error: implicit declaration of function
+>>>> 'op_is_write' [-Werror=implicit-function-declaration]
+>>      if (!op_is_write(op)) {
+>>           ^~~~~~~~~~~
+> 
+> Mike, how about moving op_is_write() outside of CONFIG_BLOCK protection
+> in fs.h, and making the REQ_OP_* enum generally available as well? That
+> should fix it.
+> 
+> 
+> diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+> index f254eb264924..14b28ff2caf8 100644
+> --- a/include/linux/blk_types.h
+> +++ b/include/linux/blk_types.h
+> @@ -18,6 +18,17 @@ struct cgroup_subsys_state;
+>  typedef void (bio_end_io_t) (struct bio *);
+>  typedef void (bio_destructor_t) (struct bio *);
+> 
+> +enum req_op {
+> +    REQ_OP_READ,
+> +    REQ_OP_WRITE,
+> +    REQ_OP_DISCARD,        /* request to discard sectors */
+> +    REQ_OP_SECURE_ERASE,    /* request to securely erase sectors */
+> +    REQ_OP_WRITE_SAME,    /* write same block many times */
+> +    REQ_OP_FLUSH,        /* request for cache flush */
+> +};
+> +
+> +#define REQ_OP_BITS 3
+> +
+>  #ifdef CONFIG_BLOCK
+>  /*
+>   * main unit of I/O for the block layer and lower layers (ie drivers and
+> @@ -228,17 +239,6 @@ enum rq_flag_bits {
+>  #define REQ_HASHED        (1ULL << __REQ_HASHED)
+>  #define REQ_MQ_INFLIGHT        (1ULL << __REQ_MQ_INFLIGHT)
+> 
+> -enum req_op {
+> -    REQ_OP_READ,
+> -    REQ_OP_WRITE,
+> -    REQ_OP_DISCARD,        /* request to discard sectors */
+> -    REQ_OP_SECURE_ERASE,    /* request to securely erase sectors */
+> -    REQ_OP_WRITE_SAME,    /* write same block many times */
+> -    REQ_OP_FLUSH,        /* request for cache flush */
+> -};
+> -
+> -#define REQ_OP_BITS 3
+> -
+>  typedef unsigned int blk_qc_t;
+>  #define BLK_QC_T_NONE    -1U
+>  #define BLK_QC_T_SHIFT    16
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f2a69f20926f..13cc1bfce9aa 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2465,12 +2465,13 @@ extern void init_special_inode(struct inode *,
+> umode_t, dev_t);
+>  extern void make_bad_inode(struct inode *);
+>  extern bool is_bad_inode(struct inode *);
+> 
+> -#ifdef CONFIG_BLOCK
+>  static inline bool op_is_write(unsigned int op)
+>  {
+>      return op == REQ_OP_READ ? false : true;
+>  }
+> 
+> +#ifdef CONFIG_BLOCK
+> +
+>  /*
+>   * return data direction, READ or WRITE
+>   */
+> 
 
-            Bug ID: 151491
-           Summary: free space lossage on busy system with bigalloc
-                    enabled and 128KB cluster
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.1.8
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: mlmartin@clearsky-data.com
-        Regression: No
 
-Created attachment 227581
-  --> https://bugzilla.kernel.org/attachment.cgi?id=227581&action=edit
-details of fault with scripts for reproduction
+Looks ok to me. Did a quick build and test run with it.
 
-file system with bigalloc enabled and 128KB cluster size with a large number of
-2MB files being created/overwritten/deleted loses usable space.
 
-Running du and df gives wildly different usage with df showing much more usage
-than du. lsof shows no phantom open files. Using dd to fill the file system
-shows that df's version of free space is operative, but unmounting and
-remounting the file system returns the free space. There is no difference
-between df and du usage after remount.
-
-The fault does not seem to be present in the 4.7 kernel (or it takes a lot more
-activity for it to show up).
-
-I will build 4.4.16 and retest to see if is present there.
-
-We do have a(n obnoxious) workaround of periodically unmounting/remounting
-files systems.
-
-Details of configurations and tests in the attached document
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
