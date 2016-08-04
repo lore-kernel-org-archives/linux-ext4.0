@@ -1,60 +1,44 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 37/45] drivers: use req op accessor
-Date: Thu, 4 Aug 2016 08:46:22 -0700
-Message-ID: <20160804154622.GB15656@infradead.org>
-References: <1465155145-10812-1-git-send-email-mchristi@redhat.com>
-	<1465155145-10812-38-git-send-email-mchristi@redhat.com>
-	<CAOxpaSUMsgfTYsL0bL6VCnwxz7bpgpKO-ZfC5J8dFG9PN-hzvg@mail.gmail.com>
-	<87fbe31f-27b3-ff7a-e381-34fc1aad337e@redhat.com>
-	<CAJVOszAd9Eu88P2=QoNVArd0jwDH7KRe=OB82tCNMpjfv9B4KA@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Sleeping function called in invalid context
+Date: Thu, 4 Aug 2016 18:05:50 +0200
+Message-ID: <20160804160550.GA12861@quack2.suse.cz>
+References: <57A19B9B.60005@kyup.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: philipp.reisner@linbit.com, dm-devel@redhat.com,
-	target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
-	drbd-dev@lists.linbit.com, linux-scsi@vger.kernel.org,
-	Mike Christie <mchristi@redhat.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, konrad.wilk@oracle.com,
-	XFS Developers <xfs@oss.sgi.com>, linux-block@vger.kernel.org,
-	linux-bcache@vger.kernel.org, osd-dev@open-osd.org,
-	Ross Zwisler <zwisler@gmail.com>, Jens Axboe <axboe@fb.com>,
-	linux-raid@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	lars.ellenberg@linbit.com, ocfs2-devel@oss.oracle.com
-To: Shaun Tancheff <shaun.tancheff@seagate.com>
-Return-path: <xfs-bounces@oss.sgi.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Nikolay Borisov <kernel@kyup.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40799 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964981AbcHDQF6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Aug 2016 12:05:58 -0400
 Content-Disposition: inline
-In-Reply-To: <CAJVOszAd9Eu88P2=QoNVArd0jwDH7KRe=OB82tCNMpjfv9B4KA@mail.gmail.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <57A19B9B.60005@kyup.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 03, 2016 at 07:30:29PM -0500, Shaun Tancheff wrote:
-> I think the translation in loop.c is suspicious here:
-> 
->     "if use DIO && not (a flush_flag or discard_flag)"
-> should translate to:
->     "if use DIO && not ((a flush_flag) || op == discard)"
-> 
-> But in the patch I read:
->     "if use DIO && ((not a flush_flag) || op == discard)
-> 
-> Which would have DIO && discards follow the AIO path?
+On Wed 03-08-16 10:22:03, Nikolay Borisov wrote:
+> While doing some testing on today's checkout of Linus' master branch I
+> got the following: 
 
-Indeed.  Sorry for missing out on your patch, I just sent a fix
-in reply to Dave's other report earlier which is pretty similar to
-yours.
+> 
+> [    9.302725] BUG: sleeping function called from invalid context at ./include/linux/buffer_head.h:358
+> [    9.304403] in_atomic(): 1, irqs_disabled(): 0, pid: 1718, name: mount
+> [    9.305633] 8 locks held by mount/1718:
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+Yeah, this looks like a regression cause by commit 4743f83990614af "ext4:
+Fix WARN_ON_ONCE in ext4_commit_super()". Arguably that cure is worse than
+the disease but OTOH calling ext4_commit_super() from an atomic context
+(like __ext4_grp_locked_error() does) sucks as well.
+
+I'm not sure what the right fix is here. The cleanest would probably be to
+always drop group lock in __ext4_grp_locked_error() and make sure we always
+properly bail out of mballoc code on such error. But that's a non-trivial
+amount of work. Not sure if other ext4 people have opinion on this?
+
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
