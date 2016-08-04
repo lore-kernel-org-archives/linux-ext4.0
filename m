@@ -1,55 +1,127 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Sleeping function called in invalid context
-Date: Thu, 4 Aug 2016 16:58:45 -0400
-Message-ID: <20160804205845.GC10933@thunk.org>
-References: <57A19B9B.60005@kyup.com>
- <20160804160550.GA12861@quack2.suse.cz>
+From: Mike Christie <mchristi@redhat.com>
+Subject: Re: [PATCH 1/1] mm/block: convert rw_page users to bio op use
+Date: Thu, 4 Aug 2016 16:24:40 -0500
+Message-ID: <57A3B298.6040707@redhat.com>
+References: <201608050158.hllBWy4G%fengguang.wu@intel.com>
+ <38523086-1436-fdbf-bd89-9f31ad134bed@kernel.dk>
+ <57A39E85.6000606@redhat.com>
+ <a49706b7-848f-d558-c253-2b5c4a75a30f@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nikolay Borisov <kernel@kyup.com>, Jan Kara <jack@suse.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51354 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753657AbcHDU7B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Aug 2016 16:59:01 -0400
-Content-Disposition: inline
-In-Reply-To: <20160804160550.GA12861@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: kbuild-all@01.org, ross.zwisler@linux.intel.com,
+	linux-ext4@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, david@fromorbit.com,
+	minchan@kernel.org, ngupta@vflare.org, vishal.l.verma@intel.com
+To: Jens Axboe <axboe@kernel.dk>, kbuild test robot <lkp@intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <a49706b7-848f-d558-c253-2b5c4a75a30f@kernel.dk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 04, 2016 at 06:05:50PM +0200, Jan Kara wrote:
-> On Wed 03-08-16 10:22:03, Nikolay Borisov wrote:
-> > While doing some testing on today's checkout of Linus' master branch I
-> > got the following: 
+On 08/04/2016 03:15 PM, Jens Axboe wrote:
+> On 08/04/2016 01:59 PM, Mike Christie wrote:
+>> On 08/04/2016 02:27 PM, Jens Axboe wrote:
+>>> On 08/04/2016 11:50 AM, kbuild test robot wrote:
+>>>> Hi Mike,
+>>>>
+>>>> [auto build test ERROR on linus/master]
+>>>> [also build test ERROR on next-20160804]
+>>>> [cannot apply to v4.7]
+>>>> [if your patch is applied to the wrong git tree, please drop us a note
+>>>> to help improve the system]
+>>>>
+>>>> url:
+>>>> https://github.com/0day-ci/linux/commits/Mike-Christie/mm-block-convert-rw_page-users-to-bio-op-use/20160805-012041
+>>>>
+>>>>
+>>>> config: i386-tinyconfig (attached as .config)
+>>>> compiler: gcc-6 (Debian 6.1.1-9) 6.1.1 20160705
+>>>> reproduce:
+>>>>         # save the attached .config to linux build tree
+>>>>         make ARCH=i386
+>>>>
+>>>> All errors (new ones prefixed by >>):
+>>>>
+>>>>    mm/filemap.c: In function 'page_endio':
+>>>>>> mm/filemap.c:892:7: error: implicit declaration of function
+>>>>>> 'op_is_write' [-Werror=implicit-function-declaration]
+>>>>      if (!op_is_write(op)) {
+>>>>           ^~~~~~~~~~~
+>>>
+>>> Mike, how about moving op_is_write() outside of CONFIG_BLOCK protection
+>>> in fs.h, and making the REQ_OP_* enum generally available as well? That
+>>> should fix it.
+>>>
+>>>
+>>> diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+>>> index f254eb264924..14b28ff2caf8 100644
+>>> --- a/include/linux/blk_types.h
+>>> +++ b/include/linux/blk_types.h
+>>> @@ -18,6 +18,17 @@ struct cgroup_subsys_state;
+>>>  typedef void (bio_end_io_t) (struct bio *);
+>>>  typedef void (bio_destructor_t) (struct bio *);
+>>>
+>>> +enum req_op {
+>>> +    REQ_OP_READ,
+>>> +    REQ_OP_WRITE,
+>>> +    REQ_OP_DISCARD,        /* request to discard sectors */
+>>> +    REQ_OP_SECURE_ERASE,    /* request to securely erase sectors */
+>>> +    REQ_OP_WRITE_SAME,    /* write same block many times */
+>>> +    REQ_OP_FLUSH,        /* request for cache flush */
+>>> +};
+>>> +
+>>> +#define REQ_OP_BITS 3
+>>> +
+>>>  #ifdef CONFIG_BLOCK
+>>>  /*
+>>>   * main unit of I/O for the block layer and lower layers (ie drivers
+>>> and
+>>> @@ -228,17 +239,6 @@ enum rq_flag_bits {
+>>>  #define REQ_HASHED        (1ULL << __REQ_HASHED)
+>>>  #define REQ_MQ_INFLIGHT        (1ULL << __REQ_MQ_INFLIGHT)
+>>>
+>>> -enum req_op {
+>>> -    REQ_OP_READ,
+>>> -    REQ_OP_WRITE,
+>>> -    REQ_OP_DISCARD,        /* request to discard sectors */
+>>> -    REQ_OP_SECURE_ERASE,    /* request to securely erase sectors */
+>>> -    REQ_OP_WRITE_SAME,    /* write same block many times */
+>>> -    REQ_OP_FLUSH,        /* request for cache flush */
+>>> -};
+>>> -
+>>> -#define REQ_OP_BITS 3
+>>> -
+>>>  typedef unsigned int blk_qc_t;
+>>>  #define BLK_QC_T_NONE    -1U
+>>>  #define BLK_QC_T_SHIFT    16
+>>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>>> index f2a69f20926f..13cc1bfce9aa 100644
+>>> --- a/include/linux/fs.h
+>>> +++ b/include/linux/fs.h
+>>> @@ -2465,12 +2465,13 @@ extern void init_special_inode(struct inode *,
+>>> umode_t, dev_t);
+>>>  extern void make_bad_inode(struct inode *);
+>>>  extern bool is_bad_inode(struct inode *);
+>>>
+>>> -#ifdef CONFIG_BLOCK
+>>>  static inline bool op_is_write(unsigned int op)
+>>>  {
+>>>      return op == REQ_OP_READ ? false : true;
+>>>  }
+>>>
+>>> +#ifdef CONFIG_BLOCK
+>>> +
+>>>  /*
+>>>   * return data direction, READ or WRITE
+>>>   */
+>>>
+>>
+>>
+>> Looks ok to me. Did a quick build and test run with it.
 > 
-> > 
-> > [    9.302725] BUG: sleeping function called from invalid context at ./include/linux/buffer_head.h:358
-> > [    9.304403] in_atomic(): 1, irqs_disabled(): 0, pid: 1718, name: mount
-> > [    9.305633] 8 locks held by mount/1718:
-> 
-> Yeah, this looks like a regression cause by commit 4743f83990614af "ext4:
-> Fix WARN_ON_ONCE in ext4_commit_super()". Arguably that cure is worse than
-> the disease but OTOH calling ext4_commit_super() from an atomic context
-> (like __ext4_grp_locked_error() does) sucks as well.
-> 
-> I'm not sure what the right fix is here. The cleanest would probably be to
-> always drop group lock in __ext4_grp_locked_error() and make sure we always
-> properly bail out of mballoc code on such error. But that's a non-trivial
-> amount of work. Not sure if other ext4 people have opinion on this?
+> Is anyone using the op_flags in the ->rw_page() strategy?
 
-The easist way to fix this is defer the ext4_commit_super() to a
-workqueue.  We only need this in the errors=continue case, and in that
-scenario we're not in a hurry when the superblock gets written out.
-
-In fact, we probably want to be doing this for all of the
-errors=continue cases when we want to save the error state to the
-superblock, so we can do the update properly using the journal,
-instead of calling ext4_commit_super() which just force writes the
-block.
-
-(Of course, if the journal is aborted we'll need to fall back to using
-ext4_commit_super, of course.)
-
-						 - Ted
+Not in the current code. I had just passed it in because the code was
+currently passing that extra info, and I thought the original
+implementer was going to use it in the future.
