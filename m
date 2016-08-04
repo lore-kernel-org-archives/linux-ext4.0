@@ -1,57 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [4.7-rc6 ext3 BUG] kernel BUG at fs/ext4/xattr.c:1331
-Date: Thu, 4 Aug 2016 18:18:14 +0200
-Message-ID: <20160804161814.GB12861@quack2.suse.cz>
-References: <20160718022356.GC1922@dastard>
- <20160718030256.GD1922@dastard>
- <83e3076d-4f84-705d-5259-b3ac1aaf90b7@redhat.com>
- <20160718052447.GE1922@dastard>
- <20160728135432.GA19398@quack2.suse.cz>
- <20160729002112.GX16044@dastard>
- <20160729064210.GA3611@quack2.suse.cz>
- <20160801030909.GD12853@thunk.org>
- <20160801121930.GB19431@quack2.suse.cz>
- <20160801130905.GH12853@thunk.org>
+From: Shaun Tancheff <shaun.tancheff@seagate.com>
+Subject: Re: [PATCH 37/45] drivers: use req op accessor
+Date: Thu, 4 Aug 2016 11:32:16 -0500
+Message-ID: <CAJVOszAqEw3UK6HV4bPvYfHeO6jvP0d-OtfXxRuve=5-Kmaokw@mail.gmail.com>
+References: <1465155145-10812-1-git-send-email-mchristi@redhat.com>
+	<1465155145-10812-38-git-send-email-mchristi@redhat.com>
+	<CAOxpaSUMsgfTYsL0bL6VCnwxz7bpgpKO-ZfC5J8dFG9PN-hzvg@mail.gmail.com>
+	<87fbe31f-27b3-ff7a-e381-34fc1aad337e@redhat.com>
+	<CAJVOszAd9Eu88P2=QoNVArd0jwDH7KRe=OB82tCNMpjfv9B4KA@mail.gmail.com>
+	<20160804154622.GB15656@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41875 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752973AbcHDQSR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Aug 2016 12:18:17 -0400
-Content-Disposition: inline
-In-Reply-To: <20160801130905.GH12853@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: philipp.reisner@linbit.com, dm-devel@redhat.com,
+        target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
+        drbd-dev@lists.linbit.com, linux-scsi@vger.kernel.org,
+        Mike Christie <mchristi@redhat.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>, konrad.wilk@oracle.com,
+        XFS Developers <xfs@oss.sgi.com>, linux-block@vger.kernel.org,
+        linux-bcache@vger.kernel.org, osd-dev@open-osd.org,
+        Ross Zwisler <zwisler@gmail.com>, Jens Axboe <axboe@fb.com>,
+        linux-raid@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lars.ellenberg@linbit.com, ocfs2-devel@oss.oracle.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+In-Reply-To: <20160804154622.GB15656@infradead.org>
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 01-08-16 09:09:05, Ted Tso wrote:
-> On Mon, Aug 01, 2016 at 02:19:30PM +0200, Jan Kara wrote:
-> > Regarding your patch - I think it's a reasonable band-aid although I'll
-> > have to backport proper fixes to 4.4 anyway (it's a base of our next
-> > enterprise release), which is where i_projid got introduced as well, so
-> > eventually we will have proper stable fixes for all relevant kernels
-> > anyway.
-> 
-> Well, it depends on whether you intend to support upgrading an
-> existing file system or require users to run mkfs.ext4 before being
-> able to take advantage of the new feature.  Red Hat is much more
-> conservative and has historically only supported running mke2fs from
-> scratch --- which probably made sense from their QA department's POV,
-> anyway.  The band-aid patch is enough if you don't suppor "tune2fs -O
-> project", but only "mke2fs -t ext4 -O project".  I'd personally prefer
-> upstream to support both flawlesssly, so I'm thankful for your work to
-> fix things properly, but enterprise distros can be extremely
-> conservative.
+On Thu, Aug 4, 2016 at 10:46 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Wed, Aug 03, 2016 at 07:30:29PM -0500, Shaun Tancheff wrote:
+>> I think the translation in loop.c is suspicious here:
+>>
+>>     "if use DIO && not (a flush_flag or discard_flag)"
+>> should translate to:
+>>     "if use DIO && not ((a flush_flag) || op == discard)"
+>>
+>> But in the patch I read:
+>>     "if use DIO && ((not a flush_flag) || op == discard)
+>>
+>> Which would have DIO && discards follow the AIO path?
+>
+> Indeed.  Sorry for missing out on your patch, I just sent a fix
+> in reply to Dave's other report earlier which is pretty similar to
+> yours.
 
-Well, in SUSE we were initially very conservative about ext4 but as ext4
-has matured, we are not that cautious anymore. So e.g. turning on project
-quota feature would be something we'd like to support unless there is a
-really good reason not to...
+No worries. I prefer your switch to a an if conditional here.
 
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Shaun Tancheff
