@@ -1,91 +1,76 @@
-From: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Fri, 5 Aug 2016 15:18:14 +0000
-Message-ID: <1470410249.8908.170.camel@hpe.com>
-References: <20160727120745.GI6860@quack2.suse.cz>
- <20160727211039.GA20278@linux.intel.com> <20160727221949.GU16044@dastard>
- <20160728081033.GC4094@quack2.suse.cz> <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
- <20160802002144.GL16044@dastard> <1470335997.8908.128.camel@hpe.com>
- <20160805112739.GG16044@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Fri, 5 Aug 2016 10:02:28 -0700
+Message-ID: <20160805170228.GA19960@birch.djwong.org>
+References: <20160718141723.GA8809@sig21.net>
+ <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160805112739.GG16044@dastard>
-Content-Language: en-US
-Content-ID: <EB300FE929CA60428CEEC314263A120B-mmYPd6ayCNGroOM5E8FhRbjFIynDaujOfM0AETQt39g@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
+	linux-kernel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Johannes Stezenbach <js@sig21.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gRnJpLCAyMDE2LTA4LTA1IGF0IDIxOjI3ICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+
-IFsgY3V0IHRvIGp1c3QgdGhlIGltcG9ydGFudCBwb2ludHMgXQ0KPiBPbiBUaHUsIEF1ZyAwNCwg
-MjAxNiBhdCAwNjo0MDo0MlBNICswMDAwLCBLYW5pLCBUb3NoaW1pdHN1IHdyb3RlOg0KPiA+IA0K
-PiA+IE9uIFR1ZSwgMjAxNi0wOC0wMiBhdCAxMDoyMSArMTAwMCwgRGF2ZSBDaGlubmVyIHdyb3Rl
-Og0KPiA+ID4gDQo+ID4gPiBJZiBJIGRyb3AgdGhlIGZzeW5jIGZyb20gdGhlDQo+ID4gPiBidWZm
-ZXJlZCBJTyBwYXRoLCBiYW5kd2lkdGggcmVtYWlucyB0aGUgc2FtZSBidXQgcnVudGltZSBkcm9w
-cyB0bw0KPiA+ID4gMC41NS0wLjU3cywgc28gYWdhaW4gdGhlIGJ1ZmZlcmVkIElPIHdyaXRlIHBh
-dGggaXMgZmFzdGVyIHRoYW4gREFYDQo+ID4gPiB3aGlsZSBkb2luZyBtb3JlIHdvcmsuDQo+ID4N
-Cj4gPiBJIGRvIG5vdCB0aGluayB0aGUgdGVzdCByZXN1bHRzIGFyZSByZWxldmFudCBvbiB0aGlz
-IHBvaW50IGJlY2F1c2UgYm90aA0KPiA+IGJ1ZmZlcmVkIGFuZCBkYXggd3JpdGUoKSBwYXRocyB1
-c2UgdW5jYWNoZWQgY29weSB0byBhdm9pZCBjbGZsdXNoLiDCoFRoZQ0KPiA+IGJ1ZmZlcmVkIHBh
-dGggdXNlcyBjYWNoZWQgY29weSB0byB0aGUgcGFnZSBjYWNoZSBhbmQgdGhlbiB1c2UgdW5jYWNo
-ZWQNCj4gPiBjb3B5IHRvIFBNRU0gdmlhIHdyaXRlYmFjay4gwqBUaGVyZWZvcmUsIHRoZSBidWZm
-ZXJlZCBJTyBwYXRoIGFsc28gYmVuZWZpdHMNCj4gPiBmcm9tIHVzaW5nIHVuY2FjaGVkIGNvcHkg
-dG8gYXZvaWQgY2xmbHVzaC4NCj4NCj4gRXhjZXB0IHRoYXQgSSB0ZXN0ZWQgd2l0aG91dCB0aGUg
-d3JpdGViYWNrIHBhdGggZm9yIGJ1ZmZlcmVkIElPLCBzbw0KPiB0aGVyZSB3YXMgYSBkaXJlY3Qg
-Y29tcGFyaXNvbiBmb3Igc2luZ2xlIGNhY2hlZCBjb3B5IHZzIHNpbmdsZQ0KPiB1bmNhY2hlZCBj
-b3B5Lg0KDQpJIGFncmVlIHRoYXQgdGhlIHJlc3VsdCBzaG93ZWQgYSB0ZW50YXRpdmUgY29tcGFy
-aXNvbiBmb3IgY2FjaGVkIGNvcHkgdnMNCnVuY2FjaGVkIGNvcHkuIMKgTXkgcG9pbnQsIGhvd2V2
-ZXIsIGlzIHRoYXQgd3JpdGVzIHRvIFBNRU0gbmVlZCB0byBwZXJzaXN0DQp1bmxpa2UgdGhlIHBh
-Z2UgY2FjaGUuIMKgU28gZm9yIFBNRU0sIHRoZSBjb21wYXJpc29uIHNob3VsZCBiZSAoY2FjaGVk
-IGNvcHkgKw0KY2xmbHVzaCkgdnMgdW5jYWNoZWQgY29weS4NCg0KPiBUaGUgdW5kZW5pYWwgZmFj
-dCBpcyB0aGF0IGEgd3JpdGUoKSB3aXRoIGEgc2luZ2xlIGNhY2hlZCBjb3B5IHdpdGgNCj4gYWxs
-IHRoZSBvdmVyaGVhZCBvZiBkaXJ0eSBwYWdlIHRyYWNraW5nIGlzIC9mYXN0ZXIvIHRoYW4gYSBt
-dWNoDQo+IHNob3J0ZXIsIHNpbXBsZXIgSU8gcGF0aCB0aGF0IHVzZXMgYW4gdW5jYWNoZWQgY29w
-eS4gVGhhdCdzIHdoYXQgdGhlDQo+IG51bWJlcnMgc2F5Li4uLg0KDQpUaGlzIGNvc3QgZXZhbHVh
-dGlvbiBuZWVkcyB0byBpbmNsdWRlIHRoZSBjb3N0IG9mIGNsZmx1c2ggZm9yIGNhY2hlZCBjb3B5
-Lg0KwqBBbHNvLCBwYWdlIGNhY2hlIGFsbG9jYXRpb24gdGVuZHMgdG8gYmUgZmFzdGVyIHRoYW4g
-ZGlzayBibG9jayBhbGxvY2F0aW9uLg0KDQo+ID4gDQo+ID4gQ2FjaGVkIGNvcHkgKHJlcSBtb3Zx
-KSBpcyBzbGlnaHRseSBmYXN0ZXIgdGhhbiB1bmNhY2hlZCBjb3B5LA0KPg0KPiBOb3QgYWNjb3Jk
-aW5nIHRvIEJvYXogLSBoZSBjbGFpbXMgdGhhdCB1bmNhY2hlZCBpcyAyMCUgZmFzdGVyIHRoYW4N
-Cj4gY2FjaGVkLiBIb3cgYWJvdXQgeW91IHR3byBnZXQgdG9nZXRoZXIsIGRvIHNvbWUgYmVuY2ht
-YXJraW5nIGFuZCBnZXQNCj4geW91ciBzdG9yeSBzdHJhaWdodCwgZWg/DQoNCkkgdmFndWVseSBy
-ZW1lbWJlciBzZWVpbmcgc3VjaCByZXN1bHRzLCBidXQgSSBtYXkgYmUgd3JvbmcgYWJvdXQgdGhh
-dC4gwqBIZXJlDQphcmUgcGVyZm9ybWFuY2UgdGVzdCByZXN1bHRzIFJvYmVydCBFbGxpb3R0IGNv
-bmR1Y3RlZCBiZWZvcmUuDQpodHRwczovL2xrbWwub3JnL2xrbWwvMjAxNS80LzIvNDUzDQoNClRv
-IHF1b3RlIHRoZSByZXN1bHRzIHJlbGV2YW50IHRvIHRoaXMgdG9waWM6DQoNCi0gQ2FjaGVkIGNv
-cHkJCQkyLjUgTQ0KLSBVbmNhY2hlZCBjb3B5IHcvwqBNT1ZOVEkJMi42IE0JDQotIFVuY2FjaGVk
-IGNvcHkgdy/CoE1PVk5URFEJMy41IE0NCg0KTm90ZSB0aGF0IHdlIHVzZSBNT1ZOVEkgdG9kYXks
-IG5vdCBNT1ZOVERRLiDCoFdlIGluc3RydW1lbnRlZCBhIE1PVk5URFEgY29weQ0KZnVuY3Rpb24g
-Zm9yIHRoaXMgdGVzdC4gwqBXZSBjYW4gZnVydGhlciBpbXByb3ZlIHRoZSBjb3B5IHBlcmZvcm1h
-bmNlIGJ5IHVzaW5nDQpNT1ZOVERRLg0KDQo+ID4gYW5kIHNob3VsZCBiZSB1c2VkIGZvciB3cml0
-aW5nIHRvIHRoZSBwYWdlIGNhY2hlLiDCoEZvciB3cml0aW5nIHRvIFBNRU0sDQo+ID4gaG93ZXZl
-ciwgYWRkaXRpb25hbCBjbGZsdXNoIGNhbiBiZSBleHBlbnNpdmUsIGFuZCBhbGxvY2F0aW5nIGNh
-Y2hlbGluZXMNCj4gPiBmb3IgUE1FTSBsZWFkcyB0byBldmljdCBhcHBsaWNhdGlvbidzIGNhY2hl
-bGluZXMuDQo+DQo+IEkga2VlcCBoZWFyaW5nIHBlb3BsZSB0ZWxsIG1lIHdoeSBjYWNoZWQgY29w
-aWVzIGFyZSBzbG93ZXIsIGJ1dA0KPiBuby1vbmUgaXMgcHJvdmlkaW5nIG51bWJlcnMgdG8gYmFj
-ayB1cCB0aGVpciBzdGF0ZW1lbnRzLiBUaGUgb25seQ0KPiBudW1iZXJzIHdlIGhhdmUgYXJlIHRo
-ZSBvbmVzIEkndmUgcHVibGlzaGVkIHNob3dpbmcgY2FjaGVkIGNvcGllcyB3Lw0KPiBmdWxsIGRp
-cnR5IHRyYWNraW5nIGlzIGZhc3RlciB0aGFuIHVuY2FjaGVkIGNvcHkgdy9vIGRpcnR5IHRyYWNr
-aW5nLg0KPiANCj4gU2hvdyBtZSB0aGUgbnVtYmVycyB0aGF0IGJhY2sgdXAgeW91ciBzdGF0ZW1l
-bnRzLCB0aGVuIEknbGwgbGlzdGVuDQo+IHRvIHlvdS4NCg0KUGxlYXNlIHNlZSBhYm92ZS4gwqBD
-YWNoZWQgY29weSByZXF1aXJlcyBjbGZsdXNoIG9uIHRvcCBvZiB0aGF0Lg0KDQpUaGFua3MsDQot
-VG9zaGkNCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCkxp
-bnV4LW52ZGltbSBtYWlsaW5nIGxpc3QKTGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRwczov
-L2xpc3RzLjAxLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LW52ZGltbQo=
+On Fri, Aug 05, 2016 at 12:35:44PM +0200, Johannes Stezenbach wrote:
+> On Wed, Aug 03, 2016 at 05:50:26PM +0300, Török Edwin wrote:
+> > I have just encountered a similar problem after I've recently upgraded to 4.7.0:
+> > [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): dx_probe:740: inode #13295: comm python: Directory index failed checksum
+> > [Wed Aug  3 11:08:57 2016] Aborting journal on device dm-1-8.
+> > [Wed Aug  3 11:08:57 2016] EXT4-fs (dm-1): Remounting filesystem read-only
+> > [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): ext4_journal_check_start:56: Detected aborted journal
+> > 
+> > I've rebooted in single-user mode, fsck fixed the filesystem, and rebooted, filesystem is rw again now.
+> > 
+> > inode #13295 seems to be this and I can list it now:
+> > stat /usr/lib64/python3.4/site-packages
+> >   File: '/usr/lib64/python3.4/site-packages'
+> >   Size: 12288     	Blocks: 24         IO Block: 4096   directory
+> > Device: fd01h/64769d	Inode: 13295       Links: 180
+> > Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> > Access: 2016-05-09 11:29:44.056661988 +0300
+> > Modify: 2016-08-01 00:34:24.029779875 +0300
+> > Change: 2016-08-01 00:34:24.029779875 +0300
+> >  Birth: -
+> > 
+> > The filesystem was /, I only noticed it was readonly after several hours when I tried to install something:
+> > /dev/mapper/vg--ssd-root on / type ext4 (rw,noatime,errors=remount-ro,data=ordered)
+> > 
+> > $ uname -a
+> > Linux bolt 4.7.0-gentoo-rr #1 SMP Thu Jul 28 11:28:56 EEST 2016 x86_64 AMD FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
+> > 
+> > FWIW I've been using ext4 for years and this is the first time I see this message.
+> > Prior to 4.7 I was on 4.6.1 -> 4.6.2 -> 4.6.3 -> 4.6.4.
+> > 
+> > The kernel is from gentoo-sources + a patch for enabling AMD LWP (I had that patch since 4.6.3 and its not related to I/O).
+> > 
+> > If I see this message again what should I do to obtain more information to trace down the root cause?
+> 
+> It just happened again to me, this time hitting /usr/sbin/
+> on root fs.  Meanwhile I ran memtest86 7.0 for two nights,
+> it didn't find anything.  I'm using hibernate regularly
+> and I think so this only happened after a few hibernate/resume
+> cycles, but no idea if that means anything.
+> Now I'm back at 4.4.16 to see if it reproduces.
+
+When you're back on 4.7, can you apply this patch[1] to see if it fixes
+the problem?  I speculate that the new parallel dir lookup code enables
+multiple threads to be verifying the same directory block buffer at the
+same time.
+
+--D
+
+[1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+
+> 
+> Johannes
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
