@@ -1,58 +1,62 @@
-From: <koopk@madisonnjps.org>
-Subject: RE: linux-ext4
-Date: Fri, 5 Aug 2016 14:55:19 -0400
-Message-ID: <000101d1ef7d$2fe60216$c0a80001@agniinfo.com>
-Reply-To: <linux-ext4@vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Fri, 5 Aug 2016 12:15:48 -0700
+Message-ID: <20160805191548.GD19960@birch.djwong.org>
+References: <20160718141723.GA8809@sig21.net>
+ <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+ <20160805170228.GA19960@birch.djwong.org>
+ <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
 Mime-Version: 1.0
-Content-Type: application/zip; name="hnhaqcguww_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.agniinfo.com ([122.166.46.28]:56783 "HELO agniinfo.com"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1424115AbcHESzT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Aug 2016 14:55:19 -0400
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
+	linux-kernel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Johannes Stezenbach <js@sig21.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
+On Fri, Aug 05, 2016 at 08:11:36PM +0200, Johannes Stezenbach wrote:
+> On Fri, Aug 05, 2016 at 10:02:28AM -0700, Darrick J. Wong wrote:
+> > On Fri, Aug 05, 2016 at 12:35:44PM +0200, Johannes Stezenbach wrote:
+> > > On Wed, Aug 03, 2016 at 05:50:26PM +0300, Török Edwin wrote:
+> > > > I have just encountered a similar problem after I've recently upgraded to 4.7.0:
+> > > > [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): dx_probe:740: inode #13295: comm python: Directory index failed checksum
+> > > > [Wed Aug  3 11:08:57 2016] Aborting journal on device dm-1-8.
+> > > > [Wed Aug  3 11:08:57 2016] EXT4-fs (dm-1): Remounting filesystem read-only
+> > > > [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): ext4_journal_check_start:56: Detected aborted journal
+> > > 
+> > > It just happened again to me, this time hitting /usr/sbin/
+> > > on root fs.  Meanwhile I ran memtest86 7.0 for two nights,
+> > > it didn't find anything.  I'm using hibernate regularly
+> > > and I think so this only happened after a few hibernate/resume
+> > > cycles, but no idea if that means anything.
+> > > Now I'm back at 4.4.16 to see if it reproduces.
+> > 
+> > When you're back on 4.7, can you apply this patch[1] to see if it fixes
+> > the problem?  I speculate that the new parallel dir lookup code enables
+> > multiple threads to be verifying the same directory block buffer at the
+> > same time.
+> > 
+> > [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+> 
+> I added the patch, rebuilt and rebooted.  It will take some time
+> before I'll report back since the issue is so hard to reproduce.
+
+FWIW I could trigger it reliably by running a bunch of directory traversal
+programs simultaneously on the same directory.  I have a script that fires
+up multiple mutts pointing to the Maildirs for the high traffic Linux lists.
+
+--D
+
+> 
+> Thanks,
+> Johannes
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
