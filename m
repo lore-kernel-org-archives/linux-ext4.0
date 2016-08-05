@@ -1,40 +1,91 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Sleeping function called in invalid context
-Date: Fri, 5 Aug 2016 10:56:04 -0400
-Message-ID: <20160805145604.GA9105@thunk.org>
-References: <57A19B9B.60005@kyup.com>
- <20160804160550.GA12861@quack2.suse.cz>
- <20160804205845.GC10933@thunk.org>
- <57A43267.7030608@kyup.com>
+From: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Fri, 5 Aug 2016 15:18:14 +0000
+Message-ID: <1470410249.8908.170.camel@hpe.com>
+References: <20160727120745.GI6860@quack2.suse.cz>
+ <20160727211039.GA20278@linux.intel.com> <20160727221949.GU16044@dastard>
+ <20160728081033.GC4094@quack2.suse.cz> <20160729022152.GZ16044@dastard>
+ <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+ <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
+ <20160802002144.GL16044@dastard> <1470335997.8908.128.camel@hpe.com>
+ <20160805112739.GG16044@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Nikolay Borisov <kernel@kyup.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53774 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422688AbcHEO4S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Aug 2016 10:56:18 -0400
-Content-Disposition: inline
-In-Reply-To: <57A43267.7030608@kyup.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+ "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20160805112739.GG16044@dastard>
+Content-Language: en-US
+Content-ID: <EB300FE929CA60428CEEC314263A120B-mmYPd6ayCNGroOM5E8FhRbjFIynDaujOfM0AETQt39g@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 05, 2016 at 09:29:59AM +0300, Nikolay Borisov wrote:
-> > The easist way to fix this is defer the ext4_commit_super() to a
-> > workqueue.  We only need this in the errors=continue case, and in that
-> > scenario we're not in a hurry when the superblock gets written out.
-> 
-> Is errors=continue the default option if nothing specifically is
-> specified at mount time, since I don't have this set explicitly:
-> 
-> /dev/vda / ext4 rw,relatime,data=ordered 0 0
-
-Yes, it's the default.  I keep wondering whether we should change the
-default to remount-ro or even panic, since people sometimes don't
-notice that the "file system has been corrupted" messages, and then
-they can end up losing a lot more detail if we forced them to address
-the issue right away.
-
-						- Ted
+T24gRnJpLCAyMDE2LTA4LTA1IGF0IDIxOjI3ICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+
+IFsgY3V0IHRvIGp1c3QgdGhlIGltcG9ydGFudCBwb2ludHMgXQ0KPiBPbiBUaHUsIEF1ZyAwNCwg
+MjAxNiBhdCAwNjo0MDo0MlBNICswMDAwLCBLYW5pLCBUb3NoaW1pdHN1IHdyb3RlOg0KPiA+IA0K
+PiA+IE9uIFR1ZSwgMjAxNi0wOC0wMiBhdCAxMDoyMSArMTAwMCwgRGF2ZSBDaGlubmVyIHdyb3Rl
+Og0KPiA+ID4gDQo+ID4gPiBJZiBJIGRyb3AgdGhlIGZzeW5jIGZyb20gdGhlDQo+ID4gPiBidWZm
+ZXJlZCBJTyBwYXRoLCBiYW5kd2lkdGggcmVtYWlucyB0aGUgc2FtZSBidXQgcnVudGltZSBkcm9w
+cyB0bw0KPiA+ID4gMC41NS0wLjU3cywgc28gYWdhaW4gdGhlIGJ1ZmZlcmVkIElPIHdyaXRlIHBh
+dGggaXMgZmFzdGVyIHRoYW4gREFYDQo+ID4gPiB3aGlsZSBkb2luZyBtb3JlIHdvcmsuDQo+ID4N
+Cj4gPiBJIGRvIG5vdCB0aGluayB0aGUgdGVzdCByZXN1bHRzIGFyZSByZWxldmFudCBvbiB0aGlz
+IHBvaW50IGJlY2F1c2UgYm90aA0KPiA+IGJ1ZmZlcmVkIGFuZCBkYXggd3JpdGUoKSBwYXRocyB1
+c2UgdW5jYWNoZWQgY29weSB0byBhdm9pZCBjbGZsdXNoLiDCoFRoZQ0KPiA+IGJ1ZmZlcmVkIHBh
+dGggdXNlcyBjYWNoZWQgY29weSB0byB0aGUgcGFnZSBjYWNoZSBhbmQgdGhlbiB1c2UgdW5jYWNo
+ZWQNCj4gPiBjb3B5IHRvIFBNRU0gdmlhIHdyaXRlYmFjay4gwqBUaGVyZWZvcmUsIHRoZSBidWZm
+ZXJlZCBJTyBwYXRoIGFsc28gYmVuZWZpdHMNCj4gPiBmcm9tIHVzaW5nIHVuY2FjaGVkIGNvcHkg
+dG8gYXZvaWQgY2xmbHVzaC4NCj4NCj4gRXhjZXB0IHRoYXQgSSB0ZXN0ZWQgd2l0aG91dCB0aGUg
+d3JpdGViYWNrIHBhdGggZm9yIGJ1ZmZlcmVkIElPLCBzbw0KPiB0aGVyZSB3YXMgYSBkaXJlY3Qg
+Y29tcGFyaXNvbiBmb3Igc2luZ2xlIGNhY2hlZCBjb3B5IHZzIHNpbmdsZQ0KPiB1bmNhY2hlZCBj
+b3B5Lg0KDQpJIGFncmVlIHRoYXQgdGhlIHJlc3VsdCBzaG93ZWQgYSB0ZW50YXRpdmUgY29tcGFy
+aXNvbiBmb3IgY2FjaGVkIGNvcHkgdnMNCnVuY2FjaGVkIGNvcHkuIMKgTXkgcG9pbnQsIGhvd2V2
+ZXIsIGlzIHRoYXQgd3JpdGVzIHRvIFBNRU0gbmVlZCB0byBwZXJzaXN0DQp1bmxpa2UgdGhlIHBh
+Z2UgY2FjaGUuIMKgU28gZm9yIFBNRU0sIHRoZSBjb21wYXJpc29uIHNob3VsZCBiZSAoY2FjaGVk
+IGNvcHkgKw0KY2xmbHVzaCkgdnMgdW5jYWNoZWQgY29weS4NCg0KPiBUaGUgdW5kZW5pYWwgZmFj
+dCBpcyB0aGF0IGEgd3JpdGUoKSB3aXRoIGEgc2luZ2xlIGNhY2hlZCBjb3B5IHdpdGgNCj4gYWxs
+IHRoZSBvdmVyaGVhZCBvZiBkaXJ0eSBwYWdlIHRyYWNraW5nIGlzIC9mYXN0ZXIvIHRoYW4gYSBt
+dWNoDQo+IHNob3J0ZXIsIHNpbXBsZXIgSU8gcGF0aCB0aGF0IHVzZXMgYW4gdW5jYWNoZWQgY29w
+eS4gVGhhdCdzIHdoYXQgdGhlDQo+IG51bWJlcnMgc2F5Li4uLg0KDQpUaGlzIGNvc3QgZXZhbHVh
+dGlvbiBuZWVkcyB0byBpbmNsdWRlIHRoZSBjb3N0IG9mIGNsZmx1c2ggZm9yIGNhY2hlZCBjb3B5
+Lg0KwqBBbHNvLCBwYWdlIGNhY2hlIGFsbG9jYXRpb24gdGVuZHMgdG8gYmUgZmFzdGVyIHRoYW4g
+ZGlzayBibG9jayBhbGxvY2F0aW9uLg0KDQo+ID4gDQo+ID4gQ2FjaGVkIGNvcHkgKHJlcSBtb3Zx
+KSBpcyBzbGlnaHRseSBmYXN0ZXIgdGhhbiB1bmNhY2hlZCBjb3B5LA0KPg0KPiBOb3QgYWNjb3Jk
+aW5nIHRvIEJvYXogLSBoZSBjbGFpbXMgdGhhdCB1bmNhY2hlZCBpcyAyMCUgZmFzdGVyIHRoYW4N
+Cj4gY2FjaGVkLiBIb3cgYWJvdXQgeW91IHR3byBnZXQgdG9nZXRoZXIsIGRvIHNvbWUgYmVuY2ht
+YXJraW5nIGFuZCBnZXQNCj4geW91ciBzdG9yeSBzdHJhaWdodCwgZWg/DQoNCkkgdmFndWVseSBy
+ZW1lbWJlciBzZWVpbmcgc3VjaCByZXN1bHRzLCBidXQgSSBtYXkgYmUgd3JvbmcgYWJvdXQgdGhh
+dC4gwqBIZXJlDQphcmUgcGVyZm9ybWFuY2UgdGVzdCByZXN1bHRzIFJvYmVydCBFbGxpb3R0IGNv
+bmR1Y3RlZCBiZWZvcmUuDQpodHRwczovL2xrbWwub3JnL2xrbWwvMjAxNS80LzIvNDUzDQoNClRv
+IHF1b3RlIHRoZSByZXN1bHRzIHJlbGV2YW50IHRvIHRoaXMgdG9waWM6DQoNCi0gQ2FjaGVkIGNv
+cHkJCQkyLjUgTQ0KLSBVbmNhY2hlZCBjb3B5IHcvwqBNT1ZOVEkJMi42IE0JDQotIFVuY2FjaGVk
+IGNvcHkgdy/CoE1PVk5URFEJMy41IE0NCg0KTm90ZSB0aGF0IHdlIHVzZSBNT1ZOVEkgdG9kYXks
+IG5vdCBNT1ZOVERRLiDCoFdlIGluc3RydW1lbnRlZCBhIE1PVk5URFEgY29weQ0KZnVuY3Rpb24g
+Zm9yIHRoaXMgdGVzdC4gwqBXZSBjYW4gZnVydGhlciBpbXByb3ZlIHRoZSBjb3B5IHBlcmZvcm1h
+bmNlIGJ5IHVzaW5nDQpNT1ZOVERRLg0KDQo+ID4gYW5kIHNob3VsZCBiZSB1c2VkIGZvciB3cml0
+aW5nIHRvIHRoZSBwYWdlIGNhY2hlLiDCoEZvciB3cml0aW5nIHRvIFBNRU0sDQo+ID4gaG93ZXZl
+ciwgYWRkaXRpb25hbCBjbGZsdXNoIGNhbiBiZSBleHBlbnNpdmUsIGFuZCBhbGxvY2F0aW5nIGNh
+Y2hlbGluZXMNCj4gPiBmb3IgUE1FTSBsZWFkcyB0byBldmljdCBhcHBsaWNhdGlvbidzIGNhY2hl
+bGluZXMuDQo+DQo+IEkga2VlcCBoZWFyaW5nIHBlb3BsZSB0ZWxsIG1lIHdoeSBjYWNoZWQgY29w
+aWVzIGFyZSBzbG93ZXIsIGJ1dA0KPiBuby1vbmUgaXMgcHJvdmlkaW5nIG51bWJlcnMgdG8gYmFj
+ayB1cCB0aGVpciBzdGF0ZW1lbnRzLiBUaGUgb25seQ0KPiBudW1iZXJzIHdlIGhhdmUgYXJlIHRo
+ZSBvbmVzIEkndmUgcHVibGlzaGVkIHNob3dpbmcgY2FjaGVkIGNvcGllcyB3Lw0KPiBmdWxsIGRp
+cnR5IHRyYWNraW5nIGlzIGZhc3RlciB0aGFuIHVuY2FjaGVkIGNvcHkgdy9vIGRpcnR5IHRyYWNr
+aW5nLg0KPiANCj4gU2hvdyBtZSB0aGUgbnVtYmVycyB0aGF0IGJhY2sgdXAgeW91ciBzdGF0ZW1l
+bnRzLCB0aGVuIEknbGwgbGlzdGVuDQo+IHRvIHlvdS4NCg0KUGxlYXNlIHNlZSBhYm92ZS4gwqBD
+YWNoZWQgY29weSByZXF1aXJlcyBjbGZsdXNoIG9uIHRvcCBvZiB0aGF0Lg0KDQpUaGFua3MsDQot
+VG9zaGkNCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCkxp
+bnV4LW52ZGltbSBtYWlsaW5nIGxpc3QKTGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRwczov
+L2xpc3RzLjAxLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LW52ZGltbQo=
