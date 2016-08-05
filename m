@@ -1,148 +1,88 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: remove old feature helpers
-Date: Fri, 5 Aug 2016 13:05:15 +0200
-Message-ID: <20160805110515.GA18566@quack2.suse.cz>
-References: <20160727175140.15742-1-ngkaho1234@gmail.com>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Fri, 5 Aug 2016 21:27:39 +1000
+Message-ID: <20160805112739.GG16044@dastard>
+References: <20160727120745.GI6860@quack2.suse.cz>
+ <20160727211039.GA20278@linux.intel.com>
+ <20160727221949.GU16044@dastard>
+ <20160728081033.GC4094@quack2.suse.cz>
+ <20160729022152.GZ16044@dastard>
+ <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+ <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
+ <20160802002144.GL16044@dastard>
+ <1470335997.8908.128.camel@hpe.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Kaho Ng <ngkaho1234@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030273AbcHELFS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Aug 2016 07:05:18 -0400
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Cc: "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+ "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20160727175140.15742-1-ngkaho1234@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1470335997.8908.128.camel-ZPxbGqLxI0U@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 28-07-16 01:51:40, Kaho Ng wrote:
-> Use the ext4_{has,set,clear}_feature_* helpers to replace the old
-> feature helpers.
-> 
-> Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
+[ cut to just the important points ]
+On Thu, Aug 04, 2016 at 06:40:42PM +0000, Kani, Toshimitsu wrote:
+> On Tue, 2016-08-02 at 10:21 +1000, Dave Chinner wrote:
+> > If I drop the fsync from the
+> > buffered IO path, bandwidth remains the same but runtime drops to
+> > 0.55-0.57s, so again the buffered IO write path is faster than DAX
+> > while doing more work.
+> =
 
-Thanks. The patch looks good! You can add:
+> I do not think the test results are relevant on this point because both
+> buffered and dax write() paths use uncached copy to avoid clflush. =A0The
+> buffered path uses cached copy to the page cache and then use uncached co=
+py to
+> PMEM via writeback. =A0Therefore, the buffered IO path also benefits from=
+ using
+> uncached copy to avoid clflush.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Except that I tested without the writeback path for buffered IO, so
+there was a direct comparison for single cached copy vs single
+uncached copy.
 
-								Honza
+The undenial fact is that a write() with a single cached copy with
+all the overhead of dirty page tracking is /faster/ than a much
+shorter, simpler IO path that uses an uncached copy. That's what the
+numbers say....
 
-> ---
->  fs/ext4/ext4.h   | 20 --------------------
->  fs/ext4/ialloc.c |  2 +-
->  fs/ext4/inode.c  |  7 +++----
->  fs/ext4/ioctl.c  |  6 ++----
->  4 files changed, 6 insertions(+), 29 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index ea31931..81a298c 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1636,26 +1636,6 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->   * Feature set definitions
->   */
->  
-> -/* Use the ext4_{has,set,clear}_feature_* helpers; these will be removed */
-> -#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
-> -	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
-> -#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
-> -	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
-> -#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
-> -	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
-> -#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
-> -#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
-> -#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
-> -#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
-> -#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
-> -#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
-> -	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
-> -
->  #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
->  #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
->  #define EXT4_FEATURE_COMPAT_HAS_JOURNAL		0x0004
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 9e66cd1..170421e 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -802,7 +802,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  	} else
->  		inode_init_owner(inode, dir, mode);
->  
-> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> +	if (ext4_has_feature_project(sb) &&
->  	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
->  		ei->i_projid = EXT4_I(dir)->i_projid;
->  	else
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3131747..3265dc8 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4414,7 +4414,7 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
->  
->  int ext4_get_projid(struct inode *inode, kprojid_t *projid)
->  {
-> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
-> +	if (!ext4_has_feature_project(inode->i_sb))
->  		return -EOPNOTSUPP;
->  	*projid = EXT4_I(inode)->i_projid;
->  	return 0;
-> @@ -4481,7 +4481,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->  	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
->  	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
->  	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
-> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> +	if (ext4_has_feature_project(sb) &&
->  	    EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
->  	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
->  		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
-> @@ -4885,8 +4885,7 @@ static int ext4_do_update_inode(handle_t *handle,
->  		}
->  	}
->  
-> -	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> -			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
-> +	BUG_ON(!ext4_has_feature_project(inode->i_sb) &&
->  	       i_projid != EXT4_DEF_PROJID);
->  
->  	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 10686fd..ef4430b 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -310,8 +310,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
->  	struct ext4_inode *raw_inode;
->  	struct dquot *transfer_to[MAXQUOTAS] = { };
->  
-> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> -			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-> +	if (!ext4_has_feature_project(sb)) {
->  		if (projid != EXT4_DEF_PROJID)
->  			return -EOPNOTSUPP;
->  		else
-> @@ -842,8 +841,7 @@ resizefs_out:
->  		ext4_get_inode_flags(ei);
->  		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
->  
-> -		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-> -				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-> +		if (ext4_has_feature_project(inode->i_sb)) {
->  			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
->  				EXT4_I(inode)->i_projid);
->  		}
-> -- 
-> 2.9.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> Cached copy (req movq) is slightly faster than uncached copy,
+
+Not according to Boaz - he claims that uncached is 20% faster than
+cached. How about you two get together, do some benchmarking and get
+your story straight, eh?
+
+> and should be
+> used for writing to the page cache. =A0For writing to PMEM, however, addi=
+tional
+> clflush can be expensive, and allocating cachelines for PMEM leads to evi=
+ct
+> application's cachelines.
+
+I keep hearing people tell me why cached copies are slower, but
+no-one is providing numbers to back up their statements. The only
+numbers we have are the ones I've published showing cached copies w/
+full dirty tracking is faster than uncached copy w/o dirty tracking.
+
+Show me the numbers that back up your statements, then I'll listen
+to you.
+
+-Dave.
+-- =
+
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
