@@ -1,59 +1,148 @@
-From: Johannes Stezenbach <js@sig21.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Fri, 5 Aug 2016 12:35:44 +0200
-Message-ID: <20160805103544.kbt7znbzypvi5ofx@sig21.net>
-References: <20160718141723.GA8809@sig21.net>
- <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: remove old feature helpers
+Date: Fri, 5 Aug 2016 13:05:15 +0200
+Message-ID: <20160805110515.GA18566@quack2.suse.cz>
+References: <20160727175140.15742-1-ngkaho1234@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: linux-kernel@vger.kernel.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Kaho Ng <ngkaho1234@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030273AbcHELFS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Aug 2016 07:05:18 -0400
 Content-Disposition: inline
-In-Reply-To: <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160727175140.15742-1-ngkaho1234@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 03, 2016 at 05:50:26PM +0300, Török Edwin wrote:
-> I have just encountered a similar problem after I've recently upgraded to 4.7.0:
-> [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): dx_probe:740: inode #13295: comm python: Directory index failed checksum
-> [Wed Aug  3 11:08:57 2016] Aborting journal on device dm-1-8.
-> [Wed Aug  3 11:08:57 2016] EXT4-fs (dm-1): Remounting filesystem read-only
-> [Wed Aug  3 11:08:57 2016] EXT4-fs error (device dm-1): ext4_journal_check_start:56: Detected aborted journal
+On Thu 28-07-16 01:51:40, Kaho Ng wrote:
+> Use the ext4_{has,set,clear}_feature_* helpers to replace the old
+> feature helpers.
 > 
-> I've rebooted in single-user mode, fsck fixed the filesystem, and rebooted, filesystem is rw again now.
-> 
-> inode #13295 seems to be this and I can list it now:
-> stat /usr/lib64/python3.4/site-packages
->   File: '/usr/lib64/python3.4/site-packages'
->   Size: 12288     	Blocks: 24         IO Block: 4096   directory
-> Device: fd01h/64769d	Inode: 13295       Links: 180
-> Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-> Access: 2016-05-09 11:29:44.056661988 +0300
-> Modify: 2016-08-01 00:34:24.029779875 +0300
-> Change: 2016-08-01 00:34:24.029779875 +0300
->  Birth: -
-> 
-> The filesystem was /, I only noticed it was readonly after several hours when I tried to install something:
-> /dev/mapper/vg--ssd-root on / type ext4 (rw,noatime,errors=remount-ro,data=ordered)
-> 
-> $ uname -a
-> Linux bolt 4.7.0-gentoo-rr #1 SMP Thu Jul 28 11:28:56 EEST 2016 x86_64 AMD FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
-> 
-> FWIW I've been using ext4 for years and this is the first time I see this message.
-> Prior to 4.7 I was on 4.6.1 -> 4.6.2 -> 4.6.3 -> 4.6.4.
-> 
-> The kernel is from gentoo-sources + a patch for enabling AMD LWP (I had that patch since 4.6.3 and its not related to I/O).
-> 
-> If I see this message again what should I do to obtain more information to trace down the root cause?
+> Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
 
-It just happened again to me, this time hitting /usr/sbin/
-on root fs.  Meanwhile I ran memtest86 7.0 for two nights,
-it didn't find anything.  I'm using hibernate regularly
-and I think so this only happened after a few hibernate/resume
-cycles, but no idea if that means anything.
-Now I'm back at 4.4.16 to see if it reproduces.
+Thanks. The patch looks good! You can add:
 
-Johannes
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/ext4/ext4.h   | 20 --------------------
+>  fs/ext4/ialloc.c |  2 +-
+>  fs/ext4/inode.c  |  7 +++----
+>  fs/ext4/ioctl.c  |  6 ++----
+>  4 files changed, 6 insertions(+), 29 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index ea31931..81a298c 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1636,26 +1636,6 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>   * Feature set definitions
+>   */
+>  
+> -/* Use the ext4_{has,set,clear}_feature_* helpers; these will be removed */
+> -#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+> -	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+> -#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+> -	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+> -#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+> -	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+> -#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+> -#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
+> -#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
+> -#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
+> -#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
+> -#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
+> -	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
+> -
+>  #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+>  #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+>  #define EXT4_FEATURE_COMPAT_HAS_JOURNAL		0x0004
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 9e66cd1..170421e 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -802,7 +802,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  	} else
+>  		inode_init_owner(inode, dir, mode);
+>  
+> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	if (ext4_has_feature_project(sb) &&
+>  	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
+>  		ei->i_projid = EXT4_I(dir)->i_projid;
+>  	else
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3131747..3265dc8 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4414,7 +4414,7 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
+>  
+>  int ext4_get_projid(struct inode *inode, kprojid_t *projid)
+>  {
+> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
+> +	if (!ext4_has_feature_project(inode->i_sb))
+>  		return -EOPNOTSUPP;
+>  	*projid = EXT4_I(inode)->i_projid;
+>  	return 0;
+> @@ -4481,7 +4481,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>  	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+>  	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+>  	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+> -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	if (ext4_has_feature_project(sb) &&
+>  	    EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+>  	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
+>  		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
+> @@ -4885,8 +4885,7 @@ static int ext4_do_update_inode(handle_t *handle,
+>  		}
+>  	}
+>  
+> -	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> -			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> +	BUG_ON(!ext4_has_feature_project(inode->i_sb) &&
+>  	       i_projid != EXT4_DEF_PROJID);
+>  
+>  	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 10686fd..ef4430b 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -310,8 +310,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+>  	struct ext4_inode *raw_inode;
+>  	struct dquot *transfer_to[MAXQUOTAS] = { };
+>  
+> -	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> -			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> +	if (!ext4_has_feature_project(sb)) {
+>  		if (projid != EXT4_DEF_PROJID)
+>  			return -EOPNOTSUPP;
+>  		else
+> @@ -842,8 +841,7 @@ resizefs_out:
+>  		ext4_get_inode_flags(ei);
+>  		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
+>  
+> -		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> -				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> +		if (ext4_has_feature_project(inode->i_sb)) {
+>  			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
+>  				EXT4_I(inode)->i_projid);
+>  		}
+> -- 
+> 2.9.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
