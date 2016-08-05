@@ -1,59 +1,161 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Sleeping function called in invalid context
-Date: Fri, 5 Aug 2016 10:06:57 -0700
-Message-ID: <20160805170657.GB19960@birch.djwong.org>
-References: <57A19B9B.60005@kyup.com>
- <20160804160550.GA12861@quack2.suse.cz>
- <20160804205845.GC10933@thunk.org>
- <57A43267.7030608@kyup.com>
- <20160805145604.GA9105@thunk.org>
+Subject: Re: [PATCH] ext4: remove old feature helpers
+Date: Fri, 5 Aug 2016 10:08:35 -0700
+Message-ID: <20160805170835.GC19960@birch.djwong.org>
+References: <20160727175140.15742-1-ngkaho1234@gmail.com>
+ <20160805110515.GA18566@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Nikolay Borisov <kernel@kyup.com>, Jan Kara <jack@suse.cz>,
-	Jan Kara <jack@suse.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Kaho Ng <ngkaho1234@gmail.com>, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:42047 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:42959 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752141AbcHERHM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2016 13:07:12 -0400
+	with ESMTP id S1759984AbcHERIs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Aug 2016 13:08:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20160805145604.GA9105@thunk.org>
+In-Reply-To: <20160805110515.GA18566@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 05, 2016 at 10:56:04AM -0400, Theodore Ts'o wrote:
-> On Fri, Aug 05, 2016 at 09:29:59AM +0300, Nikolay Borisov wrote:
-> > > The easist way to fix this is defer the ext4_commit_super() to a
-> > > workqueue.  We only need this in the errors=continue case, and in that
-> > > scenario we're not in a hurry when the superblock gets written out.
+On Fri, Aug 05, 2016 at 01:05:15PM +0200, Jan Kara wrote:
+> On Thu 28-07-16 01:51:40, Kaho Ng wrote:
+> > Use the ext4_{has,set,clear}_feature_* helpers to replace the old
+> > feature helpers.
 > > 
-> > Is errors=continue the default option if nothing specifically is
-> > specified at mount time, since I don't have this set explicitly:
-> > 
-> > /dev/vda / ext4 rw,relatime,data=ordered 0 0
+> > Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
 > 
-> Yes, it's the default.  I keep wondering whether we should change the
-> default to remount-ro or even panic, since people sometimes don't
-> notice that the "file system has been corrupted" messages, and then
-> they can end up losing a lot more detail if we forced them to address
-> the issue right away.
+> Thanks. The patch looks good! You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Yes, please. :)
-
-(At the moment I'm also trying to sort out some ext3 bug where jbd
-flushes some dirty pages to disk ahead of writing out a transaction
-but the dirty page writeback fails.  Apparently the userspace program
-is long gone by the time this happens (I haven't been able to verify
-that they're actually calling fsync) and the FS doesn't shut down,
-but a later umount/mount/reread shows old file contents.  Hence I
-now know about data_err=abort.)
+Not sure why the original patch didn't make it to my mailbox, but
+the patch looks ok, so
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
 --D
 
 > 
-> 						- Ted
+> 								Honza
+> 
+> > ---
+> >  fs/ext4/ext4.h   | 20 --------------------
+> >  fs/ext4/ialloc.c |  2 +-
+> >  fs/ext4/inode.c  |  7 +++----
+> >  fs/ext4/ioctl.c  |  6 ++----
+> >  4 files changed, 6 insertions(+), 29 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index ea31931..81a298c 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1636,26 +1636,6 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+> >   * Feature set definitions
+> >   */
+> >  
+> > -/* Use the ext4_{has,set,clear}_feature_* helpers; these will be removed */
+> > -#define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+> > -	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+> > -#define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+> > -	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+> > -#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+> > -	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+> > -#define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+> > -#define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_ro_compat |= cpu_to_le32(mask)
+> > -#define EXT4_SET_INCOMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_incompat |= cpu_to_le32(mask)
+> > -#define EXT4_CLEAR_COMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_compat &= ~cpu_to_le32(mask)
+> > -#define EXT4_CLEAR_RO_COMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_ro_compat &= ~cpu_to_le32(mask)
+> > -#define EXT4_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
+> > -	EXT4_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
+> > -
+> >  #define EXT4_FEATURE_COMPAT_DIR_PREALLOC	0x0001
+> >  #define EXT4_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+> >  #define EXT4_FEATURE_COMPAT_HAS_JOURNAL		0x0004
+> > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> > index 9e66cd1..170421e 100644
+> > --- a/fs/ext4/ialloc.c
+> > +++ b/fs/ext4/ialloc.c
+> > @@ -802,7 +802,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+> >  	} else
+> >  		inode_init_owner(inode, dir, mode);
+> >  
+> > -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> > +	if (ext4_has_feature_project(sb) &&
+> >  	    ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT))
+> >  		ei->i_projid = EXT4_I(dir)->i_projid;
+> >  	else
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 3131747..3265dc8 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -4414,7 +4414,7 @@ static inline void ext4_iget_extra_inode(struct inode *inode,
+> >  
+> >  int ext4_get_projid(struct inode *inode, kprojid_t *projid)
+> >  {
+> > -	if (!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb, EXT4_FEATURE_RO_COMPAT_PROJECT))
+> > +	if (!ext4_has_feature_project(inode->i_sb))
+> >  		return -EOPNOTSUPP;
+> >  	*projid = EXT4_I(inode)->i_projid;
+> >  	return 0;
+> > @@ -4481,7 +4481,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> >  	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
+> >  	i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
+> >  	i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
+> > -	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> > +	if (ext4_has_feature_project(sb) &&
+> >  	    EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+> >  	    EXT4_FITS_IN_INODE(raw_inode, ei, i_projid))
+> >  		i_projid = (projid_t)le32_to_cpu(raw_inode->i_projid);
+> > @@ -4885,8 +4885,7 @@ static int ext4_do_update_inode(handle_t *handle,
+> >  		}
+> >  	}
+> >  
+> > -	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> > -			EXT4_FEATURE_RO_COMPAT_PROJECT) &&
+> > +	BUG_ON(!ext4_has_feature_project(inode->i_sb) &&
+> >  	       i_projid != EXT4_DEF_PROJID);
+> >  
+> >  	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+> > diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> > index 10686fd..ef4430b 100644
+> > --- a/fs/ext4/ioctl.c
+> > +++ b/fs/ext4/ioctl.c
+> > @@ -310,8 +310,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+> >  	struct ext4_inode *raw_inode;
+> >  	struct dquot *transfer_to[MAXQUOTAS] = { };
+> >  
+> > -	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> > -			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> > +	if (!ext4_has_feature_project(sb)) {
+> >  		if (projid != EXT4_DEF_PROJID)
+> >  			return -EOPNOTSUPP;
+> >  		else
+> > @@ -842,8 +841,7 @@ resizefs_out:
+> >  		ext4_get_inode_flags(ei);
+> >  		fa.fsx_xflags = ext4_iflags_to_xflags(ei->i_flags & EXT4_FL_USER_VISIBLE);
+> >  
+> > -		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
+> > -				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+> > +		if (ext4_has_feature_project(inode->i_sb)) {
+> >  			fa.fsx_projid = (__u32)from_kprojid(&init_user_ns,
+> >  				EXT4_I(inode)->i_projid);
+> >  		}
+> > -- 
+> > 2.9.0
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
