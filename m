@@ -1,132 +1,151 @@
-From: =?UTF-8?B?VMO2csO2ayBFZHdpbg==?= <edwin@etorok.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Tue, 9 Aug 2016 00:13:01 +0300
-Message-ID: <0bd292e7-818c-b708-4591-c7feec88f072@etorok.net>
-References: <20160718141723.GA8809@sig21.net>
- <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
- <20160805103544.kbt7znbzypvi5ofx@sig21.net>
- <20160805170228.GA19960@birch.djwong.org>
- <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
- <20160805191548.GD19960@birch.djwong.org> <20160808035634.GA16193@thunk.org>
- <20160808062810.GC8590@birch.djwong.org> <20160808160818.GA9515@thunk.org>
- <20160808165546.GA11291@birch.djwong.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: Subtle races between DAX mmap fault and write path
+Date: Tue, 9 Aug 2016 09:12:25 +1000
+Message-ID: <20160808231225.GD19025@dastard>
+References: <20160727221949.GU16044@dastard>
+ <20160728081033.GC4094@quack2.suse.cz>
+ <20160729022152.GZ16044@dastard>
+ <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
+ <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
+ <20160802002144.GL16044@dastard>
+ <1470335997.8908.128.camel@hpe.com>
+ <20160805112739.GG16044@dastard>
+ <CS1PR84MB0119314ACA9B4823C0FE33318E180@CS1PR84MB0119.NAMPRD84.PROD.OUTLOOK.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 8bit
-To: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Johannes Stezenbach <js@sig21.net>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160808165546.GA11291@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Cc: "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
+ "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Boylston, Brian" <brian.boylston-ZPxbGqLxI0U@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CS1PR84MB0119314ACA9B4823C0FE33318E180-v3YevoQr3hP2N4EGskIB0ticc1VoeDReZmpNikb/MY7jO8Y7rvWZVA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On 2016-08-08 19:55, Darrick J. Wong wrote:
-> On Mon, Aug 08, 2016 at 12:08:18PM -0400, Theodore Ts'o wrote:
->> On Sun, Aug 07, 2016 at 11:28:10PM -0700, Darrick J. Wong wrote:
->>>
->>> I have one lingering concern -- is it a bug that two processes could be
->>> computing the checksum of a buffer simultaneously?  I would have thought ext4
->>> would serialize that kind of buffer_head access...
->>
->> Do we know how this is happening?  We've always depended on the VFS to
->> provide this exclusion.  The only way we should be modifying the
->> buffer_head at the same time if two CPU's are trying to modify the
->> directory at the same time, and that should _never_ be happening, even
->> with the new directory parallism code, unless the file system has
->> given permission and intends to do its own fine-grained locking.
-> 
-> It's a combination of two things, I think.  The first is that the
-> checksum calculation routine (temporarily) set the checksum field to
-> zero during the computation, which of course is a no-no.  The patch
-> fixes that problem and should go in.
+On Fri, Aug 05, 2016 at 07:58:33PM +0000, Boylston, Brian wrote:
+> Dave Chinner wrote on 2016-08-05:
+> > [ cut to just the important points ]
+> > On Thu, Aug 04, 2016 at 06:40:42PM +0000, Kani, Toshimitsu wrote:
+> >> On Tue, 2016-08-02 at 10:21 +1000, Dave Chinner wrote:
+> >>> If I drop the fsync from the
+> >>> buffered IO path, bandwidth remains the same but runtime drops to
+> >>> 0.55-0.57s, so again the buffered IO write path is faster than DAX
+> >>> while doing more work.
+> >> =
 
-Thanks a lot for the patch.
-I wrote a small testcase (see below) that triggers the problem quite soon on my box with kernel 4.7.0, and seems to have survived so far with kernel 4.7.0+patch.
-When it failed it printed something like "readdir: Bad message".
+> >> I do not think the test results are relevant on this point because both
+> >> buffered and dax write() paths use uncached copy to avoid clflush. =A0=
+The
+> >> buffered path uses cached copy to the page cache and then use uncached=
+ copy to
+> >> PMEM via writeback. =A0Therefore, the buffered IO path also benefits f=
+rom using
+> >> uncached copy to avoid clflush.
+> > =
 
-The drop caches part is quite important for triggering the bug, and might explain why this bug was hard to reproduce: IIUC this race condition can happen only
-if 2+ threads/processes try to access the same directory, and the directory's inode is not in the cache (i.e. was never cached, or got kicked out of the cache).
+> > Except that I tested without the writeback path for buffered IO, so
+> > there was a direct comparison for single cached copy vs single
+> > uncached copy.
+> > =
+
+> > The undenial fact is that a write() with a single cached copy with
+> > all the overhead of dirty page tracking is /faster/ than a much
+> > shorter, simpler IO path that uses an uncached copy. That's what the
+> > numbers say....
+> > =
+
+> >> Cached copy (req movq) is slightly faster than uncached copy,
+> > =
+
+> > Not according to Boaz - he claims that uncached is 20% faster than
+> > cached. How about you two get together, do some benchmarking and get
+> > your story straight, eh?
+> > =
+
+> >> and should be
+> >> used for writing to the page cache. =A0For writing to PMEM, however, a=
+dditional
+> >> clflush can be expensive, and allocating cachelines for PMEM leads to =
+evict
+> >> application's cachelines.
+> > =
+
+> > I keep hearing people tell me why cached copies are slower, but
+> > no-one is providing numbers to back up their statements. The only
+> > numbers we have are the ones I've published showing cached copies w/
+> > full dirty tracking is faster than uncached copy w/o dirty tracking.
+> > =
+
+> > Show me the numbers that back up your statements, then I'll listen
+> > to you.
+> =
+
+> Here are some numbers for a particular scenario, and the code is below.
+> =
+
+> Time (in seconds) to copy a 16KiB buffer 1M times to a 4MiB NVDIMM buffer
+> (1M total memcpy()s).  For the cached+clflush case, the flushes are done
+> every 4MiB (which seems slightly faster than flushing every 16KiB):
+> =
+
+>                   NUMA local    NUMA remote
+> Cached+clflush      13.5           37.1
+> movnt                1.0            1.3 =
 
 
-/*
- $ gcc trigger.c -o trigger -pthread
- $ ./trigger
-*/
+So let's put that in memory bandwidth terms. You wrote 16GB to the
+NVDIMM.  That means:
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <fcntl.h>
+                  NUMA local    NUMA remote
+Cached+clflush      1.2GB/s         0.43GB/s
+movnt              16.0GB/s         12.3GB/s
 
-#define FILES 100000
-#define THREADS 16
-#define LOOPS 1000
+That smells wrong.  The DAX code (using movnt) is not 1-2 orders of
+magnitude faster than a page cache copy, so I don't believe your
+benchmark reflects what I'm proposing.
 
-static void die(const char *msg)
-{
-	perror(msg);
-	exit(EXIT_FAILURE);
-}
+What I think you're getting wrong is that we are not doing a clflush
+after every 16k write when we use the page cache, nor will we do
+that if we use cached copies, dirty tracking and clflush on fsync().
+IOWs, the correct equivalent "cached + clflush" loop to a volatile
+copy with dirty tracking + fsync would be:
 
-static void* list(void* arg)
-{
-	for(int i=0;i<LOOPS;i++) {
-		DIR *d = opendir(".");
-		if (!d) {
-			die("opendir");
-		}
-		errno = 0;
-		while(readdir(d)) {}
-		if (errno) {
-			die("readdir");
-		}
-		closedir(d);
-		FILE *f = fopen("/proc/sys/vm/drop_caches", "w");
-		if (f) {
-			fputs("3", f);
-			fclose(f);
-		}
+	dstp =3D dst;
+	while (--nloops) {
+		memcpy(dstp, src, src_sz);	// pwrite();
+		dstp +=3D src_sz;
 	}
-	return NULL;
-}
+        pmem_persist(dst, dstsz);	// fsync();
 
-int main()
-{
-	pthread_t t[THREADS];
+i.e. The cache flushes occur only at the user defined
+synchronisation point not on every syscall.
 
-	if(mkdir("ext4test", 0755) < 0 && errno != EEXIST)
-		die("mkdir");
-	if(chdir("ext4test") < 0)
-		die("chdir");
-	for (unsigned i=0;i < FILES;i++) {
-		char name[16];
-		snprintf(name, sizeof(name), "%d", i); 
-		int fd = open(name, O_WRONLY|O_CREAT, 0600);
-		if (fd < 0)
-			die("open");
-		close(fd);
-	}
-	for (unsigned i=0;i < sizeof(t)/sizeof(t[0]); i++) {
-		pthread_create(&t[i], NULL,list, NULL);
-	}
-	for (unsigned i=0;i < sizeof(t)/sizeof(t[0]); i++) {
-		pthread_join(t[i], NULL);
-	}
-	return 0;
-}
+Yes, if you want to make your copy slow and safe, use O_SYNC to
+trigger clflush on every write() call - that's what we do for
+existing storage and the mechanisms are already there; we just need
+the dirty tracking to optimise it.
 
+Put simple: we should only care about cache flush synchronisation at
+user defined data integrity synchronisation points. That's the IO
+model the kernel has always exposed to users, and pmem storage is no
+different.
 
+Cheers,
 
--- 
-Edwin Török | Co-founder and Lead Developer
+Dave.
+-- =
 
-Skylable open-source object storage: reliable, fast, secure
-http://www.skylable.com
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
