@@ -1,55 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
- and 128KB cluster
-Date: Sat, 06 Aug 2016 12:54:07 +0000
-Message-ID: <bug-151491-13602-gZmorI6X7T@https.bugzilla.kernel.org/>
-References: <bug-151491-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Sun, 7 Aug 2016 23:56:34 -0400
+Message-ID: <20160808035634.GA16193@thunk.org>
+References: <20160718141723.GA8809@sig21.net>
+ <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+ <20160805170228.GA19960@birch.djwong.org>
+ <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+ <20160805191548.GD19960@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:46726 "EHLO mail.kernel.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751937AbcHFUBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 6 Aug 2016 16:01:11 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-	by mail.kernel.org (Postfix) with ESMTP id DFE0020634
-	for <linux-ext4@vger.kernel.org>; Sat,  6 Aug 2016 12:54:08 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-	by mail.kernel.org (Postfix) with ESMTP id B214720631
-	for <linux-ext4@vger.kernel.org>; Sat,  6 Aug 2016 12:54:07 +0000 (UTC)
-In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Johannes Stezenbach <js@sig21.net>,
+	=?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160805191548.GD19960@birch.djwong.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
+On Fri, Aug 05, 2016 at 12:15:48PM -0700, Darrick J. Wong wrote:
+> > > [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+> > 
+> > I added the patch, rebuilt and rebooted.  It will take some time
+> > before I'll report back since the issue is so hard to reproduce.
+> 
+> FWIW I could trigger it reliably by running a bunch of directory traversal
+> programs simultaneously on the same directory.  I have a script that fires
+> up multiple mutts pointing to the Maildirs for the high traffic Linux lists.
 
---- Comment #1 from Matthew L. Martin <mlmartin@clearsky-data.com> ---
-The fault is in linux 4.4.16. After running the populate script for a few hours
-du and df disagree a great deal:
+Hmm, I wonder if we should request that this patch be backported to
+-stable.  Darrick, what do you think?
 
-# df -h /mnt/hdd_sd[gh]; du -hs  /mnt/hdd_sd[gh]
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/sdg        5.5T  129G  5.3T   3% /mnt/hdd_sdg
-/dev/sdh        5.5T   20G  5.4T   1% /mnt/hdd_sdh
-20G    /mnt/hdd_sdg
-20G    /mnt/hdd_sdh
-
-# lsof | grep -e sdg -e sdh
-jbd2/sdg- 32609           root  cwd       DIR              9,127      4096     
-  192 /
-jbd2/sdg- 32609           root  rtd       DIR              9,127      4096     
-  192 /
-jbd2/sdg- 32609           root  txt   unknown                                  
-      /proc/32609/exe
-jbd2/sdh- 32614           root  cwd       DIR              9,127      4096     
-  192 /
-jbd2/sdh- 32614           root  rtd       DIR              9,127      4096     
-  192 /
-jbd2/sdh- 32614           root  txt   unknown                                  
-      /proc/32614/exe
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
