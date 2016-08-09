@@ -1,46 +1,38 @@
-From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCH] debugfs: fix check for out-of-bound xattr value
-Date: Tue,  9 Aug 2016 14:42:51 -0600
-Message-ID: <1470775371-19591-1-git-send-email-andreas.dilger@intel.com>
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <andreas.dilger@intel.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] debugfs: use labs() for absolute value of a long
+Date: Tue,  9 Aug 2016 14:44:11 -0600
+Message-ID: <1470775451-69146-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:29160 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752600AbcHIUnN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Aug 2016 16:43:13 -0400
+Received: from smtp-out-so.shaw.ca ([64.59.136.137]:36749 "EHLO
+	smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932324AbcHIUwV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Aug 2016 16:52:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since commit v1.42.12-1-g8a546777119c, the check for in-inode
-xattrs in internal_dump_inode_extra() has been incorrectly checking
-the value size.  The value can go right to the end of the inode.
+Use labs() instead of abs() for calculated value of a long int
+to quiet warning from LLVM.
 
-Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- debugfs/debugfs.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ debugfs/lsdel.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 260698c..329451c 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -557,9 +557,11 @@ static void internal_dump_inode_extra(FILE *out,
- 			char *value = start + entry->e_value_offs;
+diff --git a/debugfs/lsdel.c b/debugfs/lsdel.c
+index e5b2d20..0d74590 100644
+--- a/debugfs/lsdel.c
++++ b/debugfs/lsdel.c
+@@ -133,7 +133,7 @@ void do_lsdel(int argc, char **argv)
  
- 			if (name + entry->e_name_len >= end ||
--			    value + entry->e_value_size >= end ||
--			    (char *) next >= end) {
--				fprintf(out, "invalid EA entry in inode\n");
-+			    value + entry->e_value_size > end ||
-+			    (char *)next >= end) {
-+				fprintf(out, "invalid EA entry in inode: "
-+					"name_len=%u value_size=%u\n",
-+					entry->e_name_len, entry->e_value_size);
- 				return;
- 			}
- 			fprintf(out, "  ");
+ 	while (ino) {
+ 		if ((inode.i_dtime == 0) ||
+-		    (secs && ((unsigned) abs(now - secs) > inode.i_dtime)))
++		    (secs && ((unsigned)labs(now - secs) > inode.i_dtime)))
+ 			goto next;
+ 
+ 		lsd.inode = ino;
 -- 
-2.4.5
+1.8.0
 
