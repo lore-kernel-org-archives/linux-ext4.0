@@ -1,131 +1,148 @@
-From: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-Subject: Re: Subtle races between DAX mmap fault and write path
-Date: Tue, 9 Aug 2016 01:00:30 +0000
-Message-ID: <1470704418.32015.51.camel@hpe.com>
-References: <20160727221949.GU16044@dastard>
- <20160728081033.GC4094@quack2.suse.cz> <20160729022152.GZ16044@dastard>
- <CAPcyv4gOcDGzikJHYGxNXtYqQKkPUgkG+z4ASxogQUnp1zmD2g@mail.gmail.com>
- <20160730001249.GE16044@dastard> <579F20D9.80107@plexistor.com>
- <20160802002144.GL16044@dastard> <1470335997.8908.128.camel@hpe.com>
- <20160805112739.GG16044@dastard>
- <CS1PR84MB0119314ACA9B4823C0FE33318E180@CS1PR84MB0119.NAMPRD84.PROD.OUTLOOK.COM>
- <20160808231225.GD19025@dastard>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Mon, 8 Aug 2016 19:37:54 -0700
+Message-ID: <20160809023754.GG11291@birch.djwong.org>
+References: <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+ <20160805170228.GA19960@birch.djwong.org>
+ <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+ <20160805191548.GD19960@birch.djwong.org>
+ <20160808035634.GA16193@thunk.org>
+ <20160808062810.GC8590@birch.djwong.org>
+ <20160808160818.GA9515@thunk.org>
+ <20160808165546.GA11291@birch.djwong.org>
+ <0bd292e7-818c-b708-4591-c7feec88f072@etorok.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org" <xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-To: "david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, "Boylston, Brian"
- <brian.boylston-ZPxbGqLxI0U@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160808231225.GD19025@dastard>
-Content-Language: en-US
-Content-ID: <83D29545D28AD64192DDB3A5134C0C0A-mmYPd6ayCNGroOM5E8FhRbjFIynDaujOfM0AETQt39g@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Johannes Stezenbach <js@sig21.net>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <0bd292e7-818c-b708-4591-c7feec88f072@etorok.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gVHVlLCAyMDE2LTA4LTA5IGF0IDA5OjEyICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+
-IE9uIEZyaSwgQXVnIDA1LCAyMDE2IGF0IDA3OjU4OjMzUE0gKzAwMDAsIEJveWxzdG9uLCBCcmlh
-biB3cm90ZToNCj4gPiANCj4gPiBEYXZlIENoaW5uZXIgd3JvdGUgb24gMjAxNi0wOC0wNToNCj4g
-PiA+IA0KPiA+ID4gWyBjdXQgdG8ganVzdCB0aGUgaW1wb3J0YW50IHBvaW50cyBdDQo+ID4gPiBP
-biBUaHUsIEF1ZyAwNCwgMjAxNiBhdCAwNjo0MDo0MlBNICswMDAwLCBLYW5pLCBUb3NoaW1pdHN1
-IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gT24gVHVlLCAyMDE2LTA4LTAyIGF0IDEwOjIxICsx
-MDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSWYgSSBkcm9w
-IHRoZSBmc3luYyBmcm9tIHRoZQ0KPiA+ID4gPiA+IGJ1ZmZlcmVkIElPIHBhdGgsIGJhbmR3aWR0
-aCByZW1haW5zIHRoZSBzYW1lIGJ1dCBydW50aW1lDQo+ID4gPiA+ID4gZHJvcHMgdG8gMC41NS0w
-LjU3cywgc28gYWdhaW4gdGhlIGJ1ZmZlcmVkIElPIHdyaXRlIHBhdGggaXMNCj4gPiA+ID4gPiBm
-YXN0ZXIgdGhhbiBEQVggd2hpbGUgZG9pbmcgbW9yZSB3b3JrLg0KPiA+ID4gPiANCj4gPiA+ID4g
-SSBkbyBub3QgdGhpbmsgdGhlIHRlc3QgcmVzdWx0cyBhcmUgcmVsZXZhbnQgb24gdGhpcyBwb2lu
-dA0KPiA+ID4gPiBiZWNhdXNlIGJvdGggYnVmZmVyZWQgYW5kIGRheCB3cml0ZSgpIHBhdGhzIHVz
-ZSB1bmNhY2hlZCBjb3B5DQo+ID4gPiA+IHRvIGF2b2lkIGNsZmx1c2guIMKgVGhlIGJ1ZmZlcmVk
-IHBhdGggdXNlcyBjYWNoZWQgY29weSB0byB0aGUNCj4gPiA+ID4gcGFnZSBjYWNoZSBhbmQgdGhl
-biB1c2UgdW5jYWNoZWQgY29weSB0byBQTUVNIHZpYSB3cml0ZWJhY2suDQo+ID4gPiA+IMKgVGhl
-cmVmb3JlLCB0aGUgYnVmZmVyZWQgSU8gcGF0aCBhbHNvIGJlbmVmaXRzIGZyb20gdXNpbmcNCj4g
-PiA+ID4gdW5jYWNoZWQgY29weSB0byBhdm9pZCBjbGZsdXNoLg0KPiA+ID4gDQo+ID4gPiBFeGNl
-cHQgdGhhdCBJIHRlc3RlZCB3aXRob3V0IHRoZSB3cml0ZWJhY2sgcGF0aCBmb3IgYnVmZmVyZWQg
-SU8sDQo+ID4gPiBzbyB0aGVyZSB3YXMgYSBkaXJlY3QgY29tcGFyaXNvbiBmb3Igc2luZ2xlIGNh
-Y2hlZCBjb3B5IHZzIHNpbmdsZQ0KPiA+ID4gdW5jYWNoZWQgY29weS4NCj4gPiA+IA0KPiA+ID4g
-VGhlIHVuZGVuaWFsIGZhY3QgaXMgdGhhdCBhIHdyaXRlKCkgd2l0aCBhIHNpbmdsZSBjYWNoZWQg
-Y29weQ0KPiA+ID4gd2l0aCBhbGwgdGhlIG92ZXJoZWFkIG9mIGRpcnR5IHBhZ2UgdHJhY2tpbmcg
-aXMgL2Zhc3Rlci8gdGhhbiBhDQo+ID4gPiBtdWNoIHNob3J0ZXIsIHNpbXBsZXIgSU8gcGF0aCB0
-aGF0IHVzZXMgYW4gdW5jYWNoZWQgY29weS4gVGhhdCdzDQo+ID4gPiB3aGF0IHRoZSBudW1iZXJz
-IHNheS4uLi4NCj4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gQ2FjaGVkIGNvcHkgKHJlcSBtb3Zx
-KSBpcyBzbGlnaHRseSBmYXN0ZXIgdGhhbiB1bmNhY2hlZCBjb3B5LA0KPiA+ID4gDQo+ID4gPiBO
-b3QgYWNjb3JkaW5nIHRvIEJvYXogLSBoZSBjbGFpbXMgdGhhdCB1bmNhY2hlZCBpcyAyMCUgZmFz
-dGVyDQo+ID4gPiB0aGFuIGNhY2hlZC4gSG93IGFib3V0IHlvdSB0d28gZ2V0IHRvZ2V0aGVyLCBk
-byBzb21lIGJlbmNobWFya2luZw0KPiA+ID4gYW5kIGdldCB5b3VyIHN0b3J5IHN0cmFpZ2h0LCBl
-aD8NCj4gPiA+IA0KPiA+ID4gPiBhbmQgc2hvdWxkIGJlIHVzZWQgZm9yIHdyaXRpbmcgdG8gdGhl
-IHBhZ2UgY2FjaGUuIMKgRm9yIHdyaXRpbmcNCj4gPiA+ID4gdG8gUE1FTSwgaG93ZXZlciwgYWRk
-aXRpb25hbCBjbGZsdXNoIGNhbiBiZSBleHBlbnNpdmUsIGFuZA0KPiA+ID4gPiBhbGxvY2F0aW5n
-IGNhY2hlbGluZXMgZm9yIFBNRU0gbGVhZHMgdG8gZXZpY3QgYXBwbGljYXRpb24ncw0KPiA+ID4g
-PiBjYWNoZWxpbmVzLg0KPiA+ID4gDQo+ID4gPiBJIGtlZXAgaGVhcmluZyBwZW9wbGUgdGVsbCBt
-ZSB3aHkgY2FjaGVkIGNvcGllcyBhcmUgc2xvd2VyLCBidXQNCj4gPiA+IG5vLW9uZSBpcyBwcm92
-aWRpbmcgbnVtYmVycyB0byBiYWNrIHVwIHRoZWlyIHN0YXRlbWVudHMuIFRoZSBvbmx5DQo+ID4g
-PiBudW1iZXJzIHdlIGhhdmUgYXJlIHRoZSBvbmVzIEkndmUgcHVibGlzaGVkIHNob3dpbmcgY2Fj
-aGVkIGNvcGllcw0KPiA+ID4gdy8gZnVsbCBkaXJ0eSB0cmFja2luZyBpcyBmYXN0ZXIgdGhhbiB1
-bmNhY2hlZCBjb3B5IHcvbyBkaXJ0eQ0KPiA+ID4gdHJhY2tpbmcuDQo+ID4gPiANCj4gPiA+IFNo
-b3cgbWUgdGhlIG51bWJlcnMgdGhhdCBiYWNrIHVwIHlvdXIgc3RhdGVtZW50cywgdGhlbiBJJ2xs
-DQo+ID4gPiBsaXN0ZW4gdG8geW91Lg0KPiA+IA0KPiA+IEhlcmUgYXJlIHNvbWUgbnVtYmVycyBm
-b3IgYSBwYXJ0aWN1bGFyIHNjZW5hcmlvLCBhbmQgdGhlIGNvZGUgaXMNCj4gPiBiZWxvdy4NCj4g
-PiANCj4gPiBUaW1lIChpbiBzZWNvbmRzKSB0byBjb3B5IGEgMTZLaUIgYnVmZmVyIDFNIHRpbWVz
-IHRvIGEgNE1pQiBOVkRJTU0NCj4gPiBidWZmZXIgKDFNIHRvdGFsIG1lbWNweSgpcykuwqDCoEZv
-ciB0aGUgY2FjaGVkK2NsZmx1c2ggY2FzZSwgdGhlDQo+ID4gZmx1c2hlcyBhcmUgZG9uZSBldmVy
-eSA0TWlCICh3aGljaCBzZWVtcyBzbGlnaHRseSBmYXN0ZXIgdGhhbg0KPiA+IGZsdXNoaW5nIGV2
-ZXJ5IDE2S2lCKToNCj4gPiANCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqBOVU1BIGxvY2FswqDCoMKgwqBOVU1BIHJlbW90ZQ0KPiA+IENhY2hlZCtjbGZsdXNowqDCoMKg
-wqDCoMKgMTMuNcKgwqDCoMKgwqDCoMKgwqDCoMKgwqAzNy4xDQo+ID4gbW92bnTCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEuMMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoDEuM8KgDQo+
-IA0KPiBTbyBsZXQncyBwdXQgdGhhdCBpbiBtZW1vcnkgYmFuZHdpZHRoIHRlcm1zLiBZb3Ugd3Jv
-dGUgMTZHQiB0byB0aGUNCj4gTlZESU1NLsKgwqBUaGF0IG1lYW5zOg0KPiANCj4gwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgTlVNQSBsb2NhbMKgwqDCoMKgTlVNQSByZW1vdGUN
-Cj4gQ2FjaGVkK2NsZmx1c2jCoMKgwqDCoMKgwqAxLjJHQi9zwqDCoMKgwqDCoMKgwqDCoMKgMC40
-M0dCL3MNCj4gbW92bnTCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgMTYuMEdCL3PCoMKgwqDC
-oMKgwqDCoMKgwqAxMi4zR0Ivcw0KPiANCj4gVGhhdCBzbWVsbHMgd3JvbmcuwqDCoFRoZSBEQVgg
-Y29kZSAodXNpbmcgbW92bnQpIGlzIG5vdCAxLTIgb3JkZXJzIG9mDQo+IG1hZ25pdHVkZSBmYXN0
-ZXIgdGhhbiBhIHBhZ2UgY2FjaGUgY29weSwgc28gSSBkb24ndCBiZWxpZXZlIHlvdXINCj4gYmVu
-Y2htYXJrIHJlZmxlY3RzIHdoYXQgSSdtIHByb3Bvc2luZy4NCj4NCj4gV2hhdCBJIHRoaW5rIHlv
-dSdyZSBnZXR0aW5nIHdyb25nIGlzIHRoYXQgd2UgYXJlIG5vdCBkb2luZyBhIGNsZmx1c2gNCj4g
-YWZ0ZXIgZXZlcnkgMTZrIHdyaXRlIHdoZW4gd2UgdXNlIHRoZSBwYWdlIGNhY2hlLCBub3Igd2ls
-bCB3ZSBkbw0KPiB0aGF0IGlmIHdlIHVzZSBjYWNoZWQgY29waWVzLCBkaXJ0eSB0cmFja2luZyBh
-bmQgY2xmbHVzaCBvbiBmc3luYygpLg0KDQpBcyBJIG1lbnRpb25lZCBiZWZvcmUsIHdlIGRvIG5v
-dCB1c2UgY2xmbHVzaCBvbiB0aGUgd3JpdGUgcGF0aC4gwqBTbywNCnlvdXIgdGVzdHMgZGlkIG5v
-dCBpc3N1ZSBjbGZsdXNoIGF0IGFsbC4NCg0KPiBJT1dzLCB0aGUgY29ycmVjdCBlcXVpdmFsZW50
-ICJjYWNoZWQgKyBjbGZsdXNoIiBsb29wIHRvIGEgdm9sYXRpbGUNCj4gY29weSB3aXRoIGRpcnR5
-IHRyYWNraW5nICsgZnN5bmMgd291bGQgYmU6DQo+IA0KPiAJZHN0cCA9IGRzdDsNCj4gCXdoaWxl
-ICgtLW5sb29wcykgew0KPiAJCW1lbWNweShkc3RwLCBzcmMsIHNyY19zeik7CS8vIHB3cml0ZSgp
-Ow0KPiAJCWRzdHAgKz0gc3JjX3N6Ow0KPiAJfQ0KPiDCoMKgwqDCoMKgwqDCoMKgcG1lbV9wZXJz
-aXN0KGRzdCwgZHN0c3opOwkvLyBmc3luYygpOw0KPiANCj4gaS5lLiBUaGUgY2FjaGUgZmx1c2hl
-cyBvY2N1ciBvbmx5IGF0IHRoZSB1c2VyIGRlZmluZWQNCj4gc3luY2hyb25pc2F0aW9uIHBvaW50
-IG5vdCBvbiBldmVyeSBzeXNjYWxsLg0KDQpCcmlhbidzIHRlc3QgaXMgKDE2IEtpQiBwd3JpdGUg
-KyBmc3luYykgcmVwZWF0ZWQgMU0gdGltZXMuIMKgSXQgY29tcGFyZWQNCnR3byBhcHByb2FjaGVz
-IGluIHRoZSBjYXNlIG9mIDE2IEtpQiBwZXJzaXN0ZW50IHdyaXRlLiDCoEkgZG8gbm90DQpjb3Np
-ZGVyIGl0IHdyb25nLCBidXQgaXQgaW5kaWNhdGVkIHRoYXQgY2FjaGVkIGNvcHkgKyBjbGZsdXNo
-IHdpbGwgbGVhZA0KbXVjaCBoaWdoZXIgb3ZlcmhlYWQgd2hlbiBzeW5jJ2QgaW4gYSBmaW5lciBn
-cmFudWxhcml0eS4NCg0KSSBhZ3JlZSB0aGF0IGl0IHNob3VsZCBoYXZlIGxlc3Mgb3ZlcmhlYWQg
-aW4gdG90YWwgd2hlbiBjbGZsdXNoIGlzIGRvbmUNCmF0IG9uY2Ugc2luY2UgaXQgb25seSBoYXMg
-dG8gZXZpY3QgYXMgbXVjaCBhcyB0aGUgY2FjaGUgc2l6ZS4NCg0KPiBZZXMsIGlmIHlvdSB3YW50
-IHRvIG1ha2UgeW91ciBjb3B5IHNsb3cgYW5kIHNhZmUsIHVzZSBPX1NZTkMgdG8NCj4gdHJpZ2dl
-ciBjbGZsdXNoIG9uIGV2ZXJ5IHdyaXRlKCkgY2FsbCAtIHRoYXQncyB3aGF0IHdlIGRvIGZvcg0K
-PiBleGlzdGluZyBzdG9yYWdlIGFuZCB0aGUgbWVjaGFuaXNtcyBhcmUgYWxyZWFkeSB0aGVyZTsg
-d2UganVzdCBuZWVkDQo+IHRoZSBkaXJ0eSB0cmFja2luZyB0byBvcHRpbWlzZSBpdC4NCg0KUGVy
-aGFwcywgeW91IGFyZSByZWZlcnJpbmcgZmx1c2hpbmcgb24gZGlzayB3cml0ZSBjYWNoZT8gwqBJ
-IGRvIG5vdA0KdGhpbmsgY2xmbHVzaCBhcyBhIHg4NiBpbnN0cnVjdGlvbiBpcyB1c2VkIGZvciBl
-eGlzaXRpbmcgc3RvcmFnZS4NCg0KPiBQdXQgc2ltcGxlOiB3ZSBzaG91bGQgb25seSBjYXJlIGFi
-b3V0IGNhY2hlIGZsdXNoIHN5bmNocm9uaXNhdGlvbiBhdA0KPiB1c2VyIGRlZmluZWQgZGF0YSBp
-bnRlZ3JpdHkgc3luY2hyb25pc2F0aW9uIHBvaW50cy4gVGhhdCdzIHRoZSBJTw0KPiBtb2RlbCB0
-aGUga2VybmVsIGhhcyBhbHdheXMgZXhwb3NlZCB0byB1c2VycywgYW5kIHBtZW0gc3RvcmFnZSBp
-cyBubw0KPiBkaWZmZXJlbnQuDQoNClRoYW5rcywNCi1Ub3NoaQpfX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fXwpMaW51eC1udmRpbW0gbWFpbGluZyBsaXN0Ckxp
-bnV4LW52ZGltbUBsaXN0cy4wMS5vcmcKaHR0cHM6Ly9saXN0cy4wMS5vcmcvbWFpbG1hbi9saXN0
-aW5mby9saW51eC1udmRpbW0K
+On Tue, Aug 09, 2016 at 12:13:01AM +0300, Török Edwin wrote:
+> On 2016-08-08 19:55, Darrick J. Wong wrote:
+> > On Mon, Aug 08, 2016 at 12:08:18PM -0400, Theodore Ts'o wrote:
+> >> On Sun, Aug 07, 2016 at 11:28:10PM -0700, Darrick J. Wong wrote:
+> >>>
+> >>> I have one lingering concern -- is it a bug that two processes could be
+> >>> computing the checksum of a buffer simultaneously?  I would have thought ext4
+> >>> would serialize that kind of buffer_head access...
+> >>
+> >> Do we know how this is happening?  We've always depended on the VFS to
+> >> provide this exclusion.  The only way we should be modifying the
+> >> buffer_head at the same time if two CPU's are trying to modify the
+> >> directory at the same time, and that should _never_ be happening, even
+> >> with the new directory parallism code, unless the file system has
+> >> given permission and intends to do its own fine-grained locking.
+> > 
+> > It's a combination of two things, I think.  The first is that the
+> > checksum calculation routine (temporarily) set the checksum field to
+> > zero during the computation, which of course is a no-no.  The patch
+> > fixes that problem and should go in.
+> 
+> Thanks a lot for the patch.
+> I wrote a small testcase (see below) that triggers the problem quite soon on
+> my box with kernel 4.7.0, and seems to have survived so far with kernel
+> 4.7.0+patch.
+> When it failed it printed something like "readdir: Bad message".
+> 
+> The drop caches part is quite important for triggering the bug, and might
+> explain why this bug was hard to reproduce: IIUC this race condition can
+> happen only if 2+ threads/processes try to access the same directory, and the
+> directory's inode is not in the cache (i.e. was never cached, or got kicked
+> out of the cache).
+
+Could you formulate this into an xfstest, please?  It would be very useful to
+have this as a regression test.
+
+(Or attach a Signed-off-by and I'll take care of it eventually.)
+
+--D
+> 
+> 
+> /*
+>  $ gcc trigger.c -o trigger -pthread
+>  $ ./trigger
+> */
+> 
+> #include <stdio.h>
+> #include <sys/types.h>
+> #include <sys/stat.h>
+> #include <dirent.h>
+> #include <string.h>
+> #include <stdlib.h>
+> #include <errno.h>
+> #include <pthread.h>
+> #include <unistd.h>
+> #include <fcntl.h>
+> 
+> #define FILES 100000
+> #define THREADS 16
+> #define LOOPS 1000
+> 
+> static void die(const char *msg)
+> {
+> 	perror(msg);
+> 	exit(EXIT_FAILURE);
+> }
+> 
+> static void* list(void* arg)
+> {
+> 	for(int i=0;i<LOOPS;i++) {
+> 		DIR *d = opendir(".");
+> 		if (!d) {
+> 			die("opendir");
+> 		}
+> 		errno = 0;
+> 		while(readdir(d)) {}
+> 		if (errno) {
+> 			die("readdir");
+> 		}
+> 		closedir(d);
+> 		FILE *f = fopen("/proc/sys/vm/drop_caches", "w");
+> 		if (f) {
+> 			fputs("3", f);
+> 			fclose(f);
+> 		}
+> 	}
+> 	return NULL;
+> }
+> 
+> int main()
+> {
+> 	pthread_t t[THREADS];
+> 
+> 	if(mkdir("ext4test", 0755) < 0 && errno != EEXIST)
+> 		die("mkdir");
+> 	if(chdir("ext4test") < 0)
+> 		die("chdir");
+> 	for (unsigned i=0;i < FILES;i++) {
+> 		char name[16];
+> 		snprintf(name, sizeof(name), "%d", i); 
+> 		int fd = open(name, O_WRONLY|O_CREAT, 0600);
+> 		if (fd < 0)
+> 			die("open");
+> 		close(fd);
+> 	}
+> 	for (unsigned i=0;i < sizeof(t)/sizeof(t[0]); i++) {
+> 		pthread_create(&t[i], NULL,list, NULL);
+> 	}
+> 	for (unsigned i=0;i < sizeof(t)/sizeof(t[0]); i++) {
+> 		pthread_join(t[i], NULL);
+> 	}
+> 	return 0;
+> }
+> 
+> 
+> 
+> -- 
+> Edwin Török | Co-founder and Lead Developer
+> 
+> Skylable open-source object storage: reliable, fast, secure
+> http://www.skylable.com
