@@ -1,55 +1,46 @@
 From: Andreas Dilger <andreas.dilger@intel.com>
-Subject: [PATCHv2] fsck: fix strange logic
-Date: Tue,  9 Aug 2016 14:27:09 -0600
-Message-ID: <1470774429-18969-1-git-send-email-andreas.dilger@intel.com>
-References: <1470773576-18604-1-git-send-email-andreas.dilger@intel.com>
+Subject: [PATCH] debugfs: fix check for out-of-bound xattr value
+Date: Tue,  9 Aug 2016 14:42:51 -0600
+Message-ID: <1470775371-19591-1-git-send-email-andreas.dilger@intel.com>
 Cc: linux-ext4@vger.kernel.org,
 	Andreas Dilger <andreas.dilger@intel.com>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:56401 "EHLO mga14.intel.com"
+Received: from mga03.intel.com ([134.134.136.65]:29160 "EHLO mga03.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932299AbcHIU1g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Aug 2016 16:27:36 -0400
-In-Reply-To: <1470773576-18604-1-git-send-email-andreas.dilger@intel.com>
+	id S1752600AbcHIUnN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Aug 2016 16:43:13 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-llvm warns about the confusingly written comparison:
-
-                              !strncmp(argv[i+1], "-", 1) == 0) {
-    misc/fsck.c:1178 col 9: warning: logical not is only applied to
-      the left hand side of comparison [-Wlogical-not-parentheses]
-    misc/fsck.c:1178 col 9: note: add parentheses after the '!' to
-      evaluate the comparison first
-    misc/fsck.c:1178 col 9: note: add parentheses around left hand
-      side expression to silence this warning
-
-It makes sense to simplify this to a character comparison rather
-than using strncmp() to check only one character.
+Since commit v1.42.12-1-g8a546777119c, the check for in-inode
+xattrs in internal_dump_inode_extra() has been incorrectly checking
+the value size.  The value can go right to the end of the inode.
 
 Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
 ---
-v1->v2: revert to original logic skipping fd '-'
+ debugfs/debugfs.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
- misc/fsck.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/misc/fsck.c b/misc/fsck.c
-index 826aaeb..67e158a 100644
---- a/misc/fsck.c
-+++ b/misc/fsck.c
-@@ -1174,8 +1174,8 @@ static void PRS(int argc, char *argv[])
- 						progress_fd = 0;
- 					else
- 						goto next_arg;
--				} else if ((i+1) < argc &&
--					   !strncmp(argv[i+1], "-", 1) == 0) {
-+				} else if (argc > i + 1 &&
-+					   argv[i + 1][0] != '-') {
- 					progress_fd = string_to_int(argv[i]);
- 					if (progress_fd < 0)
- 						progress_fd = 0;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index 260698c..329451c 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -557,9 +557,11 @@ static void internal_dump_inode_extra(FILE *out,
+ 			char *value = start + entry->e_value_offs;
+ 
+ 			if (name + entry->e_name_len >= end ||
+-			    value + entry->e_value_size >= end ||
+-			    (char *) next >= end) {
+-				fprintf(out, "invalid EA entry in inode\n");
++			    value + entry->e_value_size > end ||
++			    (char *)next >= end) {
++				fprintf(out, "invalid EA entry in inode: "
++					"name_len=%u value_size=%u\n",
++					entry->e_name_len, entry->e_value_size);
+ 				return;
+ 			}
+ 			fprintf(out, "  ");
 -- 
 2.4.5
 
