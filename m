@@ -1,56 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH RESEND] ext4: Cleanup ext4_sync_parent()
-Date: Wed, 10 Aug 2016 11:25:45 +0200
-Message-ID: <1470821145-14586-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: resize2fs segfault
+Date: Wed, 10 Aug 2016 16:01:13 -0400
+Message-ID: <20160810200113.GA10523@thunk.org>
+References: <20160809214157.091c200a@schraegle.name>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org
+To: Andreas =?iso-8859-1?Q?Schr=E4gle?= <andreas@schraegle.name>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40953 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:41422 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934952AbcHJSdo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2016 14:33:44 -0400
+	id S933589AbcHJUBW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2016 16:01:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20160809214157.091c200a@schraegle.name>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A condition !hlist_empty(&inode->i_dentry) is always true for open file.
-Just remove it. Also ext4_sync_parent() could use some explanation why
-races with rmdir() are not an issue - add a comment explaining that.
+On Tue, Aug 09, 2016 at 09:41:57PM +0700, Andreas Schrägle wrote:
+> 
+> I seem to have run in a segmentation fault bug in resize2fs.
+> 
 
-Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/fsync.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+Thanks for the bug report!  I found the problem and the patch will be
+in the next version of e2fsprogs.  It should fairly simple to apply
+this patch to e2fsprogs 1.43.1 and rebuild it.
 
-This seems to have fallen through the cracks...
+Cheers,
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 8850254136ae..9b9335796fbc 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -61,6 +61,13 @@ static int ext4_sync_parent(struct inode *inode)
- 			break;
- 		iput(inode);
- 		inode = next;
-+		/*
-+		 * The directory inode may have gone through rmdir by now. But
-+		 * the inode itself and its blocks are still allocated (we hold
-+		 * a reference to the inode so it didn't go through
-+		 * ext4_evict_inode()) and so we are safe to flush metadata
-+		 * blocks and the inode.
-+		 */
- 		ret = sync_mapping_buffers(inode->i_mapping);
- 		if (ret)
- 			break;
-@@ -107,7 +114,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+						- Ted
+
+commit 3d6fc974831a360aee460e54c442538445f3017c
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Aug 10 15:49:35 2016 -0400
+
+    resize2fs: fix crash when there is an ea block and no blocks to migrate
+    
+    This fixes a bug introduced in 1.43 by commit fb47b94fffc: "resize2fs:
+    rewrite extent/dir/ea block checksums when migrating".  If there is an
+    extended attribute block and there are no blocks that need to migrate,
+    we will crash.
+    
+    The bug was caused by a botched De Morgan's transformation.
+    
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 09419ce..8f6d95e 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -1895,7 +1895,7 @@ static errcode_t migrate_ea_block(ext2_resize_t rfs, ext2_ino_t ino,
+ 	errcode_t err = 0;
  
- 	if (!journal) {
- 		ret = generic_file_fsync(file, start, end, datasync);
--		if (!ret && !hlist_empty(&inode->i_dentry))
-+		if (!ret)
- 			ret = ext4_sync_parent(inode);
- 		goto out;
- 	}
--- 
-2.6.6
-
+ 	/* No EA block or no remapping?  Quit early. */
+-	if (ext2fs_file_acl_block(rfs->old_fs, inode) == 0 && !rfs->bmap)
++	if (ext2fs_file_acl_block(rfs->old_fs, inode) == 0 || !rfs->bmap)
+ 		return 0;
+ 	new_block = extent_translate(rfs->old_fs, rfs->bmap,
+ 		ext2fs_file_acl_block(rfs->old_fs, inode));
