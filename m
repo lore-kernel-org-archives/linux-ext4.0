@@ -1,61 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: resize2fs segfault
-Date: Wed, 10 Aug 2016 16:01:13 -0400
-Message-ID: <20160810200113.GA10523@thunk.org>
-References: <20160809214157.091c200a@schraegle.name>
+Subject: Re: [PATCH] fsck: fix strange logic
+Date: Wed, 10 Aug 2016 17:40:28 -0400
+Message-ID: <20160810214028.GB10523@thunk.org>
+References: <1470773576-18604-1-git-send-email-andreas.dilger@intel.com>
+ <0F4CAD2B-88EB-4727-8937-E50D776F3264@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas =?iso-8859-1?Q?Schr=E4gle?= <andreas@schraegle.name>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41422 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:42228 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933589AbcHJUBW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2016 16:01:22 -0400
+	id S932298AbcHJVka (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Aug 2016 17:40:30 -0400
 Content-Disposition: inline
-In-Reply-To: <20160809214157.091c200a@schraegle.name>
+In-Reply-To: <0F4CAD2B-88EB-4727-8937-E50D776F3264@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 09, 2016 at 09:41:57PM +0700, Andreas Schrägle wrote:
-> 
-> I seem to have run in a segmentation fault bug in resize2fs.
-> 
+On Tue, Aug 09, 2016 at 02:26:21PM -0600, Andreas Dilger wrote:
+> I'll push a v2 patch that keeps the original logic, and Ted can choose
+> which one is correct.
+>
 
-Thanks for the bug report!  I found the problem and the patch will be
-in the next version of e2fsprogs.  It should fairly simple to apply
-this patch to e2fsprogs 1.43.1 and rebuild it.
-
-Cheers,
+The original logic is what's intended.  What's going on here is that
+the argument to -C is optional (for backwards compatibility reasons),
+and we know it's always going to be a positive integer, since it's a
+file descriptor.  If the next argument begins with a '-', it must be
+an option specifier, and the argument to -C was missing.  If the next
+argument does not begin with a '-', then we try to parse it as an
+integer, and we rely on the fact that in general the device specifier
+to fsck generally begins with a '/', and if not, isn't going to be
+parseable as a number.
 
 						- Ted
-
-commit 3d6fc974831a360aee460e54c442538445f3017c
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Wed Aug 10 15:49:35 2016 -0400
-
-    resize2fs: fix crash when there is an ea block and no blocks to migrate
-    
-    This fixes a bug introduced in 1.43 by commit fb47b94fffc: "resize2fs:
-    rewrite extent/dir/ea block checksums when migrating".  If there is an
-    extended attribute block and there are no blocks that need to migrate,
-    we will crash.
-    
-    The bug was caused by a botched De Morgan's transformation.
-    
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 09419ce..8f6d95e 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -1895,7 +1895,7 @@ static errcode_t migrate_ea_block(ext2_resize_t rfs, ext2_ino_t ino,
- 	errcode_t err = 0;
- 
- 	/* No EA block or no remapping?  Quit early. */
--	if (ext2fs_file_acl_block(rfs->old_fs, inode) == 0 && !rfs->bmap)
-+	if (ext2fs_file_acl_block(rfs->old_fs, inode) == 0 || !rfs->bmap)
- 		return 0;
- 	new_block = extent_translate(rfs->old_fs, rfs->bmap,
- 		ext2fs_file_acl_block(rfs->old_fs, inode));
