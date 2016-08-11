@@ -1,39 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCHv2] fsck: fix strange logic
-Date: Wed, 10 Aug 2016 18:54:58 -0400
-Message-ID: <20160810225458.GE10523@thunk.org>
-References: <1470773576-18604-1-git-send-email-andreas.dilger@intel.com>
- <1470774429-18969-1-git-send-email-andreas.dilger@intel.com>
+Subject: Re: [PATCH 01/11] ext4: Fix xattr shifting when expanding inodes
+Date: Thu, 11 Aug 2016 13:32:19 -0400
+Message-ID: <20160811173219.GA10626@thunk.org>
+References: <1470220795-17045-1-git-send-email-jack@suse.cz>
+ <1470220795-17045-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <andreas.dilger@intel.com>
+Cc: linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	stable@vger.kernel.org#4.4.x-
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42538 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45534 "EHLO imap.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752746AbcHJWzC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Aug 2016 18:55:02 -0400
+	id S1751356AbcHKRcY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Aug 2016 13:32:24 -0400
 Content-Disposition: inline
-In-Reply-To: <1470774429-18969-1-git-send-email-andreas.dilger@intel.com>
+In-Reply-To: <1470220795-17045-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 09, 2016 at 02:27:09PM -0600, Andreas Dilger wrote:
-> llvm warns about the confusingly written comparison:
+On Wed, Aug 03, 2016 at 12:39:45PM +0200, Jan Kara wrote:
+> The code in ext4_expand_extra_isize_ea() treated new_extra_isize
+> argument sometimes as the desired target i_extra_isize and sometimes as
+> the amount by which we need to grow current i_extra_isize. These happen
+> to coincide when i_extra_isize is 0 which used to be the common case and
+> so nobody noticed this until recently when we added i_projid to the
+> inode and so i_extra_isize now needs to grow from 28 to 32 bytes.
 > 
->                               !strncmp(argv[i+1], "-", 1) == 0) {
->     misc/fsck.c:1178 col 9: warning: logical not is only applied to
->       the left hand side of comparison [-Wlogical-not-parentheses]
->     misc/fsck.c:1178 col 9: note: add parentheses after the '!' to
->       evaluate the comparison first
->     misc/fsck.c:1178 col 9: note: add parentheses around left hand
->       side expression to silence this warning
+> The result of these bugs was that we sometimes unnecessarily decided to
+> move xattrs out of inode even if there was enough space and we often
+> ended up corrupting in-inode xattrs because arguments to
+> ext4_xattr_shift_entries() were just wrong. This could demonstrate
+> itself as BUG_ON in ext4_xattr_shift_entries() triggering.
 > 
-> It makes sense to simplify this to a character comparison rather
-> than using strncmp() to check only one character.
+> Fix the problem by introducing new isize_diff variable and use it where
+> appropriate.
 > 
-> Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+> CC: <stable@vger.kernel.org> # 4.4.x-
+> Reported-by: Dave Chinner <david@fromorbit.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
