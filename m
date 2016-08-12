@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 27/41] truncate: make invalidate_inode_pages2_range() aware about huge pages
-Date: Fri, 12 Aug 2016 21:38:10 +0300
-Message-ID: <1471027104-115213-28-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 35/41] ext4: make ext4_da_page_release_reservation() aware about huge pages
+Date: Fri, 12 Aug 2016 21:38:18 +0300
+Message-ID: <1471027104-115213-36-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,71 +25,39 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages we need to unmap whole range covered by the huge page.
+For huge pages 'stop' must be within HPAGE_PMD_SIZE.
+Let's use hpage_size() in the BUG_ON().
+
+We also need to change how we calculate lblk for cluster deallocation.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/truncate.c | 27 +++++++++++++++++++--------
- 1 file changed, 19 insertions(+), 8 deletions(-)
+ fs/ext4/inode.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 9c339e6255f2..6a445278aaaf 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -708,27 +708,34 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 				continue;
- 			}
- 			wait_on_page_writeback(page);
-+			page = compound_head(page);
-+
- 			if (page_mapped(page)) {
-+				loff_t begin, len;
-+
-+				begin = page->index << PAGE_SHIFT;
-+
- 				if (!did_range_unmap) {
- 					/*
- 					 * Zap the rest of the file in one hit.
- 					 */
-+					len = (loff_t)(1 + end - page->index) <<
-+						PAGE_SHIFT;
-+					if (len < hpage_size(page))
-+						len = hpage_size(page);
- 					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   (loff_t)(1 + end - index)
--							 << PAGE_SHIFT,
--							 0);
-+							begin, len, 0);
- 					did_range_unmap = 1;
- 				} else {
- 					/*
- 					 * Just zap this page
- 					 */
--					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   PAGE_SIZE, 0);
-+					len = hpage_size(page);
-+					unmap_mapping_range(mapping, begin,
-+							len, 0 );
- 				}
- 			}
--			BUG_ON(page_mapped(page));
-+			VM_BUG_ON_PAGE(page_mapped(page), page);
- 			ret2 = do_launder_page(mapping, page);
- 			if (ret2 == 0) {
- 				if (!invalidate_complete_page2(mapping, page))
-@@ -737,6 +744,10 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 			if (ret2 < 0)
- 				ret = ret2;
- 			unlock_page(page);
-+			if (PageTransHuge(page)) {
-+				index = page->index + HPAGE_PMD_NR - 1;
-+				break;
-+			}
- 		}
- 		pagevec_remove_exceptionals(&pvec);
- 		pagevec_release(&pvec);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0133f6fc4bb8..84ccb4469e0b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1558,7 +1558,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	int num_clusters;
+ 	ext4_fsblk_t lblk;
+ 
+-	BUG_ON(stop > PAGE_SIZE || stop < length);
++	BUG_ON(stop > hpage_size(page) || stop < length);
+ 
+ 	head = page_buffers(page);
+ 	bh = head;
+@@ -1593,7 +1593,8 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	 * need to release the reserved space for that cluster. */
+ 	num_clusters = EXT4_NUM_B2C(sbi, to_release);
+ 	while (num_clusters > 0) {
+-		lblk = (page->index << (PAGE_SHIFT - inode->i_blkbits)) +
++		lblk = ((page->index + offset / PAGE_SIZE) <<
++				(PAGE_SHIFT - inode->i_blkbits)) +
+ 			((num_clusters - 1) << sbi->s_cluster_bits);
+ 		if (sbi->s_cluster_ratio == 1 ||
+ 		    !ext4_find_delalloc_cluster(inode, lblk))
 -- 
 2.8.1
 
