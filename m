@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 38/41] ext4: fix SEEK_DATA/SEEK_HOLE for huge pages
-Date: Fri, 12 Aug 2016 21:38:21 +0300
-Message-ID: <1471027104-115213-39-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 21/41] thp: introduce hpage_size() and hpage_mask()
+Date: Fri, 12 Aug 2016 21:38:04 +0300
+Message-ID: <1471027104-115213-22-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -23,74 +23,48 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_find_unwritten_pgoff() needs few tweaks to work with huge pages.
-Mostly trivial page_mapping()/page_to_pgoff() and adjustment to how we
-find relevant block.
+Introduce new helpers which return size/mask of the page:
+HPAGE_PMD_SIZE/HPAGE_PMD_MASK if the page is PageTransHuge() and
+PAGE_SIZE/PAGE_MASK otherwise.
 
-Signe-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/file.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+ include/linux/huge_mm.h | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 261ac3734c58..2c3d6bb0edfe 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -473,7 +473,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 			 * range, it will be a hole.
- 			 */
- 			if (lastoff < endoff && whence == SEEK_HOLE &&
--			    page->index > end) {
-+			    page_to_pgoff(page) > end) {
- 				found = 1;
- 				*offset = lastoff;
- 				goto out;
-@@ -481,7 +481,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+index 6f14de45b5ce..de2789b4402c 100644
+--- a/include/linux/huge_mm.h
++++ b/include/linux/huge_mm.h
+@@ -138,6 +138,20 @@ static inline int hpage_nr_pages(struct page *page)
+ 	return 1;
+ }
  
- 			lock_page(page);
++static inline int hpage_size(struct page *page)
++{
++	if (unlikely(PageTransHuge(page)))
++		return HPAGE_PMD_SIZE;
++	return PAGE_SIZE;
++}
++
++static inline unsigned long hpage_mask(struct page *page)
++{
++	if (unlikely(PageTransHuge(page)))
++		return HPAGE_PMD_MASK;
++	return PAGE_MASK;
++}
++
+ extern int do_huge_pmd_numa_page(struct fault_env *fe, pmd_t orig_pmd);
  
--			if (unlikely(page->mapping != inode->i_mapping)) {
-+			if (unlikely(page_mapping(page) != inode->i_mapping)) {
- 				unlock_page(page);
- 				continue;
- 			}
-@@ -492,8 +492,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 			}
+ extern struct page *huge_zero_page;
+@@ -163,6 +177,8 @@ void put_huge_zero_page(void);
+ #define HPAGE_PMD_SIZE ({ BUILD_BUG(); 0; })
  
- 			if (page_has_buffers(page)) {
-+				int diff;
- 				lastoff = page_offset(page);
- 				bh = head = page_buffers(page);
-+				diff = (page - compound_head(page)) << inode->i_blkbits;
-+				while (diff--)
-+					bh = bh->b_this_page;
- 				do {
- 					if (buffer_uptodate(bh) ||
- 					    buffer_unwritten(bh)) {
-@@ -514,8 +518,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 				} while (bh != head);
- 			}
+ #define hpage_nr_pages(x) 1
++#define hpage_size(x) PAGE_SIZE
++#define hpage_mask(x) PAGE_MASK
  
--			lastoff = page_offset(page) + PAGE_SIZE;
-+			lastoff = page_offset(page) + hpage_size(page);
- 			unlock_page(page);
-+			if (PageTransCompound(page)) {
-+				i++;
-+				break;
-+			}
- 		}
- 
- 		/*
-@@ -528,7 +536,9 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 			break;
- 		}
- 
--		index = pvec.pages[i - 1]->index + 1;
-+		index = page_to_pgoff(pvec.pages[i - 1]) + 1;
-+		if (PageTransCompound(pvec.pages[i - 1]))
-+			index = round_up(index, HPAGE_PMD_NR);
- 		pagevec_release(&pvec);
- 	} while (index <= end);
+ #define transparent_hugepage_enabled(__vma) 0
  
 -- 
 2.8.1
