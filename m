@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 14/41] filemap: allocate huge page in page_cache_read(), if allowed
-Date: Fri, 12 Aug 2016 21:37:57 +0300
-Message-ID: <1471027104-115213-15-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 37/41] ext4: make EXT4_IOC_MOVE_EXT work with huge pages
+Date: Fri, 12 Aug 2016 21:38:20 +0300
+Message-ID: <1471027104-115213-38-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -23,319 +23,60 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch adds basic functionality to put huge page into page cache.
-
-At the moment we only put huge pages into radix-tree if the range covered
-by the huge page is empty.
-
-We ignore shadow entires for now, just remove them from the tree before
-inserting huge page.
-
-Later we can add logic to accumulate information from shadow entires to
-return to caller (average eviction time?).
+Adjust how we find relevant block within page and how we clear the
+required part of the page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/fs.h      |   5 ++
- include/linux/pagemap.h |  21 ++++++-
- mm/filemap.c            | 148 +++++++++++++++++++++++++++++++++++++++++++-----
- 3 files changed, 157 insertions(+), 17 deletions(-)
+ fs/ext4/move_extent.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 83253f34416d..a35a0ffbee66 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1840,6 +1840,11 @@ struct super_operations {
- #else
- #define S_DAX		0	/* Make all the DAX code disappear */
- #endif
-+#define S_HUGE_MODE		0xc000
-+#define S_HUGE_NEVER		0x0000
-+#define S_HUGE_ALWAYS		0x4000
-+#define S_HUGE_WITHIN_SIZE	0x8000
-+#define S_HUGE_ADVISE		0xc000
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index a920c5d29fac..f3efdd0e0eaf 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -210,7 +210,9 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
+ 				return err;
+ 			}
+ 			if (!buffer_mapped(bh)) {
+-				zero_user(page, block_start, blocksize);
++				zero_user(page + block_start / PAGE_SIZE,
++						block_start % PAGE_SIZE,
++						blocksize);
+ 				set_buffer_uptodate(bh);
+ 				continue;
+ 			}
+@@ -267,10 +269,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	unsigned int tmp_data_size, data_size, replaced_size;
+ 	int i, err2, jblocks, retries = 0;
+ 	int replaced_count = 0;
+-	int from = data_offset_in_page << orig_inode->i_blkbits;
++	int from;
+ 	int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
+ 	struct super_block *sb = orig_inode->i_sb;
+ 	struct buffer_head *bh = NULL;
++	int diff;
  
- /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 81363b834900..d9cf4e0f35dc 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -191,14 +191,20 @@ static inline int page_cache_add_speculative(struct page *page, int count)
- }
- 
- #ifdef CONFIG_NUMA
--extern struct page *__page_cache_alloc(gfp_t gfp);
-+extern struct page *__page_cache_alloc_order(gfp_t gfp, unsigned int order);
- #else
--static inline struct page *__page_cache_alloc(gfp_t gfp)
-+static inline struct page *__page_cache_alloc_order(gfp_t gfp,
-+		unsigned int order)
- {
--	return alloc_pages(gfp, 0);
-+	return alloc_pages(gfp, order);
- }
- #endif
- 
-+static inline struct page *__page_cache_alloc(gfp_t gfp)
-+{
-+	return __page_cache_alloc_order(gfp, 0);
-+}
-+
- static inline struct page *page_cache_alloc(struct address_space *x)
- {
- 	return __page_cache_alloc(mapping_gfp_mask(x));
-@@ -215,6 +221,15 @@ static inline gfp_t readahead_gfp_mask(struct address_space *x)
- 				  __GFP_COLD | __GFP_NORETRY | __GFP_NOWARN;
- }
- 
-+extern bool __page_cache_allow_huge(struct address_space *x, pgoff_t offset);
-+static inline bool page_cache_allow_huge(struct address_space *x,
-+		pgoff_t offset)
-+{
-+	if (!IS_ENABLED(CONFIG_TRANSPARENT_HUGEPAGE))
-+		return false;
-+	return __page_cache_allow_huge(x, offset);
-+}
-+
- typedef int filler_t(void *, struct page *);
- 
- pgoff_t page_cache_next_hole(struct address_space *mapping,
-diff --git a/mm/filemap.c b/mm/filemap.c
-index f2640fe345dd..ae1d996fa089 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -637,14 +637,14 @@ static int __add_to_page_cache_locked(struct page *page,
- 				      pgoff_t offset, gfp_t gfp_mask,
- 				      void **shadowp)
- {
--	int huge = PageHuge(page);
-+	int hugetlb = PageHuge(page);
- 	struct mem_cgroup *memcg;
- 	int error;
- 
- 	VM_BUG_ON_PAGE(!PageLocked(page), page);
- 	VM_BUG_ON_PAGE(PageSwapBacked(page), page);
- 
--	if (!huge) {
-+	if (!hugetlb) {
- 		error = mem_cgroup_try_charge(page, current->mm,
- 					      gfp_mask, &memcg, false);
- 		if (error)
-@@ -653,7 +653,7 @@ static int __add_to_page_cache_locked(struct page *page,
- 
- 	error = radix_tree_maybe_preload(gfp_mask & ~__GFP_HIGHMEM);
- 	if (error) {
--		if (!huge)
-+		if (!hugetlb)
- 			mem_cgroup_cancel_charge(page, memcg, false);
- 		return error;
+ 	/*
+ 	 * It needs twice the amount of ordinary journal buffers because
+@@ -355,6 +358,9 @@ again:
+ 		goto unlock_pages;
  	}
-@@ -663,16 +663,55 @@ static int __add_to_page_cache_locked(struct page *page,
- 	page->index = offset;
- 
- 	spin_lock_irq(&mapping->tree_lock);
--	error = page_cache_tree_insert(mapping, page, shadowp);
-+	if (PageTransHuge(page)) {
-+		struct radix_tree_iter iter;
-+		void **slot;
-+		void *p;
-+
-+		error = 0;
-+
-+		/* Wipe shadow entires */
-+		radix_tree_for_each_slot(slot, &mapping->page_tree, &iter, offset) {
-+			if (iter.index >= offset + HPAGE_PMD_NR)
-+				break;
-+
-+			p = radix_tree_deref_slot_protected(slot,
-+					&mapping->tree_lock);
-+			if (!p)
-+				continue;
-+
-+			if (!radix_tree_exception(p)) {
-+				error = -EEXIST;
-+				break;
-+			}
-+
-+			mapping->nrexceptional--;
-+			rcu_assign_pointer(*slot, NULL);
-+		}
-+
-+		if (!error)
-+			error = __radix_tree_insert(&mapping->page_tree, offset,
-+					compound_order(page), page);
-+
-+		if (!error) {
-+			count_vm_event(THP_FILE_ALLOC);
-+			mapping->nrpages += HPAGE_PMD_NR;
-+			*shadowp = NULL;
-+			__inc_node_page_state(page, NR_FILE_THPS);
-+		}
-+	} else {
-+		error = page_cache_tree_insert(mapping, page, shadowp);
-+	}
- 	radix_tree_preload_end();
- 	if (unlikely(error))
- 		goto err_insert;
- 
- 	/* hugetlb pages do not participate in page cache accounting. */
--	if (!huge)
--		__inc_node_page_state(page, NR_FILE_PAGES);
-+	if (!hugetlb)
-+		__mod_node_page_state(page_pgdat(page), NR_FILE_PAGES,
-+				hpage_nr_pages(page));
- 	spin_unlock_irq(&mapping->tree_lock);
--	if (!huge)
-+	if (!hugetlb)
- 		mem_cgroup_commit_charge(page, memcg, false, false);
- 	trace_mm_filemap_add_to_page_cache(page);
- 	return 0;
-@@ -680,7 +719,7 @@ err_insert:
- 	page->mapping = NULL;
- 	/* Leave page->index set: truncation relies upon it */
- 	spin_unlock_irq(&mapping->tree_lock);
--	if (!huge)
-+	if (!hugetlb)
- 		mem_cgroup_cancel_charge(page, memcg, false);
- 	put_page(page);
- 	return error;
-@@ -737,7 +776,7 @@ int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
- EXPORT_SYMBOL_GPL(add_to_page_cache_lru);
- 
- #ifdef CONFIG_NUMA
--struct page *__page_cache_alloc(gfp_t gfp)
-+struct page *__page_cache_alloc_order(gfp_t gfp, unsigned int order)
- {
- 	int n;
- 	struct page *page;
-@@ -747,14 +786,14 @@ struct page *__page_cache_alloc(gfp_t gfp)
- 		do {
- 			cpuset_mems_cookie = read_mems_allowed_begin();
- 			n = cpuset_mem_spread_node();
--			page = __alloc_pages_node(n, gfp, 0);
-+			page = __alloc_pages_node(n, gfp, order);
- 		} while (!page && read_mems_allowed_retry(cpuset_mems_cookie));
- 
- 		return page;
- 	}
--	return alloc_pages(gfp, 0);
-+	return alloc_pages(gfp, order);
- }
--EXPORT_SYMBOL(__page_cache_alloc);
-+EXPORT_SYMBOL(__page_cache_alloc_order);
- #endif
- 
- /*
-@@ -1149,6 +1188,69 @@ repeat:
- }
- EXPORT_SYMBOL(find_lock_entry);
- 
-+bool __page_cache_allow_huge(struct address_space *mapping, pgoff_t offset)
-+{
-+	struct inode *inode = mapping->host;
-+	struct radix_tree_iter iter;
-+	void **slot;
-+	struct page *page;
-+
-+	if (!IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
-+		return false;
-+
-+	offset = round_down(offset, HPAGE_PMD_NR);
-+
-+	switch (inode->i_flags & S_HUGE_MODE) {
-+	case S_HUGE_NEVER:
-+		return false;
-+	case S_HUGE_ALWAYS:
-+		break;
-+	case S_HUGE_WITHIN_SIZE:
-+		if (DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE) <
-+				offset + HPAGE_PMD_NR)
-+			return false;
-+		break;
-+	case S_HUGE_ADVISE:
-+		/* TODO */
-+		return false;
-+	default:
-+		WARN_ON_ONCE(1);
-+		return false;
-+	}
-+
-+	rcu_read_lock();
-+	radix_tree_for_each_slot(slot, &mapping->page_tree, &iter, offset) {
-+		if (iter.index >= offset + HPAGE_PMD_NR)
-+			break;
-+
-+		/* Shadow entires are fine */
-+		page = radix_tree_deref_slot(slot);
-+		if (page && !radix_tree_exception(page)) {
-+			rcu_read_unlock();
-+			return false;
-+		}
-+	}
-+	rcu_read_unlock();
-+
-+	return true;
-+
-+}
-+
-+static struct page *page_cache_alloc_huge(struct address_space *mapping,
-+		pgoff_t offset, gfp_t gfp_mask)
-+{
-+	struct page *page;
-+
-+	if (!page_cache_allow_huge(mapping, offset))
-+		return NULL;
-+
-+	gfp_mask |= __GFP_COMP | __GFP_NORETRY | __GFP_NOWARN;
-+	page = __page_cache_alloc_order(gfp_mask, HPAGE_PMD_ORDER);
-+	if (page)
-+		prep_transhuge_page(page);
-+	return page;
-+}
-+
- /**
-  * pagecache_get_page - find and get a page reference
-  * @mapping: the address_space to search
-@@ -2022,19 +2124,37 @@ static int page_cache_read(struct file *file, pgoff_t offset, gfp_t gfp_mask)
- {
- 	struct address_space *mapping = file->f_mapping;
- 	struct page *page;
-+	pgoff_t hoffset;
- 	int ret;
- 
- 	do {
--		page = __page_cache_alloc(gfp_mask|__GFP_COLD);
-+		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
-+no_huge:
-+		if (!page)
-+			page = __page_cache_alloc(gfp_mask|__GFP_COLD);
- 		if (!page)
- 			return -ENOMEM;
- 
--		ret = add_to_page_cache_lru(page, mapping, offset, gfp_mask & GFP_KERNEL);
-+		if (PageTransHuge(page))
-+			hoffset = round_down(offset, HPAGE_PMD_NR);
-+		else
-+			hoffset = offset;
-+
-+		ret = add_to_page_cache_lru(page, mapping, hoffset,
-+				gfp_mask & GFP_KERNEL);
- 		if (ret == 0)
- 			ret = mapping->a_ops->readpage(file, page);
- 		else if (ret == -EEXIST)
- 			ret = 0; /* losing race to add is OK */
- 
-+		if (ret && PageTransHuge(page)) {
-+			delete_from_page_cache(page);
-+			unlock_page(page);
-+			put_page(page);
-+			page = NULL;
-+			goto no_huge;
-+		}
-+
- 		put_page(page);
- 
- 	} while (ret == AOP_TRUNCATED_PAGE);
+ data_copy:
++	diff = (pagep[0] - compound_head(pagep[0])) * blocks_per_page;
++	from = (data_offset_in_page + diff) << orig_inode->i_blkbits;
++	pagep[0] = compound_head(pagep[0]);
+ 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
+ 	if (*err)
+ 		goto unlock_pages;
+@@ -384,7 +390,7 @@ data_copy:
+ 	if (!page_has_buffers(pagep[0]))
+ 		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
+ 	bh = page_buffers(pagep[0]);
+-	for (i = 0; i < data_offset_in_page; i++)
++	for (i = 0; i < data_offset_in_page + diff; i++)
+ 		bh = bh->b_this_page;
+ 	for (i = 0; i < block_len_in_page; i++) {
+ 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
 -- 
 2.8.1
