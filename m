@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 05/41] radix-tree: Add radix_tree_split_preload()
-Date: Fri, 12 Aug 2016 21:37:48 +0300
-Message-ID: <1471027104-115213-6-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 36/41] ext4: handle writeback with huge pages
+Date: Fri, 12 Aug 2016 21:38:19 +0300
+Message-ID: <1471027104-115213-37-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -10,154 +10,180 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Vlastimil Babka <vbabka@suse.cz>,
 	Matthew Wilcox <willy@infradead.org>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
 	linux-block@vger.kernel.org,
-	Matthew Wilcox <willy@linux.intel.com>,
-	"Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Matthew Wilcox <willy@linux.intel.com>
+Modify mpage_map_and_submit_buffers() and mpage_release_unused_pages()
+to deal with huge pages.
 
-Calculate how many nodes we need to allocate to split an old_order entry
-into multiple entries, each of size new_order.  The test suite checks that
-we allocated exactly the right number of nodes; neither too many (checked
-by rtp->nr == 0), nor too few (checked by comparing nr_allocated before
-and after the call to radix_tree_split()).
+Mostly result of try-and-error. Critical view would be appriciated.
 
-Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/radix-tree.h            |  1 +
- lib/radix-tree.c                      | 22 ++++++++++++++++++++++
- tools/testing/radix-tree/multiorder.c | 28 ++++++++++++++++++++++++++--
- tools/testing/radix-tree/test.h       |  9 +++++++++
- 4 files changed, 58 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 60 +++++++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 43 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
-index 459e8a152c8a..c4cea311d901 100644
---- a/include/linux/radix-tree.h
-+++ b/include/linux/radix-tree.h
-@@ -318,6 +318,7 @@ static inline void radix_tree_preload_end(void)
- 	preempt_enable();
- }
- 
-+int radix_tree_split_preload(unsigned old_order, unsigned new_order, gfp_t);
- int radix_tree_split(struct radix_tree_root *, unsigned long index,
- 			unsigned new_order);
- int radix_tree_join(struct radix_tree_root *, unsigned long index,
-diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-index e69f1053cd78..e49f32f7c537 100644
---- a/lib/radix-tree.c
-+++ b/lib/radix-tree.c
-@@ -404,6 +404,28 @@ int radix_tree_maybe_preload(gfp_t gfp_mask)
- }
- EXPORT_SYMBOL(radix_tree_maybe_preload);
- 
-+#ifdef CONFIG_RADIX_TREE_MULTIORDER
-+/*
-+ * Preload with enough objects to ensure that we can split a single entry
-+ * of order @old_order into many entries of size @new_order
-+ */
-+int radix_tree_split_preload(unsigned int old_order, unsigned int new_order,
-+							gfp_t gfp_mask)
-+{
-+	unsigned top = 1 << (old_order % RADIX_TREE_MAP_SHIFT);
-+	unsigned layers = (old_order / RADIX_TREE_MAP_SHIFT) -
-+				(new_order / RADIX_TREE_MAP_SHIFT);
-+	unsigned nr = 0;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 84ccb4469e0b..0a3aee4a57f7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1652,18 +1652,31 @@ static void mpage_release_unused_pages(struct mpage_da_data *mpd,
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+-			struct page *page = pvec.pages[i];
++			struct page *page = compound_head(pvec.pages[i]);
 +
-+	WARN_ON_ONCE(!gfpflags_allow_blocking(gfp_mask));
-+	BUG_ON(new_order >= old_order);
+ 			if (page->index > end)
+ 				break;
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
+ 			if (invalidate) {
+-				block_invalidatepage(page, 0, PAGE_SIZE);
++				unsigned long offset, len;
 +
-+	while (layers--)
-+		nr = nr * RADIX_TREE_MAP_SIZE + 1;
-+	return __radix_tree_preload(gfp_mask, top * nr);
-+}
-+#endif
++				offset = (index % hpage_nr_pages(page));
++				len = min_t(unsigned long, end - page->index,
++						hpage_nr_pages(page));
 +
- /*
-  * The same as function above, but preload number of nodes required to insert
-  * (1 << order) continuous naturally-aligned elements.
-diff --git a/tools/testing/radix-tree/multiorder.c b/tools/testing/radix-tree/multiorder.c
-index 9d27a4dd7b2a..5eda47dfe818 100644
---- a/tools/testing/radix-tree/multiorder.c
-+++ b/tools/testing/radix-tree/multiorder.c
-@@ -348,18 +348,42 @@ static void multiorder_join(void)
++				block_invalidatepage(page, offset << PAGE_SHIFT,
++						len << PAGE_SHIFT);
+ 				ClearPageUptodate(page);
+ 			}
+ 			unlock_page(page);
++			if (PageTransHuge(page)) {
++				index = page->index + HPAGE_PMD_NR;
++				goto release;
++			}
+ 		}
+ 		index = pvec.pages[nr_pages - 1]->index + 1;
++release:
+ 		pagevec_release(&pvec);
  	}
  }
+@@ -2097,16 +2110,16 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	loff_t size = i_size_read(mpd->inode);
+ 	int err;
  
-+static void check_mem(unsigned old_order, unsigned new_order, unsigned alloc)
-+{
-+	struct radix_tree_preload *rtp = &radix_tree_preloads;
-+	if (rtp->nr != 0)
-+		printf("split(%u %u) remaining %u\n", old_order, new_order,
-+							rtp->nr);
-+	/*
-+	 * Can't check for equality here as some nodes may have been
-+	 * RCU-freed while we ran.  But we should never finish with more
-+	 * nodes allocated since they should have all been preloaded.
-+	 */
-+	if (nr_allocated > alloc)
-+		printf("split(%u %u) allocated %u %u\n", old_order, new_order,
-+							alloc, nr_allocated);
-+}
+-	BUG_ON(page->index != mpd->first_page);
+-	if (page->index == size >> PAGE_SHIFT)
+-		len = size & ~PAGE_MASK;
+-	else
+-		len = PAGE_SIZE;
++	page = compound_head(page);
++	len = hpage_size(page);
++	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
++		len = size & ~hpage_mask(page);
 +
- static void __multiorder_split(int old_order, int new_order)
- {
--	RADIX_TREE(tree, GFP_KERNEL);
-+	RADIX_TREE(tree, GFP_ATOMIC);
- 	void **slot;
- 	struct radix_tree_iter iter;
-+	unsigned alloc;
+ 	clear_page_dirty_for_io(page);
+ 	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
+ 	if (!err)
+-		mpd->wbc->nr_to_write--;
+-	mpd->first_page++;
++		mpd->wbc->nr_to_write -= hpage_nr_pages(page);
++	mpd->first_page = round_up(mpd->first_page + 1, hpage_nr_pages(page));
  
--	item_insert_order(&tree, 0, old_order);
-+	radix_tree_preload(GFP_KERNEL);
-+	assert(item_insert_order(&tree, 0, old_order) == 0);
-+	radix_tree_callback(NULL, CPU_DEAD, NULL);
- 	radix_tree_tag_set(&tree, 0, 2);
-+
-+	radix_tree_split_preload(old_order, new_order, GFP_KERNEL);
-+	alloc = nr_allocated;
- 	radix_tree_split(&tree, 0, new_order);
-+	check_mem(old_order, new_order, alloc);
- 	radix_tree_for_each_slot(slot, &tree, &iter, 0) {
- 		radix_tree_replace_slot(slot, item_create(iter.index));
- 	}
-+	radix_tree_preload_end();
- 
- 	item_kill_tree(&tree);
+ 	return err;
  }
-diff --git a/tools/testing/radix-tree/test.h b/tools/testing/radix-tree/test.h
-index e85131369723..55e6d095047b 100644
---- a/tools/testing/radix-tree/test.h
-+++ b/tools/testing/radix-tree/test.h
-@@ -2,6 +2,8 @@
- #include <linux/types.h>
- #include <linux/radix-tree.h>
- #include <linux/rcupdate.h>
-+#include <linux/notifier.h>
-+#include <linux/cpu.h>
+@@ -2254,12 +2267,16 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
++			unsigned long diff;
  
- struct item {
- 	unsigned long index;
-@@ -43,3 +45,10 @@ void radix_tree_dump(struct radix_tree_root *root);
- int root_tag_get(struct radix_tree_root *root, unsigned int tag);
- unsigned long node_maxindex(struct radix_tree_node *);
- unsigned long shift_maxindex(unsigned int shift);
-+int radix_tree_callback(struct notifier_block *nfb,
-+			unsigned long action, void *hcpu);
-+struct radix_tree_preload {
-+	unsigned nr;
-+	struct radix_tree_node *nodes;
-+};
-+extern struct radix_tree_preload radix_tree_preloads;
+-			if (page->index > end)
++			if (page_to_pgoff(page) > end)
+ 				break;
+ 			/* Up to 'end' pages must be contiguous */
+-			BUG_ON(page->index != start);
++			BUG_ON(page_to_pgoff(page) != start);
++			diff = (page - compound_head(page)) << bpp_bits;
+ 			bh = head = page_buffers(page);
++			while (diff--)
++				bh = bh->b_this_page;
+ 			do {
+ 				if (lblk < mpd->map.m_lblk)
+ 					continue;
+@@ -2296,7 +2313,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			 * supports blocksize < pagesize as we will try to
+ 			 * convert potentially unmapped parts of inode.
+ 			 */
+-			mpd->io_submit.io_end->size += PAGE_SIZE;
++			if (PageTransCompound(page))
++				mpd->io_submit.io_end->size += HPAGE_PMD_SIZE;
++			else
++				mpd->io_submit.io_end->size += PAGE_SIZE;
+ 			/* Page fully mapped - let IO run! */
+ 			err = mpage_submit_page(mpd, page);
+ 			if (err < 0) {
+@@ -2304,6 +2324,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 				return err;
+ 			}
+ 			start++;
++			if (PageTransCompound(page)) {
++				start = round_up(start, HPAGE_PMD_NR);
++				break;
++			}
+ 		}
+ 		pagevec_release(&pvec);
+ 	}
+@@ -2543,7 +2567,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * mapping. However, page->index will not change
+ 			 * because we have a reference on the page.
+ 			 */
+-			if (page->index > end)
++			if (page_to_pgoff(page) > end)
+ 				goto out;
+ 
+ 			/*
+@@ -2558,7 +2582,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 				goto out;
+ 
+ 			/* If we can't merge this page, we are done. */
+-			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
++			if (mpd->map.m_len > 0 && mpd->next_page != page_to_pgoff(page))
+ 				goto out;
+ 
+ 			lock_page(page);
+@@ -2572,7 +2596,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			if (!PageDirty(page) ||
+ 			    (PageWriteback(page) &&
+ 			     (mpd->wbc->sync_mode == WB_SYNC_NONE)) ||
+-			    unlikely(page->mapping != mapping)) {
++			    unlikely(page_mapping(page) != mapping)) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -2581,8 +2605,10 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			BUG_ON(PageWriteback(page));
+ 
+ 			if (mpd->map.m_len == 0)
+-				mpd->first_page = page->index;
+-			mpd->next_page = page->index + 1;
++				mpd->first_page = page_to_pgoff(page);
++			page = compound_head(page);
++			mpd->next_page = round_up(page->index + 1,
++					hpage_nr_pages(page));
+ 			/* Add all dirty buffers to mpd */
+ 			lblk = ((ext4_lblk_t)page->index) <<
+ 				(PAGE_SHIFT - blkbits);
 -- 
 2.8.1
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
