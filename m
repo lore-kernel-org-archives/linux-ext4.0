@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 22/41] thp: do not threat slab pages as huge in hpage_{nr_pages,size,mask}
-Date: Fri, 12 Aug 2016 21:38:05 +0300
-Message-ID: <1471027104-115213-23-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 25/41] fs: make block_page_mkwrite() aware about huge pages
+Date: Fri, 12 Aug 2016 21:38:08 +0300
+Message-ID: <1471027104-115213-26-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,47 +25,50 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Slab pages can be compound, but we shouldn't threat them as THP for
-pupose of hpage_* helpers, otherwise it would lead to confusing results.
-
-For instance, ext4 uses slab pages for journal pages and we shouldn't
-confuse them with THPs. The easiest way is to exclude them in hpage_*
-helpers.
+Adjust check on whether part of the page beyond file size and apply
+compound_head() and page_mapping() where appropriate.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/huge_mm.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/buffer.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
-index de2789b4402c..5c5466ba37df 100644
---- a/include/linux/huge_mm.h
-+++ b/include/linux/huge_mm.h
-@@ -133,21 +133,21 @@ static inline spinlock_t *pmd_trans_huge_lock(pmd_t *pmd,
- }
- static inline int hpage_nr_pages(struct page *page)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 7f50e5a63670..e53808e790e2 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2502,7 +2502,7 @@ EXPORT_SYMBOL(block_commit_write);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 			 get_block_t get_block)
  {
--	if (unlikely(PageTransHuge(page)))
-+	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
- 		return HPAGE_PMD_NR;
- 	return 1;
- }
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	unsigned long end;
+ 	loff_t size;
+@@ -2510,7 +2510,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  
- static inline int hpage_size(struct page *page)
- {
--	if (unlikely(PageTransHuge(page)))
-+	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
- 		return HPAGE_PMD_SIZE;
- 	return PAGE_SIZE;
- }
+ 	lock_page(page);
+ 	size = i_size_read(inode);
+-	if ((page->mapping != inode->i_mapping) ||
++	if ((page_mapping(page) != inode->i_mapping) ||
+ 	    (page_offset(page) > size)) {
+ 		/* We overload EFAULT to mean page got truncated */
+ 		ret = -EFAULT;
+@@ -2518,10 +2518,10 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	}
  
- static inline unsigned long hpage_mask(struct page *page)
- {
--	if (unlikely(PageTransHuge(page)))
-+	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
- 		return HPAGE_PMD_MASK;
- 	return PAGE_MASK;
- }
+ 	/* page is wholly or partially inside EOF */
+-	if (((page->index + 1) << PAGE_SHIFT) > size)
+-		end = size & ~PAGE_MASK;
++	if (((page->index + hpage_nr_pages(page)) << PAGE_SHIFT) > size)
++		end = size & ~hpage_mask(page);
+ 	else
+-		end = PAGE_SIZE;
++		end = hpage_size(page);
+ 
+ 	ret = __block_write_begin(page, 0, end, get_block);
+ 	if (!ret)
 -- 
 2.8.1
 
