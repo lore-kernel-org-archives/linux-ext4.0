@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 31/41] ext4: handle huge pages in ext4_page_mkwrite()
-Date: Fri, 12 Aug 2016 21:38:14 +0300
-Message-ID: <1471027104-115213-32-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 05/41] radix-tree: Add radix_tree_split_preload()
+Date: Fri, 12 Aug 2016 21:37:48 +0300
+Message-ID: <1471027104-115213-6-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -13,61 +13,151 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
 	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Matthew Wilcox <willy@linux.intel.com>,
+	"Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-block-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
-Sender: linux-block-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Trivial: remove assumption on page size.
+From: Matthew Wilcox <willy@linux.intel.com>
 
+Calculate how many nodes we need to allocate to split an old_order entry
+into multiple entries, each of size new_order.  The test suite checks that
+we allocated exactly the right number of nodes; neither too many (checked
+by rtp->nr == 0), nor too few (checked by comparing nr_allocated before
+and after the call to radix_tree_split()).
+
+Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ include/linux/radix-tree.h            |  1 +
+ lib/radix-tree.c                      | 22 ++++++++++++++++++++++
+ tools/testing/radix-tree/multiorder.c | 28 ++++++++++++++++++++++++++--
+ tools/testing/radix-tree/test.h       |  9 +++++++++
+ 4 files changed, 58 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f585f9160a96..cd435d4a10f0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5646,7 +5646,7 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
+diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
+index 459e8a152c8a..c4cea311d901 100644
+--- a/include/linux/radix-tree.h
++++ b/include/linux/radix-tree.h
+@@ -318,6 +318,7 @@ static inline void radix_tree_preload_end(void)
+ 	preempt_enable();
+ }
  
- int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- {
--	struct page *page = vmf->page;
-+	struct page *page = compound_head(vmf->page);
- 	loff_t size;
- 	unsigned long len;
- 	int ret;
-@@ -5682,10 +5682,10 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 		goto out;
- 	}
++int radix_tree_split_preload(unsigned old_order, unsigned new_order, gfp_t);
+ int radix_tree_split(struct radix_tree_root *, unsigned long index,
+ 			unsigned new_order);
+ int radix_tree_join(struct radix_tree_root *, unsigned long index,
+diff --git a/lib/radix-tree.c b/lib/radix-tree.c
+index e69f1053cd78..e49f32f7c537 100644
+--- a/lib/radix-tree.c
++++ b/lib/radix-tree.c
+@@ -404,6 +404,28 @@ int radix_tree_maybe_preload(gfp_t gfp_mask)
+ }
+ EXPORT_SYMBOL(radix_tree_maybe_preload);
  
--	if (page->index == size >> PAGE_SHIFT)
--		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
-+	len = hpage_size(page);
-+	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
-+		len = size & ~hpage_mask(page);
++#ifdef CONFIG_RADIX_TREE_MULTIORDER
++/*
++ * Preload with enough objects to ensure that we can split a single entry
++ * of order @old_order into many entries of size @new_order
++ */
++int radix_tree_split_preload(unsigned int old_order, unsigned int new_order,
++							gfp_t gfp_mask)
++{
++	unsigned top = 1 << (old_order % RADIX_TREE_MAP_SHIFT);
++	unsigned layers = (old_order / RADIX_TREE_MAP_SHIFT) -
++				(new_order / RADIX_TREE_MAP_SHIFT);
++	unsigned nr = 0;
 +
- 	/*
- 	 * Return if we have all the buffers mapped. This avoids the need to do
- 	 * journal_start/journal_stop which can block and take a long time
-@@ -5716,7 +5716,8 @@ retry_alloc:
- 	ret = block_page_mkwrite(vma, vmf, get_block);
- 	if (!ret && ext4_should_journal_data(inode)) {
- 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
--			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
-+			  hpage_size(page), NULL,
-+			  do_journal_get_write_access)) {
- 			unlock_page(page);
- 			ret = VM_FAULT_SIGBUS;
- 			ext4_journal_stop(handle);
++	WARN_ON_ONCE(!gfpflags_allow_blocking(gfp_mask));
++	BUG_ON(new_order >= old_order);
++
++	while (layers--)
++		nr = nr * RADIX_TREE_MAP_SIZE + 1;
++	return __radix_tree_preload(gfp_mask, top * nr);
++}
++#endif
++
+ /*
+  * The same as function above, but preload number of nodes required to insert
+  * (1 << order) continuous naturally-aligned elements.
+diff --git a/tools/testing/radix-tree/multiorder.c b/tools/testing/radix-tree/multiorder.c
+index 9d27a4dd7b2a..5eda47dfe818 100644
+--- a/tools/testing/radix-tree/multiorder.c
++++ b/tools/testing/radix-tree/multiorder.c
+@@ -348,18 +348,42 @@ static void multiorder_join(void)
+ 	}
+ }
+ 
++static void check_mem(unsigned old_order, unsigned new_order, unsigned alloc)
++{
++	struct radix_tree_preload *rtp = &radix_tree_preloads;
++	if (rtp->nr != 0)
++		printf("split(%u %u) remaining %u\n", old_order, new_order,
++							rtp->nr);
++	/*
++	 * Can't check for equality here as some nodes may have been
++	 * RCU-freed while we ran.  But we should never finish with more
++	 * nodes allocated since they should have all been preloaded.
++	 */
++	if (nr_allocated > alloc)
++		printf("split(%u %u) allocated %u %u\n", old_order, new_order,
++							alloc, nr_allocated);
++}
++
+ static void __multiorder_split(int old_order, int new_order)
+ {
+-	RADIX_TREE(tree, GFP_KERNEL);
++	RADIX_TREE(tree, GFP_ATOMIC);
+ 	void **slot;
+ 	struct radix_tree_iter iter;
++	unsigned alloc;
+ 
+-	item_insert_order(&tree, 0, old_order);
++	radix_tree_preload(GFP_KERNEL);
++	assert(item_insert_order(&tree, 0, old_order) == 0);
++	radix_tree_callback(NULL, CPU_DEAD, NULL);
+ 	radix_tree_tag_set(&tree, 0, 2);
++
++	radix_tree_split_preload(old_order, new_order, GFP_KERNEL);
++	alloc = nr_allocated;
+ 	radix_tree_split(&tree, 0, new_order);
++	check_mem(old_order, new_order, alloc);
+ 	radix_tree_for_each_slot(slot, &tree, &iter, 0) {
+ 		radix_tree_replace_slot(slot, item_create(iter.index));
+ 	}
++	radix_tree_preload_end();
+ 
+ 	item_kill_tree(&tree);
+ }
+diff --git a/tools/testing/radix-tree/test.h b/tools/testing/radix-tree/test.h
+index e85131369723..55e6d095047b 100644
+--- a/tools/testing/radix-tree/test.h
++++ b/tools/testing/radix-tree/test.h
+@@ -2,6 +2,8 @@
+ #include <linux/types.h>
+ #include <linux/radix-tree.h>
+ #include <linux/rcupdate.h>
++#include <linux/notifier.h>
++#include <linux/cpu.h>
+ 
+ struct item {
+ 	unsigned long index;
+@@ -43,3 +45,10 @@ void radix_tree_dump(struct radix_tree_root *root);
+ int root_tag_get(struct radix_tree_root *root, unsigned int tag);
+ unsigned long node_maxindex(struct radix_tree_node *);
+ unsigned long shift_maxindex(unsigned int shift);
++int radix_tree_callback(struct notifier_block *nfb,
++			unsigned long action, void *hcpu);
++struct radix_tree_preload {
++	unsigned nr;
++	struct radix_tree_node *nodes;
++};
++extern struct radix_tree_preload radix_tree_preloads;
 -- 
 2.8.1
-
