@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 13/41] truncate: make sure invalidate_mapping_pages() can discard huge pages
-Date: Fri, 12 Aug 2016 21:37:56 +0300
-Message-ID: <1471027104-115213-14-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 22/41] thp: do not threat slab pages as huge in hpage_{nr_pages,size,mask}
+Date: Fri, 12 Aug 2016 21:38:05 +0300
+Message-ID: <1471027104-115213-23-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,44 +25,47 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-invalidate_inode_page() has expectation about page_count() of the page
--- if it's not 2 (one to caller, one to radix-tree), it will not be
-dropped. That condition almost never met for THPs -- tail pages are
-pinned to the pagevec.
+Slab pages can be compound, but we shouldn't threat them as THP for
+pupose of hpage_* helpers, otherwise it would lead to confusing results.
 
-Let's drop them, before calling invalidate_inode_page().
+For instance, ext4 uses slab pages for journal pages and we shouldn't
+confuse them with THPs. The easiest way is to exclude them in hpage_*
+helpers.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/truncate.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ include/linux/huge_mm.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index a01cce450a26..ce904e4b1708 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -504,10 +504,21 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
- 				/* 'end' is in the middle of THP */
- 				if (index ==  round_down(end, HPAGE_PMD_NR))
- 					continue;
-+				/*
-+				 * invalidate_inode_page() expects
-+				 * page_count(page) == 2 to drop page from page
-+				 * cache -- drop tail pages references.
-+				 */
-+				get_page(page);
-+				pagevec_release(&pvec);
- 			}
+diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+index de2789b4402c..5c5466ba37df 100644
+--- a/include/linux/huge_mm.h
++++ b/include/linux/huge_mm.h
+@@ -133,21 +133,21 @@ static inline spinlock_t *pmd_trans_huge_lock(pmd_t *pmd,
+ }
+ static inline int hpage_nr_pages(struct page *page)
+ {
+-	if (unlikely(PageTransHuge(page)))
++	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+ 		return HPAGE_PMD_NR;
+ 	return 1;
+ }
  
- 			ret = invalidate_inode_page(page);
- 			unlock_page(page);
-+
-+			if (PageTransHuge(page))
-+				put_page(page);
-+
- 			/*
- 			 * Invalidation is a hint that the page is no longer
- 			 * of interest and try to speed up its reclaim.
+ static inline int hpage_size(struct page *page)
+ {
+-	if (unlikely(PageTransHuge(page)))
++	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+ 		return HPAGE_PMD_SIZE;
+ 	return PAGE_SIZE;
+ }
+ 
+ static inline unsigned long hpage_mask(struct page *page)
+ {
+-	if (unlikely(PageTransHuge(page)))
++	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+ 		return HPAGE_PMD_MASK;
+ 	return PAGE_MASK;
+ }
 -- 
 2.8.1
 
