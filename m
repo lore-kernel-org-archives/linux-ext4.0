@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 32/41] ext4: handle huge pages in __ext4_block_zero_page_range()
-Date: Fri, 12 Aug 2016 21:38:15 +0300
-Message-ID: <1471027104-115213-33-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 29/41] ext4: make ext4_mpage_readpages() hugepage-aware
+Date: Fri, 12 Aug 2016 21:38:12 +0300
+Message-ID: <1471027104-115213-30-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -18,51 +18,111 @@ To: "Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-block-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
-Sender: linux-block-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-As the function handles zeroing range only within one block, the
-required changes are trivial, just remove assuption on page size.
+This patch modifies ext4_mpage_readpages() to deal with huge pages.
+
+We read out 2M at once, so we have to alloc (HPAGE_PMD_NR *
+blocks_per_page) sector_t for that. I'm not entirely happy with kmalloc
+in this codepath, but don't see any other option.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/readpage.c | 38 ++++++++++++++++++++++++++++++++------
+ 1 file changed, 32 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cd435d4a10f0..bee21fffbfb9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3679,7 +3679,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
- {
- 	ext4_fsblk_t index = from >> PAGE_SHIFT;
--	unsigned offset = from & (PAGE_SIZE-1);
-+	unsigned offset;
- 	unsigned blocksize, pos;
- 	ext4_lblk_t iblock;
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index a81b829d56de..6d7cbddceeb2 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -104,12 +104,12 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 
  	struct inode *inode = mapping->host;
-@@ -3692,6 +3692,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	if (!page)
- 		return -ENOMEM;
+ 	const unsigned blkbits = inode->i_blkbits;
+-	const unsigned blocks_per_page = PAGE_SIZE >> blkbits;
+ 	const unsigned blocksize = 1 << blkbits;
+ 	sector_t block_in_file;
+ 	sector_t last_block;
+ 	sector_t last_block_in_file;
+-	sector_t blocks[MAX_BUF_PER_PAGE];
++	sector_t blocks_on_stack[MAX_BUF_PER_PAGE];
++	sector_t *blocks = blocks_on_stack;
+ 	unsigned page_block;
+ 	struct block_device *bdev = inode->i_sb->s_bdev;
+ 	int length;
+@@ -122,8 +122,9 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 	map.m_flags = 0;
  
-+	page = compound_head(page);
-+	offset = from & ~hpage_mask(page);
+ 	for (; nr_pages; nr_pages--) {
+-		int fully_mapped = 1;
+-		unsigned first_hole = blocks_per_page;
++		int fully_mapped = 1, nr = nr_pages;
++		unsigned blocks_per_page = PAGE_SIZE >> blkbits;
++		unsigned first_hole;
+ 
+ 		prefetchw(&page->flags);
+ 		if (pages) {
+@@ -138,10 +139,31 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 			goto confused;
+ 
+ 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
+-		last_block = block_in_file + nr_pages * blocks_per_page;
 +
- 	blocksize = inode->i_sb->s_blocksize;
++		if (PageTransHuge(page)) {
++			BUILD_BUG_ON(BIO_MAX_PAGES < HPAGE_PMD_NR);
++			nr = HPAGE_PMD_NR * blocks_per_page;
++			/* XXX: need a better solution ? */
++			blocks = kmalloc(sizeof(sector_t) * nr, GFP_NOFS);
++			if (!blocks) {
++				if (pages) {
++					delete_from_page_cache(page);
++					goto next_page;
++				}
++				return -ENOMEM;
++			}
++
++			blocks_per_page *= HPAGE_PMD_NR;
++			last_block = block_in_file + blocks_per_page;
++		} else {
++			blocks = blocks_on_stack;
++			last_block = block_in_file + nr * blocks_per_page;
++		}
++
+ 		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
+ 		if (last_block > last_block_in_file)
+ 			last_block = last_block_in_file;
++		first_hole = blocks_per_page;
+ 		page_block = 0;
  
- 	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
-@@ -3746,7 +3749,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 		if (err)
- 			goto unlock;
- 	}
--	zero_user(page, offset, length);
-+	zero_user(page + offset / PAGE_SIZE, offset % PAGE_SIZE, length);
- 	BUFFER_TRACE(bh, "zeroed end of block");
- 
- 	if (ext4_should_journal_data(inode)) {
+ 		/*
+@@ -213,6 +235,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 			}
+ 		}
+ 		if (first_hole != blocks_per_page) {
++			if (PageTransHuge(page))
++				goto confused;
+ 			zero_user_segment(page, first_hole << blkbits,
+ 					  PAGE_SIZE);
+ 			if (first_hole == 0) {
+@@ -248,7 +272,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 					goto set_error_page;
+ 			}
+ 			bio = bio_alloc(GFP_KERNEL,
+-				min_t(int, nr_pages, BIO_MAX_PAGES));
++				min_t(int, nr, BIO_MAX_PAGES));
+ 			if (!bio) {
+ 				if (ctx)
+ 					fscrypt_release_ctx(ctx);
+@@ -289,5 +313,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 	BUG_ON(pages && !list_empty(pages));
+ 	if (bio)
+ 		submit_bio(bio);
++	if (blocks != blocks_on_stack)
++		kfree(blocks);
+ 	return 0;
+ }
 -- 
 2.8.1
-
