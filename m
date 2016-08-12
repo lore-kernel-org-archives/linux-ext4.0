@@ -1,89 +1,44 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 33/41] ext4: make ext4_block_write_begin() aware about huge pages
-Date: Fri, 12 Aug 2016 21:38:16 +0300
-Message-ID: <1471027104-115213-34-git-send-email-kirill.shutemov@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCHv2, 00/41] ext4: support of huge pages
+Date: Fri, 12 Aug 2016 16:34:40 -0400
+Message-ID: <20160812203440.GD30280@thunk.org>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
 	Andrea Arcangeli <aarcange@redhat.com>,
 	Dave Hansen <dave.hansen@intel.com>,
 	Vlastimil Babka <vbabka@suse.cz>,
 	Matthew Wilcox <willy@infradead.org>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
 In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-It simply matches changes to __block_write_begin_int().
+On Fri, Aug 12, 2016 at 09:37:43PM +0300, Kirill A. Shutemov wrote:
+> Here's stabilized version of my patchset which intended to bring huge pages
+> to ext4.
 
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
----
- fs/ext4/inode.c | 24 ++++++++++++++++--------
- 1 file changed, 16 insertions(+), 8 deletions(-)
+So this patch is more about mm level changes than it is about the file
+system, and I didn't see any comments from the linux-mm peanut gallery
+(unless the linux-ext4 list got removed from the cc list, or some such).
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bee21fffbfb9..1c325f62e766 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1079,9 +1079,8 @@ int do_journal_get_write_access(handle_t *handle,
- static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 				  get_block_t *get_block)
- {
--	unsigned from = pos & (PAGE_SIZE - 1);
--	unsigned to = from + len;
--	struct inode *inode = page->mapping->host;
-+	unsigned from, to;
-+	struct inode *inode = page_mapping(page)->host;
- 	unsigned block_start, block_end;
- 	sector_t block;
- 	int err = 0;
-@@ -1090,9 +1089,12 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
- 	bool decrypt = false;
- 
-+	page = compound_head(page);
-+	from = pos & ~hpage_mask(page);
-+	to = from + len;
- 	BUG_ON(!PageLocked(page));
--	BUG_ON(from > PAGE_SIZE);
--	BUG_ON(to > PAGE_SIZE);
-+	BUG_ON(from > hpage_size(page));
-+	BUG_ON(to > hpage_size(page));
- 	BUG_ON(from > to);
- 
- 	if (!page_has_buffers(page))
-@@ -1127,9 +1129,15 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 					mark_buffer_dirty(bh);
- 					continue;
- 				}
--				if (block_end > to || block_start < from)
--					zero_user_segments(page, to, block_end,
--							   block_start, from);
-+				if (block_end > to || block_start < from) {
-+					BUG_ON(to - from  > PAGE_SIZE);
-+					zero_user_segments(page +
-+							block_start / PAGE_SIZE,
-+							to % PAGE_SIZE,
-+							(block_start % PAGE_SIZE) + blocksize,
-+							block_start % PAGE_SIZE,
-+							from % PAGE_SIZE);
-+				}
- 				continue;
- 			}
- 		}
--- 
-2.8.1
+I haven't had time to take a close look at the ext4 changes, and I'll
+try to carve out some time to do that --- but has anyone from the mm
+side of the world taken a look at these patches?
+
+Thanks,
+
+						- Ted
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
