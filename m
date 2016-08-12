@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv2 37/41] ext4: make EXT4_IOC_MOVE_EXT work with huge pages
-Date: Fri, 12 Aug 2016 21:38:20 +0300
-Message-ID: <1471027104-115213-38-git-send-email-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv2 24/41] fs: make block_write_{begin,end}() be able to handle huge pages
+Date: Fri, 12 Aug 2016 21:38:07 +0300
+Message-ID: <1471027104-115213-25-git-send-email-kirill.shutemov@linux.intel.com>
 References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -23,60 +23,117 @@ In-Reply-To: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Adjust how we find relevant block within page and how we clear the
-required part of the page.
+It's more or less straight-forward.
+
+Most changes are around getting offset/len withing page right and zero
+out desired part of the page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/move_extent.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/buffer.c | 53 +++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 31 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index a920c5d29fac..f3efdd0e0eaf 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -210,7 +210,9 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
- 				return err;
- 			}
- 			if (!buffer_mapped(bh)) {
--				zero_user(page, block_start, blocksize);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 2739f5dae690..7f50e5a63670 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1870,21 +1870,21 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
+ 	do {
+ 		block_end = block_start + bh->b_size;
+ 
+-		if (buffer_new(bh)) {
+-			if (block_end > from && block_start < to) {
+-				if (!PageUptodate(page)) {
+-					unsigned start, size;
++		if (buffer_new(bh) && block_end > from && block_start < to) {
++			if (!PageUptodate(page)) {
++				unsigned start, size;
+ 
+-					start = max(from, block_start);
+-					size = min(to, block_end) - start;
++				start = max(from, block_start);
++				size = min(to, block_end) - start;
+ 
+-					zero_user(page, start, size);
+-					set_buffer_uptodate(bh);
+-				}
+-
+-				clear_buffer_new(bh);
+-				mark_buffer_dirty(bh);
 +				zero_user(page + block_start / PAGE_SIZE,
++						start % PAGE_SIZE,
++						size);
++				set_buffer_uptodate(bh);
+ 			}
++
++			clear_buffer_new(bh);
++			mark_buffer_dirty(bh);
+ 		}
+ 
+ 		block_start = block_end;
+@@ -1950,18 +1950,20 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
+ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
+ 		get_block_t *get_block, struct iomap *iomap)
+ {
+-	unsigned from = pos & (PAGE_SIZE - 1);
+-	unsigned to = from + len;
+-	struct inode *inode = page->mapping->host;
++	unsigned from, to;
++	struct inode *inode = page_mapping(page)->host;
+ 	unsigned block_start, block_end;
+ 	sector_t block;
+ 	int err = 0;
+ 	unsigned blocksize, bbits;
+ 	struct buffer_head *bh, *head, *wait[2], **wait_bh=wait;
+ 
++	page = compound_head(page);
++	from = pos & ~hpage_mask(page);
++	to = from + len;
+ 	BUG_ON(!PageLocked(page));
+-	BUG_ON(from > PAGE_SIZE);
+-	BUG_ON(to > PAGE_SIZE);
++	BUG_ON(from > hpage_size(page));
++	BUG_ON(to > hpage_size(page));
+ 	BUG_ON(from > to);
+ 
+ 	head = create_page_buffers(page, inode, 0);
+@@ -2001,10 +2003,15 @@ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
+ 					mark_buffer_dirty(bh);
+ 					continue;
+ 				}
+-				if (block_end > to || block_start < from)
+-					zero_user_segments(page,
+-						to, block_end,
+-						block_start, from);
++				if (block_end > to || block_start < from) {
++					BUG_ON(to - from  > PAGE_SIZE);
++					zero_user_segments(page +
++							block_start / PAGE_SIZE,
++						to % PAGE_SIZE,
++						(block_start % PAGE_SIZE) + blocksize,
 +						block_start % PAGE_SIZE,
-+						blocksize);
- 				set_buffer_uptodate(bh);
++						from % PAGE_SIZE);
++				}
  				continue;
  			}
-@@ -267,10 +269,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	unsigned int tmp_data_size, data_size, replaced_size;
- 	int i, err2, jblocks, retries = 0;
- 	int replaced_count = 0;
--	int from = data_offset_in_page << orig_inode->i_blkbits;
-+	int from;
- 	int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
- 	struct super_block *sb = orig_inode->i_sb;
- 	struct buffer_head *bh = NULL;
-+	int diff;
+ 		}
+@@ -2048,6 +2055,7 @@ static int __block_commit_write(struct inode *inode, struct page *page,
+ 	unsigned blocksize;
+ 	struct buffer_head *bh, *head;
  
- 	/*
- 	 * It needs twice the amount of ordinary journal buffers because
-@@ -355,6 +358,9 @@ again:
- 		goto unlock_pages;
- 	}
- data_copy:
-+	diff = (pagep[0] - compound_head(pagep[0])) * blocks_per_page;
-+	from = (data_offset_in_page + diff) << orig_inode->i_blkbits;
-+	pagep[0] = compound_head(pagep[0]);
- 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
- 	if (*err)
- 		goto unlock_pages;
-@@ -384,7 +390,7 @@ data_copy:
- 	if (!page_has_buffers(pagep[0]))
- 		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
- 	bh = page_buffers(pagep[0]);
--	for (i = 0; i < data_offset_in_page; i++)
-+	for (i = 0; i < data_offset_in_page + diff; i++)
- 		bh = bh->b_this_page;
- 	for (i = 0; i < block_len_in_page; i++) {
- 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
++	VM_BUG_ON_PAGE(PageTail(page), page);
+ 	bh = head = page_buffers(page);
+ 	blocksize = bh->b_size;
+ 
+@@ -2114,7 +2122,8 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 	struct inode *inode = mapping->host;
+ 	unsigned start;
+ 
+-	start = pos & (PAGE_SIZE - 1);
++	page = compound_head(page);
++	start = pos & ~hpage_mask(page);
+ 
+ 	if (unlikely(copied < len)) {
+ 		/*
 -- 
 2.8.1
