@@ -1,75 +1,86 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv2, 00/41] ext4: support of huge pages
-Date: Sun, 14 Aug 2016 15:40:09 +0300
-Message-ID: <20160814124009.GA16848@node.shutemov.name>
-References: <1471027104-115213-1-git-send-email-kirill.shutemov@linux.intel.com>
- <638E01BE-FD45-465C-8464-2E2D96ED6787@dilger.ca>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: 4.7.0, cp -al causes OOM
+Date: Sun, 14 Aug 2016 14:51:12 +0200
+Message-ID: <20160814125111.GE9248@dhcp22.suse.cz>
+References: <201608120901.41463.a.miskiewicz@gmail.com>
+ <20160812074340.GC3639@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org, linux-mm@vger.kernel.org
+To: arekm@maven.pl
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-wm0-f66.google.com ([74.125.82.66]:35005 "EHLO
+	mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753510AbcHNMvP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2016 08:51:15 -0400
 Content-Disposition: inline
-In-Reply-To: <638E01BE-FD45-465C-8464-2E2D96ED6787@dilger.ca>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160812074340.GC3639@dhcp22.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 14, 2016 at 01:20:12AM -0600, Andreas Dilger wrote:
-> On Aug 12, 2016, at 12:37 PM, Kirill A. Shutemov <kirill.shutemov@linux.intel.com> wrote:
-> > 
-> > Here's stabilized version of my patchset which intended to bring huge pages
-> > to ext4.
-> > 
-> > The basics are the same as with tmpfs[1] which is in Linus' tree now and
-> > ext4 built on top of it. The main difference is that we need to handle
-> > read out from and write-back to backing storage.
-> > 
-> > Head page links buffers for whole huge page. Dirty/writeback tracking
-> > happens on per-hugepage level.
-> > 
-> > We read out whole huge page at once. It required bumping BIO_MAX_PAGES to
-> > not less than HPAGE_PMD_NR. I defined BIO_MAX_PAGES to HPAGE_PMD_NR if
-> > huge pagecache enabled.
-> > 
-> > On split_huge_page() we need to free buffers before splitting the page.
-> > Page buffers takes additional pin on the page and can be a vector to mess
-> > with the page during split. We want to avoid this.
-> > If try_to_free_buffers() fails, split_huge_page() would return -EBUSY.
-> > 
-> > Readahead doesn't play with huge pages well: 128k max readahead window,
-> > assumption on page size, PageReadahead() to track hit/miss.  I've got it
-> > to allocate huge pages, but it doesn't provide any readahead as such.
-> > I don't know how to do this right. It's not clear at this point if we
-> > really need readahead with huge pages. I guess it's good enough for now.
+On Fri 12-08-16 09:43:40, Michal Hocko wrote:
+> Hi,
 > 
-> Typically read-ahead is a loss if you are able to get large allocations on
-> disk, since you can get at least seek_rate * chunk_size throughput from the
-> disks even with random IO at that size.  With 1MB allocations and 7200
-> RPM drives this works out to be about 150MB/s, which is close to the
-> throughput of these drive already.
+> On Fri 12-08-16 09:01:41, Arkadiusz Miskiewicz wrote:
+[...]
+> > [87259.568395] Node 0 DMA: 0*4kB 0*8kB 0*16kB 0*32kB 0*64kB 0*128kB 0*256kB 0*512kB 1*1024kB (U) 1*2048kB (M) 3*4096kB (M) = 15360kB
+> > [87259.568403] Node 0 DMA32: 11467*4kB (UME) 1525*8kB (UME) 0*16kB 0*32kB 0*64kB 0*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 58068kB
+> > [87259.568411] Node 0 Normal: 9927*4kB (UMEH) 1119*8kB (UMH) 19*16kB (H) 8*32kB (H) 2*64kB (H) 0*128kB 0*256kB 0*512kB 0*1024kB 0*2048kB 0*4096kB = 49348kB
+> 
+> As you can see there are barely some high order pages available. There
+> are few in the atomic reserves which is a bit surprising because I would
+> expect they would get released under a heavy memory pressure. I will
+> double check that part.
 
-I'm more worried about not about throughput, but latancy spikes once we
-cross huge page boundaries. We can get cache miss where we had hit with
-small pages.
-
+OK, so the reason is that we are trying to preserve at least one page
+block per zone. This is not really all that much to matter overall but I
+guess we should just release those pageblocks because OOM is certainly
+much worse than an high order GFP_ATOMIC request failing. The diff below
+does that. I am a bit skeptical this will make much difference but let's
+give it a try. I will also send another patch which should show
+compaction/migration counters during high order OOMs. This might tell us
+a bit more about the compaction behavior.
+---
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 9d46b65061be..b8600943184e 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -2053,8 +2053,7 @@ static void unreserve_highatomic_pageblock(const struct alloc_context *ac)
+ 
+ 	for_each_zone_zonelist_nodemask(zone, z, zonelist, ac->high_zoneidx,
+ 								ac->nodemask) {
+-		/* Preserve at least one pageblock */
+-		if (zone->nr_reserved_highatomic <= pageblock_nr_pages)
++		if (!zone->nr_reserved_highatomic)
+ 			continue;
+ 
+ 		spin_lock_irqsave(&zone->lock, flags);
+@@ -3276,11 +3275,10 @@ __alloc_pages_direct_reclaim(gfp_t gfp_mask, unsigned int order,
+ 
+ 	/*
+ 	 * If an allocation failed after direct reclaim, it could be because
+-	 * pages are pinned on the per-cpu lists or in high alloc reserves.
++	 * pages are pinned on the per-cpu lists.
+ 	 * Shrink them them and try again
+ 	 */
+ 	if (!page && !drained) {
+-		unreserve_highatomic_pageblock(ac);
+ 		drain_all_pages(NULL);
+ 		drained = true;
+ 		goto retry;
+@@ -3636,6 +3634,12 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
+ 		goto retry;
+ 
+ 	/*
++	 * Make sure we are not pinning atomic higher order reserves when we
++	 * are really fighting to get !costly order and running out of memory
++	 */
++	unreserve_highatomic_pageblock(ac);
++
++	/*
+ 	 * It doesn't make any sense to retry for the compaction if the order-0
+ 	 * reclaim is not able to make any progress because the current
+ 	 * implementation of the compaction depends on the sufficient amount
 -- 
- Kirill A. Shutemov
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Michal Hocko
+SUSE Labs
