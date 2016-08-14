@@ -1,119 +1,110 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: [PATCH] mm, oom: report compaction/migration stats for higher order
- requests
-Date: Sun, 14 Aug 2016 14:53:27 +0200
-Message-ID: <20160814125327.GF9248@dhcp22.suse.cz>
-References: <201608120901.41463.a.miskiewicz@gmail.com>
- <20160812074340.GC3639@dhcp22.suse.cz>
- <20160814125111.GE9248@dhcp22.suse.cz>
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: ext4: fix reference counting bug on block allocation error
+Date: Sun, 14 Aug 2016 20:32:06 +0200
+Message-ID: <20160814183206.GA11040@kroah.com>
+References: <20160727052921.5B41C35574@git2.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-mm@vger.kernel.org
-To: arekm@maven.pl
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Vegard Nossum <vegard.nossum@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:36521 "EHLO
-	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751015AbcHNMxa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2016 08:53:30 -0400
+Received: from mail.linuxfoundation.org ([140.211.169.12]:44353 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750745AbcHNSb5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Aug 2016 14:31:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20160814125111.GE9248@dhcp22.suse.cz>
+In-Reply-To: <20160727052921.5B41C35574@git2.kroah.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Michal Hocko <mhocko@suse.com>
+Hi Vegard and ext4 developers,
 
-Both oom and the allocation failure reports are not providing any
-information about the compaction/migration counters which might give us
-a clue what went wrong and why we are OOM for the particular order -
-e.g. the compaction fails constantly because it cannot isolate any pages
-or that the migration fails. So far we have been asking for /proc/vmstat
-content before and after the OOM which is rather clumsy, especially when
-the OOM is not 100% reproducible.
+The patch below, in Linus's tree, references a patch in the Fixes: line
+that is not in Linus's tree (neither the git commit id, nor the subject
+line.)
 
-Extend show_mem() to understand a new filter (SHOW_COMPACTION_STATS)
-which is enabled only for higer order paths.
+That's a bit confusing, what is this patch supposed to be fixing up?
+What stable tree(s) should it go to if the original patch it fixes isn't
+even in any tree?
 
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- include/linux/mm.h |  1 +
- lib/show_mem.c     | 14 ++++++++++++++
- mm/oom_kill.c      |  2 +-
- mm/page_alloc.c    |  2 ++
- 4 files changed, 18 insertions(+), 1 deletion(-)
+confused,
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 7e44613c5078..b4859547acc4 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1146,6 +1146,7 @@ extern void pagefault_out_of_memory(void);
-  * various contexts.
-  */
- #define SHOW_MEM_FILTER_NODES		(0x0001u)	/* disallowed nodes */
-+#define SHOW_COMPACTION_STATS		(0x0002u)
- 
- extern void show_free_areas(unsigned int flags);
- extern bool skip_free_areas_node(unsigned int flags, int nid);
-diff --git a/lib/show_mem.c b/lib/show_mem.c
-index 1feed6a2b12a..595ba00f5836 100644
---- a/lib/show_mem.c
-+++ b/lib/show_mem.c
-@@ -8,6 +8,7 @@
- #include <linux/mm.h>
- #include <linux/quicklist.h>
- #include <linux/cma.h>
-+#include <linux/vm_event_item.h>
- 
- void show_mem(unsigned int filter)
- {
-@@ -17,6 +18,19 @@ void show_mem(unsigned int filter)
- 	printk("Mem-Info:\n");
- 	show_free_areas(filter);
- 
-+#ifdef CONFIG_COMPACTION
-+	if (filter & SHOW_COMPACTION_STATS) {
-+		printk("compaction_stall:%lu compaction_fail:%lu "
-+		       "compact_migrate_scanned:%lu compact_free_scanned:%lu "
-+		       "compact_isolated:%lu "
-+		       "pgmigrate_success:%lu pgmigrate_fail:%lu\n",
-+		       global_page_state(COMPACTSTALL), global_page_state(COMPACTFAIL),
-+		       global_page_state(COMPACTMIGRATE_SCANNED), global_page_state(COMPACTFAIL),
-+		       global_page_state(COMPACTISOLATED),
-+		       global_page_state(PGMIGRATE_SUCCESS), global_page_state(PGMIGRATE_FAIL));
-+	}
-+#endif
-+
- 	for_each_online_pgdat(pgdat) {
- 		unsigned long flags;
- 		int zoneid;
-diff --git a/mm/oom_kill.c b/mm/oom_kill.c
-index 463cdd22d4e0..5e7a09f4dbc9 100644
---- a/mm/oom_kill.c
-+++ b/mm/oom_kill.c
-@@ -419,7 +419,7 @@ static void dump_header(struct oom_control *oc, struct task_struct *p)
- 	if (oc->memcg)
- 		mem_cgroup_print_oom_info(oc->memcg, p);
- 	else
--		show_mem(SHOW_MEM_FILTER_NODES);
-+		show_mem(SHOW_MEM_FILTER_NODES | (oc->order)?SHOW_COMPACTION_STATS:0);
- 	if (sysctl_oom_dump_tasks)
- 		dump_tasks(oc->memcg, oc->nodemask);
- }
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 9d46b65061be..adf0cb655827 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -2999,6 +2999,8 @@ void warn_alloc_failed(gfp_t gfp_mask, unsigned int order, const char *fmt, ...)
- 	pr_warn("%s: page allocation failure: order:%u, mode:%#x(%pGg)\n",
- 		current->comm, order, gfp_mask, &gfp_mask);
- 	dump_stack();
-+	if (order)
-+		filter |= SHOW_COMPACTION_STATS;
- 	if (!should_suppress_show_mem())
- 		show_mem(filter);
- }
--- 
-2.8.1
+greg k-h
 
--- 
-Michal Hocko
-SUSE Labs
+
+On Wed, Jul 27, 2016 at 05:29:21AM +0000, Gregs git-bot wrote:
+> commit: 554a5ccc4e4a20c5f3ec859de0842db4b4b9c77e
+> From: Vegard Nossum <vegard.nossum@oracle.com>
+> Date: Thu, 14 Jul 2016 23:02:47 -0400
+> Subject: ext4: fix reference counting bug on block allocation error
+> 
+> If we hit this error when mounted with errors=continue or
+> errors=remount-ro:
+> 
+>     EXT4-fs error (device loop0): ext4_mb_mark_diskspace_used:2940: comm ext4.exe: Allocating blocks 5090-6081 which overlap fs metadata
+> 
+> then ext4_mb_new_blocks() will call ext4_mb_release_context() and try to
+> continue. However, ext4_mb_release_context() is the wrong thing to call
+> here since we are still actually using the allocation context.
+> 
+> Instead, just error out. We could retry the allocation, but there is a
+> possibility of getting stuck in an infinite loop instead, so this seems
+> safer.
+> 
+> [ Fixed up so we don't return EAGAIN to userspace. --tytso ]
+> 
+> Fixes: 8556e8f3b6 ("ext4: Don't allow new groups to be added during block allocation")
+> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/mballoc.c | 17 +++--------------
+>  1 file changed, 3 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 77249e1..1156216 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2943,7 +2943,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+>  		ext4_error(sb, "Allocating blocks %llu-%llu which overlap "
+>  			   "fs metadata", block, block+len);
+>  		/* File system mounted not to panic on error
+> -		 * Fix the bitmap and repeat the block allocation
+> +		 * Fix the bitmap and return EFSCORRUPTED
+>  		 * We leak some of the blocks here.
+>  		 */
+>  		ext4_lock_group(sb, ac->ac_b_ex.fe_group);
+> @@ -2952,7 +2952,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+>  		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
+>  		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+>  		if (!err)
+> -			err = -EAGAIN;
+> +			err = -EFSCORRUPTED;
+>  		goto out_err;
+>  	}
+>  
+> @@ -4517,18 +4517,7 @@ repeat:
+>  	}
+>  	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+>  		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_clstrs);
+> -		if (*errp == -EAGAIN) {
+> -			/*
+> -			 * drop the reference that we took
+> -			 * in ext4_mb_use_best_found
+> -			 */
+> -			ext4_mb_release_context(ac);
+> -			ac->ac_b_ex.fe_group = 0;
+> -			ac->ac_b_ex.fe_start = 0;
+> -			ac->ac_b_ex.fe_len = 0;
+> -			ac->ac_status = AC_STATUS_CONTINUE;
+> -			goto repeat;
+> -		} else if (*errp) {
+> +		if (*errp) {
+>  			ext4_discard_allocated_blocks(ac);
+>  			goto errout;
+>  		} else {
+> -- 
+> 2.9.0
