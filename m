@@ -1,92 +1,57 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: improve ext4lazyinit scalability V2
-Date: Mon, 15 Aug 2016 17:05:20 +0200
-Message-ID: <20160815150520.GA22082@quack2.suse.cz>
-References: <1471263815-26022-1-git-send-email-dmonakhov@openvz.org>
+From: Greg KH <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
+Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME
+ and CURRENT_TIME_SEC macros
+Date: Mon, 15 Aug 2016 18:23:12 +0200
+Message-ID: <20160815162312.GA19794@kroah.com>
+References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, tytso@mit.edu
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35557 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752590AbcHOPFW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Aug 2016 11:05:22 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org,
+	clm-b10kYP2dOMg@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, buchino-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org,
+	tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, jejb-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
+	paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org, idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org,
+	dushistov-JGs/UdohzUI@public.gmane.org, arnd-r2nGTMty4D4@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org,
+	sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org,
+	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
+	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	martin.petersen-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
+	hiralpat-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org, linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+	ocfs2-devel-N0ozoZBvEnonbStXaT1jcA@public.gmane.org
+To: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1471263815-26022-1-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1471128518-24075-1-git-send-email-deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
+List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
+	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
+Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
+Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Sat, Aug 13, 2016 at 03:48:12PM -0700, Deepa Dinamani wrote:
+> The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
+> The macros are not y2038 safe. There is no plan to transition them into being
+> y2038 safe.
+> ktime_get_* api's can be used in their place. And, these are y2038 safe.
 
-Thanks for the patch. Couple of spelling fixes below and one functional
-comment...
+Who are you execting to pull this huge patch series?
 
-On Mon 15-08-16 16:23:35, Dmitry Monakhov wrote:
-> ext4lazyinit is global thread. This thread performs itable initalization
-                 ^^^ a global thread
+Why not just introduce the new api call, wait for that to be merged, and
+then push the individual patches through the different subsystems?
+After half of those get ignored, then provide a single set of patches
+that can go through Andrew or my trees.
 
-> under li_list_mtx mutex.
-> 
-> It basically does following:
-                   ^ the
+thanks,
 
-> ext4_lazyinit_thread
->   ->mutex_lock(&eli->li_list_mtx);
->   ->ext4_run_li_request(elr)
->     ->ext4_init_inode_table-> Do a lot of IO if the list is large
-> 
-> And when new mount/umount arrive they have to block on ->li_list_mtx
-> because  lazy_thread holds it during full walk procedure.
-> ext4_fill_super
->  ->ext4_register_li_request
->    ->mutex_lock(&ext4_li_info->li_list_mtx);
->    ->list_add(&elr->lr_request, &ext4_li_info >li_request_list);
-> In my case mount takes 40minutes on server with 36 * 4Tb HDD.
-> Common user may face this in case of very slow dev ( /dev/mmcblkXXX)
-> Even more. If one of filesystems was frozen lazyinit_thread will simply
-> blocks on sb_start_write() so other mount/umount will be suck forever.
-  ^^^ block                                                ^^ stuck
-
-> This patch changes logic like follows:
-> - grap ->s_umount read sem before processing new li_request.
-    ^^^ grab
-
->   After that it is safe to drop li_list_mtx because all callers of
->   li_remove_request are holding ->s_umount for write.
-> - li_thread skips frozen SB's
-> 
-> Locking order:
-> Order is asserted by umout path like follows: s_umount ->li_list_mtx so
-                        ^^^ umount
-
-> the only way to to grab ->s_mount inside li_thread is via down_read_trylock
-> 
-> xfstests:ext4/023
-> #PSBM-49658
-> 
-> Changes from V1
->  - spell fixes according to jack@ comments
->  - do not use temporal list.
-> 
-> 
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  fs/ext4/super.c | 43 +++++++++++++++++++++++++++++++------------
->  1 file changed, 31 insertions(+), 12 deletions(-)
-...
-> +			if (!progress) {
-> +				elr->lr_next_sched = jiffies +
-> +					(prandom_u32()
-> +					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
->  			}
-
-I think we need to update next_wakeup here based on updated value of
-lr_next_sched and also in case ext4_run_li_request() didn't complete the
-request but ended up rescheduling it. Otherwise the patch looks fine.
-
-								Honza
-
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+greg k-h
