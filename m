@@ -1,129 +1,125 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher
- order requests
-Date: Mon, 15 Aug 2016 10:51:29 +0200
-Message-ID: <20160815085129.GA3360@dhcp22.suse.cz>
-References: <201608120901.41463.a.miskiewicz@gmail.com>
- <20160812074340.GC3639@dhcp22.suse.cz>
- <20160814125111.GE9248@dhcp22.suse.cz>
- <20160814125327.GF9248@dhcp22.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-mm@vger.kernel.org
-To: arekm@maven.pl
+From: Dmitry Monakhov <dmonakhov@openvz.org>
+Subject: [PATCH] ext4: improve ext4lazyinit scalability V2
+Date: Mon, 15 Aug 2016 16:23:35 +0400
+Message-ID: <1471263815-26022-1-git-send-email-dmonakhov@openvz.org>
+Cc: jack@suse.cz, tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:36551 "EHLO
-	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752073AbcHOIvc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Aug 2016 04:51:32 -0400
-Content-Disposition: inline
-In-Reply-To: <20160814125327.GF9248@dhcp22.suse.cz>
+Received: from mailhub.sw.ru ([195.214.232.25]:48377 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752785AbcHOMXr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Aug 2016 08:23:47 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[Fixing up linux-mm]
+ext4lazyinit is global thread. This thread performs itable initalization
+under li_list_mtx mutex.
 
-Ups I had a c&p error in the previous patch. Here is an updated patch.
+It basically does following:
+ext4_lazyinit_thread
+  ->mutex_lock(&eli->li_list_mtx);
+  ->ext4_run_li_request(elr)
+    ->ext4_init_inode_table-> Do a lot of IO if the list is large
+
+And when new mount/umount arrive they have to block on ->li_list_mtx
+because  lazy_thread holds it during full walk procedure.
+ext4_fill_super
+ ->ext4_register_li_request
+   ->mutex_lock(&ext4_li_info->li_list_mtx);
+   ->list_add(&elr->lr_request, &ext4_li_info >li_request_list);
+In my case mount takes 40minutes on server with 36 * 4Tb HDD.
+Common user may face this in case of very slow dev ( /dev/mmcblkXXX)
+Even more. If one of filesystems was frozen lazyinit_thread will simply
+blocks on sb_start_write() so other mount/umount will be suck forever.
+
+This patch changes logic like follows:
+- grap ->s_umount read sem before processing new li_request.
+  After that it is safe to drop li_list_mtx because all callers of
+  li_remove_request are holding ->s_umount for write.
+- li_thread skips frozen SB's
+
+Locking order:
+Order is asserted by umout path like follows: s_umount ->li_list_mtx so
+the only way to to grab ->s_mount inside li_thread is via down_read_trylock
+
+xfstests:ext4/023
+#PSBM-49658
+
+Changes from V1
+ - spell fixes according to jack@ comments
+ - do not use temporal list.
+
+
+Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 ---
->From 348e768ab1f885bb6dc3160158c17f043fd7f219 Mon Sep 17 00:00:00 2001
-From: Michal Hocko <mhocko@suse.com>
-Date: Sun, 14 Aug 2016 12:23:13 +0200
-Subject: [PATCH] mm, oom: report compaction/migration stats for higher order
- requests
+ fs/ext4/super.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-Both oom and the allocation failure reports are not providing any
-information about the compaction/migration counters which might give us
-a clue what went wrong and why we are OOM for the particular order -
-e.g. the compaction fails constantly because it cannot isolate any pages
-or that the migration fails. So far we have been asking for /proc/vmstat
-content before and after the OOM which is rather clumsy, especially when
-the OOM is not 100% reproducible.
-
-Extend show_mem() to understand a new filter (SHOW_COMPACTION_STATS)
-which is enabled only for higer order paths.
-
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- include/linux/mm.h |  1 +
- lib/show_mem.c     | 14 ++++++++++++++
- mm/oom_kill.c      |  2 +-
- mm/page_alloc.c    |  2 ++
- 4 files changed, 18 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 7e44613c5078..b4859547acc4 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1146,6 +1146,7 @@ extern void pagefault_out_of_memory(void);
-  * various contexts.
-  */
- #define SHOW_MEM_FILTER_NODES		(0x0001u)	/* disallowed nodes */
-+#define SHOW_COMPACTION_STATS		(0x0002u)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3822a5a..0e45344 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2635,7 +2635,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 	sb = elr->lr_super;
+ 	ngroups = EXT4_SB(sb)->s_groups_count;
  
- extern void show_free_areas(unsigned int flags);
- extern bool skip_free_areas_node(unsigned int flags, int nid);
-diff --git a/lib/show_mem.c b/lib/show_mem.c
-index 1feed6a2b12a..c0ac5bd2c121 100644
---- a/lib/show_mem.c
-+++ b/lib/show_mem.c
-@@ -8,6 +8,7 @@
- #include <linux/mm.h>
- #include <linux/quicklist.h>
- #include <linux/cma.h>
-+#include <linux/vm_event_item.h>
- 
- void show_mem(unsigned int filter)
- {
-@@ -17,6 +18,19 @@ void show_mem(unsigned int filter)
- 	printk("Mem-Info:\n");
- 	show_free_areas(filter);
- 
-+#ifdef CONFIG_COMPACTION
-+	if (filter & SHOW_COMPACTION_STATS) {
-+		printk("compaction_stall:%lu compaction_fail:%lu "
-+		       "compact_migrate_scanned:%lu compact_free_scanned:%lu "
-+		       "compact_isolated:%lu "
-+		       "pgmigrate_success:%lu pgmigrate_fail:%lu\n",
-+		       global_page_state(COMPACTSTALL), global_page_state(COMPACTFAIL),
-+		       global_page_state(COMPACTMIGRATE_SCANNED), global_page_state(COMPACTFREE_SCANNED),
-+		       global_page_state(COMPACTISOLATED),
-+		       global_page_state(PGMIGRATE_SUCCESS), global_page_state(PGMIGRATE_FAIL));
-+	}
-+#endif
-+
- 	for_each_online_pgdat(pgdat) {
- 		unsigned long flags;
- 		int zoneid;
-diff --git a/mm/oom_kill.c b/mm/oom_kill.c
-index 463cdd22d4e0..5e7a09f4dbc9 100644
---- a/mm/oom_kill.c
-+++ b/mm/oom_kill.c
-@@ -419,7 +419,7 @@ static void dump_header(struct oom_control *oc, struct task_struct *p)
- 	if (oc->memcg)
- 		mem_cgroup_print_oom_info(oc->memcg, p);
- 	else
--		show_mem(SHOW_MEM_FILTER_NODES);
-+		show_mem(SHOW_MEM_FILTER_NODES | (oc->order)?SHOW_COMPACTION_STATS:0);
- 	if (sysctl_oom_dump_tasks)
- 		dump_tasks(oc->memcg, oc->nodemask);
+-	sb_start_write(sb);
+ 	for (group = elr->lr_next_group; group < ngroups; group++) {
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		if (!gdp) {
+@@ -2662,8 +2661,6 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+ 		elr->lr_next_group = group + 1;
+ 	}
+-	sb_end_write(sb);
+-
+ 	return ret;
  }
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 9d46b65061be..adf0cb655827 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -2999,6 +2999,8 @@ void warn_alloc_failed(gfp_t gfp_mask, unsigned int order, const char *fmt, ...)
- 	pr_warn("%s: page allocation failure: order:%u, mode:%#x(%pGg)\n",
- 		current->comm, order, gfp_mask, &gfp_mask);
- 	dump_stack();
-+	if (order)
-+		filter |= SHOW_COMPACTION_STATS;
- 	if (!should_suppress_show_mem())
- 		show_mem(filter);
- }
--- 
-2.8.1
-
-
--- 
-Michal Hocko
-SUSE Labs
+ 
+@@ -2728,21 +2725,43 @@ cont_thread:
+ 			mutex_unlock(&eli->li_list_mtx);
+ 			goto exit_thread;
+ 		}
+-
+ 		list_for_each_safe(pos, n, &eli->li_request_list) {
++			int err = 0;
++			int progress = 0;
+ 			elr = list_entry(pos, struct ext4_li_request,
+ 					 lr_request);
+ 
+-			if (time_after_eq(jiffies, elr->lr_next_sched)) {
+-				if (ext4_run_li_request(elr) != 0) {
+-					/* error, remove the lazy_init job */
+-					ext4_remove_li_request(elr);
+-					continue;
++			if (time_before(jiffies, elr->lr_next_sched)) {
++				if (time_before(elr->lr_next_sched, next_wakeup))
++					next_wakeup = elr->lr_next_sched;
++				continue;
++			}
++			if (down_read_trylock(&elr->lr_super->s_umount)) {
++				if (sb_start_write_trylock(elr->lr_super)) {
++					progress = 1;
++					/*
++					 * We hold sb->s_umount, sb can not
++					 * be removed from the list, it is
++					 * now safe to drop li_list_mtx
++					 */
++					mutex_unlock(&eli->li_list_mtx);
++					err = ext4_run_li_request(elr);
++					sb_end_write(elr->lr_super);
++					mutex_lock(&eli->li_list_mtx);
++					n = pos->next;
+ 				}
++				up_read((&elr->lr_super->s_umount));
++			}
++			/* error, remove the lazy_init job */
++			if (err) {
++				ext4_remove_li_request(elr);
++				continue;
++			}
++			if (!progress) {
++				elr->lr_next_sched = jiffies +
++					(prandom_u32()
++					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
+ 			}
