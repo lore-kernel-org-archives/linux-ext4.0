@@ -1,57 +1,96 @@
-From: Greg KH <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
-Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME
- and CURRENT_TIME_SEC macros
-Date: Mon, 15 Aug 2016 18:23:12 +0200
-Message-ID: <20160815162312.GA19794@kroah.com>
-References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] xfstests-bld: delete exclude files containing ext4 defrag
+ tests
+Date: Mon, 15 Aug 2016 13:24:59 -0400
+Message-ID: <20160815172459.GA2185@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org,
-	clm-b10kYP2dOMg@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, buchino-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org,
-	tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, jejb-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
-	paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org, idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org,
-	dushistov-JGs/UdohzUI@public.gmane.org, arnd-r2nGTMty4D4@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org,
-	sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org,
-	viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
-	ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	martin.petersen-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
-	hiralpat-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org, linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-	ocfs2-devel-N0ozoZBvEnonbStXaT1jcA@public.gmane.org
-To: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:36720 "EHLO
+	mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752824AbcHORVZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Aug 2016 13:21:25 -0400
+Received: by mail-qt0-f194.google.com with SMTP id u25so2316456qtb.3
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Aug 2016 10:21:25 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1471128518-24075-1-git-send-email-deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
-List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
-Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
-Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 13, 2016 at 03:48:12PM -0700, Deepa Dinamani wrote:
-> The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
-> The macros are not y2038 safe. There is no plan to transition them into being
-> y2038 safe.
-> ktime_get_* api's can be used in their place. And, these are y2038 safe.
+The _require_defrag function in xfstests can now correctly determine
+whether an ext4 test file system supports the online defrag feature.
+The exclude files that were added to prevent test failure noise when
+running online defrag tests on journaled data and bigalloc file systems
+are no longer necessary.  These tests include ext4/301-304 and
+ext4/307-308.
 
-Who are you execting to pull this huge patch series?
+ext4/304 remains in the master exclude file for an unrelated problem.
 
-Why not just introduce the new api call, wait for that to be merged, and
-then push the individual patches through the different subsystems?
-After half of those get ignored, then provide a single set of patches
-that can go through Andrew or my trees.
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ .../test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude         | 7 -------
+ .../test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude      | 7 -------
+ .../test-appliance/files/root/fs/ext4/cfg/data_journal.exclude     | 7 -------
+ .../files/root/fs/ext4/cfg/data_journal_noleak.exclude             | 7 -------
+ 4 files changed, 28 deletions(-)
+ delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
+ delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
+ delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
+ delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
 
-thanks,
+diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
+deleted file mode 100644
+index bd779be..0000000
+--- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# bigalloc does not support on-line defrag
+-ext4/301
+-ext4/302
+-ext4/303
+-ext4/304
+-ext4/307
+-ext4/308
+diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
+deleted file mode 100644
+index bd779be..0000000
+--- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# bigalloc does not support on-line defrag
+-ext4/301
+-ext4/302
+-ext4/303
+-ext4/304
+-ext4/307
+-ext4/308
+diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
+deleted file mode 100644
+index 7190c8c..0000000
+--- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# data_journal does not support on-line defrag
+-ext4/301
+-ext4/302
+-ext4/303
+-ext4/304
+-ext4/307
+-ext4/308
+diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
+deleted file mode 100644
+index 7190c8c..0000000
+--- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# data_journal does not support on-line defrag
+-ext4/301
+-ext4/302
+-ext4/303
+-ext4/304
+-ext4/307
+-ext4/308
+-- 
+2.1.4
 
-greg k-h
