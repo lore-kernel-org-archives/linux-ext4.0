@@ -1,64 +1,129 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: fix reference counting bug on block allocation error
-Date: Sun, 14 Aug 2016 16:19:08 -0400
-Message-ID: <20160814201908.GO10626@thunk.org>
-References: <20160727052921.5B41C35574@git2.kroah.org>
- <20160814183206.GA11040@kroah.com>
- <57B0BA84.1000600@oracle.com>
- <20160814185125.GA4077@kroah.com>
- <20160814185805.GA8087@kroah.com>
- <57B0C058.9010800@oracle.com>
- <20160814190919.GA9517@kroah.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher
+ order requests
+Date: Mon, 15 Aug 2016 10:51:29 +0200
+Message-ID: <20160815085129.GA3360@dhcp22.suse.cz>
+References: <201608120901.41463.a.miskiewicz@gmail.com>
+ <20160812074340.GC3639@dhcp22.suse.cz>
+ <20160814125111.GE9248@dhcp22.suse.cz>
+ <20160814125327.GF9248@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Vegard Nossum <vegard.nossum@oracle.com>, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Greg KH <gregkh@linuxfoundation.org>
+Cc: linux-ext4@vger.kernel.org, linux-mm@vger.kernel.org
+To: arekm@maven.pl
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54416 "EHLO imap.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752077AbcHNUTk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Aug 2016 16:19:40 -0400
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:36551 "EHLO
+	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752073AbcHOIvc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Aug 2016 04:51:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20160814190919.GA9517@kroah.com>
+In-Reply-To: <20160814125327.GF9248@dhcp22.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 14, 2016 at 09:09:19PM +0200, Greg KH wrote:
-> Huh?  Ok, this odd:
-> 	$ git describe --contains 8556e8f3b6
-> 	fatal: cannot describe '8556e8f3b6c4c11601ce1e9ea8090a6d8bd5daae'
-> 
-> Yet just a plain 'git describe' does work...
-> 
-> That's what threw me off, I only use --contains as that shows the
-> release the commit is in.
-> 
-> Ok, that makes me feel a bit better (that my scripts didn't miss the
-> patch, it was just old), but I wonder what is going on with git...
+[Fixing up linux-mm]
 
-Yeah, that's partially my fault.  Back in 2009, I was using a version
-of guilt (quilt for git) that didn't enforce the requirement that
-within a particular linear sequence of commits, the Committer time
-must be always be increasing.  In other words, things like this are
-never supposed to happen:
+Ups I had a c&p error in the previous patch. Here is an updated patch.
+---
+>From 348e768ab1f885bb6dc3160158c17f043fd7f219 Mon Sep 17 00:00:00 2001
+From: Michal Hocko <mhocko@suse.com>
+Date: Sun, 14 Aug 2016 12:23:13 +0200
+Subject: [PATCH] mm, oom: report compaction/migration stats for higher order
+ requests
 
-% git log --pretty="%h %ci %s"  -7 e8134b2
-e8134b2 2009-01-05 21:38:26 -0500 ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
-5d1b1b3 2009-01-05 22:19:52 -0500 ext4: fix BUG when calling ext4_error with locked block group
-b7be019 2008-11-23 23:51:53 -0500 ext4: Fix lockdep recursive locking warning
-7a2fcbf 2009-01-05 21:36:55 -0500 ext4: don't use blocks freed but not yet committed in buddy cache init
-fb68407 2008-11-06 17:50:21 -0500 jbd2: Call journal commit callback without holding j_list_lock
-c3a326a 2008-11-25 15:11:52 -0500 ext4: cleanup mballoc header files
-920313a 2009-01-05 21:36:19 -0500 ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+Both oom and the allocation failure reports are not providing any
+information about the compaction/migration counters which might give us
+a clue what went wrong and why we are OOM for the particular order -
+e.g. the compaction fails constantly because it cannot isolate any pages
+or that the migration fails. So far we have been asking for /proc/vmstat
+content before and after the OOM which is rather clumsy, especially when
+the OOM is not 100% reproducible.
 
-... because it hopelessly confuses commands like "git describe".  As
-you have rediscovered.  :-)
+Extend show_mem() to understand a new filter (SHOW_COMPACTION_STATS)
+which is enabled only for higer order paths.
 
-The guilt command was fixed a long time ago to not do this thing, but
-the nasty commits from late 2008 and early 2009 are still in the tree.
-Fortunately, it's rare that we need to refer to commits this old, and
-so people don't run into this often.
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+---
+ include/linux/mm.h |  1 +
+ lib/show_mem.c     | 14 ++++++++++++++
+ mm/oom_kill.c      |  2 +-
+ mm/page_alloc.c    |  2 ++
+ 4 files changed, 18 insertions(+), 1 deletion(-)
 
-						- Ted
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 7e44613c5078..b4859547acc4 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1146,6 +1146,7 @@ extern void pagefault_out_of_memory(void);
+  * various contexts.
+  */
+ #define SHOW_MEM_FILTER_NODES		(0x0001u)	/* disallowed nodes */
++#define SHOW_COMPACTION_STATS		(0x0002u)
+ 
+ extern void show_free_areas(unsigned int flags);
+ extern bool skip_free_areas_node(unsigned int flags, int nid);
+diff --git a/lib/show_mem.c b/lib/show_mem.c
+index 1feed6a2b12a..c0ac5bd2c121 100644
+--- a/lib/show_mem.c
++++ b/lib/show_mem.c
+@@ -8,6 +8,7 @@
+ #include <linux/mm.h>
+ #include <linux/quicklist.h>
+ #include <linux/cma.h>
++#include <linux/vm_event_item.h>
+ 
+ void show_mem(unsigned int filter)
+ {
+@@ -17,6 +18,19 @@ void show_mem(unsigned int filter)
+ 	printk("Mem-Info:\n");
+ 	show_free_areas(filter);
+ 
++#ifdef CONFIG_COMPACTION
++	if (filter & SHOW_COMPACTION_STATS) {
++		printk("compaction_stall:%lu compaction_fail:%lu "
++		       "compact_migrate_scanned:%lu compact_free_scanned:%lu "
++		       "compact_isolated:%lu "
++		       "pgmigrate_success:%lu pgmigrate_fail:%lu\n",
++		       global_page_state(COMPACTSTALL), global_page_state(COMPACTFAIL),
++		       global_page_state(COMPACTMIGRATE_SCANNED), global_page_state(COMPACTFREE_SCANNED),
++		       global_page_state(COMPACTISOLATED),
++		       global_page_state(PGMIGRATE_SUCCESS), global_page_state(PGMIGRATE_FAIL));
++	}
++#endif
++
+ 	for_each_online_pgdat(pgdat) {
+ 		unsigned long flags;
+ 		int zoneid;
+diff --git a/mm/oom_kill.c b/mm/oom_kill.c
+index 463cdd22d4e0..5e7a09f4dbc9 100644
+--- a/mm/oom_kill.c
++++ b/mm/oom_kill.c
+@@ -419,7 +419,7 @@ static void dump_header(struct oom_control *oc, struct task_struct *p)
+ 	if (oc->memcg)
+ 		mem_cgroup_print_oom_info(oc->memcg, p);
+ 	else
+-		show_mem(SHOW_MEM_FILTER_NODES);
++		show_mem(SHOW_MEM_FILTER_NODES | (oc->order)?SHOW_COMPACTION_STATS:0);
+ 	if (sysctl_oom_dump_tasks)
+ 		dump_tasks(oc->memcg, oc->nodemask);
+ }
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 9d46b65061be..adf0cb655827 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -2999,6 +2999,8 @@ void warn_alloc_failed(gfp_t gfp_mask, unsigned int order, const char *fmt, ...)
+ 	pr_warn("%s: page allocation failure: order:%u, mode:%#x(%pGg)\n",
+ 		current->comm, order, gfp_mask, &gfp_mask);
+ 	dump_stack();
++	if (order)
++		filter |= SHOW_COMPACTION_STATS;
+ 	if (!should_suppress_show_mem())
+ 		show_mem(filter);
+ }
+-- 
+2.8.1
+
+
+-- 
+Michal Hocko
+SUSE Labs
