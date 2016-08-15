@@ -1,96 +1,85 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] xfstests-bld: delete exclude files containing ext4 defrag
- tests
-Date: Mon, 15 Aug 2016 13:24:59 -0400
-Message-ID: <20160815172459.GA2185@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH 3/7] dax: remove buffer_size_valid()
+Date: Mon, 15 Aug 2016 13:09:14 -0600
+Message-ID: <20160815190918.20672-4-ross.zwisler@linux.intel.com>
+References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:36720 "EHLO
-	mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752824AbcHORVZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Aug 2016 13:21:25 -0400
-Received: by mail-qt0-f194.google.com with SMTP id u25so2316456qtb.3
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Aug 2016 10:21:25 -0700 (PDT)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20160815190918.20672-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-The _require_defrag function in xfstests can now correctly determine
-whether an ext4 test file system supports the online defrag feature.
-The exclude files that were added to prevent test failure noise when
-running online defrag tests on journaled data and bigalloc file systems
-are no longer necessary.  These tests include ext4/301-304 and
-ext4/307-308.
+Now that all our supported filesystems (ext2, ext4 and XFS) all properly
+set bh.b_size when we call get_block() for a hole, rely on that value and
+remove the buffer_size_valid() sanity check.
 
-ext4/304 remains in the master exclude file for an unrelated problem.
-
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- .../test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude         | 7 -------
- .../test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude      | 7 -------
- .../test-appliance/files/root/fs/ext4/cfg/data_journal.exclude     | 7 -------
- .../files/root/fs/ext4/cfg/data_journal_noleak.exclude             | 7 -------
- 4 files changed, 28 deletions(-)
- delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
- delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
- delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
- delete mode 100644 kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
+ fs/dax.c | 22 +---------------------
+ 1 file changed, 1 insertion(+), 21 deletions(-)
 
-diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
-deleted file mode 100644
-index bd779be..0000000
---- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc.exclude
-+++ /dev/null
-@@ -1,7 +0,0 @@
--# bigalloc does not support on-line defrag
--ext4/301
--ext4/302
--ext4/303
--ext4/304
--ext4/307
--ext4/308
-diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
-deleted file mode 100644
-index bd779be..0000000
---- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc_1k.exclude
-+++ /dev/null
-@@ -1,7 +0,0 @@
--# bigalloc does not support on-line defrag
--ext4/301
--ext4/302
--ext4/303
--ext4/304
--ext4/307
--ext4/308
-diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
-deleted file mode 100644
-index 7190c8c..0000000
---- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal.exclude
-+++ /dev/null
-@@ -1,7 +0,0 @@
--# data_journal does not support on-line defrag
--ext4/301
--ext4/302
--ext4/303
--ext4/304
--ext4/307
--ext4/308
-diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
-deleted file mode 100644
-index 7190c8c..0000000
---- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/data_journal_noleak.exclude
-+++ /dev/null
-@@ -1,7 +0,0 @@
--# data_journal does not support on-line defrag
--ext4/301
--ext4/302
--ext4/303
--ext4/304
--ext4/307
--ext4/308
+diff --git a/fs/dax.c b/fs/dax.c
+index 993dc6f..8030f93 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -121,19 +121,6 @@ static bool buffer_written(struct buffer_head *bh)
+ 	return buffer_mapped(bh) && !buffer_unwritten(bh);
+ }
+ 
+-/*
+- * When ext4 encounters a hole, it returns without modifying the buffer_head
+- * which means that we can't trust b_size.  To cope with this, we set b_state
+- * to 0 before calling get_block and, if any bit is set, we know we can trust
+- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
+- * and would save us time calling get_block repeatedly.
+- */
+-static bool buffer_size_valid(struct buffer_head *bh)
+-{
+-	return bh->b_state != 0;
+-}
+-
+-
+ static sector_t to_sector(const struct buffer_head *bh,
+ 		const struct inode *inode)
+ {
+@@ -175,8 +162,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 				rc = get_block(inode, block, bh, rw == WRITE);
+ 				if (rc)
+ 					break;
+-				if (!buffer_size_valid(bh))
+-					bh->b_size = 1 << blkbits;
+ 				bh_max = pos - first + bh->b_size;
+ 				bdev = bh->b_bdev;
+ 				/*
+@@ -1010,12 +995,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 
+ 	bdev = bh.b_bdev;
+ 
+-	/*
+-	 * If the filesystem isn't willing to tell us the length of a hole,
+-	 * just fall back to PTEs.  Calling get_block 512 times in a loop
+-	 * would be silly.
+-	 */
+-	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
++	if (bh.b_size < PMD_SIZE) {
+ 		dax_pmd_dbg(&bh, address, "allocated block too small");
+ 		return VM_FAULT_FALLBACK;
+ 	}
 -- 
-2.1.4
-
+2.9.0
