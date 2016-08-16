@@ -1,10 +1,11 @@
-From: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+From: Greg KH <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
 Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME
  and CURRENT_TIME_SEC macros
-Date: Tue, 16 Aug 2016 11:18:52 -0700
-Message-ID: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
+Date: Tue, 16 Aug 2016 20:53:20 +0200
+Message-ID: <20160816185320.GB6513@kroah.com>
 References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
 	<20160815162312.GA19794@kroah.com>
+	<CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -25,9 +26,10 @@ Cc: Dave Kleikamp <shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, jfs-discussi
 	Suma Ramars <sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>, John Stultz <john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org>,
 	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, David Sterba <dsterba-IBi9RG/b67k@public.gmane.org>,
 	Jaegeuk Kim <jaege
-To: Greg KH <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
+To: Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-In-Reply-To: <20160815162312.GA19794-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
 	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
@@ -39,31 +41,38 @@ Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
 Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Thank you for the suggestion.
+On Tue, Aug 16, 2016 at 11:18:52AM -0700, Deepa Dinamani wrote:
+> Thank you for the suggestion.
+> 
+> > Who are you execting to pull this huge patch series?
+> 
+> The last pull request was addressed to Al as per Arnd's suggestion.
+> I'm not completely sure who should it be addressed to.
+> 
+> > Why not just introduce the new api call, wait for that to be merged, and
+> > then push the individual patches through the different subsystems?
+> > After half of those get ignored, then provide a single set of patches
+> > that can go through Andrew or my trees.
+> 
+> Arnd and I tried to do this a few ways.
+> 
+> We can try to introduce the api first like you suggest.
+> 
+> There are a few Acks already on the patches.
+> And, patches 2-5 also need to be merged through some common tree like
+> yours or Andrew's as you suggest.
+> 
+> So, if everyone is ok, I could do the following:
+> 
+> 1. Post patches 1-5 for rc-2.
 
-> Who are you execting to pull this huge patch series?
+-rc2 is already released, and we aren't adding new apis this late in the
+release cycle, sorry.
 
-The last pull request was addressed to Al as per Arnd's suggestion.
-I'm not completely sure who should it be addressed to.
+> 2. Post all other patches to respective maintainers after rc-2
+> 3. Then after patches get ignored or merged, post remaining as a
+> series for you or Andrew to pick up.
 
-> Why not just introduce the new api call, wait for that to be merged, and
-> then push the individual patches through the different subsystems?
-> After half of those get ignored, then provide a single set of patches
-> that can go through Andrew or my trees.
+The apis need to be aimed for 4.9-rc1, it's too late for 4.8, sorry.
 
-Arnd and I tried to do this a few ways.
-
-We can try to introduce the api first like you suggest.
-
-There are a few Acks already on the patches.
-And, patches 2-5 also need to be merged through some common tree like
-yours or Andrew's as you suggest.
-
-So, if everyone is ok, I could do the following:
-
-1. Post patches 1-5 for rc-2.
-2. Post all other patches to respective maintainers after rc-2
-3. Then after patches get ignored or merged, post remaining as a
-series for you or Andrew to pick up.
-
--Deepa
+greg k-h
