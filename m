@@ -1,258 +1,130 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/7] dax: lock based on slot instead of [mapping, index]
-Date: Tue, 16 Aug 2016 11:28:16 +0200
-Message-ID: <20160816092816.GE27284@quack2.suse.cz>
-References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
- <20160815190918.20672-6-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v25 00/22] Richacls (Core and Ext4)
+Date: Tue, 16 Aug 2016 13:02:41 +0200
+Message-ID: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160815190918.20672-6-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jeff Layton <jlayton@poochiereds.net>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 15-08-16 13:09:16, Ross Zwisler wrote:
-> DAX radix tree locking currently locks entries based on the unique
-> combination of the 'mapping' pointer and the pgoff_t 'index' for the entry.
-> This works for PTEs, but as we move to PMDs we will need to have all the
-> offsets within the range covered by the PMD to map to the same bit lock.
-> To accomplish this, lock based on the 'slot' pointer in the radix tree
-> instead of [mapping, index].
+Here is another update of the richacl patches.  Changes since the last posting
+(https://lwn.net/Articles/695289/):
 
-I'm not convinced this is safe. What makes the slot pointer still valid
-after you drop tree_lock? At least radix_tree_shrink() or
-radix_tree_expand() could move your slot without letting the waiter know
-and he would be never woken.
+ * Rebase on top of the 4.8-rc2 kernel.
 
-								Honza
 
-> 
-> When a PMD entry is present in the tree, all offsets will map to the same
-> 'slot' via radix tree lookups, and they will all share the same locking.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  fs/dax.c            | 59 +++++++++++++++++++++--------------------------------
->  include/linux/dax.h |  3 +--
->  mm/filemap.c        |  3 +--
->  3 files changed, 25 insertions(+), 40 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index fed6a52..0f1d053 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -62,11 +62,10 @@ static int __init init_dax_wait_table(void)
->  }
->  fs_initcall(init_dax_wait_table);
->  
-> -static wait_queue_head_t *dax_entry_waitqueue(struct address_space *mapping,
-> -					      pgoff_t index)
-> +static wait_queue_head_t *dax_entry_waitqueue(void **slot)
->  {
-> -	unsigned long hash = hash_long((unsigned long)mapping ^ index,
-> -				       DAX_WAIT_TABLE_BITS);
-> +	unsigned long hash = hash_long((unsigned long)slot,
-> +					DAX_WAIT_TABLE_BITS);
->  	return wait_table + hash;
->  }
->  
-> @@ -281,25 +280,19 @@ EXPORT_SYMBOL_GPL(dax_do_io);
->  /*
->   * DAX radix tree locking
->   */
-> -struct exceptional_entry_key {
-> -	struct address_space *mapping;
-> -	unsigned long index;
-> -};
-> -
->  struct wait_exceptional_entry_queue {
->  	wait_queue_t wait;
-> -	struct exceptional_entry_key key;
-> +	void **slot;
->  };
->  
->  static int wake_exceptional_entry_func(wait_queue_t *wait, unsigned int mode,
->  				       int sync, void *keyp)
->  {
-> -	struct exceptional_entry_key *key = keyp;
-> +	void **slot = keyp;
->  	struct wait_exceptional_entry_queue *ewait =
->  		container_of(wait, struct wait_exceptional_entry_queue, wait);
->  
-> -	if (key->mapping != ewait->key.mapping ||
-> -	    key->index != ewait->key.index)
-> +	if (slot != ewait->slot)
->  		return 0;
->  	return autoremove_wake_function(wait, mode, sync, NULL);
->  }
-> @@ -357,12 +350,10 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
->  {
->  	void *ret, **slot;
->  	struct wait_exceptional_entry_queue ewait;
-> -	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
-> +	wait_queue_head_t *wq;
->  
->  	init_wait(&ewait.wait);
->  	ewait.wait.func = wake_exceptional_entry_func;
-> -	ewait.key.mapping = mapping;
-> -	ewait.key.index = index;
->  
->  	for (;;) {
->  		ret = __radix_tree_lookup(&mapping->page_tree, index, NULL,
-> @@ -373,6 +364,9 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
->  				*slotp = slot;
->  			return ret;
->  		}
-> +
-> +		wq = dax_entry_waitqueue(slot);
-> +		ewait.slot = slot;
->  		prepare_to_wait_exclusive(wq, &ewait.wait,
->  					  TASK_UNINTERRUPTIBLE);
->  		spin_unlock_irq(&mapping->tree_lock);
-> @@ -445,10 +439,9 @@ restart:
->  	return entry;
->  }
->  
-> -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> -				   pgoff_t index, bool wake_all)
-> +void dax_wake_mapping_entry_waiter(void **slot, bool wake_all)
->  {
-> -	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
-> +	wait_queue_head_t *wq = dax_entry_waitqueue(slot);
->  
->  	/*
->  	 * Checking for locked entry and prepare_to_wait_exclusive() happens
-> @@ -456,13 +449,8 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
->  	 * So at this point all tasks that could have seen our entry locked
->  	 * must be in the waitqueue and the following check will see them.
->  	 */
-> -	if (waitqueue_active(wq)) {
-> -		struct exceptional_entry_key key;
-> -
-> -		key.mapping = mapping;
-> -		key.index = index;
-> -		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
-> -	}
-> +	if (waitqueue_active(wq))
-> +		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, slot);
->  }
->  
->  void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
-> @@ -478,7 +466,7 @@ void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
->  	}
->  	unlock_slot(mapping, slot);
->  	spin_unlock_irq(&mapping->tree_lock);
-> -	dax_wake_mapping_entry_waiter(mapping, index, false);
-> +	dax_wake_mapping_entry_waiter(slot, false);
->  }
->  
->  static void put_locked_mapping_entry(struct address_space *mapping,
-> @@ -496,14 +484,13 @@ static void put_locked_mapping_entry(struct address_space *mapping,
->   * Called when we are done with radix tree entry we looked up via
->   * get_unlocked_mapping_entry() and which we didn't lock in the end.
->   */
-> -static void put_unlocked_mapping_entry(struct address_space *mapping,
-> -				       pgoff_t index, void *entry)
-> +static void put_unlocked_mapping_entry(void **slot, void *entry)
->  {
->  	if (!radix_tree_exceptional_entry(entry))
->  		return;
->  
->  	/* We have to wake up next waiter for the radix tree entry lock */
-> -	dax_wake_mapping_entry_waiter(mapping, index, false);
-> +	dax_wake_mapping_entry_waiter(slot, false);
->  }
->  
->  /*
-> @@ -512,10 +499,10 @@ static void put_unlocked_mapping_entry(struct address_space *mapping,
->   */
->  int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
->  {
-> -	void *entry;
-> +	void *entry, **slot;
->  
->  	spin_lock_irq(&mapping->tree_lock);
-> -	entry = get_unlocked_mapping_entry(mapping, index, NULL);
-> +	entry = get_unlocked_mapping_entry(mapping, index, &slot);
->  	/*
->  	 * This gets called from truncate / punch_hole path. As such, the caller
->  	 * must hold locks protecting against concurrent modifications of the
-> @@ -530,7 +517,7 @@ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
->  	radix_tree_delete(&mapping->page_tree, index);
->  	mapping->nrexceptional--;
->  	spin_unlock_irq(&mapping->tree_lock);
-> -	dax_wake_mapping_entry_waiter(mapping, index, true);
-> +	dax_wake_mapping_entry_waiter(slot, true);
->  
->  	return 1;
->  }
-> @@ -1118,15 +1105,15 @@ int dax_pfn_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->  {
->  	struct file *file = vma->vm_file;
->  	struct address_space *mapping = file->f_mapping;
-> -	void *entry;
-> +	void *entry, **slot;
->  	pgoff_t index = vmf->pgoff;
->  
->  	spin_lock_irq(&mapping->tree_lock);
-> -	entry = get_unlocked_mapping_entry(mapping, index, NULL);
-> +	entry = get_unlocked_mapping_entry(mapping, index, &slot);
->  	if (!entry || !radix_tree_exceptional_entry(entry))
->  		goto out;
->  	radix_tree_tag_set(&mapping->page_tree, index, PAGECACHE_TAG_DIRTY);
-> -	put_unlocked_mapping_entry(mapping, index, entry);
-> +	put_unlocked_mapping_entry(slot, entry);
->  out:
->  	spin_unlock_irq(&mapping->tree_lock);
->  	return VM_FAULT_NOPAGE;
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index 9c6dc77..8bcb852 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -15,8 +15,7 @@ int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
->  int dax_truncate_page(struct inode *, loff_t from, get_block_t);
->  int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
->  int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
-> -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> -				   pgoff_t index, bool wake_all);
-> +void dax_wake_mapping_entry_waiter(void **slot, bool wake_all);
->  
->  #ifdef CONFIG_FS_DAX
->  struct page *read_dax_sector(struct block_device *bdev, sector_t n);
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 8a287df..56c4ac7 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -617,8 +617,7 @@ static int page_cache_tree_insert(struct address_space *mapping,
->  			if (node)
->  				workingset_node_pages_dec(node);
->  			/* Wakeup waiters for exceptional entry lock */
-> -			dax_wake_mapping_entry_waiter(mapping, page->index,
-> -						      false);
-> +			dax_wake_mapping_entry_waiter(slot, false);
->  		}
->  	}
->  	radix_tree_replace_slot(slot, page);
-> -- 
-> 2.9.0
-> 
-> 
+As always, the complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2016-08-16
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+Thanks,
+Andreas
+
+
+Andreas Gruenbacher (20):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Permission check algorithm
+  richacl: Compute maximum file masks from an acl
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+  vfs: Move check_posix_acl and check_richacl out of fs/namei.c
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/9p/acl.c                                     |   8 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   1 +
+ fs/attr.c                                       |  81 +-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |   5 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 134 ++++
+ fs/ext4/richacl.h                               |  40 +
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  43 +-
+ fs/jffs2/acl.c                                  |   6 +-
+ fs/namei.c                                      | 114 +--
+ fs/nfs/nfs3acl.c                                |  14 +-
+ fs/posix_acl.c                                  |  97 ++-
+ fs/richacl.c                                    | 937 ++++++++++++++++++++++++
+ fs/richacl_xattr.c                              | 222 ++++++
+ include/linux/acl.h                             |  15 +
+ include/linux/fs.h                              |  65 +-
+ include/linux/posix_acl.h                       |  24 +-
+ include/linux/richacl.h                         | 218 ++++++
+ include/linux/richacl_xattr.h                   |  31 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 ++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 34 files changed, 2197 insertions(+), 163 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.7.4
