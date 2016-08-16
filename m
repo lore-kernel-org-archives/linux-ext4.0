@@ -1,39 +1,64 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: latest xfstests-bld and nojournal test failures
-Date: Tue, 16 Aug 2016 17:45:19 -0400
-Message-ID: <20160816214519.GA18888@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 1/7] ext2: tell DAX the size of allocation holes
+Date: Tue, 16 Aug 2016 16:52:27 -0600
+Message-ID: <20160816225227.GA632@linux.intel.com>
+References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
+ <20160815190918.20672-2-ross.zwisler@linux.intel.com>
+ <20160816091025.GA27284@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:35866 "EHLO
-	mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751266AbcHPVlp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Aug 2016 17:41:45 -0400
-Received: by mail-qk0-f195.google.com with SMTP id v123so7514913qkh.3
-        for <linux-ext4@vger.kernel.org>; Tue, 16 Aug 2016 14:41:44 -0700 (PDT)
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160816091025.GA27284-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-FYI for those running the latest version of the test appliance:
+On Tue, Aug 16, 2016 at 11:10:25AM +0200, Jan Kara wrote:
+> On Mon 15-08-16 13:09:12, Ross Zwisler wrote:
+> > When DAX calls ext2_get_block() and the file offset points to a hole we
+> > currently don't set bh_result->b_size.  When we re-enable PMD faults DAX
+> > will need bh_result->b_size to tell it the size of the hole so it can
+> > decide whether to fault in a 4 KiB zero page or a 2 MiB zero page.
+> > 
+> > For ext2 we always want DAX to use 4 KiB zero pages, so we just tell DAX
+> > that all holes are 4 KiB in size.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> > ---
+> >  fs/ext2/inode.c | 6 ++++++
+> >  1 file changed, 6 insertions(+)
+> > 
+> > diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> > index d5c7d09..c6d9763 100644
+> > --- a/fs/ext2/inode.c
+> > +++ b/fs/ext2/inode.c
+> > @@ -773,6 +773,12 @@ int ext2_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_
+> >  	if (ret > 0) {
+> >  		bh_result->b_size = (ret << inode->i_blkbits);
+> >  		ret = 0;
+> > +	} else if (ret == 0 && IS_DAX(inode)) {
+> 
+> I'd just drop the IS_DAX() check and set
+> 
+> 	bh_result->b_size = 1 << inode->i_blkbits;
+> 
+> IMO it's better to have things consistent between DAX & !DAX whenever
+> possible.
 
-Commit 5e574181f3bf ("test appliance - automate selection of
-test/scratch devices") deleted the ^has_journal option from the
-MKFS_OPTIONS string in the configuration file for the nojournal test
-case.  This leads to failures for generic/034 and 18 other tests in the
-nojournal test case;  all of them were prevented from running in the 
-previous version of the test appliance by the xfstest function
-_require_metadata_journaling().
-
-That function determines whether a test file system supports metadata
-journaling by using dumpe2fs to see whether the test or scratch file
-system contains a journal.  Use of the noload mount option as
-specified by EXT_MOUNT_OPTIONS doesn't affect that determination.
-
-It looks like we'll want to add code to _require_metadata_journaling to
-check for use of the noload mount option as well as presence/absence of a
-journal.
-
-Eric
+Agreed, this is better.  Fixed for v2, thanks!
