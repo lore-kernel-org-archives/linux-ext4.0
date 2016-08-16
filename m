@@ -1,180 +1,148 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v25 22/22] ext4: Add richacl feature flag
-Date: Tue, 16 Aug 2016 13:03:03 +0200
-Message-ID: <1471345383-15334-23-git-send-email-agruenba@redhat.com>
-References: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
+From: Arkadiusz Miskiewicz <a.miskiewicz@gmail.com>
+Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher order requests
+Date: Tue, 16 Aug 2016 13:18:25 +0200
+Message-ID: <201608161318.25412.a.miskiewicz@gmail.com>
+References: <201608120901.41463.a.miskiewicz@gmail.com> <20160814125327.GF9248@dhcp22.suse.cz> <20160815085129.GA3360@dhcp22.suse.cz>
+Reply-To: arekm@maven.pl
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Andreas Gruenbacher <agruenba@redhat.com>,
-	linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-	Christoph Hellwig <hch@infradead.org>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
-	linux-ext4@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <xfs-bounces@oss.sgi.com>
-In-Reply-To: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
-List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
-List-Archive: <http://oss.sgi.com/pipermail/xfs>
-List-Post: <mailto:xfs@oss.sgi.com>
-List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
-List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
-	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
-Errors-To: xfs-bounces@oss.sgi.com
-Sender: xfs-bounces@oss.sgi.com
+Content-Type: Text/Plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4@vger.kernel.org,
+ linux-mm@kvack.org
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160815085129.GA3360@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+On Monday 15 of August 2016, Michal Hocko wrote:
+> [Fixing up linux-mm]
+>=20
+> Ups I had a c&p error in the previous patch. Here is an updated patch.
 
-This feature flag selects richacl instead of POSIX ACL support on the
-filesystem.  When this feature is off, the "acl" and "noacl" mount options
-control whether POSIX ACLs are enabled.  When it is on, richacls are
-automatically enabled and using the "noacl" mount option leads to an error.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/ext4.h  |  6 ++++--
- fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 44 insertions(+), 11 deletions(-)
+Going to apply this patch now and report again. I mean time what I have is =
+a=20
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931..a019d92 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1114,7 +1114,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
-+#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-@@ -1698,6 +1698,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
- 
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1812,7 +1813,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
--					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
-+					 EXT4_FEATURE_INCOMPAT_RICHACL)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1c593aa..cc5f819 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1386,6 +1386,28 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static int enable_acl(struct super_block *sb)
-+{
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	if (test_opt(sb, ACL)) {
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+			sb->s_flags |= MS_RICHACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		} else {
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+			sb->s_flags |= MS_POSIXACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		}
-+	}
-+	return 0;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1532,9 +1554,9 @@ static const struct mount_opts {
- 	 MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
- 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
--	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
-+	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
- #else
- 	{Opt_acl, 0, MOPT_NOSUPPORT},
- 	{Opt_noacl, 0, MOPT_NOSUPPORT},
-@@ -1582,6 +1604,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- #endif
- 	switch (token) {
- 	case Opt_noacl:
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
-+			 "with richacl feature", opt);
-+		return -1;
-+	}
-+#endif
- 	case Opt_nouser_xattr:
- 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
- 		break;
-@@ -3364,8 +3393,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	set_opt(sb, POSIX_ACL);
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	set_opt(sb, ACL);
- #endif
- 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
- 	if (ext4_has_metadata_csum(sb))
-@@ -3448,8 +3477,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_iflags |= SB_I_CGROUPWB;
- 	}
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto failed_mount;
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (ext4_has_compat_features(sb) ||
-@@ -4778,8 +4808,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto restore_opts;
- 
- 	es = sbi->s_es;
- 
--- 
-2.7.4
+ while (true); do echo "XX date"; date; echo "XX SLAB"; cat /proc/slabinfo =
+;=20
+echo "XX VMSTAT"; cat /proc/vmstat ; echo "XX free"; free; echo "XX DMESG";=
+=20
+dmesg -T | tail -n 50; /bin/sleep 60;done 2>&1 | tee log
 
-_______________________________________________
-xfs mailing list
-xfs@oss.sgi.com
-http://oss.sgi.com/mailman/listinfo/xfs
+loop gathering some data while few OOM conditions happened.
+
+I was doing "rm -rf copyX; cp -al original copyX" 10x in parallel.
+
+https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160816.txt
+
+
+> ---
+> From 348e768ab1f885bb6dc3160158c17f043fd7f219 Mon Sep 17 00:00:00 2001
+> From: Michal Hocko <mhocko@suse.com>
+> Date: Sun, 14 Aug 2016 12:23:13 +0200
+> Subject: [PATCH] mm, oom: report compaction/migration stats for higher
+> order requests
+>=20
+> Both oom and the allocation failure reports are not providing any
+> information about the compaction/migration counters which might give us
+> a clue what went wrong and why we are OOM for the particular order -
+> e.g. the compaction fails constantly because it cannot isolate any pages
+> or that the migration fails. So far we have been asking for /proc/vmstat
+> content before and after the OOM which is rather clumsy, especially when
+> the OOM is not 100% reproducible.
+>=20
+> Extend show_mem() to understand a new filter (SHOW_COMPACTION_STATS)
+> which is enabled only for higer order paths.
+>=20
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> ---
+>  include/linux/mm.h |  1 +
+>  lib/show_mem.c     | 14 ++++++++++++++
+>  mm/oom_kill.c      |  2 +-
+>  mm/page_alloc.c    |  2 ++
+>  4 files changed, 18 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/include/linux/mm.h b/include/linux/mm.h
+> index 7e44613c5078..b4859547acc4 100644
+> --- a/include/linux/mm.h
+> +++ b/include/linux/mm.h
+> @@ -1146,6 +1146,7 @@ extern void pagefault_out_of_memory(void);
+>   * various contexts.
+>   */
+>  #define SHOW_MEM_FILTER_NODES		(0x0001u)	/* disallowed nodes */
+> +#define SHOW_COMPACTION_STATS		(0x0002u)
+>=20
+>  extern void show_free_areas(unsigned int flags);
+>  extern bool skip_free_areas_node(unsigned int flags, int nid);
+> diff --git a/lib/show_mem.c b/lib/show_mem.c
+> index 1feed6a2b12a..c0ac5bd2c121 100644
+> --- a/lib/show_mem.c
+> +++ b/lib/show_mem.c
+> @@ -8,6 +8,7 @@
+>  #include <linux/mm.h>
+>  #include <linux/quicklist.h>
+>  #include <linux/cma.h>
+> +#include <linux/vm_event_item.h>
+>=20
+>  void show_mem(unsigned int filter)
+>  {
+> @@ -17,6 +18,19 @@ void show_mem(unsigned int filter)
+>  	printk("Mem-Info:\n");
+>  	show_free_areas(filter);
+>=20
+> +#ifdef CONFIG_COMPACTION
+> +	if (filter & SHOW_COMPACTION_STATS) {
+> +		printk("compaction_stall:%lu compaction_fail:%lu "
+> +		       "compact_migrate_scanned:%lu compact_free_scanned:%lu "
+> +		       "compact_isolated:%lu "
+> +		       "pgmigrate_success:%lu pgmigrate_fail:%lu\n",
+> +		       global_page_state(COMPACTSTALL),=20
+global_page_state(COMPACTFAIL),
+> +		       global_page_state(COMPACTMIGRATE_SCANNED),
+> global_page_state(COMPACTFREE_SCANNED), +		     =20
+> global_page_state(COMPACTISOLATED),
+> +		       global_page_state(PGMIGRATE_SUCCESS),
+> global_page_state(PGMIGRATE_FAIL)); +	}
+> +#endif
+> +
+>  	for_each_online_pgdat(pgdat) {
+>  		unsigned long flags;
+>  		int zoneid;
+> diff --git a/mm/oom_kill.c b/mm/oom_kill.c
+> index 463cdd22d4e0..5e7a09f4dbc9 100644
+> --- a/mm/oom_kill.c
+> +++ b/mm/oom_kill.c
+> @@ -419,7 +419,7 @@ static void dump_header(struct oom_control *oc, struct
+> task_struct *p) if (oc->memcg)
+>  		mem_cgroup_print_oom_info(oc->memcg, p);
+>  	else
+> -		show_mem(SHOW_MEM_FILTER_NODES);
+> +		show_mem(SHOW_MEM_FILTER_NODES | (oc->order)?SHOW_COMPACTION_STATS:0);
+>  	if (sysctl_oom_dump_tasks)
+>  		dump_tasks(oc->memcg, oc->nodemask);
+>  }
+> diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+> index 9d46b65061be..adf0cb655827 100644
+> --- a/mm/page_alloc.c
+> +++ b/mm/page_alloc.c
+> @@ -2999,6 +2999,8 @@ void warn_alloc_failed(gfp_t gfp_mask, unsigned int
+> order, const char *fmt, ...) pr_warn("%s: page allocation failure:
+> order:%u, mode:%#x(%pGg)\n", current->comm, order, gfp_mask, &gfp_mask);
+>  	dump_stack();
+> +	if (order)
+> +		filter |=3D SHOW_COMPACTION_STATS;
+>  	if (!should_suppress_show_mem())
+>  		show_mem(filter);
+>  }
+
+
+=2D-=20
+Arkadiusz Mi=C5=9Bkiewicz, arekm / ( maven.pl | pld-linux.org )
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
