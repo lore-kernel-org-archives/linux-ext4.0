@@ -1,63 +1,39 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v2] ext4: allow DAX writeback for hole punch
-Date: Wed, 17 Aug 2016 12:23:09 -0600
-Message-ID: <20160817182309.28756-1-ross.zwisler@linux.intel.com>
-References: <20160817171955.GA30893@quack2.suse.cz>
+From: Johannes Stezenbach <js@sig21.net>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Wed, 17 Aug 2016 22:02:32 +0200
+Message-ID: <20160817200232.cd5ehiwbwbnggddo@sig21.net>
+References: <20160718141723.GA8809@sig21.net>
+ <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+ <20160805170228.GA19960@birch.djwong.org>
+ <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20160817171955.GA30893-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
+	linux-kernel@vger.kernel.org, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
-This is because the logic around filemap_write_and_wait_range() in
-ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
-not for dirty DAX exceptional entries.
+On Fri, Aug 05, 2016 at 08:11:36PM +0200, Johannes Stezenbach wrote:
+> On Fri, Aug 05, 2016 at 10:02:28AM -0700, Darrick J. Wong wrote:
+> > 
+> > When you're back on 4.7, can you apply this patch[1] to see if it fixes
+> > the problem?  I speculate that the new parallel dir lookup code enables
+> > multiple threads to be verifying the same directory block buffer at the
+> > same time.
+> > 
+> > [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+> 
+> I added the patch, rebuilt and rebooted.  It will take some time
+> before I'll report back since the issue is so hard to reproduce.
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Cc: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
----
-This should be applied to stable kernels v4.5 and beyond.
----
- fs/ext4/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+FWIW, so far the issue didn't appear again after I applied
+the patch to 4.7.0, and I stressed it a bit with repo syncs,
+AOSP builds, rsync backups etc.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3131747..0900cb4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- }
- 
- /*
-- * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-+ * ext4_punch_hole: punches a hole in a file by releasing the blocks
-  * associated with the given offset and length
-  *
-  * @inode:  File inode
-@@ -3919,7 +3919,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	 * Write out all dirty pages to avoid race conditions
- 	 * Then release them.
- 	 */
--	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-+	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
- 		ret = filemap_write_and_wait_range(mapping, offset,
- 						   offset + length - 1);
- 		if (ret)
--- 
-2.9.0
+Johannes
