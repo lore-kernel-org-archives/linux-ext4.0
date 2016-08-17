@@ -1,39 +1,55 @@
-From: Johannes Stezenbach <js@sig21.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Wed, 17 Aug 2016 22:02:32 +0200
-Message-ID: <20160817200232.cd5ehiwbwbnggddo@sig21.net>
-References: <20160718141723.GA8809@sig21.net>
- <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
- <20160805103544.kbt7znbzypvi5ofx@sig21.net>
- <20160805170228.GA19960@birch.djwong.org>
- <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 5/7] dax: lock based on slot instead of [mapping, index]
+Date: Wed, 17 Aug 2016 14:25:56 -0600
+Message-ID: <20160817202556.GA13009@linux.intel.com>
+References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
+ <20160815190918.20672-6-ross.zwisler@linux.intel.com>
+ <20160816092816.GE27284@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
-	linux-kernel@vger.kernel.org, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20160816092816.GE27284@quack2.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 05, 2016 at 08:11:36PM +0200, Johannes Stezenbach wrote:
-> On Fri, Aug 05, 2016 at 10:02:28AM -0700, Darrick J. Wong wrote:
-> > 
-> > When you're back on 4.7, can you apply this patch[1] to see if it fixes
-> > the problem?  I speculate that the new parallel dir lookup code enables
-> > multiple threads to be verifying the same directory block buffer at the
-> > same time.
-> > 
-> > [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+On Tue, Aug 16, 2016 at 11:28:16AM +0200, Jan Kara wrote:
+> On Mon 15-08-16 13:09:16, Ross Zwisler wrote:
+> > DAX radix tree locking currently locks entries based on the unique
+> > combination of the 'mapping' pointer and the pgoff_t 'index' for the entry.
+> > This works for PTEs, but as we move to PMDs we will need to have all the
+> > offsets within the range covered by the PMD to map to the same bit lock.
+> > To accomplish this, lock based on the 'slot' pointer in the radix tree
+> > instead of [mapping, index].
 > 
-> I added the patch, rebuilt and rebooted.  It will take some time
-> before I'll report back since the issue is so hard to reproduce.
+> I'm not convinced this is safe. What makes the slot pointer still valid
+> after you drop tree_lock? At least radix_tree_shrink() or
+> radix_tree_expand() could move your slot without letting the waiter know
+> and he would be never woken.
+> 
+> 								Honza
 
-FWIW, so far the issue didn't appear again after I applied
-the patch to 4.7.0, and I stressed it a bit with repo syncs,
-AOSP builds, rsync backups etc.
+Yep, you're right, thanks for catching that.
 
-Johannes
+Given that we can't rely on 'slot' being stable, my next idea is to use a
+combination of [mapping, index], but tweak 'index' so that it's always the
+beginning of the entry.  So for 4k entries we'd leave it alone, but for 2MiB
+entries we'd mask it down to the appropriate 2MiB barrier.
+
+Let me hack on that for a bit, unless you've a better idea.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
