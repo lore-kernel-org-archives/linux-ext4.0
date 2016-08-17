@@ -1,62 +1,56 @@
-From: Michal Hocko <mhocko@kernel.org>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher
  order requests
-Date: Wed, 17 Aug 2016 11:29:09 +0200
-Message-ID: <20160817092909.GA20703@dhcp22.suse.cz>
+Date: Wed, 17 Aug 2016 12:57:11 +0200
+Message-ID: <20160817105711.GA6656@quack2.suse.cz>
 References: <201608120901.41463.a.miskiewicz@gmail.com>
+ <20160814125327.GF9248@dhcp22.suse.cz>
+ <20160815085129.GA3360@dhcp22.suse.cz>
  <201608161318.25412.a.miskiewicz@gmail.com>
- <20160816141007.GF17417@dhcp22.suse.cz>
- <201608171034.54940.arekm@maven.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org
-To: Arkadiusz =?utf-8?Q?Mi=C5=9Bkiewicz?= <arekm@maven.pl>
+Content-Type: text/plain; charset=us-ascii
+Cc: Michal Hocko <mhocko@kernel.org>, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org
+To: arekm@maven.pl
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <201608171034.54940.arekm@maven.pl>
+In-Reply-To: <201608161318.25412.a.miskiewicz@gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 17-08-16 10:34:54, Arkadiusz Miśkiewicz wrote:
-[...]
-> With "[PATCH] mm, oom: report compaction/migration stats for higher order 
-> requests" patch:
-> https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160817.txt
+On Tue 16-08-16 13:18:25, Arkadiusz Miskiewicz wrote:
+> On Monday 15 of August 2016, Michal Hocko wrote:
+> > [Fixing up linux-mm]
+> > 
+> > Ups I had a c&p error in the previous patch. Here is an updated patch.
 > 
-> Didn't count much - all counters are 0
-> compaction_stall:0 compaction_fail:0 compact_migrate_scanned:0 
-> compact_free_scanned:0 compact_isolated:0 pgmigrate_success:0 pgmigrate_fail:0
-
-Dohh, COMPACTION counters are events and those are different than other
-counters we have. They only have per-cpu representation and so we would
-have to do 
-+       for_each_online_cpu(cpu) {
-+               struct vm_event_state *this = &per_cpu(vm_event_states, cpu);
-+               ret += this->event[item];
-+       }
-
-which is really nasty because, strictly speaking, we would have to do
-{get,put}_online_cpus around that loop and that uses locking and we do
-not want to possibly block in this path just because something is in the
-middle of the hotplug. So let's scratch that patch for now and sorry I
-haven't realized that earlier.
- 
-> two processes were killed by OOM (rm and cp), the rest of rm/cp didn't finish 
-> and I'm interrupting it to try that next patch:
 > 
-> > Could you try to test with
-> > patch from
-> > http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE please?
-> > Ideally on top of linux-next. You can add both the compaction counters
-> > patch in the oom report and high order atomic reserves patch on top.
+> Going to apply this patch now and report again. I mean time what I have is a 
 > 
-> Uhm, was going to use it on top of 4.7.[01] first.
+>  while (true); do echo "XX date"; date; echo "XX SLAB"; cat /proc/slabinfo ; 
+> echo "XX VMSTAT"; cat /proc/vmstat ; echo "XX free"; free; echo "XX DMESG"; 
+> dmesg -T | tail -n 50; /bin/sleep 60;done 2>&1 | tee log
+> 
+> loop gathering some data while few OOM conditions happened.
+> 
+> I was doing "rm -rf copyX; cp -al original copyX" 10x in parallel.
+> 
+> https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160816.txt
 
-OK
+Just one more debug idea to add on top of what Michal said: Can you enable
+mm_shrink_slab_start and mm_shrink_slab_end tracepoints (via
+/sys/kernel/debug/tracing/events/vmscan/mm_shrink_slab_{start,end}/enable)
+and gather output from /sys/kernel/debug/tracing/trace_pipe while the copy
+is running?
+
+Because your slab caches seem to contain a lot of dentries as well (even
+more than inodes in terms of numbers) so it may be that OOM is declared too
+early before slab shrinkers can actually catch up...
+
+								Honza
 -- 
-Michal Hocko
-SUSE Labs
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
