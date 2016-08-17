@@ -1,55 +1,60 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 5/7] dax: lock based on slot instead of [mapping, index]
-Date: Wed, 17 Aug 2016 14:25:56 -0600
-Message-ID: <20160817202556.GA13009@linux.intel.com>
-References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
- <20160815190918.20672-6-ross.zwisler@linux.intel.com>
- <20160816092816.GE27284@quack2.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
+Date: Wed, 17 Aug 2016 16:28:33 -0700
+Message-ID: <20160817232833.GF14651@birch.djwong.org>
+References: <20160718141723.GA8809@sig21.net>
+ <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
+ <20160805103544.kbt7znbzypvi5ofx@sig21.net>
+ <20160805170228.GA19960@birch.djwong.org>
+ <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
+ <20160805191548.GD19960@birch.djwong.org>
+ <20160808035634.GA16193@thunk.org>
+ <20160808062810.GC8590@birch.djwong.org>
+ <8b8fff2d-5c89-856a-65d2-f6962b875f8f@etorok.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Johannes Stezenbach <js@sig21.net>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160816092816.GE27284@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <8b8fff2d-5c89-856a-65d2-f6962b875f8f@etorok.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 16, 2016 at 11:28:16AM +0200, Jan Kara wrote:
-> On Mon 15-08-16 13:09:16, Ross Zwisler wrote:
-> > DAX radix tree locking currently locks entries based on the unique
-> > combination of the 'mapping' pointer and the pgoff_t 'index' for the entry.
-> > This works for PTEs, but as we move to PMDs we will need to have all the
-> > offsets within the range covered by the PMD to map to the same bit lock.
-> > To accomplish this, lock based on the 'slot' pointer in the radix tree
-> > instead of [mapping, index].
+On Wed, Aug 17, 2016 at 05:27:25PM +0300, Török Edwin wrote:
+> On 2016-08-08 09:28, Darrick J. Wong wrote:
+> > On Sun, Aug 07, 2016 at 11:56:34PM -0400, Theodore Ts'o wrote:
+> >> On Fri, Aug 05, 2016 at 12:15:48PM -0700, Darrick J. Wong wrote:
+> >>>>> [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
+> >>>>
+> >>>> I added the patch, rebuilt and rebooted.  It will take some time
+> >>>> before I'll report back since the issue is so hard to reproduce.
+> >>>
+> >>> FWIW I could trigger it reliably by running a bunch of directory traversal
+> >>> programs simultaneously on the same directory.  I have a script that fires
+> >>> up multiple mutts pointing to the Maildirs for the high traffic Linux lists.
+> >>
+> >> Hmm, I wonder if we should request that this patch be backported to
+> >> -stable.  Darrick, what do you think?
+> > 
+> > Seems like an excellent idea.
 > 
-> I'm not convinced this is safe. What makes the slot pointer still valid
-> after you drop tree_lock? At least radix_tree_shrink() or
-> radix_tree_expand() could move your slot without letting the waiter know
-> and he would be never woken.
+> Hi,
 > 
-> 								Honza
+> I see 4.7.1. was released, however before testing it in the changelog I can't
+> see the inode.c commit with the checksum fix.  Is there another commit that
+> would provide an equivalent fix, or is the fix not part of 4.7.1?
 
-Yep, you're right, thanks for catching that.
+There's no 'equivalent' fix; the one we have simply didn't make it
+to the stable maintainers before 4.7.1 came out.
 
-Given that we can't rely on 'slot' being stable, my next idea is to use a
-combination of [mapping, index], but tweak 'index' so that it's always the
-beginning of the entry.  So for 4k entries we'd leave it alone, but for 2MiB
-entries we'd mask it down to the appropriate 2MiB barrier.
+(Hey Ted, can you send the patch to ... whomever's in charge of 4.7?)
 
-Let me hack on that for a bit, unless you've a better idea.
+--D
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> 
+> Best regards,
+> --Edwin
