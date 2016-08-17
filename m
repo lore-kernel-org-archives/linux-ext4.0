@@ -1,63 +1,88 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH] ext4: allow DAX writeback for hole punch
-Date: Wed, 17 Aug 2016 10:11:02 -0600
-Message-ID: <20160817161102.2185-1-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-	linux-nvdimm@lists.01.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 0/7] re-enable DAX PMD support
+Date: Wed, 17 Aug 2016 10:21:24 -0600
+Message-ID: <20160817162124.GA16779@linux.intel.com>
+References: <20160815190918.20672-1-ross.zwisler@linux.intel.com>
+ <CAPcyv4j_eh8Rcozb40JeiPwvbPoMY2sCt+yTewZ-MZzUkBbj-Q@mail.gmail.com>
+ <20160815211106.GA31566@linux.intel.com>
+ <CAPcyv4i+XHZSN_3T_vcrv+sOkEMQzuTKRo4WBFcPxN=TzSk9iw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4i+XHZSN_3T_vcrv+sOkEMQzuTKRo4WBFcPxN=TzSk9iw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
-This is because the logic around filemap_write_and_wait_range() in
-ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
-not for dirty DAX exceptional entries.
+On Mon, Aug 15, 2016 at 02:14:14PM -0700, Dan Williams wrote:
+> On Mon, Aug 15, 2016 at 2:11 PM, Ross Zwisler
+> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
+> > On Mon, Aug 15, 2016 at 01:21:47PM -0700, Dan Williams wrote:
+> >> On Mon, Aug 15, 2016 at 12:09 PM, Ross Zwisler
+> >> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
+> >> > DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> >> > locking.  This series allows DAX PMDs to participate in the DAX radix tree
+> >> > based locking scheme so that they can be re-enabled.
+> >>
+> >> Looks good to me.
+> >>
+> >> > This series restores DAX PMD functionality back to what it was before it
+> >> > was disabled.  There is still a known issue between DAX PMDs and hole
+> >> > punch, which I am currently working on and which I plan to address with a
+> >> > separate series.
+> >>
+> >> Perhaps we should hold off on applying patch 6 and 7 until after the
+> >> hole-punch fix is ready?
+> >
+> > Sure, I'm cool with holding off on patch 7 (the Kconfig change) until after
+> > the hole punch fix is ready.
+> >
+> > I don't see a reason to hold off on patch 6, though?  It stands on it's own,
+> > implements the correct locking, and doesn't break anything.
+> 
+> Whoops, I just meant 7.
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
----
+Well, it looks like the hole punch case is much improved since I tested it
+last!  :)  I used to be able to generate a few different kernel BUGs when hole
+punching DAX PMDs, but those have apparently been fixed in the mm layer since
+I was last testing, which admittedly was quite a long time ago (February?).
 
-I found this while testing my PMD patches
-(https://lkml.org/lkml/2016/8/15/613), but this fix applies equally to the
-4k-only case.  I'm sending this separately from that series because I think
-that this should probably be merged for v4.8 as it corrects an existing bug
-and should have very low risk.
+The only issue I was able to find with DAX PMD hole punching was that ext4
+wasn't properly doing a writeback before the hole was unmapped and the radix
+tree entries were removed.  This issue applies equally to the 4k case, so I've
+submitted a bug fix for v4.8:
 
-Regarding the other two supported DAX filesystems, XFS already properly
-does this writeback and ext2 doesn't support hole punch so it doesn't have
-to worry about this issue.
+https://lists.01.org/pipermail/linux-nvdimm/2016-August/006621.html
 
----
- fs/ext4/inode.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+With that applied, I don't know of any more issues related to DAX PMDs and
+hole punch.  I've tested ext4 and XFS (ext2 doesn't support hole punch), and
+they both properly do a writeback of all affected PMDs, fully unmap all
+affected PMDs, and remove the radix tree entries.  I've tested that new page
+faults for addresses previously covered by the old PMDs generate new page
+faults, and 4k pages are now faulted in because the block allocator no longer
+has 2MiB contiguous allocations.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3131747..8550416 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- }
- 
- /*
-- * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-+ * ext4_punch_hole: punches a hole in a file by releasing the blocks
-  * associated with the given offset and length
-  *
-  * @inode:  File inode
-@@ -3919,7 +3919,9 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	 * Write out all dirty pages to avoid race conditions
- 	 * Then release them.
- 	 */
--	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-+	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY) &&
-+	    ((!dax_mapping(mapping) && mapping->nrpages) ||
-+	     (dax_mapping(mapping) && mapping->nrexceptional))) {
- 		ret = filemap_write_and_wait_range(mapping, offset,
- 						   offset + length - 1);
- 		if (ret)
--- 
-2.9.0
+One question (probably for Jan): should the above ext4 fix be marked for
+stable?
+
+Thanks,
+- Ross
