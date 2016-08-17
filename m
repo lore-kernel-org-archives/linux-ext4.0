@@ -1,47 +1,63 @@
-From: =?UTF-8?B?VMO2csO2ayBFZHdpbg==?= <edwin@etorok.net>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Wed, 17 Aug 2016 17:27:25 +0300
-Message-ID: <8b8fff2d-5c89-856a-65d2-f6962b875f8f@etorok.net>
-References: <20160718141723.GA8809@sig21.net>
- <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
- <20160805103544.kbt7znbzypvi5ofx@sig21.net>
- <20160805170228.GA19960@birch.djwong.org>
- <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
- <20160805191548.GD19960@birch.djwong.org> <20160808035634.GA16193@thunk.org>
- <20160808062810.GC8590@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Johannes Stezenbach <js@sig21.net>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH] ext4: allow DAX writeback for hole punch
+Date: Wed, 17 Aug 2016 10:11:02 -0600
+Message-ID: <20160817161102.2185-1-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+	linux-nvdimm@lists.01.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160808062810.GC8590@birch.djwong.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2016-08-08 09:28, Darrick J. Wong wrote:
-> On Sun, Aug 07, 2016 at 11:56:34PM -0400, Theodore Ts'o wrote:
->> On Fri, Aug 05, 2016 at 12:15:48PM -0700, Darrick J. Wong wrote:
->>>>> [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
->>>>
->>>> I added the patch, rebuilt and rebooted.  It will take some time
->>>> before I'll report back since the issue is so hard to reproduce.
->>>
->>> FWIW I could trigger it reliably by running a bunch of directory traversal
->>> programs simultaneously on the same directory.  I have a script that fires
->>> up multiple mutts pointing to the Maildirs for the high traffic Linux lists.
->>
->> Hmm, I wonder if we should request that this patch be backported to
->> -stable.  Darrick, what do you think?
-> 
-> Seems like an excellent idea.
+Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
+This is because the logic around filemap_write_and_wait_range() in
+ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
+not for dirty DAX exceptional entries.
 
-Hi,
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
 
-I see 4.7.1. was released, however before testing it in the changelog I can't see the inode.c commit with the checksum fix.
-Is there another commit that would provide an equivalent fix, or is the fix not part of 4.7.1?
+I found this while testing my PMD patches
+(https://lkml.org/lkml/2016/8/15/613), but this fix applies equally to the
+4k-only case.  I'm sending this separately from that series because I think
+that this should probably be merged for v4.8 as it corrects an existing bug
+and should have very low risk.
 
-Best regards,
---Edwin
+Regarding the other two supported DAX filesystems, XFS already properly
+does this writeback and ext2 doesn't support hole punch so it doesn't have
+to worry about this issue.
+
+---
+ fs/ext4/inode.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3131747..8550416 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
+ }
+ 
+ /*
+- * ext4_punch_hole: punches a hole in a file by releaseing the blocks
++ * ext4_punch_hole: punches a hole in a file by releasing the blocks
+  * associated with the given offset and length
+  *
+  * @inode:  File inode
+@@ -3919,7 +3919,9 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 	 * Write out all dirty pages to avoid race conditions
+ 	 * Then release them.
+ 	 */
+-	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
++	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY) &&
++	    ((!dax_mapping(mapping) && mapping->nrpages) ||
++	     (dax_mapping(mapping) && mapping->nrexceptional))) {
+ 		ret = filemap_write_and_wait_range(mapping, offset,
+ 						   offset + length - 1);
+ 		if (ret)
+-- 
+2.9.0
