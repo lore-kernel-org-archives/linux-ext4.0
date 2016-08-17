@@ -1,60 +1,90 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [RFC 3/3] ext4: tag asynchronous writeback io
-Date: Wed, 17 Aug 2016 14:20:45 +0900
-Message-ID: <1471411245-5186-4-git-send-email-daeho.jeong@samsung.com>
-References: <1471411245-5186-1-git-send-email-daeho.jeong@samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: axboe@kernel.dk, tytso@mit.edu, adilger.kernel@dilger.ca,
-	jack@suse.com, linux-block@vger.kernel.org, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:48330 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752094AbcHQFRi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Aug 2016 01:17:38 -0400
-In-reply-to: <1471411245-5186-1-git-send-email-daeho.jeong@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Arkadiusz =?utf-8?q?Mi=C5=9Bkiewicz?= <arekm@maven.pl>
+Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher order requests
+Date: Wed, 17 Aug 2016 10:34:54 +0200
+Message-ID: <201608171034.54940.arekm@maven.pl>
+References: <201608120901.41463.a.miskiewicz@gmail.com> <201608161318.25412.a.miskiewicz@gmail.com> <20160816141007.GF17417@dhcp22.suse.cz>
+Mime-Version: 1.0
+Content-Type: Text/Plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4@vger.kernel.org,
+ linux-mm@kvack.org
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20160816141007.GF17417@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Set the page with PG_asyncwb and PG_plugged, and set the bio with
-BIO_ASYNC_WB when submitting asynchronous writeback I/O in order to
-mark which pages are flushed as asynchronous writeback I/O and which
-one stays in the plug list.
+On Tuesday 16 of August 2016, Michal Hocko wrote:
+> On Tue 16-08-16 13:18:25, Arkadiusz Miskiewicz wrote:
+> > On Monday 15 of August 2016, Michal Hocko wrote:
+> > > [Fixing up linux-mm]
+> > >=20
+> > > Ups I had a c&p error in the previous patch. Here is an updated patch.
+> >=20
+> > Going to apply this patch now and report again. I mean time what I have
+> > is a
+> >=20
+> >  while (true); do echo "XX date"; date; echo "XX SLAB"; cat
+> >  /proc/slabinfo ;
+> >=20
+> > echo "XX VMSTAT"; cat /proc/vmstat ; echo "XX free"; free; echo "XX
+> > DMESG"; dmesg -T | tail -n 50; /bin/sleep 60;done 2>&1 | tee log
+> >=20
+> > loop gathering some data while few OOM conditions happened.
+> >=20
+> > I was doing "rm -rf copyX; cp -al original copyX" 10x in parallel.
+> >=20
+> > https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160816.txt
+>=20
+> David was right when assuming it would be the ext4 inode cache which
+> consumes the large portion of the memory. /proc/slabinfo shows
+> ext4_inode_cache consuming between 2.5 to 4.6G of memory.
+>=20
+> 			first value	last-first
+> pgmigrate_success       1861785 	2157917
+> pgmigrate_fail  	335344  	1400384
+> compact_isolated        4106390 	5777027
+> compact_migrate_scanned 113962774       446290647
+> compact_daemon_wake     17039   	43981
+> compact_fail    	645     	1039
+> compact_free_scanned    381701557       793430119
+> compact_success 	217     	307
+> compact_stall   	862     	1346
+>=20
+> which means that we have invoked compaction 1346 times and failed in
+> 77% of cases. It is interesting to see that the migration wasn't all
+> that unsuccessful. We managed to migrate 1.5x more pages than failed. It
+> smells like the compaction just backs off.
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
----
- fs/ext4/page-io.c |   11 +++++++++++
- 1 file changed, 11 insertions(+)
+With "[PATCH] mm, oom: report compaction/migration stats for higher order=20
+requests" patch:
+https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160817.txt
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 2a01df9..5912e59 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -370,6 +370,10 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
- 	bio->bi_private = ext4_get_io_end(io->io_end);
- 	io->io_bio = bio;
- 	io->io_next_block = bh->b_blocknr;
-+#ifdef CONFIG_BOOST_URGENT_ASYNC_WB
-+	if (io->io_wbc->sync_mode == WB_SYNC_NONE)
-+		bio->bi_flags |= (1 << BIO_ASYNC_WB);
-+#endif
- 	return 0;
- }
- 
-@@ -416,6 +420,13 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
- 
-+#ifdef CONFIG_BOOST_URGENT_ASYNC_WB
-+	if (wbc->sync_mode == WB_SYNC_NONE) {
-+		SetPagePlugged(page);
-+		SetPageAsyncWB(page);
-+	}
-+#endif
-+
- 	if (keep_towrite)
- 		set_page_writeback_keepwrite(page);
- 	else
--- 
-1.7.9.5
+Didn't count much - all counters are 0
+compaction_stall:0 compaction_fail:0 compact_migrate_scanned:0=20
+compact_free_scanned:0 compact_isolated:0 pgmigrate_success:0 pgmigrate_fai=
+l:0
 
+two processes were killed by OOM (rm and cp), the rest of rm/cp didn't fini=
+sh=20
+and I'm interrupting it to try that next patch:
+
+> Could you try to test with
+> patch from
+> http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE please?
+> Ideally on top of linux-next. You can add both the compaction counters
+> patch in the oom report and high order atomic reserves patch on top.
+
+Uhm, was going to use it on top of 4.7.[01] first.
+
+> Thanks
+
+=2D-=20
+Arkadiusz Mi=C5=9Bkiewicz, arekm / ( maven.pl | pld-linux.org )
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
