@@ -1,86 +1,57 @@
-From: Arkadiusz Miskiewicz <a.miskiewicz@gmail.com>
-Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher order requests
-Date: Thu, 18 Aug 2016 20:49:42 +0200
-Message-ID: <201608182049.42261.a.miskiewicz@gmail.com>
-References: <201608120901.41463.a.miskiewicz@gmail.com> <201608171034.54940.arekm@maven.pl> <20160817092909.GA20703@dhcp22.suse.cz>
-Reply-To: arekm@maven.pl
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] common/rc: improve _require_metadata_journaling() for
+ ext4
+Date: Thu, 18 Aug 2016 23:26:20 +0800
+Message-ID: <20160818152620.GC27776@eguan.usersys.redhat.com>
+References: <20160818144253.GA14069@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-ext4@vger.kernel.org,
- linux-mm@kvack.org,
- Jan Kara <jack@suse.cz>
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160817092909.GA20703@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160818144253.GA14069@localhost.localdomain>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wednesday 17 of August 2016, Michal Hocko wrote:
-> On Wed 17-08-16 10:34:54, Arkadiusz Mi=C5=9Bkiewicz wrote:
-> [...]
->=20
-> > With "[PATCH] mm, oom: report compaction/migration stats for higher ord=
-er
-> > requests" patch:
-> > https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160817.txt
-> >=20
-> > Didn't count much - all counters are 0
-> > compaction_stall:0 compaction_fail:0 compact_migrate_scanned:0
-> > compact_free_scanned:0 compact_isolated:0 pgmigrate_success:0
-> > pgmigrate_fail:0
->=20
-> Dohh, COMPACTION counters are events and those are different than other
-> counters we have. They only have per-cpu representation and so we would
-> have to do
-> +       for_each_online_cpu(cpu) {
-> +               struct vm_event_state *this =3D &per_cpu(vm_event_states,
-> cpu); +               ret +=3D this->event[item];
-> +       }
->=20
-> which is really nasty because, strictly speaking, we would have to do
-> {get,put}_online_cpus around that loop and that uses locking and we do
-> not want to possibly block in this path just because something is in the
-> middle of the hotplug. So let's scratch that patch for now and sorry I
-> haven't realized that earlier.
->=20
-> > two processes were killed by OOM (rm and cp), the rest of rm/cp didn't
-> > finish
-> >=20
-> > and I'm interrupting it to try that next patch:
-> > > Could you try to test with
-> > > patch from
-> > > http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE
-> > > please? Ideally on top of linux-next. You can add both the compaction
-> > > counters patch in the oom report and high order atomic reserves patch
-> > > on top.
-> >=20
-> > Uhm, was going to use it on top of 4.7.[01] first.
->=20
-> OK
+On Thu, Aug 18, 2016 at 10:42:53AM -0400, Eric Whitney wrote:
+> The code in _require_metadata_journaling() currently rejects ext4 file
+> systems that have been created without a journal.  However, an ext4
+> file system with a journal should also be rejected if the journal is
+> not loaded and made available for use at mount time.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> ---
+>  common/rc | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/common/rc b/common/rc
+> index 3fb0600..9a3c9bd 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -3057,6 +3057,9 @@ _require_metadata_journaling()
+>  		_require_dumpe2fs
+>  		$DUMPE2FS_PROG -h $DEV 2>&1 | grep -q has_journal || \
+>  			_notrun "$FSTYP on $DEV not configured with metadata journaling"
+> +		# ext4 may not have loaded a journal
+> +		echo $MOUNT_OPTIONS | grep -q noload && \
+> +			_notrun "$FSTYP on $DEV not mounted with metadata journaling"
 
-So with  http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE
-OOM no longer happens (all 10x rm/cp processes finished).
+I think this can be done by the new helper _exclude_scratch_mount_option
+which was introduced recently, e.g.
 
-https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160818.txt
+_exclude_scratch_mount_option "noload"
 
-On Wednesday 17 of August 2016, Jan Kara wrote:
-> Just one more debug idea to add on top of what Michal said: Can you enable
-> mm_shrink_slab_start and mm_shrink_slab_end tracepoints (via
-> /sys/kernel/debug/tracing/events/vmscan/mm_shrink_slab_{start,end}/enable)
-> and gather output from /sys/kernel/debug/tracing/trace_pipe while the copy
-> is running?
+Thanks,
+Eryu
 
-Here it is:
-
-https://ixion.pld-linux.org/~arekm/p2/ext4/log-trace_pipe-20160818.txt.gz
-
-=2D-=20
-Arkadiusz Mi=C5=9Bkiewicz, arekm / ( maven.pl | pld-linux.org )
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+>  		;;
+>  	*)
+>  		# by default we pass; if you need to, add your fs above!
+> -- 
+> 2.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
