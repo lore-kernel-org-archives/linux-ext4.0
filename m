@@ -1,54 +1,95 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 6/6] Add dockerfile
-Date: Fri, 19 Aug 2016 01:21:06 -0400
-Message-ID: <20160819052106.GC10888@thunk.org>
-References: <1471553651-9547-1-git-send-email-dmonakhov@openvz.org>
- <1471553651-9547-7-git-send-email-dmonakhov@openvz.org>
+From: Vlastimil Babka <vbabka@suse.cz>
+Subject: Re: [PATCH] mm, oom: report compaction/migration stats for higher
+ order requests
+Date: Fri, 19 Aug 2016 08:44:06 +0200
+Message-ID: <809abac0-961d-9cc1-ce6b-3227ffc791c7@suse.cz>
+References: <201608120901.41463.a.miskiewicz@gmail.com>
+ <201608171034.54940.arekm@maven.pl> <20160817092909.GA20703@dhcp22.suse.cz>
+ <201608182049.42261.a.miskiewicz@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43780 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750757AbcHSFVK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Aug 2016 01:21:10 -0400
-Content-Disposition: inline
-In-Reply-To: <1471553651-9547-7-git-send-email-dmonakhov@openvz.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org, Jan Kara <jack@suse.cz>,
+ Joonsoo Kim <iamjoonsoo.kim@lge.com>
+To: arekm@maven.pl, Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <201608182049.42261.a.miskiewicz@gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 19, 2016 at 12:54:11AM +0400, Dmitry Monakhov wrote:
-> Dockerfile is good way to create build environments
-> Let's keep it as a reference build script.
-> 
-> XXX: Currently Ted does not have hub.docker account
->      so this docker file points to my hub. Should be updated.
+On 08/18/2016 08:49 PM, Arkadiusz Miskiewicz wrote:
+> On Wednesday 17 of August 2016, Michal Hocko wrote:
+>> On Wed 17-08-16 10:34:54, Arkadiusz Miśkiewicz wrote:
+>> [...]
+>>
+>>> With "[PATCH] mm, oom: report compaction/migration stats for higher order
+>>> requests" patch:
+>>> https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160817.txt
+>>>
+>>> Didn't count much - all counters are 0
+>>> compaction_stall:0 compaction_fail:0 compact_migrate_scanned:0
+>>> compact_free_scanned:0 compact_isolated:0 pgmigrate_success:0
+>>> pgmigrate_fail:0
+>>
+>> Dohh, COMPACTION counters are events and those are different than other
+>> counters we have. They only have per-cpu representation and so we would
+>> have to do
+>> +       for_each_online_cpu(cpu) {
+>> +               struct vm_event_state *this = &per_cpu(vm_event_states,
+>> cpu); +               ret += this->event[item];
+>> +       }
+>>
+>> which is really nasty because, strictly speaking, we would have to do
+>> {get,put}_online_cpus around that loop and that uses locking and we do
+>> not want to possibly block in this path just because something is in the
+>> middle of the hotplug. So let's scratch that patch for now and sorry I
+>> haven't realized that earlier.
+>>
+>>> two processes were killed by OOM (rm and cp), the rest of rm/cp didn't
+>>> finish
+>>>
+>>> and I'm interrupting it to try that next patch:
+>>>> Could you try to test with
+>>>> patch from
+>>>> http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE
+>>>> please? Ideally on top of linux-next. You can add both the compaction
+>>>> counters patch in the oom report and high order atomic reserves patch
+>>>> on top.
+>>>
+>>> Uhm, was going to use it on top of 4.7.[01] first.
+>>
+>> OK
+>
+> So with  http://lkml.kernel.org/r/20160816031222.GC16913@js1304-P5Q-DELUXE
+> OOM no longer happens (all 10x rm/cp processes finished).
 
-I guess I'm a little confused about how this Dockerfile works.  First
-of all, says "From Debian", so I guess the idea is to be based on an
-unspecified version of Debian (why not debian:jessie?).  But then it
-has apt-get commands?  How does that work?
+Is it on top of 4.7 then? That's a bit different from the other reporter 
+who needed both linux-next and this patch to avoid OOM.
+In any case the proper solution should restrict this disabled heuristic 
+to highest compaction priority, which needs the patches from linux-next 
+anyway.
 
-And if the idea is to fetch a prebuilt docker image, and we're running
-it with docker run --privilege, I'm not sure what value using docker
-run is really providing.  We're not using the docker container
-features.   And typing
+So can you please also try linux-next with the patch from
+http://marc.info/?l=linux-mm&m=147158805719821 ?
 
-docker run -i -t --privileged ... \
-	"kvm-xfstests.sh --kernel /tmp/bzImage --update-files --update-xfstests-tar  smoke"
+Thanks!
 
-Is just *awkward*.  The whole point is to let kvm-xfstests read the
-kernel from your ~/.config/gce-xfstests, so your work flow can be
-something like this:
+> https://ixion.pld-linux.org/~arekm/p2/ext4/log-20160818.txt
+>
+> On Wednesday 17 of August 2016, Jan Kara wrote:
+>> Just one more debug idea to add on top of what Michal said: Can you enable
+>> mm_shrink_slab_start and mm_shrink_slab_end tracepoints (via
+>> /sys/kernel/debug/tracing/events/vmscan/mm_shrink_slab_{start,end}/enable)
+>> and gather output from /sys/kernel/debug/tracing/trace_pipe while the copy
+>> is running?
+>
+> Here it is:
+>
+> https://ixion.pld-linux.org/~arekm/p2/ext4/log-trace_pipe-20160818.txt.gz
+>
 
-git am -s ~/mbox/patch.mbox
-../make-ext4      # shortcut for something like "make O=/build/ext4 -j16"
-kvm-xfstests smoke   # ~/.config/gce-xfststs sets GCE_KERNEL=/build/ext4
-
-needing to type a long docker run command doesn't seem to add any
-value.
-
-Confused,
-
-					- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
