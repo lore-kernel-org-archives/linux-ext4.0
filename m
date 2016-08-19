@@ -1,41 +1,36 @@
 From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH V2] common/rc: improve _require_metadata_journaling() for ext4
-Date: Fri, 19 Aug 2016 12:47:38 -0400
-Message-ID: <20160819164738.GA1903@localhost.localdomain>
+Subject: Re: [PATCH] common/rc: improve _require_metadata_journaling() for
+ ext4
+Date: Fri, 19 Aug 2016 12:56:04 -0400
+Message-ID: <20160819165604.GB1903@localhost.localdomain>
+References: <20160818144253.GA14069@localhost.localdomain>
+ <20160818152620.GC27776@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: fstests@vger.kernel.org
+Cc: Eric Whitney <enwlinux@gmail.com>, fstests@vger.kernel.org,
+        linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eryu Guan <eguan@redhat.com>
 Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
+In-Reply-To: <20160818152620.GC27776@eguan.usersys.redhat.com>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The code in _require_metadata_journaling() currently rejects ext4 file
-systems that have been created without a journal.  However, an ext4
-file system with a journal should also be rejected if the journal is
-not loaded and made available for use at mount time.
+> 
+> I think this can be done by the new helper _exclude_scratch_mount_option
+> which was introduced recently, e.g.
+> 
+_exclude_scratch_mount_option "noload"
 
-V2:  Replaced code with call to _exclude_scratch_mount_option() per
-review comment.
+This function would be better named if it didn't include "_scratch", since
+it isn't scratch-specific.  That would make it easier for the occasional
+contributor/reader to recognize it for what it is at a glance.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- common/rc | 2 ++
- 1 file changed, 2 insertions(+)
+Also, its header comment references MKFS_OPTIONS rather than MOUNT_OPTIONS.
 
-diff --git a/common/rc b/common/rc
-index 3fb0600..9d1fc07 100644
---- a/common/rc
-+++ b/common/rc
-@@ -3057,6 +3057,8 @@ _require_metadata_journaling()
- 		_require_dumpe2fs
- 		$DUMPE2FS_PROG -h $DEV 2>&1 | grep -q has_journal || \
- 			_notrun "$FSTYP on $DEV not configured with metadata journaling"
-+		# ext4 might not load a journal
-+		_exclude_scratch_mount_option "noload"
- 		;;
- 	*)
- 		# by default we pass; if you need to, add your fs above!
--- 
-2.1.4
+Thanks,
+Eric
+
+> 
+> Thanks,
+> Eryu
