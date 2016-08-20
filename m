@@ -1,69 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 5/6] kvm-xfstests: add initrd support
-Date: Fri, 19 Aug 2016 19:40:52 -0400
-Message-ID: <20160819234052.GC12834@thunk.org>
-References: <1471553651-9547-1-git-send-email-dmonakhov@openvz.org>
- <1471553651-9547-6-git-send-email-dmonakhov@openvz.org>
- <20160819134432.GH10888@thunk.org>
- <874m6g7tc5.fsf@openvz.org>
+From: Thomas Deutschmann <whissi@whissi.de>
+Subject: linux-4.4.18 crashed in find_inode_fast while deleting directory
+Date: Sat, 20 Aug 2016 16:50:34 +0200
+Message-ID: <768259a7-ed21-6538-8f82-76a19359e03e@whissi.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47610 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754781AbcHSXlG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Aug 2016 19:41:06 -0400
-Content-Disposition: inline
-In-Reply-To: <874m6g7tc5.fsf@openvz.org>
+Received: from yamato.tf-network.de ([93.186.202.221]:59902 "EHLO
+        yamato.tf-network.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752844AbcHTPBH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Aug 2016 11:01:07 -0400
+Received: from amavis3.tf-network.de ([IPv6:2001:4ba0:ffa0:1b::d1:221])
+        by yamato.tf-network.de (Postfix) with ESMTP id 3sGjSD50QSz4DYt
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2016 16:50:36 +0200 (CEST)
+Received: from smtp.tf-network.de ([93.186.202.221])
+        by amavis3.tf-network.de ([IPv6:2001:4ba0:ffa0:1b::d1:221]) (amavisd-new, port 10024)
+        with LMTP id gBbB9NudbMyl for <linux-ext4@vger.kernel.org>;
+        Sat, 20 Aug 2016 16:50:35 +0200 (CEST)
+Received: from [192.168.2.10] (p578671EC.dip0.t-ipconnect.de [87.134.113.236])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by smtp.tf-network.de (Postfix) with ESMTPSA id 3sGjSC2jyDz4DYs
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2016 16:50:35 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 19, 2016 at 04:59:22PM +0300, Dmitry Monakhov wrote:
-> No problem, but it looks like my knowledge about GCE is too low at the
-> moment. BTW are there are any way to make a bullet prof method to stop
-> gce instance after predefined timout? Your systemctl timeout script
-> does not always work. In my case it stuck somewhere inside FS and
-> timeout.service can not do it's job. Probably we can do it via
-> kernel watchdog or external watcher ala Jenkins.
+Hi,
 
-My long term vision was to use an external watcher that would run in
-Google App Engine.  The idea would be that this would also take care
-of launching separate VM's for each of the different test cases, and
-then collate the reports into a single test report.  Long term I'd
-also like to have the results stored into Google Cloud Datastore, and
-do automatic flaky test detection.
+while deleting a directory containing gcc-5.4.0 sources linux-4.4.18
+crashed with:
 
-For now, I just simply manually keep an eye on things using
-"gce-xfstests ls -l", and if I see something running for too long,
-I'll connect to it using "gce-xfstests console xfstests-XXXX" to grab
-the results.  In the app-engine test runner vision it would use the
-equivalent of "gce-xfstests serial xfstests-XXX" and store the
-complete serial console output someplace safe.  What happens today
-tends to be:
+> [...]
+> [198.425403] RHX: 0000000000000000 RBX: 00000000ffffff28 RCX: 0000000000000012
+> [198.425776] RDX: 0000000000006016 RSI: ffff8800b9a46060 RDI: ffff8800b8b0e800
+> [198.426145] RBP: ffff8800b36d3d68 Ro8: 0000000000006016 Ro9: ffff8800b6419958
+> [198.426524] R10: ffff8800b5f36400 R11: 0000000000000028 R12: 0000000000006016
+> [198.426904] R13: ffff8800b8b0e800 R14: ffff8800b9a46060 R15: 0000000000000002
+> [198.427284] FS:  00007f7a23216700(0000) GS:ffff8800ba020000(0000) knlGS:0000000000000000
+> [198.427667] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [198.428095] CR2: 00000000ffffff60 CR3: 00000000b5e07000 CR4: 00000000001406e0
+> [198.428517] Stack:
+> [198.428916] 0000000000006016 ffff8800b8b0e800 0000000000006016 ffff8800b9a46060
+> [198.429338] 0000000000000002 ffff8800b36d3da0 ffffffff81215709 ffff8800b6175fc8
+> [198.429735] ffff8800b61ac180 0000000000006016 ffff8800b8b0e800 0000000000000002
+> [198.430163] Call Trace:
+> [198.430576] [<ffffffff81215709>] iget_locked+ox69/0x170
+> [198.431015] [<ffffffff8127c6ed>] ext4_iget+0x3d/0xb20
+> [198.431440] [<ffffffff81212d0a>] ? __d_alloc+0x13a/0x170
+> [198.431870] [<ffffffff8127d1fb>] ext4_iget_normal+0x2b/0x30
+> [198.432287] [<ffffffff81286ed6>] ext4_lookup+0x96/0x140
+> [198.432699] [<ffffffff81204d58>] lookup_real+0x18/0x60
+> [198.433093] [<ffffffff812062ee>] __lookup_hash+0x2e/0x40
+> [198.433484] [<ffffffff8120a891>] do_unlinkat+0x121/0x290
+> [198.433865] [<ffffffff8120b306>] SyS_unlinkat+0x16/0x30
+> [198.434236] [<ffffffff8166df57>] entry_SYSCALL_64_fastpath+0x12/0x66
+> [198.434612] Code: 49 89 fd 41 54 49 89 d4 53 49 8b 1e 48 85 db 75 0e eb 4c 48 8b 9b d8 00 00 00 48 85 db 74 40 48 81 eb d8 00 00 00 48 85 db 74 34 <4c> 39 63 38 75 e2 40 39 6b 28 75 dc 4c 8d bb 80 00 00 00 4c 89
+> [198.435786] RIP [<ffffffff81214678>] find_inode_fast+0x38/0x90
+> [198.436150]  RSP <ffff880ob36d3d40>
+> [198.436513] CR2: 00000000ffffff60
+> [198.436861] ---[ end trace dfe3106be8oeb2d7 ]---
+> [198.437181] note: rm[5815] exited with preempt_count 1
 
-1) gce-xfstests -c overlay -g auto
+Text was extracted from a screenshot using OCR. Original screenshot:
+http://666kb.com/i/dboxb0sei3pe9we0w.png
 
-2) periodically I'll run gce-xfstests ls -l, and notice when the VM
-apparently is no longer making foreward progress.
+Please CC on reply because I am not subscribed to the ext4 mailing list.
 
-3) Hmm, looks like overlayfs is blowing up.  And gce-xfstests console
-doesn't give me enough history since it only stores the last N lines".
 
-4) gce-xfstests abort xfstests-XXXXXX
-
-5) rerun "gce-xfstests -c overaly -g auto", but now after it starts,
-   also run: "script -c "gce-xfstests serial xfstests-XXXXX" console-XXXXX.out"
-
-In practice this doesn't happen often enough that I've automated this,
-and it's also why I haven't made it a high priority to create some
-kind of external test running / monitoring service.
-
-     		      	      		   - Ted
-
-P.S. I recently added overlayfs support, and it looks like overlayfs
-has a bug which ends up screwing up an inode link's count, and causing
-the ext4 orphan list to get corrupted, and causing subsequent ext4
-warnings and BUG's to get triggered.  So this isn't a hypothetical
-example; it's just one that I haven't had time to track down yet.  :-)
+-- 
+Regards,
+Thomas
