@@ -1,34 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 4/6] xfstest-bld: use parallel gzip if possible
-Date: Sat, 20 Aug 2016 18:52:08 -0400
-Message-ID: <20160820225208.GC855@thunk.org>
-References: <1471553651-9547-1-git-send-email-dmonakhov@openvz.org>
- <1471553651-9547-5-git-send-email-dmonakhov@openvz.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 88321] WARNING: CPU: 1 PID: 6784 at fs/dcache.c:1318
+ umount_check+0x77/0x7b()
+Date: Sat, 20 Aug 2016 23:06:37 +0000
+Message-ID: <bug-88321-13602-yesOWJ8D4b@https.bugzilla.kernel.org/>
+References: <bug-88321-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48746 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:40572 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751222AbcHTWwM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 20 Aug 2016 18:52:12 -0400
-Content-Disposition: inline
-In-Reply-To: <1471553651-9547-5-git-send-email-dmonakhov@openvz.org>
+        id S1752154AbcHTXGl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 20 Aug 2016 19:06:41 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id F2C3220259
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2016 23:06:39 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+        by mail.kernel.org (Postfix) with ESMTP id 264812024C
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Aug 2016 23:06:38 +0000 (UTC)
+In-Reply-To: <bug-88321-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 19, 2016 at 12:54:09AM +0400, Dmitry Monakhov wrote:
-> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
-> ---
->  gen-tarball                                  | 4 +++-
->  kvm-xfstests/gce-xfstests                    | 5 +++--
->  kvm-xfstests/kvm-xfstests                    | 3 ++-
->  kvm-xfstests/test-appliance/gce-create-image | 3 ++-
->  4 files changed, 10 insertions(+), 5 deletions(-)
+https://bugzilla.kernel.org/show_bug.cgi?id=88321
 
-I've applied just the gen-tarball portion of the patch, because that's
-where using the parallelized gzip makes a difference.  For small
-files, pigz can actually take a tiny bit _more_ time.
+ingvarthorvald@gmail.com changed:
 
-       	    		      	     	 - Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |ingvarthorvald@gmail.com
+
+--- Comment #3 from ingvarthorvald@gmail.com ---
+See if you can reproduce this on a newer kernel. Seems that this was fixed
+somewhere as the call to kill_anon_super no longer shows up in nfs_kill_super.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
