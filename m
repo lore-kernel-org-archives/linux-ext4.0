@@ -1,62 +1,48 @@
-From: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
-Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME
-	and CURRENT_TIME_SEC macros
-Date: Tue, 23 Aug 2016 16:51:39 +0200
-Message-ID: <2295046.g7jOF3qsLW@wuerfel>
-References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
-	<20160815162312.GA19794@kroah.com>
+From: Marcos Mello <marcosfrm@gmail.com>
+Subject: Re: Kernel does not respect tune2fs -E mount_opts=foo
+Date: Tue, 23 Aug 2016 13:01:53 -0300
+Message-ID: <CAJZVDJDgz=QTARjPXDqh8YuFOiS6nO_BdTzNsb2hr5apPmLk5w@mail.gmail.com>
+References: <CAJZVDJDeLePt1RYAtLQ-NzZ0R5nwRb_wwBW9H7dcgD2zG8_m=g@mail.gmail.com>
+ <20160823154849.GA15892@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: shaggy-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org, adrian.hunter-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org,
-	clm-b10kYP2dOMg@public.gmane.org, adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-	Deepa Dinamani <deepa.kernel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, buchino-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org,
-	tglx-hfZtesqFncYOwBW4kG4KsQ@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, jejb-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
-	paul-r2n+y4ga6xFZroRs9YW3xA@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	y2038-cunTk1MwBs8s++Sfvej+rw@public.gmane.org, idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cm224.lee-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org,
-	dushistov-JGs/UdohzUI@public.gmane.org, mfasheh-IBi9RG/b67k@public.gmane.org, sramars-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org,
-	john.stultz-QSEj5FYQhm4dnm+yROfE0A@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-	dsterba-IBi9RG/b67k@public.gmane.org, jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, elder-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-	sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, martin.petersen-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, dedekind1-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-	jbacik-b10kYP2dOMg@public.gmane.org, hiralpat-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	eparis-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	sfrench-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org, linux-audit-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
-To: Greg KH <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>
-Return-path: <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-In-Reply-To: <20160815162312.GA19794-U8xfFu+wG4EAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <http://lists.lustre.org/options.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.lustre.org/pipermail/lustre-devel-lustre.org/>
-List-Post: <mailto:lustre-devel-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Help: <mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org>,
-	<mailto:lustre-devel-request-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org?subject=subscribe>
-Errors-To: lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org
-Sender: "lustre-devel" <lustre-devel-bounces-aLEFhgZF4x6X6Mz3xDxJMA@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yb0-f179.google.com ([209.85.213.179]:36555 "EHLO
+        mail-yb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753370AbcHWQI6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Aug 2016 12:08:58 -0400
+Received: by mail-yb0-f179.google.com with SMTP id e31so52150693ybi.3
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Aug 2016 09:08:14 -0700 (PDT)
+In-Reply-To: <20160823154849.GA15892@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday, August 15, 2016 6:23:12 PM CEST Greg KH wrote:
-> On Sat, Aug 13, 2016 at 03:48:12PM -0700, Deepa Dinamani wrote:
-> > The series is aimed at getting rid of CURRENT_TIME and CURRENT_TIME_SEC macros.
-> > The macros are not y2038 safe. There is no plan to transition them into being
-> > y2038 safe.
-> > ktime_get_* api's can be used in their place. And, these are y2038 safe.
-> 
-> Who are you execting to pull this huge patch series?
+2016-08-23 12:48 GMT-03:00  <tytso@mit.edu>:
+> The problem you are running into is not something we can fix,
+> unfortunately, or at least not in a full and general way.  The problem
+> is that there are certain mount options which are parsed by the mount
+> command (in userspace) and then translated to a mount flag, which is
+> then passed to the mount command as a bitmask, and which is
+> interpreted by the VFS layer before calling the file system.
+>
+> The mount options field in the superblock is parsed by the ext4 file
+> system along with options that were not parsed by the mount binary,
+> passed to the VFS, which then passed it to ext4 file system driver.
+>
+> In theory, we could interpret relatime in ext4 and replicate its
+> effects.  For relatime, this is trivial to do.  There may be other
+> mount options which are interepted by the mount userspace program, and
+> implemented in the VFS, where this would be much less easy to do.
+>
+>> Other options like noacl, nouser_xattr, are ignored too. This
+>> filesystem is not listed in fstab.
+>
+> This is exactly the same issue.
+>
 
-Dave Chinner suggested to have Al Viro pick up the whole series.
+Thanks for the explanation. A hint about this limitation in tune2fs
+man page would help.
 
-> Why not just introduce the new api call, wait for that to be merged, and
-> then push the individual patches through the different subsystems?
-> After half of those get ignored, then provide a single set of patches
-> that can go through Andrew or my trees.
-
-That was the original approach for v4.7, but (along with requesting
-a number of reworks that Deepa incorporated), Linus preferred doing
-the API change done in one chunk, see
-https://patchwork.kernel.org/patch/9134249/
-
-	Arnd
+Marcos
