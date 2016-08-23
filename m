@@ -1,43 +1,64 @@
-From: tytso@mit.edu
-Subject: Re: Kernel does not respect tune2fs -E mount_opts=foo
-Date: Tue, 23 Aug 2016 15:48:49 +0000
-Message-ID: <20160823154849.GA15892@thunk.org>
-References: <CAJZVDJDeLePt1RYAtLQ-NzZ0R5nwRb_wwBW9H7dcgD2zG8_m=g@mail.gmail.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH v2 0/9] re-enable DAX PMD support
+Date: Tue, 23 Aug 2016 16:04:10 -0600
+Message-ID: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Marcos Mello <marcosfrm@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57742 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752931AbcHWQoC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 Aug 2016 12:44:02 -0400
-Content-Disposition: inline
-In-Reply-To: <CAJZVDJDeLePt1RYAtLQ-NzZ0R5nwRb_wwBW9H7dcgD2zG8_m=g@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-The problem you are running into is not something we can fix,
-unfortunately, or at least not in a full and general way.  The problem
-is that there are certain mount options which are parsed by the mount
-command (in userspace) and then translated to a mount flag, which is
-then passed to the mount command as a bitmask, and which is
-interpreted by the VFS layer before calling the file system.
+DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+locking.  This series allows DAX PMDs to participate in the DAX radix tree
+based locking scheme so that they can be re-enabled.
 
-The mount options field in the superblock is parsed by the ext4 file
-system along with options that were not parsed by the mount binary,
-passed to the VFS, which then passed it to ext4 file system driver.
+Changes since v1:
+ - PMD entry locking is now done based on the starting offset of the PMD
+   entry, rather than on the radix tree slot which was unreliable. (Jan)
+ - Fixed the one issue I could find with hole punch.  As far as I can tell
+   hole punch now works correctly for both PMD and PTE DAX entries, 4k zero
+   pages and huge zero pages.
+ - Fixed the way that ext2 returns the size of holes in ext2_get_block().
+   (Jan)
+ - Made the 'wait_table' global variable static in respnse to a sparse
+   warning.
+ - Fixed some more inconsitent usage between the names 'ret' and 'entry'
+   for radix tree entry variables.
 
-In theory, we could interpret relatime in ext4 and replicate its
-effects.  For relatime, this is trivial to do.  There may be other
-mount options which are interepted by the mount userspace program, and
-implemented in the VFS, where this would be much less easy to do.
+Ross Zwisler (9):
+  ext4: allow DAX writeback for hole punch
+  ext2: tell DAX the size of allocation holes
+  ext4: tell DAX the size of allocation holes
+  dax: remove buffer_size_valid()
+  dax: make 'wait_table' global variable static
+  dax: consistent variable naming for DAX entries
+  dax: coordinate locking for offsets in PMD range
+  dax: re-enable DAX PMD support
+  dax: remove "depends on BROKEN" from FS_DAX_PMD
 
-> Other options like noacl, nouser_xattr, are ignored too. This
-> filesystem is not listed in fstab.
+ fs/Kconfig          |   1 -
+ fs/dax.c            | 297 +++++++++++++++++++++++++++++-----------------------
+ fs/ext2/inode.c     |   3 +
+ fs/ext4/inode.c     |   7 +-
+ include/linux/dax.h |  29 ++++-
+ mm/filemap.c        |   6 +-
+ 6 files changed, 201 insertions(+), 142 deletions(-)
 
-This is exactly the same issue.
-
-Cheers,
-
-					- Ted
+-- 
+2.9.0
