@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v2 4/9] dax: remove buffer_size_valid()
-Date: Tue, 23 Aug 2016 16:04:14 -0600
-Message-ID: <20160823220419.11717-5-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 7/9] dax: coordinate locking for offsets in PMD range
+Date: Tue, 23 Aug 2016 16:04:17 -0600
+Message-ID: <20160823220419.11717-8-ross.zwisler@linux.intel.com>
 References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,62 +26,164 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that all our supported filesystems (ext2, ext4 and XFS) all properly
-set bh.b_size when we call get_block() for a hole, rely on that value and
-remove the buffer_size_valid() sanity check.
+DAX radix tree locking currently locks entries based on the unique
+combination of the 'mapping' pointer and the pgoff_t 'index' for the entry.
+This works for PTEs, but as we move to PMDs we will need to have all the
+offsets within the range covered by the PMD to map to the same bit lock.
+To accomplish this, for ranges covered by a PMD entry we will instead lock
+based on the page offset of the beginning of the PMD entry.  The 'mapping'
+pointer is still used in the same way.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 22 +---------------------
- 1 file changed, 1 insertion(+), 21 deletions(-)
+ fs/dax.c            | 37 ++++++++++++++++++++++++-------------
+ include/linux/dax.h |  2 +-
+ mm/filemap.c        |  2 +-
+ 3 files changed, 26 insertions(+), 15 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 993dc6f..8030f93 100644
+index 0e3f462..955e184 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -121,19 +121,6 @@ static bool buffer_written(struct buffer_head *bh)
- 	return buffer_mapped(bh) && !buffer_unwritten(bh);
+@@ -62,10 +62,17 @@ static int __init init_dax_wait_table(void)
+ }
+ fs_initcall(init_dax_wait_table);
+ 
++static pgoff_t dax_entry_start(pgoff_t index, void *entry)
++{
++	if (RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
++		index &= (PMD_MASK >> PAGE_SHIFT);
++	return index;
++}
++
+ static wait_queue_head_t *dax_entry_waitqueue(struct address_space *mapping,
+-					      pgoff_t index)
++					      pgoff_t entry_start)
+ {
+-	unsigned long hash = hash_long((unsigned long)mapping ^ index,
++	unsigned long hash = hash_long((unsigned long)mapping ^ entry_start,
+ 				       DAX_WAIT_TABLE_BITS);
+ 	return wait_table + hash;
+ }
+@@ -283,7 +290,7 @@ EXPORT_SYMBOL_GPL(dax_do_io);
+  */
+ struct exceptional_entry_key {
+ 	struct address_space *mapping;
+-	unsigned long index;
++	pgoff_t entry_start;
+ };
+ 
+ struct wait_exceptional_entry_queue {
+@@ -299,7 +306,7 @@ static int wake_exceptional_entry_func(wait_queue_t *wait, unsigned int mode,
+ 		container_of(wait, struct wait_exceptional_entry_queue, wait);
+ 
+ 	if (key->mapping != ewait->key.mapping ||
+-	    key->index != ewait->key.index)
++	    key->entry_start != ewait->key.entry_start)
+ 		return 0;
+ 	return autoremove_wake_function(wait, mode, sync, NULL);
+ }
+@@ -357,12 +364,10 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+ {
+ 	void *entry, **slot;
+ 	struct wait_exceptional_entry_queue ewait;
+-	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
++	wait_queue_head_t *wq;
+ 
+ 	init_wait(&ewait.wait);
+ 	ewait.wait.func = wake_exceptional_entry_func;
+-	ewait.key.mapping = mapping;
+-	ewait.key.index = index;
+ 
+ 	for (;;) {
+ 		entry = __radix_tree_lookup(&mapping->page_tree, index, NULL,
+@@ -373,6 +378,11 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+ 				*slotp = slot;
+ 			return entry;
+ 		}
++
++		wq = dax_entry_waitqueue(mapping,
++				dax_entry_start(index, entry));
++		ewait.key.mapping = mapping;
++		ewait.key.entry_start = dax_entry_start(index, entry);
+ 		prepare_to_wait_exclusive(wq, &ewait.wait,
+ 					  TASK_UNINTERRUPTIBLE);
+ 		spin_unlock_irq(&mapping->tree_lock);
+@@ -445,10 +455,11 @@ restart:
+ 	return entry;
  }
  
--/*
-- * When ext4 encounters a hole, it returns without modifying the buffer_head
-- * which means that we can't trust b_size.  To cope with this, we set b_state
-- * to 0 before calling get_block and, if any bit is set, we know we can trust
-- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
-- * and would save us time calling get_block repeatedly.
-- */
--static bool buffer_size_valid(struct buffer_head *bh)
--{
--	return bh->b_state != 0;
--}
--
--
- static sector_t to_sector(const struct buffer_head *bh,
- 		const struct inode *inode)
+-void dax_wake_mapping_entry_waiter(struct address_space *mapping,
++void dax_wake_mapping_entry_waiter(void *entry, struct address_space *mapping,
+ 				   pgoff_t index, bool wake_all)
  {
-@@ -175,8 +162,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
- 				rc = get_block(inode, block, bh, rw == WRITE);
- 				if (rc)
- 					break;
--				if (!buffer_size_valid(bh))
--					bh->b_size = 1 << blkbits;
- 				bh_max = pos - first + bh->b_size;
- 				bdev = bh->b_bdev;
- 				/*
-@@ -1010,12 +995,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+-	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
++	wait_queue_head_t *wq = dax_entry_waitqueue(mapping,
++						dax_entry_start(index, entry));
  
- 	bdev = bh.b_bdev;
+ 	/*
+ 	 * Checking for locked entry and prepare_to_wait_exclusive() happens
+@@ -460,7 +471,7 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+ 		struct exceptional_entry_key key;
  
--	/*
--	 * If the filesystem isn't willing to tell us the length of a hole,
--	 * just fall back to PTEs.  Calling get_block 512 times in a loop
--	 * would be silly.
--	 */
--	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
-+	if (bh.b_size < PMD_SIZE) {
- 		dax_pmd_dbg(&bh, address, "allocated block too small");
- 		return VM_FAULT_FALLBACK;
+ 		key.mapping = mapping;
+-		key.index = index;
++		key.entry_start = dax_entry_start(index, entry);
+ 		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
+ 	}
+ }
+@@ -478,7 +489,7 @@ void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
+ 	}
+ 	unlock_slot(mapping, slot);
+ 	spin_unlock_irq(&mapping->tree_lock);
+-	dax_wake_mapping_entry_waiter(mapping, index, false);
++	dax_wake_mapping_entry_waiter(entry, mapping, index, false);
+ }
+ 
+ static void put_locked_mapping_entry(struct address_space *mapping,
+@@ -503,7 +514,7 @@ static void put_unlocked_mapping_entry(struct address_space *mapping,
+ 		return;
+ 
+ 	/* We have to wake up next waiter for the radix tree entry lock */
+-	dax_wake_mapping_entry_waiter(mapping, index, false);
++	dax_wake_mapping_entry_waiter(entry, mapping, index, false);
+ }
+ 
+ /*
+@@ -530,7 +541,7 @@ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
+ 	radix_tree_delete(&mapping->page_tree, index);
+ 	mapping->nrexceptional--;
+ 	spin_unlock_irq(&mapping->tree_lock);
+-	dax_wake_mapping_entry_waiter(mapping, index, true);
++	dax_wake_mapping_entry_waiter(entry, mapping, index, true);
+ 
+ 	return 1;
+ }
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 9c6dc77..f6cab31 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -15,7 +15,7 @@ int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
+ int dax_truncate_page(struct inode *, loff_t from, get_block_t);
+ int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+-void dax_wake_mapping_entry_waiter(struct address_space *mapping,
++void dax_wake_mapping_entry_waiter(void *entry, struct address_space *mapping,
+ 				   pgoff_t index, bool wake_all);
+ 
+ #ifdef CONFIG_FS_DAX
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 8a287df..35e880d 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -617,7 +617,7 @@ static int page_cache_tree_insert(struct address_space *mapping,
+ 			if (node)
+ 				workingset_node_pages_dec(node);
+ 			/* Wakeup waiters for exceptional entry lock */
+-			dax_wake_mapping_entry_waiter(mapping, page->index,
++			dax_wake_mapping_entry_waiter(p, mapping, page->index,
+ 						      false);
+ 		}
  	}
 -- 
 2.9.0
