@@ -1,7 +1,7 @@
 From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH 3/6 linux-next] ext4: create EXT4_MAX_BLOCKS() macro
-Date: Wed, 24 Aug 2016 22:03:17 +0200
-Message-ID: <1472069000-18897-4-git-send-email-fabf@skynet.be>
+Subject: [PATCH 4/6 linux-next] ext4: use bool for check in ext4_ext_space_()
+Date: Wed, 24 Aug 2016 22:03:18 +0200
+Message-ID: <1472069000-18897-5-git-send-email-fabf@skynet.be>
 References: <1472069000-18897-1-git-send-email-fabf@skynet.be>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         fabf@skynet.be
@@ -11,77 +11,133 @@ In-Reply-To: <1472069000-18897-1-git-send-email-fabf@skynet.be>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Create a macro to calculate length + offset -> maximum blocks
-This adds more readability.
+check is used in 0/1 context.
+
+Also use unsigned int instead of unsigned (checkpatch warning)
 
 Signed-off-by: Fabian Frederick <fabf@skynet.be>
 ---
- fs/ext4/ext4.h    |  3 +++
- fs/ext4/extents.c | 15 +++------------
- fs/ext4/file.c    |  3 +--
- 3 files changed, 7 insertions(+), 14 deletions(-)
+ fs/ext4/extents.c | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931..6e98f3f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -262,6 +262,9 @@ struct ext4_io_submit {
- 				 (s)->s_first_ino)
- #endif
- #define EXT4_BLOCK_ALIGN(size, blkbits)		ALIGN((size), (1 << (blkbits)))
-+#define EXT4_MAX_BLOCKS(size, offset, blkbits) \
-+	((EXT4_BLOCK_ALIGN(size + offset, blkbits) >> blkbits) - (offset >> \
-+								  blkbits))
- 
- /* Translate a block number to a cluster number */
- #define EXT4_B2C(sbi, blk)	((blk) >> (sbi)->s_cluster_bits)
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4f1cca8..ac54907 100644
+index ac54907..5b0913d 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4960,13 +4960,8 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+@@ -241,7 +241,7 @@ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
+ 	return newblock;
+ }
  
- 	trace_ext4_fallocate_enter(inode, offset, len, mode);
- 	lblk = offset >> blkbits;
--	/*
--	 * We can't just convert len to max_blocks because
--	 * If blocksize = 4096 offset = 3072 and len = 2048
--	 */
--	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
--		- lblk;
+-static inline int ext4_ext_space_block(struct inode *inode, int check)
++static inline int ext4_ext_space_block(struct inode *inode, bool check)
+ {
+ 	int size;
  
-+	max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
- 	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
-@@ -5029,12 +5024,8 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 	unsigned int credits, blkbits = inode->i_blkbits;
+@@ -254,7 +254,7 @@ static inline int ext4_ext_space_block(struct inode *inode, int check)
+ 	return size;
+ }
  
- 	map.m_lblk = offset >> blkbits;
--	/*
--	 * We can't just convert len to max_blocks because
--	 * If blocksize = 4096 offset = 3072 and len = 2048
--	 */
--	max_blocks = ((EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits) -
--		      map.m_lblk);
-+	max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
-+
- 	/*
- 	 * This is somewhat ugly but the idea is clear: When transaction is
- 	 * reserved, everything goes into it. Otherwise we rather start several
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 261ac37..34acda7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -144,8 +144,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			int err, len;
+-static inline int ext4_ext_space_block_idx(struct inode *inode, int check)
++static inline int ext4_ext_space_block_idx(struct inode *inode, bool check)
+ {
+ 	int size;
  
- 			map.m_lblk = pos >> blkbits;
--			map.m_len = (EXT4_BLOCK_ALIGN(pos + length, blkbits) >> blkbits)
--				- map.m_lblk;
-+			map.m_len = EXT4_MAX_BLOCKS(length, pos, blkbits);
- 			len = map.m_len;
+@@ -267,7 +267,7 @@ static inline int ext4_ext_space_block_idx(struct inode *inode, int check)
+ 	return size;
+ }
  
- 			err = ext4_map_blocks(NULL, inode, &map, 0);
+-static inline int ext4_ext_space_root(struct inode *inode, int check)
++static inline int ext4_ext_space_root(struct inode *inode, bool check)
+ {
+ 	int size;
+ 
+@@ -363,14 +363,14 @@ ext4_ext_max_entries(struct inode *inode, int depth)
+ 
+ 	if (depth == ext_depth(inode)) {
+ 		if (depth == 0)
+-			max = ext4_ext_space_root(inode, 1);
++			max = ext4_ext_space_root(inode, true);
+ 		else
+-			max = ext4_ext_space_root_idx(inode, 1);
++			max = ext4_ext_space_root_idx(inode, true);
+ 	} else {
+ 		if (depth == 0)
+-			max = ext4_ext_space_block(inode, 1);
++			max = ext4_ext_space_block(inode, true);
+ 		else
+-			max = ext4_ext_space_block_idx(inode, 1);
++			max = ext4_ext_space_block_idx(inode, true);
+ 	}
+ 
+ 	return max;
+@@ -864,7 +864,7 @@ int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
+ 	eh->eh_depth = 0;
+ 	eh->eh_entries = 0;
+ 	eh->eh_magic = EXT4_EXT_MAGIC;
+-	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, 0));
++	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, false));
+ 	ext4_mark_inode_dirty(handle, inode);
+ 	return 0;
+ }
+@@ -1109,7 +1109,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 
+ 	neh = ext_block_hdr(bh);
+ 	neh->eh_entries = 0;
+-	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
++	neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, false));
+ 	neh->eh_magic = EXT4_EXT_MAGIC;
+ 	neh->eh_depth = 0;
+ 
+@@ -1183,7 +1183,8 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+ 		neh = ext_block_hdr(bh);
+ 		neh->eh_entries = cpu_to_le16(1);
+ 		neh->eh_magic = EXT4_EXT_MAGIC;
+-		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode, 0));
++		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode,
++								   false));
+ 		neh->eh_depth = cpu_to_le16(depth - i);
+ 		fidx = EXT_FIRST_INDEX(neh);
+ 		fidx->ei_block = border;
+@@ -1310,9 +1311,10 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	/* old root could have indexes or leaves
+ 	 * so calculate e_max right way */
+ 	if (ext_depth(inode))
+-		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode, 0));
++		neh->eh_max = cpu_to_le16(ext4_ext_space_block_idx(inode,
++								   false));
+ 	else
+-		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, 0));
++		neh->eh_max = cpu_to_le16(ext4_ext_space_block(inode, false));
+ 	neh->eh_magic = EXT4_EXT_MAGIC;
+ 	ext4_extent_block_csum_set(inode, neh);
+ 	set_buffer_uptodate(bh);
+@@ -1328,7 +1330,8 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+ 	ext4_idx_store_pblock(EXT_FIRST_INDEX(neh), newblock);
+ 	if (neh->eh_depth == 0) {
+ 		/* Root extent block becomes index block */
+-		neh->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode, 0));
++		neh->eh_max = cpu_to_le16(ext4_ext_space_root_idx(inode,
++								  false));
+ 		EXT_FIRST_INDEX(neh)->ei_block =
+ 			EXT_FIRST_EXTENT(neh)->ee_block;
+ 	}
+@@ -1816,7 +1819,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+ 				     struct ext4_ext_path *path)
+ {
+ 	size_t s;
+-	unsigned max_root = ext4_ext_space_root(inode, 0);
++	unsigned int max_root = ext4_ext_space_root(inode, false);
+ 	ext4_fsblk_t blk;
+ 
+ 	if ((path[0].p_depth != 1) ||
+@@ -3053,7 +3056,7 @@ again:
+ 		if (err == 0) {
+ 			ext_inode_hdr(inode)->eh_depth = 0;
+ 			ext_inode_hdr(inode)->eh_max =
+-				cpu_to_le16(ext4_ext_space_root(inode, 0));
++				cpu_to_le16(ext4_ext_space_root(inode, false));
+ 			err = ext4_ext_dirty(handle, inode, path);
+ 		}
+ 	}
 -- 
 2.8.1
