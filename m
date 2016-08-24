@@ -1,39 +1,55 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [sparc64] ext4 TPC and call trace (process blocked/stuck) on git
- kernel 4.8.0-rc3+
-Date: Wed, 24 Aug 2016 16:27:36 +0800
-Message-ID: <20160824082736.GQ27776@eguan.usersys.redhat.com>
-References: <CADxRZqyE2HjaXzbv-9ovJM=G18C28tr7pEL8RsUx+9o870jqBg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sparclinux@vger.kernel.org,
-        fstests@vger.kernel.org
-To: Anatoly Pugachev <matorola@gmail.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CADxRZqyE2HjaXzbv-9ovJM=G18C28tr7pEL8RsUx+9o870jqBg@mail.gmail.com>
-Sender: fstests-owner@vger.kernel.org
+From: Fabian Frederick <fabf@skynet.be>
+Subject: [PATCH 6/6 linux-next] ext4: fix memory leak in ext4_insert_range()
+Date: Wed, 24 Aug 2016 22:03:20 +0200
+Message-ID: <1472069000-18897-7-git-send-email-fabf@skynet.be>
+References: <1472069000-18897-1-git-send-email-fabf@skynet.be>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        fabf@skynet.be
+To: tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1472069000-18897-1-git-send-email-fabf@skynet.be>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 24, 2016 at 11:13:25AM +0300, Anatoly Pugachev wrote:
-> Hello!
-> 
-> Running fstests (xfstests) suite on sparc64 debian sid/unstable with
-> linux kernel 4.8.0-rc3+ , I'm getting the following call trace and TPC
-> on server console and system logs:
-> 
-> mator@nvg5120:~/xfstests-dev$ ./check ext4/022
+Running xfstests generic/013 with kmemleak gives the following:
 
-ext4/022 is known to hang, and AFAIK the fixes are pending on review and
-not merged to mainline kernel yet. Please see this patchset
+unreferenced object 0xffff8801d3d27de0 (size 96):
+  comm "fsstress", pid 4941, jiffies 4294860168 (age 53.485s)
+  hex dump (first 32 bytes):
+    00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00  ................
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff818eaaf3>] kmemleak_alloc+0x23/0x40
+    [<ffffffff81179805>] __kmalloc+0xf5/0x1d0
+    [<ffffffff8122ef5c>] ext4_find_extent+0x1ec/0x2f0
+    [<ffffffff8123530c>] ext4_insert_range+0x34c/0x4a0
+    [<ffffffff81235942>] ext4_fallocate+0x4e2/0x8b0
+    [<ffffffff81181334>] vfs_fallocate+0x134/0x210
+    [<ffffffff8118203f>] SyS_fallocate+0x3f/0x60
+    [<ffffffff818efa9b>] entry_SYSCALL_64_fastpath+0x13/0x8f
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
-https://www.spinics.net/lists/linux-ext4/msg53200.html
+Problem seems mitigated by dropping refs and freeing path
+when there's no path[depth].p_ext
 
-And ext4/022 is in dangerous group, I think you can skip it by adding
-"-x dangerous" to your check options (skip all tests in dangerous
-group), e.g.
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
+---
+ fs/ext4/extents.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-./check -g auto -x dangerous
-
-Thanks,
-Eryu
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 5b0913d..2774df4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5711,6 +5711,9 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 			up_write(&EXT4_I(inode)->i_data_sem);
+ 			goto out_stop;
+ 		}
++	} else {
++		ext4_ext_drop_refs(path);
++		kfree(path);
+ 	}
+ 
+ 	ret = ext4_es_remove_extent(inode, offset_lblk,
+-- 
+2.8.1
