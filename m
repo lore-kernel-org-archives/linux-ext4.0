@@ -1,52 +1,43 @@
-From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH 1/6 linux-next] ext4: avoid EXT4_INODE_EXTENTS double checking
-Date: Wed, 24 Aug 2016 22:03:15 +0200
-Message-ID: <1472069000-18897-2-git-send-email-fabf@skynet.be>
-References: <1472069000-18897-1-git-send-email-fabf@skynet.be>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        fabf@skynet.be
-To: tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1472069000-18897-1-git-send-email-fabf@skynet.be>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
+Date: Thu, 25 Aug 2016 00:57:28 -0700
+Message-ID: <20160825075728.GA11235@infradead.org>
+References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
+ <20160823220419.11717-3-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20160823220419.11717-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_collapse_range() and ext4_insert_range()
-already checked inode flag at the beginning of function.
+Hi Ross,
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/ext4/extents.c | 11 -----------
- 1 file changed, 11 deletions(-)
+can you take at my (fully working, but not fully cleaned up) version
+of the iomap based DAX code here:
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d7ccb7f..5d9f99a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5506,12 +5506,6 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 		goto out_mutex;
- 	}
- 
--	/* Currently just for extent based files */
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
--		ret = -EOPNOTSUPP;
--		goto out_mutex;
--	}
--
- 	/* Wait for existing dio to complete */
- 	ext4_inode_block_unlocked_dio(inode);
- 	inode_dio_wait(inode);
-@@ -5643,11 +5637,6 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
- 	}
- 
- 	inode_lock(inode);
--	/* Currently just for extent based files */
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
--		ret = -EOPNOTSUPP;
--		goto out_mutex;
--	}
- 
- 	/* Check for wrap through zero */
- 	if (inode->i_size + len > inode->i_sb->s_maxbytes) {
--- 
-2.8.1
+http://git.infradead.org/users/hch/vfs.git/shortlog/refs/heads/iomap-dax
+
+By using iomap we don't even have the size hole problem and totally
+get out of the reverse-engineer what buffer_heads are trying to tell
+us business.  It also gets rid of the other warts of the DAX path
+due to pretending to be like direct I/O, so this might be a better
+way forward also for ext2/4.
