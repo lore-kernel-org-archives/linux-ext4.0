@@ -1,47 +1,28 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
-Date: Thu, 25 Aug 2016 13:25:31 -0600
-Message-ID: <20160825192531.GA2607@linux.intel.com>
-References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
- <20160823220419.11717-3-ross.zwisler@linux.intel.com>
- <20160825075728.GA11235@infradead.org>
+From: =?UTF-8?B?0JLQu9Cw0LTQuNC80LjRgCDQotC40LzQvtGE0LjQtdCy?=
+        <elimelech007@gmail.com>
+Subject: mount options lazytime
+Date: Thu, 25 Aug 2016 22:55:20 +0300
+Message-ID: <CAEQ1wyH+qxh3Meox7cJqXBmyHw-7bzLG1fTRVAXnAw_Q+yq=8w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160825075728.GA11235-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lf0-f51.google.com ([209.85.215.51]:34299 "EHLO
+        mail-lf0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753320AbcHYUYB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Aug 2016 16:24:01 -0400
+Received: by mail-lf0-f51.google.com with SMTP id l89so42747521lfi.1
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Aug 2016 13:23:01 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 25, 2016 at 12:57:28AM -0700, Christoph Hellwig wrote:
-> Hi Ross,
-> 
-> can you take at my (fully working, but not fully cleaned up) version
-> of the iomap based DAX code here:
-> 
-> http://git.infradead.org/users/hch/vfs.git/shortlog/refs/heads/iomap-dax
-> 
-> By using iomap we don't even have the size hole problem and totally
-> get out of the reverse-engineer what buffer_heads are trying to tell
-> us business.  It also gets rid of the other warts of the DAX path
-> due to pretending to be like direct I/O, so this might be a better
-> way forward also for ext2/4.
-
-Sure, I'll take a look.
+R29vZCBhZnRlcm5vb24hDQpQbGVhc2UgdGVsbCBtZSB0aGVzZSBtb3VudCBvcHRpb25zIHRvIHJl
+Z2lzdGVyIHByb3Blcmx5Og0KDQojIC8gd2FzIG9uIC9kZXYvc2RhNiBkdXJpbmcgaW5zdGFsbGF0
+aW9uDQpVVUlEPWQ2NTU3NDlkLTlkMGItNDhiOS1hMjU1LTkyZWZkNmEzNjk5NyAvICAgICAgICAg
+ICAgICAgZXh0NA0KZXJyb3JzPXJlbW91bnQtcm8scmVsYXRpbWUsbGF6eXRpbWUgMCAgICAgICAx
+DQoNCmxhenl0aW1lIG9yIHJlbGF0aW1lLGxhenl0aW1lICBvciB5b3UgY2FuIGp1c3QgbGVhdmUg
+bGF6eXRpbWUgPw0KDQpUaGFua3MgZm9yIHRoZSBhbnN3ZXIhDQoNCi0tIA0K0JbQtdC70LDRjiDQ
+stCw0Lwg0L/QvtC00LTQtdGA0LbQutC4INCh0LLRi9GI0LUg0Lgg0YPRgdC/0LXRhdCwIQ0KDQrQ
+oSDRg9Cy0LDQttC10L3QuNC10LwsDQrQktCw0YggINCS0LvQsNC00LjQvNC40YAg0KLQuNC80L7R
+hNC40LXQsiA8aHR0cDovL2NvcGkucnUvOTQ3MTcvPg0K
