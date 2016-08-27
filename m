@@ -1,49 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Ext4 stuck at wait_transaction_locked
-Date: Sat, 27 Aug 2016 12:14:38 -0400
-Message-ID: <20160827161438.miujy357ldsug7be@thunk.org>
-References: <CAFz9U7TAWtpQPfgG0u=6_jtVUhK5ahPGGnGy6GK8RZ-0XM2pfg@mail.gmail.com>
- <20160827133642.4znpf3aprhgbdtwv@thunk.org>
- <CAFz9U7SHbv4i=x-2mVYKw5TG_Q9_F+WSp5+jHiHWoQGHJXRmXw@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug
+ 154351]=?UTF-8?Q?=20=E0=A4=AA=E0=A4=A4=E0=A5=8D=E0=A4=B0=E0=A4=BF=E0=A4=95=E0=A4=BE=E0=A4=93=20=20California=20=2DTexas=20=20?=(<1<855<675<0109) Intuit Software Support Helpline Number
+Date: Sat, 27 Aug 2016 17:49:30 +0000
+Message-ID: <bug-154351-13602-N8Dc82FTWB@https.bugzilla.kernel.org/>
+References: <bug-154351-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Roy Yang <roy@cohesity.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43834 "EHLO imap.thunk.org"
+Received: from mail.kernel.org ([198.145.29.136]:48534 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753958AbcH0QOl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 27 Aug 2016 12:14:41 -0400
-Content-Disposition: inline
-In-Reply-To: <CAFz9U7SHbv4i=x-2mVYKw5TG_Q9_F+WSp5+jHiHWoQGHJXRmXw@mail.gmail.com>
+        id S1754145AbcH0Rtd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 27 Aug 2016 13:49:33 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id D44D22034F
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Aug 2016 17:49:31 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id 82E5620254
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Aug 2016 17:49:30 +0000 (UTC)
+In-Reply-To: <bug-154351-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 27, 2016 at 07:45:57AM -0700, Roy Yang wrote:
-> Hi Ted,
->   Thank you very much for reply.
->   The stack trace of the process is killed is:
+https://bugzilla.kernel.org/show_bug.cgi?id=154351
 
-Hmm, are you sure this is the only process that got oom-killed?  What
-I was expecting was a process with a stack trace that showed it was in
-the middle of ext4 or jbd2 code at the time when it tried to do a
-memory allocation and this either caused an OOM kill, or an EXT4-fs
-error report when a memory allocation failed.  
+Theodore Tso <tytso@mit.edu> changed:
 
->  We adjust the memory limit and avoid this process is killed. Now the
-> problem goes away. If possible, we still want to understand why Ext4
-> is stuck in this case.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+          Component|ext2                        |Spam
+           Assignee|fs_ext2@kernel-bugs.osdl.or |other_spam@kernel-bugs.kern
+                   |g                           |el.org
+            Product|File System                 |Other
 
-What is probably happening is that a memory allocation failed in the
-middle of an ext4 operation, and it was holding jbd2 handle at the
-time of the failure.  The error handling path didn't release the
-handle, and so the next time the jbd2 subsystem tried to do a
-transaction commit, it waited for all of the handles to complete, and
-since there was a handle leak due to the allocation failure / OOM
-kill, it caused the jbd2 commit code to wait forever.
-
-If that was the only process that got OOM killed, were there any ext4
-error or warning messages before the OOM kill, or maybe slightly after
-it?
-
-							- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
