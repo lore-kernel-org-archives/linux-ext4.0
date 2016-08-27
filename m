@@ -1,297 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 154701]
- New:=?UTF-8?Q?=20=E0=A4=95=E0=A4=A4=E0=A4=88=20California=20=2D=20Texas=20=20=2A1855=2A675=2A0109=2A=20Intuit=20Quickbooks=20Technical=20Support=20Phone=20Number?=
-Date: Sat, 27 Aug 2016 15:40:38 +0000
-Message-ID: <bug-154701-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Ext4 stuck at wait_transaction_locked
+Date: Sat, 27 Aug 2016 12:14:38 -0400
+Message-ID: <20160827161438.miujy357ldsug7be@thunk.org>
+References: <CAFz9U7TAWtpQPfgG0u=6_jtVUhK5ahPGGnGy6GK8RZ-0XM2pfg@mail.gmail.com>
+ <20160827133642.4znpf3aprhgbdtwv@thunk.org>
+ <CAFz9U7SHbv4i=x-2mVYKw5TG_Q9_F+WSp5+jHiHWoQGHJXRmXw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Roy Yang <roy@cohesity.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:40726 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:43834 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932109AbcH0Pkn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 27 Aug 2016 11:40:43 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id A049F20382
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Aug 2016 15:40:40 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id A44A920373
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Aug 2016 15:40:38 +0000 (UTC)
+        id S1753958AbcH0QOl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 27 Aug 2016 12:14:41 -0400
+Content-Disposition: inline
+In-Reply-To: <CAFz9U7SHbv4i=x-2mVYKw5TG_Q9_F+WSp5+jHiHWoQGHJXRmXw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=154701
+On Sat, Aug 27, 2016 at 07:45:57AM -0700, Roy Yang wrote:
+> Hi Ted,
+>   Thank you very much for reply.
+>   The stack trace of the process is killed is:
 
-            Bug ID: 154701
-           Summary: कतई California - Texas  *1855*675*0109* Intuit
-                    Quickbooks Technical Support Phone Number
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.4
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext2
-          Assignee: fs_ext2@kernel-bugs.osdl.org
-          Reporter: lopez.hill92@gmail.com
-        Regression: No
+Hmm, are you sure this is the only process that got oom-killed?  What
+I was expecting was a process with a stack trace that showed it was in
+the middle of ext4 or jbd2 code at the time when it tried to do a
+memory allocation and this either caused an OOM kill, or an EXT4-fs
+error report when a memory allocation failed.  
 
-कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number            
+>  We adjust the memory limit and avoid this process is killed. Now the
+> problem goes away. If possible, we still want to understand why Ext4
+> is stuck in this case.
 
-helpline support dial number No Waiting. Maine intuit quickbooks payroll
-support number@ Colorado/Indiana intuit quickbooks customer service telephone
-number Talk To An Expert Now? at Nebraska Idaho ((((+1 855 675 0109
-Michigan)))) intuit quickbooks support phone number canada Illinois intuit
-quickbooks support canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855
-675 0109>> intuit quickbooks support canada number with All States and Cities
-USA HuM^TuM @ intuit ((((+1 855 675 0109 New York)))) quickbooks customer
-support number))))&&& intuit quickbooks online customer support phone ((((+1
-855 675 0109 New Jersey)))) number CITIES ka CH.1 855 675 0109>Intuit Support
-Quickbooks Number inuit 1 855 675 0109 quickbooks desktop support phone number
-quickbooks 1 855 675 0109 desktop support number ERDFGSWSS quickbooks 1 855 675
-0109 desktop support toll free number !!LOL!! CL_quickbooks 1 855 675 0109
-desktop support customer number (((dkejdjdijnv))) USA quickbooks 1 855 675 0109
-desktop support telephone number quickbooks 1 855 675 0109 desktop support
-contact number Alabama quickbooks +1>>>855.. 675.. 0109 Nevada desktop support
-phone number ((JAI^^^HIND))intuit Pennsylvania +1>>>855.. 675.. 0109 quickbooks
-technical support phone number Ohio California HELP@DESK intuit ((((+1 855 675
-0109 Mississippi))))quickbooks customer service number gtrssres@@ftred
-((intuit)) +1 855 675 0109 quickbooks support New Mexico helpline support dial
-number No Waiting. Maine intuit quickbooks payroll support number@
-Colorado/Indiana intuit quickbooks customer service telephone number Talk To An
-Expert Now? at Nebraska Idaho ((((+1 855 675 0109 Michigan)))) intuit
-quickbooks support phone number canada Illinois intuit quickbooks support
-canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855 675 0109>> intuit
-quickbooks support canada number with All States and Cities USA HuM^TuM @
-intuit ((((+1 855 675 0109 New York)))) quickbooks customer support
-number))))&&& intuit quickbooks online customer support phone ((((+1 855 675
-0109 New Jersey)))) number quickbooks 1 855 675 0109 desktop support Helpline
-number quickbooks 1 855 675 0109 desktop support landline number. intuit %1 855
-675 0109%% quickbooks technical support phone number intuit 1 855 675
-0109quickbooks technical support help     कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number                कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number 
+What is probably happening is that a memory allocation failed in the
+middle of an ext4 operation, and it was holding jbd2 handle at the
+time of the failure.  The error handling path didn't release the
+handle, and so the next time the jbd2 subsystem tried to do a
+transaction commit, it waited for all of the handles to complete, and
+since there was a handle leak due to the allocation failure / OOM
+kill, it caused the jbd2 commit code to wait forever.
 
-helpline support dial number No Waiting. Maine intuit quickbooks payroll
-support number@ Colorado/Indiana intuit quickbooks customer service telephone
-number Talk To An Expert Now? at Nebraska Idaho ((((+1 855 675 0109
-Michigan)))) intuit quickbooks support phone number canada Illinois intuit
-quickbooks support canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855
-675 0109>> intuit quickbooks support canada number with All States and Cities
-USA HuM^TuM @ intuit ((((+1 855 675 0109 New York)))) quickbooks customer
-support number))))&&& intuit quickbooks online customer support phone ((((+1
-855 675 0109 New Jersey)))) number CITIES ka CH.1 855 675 0109>Intuit Support
-Quickbooks Number inuit 1 855 675 0109 quickbooks desktop support phone number
-quickbooks 1 855 675 0109 desktop support number ERDFGSWSS quickbooks 1 855 675
-0109 desktop support toll free number !!LOL!! CL_quickbooks 1 855 675 0109
-desktop support customer number (((dkejdjdijnv))) USA quickbooks 1 855 675 0109
-desktop support telephone number quickbooks 1 855 675 0109 desktop support
-contact number Alabama quickbooks +1>>>855.. 675.. 0109 Nevada desktop support
-phone number ((JAI^^^HIND))intuit Pennsylvania +1>>>855.. 675.. 0109 quickbooks
-technical support phone number Ohio California HELP@DESK intuit ((((+1 855 675
-0109 Mississippi))))quickbooks customer service number gtrssres@@ftred
-((intuit)) +1 855 675 0109 quickbooks support New Mexico helpline support dial
-number No Waiting. Maine intuit quickbooks payroll support number@
-Colorado/Indiana intuit quickbooks customer service telephone number Talk To An
-Expert Now? at Nebraska Idaho ((((+1 855 675 0109 Michigan)))) intuit
-quickbooks support phone number canada Illinois intuit quickbooks support
-canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855 675 0109>> intuit
-quickbooks support canada number with All States and Cities USA HuM^TuM @
-intuit ((((+1 855 675 0109 New York)))) quickbooks customer support
-number))))&&& intuit quickbooks online customer support phone ((((+1 855 675
-0109 New Jersey)))) number quickbooks 1 855 675 0109 desktop support Helpline
-number quickbooks 1 855 675 0109 desktop support landline number. intuit %1 855
-675 0109%% quickbooks technical support phone number intuit 1 855 675
-0109quickbooks technical support help     कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number                कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number 
+If that was the only process that got OOM killed, were there any ext4
+error or warning messages before the OOM kill, or maybe slightly after
+it?
 
-helpline support dial number No Waiting. Maine intuit quickbooks payroll
-support number@ Colorado/Indiana intuit quickbooks customer service telephone
-number Talk To An Expert Now? at Nebraska Idaho ((((+1 855 675 0109
-Michigan)))) intuit quickbooks support phone number canada Illinois intuit
-quickbooks support canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855
-675 0109>> intuit quickbooks support canada number with All States and Cities
-USA HuM^TuM @ intuit ((((+1 855 675 0109 New York)))) quickbooks customer
-support number))))&&& intuit quickbooks online customer support phone ((((+1
-855 675 0109 New Jersey)))) number CITIES ka CH.1 855 675 0109>Intuit Support
-Quickbooks Number inuit 1 855 675 0109 quickbooks desktop support phone number
-quickbooks 1 855 675 0109 desktop support number ERDFGSWSS quickbooks 1 855 675
-0109 desktop support toll free number !!LOL!! CL_quickbooks 1 855 675 0109
-desktop support customer number (((dkejdjdijnv))) USA quickbooks 1 855 675 0109
-desktop support telephone number quickbooks 1 855 675 0109 desktop support
-contact number Alabama quickbooks +1>>>855.. 675.. 0109 Nevada desktop support
-phone number ((JAI^^^HIND))intuit Pennsylvania +1>>>855.. 675.. 0109 quickbooks
-technical support phone number Ohio California HELP@DESK intuit ((((+1 855 675
-0109 Mississippi))))quickbooks customer service number gtrssres@@ftred
-((intuit)) +1 855 675 0109 quickbooks support New Mexico helpline support dial
-number No Waiting. Maine intuit quickbooks payroll support number@
-Colorado/Indiana intuit quickbooks customer service telephone number Talk To An
-Expert Now? at Nebraska Idaho ((((+1 855 675 0109 Michigan)))) intuit
-quickbooks support phone number canada Illinois intuit quickbooks support
-canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855 675 0109>> intuit
-quickbooks support canada number with All States and Cities USA HuM^TuM @
-intuit ((((+1 855 675 0109 New York)))) quickbooks customer support
-number))))&&& intuit quickbooks online customer support phone ((((+1 855 675
-0109 New Jersey)))) number quickbooks 1 855 675 0109 desktop support Helpline
-number quickbooks 1 855 675 0109 desktop support landline number. intuit %1 855
-675 0109%% quickbooks technical support phone number intuit 1 855 675
-0109quickbooks technical support help     कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number                कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number 
-
-helpline support dial number No Waiting. Maine intuit quickbooks payroll
-support number@ Colorado/Indiana intuit quickbooks customer service telephone
-number Talk To An Expert Now? at Nebraska Idaho ((((+1 855 675 0109
-Michigan)))) intuit quickbooks support phone number canada Illinois intuit
-quickbooks support canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855
-675 0109>> intuit quickbooks support canada number with All States and Cities
-USA HuM^TuM @ intuit ((((+1 855 675 0109 New York)))) quickbooks customer
-support number))))&&& intuit quickbooks online customer support phone ((((+1
-855 675 0109 New Jersey)))) number CITIES ka CH.1 855 675 0109>Intuit Support
-Quickbooks Number inuit 1 855 675 0109 quickbooks desktop support phone number
-quickbooks 1 855 675 0109 desktop support number ERDFGSWSS quickbooks 1 855 675
-0109 desktop support toll free number !!LOL!! CL_quickbooks 1 855 675 0109
-desktop support customer number (((dkejdjdijnv))) USA quickbooks 1 855 675 0109
-desktop support telephone number quickbooks 1 855 675 0109 desktop support
-contact number Alabama quickbooks +1>>>855.. 675.. 0109 Nevada desktop support
-phone number ((JAI^^^HIND))intuit Pennsylvania +1>>>855.. 675.. 0109 quickbooks
-technical support phone number Ohio California HELP@DESK intuit ((((+1 855 675
-0109 Mississippi))))quickbooks customer service number gtrssres@@ftred
-((intuit)) +1 855 675 0109 quickbooks support New Mexico helpline support dial
-number No Waiting. Maine intuit quickbooks payroll support number@
-Colorado/Indiana intuit quickbooks customer service telephone number Talk To An
-Expert Now? at Nebraska Idaho ((((+1 855 675 0109 Michigan)))) intuit
-quickbooks support phone number canada Illinois intuit quickbooks support
-canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855 675 0109>> intuit
-quickbooks support canada number with All States and Cities USA HuM^TuM @
-intuit ((((+1 855 675 0109 New York)))) quickbooks customer support
-number))))&&& intuit quickbooks online customer support phone ((((+1 855 675
-0109 New Jersey)))) number quickbooks 1 855 675 0109 desktop support Helpline
-number quickbooks 1 855 675 0109 desktop support landline number. intuit %1 855
-675 0109%% quickbooks technical support phone number intuit 1 855 675
-0109quickbooks technical support help     कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number                कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number 
-
-helpline support dial number No Waiting. Maine intuit quickbooks payroll
-support number@ Colorado/Indiana intuit quickbooks customer service telephone
-number Talk To An Expert Now? at Nebraska Idaho ((((+1 855 675 0109
-Michigan)))) intuit quickbooks support phone number canada Illinois intuit
-quickbooks support canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855
-675 0109>> intuit quickbooks support canada number with All States and Cities
-USA HuM^TuM @ intuit ((((+1 855 675 0109 New York)))) quickbooks customer
-support number))))&&& intuit quickbooks online customer support phone ((((+1
-855 675 0109 New Jersey)))) number CITIES ka CH.1 855 675 0109>Intuit Support
-Quickbooks Number inuit 1 855 675 0109 quickbooks desktop support phone number
-quickbooks 1 855 675 0109 desktop support number ERDFGSWSS quickbooks 1 855 675
-0109 desktop support toll free number !!LOL!! CL_quickbooks 1 855 675 0109
-desktop support customer number (((dkejdjdijnv))) USA quickbooks 1 855 675 0109
-desktop support telephone number quickbooks 1 855 675 0109 desktop support
-contact number Alabama quickbooks +1>>>855.. 675.. 0109 Nevada desktop support
-phone number ((JAI^^^HIND))intuit Pennsylvania +1>>>855.. 675.. 0109 quickbooks
-technical support phone number Ohio California HELP@DESK intuit ((((+1 855 675
-0109 Mississippi))))quickbooks customer service number gtrssres@@ftred
-((intuit)) +1 855 675 0109 quickbooks support New Mexico helpline support dial
-number No Waiting. Maine intuit quickbooks payroll support number@
-Colorado/Indiana intuit quickbooks customer service telephone number Talk To An
-Expert Now? at Nebraska Idaho ((((+1 855 675 0109 Michigan)))) intuit
-quickbooks support phone number canada Illinois intuit quickbooks support
-canada ((((+1 855 675 0109 Michigan)))) CHaMPaK@ +++1 855 675 0109>> intuit
-quickbooks support canada number with All States and Cities USA HuM^TuM @
-intuit ((((+1 855 675 0109 New York)))) quickbooks customer support
-number))))&&& intuit quickbooks online customer support phone ((((+1 855 675
-0109 New Jersey)))) number quickbooks 1 855 675 0109 desktop support Helpline
-number quickbooks 1 855 675 0109 desktop support landline number. intuit %1 855
-675 0109%% quickbooks technical support phone number intuit 1 855 675
-0109quickbooks technical support help     कतई California - Texas    
-*1855*675*0109*    Intuit Quickbooks Technical Support Phone Number            
-   कतई California - Texas     *1855*675*0109*    Intuit Quickbooks Technical
-Support Phone Number                कतई California - Texas     *1855*675*0109* 
-  Intuit Quickbooks Technical Support Phone Number                कतई
-California - Texas     *1855*675*0109*    Intuit Quickbooks Technical Support
-Phone Number                कतई California - Texas     *1855*675*0109*   
-Intuit Quickbooks Technical Support Phone Number                कतई California
-- Texas     *1855*675*0109*    Intuit Quickbooks Technical Support Phone Number
-               कतई California - Texas     *1855*675*0109*    Intuit Quickbooks
-Technical Support Phone Number
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+							- Ted
