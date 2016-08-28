@@ -1,60 +1,68 @@
-From: Roy Yang <roy@cohesity.com>
-Subject: Re: Ext4 stuck at wait_transaction_locked
-Date: Sat, 27 Aug 2016 13:12:51 -0700
-Message-ID: <CAFz9U7S-KqMAsqnRiJxwBG_22RmV2mf1L2miKaCgSw=aWcXEXA@mail.gmail.com>
-References: <CAFz9U7TAWtpQPfgG0u=6_jtVUhK5ahPGGnGy6GK8RZ-0XM2pfg@mail.gmail.com>
- <20160827133642.4znpf3aprhgbdtwv@thunk.org> <CAFz9U7SHbv4i=x-2mVYKw5TG_Q9_F+WSp5+jHiHWoQGHJXRmXw@mail.gmail.com>
- <20160827161438.miujy357ldsug7be@thunk.org> <CAFz9U7RxRLLB7dK7YtEVY9qWKKnQ-AbwpL0MT98jx3urbafJmA@mail.gmail.com>
- <20160827190236.aoeaphgniuqzwkay@thunk.org>
+From: Chao Yu <chao@kernel.org>
+Subject: [PATCH] fscrypto: fix to null-terminate encrypted
+	filename in fname_encrypt
+Date: Sun, 28 Aug 2016 09:13:28 +0800
+Message-ID: <1472346808-3213-1-git-send-email-chao@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ua0-f172.google.com ([209.85.217.172]:34912 "EHLO
-        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751194AbcH0UMx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Aug 2016 16:12:53 -0400
-Received: by mail-ua0-f172.google.com with SMTP id i32so19702191uai.2
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Aug 2016 13:12:53 -0700 (PDT)
-In-Reply-To: <20160827190236.aoeaphgniuqzwkay@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net
+To: tytso@mit.edu,
+	jaegeuk@kernel.org
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-Thanks Ted,
+From: Chao Yu <yuchao0@huawei.com>
 
-I will work with our team to reproduce this with upstream kernel.
+This patch fixes to add null character at the end of encrypted filename
+in fname_encrypt, in order to avoid incorrectly traversing random data
+located after target filename. The call stack is as below:
 
-Will update you after we get this after next week.
+- f2fs_add_link
+ - __f2fs_add_link
+  - fscrypt_setup_filename
+   - fscrypt_fname_alloc_buffer		allocate buffer for @fname
+   - fname_encrypt			didn't set null character for @fname
+  - f2fs_add_regular_entry		init qstr with @fname
+   - init_inode_metadata
+    - f2fs_init_security
+     - security_inode_init_security
+      - selinux_inode_init_security
+       - selinux_determine_inode_label
+        - security_transition_sid
+	 - security_compute_sid
+	  - filename_compute_type
+	   - hashtab_search
+	    - filenametr_hash		traverse @fname as one which has null character
 
-Best Regards
+Signed-off-by: Chao Yu <yuchao0@huawei.com>
+---
+ fs/crypto/fname.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Roy
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 5d6d491..5c356c0 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -110,6 +110,7 @@ static int fname_encrypt(struct inode *inode,
+ 				"%s: Error (error code %d)\n", __func__, res);
+ 
+ 	oname->len = ciphertext_len;
++	oname->name[oname->len] = 0;
+ 	return res;
+ }
+ 
+-- 
+2.7.2
 
-On Sat, Aug 27, 2016 at 12:02 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sat, Aug 27, 2016 at 09:29:51AM -0700, Roy Yang wrote:
->> Yes, that is the process which was killed by oom killer since it is
->> exceeding 1.4GB memory.
->> The full dmesg and also processes stuck at ext4
->> start_this_handle/wait_transaction_locked
->> are attached.
->
-> Yeah, unfortunately it's not helpful.  My guess is that it's somewhere
-> in the call chain of page fault code calling ext4_page_mkwrite() where
-> we have a bad error handling path, but finding it will be a pain.
->
-> Since you have a reliable repro, would you be willing to try and
-> reproduce the problem with the latest upstream kernel?  If you can
-> reproduce it there, I'll promise to help you instrument the kernel so
-> we can track down the problem.
->
->> I also searched Redhat support portal, online resource. Similar issue
->> was found but not sure whether
->> upstream patch 2c869b262a10ca99cb866d04087d75311587a30c mentioned at
->> https://groups.google.com/a/chromium.org/forum/#!topic/chromium-os-checkins/y6n90Mqop7A
->> has addressed the problem.
->
-> No, this patch fixes a problem with online resize, which has nothing
-> to do with what you are seeing.
->
->                                                 - Ted
+
+------------------------------------------------------------------------------
