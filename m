@@ -1,49 +1,96 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
-Date: Mon, 29 Aug 2016 08:57:41 -0400
-Message-ID: <20160829125741.cdnbb2uaditcmnw2@thunk.org>
-References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
- <20160823220419.11717-3-ross.zwisler@linux.intel.com>
- <20160825075728.GA11235@infradead.org>
- <20160826212934.GA11265@linux.intel.com>
- <20160829074116.GA16491@infradead.org>
+From: Chao Yu <chao@kernel.org>
+Subject: Re: [PATCH] fscrypto: fix to null-terminate encrypted
+ filename in fname_encrypt
+Date: Mon, 29 Aug 2016 22:55:47 +0800
+Message-ID: <81758b43-a82c-0526-8921-cb34d6da1c50@kernel.org>
+References: <1472346808-3213-1-git-send-email-chao@kernel.org>
+	<20160828051330.7kyhhvvxitghshi7@thunk.org>
+	<4a1a7233-a8f5-873a-2895-a259dc0cf717@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160829074116.GA16491-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+To: Theodore Ts'o <tytso@mit.edu>, jaegeuk@kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Chao Yu <yuchao0@huawei.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <4a1a7233-a8f5-873a-2895-a259dc0cf717@kernel.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 29, 2016 at 12:41:16AM -0700, Christoph Hellwig wrote:
+Hi Ted, Jaegeuk,
+
+On 2016/8/28 14:16, Chao Yu wrote:
+> Hi Ted,
 > 
-> We're going to move forward killing buffer_heads in XFS.  I think ext4
-> would dramatically benefit from this a well, as would ext2 (although I
-> think all that DAX work in ext2 is a horrible idea to start with).
+> On 2016/8/28 13:13, Theodore Ts'o wrote:
+>> On Sun, Aug 28, 2016 at 09:13:28AM +0800, Chao Yu wrote:
+>>> From: Chao Yu <yuchao0@huawei.com>
+>>>
+>>> This patch fixes to add null character at the end of encrypted filename
 
-It's been on my todo list.  The only reason why I haven't done it yet
-is because I knew you were working on a solution, and I didn't want to
-do things one way for buffered I/O, and a different way for Direct
-I/O, and disentangling the DIO code and the different assumptions of
-how different file systems interact with the DIO code is a *mess*.
+Since encryption functionality in ext4/f2fs was exported to vfs as fscrypot
+module, more filesystems can use it, I'm not sure, maybe other fs will traverse
+encrypted filename directly.
 
-It may have gotten better more recently, but a few years ago I took a
-look at it and backed slowly away.....
+So, could we set this null character in fname_encrypt in advance in order to
+avoid hitting random characters behind target filename when traversing it?
 
-						- Ted
+Thanks,
+
+>>> in fname_encrypt, in order to avoid incorrectly traversing random data
+>>> located after target filename. The call stack is as below:
+>>>
+>>> - f2fs_add_link
+>>>  - __f2fs_add_link
+>>>   - fscrypt_setup_filename
+>>>    - fscrypt_fname_alloc_buffer		allocate buffer for @fname
+>>>    - fname_encrypt			didn't set null character for @fname
+>>>   - f2fs_add_regular_entry		init qstr with @fname
+>>>    - init_inode_metadata
+>>>     - f2fs_init_security
+>>>      - security_inode_init_security
+>>>       - selinux_inode_init_security
+>>>        - selinux_determine_inode_label
+>>>         - security_transition_sid
+>>> 	 - security_compute_sid
+>>> 	  - filename_compute_type
+>>> 	   - hashtab_search
+>>> 	    - filenametr_hash		traverse @fname as one which has null character
+>>
+>> The problem is not in fname_encrypt(), but rather that
+>> security_inode_init_security() should be given the _unencrypted_
+>> filename.
+>>
+>> In ext4 security_inode_init_security() is called with the qstr from
+>> the dentry, not the encrypted qstr --- in fact we call
+>> security_inode_init_security before we call fname_encrypt.
+>>
+>> SELinux needs the unencrypted filename in order to decide which
+>> SELinux rules / labels should apply.
+> 
+> You're right, I missed this mistake. So actually, this is a bug of f2fs.
+> Let me figure out the fixing patch.
+> 
+> Thanks for your review! :)
+> 
+> Thanks,
+> 
+>>
+>> 					- Ted
+>>
+> 
+> ------------------------------------------------------------------------------
+> _______________________________________________
+> Linux-f2fs-devel mailing list
+> Linux-f2fs-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel
+> 
+
+------------------------------------------------------------------------------
