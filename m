@@ -1,38 +1,44 @@
-From: jose.marchesi@oracle.com (Jose E. Marchesi)
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [sparc64] sigbus in e2fsck
-Date: Tue, 30 Aug 2016 18:45:45 +0200
-Message-ID: <87shtmnr2e.fsf@oracle.com>
+Date: Tue, 30 Aug 2016 15:16:44 -0400
+Message-ID: <20160830191644.hoqnviqcj2odxcpu@thunk.org>
 References: <CADxRZqwws+5t-hjO=70yP84p4+1_YYZO5ER3-=faFh1JbWjTeA@mail.gmail.com>
-        <6a774a5e-b2e5-6276-c272-2b737bd098f0@physik.fu-berlin.de>
-        <20160830145810.rgms25xlnatnyxir@thunk.org>
+ <6a774a5e-b2e5-6276-c272-2b737bd098f0@physik.fu-berlin.de>
+ <20160830145810.rgms25xlnatnyxir@thunk.org>
+ <CADxRZqzQ+hnjVLkN+4L1u=k4iMOa_6j7UjGX-40F=uy9oUAppA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>,
-        Anatoly Pugachev <matorola@gmail.com>,
-        linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
         debian-sparc <debian-sparc@lists.debian.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Anatoly Pugachev <matorola@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:36709 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755626AbcH3QjO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2016 12:39:14 -0400
-In-Reply-To: <20160830145810.rgms25xlnatnyxir@thunk.org> (Theodore Ts'o's
-        message of "Tue, 30 Aug 2016 10:58:10 -0400")
+Received: from imap.thunk.org ([74.207.234.97]:52984 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751606AbcH3TQt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 30 Aug 2016 15:16:49 -0400
+Content-Disposition: inline
+In-Reply-To: <CADxRZqzQ+hnjVLkN+4L1u=k4iMOa_6j7UjGX-40F=uy9oUAppA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-    
-    typedef struct journal_revoke_header_s
-    {
-    	journal_header_t r_header;
-    	int		 r_count;	/* Count of bytes used in the block */
-    } journal_revoke_header_t;
-    
-    The "int" above should be a __u32.  What is the size of int on
-    sparc64?  Is it by any chance 8 bytes?  If that's the problem then I'm
-    kind of surprised we haven't run into massive problems earlier, as
-    this looks like a long standing bug.
+On Tue, Aug 30, 2016 at 06:12:39PM +0300, Anatoly Pugachev wrote:
+> 
+> (gdb) p bh->b_data
+> $1 = "\300;9\230\000\000\000\005\000\000\253\204\000\000\000\070\000\000\000\000\000\000$\022\000\000\000\000\000\000$<\000\000\000\000\000\000$\270\000\000\000\000\000\000$]\000\000\000\000\000\000$\024",
+> '\000' <repeats 967 times>
+> (gdb) p offset
+> $2 = 16
+> (gdb) p *bh->b_data
+> $3 = -64 '\300'
+> (gdb) p *(bh->b_data+offset)
+> $6 = 0 '\000'
 
-sizeof(int) == 4 in both sparc64-linux-gnu and sparcv9-linux-gnu (32bit)
-targets.
+Can you give us "p &bh->b_data" (so we can get the starting address of
+b_data to make sure it's aligned) and "p offset" (so we can check and
+make sure offset is sane)?
+
+Thanks,
+
+					- Ted
+
+
