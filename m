@@ -1,53 +1,86 @@
-From: Anatoly Pugachev <matorola@gmail.com>
-Subject: Re: [sparc64] sigbus in e2fsck
-Date: Tue, 30 Aug 2016 18:12:39 +0300
-Message-ID: <CADxRZqzQ+hnjVLkN+4L1u=k4iMOa_6j7UjGX-40F=uy9oUAppA@mail.gmail.com>
-References: <CADxRZqwws+5t-hjO=70yP84p4+1_YYZO5ER3-=faFh1JbWjTeA@mail.gmail.com>
- <6a774a5e-b2e5-6276-c272-2b737bd098f0@physik.fu-berlin.de> <20160830145810.rgms25xlnatnyxir@thunk.org>
+From: Chao Yu <yuchao0@huawei.com>
+Subject: Re: [f2fs-dev] [PATCH] fscrypto: fix to null-terminate encrypted
+ filename in fname_encrypt
+Date: Wed, 31 Aug 2016 00:10:32 +0800
+Message-ID: <5b07433c-02f1-8bbb-b7cd-94b0b6bc3b7e@huawei.com>
+References: <1472346808-3213-1-git-send-email-chao@kernel.org>
+ <20160828051330.7kyhhvvxitghshi7@thunk.org>
+ <4a1a7233-a8f5-873a-2895-a259dc0cf717@kernel.org>
+ <81758b43-a82c-0526-8921-cb34d6da1c50@kernel.org>
+ <20160829190803.clqnlfl7qpi7tgsi@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org,
-        debian-sparc <debian-sparc@lists.debian.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ua0-f196.google.com ([209.85.217.196]:34292 "EHLO
-        mail-ua0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751527AbcH3PMl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2016 11:12:41 -0400
-Received: by mail-ua0-f196.google.com with SMTP id s91so1644555uas.1
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Aug 2016 08:12:40 -0700 (PDT)
-In-Reply-To: <20160830145810.rgms25xlnatnyxir@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
+To: "Theodore Ts'o" <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+        <jaegeuk@kernel.org>, <linux-f2fs-devel@lists.sourceforge.net>,
+        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20160829190803.clqnlfl7qpi7tgsi@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 30, 2016 at 5:58 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Tue, Aug 30, 2016 at 02:56:45PM +0200, John Paul Adrian Glaubitz wrote:
->> On 08/30/2016 02:42 PM, Anatoly Pugachev wrote:
->> > ../../e2fsck/recovery.c:866
->> > 866                             blocknr = ext2fs_be64_to_cpu(* ((__u64
->> > *) (bh->b_data+offset)));
+Hi Ted,
+
+On 2016/8/30 3:08, Theodore Ts'o wrote:
+> On Mon, Aug 29, 2016 at 10:55:47PM +0800, Chao Yu wrote:
+>> Hi Ted, Jaegeuk,
 >>
->> The reason is that this expression is casting "char * b_data" [1] into u64 [2]
->> which provokes unaligned access. Since such expression are often inevitable,
->> it's probably best to modify the conversion macros in bitops.h [3] to be
->> safe against unaligned accesses.
->
-> I don't think that's it.  b_data is a 4k buffer should be 8 byte
-> aligned.  For a file system with 64-bit blocks (which you presumably
-> have since we're on the be64 path as shown in your debugger output)
-> the offset is initially set to 16, and is incremented in chunks of 8
-> bytes.  So there shouldn't be any unaligned access.
->
-> Since you are able to provke this in a debugger, can you have gdb
-> print out the value of bh->b_data and offset, so we can be sure what's
-> going on?
+>> Since encryption functionality in ext4/f2fs was exported to vfs as fscrypot
+>> module, more filesystems can use it, I'm not sure, maybe other fs will traverse
+>> encrypted filename directly.
+>>
+>> So, could we set this null character in fname_encrypt in advance in order to
+>> avoid hitting random characters behind target filename when traversing it?
+> 
+> The encrypted filename is only used by the file system; it's not
+> anything which is visible outside of the file system --- if it does,
+> such as passing it to the security subsystem, it's a bug.
+> 
+> Secondly, remember that the encrypted filename is a binary blob, and
+> may contain hex 00 as part of the encrypted filename.  So ***any***
+> code that tries to use NULL termination for the encrypted filename by
+> definition is a bug.  In other words, you must use memcpy, and not
+> strcpy.  If you use strcpy, even if you did add a NUL character to the
+> end of the encrypted filename (which is a bit of a misnomer because it
+> is a binary blob, not an ASCII string, so NUL is really not
+> technically correct), there will be encrypted filenames where strcpy
+> will stop early, because there is a 0x00 byte in the encrypted
+> filename.
+> 
+> Hence, other file systems MUST NOT traverse the encrypted filename
+> directly, because treating it as a NUL-terminated string when it is
+> really a binary blob of bits that can include a 0x00 byte is by
+> definition a BUG.
 
-(gdb) p bh->b_data
-$1 = "\300;9\230\000\000\000\005\000\000\253\204\000\000\000\070\000\000\000\000\000\000$\022\000\000\000\000\000\000$<\000\000\000\000\000\000$\270\000\000\000\000\000\000$]\000\000\000\000\000\000$\024",
-'\000' <repeats 967 times>
-(gdb) p offset
-$2 = 16
-(gdb) p *bh->b_data
-$3 = -64 '\300'
-(gdb) p *(bh->b_data+offset)
-$6 = 0 '\000'
+Thanks for your detailed explain. :)
+
+I just be misguided by comments of following code:
+
+int fscrypt_fname_alloc_buffer(struct inode *inode,
+				u32 ilen, struct fscrypt_str *crypto_str)
+{
+	unsigned int olen = fscrypt_fname_encrypted_size(inode, ilen);
+
+	crypto_str->len = olen;
+	if (olen < FS_FNAME_CRYPTO_DIGEST_SIZE * 2)
+		olen = FS_FNAME_CRYPTO_DIGEST_SIZE * 2;
+	/*
+	 * Allocated buffer can hold one more character to null-terminate the
+	 * string
+	 */
+	crypto_str->name = kmalloc(olen + 1, GFP_NOFS);
+	if (!(crypto_str->name))
+		return -ENOMEM;
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_fname_alloc_buffer);
+
+Thanks,
+
+> 
+> Cheers,
+> 
+> 						- Ted
+> 
+> .
+> 
