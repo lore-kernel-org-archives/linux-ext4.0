@@ -1,60 +1,71 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [sparc64] sigbus in e2fsck
-Date: Tue, 30 Aug 2016 13:25:10 -0700
-Message-ID: <20160830202510.GA8258@birch.djwong.org>
-References: <CADxRZqwws+5t-hjO=70yP84p4+1_YYZO5ER3-=faFh1JbWjTeA@mail.gmail.com>
- <6a774a5e-b2e5-6276-c272-2b737bd098f0@physik.fu-berlin.de>
- <20160830145810.rgms25xlnatnyxir@thunk.org>
- <CADxRZqzQ+hnjVLkN+4L1u=k4iMOa_6j7UjGX-40F=uy9oUAppA@mail.gmail.com>
- <20160830191644.hoqnviqcj2odxcpu@thunk.org>
- <CADxRZqx1QQNPXyzw7qXKPGH40yA9UsvZPYHaW0=i=z_tAix2Aw@mail.gmail.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH v2 0/9] re-enable DAX PMD support
+Date: Tue, 30 Aug 2016 17:01:50 -0600
+Message-ID: <20160830230150.GA12173@linux.intel.com>
+References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        debian-sparc <debian-sparc@lists.debian.org>
-To: Anatoly Pugachev <matorola@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:34106 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751029AbcH3U0O (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Aug 2016 16:26:14 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <CADxRZqx1QQNPXyzw7qXKPGH40yA9UsvZPYHaW0=i=z_tAix2Aw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160823220419.11717-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 30, 2016 at 11:17:07PM +0300, Anatoly Pugachev wrote:
-> On Tue, Aug 30, 2016 at 10:16 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Tue, Aug 30, 2016 at 06:12:39PM +0300, Anatoly Pugachev wrote:
-> >>
-> >> (gdb) p bh->b_data
-> >> $1 = "\300;9\230\000\000\000\005\000\000\253\204\000\000\000\070\000\000\000\000\000\000$\022\000\000\000\000\000\000$<\000\000\000\000\000\000$\270\000\000\000\000\000\000$]\000\000\000\000\000\000$\024",
-> >> '\000' <repeats 967 times>
-> >> (gdb) p offset
-> >> $2 = 16
-> >> (gdb) p *bh->b_data
-> >> $3 = -64 '\300'
-> >> (gdb) p *(bh->b_data+offset)
-> >> $6 = 0 '\000'
-> >
-> > Can you give us "p &bh->b_data" (so we can get the starting address of
-> > b_data to make sure it's aligned) and "p offset" (so we can check and
-> > make sure offset is sane)?
+On Tue, Aug 23, 2016 at 04:04:10PM -0600, Ross Zwisler wrote:
+> DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> locking.  This series allows DAX PMDs to participate in the DAX radix tree
+> based locking scheme so that they can be re-enabled.
 > 
-> (gdb) p &bh->b_data
-> $7 = (char (*)[1024]) 0x2e9b9c
-> (gdb) p offset
-> $8 = 16
+> Changes since v1:
+>  - PMD entry locking is now done based on the starting offset of the PMD
+>    entry, rather than on the radix tree slot which was unreliable. (Jan)
+>  - Fixed the one issue I could find with hole punch.  As far as I can tell
+>    hole punch now works correctly for both PMD and PTE DAX entries, 4k zero
+>    pages and huge zero pages.
+>  - Fixed the way that ext2 returns the size of holes in ext2_get_block().
+>    (Jan)
+>  - Made the 'wait_table' global variable static in respnse to a sparse
+>    warning.
+>  - Fixed some more inconsitent usage between the names 'ret' and 'entry'
+>    for radix tree entry variables.
+> 
+> Ross Zwisler (9):
+>   ext4: allow DAX writeback for hole punch
+>   ext2: tell DAX the size of allocation holes
+>   ext4: tell DAX the size of allocation holes
+>   dax: remove buffer_size_valid()
+>   dax: make 'wait_table' global variable static
+>   dax: consistent variable naming for DAX entries
+>   dax: coordinate locking for offsets in PMD range
+>   dax: re-enable DAX PMD support
+>   dax: remove "depends on BROKEN" from FS_DAX_PMD
+> 
+>  fs/Kconfig          |   1 -
+>  fs/dax.c            | 297 +++++++++++++++++++++++++++++-----------------------
+>  fs/ext2/inode.c     |   3 +
+>  fs/ext4/inode.c     |   7 +-
+>  include/linux/dax.h |  29 ++++-
+>  mm/filemap.c        |   6 +-
+>  6 files changed, 201 insertions(+), 142 deletions(-)
+> 
+> -- 
+> 2.9.0
 
-AFAICT, each bh is malloc'd via e2fsck_allocate_memory and nothing seems
-to guarantee that the char b_data[1024] will be aligned to a multiple of
-8 (it certainly isn't on x64), so I guess this isn't much of a surprise.
-
-We could change b_data to a pointer and then posix_memalign it.
-
---D
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ping on this series?  Any objections or comments?
