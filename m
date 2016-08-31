@@ -1,244 +1,132 @@
-From: "Kani, Toshimitsu" <toshi.kani@hpe.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Subject: Re: [PATCH v2 0/9] re-enable DAX PMD support
-Date: Wed, 31 Aug 2016 20:20:48 +0000
-Message-ID: <1472674799.2092.19.camel@hpe.com>
+Date: Wed, 31 Aug 2016 15:36:07 -0600
+Message-ID: <20160831213607.GA6921@linux.intel.com>
 References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
-	 <20160830230150.GA12173@linux.intel.com>
+ <20160830230150.GA12173@linux.intel.com>
+ <1472674799.2092.19.camel@hpe.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="_004_1472674799209219camelhpecom_"
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-mm@kvack.org" <linux-mm@kvack.org>, "adilger.kernel@dilger.ca"
-	<adilger.kernel@dilger.ca>, "viro@zeniv.linux.org.uk"
-	<viro@zeniv.linux.org.uk>, "dan.j.williams@intel.com"
-	<dan.j.williams@intel.com>, "akpm@linux-foundation.org"
-	<akpm@linux-foundation.org>, "mawilcox@microsoft.com"
-	<mawilcox@microsoft.com>, "linux-nvdimm@lists.01.org"
-	<linux-nvdimm@lists.01.org>, "linux-fsdevel@vger.kernel.org"
-	<linux-fsdevel@vger.kernel.org>, "jack@suse.com" <jack@suse.com>,
-	"tytso@mit.edu" <tytso@mit.edu>, "linux-ext4@vger.kernel.org"
-	<linux-ext4@vger.kernel.org>, "david@fromorbit.com" <david@fromorbit.com>
-To: "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20160830230150.GA12173@linux.intel.com>
-Content-Language: en-US
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Cc: "tytso-3s7WtUTddSA@public.gmane.org" <tytso-3s7WtUTddSA@public.gmane.org>,
+ "akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org" <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ "mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org" <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org" <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org" <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
+ "adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org" <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ "viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org" <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ "jack-IBi9RG/b67k@public.gmane.org" <jack-IBi9RG/b67k@public.gmane.org>,
+ "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Kani, Toshimitsu" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1472674799.2092.19.camel-ZPxbGqLxI0U@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
---_004_1472674799209219camelhpecom_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <472E1791944B7944BBF7918D30BBD5CA@NAMPRD84.PROD.OUTLOOK.COM>
-Content-Transfer-Encoding: base64
+On Wed, Aug 31, 2016 at 08:20:48PM +0000, Kani, Toshimitsu wrote:
+> On Tue, 2016-08-30 at 17:01 -0600, Ross Zwisler wrote:
+> > On Tue, Aug 23, 2016 at 04:04:10PM -0600, Ross Zwisler wrote:
+> > > =
 
-T24gVHVlLCAyMDE2LTA4LTMwIGF0IDE3OjAxIC0wNjAwLCBSb3NzIFp3aXNsZXIgd3JvdGU6DQo+
-IE9uIFR1ZSwgQXVnIDIzLCAyMDE2IGF0IDA0OjA0OjEwUE0gLTA2MDAsIFJvc3MgWndpc2xlciB3
-cm90ZToNCj4gPiANCj4gPiBEQVggUE1EcyBoYXZlIGJlZW4gZGlzYWJsZWQgc2luY2UgSmFuIEth
-cmEgaW50cm9kdWNlZCBEQVggcmFkaXgNCj4gPiB0cmVlIGJhc2VkIGxvY2tpbmcuwqDCoFRoaXMg
-c2VyaWVzIGFsbG93cyBEQVggUE1EcyB0byBwYXJ0aWNpcGF0ZSBpbg0KPiA+IHRoZSBEQVggcmFk
-aXggdHJlZSBiYXNlZCBsb2NraW5nIHNjaGVtZSBzbyB0aGF0IHRoZXkgY2FuIGJlIHJlLQ0KPiA+
-IGVuYWJsZWQuDQo+ID4gDQo+ID4gQ2hhbmdlcyBzaW5jZSB2MToNCj4gPiDCoC0gUE1EIGVudHJ5
-IGxvY2tpbmcgaXMgbm93IGRvbmUgYmFzZWQgb24gdGhlIHN0YXJ0aW5nIG9mZnNldCBvZg0KPiA+
-IHRoZSBQTUQgZW50cnksIHJhdGhlciB0aGFuIG9uIHRoZSByYWRpeCB0cmVlIHNsb3Qgd2hpY2gg
-d2FzDQo+ID4gdW5yZWxpYWJsZS4gKEphbikNCj4gPiDCoC0gRml4ZWQgdGhlIG9uZSBpc3N1ZSBJ
-IGNvdWxkIGZpbmQgd2l0aCBob2xlIHB1bmNoLsKgwqBBcyBmYXIgYXMgSQ0KPiA+IGNhbiB0ZWxs
-IGhvbGUgcHVuY2ggbm93IHdvcmtzIGNvcnJlY3RseSBmb3IgYm90aCBQTUQgYW5kIFBURSBEQVgN
-Cj4gPiBlbnRyaWVzLCA0ayB6ZXJvIHBhZ2VzIGFuZCBodWdlIHplcm8gcGFnZXMuDQo+ID4gwqAt
-IEZpeGVkIHRoZSB3YXkgdGhhdCBleHQyIHJldHVybnMgdGhlIHNpemUgb2YgaG9sZXMgaW4NCj4g
-PiBleHQyX2dldF9ibG9jaygpLiAoSmFuKQ0KPiA+IMKgLSBNYWRlIHRoZSAnd2FpdF90YWJsZScg
-Z2xvYmFsIHZhcmlhYmxlIHN0YXRpYyBpbiByZXNwbnNlIHRvIGENCj4gPiBzcGFyc2Ugd2Fybmlu
-Zy4NCj4gPiDCoC0gRml4ZWQgc29tZSBtb3JlIGluY29uc2l0ZW50IHVzYWdlIGJldHdlZW4gdGhl
-IG5hbWVzICdyZXQnIGFuZA0KPiA+ICdlbnRyeScgZm9yIHJhZGl4IHRyZWUgZW50cnkgdmFyaWFi
-bGVzLg0KPiA+IA0KPiA+IFJvc3MgWndpc2xlciAoOSk6DQo+ID4gwqAgZXh0NDogYWxsb3cgREFY
-IHdyaXRlYmFjayBmb3IgaG9sZSBwdW5jaA0KPiA+IMKgIGV4dDI6IHRlbGwgREFYIHRoZSBzaXpl
-IG9mIGFsbG9jYXRpb24gaG9sZXMNCj4gPiDCoCBleHQ0OiB0ZWxsIERBWCB0aGUgc2l6ZSBvZiBh
-bGxvY2F0aW9uIGhvbGVzDQo+ID4gwqAgZGF4OiByZW1vdmUgYnVmZmVyX3NpemVfdmFsaWQoKQ0K
-PiA+IMKgIGRheDogbWFrZSAnd2FpdF90YWJsZScgZ2xvYmFsIHZhcmlhYmxlIHN0YXRpYw0KPiA+
-IMKgIGRheDogY29uc2lzdGVudCB2YXJpYWJsZSBuYW1pbmcgZm9yIERBWCBlbnRyaWVzDQo+ID4g
-wqAgZGF4OiBjb29yZGluYXRlIGxvY2tpbmcgZm9yIG9mZnNldHMgaW4gUE1EIHJhbmdlDQo+ID4g
-wqAgZGF4OiByZS1lbmFibGUgREFYIFBNRCBzdXBwb3J0DQo+ID4gwqAgZGF4OiByZW1vdmUgImRl
-cGVuZHMgb24gQlJPS0VOIiBmcm9tIEZTX0RBWF9QTUQNCj4gPiANCj4gPiDCoGZzL0tjb25maWfC
-oMKgwqDCoMKgwqDCoMKgwqDCoHzCoMKgwqAxIC0NCj4gPiDCoGZzL2RheC5jwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgfCAyOTcgKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0t
-LQ0KPiA+IC0tLS0tLS0tLS0tLQ0KPiA+IMKgZnMvZXh0Mi9pbm9kZS5jwqDCoMKgwqDCoHzCoMKg
-wqAzICsNCj4gPiDCoGZzL2V4dDQvaW5vZGUuY8KgwqDCoMKgwqB8wqDCoMKgNyArLQ0KPiA+IMKg
-aW5jbHVkZS9saW51eC9kYXguaCB8wqDCoDI5ICsrKystDQo+ID4gwqBtbS9maWxlbWFwLmPCoMKg
-wqDCoMKgwqDCoMKgfMKgwqDCoDYgKy0NCj4gPiDCoDYgZmlsZXMgY2hhbmdlZCwgMjAxIGluc2Vy
-dGlvbnMoKyksIDE0MiBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiAtLcKgDQo+ID4gMi45LjANCj4g
-DQo+IFBpbmcgb24gdGhpcyBzZXJpZXM/wqDCoEFueSBvYmplY3Rpb25zIG9yIGNvbW1lbnRzPw0K
-DQpIaSBSb3NzLA0KDQpJIGFtIHNlZWluZyBhIG1ham9yIHBlcmZvcm1hbmNlIGxvc3MgaW4gZmlv
-IG1tYXAgdGVzdCB3aXRoIHRoaXMgcGF0Y2gtDQpzZXQgYXBwbGllZC4gwqBUaGlzIGhhcHBlbnMg
-d2l0aCBvciB3aXRob3V0IG15IHBhdGNoZXMgWzFdIGFwcGxpZWQgb24NCnRvcCBvZiB5b3Vycy4g
-wqBXaXRob3V0IG15IHBhdGNoZXMswqBkYXhfcG1kX2ZhdWx0KCkgZmFsbHMgYmFjayB0byB0aGUN
-CnB0ZSBoYW5kbGVyIHNpbmNlIGFuIG1tYXAnZWQgYWRkcmVzcyBpcyBub3QgMk1CLWFsaWduZWQu
-DQoNCkkgaGF2ZSBhdHRhY2hlZCB0aHJlZSB0ZXN0IHJlc3VsdHMuDQrCoG8gcmM0LmxvZyAtIDQu
-OC4wLXJjNCAoYmFzZSkNCsKgbyBub24tcG1kLmxvZyAtIDQuOC4wLXJjNCArIHlvdXIgcGF0Y2hz
-ZXQgKGZhbGwgYmFjayB0byBwdGUpDQrCoG8gcG1kLmxvZyAtIDQuOC4wLXJjNCArIHlvdXIgcGF0
-Y2hzZXQgKyBteSBwYXRjaHNldCAodXNlIHBtZCBtYXBzKQ0KDQpNeSB0ZXN0IHN0ZXBzIGFyZSBh
-cyBmb2xsb3dzLg0KDQpta2ZzLmV4dDQgLU8gYmlnYWxsb2MgLUMgMk0gL2Rldi9wbWVtMA0KbW91
-bnQgLW8gZGF4IC9kZXYvcG1lbTAgL21udC9wbWVtMA0KbnVtYWN0bCAtLXByZWZlcnJlZCBibG9j
-azpwbWVtMCAtLWNwdW5vZGViaW5kIGJsb2NrOnBtZW0wIGZpbyB0ZXN0LmZpbw0KDQoidGVzdC5m
-aW8iDQotLS0NCltnbG9iYWxdDQpicz00aw0Kc2l6ZT0yRw0KZGlyZWN0b3J5PS9tbnQvcG1lbTAN
-CmlvZW5naW5lPW1tYXANCltyYW5kcnddDQpydz1yYW5kcncNCi0tLQ0KDQpDYW4geW91IHBsZWFz
-ZSB0YWtlIGEgbG9vaz8NClRoYW5rcywNCi1Ub3NoaQ0KDQpbMV3CoGh0dHBzOi8vbGttbC5vcmcv
-bGttbC8yMDE2LzgvMjkvNTYwDQoNCg0KDQoNCg==
+> > > DAX PMDs have been disabled since Jan Kara introduced DAX radix
+> > > tree based locking.=A0=A0This series allows DAX PMDs to participate in
+> > > the DAX radix tree based locking scheme so that they can be re-
+> > > enabled.
+> > > =
 
---_004_1472674799209219camelhpecom_
-Content-Type: text/x-log; name="non-pmd.log"
-Content-Description: non-pmd.log
-Content-Disposition: attachment; filename="non-pmd.log"; size=2306;
-	creation-date="Wed, 31 Aug 2016 20:20:48 GMT";
-	modification-date="Wed, 31 Aug 2016 20:20:48 GMT"
-Content-ID: <BF0FCE1358CFC04DAEABACDFF304ABEB@NAMPRD84.PROD.OUTLOOK.COM>
-Content-Transfer-Encoding: base64
+> > > Changes since v1:
+> > > =A0- PMD entry locking is now done based on the starting offset of
+> > > the PMD entry, rather than on the radix tree slot which was
+> > > unreliable. (Jan)
+> > > =A0- Fixed the one issue I could find with hole punch.=A0=A0As far as=
+ I
+> > > can tell hole punch now works correctly for both PMD and PTE DAX
+> > > entries, 4k zero pages and huge zero pages.
+> > > =A0- Fixed the way that ext2 returns the size of holes in
+> > > ext2_get_block(). (Jan)
+> > > =A0- Made the 'wait_table' global variable static in respnse to a
+> > > sparse warning.
+> > > =A0- Fixed some more inconsitent usage between the names 'ret' and
+> > > 'entry' for radix tree entry variables.
+> > > =
 
-cmFuZHJ3OiAoZz0wKTogcnc9cmFuZHJ3LCBicz00Sy00Sy80Sy00Sy80Sy00SywgaW9lbmdpbmU9
-bW1hcCwgaW9kZXB0aD0xCmZpby0yLjYKU3RhcnRpbmcgMSBwcm9jZXNzCnJhbmRydzogTGF5aW5n
-IG91dCBJTyBmaWxlKHMpICgxIGZpbGUocykgLyAyMDQ4TUIpCgpyYW5kcnc6IChncm91cGlkPTAs
-IGpvYnM9MSk6IGVycj0gMDogcGlkPTEyNjU2OiBXZWQgQXVnIDMxIDE4OjE0OjA2IDIwMTYKICBy
-ZWFkIDogaW89MTAyNC43TUIsIGJ3PTMwNzYuNEtCL3MsIGlvcHM9NzY5LCBydW50PTM0MTA2Mm1z
-ZWMKICAgIGNsYXQgKHVzZWMpOiBtaW49NDE1LCBtYXg9MTcwMywgYXZnPTUwOS43OCwgc3RkZXY9
-MzcuNDAKICAgICBsYXQgKHVzZWMpOiBtaW49NDE1LCBtYXg9MTcwMywgYXZnPTUwOS44MSwgc3Rk
-ZXY9MzcuNDAKICAgIGNsYXQgcGVyY2VudGlsZXMgKHVzZWMpOgogICAgIHwgIDEuMDB0aD1bICA0
-ODJdLCAgNS4wMHRoPVsgIDQ5OF0sIDEwLjAwdGg9WyAgNDk4XSwgMjAuMDB0aD1bICA0OThdLAog
-ICAgIHwgMzAuMDB0aD1bICA1MDJdLCA0MC4wMHRoPVsgIDUwMl0sIDUwLjAwdGg9WyAgNTAyXSwg
-NjAuMDB0aD1bICA1MDJdLAogICAgIHwgNzAuMDB0aD1bICA1MDJdLCA4MC4wMHRoPVsgIDUwNl0s
-IDkwLjAwdGg9WyAgNTI0XSwgOTUuMDB0aD1bICA1NDBdLAogICAgIHwgOTkuMDB0aD1bICA3MjRd
-LCA5OS41MHRoPVsgIDczMl0sIDk5LjkwdGg9WyAgNzQ4XSwgOTkuOTV0aD1bICA4NjBdLAogICAg
-IHwgOTkuOTl0aD1bICA5MDBdCiAgICBidyAoS0IgIC9zKTogbWluPSAyNjg4LCBtYXg9IDM1NTIs
-IHBlcj0xMDAuMDAlLCBhdmc9MzA3OC42OSwgc3RkZXY9MTQzLjg0CiAgd3JpdGU6IGlvPTEwMjMu
-NE1CLCBidz0zMDcyLjZLQi9zLCBpb3BzPTc2OCwgcnVudD0zNDEwNjJtc2VjCiAgICBjbGF0ICh1
-c2VjKTogbWluPTY4MywgbWF4PTE5NTUsIGF2Zz03ODguOTksIHN0ZGV2PTQ1LjgzCiAgICAgbGF0
-ICh1c2VjKTogbWluPTY4MywgbWF4PTE5NTUsIGF2Zz03ODkuMDQsIHN0ZGV2PTQ1Ljg0CiAgICBj
-bGF0IHBlcmNlbnRpbGVzICh1c2VjKToKICAgICB8ICAxLjAwdGg9WyAgNzU2XSwgIDUuMDB0aD1b
-ICA3NzJdLCAxMC4wMHRoPVsgIDc3Ml0sIDIwLjAwdGg9WyAgNzcyXSwKICAgICB8IDMwLjAwdGg9
-WyAgNzcyXSwgNDAuMDB0aD1bICA3ODBdLCA1MC4wMHRoPVsgIDc4MF0sIDYwLjAwdGg9WyAgNzgw
-XSwKICAgICB8IDcwLjAwdGg9WyAgNzgwXSwgODAuMDB0aD1bICA3ODhdLCA5MC4wMHRoPVsgIDgx
-Ml0sIDk1LjAwdGg9WyAgODI4XSwKICAgICB8IDk5LjAwdGg9WyAxMDA0XSwgOTkuNTB0aD1bIDEw
-MTJdLCA5OS45MHRoPVsgMTEyOF0sIDk5Ljk1dGg9WyAxMTQ0XSwKICAgICB8IDk5Ljk5dGg9WyAx
-MjA4XQogICAgYncgKEtCICAvcyk6IG1pbj0gMjc1MiwgbWF4PSAzNTUyLCBwZXI9MTAwLjAwJSwg
-YXZnPTMwNzQuNjAsIHN0ZGV2PTk2LjYyCiAgICBsYXQgKHVzZWMpIDogNTAwPTEyLjU1JSwgNzUw
-PTM3LjczJSwgMTAwMD00OC45NiUKICAgIGxhdCAobXNlYykgOiAyPTAuNzYlCiAgY3B1ICAgICAg
-ICAgIDogdXNyPTk5Ljk2JSwgc3lzPTAuMDElLCBjdHg9MzI4NzAsIG1hamY9MCwgbWluZj0zMDE0
-CiAgSU8gZGVwdGhzICAgIDogMT0xMDAuMCUsIDI9MC4wJSwgND0wLjAlLCA4PTAuMCUsIDE2PTAu
-MCUsIDMyPTAuMCUsID49NjQ9MC4wJQogICAgIHN1Ym1pdCAgICA6IDA9MC4wJSwgND0xMDAuMCUs
-IDg9MC4wJSwgMTY9MC4wJSwgMzI9MC4wJSwgNjQ9MC4wJSwgPj02ND0wLjAlCiAgICAgY29tcGxl
-dGUgIDogMD0wLjAlLCA0PTEwMC4wJSwgOD0wLjAlLCAxNj0wLjAlLCAzMj0wLjAlLCA2ND0wLjAl
-LCA+PTY0PTAuMCUKICAgICBpc3N1ZWQgICAgOiB0b3RhbD1yPTI2MjMwOS93PTI2MTk3OS9kPTAs
-IHNob3J0PXI9MC93PTAvZD0wLCBkcm9wPXI9MC93PTAvZD0wCiAgICAgbGF0ZW5jeSAgIDogdGFy
-Z2V0PTAsIHdpbmRvdz0wLCBwZXJjZW50aWxlPTEwMC4wMCUsIGRlcHRoPTEKClJ1biBzdGF0dXMg
-Z3JvdXAgMCAoYWxsIGpvYnMpOgogICBSRUFEOiBpbz0xMDI0LjdNQiwgYWdncmI9MzA3NktCL3Ms
-IG1pbmI9MzA3NktCL3MsIG1heGI9MzA3NktCL3MsIG1pbnQ9MzQxMDYybXNlYywgbWF4dD0zNDEw
-NjJtc2VjCiAgV1JJVEU6IGlvPTEwMjMuNE1CLCBhZ2dyYj0zMDcyS0IvcywgbWluYj0zMDcyS0Iv
-cywgbWF4Yj0zMDcyS0IvcywgbWludD0zNDEwNjJtc2VjLCBtYXh0PTM0MTA2Mm1zZWMKCkRpc2sg
-c3RhdHMgKHJlYWQvd3JpdGUpOgogIHBtZW0wOiBpb3M9MC8wLCBtZXJnZT0wLzAsIHRpY2tzPTAv
-MCwgaW5fcXVldWU9MCwgdXRpbD0wLjAwJQo=
+> > > Ross Zwisler (9):
+> > > =A0 ext4: allow DAX writeback for hole punch
+> > > =A0 ext2: tell DAX the size of allocation holes
+> > > =A0 ext4: tell DAX the size of allocation holes
+> > > =A0 dax: remove buffer_size_valid()
+> > > =A0 dax: make 'wait_table' global variable static
+> > > =A0 dax: consistent variable naming for DAX entries
+> > > =A0 dax: coordinate locking for offsets in PMD range
+> > > =A0 dax: re-enable DAX PMD support
+> > > =A0 dax: remove "depends on BROKEN" from FS_DAX_PMD
+> > > =
 
---_004_1472674799209219camelhpecom_
-Content-Type: text/x-log; name="pmd.log"
-Content-Description: pmd.log
-Content-Disposition: attachment; filename="pmd.log"; size=2306;
-	creation-date="Wed, 31 Aug 2016 20:20:48 GMT";
-	modification-date="Wed, 31 Aug 2016 20:20:48 GMT"
-Content-ID: <4DE1422FD30D054680F02C8E69F04A7B@NAMPRD84.PROD.OUTLOOK.COM>
-Content-Transfer-Encoding: base64
+> > > =A0fs/Kconfig=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0|=A0=A0=A01 -
+> > > =A0fs/dax.c=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0| 297 ++++++++++++++++=
++++++++++++++-----------
+> > > ------------
+> > > =A0fs/ext2/inode.c=A0=A0=A0=A0=A0|=A0=A0=A03 +
+> > > =A0fs/ext4/inode.c=A0=A0=A0=A0=A0|=A0=A0=A07 +-
+> > > =A0include/linux/dax.h |=A0=A029 ++++-
+> > > =A0mm/filemap.c=A0=A0=A0=A0=A0=A0=A0=A0|=A0=A0=A06 +-
+> > > =A06 files changed, 201 insertions(+), 142 deletions(-)
+> > > =
 
-cmFuZHJ3OiAoZz0wKTogcnc9cmFuZHJ3LCBicz00Sy00Sy80Sy00Sy80Sy00SywgaW9lbmdpbmU9
-bW1hcCwgaW9kZXB0aD0xCmZpby0yLjYKU3RhcnRpbmcgMSBwcm9jZXNzCnJhbmRydzogTGF5aW5n
-IG91dCBJTyBmaWxlKHMpICgxIGZpbGUocykgLyAyMDQ4TUIpCgpyYW5kcnc6IChncm91cGlkPTAs
-IGpvYnM9MSk6IGVycj0gMDogcGlkPTE5NTIxOiBXZWQgQXVnIDMxIDE3OjUwOjM5IDIwMTYKICBy
-ZWFkIDogaW89MTAyNC43TUIsIGJ3PTMwMzQuNUtCL3MsIGlvcHM9NzU4LCBydW50PTM0NTc4MG1z
-ZWMKICAgIGNsYXQgKHVzZWMpOiBtaW49NDkyLCBtYXg9MTM1OSwgYXZnPTUxNy4yMCwgc3RkZXY9
-NTUuODcKICAgICBsYXQgKHVzZWMpOiBtaW49NDkyLCBtYXg9MTM1OSwgYXZnPTUxNy4yMywgc3Rk
-ZXY9NTUuODcKICAgIGNsYXQgcGVyY2VudGlsZXMgKHVzZWMpOgogICAgIHwgIDEuMDB0aD1bICA0
-OThdLCAgNS4wMHRoPVsgIDQ5OF0sIDEwLjAwdGg9WyAgNDk4XSwgMjAuMDB0aD1bICA0OThdLAog
-ICAgIHwgMzAuMDB0aD1bICA1MDJdLCA0MC4wMHRoPVsgIDUwMl0sIDUwLjAwdGg9WyAgNTAyXSwg
-NjAuMDB0aD1bICA1MDJdLAogICAgIHwgNzAuMDB0aD1bICA1MDJdLCA4MC4wMHRoPVsgIDUwNl0s
-IDkwLjAwdGg9WyAgNTI0XSwgOTUuMDB0aD1bICA3MDhdLAogICAgIHwgOTkuMDB0aD1bICA3NDBd
-LCA5OS41MHRoPVsgIDc1Nl0sIDk5LjkwdGg9WyAgOTAwXSwgOTkuOTV0aD1bICA5MDhdLAogICAg
-IHwgOTkuOTl0aD1bIDEwNDhdCiAgICBidyAoS0IgIC9zKTogbWluPSAyNjAwLCBtYXg9IDM0NDgs
-IHBlcj0xMDAuMDAlLCBhdmc9MzAzNi41Miwgc3RkZXY9MTQxLjU5CiAgd3JpdGU6IGlvPTEwMjMu
-NE1CLCBidz0zMDMwLjZLQi9zLCBpb3BzPTc1NywgcnVudD0zNDU3ODBtc2VjCiAgICBjbGF0ICh1
-c2VjKTogbWluPTc2NSwgbWF4PTE3ODgsIGF2Zz03OTkuNDYsIHN0ZGV2PTY3LjE5CiAgICAgbGF0
-ICh1c2VjKTogbWluPTc2NiwgbWF4PTE3ODgsIGF2Zz03OTkuNTAsIHN0ZGV2PTY3LjIwCiAgICBj
-bGF0IHBlcmNlbnRpbGVzICh1c2VjKToKICAgICB8ICAxLjAwdGg9WyAgNzcyXSwgIDUuMDB0aD1b
-ICA3NzJdLCAxMC4wMHRoPVsgIDc3Ml0sIDIwLjAwdGg9WyAgNzcyXSwKICAgICB8IDMwLjAwdGg9
-WyAgNzcyXSwgNDAuMDB0aD1bICA3ODBdLCA1MC4wMHRoPVsgIDc4MF0sIDYwLjAwdGg9WyAgNzgw
-XSwKICAgICB8IDcwLjAwdGg9WyAgNzgwXSwgODAuMDB0aD1bICA3ODhdLCA5MC4wMHRoPVsgIDgy
-MF0sIDk1LjAwdGg9WyAgOTk2XSwKICAgICB8IDk5LjAwdGg9WyAxMDIwXSwgOTkuNTB0aD1bIDEx
-NDRdLCA5OS45MHRoPVsgMTE3Nl0sIDk5Ljk1dGg9WyAxMjA4XSwKICAgICB8IDk5Ljk5dGg9WyAx
-MzIwXQogICAgYncgKEtCICAvcyk6IG1pbj0gMjcwNCwgbWF4PSAzMzI4LCBwZXI9MTAwLjAwJSwg
-YXZnPTMwMzIuNTYsIHN0ZGV2PTkzLjAwCiAgICBsYXQgKHVzZWMpIDogNTAwPTEwLjY2JSwgNzUw
-PTM5LjA2JSwgMTAwMD00OC4xOSUKICAgIGxhdCAobXNlYykgOiAyPTIuMDglCiAgY3B1ICAgICAg
-ICAgIDogdXNyPTk5Ljk2JSwgc3lzPTAuMDAlLCBjdHg9MzI1MTMsIG1hamY9MCwgbWluZj0zMDEy
-CiAgSU8gZGVwdGhzICAgIDogMT0xMDAuMCUsIDI9MC4wJSwgND0wLjAlLCA4PTAuMCUsIDE2PTAu
-MCUsIDMyPTAuMCUsID49NjQ9MC4wJQogICAgIHN1Ym1pdCAgICA6IDA9MC4wJSwgND0xMDAuMCUs
-IDg9MC4wJSwgMTY9MC4wJSwgMzI9MC4wJSwgNjQ9MC4wJSwgPj02ND0wLjAlCiAgICAgY29tcGxl
-dGUgIDogMD0wLjAlLCA0PTEwMC4wJSwgOD0wLjAlLCAxNj0wLjAlLCAzMj0wLjAlLCA2ND0wLjAl
-LCA+PTY0PTAuMCUKICAgICBpc3N1ZWQgICAgOiB0b3RhbD1yPTI2MjMwOS93PTI2MTk3OS9kPTAs
-IHNob3J0PXI9MC93PTAvZD0wLCBkcm9wPXI9MC93PTAvZD0wCiAgICAgbGF0ZW5jeSAgIDogdGFy
-Z2V0PTAsIHdpbmRvdz0wLCBwZXJjZW50aWxlPTEwMC4wMCUsIGRlcHRoPTEKClJ1biBzdGF0dXMg
-Z3JvdXAgMCAoYWxsIGpvYnMpOgogICBSRUFEOiBpbz0xMDI0LjdNQiwgYWdncmI9MzAzNEtCL3Ms
-IG1pbmI9MzAzNEtCL3MsIG1heGI9MzAzNEtCL3MsIG1pbnQ9MzQ1NzgwbXNlYywgbWF4dD0zNDU3
-ODBtc2VjCiAgV1JJVEU6IGlvPTEwMjMuNE1CLCBhZ2dyYj0zMDMwS0IvcywgbWluYj0zMDMwS0Iv
-cywgbWF4Yj0zMDMwS0IvcywgbWludD0zNDU3ODBtc2VjLCBtYXh0PTM0NTc4MG1zZWMKCkRpc2sg
-c3RhdHMgKHJlYWQvd3JpdGUpOgogIHBtZW0wOiBpb3M9MC8wLCBtZXJnZT0wLzAsIHRpY2tzPTAv
-MCwgaW5fcXVldWU9MCwgdXRpbD0wLjAwJQo=
+> > > --=A0
+> > > 2.9.0
+> > =
 
---_004_1472674799209219camelhpecom_
-Content-Type: text/x-log; name="rc4.log"
-Content-Description: rc4.log
-Content-Disposition: attachment; filename="rc4.log"; size=2338;
-	creation-date="Wed, 31 Aug 2016 20:20:48 GMT";
-	modification-date="Wed, 31 Aug 2016 20:20:48 GMT"
-Content-ID: <4369CE9F68F96E4BAB7BD8B8F4E71E91@NAMPRD84.PROD.OUTLOOK.COM>
-Content-Transfer-Encoding: base64
+> > Ping on this series?=A0=A0Any objections or comments?
+> =
 
-cmFuZHJ3OiAoZz0wKTogcnc9cmFuZHJ3LCBicz00Sy00Sy80Sy00Sy80Sy00SywgaW9lbmdpbmU9
-bW1hcCwgaW9kZXB0aD0xCmZpby0yLjYKU3RhcnRpbmcgMSBwcm9jZXNzCnJhbmRydzogTGF5aW5n
-IG91dCBJTyBmaWxlKHMpICgxIGZpbGUocykgLyAyMDQ4TUIpCgpyYW5kcnc6IChncm91cGlkPTAs
-IGpvYnM9MSk6IGVycj0gMDogcGlkPTEyNjc4OiBXZWQgQXVnIDMxIDE5OjU5OjQ1IDIwMTYKICBy
-ZWFkIDogaW89MTAyNC43TUIsIGJ3PTc3NTQ4OUtCL3MsIGlvcHM9MTkzODcyLCBydW50PSAgMTM1
-M21zZWMKICAgIGNsYXQgKHVzZWMpOiBtaW49MSwgbWF4PTI5NywgYXZnPSAxLjY3LCBzdGRldj0g
-Mi45MgogICAgIGxhdCAodXNlYyk6IG1pbj0xLCBtYXg9Mjk3LCBhdmc9IDEuNzAsIHN0ZGV2PSAy
-Ljk2CiAgICBjbGF0IHBlcmNlbnRpbGVzICh1c2VjKToKICAgICB8ICAxLjAwdGg9WyAgICAxXSwg
-IDUuMDB0aD1bICAgIDFdLCAxMC4wMHRoPVsgICAgMV0sIDIwLjAwdGg9WyAgICAxXSwKICAgICB8
-IDMwLjAwdGg9WyAgICAxXSwgNDAuMDB0aD1bICAgIDFdLCA1MC4wMHRoPVsgICAgMl0sIDYwLjAw
-dGg9WyAgICAyXSwKICAgICB8IDcwLjAwdGg9WyAgICAyXSwgODAuMDB0aD1bICAgIDJdLCA5MC4w
-MHRoPVsgICAgMl0sIDk1LjAwdGg9WyAgICAyXSwKICAgICB8IDk5LjAwdGg9WyAgICAzXSwgOTku
-NTB0aD1bICAgIDRdLCA5OS45MHRoPVsgICAxMl0sIDk5Ljk1dGg9WyAgIDEyXSwKICAgICB8IDk5
-Ljk5dGg9WyAgMTg5XQogICAgYncgKEtCICAvcyk6IG1pbj03MzY2MDgsIG1heD03OTIyOTYsIHBl
-cj05OC41OCUsIGF2Zz03NjQ0NTIuMDAsIHN0ZGV2PTM5Mzc3LjM2CiAgd3JpdGU6IGlvPTEwMjMu
-NE1CLCBidz03NzQ1MTNLQi9zLCBpb3BzPTE5MzYyOCwgcnVudD0gIDEzNTNtc2VjCiAgICBjbGF0
-ICh1c2VjKTogbWluPTIsIG1heD0yMzUsIGF2Zz0gMi42Niwgc3RkZXY9IDMuNTkKICAgICBsYXQg
-KHVzZWMpOiBtaW49MiwgbWF4PTIzNSwgYXZnPSAyLjcwLCBzdGRldj0gMy42MQogICAgY2xhdCBw
-ZXJjZW50aWxlcyAodXNlYyk6CiAgICAgfCAgMS4wMHRoPVsgICAgMl0sICA1LjAwdGg9WyAgICAy
-XSwgMTAuMDB0aD1bICAgIDJdLCAyMC4wMHRoPVsgICAgMl0sCiAgICAgfCAzMC4wMHRoPVsgICAg
-Ml0sIDQwLjAwdGg9WyAgICAyXSwgNTAuMDB0aD1bICAgIDNdLCA2MC4wMHRoPVsgICAgM10sCiAg
-ICAgfCA3MC4wMHRoPVsgICAgM10sIDgwLjAwdGg9WyAgICAzXSwgOTAuMDB0aD1bICAgIDNdLCA5
-NS4wMHRoPVsgICAgM10sCiAgICAgfCA5OS4wMHRoPVsgICAgNF0sIDk5LjUwdGg9WyAgICA2XSwg
-OTkuOTB0aD1bICAgMTNdLCA5OS45NXRoPVsgICAxNF0sCiAgICAgfCA5OS45OXRoPVsgIDE5M10K
-ICAgIGJ3IChLQiAgL3MpOiBtaW49NzM2Mjg4LCBtYXg9Nzg5NDQwLCBwZXI9OTguNTAlLCBhdmc9
-NzYyODY0LjAwLCBzdGRldj0zNzU4NC4xNAogICAgbGF0ICh1c2VjKSA6IDI9MjAuMTglLCA0PTc4
-LjIzJSwgMTA9MS40MCUsIDIwPTAuMTYlLCA1MD0wLjAxJQogICAgbGF0ICh1c2VjKSA6IDI1MD0w
-LjAzJSwgNTAwPTAuMDElCiAgY3B1ICAgICAgICAgIDogdXNyPTQ2LjgyJSwgc3lzPTUzLjAzJSwg
-Y3R4PTEzNSwgbWFqZj0wLCBtaW5mPTc4NjI3OQogIElPIGRlcHRocyAgICA6IDE9MTAwLjAlLCAy
-PTAuMCUsIDQ9MC4wJSwgOD0wLjAlLCAxNj0wLjAlLCAzMj0wLjAlLCA+PTY0PTAuMCUKICAgICBz
-dWJtaXQgICAgOiAwPTAuMCUsIDQ9MTAwLjAlLCA4PTAuMCUsIDE2PTAuMCUsIDMyPTAuMCUsIDY0
-PTAuMCUsID49NjQ9MC4wJQogICAgIGNvbXBsZXRlICA6IDA9MC4wJSwgND0xMDAuMCUsIDg9MC4w
-JSwgMTY9MC4wJSwgMzI9MC4wJSwgNjQ9MC4wJSwgPj02ND0wLjAlCiAgICAgaXNzdWVkICAgIDog
-dG90YWw9cj0yNjIzMDkvdz0yNjE5NzkvZD0wLCBzaG9ydD1yPTAvdz0wL2Q9MCwgZHJvcD1yPTAv
-dz0wL2Q9MAogICAgIGxhdGVuY3kgICA6IHRhcmdldD0wLCB3aW5kb3c9MCwgcGVyY2VudGlsZT0x
-MDAuMDAlLCBkZXB0aD0xCgpSdW4gc3RhdHVzIGdyb3VwIDAgKGFsbCBqb2JzKToKICAgUkVBRDog
-aW89MTAyNC43TUIsIGFnZ3JiPTc3NTQ4OEtCL3MsIG1pbmI9Nzc1NDg4S0IvcywgbWF4Yj03NzU0
-ODhLQi9zLCBtaW50PTEzNTNtc2VjLCBtYXh0PTEzNTNtc2VjCiAgV1JJVEU6IGlvPTEwMjMuNE1C
-LCBhZ2dyYj03NzQ1MTJLQi9zLCBtaW5iPTc3NDUxMktCL3MsIG1heGI9Nzc0NTEyS0IvcywgbWlu
-dD0xMzUzbXNlYywgbWF4dD0xMzUzbXNlYwoKRGlzayBzdGF0cyAocmVhZC93cml0ZSk6CiAgcG1l
-bTA6IGlvcz0wLzAsIG1lcmdlPTAvMCwgdGlja3M9MC8wLCBpbl9xdWV1ZT0wLCB1dGlsPTAuMDAl
-Cg==
+> Hi Ross,
+> =
 
---_004_1472674799209219camelhpecom_--
+> I am seeing a major performance loss in fio mmap test with this patch-
+> set applied. =A0This happens with or without my patches [1] applied on
+> top of yours. =A0Without my patches,=A0dax_pmd_fault() falls back to the
+> pte handler since an mmap'ed address is not 2MB-aligned.
+> =
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> I have attached three test results.
+> =A0o rc4.log - 4.8.0-rc4 (base)
+> =A0o non-pmd.log - 4.8.0-rc4 + your patchset (fall back to pte)
+> =A0o pmd.log - 4.8.0-rc4 + your patchset + my patchset (use pmd maps)
+> =
+
+> My test steps are as follows.
+> =
+
+> mkfs.ext4 -O bigalloc -C 2M /dev/pmem0
+> mount -o dax /dev/pmem0 /mnt/pmem0
+> numactl --preferred block:pmem0 --cpunodebind block:pmem0 fio test.fio
+> =
+
+> "test.fio"
+> ---
+> [global]
+> bs=3D4k
+> size=3D2G
+> directory=3D/mnt/pmem0
+> ioengine=3Dmmap
+> [randrw]
+> rw=3Drandrw
+> ---
+> =
+
+> Can you please take a look?
+
+Yep, thanks for the report.
