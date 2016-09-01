@@ -1,83 +1,49 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: DAX can not work on virtual nvdimm device
-Date: Thu, 1 Sep 2016 20:57:38 -0600
-Message-ID: <20160902025738.GA26108@linux.intel.com>
-References: <436d7526-bf06-633d-afce-4333552d9e31@linux.intel.com>
- <CAPcyv4hVgi6Hw8Beg=Nt78+U0QNJN9mBGWEp3V6bg86NaM3Q6Q@mail.gmail.com>
- <20160819183047.GA7216@linux.intel.com>
- <600ac51c-0f61-6e53-9bfa-669c85494d1f@linux.intel.com>
- <20160829193014.GB16738@linux.intel.com>
- <61d5c470-a8bf-86d5-d1fe-b4b577a85967@linux.intel.com>
- <CAPcyv4hrFSxNcmmVLVZT4fK3+hspPCDKW0rVBj1=3GkJRgZ29Q@mail.gmail.com>
- <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [sparc64] sigbus in e2fsck
+Date: Wed, 31 Aug 2016 21:26:20 -0400
+Message-ID: <20160901012620.au5syxdjha4aedlm@thunk.org>
+References: <CADxRZqwws+5t-hjO=70yP84p4+1_YYZO5ER3-=faFh1JbWjTeA@mail.gmail.com>
+ <6a774a5e-b2e5-6276-c272-2b737bd098f0@physik.fu-berlin.de>
+ <20160830145810.rgms25xlnatnyxir@thunk.org>
+ <CADxRZqzQ+hnjVLkN+4L1u=k4iMOa_6j7UjGX-40F=uy9oUAppA@mail.gmail.com>
+ <20160830191644.hoqnviqcj2odxcpu@thunk.org>
+ <CADxRZqx1QQNPXyzw7qXKPGH40yA9UsvZPYHaW0=i=z_tAix2Aw@mail.gmail.com>
+ <20160830202510.GA8258@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dan Williams <dan.j.williams@intel.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Yumei Huang <yuhuang@redhat.com>, KVM <kvm@vger.kernel.org>,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        "qemu-devel@nongnu.org" <qemu-devel@nongnu.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-To: Xiao Guangrong <guangrong.xiao@linux.intel.com>,
-        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-acpi-owner@vger.kernel.org>
+Cc: Anatoly Pugachev <matorola@gmail.com>, linux-ext4@vger.kernel.org,
+        debian-sparc <debian-sparc@lists.debian.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35618 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751678AbcIBGC5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 2 Sep 2016 02:02:57 -0400
 Content-Disposition: inline
-In-Reply-To: <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
-Sender: linux-acpi-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160830202510.GA8258@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 31, 2016 at 04:44:47PM +0800, Xiao Guangrong wrote:
-> On 08/31/2016 01:09 AM, Dan Williams wrote:
-> > 
-> > Can you post your exact reproduction steps?  This test is not failing for me.
-> > 
+On Tue, Aug 30, 2016 at 01:25:10PM -0700, Darrick J. Wong wrote:
 > 
-> Sure.
+> AFAICT, each bh is malloc'd via e2fsck_allocate_memory and nothing seems
+> to guarantee that the char b_data[1024] will be aligned to a multiple of
+> 8 (it certainly isn't on x64), so I guess this isn't much of a surprise.
 > 
-> 1. make the guest kernel based on your tree, the top commit is
->    10d7902fa0e82b (dax: unmap/truncate on device shutdown) and
->    the config file can be found in this thread.
-> 
-> 2. add guest kernel command line: memmap=6G!10G
-> 
-> 3: start the guest:
->    x86_64-softmmu/qemu-system-x86_64 -machine pc,nvdimm --enable-kvm \
->    -smp 16 -m 32G,maxmem=100G,slots=100 /other/VMs/centos6.img -monitor stdio
-> 
-> 4: in guest:
->    mkfs.ext4 /dev/pmem0
->    mount -o dax /dev/pmem0  /mnt/pmem/
->    echo > /mnt/pmem/xxx
->    ./mmap /mnt/pmem/xxx
->    ./read /mnt/pmem/xxx
-> 
->   The source code of mmap and read has been attached in this mail.
-> 
->   Hopefully, you can detect the error triggered by read test.
-> 
-> Thanks!
+> We could change b_data to a pointer and then posix_memalign it.
 
-Okay, I think I've isolated this issue.  Xiao's VM was an old CentOS 6 system,
-and for some reason ext4+DAX with the old tools found in that VM fails.  I was
-able to reproduce this failure with a freshly installed CentOS 6.8 VM.
+Actually, all we need to do is to rearrange the structure elements so
+it looks like this:
 
-You can see the failure with his tests, or perhaps more easily with this
-series of commands:
+	unsigned long long b_blocknr;
+	char            b_data[1024];
+};
 
-  # mkfs.ext4 /dev/pmem0
-  # mount -o dax /dev/pmem0  /mnt/pmem/
-  # touch /mnt/pmem/x
-  # md5sum /mnt/pmem/x
-  md5sum: /mnt/pmem/x: Bad address
+Since b_blocknr will need to be eight byte aligned, this will also
+ensure that b_data will also be aligned correctly.
 
-This sequence of commands works fine in the old CentOS 6 system if you use XFS
-instead of ext4, and it works fine with both ext4 and XFS in CentOS 7 and
-with recent versions of Fedora.
+       	    	   	     		- Ted
 
-I've added the ext4 folks to this mail in case they care, but my guess is that
-the tools in CentOS 6 are so old that it's not worth worrying about.  For
-reference, the kernel in CentOS 6 is based on 2.6.32.  :)  DAX was introduced
-in v4.0.
+
+
+
