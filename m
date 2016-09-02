@@ -1,78 +1,83 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: 4.7.0-rc7 ext4 error in dx_probe
-Date: Thu, 1 Sep 2016 09:40:17 -0700
-Message-ID: <20160901164016.GB25818@birch.djwong.org>
-References: <7849bcd2-142d-0a12-0a04-7d0c3b6d788f@etorok.net>
- <20160805103544.kbt7znbzypvi5ofx@sig21.net>
- <20160805170228.GA19960@birch.djwong.org>
- <20160805181136.mcjnnvuo5m6kpxzb@sig21.net>
- <20160805191548.GD19960@birch.djwong.org>
- <20160808035634.GA16193@thunk.org>
- <20160808062810.GC8590@birch.djwong.org>
- <8b8fff2d-5c89-856a-65d2-f6962b875f8f@etorok.net>
- <20160817232833.GF14651@birch.djwong.org>
- <dee1ff49-fea3-6f48-3d53-3737bdda135b@etorok.net>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: DAX can not work on virtual nvdimm device
+Date: Thu, 1 Sep 2016 20:57:38 -0600
+Message-ID: <20160902025738.GA26108@linux.intel.com>
+References: <436d7526-bf06-633d-afce-4333552d9e31@linux.intel.com>
+ <CAPcyv4hVgi6Hw8Beg=Nt78+U0QNJN9mBGWEp3V6bg86NaM3Q6Q@mail.gmail.com>
+ <20160819183047.GA7216@linux.intel.com>
+ <600ac51c-0f61-6e53-9bfa-669c85494d1f@linux.intel.com>
+ <20160829193014.GB16738@linux.intel.com>
+ <61d5c470-a8bf-86d5-d1fe-b4b577a85967@linux.intel.com>
+ <CAPcyv4hrFSxNcmmVLVZT4fK3+hspPCDKW0rVBj1=3GkJRgZ29Q@mail.gmail.com>
+ <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>,
-        Daeho Jeong <daeho.jeong@samsung.com>,
-        Youngjin Gil <youngjin.gil@samsung.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Johannes Stezenbach <js@sig21.net>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dan Williams <dan.j.williams@intel.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Yumei Huang <yuhuang@redhat.com>, KVM <kvm@vger.kernel.org>,
+        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+        "qemu-devel@nongnu.org" <qemu-devel@nongnu.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+To: Xiao Guangrong <guangrong.xiao@linux.intel.com>,
+        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-acpi-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <dee1ff49-fea3-6f48-3d53-3737bdda135b@etorok.net>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
+Sender: linux-acpi-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 22, 2016 at 10:33:08AM +0300, Török Edwin wrote:
-> On 2016-08-18 02:28, Darrick J. Wong wrote:
-> > On Wed, Aug 17, 2016 at 05:27:25PM +0300, Török Edwin wrote:
-> >> On 2016-08-08 09:28, Darrick J. Wong wrote:
-> >>> On Sun, Aug 07, 2016 at 11:56:34PM -0400, Theodore Ts'o wrote:
-> >>>> On Fri, Aug 05, 2016 at 12:15:48PM -0700, Darrick J. Wong wrote:
-> >>>>>>> [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/fs/ext4/inode.c?id=b47820edd1634dc1208f9212b7ecfb4230610a23
-> >>>>>>
-> >>>>>> I added the patch, rebuilt and rebooted.  It will take some time
-> >>>>>> before I'll report back since the issue is so hard to reproduce.
-> >>>>>
-> >>>>> FWIW I could trigger it reliably by running a bunch of directory traversal
-> >>>>> programs simultaneously on the same directory.  I have a script that fires
-> >>>>> up multiple mutts pointing to the Maildirs for the high traffic Linux lists.
-> >>>>
-> >>>> Hmm, I wonder if we should request that this patch be backported to
-> >>>> -stable.  Darrick, what do you think?
-> >>>
-> >>> Seems like an excellent idea.
-> >>
-> >> Hi,
-> >>
-> >> I see 4.7.1. was released, however before testing it in the changelog I can't
-> >> see the inode.c commit with the checksum fix.  Is there another commit that
-> >> would provide an equivalent fix, or is the fix not part of 4.7.1?
+On Wed, Aug 31, 2016 at 04:44:47PM +0800, Xiao Guangrong wrote:
+> On 08/31/2016 01:09 AM, Dan Williams wrote:
 > > 
-> > There's no 'equivalent' fix; the one we have simply didn't make it
-> > to the stable maintainers before 4.7.1 came out.
+> > Can you post your exact reproduction steps?  This test is not failing for me.
 > > 
-> > (Hey Ted, can you send the patch to ... whomever's in charge of 4.7?)
 > 
-> Ping? 4.7.2 is out....
+> Sure.
 > 
-> The process for submitting to stable seems to be described here [1], it
-> doesn't say who can submit, but I  guess it'd be better if one of the people
-> listed in the original commit, or an ext4 maintainer submitted it.
+> 1. make the guest kernel based on your tree, the top commit is
+>    10d7902fa0e82b (dax: unmap/truncate on device shutdown) and
+>    the config file can be found in this thread.
 > 
-> FWIW 4.7.0+patch has been working reliably here, would be nice if I could
-> tell people here that its safe to upgrade to 4.7.x (without manually patching
-> it).
+> 2. add guest kernel command line: memmap=6G!10G
+> 
+> 3: start the guest:
+>    x86_64-softmmu/qemu-system-x86_64 -machine pc,nvdimm --enable-kvm \
+>    -smp 16 -m 32G,maxmem=100G,slots=100 /other/VMs/centos6.img -monitor stdio
+> 
+> 4: in guest:
+>    mkfs.ext4 /dev/pmem0
+>    mount -o dax /dev/pmem0  /mnt/pmem/
+>    echo > /mnt/pmem/xxx
+>    ./mmap /mnt/pmem/xxx
+>    ./read /mnt/pmem/xxx
+> 
+>   The source code of mmap and read has been attached in this mail.
+> 
+>   Hopefully, you can detect the error triggered by read test.
+> 
+> Thanks!
 
-Ted, ping for stable inclusion please? :)
+Okay, I think I've isolated this issue.  Xiao's VM was an old CentOS 6 system,
+and for some reason ext4+DAX with the old tools found in that VM fails.  I was
+able to reproduce this failure with a freshly installed CentOS 6.8 VM.
 
---D
+You can see the failure with his tests, or perhaps more easily with this
+series of commands:
 
-> 
-> Best regards,
-> --Edwin
+  # mkfs.ext4 /dev/pmem0
+  # mount -o dax /dev/pmem0  /mnt/pmem/
+  # touch /mnt/pmem/x
+  # md5sum /mnt/pmem/x
+  md5sum: /mnt/pmem/x: Bad address
+
+This sequence of commands works fine in the old CentOS 6 system if you use XFS
+instead of ext4, and it works fine with both ext4 and XFS in CentOS 7 and
+with recent versions of Fedora.
+
+I've added the ext4 folks to this mail in case they care, but my guess is that
+the tools in CentOS 6 are so old that it's not worth worrying about.  For
+reference, the kernel in CentOS 6 is based on 2.6.32.  :)  DAX was introduced
+in v4.0.
