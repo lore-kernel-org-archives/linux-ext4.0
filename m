@@ -1,43 +1,237 @@
-From: Unknown <unknown@unknown.invalid>
-Subject: [Shared Post] The Spiritually Self-Seeking Church
-Date: Thu, 1 Sep 2016 20:19:35 +0000
-Message-ID: <6df3e7f4db4dcc83144feda00ced9f56@ourdailybread.org>
+From: Eric Ren <zren@suse.com>
+Subject: Re: [PATCH] jbd2: add jbd2_journal_init() helper
+Date: Sat, 3 Sep 2016 17:33:39 +0800
+Message-ID: <1b8c6456-dcf2-648d-2a29-6671fc519187@suse.com>
+References: <4f138dd04ef1dd370642c24f4a801370cc12ca54.1472644753.git.geliangtang@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Geliang Tang <geliangtang@gmail.com>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [23.253.177.166] ([23.253.177.166]:49941 "EHLO web-107"
-        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752771AbcICC4p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 2 Sep 2016 22:56:45 -0400
-Received: from www-data by web-107 with local (Exim 4.84_RC1)
-        (envelope-from <support@addthis.com>)
-        id 1bfYSV-0007mN-IA
-        for linux-ext4@vger.kernel.org; Thu, 01 Sep 2016 20:19:35 +0000
-From: =?UTF-8?B?44CQ5r6z6Zeo6YeR5rKZ6ZuG5Zui44CR55S15a2Q5ri45oiP5LiN6K6h6L6T?=
-         =?UTF-8?B?6LWi77yM5aSp5aSpMS4yJei/lOawtOaXoOS4iumZkO+8geaLpeaciU1H55S1?=
-         =?UTF-8?B?5a2Q44CBQkLnlLXlrZDnrYnmnIDngavlubPlj7DvvIwx5YWD5Y2z5Y+v5ri4?=
-         =?UTF-8?B?5oiP77yI5pSv5oyB5pSv5LuY5a6d44CB5b6u5L+h44CB6LSi5LuY6YCa44CB?=
-         =?UTF-8?B?5ri45oiP54K55Y2h5YWF5YC877yJ5pyA5paw5o2V6bG85ri45oiP5LiK57q/?=
-         =?UTF-8?B?77yM54us5YW35LiA5qC877yM546p5rOV57K+5b2p77yM5oOK5Zac6L+e5LiN?=
-         =?UTF-8?B?5YGc77yM6L+Q5rCU6auY5Yiw54iG77yB5Liw5a+M55qE5ZCE57G755S15a2Q?=
-         =?UTF-8?B?5ri45oiP77yM6YKA5oKo5L2T6aqM77yM6LW25b+r5Yqg5YWl5ZCn77yB77ya?=
-         =?UTF-8?B?aHR0cDovL3d3dy44MzQ1MTYuY29tLz8=?=
-         =?UTF-8?B?bGludXgtZXh0NEB2Z2VyLmtlcm5lbC4=?=
-         =?UTF-8?B?b3JnLS0tLS0tLS0tLS0tLS0tLS0tLS0=?=
-         =?UTF-8?B?LS0tLS0tLS0tLS0tLS0tLS0tLS0tLSA=?=
-         =?UTF-8?B?ICAgICAgICAg
+Received: from smtp2.provo.novell.com ([137.65.250.81]:57792 "EHLO
+        smtp2.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752411AbcICJeC (ORCPT
+        <rfc822;groupwise-linux-ext4@vger.kernel.org:0:0>);
+        Sat, 3 Sep 2016 05:34:02 -0400
+In-Reply-To: <4f138dd04ef1dd370642c24f4a801370cc12ca54.1472644753.git.geliangtang@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-【澳门金沙集团】电子游戏不计输赢，天天1.2%返水无上限！
-拥有MG电子、BB电子等最火平台，1元即可游戏（支持支付宝、微信、财付通、游戏点卡充值）
-最新捕鱼游戏上线，独具一格，玩法精彩，惊喜连不停，运气高到爆！
-丰富的各类电子游戏，邀您体验，赶快加入吧！：http://www.834516.com/?linux-ext4@vger.kernel.org
-------------------------------------------
-                    榜样的力量是无穷的！ (support@addthis.com) thinks you may be interested in the following post:
+Hi Geliang,
 
-The Spiritually Self-Seeking Church
-http://utmost.org/the-spiritually-self-seeking-church/
+On 08/31/2016 08:23 PM, Geliang Tang wrote:
+> There are some repetitive code in jbd2_journal_init_dev() and
+> jbd2_journal_init_inode(). So this patch extracts the common code into
+> jbd2_journal_init() helper to simplify the code. And fix the coding
+> style warnings reported by checkpatch.pl by the way.
+journal_init_common() is already there for the same purpose, right?
+Do we really need another helper?
+
+Thanks,
+Eric
+
+>
+> Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+> ---
+>   fs/jbd2/journal.c | 130 +++++++++++++++++++++++++++---------------------------
+>   1 file changed, 66 insertions(+), 64 deletions(-)
+>
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 46261a6..c10f657 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1143,30 +1143,13 @@ static journal_t * journal_init_common (void)
+>    *
+>    */
+>   
+> -/**
+> - *  journal_t * jbd2_journal_init_dev() - creates and initialises a journal structure
+> - *  @bdev: Block device on which to create the journal
+> - *  @fs_dev: Device which hold journalled filesystem for this journal.
+> - *  @start: Block nr Start of journal.
+> - *  @len:  Length of the journal in blocks.
+> - *  @blocksize: blocksize of journalling device
+> - *
+> - *  Returns: a newly created journal_t *
+> - *
+> - *  jbd2_journal_init_dev creates a journal which maps a fixed contiguous
+> - *  range of blocks on an arbitrary block device.
+> - *
+> - */
+> -journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+> -			struct block_device *fs_dev,
+> -			unsigned long long start, int len, int blocksize)
+> +static int jbd2_journal_init(journal_t *journal, struct block_device *bdev,
+> +			struct block_device *fs_dev, unsigned long long start,
+> +			int len, int blocksize, gfp_t gfp)
+>   {
+> -	journal_t *journal = journal_init_common();
+>   	struct buffer_head *bh;
+>   	int n;
+> -
+> -	if (!journal)
+> -		return NULL;
+> +	int err = 0;
+>   
+>   	/* journal descriptor can store up to n blocks -bzzz */
+>   	journal->j_blocksize = blocksize;
+> @@ -1183,94 +1166,113 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>   	if (!journal->j_wbuf) {
+>   		printk(KERN_ERR "%s: Can't allocate bhs for commit thread\n",
+>   			__func__);
+> +		err = -ENOMEM;
+>   		goto out_err;
+>   	}
+>   
+> -	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
+> +	bh = __getblk_gfp(journal->j_dev, start, journal->j_blocksize, gfp);
+>   	if (!bh) {
+>   		printk(KERN_ERR
+>   		       "%s: Cannot get buffer for journal superblock\n",
+>   		       __func__);
+> +		err = -EIO;
+>   		goto out_err;
+>   	}
+>   	journal->j_sb_buffer = bh;
+>   	journal->j_superblock = (journal_superblock_t *)bh->b_data;
+>   
+> -	return journal;
+> +	return 0;
+>   out_err:
+>   	kfree(journal->j_wbuf);
+>   	jbd2_stats_proc_exit(journal);
+> +	return err;
+> +}
+> +
+> +/**
+> + * journal_t *jbd2_journal_init_dev() - creates and initialises a journal
+> + * structure.
+> + * @bdev: Block device on which to create the journal
+> + * @fs_dev: Device which hold journalled filesystem for this journal.
+> + * @start: Block nr Start of journal.
+> + * @len:  Length of the journal in blocks.
+> + * @blocksize: blocksize of journalling device
+> + *
+> + * Returns: a newly created journal_t *
+> + *
+> + * jbd2_journal_init_dev creates a journal which maps a fixed contiguous
+> + * range of blocks on an arbitrary block device.
+> + */
+> +journal_t *jbd2_journal_init_dev(struct block_device *bdev,
+> +			struct block_device *fs_dev,
+> +			unsigned long long start, int len, int blocksize)
+> +{
+> +	journal_t *journal = journal_init_common();
+> +	int err;
+> +
+> +	if (!journal)
+> +		return NULL;
+> +
+> +	err = jbd2_journal_init(journal, bdev, fs_dev, start, len,
+> +				blocksize, __GFP_MOVABLE);
+> +	if (err) {
+> +		pr_err("%s: journal init error\n",
+> +		       __func__);
+> +		goto out_err;
+> +	}
+> +
+> +	return journal;
+> +
+> +out_err:
+>   	kfree(journal);
+>   	return NULL;
+>   }
+>   
+>   /**
+> - *  journal_t * jbd2_journal_init_inode () - creates a journal which maps to a inode.
+> - *  @inode: An inode to create the journal in
+> + * journal_t *jbd2_journal_init_inode() - creates a journal which maps to a
+> + * inode.
+> + * @inode: An inode to create the journal in
+> + *
+> + * Returns: a newly created journal_t *
+>    *
+>    * jbd2_journal_init_inode creates a journal which maps an on-disk inode as
+> - * the journal.  The inode must exist already, must support bmap() and
+> - * must have all data blocks preallocated.
+> + * the journal.  The inode must exist already, must support bmap() and must
+> + * have all data blocks preallocated.
+>    */
+> -journal_t * jbd2_journal_init_inode (struct inode *inode)
+> +journal_t *jbd2_journal_init_inode(struct inode *inode)
+>   {
+> -	struct buffer_head *bh;
+>   	journal_t *journal = journal_init_common();
+> -	char *p;
+> -	int err;
+> -	int n;
+>   	unsigned long long blocknr;
+> +	int err;
+>   
+>   	if (!journal)
+>   		return NULL;
+>   
+> -	journal->j_dev = journal->j_fs_dev = inode->i_sb->s_bdev;
+>   	journal->j_inode = inode;
+> -	bdevname(journal->j_dev, journal->j_devname);
+> -	p = strreplace(journal->j_devname, '/', '!');
+> -	sprintf(p, "-%lu", journal->j_inode->i_ino);
+> -	jbd_debug(1,
+> -		  "journal %p: inode %s/%ld, size %Ld, bits %d, blksize %ld\n",
+> -		  journal, inode->i_sb->s_id, inode->i_ino,
+> -		  (long long) inode->i_size,
+> -		  inode->i_sb->s_blocksize_bits, inode->i_sb->s_blocksize);
+> -
+> -	journal->j_maxlen = inode->i_size >> inode->i_sb->s_blocksize_bits;
+> -	journal->j_blocksize = inode->i_sb->s_blocksize;
+> -	jbd2_stats_proc_init(journal);
+> -
+> -	/* journal descriptor can store up to n blocks -bzzz */
+> -	n = journal->j_blocksize / sizeof(journal_block_tag_t);
+> -	journal->j_wbufsize = n;
+> -	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
+> -	if (!journal->j_wbuf) {
+> -		printk(KERN_ERR "%s: Can't allocate bhs for commit thread\n",
+> -			__func__);
+> -		goto out_err;
+> -	}
+>   
+>   	err = jbd2_journal_bmap(journal, 0, &blocknr);
+>   	/* If that failed, give up */
+>   	if (err) {
+> -		printk(KERN_ERR "%s: Cannot locate journal superblock\n",
+> +		pr_err("%s: Cannot locate journal superblock\n",
+>   		       __func__);
+>   		goto out_err;
+>   	}
+>   
+> -	bh = getblk_unmovable(journal->j_dev, blocknr, journal->j_blocksize);
+> -	if (!bh) {
+> -		printk(KERN_ERR
+> -		       "%s: Cannot get buffer for journal superblock\n",
+> +	err = jbd2_journal_init(journal, inode->i_sb->s_bdev,
+> +				inode->i_sb->s_bdev, blocknr,
+> +				inode->i_size >> inode->i_sb->s_blocksize_bits,
+> +				inode->i_sb->s_blocksize, 0);
+> +	if (err) {
+> +		pr_err("%s: journal init error\n",
+>   		       __func__);
+>   		goto out_err;
+>   	}
+> -	journal->j_sb_buffer = bh;
+> -	journal->j_superblock = (journal_superblock_t *)bh->b_data;
+> +
+> +	sprintf(journal->j_devname, "%s-%lu",
+> +		journal->j_devname, journal->j_inode->i_ino);
+>   
+>   	return journal;
+> +
+>   out_err:
+> -	kfree(journal->j_wbuf);
+> -	jbd2_stats_proc_exit(journal);
+>   	kfree(journal);
+>   	return NULL;
+>   }
 
