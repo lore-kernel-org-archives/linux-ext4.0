@@ -1,237 +1,60 @@
-From: Eric Ren <zren@suse.com>
-Subject: Re: [PATCH] jbd2: add jbd2_journal_init() helper
-Date: Sat, 3 Sep 2016 17:33:39 +0800
-Message-ID: <1b8c6456-dcf2-648d-2a29-6671fc519187@suse.com>
-References: <4f138dd04ef1dd370642c24f4a801370cc12ca54.1472644753.git.geliangtang@gmail.com>
+From: wang.guang55@zte.com.cn
+Subject: bugfix for mmaped pages in mpage_release_unused_pages()
+Date: Mon, 5 Sep 2016 09:22:20 +0800
+Message-ID: <OF437C2FCD.10711776-ON48258025.00052949-48258025.00077948@zte.com.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Geliang Tang <geliangtang@gmail.com>,
-        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>
+Content-Type: text/plain; charset="GB2312"
+Content-Transfer-Encoding: base64
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.provo.novell.com ([137.65.250.81]:57792 "EHLO
-        smtp2.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752411AbcICJeC (ORCPT
-        <rfc822;groupwise-linux-ext4@vger.kernel.org:0:0>);
-        Sat, 3 Sep 2016 05:34:02 -0400
-In-Reply-To: <4f138dd04ef1dd370642c24f4a801370cc12ca54.1472644753.git.geliangtang@gmail.com>
+Received: from mx5.zte.com.cn ([63.217.80.70]:50360 "EHLO mx5.zte.com.cn"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754150AbcIEBWg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 4 Sep 2016 21:22:36 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Geliang,
-
-On 08/31/2016 08:23 PM, Geliang Tang wrote:
-> There are some repetitive code in jbd2_journal_init_dev() and
-> jbd2_journal_init_inode(). So this patch extracts the common code into
-> jbd2_journal_init() helper to simplify the code. And fix the coding
-> style warnings reported by checkpatch.pl by the way.
-journal_init_common() is already there for the same purpose, right?
-Do we really need another helper?
-
-Thanks,
-Eric
-
->
-> Signed-off-by: Geliang Tang <geliangtang@gmail.com>
-> ---
->   fs/jbd2/journal.c | 130 +++++++++++++++++++++++++++---------------------------
->   1 file changed, 66 insertions(+), 64 deletions(-)
->
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 46261a6..c10f657 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1143,30 +1143,13 @@ static journal_t * journal_init_common (void)
->    *
->    */
->   
-> -/**
-> - *  journal_t * jbd2_journal_init_dev() - creates and initialises a journal structure
-> - *  @bdev: Block device on which to create the journal
-> - *  @fs_dev: Device which hold journalled filesystem for this journal.
-> - *  @start: Block nr Start of journal.
-> - *  @len:  Length of the journal in blocks.
-> - *  @blocksize: blocksize of journalling device
-> - *
-> - *  Returns: a newly created journal_t *
-> - *
-> - *  jbd2_journal_init_dev creates a journal which maps a fixed contiguous
-> - *  range of blocks on an arbitrary block device.
-> - *
-> - */
-> -journal_t * jbd2_journal_init_dev(struct block_device *bdev,
-> -			struct block_device *fs_dev,
-> -			unsigned long long start, int len, int blocksize)
-> +static int jbd2_journal_init(journal_t *journal, struct block_device *bdev,
-> +			struct block_device *fs_dev, unsigned long long start,
-> +			int len, int blocksize, gfp_t gfp)
->   {
-> -	journal_t *journal = journal_init_common();
->   	struct buffer_head *bh;
->   	int n;
-> -
-> -	if (!journal)
-> -		return NULL;
-> +	int err = 0;
->   
->   	/* journal descriptor can store up to n blocks -bzzz */
->   	journal->j_blocksize = blocksize;
-> @@ -1183,94 +1166,113 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->   	if (!journal->j_wbuf) {
->   		printk(KERN_ERR "%s: Can't allocate bhs for commit thread\n",
->   			__func__);
-> +		err = -ENOMEM;
->   		goto out_err;
->   	}
->   
-> -	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
-> +	bh = __getblk_gfp(journal->j_dev, start, journal->j_blocksize, gfp);
->   	if (!bh) {
->   		printk(KERN_ERR
->   		       "%s: Cannot get buffer for journal superblock\n",
->   		       __func__);
-> +		err = -EIO;
->   		goto out_err;
->   	}
->   	journal->j_sb_buffer = bh;
->   	journal->j_superblock = (journal_superblock_t *)bh->b_data;
->   
-> -	return journal;
-> +	return 0;
->   out_err:
->   	kfree(journal->j_wbuf);
->   	jbd2_stats_proc_exit(journal);
-> +	return err;
-> +}
-> +
-> +/**
-> + * journal_t *jbd2_journal_init_dev() - creates and initialises a journal
-> + * structure.
-> + * @bdev: Block device on which to create the journal
-> + * @fs_dev: Device which hold journalled filesystem for this journal.
-> + * @start: Block nr Start of journal.
-> + * @len:  Length of the journal in blocks.
-> + * @blocksize: blocksize of journalling device
-> + *
-> + * Returns: a newly created journal_t *
-> + *
-> + * jbd2_journal_init_dev creates a journal which maps a fixed contiguous
-> + * range of blocks on an arbitrary block device.
-> + */
-> +journal_t *jbd2_journal_init_dev(struct block_device *bdev,
-> +			struct block_device *fs_dev,
-> +			unsigned long long start, int len, int blocksize)
-> +{
-> +	journal_t *journal = journal_init_common();
-> +	int err;
-> +
-> +	if (!journal)
-> +		return NULL;
-> +
-> +	err = jbd2_journal_init(journal, bdev, fs_dev, start, len,
-> +				blocksize, __GFP_MOVABLE);
-> +	if (err) {
-> +		pr_err("%s: journal init error\n",
-> +		       __func__);
-> +		goto out_err;
-> +	}
-> +
-> +	return journal;
-> +
-> +out_err:
->   	kfree(journal);
->   	return NULL;
->   }
->   
->   /**
-> - *  journal_t * jbd2_journal_init_inode () - creates a journal which maps to a inode.
-> - *  @inode: An inode to create the journal in
-> + * journal_t *jbd2_journal_init_inode() - creates a journal which maps to a
-> + * inode.
-> + * @inode: An inode to create the journal in
-> + *
-> + * Returns: a newly created journal_t *
->    *
->    * jbd2_journal_init_inode creates a journal which maps an on-disk inode as
-> - * the journal.  The inode must exist already, must support bmap() and
-> - * must have all data blocks preallocated.
-> + * the journal.  The inode must exist already, must support bmap() and must
-> + * have all data blocks preallocated.
->    */
-> -journal_t * jbd2_journal_init_inode (struct inode *inode)
-> +journal_t *jbd2_journal_init_inode(struct inode *inode)
->   {
-> -	struct buffer_head *bh;
->   	journal_t *journal = journal_init_common();
-> -	char *p;
-> -	int err;
-> -	int n;
->   	unsigned long long blocknr;
-> +	int err;
->   
->   	if (!journal)
->   		return NULL;
->   
-> -	journal->j_dev = journal->j_fs_dev = inode->i_sb->s_bdev;
->   	journal->j_inode = inode;
-> -	bdevname(journal->j_dev, journal->j_devname);
-> -	p = strreplace(journal->j_devname, '/', '!');
-> -	sprintf(p, "-%lu", journal->j_inode->i_ino);
-> -	jbd_debug(1,
-> -		  "journal %p: inode %s/%ld, size %Ld, bits %d, blksize %ld\n",
-> -		  journal, inode->i_sb->s_id, inode->i_ino,
-> -		  (long long) inode->i_size,
-> -		  inode->i_sb->s_blocksize_bits, inode->i_sb->s_blocksize);
-> -
-> -	journal->j_maxlen = inode->i_size >> inode->i_sb->s_blocksize_bits;
-> -	journal->j_blocksize = inode->i_sb->s_blocksize;
-> -	jbd2_stats_proc_init(journal);
-> -
-> -	/* journal descriptor can store up to n blocks -bzzz */
-> -	n = journal->j_blocksize / sizeof(journal_block_tag_t);
-> -	journal->j_wbufsize = n;
-> -	journal->j_wbuf = kmalloc(n * sizeof(struct buffer_head*), GFP_KERNEL);
-> -	if (!journal->j_wbuf) {
-> -		printk(KERN_ERR "%s: Can't allocate bhs for commit thread\n",
-> -			__func__);
-> -		goto out_err;
-> -	}
->   
->   	err = jbd2_journal_bmap(journal, 0, &blocknr);
->   	/* If that failed, give up */
->   	if (err) {
-> -		printk(KERN_ERR "%s: Cannot locate journal superblock\n",
-> +		pr_err("%s: Cannot locate journal superblock\n",
->   		       __func__);
->   		goto out_err;
->   	}
->   
-> -	bh = getblk_unmovable(journal->j_dev, blocknr, journal->j_blocksize);
-> -	if (!bh) {
-> -		printk(KERN_ERR
-> -		       "%s: Cannot get buffer for journal superblock\n",
-> +	err = jbd2_journal_init(journal, inode->i_sb->s_bdev,
-> +				inode->i_sb->s_bdev, blocknr,
-> +				inode->i_size >> inode->i_sb->s_blocksize_bits,
-> +				inode->i_sb->s_blocksize, 0);
-> +	if (err) {
-> +		pr_err("%s: journal init error\n",
->   		       __func__);
->   		goto out_err;
->   	}
-> -	journal->j_sb_buffer = bh;
-> -	journal->j_superblock = (journal_superblock_t *)bh->b_data;
-> +
-> +	sprintf(journal->j_devname, "%s-%lu",
-> +		journal->j_devname, journal->j_inode->i_ino);
->   
->   	return journal;
-> +
->   out_err:
-> -	kfree(journal->j_wbuf);
-> -	jbd2_stats_proc_exit(journal);
->   	kfree(journal);
->   	return NULL;
->   }
-
+W1BBVENIXWV4dDQ6IGJ1Z2ZpeCBmb3IgbW1hcGVkIHBhZ2VzIGluIG1wYWdlX3JlbGVhc2VfdW51
+c2VkX3BhZ2VzKCkNCg0KZXh0NDogYnVnZml4IGZvciBtbWFwZWQgcGFnZXMgIGluIG1wYWdlX3Jl
+bGVhc2VfdW51c2VkX3BhZ2VzKCkNCg0KUGFnZXMgY2xlYXIgYnVmZmVycyBhZnRlciBleHQ0IGRl
+bGF5ZWQgYmxvY2sgYWxsb2NhdGlvbiBmYWlsZWQsDQpIb3dldmVyLCBpdCBkb2VzIG5vdCBjbGVh
+biBpdHMgcHRlX2RpcnR5IGZsYWcuDQppZiB0aGUgcGFnZXMgdW5tYXAgLGluIGNvcmRpbmcgdG8g
+dGhlIHB0ZV9kaXJ0eSAsDQp1bm1hcF9wYWdlX3JhbmdlIG1heSB0cnkgdG8gY2FsbCBfX3NldF9w
+YWdlX2RpcnR5LA0KDQp3aGljaCBtYXkgbGVhZCB0byB0aGUgYnVnb24gYXQgDQptcGFnZV9wcmVw
+YXJlX2V4dGVudF90b19tYXA6aGVhZCA9IHBhZ2VfYnVmZmVycyhwYWdlKTsuDQoNClRoaXMgcGF0
+Y2gganVzdCBjYWxsIGNsZWFyX3BhZ2VfZGlydHlfZm9yX2lvIHRvIGNsZWFuIHB0ZV9kaXJ0eSAN
+CmF0IG1wYWdlX3JlbGVhc2VfdW51c2VkX3BhZ2VzIGZvciBwYWdlcyBtbWFwZWQuIA0KDQogDQpT
+dGVwcyB0byByZXByb2R1Y2UgdGhlIGJ1ZzoNCqOoMaOpIG1tYXAgYSBmaWxlIGluIGV4dDQNCmFk
+ZHIgPSAoY2hhciAqKW1tYXAoTlVMTCwgNDA5NiwgDQogICAgICAgIFBST1RfUkVBRHxQUk9UX1dS
+SVRFLCBNQVBfU0hBUkVELCBmZCwgMCk7DQogbWVtc2V0KGFkZHIsICdpJywgNDA5Nik7DQqjqDKj
+qSByZXR1cm4gRUlPIGF0IA0KZXh0NF93cml0ZXBhZ2VzLT5tcGFnZV9tYXBfYW5kX3N1Ym1pdF9l
+eHRlbnQtPm1wYWdlX21hcF9vbmVfZXh0ZW50IA0KQ2F1c2UgdGhlIGxvZzoNCiAgICAgICAgICAg
+ICAgICBleHQ0X21zZyhzYiwgS0VSTl9DUklULA0KICAgICAgICAgICAgICAgICAgICAgICAgIkRl
+bGF5ZWQgYmxvY2sgYWxsb2NhdGlvbiBmYWlsZWQgZm9yICINCiAgICAgICAgICAgICAgICAgICAg
+ICAgICJpbm9kZSAlbHUgYXQgbG9naWNhbCBvZmZzZXQgJWxsdSB3aXRoIg0KICAgICAgICAgICAg
+ICAgICAgICAgICAgIiBtYXggYmxvY2tzICV1IHdpdGggZXJyb3IgJWQiLA0KICAgICAgICAgICAg
+ICAgICAgICAgICAgaW5vZGUtPmlfaW5vLA0KICAgICAgICAgICAgICAgICAgICAgICAgKHVuc2ln
+bmVkIGxvbmcgbG9uZyltYXAtPm1fbGJsaywNCiAgICAgICAgICAgICAgICAgICAgICAgICh1bnNp
+Z25lZCltYXAtPm1fbGVuLCAtZXJyKTsNCg0KKDOjqVVubWFwIHRoZSBhZGRyIGNhdXNlIHdhcm5p
+bmcgYXQgDQpfX3NldF9wYWdlX2RpcnR5OldBUk5fT05fT05DRSh3YXJuICYmICFQYWdlVXB0b2Rh
+dGUocGFnZSkpOw0KKDQpIHdhaXQgZm9yIGEgbWludXRlLHRoZW4gYnVnb24gaGFwcGVuLg0KDQpG
+cm9tIDNlYWI4ODdhNTU0MjRmYzJjMjc1NTNiN2JmZTMyMzMwZGY4M2Y3YjgNCkZyb206IHdhbmdn
+dWFuZyA8d2FuZ2d1YW5nMDNAenRlLmNvbT4NCkRhdGU6IE1vbiwgMjkgQXVnIDIwMTYgMTQ6NTQ6
+NTggLTA3MDANClN1YmplY3Q6IFtQQVRDSF0gYnVnZml4IGZvciBtbWFwZWQgcGFnZXMgaW4gbXBh
+Z2VfcmVsZWFzZV91bnVzZWRfcGFnZXMoKQ0KU2lnbmVkLW9mZi1ieTogd2FuZ2d1YW5nIDx3YW5n
+Z3VhbmcwM0B6dGUuY29tPg0KLS0tIG9sZC9mcy9leHQ0L2lub2RlLmMgMjAxNi0wOC0yOSAxMjox
+NToyNS4xNTA3NjQ0NDcgLTA0MDANCisrKyBuZXcvZnMvZXh0NC9pbm9kZS5jIDIwMTYtMDgtMjkg
+MTM6MDE6NTguNjgzNTU5MTk4IC0wNDAwDQpAQCAtMTY0OSw2ICsxNjQ5LDggQEAgc3RhdGljIHZv
+aWQgbXBhZ2VfcmVsZWFzZV91bnVzZWRfcGFnZXMocw0KICAgICAgICAgICAgICAgICAgICAgICAg
+QlVHX09OKCFQYWdlTG9ja2VkKHBhZ2UpKTsNCiAgICAgICAgICAgICAgICAgICAgICAgIEJVR19P
+TihQYWdlV3JpdGViYWNrKHBhZ2UpKTsNCiAgICAgICAgICAgICAgICAgICAgICAgIGlmIChpbnZh
+bGlkYXRlKSB7DQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlmIChwYWdlX21hcHBl
+ZChwYWdlKSkNCisgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGVhcl9w
+YWdlX2RpcnR5X2Zvcl9pbyhwYWdlKTsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+YmxvY2tfaW52YWxpZGF0ZXBhZ2UocGFnZSwgMCwgUEFHRV9TSVpFKTsNCiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgQ2xlYXJQYWdlVXB0b2RhdGUocGFnZSk7DQogICAgICAgICAgICAg
+ICAgICAgICAgICB9DQoNCg0KDQoNCg0KzfW54w0KT3BlcmF0aW9uIFN5c3RlbSBQcm9kdWN0aW9u
+IERlcHQgLg0KstnX98+1zbOy+sa3sr8NCg0KtLTQwirNu8bGKryv1Ly7rw0KQWRkOrPJtrzK0Ljf
+0MLH+MzsuK6087XA1tC2zjgwMLrF1tDQy82o0ba088/DeHh4ytIgDQpUZWw6MTM2NzgxOTc0MDIN
+Cg0KDQoNCiANCg==
