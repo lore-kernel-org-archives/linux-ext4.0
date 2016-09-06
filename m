@@ -1,35 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: enforce online defrag restriction for encrypted
- files
-Date: Mon, 5 Sep 2016 23:05:18 -0400
-Message-ID: <20160906030518.igheo52lccautlvo@thunk.org>
-References: <20160722221755.GA1594@localhost.localdomain>
+Subject: Re: [PATCH] ext4: Enable quota enforcement based on mount options
+Date: Mon, 5 Sep 2016 23:09:07 -0400
+Message-ID: <20160906030907.f6r2rksdibza76ho@thunk.org>
+References: <1468841157-8083-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46606 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46642 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755769AbcIFDFW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 5 Sep 2016 23:05:22 -0400
+        id S1753583AbcIFDJZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Sep 2016 23:09:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20160722221755.GA1594@localhost.localdomain>
+In-Reply-To: <1468841157-8083-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 22, 2016 at 06:17:55PM -0400, Eric Whitney wrote:
-> Online defragging of encrypted files is not currently implemented.
-> However, the move extent ioctl can still return successfully when
-> called.  For example, this occurs when xfstest ext4/020 is run on an
-> encrypted file system, resulting in a corrupted test file and a
-> corresponding test failure.
+On Mon, Jul 18, 2016 at 01:25:57PM +0200, Jan Kara wrote:
+> When quota information is stored in quota files, we enable only quota
+> accounting on mount and enforcement is enabled only in response to
+> Q_QUOTAON quotactl. To make ext4 behavior consistent with XFS, we add a
+> possibility to enable quota enforcement on mount by specifying
+> corresponding quota mount option (usrquota, grpquota, prjquota).
 > 
-> Until the proper functionality is implemented, fail the move extent
-> ioctl if either the original or donor file is encrypted.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
