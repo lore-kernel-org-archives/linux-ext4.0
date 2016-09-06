@@ -1,72 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: improve ext4lazyinit scalability V2
-Date: Tue, 6 Sep 2016 10:36:08 +0200
-Message-ID: <20160906083608.GB28922@quack2.suse.cz>
-References: <1471263815-26022-1-git-send-email-dmonakhov@openvz.org>
- <20160815150520.GA22082@quack2.suse.cz>
- <20160906033954.k22xaasbn26s4wo4@thunk.org>
+From: wang.guang55@zte.com.cn
+Subject: [RESEND PATCH]ext4: bugfix for mmaped pages in mpage_release_unused_pages()
+Date: Tue, 6 Sep 2016 16:36:03 +0800
+Message-ID: <OF1131FC37.F6A9396B-ON48258026.002F1164-48258026.002F395B@zte.com.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dmitry Monakhov <dmonakhov@openvz.org>,
-        linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="GB2312"
+Content-Transfer-Encoding: base64
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35024 "EHLO mx2.suse.de"
+Received: from mx5.zte.com.cn ([63.217.80.70]:50497 "EHLO mx5.zte.com.cn"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755095AbcIFIgL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 6 Sep 2016 04:36:11 -0400
-Content-Disposition: inline
-In-Reply-To: <20160906033954.k22xaasbn26s4wo4@thunk.org>
+        id S1755179AbcIFIgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Sep 2016 04:36:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 05-09-16 23:39:54, Ted Tso wrote:
-> Dmitry, thanks for the patch, and Jan, thanks for the review.
-> 
-> This is what I've added to the ext4 tree, which should reflect all of
-> the comments which Jan made.
-
-Hum, one comment still:
-
-> +			if (down_read_trylock(&elr->lr_super->s_umount)) {
-> +				if (sb_start_write_trylock(elr->lr_super)) {
-> +					progress = 1;
-> +					/*
-> +					 * We hold sb->s_umount, sb can not
-> +					 * be removed from the list, it is
-> +					 * now safe to drop li_list_mtx
-> +					 */
-> +					mutex_unlock(&eli->li_list_mtx);
-> +					err = ext4_run_li_request(elr);
-> +					sb_end_write(elr->lr_super);
-> +					mutex_lock(&eli->li_list_mtx);
-> +					n = pos->next;
->  				}
-> +				up_read((&elr->lr_super->s_umount));
-> +			}
-> +			/* error, remove the lazy_init job */
-> +			if (err) {
-> +				ext4_remove_li_request(elr);
-> +				continue;
-> +			}
-> +			if (!progress) {
-> +				elr->lr_next_sched = jiffies +
-> +					(prandom_u32()
-> +					 % (EXT4_DEF_LI_MAX_START_DELAY * HZ));
-> +				if (time_before(elr->lr_next_sched,
-> +						next_wakeup))
-> +					next_wakeup = elr->lr_next_sched;
->  			}
-> -
-> -			if (time_before(elr->lr_next_sched, next_wakeup))
-> -				next_wakeup = elr->lr_next_sched;
->  		}
-
-ext4_run_li_request() can also update elr->lr_next_sched. So we need to
-update next_wakeup even in progress == 1 case (i.e., I'd leave the update
-of next_wakeup as is in the old code...). Otherwise the patch looks good.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+ZXh0NDogYnVnZml4IGZvciBtbWFwZWQgcGFnZXMgIGluIG1wYWdlX3JlbGVhc2VfdW51c2VkX3Bh
+Z2VzKCkNCg0KUGFnZXMgY2xlYXIgYnVmZmVycyBhZnRlciBleHQ0IGRlbGF5ZWQgYmxvY2sgYWxs
+b2NhdGlvbiBmYWlsZWQsDQpIb3dldmVyLCBpdCBkb2VzIG5vdCBjbGVhbiBpdHMgcHRlX2RpcnR5
+IGZsYWcuDQppZiB0aGUgcGFnZXMgdW5tYXAgLGluIGNvcmRpbmcgdG8gdGhlIHB0ZV9kaXJ0eSAs
+DQp1bm1hcF9wYWdlX3JhbmdlIG1heSB0cnkgdG8gY2FsbCBfX3NldF9wYWdlX2RpcnR5LA0KDQp3
+aGljaCBtYXkgbGVhZCB0byB0aGUgYnVnb24gYXQgDQptcGFnZV9wcmVwYXJlX2V4dGVudF90b19t
+YXA6aGVhZCA9IHBhZ2VfYnVmZmVycyhwYWdlKTsuDQoNClRoaXMgcGF0Y2gganVzdCBjYWxsIGNs
+ZWFyX3BhZ2VfZGlydHlfZm9yX2lvIHRvIGNsZWFuIHB0ZV9kaXJ0eSANCmF0IG1wYWdlX3JlbGVh
+c2VfdW51c2VkX3BhZ2VzIGZvciBwYWdlcyBtbWFwZWQuIA0KDQogDQpTdGVwcyB0byByZXByb2R1
+Y2UgdGhlIGJ1ZzoNCqOoMaOpIG1tYXAgYSBmaWxlIGluIGV4dDQNCmFkZHIgPSAoY2hhciAqKW1t
+YXAoTlVMTCwgNDA5NiwgDQogICAgICAgIFBST1RfUkVBRHxQUk9UX1dSSVRFLCBNQVBfU0hBUkVE
+LCBmZCwgMCk7DQogbWVtc2V0KGFkZHIsICdpJywgNDA5Nik7DQqjqDKjqSByZXR1cm4gRUlPIGF0
+IA0KZXh0NF93cml0ZXBhZ2VzLT5tcGFnZV9tYXBfYW5kX3N1Ym1pdF9leHRlbnQtPm1wYWdlX21h
+cF9vbmVfZXh0ZW50IA0KQ2F1c2UgdGhlIGxvZzoNCiAgICAgICAgICAgICAgICBleHQ0X21zZyhz
+YiwgS0VSTl9DUklULA0KICAgICAgICAgICAgICAgICAgICAgICAgIkRlbGF5ZWQgYmxvY2sgYWxs
+b2NhdGlvbiBmYWlsZWQgZm9yICINCiAgICAgICAgICAgICAgICAgICAgICAgICJpbm9kZSAlbHUg
+YXQgbG9naWNhbCBvZmZzZXQgJWxsdSB3aXRoIg0KICAgICAgICAgICAgICAgICAgICAgICAgIiBt
+YXggYmxvY2tzICV1IHdpdGggZXJyb3IgJWQiLA0KICAgICAgICAgICAgICAgICAgICAgICAgaW5v
+ZGUtPmlfaW5vLA0KICAgICAgICAgICAgICAgICAgICAgICAgKHVuc2lnbmVkIGxvbmcgbG9uZylt
+YXAtPm1fbGJsaywNCiAgICAgICAgICAgICAgICAgICAgICAgICh1bnNpZ25lZCltYXAtPm1fbGVu
+LCAtZXJyKTsNCg0KKDOjqVVubWFwIHRoZSBhZGRyIGNhdXNlIHdhcm5pbmcgYXQgDQpfX3NldF9w
+YWdlX2RpcnR5OldBUk5fT05fT05DRSh3YXJuICYmICFQYWdlVXB0b2RhdGUocGFnZSkpOw0KKDQp
+IHdhaXQgZm9yIGEgbWludXRlLHRoZW4gYnVnb24gaGFwcGVuLg0KDQoNClNpZ25lZC1vZmYtYnk6
+IHdhbmdndWFuZyA8d2FuZ2d1YW5nMDNAenRlLmNvbT4NCi0tLSBvbGQvZnMvZXh0NC9pbm9kZS5j
+IDIwMTYtMDgtMjkgMTI6MTU6MjUuMTUwNzY0NDQ3IC0wNDAwDQorKysgbmV3L2ZzL2V4dDQvaW5v
+ZGUuYyAyMDE2LTA4LTI5IDEzOjAxOjU4LjY4MzU1OTE5OCAtMDQwMA0KQEAgLTE2NDksNiArMTY0
+OSw4IEBAIHN0YXRpYyB2b2lkIG1wYWdlX3JlbGVhc2VfdW51c2VkX3BhZ2VzKHMNCiAgICAgICAg
+ICAgICAgICAgICAgICAgIEJVR19PTighUGFnZUxvY2tlZChwYWdlKSk7DQogICAgICAgICAgICAg
+ICAgICAgICAgICBCVUdfT04oUGFnZVdyaXRlYmFjayhwYWdlKSk7DQogICAgICAgICAgICAgICAg
+ICAgICAgICBpZiAoaW52YWxpZGF0ZSkgew0KKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICBpZiAocGFnZV9tYXBwZWQocGFnZSkpDQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgY2xlYXJfcGFnZV9kaXJ0eV9mb3JfaW8ocGFnZSk7DQogICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIGJsb2NrX2ludmFsaWRhdGVwYWdlKHBhZ2UsIDAsIFBBR0VfU0laRSk7
+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIENsZWFyUGFnZVVwdG9kYXRlKHBhZ2Up
+Ow0KICAgICAgICAgICAgICAgICAgICAgICAgfQ0K
