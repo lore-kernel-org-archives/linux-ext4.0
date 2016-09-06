@@ -1,48 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [STABLE CHERRYPICK] ext4: avoid modifying checksum fields directly
- during checksum verification
-Date: Mon, 5 Sep 2016 22:29:55 -0400
-Message-ID: <20160906022955.qopdwuznvtqlwofq@thunk.org>
+Subject: Re: [PATCH RESEND] ext4: reinforce check of i_dtime when clearing
+ high fields of uid and gid
+Date: Mon, 5 Sep 2016 23:01:27 -0400
+Message-ID: <20160906030127.rdb5g4fo57izutpn@thunk.org>
+References: <1471845085-9590-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
-To: stable@kernel.org
+Cc: linux-ext4@vger.kernel.org, Hobin Woo <hobin.woo@samsung.com>
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46528 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46574 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755342AbcIFCbF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 5 Sep 2016 22:31:05 -0400
+        id S1752884AbcIFDCK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Sep 2016 23:02:10 -0400
 Content-Disposition: inline
+In-Reply-To: <1471845085-9590-1-git-send-email-daeho.jeong@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, please cherry pick the following commit into the stable kernels.
-The commit landed in 4.8-rc1.  It wasn't marked with a cc:
-stable@kernel.org, but it should be backported since it affecting a
-number of users who are trying to use ext4's metadata checksum
-feature.
+On Mon, Aug 22, 2016 at 02:51:25PM +0900, Daeho Jeong wrote:
+> Now, ext4_do_update_inode() clears high 16-bit fields of uid/gid
+> of deleted and evicted inode to fix up interoperability with old
+> kernels. However, it checks only i_dtime of an inode to determine
+> whether the inode was deleted and evicted, and this is very risky,
+> because i_dtime can be used for the pointer maintaining orphan inode
+> list, too. We need to further check whether the i_dtime is being
+> used for the orphan inode list even if the i_dtime is not NULL.
+> 
+> We found that high 16-bit fields of uid/gid of inode are unintentionally
+> and permanently cleared when the inode truncation is just triggered,
+> but not finished, and the inode metadata, whose high uid/gid bits are
+> cleared, is written on disk, and the sudden power-off follows that
+> in order.
+> 
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Signed-off-by: Hobin Woo <hobin.woo@samsung.com>
 
-Thanks!!
-
-commit b47820edd1634dc1208f9212b7ecfb4230610a23
-Author: Daeho Jeong <daeho.jeong@samsung.com>
-Date:   Sun Jul 3 17:51:39 2016 -0400
-
-    ext4: avoid modifying checksum fields directly during checksum verification
-    
-    We temporally change checksum fields in buffers of some types of
-    metadata into '0' for verifying the checksum values. By doing this
-    without locking the buffer, some metadata's checksums, which are
-    being committed or written back to the storage, could be damaged.
-    In our test, several metadata blocks were found with damaged metadata
-    checksum value during recovery process. When we only verify the
-    checksum value, we have to avoid modifying checksum fields directly.
-    
-    Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-    Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-    Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Thanks, applied.
 
 						- Ted
-						
