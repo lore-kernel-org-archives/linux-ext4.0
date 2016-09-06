@@ -1,60 +1,48 @@
-From: wang.guang55@zte.com.cn
-Subject: bugfix for mmaped pages in mpage_release_unused_pages()
-Date: Mon, 5 Sep 2016 09:22:20 +0800
-Message-ID: <OF437C2FCD.10711776-ON48258025.00052949-48258025.00077948@zte.com.cn>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [STABLE CHERRYPICK] ext4: avoid modifying checksum fields directly
+ during checksum verification
+Date: Mon, 5 Sep 2016 22:29:55 -0400
+Message-ID: <20160906022955.qopdwuznvtqlwofq@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="GB2312"
-Content-Transfer-Encoding: base64
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+        =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx5.zte.com.cn ([63.217.80.70]:50360 "EHLO mx5.zte.com.cn"
+Received: from imap.thunk.org ([74.207.234.97]:46528 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754150AbcIEBWg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 4 Sep 2016 21:22:36 -0400
+        id S1755342AbcIFCbF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Sep 2016 22:31:05 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-W1BBVENIXWV4dDQ6IGJ1Z2ZpeCBmb3IgbW1hcGVkIHBhZ2VzIGluIG1wYWdlX3JlbGVhc2VfdW51
-c2VkX3BhZ2VzKCkNCg0KZXh0NDogYnVnZml4IGZvciBtbWFwZWQgcGFnZXMgIGluIG1wYWdlX3Jl
-bGVhc2VfdW51c2VkX3BhZ2VzKCkNCg0KUGFnZXMgY2xlYXIgYnVmZmVycyBhZnRlciBleHQ0IGRl
-bGF5ZWQgYmxvY2sgYWxsb2NhdGlvbiBmYWlsZWQsDQpIb3dldmVyLCBpdCBkb2VzIG5vdCBjbGVh
-biBpdHMgcHRlX2RpcnR5IGZsYWcuDQppZiB0aGUgcGFnZXMgdW5tYXAgLGluIGNvcmRpbmcgdG8g
-dGhlIHB0ZV9kaXJ0eSAsDQp1bm1hcF9wYWdlX3JhbmdlIG1heSB0cnkgdG8gY2FsbCBfX3NldF9w
-YWdlX2RpcnR5LA0KDQp3aGljaCBtYXkgbGVhZCB0byB0aGUgYnVnb24gYXQgDQptcGFnZV9wcmVw
-YXJlX2V4dGVudF90b19tYXA6aGVhZCA9IHBhZ2VfYnVmZmVycyhwYWdlKTsuDQoNClRoaXMgcGF0
-Y2gganVzdCBjYWxsIGNsZWFyX3BhZ2VfZGlydHlfZm9yX2lvIHRvIGNsZWFuIHB0ZV9kaXJ0eSAN
-CmF0IG1wYWdlX3JlbGVhc2VfdW51c2VkX3BhZ2VzIGZvciBwYWdlcyBtbWFwZWQuIA0KDQogDQpT
-dGVwcyB0byByZXByb2R1Y2UgdGhlIGJ1ZzoNCqOoMaOpIG1tYXAgYSBmaWxlIGluIGV4dDQNCmFk
-ZHIgPSAoY2hhciAqKW1tYXAoTlVMTCwgNDA5NiwgDQogICAgICAgIFBST1RfUkVBRHxQUk9UX1dS
-SVRFLCBNQVBfU0hBUkVELCBmZCwgMCk7DQogbWVtc2V0KGFkZHIsICdpJywgNDA5Nik7DQqjqDKj
-qSByZXR1cm4gRUlPIGF0IA0KZXh0NF93cml0ZXBhZ2VzLT5tcGFnZV9tYXBfYW5kX3N1Ym1pdF9l
-eHRlbnQtPm1wYWdlX21hcF9vbmVfZXh0ZW50IA0KQ2F1c2UgdGhlIGxvZzoNCiAgICAgICAgICAg
-ICAgICBleHQ0X21zZyhzYiwgS0VSTl9DUklULA0KICAgICAgICAgICAgICAgICAgICAgICAgIkRl
-bGF5ZWQgYmxvY2sgYWxsb2NhdGlvbiBmYWlsZWQgZm9yICINCiAgICAgICAgICAgICAgICAgICAg
-ICAgICJpbm9kZSAlbHUgYXQgbG9naWNhbCBvZmZzZXQgJWxsdSB3aXRoIg0KICAgICAgICAgICAg
-ICAgICAgICAgICAgIiBtYXggYmxvY2tzICV1IHdpdGggZXJyb3IgJWQiLA0KICAgICAgICAgICAg
-ICAgICAgICAgICAgaW5vZGUtPmlfaW5vLA0KICAgICAgICAgICAgICAgICAgICAgICAgKHVuc2ln
-bmVkIGxvbmcgbG9uZyltYXAtPm1fbGJsaywNCiAgICAgICAgICAgICAgICAgICAgICAgICh1bnNp
-Z25lZCltYXAtPm1fbGVuLCAtZXJyKTsNCg0KKDOjqVVubWFwIHRoZSBhZGRyIGNhdXNlIHdhcm5p
-bmcgYXQgDQpfX3NldF9wYWdlX2RpcnR5OldBUk5fT05fT05DRSh3YXJuICYmICFQYWdlVXB0b2Rh
-dGUocGFnZSkpOw0KKDQpIHdhaXQgZm9yIGEgbWludXRlLHRoZW4gYnVnb24gaGFwcGVuLg0KDQpG
-cm9tIDNlYWI4ODdhNTU0MjRmYzJjMjc1NTNiN2JmZTMyMzMwZGY4M2Y3YjgNCkZyb206IHdhbmdn
-dWFuZyA8d2FuZ2d1YW5nMDNAenRlLmNvbT4NCkRhdGU6IE1vbiwgMjkgQXVnIDIwMTYgMTQ6NTQ6
-NTggLTA3MDANClN1YmplY3Q6IFtQQVRDSF0gYnVnZml4IGZvciBtbWFwZWQgcGFnZXMgaW4gbXBh
-Z2VfcmVsZWFzZV91bnVzZWRfcGFnZXMoKQ0KU2lnbmVkLW9mZi1ieTogd2FuZ2d1YW5nIDx3YW5n
-Z3VhbmcwM0B6dGUuY29tPg0KLS0tIG9sZC9mcy9leHQ0L2lub2RlLmMgMjAxNi0wOC0yOSAxMjox
-NToyNS4xNTA3NjQ0NDcgLTA0MDANCisrKyBuZXcvZnMvZXh0NC9pbm9kZS5jIDIwMTYtMDgtMjkg
-MTM6MDE6NTguNjgzNTU5MTk4IC0wNDAwDQpAQCAtMTY0OSw2ICsxNjQ5LDggQEAgc3RhdGljIHZv
-aWQgbXBhZ2VfcmVsZWFzZV91bnVzZWRfcGFnZXMocw0KICAgICAgICAgICAgICAgICAgICAgICAg
-QlVHX09OKCFQYWdlTG9ja2VkKHBhZ2UpKTsNCiAgICAgICAgICAgICAgICAgICAgICAgIEJVR19P
-TihQYWdlV3JpdGViYWNrKHBhZ2UpKTsNCiAgICAgICAgICAgICAgICAgICAgICAgIGlmIChpbnZh
-bGlkYXRlKSB7DQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlmIChwYWdlX21hcHBl
-ZChwYWdlKSkNCisgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjbGVhcl9w
-YWdlX2RpcnR5X2Zvcl9pbyhwYWdlKTsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-YmxvY2tfaW52YWxpZGF0ZXBhZ2UocGFnZSwgMCwgUEFHRV9TSVpFKTsNCiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgQ2xlYXJQYWdlVXB0b2RhdGUocGFnZSk7DQogICAgICAgICAgICAg
-ICAgICAgICAgICB9DQoNCg0KDQoNCg0KzfW54w0KT3BlcmF0aW9uIFN5c3RlbSBQcm9kdWN0aW9u
-IERlcHQgLg0KstnX98+1zbOy+sa3sr8NCg0KtLTQwirNu8bGKryv1Ly7rw0KQWRkOrPJtrzK0Ljf
-0MLH+MzsuK6087XA1tC2zjgwMLrF1tDQy82o0ba088/DeHh4ytIgDQpUZWw6MTM2NzgxOTc0MDIN
-Cg0KDQoNCiANCg==
+Hi, please cherry pick the following commit into the stable kernels.
+The commit landed in 4.8-rc1.  It wasn't marked with a cc:
+stable@kernel.org, but it should be backported since it affecting a
+number of users who are trying to use ext4's metadata checksum
+feature.
+
+Thanks!!
+
+commit b47820edd1634dc1208f9212b7ecfb4230610a23
+Author: Daeho Jeong <daeho.jeong@samsung.com>
+Date:   Sun Jul 3 17:51:39 2016 -0400
+
+    ext4: avoid modifying checksum fields directly during checksum verification
+    
+    We temporally change checksum fields in buffers of some types of
+    metadata into '0' for verifying the checksum values. By doing this
+    without locking the buffer, some metadata's checksums, which are
+    being committed or written back to the storage, could be damaged.
+    In our test, several metadata blocks were found with damaged metadata
+    checksum value during recovery process. When we only verify the
+    checksum value, we have to avoid modifying checksum fields directly.
+    
+    Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+    Signed-off-by: Youngjin Gil <youngjin.gil@samsung.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+    Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+						- Ted
+						
