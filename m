@@ -1,29 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: remove old feature helpers
-Date: Mon, 5 Sep 2016 23:13:38 -0400
-Message-ID: <20160906031338.6xbh373j3fwuefod@thunk.org>
-References: <20160805174037.8151-1-ngkaho1234@gmail.com>
+Subject: Re: [PATCH RESEND] ext4: Cleanup ext4_sync_parent()
+Date: Mon, 5 Sep 2016 23:22:32 -0400
+Message-ID: <20160906032232.ofcyyy6albwhdh5s@thunk.org>
+References: <1470821145-14586-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-To: Kaho Ng <ngkaho1234@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46660 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:46674 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753565AbcIFDOs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 5 Sep 2016 23:14:48 -0400
+        id S1752818AbcIFDWl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Sep 2016 23:22:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20160805174037.8151-1-ngkaho1234@gmail.com>
+In-Reply-To: <1470821145-14586-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 06, 2016 at 01:40:37AM +0800, Kaho Ng wrote:
-> Use the ext4_{has,set,clear}_feature_* helpers to replace the old
-> feature helpers.
+On Wed, Aug 10, 2016 at 11:25:45AM +0200, Jan Kara wrote:
+> A condition !hlist_empty(&inode->i_dentry) is always true for open file.
+> Just remove it. Also ext4_sync_parent() could use some explanation why
+> races with rmdir() are not an issue - add a comment explaining that.
 > 
-> Signed-off-by: Kaho Ng <ngkaho1234@gmail.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
