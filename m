@@ -1,42 +1,47 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: add jbd2_journal_init() helper
-Date: Tue, 6 Sep 2016 17:15:54 +0200
-Message-ID: <20160906151554.GK28922@quack2.suse.cz>
-References: <4f138dd04ef1dd370642c24f4a801370cc12ca54.1472644753.git.geliangtang@gmail.com>
- <1b8c6456-dcf2-648d-2a29-6671fc519187@suse.com>
+From: Alaine Kamba <dansekou101@gmail.com>
+Subject: GET BACK TO ME IMMEDIATELY.
+Date: Wed, 7 Sep 2016 09:39:34 +0200
+Message-ID: <CAD1MCdyuUHwaPE8f16VxoRKt6eE1SH0uejQeH0038uTUnb2YDw__39453.089857898$1473233993$gmane$org@mail.gmail.com>
+Reply-To: alainekamba1@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Geliang Tang <geliangtang@gmail.com>,
-        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Ren <zren@suse.com>
+Content-Type: text/plain; charset=UTF-8
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59210 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753565AbcIFPP5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 6 Sep 2016 11:15:57 -0400
-Content-Disposition: inline
-In-Reply-To: <1b8c6456-dcf2-648d-2a29-6671fc519187@suse.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:35719 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756483AbcIGHjh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Sep 2016 03:39:37 -0400
+Received: by mail-it0-f67.google.com with SMTP id c198so460457ith.2
+        for <linux-ext4@vger.kernel.org>; Wed, 07 Sep 2016 00:39:37 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 03-09-16 17:33:39, Eric Ren wrote:
-> Hi Geliang,
-> 
-> On 08/31/2016 08:23 PM, Geliang Tang wrote:
-> >There are some repetitive code in jbd2_journal_init_dev() and
-> >jbd2_journal_init_inode(). So this patch extracts the common code into
-> >jbd2_journal_init() helper to simplify the code. And fix the coding
-> >style warnings reported by checkpatch.pl by the way.
-> journal_init_common() is already there for the same purpose, right?
-> Do we really need another helper?
+Dear,
 
-Agreed, just move the common code into journal_init_common(). Also the
-__getblk() in jbd2_journal_init_dev() should be getblk_unmovable() so that
-would be a good preparatory fix to remove the need of the gfp argument.
+My name is Mr Alaine Kamba, I am the Bill and Exchange (assistant)
+Manager of Bank of Africa Ouagadougou, Burkina Faso. In my department
+I discovered an abandoned sum of eighteen million three hundred
+thousand United State of American dollars (18.3MILLION USA DOLLARS) in
+an account that belongs to one of our foreign customer who died in
+airline that crashed on 4th October 2001.
 
+Since I got information about his death I have been expecting his next
+of kin to come over and claim his money because we can not release it
+unless somebody applies for it as the next of kin or relation to the
+deceased as indicated in our banking guidelines, but unfortunately we
+learnt that all his supposed next of kin or relation died alongside
+with him in the plane crash leaving nobody behind for the claim. It is
+therefore upon this discovery that I decided to make this business
+proposal to you and release the money to you as next of kin or
+relation to the deceased for safety and subsequent disbursement since
+nobody is coming for it and I don't want the money to go into the bank
+treasury as unclaimed bill.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You will be entitled with 40% of the total sum while 60% will be for
+me after which I will visit your Country to invest my own share when
+the fund is successfully transferred into your account, Please I would
+like you to keep this transaction confidential and as a top secret as
+you may wish to know that I am a bank official.
+
+Yours sincerely,
+Mr Alaine Kamba.
