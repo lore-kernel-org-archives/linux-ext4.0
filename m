@@ -1,155 +1,174 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: DAX can not work on virtual nvdimm device
-Date: Thu, 8 Sep 2016 14:47:08 -0600
-Message-ID: <20160908204708.GA15167@linux.intel.com>
-References: <436d7526-bf06-633d-afce-4333552d9e31@linux.intel.com>
- <CAPcyv4hVgi6Hw8Beg=Nt78+U0QNJN9mBGWEp3V6bg86NaM3Q6Q@mail.gmail.com>
- <20160819183047.GA7216@linux.intel.com>
- <600ac51c-0f61-6e53-9bfa-669c85494d1f@linux.intel.com>
- <20160829193014.GB16738@linux.intel.com>
- <61d5c470-a8bf-86d5-d1fe-b4b577a85967@linux.intel.com>
- <CAPcyv4hrFSxNcmmVLVZT4fK3+hspPCDKW0rVBj1=3GkJRgZ29Q@mail.gmail.com>
- <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
- <20160902025738.GA26108@linux.intel.com>
- <20160906150620.GJ28922@quack2.suse.cz>
+From: Eric Biggers <ebiggers@google.com>
+Subject: [PATCH] fscrypto: require write access to mount to set
+	encryption policy
+Date: Thu,  8 Sep 2016 14:20:38 -0700
+Message-ID: <1473369638-19995-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Yumei Huang <yuhuang-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- KVM <kvm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org" <qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>,
- LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Linux ACPI <linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Stefan Hajnoczi <stefanha-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Xiao Guangrong <guangrong.xiao-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20160906150620.GJ28922-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: jaegeuk@kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
+	Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 06, 2016 at 05:06:20PM +0200, Jan Kara wrote:
-> On Thu 01-09-16 20:57:38, Ross Zwisler wrote:
-> > On Wed, Aug 31, 2016 at 04:44:47PM +0800, Xiao Guangrong wrote:
-> > > On 08/31/2016 01:09 AM, Dan Williams wrote:
-> > > > 
-> > > > Can you post your exact reproduction steps?  This test is not failing for me.
-> > > > 
-> > > 
-> > > Sure.
-> > > 
-> > > 1. make the guest kernel based on your tree, the top commit is
-> > >    10d7902fa0e82b (dax: unmap/truncate on device shutdown) and
-> > >    the config file can be found in this thread.
-> > > 
-> > > 2. add guest kernel command line: memmap=6G!10G
-> > > 
-> > > 3: start the guest:
-> > >    x86_64-softmmu/qemu-system-x86_64 -machine pc,nvdimm --enable-kvm \
-> > >    -smp 16 -m 32G,maxmem=100G,slots=100 /other/VMs/centos6.img -monitor stdio
-> > > 
-> > > 4: in guest:
-> > >    mkfs.ext4 /dev/pmem0
-> > >    mount -o dax /dev/pmem0  /mnt/pmem/
-> > >    echo > /mnt/pmem/xxx
-> > >    ./mmap /mnt/pmem/xxx
-> > >    ./read /mnt/pmem/xxx
-> > > 
-> > >   The source code of mmap and read has been attached in this mail.
-> > > 
-> > >   Hopefully, you can detect the error triggered by read test.
-> > > 
-> > > Thanks!
-> > 
-> > Okay, I think I've isolated this issue.  Xiao's VM was an old CentOS 6 system,
-> > and for some reason ext4+DAX with the old tools found in that VM fails.  I was
-> > able to reproduce this failure with a freshly installed CentOS 6.8 VM.
-> > 
-> > You can see the failure with his tests, or perhaps more easily with this
-> > series of commands:
-> > 
-> >   # mkfs.ext4 /dev/pmem0
-> >   # mount -o dax /dev/pmem0  /mnt/pmem/
-> >   # touch /mnt/pmem/x
-> >   # md5sum /mnt/pmem/x
-> >   md5sum: /mnt/pmem/x: Bad address
-> > 
-> > This sequence of commands works fine in the old CentOS 6 system if you use XFS
-> > instead of ext4, and it works fine with both ext4 and XFS in CentOS 7 and
-> > with recent versions of Fedora.
-> > 
-> > I've added the ext4 folks to this mail in case they care, but my guess is that
-> > the tools in CentOS 6 are so old that it's not worth worrying about.  For
-> > reference, the kernel in CentOS 6 is based on 2.6.32.  :)  DAX was introduced
-> > in v4.0.
-> 
-> Hum, can you post 'dumpe2fs -h /dev/pmem0' output from that system when the
-> md5sum fails? Because the only idea I have is that mkfs.ext4 in CentOS 6
-> creates the filesystem with a different set of features than more recent
-> e2fsprogs and so we hit some untested path...
+[To apply cleanly, my other two patches must be applied before this one]
 
-Sure, here's the output:
+Since setting an encryption policy requires writing metadata to the
+filesystem, it should be guarded by mnt_want_write/mnt_drop_write.
+Otherwise, a user could cause a write to a frozen or readonly
+filesystem.  This was handled correctly by f2fs but not by ext4.  Make
+fscrypt_process_policy() handle it rather than relying on the filesystem
+to get it right.
 
-# dumpe2fs -h /dev/pmem0 
-dumpe2fs 1.41.12 (17-May-2010)
-Filesystem volume name:   <none>
-Last mounted on:          /mnt/pmem
-Filesystem UUID:          4cd8a836-cc54-4c59-ae0a-4a26bab0f8bc
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
-needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
-dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash 
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              1048576
-Block count:              4194304
-Reserved block count:     209715
-Free blocks:              4084463
-Free inodes:              1048565
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1023
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8192
-Inode blocks per group:   512
-RAID stride:              1
-Flex block group size:    16
-Filesystem created:       Thu Sep  8 14:45:31 2016
-Last mount time:          Thu Sep  8 14:45:39 2016
-Last write time:          Thu Sep  8 14:45:39 2016
-Mount count:              1
-Maximum mount count:      21
-Last checked:             Thu Sep  8 14:45:31 2016
-Check interval:           15552000 (6 months)
-Next check after:         Tue Mar  7 13:45:31 2017
-Lifetime writes:          388 MB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:	          256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      19cad581-c46a-4212-bfa0-d527ff55db49
-Journal backup:           inode blocks
-Journal features:         (none)
-Journal size:             128M
-Journal length:           32768
-Journal sequence:         0x00000002
-Journal start:            1
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Cc: stable@vger.kernel.org # 4.1+; check fs/{ext4,f2fs}
+---
+ fs/crypto/policy.c       | 36 +++++++++++++++++++++++-------------
+ fs/ext4/ioctl.c          |  2 +-
+ fs/f2fs/file.c           |  9 +--------
+ include/linux/fscrypto.h |  5 ++---
+ 4 files changed, 27 insertions(+), 25 deletions(-)
+
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index f96547f..e2ada8f 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -11,6 +11,7 @@
+ #include <linux/random.h>
+ #include <linux/string.h>
+ #include <linux/fscrypto.h>
++#include <linux/mount.h>
+ 
+ static int inode_has_encryption_context(struct inode *inode)
+ {
+@@ -92,31 +93,40 @@ static int create_encryption_context_from_policy(struct inode *inode,
+ 	return inode->i_sb->s_cop->set_context(inode, &ctx, sizeof(ctx), NULL);
+ }
+ 
+-int fscrypt_process_policy(struct inode *inode,
++int fscrypt_process_policy(struct file *filp,
+ 				const struct fscrypt_policy *policy)
+ {
++	struct inode *inode = file_inode(filp);
++	int ret;
++
+ 	if (!inode_owner_or_capable(inode))
+ 		return -EACCES;
+ 
+ 	if (policy->version != 0)
+ 		return -EINVAL;
+ 
++	ret = mnt_want_write_file(filp);
++	if (ret)
++		return ret;
++
+ 	if (!inode_has_encryption_context(inode)) {
+ 		if (!S_ISDIR(inode->i_mode))
+-			return -EINVAL;
+-		if (!inode->i_sb->s_cop->empty_dir)
+-			return -EOPNOTSUPP;
+-		if (!inode->i_sb->s_cop->empty_dir(inode))
+-			return -ENOTEMPTY;
+-		return create_encryption_context_from_policy(inode, policy);
++			ret = -EINVAL;
++		else if (!inode->i_sb->s_cop->empty_dir)
++			ret = -EOPNOTSUPP;
++		else if (!inode->i_sb->s_cop->empty_dir(inode))
++			ret = -ENOTEMPTY;
++		else
++			ret = create_encryption_context_from_policy(inode, policy);
++	} else if (!is_encryption_context_consistent_with_policy(inode, policy)) {
++		printk(KERN_WARNING
++		       "%s: Policy inconsistent with encryption context\n",
++		       __func__);
++		ret = -EINVAL;
+ 	}
+ 
+-	if (is_encryption_context_consistent_with_policy(inode, policy))
+-		return 0;
+-
+-	printk(KERN_WARNING "%s: Policy inconsistent with encryption context\n",
+-	       __func__);
+-	return -EINVAL;
++	mnt_drop_write_file(filp);
++	return ret;
+ }
+ EXPORT_SYMBOL(fscrypt_process_policy);
+ 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 10686fd..1bb7df5 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -776,7 +776,7 @@ resizefs_out:
+ 				   (struct fscrypt_policy __user *)arg,
+ 				   sizeof(policy)))
+ 			return -EFAULT;
+-		return fscrypt_process_policy(inode, &policy);
++		return fscrypt_process_policy(filp, &policy);
+ #else
+ 		return -EOPNOTSUPP;
+ #endif
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 47abb96..28f4f4c 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1757,21 +1757,14 @@ static int f2fs_ioc_set_encryption_policy(struct file *filp, unsigned long arg)
+ {
+ 	struct fscrypt_policy policy;
+ 	struct inode *inode = file_inode(filp);
+-	int ret;
+ 
+ 	if (copy_from_user(&policy, (struct fscrypt_policy __user *)arg,
+ 							sizeof(policy)))
+ 		return -EFAULT;
+ 
+-	ret = mnt_want_write_file(filp);
+-	if (ret)
+-		return ret;
+-
+ 	f2fs_update_time(F2FS_I_SB(inode), REQ_TIME);
+-	ret = fscrypt_process_policy(inode, &policy);
+ 
+-	mnt_drop_write_file(filp);
+-	return ret;
++	return fscrypt_process_policy(filp, &policy);
+ }
+ 
+ static int f2fs_ioc_get_encryption_policy(struct file *filp, unsigned long arg)
+diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
+index cfa6cde..76cff18 100644
+--- a/include/linux/fscrypto.h
++++ b/include/linux/fscrypto.h
+@@ -274,8 +274,7 @@ extern void fscrypt_restore_control_page(struct page *);
+ extern int fscrypt_zeroout_range(struct inode *, pgoff_t, sector_t,
+ 						unsigned int);
+ /* policy.c */
+-extern int fscrypt_process_policy(struct inode *,
+-					const struct fscrypt_policy *);
++extern int fscrypt_process_policy(struct file *, const struct fscrypt_policy *);
+ extern int fscrypt_get_policy(struct inode *, struct fscrypt_policy *);
+ extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
+ extern int fscrypt_inherit_context(struct inode *, struct inode *,
+@@ -345,7 +344,7 @@ static inline int fscrypt_notsupp_zeroout_range(struct inode *i, pgoff_t p,
+ }
+ 
+ /* policy.c */
+-static inline int fscrypt_notsupp_process_policy(struct inode *i,
++static inline int fscrypt_notsupp_process_policy(struct file *f,
+ 				const struct fscrypt_policy *p)
+ {
+ 	return -EOPNOTSUPP;
+-- 
+2.8.0.rc3.226.g39d4020
+
+
+------------------------------------------------------------------------------
