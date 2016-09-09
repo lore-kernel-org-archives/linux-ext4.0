@@ -1,143 +1,132 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH]:ext4 these lines are too long while reading
-Date: Fri, 9 Sep 2016 14:05:55 -0600
-Message-ID: <EB88063A-4241-4E91-916B-43511656405D@dilger.ca>
-References: <57D281D1.6020208@huawei.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_2F3F825C-BC67-472F-B104-D88E6D12E37C"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: norton <norton.zhu@huawei.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:35909 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751120AbcIIUGC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Sep 2016 16:06:02 -0400
-Received: by mail-oi0-f67.google.com with SMTP id s71so8835720oih.3
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Sep 2016 13:06:02 -0700 (PDT)
-In-Reply-To: <57D281D1.6020208@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-
---Apple-Mail=_2F3F825C-BC67-472F-B104-D88E6D12E37C
+From: Matthew Wilcox <mawilcox@microsoft.com>
+Subject: RE: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
+Date: Fri, 9 Sep 2016 20:35:01 +0000
+Message-ID: <DM2PR21MB0089BCA980B67D8C53B25A1BCBFA0@DM2PR21MB0089.namprd21.prod.outlook.com>
+References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
+ <20160823220419.11717-3-ross.zwisler@linux.intel.com>
+ <20160825075728.GA11235@infradead.org>
+ <20160826212934.GA11265@linux.intel.com>
+ <20160829074116.GA16491@infradead.org>
+ <20160829125741.cdnbb2uaditcmnw2@thunk.org>
+ <20160909164808.GC18554@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+To: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-nvdimm@ml01.01.org" <linux-nvdimm@ml01.01.org>,
+        Dave Chinner <david@fromorbit.com>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Jan Kara" <jack@suse.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20160909164808.GC18554@linux.intel.com>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sep 9, 2016, at 3:33 AM, norton <norton.zhu@huawei.com> wrote:
+I feel like we're not only building on shifting sands, but we haven't decid=
+ed whether we're building a Pyramid or a Sphinx.
+
+I thought after Storage Summit, we had broad agreement that we were moving =
+to a primary DAX API that was not BH (nor indeed iomap) based.  We would st=
+ill have DAX helpers for block based filesystems (because duplicating all t=
+hat code between filesystems is pointless), but I now know of three filesys=
+tems which are not block based that are interested in using DAX.  Jared Hul=
+bert's AXFS is a nice public example.
+
+I posted a prototype of this here:
+
+https://groups.google.com/d/msg/linux.kernel/xFFHVCQM7Go/ZQeDVYTnFgAJ
+
+It is, of course, woefully out of date, but some of the principles in it ar=
+e still good (and I'm working to split it into digestible chunks).
+
+The essence:
+
+1. VFS or VM calls filesystem (eg ->fault())=20
+2. Filesystem calls DAX (eg dax_fault())=20
+3. DAX looks in radix tree, finds no information.=20
+4. DAX calls (NEW!) mapping->a_ops->populate_pfns=20
+5a. Filesystem (if not block based) does its own thing to find out the PFNs=
+ corresponding to the requested range, then inserts them into the radix tre=
+e (possible helper in DAX code)
+5b. Filesystem (if block based) looks up its internal data structure (eg ex=
+tent tree) and=20
+=A0 =A0calls dax_create_pfns() (see giant patch from yesterday, only instea=
+d of=20
+=A0 =A0passing a get_block_t, the filesystem has already filled in a bh whi=
+ch=20
+=A0 =A0describes the entire extent that this access happens to land in).=20
+6b. DAX takes care of calling bdev_direct_access() from=A0dax_create_pfns()=
+.
+
+Now, notice that there's no interaction with the rest of the filesystem her=
+e.  We can swap out BHs and iomaps relatively trivially; there's no call fo=
+r making grand changes, like converting ext2 over to iomap.  The BH or ioma=
+p is only used for communicating the extent from the filesystem to DAX.
+
+Do we have agreement that this is the right way to go?
+
+-----Original Message-----
+From: Ross Zwisler [mailto:ross.zwisler@linux.intel.com]=20
+Sent: Friday, September 9, 2016 12:48 PM
+To: Theodore Ts'o <tytso@mit.edu>; Christoph Hellwig <hch@infradead.org>; R=
+oss Zwisler <ross.zwisler@linux.intel.com>; linux-kernel@vger.kernel.org; A=
+ndrew Morton <akpm@linux-foundation.org>; linux-nvdimm@ml01.01.org; Matthew=
+ Wilcox <mawilcox@microsoft.com>; Dave Chinner <david@fromorbit.com>; linux=
+-mm@kvack.org; Andreas Dilger <adilger.kernel@dilger.ca>; Alexander Viro <v=
+iro@zeniv.linux.org.uk>; Jan Kara <jack@suse.com>; linux-fsdevel@vger.kerne=
+l.org; linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
+
+On Mon, Aug 29, 2016 at 08:57:41AM -0400, Theodore Ts'o wrote:
+> On Mon, Aug 29, 2016 at 12:41:16AM -0700, Christoph Hellwig wrote:
+> >=20
+> > We're going to move forward killing buffer_heads in XFS.  I think ext4
+> > would dramatically benefit from this a well, as would ext2 (although I
+> > think all that DAX work in ext2 is a horrible idea to start with).
 >=20
-> Hi, all
+> It's been on my todo list.  The only reason why I haven't done it yet
+> is because I knew you were working on a solution, and I didn't want to
+> do things one way for buffered I/O, and a different way for Direct
+> I/O, and disentangling the DIO code and the different assumptions of
+> how different file systems interact with the DIO code is a *mess*.
 >=20
-> I'm a freshman in ext4 file system and I'm reading its source code =
-now.
-> This patch did nothing but make it looks better.(
-> some lines are too long in vim :( ).
->=20
-> Thanks.
->=20
-> Signed-off-by: Norton <norton.zhu@huawei.com>
->=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3ec8708..09314f8 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -109,7 +109,8 @@ static void ext4_clear_request_list(void);
->  * transaction start -> page lock(s) -> i_data_sem (rw)
->  */
->=20
-> -#if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && =
-defined(CONFIG_EXT4_USE_FOR_EXT2)
-> +#if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && \
-> +	defined(CONFIG_EXT4_USE_FOR_EXT2)
-> static struct file_system_type ext2_fs_type =3D {
-> 	.owner		=3D THIS_MODULE,
-> 	.name		=3D "ext2",
-> @@ -1751,7 +1752,9 @@ static int handle_mount_opt(struct super_block =
-*sb, char *opt, int token,
-> 	} else if (m->flags & MOPT_DATAJ) {
-> 		if (is_remount) {
-> 			if (!sbi->s_journal)
-> -				ext4_msg(sb, KERN_WARNING, "Remounting =
-file system with no journal so ignoring journalled data option");
-> +				ext4_msg(sb, KERN_WARNING, "Remounting =
-file "
-> +					"system with no journal so "
-> +					"ignoring journalled data =
-option");
-> 			else if (test_opt(sb, DATA_FLAGS) !=3D =
-m->mount_opt) {
-> 				ext4_msg(sb, KERN_ERR,
-> 					 "Cannot change data mode on =
-remount");
-> @@ -5412,7 +5415,8 @@ static struct dentry *ext4_mount(struct =
-file_system_type *fs_type, int flags,
-> 	return mount_bdev(fs_type, flags, dev_name, data, =
-ext4_fill_super);
-> }
->=20
-> -#if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && =
-defined(CONFIG_EXT4_USE_FOR_EXT2)
-> +#if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && \
-> +	defined(CONFIG_EXT4_USE_FOR_EXT2)
-> static inline void register_as_ext2(void)
-> {
-> 	int err =3D register_filesystem(&ext2_fs_type);
-> @@ -5555,7 +5559,8 @@ static void __exit ext4_exit_fs(void)
-> 	ext4_exit_es();
-> }
->=20
-> -MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas =
-Dilger, Theodore Ts'o and others");
-> +MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas =
-Dilger, \
-> +		Theodore Ts'o and others");
+> It may have gotten better more recently, but a few years ago I took a
+> look at it and backed slowly away.....
 
-In addition to the other comments from Ted and Eric, the above change is
-actually broken, as it would insert two tabs into the middle of the =
-string.
+Ted, what do you think of the idea of moving to struct iomap in ext2?
 
-Firstly, the linefeed escape '\' is only for CPP, and not needed for C.
+If ext2 stays with the current struct buffer_head + get_block_t interface,
+then it looks like DAX basically has three options:
 
-Secondly, to split a string across lines you need to terminate it, and
-the compiler will merge adjacent strings:
+1) Support two I/O paths and two versions of each of the fault paths (PTE,
+PMD, etc).  One of each of these would be based on struct iomap and would b=
+e
+used by xfs and potentially ext4, and the other would be based on struct
+buffer_head + get_block_t and would be used by ext2.
 
-+MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas =
-Dilger, "
-+	       "Theodore Ts'o and others");
+2) Only have a single struct iomap based I/O path and fault path, and add
+shim/support code so that ext2 can use it, leaving the rest of ext2 to be
+struct buffer_head + get_block_t based.
 
-Don't forget the space inside the string at the end of the first line.
+3) Only have a single struct buffer_head + get_block_t based DAX I/O and fa=
+ult
+path, and have XFS and potentially ext4 do the translation from their nativ=
+e
+struct iomap interface.
 
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_2F3F825C-BC67-472F-B104-D88E6D12E37C
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBV9MWJXKl2rkXzB/gAQgMEw//dYUbSkWPL9eGn9JP7P4PysNXnFejLyD3
-z/BJdxUCLij/+nt9mgvolmJqqY/gpOBK3+aXfEeD1krTrqo8mLxqZPsXLx1j2y7M
-KC+wj8BHs8s66Y3zUqb0HvP4smrv/FAcWAgcRc1WWlrHSUXR/znbKfeQVvTDf+M8
-XNC/mJ9vHASISf/I3wm1HIXL8ge3fkzm0tt+COBxQ9lnxEZa1OalZy64SJeWZge0
-CByiMJQ1YfAlPfH2y6TrtV5uZ5I4jYGE000KtDBWTOQ6Mz95O6DP+0vgThaUuMl8
-1COxkNwc/py/rRx+VdAbZZdUSf9blBKOr/j11G2TY2rwflDcyno4vjOmqwumDBR7
-RIi8qjMq7fY9JZ+y81dMpEd0ZFRFFMSZG0QreQPf/4xDr6Mdp4YG4gftRmy6zbzy
-WJygW/2gaEplAEOkazMtstEmU1D7yHMyXgdCzTNfOAvoEI1nBiIwNGIRWyMyBNIf
-kMbLvSRuzuCOeQO6+vh+OHZr3uUU++sHm3NfHnQmbADeVE2G4fqxpWRvtcnNx0/T
-8K+s/AlaWgA37ngLz9kswJbbeUd2HYo2M8X3NcO4kBO1IjGDoNzOEpYcKkgr8HWC
-kW/K/rvuC4eKEwq3O04XGHzrVTdUqQDsRddMui7JTgLMIiZGF4MrlzaSYG8NqzsS
-z+vJ4Q9haJI=
-=pM2V
------END PGP SIGNATURE-----
-
---Apple-Mail=_2F3F825C-BC67-472F-B104-D88E6D12E37C--
+It seems ideal for ext2 to switch along with everyone else, if getting rid =
+of
+struct buffer_head is a global goal.  If not, I guess barring technical iss=
+ues
+#2 above seems cleanest - move DAX to the new structure, and provide backwa=
+rds
+compatibility to ext2.  Thoughts?
