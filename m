@@ -1,59 +1,44 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: DAX can not work on virtual nvdimm device
-Date: Fri, 9 Sep 2016 10:03:27 -0400
-Message-ID: <20160909140327.r2j64s5xdaxnnxhx@thunk.org>
-References: <20160819183047.GA7216@linux.intel.com>
- <600ac51c-0f61-6e53-9bfa-669c85494d1f@linux.intel.com>
- <20160829193014.GB16738@linux.intel.com>
- <61d5c470-a8bf-86d5-d1fe-b4b577a85967@linux.intel.com>
- <CAPcyv4hrFSxNcmmVLVZT4fK3+hspPCDKW0rVBj1=3GkJRgZ29Q@mail.gmail.com>
- <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
- <20160902025738.GA26108@linux.intel.com>
- <20160906150620.GJ28922@quack2.suse.cz>
- <20160908204708.GA15167@linux.intel.com>
- <20160909091925.GF22777@quack2.suse.cz>
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: Fwd: [STABLE CHERRYPICK] ext4: avoid modifying checksum fields
+ directly during checksum verification
+Date: Fri, 9 Sep 2016 16:11:23 +0200
+Message-ID: <20160909141123.GA13328@kroah.com>
+References: <20160906022955.qopdwuznvtqlwofq@thunk.org>
+ <40811621-e317-fecc-8052-56b88fd5ce35@etorok.net>
+ <20160908085615.GA21050@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Yumei Huang <yuhuang-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Xiao Guangrong <guangrong.xiao-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, KVM <kvm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org>,
- "qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org" <qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>,
- LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Linux ACPI <linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Stefan Hajnoczi <stefanha-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: stable@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org
+To: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:36112 "EHLO
+        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750882AbcIIOLS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Sep 2016 10:11:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20160909091925.GF22777-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20160908085615.GA21050@kroah.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 09, 2016 at 11:19:25AM +0200, Jan Kara wrote:
-> > > > > 1. make the guest kernel based on your tree, the top commit is
-> > > > >    10d7902fa0e82b (dax: unmap/truncate on device shutdown) and
-> > > > >    the config file can be found in this thread.
+On Thu, Sep 08, 2016 at 10:56:15AM +0200, Greg KH wrote:
+> On Thu, Sep 08, 2016 at 10:21:34AM +0300, Török Edwin wrote:
+> > Hi,
+> > 
+> > Not sure if this was sent to the right place: stable@kernel.org
+> > doesn't seem to exist, I can't find this message in the ML archives,
+> > or the 4.7.3 changelog.  Could you please include this in 4.7.4, I've
+> > been waiting for this patch to get included ever since 4.7.1...
+> 
+> Yeah, I never saw it.
+> 
+> Will add it to the queue, it's long, might take a release or two to make
+> it...
+> 
+> Were there any objections from the ext4 maintainers in taking the patch
+> below?
 
-What git tree is 10d7902fa0e82b from?
+Now applied, thanks.
 
-> Hum, nothing unusual in there. I've tried reproducing on a local SLE11 SP3
-> machine (which is from about the same time) but everything works as
-> expected there. Shrug...
-
-I just tried reproducing it via "gce-xfstests --pmem-device shell"
-with a downgraded e2fsprogs to stock upstream 1.42.12, and I can't
-reproduce it with the ext4.git tree.  I'm not sure whether the git
-commit is critical, though.  Is this a regression that was working
-before?
-
-Or it's possible that Red Hat did something weird with the CentOS 6
-e2fsprogs....
-
-					- Ted
+greg k-h
