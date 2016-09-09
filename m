@@ -1,44 +1,50 @@
-From: Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: Fwd: [STABLE CHERRYPICK] ext4: avoid modifying checksum fields
- directly during checksum verification
-Date: Fri, 9 Sep 2016 16:11:23 +0200
-Message-ID: <20160909141123.GA13328@kroah.com>
-References: <20160906022955.qopdwuznvtqlwofq@thunk.org>
- <40811621-e317-fecc-8052-56b88fd5ce35@etorok.net>
- <20160908085615.GA21050@kroah.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH]:ext4 these lines are too long while reading
+Date: Fri, 9 Sep 2016 09:34:14 -0500
+Message-ID: <d5dbbe4a-6558-504f-4f42-1cbe9c7b3c3a@redhat.com>
+References: <57D281D1.6020208@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: stable@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
-To: =?iso-8859-1?B?VPZy9ms=?= Edwin <edwin@etorok.net>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org
+To: norton <norton.zhu@huawei.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:36112 "EHLO
-        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750882AbcIIOLS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Sep 2016 10:11:18 -0400
-Content-Disposition: inline
-In-Reply-To: <20160908085615.GA21050@kroah.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42164 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752707AbcIIOeQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Sep 2016 10:34:16 -0400
+In-Reply-To: <57D281D1.6020208@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 08, 2016 at 10:56:15AM +0200, Greg KH wrote:
-> On Thu, Sep 08, 2016 at 10:21:34AM +0300, Török Edwin wrote:
-> > Hi,
-> > 
-> > Not sure if this was sent to the right place: stable@kernel.org
-> > doesn't seem to exist, I can't find this message in the ML archives,
-> > or the 4.7.3 changelog.  Could you please include this in 4.7.4, I've
-> > been waiting for this patch to get included ever since 4.7.1...
+On 9/9/16 4:33 AM, norton wrote:
+> Hi, all
 > 
-> Yeah, I never saw it.
-> 
-> Will add it to the queue, it's long, might take a release or two to make
-> it...
-> 
-> Were there any objections from the ext4 maintainers in taking the patch
-> below?
+> I'm a freshman in ext4 file system and I'm reading its source code now.
+> This patch did nothing but make it looks better.(
+> some lines are too long in vim :( ).
 
-Now applied, thanks.
+Aside from Ted's point about not taking patches which simply rewrap
+lines, it's worth knowing that the better practice, IMHO, when adding
+long text strings is not:
 
-greg k-h
++				ext4_msg(sb, KERN_WARNING, "Remounting file "
++					"system with no journal so "
++					"ignoring journalled data option");
+
+but:
+
++				ext4_msg(sb, KERN_WARNING,
++"Remounting file system with no journal so ignoring journalled data option");
+
+so that the strings can be found by a grep, if needed, while still
+avoiding 120-column lines.
+
+At least that's my time-tested opinion :)
+
+So if you ever find yourself in the position of needing to add a string like
+that, or are hitting it as part of other work, it's something to consider.
+
+-Eric
+
+
