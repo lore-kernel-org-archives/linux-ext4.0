@@ -1,350 +1,165 @@
-From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH v3 3/3] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Thu, 8 Sep 2016 23:17:07 -0700
-Message-ID: <20160909061707.GB9312@birch.djwong.org>
-References: <147216758326.32321.8525481353986871349.stgit@birch.djwong.org>
- <147216760214.32321.8331561706153372268.stgit@birch.djwong.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: DAX can not work on virtual nvdimm device
+Date: Fri, 9 Sep 2016 11:19:25 +0200
+Message-ID: <20160909091925.GF22777@quack2.suse.cz>
+References: <CAPcyv4hVgi6Hw8Beg=Nt78+U0QNJN9mBGWEp3V6bg86NaM3Q6Q@mail.gmail.com>
+ <20160819183047.GA7216@linux.intel.com>
+ <600ac51c-0f61-6e53-9bfa-669c85494d1f@linux.intel.com>
+ <20160829193014.GB16738@linux.intel.com>
+ <61d5c470-a8bf-86d5-d1fe-b4b577a85967@linux.intel.com>
+ <CAPcyv4hrFSxNcmmVLVZT4fK3+hspPCDKW0rVBj1=3GkJRgZ29Q@mail.gmail.com>
+ <25098f37-53f7-6d5d-0b1a-8469bab51a9f@linux.intel.com>
+ <20160902025738.GA26108@linux.intel.com>
+ <20160906150620.GJ28922@quack2.suse.cz>
+ <20160908204708.GA15167@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, xfs-VZNHf3L845pBDgjK7y7TUQ@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-        linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
-        "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, Josef Bacik <jbacik-b10kYP2dOMg@public.gmane.org>,
-        Mark Fasheh <mfasheh-l3A5Bk7waGM@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Yumei Huang <yuhuang-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Xiao Guangrong <guangrong.xiao-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, KVM <kvm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org" <qemu-devel-qX2TKyscuCcdnm+yROfE0A@public.gmane.org>,
+ LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Linux ACPI <linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Stefan Hajnoczi <stefanha-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <147216760214.32321.8331561706153372268.stgit-PTl6brltDGh4DFYR7WNSRA@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20160908204708.GA15167-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Document the new GETFSMAP ioctl that returns the physical layout of a
-(disk-based) filesystem.
+On Thu 08-09-16 14:47:08, Ross Zwisler wrote:
+> On Tue, Sep 06, 2016 at 05:06:20PM +0200, Jan Kara wrote:
+> > On Thu 01-09-16 20:57:38, Ross Zwisler wrote:
+> > > On Wed, Aug 31, 2016 at 04:44:47PM +0800, Xiao Guangrong wrote:
+> > > > On 08/31/2016 01:09 AM, Dan Williams wrote:
+> > > > > 
+> > > > > Can you post your exact reproduction steps?  This test is not failing for me.
+> > > > > 
+> > > > 
+> > > > Sure.
+> > > > 
+> > > > 1. make the guest kernel based on your tree, the top commit is
+> > > >    10d7902fa0e82b (dax: unmap/truncate on device shutdown) and
+> > > >    the config file can be found in this thread.
+> > > > 
+> > > > 2. add guest kernel command line: memmap=6G!10G
+> > > > 
+> > > > 3: start the guest:
+> > > >    x86_64-softmmu/qemu-system-x86_64 -machine pc,nvdimm --enable-kvm \
+> > > >    -smp 16 -m 32G,maxmem=100G,slots=100 /other/VMs/centos6.img -monitor stdio
+> > > > 
+> > > > 4: in guest:
+> > > >    mkfs.ext4 /dev/pmem0
+> > > >    mount -o dax /dev/pmem0  /mnt/pmem/
+> > > >    echo > /mnt/pmem/xxx
+> > > >    ./mmap /mnt/pmem/xxx
+> > > >    ./read /mnt/pmem/xxx
+> > > > 
+> > > >   The source code of mmap and read has been attached in this mail.
+> > > > 
+> > > >   Hopefully, you can detect the error triggered by read test.
+> > > > 
+> > > > Thanks!
+> > > 
+> > > Okay, I think I've isolated this issue.  Xiao's VM was an old CentOS 6 system,
+> > > and for some reason ext4+DAX with the old tools found in that VM fails.  I was
+> > > able to reproduce this failure with a freshly installed CentOS 6.8 VM.
+> > > 
+> > > You can see the failure with his tests, or perhaps more easily with this
+> > > series of commands:
+> > > 
+> > >   # mkfs.ext4 /dev/pmem0
+> > >   # mount -o dax /dev/pmem0  /mnt/pmem/
+> > >   # touch /mnt/pmem/x
+> > >   # md5sum /mnt/pmem/x
+> > >   md5sum: /mnt/pmem/x: Bad address
+> > > 
+> > > This sequence of commands works fine in the old CentOS 6 system if you use XFS
+> > > instead of ext4, and it works fine with both ext4 and XFS in CentOS 7 and
+> > > with recent versions of Fedora.
+> > > 
+> > > I've added the ext4 folks to this mail in case they care, but my guess is that
+> > > the tools in CentOS 6 are so old that it's not worth worrying about.  For
+> > > reference, the kernel in CentOS 6 is based on 2.6.32.  :)  DAX was introduced
+> > > in v4.0.
+> > 
+> > Hum, can you post 'dumpe2fs -h /dev/pmem0' output from that system when the
+> > md5sum fails? Because the only idea I have is that mkfs.ext4 in CentOS 6
+> > creates the filesystem with a different set of features than more recent
+> > e2fsprogs and so we hit some untested path...
+> 
+> Sure, here's the output:
+> 
+> # dumpe2fs -h /dev/pmem0 
+> dumpe2fs 1.41.12 (17-May-2010)
+> Filesystem volume name:   <none>
+> Last mounted on:          /mnt/pmem
+> Filesystem UUID:          4cd8a836-cc54-4c59-ae0a-4a26bab0f8bc
+> Filesystem magic number:  0xEF53
+> Filesystem revision #:    1 (dynamic)
+> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
+> needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
+> dir_nlink extra_isize
+> Filesystem flags:         signed_directory_hash 
+> Default mount options:    (none)
+> Filesystem state:         clean
+> Errors behavior:          Continue
+> Filesystem OS type:       Linux
+> Inode count:              1048576
+> Block count:              4194304
+> Reserved block count:     209715
+> Free blocks:              4084463
+> Free inodes:              1048565
+> First block:              0
+> Block size:               4096
+> Fragment size:            4096
+> Reserved GDT blocks:      1023
+> Blocks per group:         32768
+> Fragments per group:      32768
+> Inodes per group:         8192
+> Inode blocks per group:   512
+> RAID stride:              1
+> Flex block group size:    16
+> Filesystem created:       Thu Sep  8 14:45:31 2016
+> Last mount time:          Thu Sep  8 14:45:39 2016
+> Last write time:          Thu Sep  8 14:45:39 2016
+> Mount count:              1
+> Maximum mount count:      21
+> Last checked:             Thu Sep  8 14:45:31 2016
+> Check interval:           15552000 (6 months)
+> Next check after:         Tue Mar  7 13:45:31 2017
+> Lifetime writes:          388 MB
+> Reserved blocks uid:      0 (user root)
+> Reserved blocks gid:      0 (group root)
+> First inode:              11
+> Inode size:	          256
+> Required extra isize:     28
+> Desired extra isize:      28
+> Journal inode:            8
+> Default directory hash:   half_md4
+> Directory Hash Seed:      19cad581-c46a-4212-bfa0-d527ff55db49
+> Journal backup:           inode blocks
+> Journal features:         (none)
+> Journal size:             128M
+> Journal length:           32768
+> Journal sequence:         0x00000002
+> Journal start:            1
 
-Signed-off-by: Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
----
- man2/ioctl_getfsmap.2 |  313 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 313 insertions(+)
- create mode 100644 man2/ioctl_getfsmap.2
+Hum, nothing unusual in there. I've tried reproducing on a local SLE11 SP3
+machine (which is from about the same time) but everything works as
+expected there. Shrug...
 
-diff --git a/man2/ioctl_getfsmap.2 b/man2/ioctl_getfsmap.2
-new file mode 100644
-index 0000000..fac3ff4
---- /dev/null
-+++ b/man2/ioctl_getfsmap.2
-@@ -0,0 +1,313 @@
-+.\" Copyright (c) 2016, Oracle.  All rights reserved.
-+.\"
-+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
-+.\" This is free documentation; you can redistribute it and/or
-+.\" modify it under the terms of the GNU General Public License as
-+.\" published by the Free Software Foundation; either version 2 of
-+.\" the License, or (at your option) any later version.
-+.\"
-+.\" The GNU General Public License's references to "object code"
-+.\" and "executables" are to be interpreted as the output of any
-+.\" document formatting or typesetting system, including
-+.\" intermediate and printed output.
-+.\"
-+.\" This manual is distributed in the hope that it will be useful,
-+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
-+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+.\" GNU General Public License for more details.
-+.\"
-+.\" You should have received a copy of the GNU General Public
-+.\" License along with this manual; if not, see
-+.\" <http://www.gnu.org/licenses/>.
-+.\" %%%LICENSE_END
-+.TH IOCTL-GETFSMAP 2 2016-09-08 "Linux" "Linux Programmer's Manual"
-+.SH NAME
-+ioctl_getfsmap \- retrieve the physical layout of the filesystem
-+.SH SYNOPSIS
-+.br
-+.B #include <sys/ioctl.h>
-+.br
-+.B #include <linux/fs.h>
-+.sp
-+.BI "int ioctl(int " fd ", GETFSMAP, struct fsmap_head * " arg );
-+.SH DESCRIPTION
-+This
-+.BR ioctl (2)
-+retrieves physical extent mappings for a filesystem.
-+This information can be used to discover which files are mapped to a physical
-+block, examine free space, or find known bad blocks, among other things.
-+
-+The sole argument to this ioctl should be a pointer to a single
-+.BR "struct fsmap_head" ":"
-+.in +4n
-+.nf
-+
-+struct fsmap {
-+	__u32		fmr_device;	/* device id */
-+	__u32		fmr_flags;	/* mapping flags */
-+	__u64		fmr_physical;	/* device offset of segment */
-+	__u64		fmr_owner;	/* owner id */
-+	__u64		fmr_offset;	/* file offset of segment */
-+	__u64		fmr_length;	/* length of segment */
-+	__u64		fmr_reserved[3];	/* must be zero */
-+};
-+
-+struct fsmap_head {
-+	__u32		fmh_iflags;	/* control flags */
-+	__u32		fmh_oflags;	/* output flags */
-+	__u32		fmh_count;	/* # of entries in array incl. input */
-+	__u32		fmh_entries;	/* # of entries filled in (output). */
-+	__u64		fmh_reserved[6];	/* must be zero */
-+
-+	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
-+	struct fsmap	fmh_recs[];	/* returned records */
-+};
-+
-+.fi
-+.in
-+The two
-+.I fmh_keys
-+array elements specify the lowest and highest reverse-mapping
-+keys, respectively, for which userspace would like physical mapping
-+information.
-+A reverse mapping key consists of the tuple (device, block, owner, offset).
-+The owner and offset fields are part of the key because some filesystems
-+support sharing physical blocks between multiple files and
-+therefore may return multiple mappings for a given physical block.
-+.PP
-+Filesystem mappings are copied into the
-+.I fmh_recs
-+array, which immediately follows the header data.
-+.SS Fields of struct fsmap_head
-+.PP
-+The
-+.I fmh_iflags
-+field is a bitmask passed to the kernel to alter the output.
-+There are no flags defined, so this value must be zero.
-+
-+.PP
-+The
-+.I fmh_oflags
-+field is a bitmask of flags that concern all output mappings.
-+If
-+.B FMH_OF_DEV_T
-+is set, then the
-+.I fmr_device
-+field represents a
-+.B dev_t
-+structure containing the major and minor numbers of the block device.
-+
-+.PP
-+The
-+.I fmh_count
-+field contains the number of elements in the array being passed to the
-+kernel.
-+If this value is 0,
-+.I fmh_entries
-+will be set to the number of records that would have been returned had
-+the array been large enough;
-+no mapping information will be returned.
-+
-+.PP
-+The
-+.I fmh_entries
-+field contains the number of elements in the
-+.I fmh_recs
-+array that contain useful information.
-+
-+.PP
-+The
-+.I fmh_reserved
-+fields must be set to zero.
-+
-+.SS Keys
-+.PP
-+The two key records in
-+.B fsmap_head.fmh_keys
-+specify the lowest and highest extent records in the keyspace that the caller
-+wants returned.
-+A filesystem that can share blocks between files likely requires the tuple
-+.RI "(" "device" ", " "physical" ", " "owner" ", " "offset" ", " "flags" ")"
-+to uniquely index any filesystem mapping record.
-+Classic non-sharing filesystems might be able to identify any record with only
-+.RI "(" "device" ", " "physical" ", " "flags" ")."
-+For example, if the low key is set to (0, 36864, 0, 0, 0), the filesystem will
-+only return records for extents starting at or above 36KiB on disk.
-+If the high key is set to (0, 1048576, 0, 0, 0), only records below 1MiB will
-+be returned.
-+By convention, the field
-+.B fsmap_head.fmh_keys[0]
-+must contain the low key and
-+.B fsmap_head.fmh_keys[1]
-+must contain the high key for the request.
-+.PP
-+For convenience, if
-+.B fmr_length
-+is set in the low key, it will be added to
-+.IR fmr_block " or " fmr_offset
-+as appropriate.
-+The caller can take advantage of this subtlety to set up subsequent calls
-+by copying
-+.B fsmap_head.fmh_recs[fsmap_head.fmh_entries - 1]
-+into the low key.
-+
-+.SS Fields of struct fsmap
-+.PP
-+The
-+.I fmr_device
-+field contains a 32-bit cookie to uniquely identify the underlying storage
-+device.
-+If the
-+.B FMH_OF_DEV_T
-+flag is set in the header's
-+.I fmh_oflags
-+field, this field contains a
-+.B dev_t
-+from which major and minor numbers can be extracted.
-+If the flag is not set, this field contains a value that must be unique
-+for each unique storage device.
-+
-+.PP
-+The
-+.I fmr_physical
-+field contains the disk address of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_owner
-+field contains the owner of the extent.
-+This is an inode number unless
-+.B FMR_OF_SPECIAL_OWNER
-+is set in the
-+.I fmr_flags
-+field, in which case the owner value is one of the following special values:
-+.RS 0.4i
-+.TP
-+.B FMR_OWN_FREE
-+Free space.
-+.TP
-+.B FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known.
-+.TP
-+.B FMR_OWN_FS
-+Static filesystem metadata which exists at a fixed address.
-+On XFS these are the AG superblock, AGF, AGFL, and AGI headers.
-+.TP
-+.B FMR_OWN_LOG
-+The filesystem journal.
-+.TP
-+.B FMR_OWN_AG
-+Allocation group metadata.
-+On XFS these are the free space btrees or the reverse mapping btrees.
-+.TP
-+.B FMR_OWN_INOBT
-+Inode indexing, if any are provided.
-+On XFS these are the inode and free inode btrees.
-+.TP
-+.B FMR_OWN_INODES
-+Inode records.
-+.TP
-+.B FMR_OWN_REFC
-+Reference count information.
-+On XFS this is the reference count btree.
-+.TP
-+.B FMR_OWN_COW
-+This extent is being used to stage a copy-on-write.
-+.TP
-+.B FMR_OWN_DEFECTIVE:
-+This extent has been marked defective either by the filesystem or the
-+underlying device.
-+.RE
-+
-+.PP
-+The
-+.I fmr_offset
-+field contains the logical address in the mapping record in bytes.
-+This field has no meaning if the
-+.BR FMR_OF_SPECIAL_OWNER " or " FMR_OF_EXTENT_MAP
-+flags are set in
-+.IR fmr_flags "."
-+
-+.PP
-+The
-+.I fmr_length
-+field contains the length of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_flags
-+field is a bitmask of extent state flags.
-+The bits are:
-+.RS 0.4i
-+.TP
-+.B FMR_OF_PREALLOC
-+The extent is allocated but not yet written.
-+.TP
-+.B FMR_OF_ATTR_FORK
-+This extent contains extended attribute data.
-+.TP
-+.B FMR_OF_EXTENT_MAP
-+This extent contains extent map information for the owner.
-+.TP
-+.B FMR_OF_SHARED
-+Parts of this extent may be shared.
-+.TP
-+.B FMR_OF_SPECIAL_OWNER
-+The
-+.I fmr_owner
-+field contains a special value instead of an inode number.
-+.TP
-+.B FMR_OF_LAST
-+This is the last record in the filesystem.
-+.RE
-+
-+.PP
-+The
-+.I fmr_reserved
-+field will be set to zero.
-+
-+.SH RETURN VALUE
-+On error, \-1 is returned, and
-+.I errno
-+is set to indicate the error.
-+.PP
-+.SH ERRORS
-+Error codes can be one of, but are not limited to, the following:
-+.TP
-+.B EINVAL
-+The array is not long enough, or a non-zero value was passed in one of the
-+fields that must be zero.
-+.TP
-+.B EFAULT
-+The pointer passed in was not mapped to a valid memory address.
-+.TP
-+.B EBADF
-+.IR fd
-+is not open for reading.
-+.TP
-+.B EPERM
-+This query is not allowed.
-+.TP
-+.B EOPNOTSUPP
-+The filesystem does not support this command.
-+.TP
-+.B EUCLEAN
-+The filesystem metadata is corrupt and needs repair.
-+.TP
-+.B EBADMSG
-+The filesystem has detected a checksum error in the metadata.
-+.TP
-+.B ENOMEM
-+Insufficient memory to process the request.
-+
-+.SH EXAMPLE
-+.TP
-+Please see io/fsmap.c in the xfsprogs distribution for a sample program.
-+
-+.SH CONFORMING TO
-+This API is Linux-specific.
-+Not all filesystems support it.
-+.fi
-+.in
-+.SH SEE ALSO
-+.BR ioctl (2)
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
