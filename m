@@ -1,32 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypto: require write access to mount to set
- encryption policy
-Date: Sat, 10 Sep 2016 01:20:28 -0400
-Message-ID: <20160910052028.e5xnxysyhv4bjibn@thunk.org>
-References: <1473369638-19995-1-git-send-email-ebiggers@google.com>
- <20160910041519.nmim57wyptdynwxh@thunk.org>
- <20160910044049.GD34151@jaegeuk>
+Subject: [GIT PULL] fscrypto fixes for 4.8-rc6
+Date: Sat, 10 Sep 2016 01:36:43 -0400
+Message-ID: <20160910053643.3hkypkiuxfmra7yd@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers@google.com>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-To: Jaegeuk Kim <jaegeuk@kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160910044049.GD34151@jaegeuk>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 09, 2016 at 09:40:49PM -0700, Jaegeuk Kim wrote:
-> Acked-by: Jaegeuk Kim <jaegeuk@kernel.org>
+The following changes since commit c6935931c1894ff857616ff8549b61236a19148f:
 
-Thanks for acking this so quickly!  I'll send all three fixes to
-Linus, then.
+  Linux 4.8-rc5 (2016-09-04 14:31:46 -0700)
 
-> It'd be better to fix the below basic warnings tho.
+are available in the git repository at:
 
-Thanks, I've fixed the line over 80 characters warning.  The rest of
-the file uses "printk(KERN_WARNING, ..." and that's a fairly pedantic
-warning so I'm just going to ignore it.
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/for_linus_stable
 
-	       	    	     	    - Ted
+for you to fetch changes up to ba63f23d69a3a10e7e527a02702023da68ef8a6d:
+
+  fscrypto: require write access to mount to set encryption policy (2016-09-10 01:18:57 -0400)
+
+----------------------------------------------------------------
+Fix some brown-paper-bag bugs for fscrypto, including one one which
+allows a malicious user to set an encryption policy on an empty
+directory which they do not own.
+
+----------------------------------------------------------------
+Eric Biggers (3):
+      fscrypto: add authorization check for setting encryption policy
+      fscrypto: only allow setting encryption policy on directories
+      fscrypto: require write access to mount to set encryption policy
+
+ fs/crypto/policy.c       | 41 +++++++++++++++++++++++++++++------------
+ fs/ext4/ioctl.c          |  2 +-
+ fs/f2fs/file.c           |  9 +--------
+ include/linux/fscrypto.h |  5 ++---
+ 4 files changed, 33 insertions(+), 24 deletions(-)
