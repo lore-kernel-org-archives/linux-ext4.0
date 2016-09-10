@@ -1,81 +1,43 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v2 2/9] ext2: tell DAX the size of allocation holes
-Date: Fri, 9 Sep 2016 15:34:43 -0700
-Message-ID: <CAPcyv4hjna08+Yw23w_V2f-RbBE6ar220+YGCuBVA-TACKWNug@mail.gmail.com>
-References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
- <20160823220419.11717-3-ross.zwisler@linux.intel.com>
- <20160825075728.GA11235@infradead.org>
- <20160826212934.GA11265@linux.intel.com>
- <20160829074116.GA16491@infradead.org>
- <20160829125741.cdnbb2uaditcmnw2@thunk.org>
- <20160909164808.GC18554@linux.intel.com>
- <DM2PR21MB0089BCA980B67D8C53B25A1BCBFA0@DM2PR21MB0089.namprd21.prod.outlook.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] fscrypto: add authorization check for setting encryption
+ policy
+Date: Fri, 9 Sep 2016 23:37:59 -0400
+Message-ID: <20160910033759.qsvg4loedccqc7if@thunk.org>
+References: <1473357429-134444-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- "linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org" <linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
- "linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org" <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <DM2PR21MB0089BCA980B67D8C53B25A1BCBFA0-B2pw06WL+/BAVFCO9/lqPs1VXTxX1y3OvxpqHgZTriW3zl9H0oFU5g@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs@vger.kernel.org, jaegeuk@kernel.org
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35640 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753073AbcIJDiz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Sep 2016 23:38:55 -0400
+Content-Disposition: inline
+In-Reply-To: <1473357429-134444-1-git-send-email-ebiggers@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-/me grumbles about top-posting...
+On Thu, Sep 08, 2016 at 10:57:08AM -0700, Eric Biggers wrote:
+> On an ext4 or f2fs filesystem with file encryption supported, a user
+> could set an encryption policy on any empty directory(*) to which they
+> had readonly access.  This is obviously problematic, since such a
+> directory might be owned by another user and the new encryption policy
+> would prevent that other user from creating files in their own directory
+> (for example).
+> 
+> Fix this by requiring inode_owner_or_capable() permission to set an
+> encryption policy.  This means that either the caller must own the file,
+> or the caller must have the capability CAP_FOWNER.
+> 
+> (*) Or also on any regular file, for f2fs v4.6 and later and ext4
+>     v4.8-rc1 and later; a separate bug fix is coming for that.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Cc: stable@vger.kernel.org # 4.1+; check fs/{ext4,f2fs}
 
-On Fri, Sep 9, 2016 at 1:35 PM, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org> wrote:
-> I feel like we're not only building on shifting sands, but we haven't decided whether we're building a Pyramid or a Sphinx.
->
-> I thought after Storage Summit, we had broad agreement that we were moving to a primary DAX API that was not BH (nor indeed iomap) based.  We would still have DAX helpers for block based filesystems (because duplicating all that code between filesystems is pointless), but I now know of three filesystems which are not block based that are interested in using DAX.  Jared Hulbert's AXFS is a nice public example.
->
-> I posted a prototype of this here:
->
-> https://groups.google.com/d/msg/linux.kernel/xFFHVCQM7Go/ZQeDVYTnFgAJ
->
-> It is, of course, woefully out of date, but some of the principles in it are still good (and I'm working to split it into digestible chunks).
->
-> The essence:
->
-> 1. VFS or VM calls filesystem (eg ->fault())
-> 2. Filesystem calls DAX (eg dax_fault())
-> 3. DAX looks in radix tree, finds no information.
-> 4. DAX calls (NEW!) mapping->a_ops->populate_pfns
-> 5a. Filesystem (if not block based) does its own thing to find out the PFNs corresponding to the requested range, then inserts them into the radix tree (possible helper in DAX code)
-> 5b. Filesystem (if block based) looks up its internal data structure (eg extent tree) and
->    calls dax_create_pfns() (see giant patch from yesterday, only instead of
->    passing a get_block_t, the filesystem has already filled in a bh which
->    describes the entire extent that this access happens to land in).
-> 6b. DAX takes care of calling bdev_direct_access() from dax_create_pfns().
->
-> Now, notice that there's no interaction with the rest of the filesystem here.  We can swap out BHs and iomaps relatively trivially; there's no call for making grand changes, like converting ext2 over to iomap.  The BH or iomap is only used for communicating the extent from the filesystem to DAX.
->
-> Do we have agreement that this is the right way to go?
+Thanks, applied.  (Jaeguk, I plan to send this to Linus via the
+ext4.git tree as a fix for v4.8)
 
-My $0.02...
-
-So the current dax implementation is still struggling to get right
-(pmd faulting, dirty entry cleaning, etc) and this seems like a
-rewrite that sets us up for future features without addressing the
-current bugs and todo items.  In comparison the iomap conversion work
-seems incremental and conserving of current development momentum.
-
-I agree with you that continuing to touch ext2 is not a good idea, but
-I'm not yet convinced that now is the time to go do dax-2.0 when we
-haven't finished shipping dax-1.0.
+					- Ted
