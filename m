@@ -1,44 +1,42 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: Re: [PATCH] fscrypto: add authorization check for setting encryption
- policy
-Date: Fri, 9 Sep 2016 21:03:35 -0700
-Message-ID: <20160910040335.GA34151@jaegeuk>
-References: <1473357429-134444-1-git-send-email-ebiggers@google.com>
- <20160910033759.qsvg4loedccqc7if@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] fscrypto: require write access to mount to set
+ encryption policy
+Date: Sat, 10 Sep 2016 00:15:19 -0400
+Message-ID: <20160910041519.nmim57wyptdynwxh@thunk.org>
+References: <1473369638-19995-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers@google.com>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35718 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750812AbcIJEPq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 10 Sep 2016 00:15:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20160910033759.qsvg4loedccqc7if@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1473369638-19995-1-git-send-email-ebiggers@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 09, 2016 at 11:37:59PM -0400, Theodore Ts'o wrote:
-> On Thu, Sep 08, 2016 at 10:57:08AM -0700, Eric Biggers wrote:
-> > On an ext4 or f2fs filesystem with file encryption supported, a user
-> > could set an encryption policy on any empty directory(*) to which they
-> > had readonly access.  This is obviously problematic, since such a
-> > directory might be owned by another user and the new encryption policy
-> > would prevent that other user from creating files in their own directory
-> > (for example).
-> > 
-> > Fix this by requiring inode_owner_or_capable() permission to set an
-> > encryption policy.  This means that either the caller must own the file,
-> > or the caller must have the capability CAP_FOWNER.
-> > 
-> > (*) Or also on any regular file, for f2fs v4.6 and later and ext4
-> >     v4.8-rc1 and later; a separate bug fix is coming for that.
-> > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
-> > Cc: stable@vger.kernel.org # 4.1+; check fs/{ext4,f2fs}
+On Thu, Sep 08, 2016 at 02:20:38PM -0700, Eric Biggers wrote:
+> [To apply cleanly, my other two patches must be applied before this one]
 > 
-> Thanks, applied.  (Jaeguk, I plan to send this to Linus via the
-> ext4.git tree as a fix for v4.8)
-
-Sure, no problem.
-
+> Since setting an encryption policy requires writing metadata to the
+> filesystem, it should be guarded by mnt_want_write/mnt_drop_write.
+> Otherwise, a user could cause a write to a frozen or readonly
+> filesystem.  This was handled correctly by f2fs but not by ext4.  Make
+> fscrypt_process_policy() handle it rather than relying on the filesystem
+> to get it right.
 > 
-> 					- Ted
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Cc: stable@vger.kernel.org # 4.1+; check fs/{ext4,f2fs}
+
+Thanks, I have this in the ext4.git's fixes branch, but I plan to only
+send the other two fixes to Linus, since (a) they are more critical,
+and I'd prefer to get an Acked-by from Jaeguk or Changman (as the f2fs
+maintainers) before I send this fix to Linus, since it touches f2fs.
+
+Jaeguk, Changman, any objections?
+
+							- Ted
