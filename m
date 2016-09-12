@@ -1,41 +1,39 @@
-From: norton <norton.zhu@huawei.com>
-Subject: Re: [PATCH]:ext4 these lines are too long while reading
-Date: Mon, 12 Sep 2016 09:35:44 +0800
-Message-ID: <57D60670.9060306@huawei.com>
-References: <57D281D1.6020208@huawei.com>
- <20160909134731.qw3pmidbprxjrtpg@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20160909134731.qw3pmidbprxjrtpg@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers@google.com>
+Subject: [PATCH] ext4: fix memory leak when symlink decryption fails
+Date: Mon, 12 Sep 2016 12:16:46 -0700
+Message-ID: <1473707806-37537-1-git-send-email-ebiggers@google.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        jaegeuk@kernel.org, Eric Biggers <ebiggers@google.com>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:35863 "EHLO
+        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753490AbcILTRW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Sep 2016 15:17:22 -0400
+Received: by mail-pf0-f176.google.com with SMTP id 128so55076568pfb.3
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Sep 2016 12:17:22 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, Theodore
-Thanks for your suggest, I looks better now.:)
+This bug was introduced in v4.8-rc1.
 
-On 2016/9/9 21:47, Theodore Ts'o wrote:
-> On Fri, Sep 09, 2016 at 05:33:05PM +0800, norton wrote:
->> Hi, all
->>
->> I'm a freshman in ext4 file system and I'm reading its source code now.
->> This patch did nothing but make it looks better.(
->> some lines are too long in vim :( ).
-> 
-> We don't take line-remapping patches.  It used to be the case that
-> checkpatch would complain if lines were too long, and then it started
-> complaining if the lines were wrapped.  I don't like checkpatch,
-> because it causes unnecessary patch churn.  :-(
-> 
-> May I suggest instead that you take a look at reconfiguring vim?
-> 
-> http://stackoverflow.com/questions/467739/how-do-you-get-vim-to-display-wrapped-lines-without-inserting-newlines
-> 
-> 					- Ted
-> 
-> .
-> 
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/symlink.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index 4d83d9e..04a7850 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -65,13 +65,12 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
+ 	res = fscrypt_fname_alloc_buffer(inode, cstr.len, &pstr);
+ 	if (res)
+ 		goto errout;
++	paddr = pstr.name;
+ 
+ 	res = fscrypt_fname_disk_to_usr(inode, 0, 0, &cstr, &pstr);
+ 	if (res < 0)
+ 		goto errout;
+ 
+-	paddr = pstr.name;
