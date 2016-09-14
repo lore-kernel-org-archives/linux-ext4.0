@@ -1,61 +1,79 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] blockgroup_lock.h: remove debris from bgl_lock_ptr() conversion
-Date: Wed, 14 Sep 2016 15:09:04 -0600
-Message-ID: <8CA6154E-320A-4AB3-891F-05E097679438@dilger.ca>
-References: <1473881279-122959-1-git-send-email-ebiggers@google.com>
+Subject: Re: [PATCH] blockgroup_lock.h: simplify definition of NR_BG_LOCKS
+Date: Wed, 14 Sep 2016 15:09:30 -0600
+Message-ID: <3F033C47-E636-42D1-AFCD-FCBCBF795ED4@dilger.ca>
+References: <1473881320-123184-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_16E1F799-E71F-40EF-874D-A8A61D5CC968"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Type: multipart/signed; boundary="Apple-Mail=_EB2F5A84-6BCB-4840-8ACF-BC4233606F9F"; protocol="application/pgp-signature"; micalg=pgp-sha256
 Cc: Theodore Ts'o <tytso@mit.edu>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
         LKML <linux-kernel@vger.kernel.org>
 To: Eric Biggers <ebiggers@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1473881279-122959-1-git-send-email-ebiggers@google.com>
+In-Reply-To: <1473881320-123184-1-git-send-email-ebiggers@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---Apple-Mail=_16E1F799-E71F-40EF-874D-A8A61D5CC968
+--Apple-Mail=_EB2F5A84-6BCB-4840-8ACF-BC4233606F9F
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Sep 14, 2016, at 1:27 PM, Eric Biggers <ebiggers@google.com> wrote:
+On Sep 14, 2016, at 1:28 PM, Eric Biggers <ebiggers@google.com> wrote:
 >=20
-> An obsolete comment and extra parentheses were left over from when the
-> sb_bgl_lock() macro was replaced with the bgl_lock_ptr() function.
+> We can use ilog2() to more easily produce the desired NR_BG_LOCKS.  =
+This
+> works because ilog2() is evaluated at compile-time when its argument =
+is
+> a compile-time constant.
+>=20
+> I did not change the chosen NR_BG_LOCKS values.
 >=20
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
-> include/linux/blockgroup_lock.h | 6 +-----
-> 1 file changed, 1 insertion(+), 5 deletions(-)
+> include/linux/blockgroup_lock.h | 22 ++--------------------
+> 1 file changed, 2 insertions(+), 20 deletions(-)
 >=20
 > diff --git a/include/linux/blockgroup_lock.h =
 b/include/linux/blockgroup_lock.h
-> index e44b88b..61b583d 100644
+> index 61b583d..225bdb7 100644
 > --- a/include/linux/blockgroup_lock.h
 > +++ b/include/linux/blockgroup_lock.h
-> @@ -49,14 +49,10 @@ static inline void bgl_lock_init(struct =
-blockgroup_lock *bgl)
-> 		spin_lock_init(&bgl->locks[i].lock);
-> }
+> @@ -10,28 +10,10 @@
+> #include <linux/cache.h>
 >=20
+> #ifdef CONFIG_SMP
+> -
 > -/*
-> - * The accessor is a macro so we can embed a blockgroup_lock into =
-different
-> - * superblock types
+> - * We want a power-of-two.  Is there a better way than this?
 > - */
-> static inline spinlock_t *
-> bgl_lock_ptr(struct blockgroup_lock *bgl, unsigned int block_group)
-> {
-> -	return &bgl->locks[(block_group) & (NR_BG_LOCKS-1)].lock;
-> +	return &bgl->locks[block_group & (NR_BG_LOCKS-1)].lock;
-> }
+> -
+> -#if NR_CPUS >=3D 32
+> -#define NR_BG_LOCKS	128
+> -#elif NR_CPUS >=3D 16
+> -#define NR_BG_LOCKS	64
+> -#elif NR_CPUS >=3D 8
+> -#define NR_BG_LOCKS	32
+> -#elif NR_CPUS >=3D 4
+> -#define NR_BG_LOCKS	16
+> -#elif NR_CPUS >=3D 2
+> -#define NR_BG_LOCKS	8
+> +#define NR_BG_LOCKS	(4 << ilog2(NR_CPUS < 32 ? NR_CPUS : 32))
+> #else
+> -#define NR_BG_LOCKS	4
+> -#endif
+> -
+> -#else	/* CONFIG_SMP */
+> #define NR_BG_LOCKS	1
+> -#endif	/* CONFIG_SMP */
+> +#endif
 >=20
-> #endif
+> struct bgl_lock {
+> 	spinlock_t lock;
 > --
 > 2.8.0.rc3.226.g39d4020
 >=20
@@ -68,7 +86,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_16E1F799-E71F-40EF-874D-A8A61D5CC968
+--Apple-Mail=_EB2F5A84-6BCB-4840-8ACF-BC4233606F9F
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -79,19 +97,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBV9m8cXKl2rkXzB/gAQjVfA/5Aexup/Ydt3DXUoDZV3EHKBhL1N+jFdIC
-/zX8q5/dIpOCUx5k3wtqP/SPYQZuDv/M52ITh292WPkjYdg5GFHiAgFwZoOyxhhf
-9sIZMnjyz91XJ4yxEu1hdVVspPEkFyG11H2G4RtbwS/gWd8KKTpFaPXDT18c0Pqx
-okBluod4bOQ3mupAHPOo28+JULsVHa4hdKISALDbOb9tHxwwEKCf2k6sipxymagq
-/lmO1G/kHe+YBYRaBuPNlN6e823RZI8cSrB/ZxTmpyDV/XJWxozM8ZcQ/UaKiNGN
-CKnww1uu9xaARvg63JHxOF4kcexvx1OvK8QrK6gHqrO7SAzsx9vT78VDAPpDnMCe
-H+H1A4gppUZnOaSRzZ6j1xBFrru9rlcHWuJ2Ptx15WMRA7JWFnWMDsSWDaI10Oxi
-MrLKVih8SthnRU5OxwXe5NW3IrpdQNoVRatJlYRYPB4PJta0TuvyoExs6WZxoLJr
-MDbiEy2gR6aqyWxL/HmIbSqGxOSBmAcGdbJJovpV/z8XdKs5IKiYwX1N9zKiawoU
-dqZXd75ILtBrZhdl5yejbw1h7qJ/bgCvfxz7YWDVCTH8P3YsJjEWAtgNi/1AO+q4
-cG7aZMMEceSyBmLqkCBnJfhGtLZLTl3TaxaWfPXMT9bCV7kAu6B7eSg0kHRbIpYm
-KHAJ/RZ86UM=
-=y7ez
+iQIVAwUBV9m8inKl2rkXzB/gAQiCFBAAqcMx2tQxMUS7eHC3diLUxASTX5ZPAsti
+95gf4xROmdPwCN1+/77Qq7ppGpGJBdPgm3mqe+gJijCkSB1t+zfAruh4hQJAp1nN
+TO8QT5WIdXEmtUCck0g4CKv72djgBG55lECD/1YaHspwJ7eM6Z4KDUCEnIIFFts2
+ut1dJVZ9PaSaorITjPwcE9C5bu576K0K2EczELPKnABK0k0fpzhfrm9RLDEPGt4H
+Qfm+UCvtstMPLOSPzti6Mx3ENtaCit4k3T1Sbd05F35Xv0AVn/umSVo1RPjGl14Q
+PQZPwMQxb2ju92oNv9zi4pkmEJ4/9COcnpmNkjdxd+Uy8mbW8bgYRxv+4IzOpZTE
+LgGrxmSffc0PPTe41GAkuEHzmPkbMaqjEGosvUnxHwPntoB+5bMKAFHCOn1wMD5L
+J4maC5gY9FqBLv7xw1c4H0A2jQIO0OEs2GFRJZfB/mlJES7otJfzukiMcy+2Ytr0
+2kU18tNk2EKgnveYNzM6xgVRstrxe3/80Ov3QKvThPS2Jfv2q5ScdjKwShnMFyAZ
+d7WgANCySCBcgQyKWNRLywD+EZTJYd1pnP7uUYklT1OhG9SDxgV6caZUEUKtPqU6
+5LnOxmjLh6O8nZ2PbM2r7Y4OG2VWUPuvfsuCCKZTbxOK0efwnveEo0NyfVW33PBG
+UYT71fpeqoM=
+=bfjg
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_16E1F799-E71F-40EF-874D-A8A61D5CC968--
+--Apple-Mail=_EB2F5A84-6BCB-4840-8ACF-BC4233606F9F--
