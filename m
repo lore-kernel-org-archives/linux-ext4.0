@@ -1,59 +1,67 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] blockgroup_lock.h: simplify definition of NR_BG_LOCKS
-Date: Wed, 14 Sep 2016 12:28:40 -0700
-Message-ID: <1473881320-123184-1-git-send-email-ebiggers@google.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+Subject: [PATCH] fscrypto: remove unnecessary includes
+Date: Wed, 14 Sep 2016 13:57:12 -0700
+Message-ID: <1473886634-24627-1-git-send-email-ebiggers@google.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        tytso@mit.edu, jaegeuk@kernel.org,
         Eric Biggers <ebiggers@google.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We can use ilog2() to more easily produce the desired NR_BG_LOCKS.  This
-works because ilog2() is evaluated at compile-time when its argument is
-a compile-time constant.
-
-I did not change the chosen NR_BG_LOCKS values.
+This patch removes some #includes that are clearly not needed, such as a
+reference to ecryptfs, which is unrelated to the new filesystem
+encryption code.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/blockgroup_lock.h | 22 ++--------------------
- 1 file changed, 2 insertions(+), 20 deletions(-)
+ fs/crypto/crypto.c  | 1 -
+ fs/crypto/fname.c   | 2 --
+ fs/crypto/keyinfo.c | 3 ---
+ 3 files changed, 6 deletions(-)
 
-diff --git a/include/linux/blockgroup_lock.h b/include/linux/blockgroup_lock.h
-index 61b583d..225bdb7 100644
---- a/include/linux/blockgroup_lock.h
-+++ b/include/linux/blockgroup_lock.h
-@@ -10,28 +10,10 @@
- #include <linux/cache.h>
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index c502c11..7c39eab 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -28,7 +28,6 @@
+ #include <linux/dcache.h>
+ #include <linux/namei.h>
+ #include <linux/fscrypto.h>
+-#include <linux/ecryptfs.h>
  
- #ifdef CONFIG_SMP
--
--/*
-- * We want a power-of-two.  Is there a better way than this?
-- */
--
--#if NR_CPUS >= 32
--#define NR_BG_LOCKS	128
--#elif NR_CPUS >= 16
--#define NR_BG_LOCKS	64
--#elif NR_CPUS >= 8
--#define NR_BG_LOCKS	32
--#elif NR_CPUS >= 4
--#define NR_BG_LOCKS	16
--#elif NR_CPUS >= 2
--#define NR_BG_LOCKS	8
-+#define NR_BG_LOCKS	(4 << ilog2(NR_CPUS < 32 ? NR_CPUS : 32))
- #else
--#define NR_BG_LOCKS	4
--#endif
--
--#else	/* CONFIG_SMP */
- #define NR_BG_LOCKS	1
--#endif	/* CONFIG_SMP */
-+#endif
+ static unsigned int num_prealloc_crypto_pages = 32;
+ static unsigned int num_prealloc_crypto_ctxs = 128;
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 5d6d491..3108806 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -10,8 +10,6 @@
+  * This has not yet undergone a rigorous security audit.
+  */
  
- struct bgl_lock {
- 	spinlock_t lock;
+-#include <keys/encrypted-type.h>
+-#include <keys/user-type.h>
+ #include <linux/scatterlist.h>
+ #include <linux/ratelimit.h>
+ #include <linux/fscrypto.h>
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 1ac263e..58b1c82 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -8,11 +8,8 @@
+  * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
+  */
+ 
+-#include <keys/encrypted-type.h>
+ #include <keys/user-type.h>
+-#include <linux/random.h>
+ #include <linux/scatterlist.h>
+-#include <uapi/linux/keyctl.h>
+ #include <linux/fscrypto.h>
+ 
+ static void derive_crypt_complete(struct crypto_async_request *req, int rc)
 -- 
 2.8.0.rc3.226.g39d4020
+
