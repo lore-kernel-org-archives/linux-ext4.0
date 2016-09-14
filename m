@@ -1,206 +1,36 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] fscrypto: improved validation when loading inode
-	encryption metadata
-Date: Mon, 12 Sep 2016 12:24:00 -0700
-Message-ID: <1473708240-39880-1-git-send-email-ebiggers@google.com>
+From: =?UTF-8?Q?Toralf_F=c3=b6rster?= <toralf.foerster@gmx.de>
+Subject: ext4 encrypted dir becomes sickish after 4-5 days
+Date: Wed, 14 Sep 2016 11:44:02 +0200
+Message-ID: <0951cedc-fff1-682c-daca-b9a1734e43e2@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: jaegeuk@kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-- Validate fscrypt_context.format and fscrypt_context.flags.  If
-  unrecognized values are set, then the kernel may not know how to
-  interpret the encrypted file, so it should fail the operation.
+I do run a hardened stable Gentoo Linux server w/ kernel 4.7.3-ahrdened-r1 where I use an ext4fs directory /var/lib/tor in the following way :
 
-- Validate that AES_256_XTS is used for contents and that AES_256_CTS is
-  used for filenames.  It was previously possible for the kernel to
-  accept these reversed, though it would have taken manual editing of
-  the block device.  This was not intended.
+	scp ~/.cryptoSalt user@host:/tmp
+	cat /tmp/.cryptoPass | ssh user@host 'sudo -u tor e4crypt add_key -S $(cat /tmp/.cryptoSalt) /var/lib/tor && sudo /etc/init.d/tor start; rm /tmp/.cryptoSalt'
 
-- Fail cleanly rather than BUG()-ing if a file has an unexpected type.
+Works fine after reboot.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/crypto/keyinfo.c      | 68 ++++++++++++++++++++++++++++++++----------------
- include/linux/fscrypto.h | 24 -----------------
- 2 files changed, 45 insertions(+), 47 deletions(-)
+But after 4 days or so a restart of the service "tor" fails with messages like :
 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 1ac263e..b5374ef 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -139,6 +139,38 @@ out:
- 	return res;
- }
- 
-+static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
-+				 const char **cipher_str_ret, int *keysize_ret)
-+{
-+	if (S_ISREG(inode->i_mode)) {
-+		if (ci->ci_data_mode == FS_ENCRYPTION_MODE_AES_256_XTS) {
-+			*cipher_str_ret = "xts(aes)";
-+			*keysize_ret = FS_AES_256_XTS_KEY_SIZE;
-+			return 0;
-+		}
-+		pr_warn_once("fscrypto: unsupported contents encryption mode "
-+			     "%d for inode %lu\n",
-+			     ci->ci_data_mode, inode->i_ino);
-+		return -ENOKEY;
-+	}
-+
-+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) {
-+		if (ci->ci_filename_mode == FS_ENCRYPTION_MODE_AES_256_CTS) {
-+			*cipher_str_ret = "cts(cbc(aes))";
-+			*keysize_ret = FS_AES_256_CTS_KEY_SIZE;
-+			return 0;
-+		}
-+		pr_warn_once("fscrypto: unsupported filenames encryption mode "
-+			     "%d for inode %lu\n",
-+			     ci->ci_filename_mode, inode->i_ino);
-+		return -ENOKEY;
-+	}
-+
-+	pr_warn_once("fscrypto: unsupported file type %d for inode %lu\n",
-+		     (inode->i_mode & S_IFMT), inode->i_ino);
-+	return -ENOKEY;
-+}
-+
- static void put_crypt_info(struct fscrypt_info *ci)
- {
- 	if (!ci)
-@@ -155,8 +187,8 @@ int get_crypt_info(struct inode *inode)
- 	struct fscrypt_context ctx;
- 	struct crypto_skcipher *ctfm;
- 	const char *cipher_str;
-+	int keysize;
- 	u8 raw_key[FS_MAX_KEY_SIZE];
--	u8 mode;
- 	int res;
- 
- 	res = fscrypt_initialize();
-@@ -179,13 +211,19 @@ retry:
- 	if (res < 0) {
- 		if (!fscrypt_dummy_context_enabled(inode))
- 			return res;
-+		ctx.format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
- 		ctx.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
- 		ctx.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
- 		ctx.flags = 0;
- 	} else if (res != sizeof(ctx)) {
- 		return -EINVAL;
- 	}
--	res = 0;
-+
-+	if (ctx.format != FS_ENCRYPTION_CONTEXT_FORMAT_V1)
-+		return -EINVAL;
-+
-+	if (ctx.flags & ~FS_POLICY_FLAGS_VALID)
-+		return -EINVAL;
- 
- 	crypt_info = kmem_cache_alloc(fscrypt_info_cachep, GFP_NOFS);
- 	if (!crypt_info)
-@@ -198,27 +236,11 @@ retry:
- 	crypt_info->ci_keyring_key = NULL;
- 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
- 				sizeof(crypt_info->ci_master_key));
--	if (S_ISREG(inode->i_mode))
--		mode = crypt_info->ci_data_mode;
--	else if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
--		mode = crypt_info->ci_filename_mode;
--	else
--		BUG();
--
--	switch (mode) {
--	case FS_ENCRYPTION_MODE_AES_256_XTS:
--		cipher_str = "xts(aes)";
--		break;
--	case FS_ENCRYPTION_MODE_AES_256_CTS:
--		cipher_str = "cts(cbc(aes))";
--		break;
--	default:
--		printk_once(KERN_WARNING
--			    "%s: unsupported key mode %d (ino %u)\n",
--			    __func__, mode, (unsigned) inode->i_ino);
--		res = -ENOKEY;
-+
-+	res = determine_cipher_type(crypt_info, inode, &cipher_str, &keysize);
-+	if (res)
- 		goto out;
--	}
-+
- 	if (fscrypt_dummy_context_enabled(inode)) {
- 		memset(raw_key, 0x42, FS_AES_256_XTS_KEY_SIZE);
- 		goto got_key;
-@@ -253,7 +275,7 @@ got_key:
- 	crypt_info->ci_ctfm = ctfm;
- 	crypto_skcipher_clear_flags(ctfm, ~0);
- 	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
--	res = crypto_skcipher_setkey(ctfm, raw_key, fscrypt_key_size(mode));
-+	res = crypto_skcipher_setkey(ctfm, raw_key, keysize);
- 	if (res)
- 		goto out;
- 
-diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
-index cfa6cde..00813c2 100644
---- a/include/linux/fscrypto.h
-+++ b/include/linux/fscrypto.h
-@@ -111,23 +111,6 @@ struct fscrypt_completion_result {
- 	struct fscrypt_completion_result ecr = { \
- 		COMPLETION_INITIALIZER((ecr).completion), 0 }
- 
--static inline int fscrypt_key_size(int mode)
--{
--	switch (mode) {
--	case FS_ENCRYPTION_MODE_AES_256_XTS:
--		return FS_AES_256_XTS_KEY_SIZE;
--	case FS_ENCRYPTION_MODE_AES_256_GCM:
--		return FS_AES_256_GCM_KEY_SIZE;
--	case FS_ENCRYPTION_MODE_AES_256_CBC:
--		return FS_AES_256_CBC_KEY_SIZE;
--	case FS_ENCRYPTION_MODE_AES_256_CTS:
--		return FS_AES_256_CTS_KEY_SIZE;
--	default:
--		BUG();
--	}
--	return 0;
--}
--
- #define FS_FNAME_NUM_SCATTER_ENTRIES	4
- #define FS_CRYPTO_BLOCK_SIZE		16
- #define FS_FNAME_CRYPTO_DIGEST_SIZE	32
-@@ -202,13 +185,6 @@ static inline bool fscrypt_valid_filenames_enc_mode(u32 mode)
- 	return (mode == FS_ENCRYPTION_MODE_AES_256_CTS);
- }
- 
--static inline u32 fscrypt_validate_encryption_key_size(u32 mode, u32 size)
--{
--	if (size == fscrypt_key_size(mode))
--		return size;
--	return 0;
--}
--
- static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
- {
- 	if (str->len == 1 && str->name[0] == '.')
+Sep 14 11:27:10.000 [warn] Could not open "/var/lib/tor/data/keys/secret_id_key": Required key not available
+Sep 14 11:27:10.000 [warn] Error reading private key from "/var/lib/tor/data/keys/secret_id_key"
+Sep 14 11:27:10.000 [err] Error loading private key.
+Sep 14 11:27:10.000 [err] Error initializing keys; exiting
+Sep 14 11:27:10.000 [warn] Couldn't open "/var/lib/tor/data/state.tmp" (/var/lib/tor/data/state) for writing: Required key not available
+Sep 14 11:27:10.000 [warn] Unable to write state to file "/var/lib/tor/data/state"; will try again later
+
+No way to get it repaired other than rebooting the machine.
+
+Any hints  ?
+
 -- 
-2.8.0.rc3.226.g39d4020
-
-
-------------------------------------------------------------------------------
-What NetFlow Analyzer can do for you? Monitors network bandwidth and traffic
-patterns at an interface-level. Reveals which users, apps, and protocols are 
-consuming the most bandwidth. Provides multi-vendor support for NetFlow, 
-J-Flow, sFlow and other flows. Make informed decisions using capacity 
-planning reports. http://sdm.link/zohodev2dev
+Toralf
+PGP: C4EACDDE 0076E94E, OTR: 420E74C8 30246EE7
