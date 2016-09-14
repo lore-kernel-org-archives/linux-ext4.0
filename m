@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] blockgroup_lock.h: remove debris from bgl_lock_ptr() conversion
-Date: Wed, 14 Sep 2016 12:27:59 -0700
-Message-ID: <1473881279-122959-1-git-send-email-ebiggers@google.com>
+Subject: [PATCH] blockgroup_lock.h: simplify definition of NR_BG_LOCKS
+Date: Wed, 14 Sep 2016 12:28:40 -0700
+Message-ID: <1473881320-123184-1-git-send-email-ebiggers@google.com>
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         Eric Biggers <ebiggers@google.com>
 To: tytso@mit.edu, adilger.kernel@dilger.ca
@@ -9,33 +9,51 @@ Return-path: <linux-kernel-owner@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-An obsolete comment and extra parentheses were left over from when the
-sb_bgl_lock() macro was replaced with the bgl_lock_ptr() function.
+We can use ilog2() to more easily produce the desired NR_BG_LOCKS.  This
+works because ilog2() is evaluated at compile-time when its argument is
+a compile-time constant.
+
+I did not change the chosen NR_BG_LOCKS values.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/blockgroup_lock.h | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ include/linux/blockgroup_lock.h | 22 ++--------------------
+ 1 file changed, 2 insertions(+), 20 deletions(-)
 
 diff --git a/include/linux/blockgroup_lock.h b/include/linux/blockgroup_lock.h
-index e44b88b..61b583d 100644
+index 61b583d..225bdb7 100644
 --- a/include/linux/blockgroup_lock.h
 +++ b/include/linux/blockgroup_lock.h
-@@ -49,14 +49,10 @@ static inline void bgl_lock_init(struct blockgroup_lock *bgl)
- 		spin_lock_init(&bgl->locks[i].lock);
- }
+@@ -10,28 +10,10 @@
+ #include <linux/cache.h>
  
+ #ifdef CONFIG_SMP
+-
 -/*
-- * The accessor is a macro so we can embed a blockgroup_lock into different
-- * superblock types
+- * We want a power-of-two.  Is there a better way than this?
 - */
- static inline spinlock_t *
- bgl_lock_ptr(struct blockgroup_lock *bgl, unsigned int block_group)
- {
--	return &bgl->locks[(block_group) & (NR_BG_LOCKS-1)].lock;
-+	return &bgl->locks[block_group & (NR_BG_LOCKS-1)].lock;
- }
+-
+-#if NR_CPUS >= 32
+-#define NR_BG_LOCKS	128
+-#elif NR_CPUS >= 16
+-#define NR_BG_LOCKS	64
+-#elif NR_CPUS >= 8
+-#define NR_BG_LOCKS	32
+-#elif NR_CPUS >= 4
+-#define NR_BG_LOCKS	16
+-#elif NR_CPUS >= 2
+-#define NR_BG_LOCKS	8
++#define NR_BG_LOCKS	(4 << ilog2(NR_CPUS < 32 ? NR_CPUS : 32))
+ #else
+-#define NR_BG_LOCKS	4
+-#endif
+-
+-#else	/* CONFIG_SMP */
+ #define NR_BG_LOCKS	1
+-#endif	/* CONFIG_SMP */
++#endif
  
- #endif
+ struct bgl_lock {
+ 	spinlock_t lock;
 -- 
 2.8.0.rc3.226.g39d4020
