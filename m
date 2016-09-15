@@ -1,68 +1,189 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 34/41] ext4: handle huge pages in ext4_da_write_end()
-Date: Thu, 15 Sep 2016 14:55:16 +0300
-Message-ID: <20160915115523.29737-35-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 36/41] ext4: handle writeback with huge pages
+Date: Thu, 15 Sep 2016 14:55:18 +0300
+Message-ID: <20160915115523.29737-37-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Call ext4_da_should_update_i_disksize() for head page with offset
-relative to head page.
+Modify mpage_map_and_submit_buffers() and mpage_release_unused_pages()
+to deal with huge pages.
+
+Mostly result of try-and-error. Critical view would be appriciated.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 61 ++++++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 43 insertions(+), 18 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 31560b52eff2..deacd3499ec7 100644
+index 6a8da1a8409c..f2e34e340e65 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3006,7 +3006,6 @@ static int ext4_da_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
--	unsigned long start, end;
- 	int write_mode = (int)(unsigned long)fsdata;
+@@ -1652,18 +1652,30 @@ static void mpage_release_unused_pages(struct mpage_da_data *mpd,
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+-			struct page *page = pvec.pages[i];
++			struct page *page = compound_head(pvec.pages[i]);
++
+ 			if (page->index > end)
+ 				break;
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
+ 			if (invalidate) {
+-				block_invalidatepage(page, 0, PAGE_SIZE);
++				unsigned long offset, len;
++
++				offset = (index % hpage_nr_pages(page));
++				len = min_t(unsigned long, end - page->index,
++						hpage_nr_pages(page));
++
++				block_invalidatepage(page, offset << PAGE_SHIFT,
++						len << PAGE_SHIFT);
+ 				ClearPageUptodate(page);
+ 			}
+ 			unlock_page(page);
++			if (PageTransHuge(page))
++				break;
+ 		}
+-		index = pvec.pages[nr_pages - 1]->index + 1;
++		index = page_to_pgoff(pvec.pages[nr_pages - 1]) + 1;
++		if (PageTransCompound(pvec.pages[nr_pages - 1]))
++			index = round_up(index, HPAGE_PMD_NR);
+ 		pagevec_release(&pvec);
+ 	}
+ }
+@@ -2097,16 +2109,16 @@ static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
+ 	loff_t size = i_size_read(mpd->inode);
+ 	int err;
  
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC)
-@@ -3014,8 +3013,6 @@ static int ext4_da_write_end(struct file *file,
- 				      len, copied, page, fsdata);
+-	BUG_ON(page->index != mpd->first_page);
+-	if (page->index == size >> PAGE_SHIFT)
+-		len = size & ~PAGE_MASK;
+-	else
+-		len = PAGE_SIZE;
++	page = compound_head(page);
++	len = hpage_size(page);
++	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
++		len = size & ~hpage_mask(page);
++
+ 	clear_page_dirty_for_io(page);
+ 	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
+ 	if (!err)
+-		mpd->wbc->nr_to_write--;
+-	mpd->first_page++;
++		mpd->wbc->nr_to_write -= hpage_nr_pages(page);
++	mpd->first_page = round_up(mpd->first_page + 1, hpage_nr_pages(page));
  
- 	trace_ext4_da_write_end(inode, pos, len, copied);
--	start = pos & (PAGE_SIZE - 1);
--	end = start + copied - 1;
+ 	return err;
+ }
+@@ -2254,12 +2266,16 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
++			unsigned long diff;
  
- 	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -3024,8 +3021,10 @@ static int ext4_da_write_end(struct file *file,
- 	 */
- 	new_i_size = pos + copied;
- 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
-+		struct page *head = compound_head(page);
-+		unsigned long end = (pos & ~hpage_mask(head)) + copied - 1;
- 		if (ext4_has_inline_data(inode) ||
--		    ext4_da_should_update_i_disksize(page, end)) {
-+		    ext4_da_should_update_i_disksize(head, end)) {
- 			ext4_update_i_disksize(inode, new_i_size);
- 			/* We need to mark inode dirty even if
- 			 * new_i_size is less that inode->i_size
+-			if (page->index > end)
++			if (page_to_pgoff(page) > end)
+ 				break;
+ 			/* Up to 'end' pages must be contiguous */
+-			BUG_ON(page->index != start);
++			BUG_ON(page_to_pgoff(page) != start);
++			diff = (page - compound_head(page)) << bpp_bits;
+ 			bh = head = page_buffers(page);
++			while (diff--)
++				bh = bh->b_this_page;
+ 			do {
+ 				if (lblk < mpd->map.m_lblk)
+ 					continue;
+@@ -2296,7 +2312,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			 * supports blocksize < pagesize as we will try to
+ 			 * convert potentially unmapped parts of inode.
+ 			 */
+-			mpd->io_submit.io_end->size += PAGE_SIZE;
++			if (PageTransCompound(page))
++				mpd->io_submit.io_end->size += HPAGE_PMD_SIZE;
++			else
++				mpd->io_submit.io_end->size += PAGE_SIZE;
+ 			/* Page fully mapped - let IO run! */
+ 			err = mpage_submit_page(mpd, page);
+ 			if (err < 0) {
+@@ -2304,6 +2323,10 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 				return err;
+ 			}
+ 			start++;
++			if (PageTransCompound(page)) {
++				start = round_up(start, HPAGE_PMD_NR);
++				break;
++			}
+ 		}
+ 		pagevec_release(&pvec);
+ 	}
+@@ -2543,7 +2566,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * mapping. However, page->index will not change
+ 			 * because we have a reference on the page.
+ 			 */
+-			if (page->index > end)
++			if (page_to_pgoff(page) > end)
+ 				goto out;
+ 
+ 			/*
+@@ -2558,7 +2581,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 				goto out;
+ 
+ 			/* If we can't merge this page, we are done. */
+-			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
++			if (mpd->map.m_len > 0 && mpd->next_page != page_to_pgoff(page))
+ 				goto out;
+ 
+ 			lock_page(page);
+@@ -2572,7 +2595,7 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			if (!PageDirty(page) ||
+ 			    (PageWriteback(page) &&
+ 			     (mpd->wbc->sync_mode == WB_SYNC_NONE)) ||
+-			    unlikely(page->mapping != mapping)) {
++			    unlikely(page_mapping(page) != mapping)) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -2581,8 +2604,10 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			BUG_ON(PageWriteback(page));
+ 
+ 			if (mpd->map.m_len == 0)
+-				mpd->first_page = page->index;
+-			mpd->next_page = page->index + 1;
++				mpd->first_page = page_to_pgoff(page);
++			page = compound_head(page);
++			mpd->next_page = round_up(page->index + 1,
++					hpage_nr_pages(page));
+ 			/* Add all dirty buffers to mpd */
+ 			lblk = ((ext4_lblk_t)page->index) <<
+ 				(PAGE_SHIFT - blkbits);
 -- 
 2.9.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
