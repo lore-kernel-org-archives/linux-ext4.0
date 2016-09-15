@@ -1,34 +1,61 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: improve ext4lazyinit scalability V2
-Date: Thu, 15 Sep 2016 11:22:04 -0400
-Message-ID: <20160915152204.eryra42mtigl5aru@thunk.org>
-References: <1471263815-26022-1-git-send-email-dmonakhov@openvz.org>
- <20160815150520.GA22082@quack2.suse.cz>
- <20160906033954.k22xaasbn26s4wo4@thunk.org>
- <20160906083608.GB28922@quack2.suse.cz>
- <87poohcq96.fsf@dmlp.Dlink>
+Subject: Re: [RESEND PATCH]ext4: bugfix for mmaped pages in
+ mpage_release_unused_pages()
+Date: Thu, 15 Sep 2016 11:34:08 -0400
+Message-ID: <20160915153408.qvhtcymmvkfdlvfj@thunk.org>
+References: <OF1131FC37.F6A9396B-ON48258026.002F1164-48258026.00306F86@zte.com.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Dmitry Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org
+To: wang.guang55@zte.com.cn
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55614 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:55688 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753342AbcIOPW5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Sep 2016 11:22:57 -0400
+        id S1750922AbcIOPeq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Sep 2016 11:34:46 -0400
 Content-Disposition: inline
-In-Reply-To: <87poohcq96.fsf@dmlp.Dlink>
+In-Reply-To: <OF1131FC37.F6A9396B-ON48258026.002F1164-48258026.00306F86@zte.com.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 06, 2016 at 12:49:09PM +0300, Dmitry Monakhov wrote:
-> > ext4_run_li_request() can also update elr->lr_next_sched. So we need to
-> > update next_wakeup even in progress == 1 case (i.e., I'd leave the update
-> > of next_wakeup as is in the old code...). Otherwise the patch looks good.
-> Yes. That is correct. Simply last hank shoul not be deleted.
+On Tue, Sep 06, 2016 at 04:49:17PM +0800, wang.guang55@zte.com.cn wrote:
+> ext4: bugfix for mmaped pages  in mpage_release_unused_pages()
 > 
-> Theodore, please fold patch attached to original one.
+> Pages clear buffers after ext4 delayed block allocation failed,
+> However, it does not clean its pte_dirty flag.
+> if the pages unmap ,in cording to the pte_dirty ,
+> unmap_page_range may try to call __set_page_dirty,
+> 
+> which may lead to the bugon at 
+> mpage_prepare_extent_to_map:head = page_buffers(page);.
+> 
+> This patch just call clear_page_dirty_for_io to clean pte_dirty 
+> at mpage_release_unused_pages for pages mmaped. 
+> 
+>  
+> Steps to reproduce the bug:
+> （1） mmap a file in ext4
+> addr = (char *)mmap(NULL, 4096, 
+>         PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+>  memset(addr, 'i', 4096);
+> （2） return EIO at 
+> ext4_writepages->mpage_map_and_submit_extent->mpage_map_one_extent 
+> Cause the log:
+>                 ext4_msg(sb, KERN_CRIT,
+>                         "Delayed block allocation failed for "
+>                         "inode %lu at logical offset %llu with"
+>                         " max blocks %u with error %d",
+>                         inode->i_ino,
+>                         (unsigned long long)map->m_lblk,
+>                         (unsigned)map->m_len, -err);
+> 
+> (3）Unmap the addr cause warning at 
+> __set_page_dirty:WARN_ON_ONCE(warn && !PageUptodate(page));
+> (4) wait for a minute,then bugon happen.
+> 
+> Signed-off-by: wangguang <wangguang03@zte.com>
 
-Done, thanks!!
+Thanks, applied.   Apologies for the delay.
 
-					- Ted
+						- Ted
