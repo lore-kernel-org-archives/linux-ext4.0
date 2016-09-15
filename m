@@ -1,97 +1,76 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 39/41] ext4: make fallocate() operations work with huge pages
-Date: Thu, 15 Sep 2016 14:55:21 +0300
-Message-ID: <20160915115523.29737-40-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 25/41] fs: make block_page_mkwrite() aware about huge pages
+Date: Thu, 15 Sep 2016 14:55:07 +0300
+Message-ID: <20160915115523.29737-26-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga06.intel.com ([134.134.136.31]:59068 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934807AbcIOL4v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Sep 2016 07:56:51 -0400
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-__ext4_block_zero_page_range() adjusted to calculate starting iblock
-correctry for huge pages.
-
-ext4_{collapse,insert}_range() requires page cache invalidation. We need
-the invalidation to be aligning to huge page border if huge pages are
-possible in page cache.
+Adjust check on whether part of the page beyond file size and apply
+compound_head() and page_mapping() where appropriate.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/extents.c | 10 ++++++++--
- fs/ext4/inode.c   |  3 +--
- 2 files changed, 9 insertions(+), 4 deletions(-)
+ fs/buffer.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d7ccb7f51dfc..d46aeda70fb0 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5525,7 +5525,10 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * Need to round down offset to be aligned with page size boundary
- 	 * for page size > block size.
- 	 */
--	ioffset = round_down(offset, PAGE_SIZE);
-+	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
-+		ioffset = round_down(offset, HPAGE_PMD_SIZE);
-+	else
-+		ioffset = round_down(offset, PAGE_SIZE);
- 	/*
- 	 * Write tail of the last page before removed range since it will get
- 	 * removed from the page cache below.
-@@ -5674,7 +5677,10 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * Need to round down to align start offset to page size boundary
- 	 * for page size > block size.
- 	 */
--	ioffset = round_down(offset, PAGE_SIZE);
-+	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
-+		ioffset = round_down(offset, HPAGE_PMD_SIZE);
-+	else
-+		ioffset = round_down(offset, PAGE_SIZE);
- 	/* Write out all dirty pages */
- 	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
- 			LLONG_MAX);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f2e34e340e65..645a984a15ef 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3711,7 +3711,6 @@ void ext4_set_aops(struct inode *inode)
- static int __ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 7f50e5a63670..e53808e790e2 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2502,7 +2502,7 @@ EXPORT_SYMBOL(block_commit_write);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 			 get_block_t get_block)
  {
--	ext4_fsblk_t index = from >> PAGE_SHIFT;
- 	unsigned offset;
- 	unsigned blocksize, pos;
- 	ext4_lblk_t iblock;
-@@ -3730,7 +3729,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	unsigned long end;
+ 	loff_t size;
+@@ -2510,7 +2510,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  
- 	blocksize = inode->i_sb->s_blocksize;
+ 	lock_page(page);
+ 	size = i_size_read(inode);
+-	if ((page->mapping != inode->i_mapping) ||
++	if ((page_mapping(page) != inode->i_mapping) ||
+ 	    (page_offset(page) > size)) {
+ 		/* We overload EFAULT to mean page got truncated */
+ 		ret = -EFAULT;
+@@ -2518,10 +2518,10 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	}
  
--	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
-+	iblock = page->index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
+ 	/* page is wholly or partially inside EOF */
+-	if (((page->index + 1) << PAGE_SHIFT) > size)
+-		end = size & ~PAGE_MASK;
++	if (((page->index + hpage_nr_pages(page)) << PAGE_SHIFT) > size)
++		end = size & ~hpage_mask(page);
+ 	else
+-		end = PAGE_SIZE;
++		end = hpage_size(page);
  
- 	if (!page_has_buffers(page))
- 		create_empty_buffers(page, blocksize, 0);
+ 	ret = __block_write_begin(page, 0, end, get_block);
+ 	if (!ret)
 -- 
 2.9.3
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
