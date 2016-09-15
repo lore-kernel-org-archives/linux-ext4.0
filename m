@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 37/41] ext4: make EXT4_IOC_MOVE_EXT work with huge pages
-Date: Thu, 15 Sep 2016 14:55:19 +0300
-Message-ID: <20160915115523.29737-38-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 33/41] ext4: make ext4_block_write_begin() aware about huge pages
+Date: Thu, 15 Sep 2016 14:55:15 +0300
+Message-ID: <20160915115523.29737-34-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,61 +25,63 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Adjust how we find relevant block within page and how we clear the
-required part of the page.
+It simply matches changes to __block_write_begin_int().
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/move_extent.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index a920c5d29fac..f3efdd0e0eaf 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -210,7 +210,9 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
- 				return err;
- 			}
- 			if (!buffer_mapped(bh)) {
--				zero_user(page, block_start, blocksize);
-+				zero_user(page + block_start / PAGE_SIZE,
-+						block_start % PAGE_SIZE,
-+						blocksize);
- 				set_buffer_uptodate(bh);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a07c055d8e78..31560b52eff2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1079,9 +1079,8 @@ int do_journal_get_write_access(handle_t *handle,
+ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 				  get_block_t *get_block)
+ {
+-	unsigned from = pos & (PAGE_SIZE - 1);
+-	unsigned to = from + len;
+-	struct inode *inode = page->mapping->host;
++	unsigned from, to;
++	struct inode *inode = page_mapping(page)->host;
+ 	unsigned block_start, block_end;
+ 	sector_t block;
+ 	int err = 0;
+@@ -1090,9 +1089,12 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
+ 	bool decrypt = false;
+ 
++	page = compound_head(page);
++	from = pos & ~hpage_mask(page);
++	to = from + len;
+ 	BUG_ON(!PageLocked(page));
+-	BUG_ON(from > PAGE_SIZE);
+-	BUG_ON(to > PAGE_SIZE);
++	BUG_ON(from > hpage_size(page));
++	BUG_ON(to > hpage_size(page));
+ 	BUG_ON(from > to);
+ 
+ 	if (!page_has_buffers(page))
+@@ -1127,9 +1129,15 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 					mark_buffer_dirty(bh);
+ 					continue;
+ 				}
+-				if (block_end > to || block_start < from)
+-					zero_user_segments(page, to, block_end,
+-							   block_start, from);
++				if (block_end > to || block_start < from) {
++					BUG_ON(to - from  > PAGE_SIZE);
++					zero_user_segments(page +
++							block_start / PAGE_SIZE,
++							to % PAGE_SIZE,
++							(block_start % PAGE_SIZE) + blocksize,
++							block_start % PAGE_SIZE,
++							from % PAGE_SIZE);
++				}
  				continue;
  			}
-@@ -267,10 +269,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 	unsigned int tmp_data_size, data_size, replaced_size;
- 	int i, err2, jblocks, retries = 0;
- 	int replaced_count = 0;
--	int from = data_offset_in_page << orig_inode->i_blkbits;
-+	int from;
- 	int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
- 	struct super_block *sb = orig_inode->i_sb;
- 	struct buffer_head *bh = NULL;
-+	int diff;
- 
- 	/*
- 	 * It needs twice the amount of ordinary journal buffers because
-@@ -355,6 +358,9 @@ again:
- 		goto unlock_pages;
- 	}
- data_copy:
-+	diff = (pagep[0] - compound_head(pagep[0])) * blocks_per_page;
-+	from = (data_offset_in_page + diff) << orig_inode->i_blkbits;
-+	pagep[0] = compound_head(pagep[0]);
- 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
- 	if (*err)
- 		goto unlock_pages;
-@@ -384,7 +390,7 @@ data_copy:
- 	if (!page_has_buffers(pagep[0]))
- 		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
- 	bh = page_buffers(pagep[0]);
--	for (i = 0; i < data_offset_in_page; i++)
-+	for (i = 0; i < data_offset_in_page + diff; i++)
- 		bh = bh->b_this_page;
- 	for (i = 0; i < block_len_in_page; i++) {
- 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
+ 		}
 -- 
 2.9.3
 
