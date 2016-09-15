@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 20/41] mm: make write_cache_pages() work on huge pages
-Date: Thu, 15 Sep 2016 14:55:02 +0300
-Message-ID: <20160915115523.29737-21-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 41/41] ext4, vfs: add huge= mount option
+Date: Thu, 15 Sep 2016 14:55:23 +0300
+Message-ID: <20160915115523.29737-42-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,95 +25,157 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We writeback whole huge page a time. Let's adjust iteration this way.
+The same four values as in tmpfs case.
+
+Encyption code is not yet ready to handle huge page, so we disable huge
+pages support if the inode has EXT4_INODE_ENCRYPT.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/mm.h      |  1 +
- include/linux/pagemap.h |  1 +
- mm/page-writeback.c     | 17 ++++++++++++-----
- 3 files changed, 14 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h  |  5 +++++
+ fs/ext4/inode.c | 26 +++++++++++++++++++++-----
+ fs/ext4/super.c | 26 ++++++++++++++++++++++++++
+ 3 files changed, 52 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index ef815b9cd426..44e55d1c8e41 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1054,6 +1054,7 @@ struct address_space *page_file_mapping(struct page *page)
-  */
- static inline pgoff_t page_index(struct page *page)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ea31931386ec..feece2d1f646 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1123,6 +1123,11 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
++#define EXT4_MOUNT_HUGE_MODE		0x6000000 /* Huge support mode: */
++#define EXT4_MOUNT_HUGE_NEVER		0x0000000
++#define EXT4_MOUNT_HUGE_ALWAYS		0x2000000
++#define EXT4_MOUNT_HUGE_WITHIN_SIZE	0x4000000
++#define EXT4_MOUNT_HUGE_ADVISE		0x6000000
+ #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ff995083856b..fd243e9f7c29 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4369,7 +4369,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ void ext4_set_inode_flags(struct inode *inode)
  {
-+	page = compound_head(page);
- 	if (unlikely(PageSwapCache(page)))
- 		return page_private(page);
- 	return page->index;
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index a84f11a672f0..4d6e9aec2d1f 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -518,6 +518,7 @@ static inline void wait_on_page_locked(struct page *page)
-  */
- static inline void wait_on_page_writeback(struct page *page)
- {
-+	page = compound_head(page);
- 	if (PageWriteback(page))
- 		wait_on_page_bit(page, PG_writeback);
+ 	unsigned int flags = EXT4_I(inode)->i_flags;
+-	unsigned int new_fl = 0;
++	unsigned int mask, new_fl = 0;
+ 
+ 	if (flags & EXT4_SYNC_FL)
+ 		new_fl |= S_SYNC;
+@@ -4381,10 +4381,26 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+-		new_fl |= S_DAX;
+-	inode_set_flags(inode, new_fl,
+-			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
++	if (S_ISREG(inode->i_mode) && !ext4_encrypted_inode(inode)) {
++		if (test_opt(inode->i_sb, DAX))
++			new_fl |= S_DAX;
++		switch (test_opt(inode->i_sb, HUGE_MODE)) {
++		case EXT4_MOUNT_HUGE_NEVER:
++			break;
++		case EXT4_MOUNT_HUGE_ALWAYS:
++			new_fl |= S_HUGE_ALWAYS;
++			break;
++		case EXT4_MOUNT_HUGE_WITHIN_SIZE:
++			new_fl |= S_HUGE_WITHIN_SIZE;
++			break;
++		case EXT4_MOUNT_HUGE_ADVISE:
++			new_fl |= S_HUGE_ADVISE;
++			break;
++		}
++	}
++	mask = S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME |
++		S_DIRSYNC | S_DAX | S_HUGE_MODE;
++	inode_set_flags(inode, new_fl, mask);
  }
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index f4cd7d8005c9..6390c9488e29 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2242,7 +2242,7 @@ retry:
- 			 * mapping. However, page->index will not change
- 			 * because we have a reference on the page.
- 			 */
--			if (page->index > end) {
-+			if (page_to_pgoff(page) > end) {
- 				/*
- 				 * can't be range_cyclic (1st pass) because
- 				 * end == -1 in that case.
-@@ -2251,7 +2251,12 @@ retry:
- 				break;
- 			}
  
--			done_index = page->index;
-+			done_index = page_to_pgoff(page);
-+			if (PageTransCompound(page)) {
-+				index = round_up(index + 1, HPAGE_PMD_NR);
-+				i += HPAGE_PMD_NR -
-+					done_index % HPAGE_PMD_NR - 1;
-+			}
+ /* Propagate flags from i_flags to EXT4_I(inode)->i_flags */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3ec8708989ca..392c30925052 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1123,6 +1123,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+ 			ext4_clear_inode_state(inode,
+ 					EXT4_STATE_MAY_INLINE_DATA);
++			ext4_set_inode_flags(inode);
+ 		}
+ 		return res;
+ 	}
+@@ -1137,6 +1138,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			len, 0);
+ 	if (!res) {
+ 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
++		ext4_set_inode_flags(inode);
+ 		res = ext4_mark_inode_dirty(handle, inode);
+ 		if (res)
+ 			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
+@@ -1275,6 +1277,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum,
++	Opt_huge_never, Opt_huge_always, Opt_huge_within_size, Opt_huge_advise,
+ };
  
- 			lock_page(page);
+ static const match_table_t tokens = {
+@@ -1354,6 +1357,10 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
+ 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
++	{Opt_huge_never, "huge=never"},
++	{Opt_huge_always, "huge=always"},
++	{Opt_huge_within_size, "huge=within_size"},
++	{Opt_huge_advise, "huge=advise"},
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+@@ -1472,6 +1479,11 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+ #define MOPT_NO_EXT3	0x0200
+ #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
+ #define MOPT_STRING	0x0400
++#ifdef CONFIG_TRANSPARENT_HUGE_PAGECACHE
++#define MOPT_HUGE	0x1000
++#else
++#define MOPT_HUGE	MOPT_NOSUPPORT
++#endif
  
-@@ -2263,7 +2268,7 @@ retry:
- 			 * even if there is now a new, dirty page at the same
- 			 * pagecache address.
- 			 */
--			if (unlikely(page->mapping != mapping)) {
-+			if (unlikely(page_mapping(page) != mapping)) {
- continue_unlock:
- 				unlock_page(page);
- 				continue;
-@@ -2301,7 +2306,8 @@ continue_unlock:
- 					 * not be suitable for data integrity
- 					 * writeout).
- 					 */
--					done_index = page->index + 1;
-+					done_index = compound_head(page)->index
-+						+ hpage_nr_pages(page);
- 					done = 1;
- 					break;
- 				}
-@@ -2313,7 +2319,8 @@ continue_unlock:
- 			 * keep going until we have written all the pages
- 			 * we tagged for writeback prior to entering this loop.
- 			 */
--			if (--wbc->nr_to_write <= 0 &&
-+			wbc->nr_to_write -= hpage_nr_pages(page);
-+			if (wbc->nr_to_write <= 0 &&
- 			    wbc->sync_mode == WB_SYNC_NONE) {
- 				done = 1;
- 				break;
+ static const struct mount_opts {
+ 	int	token;
+@@ -1556,6 +1568,10 @@ static const struct mount_opts {
+ 	{Opt_jqfmt_vfsv0, QFMT_VFS_V0, MOPT_QFMT},
+ 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
++	{Opt_huge_never, EXT4_MOUNT_HUGE_NEVER, MOPT_HUGE},
++	{Opt_huge_always, EXT4_MOUNT_HUGE_ALWAYS, MOPT_HUGE},
++	{Opt_huge_within_size, EXT4_MOUNT_HUGE_WITHIN_SIZE, MOPT_HUGE},
++	{Opt_huge_advise, EXT4_MOUNT_HUGE_ADVISE, MOPT_HUGE},
+ 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
+ 	{Opt_err, 0, 0}
+ };
+@@ -1637,6 +1653,16 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 		} else
+ 			return -1;
+ 	}
++	if (MOPT_HUGE != MOPT_NOSUPPORT && m->flags & MOPT_HUGE) {
++		sbi->s_mount_opt &= ~EXT4_MOUNT_HUGE_MODE;
++		sbi->s_mount_opt |= m->mount_opt;
++		if (m->mount_opt) {
++			ext4_msg(sb, KERN_WARNING, "Warning: "
++					"Support of huge pages is EXPERIMENTAL,"
++					" use at your own risk");
++		}
++		return 1;
++	}
+ 	if (m->flags & MOPT_CLEAR_ERR)
+ 		clear_opt(sb, ERRORS_MASK);
+ 	if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
 -- 
 2.9.3
 
