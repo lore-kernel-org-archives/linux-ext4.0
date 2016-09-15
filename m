@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 06/41] radix-tree: Handle multiorder entries being deleted by replace_clear_tags
-Date: Thu, 15 Sep 2016 14:54:48 +0300
-Message-ID: <20160915115523.29737-7-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 38/41] ext4: fix SEEK_DATA/SEEK_HOLE for huge pages
+Date: Thu, 15 Sep 2016 14:55:20 +0300
+Message-ID: <20160915115523.29737-39-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
         Hugh Dickins <hughd@google.com>,
@@ -13,67 +13,84 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-block@vger.kernel.org,
-        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.com>,
         Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-block-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: linux-block-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Matthew Wilcox <willy@infradead.org>
+ext4_find_unwritten_pgoff() needs few tweaks to work with huge pages.
+Mostly trivial page_mapping()/page_to_pgoff() and adjustment to how we
+find relevant block.
 
-radix_tree_replace_clear_tags() can be called with NULL as the replacement
-value; in this case we need to delete sibling entries which point to
-the slot.
-
-Signed-off-by: Matthew Wilcox <willy@infradead.org>
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Signe-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- lib/radix-tree.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+ fs/ext4/file.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
 
-diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-index e58855435c01..57c15c4d0796 100644
---- a/lib/radix-tree.c
-+++ b/lib/radix-tree.c
-@@ -1805,17 +1805,23 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
- }
- EXPORT_SYMBOL(radix_tree_delete);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 261ac3734c58..2c3d6bb0edfe 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -473,7 +473,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			 * range, it will be a hole.
+ 			 */
+ 			if (lastoff < endoff && whence == SEEK_HOLE &&
+-			    page->index > end) {
++			    page_to_pgoff(page) > end) {
+ 				found = 1;
+ 				*offset = lastoff;
+ 				goto out;
+@@ -481,7 +481,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
  
-+/*
-+ * If the caller passes NULL for @entry, it must take care to adjust
-+ * node->count.  See page_cache_tree_delete() for an example.
-+ */
- struct radix_tree_node *radix_tree_replace_clear_tags(
- 			struct radix_tree_root *root,
- 			unsigned long index, void *entry)
- {
- 	struct radix_tree_node *node;
- 	void **slot;
-+	unsigned int offset;
+ 			lock_page(page);
  
- 	__radix_tree_lookup(root, index, &node, &slot);
+-			if (unlikely(page->mapping != inode->i_mapping)) {
++			if (unlikely(page_mapping(page) != inode->i_mapping)) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -492,8 +492,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			}
  
- 	if (node) {
--		unsigned int tag, offset = get_slot_offset(node, slot);
-+		unsigned int tag;
-+		offset = get_slot_offset(node, slot);
- 		for (tag = 0; tag < RADIX_TREE_MAX_TAGS; tag++)
- 			node_tag_clear(root, node, tag, offset);
- 	} else {
-@@ -1824,6 +1830,9 @@ struct radix_tree_node *radix_tree_replace_clear_tags(
- 	}
+ 			if (page_has_buffers(page)) {
++				int diff;
+ 				lastoff = page_offset(page);
+ 				bh = head = page_buffers(page);
++				diff = (page - compound_head(page)) << inode->i_blkbits;
++				while (diff--)
++					bh = bh->b_this_page;
+ 				do {
+ 					if (buffer_uptodate(bh) ||
+ 					    buffer_unwritten(bh)) {
+@@ -514,8 +518,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 				} while (bh != head);
+ 			}
  
- 	radix_tree_replace_slot(slot, entry);
-+	if (!entry && node)
-+		delete_sibling_entries(node, node_to_entry(slot), offset);
-+
- 	return node;
- }
+-			lastoff = page_offset(page) + PAGE_SIZE;
++			lastoff = page_offset(page) + hpage_size(page);
+ 			unlock_page(page);
++			if (PageTransCompound(page)) {
++				i++;
++				break;
++			}
+ 		}
+ 
+ 		/*
+@@ -528,7 +536,9 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			break;
+ 		}
+ 
+-		index = pvec.pages[i - 1]->index + 1;
++		index = page_to_pgoff(pvec.pages[i - 1]) + 1;
++		if (PageTransCompound(pvec.pages[i - 1]))
++			index = round_up(index, HPAGE_PMD_NR);
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
  
 -- 
 2.9.3
-
