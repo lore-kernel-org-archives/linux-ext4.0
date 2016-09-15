@@ -1,97 +1,79 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 18/41] HACK: readahead: alloc huge pages, if allowed
-Date: Thu, 15 Sep 2016 14:55:00 +0300
-Message-ID: <20160915115523.29737-19-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 06/41] radix-tree: Handle multiorder entries being deleted by replace_clear_tags
+Date: Thu, 15 Sep 2016 14:54:48 +0300
+Message-ID: <20160915115523.29737-7-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-block-owner@vger.kernel.org>
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Most page cache allocation happens via readahead (sync or async), so if
-we want to have significant number of huge pages in page cache we need
-to find a ways to allocate them from readahead.
+From: Matthew Wilcox <willy@infradead.org>
 
-Unfortunately, huge pages doesn't fit into current readahead design:
-128 max readahead window, assumption on page size, PageReadahead() to
-track hit/miss.
+radix_tree_replace_clear_tags() can be called with NULL as the replacement
+value; in this case we need to delete sibling entries which point to
+the slot.
 
-I haven't found a ways to get it right yet.
-
-This patch just allocates huge page if allowed, but doesn't really
-provide any readahead if huge page is allocated. We read out 2M a time
-and I would expect spikes in latancy without readahead.
-
-Therefore HACK.
-
-Having that said, I don't think it should prevent huge page support to
-be applied. Future will show if lacking readahead is a big deal with
-huge pages in page cache.
-
-Any suggestions are welcome.
-
+Signed-off-by: Matthew Wilcox <willy@infradead.org>
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/readahead.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ lib/radix-tree.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index c8a955b1297e..f46a9080f6a9 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 		if (page_offset > end_index)
- 			break;
+diff --git a/lib/radix-tree.c b/lib/radix-tree.c
+index e58855435c01..57c15c4d0796 100644
+--- a/lib/radix-tree.c
++++ b/lib/radix-tree.c
+@@ -1805,17 +1805,23 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
+ }
+ EXPORT_SYMBOL(radix_tree_delete);
  
-+		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
-+				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
-+				page_cache_allow_huge(mapping, page_offset)) {
-+			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
-+					HPAGE_PMD_ORDER);
-+			if (page) {
-+				prep_transhuge_page(page);
-+				page->index = round_down(page_offset,
-+						HPAGE_PMD_NR);
-+				list_add(&page->lru, &page_pool);
-+				ret++;
-+				goto start_io;
-+			}
-+		}
-+
- 		rcu_read_lock();
- 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
- 		rcu_read_unlock();
-@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 			SetPageReadahead(page);
- 		ret++;
++/*
++ * If the caller passes NULL for @entry, it must take care to adjust
++ * node->count.  See page_cache_tree_delete() for an example.
++ */
+ struct radix_tree_node *radix_tree_replace_clear_tags(
+ 			struct radix_tree_root *root,
+ 			unsigned long index, void *entry)
+ {
+ 	struct radix_tree_node *node;
+ 	void **slot;
++	unsigned int offset;
+ 
+ 	__radix_tree_lookup(root, index, &node, &slot);
+ 
+ 	if (node) {
+-		unsigned int tag, offset = get_slot_offset(node, slot);
++		unsigned int tag;
++		offset = get_slot_offset(node, slot);
+ 		for (tag = 0; tag < RADIX_TREE_MAX_TAGS; tag++)
+ 			node_tag_clear(root, node, tag, offset);
+ 	} else {
+@@ -1824,6 +1830,9 @@ struct radix_tree_node *radix_tree_replace_clear_tags(
  	}
--
-+start_io:
- 	/*
- 	 * Now start the IO.  We ignore I/O errors - if the page is not
- 	 * uptodate then the caller will launch readpage again, and
+ 
+ 	radix_tree_replace_slot(slot, entry);
++	if (!entry && node)
++		delete_sibling_entries(node, node_to_entry(slot), offset);
++
+ 	return node;
+ }
+ 
 -- 
 2.9.3
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
