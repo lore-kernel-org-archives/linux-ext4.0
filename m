@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 26/41] truncate: make truncate_inode_pages_range() aware about huge pages
-Date: Thu, 15 Sep 2016 14:55:08 +0300
-Message-ID: <20160915115523.29737-27-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 24/41] fs: make block_write_{begin,end}() be able to handle huge pages
+Date: Thu, 15 Sep 2016 14:55:06 +0300
+Message-ID: <20160915115523.29737-25-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,178 +25,118 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-As with shmem_undo_range(), truncate_inode_pages_range() removes huge
-pages, if it fully within range.
+It's more or less straight-forward.
 
-Partial truncate of huge pages zero out this part of THP.
-
-Unlike with shmem, it doesn't prevent us having holes in the middle of
-huge page we still can skip writeback not touched buffers.
-
-With memory-mapped IO we would loose holes in some cases when we have
-THP in page cache, since we cannot track access on 4k level in this
-case.
+Most changes are around getting offset/len withing page right and zero
+out desired part of the page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c   |  2 +-
- mm/truncate.c | 95 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 88 insertions(+), 9 deletions(-)
+ fs/buffer.c | 53 +++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 31 insertions(+), 22 deletions(-)
 
 diff --git a/fs/buffer.c b/fs/buffer.c
-index e53808e790e2..20898b051044 100644
+index 2739f5dae690..7f50e5a63670 100644
 --- a/fs/buffer.c
 +++ b/fs/buffer.c
-@@ -1534,7 +1534,7 @@ void block_invalidatepage(struct page *page, unsigned int offset,
- 	/*
- 	 * Check for overflow
- 	 */
--	BUG_ON(stop > PAGE_SIZE || stop < length);
-+	BUG_ON(stop > hpage_size(page) || stop < length);
+@@ -1870,21 +1870,21 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
+ 	do {
+ 		block_end = block_start + bh->b_size;
  
- 	head = page_buffers(page);
- 	bh = head;
-diff --git a/mm/truncate.c b/mm/truncate.c
-index ce904e4b1708..9c339e6255f2 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -90,7 +90,7 @@ void do_invalidatepage(struct page *page, unsigned int offset,
- {
- 	void (*invalidatepage)(struct page *, unsigned int, unsigned int);
+-		if (buffer_new(bh)) {
+-			if (block_end > from && block_start < to) {
+-				if (!PageUptodate(page)) {
+-					unsigned start, size;
++		if (buffer_new(bh) && block_end > from && block_start < to) {
++			if (!PageUptodate(page)) {
++				unsigned start, size;
  
--	invalidatepage = page->mapping->a_ops->invalidatepage;
-+	invalidatepage = page_mapping(page)->a_ops->invalidatepage;
- #ifdef CONFIG_BLOCK
- 	if (!invalidatepage)
- 		invalidatepage = block_invalidatepage;
-@@ -116,7 +116,7 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
- 		return -EIO;
+-					start = max(from, block_start);
+-					size = min(to, block_end) - start;
++				start = max(from, block_start);
++				size = min(to, block_end) - start;
  
- 	if (page_has_private(page))
--		do_invalidatepage(page, 0, PAGE_SIZE);
-+		do_invalidatepage(page, 0, hpage_size(page));
- 
- 	/*
- 	 * Some filesystems seem to re-dirty the page even after
-@@ -288,6 +288,36 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 				unlock_page(page);
- 				continue;
+-					zero_user(page, start, size);
+-					set_buffer_uptodate(bh);
+-				}
+-
+-				clear_buffer_new(bh);
+-				mark_buffer_dirty(bh);
++				zero_user(page + block_start / PAGE_SIZE,
++						start % PAGE_SIZE,
++						size);
++				set_buffer_uptodate(bh);
  			}
 +
-+			if (PageTransTail(page)) {
-+				/* Middle of THP: zero out the page */
-+				clear_highpage(page);
-+				if (page_has_private(page)) {
-+					int off = page - compound_head(page);
-+					do_invalidatepage(compound_head(page),
-+							off * PAGE_SIZE,
-+							PAGE_SIZE);
-+				}
-+				unlock_page(page);
-+				continue;
-+			} else if (PageTransHuge(page)) {
-+				if (index == round_down(end, HPAGE_PMD_NR)) {
-+					/*
-+					 * Range ends in the middle of THP:
-+					 * zero out the page
-+					 */
-+					clear_highpage(page);
-+					if (page_has_private(page)) {
-+						do_invalidatepage(page, 0,
-+								PAGE_SIZE);
-+					}
-+					unlock_page(page);
-+					continue;
-+				}
-+				index += HPAGE_PMD_NR - 1;
-+				i += HPAGE_PMD_NR - 1;
-+			}
-+
- 			truncate_inode_page(mapping, page);
- 			unlock_page(page);
++			clear_buffer_new(bh);
++			mark_buffer_dirty(bh);
  		}
-@@ -309,9 +339,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			wait_on_page_writeback(page);
- 			zero_user_segment(page, partial_start, top);
- 			cleancache_invalidate_page(mapping, page);
--			if (page_has_private(page))
--				do_invalidatepage(page, partial_start,
--						  top - partial_start);
-+			if (page_has_private(page)) {
-+				int off = page - compound_head(page);
-+				do_invalidatepage(compound_head(page),
-+						off * PAGE_SIZE + partial_start,
-+						top - partial_start);
-+			}
- 			unlock_page(page);
- 			put_page(page);
- 		}
-@@ -322,9 +355,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			wait_on_page_writeback(page);
- 			zero_user_segment(page, 0, partial_end);
- 			cleancache_invalidate_page(mapping, page);
--			if (page_has_private(page))
--				do_invalidatepage(page, 0,
--						  partial_end);
-+			if (page_has_private(page)) {
-+				int off = page - compound_head(page);
-+				do_invalidatepage(compound_head(page),
-+						off * PAGE_SIZE,
-+						partial_end);
-+			}
- 			unlock_page(page);
- 			put_page(page);
- 		}
-@@ -373,6 +409,49 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			lock_page(page);
- 			WARN_ON(page_to_pgoff(page) != index);
- 			wait_on_page_writeback(page);
-+
-+			if (PageTransTail(page)) {
-+				/* Middle of THP: zero out the page */
-+				clear_highpage(page);
-+				if (page_has_private(page)) {
-+					int off = page - compound_head(page);
-+					do_invalidatepage(compound_head(page),
-+							off * PAGE_SIZE,
-+							PAGE_SIZE);
+ 
+ 		block_start = block_end;
+@@ -1950,18 +1950,20 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
+ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
+ 		get_block_t *get_block, struct iomap *iomap)
+ {
+-	unsigned from = pos & (PAGE_SIZE - 1);
+-	unsigned to = from + len;
+-	struct inode *inode = page->mapping->host;
++	unsigned from, to;
++	struct inode *inode = page_mapping(page)->host;
+ 	unsigned block_start, block_end;
+ 	sector_t block;
+ 	int err = 0;
+ 	unsigned blocksize, bbits;
+ 	struct buffer_head *bh, *head, *wait[2], **wait_bh=wait;
+ 
++	page = compound_head(page);
++	from = pos & ~hpage_mask(page);
++	to = from + len;
+ 	BUG_ON(!PageLocked(page));
+-	BUG_ON(from > PAGE_SIZE);
+-	BUG_ON(to > PAGE_SIZE);
++	BUG_ON(from > hpage_size(page));
++	BUG_ON(to > hpage_size(page));
+ 	BUG_ON(from > to);
+ 
+ 	head = create_page_buffers(page, inode, 0);
+@@ -2001,10 +2003,15 @@ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
+ 					mark_buffer_dirty(bh);
+ 					continue;
+ 				}
+-				if (block_end > to || block_start < from)
+-					zero_user_segments(page,
+-						to, block_end,
+-						block_start, from);
++				if (block_end > to || block_start < from) {
++					BUG_ON(to - from  > PAGE_SIZE);
++					zero_user_segments(page +
++							block_start / PAGE_SIZE,
++						to % PAGE_SIZE,
++						(block_start % PAGE_SIZE) + blocksize,
++						block_start % PAGE_SIZE,
++						from % PAGE_SIZE);
 +				}
-+				unlock_page(page);
-+				/*
-+				 * Partial thp truncate due 'start' in middle
-+				 * of THP: don't need to look on these pages
-+				 * again on !pvec.nr restart.
-+				 */
-+				if (index != round_down(end, HPAGE_PMD_NR))
-+					start++;
-+				continue;
-+			} else if (PageTransHuge(page)) {
-+				if (index == round_down(end, HPAGE_PMD_NR)) {
-+					/*
-+					 * Range ends in the middle of THP:
-+					 * zero out the page
-+					 */
-+					clear_highpage(page);
-+					if (page_has_private(page)) {
-+						do_invalidatepage(page, 0,
-+								PAGE_SIZE);
-+					}
-+					unlock_page(page);
-+					/*
-+					 * Partial thp truncate due 'end' in
-+					 * middle of THP: don't need to look on
-+					 * these pages again restart.
-+					 */
-+					start++;
-+					continue;
-+				}
-+				index += HPAGE_PMD_NR - 1;
-+				i += HPAGE_PMD_NR - 1;
-+			}
-+
- 			truncate_inode_page(mapping, page);
- 			unlock_page(page);
+ 				continue;
+ 			}
  		}
+@@ -2048,6 +2055,7 @@ static int __block_commit_write(struct inode *inode, struct page *page,
+ 	unsigned blocksize;
+ 	struct buffer_head *bh, *head;
+ 
++	VM_BUG_ON_PAGE(PageTail(page), page);
+ 	bh = head = page_buffers(page);
+ 	blocksize = bh->b_size;
+ 
+@@ -2114,7 +2122,8 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 	struct inode *inode = mapping->host;
+ 	unsigned start;
+ 
+-	start = pos & (PAGE_SIZE - 1);
++	page = compound_head(page);
++	start = pos & ~hpage_mask(page);
+ 
+ 	if (unlikely(copied < len)) {
+ 		/*
 -- 
 2.9.3
 
