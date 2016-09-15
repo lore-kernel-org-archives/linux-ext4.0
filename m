@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 35/41] ext4: make ext4_da_page_release_reservation() aware about huge pages
-Date: Thu, 15 Sep 2016 14:55:17 +0300
-Message-ID: <20160915115523.29737-36-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 37/41] ext4: make EXT4_IOC_MOVE_EXT work with huge pages
+Date: Thu, 15 Sep 2016 14:55:19 +0300
+Message-ID: <20160915115523.29737-38-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,39 +25,61 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages 'stop' must be within HPAGE_PMD_SIZE.
-Let's use hpage_size() in the BUG_ON().
-
-We also need to change how we calculate lblk for cluster deallocation.
+Adjust how we find relevant block within page and how we clear the
+required part of the page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/move_extent.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index deacd3499ec7..6a8da1a8409c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1558,7 +1558,7 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	int num_clusters;
- 	ext4_fsblk_t lblk;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index a920c5d29fac..f3efdd0e0eaf 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -210,7 +210,9 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
+ 				return err;
+ 			}
+ 			if (!buffer_mapped(bh)) {
+-				zero_user(page, block_start, blocksize);
++				zero_user(page + block_start / PAGE_SIZE,
++						block_start % PAGE_SIZE,
++						blocksize);
+ 				set_buffer_uptodate(bh);
+ 				continue;
+ 			}
+@@ -267,10 +269,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	unsigned int tmp_data_size, data_size, replaced_size;
+ 	int i, err2, jblocks, retries = 0;
+ 	int replaced_count = 0;
+-	int from = data_offset_in_page << orig_inode->i_blkbits;
++	int from;
+ 	int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
+ 	struct super_block *sb = orig_inode->i_sb;
+ 	struct buffer_head *bh = NULL;
++	int diff;
  
--	BUG_ON(stop > PAGE_SIZE || stop < length);
-+	BUG_ON(stop > hpage_size(page) || stop < length);
- 
- 	head = page_buffers(page);
- 	bh = head;
-@@ -1593,7 +1593,8 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	 * need to release the reserved space for that cluster. */
- 	num_clusters = EXT4_NUM_B2C(sbi, to_release);
- 	while (num_clusters > 0) {
--		lblk = (page->index << (PAGE_SHIFT - inode->i_blkbits)) +
-+		lblk = ((page->index + offset / PAGE_SIZE) <<
-+				(PAGE_SHIFT - inode->i_blkbits)) +
- 			((num_clusters - 1) << sbi->s_cluster_bits);
- 		if (sbi->s_cluster_ratio == 1 ||
- 		    !ext4_find_delalloc_cluster(inode, lblk))
+ 	/*
+ 	 * It needs twice the amount of ordinary journal buffers because
+@@ -355,6 +358,9 @@ again:
+ 		goto unlock_pages;
+ 	}
+ data_copy:
++	diff = (pagep[0] - compound_head(pagep[0])) * blocks_per_page;
++	from = (data_offset_in_page + diff) << orig_inode->i_blkbits;
++	pagep[0] = compound_head(pagep[0]);
+ 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
+ 	if (*err)
+ 		goto unlock_pages;
+@@ -384,7 +390,7 @@ data_copy:
+ 	if (!page_has_buffers(pagep[0]))
+ 		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
+ 	bh = page_buffers(pagep[0]);
+-	for (i = 0; i < data_offset_in_page; i++)
++	for (i = 0; i < data_offset_in_page + diff; i++)
+ 		bh = bh->b_this_page;
+ 	for (i = 0; i < block_len_in_page; i++) {
+ 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
 -- 
 2.9.3
 
