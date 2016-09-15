@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 33/41] ext4: make ext4_block_write_begin() aware about huge pages
-Date: Thu, 15 Sep 2016 14:55:15 +0300
-Message-ID: <20160915115523.29737-34-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 39/41] ext4: make fallocate() operations work with huge pages
+Date: Thu, 15 Sep 2016 14:55:21 +0300
+Message-ID: <20160915115523.29737-40-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,63 +25,68 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-It simply matches changes to __block_write_begin_int().
+__ext4_block_zero_page_range() adjusted to calculate starting iblock
+correctry for huge pages.
+
+ext4_{collapse,insert}_range() requires page cache invalidation. We need
+the invalidation to be aligning to huge page border if huge pages are
+possible in page cache.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 24 ++++++++++++++++--------
- 1 file changed, 16 insertions(+), 8 deletions(-)
+ fs/ext4/extents.c | 10 ++++++++--
+ fs/ext4/inode.c   |  3 +--
+ 2 files changed, 9 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d7ccb7f51dfc..d46aeda70fb0 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5525,7 +5525,10 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 	 * Need to round down offset to be aligned with page size boundary
+ 	 * for page size > block size.
+ 	 */
+-	ioffset = round_down(offset, PAGE_SIZE);
++	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
++		ioffset = round_down(offset, HPAGE_PMD_SIZE);
++	else
++		ioffset = round_down(offset, PAGE_SIZE);
+ 	/*
+ 	 * Write tail of the last page before removed range since it will get
+ 	 * removed from the page cache below.
+@@ -5674,7 +5677,10 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 	 * Need to round down to align start offset to page size boundary
+ 	 * for page size > block size.
+ 	 */
+-	ioffset = round_down(offset, PAGE_SIZE);
++	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
++		ioffset = round_down(offset, HPAGE_PMD_SIZE);
++	else
++		ioffset = round_down(offset, PAGE_SIZE);
+ 	/* Write out all dirty pages */
+ 	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
+ 			LLONG_MAX);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a07c055d8e78..31560b52eff2 100644
+index f2e34e340e65..645a984a15ef 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1079,9 +1079,8 @@ int do_journal_get_write_access(handle_t *handle,
- static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 				  get_block_t *get_block)
+@@ -3711,7 +3711,6 @@ void ext4_set_aops(struct inode *inode)
+ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
  {
--	unsigned from = pos & (PAGE_SIZE - 1);
--	unsigned to = from + len;
--	struct inode *inode = page->mapping->host;
-+	unsigned from, to;
-+	struct inode *inode = page_mapping(page)->host;
- 	unsigned block_start, block_end;
- 	sector_t block;
- 	int err = 0;
-@@ -1090,9 +1089,12 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
- 	bool decrypt = false;
+-	ext4_fsblk_t index = from >> PAGE_SHIFT;
+ 	unsigned offset;
+ 	unsigned blocksize, pos;
+ 	ext4_lblk_t iblock;
+@@ -3730,7 +3729,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
  
-+	page = compound_head(page);
-+	from = pos & ~hpage_mask(page);
-+	to = from + len;
- 	BUG_ON(!PageLocked(page));
--	BUG_ON(from > PAGE_SIZE);
--	BUG_ON(to > PAGE_SIZE);
-+	BUG_ON(from > hpage_size(page));
-+	BUG_ON(to > hpage_size(page));
- 	BUG_ON(from > to);
+ 	blocksize = inode->i_sb->s_blocksize;
+ 
+-	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
++	iblock = page->index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
  
  	if (!page_has_buffers(page))
-@@ -1127,9 +1129,15 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 					mark_buffer_dirty(bh);
- 					continue;
- 				}
--				if (block_end > to || block_start < from)
--					zero_user_segments(page, to, block_end,
--							   block_start, from);
-+				if (block_end > to || block_start < from) {
-+					BUG_ON(to - from  > PAGE_SIZE);
-+					zero_user_segments(page +
-+							block_start / PAGE_SIZE,
-+							to % PAGE_SIZE,
-+							(block_start % PAGE_SIZE) + blocksize,
-+							block_start % PAGE_SIZE,
-+							from % PAGE_SIZE);
-+				}
- 				continue;
- 			}
- 		}
+ 		create_empty_buffers(page, blocksize, 0);
 -- 
 2.9.3
 
