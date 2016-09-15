@@ -1,103 +1,68 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 30/41] ext4: make ext4_writepage() work on huge pages
-Date: Thu, 15 Sep 2016 14:55:12 +0300
-Message-ID: <20160915115523.29737-31-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 34/41] ext4: handle huge pages in ext4_da_write_end()
+Date: Thu, 15 Sep 2016 14:55:16 +0300
+Message-ID: <20160915115523.29737-35-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Change ext4_writepage() and underlying ext4_bio_write_page().
-
-It basically removes assumption on page size, infer it from struct page
-instead.
+Call ext4_da_should_update_i_disksize() for head page with offset
+relative to head page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c   | 10 +++++-----
- fs/ext4/page-io.c | 11 +++++++++--
- 2 files changed, 14 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c6ea25a190f8..c9c05840f6cc 100644
+index 31560b52eff2..deacd3499ec7 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2020,10 +2020,10 @@ static int ext4_writepage(struct page *page,
+@@ -3006,7 +3006,6 @@ static int ext4_da_write_end(struct file *file,
+ 	int ret = 0, ret2;
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	loff_t new_i_size;
+-	unsigned long start, end;
+ 	int write_mode = (int)(unsigned long)fsdata;
  
- 	trace_ext4_writepage(page);
- 	size = i_size_read(inode);
--	if (page->index == size >> PAGE_SHIFT)
--		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
-+
-+	len = hpage_size(page);
-+	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
-+			len = size & ~hpage_mask(page);
+ 	if (write_mode == FALL_BACK_TO_NONDELALLOC)
+@@ -3014,8 +3013,6 @@ static int ext4_da_write_end(struct file *file,
+ 				      len, copied, page, fsdata);
  
- 	page_bufs = page_buffers(page);
+ 	trace_ext4_da_write_end(inode, pos, len, copied);
+-	start = pos & (PAGE_SIZE - 1);
+-	end = start + copied - 1;
+ 
  	/*
-@@ -2047,7 +2047,7 @@ static int ext4_writepage(struct page *page,
- 				   ext4_bh_delay_or_unwritten)) {
- 		redirty_page_for_writepage(wbc, page);
- 		if ((current->flags & PF_MEMALLOC) ||
--		    (inode->i_sb->s_blocksize == PAGE_SIZE)) {
-+		    (inode->i_sb->s_blocksize == hpage_size(page))) {
- 			/*
- 			 * For memory cleaning there's no point in writing only
- 			 * some buffers. So just bail out. Warn if we came here
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index a6132a730967..952957ee48b7 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -415,6 +415,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
-+	BUG_ON(PageTail(page));
- 
- 	if (keep_towrite)
- 		set_page_writeback_keepwrite(page);
-@@ -431,8 +432,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	 * the page size, the remaining memory is zeroed when mapped, and
- 	 * writes to that region are not written out to the file."
+ 	 * generic_write_end() will run mark_inode_dirty() if i_size
+@@ -3024,8 +3021,10 @@ static int ext4_da_write_end(struct file *file,
  	 */
--	if (len < PAGE_SIZE)
--		zero_user_segment(page, len, PAGE_SIZE);
-+	if (len < hpage_size(page)) {
-+		page += len / PAGE_SIZE;
-+		if (len % PAGE_SIZE)
-+			zero_user_segment(page, len % PAGE_SIZE, PAGE_SIZE);
-+		while (page + 1 == compound_head(page))
-+			clear_highpage(++page);
-+		page = compound_head(page);
-+	}
- 	/*
- 	 * In the first loop we prepare and mark buffers to submit. We have to
- 	 * mark all buffers in the page before submitting so that
+ 	new_i_size = pos + copied;
+ 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
++		struct page *head = compound_head(page);
++		unsigned long end = (pos & ~hpage_mask(head)) + copied - 1;
+ 		if (ext4_has_inline_data(inode) ||
+-		    ext4_da_should_update_i_disksize(page, end)) {
++		    ext4_da_should_update_i_disksize(head, end)) {
+ 			ext4_update_i_disksize(inode, new_i_size);
+ 			/* We need to mark inode dirty even if
+ 			 * new_i_size is less that inode->i_size
 -- 
 2.9.3
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
