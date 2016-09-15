@@ -1,155 +1,164 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 08/41] Revert "radix-tree: implement radix_tree_maybe_preload_order()"
-Date: Thu, 15 Sep 2016 14:54:50 +0300
-Message-ID: <20160915115523.29737-9-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 23/41] fs: make block_read_full_page() be able to read huge page
+Date: Thu, 15 Sep 2016 14:55:05 +0300
+Message-ID: <20160915115523.29737-24-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-This reverts commit 356e1c23292a4f63cfdf1daf0e0ddada51f32de8.
+The approach is straight-forward: for compound pages we read out whole
+huge page.
 
-After conversion of huge tmpfs to multi-order entries, we don't need
-this anymore.
+For huge page we cannot have array of buffer head pointers on stack --
+it's 4096 pointers on x86-64 -- 'arr' is allocated with kmalloc() for
+huge pages.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/radix-tree.h |  1 -
- lib/radix-tree.c           | 74 ----------------------------------------------
- 2 files changed, 75 deletions(-)
+ fs/buffer.c                 | 22 +++++++++++++++++-----
+ include/linux/buffer_head.h |  9 +++++----
+ include/linux/page-flags.h  |  2 +-
+ 3 files changed, 23 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/radix-tree.h b/include/linux/radix-tree.h
-index c4cea311d901..7a271f662320 100644
---- a/include/linux/radix-tree.h
-+++ b/include/linux/radix-tree.h
-@@ -290,7 +290,6 @@ unsigned int radix_tree_gang_lookup_slot(struct radix_tree_root *root,
- 			unsigned long first_index, unsigned int max_items);
- int radix_tree_preload(gfp_t gfp_mask);
- int radix_tree_maybe_preload(gfp_t gfp_mask);
--int radix_tree_maybe_preload_order(gfp_t gfp_mask, int order);
- void radix_tree_init(void);
- void *radix_tree_tag_set(struct radix_tree_root *root,
- 			unsigned long index, unsigned int tag);
-diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-index 57c15c4d0796..307e517b2479 100644
---- a/lib/radix-tree.c
-+++ b/lib/radix-tree.c
-@@ -38,9 +38,6 @@
- #include <linux/preempt.h>		/* in_interrupt() */
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 9c8eb9b6db6a..2739f5dae690 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -870,7 +870,7 @@ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
  
- 
--/* Number of nodes in fully populated tree of given height */
--static unsigned long height_to_maxnodes[RADIX_TREE_MAX_PATH + 1] __read_mostly;
--
- /*
-  * Radix tree node cache.
-  */
-@@ -433,51 +430,6 @@ int radix_tree_split_preload(unsigned int old_order, unsigned int new_order,
- #endif
- 
- /*
-- * The same as function above, but preload number of nodes required to insert
-- * (1 << order) continuous naturally-aligned elements.
-- */
--int radix_tree_maybe_preload_order(gfp_t gfp_mask, int order)
--{
--	unsigned long nr_subtrees;
--	int nr_nodes, subtree_height;
--
--	/* Preloading doesn't help anything with this gfp mask, skip it */
--	if (!gfpflags_allow_blocking(gfp_mask)) {
--		preempt_disable();
--		return 0;
--	}
--
--	/*
--	 * Calculate number and height of fully populated subtrees it takes to
--	 * store (1 << order) elements.
--	 */
--	nr_subtrees = 1 << order;
--	for (subtree_height = 0; nr_subtrees > RADIX_TREE_MAP_SIZE;
--			subtree_height++)
--		nr_subtrees >>= RADIX_TREE_MAP_SHIFT;
--
--	/*
--	 * The worst case is zero height tree with a single item at index 0 and
--	 * then inserting items starting at ULONG_MAX - (1 << order).
--	 *
--	 * This requires RADIX_TREE_MAX_PATH nodes to build branch from root to
--	 * 0-index item.
--	 */
--	nr_nodes = RADIX_TREE_MAX_PATH;
--
--	/* Plus branch to fully populated subtrees. */
--	nr_nodes += RADIX_TREE_MAX_PATH - subtree_height;
--
--	/* Root node is shared. */
--	nr_nodes--;
--
--	/* Plus nodes required to build subtrees. */
--	nr_nodes += nr_subtrees * height_to_maxnodes[subtree_height];
--
--	return __radix_tree_preload(gfp_mask, nr_nodes);
--}
--
--/*
-  * The maximum index which can be stored in a radix tree
-  */
- static inline unsigned long shift_maxindex(unsigned int shift)
-@@ -1856,31 +1808,6 @@ radix_tree_node_ctor(void *arg)
- 	INIT_LIST_HEAD(&node->private_list);
- }
- 
--static __init unsigned long __maxindex(unsigned int height)
--{
--	unsigned int width = height * RADIX_TREE_MAP_SHIFT;
--	int shift = RADIX_TREE_INDEX_BITS - width;
--
--	if (shift < 0)
--		return ~0UL;
--	if (shift >= BITS_PER_LONG)
--		return 0UL;
--	return ~0UL >> shift;
--}
--
--static __init void radix_tree_init_maxnodes(void)
--{
--	unsigned long height_to_maxindex[RADIX_TREE_MAX_PATH + 1];
--	unsigned int i, j;
--
--	for (i = 0; i < ARRAY_SIZE(height_to_maxindex); i++)
--		height_to_maxindex[i] = __maxindex(i);
--	for (i = 0; i < ARRAY_SIZE(height_to_maxnodes); i++) {
--		for (j = i; j > 0; j--)
--			height_to_maxnodes[i] += height_to_maxindex[j - 1] + 1;
--	}
--}
--
- static int radix_tree_callback(struct notifier_block *nfb,
- 				unsigned long action, void *hcpu)
+ try_again:
+ 	head = NULL;
+-	offset = PAGE_SIZE;
++	offset = hpage_size(page);
+ 	while ((offset -= size) >= 0) {
+ 		bh = alloc_buffer_head(GFP_NOFS);
+ 		if (!bh)
+@@ -1466,7 +1466,7 @@ void set_bh_page(struct buffer_head *bh,
+ 		struct page *page, unsigned long offset)
  {
-@@ -1907,6 +1834,5 @@ void __init radix_tree_init(void)
- 			sizeof(struct radix_tree_node), 0,
- 			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
- 			radix_tree_node_ctor);
--	radix_tree_init_maxnodes();
- 	hotcpu_notifier(radix_tree_callback, 0);
+ 	bh->b_page = page;
+-	BUG_ON(offset >= PAGE_SIZE);
++	BUG_ON(offset >= hpage_size(page));
+ 	if (PageHighMem(page))
+ 		/*
+ 		 * This catches illegal uses and preserves the offset:
+@@ -2239,11 +2239,13 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ {
+ 	struct inode *inode = page->mapping->host;
+ 	sector_t iblock, lblock;
+-	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
++	struct buffer_head *arr_on_stack[MAX_BUF_PER_PAGE];
++	struct buffer_head *bh, *head, **arr = arr_on_stack;
+ 	unsigned int blocksize, bbits;
+ 	int nr, i;
+ 	int fully_mapped = 1;
+ 
++	VM_BUG_ON_PAGE(PageTail(page), page);
+ 	head = create_page_buffers(page, inode, 0);
+ 	blocksize = head->b_size;
+ 	bbits = block_size_bits(blocksize);
+@@ -2254,6 +2256,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 	nr = 0;
+ 	i = 0;
+ 
++	if (PageTransHuge(page)) {
++		arr = kmalloc(sizeof(struct buffer_head *) * HPAGE_PMD_NR *
++				MAX_BUF_PER_PAGE, GFP_NOFS);
++	}
++
+ 	do {
+ 		if (buffer_uptodate(bh))
+ 			continue;
+@@ -2269,7 +2276,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 					SetPageError(page);
+ 			}
+ 			if (!buffer_mapped(bh)) {
+-				zero_user(page, i * blocksize, blocksize);
++				zero_user(page + (i * blocksize / PAGE_SIZE),
++						i * blocksize % PAGE_SIZE,
++						blocksize);
+ 				if (!err)
+ 					set_buffer_uptodate(bh);
+ 				continue;
+@@ -2295,7 +2304,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 		if (!PageError(page))
+ 			SetPageUptodate(page);
+ 		unlock_page(page);
+-		return 0;
++		goto out;
+ 	}
+ 
+ 	/* Stage two: lock the buffers */
+@@ -2317,6 +2326,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 		else
+ 			submit_bh(REQ_OP_READ, 0, bh);
+ 	}
++out:
++	if (arr != arr_on_stack)
++		kfree(arr);
+ 	return 0;
  }
+ EXPORT_SYMBOL(block_read_full_page);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 006a8a42acfb..194a85822d5f 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -131,13 +131,14 @@ BUFFER_FNS(Meta, meta)
+ BUFFER_FNS(Prio, prio)
+ BUFFER_FNS(Defer_Completion, defer_completion)
+ 
+-#define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
++#define bh_offset(bh)	((unsigned long)(bh)->b_data & ~hpage_mask(bh->b_page))
+ 
+ /* If we *know* page->private refers to buffer_heads */
+-#define page_buffers(page)					\
++#define page_buffers(__page)					\
+ 	({							\
+-		BUG_ON(!PagePrivate(page));			\
+-		((struct buffer_head *)page_private(page));	\
++		struct page *p = compound_head(__page);		\
++		BUG_ON(!PagePrivate(p));			\
++		((struct buffer_head *)page_private(p));	\
+ 	})
+ #define page_has_buffers(page)	PagePrivate(page)
+ 
+diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
+index a2bef9a41bcf..20b7684e9298 100644
+--- a/include/linux/page-flags.h
++++ b/include/linux/page-flags.h
+@@ -730,7 +730,7 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
+  */
+ static inline int page_has_private(struct page *page)
+ {
+-	return !!(page->flags & PAGE_FLAGS_PRIVATE);
++	return !!(compound_head(page)->flags & PAGE_FLAGS_PRIVATE);
+ }
+ 
+ #undef PF_ANY
 -- 
 2.9.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
