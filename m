@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 24/41] fs: make block_write_{begin,end}() be able to handle huge pages
-Date: Thu, 15 Sep 2016 14:55:06 +0300
-Message-ID: <20160915115523.29737-25-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 32/41] ext4: handle huge pages in __ext4_block_zero_page_range()
+Date: Thu, 15 Sep 2016 14:55:14 +0300
+Message-ID: <20160915115523.29737-33-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,118 +25,46 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-It's more or less straight-forward.
-
-Most changes are around getting offset/len withing page right and zero
-out desired part of the page.
+As the function handles zeroing range only within one block, the
+required changes are trivial, just remove assuption on page size.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c | 53 +++++++++++++++++++++++++++++++----------------------
- 1 file changed, 31 insertions(+), 22 deletions(-)
+ fs/ext4/inode.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 2739f5dae690..7f50e5a63670 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1870,21 +1870,21 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
- 	do {
- 		block_end = block_start + bh->b_size;
- 
--		if (buffer_new(bh)) {
--			if (block_end > from && block_start < to) {
--				if (!PageUptodate(page)) {
--					unsigned start, size;
-+		if (buffer_new(bh) && block_end > from && block_start < to) {
-+			if (!PageUptodate(page)) {
-+				unsigned start, size;
- 
--					start = max(from, block_start);
--					size = min(to, block_end) - start;
-+				start = max(from, block_start);
-+				size = min(to, block_end) - start;
- 
--					zero_user(page, start, size);
--					set_buffer_uptodate(bh);
--				}
--
--				clear_buffer_new(bh);
--				mark_buffer_dirty(bh);
-+				zero_user(page + block_start / PAGE_SIZE,
-+						start % PAGE_SIZE,
-+						size);
-+				set_buffer_uptodate(bh);
- 			}
-+
-+			clear_buffer_new(bh);
-+			mark_buffer_dirty(bh);
- 		}
- 
- 		block_start = block_end;
-@@ -1950,18 +1950,20 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
- int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 		get_block_t *get_block, struct iomap *iomap)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9ed715ed00e7..a07c055d8e78 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3679,7 +3679,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
  {
--	unsigned from = pos & (PAGE_SIZE - 1);
--	unsigned to = from + len;
--	struct inode *inode = page->mapping->host;
-+	unsigned from, to;
-+	struct inode *inode = page_mapping(page)->host;
- 	unsigned block_start, block_end;
- 	sector_t block;
- 	int err = 0;
- 	unsigned blocksize, bbits;
- 	struct buffer_head *bh, *head, *wait[2], **wait_bh=wait;
- 
-+	page = compound_head(page);
-+	from = pos & ~hpage_mask(page);
-+	to = from + len;
- 	BUG_ON(!PageLocked(page));
--	BUG_ON(from > PAGE_SIZE);
--	BUG_ON(to > PAGE_SIZE);
-+	BUG_ON(from > hpage_size(page));
-+	BUG_ON(to > hpage_size(page));
- 	BUG_ON(from > to);
- 
- 	head = create_page_buffers(page, inode, 0);
-@@ -2001,10 +2003,15 @@ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 					mark_buffer_dirty(bh);
- 					continue;
- 				}
--				if (block_end > to || block_start < from)
--					zero_user_segments(page,
--						to, block_end,
--						block_start, from);
-+				if (block_end > to || block_start < from) {
-+					BUG_ON(to - from  > PAGE_SIZE);
-+					zero_user_segments(page +
-+							block_start / PAGE_SIZE,
-+						to % PAGE_SIZE,
-+						(block_start % PAGE_SIZE) + blocksize,
-+						block_start % PAGE_SIZE,
-+						from % PAGE_SIZE);
-+				}
- 				continue;
- 			}
- 		}
-@@ -2048,6 +2055,7 @@ static int __block_commit_write(struct inode *inode, struct page *page,
- 	unsigned blocksize;
- 	struct buffer_head *bh, *head;
- 
-+	VM_BUG_ON_PAGE(PageTail(page), page);
- 	bh = head = page_buffers(page);
- 	blocksize = bh->b_size;
- 
-@@ -2114,7 +2122,8 @@ int block_write_end(struct file *file, struct address_space *mapping,
+ 	ext4_fsblk_t index = from >> PAGE_SHIFT;
+-	unsigned offset = from & (PAGE_SIZE-1);
++	unsigned offset;
+ 	unsigned blocksize, pos;
+ 	ext4_lblk_t iblock;
  	struct inode *inode = mapping->host;
- 	unsigned start;
+@@ -3692,6 +3692,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	if (!page)
+ 		return -ENOMEM;
  
--	start = pos & (PAGE_SIZE - 1);
 +	page = compound_head(page);
-+	start = pos & ~hpage_mask(page);
++	offset = from & ~hpage_mask(page);
++
+ 	blocksize = inode->i_sb->s_blocksize;
  
- 	if (unlikely(copied < len)) {
- 		/*
+ 	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
+@@ -3746,7 +3749,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		if (err)
+ 			goto unlock;
+ 	}
+-	zero_user(page, offset, length);
++	zero_user(page + offset / PAGE_SIZE, offset % PAGE_SIZE, length);
+ 	BUFFER_TRACE(bh, "zeroed end of block");
+ 
+ 	if (ext4_should_journal_data(inode)) {
 -- 
 2.9.3
 
