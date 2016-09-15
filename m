@@ -1,35 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: move more common code into journal_init_common()
-Date: Thu, 15 Sep 2016 12:03:09 -0400
-Message-ID: <20160915160309.okkvwpxz4im5abti@thunk.org>
-References: <cover.1473240936.git.geliangtang@gmail.com>
- <50f2f9e8f6e503a3bd9a54b4dcb58531e18dbf52.1473240936.git.geliangtang@gmail.com>
- <20160907131624.GU28922@quack2.suse.cz>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: Re: [PATCH] fscrypto: make filename crypto functions return 0 on
+ success
+Date: Thu, 15 Sep 2016 09:54:12 -0700
+Message-ID: <20160915165412.GA52239@jaegeuk>
+References: <1473894045-65215-1-git-send-email-ebiggers@google.com>
+ <20160915001021.GB50095@jaegeuk>
+ <20160915025441.GA80824@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Geliang Tang <geliangtang@gmail.com>, Jan Kara <jack@suse.com>,
-        Eric Ren <zren@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160907131624.GU28922@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20160915025441.GA80824@google.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 07, 2016 at 03:16:24PM +0200, Jan Kara wrote:
-> On Wed 07-09-16 20:41:13, Geliang Tang wrote:
-> > There are some repetitive code in jbd2_journal_init_dev() and
-> > jbd2_journal_init_inode(). So this patch moves the common code into
-> > journal_init_common() helper to simplify the code. And fix the coding
-> > style warnings reported by checkpatch.pl by the way.
+On Wed, Sep 14, 2016 at 07:54:41PM -0700, Eric Biggers wrote:
+> On Wed, Sep 14, 2016 at 05:10:21PM -0700, Jaegeuk Kim wrote:
+> > Hi Eric,
 > > 
-> > Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+> > On Wed, Sep 14, 2016 at 04:00:45PM -0700, Eric Biggers wrote:
+> > > Several filename crypto functions: fname_decrypt(),
+> > > fscrypt_fname_disk_to_usr(), and fscrypt_fname_usr_to_disk(), returned
+> > > the output length on success or -errno on failure.  However, the output
+> > > length was redundant with the value written to 'oname->len'.  It is also
+> > > potentially error-prone to make callers have to check for '< 0' instead
+> > > of '!= 0'.
+> > 
+> > At a glance, you missed some places like
+> > - fscrypt_fname_usr_to_disk() in ext4_symlink() and f2fs_symlink()
+> > - fscrypt_fname_disk_to_usr() in dx_show_leaf() and f2fs_fill_dentries()
+> > 
 > 
-> The patch looks good to me. You can add:
+> Those callers don't have to be updated because they only check for an error
+> value --- they don't use the return value as a length.  I did check all the
+> callers of fscrypt_fname_{usr_to_disk,disk_to_usr()}, and only the three I
+> update in the patch used the return value as a length.
+
+Hmm, your patch tries to change the return value and make its usage more
+consistent. So, I think it should have been considered to change if (err < 0)
+to if (err) entirely in order to avoid any potential mistake; this patch already
+addresses it in some cases, but not all.
+
+e.g., in f2fs_symlink,
+
+	err = fscrypt_fname_usr_to_disk(inode, &istr, &ostr);
+	if (err < 0)
+		goto err_out;
+
+BTW, in dx_show_leaf(),
+	res = fscrypt_fname_disk_to_usr(dir,
+		0, 0, &de_name,
+		&fname_crypto_str);
+	if (res < 0)
+		...
+
+IMHO, it'd be better to use err instead of {res|ret} when considering naming
+convention.
+
+Thanks,
+
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-
-Applied, thanks.
-
-						- Ted
+> Eric
