@@ -1,10 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/6 linux-next] ext4: remove unneeded test in
- ext4_alloc_file_blocks()
-Date: Thu, 15 Sep 2016 11:52:52 -0400
-Message-ID: <20160915155252.5k453j76dgrveqgf@thunk.org>
+Subject: Re: [PATCH 3/6 linux-next] ext4: create EXT4_MAX_BLOCKS() macro
+Date: Thu, 15 Sep 2016 11:55:55 -0400
+Message-ID: <20160915155555.zumniwvtuu2frsg3@thunk.org>
 References: <1472069000-18897-1-git-send-email-fabf@skynet.be>
- <1472069000-18897-3-git-send-email-fabf@skynet.be>
+ <1472069000-18897-4-git-send-email-fabf@skynet.be>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -12,19 +11,16 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
 To: Fabian Frederick <fabf@skynet.be>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1472069000-18897-3-git-send-email-fabf@skynet.be>
+In-Reply-To: <1472069000-18897-4-git-send-email-fabf@skynet.be>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 24, 2016 at 10:03:16PM +0200, Fabian Frederick wrote:
-> ext4_alloc_file_blocks() is called from ext4_zero_range() and
-> ext4_fallocate() both already testing EXT4_INODE_EXTENTS
-> We can call ext_depth(inode) unconditionnally.
+On Wed, Aug 24, 2016 at 10:03:17PM +0200, Fabian Frederick wrote:
+> Create a macro to calculate length + offset -> maximum blocks
+> This adds more readability.
 > 
 > Signed-off-by: Fabian Frederick <fabf@skynet.be>
 
-Applied, although I also added a BUG_ON() check to make sure
-ext4_alloc_file_blocks() won't get called with an indirect-mapped
-inode in the future.
+Applied, thanks.
 
-				- Ted
+					- Ted
