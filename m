@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv3 40/41] mm, fs, ext4: expand use of page_mapping() and page_to_pgoff()
-Date: Thu, 15 Sep 2016 14:55:22 +0300
-Message-ID: <20160915115523.29737-41-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv3 20/41] mm: make write_cache_pages() work on huge pages
+Date: Thu, 15 Sep 2016 14:55:02 +0300
+Message-ID: <20160915115523.29737-21-kirill.shutemov@linux.intel.com>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,233 +25,95 @@ In-Reply-To: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-With huge pages in page cache we see tail pages in more code paths.
-This patch replaces direct access to struct page fields with macros
-which can handle tail pages properly.
+We writeback whole huge page a time. Let's adjust iteration this way.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c         |  2 +-
- fs/ext4/inode.c     |  4 ++--
- mm/filemap.c        | 26 ++++++++++++++------------
- mm/memory.c         |  4 ++--
- mm/page-writeback.c |  2 +-
- mm/truncate.c       |  5 +++--
- 6 files changed, 23 insertions(+), 20 deletions(-)
+ include/linux/mm.h      |  1 +
+ include/linux/pagemap.h |  1 +
+ mm/page-writeback.c     | 17 ++++++++++++-----
+ 3 files changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 20898b051044..56323862dad3 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -630,7 +630,7 @@ static void __set_page_dirty(struct page *page, struct address_space *mapping,
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&mapping->tree_lock, flags);
--	if (page->mapping) {	/* Race with truncate? */
-+	if (page_mapping(page)) {	/* Race with truncate? */
- 		WARN_ON_ONCE(warn && !PageUptodate(page));
- 		account_page_dirtied(page, mapping);
- 		radix_tree_tag_set(&mapping->page_tree,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 645a984a15ef..ff995083856b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1223,7 +1223,7 @@ retry_journal:
- 	}
- 
- 	lock_page(page);
--	if (page->mapping != mapping) {
-+	if (page_mapping(page) != mapping) {
- 		/* The page got truncated from under us */
- 		unlock_page(page);
- 		put_page(page);
-@@ -2961,7 +2961,7 @@ retry_journal:
- 	}
- 
- 	lock_page(page);
--	if (page->mapping != mapping) {
-+	if (page_mapping(page) != mapping) {
- 		/* The page got truncated from under us */
- 		unlock_page(page);
- 		put_page(page);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 61d375d7f93e..c69b1204744a 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -369,7 +369,7 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- 			struct page *page = pvec.pages[i];
- 
- 			/* until radix tree lookup accepts end_index */
--			if (page->index > end)
-+			if (page_to_pgoff(page) > end)
- 				continue;
- 
- 			page = compound_head(page);
-@@ -1307,12 +1307,12 @@ repeat:
- 		}
- 
- 		/* Has the page been truncated? */
--		if (unlikely(page->mapping != mapping)) {
-+		if (unlikely(page_mapping(page) != mapping)) {
- 			unlock_page(page);
- 			put_page(page);
- 			goto repeat;
- 		}
--		VM_BUG_ON_PAGE(page->index != offset, page);
-+		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
- 	}
- 
- 	if (page && (fgp_flags & FGP_ACCESSED))
-@@ -1606,7 +1606,8 @@ repeat:
- 		 * otherwise we can get both false positives and false
- 		 * negatives, which is just confusing to the caller.
- 		 */
--		if (page->mapping == NULL || page_to_pgoff(page) != index) {
-+		if (page_mapping(page) == NULL ||
-+				page_to_pgoff(page) != index) {
- 			put_page(page);
- 			break;
- 		}
-@@ -1907,7 +1908,7 @@ find_page:
- 			if (!trylock_page(page))
- 				goto page_not_up_to_date;
- 			/* Did it get truncated before we got the lock? */
--			if (!page->mapping)
-+			if (!page_mapping(page))
- 				goto page_not_up_to_date_locked;
- 			if (!mapping->a_ops->is_partially_uptodate(page,
- 							offset, iter->count))
-@@ -1987,7 +1988,7 @@ page_not_up_to_date:
- 
- page_not_up_to_date_locked:
- 		/* Did it get truncated before we got the lock? */
--		if (!page->mapping) {
-+		if (!page_mapping(page)) {
- 			unlock_page(page);
- 			put_page(page);
- 			continue;
-@@ -2023,7 +2024,7 @@ readpage:
- 			if (unlikely(error))
- 				goto readpage_error;
- 			if (!PageUptodate(page)) {
--				if (page->mapping == NULL) {
-+				if (page_mapping(page) == NULL) {
- 					/*
- 					 * invalidate_mapping_pages got it
- 					 */
-@@ -2324,12 +2325,12 @@ retry_find:
- 	}
- 
- 	/* Did it get truncated? */
--	if (unlikely(page->mapping != mapping)) {
-+	if (unlikely(page_mapping(page) != mapping)) {
- 		unlock_page(page);
- 		put_page(page);
- 		goto retry_find;
- 	}
--	VM_BUG_ON_PAGE(page->index != offset, page);
-+	VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
- 
- 	/*
- 	 * We have a locked page in the page cache, now we need to check
-@@ -2505,7 +2506,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vma->vm_file);
- 	lock_page(page);
--	if (page->mapping != inode->i_mapping) {
-+	if (page_mapping(page) != inode->i_mapping) {
- 		unlock_page(page);
- 		ret = VM_FAULT_NOPAGE;
- 		goto out;
-@@ -2654,7 +2655,7 @@ filler:
- 	lock_page(page);
- 
- 	/* Case c or d, restart the operation */
--	if (!page->mapping) {
-+	if (!page_mapping(page)) {
- 		unlock_page(page);
- 		put_page(page);
- 		goto repeat;
-@@ -3110,12 +3111,13 @@ EXPORT_SYMBOL(generic_file_write_iter);
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index ef815b9cd426..44e55d1c8e41 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1054,6 +1054,7 @@ struct address_space *page_file_mapping(struct page *page)
   */
- int try_to_release_page(struct page *page, gfp_t gfp_mask)
+ static inline pgoff_t page_index(struct page *page)
  {
--	struct address_space * const mapping = page->mapping;
-+	struct address_space * const mapping = page_mapping(page);
- 
- 	BUG_ON(!PageLocked(page));
- 	if (PageWriteback(page))
- 		return 0;
- 
 +	page = compound_head(page);
- 	if (mapping && mapping->a_ops->releasepage)
- 		return mapping->a_ops->releasepage(page, gfp_mask);
- 	return try_to_free_buffers(page);
-diff --git a/mm/memory.c b/mm/memory.c
-index aad8d5c6311f..ea80eded3179 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2052,7 +2052,7 @@ static int do_page_mkwrite(struct vm_area_struct *vma, struct page *page,
- 		return ret;
- 	if (unlikely(!(ret & VM_FAULT_LOCKED))) {
- 		lock_page(page);
--		if (!page->mapping) {
-+		if (!page_mapping(page)) {
- 			unlock_page(page);
- 			return 0; /* retry */
- 		}
-@@ -2100,7 +2100,7 @@ static inline int wp_page_reuse(struct fault_env *fe, pte_t orig_pte,
- 
- 		dirtied = set_page_dirty(page);
- 		VM_BUG_ON_PAGE(PageAnon(page), page);
--		mapping = page->mapping;
-+		mapping = page_mapping(page);
- 		unlock_page(page);
- 		put_page(page);
- 
+ 	if (unlikely(PageSwapCache(page)))
+ 		return page_private(page);
+ 	return page->index;
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index a84f11a672f0..4d6e9aec2d1f 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -518,6 +518,7 @@ static inline void wait_on_page_locked(struct page *page)
+  */
+ static inline void wait_on_page_writeback(struct page *page)
+ {
++	page = compound_head(page);
+ 	if (PageWriteback(page))
+ 		wait_on_page_bit(page, PG_writeback);
+ }
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 6390c9488e29..3bfa158aa784 100644
+index f4cd7d8005c9..6390c9488e29 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
-@@ -2878,7 +2878,7 @@ EXPORT_SYMBOL(mapping_tagged);
-  */
- void wait_for_stable_page(struct page *page)
- {
--	if (bdi_cap_stable_pages_required(inode_to_bdi(page->mapping->host)))
-+	if (bdi_cap_stable_pages_required(inode_to_bdi(page_mapping(page)->host)))
- 		wait_on_page_writeback(page);
- }
- EXPORT_SYMBOL_GPL(wait_for_stable_page);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 6a445278aaaf..87b47de58b50 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -627,6 +627,7 @@ invalidate_complete_page2(struct address_space *mapping, struct page *page)
- {
- 	unsigned long flags;
+@@ -2242,7 +2242,7 @@ retry:
+ 			 * mapping. However, page->index will not change
+ 			 * because we have a reference on the page.
+ 			 */
+-			if (page->index > end) {
++			if (page_to_pgoff(page) > end) {
+ 				/*
+ 				 * can't be range_cyclic (1st pass) because
+ 				 * end == -1 in that case.
+@@ -2251,7 +2251,12 @@ retry:
+ 				break;
+ 			}
  
-+	page = compound_head(page);
- 	if (page->mapping != mapping)
- 		return 0;
- 
-@@ -655,7 +656,7 @@ static int do_launder_page(struct address_space *mapping, struct page *page)
- {
- 	if (!PageDirty(page))
- 		return 0;
--	if (page->mapping != mapping || mapping->a_ops->launder_page == NULL)
-+	if (page_mapping(page) != mapping || mapping->a_ops->launder_page == NULL)
- 		return 0;
- 	return mapping->a_ops->launder_page(page);
- }
-@@ -703,7 +704,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+-			done_index = page->index;
++			done_index = page_to_pgoff(page);
++			if (PageTransCompound(page)) {
++				index = round_up(index + 1, HPAGE_PMD_NR);
++				i += HPAGE_PMD_NR -
++					done_index % HPAGE_PMD_NR - 1;
++			}
  
  			lock_page(page);
- 			WARN_ON(page_to_pgoff(page) != index);
--			if (page->mapping != mapping) {
-+			if (page_mapping(page) != mapping) {
+ 
+@@ -2263,7 +2268,7 @@ retry:
+ 			 * even if there is now a new, dirty page at the same
+ 			 * pagecache address.
+ 			 */
+-			if (unlikely(page->mapping != mapping)) {
++			if (unlikely(page_mapping(page) != mapping)) {
+ continue_unlock:
  				unlock_page(page);
  				continue;
- 			}
+@@ -2301,7 +2306,8 @@ continue_unlock:
+ 					 * not be suitable for data integrity
+ 					 * writeout).
+ 					 */
+-					done_index = page->index + 1;
++					done_index = compound_head(page)->index
++						+ hpage_nr_pages(page);
+ 					done = 1;
+ 					break;
+ 				}
+@@ -2313,7 +2319,8 @@ continue_unlock:
+ 			 * keep going until we have written all the pages
+ 			 * we tagged for writeback prior to entering this loop.
+ 			 */
+-			if (--wbc->nr_to_write <= 0 &&
++			wbc->nr_to_write -= hpage_nr_pages(page);
++			if (wbc->nr_to_write <= 0 &&
+ 			    wbc->sync_mode == WB_SYNC_NONE) {
+ 				done = 1;
+ 				break;
 -- 
 2.9.3
 
