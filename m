@@ -1,35 +1,35 @@
 From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 159141]
- New:=?UTF-8?Q?=20mantara=20=E2=9C=88=E2=9C=88=E2=9C=88855=E2=9C=88675=E2=9C=880113=20=20=20=20intuit=20quickbooks=20proadvisor=20customer=20care=20support=20phone=20number?=
-Date: Fri, 16 Sep 2016 12:01:53 +0000
-Message-ID: <bug-159141-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 159191]
+ New:=?UTF-8?Q?=20intuit=20quickbooks=201=20=E2=9C=88=E2=9C=88=E2=9C=88=E2=9C=88855=E2=9C=88675=E2=9C=880113=20=20=20=20=20proadvisor=20support=20number?=
+Date: Fri, 16 Sep 2016 12:03:10 +0000
+Message-ID: <bug-159191-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:47812 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.136]:48024 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752856AbcIPMB4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Sep 2016 08:01:56 -0400
+        id S1757357AbcIPMDP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Sep 2016 08:03:15 -0400
 Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id C09182022D
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2016 12:01:54 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTP id 1B9F4205DD
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2016 12:03:13 +0000 (UTC)
 Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-        by mail.kernel.org (Postfix) with ESMTP id 4DA782020F
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2016 12:01:53 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTP id B471A205DB
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Sep 2016 12:03:10 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=159141
+https://bugzilla.kernel.org/show_bug.cgi?id=159191
 
-            Bug ID: 159141
-           Summary: mantara ✈✈✈855✈675✈0113    intuit quickbooks
-                    proadvisor customer care support phone number
+            Bug ID: 159191
+           Summary: intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor
+                    support number
            Product: File System
            Version: 2.5
-    Kernel Version: mantara ✈✈✈855✈675✈0113    intuit quickbooks
-                    proadvisor customer care support phone number
+    Kernel Version: intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor
+                    support number
           Hardware: All
                 OS: Linux
               Tree: Mainline
@@ -41,71 +41,90 @@ https://bugzilla.kernel.org/show_bug.cgi?id=159141
           Reporter: franklinsam987@gmail.com
         Regression: No
 
-Created attachment 235021
-  --> https://bugzilla.kernel.org/attachment.cgi?id=235021&action=edit
-mantara ✈✈✈855✈675✈0113    intuit quickbooks proadvisor customer care support
-phone number
+Created attachment 235041
+  --> https://bugzilla.kernel.org/attachment.cgi?id=235041&action=edit
+intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor support number
 
-mantara ✈✈✈855✈675✈0113    intuit quickbooks proadvisor customer care support
-phone number Enhanced Payroll Subscription Renewal Support Number855-675-
-payroll basic 2014855/675*0113/intuit quickbooks payroll
-basic855/675*0113/intuit quickbooks basic payroll 2013855/675*0113/intuit
-quickbooks basic payroll 2015855/675*0113/intuit quickbooks payroll customer
-service855/675*0113/intuit quickbooks payroll calculator855/675*0113/intuit
-quickbooks payroll checks855/675*0113/intuit quickbooks payroll
-cost855/675*0113/intuit quickbooks payroll nada855/675*0113/intuit quickbooks
-certified payroll855/675*0113/quickbooks.intuit.com payroll855/675*0113/intuit
-quickbooks payroll year end center855/675*0113/intuit quickbooks payroll
-enhanced pos 9 serial number855-675-0113.Oregon intuit quickbooks pos 2013
-serial number855-675-0113.Pennsylvania intuit quickbooks point of sale 2013
-support number
-855-675-0113.Rhode Island intuit quickbooks point of sale tech support
-number855-675-0113.South Carolina intuit quickbooks pos duplicate item numbers
-mantara ✈✈✈855✈675✈0113    intuit quickbooks proadvisor customer care support
-phone number Enhanced Payroll Subscription Renewal Support Number855-675-
-payroll basic 2014855/675*0113/intuit quickbooks payroll
-basic855/675*0113/intuit quickbooks basic payroll 2013855/675*0113/intuit
-quickbooks basic payroll 2015855/675*0113/intuit quickbooks payroll customer
-service855/675*0113/intuit quickbooks payroll calculator855/675*0113/intuit
-quickbooks payroll checks855/675*0113/intuit quickbooks payroll
-cost855/675*0113/intuit quickbooks payroll nada855/675*0113/intuit quickbooks
-certified payroll855/675*0113/quickbooks.intuit.com payroll855/675*0113/intuit
-quickbooks payroll year end center855/675*0113/intuit quickbooks payroll
-enhanced pos 9 serial number855-675-0113.Oregon intuit quickbooks pos 2013
-serial number855-675-0113.Pennsylvania intuit quickbooks point of sale 2013
-support number
-855-675-0113.Rhode Island intuit quickbooks point of sale tech support
-number855-675-0113.South Carolina intuit quickbooks pos duplicate item numbers
-mantara ✈✈✈855✈675✈0113    intuit quickbooks proadvisor customer care support
-phone number Enhanced Payroll Subscription Renewal Support Number855-675-
-payroll basic 2014855/675*0113/intuit quickbooks payroll
-basic855/675*0113/intuit quickbooks basic payroll 2013855/675*0113/intuit
-quickbooks basic payroll 2015855/675*0113/intuit quickbooks payroll customer
-service855/675*0113/intuit quickbooks payroll calculator855/675*0113/intuit
-quickbooks payroll checks855/675*0113/intuit quickbooks payroll
-cost855/675*0113/intuit quickbooks payroll nada855/675*0113/intuit quickbooks
-certified payroll855/675*0113/quickbooks.intuit.com payroll855/675*0113/intuit
-quickbooks payroll year end center855/675*0113/intuit quickbooks payroll
-enhanced pos 9 serial number855-675-0113.Oregon intuit quickbooks pos 2013
-serial number855-675-0113.Pennsylvania intuit quickbooks point of sale 2013
-support number
-855-675-0113.Rhode Island intuit quickbooks point of sale tech support
-number855-675-0113.South Carolina intuit quickbooks pos duplicate item numbers
-mantara ✈✈✈855✈675✈0113    intuit quickbooks proadvisor customer care support
-phone number Enhanced Payroll Subscription Renewal Support Number855-675-
-payroll basic 2014855/675*0113/intuit quickbooks payroll
-basic855/675*0113/intuit quickbooks basic payroll 2013855/675*0113/intuit
-quickbooks basic payroll 2015855/675*0113/intuit quickbooks payroll customer
-service855/675*0113/intuit quickbooks payroll calculator855/675*0113/intuit
-quickbooks payroll checks855/675*0113/intuit quickbooks payroll
-cost855/675*0113/intuit quickbooks payroll nada855/675*0113/intuit quickbooks
-certified payroll855/675*0113/quickbooks.intuit.com payroll855/675*0113/intuit
-quickbooks payroll year end center855/675*0113/intuit quickbooks payroll
-enhanced pos 9 serial number855-675-0113.Oregon intuit quickbooks pos 2013
-serial number855-675-0113.Pennsylvania intuit quickbooks point of sale 2013
-support number
-855-675-0113.Rhode Island intuit quickbooks point of sale tech support
-number855-675-0113.South Carolina intuit quickbooks pos duplicate item numbers
+intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor support number
+855-675-0113.South Dakota intuit quickbooks pos item
+numbers855-675-0113.Tennessee intuit quickbooks pos support telephone
+number855-675-0113.Texas intuit quickbooks pos workstation
+number855-675-0113.Utah intuit quickbooks pos change workstation
+number855-675-0113.Vermont intuit quickbooks pos 6 license number
+855-675-0113.Virginia intuit quickbooks pos 8 license
+number855-675-0113.Washington intuit quickbooks pos 8 invalid product
+number855-675-0113. phone number for intuit quickbooks
+support855-675-0113.phone number for intuit quickbooks855-675-0113.license
+number for intuit quickbooks855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.telephone number for intuit quickbooks
+support855-675-0113.contact number for intuit quickbooks855-675-0113.customer
+service phone number for intuit quickbooks855-675-0113.number for quickbooks
+support855-675-0113.phone number for quickbooks payroll
+support855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.phone number for quickbooks assisted
+payroll855-675-0113.phone number for quickbooks online payroll
+support855-675-0113.telephone number for quickbooks payroll
+support855-675-0113.quickbooks desktop support number855-675-0113.quickbooks 
+intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor support number
+855-675-0113.South Dakota intuit quickbooks pos item
+numbers855-675-0113.Tennessee intuit quickbooks pos support telephone
+number855-675-0113.Texas intuit quickbooks pos workstation
+number855-675-0113.Utah intuit quickbooks pos change workstation
+number855-675-0113.Vermont intuit quickbooks pos 6 license number
+855-675-0113.Virginia intuit quickbooks pos 8 license
+number855-675-0113.Washington intuit quickbooks pos 8 invalid product
+number855-675-0113. phone number for intuit quickbooks
+support855-675-0113.phone number for intuit quickbooks855-675-0113.license
+number for intuit quickbooks855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.telephone number for intuit quickbooks
+support855-675-0113.contact number for intuit quickbooks855-675-0113.customer
+service phone number for intuit quickbooks855-675-0113.number for quickbooks
+support855-675-0113.phone number for quickbooks payroll
+support855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.phone number for quickbooks assisted
+payroll855-675-0113.phone number for quickbooks online payroll
+support855-675-0113.telephone number for quickbooks payroll
+support855-675-0113.quickbooks desktop support number855-675-0113.quickbooks 
+intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor support number
+855-675-0113.South Dakota intuit quickbooks pos item
+numbers855-675-0113.Tennessee intuit quickbooks pos support telephone
+number855-675-0113.Texas intuit quickbooks pos workstation
+number855-675-0113.Utah intuit quickbooks pos change workstation
+number855-675-0113.Vermont intuit quickbooks pos 6 license number
+855-675-0113.Virginia intuit quickbooks pos 8 license
+number855-675-0113.Washington intuit quickbooks pos 8 invalid product
+number855-675-0113. phone number for intuit quickbooks
+support855-675-0113.phone number for intuit quickbooks855-675-0113.license
+number for intuit quickbooks855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.telephone number for intuit quickbooks
+support855-675-0113.contact number for intuit quickbooks855-675-0113.customer
+service phone number for intuit quickbooks855-675-0113.number for quickbooks
+support855-675-0113.phone number for quickbooks payroll
+support855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.phone number for quickbooks assisted
+payroll855-675-0113.phone number for quickbooks online payroll
+support855-675-0113.telephone number for quickbooks payroll
+support855-675-0113.quickbooks desktop support number855-675-0113.quickbooks 
+intuit quickbooks 1 ✈✈✈✈855✈675✈0113     proadvisor support number
+855-675-0113.South Dakota intuit quickbooks pos item
+numbers855-675-0113.Tennessee intuit quickbooks pos support telephone
+number855-675-0113.Texas intuit quickbooks pos workstation
+number855-675-0113.Utah intuit quickbooks pos change workstation
+number855-675-0113.Vermont intuit quickbooks pos 6 license number
+855-675-0113.Virginia intuit quickbooks pos 8 license
+number855-675-0113.Washington intuit quickbooks pos 8 invalid product
+number855-675-0113. phone number for intuit quickbooks
+support855-675-0113.phone number for intuit quickbooks855-675-0113.license
+number for intuit quickbooks855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.telephone number for intuit quickbooks
+support855-675-0113.contact number for intuit quickbooks855-675-0113.customer
+service phone number for intuit quickbooks855-675-0113.number for quickbooks
+support855-675-0113.phone number for quickbooks payroll
+support855-675-0113.phone number for intuit quickbooks
+payroll855-675-0113.phone number for quickbooks assisted
+payroll855-675-0113.phone number for quickbooks online payroll
+support855-675-0113.telephone number for quickbooks payroll
+support855-675-0113.quickbooks desktop support number855-675-0113.quickbooks
 
 -- 
 You are receiving this mail because:
