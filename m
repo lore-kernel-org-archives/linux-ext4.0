@@ -1,220 +1,72 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Trouble mounting metadata_csum ext4 filesystems with v4.7.x
- after c9274d891869880648c4ee9365df3ecc7ba2e285: not enough inode bytes
- checksummed?
-Date: Mon, 19 Sep 2016 22:52:16 -0700
-Message-ID: <20160920055216.GD9309@birch.djwong.org>
+From: =?UTF-8?B?7KCV64yA7Zi4?= <daeho.jeong@samsung.com>
+Subject: =?UTF-8?B?UmU6IFRyb3VibGUgbW91bnRpbmcgbWV0YWRhdGFfY3N1bSBl?=
+ =?UTF-8?B?eHQ0IGZpbGVzeXN0ZW1zIHdpdGggdjQuNy54IGFmdGVyIGM5?=
+ =?UTF-8?B?Mjc0ZDg5MTg2OTg4MDY0OGM0ZWU5MzY1ZGYzZWNjN2JhMmUy?=
+ =?UTF-8?B?ODU6IG5vdCBlbm91Z2ggaW5vZGUgYnl0ZXMgY2hlY2tzdW1t?= =?UTF-8?B?ZWQ/?=
+Date: Tue, 20 Sep 2016 13:35:58 +0000
+Message-ID: <1153903080.1652319.1474378558082.JavaMail.weblogic@ep1ml103c>
 References: <87zin42crs.fsf@esperi.org.uk>
+ <CGME20160920055236epcas1p191f8fd252e18f762fa3ad9704f5e77e2@epcas1p1.samsung.com>
+Reply-To: daeho.jeong@samsung.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
-        daeho.jeong@samsung.com, linux-ext4 <linux-ext4@vger.kernel.org>
-To: Nix <nix@esperi.org.uk>, "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: multipart/related;
+ boundary="----=_Part_1652318_1041931074.1474378558082"
+Cc: =?UTF-8?B?TGludXggRlMgTWFsaW5nIExpc3Q=?=
+        <linux-fsdevel@vger.kernel.org>,
+        =?UTF-8?B?7KCV64yA7Zi4?= <daeho.jeong@samsung.com>,
+        =?UTF-8?B?bGludXgtZXh0NA==?= <linux-ext4@vger.kernel.org>
+To: =?UTF-8?B?RGFycmljayBKLiBXb25n?= <darrick.wong@oracle.com>,
+        =?UTF-8?B?Tml4?= <nix@esperi.org.uk>,
+        =?UTF-8?B?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <87zin42crs.fsf@esperi.org.uk>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-[cc Ted and the ext4 list]
+------=_Part_1652318_1041931074.1474378558082
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="utf-8"
 
-On Mon, Sep 19, 2016 at 03:19:03PM +0100, Nix wrote:
-> So I ran into spurious metadata corruption warnings in v4.7.2 due to the
-> problem fixed by c9274d8. I applied an early version of the fix,
-> rebooted, and oh dear root filesystem mount failure with invalid
-> checksum errors.
-> 
-> The problem persists in v4.7.4, as seen here in qemu emulation on a raw
-> image dd'ed directly from the thing that won't boot, with a couple of
-> printk()s:
-> 
-> # mount /dev/vda /new-root/
-> [    8.124692] EXT4-fs (vda): couldn't mount as ext3 due to feature incompatibilities
-> [    8.126977] EXT4-fs (vda): couldn't mount as ext2 due to feature incompatibilities
-> [    9.017980] Inode size 256 > good old size 128; fits in inode: 0
-> [    8.134897] inode 8: provided: 5c50l; calculated: 36e1i
-> [    8.135098] EXT4-fs error (device vda): ext4_iget:4479: inode #8: comm mount: checksum invalid
-> [    8.138992] EXT4-fs (vda): no journal found
-> [    8.165744] UDF-fs: warning (device vda): udf_fill_super: No partition found (2)
-> mount: mounting /dev/vda on /new-root/ failed: Invalid argument
-> 
-> I added a bit of printking to show the failure of the journal inode
-> checksum to pass muster. e2fsck (from e2fsprogs 1.43.1-14) is quite
-> happy with this filesystem. Reverting c9274d8 makes everything happy
-> again (well, it does bring the original bug back, which is a rather
-> serious one, but other than that...):
-> 
-> [    9.823032] EXT4-fs (vda): couldn't mount as ext3 due to feature incompatibilities
-> [    9.824647] EXT4-fs (vda): couldn't mount as ext2 due to feature incompatibilities
-> [    9.832593] inode 8: provided: 5c50l; calculated: 5c50i
-> [    9.839253] inode 2: provided: d6ea92e9l; calculated: d6ea92e9i
-> [    9.846947] EXT4-fs (vda): mounted filesystem with ordered data mode. Opts: (null)
-> 
-> So c9274d8 is clearly messing up the calculation of the checksum.
-> 
-> The problem becomes more evident if we add more printk()s to the old
-> code, so we can see what region is being checksummed:
-> 
-> # mount /dev/vda /new-root
-> [    6.827297] inode 8: unadjusted csum of 256 bytes with seed a5df92a7: 449a5c50
-> [    6.827596] adjusted csum: 5c50
-> [    6.835993] inode 2: unadjusted csum of 256 bytes with seed 759c6c33: d6ea92e9
-> [    6.836173] adjusted csum: d6ea92e9
-> [    6.844801] EXT4-fs (vda): mounted filesystem with ordered data mode. Opts:
-> 
-> and the new:
-> 
-> [   11.098013] inode 8: csum of first 124 bytes with seed a5df92a7: f375b663
-> [   11.098205] inode 8: added csum of 2 dummy_csum bytes with seed a5df92a7: 20cfebcb
-> [   11.098420] inode 8: added csum of 2 bytes from offset 126 -- 128 to existing: d79e7432
-> [   11.098646] inode 8: > GOOD_OLD_INODE_SIZE; added csum of 2 bytes from 128 -- 130 to existing: d10936e1
-> [   11.098890] 8: adjusted csum: 36e1
-> [   11.099133] EXT4-fs error (device vda): ext4_iget:4483: inode #8: comm mount: checksum invalid
-> 
-> We are not checksumming enough bytes! We used to checksum the entire
-> 256-byte inode: now, we checksum only 130 bytes of it, which isn't even
-> enough to cover the 28-byte extra_isize on this filesystem and is more
-> or less guaranteed to give the wrong answer. I'd fix the problem, but I
-> frankly can't see how the new code is meant to be equivalent to the old
-> code in any sense -- most particularly what the stuff around dummy_csum
-> is meant to do -- so I thought it better to let the people who wrote it
-> fix it :)
-
-Sh*t, I missed this during the review.  So your filesystem image (thank
-you!) had this to say:
-
-debugfs> stats
-Inode size:               256
-debugfs> stat <8>
-Size of extra inode fields: 0
-
-Basically, a 128-byte inode inside a filesystem that allocated 256 bytes
-for each inode.  As you point out, the old code would checksum the entire
-allocated space, whether or not the inode core used it.  Obviously, you
-want this since inline extended attributes live in that space:
-
-csum = ext4_chksum(sbi, ei->i_csum_seed, (__u8 *)raw,
-		   EXT4_INODE_SIZE(inode->i_sb));
-
-The new code, on the other hand, carefully checksums around the
-i_checksum fields and only bothers to checksum the space between the end
-of i_checksum_hi and the end of the allocated space if the inode core is
-big enough to store i_checksum_hi.  Since we allocated 256 bytes for
-each inode, we checksum the first two bytes after byte 128
-(EXT4_GOOD_OLD_INODE_SIZE), but then we see that i_extra_size == 0 so we
-never bother to checksum anything after that.  This is of course wrong
-since we no longer checksum the xattr space and we've deviated from the
-pre-4.7.4 (documented) on-disk format.
-
-*FORTUNATELY* since the root inode fails the read verifier, the file (in
-this case the root dir) can't be modified and therefore nothing has been
-corrupted.  Especially fortunate for you, the fs won't mount, reducing
-the chances that any serious damage has occurred.
-
-I /think/ the fix in this case is to hoist the last ext4_chksum call
-out of the EXT4_FITS_IN_INODE blob:
-
-if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
-	offset = offsetof(struct ext4_inode, i_checksum_hi);
-	csum = ext4_chksum(sbi, csum, (__u8 *)raw +
-			   EXT4_GOOD_OLD_INODE_SIZE,
-			   offset - EXT4_GOOD_OLD_INODE_SIZE);
-	if (EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
-		csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
-				   csum_size);
-		offset += csum_size;
-	}
-	csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
-			   EXT4_INODE_SIZE(inode->i_sb) - offset);
-}
-
-Can you give that a try?
-
-> tune2fs output for this filesystem, particularly the extra_isize and
-> inode size fields are likely relevant:
-> 
-> tune2fs 1.43.1 (08-Jun-2016)
-> Filesystem volume name:   root
-> Last mounted on:          /
-> Filesystem UUID:          6c0f7fa7-d6c2-4054-bff3-3a878460bdc7
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype extent 64bit flex_bg sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
-> Filesystem flags:         signed_directory_hash
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              65536
-> Block count:              262144
-> Reserved block count:     13107
-> Free blocks:              227009
-> Free inodes:              59499
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Group descriptor size:    64
-> Reserved GDT blocks:      63
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         8192
-> Inode blocks per group:   512
-> RAID stripe width:        16
-> Flex block group size:    64
-> Filesystem created:       Tue May 26 21:28:46 2009
-> Last mount time:          Sun Sep 18 23:34:41 2016
-> Last write time:          Mon Sep 19 13:51:59 2016
-> Mount count:              0
-> Maximum mount count:      36
-> Last checked:             Mon Sep 19 13:51:59 2016
-> Check interval:           15552000 (6 months)
-> Next check after:         Sat Mar 18 12:51:59 2017
-> Lifetime writes:          16 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> Default directory hash:   half_md4
-> Directory Hash Seed:      f1da2da0-057e-4ba0-a021-3d56db5b24ab
-> Journal backup:           inode blocks
-> Checksum type:            crc32c
-> Checksum:                 0x92acf115
-> 
-> This is an old, upgraded fs from before the days of checksums, but even
-> so I'm surprised that with a 256-byte inode and no xattrs in use,
-> EXT4_FITS_IN_INODE is false. Maybe the extra_isize isn't big enough?
-
-It's zero, so yes. :)
-
-> An lzipped e2image of the problematic filesystem is available from
-> <http://www.esperi.org.uk/~nix/temporary/csum-corruption.img.lz>:
-> I have verified that the problem recurs with this image.
-> 
-> I can also replicate the problem in literally seconds if you need more
-> debugging output.
-> 
-> 
-> ... The mystery is why this isn't going wrong anywhere else: I have
-> metadata_csum working on every fs on a bunch of other ext4-using
-> systems, and indeed on every filesystem on this machine as well, as long
-> as c9274d8 is not applied. Many of them are similarly upgraded pre-csum
-> fses with the same inode size and extra_isize, but they work...
-
-Hard to say, but this bug only affects inodes with 0 < i_extra_size <= 4
-i.e. 128 < inode-core-size <= 130.  Maybe an old ext3 fs that was
-created with 256 bytes per inode but inode-core-size of 128?
-
-Uck.  Sorry about this mess.
-
---D
-
-> 
-> -- 
-> NULL && (void)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+SGksIFNvcnJ5IHRvIGJvdGhlciB5b3UuDQoNCj4gQmFzaWNhbGx5LMKgYcKgMTI4LWJ5dGXCoGlu
+b2RlwqBpbnNpZGXCoGHCoGZpbGVzeXN0ZW3CoHRoYXTCoGFsbG9jYXRlZMKgMjU2wqBieXRlcw0K
+PiBmb3LCoGVhY2jCoGlub2RlLsKgwqBBc8KgeW91wqBwb2ludMKgb3V0LMKgdGhlwqBvbGTCoGNv
+ZGXCoHdvdWxkwqBjaGVja3N1bcKgdGhlwqBlbnRpcmUNCj4gYWxsb2NhdGVkwqBzcGFjZSzCoHdo
+ZXRoZXLCoG9ywqBub3TCoHRoZcKgaW5vZGXCoGNvcmXCoHVzZWTCoGl0LsKgwqBPYnZpb3VzbHks
+wqB5b3UNCj4gd2FudMKgdGhpc8Kgc2luY2XCoGlubGluZcKgZXh0ZW5kZWTCoGF0dHJpYnV0ZXPC
+oGxpdmXCoGluwqB0aGF0wqBzcGFjZToNCsKgDQo+IGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzC
+oGVpLT5pX2NzdW1fc2VlZCzCoChfX3U4wqAqKXJhdywNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoEVYVDRfSU5PREVfU0laRShpbm9kZS0+aV9zYikpOw0KwqANCj4gVGhl
+wqBuZXfCoGNvZGUswqBvbsKgdGhlwqBvdGhlcsKgaGFuZCzCoGNhcmVmdWxsecKgY2hlY2tzdW1z
+wqBhcm91bmTCoHRoZQ0KPiBpX2NoZWNrc3VtwqBmaWVsZHPCoGFuZMKgb25secKgYm90aGVyc8Kg
+dG/CoGNoZWNrc3VtwqB0aGXCoHNwYWNlwqBiZXR3ZWVuwqB0aGXCoGVuZA0KPiBvZsKgaV9jaGVj
+a3N1bV9oacKgYW5kwqB0aGXCoGVuZMKgb2bCoHRoZcKgYWxsb2NhdGVkwqBzcGFjZcKgaWbCoHRo
+ZcKgaW5vZGXCoGNvcmXCoGlzDQo+IGJpZ8KgZW5vdWdowqB0b8Kgc3RvcmXCoGlfY2hlY2tzdW1f
+aGkuwqDCoFNpbmNlwqB3ZcKgYWxsb2NhdGVkwqAyNTbCoGJ5dGVzwqBmb3INCj4gZWFjaMKgaW5v
+ZGUswqB3ZcKgY2hlY2tzdW3CoHRoZcKgZmlyc3TCoHR3b8KgYnl0ZXPCoGFmdGVywqBieXRlwqAx
+MjgNCj4gKEVYVDRfR09PRF9PTERfSU5PREVfU0laRSkswqBidXTCoHRoZW7CoHdlwqBzZWXCoHRo
+YXTCoGlfZXh0cmFfc2l6ZcKgPT3CoDDCoHNvwqB3ZQ0KPiBuZXZlcsKgYm90aGVywqB0b8KgY2hl
+Y2tzdW3CoGFueXRoaW5nwqBhZnRlcsKgdGhhdC7CoMKgVGhpc8KgaXPCoG9mwqBjb3Vyc2XCoHdy
+b25nDQo+IHNpbmNlwqB3ZcKgbm/CoGxvbmdlcsKgY2hlY2tzdW3CoHRoZcKgeGF0dHLCoHNwYWNl
+wqBhbmTCoHdlJ3ZlwqBkZXZpYXRlZMKgZnJvbcKgdGhlDQo+IHByZS00LjcuNMKgKGRvY3VtZW50
+ZWQpwqBvbi1kaXNrwqBmb3JtYXQuDQoNCk9vcHMuIEkgaGFkIG92ZXJsb29rZWQgdGhlIGNhc2Ug
+b2YgdGhhdCBpX2V4dHJhX3NpemUgaXMgbGVzcyB0aGFuIDQuDQpJIG1pc3VuZGVyc3Rvb2QgdGhl
+IHByZXZpb3VzIERhcnJpY2sncyBjb2RlcyBjYWxjdWxhdGluZyBpbm9kZSBjaGVja3N1bSB2YWx1
+ZS4NClNvcnJ5IGFib3V0IHRoYXQuIDotKA0KwqANCj4gaWbCoChFWFQ0X0lOT0RFX1NJWkUoaW5v
+ZGUtPmlfc2IpwqA+wqBFWFQ0X0dPT0RfT0xEX0lOT0RFX1NJWkUpwqB7DQo+wqDCoMKgwqDCoMKg
+wqDCoG9mZnNldMKgPcKgb2Zmc2V0b2Yoc3RydWN0wqBleHQ0X2lub2RlLMKgaV9jaGVja3N1bV9o
+aSk7DQo+wqDCoMKgwqDCoMKgwqDCoGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzCoGNzdW0swqAo
+X191OMKgKilyYXfCoCsNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqBFWFQ0X0dPT0RfT0xEX0lOT0RFX1NJWkUsDQo+wqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgb2Zmc2V0wqAtwqBFWFQ0X0dP
+T0RfT0xEX0lOT0RFX1NJWkUpOw0KPsKgwqDCoMKgwqDCoMKgwqBpZsKgKEVYVDRfRklUU19JTl9J
+Tk9ERShyYXcswqBlaSzCoGlfY2hlY2tzdW1faGkpKcKgew0KPsKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgY3N1bcKgPcKgZXh0NF9jaGtzdW0oc2JpLMKgY3N1bSzCoChfX3U4wqAqKSZk
+dW1teV9jc3VtLA0KPsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBjc3VtX3NpemUpOw0KPsKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgb2Zmc2V0wqArPcKgY3N1bV9zaXplOw0KPsKgwqDCoMKgwqDCoMKgwqB9
+DQo+wqDCoMKgwqDCoMKgwqDCoGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzCoGNzdW0swqAoX191
+OMKgKilyYXfCoCvCoG9mZnNldCwNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqBFWFQ0X0lOT0RFX1NJWkUoaW5vZGUtPmlfc2IpwqAtwqBvZmZz
+ZXQpOw0KPiB9DQo+wqANCj4gQ2FuwqB5b3XCoGdpdmXCoHRoYXTCoGHCoHRyeT8NCg0KRGFycmlj
+aywgeW91ciBtb2RpZmljYXRpb24gbG9va3MgZ29vZCBlbm91Z2ggdG8gbWUuDQoNClRoYW5rIHlv
+dSwgZ3V5cy4NCg0KwqA=
+------=_Part_1652318_1041931074.1474378558082--
