@@ -1,72 +1,27 @@
-From: =?UTF-8?B?7KCV64yA7Zi4?= <daeho.jeong@samsung.com>
-Subject: =?UTF-8?B?UmU6IFRyb3VibGUgbW91bnRpbmcgbWV0YWRhdGFfY3N1bSBl?=
- =?UTF-8?B?eHQ0IGZpbGVzeXN0ZW1zIHdpdGggdjQuNy54IGFmdGVyIGM5?=
- =?UTF-8?B?Mjc0ZDg5MTg2OTg4MDY0OGM0ZWU5MzY1ZGYzZWNjN2JhMmUy?=
- =?UTF-8?B?ODU6IG5vdCBlbm91Z2ggaW5vZGUgYnl0ZXMgY2hlY2tzdW1t?= =?UTF-8?B?ZWQ/?=
-Date: Tue, 20 Sep 2016 13:35:58 +0000
-Message-ID: <1153903080.1652319.1474378558082.JavaMail.weblogic@ep1ml103c>
-References: <87zin42crs.fsf@esperi.org.uk>
- <CGME20160920055236epcas1p191f8fd252e18f762fa3ad9704f5e77e2@epcas1p1.samsung.com>
-Reply-To: daeho.jeong@samsung.com
+From: Richard Weinberger <richard@nod.at>
+Subject: Locking rules for fscrypt_operations->set_context()
+Date: Tue, 20 Sep 2016 16:30:06 +0200
+Message-ID: <b6073ec6-3826-a4a1-b1ce-48106c012d43@nod.at>
 Mime-Version: 1.0
-Content-Type: multipart/related;
- boundary="----=_Part_1652318_1041931074.1474378558082"
-Cc: =?UTF-8?B?TGludXggRlMgTWFsaW5nIExpc3Q=?=
-        <linux-fsdevel@vger.kernel.org>,
-        =?UTF-8?B?7KCV64yA7Zi4?= <daeho.jeong@samsung.com>,
-        =?UTF-8?B?bGludXgtZXh0NA==?= <linux-ext4@vger.kernel.org>
-To: =?UTF-8?B?RGFycmljayBKLiBXb25n?= <darrick.wong@oracle.com>,
-        =?UTF-8?B?Tml4?= <nix@esperi.org.uk>,
-        =?UTF-8?B?VGhlb2RvcmUgVHMnbw==?= <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Theodore Ts'o <tytso@mit.edu>, David Gstir <david@sigma-star.at>
+To: linux-ext4@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-------=_Part_1652318_1041931074.1474378558082
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset="utf-8"
+Hi!
 
-SGksIFNvcnJ5IHRvIGJvdGhlciB5b3UuDQoNCj4gQmFzaWNhbGx5LMKgYcKgMTI4LWJ5dGXCoGlu
-b2RlwqBpbnNpZGXCoGHCoGZpbGVzeXN0ZW3CoHRoYXTCoGFsbG9jYXRlZMKgMjU2wqBieXRlcw0K
-PiBmb3LCoGVhY2jCoGlub2RlLsKgwqBBc8KgeW91wqBwb2ludMKgb3V0LMKgdGhlwqBvbGTCoGNv
-ZGXCoHdvdWxkwqBjaGVja3N1bcKgdGhlwqBlbnRpcmUNCj4gYWxsb2NhdGVkwqBzcGFjZSzCoHdo
-ZXRoZXLCoG9ywqBub3TCoHRoZcKgaW5vZGXCoGNvcmXCoHVzZWTCoGl0LsKgwqBPYnZpb3VzbHks
-wqB5b3UNCj4gd2FudMKgdGhpc8Kgc2luY2XCoGlubGluZcKgZXh0ZW5kZWTCoGF0dHJpYnV0ZXPC
-oGxpdmXCoGluwqB0aGF0wqBzcGFjZToNCsKgDQo+IGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzC
-oGVpLT5pX2NzdW1fc2VlZCzCoChfX3U4wqAqKXJhdywNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoEVYVDRfSU5PREVfU0laRShpbm9kZS0+aV9zYikpOw0KwqANCj4gVGhl
-wqBuZXfCoGNvZGUswqBvbsKgdGhlwqBvdGhlcsKgaGFuZCzCoGNhcmVmdWxsecKgY2hlY2tzdW1z
-wqBhcm91bmTCoHRoZQ0KPiBpX2NoZWNrc3VtwqBmaWVsZHPCoGFuZMKgb25secKgYm90aGVyc8Kg
-dG/CoGNoZWNrc3VtwqB0aGXCoHNwYWNlwqBiZXR3ZWVuwqB0aGXCoGVuZA0KPiBvZsKgaV9jaGVj
-a3N1bV9oacKgYW5kwqB0aGXCoGVuZMKgb2bCoHRoZcKgYWxsb2NhdGVkwqBzcGFjZcKgaWbCoHRo
-ZcKgaW5vZGXCoGNvcmXCoGlzDQo+IGJpZ8KgZW5vdWdowqB0b8Kgc3RvcmXCoGlfY2hlY2tzdW1f
-aGkuwqDCoFNpbmNlwqB3ZcKgYWxsb2NhdGVkwqAyNTbCoGJ5dGVzwqBmb3INCj4gZWFjaMKgaW5v
-ZGUswqB3ZcKgY2hlY2tzdW3CoHRoZcKgZmlyc3TCoHR3b8KgYnl0ZXPCoGFmdGVywqBieXRlwqAx
-MjgNCj4gKEVYVDRfR09PRF9PTERfSU5PREVfU0laRSkswqBidXTCoHRoZW7CoHdlwqBzZWXCoHRo
-YXTCoGlfZXh0cmFfc2l6ZcKgPT3CoDDCoHNvwqB3ZQ0KPiBuZXZlcsKgYm90aGVywqB0b8KgY2hl
-Y2tzdW3CoGFueXRoaW5nwqBhZnRlcsKgdGhhdC7CoMKgVGhpc8KgaXPCoG9mwqBjb3Vyc2XCoHdy
-b25nDQo+IHNpbmNlwqB3ZcKgbm/CoGxvbmdlcsKgY2hlY2tzdW3CoHRoZcKgeGF0dHLCoHNwYWNl
-wqBhbmTCoHdlJ3ZlwqBkZXZpYXRlZMKgZnJvbcKgdGhlDQo+IHByZS00LjcuNMKgKGRvY3VtZW50
-ZWQpwqBvbi1kaXNrwqBmb3JtYXQuDQoNCk9vcHMuIEkgaGFkIG92ZXJsb29rZWQgdGhlIGNhc2Ug
-b2YgdGhhdCBpX2V4dHJhX3NpemUgaXMgbGVzcyB0aGFuIDQuDQpJIG1pc3VuZGVyc3Rvb2QgdGhl
-IHByZXZpb3VzIERhcnJpY2sncyBjb2RlcyBjYWxjdWxhdGluZyBpbm9kZSBjaGVja3N1bSB2YWx1
-ZS4NClNvcnJ5IGFib3V0IHRoYXQuIDotKA0KwqANCj4gaWbCoChFWFQ0X0lOT0RFX1NJWkUoaW5v
-ZGUtPmlfc2IpwqA+wqBFWFQ0X0dPT0RfT0xEX0lOT0RFX1NJWkUpwqB7DQo+wqDCoMKgwqDCoMKg
-wqDCoG9mZnNldMKgPcKgb2Zmc2V0b2Yoc3RydWN0wqBleHQ0X2lub2RlLMKgaV9jaGVja3N1bV9o
-aSk7DQo+wqDCoMKgwqDCoMKgwqDCoGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzCoGNzdW0swqAo
-X191OMKgKilyYXfCoCsNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqBFWFQ0X0dPT0RfT0xEX0lOT0RFX1NJWkUsDQo+wqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgb2Zmc2V0wqAtwqBFWFQ0X0dP
-T0RfT0xEX0lOT0RFX1NJWkUpOw0KPsKgwqDCoMKgwqDCoMKgwqBpZsKgKEVYVDRfRklUU19JTl9J
-Tk9ERShyYXcswqBlaSzCoGlfY2hlY2tzdW1faGkpKcKgew0KPsKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgY3N1bcKgPcKgZXh0NF9jaGtzdW0oc2JpLMKgY3N1bSzCoChfX3U4wqAqKSZk
-dW1teV9jc3VtLA0KPsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBjc3VtX3NpemUpOw0KPsKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgb2Zmc2V0wqArPcKgY3N1bV9zaXplOw0KPsKgwqDCoMKgwqDCoMKgwqB9
-DQo+wqDCoMKgwqDCoMKgwqDCoGNzdW3CoD3CoGV4dDRfY2hrc3VtKHNiaSzCoGNzdW0swqAoX191
-OMKgKilyYXfCoCvCoG9mZnNldCwNCj7CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqBFWFQ0X0lOT0RFX1NJWkUoaW5vZGUtPmlfc2IpwqAtwqBvZmZz
-ZXQpOw0KPiB9DQo+wqANCj4gQ2FuwqB5b3XCoGdpdmXCoHRoYXTCoGHCoHRyeT8NCg0KRGFycmlj
-aywgeW91ciBtb2RpZmljYXRpb24gbG9va3MgZ29vZCBlbm91Z2ggdG8gbWUuDQoNClRoYW5rIHlv
-dSwgZ3V5cy4NCg0KwqA=
-------=_Part_1652318_1041931074.1474378558082--
+To my understanding ->setxattr() is always being called with i_mutex held.
+->set_context() in ext4 stores the security context using ext4_xattr_set(),
+but the fs crypto framework does not lock the inode itself.
+So, depending on the call path, ext4_xattr_set() is sometimes being
+called with i_mutex held and some times not.
+
+What are the locking rules for fscrypt_operations and especially ->set_context()?
+
+Thanks,
+//richard
