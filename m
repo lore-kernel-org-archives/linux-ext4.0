@@ -1,27 +1,44 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Locking rules for fscrypt_operations->set_context()
-Date: Tue, 20 Sep 2016 16:30:06 +0200
-Message-ID: <b6073ec6-3826-a4a1-b1ce-48106c012d43@nod.at>
+From: Eric Engestrom <eric.engestrom@imgtec.com>
+Subject: [PATCH 1/2] ext4: remove unused variable
+Date: Tue, 20 Sep 2016 17:16:18 +0100
+Message-ID: <20160920161619.16586-1-eric.engestrom@imgtec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: Theodore Ts'o <tytso@mit.edu>, David Gstir <david@sigma-star.at>
-To: linux-ext4@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain
+Cc: Eric Engestrom <eric.engestrom@imgtec.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>
+To: <linux-kernel@vger.kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi!
+Signed-off-by: Eric Engestrom <eric.engestrom@imgtec.com>
+---
+ fs/ext4/dir.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-To my understanding ->setxattr() is always being called with i_mutex held.
-->set_context() in ext4 stores the security context using ext4_xattr_set(),
-but the fs crypto framework does not lock the inode itself.
-So, depending on the call path, ext4_xattr_set() is sometimes being
-called with i_mutex held and some times not.
-
-What are the locking rules for fscrypt_operations and especially ->set_context()?
-
-Thanks,
-//richard
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 67415e0..acd76f1 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -627,7 +627,7 @@ int ext4_check_all_de(struct inode *dir, struct buffer_head *bh, void *buf,
+ 		      int buf_size)
+ {
+ 	struct ext4_dir_entry_2 *de;
+-	int nlen, rlen;
++	int rlen;
+ 	unsigned int offset = 0;
+ 	char *top;
+ 
+@@ -637,7 +637,6 @@ int ext4_check_all_de(struct inode *dir, struct buffer_head *bh, void *buf,
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 buf, buf_size, offset))
+ 			return -EFSCORRUPTED;
+-		nlen = EXT4_DIR_REC_LEN(de->name_len);
+ 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
+ 		de = (struct ext4_dir_entry_2 *)((char *)de + rlen);
+ 		offset += rlen;
+-- 
+Cheers,
+  Eric
