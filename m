@@ -1,57 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: optimize ext4 direct I/O locking for reading
-Date: Wed, 21 Sep 2016 10:37:48 -0400
-Message-ID: <20160921143748.xswkovbjrtcgs3bq@thunk.org>
-References: <20160921052744.5223-1-tytso@mit.edu>
- <20160921132609.GA30232@infradead.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 1/9] ext4: allow DAX writeback for hole punch
+Date: Wed, 21 Sep 2016 09:22:44 -0600
+Message-ID: <20160921152244.GB10516@linux.intel.com>
+References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
+ <20160823220419.11717-2-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46342 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934002AbcIUPOR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Sep 2016 11:14:17 -0400
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+        Matthew Wilcox <mawilcox@microsoft.com>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160921132609.GA30232@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160823220419.11717-2-ross.zwisler@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 21, 2016 at 06:26:09AM -0700, Christoph Hellwig wrote:
-> Is there any chance you could look into simplifying the locking instead
-> of making it even more complicated?  Since Al replaced i_mutex with
-> i_rwsem you can now easily take that in shared mode.  E.g. if you'd
-> move to a direct I/O model closer to XFS, ocfs2 and NFS where you always
-> take i_rwsem in shared mode you'll get the scalibility of the
-> dioread_nolock case while no having to do these crazy dances, and you
-> can also massively simplify the codebase.  Similarly you can demote it
-> from exclusive to shared after allocating blocks in the write path,
-> and you'll end up with something way easier to understand.
+On Tue, Aug 23, 2016 at 04:04:11PM -0600, Ross Zwisler wrote:
+> Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
+> This is because the logic around filemap_write_and_wait_range() in
+> ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
+> not for dirty DAX exceptional entries.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Cc: <stable@vger.kernel.org>
 
-Unfortunately, in order to do this we need to extend the
-dioread_nolock handling for sub-page block sizes.  (This is where we
-insert the allocated blocks into the extent maps marked uninitialized,
-and only converting the extent from uninitialized to initialized ---
-which today only works when the page size == block size.)
+Ted & Jan,
 
-This is on my todo list, but half of the problem is the mess caused by
-needing to iterate over the circularly linked buffer heads when there
-are multiple buffer heads covering the page.  I was originally
-assuming that it would be easier to fix this after doing the bh ->
-iomap conversion, but it's in a while before I looked into this
-particular change.  I can try to take a closer look again....
+I'm still working on the latest version of the PMD work which integrates with
+the new struct iomap faults.  At this point it doesn't look like I'm going to
+make v4.9, but I think that this bug fix at least should probably go in alone?
 
-The main reason why I looked into this hack --- and I will be the
-first to agree it was a hack, is because I had a request to support
-the dioread_nolock scalability on a Little Endian PowerPC system which
-has 64k page sizes.
+Thanks,
+- Ross
 
-> Sorry for the rant, but I just had to dig into this code when looking
-> at converting ext4 to the new DAX path, and my eyes still bleed..
-
-Yeah, I know, and I'm sorry.  There's quite a bit of technical debt
-there, which I do want to clean up.
-
-							- Ted
+> ---
+>  fs/ext4/inode.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3131747..0900cb4 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
+>  }
+>  
+>  /*
+> - * ext4_punch_hole: punches a hole in a file by releaseing the blocks
+> + * ext4_punch_hole: punches a hole in a file by releasing the blocks
+>   * associated with the given offset and length
+>   *
+>   * @inode:  File inode
+> @@ -3919,7 +3919,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+>  	 * Write out all dirty pages to avoid race conditions
+>  	 * Then release them.
+>  	 */
+> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+> +	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
+>  		ret = filemap_write_and_wait_range(mapping, offset,
+>  						   offset + length - 1);
+>  		if (ret)
+> -- 
+> 2.9.0
+> 
