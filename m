@@ -1,56 +1,36 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [RESEND][PATCH 2/2] ext4: use journal inode to determine journal
- overhead
-Date: Thu, 22 Sep 2016 11:07:52 -0400
-Message-ID: <20160922150752.GA14239@localhost.localdomain>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: Fix lockdep annotation in add_transaction_credits()
+Date: Thu, 22 Sep 2016 11:47:18 -0400
+Message-ID: <20160922154718.v4drz3ar64saaxnd@thunk.org>
+References: <1474288243-584-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:34587 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933674AbcIVPDp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Sep 2016 11:03:45 -0400
-Received: by mail-qk0-f194.google.com with SMTP id b204so5337633qkc.1
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Sep 2016 08:03:45 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:50772 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753108AbcIVPst (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Sep 2016 11:48:49 -0400
 Content-Disposition: inline
+In-Reply-To: <1474288243-584-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a file system contains an internal journal that has not been
-loaded, use the journal inode's i_size field to determine its
-contribution to the file system's overhead.  (The journal's j_maxlen
-field is normally used to determine its size, but it's unavailable when
-the journal has not been loaded.)
+On Mon, Sep 19, 2016 at 02:30:43PM +0200, Jan Kara wrote:
+> Thomas has reported a lockdep splat hitting in
+> add_transaction_credits(). The problem is that that function calls
+> jbd2_might_wait_for_commit() while holding j_state_lock which is wrong
+> (we do not really wait for transaction commit while holding that lock).
+> 
+> Fix the problem by moving jbd2_might_wait_for_commit() into places where
+> we are ready to wait for transaction commit and thus j_state_lock is
+> unlocked.
+> 
+> Fixes: 1eaa566d368b214d99cbb973647c1b0b8102a9ae
+> Reported-by: Thomas Gleixner <tglx@linutronix.de>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/super.c | 19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+Thanks, applied.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4b0ca25..1a7b6fd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3210,6 +3210,8 @@ int ext4_calculate_overhead(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_super_block *es = sbi->s_es;
-+	struct inode *j_inode;
-+	unsigned int j_blocks, j_inum = le32_to_cpu(es->s_journal_inum);
- 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
- 	ext4_fsblk_t overhead = 0;
- 	char *buf = (char *) get_zeroed_page(GFP_NOFS);
-@@ -3240,10 +3242,23 @@ int ext4_calculate_overhead(struct super_block *sb)
- 			memset(buf, 0, PAGE_SIZE);
- 		cond_resched();
- 	}
--	/* Add the internal journal blocks as well */
-+
-+	/*
-+	 * Add the internal journal blocks whether the journal has been
-+	 * loaded or not
-+	 */
- 	if (sbi->s_journal && !sbi->journal_bdev)
- 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
+						- Ted
