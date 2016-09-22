@@ -1,72 +1,65 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v2 1/9] ext4: allow DAX writeback for hole punch
-Date: Wed, 21 Sep 2016 09:22:44 -0600
-Message-ID: <20160921152244.GB10516@linux.intel.com>
-References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
- <20160823220419.11717-2-ross.zwisler@linux.intel.com>
+From: Eric Biggers <ebiggers@google.com>
+Subject: Re: Locking rules for fscrypt_operations->set_context()
+Date: Wed, 21 Sep 2016 17:14:02 -0700
+Message-ID: <20160922001402.GA124993@google.com>
+References: <b6073ec6-3826-a4a1-b1ce-48106c012d43@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-        Matthew Wilcox <mawilcox@microsoft.com>, stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        David Gstir <david@sigma-star.at>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f170.google.com ([209.85.192.170]:36051 "EHLO
+        mail-pf0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753383AbcIVAOK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Sep 2016 20:14:10 -0400
+Received: by mail-pf0-f170.google.com with SMTP id q2so24114542pfj.3
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Sep 2016 17:14:09 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20160823220419.11717-2-ross.zwisler@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <b6073ec6-3826-a4a1-b1ce-48106c012d43@nod.at>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 23, 2016 at 04:04:11PM -0600, Ross Zwisler wrote:
-> Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
-> This is because the logic around filemap_write_and_wait_range() in
-> ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
-> not for dirty DAX exceptional entries.
+On Tue, Sep 20, 2016 at 04:30:06PM +0200, Richard Weinberger wrote:
+> Hi!
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Cc: <stable@vger.kernel.org>
-
-Ted & Jan,
-
-I'm still working on the latest version of the PMD work which integrates with
-the new struct iomap faults.  At this point it doesn't look like I'm going to
-make v4.9, but I think that this bug fix at least should probably go in alone?
-
-Thanks,
-- Ross
-
-> ---
->  fs/ext4/inode.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> To my understanding ->setxattr() is always being called with i_mutex held.
+> ->set_context() in ext4 stores the security context using ext4_xattr_set(),
+> but the fs crypto framework does not lock the inode itself.
+> So, depending on the call path, ext4_xattr_set() is sometimes being
+> called with i_mutex held and some times not.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3131747..0900cb4 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
->  }
->  
->  /*
-> - * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-> + * ext4_punch_hole: punches a hole in a file by releasing the blocks
->   * associated with the given offset and length
->   *
->   * @inode:  File inode
-> @@ -3919,7 +3919,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
->  	 * Write out all dirty pages to avoid race conditions
->  	 * Then release them.
->  	 */
-> -	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-> +	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
->  		ret = filemap_write_and_wait_range(mapping, offset,
->  						   offset + length - 1);
->  		if (ret)
-> -- 
-> 2.9.0
-> 
+> What are the locking rules for fscrypt_operations and especially ->set_context()?
+
+Hi Richard, this is a great question.  I would like to document somewhere the
+semantics of each of the fscrypt_operations, but I am still figuring them out
+myself.
+
+With regards to ->set_context(), it is called in two distinct situtations:
+
+  (1) when a user process uses FS_IOC_SET_ENCRYPTION_POLICY to set the
+      encryption policy on an empty directory
+
+  (2) when an encryption policy is inherited by a newly created file in an
+      encrypted directory
+
+In case (1), I think there needs to be an inode_lock() added.  For ext4 and
+f2fs, it looks like setting an xattr without inode_lock() isn't problematic by
+itself.  Instead, the problem I see is that fscrypt_process_policy() does
+several operations, including the ->empty_dir() check, which aren't guaranteed
+to be atomic if the directory inode is not locked with inode_lock().
+
+In case (2), I don't think it matters whether inode_lock() is held, since the
+inode is still being initialized and is still "locked" in a different way, in
+the I_NEW state.  There are also other xattrs being set in __ext4_new_inode(),
+seemingly without inode_lock(), which I *think* is fine.
+
+So I am currently thinking that fscrypt_process_policy() should be fixed to do
+inode_lock(), and ->set_context() should be documented as a filesystem internal
+operation (not necessarily related to ->setxattr()) that is called on either an
+inode_lock()-ed inode or on an I_NEW inode.
+
+Eric
