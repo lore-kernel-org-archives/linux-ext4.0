@@ -1,51 +1,74 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: optimize ext4 direct I/O locking for reading
-Date: Thu, 22 Sep 2016 09:30:31 -0400
-Message-ID: <20160922133031.zjiyudqwthqp742g@thunk.org>
-References: <20160921052744.5223-1-tytso@mit.edu>
- <20160921132609.GA30232@infradead.org>
- <20160921143748.xswkovbjrtcgs3bq@thunk.org>
- <20160922123143.GO2834@quack2.suse.cz>
+Subject: Re: ext4, f2fs: fscrypt_has_permitted_context() check in file open
+Date: Thu, 22 Sep 2016 09:44:33 -0400
+Message-ID: <20160922134433.w3riey2mhtvs54dx@thunk.org>
+References: <6789d30e-f95d-d8bd-cd6e-664a89c0dfd1@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50062 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932876AbcIVNdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Sep 2016 09:33:11 -0400
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20160922123143.GO2834@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <6789d30e-f95d-d8bd-cd6e-664a89c0dfd1@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 22, 2016 at 02:31:43PM +0200, Jan Kara wrote:
+On Thu, Sep 22, 2016 at 02:24:35PM +0200, Richard Weinberger wrote:
+> Hi!
 > 
-> So I think what Christoph meant in this case is something like attached
-> patch. That achieves more than your dirty hack in a much cleaner way.
-> Beware, the patch is only compile-tested.
+> Both ext4 and f2fs check in the file open code the context of the parent directory too:
+> 
+> ext4:
+>         if (ext4_encrypted_inode(d_inode(dir)) &&
+>                         !fscrypt_has_permitted_context(d_inode(dir), inode)) {
+>                 ext4_warning(inode->i_sb,
+>                              "Inconsistent encryption contexts: %lu/%lu",
+>                              (unsigned long) d_inode(dir)->i_ino,
+>                              (unsigned long) inode->i_ino);
+>                 dput(dir);
+>                 return -EPERM;
+>         }
+> 
+> f2fs:
+>         if (f2fs_encrypted_inode(d_inode(dir)) &&
+>                         !fscrypt_has_permitted_context(d_inode(dir), inode)) {
+>                 dput(dir);
+>                 return -EPERM;
+>         }
+> 
+> Why do we need this check? AFAIK this situation can never happen unless due to
+> a bug in the filesystem code.
 
-Your patch also disables dioread_nolock (which is what I think
-Christoph was asking about because it's the rest of the dioread nolock
-support code which causes the eye-bleeding complexity on the write
-path).
+Or in the case of a malicious attacker who is trying to achieve an
+off-line attack on your file system....  applications aren't going to
+be checking to see if they are writing their file with encryption
+enabled (and with the correct key), because they will largely be
+encryption oblivious.
 
-> Then there is the case of unlocked direct IO overwrites which we allow to
-> run without inode_lock in dioread_nolock mode as well and that is more
-> difficult to resolve (there lay the problems with blocksize < pagesize you
-> speak about).
+So imagine a case where you have a file, say, dissidents.txt.  This
+file is encrypted, and is in a encrypted directory.  The bad guy, in
+an offline attack (e.g., using a tool like debugfs), creates a
+replacement directory which is unencrypted, and creates a link to the
+encrypted dissidents.txt file to that replacement directory.
 
-Right, by disabling dioread_nolock, it means we lose the feature that
-dioread_nolock doesn't require blocking versus _any_ direct I/O writes
-(because of the post-write uninit->init conversion) --- not just DIO
-overwrites.
+You then go back to your hotel room in Beijing, boot your laptop, fire
+up your editor, and then edit the dissidents.txt file.  You have the
+keys, so it is read in just fine into vi or emacs.  But when when you
+write out the file, the editor writes the file into
+dissidents.txt.new, calls fsync on it, and then renames dissidents.txt
+to dissidents.txt~, and renames dissidents.txt.new to dissidents.txt.
+But since it is now in an unencrypted directory, dissidents.txt is now
+unencrypted.
 
-But we should be able to support dioread_nolock as well as by only
-taking inode_lock_shared() in the non-dioread_nolock case, I think.
+You then leave the hotel room, and the MSS agent goes back to your
+room, and completes the exfiltration of dissidents.txt.
 
-Thanks for the prototype patch; I agree it's a cleaner way to go.
+Cheers,
 
-	       	      	    		      - Ted
+						- Ted
+
+P.S.  If you're from China, replace MSS with FBI, and Beijing with
+Washington, D.C.  :-)   The principle is the same in either case.
