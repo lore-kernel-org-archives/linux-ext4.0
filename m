@@ -1,51 +1,64 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] f2fs: do not unnecessarily null-terminate encrypted symlink data
-Date: Thu, 22 Sep 2016 13:31:48 -0700
-Message-ID: <1474576309-86917-2-git-send-email-ebiggers@google.com>
+Subject: [PATCH] fscrypto: use standard macros to compute length of fname ciphertext
+Date: Thu, 22 Sep 2016 13:31:49 -0700
+Message-ID: <1474576309-86917-3-git-send-email-ebiggers@google.com>
 References: <1474576309-86917-1-git-send-email-ebiggers@google.com>
 Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         tytso@mit.edu, jaegeuk@kernel.org,
         Eric Biggers <ebiggers@google.com>
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:35783 "EHLO
-        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756200AbcIVUcZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Sep 2016 16:32:25 -0400
-Received: by mail-pf0-f176.google.com with SMTP id z123so34049141pfz.2
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Sep 2016 13:32:25 -0700 (PDT)
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1474576309-86917-1-git-send-email-ebiggers@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Null-terminating the fscrypt_symlink_data on read is unnecessary because
-it is not string data --- it contains binary ciphertext.
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/f2fs/namei.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/crypto/fname.c | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-index afd5633..5b4733e 100644
---- a/fs/f2fs/namei.c
-+++ b/fs/f2fs/namei.c
-@@ -1010,7 +1010,6 @@ static const char *f2fs_encrypted_get_link(struct dentry *dentry,
- 	struct fscrypt_str cstr = FSTR_INIT(NULL, 0);
- 	struct fscrypt_str pstr = FSTR_INIT(NULL, 0);
- 	struct fscrypt_symlink_data *sd;
--	loff_t size = min_t(loff_t, i_size_read(inode), PAGE_SIZE - 1);
- 	u32 max_size = inode->i_sb->s_blocksize;
- 	int res;
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 90697c7..9a28133 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -14,11 +14,6 @@
+ #include <linux/ratelimit.h>
+ #include <linux/fscrypto.h>
  
-@@ -1025,7 +1024,6 @@ static const char *f2fs_encrypted_get_link(struct dentry *dentry,
- 	if (IS_ERR(cpage))
- 		return ERR_CAST(cpage);
- 	caddr = page_address(cpage);
--	caddr[size] = 0;
+-static u32 size_round_up(size_t size, size_t blksize)
+-{
+-	return ((size + blksize - 1) / blksize) * blksize;
+-}
+-
+ /**
+  * fname_crypt_complete() - completion callback for filename crypto
+  * @req: The asynchronous cipher request context
+@@ -60,10 +55,9 @@ static int fname_encrypt(struct inode *inode,
+ 	if (iname->len <= 0 || iname->len > lim)
+ 		return -EIO;
  
- 	/* Symlink is encrypted */
- 	sd = (struct fscrypt_symlink_data *)caddr;
+-	ciphertext_len = (iname->len < FS_CRYPTO_BLOCK_SIZE) ?
+-					FS_CRYPTO_BLOCK_SIZE : iname->len;
+-	ciphertext_len = size_round_up(ciphertext_len, padding);
+-	ciphertext_len = (ciphertext_len > lim) ? lim : ciphertext_len;
++	ciphertext_len = max(iname->len, (u32)FS_CRYPTO_BLOCK_SIZE);
++	ciphertext_len = round_up(ciphertext_len, padding);
++	ciphertext_len = min(ciphertext_len, lim);
+ 
+ 	if (ciphertext_len <= sizeof(buf)) {
+ 		workbuf = buf;
+@@ -233,9 +227,8 @@ u32 fscrypt_fname_encrypted_size(struct inode *inode, u32 ilen)
+ 
+ 	if (ci)
+ 		padding = 4 << (ci->ci_flags & FS_POLICY_FLAGS_PAD_MASK);
+-	if (ilen < FS_CRYPTO_BLOCK_SIZE)
+-		ilen = FS_CRYPTO_BLOCK_SIZE;
+-	return size_round_up(ilen, padding);
++	ilen = max(ilen, (u32)FS_CRYPTO_BLOCK_SIZE);
++	return round_up(ilen, padding);
+ }
+ EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
+ 
 -- 
 2.8.0.rc3.226.g39d4020
 
