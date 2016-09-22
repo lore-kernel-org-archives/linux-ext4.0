@@ -1,90 +1,41 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH 1/2] ext4: create function to read journal inode
-Date: Wed, 21 Sep 2016 21:14:50 -0400
-Message-ID: <20160922011450.GB27216@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f193.google.com ([209.85.216.193]:33754 "EHLO
-        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754297AbcIVBKn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Sep 2016 21:10:43 -0400
-Received: by mail-qt0-f193.google.com with SMTP id p47so2113565qtc.0
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Sep 2016 18:10:43 -0700 (PDT)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Richard Weinberger <richard@nod.at>
+Subject: [PATCH] ext4: Check for encryption feature before fscrypt_process_policy()
+Date: Thu, 22 Sep 2016 08:50:54 +0200
+Message-ID: <1474527054-24207-1-git-send-email-richard@nod.at>
+Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, david@sigma-star.at,
+        Richard Weinberger <richard@nod.at>
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Factor out the code used in ext4_get_journal() to read a valid journal
-inode from storage, enabling its reuse in other functions.
+...otherwise an user can enable encryption for certain files even
+when the filesystem is unable to support it.
+Such a case would be a filesystem created by mkfs.ext4's default
+settings, 1KiB block size. Ext4 supports encyption only when block size
+is equal to PAGE_SIZE.
+But this constraint is only checked when the encryption feature flag
+is set.
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Richard Weinberger <richard@nod.at>
 ---
- fs/ext4/super.c | 32 +++++++++++++++++++++++---------
- 1 file changed, 23 insertions(+), 9 deletions(-)
+ fs/ext4/ioctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 50912cc..4b0ca25 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -78,6 +78,8 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly);
- static void ext4_destroy_lazyinit_thread(void);
- static void ext4_unregister_li_request(struct super_block *sb);
- static void ext4_clear_request_list(void);
-+static struct inode *ext4_get_journal_inode(struct super_block *sb,
-+					    unsigned int journal_inum);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 1bb7df5..9e9a73e 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -772,6 +772,9 @@ resizefs_out:
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 		struct fscrypt_policy policy;
  
- /*
-  * Lock ordering
-@@ -4237,18 +4239,16 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
- 	write_unlock(&journal->j_state_lock);
- }
- 
--static journal_t *ext4_get_journal(struct super_block *sb,
--				   unsigned int journal_inum)
-+static struct inode *ext4_get_journal_inode(struct super_block *sb,
-+					     unsigned int journal_inum)
- {
- 	struct inode *journal_inode;
--	journal_t *journal;
--
--	BUG_ON(!ext4_has_feature_journal(sb));
--
--	/* First, test for the existence of a valid inode on disk.  Bad
--	 * things happen if we iget() an unused inode, as the subsequent
--	 * iput() will try to delete it. */
- 
-+	/*
-+	 * Test for the existence of a valid inode on disk.  Bad things
-+	 * happen if we iget() an unused inode, as the subsequent iput()
-+	 * will try to delete it.
-+	 */
- 	journal_inode = ext4_iget(sb, journal_inum);
- 	if (IS_ERR(journal_inode)) {
- 		ext4_msg(sb, KERN_ERR, "no journal found");
-@@ -4268,6 +4268,20 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 		iput(journal_inode);
- 		return NULL;
- 	}
-+	return journal_inode;
-+}
++		if (!ext4_has_feature_encrypt(sb))
++			return -EOPNOTSUPP;
 +
-+static journal_t *ext4_get_journal(struct super_block *sb,
-+				   unsigned int journal_inum)
-+{
-+	struct inode *journal_inode;
-+	journal_t *journal;
-+
-+	BUG_ON(!ext4_has_feature_journal(sb));
-+
-+	journal_inode = ext4_get_journal_inode(sb, journal_inum);
-+	if (!journal_inode)
-+		return NULL;
- 
- 	journal = jbd2_journal_init_inode(journal_inode);
- 	if (!journal) {
+ 		if (copy_from_user(&policy,
+ 				   (struct fscrypt_policy __user *)arg,
+ 				   sizeof(policy)))
 -- 
-2.1.4
-
+2.7.3
