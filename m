@@ -1,36 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix lockdep annotation in add_transaction_credits()
-Date: Thu, 22 Sep 2016 11:47:18 -0400
-Message-ID: <20160922154718.v4drz3ar64saaxnd@thunk.org>
-References: <1474288243-584-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH v2 1/9] ext4: allow DAX writeback for hole punch
+Date: Thu, 22 Sep 2016 11:51:03 -0400
+Message-ID: <20160922155103.xqxdxum3rq7i4sqa@thunk.org>
+References: <20160823220419.11717-1-ross.zwisler@linux.intel.com>
+ <20160823220419.11717-2-ross.zwisler@linux.intel.com>
+ <20160921152244.GB10516@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50772 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753108AbcIVPst (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Sep 2016 11:48:49 -0400
+To: Ross Zwisler <ross.zwisler@linux.intel.com>, Jan Kara <jack@suse.cz>,
+	linux-kernel@vger.kernel.org,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@ml01.01.org,
+	Matthew Wilcox <mawilcox@microsoft.com>, stable@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1474288243-584-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20160921152244.GB10516@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 19, 2016 at 02:30:43PM +0200, Jan Kara wrote:
-> Thomas has reported a lockdep splat hitting in
-> add_transaction_credits(). The problem is that that function calls
-> jbd2_might_wait_for_commit() while holding j_state_lock which is wrong
-> (we do not really wait for transaction commit while holding that lock).
+On Wed, Sep 21, 2016 at 09:22:44AM -0600, Ross Zwisler wrote:
 > 
-> Fix the problem by moving jbd2_might_wait_for_commit() into places where
-> we are ready to wait for transaction commit and thus j_state_lock is
-> unlocked.
+> Ted & Jan,
 > 
-> Fixes: 1eaa566d368b214d99cbb973647c1b0b8102a9ae
-> Reported-by: Thomas Gleixner <tglx@linutronix.de>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> I'm still working on the latest version of the PMD work which integrates with
+> the new struct iomap faults.  At this point it doesn't look like I'm going to
+> make v4.9, but I think that this bug fix at least should probably go in alone?
 
 Thanks, applied.
 
 						- Ted
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
