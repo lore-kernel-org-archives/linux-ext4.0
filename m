@@ -1,64 +1,45 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] fscrypto: use standard macros to compute length of fname ciphertext
-Date: Thu, 22 Sep 2016 13:31:49 -0700
-Message-ID: <1474576309-86917-3-git-send-email-ebiggers@google.com>
-References: <1474576309-86917-1-git-send-email-ebiggers@google.com>
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        tytso@mit.edu, jaegeuk@kernel.org,
-        Eric Biggers <ebiggers@google.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1474576309-86917-1-git-send-email-ebiggers@google.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Check for encryption feature before
+ fscrypt_process_policy()
+Date: Thu, 22 Sep 2016 18:38:03 -0400
+Message-ID: <20160922223803.ggz2qodtqtht7oot@thunk.org>
+References: <1474527054-24207-1-git-send-email-richard@nod.at>
+ <20160922194931.GA53380@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Richard Weinberger <richard@nod.at>, adilger.kernel@dilger.ca,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        david@sigma-star.at, jaegeuk@kernel.org
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20160922194931.GA53380@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/crypto/fname.c | 17 +++++------------
- 1 file changed, 5 insertions(+), 12 deletions(-)
+On Thu, Sep 22, 2016 at 12:49:31PM -0700, Eric Biggers wrote:
+> 
+> Ted had actually pointed out that the reason this hasn't already been fixed is
+> that some users, e.g. Android, do not set the feature flag but still expect the
+> filesystem encryption code to work.  Maybe he can chime in with regards to when
+> (if ever) it would make sense to make this change.
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 90697c7..9a28133 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -14,11 +14,6 @@
- #include <linux/ratelimit.h>
- #include <linux/fscrypto.h>
- 
--static u32 size_round_up(size_t size, size_t blksize)
--{
--	return ((size + blksize - 1) / blksize) * blksize;
--}
--
- /**
-  * fname_crypt_complete() - completion callback for filename crypto
-  * @req: The asynchronous cipher request context
-@@ -60,10 +55,9 @@ static int fname_encrypt(struct inode *inode,
- 	if (iname->len <= 0 || iname->len > lim)
- 		return -EIO;
- 
--	ciphertext_len = (iname->len < FS_CRYPTO_BLOCK_SIZE) ?
--					FS_CRYPTO_BLOCK_SIZE : iname->len;
--	ciphertext_len = size_round_up(ciphertext_len, padding);
--	ciphertext_len = (ciphertext_len > lim) ? lim : ciphertext_len;
-+	ciphertext_len = max(iname->len, (u32)FS_CRYPTO_BLOCK_SIZE);
-+	ciphertext_len = round_up(ciphertext_len, padding);
-+	ciphertext_len = min(ciphertext_len, lim);
- 
- 	if (ciphertext_len <= sizeof(buf)) {
- 		workbuf = buf;
-@@ -233,9 +227,8 @@ u32 fscrypt_fname_encrypted_size(struct inode *inode, u32 ilen)
- 
- 	if (ci)
- 		padding = 4 << (ci->ci_flags & FS_POLICY_FLAGS_PAD_MASK);
--	if (ilen < FS_CRYPTO_BLOCK_SIZE)
--		ilen = FS_CRYPTO_BLOCK_SIZE;
--	return size_round_up(ilen, padding);
-+	ilen = max(ilen, (u32)FS_CRYPTO_BLOCK_SIZE);
-+	return round_up(ilen, padding);
- }
- EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
- 
--- 
-2.8.0.rc3.226.g39d4020
+I think it's fine to fix it now in upstream.  It might cause some
+problems for Cyanogen developers if they want to try to use an
+upstream kernel and also enable the ext4 encryption feature, but the
+fix to make_ext4fs isn't all that hard.
 
+> Also, it seems the default block size for mkfs.ext4 is determined by a heuristic
+> and isn't guaranteed to be 1 KiB.  So the commit message probably should say
+> something more general like "filesystems created with a block size other than
+> PAGE_SIZE".
+
+In fact mke2fs only uses 1k block sizes for filessystems smaller than
+512M.  If you were take a census of all ext4 file systems out there,
+the most common block size you would see is 4k.
+
+Cheers,
+
+						- Ted
+
+       	  	       	    	     	  
