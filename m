@@ -1,53 +1,106 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: ext4, f2fs: fscrypt_has_permitted_context() check in file open
-Date: Thu, 22 Sep 2016 16:21:30 +0200
-Message-ID: <0216ba94-eb55-9617-9b0d-32b92ee41ec5@nod.at>
-References: <6789d30e-f95d-d8bd-cd6e-664a89c0dfd1@nod.at>
- <20160922134433.w3riey2mhtvs54dx@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext4: create function to read journal inode
+Date: Thu, 22 Sep 2016 17:03:53 +0200
+Message-ID: <20160922150353.GA19971@quack2.suse.cz>
+References: <20160922011450.GB27216@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        David Gstir <david@sigma-star.at>
-To: Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20160922134433.w3riey2mhtvs54dx@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:42499 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933674AbcIVPD4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Sep 2016 11:03:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20160922011450.GB27216@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Ted,
-
-On 22.09.2016 15:44, Theodore Ts'o wrote:
-> On Thu, Sep 22, 2016 at 02:24:35PM +0200, Richard Weinberger wrote:
->> Why do we need this check? AFAIK this situation can never happen unless due to
->> a bug in the filesystem code.
+On Wed 21-09-16 21:14:50, Eric Whitney wrote:
+> Factor out the code used in ext4_get_journal() to read a valid journal
+> inode from storage, enabling its reuse in other functions.
 > 
-> Or in the case of a malicious attacker who is trying to achieve an
-> off-line attack on your file system....  applications aren't going to
-> be checking to see if they are writing their file with encryption
-> enabled (and with the correct key), because they will largely be
-> encryption oblivious.
-> 
-> So imagine a case where you have a file, say, dissidents.txt.  This
-> file is encrypted, and is in a encrypted directory.  The bad guy, in
-> an offline attack (e.g., using a tool like debugfs), creates a
-> replacement directory which is unencrypted, and creates a link to the
-> encrypted dissidents.txt file to that replacement directory.
-> 
-> You then go back to your hotel room in Beijing, boot your laptop, fire
-> up your editor, and then edit the dissidents.txt file.  You have the
-> keys, so it is read in just fine into vi or emacs.  But when when you
-> write out the file, the editor writes the file into
-> dissidents.txt.new, calls fsync on it, and then renames dissidents.txt
-> to dissidents.txt~, and renames dissidents.txt.new to dissidents.txt.
-> But since it is now in an unencrypted directory, dissidents.txt is now
-> unencrypted.
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-Got it. So, the use case is preventing off-line attacks.
-But I fear this is only a drop in the bucket. What we really need is
-meta data authentication.
+Looks good. You can add:
 
-Thanks,
-//richard
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+BTW: I didn't see PATCH 2/2?
+
+								Honza
+> ---
+>  fs/ext4/super.c | 32 +++++++++++++++++++++++---------
+>  1 file changed, 23 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 50912cc..4b0ca25 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -78,6 +78,8 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly);
+>  static void ext4_destroy_lazyinit_thread(void);
+>  static void ext4_unregister_li_request(struct super_block *sb);
+>  static void ext4_clear_request_list(void);
+> +static struct inode *ext4_get_journal_inode(struct super_block *sb,
+> +					    unsigned int journal_inum);
+>  
+>  /*
+>   * Lock ordering
+> @@ -4237,18 +4239,16 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
+>  	write_unlock(&journal->j_state_lock);
+>  }
+>  
+> -static journal_t *ext4_get_journal(struct super_block *sb,
+> -				   unsigned int journal_inum)
+> +static struct inode *ext4_get_journal_inode(struct super_block *sb,
+> +					     unsigned int journal_inum)
+>  {
+>  	struct inode *journal_inode;
+> -	journal_t *journal;
+> -
+> -	BUG_ON(!ext4_has_feature_journal(sb));
+> -
+> -	/* First, test for the existence of a valid inode on disk.  Bad
+> -	 * things happen if we iget() an unused inode, as the subsequent
+> -	 * iput() will try to delete it. */
+>  
+> +	/*
+> +	 * Test for the existence of a valid inode on disk.  Bad things
+> +	 * happen if we iget() an unused inode, as the subsequent iput()
+> +	 * will try to delete it.
+> +	 */
+>  	journal_inode = ext4_iget(sb, journal_inum);
+>  	if (IS_ERR(journal_inode)) {
+>  		ext4_msg(sb, KERN_ERR, "no journal found");
+> @@ -4268,6 +4268,20 @@ static journal_t *ext4_get_journal(struct super_block *sb,
+>  		iput(journal_inode);
+>  		return NULL;
+>  	}
+> +	return journal_inode;
+> +}
+> +
+> +static journal_t *ext4_get_journal(struct super_block *sb,
+> +				   unsigned int journal_inum)
+> +{
+> +	struct inode *journal_inode;
+> +	journal_t *journal;
+> +
+> +	BUG_ON(!ext4_has_feature_journal(sb));
+> +
+> +	journal_inode = ext4_get_journal_inode(sb, journal_inum);
+> +	if (!journal_inode)
+> +		return NULL;
+>  
+>  	journal = jbd2_journal_init_inode(journal_inode);
+>  	if (!journal) {
+> -- 
+> 2.1.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
