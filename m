@@ -1,54 +1,47 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH] fstests: make some xfs project quota tests generic
-Date: Fri, 23 Sep 2016 07:20:40 -0500
-Message-ID: <a834fc9c-c406-022f-8304-2ed54c65bc9b@sandeen.net>
-References: <ffeed0c4-7e77-a7a0-1426-0890bf38a52f@redhat.com>
- <20160923042500.GV27776@eguan.usersys.redhat.com>
+From: Eric Biggers <ebiggers@google.com>
+Subject: Re: [PATCH] ext4: Check for encryption feature before
+ fscrypt_process_policy()
+Date: Fri, 23 Sep 2016 14:56:54 -0700
+Message-ID: <20160923215654.GB106495@google.com>
+References: <1474527054-24207-1-git-send-email-richard@nod.at>
+ <20160922194931.GA53380@google.com>
+ <20160922223803.ggz2qodtqtht7oot@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: fstests <fstests@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Eryu Guan <eguan@redhat.com>, Eric Sandeen <sandeen@redhat.com>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20160923042500.GV27776@eguan.usersys.redhat.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>, Richard Weinberger <richard@nod.at>,
+        adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, david@sigma-star.at, jaegeuk@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f180.google.com ([209.85.192.180]:33056 "EHLO
+        mail-pf0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934834AbcIWV5D (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Sep 2016 17:57:03 -0400
+Received: by mail-pf0-f180.google.com with SMTP id 21so45800288pfy.0
+        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2016 14:57:02 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20160922223803.ggz2qodtqtht7oot@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 9/22/16 11:25 PM, Eryu Guan wrote:
->> @@ -210,16 +226,23 @@ _qmount_option()
->> >  		-e 's/gquota/QUOTA/g'      \
->> >  		-e 's/grpquota/QUOTA/g'    \
->> >  		-e 's/pquota/QUOTA/g'      \
->> > -		-e 's/prjquota/QUOTA/g'      \
->> > +		-e 's/prjquota/QUOTA/g'    \
->> >  		-e 's/quota/QUOTA/g'       \
->> >  		-e 's/uqnoenforce/QUOTA/g' \
->> >  		-e 's/gqnoenforce/QUOTA/g' \
->> >  		-e 's/pqnoenforce/QUOTA/g' \
->> >  		-e 's/qnoenforce/QUOTA/g'  \
->> > -		-e "s/QUOTA/$1/g"`
->> > +		-e "s/QUOTA/$OPTS/g"`
->> >  
->> > +	# ext4 doesn't _do_ "-o pquota/prjquota" because reasons
->> > +	# Switch it to "quota" to enable mkfs-time pquota
->> > +	if [ "$FSTYP" == "ext4" ]; then
->> > +		OPTS=`echo $OPTS \
->> > +		| sed	-e 's/pquota/quota/g'	\
->> > +			-e 's/prjquota/quota/g'`
->> > +	fi
-> This replaces "grpquota" to "grquota" and mount failed because of
-> unknown mount option "grquota". The following change works for me:
+On Thu, Sep 22, 2016 at 06:38:03PM -0400, Theodore Ts'o wrote:
 > 
-> -             | sed   -e 's/pquota/quota/g'   \
-> +             | sed   -e 's/\bpquota/quota/g' \
-> 
-> If you can give me an ack (or another fix), I can fold it into the
-> original patch.
+> I think it's fine to fix it now in upstream.  It might cause some
+> problems for Cyanogen developers if they want to try to use an
+> upstream kernel and also enable the ext4 encryption feature, but the
+> fix to make_ext4fs isn't all that hard.
 
-Eek .. yes, feel free to change that (and the other, unless you want
-to make it a separate commit) - sorry, not sure how I missed that.
+Would it make sense to at least provide a helpful error message in the kernel
+log?  For example:
 
-Thanks,
--Eric
+		if (!ext4_has_feature_encrypt(sb)) {
+			ext4_msg(sb, KERN_INFO,
+				 "warning: process `%s' tried to set "
+				 "encryption policy on filesystem without "
+				 "encryption enabled.  This is not supported.  "
+				 "Use 'tune2fs -O encrypt' to enable the "
+				 "encryption feature flag first.",
+				 current->comm);
+			return -EOPNOTSUPP;
+		}
+
+Eric
