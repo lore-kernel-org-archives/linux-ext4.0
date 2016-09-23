@@ -1,41 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 172741] create year being set as 2014 and not 2016
-Date: Fri, 23 Sep 2016 01:05:39 +0000
-Message-ID: <bug-172741-13602-oUTZKHQmop@https.bugzilla.kernel.org/>
-References: <bug-172741-13602@https.bugzilla.kernel.org/>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] fstests: make some xfs project quota tests generic
+Date: Fri, 23 Sep 2016 09:58:14 +0800
+Message-ID: <20160923015814.GS27776@eguan.usersys.redhat.com>
+References: <ffeed0c4-7e77-a7a0-1426-0890bf38a52f@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:37356 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752479AbcIWBFn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Sep 2016 21:05:43 -0400
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id 01D76203ED
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2016 01:05:42 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id 0D73F2041B
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Sep 2016 01:05:40 +0000 (UTC)
-In-Reply-To: <bug-172741-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests <fstests@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <ffeed0c4-7e77-a7a0-1426-0890bf38a52f@redhat.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=172741
+On Thu, Sep 22, 2016 at 05:51:03PM -0500, Eric Sandeen wrote:
+> This patch makes some xfs project quota tests generic,
+> so that there is at least some coverage on ext4 for this
+> (semi-)new feature.
+> 
+> It requires bleeding edge xfsprogs, so that xfs_quota and 
+> xfs_io's chproj command can operate on "foreign" filesystems,
+> and requires relatively new e2fsprogs to enable the project
+> quota feature on-disk.
+> 
+> The mechanism for enabling project quota on ext4 is a bit
+> arcane, but hopefully I've encapsulated it reasonably well here.
+> 
+> Changes:
+> 
+> * look for "project" feature in _require_prjquota
+> * look for accounting not enforcement (-P) in _require_prjquota
+> * add a _scratch_enable_pquota to turn on project quota feature
+> * s/pquota/quota/ in _qmount_option for ext4
+> * add helper to test for xfs_io chproj on foreign filesystems
+> * switch from block to inode quota in xfs/133 because empty
+>   ext4 dirs consume one block
+> * cosmetic/generic changes for mkfs, require tests, etc.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+> 
+> Eryu, would you like to do the move-to-generic/ since you'll need
+> to renumber them anyway? :)
 
-Theodore Tso <tytso@mit.edu> changed:
+Yeah, sure, I can do that :)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+> 
+> Note -
+> This requires the previous patch I sent to the fstests list,
+> 
+> [PATCH 2/3 V2] modify xfs/ quota tests to work on generic filesystems
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-Can you reliably reproduce this and are you sure the system time was set
-correctly?
+Thanks!
 
-If so, please give us your reproduction instructions.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Eryu
