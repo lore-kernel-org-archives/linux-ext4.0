@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v3 02/11] ext4: tell DAX the size of allocation holes
-Date: Tue, 27 Sep 2016 14:47:53 -0600
-Message-ID: <1475009282-9818-3-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v3 05/11] dax: make 'wait_table' global variable static
+Date: Tue, 27 Sep 2016 14:47:56 -0600
+Message-ID: <1475009282-9818-6-git-send-email-ross.zwisler@linux.intel.com>
 References: <1475009282-9818-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,32 +27,30 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-When DAX calls _ext4_get_block() and the file offset points to a hole we
-currently don't set bh->b_size.  This is current worked around via
-buffer_size_valid() in fs/dax.c.
+The global 'wait_table' variable is only used within fs/dax.c, and
+generates the following sparse warning:
 
-_ext4_get_block() has the hole size information from ext4_map_blocks(), so
-populate bh->b_size so we can remove buffer_size_valid() in a later patch.
+fs/dax.c:39:19: warning: symbol 'wait_table' was not declared. Should it be static?
+
+Make it static so it has scope local to fs/dax.c, and to make sparse happy.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/dax.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0900cb4..9075fac 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -759,6 +759,9 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 		ext4_update_bh_state(bh, map.m_flags);
- 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 		ret = 0;
-+	} else if (ret == 0) {
-+		/* hole case, need to fill in bh->b_size */
-+		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 	}
- 	return ret;
- }
+diff --git a/fs/dax.c b/fs/dax.c
+index 9b9be8a..ac28cdf 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -52,7 +52,7 @@
+ #define DAX_WAIT_TABLE_BITS 12
+ #define DAX_WAIT_TABLE_ENTRIES (1 << DAX_WAIT_TABLE_BITS)
+ 
+-wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
++static wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
+ 
+ static int __init init_dax_wait_table(void)
+ {
 -- 
 2.7.4
