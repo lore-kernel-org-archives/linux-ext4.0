@@ -1,75 +1,93 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: SECRM, UNRM, COMPR flags
-Date: Wed, 28 Sep 2016 19:30:12 -0400
-Message-ID: <20160928233012.kstjjomqjd7w7jb4@thunk.org>
-References: <20160926091149.GA7733@quack2.suse.cz>
- <20160926150621.rp2s5uhkbqzjzixn@thunk.org>
- <20160927083508.GE1139@quack2.suse.cz>
+Subject: Re: Test generic/299 stalling forever
+Date: Thu, 29 Sep 2016 00:37:22 -0400
+Message-ID: <20160929043722.ypf3tnxsl6ovt653@thunk.org>
+References: <20150618155337.GA10439@thunk.org>
+ <20150618233430.GK20262@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
+        tarasov@vasily.name, axboe@fb.com
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42804 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:43138 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754637AbcI2BRw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Sep 2016 21:17:52 -0400
+        id S1751038AbcI2EiB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Sep 2016 00:38:01 -0400
 Content-Disposition: inline
-In-Reply-To: <20160927083508.GE1139@quack2.suse.cz>
+In-Reply-To: <20150618233430.GK20262@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 27, 2016 at 10:35:08AM +0200, Jan Kara wrote:
+On Fri, Jun 19, 2015 at 09:34:30AM +1000, Dave Chinner wrote:
+> On Thu, Jun 18, 2015 at 11:53:37AM -0400, Theodore Ts'o wrote:
+> > I've been trying to figure out why generic/299 has occasionally been
+> > stalling forever.  After taking a closer look, it appears the problem
+> > is that the fio process is stalling in userspace.  Looking at the ps
+> > listing, the fio process hasn't run in over six hours, and using
+> > attaching strace to the fio process, it's stalled in a FUTUEX_WAIT.
+> > 
+> > Has anyone else seen this?  I'm using fio 2.2.6, and I have a feeling
+> > that I started seeing this when I started using a newer version of
+> > fio.  So I'm going to try roll back to an older version of fio and see
+> > if that causes the problem to go away.
 > 
-> What I'd like is: Remove UNRM, SECRM and COMPR from USER_MODIFIABLE
-> bitmask. Return -EOPNOTSUPP when (flags & ~USER_MODIFIABLE) != 0.
-> This way we flag possible issues early and also using the so far unused
-> flags for any functionality in future is safe (otherwise you cannot be sure
-> whether some apps just randomly don't leave unused bits set). Whether some
-> apps won't get broken by this is a question but I'd hope not since as I
-> said other filesystems already behave this way and get away with that...
-> Are people willing to try this out?
+> I'm running on fio 2.1.3 at the moment and I havne't seen any
+> problems like this for months. Keep in mind that fio does tend to
+> break in strange ways fairly regularly, so I'd suggest an
+> upgrade/downgrade of fio as your first move.
 
-I'm uncomfortable returning an error but also making changes to the
-flags.  If we return an error, we shouldn't be modifying the flags.
+Out of curiosity, Dave, are you still using fio 2.1.3?  I had upgraded
+to the latest fio to fix other test breaks, and I'm stil seeing the
+occasional generic/299 test failure.  In fact, it's been happening
+often enough on one of my test platforms[1] that I decided to really
+dig down and investigate it, and all of the threads were blocking on
+td->verify_cond in fio's verify.c.
 
-I'm happy adding a new ioctl which returns an error without making any
-changes --- but that's something all file systems would have to
-support.
+It bisected down to this commit:
 
-I'm also happy having an ioctl which returns the current
-USER_MODIFIABLE bitmap (which is per-file system, by the way).
+commit e5437a073e658e8154b9e87bab5c7b3b06ed4255
+Author: Vasily Tarasov <tarasov@vasily.name>
+Date:   Sun Nov 9 20:22:24 2014 -0700
 
-> 
-> > What I think would make sense is to simply remove UNRM, SECRM, and
-> > UNRM from the USER_MODIFIABLE bitmask.  I also suspect it might be
-> > useful to define a new ioctl which returns the USER_VISIBLE and
-> > USER_MODIFIABLE bitmasks, so that tools can know how to expect (and
-> > give warning or error messages as desired).
-> 
-> Well the GET/SETFLAGS ioctl is used by several filesystems these days so
-> we'd better check with other filesystems whether they are able to support
-> this functionality.
+    Fix for a race when fio prints I/O statistics periodically
 
-As mentioned about, the USER_MODIFIABLE bitmask is a per-file system
-thing, so we can change it for ext4 without needing to consult with
-the other file systems.  (It's EXT4_USER_MODIFIABLE_FL, IIRC).
+    Below is the demonstration for the latest code in git:
+    ...
 
-But I don't think we can return an error but also make changes to the
-flag fields, or make any changes to the actual behavior of the current
-ioctl without consulting the other file systems.
+So generic/299 passes reliably with this commits parent, and it fails
+on this commit within a dozen tries or so.  The commit first landed in
+fio 2.1.14, so it's consistent with Dave's report a year ago he was
+still using fio 2.1.3.
 
-That's why I think the better approach is to define a new ioctl that
-returns the user modifialbe and user visible bitmasks, and teach
-userspace to give warning messages (or error out entirely) if the user
-tries to set a flag which the file system is going to ignore.
+I haven't had time to do a deep analysis on what fio/verify.c does, or
+the above patch, but the good news is that when fio hangs, it's just a
+userspace hang, so I can log into machine and attach a gdb to the
+process.  The code in question isn't very well documented, so I'm
+sending this out in the hopes that Jens and Vasily might see something
+obvious, and because I'm curious whether anyone else has seen this
+(since it seems to be a timing-related race in fio, so it's likely a
+file system independent issue).
 
-If the ioctl isn't defined for the other file systems, we'll fall back
-to the current behavior --- or if you like we can follow up the
-SETFLAGS with a GETFLAGS and then report a warning if the flags aren't
-checked.
+Thanks,
 
-This to me is much more of an user interface issue for chattr than
-anything else, so I thin kit's better to fix this in chattr.
+						- Ted
 
-	       	    	       	      	 - Ted
+[1] When running xfstests in a Google Compute Engine VM with a
+SSD-backed Persistent disk, using a n1-standard-2 machine type with a
+recent kernel testing with ext4, the command "gce-xfstests -C 100
+generic/299" will hang within a dozen runs of the test, so -C 100 to
+run the test a hundred times was definitely overkill --- in fact
+usually in fio would hang after less than a half-dozen runs.
+
+My bisecting technique (using the infrastructure at
+https://github.com/tytso/xfstests-bld) was:
+
+	./build-all --fio-only
+	make tarball
+	gce-xfstests --update-xfstests -C 100 generic/299
+
+and then wait for an hour or so and see whether or not fio was hanging
+or not, and then follow it up with "(cd fio ; git bisect good)" or
+"(cd fio ; git bisect bad)" as appropriate.  I was using a Debian
+jessie build chroot to compile fio and all of xfstests-bld.
