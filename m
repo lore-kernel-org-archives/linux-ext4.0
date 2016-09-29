@@ -1,93 +1,71 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Test generic/299 stalling forever
-Date: Thu, 29 Sep 2016 00:37:22 -0400
-Message-ID: <20160929043722.ypf3tnxsl6ovt653@thunk.org>
-References: <20150618155337.GA10439@thunk.org>
- <20150618233430.GK20262@dastard>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: Unmap metadata when zeroing blocks
+Date: Thu, 29 Sep 2016 15:14:57 +0200
+Message-ID: <20160929131457.wyhlp34n55ewzzxu@localhost.localdomain>
+References: <1474992918-20488-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, fstests@vger.kernel.org,
-        tarasov@vasily.name, axboe@fb.com
-To: Dave Chinner <david@fromorbit.com>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43138 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:45980 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751038AbcI2EiB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Sep 2016 00:38:01 -0400
+        id S1754226AbcI2NPD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Sep 2016 09:15:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20150618233430.GK20262@dastard>
+In-Reply-To: <1474992918-20488-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 19, 2015 at 09:34:30AM +1000, Dave Chinner wrote:
-> On Thu, Jun 18, 2015 at 11:53:37AM -0400, Theodore Ts'o wrote:
-> > I've been trying to figure out why generic/299 has occasionally been
-> > stalling forever.  After taking a closer look, it appears the problem
-> > is that the fio process is stalling in userspace.  Looking at the ps
-> > listing, the fio process hasn't run in over six hours, and using
-> > attaching strace to the fio process, it's stalled in a FUTUEX_WAIT.
-> > 
-> > Has anyone else seen this?  I'm using fio 2.2.6, and I have a feeling
-> > that I started seeing this when I started using a newer version of
-> > fio.  So I'm going to try roll back to an older version of fio and see
-> > if that causes the problem to go away.
+Hi Jan,
+
+do we have a xfstest case for this particular problem ?
+
+Thanks!
+-Lukas
+
+
+On Tue, Sep 27, 2016 at 06:15:18PM +0200, Jan Kara wrote:
+> When zeroing blocks for DAX allocations, we also have to unmap aliases
+> in the block device mappings. Otherwise writeback can overwrite zeros
+> with stale data from block device page cache.
 > 
-> I'm running on fio 2.1.3 at the moment and I havne't seen any
-> problems like this for months. Keep in mind that fio does tend to
-> break in strange ways fairly regularly, so I'd suggest an
-> upgrade/downgrade of fio as your first move.
-
-Out of curiosity, Dave, are you still using fio 2.1.3?  I had upgraded
-to the latest fio to fix other test breaks, and I'm stil seeing the
-occasional generic/299 test failure.  In fact, it's been happening
-often enough on one of my test platforms[1] that I decided to really
-dig down and investigate it, and all of the threads were blocking on
-td->verify_cond in fio's verify.c.
-
-It bisected down to this commit:
-
-commit e5437a073e658e8154b9e87bab5c7b3b06ed4255
-Author: Vasily Tarasov <tarasov@vasily.name>
-Date:   Sun Nov 9 20:22:24 2014 -0700
-
-    Fix for a race when fio prints I/O statistics periodically
-
-    Below is the demonstration for the latest code in git:
-    ...
-
-So generic/299 passes reliably with this commits parent, and it fails
-on this commit within a dozen tries or so.  The commit first landed in
-fio 2.1.14, so it's consistent with Dave's report a year ago he was
-still using fio 2.1.3.
-
-I haven't had time to do a deep analysis on what fio/verify.c does, or
-the above patch, but the good news is that when fio hangs, it's just a
-userspace hang, so I can log into machine and attach a gdb to the
-process.  The code in question isn't very well documented, so I'm
-sending this out in the hopes that Jens and Vasily might see something
-obvious, and because I'm curious whether anyone else has seen this
-(since it seems to be a timing-related race in fio, so it's likely a
-file system independent issue).
-
-Thanks,
-
-						- Ted
-
-[1] When running xfstests in a Google Compute Engine VM with a
-SSD-backed Persistent disk, using a n1-standard-2 machine type with a
-recent kernel testing with ext4, the command "gce-xfstests -C 100
-generic/299" will hang within a dozen runs of the test, so -C 100 to
-run the test a hundred times was definitely overkill --- in fact
-usually in fio would hang after less than a half-dozen runs.
-
-My bisecting technique (using the infrastructure at
-https://github.com/tytso/xfstests-bld) was:
-
-	./build-all --fio-only
-	make tarball
-	gce-xfstests --update-xfstests -C 100 generic/299
-
-and then wait for an hour or so and see whether or not fio was hanging
-or not, and then follow it up with "(cd fio ; git bisect good)" or
-"(cd fio ; git bisect bad)" as appropriate.  I was using a Debian
-jessie build chroot to compile fio and all of xfstests-bld.
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 10 +++++++++-
+>  1 file changed, 9 insertions(+), 1 deletion(-)
+> 
+> Ted, can you merge this patch please? It's a data corruption issue for DAX.
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c6ea25a190f8..87150122d361 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -647,11 +647,19 @@ found:
+>  		/*
+>  		 * We have to zeroout blocks before inserting them into extent
+>  		 * status tree. Otherwise someone could look them up there and
+> -		 * use them before they are really zeroed.
+> +		 * use them before they are really zeroed. We also have to
+> +		 * unmap metadata before zeroing as otherwise writeback can
+> +		 * overwrite zeros with stale data from block device.
+>  		 */
+>  		if (flags & EXT4_GET_BLOCKS_ZERO &&
+>  		    map->m_flags & EXT4_MAP_MAPPED &&
+>  		    map->m_flags & EXT4_MAP_NEW) {
+> +			ext4_lblk_t i;
+> +
+> +			for (i = 0; i < map->m_len; i++) {
+> +				unmap_underlying_metadata(inode->i_sb->s_bdev,
+> +							  map->m_pblk + i);
+> +			}
+>  			ret = ext4_issue_zeroout(inode, map->m_lblk,
+>  						 map->m_pblk, map->m_len);
+>  			if (ret) {
+> -- 
+> 2.6.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
