@@ -1,33 +1,55 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH] fscrypto: lock inode while setting encryption policy
-Date: Thu, 29 Sep 2016 19:20:20 +0200
-Message-ID: <ea8b7140-f04e-380d-b5ae-263f029c0624@nod.at>
-References: <1475087688-4048-1-git-send-email-ebiggers@google.com>
+From: gmail <yngsion@gmail.com>
+Subject: [PATCH] ext4: release bh in make_indexed_dir
+Date: Fri, 30 Sep 2016 01:36:30 +0800
+Message-ID: <1475170590.1830.13.camel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        tytso@mit.edu, jaegeuk@kernel.org
-To: Eric Biggers <ebiggers@google.com>, linux-fsdevel@vger.kernel.org
+Cc: tytso@mit.edu, jack@suse.cz
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from b.ns.miles-group.at ([95.130.255.144]:44723 "EHLO radon.swed.at"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S934212AbcI2RUZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Sep 2016 13:20:25 -0400
-In-Reply-To: <1475087688-4048-1-git-send-email-ebiggers@google.com>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:34684 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933853AbcI2Rgv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Sep 2016 13:36:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 28.09.2016 20:34, Eric Biggers wrote:
-> i_rwsem needs to be acquired while setting an encryption policy so that
-> concurrent calls to FS_IOC_SET_ENCRYPTION_POLICY are correctly
-> serialized (especially the ->get_context() + ->set_context() pair), and
-> so that new files cannot be created in the directory during or after the
-> ->empty_dir() check.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+The commit 6050d47adcad
+("ext4: bail out from make_indexed_dir() on first error")
+miss to release bh in make_indexed_dir.
 
-Reviewed-by: Richard Weinberger <richard@nod.at>
+Signed-off-by: yangsheng <yngsion@gmail.com>
+---
+ fs/ext4/namei.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-Thanks,
-//richard
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 38ca0fe..465f960 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2058,19 +2058,18 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 		retval = PTR_ERR(de);
+ 		goto out_frames;
+ 	}
+-	dx_release(frames);
+ 
+ 	retval = add_dirent_to_buf(handle, fname, dir, inode, de, bh);
+-	brelse(bh);
+-	return retval;
+ out_frames:
+ 	/*
+ 	 * Even if the block split failed, we have to properly write
+ 	 * out all the changes we did so far. Otherwise we can end up
+ 	 * with corrupted filesystem.
+ 	 */
+-	ext4_mark_inode_dirty(handle, dir);
++	if (retval)
++		ext4_mark_inode_dirty(handle, dir);
+ 	dx_release(frames);
++	brelse(bh);
+ 	return retval;
+ }
+ 
+
+
