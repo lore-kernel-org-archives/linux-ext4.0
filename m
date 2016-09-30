@@ -1,37 +1,30 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v4 00/12] re-enable DAX PMD support
-Date: Fri, 30 Sep 2016 04:46:56 -0700
-Message-ID: <20160930114656.GA16447@infradead.org>
-References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+From: Richard Weinberger <richard@nod.at>
+Subject: Question on ext4 directory hashes in combination with file name
+ encryption
+Date: Fri, 30 Sep 2016 16:09:09 +0200
+Message-ID: <9a5198b3-0c00-a558-5132-9c38b4bb8795@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@ml01.01.org, linux-xfs@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+        David Gstir <david@sigma-star.at>
+To: linux-ext4@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from b.ns.miles-group.at ([95.130.255.144]:44723 "EHLO radon.swed.at"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932237AbcI3OJN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Sep 2016 10:09:13 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 29, 2016 at 04:49:18PM -0600, Ross Zwisler wrote:
-> DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-> locking.  This series allows DAX PMDs to participate in the DAX radix tree
-> based locking scheme so that they can be re-enabled.
+Hi,
 
-This seems to pass xfstests fine, so with the various cleanups noted
-in the individual patches this looks fine to me.
+if I read the ext4 code correctly, you pass encrypted filenames to ext4fs_dirhash().
+These filenames are not encoded and therefore binary gibberish.
+Isn't this a problem for the ext4 hash functions? My fear is that these hashes are optimized
+for ASCII strings and produce more collisions when binary data is used as input.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks,
+//richard
