@@ -1,28 +1,26 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: release bh in make_indexed_dir
-Date: Fri, 30 Sep 2016 01:34:44 -0400
-Message-ID: <20160930053444.qnbikbjh3sqz5wi7@thunk.org>
-References: <1475170590.1830.13.camel@gmail.com>
+Subject: Re: [PATCH] ext4: do not unnecessarily null-terminate encrypted
+ symlink data
+Date: Fri, 30 Sep 2016 01:45:28 -0400
+Message-ID: <20160930054528.rc4a45gkeelhdyjp@thunk.org>
+References: <1474576309-86917-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        jack@suse.cz
-To: gmail <yngsion@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org
+To: Eric Biggers <ebiggers@google.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1475170590.1830.13.camel@gmail.com>
+In-Reply-To: <1474576309-86917-1-git-send-email-ebiggers@google.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 30, 2016 at 01:36:30AM +0800, gmail wrote:
-> The commit 6050d47adcad
-> ("ext4: bail out from make_indexed_dir() on first error")
-> miss to release bh in make_indexed_dir.
+On Thu, Sep 22, 2016 at 01:31:47PM -0700, Eric Biggers wrote:
+> Null-terminating the fscrypt_symlink_data on read is unnecessary because
+> it is not string data --- it contains binary ciphertext.
 > 
-> Signed-off-by: yangsheng <yngsion@gmail.com>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Thanks, applied.  I rewrote the commit description and also took out
-the confusing "bh = bh2" and then used bh2 where we were using bh
-before, which makes the code much easier to understand.
+Thanks, applied.
 
-	      	    	     	  - Ted
+					- Ted
