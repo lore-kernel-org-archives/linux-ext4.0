@@ -1,27 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypto: use standard macros to compute length of fname
- ciphertext
-Date: Fri, 30 Sep 2016 01:47:35 -0400
-Message-ID: <20160930054735.oaspdaohtghix5q7@thunk.org>
-References: <1474576309-86917-1-git-send-email-ebiggers@google.com>
- <1474576309-86917-3-git-send-email-ebiggers@google.com>
+Subject: Re: [PATCH] ext4: Check for encryption feature before
+ fscrypt_process_policy()
+Date: Fri, 30 Sep 2016 01:53:52 -0400
+Message-ID: <20160930055352.qhqvxpwino4yomdo@thunk.org>
+References: <1474527054-24207-1-git-send-email-richard@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47580 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934349AbcI3Fri (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Sep 2016 01:47:38 -0400
+Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, david@sigma-star.at
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1474576309-86917-3-git-send-email-ebiggers@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1474527054-24207-1-git-send-email-richard@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 22, 2016 at 01:31:49PM -0700, Eric Biggers wrote:
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+On Thu, Sep 22, 2016 at 08:50:54AM +0200, Richard Weinberger wrote:
+> ...otherwise an user can enable encryption for certain files even
+> when the filesystem is unable to support it.
+> Such a case would be a filesystem created by mkfs.ext4's default
+> settings, 1KiB block size. Ext4 supports encyption only when block size
+> is equal to PAGE_SIZE.
+> But this constraint is only checked when the encryption feature flag
+> is set.
+> 
+> Signed-off-by: Richard Weinberger <richard@nod.at>
 
 Thanks, applied.
 
