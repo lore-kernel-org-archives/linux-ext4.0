@@ -1,31 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Check for encryption feature before
- fscrypt_process_policy()
-Date: Fri, 30 Sep 2016 01:53:52 -0400
-Message-ID: <20160930055352.qhqvxpwino4yomdo@thunk.org>
-References: <1474527054-24207-1-git-send-email-richard@nod.at>
+Subject: Re: [PATCH 1/2] ext4: Allow unlocked direct IO when pages are cached
+Date: Fri, 30 Sep 2016 01:56:29 -0400
+Message-ID: <20160930055629.uu2gt3ykigb24yho@thunk.org>
+References: <1474986148-9683-1-git-send-email-jack@suse.cz>
+ <1474986148-9683-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, david@sigma-star.at
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:47634 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935602AbcI3F4m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Sep 2016 01:56:42 -0400
 Content-Disposition: inline
-In-Reply-To: <1474527054-24207-1-git-send-email-richard@nod.at>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1474986148-9683-2-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 22, 2016 at 08:50:54AM +0200, Richard Weinberger wrote:
-> ...otherwise an user can enable encryption for certain files even
-> when the filesystem is unable to support it.
-> Such a case would be a filesystem created by mkfs.ext4's default
-> settings, 1KiB block size. Ext4 supports encyption only when block size
-> is equal to PAGE_SIZE.
-> But this constraint is only checked when the encryption feature flag
-> is set.
+On Tue, Sep 27, 2016 at 04:22:27PM +0200, Jan Kara wrote:
+> Currently we do not allow unlocked (meaning without inode_lock) direct
+> IO when the file has any pages cached. This check is not needed anymore
+> as we keep inode lock until ext4_direct_IO_write() and thus can happily
+> writeback and evict any pages conflicting with current direct IO write.
 > 
-> Signed-off-by: Richard Weinberger <richard@nod.at>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
