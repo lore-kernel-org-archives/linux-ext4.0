@@ -1,28 +1,27 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Unmap metadata when zeroing blocks
-Date: Fri, 30 Sep 2016 02:03:58 -0400
-Message-ID: <20160930060358.onzfpefx7xb3fw7q@thunk.org>
-References: <1474992918-20488-1-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH 1/2] ext4: create function to read journal inode
+Date: Fri, 30 Sep 2016 02:11:37 -0400
+Message-ID: <20160930061136.sfw65ainhhgjkpht@thunk.org>
+References: <20160922011450.GB27216@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47664 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47680 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934757AbcI3GEE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Sep 2016 02:04:04 -0400
+        id S935955AbcI3GLv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Sep 2016 02:11:51 -0400
 Content-Disposition: inline
-In-Reply-To: <1474992918-20488-1-git-send-email-jack@suse.cz>
+In-Reply-To: <20160922011450.GB27216@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 27, 2016 at 06:15:18PM +0200, Jan Kara wrote:
-> When zeroing blocks for DAX allocations, we also have to unmap aliases
-> in the block device mappings. Otherwise writeback can overwrite zeros
-> with stale data from block device page cache.
+On Wed, Sep 21, 2016 at 09:14:50PM -0400, Eric Whitney wrote:
+> Factor out the code used in ext4_get_journal() to read a valid journal
+> inode from storage, enabling its reuse in other functions.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
 Thanks, applied.
 
