@@ -1,82 +1,100 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v4 00/12] re-enable DAX PMD support
-Date: Mon, 3 Oct 2016 12:54:03 -0600
-Message-ID: <20161003185403.GD2044@linux.intel.com>
-References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
- <20160929234345.GG27872@dastard>
- <20160930030343.GA12464@linux.intel.com>
- <20160930040055.GE9309@birch.djwong.org>
+From: Steve French <smfrench-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 5/6] statx: Make windows attributes available for CIFS,
+ NTFS and FAT to use
+Date: Mon, 3 Oct 2016 16:03:49 -0500
+Message-ID: <CAH2r5mv4WSM==ACMO2OZxF-GJgMqKE2Y0T08f3JoWCX5SM0VmQ@mail.gmail.com>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125813.23636.49830.stgit@warthog.procyon.org.uk> <D21EA8F8-0A7A-4275-8D4C-E9CFCC2A7293@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.com>,
-	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@ml01.01.org, linux-xfs@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20160930040055.GE9309@birch.djwong.org>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+Cc: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+        linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-afs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        "linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        samba-technical <samba-technical-w/Ol4Ecudpl8XjKLYN78aQ@public.gmane.org>,
+        LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <D21EA8F8-0A7A-4275-8D4C-E9CFCC2A7293-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 29, 2016 at 09:00:55PM -0700, Darrick J. Wong wrote:
-> On Thu, Sep 29, 2016 at 09:03:43PM -0600, Ross Zwisler wrote:
-> > On Fri, Sep 30, 2016 at 09:43:45AM +1000, Dave Chinner wrote:
-> > > Finally: none of the patches in your tree have reviewed-by tags.
-> > > That says to me that none of this code has been reviewed yet.
-> > > Reviewed-by tags are non-negotiable requirement for anything going
-> > > through my trees. I don't have time right now to review this code,
-> > > so you're going to need to chase up other reviewers before merging.
-> > > 
-> > > And, really, this is getting very late in the cycle to be merging
-> > > new code - we're less than one working day away from the merge
-> > > window opening and we've missed the last linux-next build. I'd
-> > > suggest that we'd might be best served by slipping this to the PMD
-> > > support code to the next cycle when there's no time pressure for
-> > > review and we can get a decent linux-next soak on the code.
-> > 
-> > I absolutely support your policy of only sending code to Linux that has passed
-> > peer review.
-> > 
-> > However, I do feel compelled to point out that this is not new code.  I didn't
-> > just spring it on everyone in the hours before the v4.8 merge window.  I
-> > posted the first version of this patch set on August 15th, *seven weeks ago*:
-> > 
-> > https://lkml.org/lkml/2016/8/15/613
-> > 
-> > This was the day after v4.7-rc2 was released.
-> > 
-> > Since then I have responded promptly to the little review feedback
-> > that I've received.  I've also reviewed and tested other DAX changes,
-> > like the struct iomap changes from Christoph.  Those changes were
-> > first posted to the mailing list on September 9th, four weeks after
-> > mine.  Nevertheless, I was happy to rebase my changes on top of his,
-> > which meant a full rewrite of the DAX PMD fault handler so it would be
-> > based on struct iomap.  His changes are going to be merged for v4.9,
-> > and mine are not.
-> 
-> I'm not knocking the iomap migration, but it did cause a fair amount of
-> churn in the XFS reflink patchset -- and that's for a filesystem that
-> already /had/ iomap implemented.  It'd be neat to have all(?) the DAX
-> filesystems (ext[24], XFS) move over to iomap so that you wouldn't have
-> to support multiple ways of talking to FSes.  AFAICT ext4 hasn't gotten
-> iomap, which complicates things.  But that's my opinion, maybe you're
-> fine with supporting iomap and not-iomap.
+On Mon, May 2, 2016 at 5:52 PM, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
+> On Apr 29, 2016, at 6:58 AM, David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+>>
+>> Make windows attributes available for CIFS, NTFS and FAT to use in the
+>> statx struct.  The attribute flags map directly by value to those in the
+>> CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and HPFS.
+>>
+>> The statx struct acquires:
+>>
+>>       __u32   st_win_attrs;
+>
+> It seems some of these flags are duplicated with the st_information field,
+> and some are duplicate with FS_IOC_GETFLAGS values, and returning the same
+> information in multiple ways is confusing.
+>
+> If these flags are part of the CIFS protocol, and are directly usable by
+> Samba then I can understand we wouldn't want to change them once in the
+> kernel and then convert them back in userspace, but I'm a bit reluctant
+> to have flags only for CIFS/NTFS/FAT that might also be useful for other filesystems.  Would we want to be able to get translated st_win_attrs
+> flags in ext4 attrs when it is being exported by Samba?
 
-I agree that we want to move everything over to be iomap based.   I think
-Christoph is already working on moving ext4 over, but as of this set PMD
-support explicitly depends on the iomap interface, and I'm itching to remove
-the struct buffer_head + get_block_t PTE path and I/O path as well.
+It could be useful to have them in statx in an fs neutral way (and
+could be implemented by CIFS/NTFS/FAT and probably NFS), but I am ok
+with doing this via file system specific xattrs as we do now: NTFS has
+an ntfs specific pseudo-xattr for these and for birth time (and now
+cifs with recent patches can return the SMB3 inode attributes,
+including the older DOS attributes noted below).  Samba server also
+stores them in an xattr (although they ndr encode them so it is not
+useful to us in the kernel) in local file systems.  NFS v4 (and later)
+can also return (in theory) some of these flags but they are optional.
 
+>> The value in this is present if STATX_WIN_ATTRS is set.
+>>
+>> The defined flags in this are:
+>>
+>>       STATX_WIN_ATTR_READONLY
+>>       STATX_WIN_ATTR_HIDDEN
+>>       STATX_WIN_ATTR_SYSTEM
+>>       STATX_WIN_ATTR_DIRECTORY
+>
+> How does this differ from (st_mode & S_IFMT) == S_IFDIR)?
+>
+>>       STATX_WIN_ATTR_ARCHIVE
+>>       STATX_WIN_ATTR_NORMAL
+>
+> How does this differ from (st_mode & S_IFMT) == S_IFREG)?
+>
+>>       STATX_WIN_ATTR_TEMPORARY
+>
+> How does this differ from STATX_INFO_TEMPORARY?
+>
+>>       STATX_WIN_ATTR_SPARSE_FILE
+>>       STATX_WIN_ATTR_REPARSE_POINT
+>>       STATX_WIN_ATTR_COMPRESSED
+>>       STATX_WIN_ATTR_OFFLINE
+>>       STATX_WIN_ATTR_NOT_CONTENT_INDEXED
+>>       STATX_WIN_ATTR_ENCRYPTED
+>
+> How does this differ from STATX_INFO_ENCRYPTED?
+
+As you noted, directory, compressed, encrypted overlap with existing
+posix file type (directory vs. file) and FS_IOC_FLAGS (although
+cifs.ko does not allow you to set encrypted yet as we do with
+compressed through the IOC flags, I could add a patch for setting the
+encrypted flag since it should be trivial as it does not affect
+reads/writes/open/close over the network fs since the file would be
+only encrypted at rest on the server fs)
+
+
+
+-- 
+Thanks,
+
+Steve
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
