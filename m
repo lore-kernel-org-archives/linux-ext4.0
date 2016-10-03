@@ -1,43 +1,124 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: optimize ext4 direct I/O locking for reading
-Date: Mon, 3 Oct 2016 09:41:03 +0200
-Message-ID: <20161003074103.GE6457@quack2.suse.cz>
-References: <20160921052744.5223-1-tytso@mit.edu>
- <20160921132609.GA30232@infradead.org>
- <20160921143748.xswkovbjrtcgs3bq@thunk.org>
- <20160922123143.GO2834@quack2.suse.cz>
- <20160922133031.zjiyudqwthqp742g@thunk.org>
- <20160930052233.puwov5avj4kfedin@thunk.org>
+Subject: Re: [PATCH v4 04/12] ext2: remove support for DAX PMD faults
+Date: Mon, 3 Oct 2016 11:35:13 +0200
+Message-ID: <20161003093513.GJ6457@quack2.suse.cz>
+References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-5-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160930052233.puwov5avj4kfedin@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <1475189370-31634-5-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 30-09-16 01:22:33, Ted Tso wrote:
-> I've been looking at your patch and testing it, and it looks like
-> works fine as-is.
+On Thu 29-09-16 16:49:22, Ross Zwisler wrote:
+> DAX PMD support was added via the following commit:
+> 
+> commit e7b1ea2ad658 ("ext2: huge page fault support")
+> 
+> I believe this path to be untested as ext2 doesn't reliably provide block
+> allocations that are aligned to 2MiB.  In my testing I've been unable to
+> get ext2 to actually fault in a PMD.  It always fails with a "pfn
+> unaligned" message because the sector returned by ext2_get_block() isn't
+> aligned.
+> 
+> I've tried various settings for the "stride" and "stripe_width" extended
+> options to mkfs.ext2, without any luck.
+> 
+> Since we can't reliably get PMDs, remove support so that we don't have an
+> untested code path that we may someday traverse when we happen to get an
+> aligned block allocation.  This should also make 4k DAX faults in ext2 a
+> bit faster since they will no longer have to call the PMD fault handler
+> only to get a response of VM_FAULT_FALLBACK.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Glad to hear that!
+Looks good. You can add:
 
-> The other thing I like about this patch is it allows us to drop
-> ext4_inode_{block,resume}_unlocked_dio() and EXT4_STATE_DIOREAD_LOCK.
-
-Well, not completely - we still need to deal with unlocked writes that
-happen in ext4_direct_IO_write() when overwrite == 1. But that should be
-doable in a similar way. We could just demote inode_lock to a shared mode
-instead of dropping it in ext4_direct_IO_write() and then we could drop the
-bits you mention above. I can look into that when I'll be looking into
-converting ext4 into the new iomap infrastructure but that's definitely
-material for the next merge window.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/ext2/file.c | 29 ++++++-----------------------
+>  1 file changed, 6 insertions(+), 23 deletions(-)
+> 
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 0ca363d..0f257f8 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -107,27 +107,6 @@ static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  	return ret;
+>  }
+>  
+> -static int ext2_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+> -						pmd_t *pmd, unsigned int flags)
+> -{
+> -	struct inode *inode = file_inode(vma->vm_file);
+> -	struct ext2_inode_info *ei = EXT2_I(inode);
+> -	int ret;
+> -
+> -	if (flags & FAULT_FLAG_WRITE) {
+> -		sb_start_pagefault(inode->i_sb);
+> -		file_update_time(vma->vm_file);
+> -	}
+> -	down_read(&ei->dax_sem);
+> -
+> -	ret = dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block);
+> -
+> -	up_read(&ei->dax_sem);
+> -	if (flags & FAULT_FLAG_WRITE)
+> -		sb_end_pagefault(inode->i_sb);
+> -	return ret;
+> -}
+> -
+>  static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+>  		struct vm_fault *vmf)
+>  {
+> @@ -154,7 +133,11 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+>  
+>  static const struct vm_operations_struct ext2_dax_vm_ops = {
+>  	.fault		= ext2_dax_fault,
+> -	.pmd_fault	= ext2_dax_pmd_fault,
+> +	/*
+> +	 * .pmd_fault is not supported for DAX because allocation in ext2
+> +	 * cannot be reliably aligned to huge page sizes and so pmd faults
+> +	 * will always fail and fail back to regular faults.
+> +	 */
+>  	.page_mkwrite	= ext2_dax_fault,
+>  	.pfn_mkwrite	= ext2_dax_pfn_mkwrite,
+>  };
+> @@ -166,7 +149,7 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+>  
+>  	file_accessed(file);
+>  	vma->vm_ops = &ext2_dax_vm_ops;
+> -	vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
+> +	vma->vm_flags |= VM_MIXEDMAP;
+>  	return 0;
+>  }
+>  #else
+> -- 
+> 2.7.4
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
