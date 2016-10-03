@@ -1,9 +1,9 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH v4 05/12] dax: make 'wait_table' global variable static
-Date: Mon, 3 Oct 2016 11:36:03 +0200
-Message-ID: <20161003093603.GK6457@quack2.suse.cz>
+Subject: Re: [PATCH v4 06/12] dax: consistent variable naming for DAX entries
+Date: Mon, 3 Oct 2016 11:37:32 +0200
+Message-ID: <20161003093732.GL6457@quack2.suse.cz>
 References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475189370-31634-6-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-7-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -17,7 +17,7 @@ Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox
 To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1475189370-31634-6-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+In-Reply-To: <1475189370-31634-7-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -29,39 +29,128 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 29-09-16 16:49:23, Ross Zwisler wrote:
-> The global 'wait_table' variable is only used within fs/dax.c, and
-> generates the following sparse warning:
+On Thu 29-09-16 16:49:24, Ross Zwisler wrote:
+> No functional change.
 > 
-> fs/dax.c:39:19: warning: symbol 'wait_table' was not declared. Should it be static?
-> 
-> Make it static so it has scope local to fs/dax.c, and to make sparse happy.
+> Consistently use the variable name 'entry' instead of 'ret' for DAX radix
+> tree entries.  This was already happening in most of the code, so update
+> get_unlocked_mapping_entry(), grab_mapping_entry() and
+> dax_unlock_mapping_entry().
 > 
 > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 
-Looks fine. You can add:
+Looks good. You can add:
 
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
 								Honza
 
 > ---
->  fs/dax.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/dax.c | 34 +++++++++++++++++-----------------
+>  1 file changed, 17 insertions(+), 17 deletions(-)
 > 
 > diff --git a/fs/dax.c b/fs/dax.c
-> index 9b9be8a..ac28cdf 100644
+> index ac28cdf..baef586 100644
 > --- a/fs/dax.c
 > +++ b/fs/dax.c
-> @@ -52,7 +52,7 @@
->  #define DAX_WAIT_TABLE_BITS 12
->  #define DAX_WAIT_TABLE_ENTRIES (1 << DAX_WAIT_TABLE_BITS)
->  
-> -wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
-> +static wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
->  
->  static int __init init_dax_wait_table(void)
+> @@ -357,7 +357,7 @@ static inline void *unlock_slot(struct address_space *mapping, void **slot)
+>  static void *get_unlocked_mapping_entry(struct address_space *mapping,
+>  					pgoff_t index, void ***slotp)
 >  {
+> -	void *ret, **slot;
+> +	void *entry, **slot;
+>  	struct wait_exceptional_entry_queue ewait;
+>  	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
+>  
+> @@ -367,13 +367,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+>  	ewait.key.index = index;
+>  
+>  	for (;;) {
+> -		ret = __radix_tree_lookup(&mapping->page_tree, index, NULL,
+> +		entry = __radix_tree_lookup(&mapping->page_tree, index, NULL,
+>  					  &slot);
+> -		if (!ret || !radix_tree_exceptional_entry(ret) ||
+> +		if (!entry || !radix_tree_exceptional_entry(entry) ||
+>  		    !slot_locked(mapping, slot)) {
+>  			if (slotp)
+>  				*slotp = slot;
+> -			return ret;
+> +			return entry;
+>  		}
+>  		prepare_to_wait_exclusive(wq, &ewait.wait,
+>  					  TASK_UNINTERRUPTIBLE);
+> @@ -396,13 +396,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+>   */
+>  static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index)
+>  {
+> -	void *ret, **slot;
+> +	void *entry, **slot;
+>  
+>  restart:
+>  	spin_lock_irq(&mapping->tree_lock);
+> -	ret = get_unlocked_mapping_entry(mapping, index, &slot);
+> +	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+>  	/* No entry for given index? Make sure radix tree is big enough. */
+> -	if (!ret) {
+> +	if (!entry) {
+>  		int err;
+>  
+>  		spin_unlock_irq(&mapping->tree_lock);
+> @@ -410,10 +410,10 @@ restart:
+>  				mapping_gfp_mask(mapping) & ~__GFP_HIGHMEM);
+>  		if (err)
+>  			return ERR_PTR(err);
+> -		ret = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
+> +		entry = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
+>  			       RADIX_DAX_ENTRY_LOCK);
+>  		spin_lock_irq(&mapping->tree_lock);
+> -		err = radix_tree_insert(&mapping->page_tree, index, ret);
+> +		err = radix_tree_insert(&mapping->page_tree, index, entry);
+>  		radix_tree_preload_end();
+>  		if (err) {
+>  			spin_unlock_irq(&mapping->tree_lock);
+> @@ -425,11 +425,11 @@ restart:
+>  		/* Good, we have inserted empty locked entry into the tree. */
+>  		mapping->nrexceptional++;
+>  		spin_unlock_irq(&mapping->tree_lock);
+> -		return ret;
+> +		return entry;
+>  	}
+>  	/* Normal page in radix tree? */
+> -	if (!radix_tree_exceptional_entry(ret)) {
+> -		struct page *page = ret;
+> +	if (!radix_tree_exceptional_entry(entry)) {
+> +		struct page *page = entry;
+>  
+>  		get_page(page);
+>  		spin_unlock_irq(&mapping->tree_lock);
+> @@ -442,9 +442,9 @@ restart:
+>  		}
+>  		return page;
+>  	}
+> -	ret = lock_slot(mapping, slot);
+> +	entry = lock_slot(mapping, slot);
+>  	spin_unlock_irq(&mapping->tree_lock);
+> -	return ret;
+> +	return entry;
+>  }
+>  
+>  void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+> @@ -469,11 +469,11 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+>  
+>  void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
+>  {
+> -	void *ret, **slot;
+> +	void *entry, **slot;
+>  
+>  	spin_lock_irq(&mapping->tree_lock);
+> -	ret = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
+> -	if (WARN_ON_ONCE(!ret || !radix_tree_exceptional_entry(ret) ||
+> +	entry = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
+> +	if (WARN_ON_ONCE(!entry || !radix_tree_exceptional_entry(entry) ||
+>  			 !slot_locked(mapping, slot))) {
+>  		spin_unlock_irq(&mapping->tree_lock);
+>  		return;
 > -- 
 > 2.7.4
 > 
