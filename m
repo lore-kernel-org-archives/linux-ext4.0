@@ -1,165 +1,121 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
-Date: Mon, 3 Oct 2016 15:16:38 -0600
-Message-ID: <20161003211638.GC28177@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v4 00/12] re-enable DAX PMD support
+Date: Mon, 3 Oct 2016 17:05:06 -0600
+Message-ID: <20161003230506.GA15947@linux.intel.com>
 References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
- <20160930095627.GB5299@infradead.org>
+ <20160929234345.GG27872@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160930095627.GB5299-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20160929234345.GG27872@dastard>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 30, 2016 at 02:56:27AM -0700, Christoph Hellwig wrote:
-> > -/*
-> > - * We use lowest available bit in exceptional entry for locking, other two
-> > - * bits to determine entry type. In total 3 special bits.
-> > - */
-> > -#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
-> > -#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-> > -#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-> > -#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
-> > -#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
-> > -#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
-> > -#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
-> > -		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
-> > -		RADIX_TREE_EXCEPTIONAL_ENTRY))
-> > -
+On Fri, Sep 30, 2016 at 09:43:45AM +1000, Dave Chinner wrote:
+> On Thu, Sep 29, 2016 at 04:49:18PM -0600, Ross Zwisler wrote:
+> > DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> > locking.  This series allows DAX PMDs to participate in the DAX radix tree
+> > based locking scheme so that they can be re-enabled.
+> > 
+> > Ted, can you please take the ext2 + ext4 patches through your tree?  Dave,
+> > can you please take the rest through the XFS tree?
 > 
-> Please split the move of these constants into a separate patch.
+> That will make merging this difficult, because later patches in the
+> series are dependent on the ext2/ext4 patches early in the series.
+> I'd much prefer they all go through the one tree to avoid issues
+> like this.
 
-Will do for v5.
+I think that at least some of the ext2 patches at least will be merged in v4.9
+through Ted's tree because they are just bugfixes.  For whatever is left I'm
+happy to have it merged to v4.10 through the XFS tree, thank you.
 
-> > -static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index)
-> > +static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
-> > +		unsigned long new_type)
-> >  {
-> > +	bool pmd_downgrade = false; /* splitting 2MiB entry into 4k entries? */
-> >  	void *entry, **slot;
-> >  
-> >  restart:
-> >  	spin_lock_irq(&mapping->tree_lock);
-> >  	entry = get_unlocked_mapping_entry(mapping, index, &slot);
-> > +
-> > +	if (entry && new_type == RADIX_DAX_PMD) {
-> > +		if (!radix_tree_exceptional_entry(entry) ||
-> > +				RADIX_DAX_TYPE(entry) == RADIX_DAX_PTE) {
-> > +			spin_unlock_irq(&mapping->tree_lock);
-> > +			return ERR_PTR(-EEXIST);
-> > +		}
-> > +	} else if (entry && new_type == RADIX_DAX_PTE) {
-> > +		if (radix_tree_exceptional_entry(entry) &&
-> > +		    RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD &&
-> > +		    (unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
-> > +			pmd_downgrade = true;
-> > +		}
-> > +	}
+> > 
+> > Changes since v3:
+> >  - Corrected dax iomap code namespace for functions defined in fs/dax.c.
+> >    (Dave Chinner)
+> >  - Added leading "dax" namespace to new static functions in fs/dax.c.
+> >    (Dave Chinner)
+> >  - Made all DAX PMD code in fs/dax.c conditionally compiled based on
+> >    CONFIG_FS_DAX_PMD.  Otherwise a stub in include/linux/dax.h that just
+> >    returns VM_FAULT_FALLBACK will be used.  (Dave Chinner)
+> >  - Removed dynamic debugging messages from DAX PMD fault path.  Debugging
+> >    tracepoints will be added later to both the PTE and PMD paths via a
+> >    later patch set. (Dave Chinner)
+> >  - Added a comment to ext2_dax_vm_ops explaining why we don't support DAX
+> >    PMD faults in ext2. (Dave Chinner)
+> > 
+> > This was built upon xfs/for-next with PMD performance fixes from Toshi Kani
+> > and Dan Williams.  Dan's patch has already been merged for v4.8, and
+> > Toshi's patches are currently queued in Andrew Morton's mm tree for v4.9
+> > inclusion.
 > 
-> 	Would be nice to use switch on the type here:
+> the xfs/for-next branch is not a stable branch - it can rebase at
+> any time just like linux-next can. The topic branches that I merge
+> into the for-next branch, OTOH, are usually stable. i.e. The topic
+> branch you should be basing this on is "iomap-4.9-dax".
+
+Thanks, I didn't realize that.  I'll rebase onto iomap-4.9-dax, then on a
+v4.9-rc when things become more stable.
+
+> And then you'll also see that there are already ext2 patches in this
+> topic branch to convert it to iomap for DAX. So I'm quite happy to
+> take the ext2/4 patches in this series in the same way.
 > 
-> 	old_type = RADIX_DAX_TYPE(entry);
+> The patches from Dan and Toshi: is you patch series dependent on
+> them? Do I need to take them as well?
+
+Nope, Dan and Toshi's patches are just performance fixes, and should be merged
+through other trees for v4.9.
+
+> > Previously reported performance numbers:
+> > 
+> >   [global]
+> >   bs=4k
+> >   size=2G
+> >   directory=/mnt/pmem0
+> >   ioengine=mmap
+> >   [randrw]
+> >   rw=randrw
+> > 
+> > Here are the performance results with XFS using only pte faults:
+> >    READ: io=1022.7MB, aggrb=557610KB/s, minb=557610KB/s, maxb=557610KB/s, mint=1878msec, maxt=1878msec
+> >   WRITE: io=1025.4MB, aggrb=559084KB/s, minb=559084KB/s, maxb=559084KB/s, mint=1878msec, maxt=1878msec
+> > 
+> > Here are performance numbers for that same test using PMD faults:
+> >    READ: io=1022.7MB, aggrb=1406.7MB/s, minb=1406.7MB/s, maxb=1406.7MB/s, mint=727msec, maxt=727msec
+> >   WRITE: io=1025.4MB, aggrb=1410.4MB/s, minb=1410.4MB/s, maxb=1410.4MB/s, mint=727msec, maxt=727msec
 > 
-> 	if (entry) {
-> 		switch (new_type) {
-> 		case RADIX_DAX_PMD:
-> 			if (!radix_tree_exceptional_entry(entry) ||
-> 			    oldentry == RADIX_DAX_PTE) {
-> 			    	entry = ERR_PTR(-EEXIST);
-> 				goto out_unlock;
-> 			}
-> 			break;
-> 		case RADIX_DAX_PTE:
-> 			if (radix_tree_exceptional_entry(entry) &&
-> 			    old_entry = RADIX_DAX_PMD &&
-> 			    (unsigned long)entry & 
-> 			      (RADIX_DAX_HZP|RADIX_DAX_EMPTY))
-> 			      	..
+> The numbers look good - how much of that is from lower filesystem
+> allocation overhead and how much of it is from fewer page faults?
+> You can probably determine this by creating the test file with
+> write() to ensure it is fully allocated and so all the filesystem
+> is doing on both the read and write paths is mapping allocated
+> regions....
 
-Will do.  This definitely makes things less dense and more readable.
+Perhaps I'm doing something wrong, but I think that the first time I run the
+test I get all allocating writes because that's when the file is first
+created.  The file stays around between runs, though, so every run thereafter
+should already have a fully allocated file, so the only overhead difference
+should be page faults?  Does this sound correct?
 
-> Btw, why are only RADIX_DAX_PTE and RADIX_DAX_PMD in the type mask,
-> and not RADIX_DAX_HZP and RADIX_DAX_EMPTY?  With that we could use the
-> above old_entry local variable over this function and make it a lot les
-> of a mess.
+If that's true, the performance gain seems to be almost entirely due to fewer
+page faults.  For both the 4k case and the 2M case there isn't a noticeable
+performance difference between the unallocated vs fully allocated cases.
 
-So essentially in this revision of the series 'type' just means PMD or PTE
-(perhaps this should have been 'size' or something), and the Zero Page / Empty
-Entry / Regular DAX choice was something separate.  Jan also commented on
-this, and I agree there's room for improvement.  Let me try and rework it a
-bit for v5.
-
-> >  static void *dax_insert_mapping_entry(struct address_space *mapping,
-> >  				      struct vm_fault *vmf,
-> > -				      void *entry, sector_t sector)
-> > +				      void *entry, sector_t sector,
-> > +				      unsigned long new_type, bool hzp)
-> 
-> And then we could also drop the hzp argument here..
-
-Yep, that would be good.
-
-> >  #ifdef CONFIG_FS_IOMAP
-> > +static inline sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
-> > +{
-> > +	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
-> > +}
-> 
-> Please split adding this new helper into a separate patch.
-
-Done for v5.
-
-> > +#if defined(CONFIG_FS_DAX_PMD)
-> 
-> Please use #ifdef here.
-
-Will do.
-
-> > +#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
-> > +#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
-> > +
-> > +/* entries begin locked */
-> > +#define RADIX_DAX_ENTRY(sector, type) ((void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |\
-> > +	type | (unsigned long)sector << RADIX_DAX_SHIFT | RADIX_DAX_ENTRY_LOCK))
-> > +#define RADIX_DAX_HZP_ENTRY() ((void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | \
-> > +	RADIX_DAX_PMD | RADIX_DAX_HZP | RADIX_DAX_EMPTY | RADIX_DAX_ENTRY_LOCK))
-> > +#define RADIX_DAX_EMPTY_ENTRY(type) ((void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | \
-> > +		type | RADIX_DAX_EMPTY | RADIX_DAX_ENTRY_LOCK))
-> > +
-> > +#define RADIX_DAX_ORDER(type) (type == RADIX_DAX_PMD ? PMD_SHIFT-PAGE_SHIFT : 0)
-> 
-> All these macros don't properly brace their arguments.  I think
-> you'd make your life a lot easier by making them inline functions.
-
-Oh, great point.  Will do, although depending on how the 'type' thing works
-out we may end up with just a dax_radix_entry(sector, type) inline function,
-where 'type' can be (RADIX_DAX_PMD | RADIX_DAX_EMPTY), etc.  That would
-prevent the need for a bunch of different ways of making a new entry.
-
-> > +#if defined(CONFIG_FS_DAX_PMD)
-> 
-> #ifdef, please
-
-Will do.
-
-Thank you for the review, Christoph.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
