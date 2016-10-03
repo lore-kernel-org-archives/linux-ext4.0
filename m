@@ -1,251 +1,382 @@
-From: Johannes Bauer <dfnsonfsduifb@gmx.de>
-Subject: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
-Date: Mon, 3 Oct 2016 12:52:20 +0200
-Message-ID: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
+Date: Mon, 3 Oct 2016 12:59:49 +0200
+Message-ID: <20161003105949.GP6457@quack2.suse.cz>
+References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.18]:63856 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751061AbcJCKwZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Oct 2016 06:52:25 -0400
-Received: from [192.168.1.31] ([93.186.12.232]) by mail.gmx.com (mrgmx003)
- with ESMTPSA (Nemesis) id 0Lpspj-1bEMvC2e07-00fmLH for
- <linux-ext4@vger.kernel.org>; Mon, 03 Oct 2016 12:52:21 +0200
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi there,
+On Thu 29-09-16 16:49:28, Ross Zwisler wrote:
+> DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> locking.  This patch allows DAX PMDs to participate in the DAX radix tree
+> based locking scheme so that they can be re-enabled using the new struct
+> iomap based fault handlers.
+> 
+> There are currently three types of DAX 4k entries: 4k zero pages, 4k DAX
+> mappings that have an associated block allocation, and 4k DAX empty
+> entries.  The empty entries exist to provide locking for the duration of a
+> given page fault.
+> 
+> This patch adds three equivalent 2MiB DAX entries: Huge Zero Page (HZP)
+> entries, PMD DAX entries that have associated block allocations, and 2 MiB
+> DAX empty entries.
+> 
+> Unlike the 4k case where we insert a struct page* into the radix tree for
+> 4k zero pages, for HZP we insert a DAX exceptional entry with the new
+> RADIX_DAX_HZP flag set.  This is because we use a single 2 MiB zero page in
+> every 2MiB hole mapping, and it doesn't make sense to have that same struct
+> page* with multiple entries in multiple trees.  This would cause contention
+> on the single page lock for the one Huge Zero Page, and it would break the
+> page->index and page->mapping associations that are assumed to be valid in
+> many other places in the kernel.
+> 
+> One difficult use case is when one thread is trying to use 4k entries in
+> radix tree for a given offset, and another thread is using 2 MiB entries
+> for that same offset.  The current code handles this by making the 2 MiB
+> user fall back to 4k entries for most cases.  This was done because it is
+> the simplest solution, and because the use of 2MiB pages is already
+> opportunistic.
+> 
+> If we were to try to upgrade from 4k pages to 2MiB pages for a given range,
+> we run into the problem of how we lock out 4k page faults for the entire
+> 2MiB range while we clean out the radix tree so we can insert the 2MiB
+> entry.  We can solve this problem if we need to, but I think that the cases
+> where both 2MiB entries and 4K entries are being used for the same range
+> will be rare enough and the gain small enough that it probably won't be
+> worth the complexity.
+...
+>  restart:
+>  	spin_lock_irq(&mapping->tree_lock);
+>  	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+> +
+> +	if (entry && new_type == RADIX_DAX_PMD) {
+> +		if (!radix_tree_exceptional_entry(entry) ||
+> +				RADIX_DAX_TYPE(entry) == RADIX_DAX_PTE) {
+> +			spin_unlock_irq(&mapping->tree_lock);
+> +			return ERR_PTR(-EEXIST);
+> +		}
+> +	} else if (entry && new_type == RADIX_DAX_PTE) {
+> +		if (radix_tree_exceptional_entry(entry) &&
+> +		    RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD &&
+> +		    (unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
+> +			pmd_downgrade = true;
+> +		}
+> +	}
+> +
+>  	/* No entry for given index? Make sure radix tree is big enough. */
+> -	if (!entry) {
+> +	if (!entry || pmd_downgrade) {
+>  		int err;
+>  
+>  		spin_unlock_irq(&mapping->tree_lock);
+> @@ -420,15 +439,39 @@ restart:
+>  				mapping_gfp_mask(mapping) & ~__GFP_HIGHMEM);
+>  		if (err)
+>  			return ERR_PTR(err);
+> -		entry = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
+> -			       RADIX_DAX_ENTRY_LOCK);
+> +
+> +		/*
+> +		 * Besides huge zero pages the only other thing that gets
+> +		 * downgraded are empty entries which don't need to be
+> +		 * unmapped.
+> +		 */
+> +		if (pmd_downgrade && ((unsigned long)entry & RADIX_DAX_HZP))
+> +			unmap_mapping_range(mapping,
+> +				(index << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+> +
+>  		spin_lock_irq(&mapping->tree_lock);
+> -		err = radix_tree_insert(&mapping->page_tree, index, entry);
+> +
+> +		if (pmd_downgrade) {
+> +			radix_tree_delete(&mapping->page_tree, index);
+> +			mapping->nrexceptional--;
+> +			dax_wake_mapping_entry_waiter(entry, mapping, index,
+> +					false);
+> +		}
 
-I have recently bought an Intel NUC6i3SYB. That's essentially a small
-form-factor x86_64 PC. That device runs Linux Mint. Unfortunately I see
-frequent kernel oopses within the ext4 subsystem and consequently loss
-of data, corrupted files and complete system crashes. Here's a recent
-call trace:
+Hum, this looks really problematic. Once you have dropped tree_lock,
+anything could have happened with the radix tree - in particular the entry
+you've got from get_unlocked_mapping_entry() can be different by now. Also
+there's no guarantee that someone does not map the huge entry again just
+after your call to unmap_mapping_range() finished.
 
-[  796.429566] systemd[1]: apt-daily.timer: Adding 4h 1min 3.723928s
-random time.
-[ 3405.666456] general protection fault: 0000 [#1] SMP
-[ 3405.666519] Modules linked in: rfcomm bnep binfmt_misc
-snd_hda_codec_hdmi snd_hda_codec_realtek snd_hda_codec_generic arc4
-snd_soc_skl snd_soc_skl_ipc snd_hda_ext_core iwlmvm snd_soc_sst_ipc
-snd_soc_sst_dsp snd_soc_core mac80211 btusb snd_compress btrtl ac97_bus
-snd_pcm_dmaengine dw_dmac_core snd_hda_intel snd_hda_codec snd_hda_core
-8250_dw snd_hwdep intel_rapl snd_pcm x86_pkg_temp_thermal
-intel_powerclamp coretemp iwlwifi snd_seq_midi snd_seq_midi_event
-kvm_intel snd_rawmidi hci_uart btbcm btqca snd_seq cfg80211
-snd_seq_device kvm btintel bluetooth snd_timer irqbypass
-ir_sharp_decoder ir_rc5_decoder snd ir_lirc_codec ir_jvc_decoder
-ir_xmp_decoder lirc_dev ir_mce_kbd_decoder ir_sanyo_decoder
-ir_rc6_decoder ir_sony_decoder ir_nec_decoder rc_rc6_mce soundcore
-ite_cir intel_lpss_acpi mei_me rc_core
-[ 3405.667326]  idma64 virt_dma shpchp intel_lpss_pci intel_lpss mei
-acpi_pad acpi_als kfifo_buf industrialio mac_hid parport_pc ppdev lp
-parport autofs4 btrfs xor raid6_pq jitterentropy_rng drbg ansi_cprng
-dm_crypt algif_skcipher af_alg dm_mirror dm_region_hash dm_log
-crct10dif_pclmul crc32_pclmul i915_bpo intel_ips i2c_algo_bit
-drm_kms_helper aesni_intel syscopyarea sysfillrect aes_x86_64 lrw
-gf128mul glue_helper sysimgblt ablk_helper e1000e fb_sys_fops sdhci_pci
-cryptd ahci ptp i2c_hid drm pps_core libahci sdhci pinctrl_sunrisepoint
-video hid pinctrl_intel fjes
-[ 3405.667929] CPU: 3 PID: 2261 Comm: hexchat Not tainted
-4.4.0-21-generic #37-Ubuntu
-[ 3405.667998] Hardware name:                  /NUC6i3SYB, BIOS
-SYSKLi35.86A.0042.2016.0409.1246 04/09/2016
-[ 3405.668082] task: ffff88003565ac40 ti: ffff8804332e8000 task.ti:
-ffff8804332e8000
-[ 3405.668148] RIP: 0010:[<ffffffff811eb027>]  [<ffffffff811eb027>]
-kmem_cache_alloc+0x77/0x1f0
-[ 3405.668234] RSP: 0018:ffff8804332eba88  EFLAGS: 00010282
-[ 3405.668282] RAX: 0000000000000000 RBX: 0000000002408040 RCX:
-00000000000e1547
-[ 3405.668345] RDX: 00000000000e1546 RSI: 0000000002408040 RDI:
-000000000001a940
-[ 3405.668408] RBP: ffff8804332ebab8 R08: ffff88046ed9a940 R09:
-ffdb88033bb3a3a8
-[ 3405.668470] R10: ffff8804591a4ed0 R11: ffffffff81ccc462 R12:
-0000000002408040
-[ 3405.668533] R13: ffffffff81243351 R14: ffff88045e08bc00 R15:
-ffff88045e08bc00
-[ 3405.668597] FS:  00007f1df9704a40(0000) GS:ffff88046ed80000(0000)
-knlGS:0000000000000000
-[ 3405.668668] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[ 3405.668719] CR2: 00007fd945ecebd6 CR3: 0000000456a48000 CR4:
-00000000003406e0
-[ 3405.668782] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-0000000000000000
-[ 3405.668844] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-0000000000000400
-[ 3405.668906] Stack:
-[ 3405.668926]  01ff880438ee2508 0000000000001000 ffff8803344df000
-ffffea000cd137c0
-[ 3405.669003]  0000000000000000 0000000000000000 ffff8804332ebad0
-ffffffff81243351
-[ 3405.669080]  ffff8800354bd024 ffff8804332ebb18 ffffffff81243829
-00000001332ebb70
-[ 3405.669156] Call Trace:
-[ 3405.669186]  [<ffffffff81243351>] alloc_buffer_head+0x21/0x60
-[ 3405.669240]  [<ffffffff81243829>] alloc_page_buffers+0x79/0xe0
-[ 3405.669294]  [<ffffffff812438ae>] create_empty_buffers+0x1e/0xc0
-[ 3405.669351]  [<ffffffff812979cc>] ext4_block_write_begin+0x3cc/0x4d0
-[ 3405.669410]  [<ffffffff812e74db>] ? jbd2__journal_start+0xdb/0x1e0
-[ 3405.669469]  [<ffffffff81296e10>] ?
-ext4_inode_attach_jinode.part.60+0xb0/0xb0
-[ 3405.669536]  [<ffffffff812cb83d>] ? __ext4_journal_start_sb+0x6d/0x120
-[ 3405.669596]  [<ffffffff8129d574>] ext4_da_write_begin+0x154/0x320
-[ 3405.669656]  [<ffffffff8118d4de>] generic_perform_write+0xce/0x1c0
-[ 3405.669713]  [<ffffffff8118f382>] __generic_file_write_iter+0x1a2/0x1e0
-[ 3405.669773]  [<ffffffff81291ffc>] ext4_file_write_iter+0xfc/0x460
-[ 3405.669833]  [<ffffffff81794d6e>] ? inet_recvmsg+0x7e/0xb0
-[ 3405.669885]  [<ffffffff816fdb6b>] ? sock_recvmsg+0x3b/0x50
-[ 3405.669938]  [<ffffffff8120bedb>] new_sync_write+0x9b/0xe0
-[ 3405.669990]  [<ffffffff8120bf46>] __vfs_write+0x26/0x40
-[ 3405.670040]  [<ffffffff8120c8c9>] vfs_write+0xa9/0x1a0
-[ 3405.672397]  [<ffffffff8120c776>] ? vfs_read+0x86/0x130
-[ 3405.674693]  [<ffffffff8120d585>] SyS_write+0x55/0xc0
-[ 3405.676925]  [<ffffffff818244f2>] entry_SYSCALL_64_fastpath+0x16/0x71
-[ 3405.679111] Code: 08 65 4c 03 05 83 f1 e1 7e 49 83 78 10 00 4d 8b 08
-0f 84 29 01 00 00 4d 85 c9 0f 84 20 01 00 00 49 63 47 20 48 8d 4a 01 49
-8b 3f <49> 8b 1c 01 4c 89 c8 65 48 0f c7 0f 0f 94 c0 84 c0 74 bb 49 63
-[ 3405.683725] RIP  [<ffffffff811eb027>] kmem_cache_alloc+0x77/0x1f0
-[ 3405.685876]  RSP <ffff8804332eba88>
-[ 3405.696001] ---[ end trace 4968a9119e168c92 ]---
+So it seems you need to lock the entry (if you have one) before releasing
+tree_lock to stabilize it. That is enough also to block other mappings of
+that entry. Then once you reacquire the tree_lock, you can safely delete it
+and replace it with a different entry.
 
-After this occurs, the system becomes extremely unstable, i.e., the
-filesystem cannot be read properly anymore (e.g., ssh logins usually do
-not work anymore, most binaries just segfault). After a reboot (which
-has to be done manually, "shutdown -r now" also segfaults) it works fine
-again (until the problem comes back).
+> +
+> +		entry = RADIX_DAX_EMPTY_ENTRY(new_type);
+> +
+> +		err = __radix_tree_insert(&mapping->page_tree, index,
+> +				RADIX_DAX_ORDER(new_type), entry);
+>  		radix_tree_preload_end();
+>  		if (err) {
+>  			spin_unlock_irq(&mapping->tree_lock);
+> -			/* Someone already created the entry? */
+> -			if (err == -EEXIST)
+> +			/*
+> +			 * Someone already created the entry?  This is a
+> +			 * normal failure when inserting PMDs in a range
+> +			 * that already contains PTEs.  In that case we want
+> +			 * to return -EEXIST immediately.
+> +			 */
+> +			if (err == -EEXIST && new_type == RADIX_DAX_PTE)
+>  				goto restart;
+>  			return ERR_PTR(err);
+>  		}
+> @@ -596,11 +639,17 @@ static int copy_user_dax(struct block_device *bdev, sector_t sector, size_t size
+>  	return 0;
+>  }
+>  
+> -#define DAX_PMD_INDEX(page_index) (page_index & (PMD_MASK >> PAGE_SHIFT))
+> -
+> +/*
+> + * By this point grab_mapping_entry() has ensured that we have a locked entry
+> + * of the appropriate size so we don't have to worry about downgrading PMDs to
+> + * PTEs.  If we happen to be trying to insert a PTE and there is a PMD
+> + * already in the tree, we will skip the insertion and just dirty the PMD as
+> + * appropriate.
+> + */
+>  static void *dax_insert_mapping_entry(struct address_space *mapping,
+>  				      struct vm_fault *vmf,
+> -				      void *entry, sector_t sector)
+> +				      void *entry, sector_t sector,
+> +				      unsigned long new_type, bool hzp)
+>  {
+>  	struct radix_tree_root *page_tree = &mapping->page_tree;
+>  	int error = 0;
+> @@ -623,22 +672,30 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
+>  		error = radix_tree_preload(vmf->gfp_mask & ~__GFP_HIGHMEM);
+>  		if (error)
+>  			return ERR_PTR(error);
+> +	} else if ((unsigned long)entry & RADIX_DAX_HZP && !hzp) {
+> +		/* replacing huge zero page with PMD block mapping */
+> +		unmap_mapping_range(mapping,
+> +			(vmf->pgoff << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+>  	}
+>  
+>  	spin_lock_irq(&mapping->tree_lock);
+> -	new_entry = (void *)((unsigned long)RADIX_DAX_ENTRY(sector, false) |
+> -		       RADIX_DAX_ENTRY_LOCK);
+> +	if (hzp)
+> +		new_entry = RADIX_DAX_HZP_ENTRY();
+> +	else
+> +		new_entry = RADIX_DAX_ENTRY(sector, new_type);
+> +
+>  	if (hole_fill) {
+>  		__delete_from_page_cache(entry, NULL);
+>  		/* Drop pagecache reference */
+>  		put_page(entry);
+> -		error = radix_tree_insert(page_tree, index, new_entry);
+> +		error = __radix_tree_insert(page_tree, index,
+> +				RADIX_DAX_ORDER(new_type), new_entry);
+>  		if (error) {
+>  			new_entry = ERR_PTR(error);
+>  			goto unlock;
+>  		}
+>  		mapping->nrexceptional++;
+> -	} else {
+> +	} else if ((unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
+>  		void **slot;
+>  		void *ret;
 
-Since the hardware is fairly new, I cannot exclude a hardware defect as
-of now. I've thouroughly tested the RAM though and not found any defect
-there (ran MemTest86+ for 24 hours). One curious thing is that someone
-else seems to have run into this before. Searching for the symbols in
-the stackframe I came upon this:
+Hum, I somewhat dislike how PTE and PMD paths differ here. But it's OK for
+now I guess. Long term we might be better off to do away with zero pages
+for PTEs as well and use exceptional entry and a single zero page like you
+do for PMD. Because the special cases these zero pages cause are a
+headache.
 
-http://pastebin.com/BJbu35H4
+>  
+> @@ -694,6 +751,18 @@ static int dax_writeback_one(struct block_device *bdev,
+>  		goto unlock;
+>  	}
+>  
+> +	if (WARN_ON_ONCE((unsigned long)entry & RADIX_DAX_EMPTY)) {
+> +		ret = -EIO;
+> +		goto unlock;
+> +	}
+> +
+> +	/*
+> +	 * Even if dax_writeback_mapping_range() was given a wbc->range_start
+> +	 * in the middle of a PMD, the 'index' we are given will be aligned to
+> +	 * the start index of the PMD, as will the sector we pull from
+> +	 * 'entry'.  This allows us to flush for PMD_SIZE and not have to
+> +	 * worry about partial PMD writebacks.
+> +	 */
+>  	dax.sector = RADIX_DAX_SECTOR(entry);
+>  	dax.size = (type == RADIX_DAX_PMD ? PMD_SIZE : PAGE_SIZE);
+>  	spin_unlock_irq(&mapping->tree_lock);
 
-Which, quoting in full:
+<snip>
 
-Jul 16 14:28:29 nuc kernel: [  370.642612] general protection fault:
-0000 [#1] SMP
-Jul 16 14:28:29 nuc kernel: [  370.642657] Modules linked in: arc4
-intel_rapl x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
-iwlmvm kvm mac80211 irqbypass crct10dif_pclmul crc32_pclmul iwlwifi
-aesni_intel aes_x86_64 snd_hda_codec_hdmi btusb btrtl
-snd_hda_codec_realtek btbcm btintel lrw gf128mul snd_hda_codec_generic
-ir_xmp_decoder glue_helper ablk_helper ir_lirc_codec cryptd mei_me
-lirc_dev ir_mce_kbd_decoder ir_sharp_decoder ir_sanyo_decoder bluetooth
-cfg80211 snd_hda_intel ir_sony_decoder mei ir_jvc_decoder ir_rc6_decoder
-ir_rc5_decoder ir_nec_decoder lpc_ich snd_hda_codec shpchp
-snd_soc_rt5640 snd_hda_core snd_soc_rl6231 snd_hwdep snd_soc_core
-snd_compress ac97_bus snd_pcm_dmaengine rc_rc6_mce dw_dmac snd_pcm
-nuvoton_cir rc_core snd_timer dw_dmac_core snd elan_i2c soundcore
-snd_soc_sst_acpi spi_pxa2xx_platform i2c_designware_platform
-i2c_designware_core 8250_dw mac_hid ip6t_REJECT nf_reject_ipv6
-nf_log_ipv6 xt_hl ip6t_rt nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT
-nf_reject_ipv4 xt_comment nf_log_ipv4 nf_log_common xt_LOG xt_multiport
-xt_limit xt_tcpudp xt_addrtype nf_conntrack_ipv4 nf_defrag_ipv4
-xt_conntrack ip6table_filter ip6_tables nf_conntrack_netbios_ns
-nf_conntrack_broadcast nf_nat_ftp nf_nat sunrpc nf_conntrack_ftp
-nf_conntrack iptable_filter ip_tables x_tables autofs4 btrfs xor
-raid6_pq i915 i2c_algo_bit drm_kms_helper e1000e syscopyarea sysfillrect
-sysimgblt uas fb_sys_fops ptp ahci sdhci_acpi usb_storage libahci drm
-pps_core video i2c_hid sdhci hid fjes
-Jul 16 14:28:29 nuc kernel: [  370.643778] CPU: 3 PID: 1505 Comm: dd Not
-tainted 4.4.0-31-generic #50-Ubuntu
-Jul 16 14:28:29 nuc kernel: [  370.643822] Hardware name:
-  /D54250WYK, BIOS WYLPT10H.86A.0041.2015.0720.1108 07/20/2015
-Jul 16 14:28:29 nuc kernel: [  370.643878] task: ffff88040aa90000 ti:
-ffff880407b98000 task.ti: ffff880407b98000
-Jul 16 14:28:29 nuc kernel: [  370.643923] RIP:
-0010:[<ffffffff811eb987>]  [<ffffffff811eb987>] kmem_cache_alloc+0x77/0x1f0
-Jul 16 14:28:29 nuc kernel: [  370.643982] RSP: 0018:ffff880407b9ba80
-EFLAGS: 00010282
-Jul 16 14:28:29 nuc kernel: [  370.644015] RAX: 0000000000000000 RBX:
-0000000002408040 RCX: 00000000000bb283
-Jul 16 14:28:29 nuc kernel: [  370.644054] RDX: 00000000000bb282 RSI:
-0000000002408040 RDI: 000000000001a940
-Jul 16 14:28:29 nuc kernel: [  370.644076] RBP: ffff880407b9bab0 R08:
-ffff88041fb9a940 R09: ddff88007f5aff08
-Jul 16 14:28:29 nuc kernel: [  370.644097] R10: ffff8800d522d060 R11:
-ffffffff81ccf1ea R12: 0000000002408040
-Jul 16 14:28:29 nuc kernel: [  370.644119] R13: ffffffff81243ea1 R14:
-ffff88040f08bc00 R15: ffff88040f08bc00
-Jul 16 14:28:29 nuc kernel: [  370.644141] FS:  00007fa227587700(0000)
-GS:ffff88041fb80000(0000) knlGS:0000000000000000
-Jul 16 14:28:29 nuc kernel: [  370.644165] CS:  0010 DS: 0000 ES: 0000
-CR0: 0000000080050033
-Jul 16 14:28:29 nuc kernel: [  370.644183] CR2: 0000000000a08000 CR3:
-000000040aaac000 CR4: 00000000001406e0
-Jul 16 14:28:29 nuc kernel: [  370.644205] Stack:
-Jul 16 14:28:29 nuc kernel: [  370.644213]  01ff8803fef10a00
-0000000000001000 ffff88007b89f000 ffffea0001ee27c0
-Jul 16 14:28:29 nuc kernel: [  370.644241]  0000000000000000
-0000000000000000 ffff880407b9bac8 ffffffff81243ea1
-Jul 16 14:28:29 nuc kernel: [  370.644270]  ffff8804099b8024
-ffff880407b9bb10 ffffffff81244379 0000000107b9bb68
-Jul 16 14:28:29 nuc kernel: [  370.644298] Call Trace:
-Jul 16 14:28:29 nuc kernel: [  370.644311]  [<ffffffff81243ea1>]
-alloc_buffer_head+0x21/0x60
-Jul 16 14:28:29 nuc kernel: [  370.644329]  [<ffffffff81244379>]
-alloc_page_buffers+0x79/0xe0
-Jul 16 14:28:29 nuc kernel: [  370.644349]  [<ffffffff812443fe>]
-create_empty_buffers+0x1e/0xc0
-Jul 16 14:28:29 nuc kernel: [  370.644369]  [<ffffffff812987fc>]
-ext4_block_write_begin+0x3cc/0x4e0
-Jul 16 14:28:29 nuc kernel: [  370.644390]  [<ffffffff812e8afb>] ?
-jbd2__journal_start+0xdb/0x1e0
-Jul 16 14:28:29 nuc kernel: [  370.644410]  [<ffffffff81297c40>] ?
-ext4_inode_attach_jinode.part.60+0xb0/0xb0
-Jul 16 14:28:29 nuc kernel: [  370.644434]  [<ffffffff812ccc2d>] ?
-__ext4_journal_start_sb+0x6d/0x120
-Jul 16 14:28:29 nuc kernel: [  370.644456]  [<ffffffff8129e61d>]
-ext4_da_write_begin+0x15d/0x340
-Jul 16 14:28:29 nuc kernel: [  370.644477]  [<ffffffff8118db4e>]
-generic_perform_write+0xce/0x1c0
-Jul 16 14:28:29 nuc kernel: [  370.644498]  [<ffffffff8118f9f2>]
-__generic_file_write_iter+0x1a2/0x1e0
-Jul 16 14:28:29 nuc kernel: [  370.644518]  [<ffffffff81292d72>]
-ext4_file_write_iter+0x102/0x470
-Jul 16 14:28:29 nuc kernel: [  370.644540]  [<ffffffff81403f37>] ?
-iov_iter_zero+0x67/0x200
-Jul 16 14:28:29 nuc kernel: [  370.644560]  [<ffffffff8120c94b>]
-new_sync_write+0x9b/0xe0
-Jul 16 14:28:29 nuc kernel: [  370.644578]  [<ffffffff8120c9b6>]
-__vfs_write+0x26/0x40
-Jul 16 14:28:29 nuc kernel: [  370.645377]  [<ffffffff8120d339>]
-vfs_write+0xa9/0x1a0
-Jul 16 14:28:29 nuc kernel: [  370.646174]  [<ffffffff8120d274>] ?
-vfs_read+0x114/0x130
-Jul 16 14:28:29 nuc kernel: [  370.646973]  [<ffffffff8120dff5>]
-SyS_write+0x55/0xc0
-Jul 16 14:28:29 nuc kernel: [  370.647766]  [<ffffffff8182db32>]
-entry_SYSCALL_64_fastpath+0x16/0x71
-Jul 16 14:28:29 nuc kernel: [  370.648547] Code: 08 65 4c 03 05 23 e8 e1
-7e 49 83 78 10 00 4d 8b 08 0f 84 29 01 00 00 4d 85 c9 0f 84 20 01 00 00
-49 63 47 20 48 8d 4a 01 49 8b 3f <49> 8b 1c 01 4c 89 c8 65 48 0f c7 0f
-0f 94 c0 84 c0 74 bb 49 63
-Jul 16 14:28:29 nuc kernel: [  370.650215] RIP  [<ffffffff811eb987>]
-kmem_cache_alloc+0x77/0x1f0
-Jul 16 14:28:29 nuc kernel: [  370.650985]  RSP <ffff880407b9ba80>
-Jul 16 14:28:29 nuc kernel: [  370.651755] ---[ end trace
-639091250fabe2af ]---
+> +int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> +		pmd_t *pmd, unsigned int flags, struct iomap_ops *ops)
+> +{
+> +	struct address_space *mapping = vma->vm_file->f_mapping;
+> +	unsigned long pmd_addr = address & PMD_MASK;
+> +	bool write = flags & FAULT_FLAG_WRITE;
+> +	struct inode *inode = mapping->host;
+> +	struct iomap iomap = { 0 };
+> +	int error, result = 0;
+> +	pgoff_t size, pgoff;
+> +	struct vm_fault vmf;
+> +	void *entry;
+> +	loff_t pos;
+> +
+> +	/* Fall back to PTEs if we're going to COW */
+> +	if (write && !(vma->vm_flags & VM_SHARED)) {
+> +		split_huge_pmd(vma, pmd, address);
+> +		return VM_FAULT_FALLBACK;
+> +	}
+> +
+> +	/* If the PMD would extend outside the VMA */
+> +	if (pmd_addr < vma->vm_start)
+> +		return VM_FAULT_FALLBACK;
+> +	if ((pmd_addr + PMD_SIZE) > vma->vm_end)
+> +		return VM_FAULT_FALLBACK;
+> +
+> +	/*
+> +	 * Check whether offset isn't beyond end of file now. Caller is
+> +	 * supposed to hold locks serializing us with truncate / punch hole so
+> +	 * this is a reliable test.
+> +	 */
+> +	pgoff = linear_page_index(vma, pmd_addr);
+> +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> +
+> +	if (pgoff >= size)
+> +		return VM_FAULT_SIGBUS;
+> +
+> +	/* If the PMD would extend beyond the file size */
+> +	if ((pgoff | PG_PMD_COLOUR) >= size)
+> +		return VM_FAULT_FALLBACK;
+> +
+> +	/*
+> +	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
+> +	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
+> +	 * the tree, for instance), it will return -EEXIST and we just fall
+> +	 * back to 4k entries.
+> +	 */
+> +	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
+> +	if (IS_ERR(entry))
+> +		return VM_FAULT_FALLBACK;
+> +
+> +	/*
+> +	 * Note that we don't use iomap_apply here.  We aren't doing I/O, only
+> +	 * setting up a mapping, so really we're using iomap_begin() as a way
+> +	 * to look up our filesystem block.
+> +	 */
+> +	pos = (loff_t)pgoff << PAGE_SHIFT;
+> +	error = ops->iomap_begin(inode, pos, PMD_SIZE, write ? IOMAP_WRITE : 0,
+> +			&iomap);
 
-Shows also a stacktrace with the same call path, also running on a
-(different) Intel NUC, also running a 4.4.0 kernel. This pastebin is
-nowhere referenced however, so I'm unsure who found it and where exactly
-it was posted. Since the offending process in the unknown guy or girl's
-pastebin was dd, however, I believe that he or she tried to deliberately
-reproduce the problem.
+I'm not quite sure if it is OK to call ->iomap_begin() without ever calling
+->iomap_end. Specifically the comment before iomap_apply() says:
 
-The problem occurs only when the system is under heavy disk load for me
-(usually after an hour of activity). I've a process running which
-frequently does sqlite3 commits about every 10 seconds. Having it run
-overnight with almost no load led to no oooops.
+"It is assumed that the filesystems will lock whatever resources they
+require in the iomap_begin call, and release them in the iomap_end call."
 
-Any and all advice is greatly appreciated.
-Cheers,
-Johannes
+so what you do could result in unbalanced allocations / locks / whatever.
+Christoph?
+
+> +	if (error)
+> +		goto fallback;
+> +	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+> +		goto fallback;
+> +
+> +	vmf.pgoff = pgoff;
+> +	vmf.flags = flags;
+> +	vmf.gfp_mask = mapping_gfp_mask(mapping) | __GFP_FS | __GFP_IO;
+
+I don't think you want __GFP_FS here - we have already gone through the
+filesystem's pmd_fault() handler which called dax_iomap_pmd_fault() and
+thus we hold various fs locks, freeze protection, ...
+
+> +
+> +	switch (iomap.type) {
+> +	case IOMAP_MAPPED:
+> +		result = dax_pmd_insert_mapping(vma, pmd, &vmf, address,
+> +				&iomap, pos, write, &entry);
+> +		break;
+> +	case IOMAP_UNWRITTEN:
+> +	case IOMAP_HOLE:
+> +		if (WARN_ON_ONCE(write))
+> +			goto fallback;
+> +		result = dax_pmd_load_hole(vma, pmd, &vmf, address, &iomap,
+> +				&entry);
+> +		break;
+> +	default:
+> +		WARN_ON_ONCE(1);
+> +		result = VM_FAULT_FALLBACK;
+> +		break;
+> +	}
+> +
+> +	if (result == VM_FAULT_FALLBACK)
+> +		count_vm_event(THP_FAULT_FALLBACK);
+> +
+> + unlock_entry:
+> +	put_locked_mapping_entry(mapping, pgoff, entry);
+> +	return result;
+> +
+> + fallback:
+> +	count_vm_event(THP_FAULT_FALLBACK);
+> +	result = VM_FAULT_FALLBACK;
+> +	goto unlock_entry;
+> +}
+> +EXPORT_SYMBOL_GPL(dax_iomap_pmd_fault);
+> +#endif /* CONFIG_FS_DAX_PMD */
+>  #endif /* CONFIG_FS_IOMAP */
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index c4a51bb..cacff9e 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -8,8 +8,33 @@
+>  
+>  struct iomap_ops;
+>  
+> -/* We use lowest available exceptional entry bit for locking */
+> +/*
+> + * We use lowest available bit in exceptional entry for locking, two bits for
+> + * the entry type (PMD & PTE), and two more for flags (HZP and empty).  In
+> + * total five special bits.
+> + */
+> +#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 5)
+>  #define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
+> +/* PTE and PMD types */
+> +#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
+> +#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
+> +/* huge zero page and empty entry flags */
+> +#define RADIX_DAX_HZP (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
+> +#define RADIX_DAX_EMPTY (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 4))
+
+I think we can do with just 2 bits for type instead of 4 but for now this
+is OK I guess.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
