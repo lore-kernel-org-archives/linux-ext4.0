@@ -1,222 +1,251 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v4 09/12] dax: correct dax iomap code namespace
-Date: Mon, 3 Oct 2016 11:57:49 +0200
-Message-ID: <20161003095749.GO6457@quack2.suse.cz>
-References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475189370-31634-10-git-send-email-ross.zwisler@linux.intel.com>
+From: Johannes Bauer <dfnsonfsduifb@gmx.de>
+Subject: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
+Date: Mon, 3 Oct 2016 12:52:20 +0200
+Message-ID: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1475189370-31634-10-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mout.gmx.net ([212.227.15.18]:63856 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751061AbcJCKwZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Oct 2016 06:52:25 -0400
+Received: from [192.168.1.31] ([93.186.12.232]) by mail.gmx.com (mrgmx003)
+ with ESMTPSA (Nemesis) id 0Lpspj-1bEMvC2e07-00fmLH for
+ <linux-ext4@vger.kernel.org>; Mon, 03 Oct 2016 12:52:21 +0200
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 29-09-16 16:49:27, Ross Zwisler wrote:
-> The recently added DAX functions that use the new struct iomap data
-> structure were named iomap_dax_rw(), iomap_dax_fault() and
-> iomap_dax_actor().  These are actually defined in fs/dax.c, though, so
-> should be part of the "dax" namespace and not the "iomap" namespace.
-> Rename them to dax_iomap_rw(), dax_iomap_fault() and dax_iomap_actor()
-> respectively.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Suggested-by: Dave Chinner <david@fromorbit.com>
+Hi there,
 
-Looks good. You can add:
+I have recently bought an Intel NUC6i3SYB. That's essentially a small
+form-factor x86_64 PC. That device runs Linux Mint. Unfortunately I see
+frequent kernel oopses within the ext4 subsystem and consequently loss
+of data, corrupted files and complete system crashes. Here's a recent
+call trace:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+[  796.429566] systemd[1]: apt-daily.timer: Adding 4h 1min 3.723928s
+random time.
+[ 3405.666456] general protection fault: 0000 [#1] SMP
+[ 3405.666519] Modules linked in: rfcomm bnep binfmt_misc
+snd_hda_codec_hdmi snd_hda_codec_realtek snd_hda_codec_generic arc4
+snd_soc_skl snd_soc_skl_ipc snd_hda_ext_core iwlmvm snd_soc_sst_ipc
+snd_soc_sst_dsp snd_soc_core mac80211 btusb snd_compress btrtl ac97_bus
+snd_pcm_dmaengine dw_dmac_core snd_hda_intel snd_hda_codec snd_hda_core
+8250_dw snd_hwdep intel_rapl snd_pcm x86_pkg_temp_thermal
+intel_powerclamp coretemp iwlwifi snd_seq_midi snd_seq_midi_event
+kvm_intel snd_rawmidi hci_uart btbcm btqca snd_seq cfg80211
+snd_seq_device kvm btintel bluetooth snd_timer irqbypass
+ir_sharp_decoder ir_rc5_decoder snd ir_lirc_codec ir_jvc_decoder
+ir_xmp_decoder lirc_dev ir_mce_kbd_decoder ir_sanyo_decoder
+ir_rc6_decoder ir_sony_decoder ir_nec_decoder rc_rc6_mce soundcore
+ite_cir intel_lpss_acpi mei_me rc_core
+[ 3405.667326]  idma64 virt_dma shpchp intel_lpss_pci intel_lpss mei
+acpi_pad acpi_als kfifo_buf industrialio mac_hid parport_pc ppdev lp
+parport autofs4 btrfs xor raid6_pq jitterentropy_rng drbg ansi_cprng
+dm_crypt algif_skcipher af_alg dm_mirror dm_region_hash dm_log
+crct10dif_pclmul crc32_pclmul i915_bpo intel_ips i2c_algo_bit
+drm_kms_helper aesni_intel syscopyarea sysfillrect aes_x86_64 lrw
+gf128mul glue_helper sysimgblt ablk_helper e1000e fb_sys_fops sdhci_pci
+cryptd ahci ptp i2c_hid drm pps_core libahci sdhci pinctrl_sunrisepoint
+video hid pinctrl_intel fjes
+[ 3405.667929] CPU: 3 PID: 2261 Comm: hexchat Not tainted
+4.4.0-21-generic #37-Ubuntu
+[ 3405.667998] Hardware name:                  /NUC6i3SYB, BIOS
+SYSKLi35.86A.0042.2016.0409.1246 04/09/2016
+[ 3405.668082] task: ffff88003565ac40 ti: ffff8804332e8000 task.ti:
+ffff8804332e8000
+[ 3405.668148] RIP: 0010:[<ffffffff811eb027>]  [<ffffffff811eb027>]
+kmem_cache_alloc+0x77/0x1f0
+[ 3405.668234] RSP: 0018:ffff8804332eba88  EFLAGS: 00010282
+[ 3405.668282] RAX: 0000000000000000 RBX: 0000000002408040 RCX:
+00000000000e1547
+[ 3405.668345] RDX: 00000000000e1546 RSI: 0000000002408040 RDI:
+000000000001a940
+[ 3405.668408] RBP: ffff8804332ebab8 R08: ffff88046ed9a940 R09:
+ffdb88033bb3a3a8
+[ 3405.668470] R10: ffff8804591a4ed0 R11: ffffffff81ccc462 R12:
+0000000002408040
+[ 3405.668533] R13: ffffffff81243351 R14: ffff88045e08bc00 R15:
+ffff88045e08bc00
+[ 3405.668597] FS:  00007f1df9704a40(0000) GS:ffff88046ed80000(0000)
+knlGS:0000000000000000
+[ 3405.668668] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 3405.668719] CR2: 00007fd945ecebd6 CR3: 0000000456a48000 CR4:
+00000000003406e0
+[ 3405.668782] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+0000000000000000
+[ 3405.668844] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
+0000000000000400
+[ 3405.668906] Stack:
+[ 3405.668926]  01ff880438ee2508 0000000000001000 ffff8803344df000
+ffffea000cd137c0
+[ 3405.669003]  0000000000000000 0000000000000000 ffff8804332ebad0
+ffffffff81243351
+[ 3405.669080]  ffff8800354bd024 ffff8804332ebb18 ffffffff81243829
+00000001332ebb70
+[ 3405.669156] Call Trace:
+[ 3405.669186]  [<ffffffff81243351>] alloc_buffer_head+0x21/0x60
+[ 3405.669240]  [<ffffffff81243829>] alloc_page_buffers+0x79/0xe0
+[ 3405.669294]  [<ffffffff812438ae>] create_empty_buffers+0x1e/0xc0
+[ 3405.669351]  [<ffffffff812979cc>] ext4_block_write_begin+0x3cc/0x4d0
+[ 3405.669410]  [<ffffffff812e74db>] ? jbd2__journal_start+0xdb/0x1e0
+[ 3405.669469]  [<ffffffff81296e10>] ?
+ext4_inode_attach_jinode.part.60+0xb0/0xb0
+[ 3405.669536]  [<ffffffff812cb83d>] ? __ext4_journal_start_sb+0x6d/0x120
+[ 3405.669596]  [<ffffffff8129d574>] ext4_da_write_begin+0x154/0x320
+[ 3405.669656]  [<ffffffff8118d4de>] generic_perform_write+0xce/0x1c0
+[ 3405.669713]  [<ffffffff8118f382>] __generic_file_write_iter+0x1a2/0x1e0
+[ 3405.669773]  [<ffffffff81291ffc>] ext4_file_write_iter+0xfc/0x460
+[ 3405.669833]  [<ffffffff81794d6e>] ? inet_recvmsg+0x7e/0xb0
+[ 3405.669885]  [<ffffffff816fdb6b>] ? sock_recvmsg+0x3b/0x50
+[ 3405.669938]  [<ffffffff8120bedb>] new_sync_write+0x9b/0xe0
+[ 3405.669990]  [<ffffffff8120bf46>] __vfs_write+0x26/0x40
+[ 3405.670040]  [<ffffffff8120c8c9>] vfs_write+0xa9/0x1a0
+[ 3405.672397]  [<ffffffff8120c776>] ? vfs_read+0x86/0x130
+[ 3405.674693]  [<ffffffff8120d585>] SyS_write+0x55/0xc0
+[ 3405.676925]  [<ffffffff818244f2>] entry_SYSCALL_64_fastpath+0x16/0x71
+[ 3405.679111] Code: 08 65 4c 03 05 83 f1 e1 7e 49 83 78 10 00 4d 8b 08
+0f 84 29 01 00 00 4d 85 c9 0f 84 20 01 00 00 49 63 47 20 48 8d 4a 01 49
+8b 3f <49> 8b 1c 01 4c 89 c8 65 48 0f c7 0f 0f 94 c0 84 c0 74 bb 49 63
+[ 3405.683725] RIP  [<ffffffff811eb027>] kmem_cache_alloc+0x77/0x1f0
+[ 3405.685876]  RSP <ffff8804332eba88>
+[ 3405.696001] ---[ end trace 4968a9119e168c92 ]---
 
-								Honza
+After this occurs, the system becomes extremely unstable, i.e., the
+filesystem cannot be read properly anymore (e.g., ssh logins usually do
+not work anymore, most binaries just segfault). After a reboot (which
+has to be done manually, "shutdown -r now" also segfaults) it works fine
+again (until the problem comes back).
 
-> ---
->  fs/dax.c            | 16 ++++++++--------
->  fs/ext2/file.c      |  6 +++---
->  fs/xfs/xfs_file.c   |  8 ++++----
->  include/linux/dax.h |  4 ++--
->  4 files changed, 17 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index b5e7b13..6977e5e 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -1024,7 +1024,7 @@ EXPORT_SYMBOL_GPL(dax_truncate_page);
->  
->  #ifdef CONFIG_FS_IOMAP
->  static loff_t
-> -iomap_dax_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
-> +dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->  		struct iomap *iomap)
->  {
->  	struct iov_iter *iter = data;
-> @@ -1081,7 +1081,7 @@ iomap_dax_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->  }
->  
->  /**
-> - * iomap_dax_rw - Perform I/O to a DAX file
-> + * dax_iomap_rw - Perform I/O to a DAX file
->   * @iocb:	The control block for this I/O
->   * @iter:	The addresses to do I/O from or to
->   * @ops:	iomap ops passed from the file system
-> @@ -1091,7 +1091,7 @@ iomap_dax_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->   * and evicting any page cache pages in the region under I/O.
->   */
->  ssize_t
-> -iomap_dax_rw(struct kiocb *iocb, struct iov_iter *iter,
-> +dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
->  		struct iomap_ops *ops)
->  {
->  	struct address_space *mapping = iocb->ki_filp->f_mapping;
-> @@ -1121,7 +1121,7 @@ iomap_dax_rw(struct kiocb *iocb, struct iov_iter *iter,
->  
->  	while (iov_iter_count(iter)) {
->  		ret = iomap_apply(inode, pos, iov_iter_count(iter), flags, ops,
-> -				iter, iomap_dax_actor);
-> +				iter, dax_iomap_actor);
->  		if (ret <= 0)
->  			break;
->  		pos += ret;
-> @@ -1131,10 +1131,10 @@ iomap_dax_rw(struct kiocb *iocb, struct iov_iter *iter,
->  	iocb->ki_pos += done;
->  	return done ? done : ret;
->  }
-> -EXPORT_SYMBOL_GPL(iomap_dax_rw);
-> +EXPORT_SYMBOL_GPL(dax_iomap_rw);
->  
->  /**
-> - * iomap_dax_fault - handle a page fault on a DAX file
-> + * dax_iomap_fault - handle a page fault on a DAX file
->   * @vma: The virtual memory area where the fault occurred
->   * @vmf: The description of the fault
->   * @ops: iomap ops passed from the file system
-> @@ -1143,7 +1143,7 @@ EXPORT_SYMBOL_GPL(iomap_dax_rw);
->   * or mkwrite handler for DAX files. Assumes the caller has done all the
->   * necessary locking for the page fault to proceed successfully.
->   */
-> -int iomap_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
-> +int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
->  			struct iomap_ops *ops)
->  {
->  	struct address_space *mapping = vma->vm_file->f_mapping;
-> @@ -1245,5 +1245,5 @@ int iomap_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
->  		return VM_FAULT_SIGBUS | major;
->  	return VM_FAULT_NOPAGE | major;
->  }
-> -EXPORT_SYMBOL_GPL(iomap_dax_fault);
-> +EXPORT_SYMBOL_GPL(dax_iomap_fault);
->  #endif /* CONFIG_FS_IOMAP */
-> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-> index 0f257f8..32a4913 100644
-> --- a/fs/ext2/file.c
-> +++ b/fs/ext2/file.c
-> @@ -38,7 +38,7 @@ static ssize_t ext2_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
->  		return 0; /* skip atime */
->  
->  	inode_lock_shared(inode);
-> -	ret = iomap_dax_rw(iocb, to, &ext2_iomap_ops);
-> +	ret = dax_iomap_rw(iocb, to, &ext2_iomap_ops);
->  	inode_unlock_shared(inode);
->  
->  	file_accessed(iocb->ki_filp);
-> @@ -62,7 +62,7 @@ static ssize_t ext2_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
->  	if (ret)
->  		goto out_unlock;
->  
-> -	ret = iomap_dax_rw(iocb, from, &ext2_iomap_ops);
-> +	ret = dax_iomap_rw(iocb, from, &ext2_iomap_ops);
->  	if (ret > 0 && iocb->ki_pos > i_size_read(inode)) {
->  		i_size_write(inode, iocb->ki_pos);
->  		mark_inode_dirty(inode);
-> @@ -99,7 +99,7 @@ static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
->  	}
->  	down_read(&ei->dax_sem);
->  
-> -	ret = iomap_dax_fault(vma, vmf, &ext2_iomap_ops);
-> +	ret = dax_iomap_fault(vma, vmf, &ext2_iomap_ops);
->  
->  	up_read(&ei->dax_sem);
->  	if (vmf->flags & FAULT_FLAG_WRITE)
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 882f264..00293d2 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -342,7 +342,7 @@ xfs_file_dax_read(
->  		return 0; /* skip atime */
->  
->  	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
-> -	ret = iomap_dax_rw(iocb, to, &xfs_iomap_ops);
-> +	ret = dax_iomap_rw(iocb, to, &xfs_iomap_ops);
->  	xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
->  
->  	file_accessed(iocb->ki_filp);
-> @@ -721,7 +721,7 @@ xfs_file_dax_write(
->  
->  	trace_xfs_file_dax_write(ip, count, pos);
->  
-> -	ret = iomap_dax_rw(iocb, from, &xfs_iomap_ops);
-> +	ret = dax_iomap_rw(iocb, from, &xfs_iomap_ops);
->  	if (ret > 0 && iocb->ki_pos > i_size_read(inode)) {
->  		i_size_write(inode, iocb->ki_pos);
->  		error = xfs_setfilesize(ip, pos, ret);
-> @@ -1468,7 +1468,7 @@ xfs_filemap_page_mkwrite(
->  	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
->  
->  	if (IS_DAX(inode)) {
-> -		ret = iomap_dax_fault(vma, vmf, &xfs_iomap_ops);
-> +		ret = dax_iomap_fault(vma, vmf, &xfs_iomap_ops);
->  	} else {
->  		ret = iomap_page_mkwrite(vma, vmf, &xfs_iomap_ops);
->  		ret = block_page_mkwrite_return(ret);
-> @@ -1502,7 +1502,7 @@ xfs_filemap_fault(
->  		 * changes to xfs_get_blocks_direct() to map unwritten extent
->  		 * ioend for conversion on read-only mappings.
->  		 */
-> -		ret = iomap_dax_fault(vma, vmf, &xfs_iomap_ops);
-> +		ret = dax_iomap_fault(vma, vmf, &xfs_iomap_ops);
->  	} else
->  		ret = filemap_fault(vma, vmf);
->  	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index d9a8350..c4a51bb 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -11,13 +11,13 @@ struct iomap_ops;
->  /* We use lowest available exceptional entry bit for locking */
->  #define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
->  
-> -ssize_t iomap_dax_rw(struct kiocb *iocb, struct iov_iter *iter,
-> +ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
->  		struct iomap_ops *ops);
->  ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *,
->  		  get_block_t, dio_iodone_t, int flags);
->  int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
->  int dax_truncate_page(struct inode *, loff_t from, get_block_t);
-> -int iomap_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
-> +int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
->  			struct iomap_ops *ops);
->  int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
->  int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
-> -- 
-> 2.7.4
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Since the hardware is fairly new, I cannot exclude a hardware defect as
+of now. I've thouroughly tested the RAM though and not found any defect
+there (ran MemTest86+ for 24 hours). One curious thing is that someone
+else seems to have run into this before. Searching for the symbols in
+the stackframe I came upon this:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+http://pastebin.com/BJbu35H4
+
+Which, quoting in full:
+
+Jul 16 14:28:29 nuc kernel: [  370.642612] general protection fault:
+0000 [#1] SMP
+Jul 16 14:28:29 nuc kernel: [  370.642657] Modules linked in: arc4
+intel_rapl x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
+iwlmvm kvm mac80211 irqbypass crct10dif_pclmul crc32_pclmul iwlwifi
+aesni_intel aes_x86_64 snd_hda_codec_hdmi btusb btrtl
+snd_hda_codec_realtek btbcm btintel lrw gf128mul snd_hda_codec_generic
+ir_xmp_decoder glue_helper ablk_helper ir_lirc_codec cryptd mei_me
+lirc_dev ir_mce_kbd_decoder ir_sharp_decoder ir_sanyo_decoder bluetooth
+cfg80211 snd_hda_intel ir_sony_decoder mei ir_jvc_decoder ir_rc6_decoder
+ir_rc5_decoder ir_nec_decoder lpc_ich snd_hda_codec shpchp
+snd_soc_rt5640 snd_hda_core snd_soc_rl6231 snd_hwdep snd_soc_core
+snd_compress ac97_bus snd_pcm_dmaengine rc_rc6_mce dw_dmac snd_pcm
+nuvoton_cir rc_core snd_timer dw_dmac_core snd elan_i2c soundcore
+snd_soc_sst_acpi spi_pxa2xx_platform i2c_designware_platform
+i2c_designware_core 8250_dw mac_hid ip6t_REJECT nf_reject_ipv6
+nf_log_ipv6 xt_hl ip6t_rt nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT
+nf_reject_ipv4 xt_comment nf_log_ipv4 nf_log_common xt_LOG xt_multiport
+xt_limit xt_tcpudp xt_addrtype nf_conntrack_ipv4 nf_defrag_ipv4
+xt_conntrack ip6table_filter ip6_tables nf_conntrack_netbios_ns
+nf_conntrack_broadcast nf_nat_ftp nf_nat sunrpc nf_conntrack_ftp
+nf_conntrack iptable_filter ip_tables x_tables autofs4 btrfs xor
+raid6_pq i915 i2c_algo_bit drm_kms_helper e1000e syscopyarea sysfillrect
+sysimgblt uas fb_sys_fops ptp ahci sdhci_acpi usb_storage libahci drm
+pps_core video i2c_hid sdhci hid fjes
+Jul 16 14:28:29 nuc kernel: [  370.643778] CPU: 3 PID: 1505 Comm: dd Not
+tainted 4.4.0-31-generic #50-Ubuntu
+Jul 16 14:28:29 nuc kernel: [  370.643822] Hardware name:
+  /D54250WYK, BIOS WYLPT10H.86A.0041.2015.0720.1108 07/20/2015
+Jul 16 14:28:29 nuc kernel: [  370.643878] task: ffff88040aa90000 ti:
+ffff880407b98000 task.ti: ffff880407b98000
+Jul 16 14:28:29 nuc kernel: [  370.643923] RIP:
+0010:[<ffffffff811eb987>]  [<ffffffff811eb987>] kmem_cache_alloc+0x77/0x1f0
+Jul 16 14:28:29 nuc kernel: [  370.643982] RSP: 0018:ffff880407b9ba80
+EFLAGS: 00010282
+Jul 16 14:28:29 nuc kernel: [  370.644015] RAX: 0000000000000000 RBX:
+0000000002408040 RCX: 00000000000bb283
+Jul 16 14:28:29 nuc kernel: [  370.644054] RDX: 00000000000bb282 RSI:
+0000000002408040 RDI: 000000000001a940
+Jul 16 14:28:29 nuc kernel: [  370.644076] RBP: ffff880407b9bab0 R08:
+ffff88041fb9a940 R09: ddff88007f5aff08
+Jul 16 14:28:29 nuc kernel: [  370.644097] R10: ffff8800d522d060 R11:
+ffffffff81ccf1ea R12: 0000000002408040
+Jul 16 14:28:29 nuc kernel: [  370.644119] R13: ffffffff81243ea1 R14:
+ffff88040f08bc00 R15: ffff88040f08bc00
+Jul 16 14:28:29 nuc kernel: [  370.644141] FS:  00007fa227587700(0000)
+GS:ffff88041fb80000(0000) knlGS:0000000000000000
+Jul 16 14:28:29 nuc kernel: [  370.644165] CS:  0010 DS: 0000 ES: 0000
+CR0: 0000000080050033
+Jul 16 14:28:29 nuc kernel: [  370.644183] CR2: 0000000000a08000 CR3:
+000000040aaac000 CR4: 00000000001406e0
+Jul 16 14:28:29 nuc kernel: [  370.644205] Stack:
+Jul 16 14:28:29 nuc kernel: [  370.644213]  01ff8803fef10a00
+0000000000001000 ffff88007b89f000 ffffea0001ee27c0
+Jul 16 14:28:29 nuc kernel: [  370.644241]  0000000000000000
+0000000000000000 ffff880407b9bac8 ffffffff81243ea1
+Jul 16 14:28:29 nuc kernel: [  370.644270]  ffff8804099b8024
+ffff880407b9bb10 ffffffff81244379 0000000107b9bb68
+Jul 16 14:28:29 nuc kernel: [  370.644298] Call Trace:
+Jul 16 14:28:29 nuc kernel: [  370.644311]  [<ffffffff81243ea1>]
+alloc_buffer_head+0x21/0x60
+Jul 16 14:28:29 nuc kernel: [  370.644329]  [<ffffffff81244379>]
+alloc_page_buffers+0x79/0xe0
+Jul 16 14:28:29 nuc kernel: [  370.644349]  [<ffffffff812443fe>]
+create_empty_buffers+0x1e/0xc0
+Jul 16 14:28:29 nuc kernel: [  370.644369]  [<ffffffff812987fc>]
+ext4_block_write_begin+0x3cc/0x4e0
+Jul 16 14:28:29 nuc kernel: [  370.644390]  [<ffffffff812e8afb>] ?
+jbd2__journal_start+0xdb/0x1e0
+Jul 16 14:28:29 nuc kernel: [  370.644410]  [<ffffffff81297c40>] ?
+ext4_inode_attach_jinode.part.60+0xb0/0xb0
+Jul 16 14:28:29 nuc kernel: [  370.644434]  [<ffffffff812ccc2d>] ?
+__ext4_journal_start_sb+0x6d/0x120
+Jul 16 14:28:29 nuc kernel: [  370.644456]  [<ffffffff8129e61d>]
+ext4_da_write_begin+0x15d/0x340
+Jul 16 14:28:29 nuc kernel: [  370.644477]  [<ffffffff8118db4e>]
+generic_perform_write+0xce/0x1c0
+Jul 16 14:28:29 nuc kernel: [  370.644498]  [<ffffffff8118f9f2>]
+__generic_file_write_iter+0x1a2/0x1e0
+Jul 16 14:28:29 nuc kernel: [  370.644518]  [<ffffffff81292d72>]
+ext4_file_write_iter+0x102/0x470
+Jul 16 14:28:29 nuc kernel: [  370.644540]  [<ffffffff81403f37>] ?
+iov_iter_zero+0x67/0x200
+Jul 16 14:28:29 nuc kernel: [  370.644560]  [<ffffffff8120c94b>]
+new_sync_write+0x9b/0xe0
+Jul 16 14:28:29 nuc kernel: [  370.644578]  [<ffffffff8120c9b6>]
+__vfs_write+0x26/0x40
+Jul 16 14:28:29 nuc kernel: [  370.645377]  [<ffffffff8120d339>]
+vfs_write+0xa9/0x1a0
+Jul 16 14:28:29 nuc kernel: [  370.646174]  [<ffffffff8120d274>] ?
+vfs_read+0x114/0x130
+Jul 16 14:28:29 nuc kernel: [  370.646973]  [<ffffffff8120dff5>]
+SyS_write+0x55/0xc0
+Jul 16 14:28:29 nuc kernel: [  370.647766]  [<ffffffff8182db32>]
+entry_SYSCALL_64_fastpath+0x16/0x71
+Jul 16 14:28:29 nuc kernel: [  370.648547] Code: 08 65 4c 03 05 23 e8 e1
+7e 49 83 78 10 00 4d 8b 08 0f 84 29 01 00 00 4d 85 c9 0f 84 20 01 00 00
+49 63 47 20 48 8d 4a 01 49 8b 3f <49> 8b 1c 01 4c 89 c8 65 48 0f c7 0f
+0f 94 c0 84 c0 74 bb 49 63
+Jul 16 14:28:29 nuc kernel: [  370.650215] RIP  [<ffffffff811eb987>]
+kmem_cache_alloc+0x77/0x1f0
+Jul 16 14:28:29 nuc kernel: [  370.650985]  RSP <ffff880407b9ba80>
+Jul 16 14:28:29 nuc kernel: [  370.651755] ---[ end trace
+639091250fabe2af ]---
+
+Shows also a stacktrace with the same call path, also running on a
+(different) Intel NUC, also running a 4.4.0 kernel. This pastebin is
+nowhere referenced however, so I'm unsure who found it and where exactly
+it was posted. Since the offending process in the unknown guy or girl's
+pastebin was dd, however, I believe that he or she tried to deliberately
+reproduce the problem.
+
+The problem occurs only when the system is under heavy disk load for me
+(usually after an hour of activity). I've a process running which
+frequently does sqlite3 commits about every 10 seconds. Having it run
+overnight with almost no load led to no oooops.
+
+Any and all advice is greatly appreciated.
+Cheers,
+Johannes
