@@ -1,78 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Unmap metadata when zeroing blocks
-Date: Mon, 3 Oct 2016 09:18:48 +0200
-Message-ID: <20161003071848.GC6457@quack2.suse.cz>
-References: <1474992918-20488-1-git-send-email-jack@suse.cz>
- <20160929131457.wyhlp34n55ewzzxu@localhost.localdomain>
+From: Credit Suisse Bank England <werberthfurtado@detran.ma.gov.br>
+Subject: Credit Suisse Bank England
+Date: Mon, 3 Oct 2016 03:21:07 -0300 (BRT)
+Message-ID: <225830506.151248.1475475667071.JavaMail.root__14926.2828439989$1475479858$gmane$org@detran.ma.gov.br>
+Reply-To: Chris Williams <chriswilliams-creditsuisse@mail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45613 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751542AbcJCHSu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Oct 2016 03:18:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20160929131457.wyhlp34n55ewzzxu@localhost.localdomain>
+Received: from mail3.seati.ma.gov.br ([201.18.153.129]:41768 "EHLO
+        mail3.seati.ma.gov.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750839AbcJCHaY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Oct 2016 03:30:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Guten Tag, wie geht es Ihnen heute? Ich habe Ihre E-Mail-Kontakt aus Ihrem Land Business Directory und beschlossen, mit Ihnen in Verbindung zu diesem Business-Vorschlag. Ich bin Herr Chris Williams der Investment Banking Abteilung der Credit Suisse Bank One Cabot Square, London E14 4QJ, Großbritannien. Ich bin Kontaktaufnahme mit Ihnen in Bezug auf ein Geschäft Vorschlag, die von einer immensen Vorteil für uns beide sein wird.
 
-On Thu 29-09-16 15:14:57, Lukas Czerner wrote:
-> do we have a xfstest case for this particular problem ?
+In meiner Abteilung, entdeckte ich eine verlassene Summe von £ 17,5 Mio. GBP (Siebzehn Millionen fünfhunderttausend britische Pfund Sterling) in einem Konto, das zu einem unserer ausländischen Kunden verstorbenen Herrn Brodskij Nikolai, ein russischer Geschäftsmann, der ein Opfer war, gehört der Malaysia Airlines Flight 370 (MH370 / MAS370), die im Süden der indische Ozean auf 8. März 2014 auf dem Weg von Kuala Lumpur international Airport abgestürzt zu Beijing Capital International Airport zu töten alle an Bord.
 
-Not specifically, but some of the existing xfstests did trigger this
-problem for me which is how I found it out...
+Informieren Sie sich über den untenstehenden Link für die Passagierliste:
 
-								Honza
 
-> On Tue, Sep 27, 2016 at 06:15:18PM +0200, Jan Kara wrote:
-> > When zeroing blocks for DAX allocations, we also have to unmap aliases
-> > in the block device mappings. Otherwise writeback can overwrite zeros
-> > with stale data from block device page cache.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/inode.c | 10 +++++++++-
-> >  1 file changed, 9 insertions(+), 1 deletion(-)
-> > 
-> > Ted, can you merge this patch please? It's a data corruption issue for DAX.
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index c6ea25a190f8..87150122d361 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -647,11 +647,19 @@ found:
-> >  		/*
-> >  		 * We have to zeroout blocks before inserting them into extent
-> >  		 * status tree. Otherwise someone could look them up there and
-> > -		 * use them before they are really zeroed.
-> > +		 * use them before they are really zeroed. We also have to
-> > +		 * unmap metadata before zeroing as otherwise writeback can
-> > +		 * overwrite zeros with stale data from block device.
-> >  		 */
-> >  		if (flags & EXT4_GET_BLOCKS_ZERO &&
-> >  		    map->m_flags & EXT4_MAP_MAPPED &&
-> >  		    map->m_flags & EXT4_MAP_NEW) {
-> > +			ext4_lblk_t i;
-> > +
-> > +			for (i = 0; i < map->m_len; i++) {
-> > +				unmap_underlying_metadata(inode->i_sb->s_bdev,
-> > +							  map->m_pblk + i);
-> > +			}
-> >  			ret = ext4_issue_zeroout(inode, map->m_lblk,
-> >  						 map->m_pblk, map->m_len);
-> >  			if (ret) {
-> > -- 
-> > 2.6.6
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+http://online.wsj.com/news/articles/SB10001424052702303369904579427230127866184
+
+MR Brodskij Nikolai Nummer 7 auf der Liste, Seit seinem Tod unserer Bank hat für die nächsten Angehörigen zu kommen für die Behauptung seiner Gelder und Güter schätzten die Summe von £ 17,5 Mio. GBP, aber niemand hat so, ich persönlich getan gewartet , waren nicht erfolgreich bei der Suche nach einer seiner Verwandten. Ich suche Ihre Zustimmung an Sie an die Bank, wie die nächsten Angehörigen des Verstorbenen zu präsentieren, so dass die Erlöse aus diesem Konto bei £ 17,5 Mio. GBP an Sie gezahlt werden bewertet.
+
+
+Der Deal wird in diesem Verhältnis aufgeteilt: 55% für mich und 45% zu Ihnen. Ich habe in meinem Besitz alle notwendigen und wichtigen Dokumente, die in diesem Geschäft verwendet werden kann. Ich brauche Ihre ehrliche Zusammenarbeit, Verschwiegenheit und Vertrauen, damit wir sehen diese Verhandlung durch. Ich garantiere Ihnen 100% Erfolg in diesem Geschäft, wenden Sie sich bitte sicher sein, dass Sie das Angebot unter einer legitimen Anordnung, die Sie aus der Verletzung des Gesetzes sowohl hier als auch in Großbritannien und in Ihrem Land zu schützen wird ausgeführt.
+
+Wenn Sie in der Lage, dem Umgang mit diesem Angebot sind, bitte zurück zu mir mit folgenden Angaben, damit wir fortfahren:
+
+1. Ihr vollständiger Name:
+2. Telefonnummer:
+3. Kontakt-Adresse:
+4. Alter:
+5. Geschlecht:
+6. Beruf:
+7. Ihre Nationalität:
+
+
+Nachdem durch eine methodische Suche gegangen, entschied ich mich, Sie zu kontaktieren hoffen, dass Sie diesen Vorschlag interessant, Bitte auf Ihrer Bestätigung dieser Nachricht und geben Sie Ihr Interesse, ich will dich mit mehr Informationen liefern zu finden.
+
+Ihre Zustimmung zu dieser E-Mail und Business-Vorschlag wird sehr geschätzt werden.
+
+Freundliche Grüße,
+Chris Williams
