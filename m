@@ -1,80 +1,110 @@
-From: Tony Lindgren <tony@atomide.com>
-Subject: Regression in next with ext4 oops
-Date: Mon, 3 Oct 2016 16:30:55 -0700
-Message-ID: <20161003233054.eltv3coiweht3ui4@atomide.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
+Date: Mon, 3 Oct 2016 23:18:55 -0400
+Message-ID: <20161004031855.thdifhchkxgjjl4e@thunk.org>
+References: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org
-To: Eric Biggers <ebiggers@google.com>, Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Johannes Bauer <dfnsonfsduifb@gmx.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from muru.com ([72.249.23.125]:43650 "EHLO muru.com"
+Received: from imap.thunk.org ([74.207.234.97]:56646 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752783AbcJCXa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Oct 2016 19:30:59 -0400
+        id S1751636AbcJDDTO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Oct 2016 23:19:14 -0400
 Content-Disposition: inline
+In-Reply-To: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Mon, Oct 03, 2016 at 12:52:20PM +0200, Johannes Bauer wrote:
+> Shows also a stacktrace with the same call path, also running on a
+> (different) Intel NUC, also running a 4.4.0 kernel. This pastebin is
+> nowhere referenced however, so I'm unsure who found it and where exactly
+> it was posted. Since the offending process in the unknown guy or girl's
+> pastebin was dd, however, I believe that he or she tried to deliberately
+> reproduce the problem.
 
-I'm seeing a repeatable oops with Linux next while running
-update-initramfs, see below. I tried reverting commit 59aa5a3aeead
-("fscrypto: make filename crypto functions return 0 on success")
-as that's the only commit changing ext4_htree_store_dirent, but
-that did not help.
+Have you tried using a 4.4.23 kernel?  There are a large number of bug
+fixes in the kernel betweeb 4.4.0 and 4.4.23.
 
-Anybody else seeing something like this?
+The last time I've done a stable kernel test run was against 4.4.17,
+and it passed clean:
 
-Regards,
+FSTESTIMG: gce-xfstests/xfstests-201608132226
+FSTESTVER: e2fsprogs	v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
+FSTESTVER: fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
+FSTESTVER: quota		81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
+FSTESTVER: xfsprogs	v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
+FSTESTVER: xfstests-bld	75f1eb0 (Sat, 13 Aug 2016 22:18:57 -0400)
+FSTESTVER: xfstests	linux-v3.8-1149-g4e58a5b (Mon, 8 Aug 2016 10:50:34 -0400)
+FSTESTVER: kernel	4.4.17 #4 SMP Mon Aug 15 23:55:25 EDT 2016 x86_64
+FSTESTCFG: "all"
+FSTESTSET: "-g auto"
+FSTESTEXC: "ext4/022"
+FSTESTOPT: "aex"
+MNTOPTS: ""
+CPUS: "2"
+MEM: "7477.49"
+MEM: 7680 MB (Max capacity)
+BEGIN TEST 4k: Ext4 4k block Tue Aug 16 00:05:28 EDT 2016
+Passed all 224 tests
 
-Tony
+						- Ted
 
-8< --------------
-Unable to handle kernel NULL pointer dereference at virtual address 00000004
-pgd = ee7e7280
-[00000004] *pgd=00000000
-Internal error: Oops: 205 [#1] SMP ARM
-Modules linked in: ledtrig_default_on ledtrig_heartbeat hid_generic usbhid smsc95xx smsc]
-CPU: 1 PID: 2299 Comm: mkinitramfs Not tainted 4.8.0-rc8-next-20160930+ #974
-Hardware name: Generic OMAP5 (Flattened Device Tree)
-task: ed0b8380 task.stack: ec216000
-PC is at rb_insert_color+0x1c/0x1b8
-LR is at ext4_htree_store_dirent+0xe0/0x104
-pc : [<c0594930>]    lr : [<c042aa70>]    psr: 600e0013
-sp : ec217db8  ip : ed177948  fp : c0a17618
-r10: 00000001  r9 : ec217e08  r8 : ed177940
-r7 : ec224b80  r6 : 2d7d188a  r5 : 83aa4108  r4 : 00000000
-r3 : 00000000  r2 : ed389e88  r1 : ec224b80  r0 : ed177948
-Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
-Control: 30c5387d  Table: ae7e7280  DAC: 55555555
-Process mkinitramfs (pid: 2299, stack limit = 0xec216218)
-Stack: (0xec217db8 to 0xec218000)
-7da0:                                                       00000000 83aa4108
-7dc0: 2d7d188a c042aa70 c0f1a628 ed80c040 ed80d6d0 ec217e60 c0f1a630 c0f1aff8
-7de0: 00000001 c043ecc8 ec217e08 ed80c040 c0f1a000 00001000 00001628 00000000
-7e00: 0000005c ebaf9c80 c0f1a630 0000000b ec224bc2 00000000 00000002 ed80d6d0
-7e20: 00000000 ebaf9c80 00000000 ec217e60 ec217e70 c043fb8c 00000000 00000000
-7e40: 00000006 024080c0 ec224ba0 ec216000 600e0013 c100253c c0f19014 00000002
-7e60: 83aa4108 2d7d188a 00000004 ee7bb8b8 ed80c080 c0f19020 c0f19020 00000000
-7e80: ec224b80 c028ac34 ab5552a8 ec224b80 ed80d800 ec217f70 ed80d6d0 ed80d770
-7ea0: ebaf9c80 ed80d6d0 ee7b8000 c042a694 00000055 ed80d7a4 00000000 00000000
-7ec0: 00000001 00000000 600e0013 c1093070 00000000 00000000 00000001 00000000
-7ee0: 00000000 c03b49e8 00000000 00000000 00000000 600e0013 00000000 00020000
-7f00: ed80d6d0 ed80d770 00000000 ed80d6d0 ec217f70 ed80d770 ec216000 ebaf9c80
-7f20: 00000000 00000001 ec217f70 ed80d770 ec216000 00000000 7f5edef4 c03b4ae8
-7f40: 7f60261c 7f602611 000000c5 7f617428 ebaf9c80 00008000 0000008d ebaf9c80
-7f60: ec216000 00000000 7f5edef4 c03b4f80 c03b4b30 00000000 00000000 00000000
-7f80: 7f617428 00000000 00008000 00000000 7f617408 7f60261c 7f617428 0000008d
-7fa0: c02080c4 c0207f40 7f617408 7f60261c 00000003 7f617428 00008000 00000000
-7fc0: 7f617408 7f60261c 7f617428 0000008d b6f98820 00000002 7f6004c8 7f5edef4
-7fe0: 0000008d bed19808 b6edaf41 b6e836f6 600e0030 00000003 cf30eaa8 d31d966f
-[<c0594930>] (rb_insert_color) from [<c042aa70>] (ext4_htree_store_dirent+0xe0/0x104)
-[<c042aa70>] (ext4_htree_store_dirent) from [<c043ecc8>] (htree_dirblock_to_tree+0xb0/0x)
-[<c043ecc8>] (htree_dirblock_to_tree) from [<c043fb8c>] (ext4_htree_fill_tree+0x1c8/0x2a)
-[<c043fb8c>] (ext4_htree_fill_tree) from [<c042a694>] (ext4_readdir+0x62c/0x910)
-[<c042a694>] (ext4_readdir) from [<c03b4ae8>] (iterate_dir+0x14c/0x194)
-[<c03b4ae8>] (iterate_dir) from [<c03b4f80>] (SyS_getdents+0x7c/0x118)
-[<c03b4f80>] (SyS_getdents) from [<c0207f40>] (ret_fast_syscall+0x0/0x1c)
-Code: e5923000 e3130001 1a000062 e92d4070 (e593c004)
+P.S.   Fixes between 4.4.0 and 4.4.17:
+
+% git log --oneline v4.4..v4.4.17 -- fs/ext4 fs/jbd2
+26015f0 ext4: verify extent header depth
+8b8de1c ext4: silence UBSAN in ext4_mb_init()
+12aa7d9 ext4: address UBSAN warning in mb_find_order_for_block()
+b2601bb ext4: fix oops on corrupted filesystem
+b2044c3 ext4: clean up error handling when orphan list is corrupted
+c5ce389 ext4: fix hang when processing corrupted orphaned inode list
+fa5613b ext4: iterate over buffer heads correctly in move_extent_per_page()
+2122834 ext4: fix races of writeback with punch hole and zero range
+1f7b7e9 ext4: fix races between buffered IO and collapse / insert range
+e096ade ext4: move unlocked dio protection from ext4_alloc_file_blocks()
+0b680de ext4: fix races between page faults and hole punching
+c745297 ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
+ee8516a ext4: ignore quota mount options if the quota feature is enabled
+321299a ext4: add lockdep annotations for i_data_sem
+93272be jbd2: fix FS corruption possibility in jbd2_journal_destroy() on umount path
+7c3d142 ext4: fix bh->b_state corruption
+bbfe21c ext4: don't read blocks from disk after extents being swapped
+600d41f ext4: fix potential integer overflow
+33f48f8 ext4: fix scheduling in atomic on group checksum failure
+b80b70e ext4 crypto: add missing locking for keyring_key access
+
+Fixes between 4.4.17 and 4.4.23:
+
+% git log --oneline v4.4.17..v4.4.23 -- fs/ext4 fs/jbd2
+bf63b9d fscrypto: require write access to mount to set encryption policy
+8d693a2 fscrypto: add authorization check for setting encryption policy
+d8aafd0 ext4: use __GFP_NOFAIL in ext4_free_blocks()
+1d12bad ext4: avoid modifying checksum fields directly during checksum verification
+77ae14d ext4: avoid deadlock when expanding inode size
+a79f1f7 ext4: properly align shifted xattrs when expanding inodes
+e6abdbf ext4: fix xattr shifting when expanding inodes part 2
+f2c06c7 ext4: fix xattr shifting when expanding inodes
+dfa0a22 ext4: validate that metadata blocks do not overlap superblock
+564e0f8 jbd2: make journal y2038 safe
+3a22cf0 ext4: fix reference counting bug on block allocation error
+db82c74 ext4: short-cut orphan cleanup on error
+f8d4d52 ext4: validate s_reserved_gdt_blocks on mount
+175f36c ext4: don't call ext4_should_journal_data() on the journal inode
+5a7f477 ext4: fix deadlock during page writeback
+9e38db2 ext4: check for extents that wrap around
+
+And note that not all fixes get backported.  Sometimes a patch is too
+large or too complex to backport.  Or sometimes we forget to tag a
+patch for a stable kernel backport that really should have been
+backported.  So trying to see if you can replicate the problem using
+the latest 4.8 kernel would also be a good thing to try.
+
+Finally, the oops was inside the memory allocator, so it's possible
+the problem was caused by a corrupted freelist, which could have been
+caused by a wild pointer dereference in any part of the kernel, not
+necessarily ext4.  Which is another reason to go to the latest 4.4.x
+kernel or to try the 4.8 kernel.  The bug in some other part of the
+subsystem may have since been fixed.
