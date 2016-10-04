@@ -1,44 +1,53 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] fscrypto: make XTS tweak initialization
- endian-independent
-Date: Tue, 4 Oct 2016 09:38:29 -0700
-Message-ID: <20161004163829.GA127921@google.com>
-References: <1475258329-146528-1-git-send-email-ebiggers@google.com>
- <CAFLxGvyCHwWms8wJf1gU0hRj__Q0Z2F2wKuZ3sYNfp8wQ9S4PQ@mail.gmail.com>
- <20161003180340.GA54410@google.com>
- <6c9b32ef-1e63-f721-1d7f-b0f1e0f2d1ca@nod.at>
+From: Johannes Bauer <dfnsonfsduifb@gmx.de>
+Subject: Re: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
+Date: Tue, 4 Oct 2016 18:50:55 +0200
+Message-ID: <90dfe18f-9fe7-819d-c410-cdd160644ab7@gmx.de>
+References: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
+ <20161004084136.GD17515@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        Theodore Ts'o <tytso@mit.edu>, jaegeuk@kernel.org,
-        David Gstir <david@sigma-star.at>
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <6c9b32ef-1e63-f721-1d7f-b0f1e0f2d1ca@nod.at>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-mm@kvack.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20161004084136.GD17515@quack2.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 04, 2016 at 10:46:54AM +0200, Richard Weinberger wrote:
-> > Also, currently this code *is* only supposed to be used for XTS.  There's a bug
-> > where a specially crafted filesystem can cause this code path to be entered with
-> > CTS, but I have a patch pending in the ext4 tree to fix that.
+On 04.10.2016 10:41, Jan Kara wrote:
+
+> The problem looks like memory corruption:
+[...]
+
+Huh, very interesting -- thanks for the walkthrough!
+
+> Anyway, adding linux-mm to CC since this does not look ext4 related but
+> rather mm related issue.
 > 
-> David and I are currently working on UBIFS encryption and we have to support other cipher
-> modes than XTS. So, keeping fscrypto as generic as possible would be nice. :-)
-> 
+> Bugs like these are always hard to catch, usually it's some flaky device
+> driver, sometimes also flaky HW. You can try running kernel with various
+> debug options enabled in a hope to catch the code corrupting memory
+> earlier - e.g. CONFIG_DEBUG_PAGE_ALLOC sometimes catches something,
+> CONFIG_SLAB_DEBUG can be useful as well. Another option is to get a
+> crashdump when the oops happens (although that's going to be a pain to
+> setup on such a small machine) and then look at which places point to
+> the corrupted memory - sometimes you can find old structures pointing to
+> the place and find the use-after-free issue or stuff like that...
 
-The problem was that the kernel supported reading a file whose contents was
-encrypted with CTS, which is only supposed to be used for filenames.  This was
-inconsistent with FS_IOC_SET_ENCRYPTION_POLICY which currently only allows XTS
-for contents and CTS for filenames.  So in other words I wanted to eliminate a
-strange scenario that was not intended to happen and was almost certainly never
-tested.
+Uhh, that sounds painful. So I'm following Ted's advice and building
+myself a 4.8 as we speak.
 
-Either way, new modes can still be added if there is a good reason to do so.
-What new encryption modes are you thinking of adding, would they be for contents
-or for filenames, and are you thinking they would be offered by all filesystems
-(ext4 and f2fs too)?
+If the problem is fixed, would it be of any help to trace the source by
+going back to the 4.4.0 and reproduce with the debug symbols you
+mentioned? I don't think a memdump would be difficult on the machine
+(while it certainly has a small form factor, it's got a 1 TB hdd and 16
+GB of RAM, so it's not really that small).
 
-Eric
+Cheers,
+Johannes
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
