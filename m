@@ -1,142 +1,38 @@
-From: Jan Kara <jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Regression in next with ext4 oops
-Date: Tue, 4 Oct 2016 11:00:41 +0200
-Message-ID: <20161004090041.GE17515@quack2.suse.cz>
+Date: Tue, 4 Oct 2016 10:02:31 -0400
+Message-ID: <20161004140231.fyfrc6rs2lb6z63v@thunk.org>
 References: <20161003233054.eltv3coiweht3ui4@atomide.com>
+ <20161004090041.GE17515@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="LQksG6bCIzRHxTLp"
-Cc: Eric Biggers <ebiggers@google.com>, Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Tony Lindgren <tony@atomide.com>,
+        Eric Biggers <ebiggers@google.com>,
         Andreas Dilger <adilger@dilger.ca>,
         Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org,
         Al Viro <viro@ZenIV.linux.org.uk>
-To: Tony Lindgren <tony@atomide.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161003233054.eltv3coiweht3ui4@atomide.com>
+In-Reply-To: <20161004090041.GE17515@quack2.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Oct 04, 2016 at 11:00:41AM +0200, Jan Kara wrote:
+> Never seen this but I suspect it is a fallout from Al's directory locking
+> changes. In particular ext4_htree_fill_tree() builds rb-tree of found
+> directory entries in file->private_data (and generally modifies the
+> structure stored there) but after Al's changes we don't have exclusive
+> access to struct file if I'm right so if two processes end up calling
+> getdents() for the same 'struct file' we are doomed.
 
---LQksG6bCIzRHxTLp
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+I haven't seen it either, and I've been doing a lot of testing on the
+ext4 test branch.  So I'm guessing Tony has the only reliable repro
+for the problem at the moment.  That being said, it shouldn't be that
+hard to create a test case for this and add it to xfstests.
 
-Hi!
+I'm pretty sure Jan is right about this, though, but it would be great
+to a get a quick confirmation from Tony if at all possible.
 
-On Mon 03-10-16 16:30:55, Tony Lindgren wrote:
-> I'm seeing a repeatable oops with Linux next while running
-> update-initramfs, see below. I tried reverting commit 59aa5a3aeead
-> ("fscrypto: make filename crypto functions return 0 on success")
-> as that's the only commit changing ext4_htree_store_dirent, but
-> that did not help.
-> 
-> Anybody else seeing something like this?
-
-Never seen this but I suspect it is a fallout from Al's directory locking
-changes. In particular ext4_htree_fill_tree() builds rb-tree of found
-directory entries in file->private_data (and generally modifies the
-structure stored there) but after Al's changes we don't have exclusive
-access to struct file if I'm right so if two processes end up calling
-getdents() for the same 'struct file' we are doomed.
-
-That being said two getdents() calls for a single fd looks like a stupid
-things to do but I don't see anything that would prevent this. Does the
-attached patch fix the issue for you?
-
-If I'm right, better fix would be to exclude two ->readdir callbacks for
-one fd but that would be slightly more complicated patch...
-
-								Honza
-> 8< --------------
-> Unable to handle kernel NULL pointer dereference at virtual address 00000004
-> pgd = ee7e7280
-> [00000004] *pgd=00000000
-> Internal error: Oops: 205 [#1] SMP ARM
-> Modules linked in: ledtrig_default_on ledtrig_heartbeat hid_generic usbhid smsc95xx smsc]
-> CPU: 1 PID: 2299 Comm: mkinitramfs Not tainted 4.8.0-rc8-next-20160930+ #974
-> Hardware name: Generic OMAP5 (Flattened Device Tree)
-> task: ed0b8380 task.stack: ec216000
-> PC is at rb_insert_color+0x1c/0x1b8
-> LR is at ext4_htree_store_dirent+0xe0/0x104
-> pc : [<c0594930>]    lr : [<c042aa70>]    psr: 600e0013
-> sp : ec217db8  ip : ed177948  fp : c0a17618
-> r10: 00000001  r9 : ec217e08  r8 : ed177940
-> r7 : ec224b80  r6 : 2d7d188a  r5 : 83aa4108  r4 : 00000000
-> r3 : 00000000  r2 : ed389e88  r1 : ec224b80  r0 : ed177948
-> Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
-> Control: 30c5387d  Table: ae7e7280  DAC: 55555555
-> Process mkinitramfs (pid: 2299, stack limit = 0xec216218)
-> Stack: (0xec217db8 to 0xec218000)
-> 7da0:                                                       00000000 83aa4108
-> 7dc0: 2d7d188a c042aa70 c0f1a628 ed80c040 ed80d6d0 ec217e60 c0f1a630 c0f1aff8
-> 7de0: 00000001 c043ecc8 ec217e08 ed80c040 c0f1a000 00001000 00001628 00000000
-> 7e00: 0000005c ebaf9c80 c0f1a630 0000000b ec224bc2 00000000 00000002 ed80d6d0
-> 7e20: 00000000 ebaf9c80 00000000 ec217e60 ec217e70 c043fb8c 00000000 00000000
-> 7e40: 00000006 024080c0 ec224ba0 ec216000 600e0013 c100253c c0f19014 00000002
-> 7e60: 83aa4108 2d7d188a 00000004 ee7bb8b8 ed80c080 c0f19020 c0f19020 00000000
-> 7e80: ec224b80 c028ac34 ab5552a8 ec224b80 ed80d800 ec217f70 ed80d6d0 ed80d770
-> 7ea0: ebaf9c80 ed80d6d0 ee7b8000 c042a694 00000055 ed80d7a4 00000000 00000000
-> 7ec0: 00000001 00000000 600e0013 c1093070 00000000 00000000 00000001 00000000
-> 7ee0: 00000000 c03b49e8 00000000 00000000 00000000 600e0013 00000000 00020000
-> 7f00: ed80d6d0 ed80d770 00000000 ed80d6d0 ec217f70 ed80d770 ec216000 ebaf9c80
-> 7f20: 00000000 00000001 ec217f70 ed80d770 ec216000 00000000 7f5edef4 c03b4ae8
-> 7f40: 7f60261c 7f602611 000000c5 7f617428 ebaf9c80 00008000 0000008d ebaf9c80
-> 7f60: ec216000 00000000 7f5edef4 c03b4f80 c03b4b30 00000000 00000000 00000000
-> 7f80: 7f617428 00000000 00008000 00000000 7f617408 7f60261c 7f617428 0000008d
-> 7fa0: c02080c4 c0207f40 7f617408 7f60261c 00000003 7f617428 00008000 00000000
-> 7fc0: 7f617408 7f60261c 7f617428 0000008d b6f98820 00000002 7f6004c8 7f5edef4
-> 7fe0: 0000008d bed19808 b6edaf41 b6e836f6 600e0030 00000003 cf30eaa8 d31d966f
-> [<c0594930>] (rb_insert_color) from [<c042aa70>] (ext4_htree_store_dirent+0xe0/0x104)
-> [<c042aa70>] (ext4_htree_store_dirent) from [<c043ecc8>] (htree_dirblock_to_tree+0xb0/0x)
-> [<c043ecc8>] (htree_dirblock_to_tree) from [<c043fb8c>] (ext4_htree_fill_tree+0x1c8/0x2a)
-> [<c043fb8c>] (ext4_htree_fill_tree) from [<c042a694>] (ext4_readdir+0x62c/0x910)
-> [<c042a694>] (ext4_readdir) from [<c03b4ae8>] (iterate_dir+0x14c/0x194)
-> [<c03b4ae8>] (iterate_dir) from [<c03b4f80>] (SyS_getdents+0x7c/0x118)
-> [<c03b4f80>] (SyS_getdents) from [<c0207f40>] (ret_fast_syscall+0x0/0x1c)
-> Code: e5923000 e3130001 1a000062 e92d4070 (e593c004)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---LQksG6bCIzRHxTLp
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Use-exclusive-locking-for-ext4_readdir.patch"
-
->From d13477d654e60ec4434c266d11828347a135ca32 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 4 Oct 2016 10:56:00 +0200
-Subject: [PATCH] ext4: Use exclusive locking for ext4_readdir()
-
-We use file->private_data to track information for readdir calls. As
-such we cannot allow two readdir calls to happen at the same time for
-one struct file as they end up corrupting the information. For now just
-revert back to the old behavior where readdirs are synchronized.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/dir.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 67415e0e6af0..5ee86243620b 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -651,7 +651,7 @@ int ext4_check_all_de(struct inode *dir, struct buffer_head *bh, void *buf,
- const struct file_operations ext4_dir_operations = {
- 	.llseek		= ext4_dir_llseek,
- 	.read		= generic_read_dir,
--	.iterate_shared	= ext4_readdir,
-+	.iterate	= ext4_readdir,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext4_compat_ioctl,
--- 
-2.6.6
-
-
---LQksG6bCIzRHxTLp--
+     	   	 	      	   	- Ted
