@@ -1,41 +1,124 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: Regression in next with ext4 oops
-Date: Tue, 4 Oct 2016 15:59:15 +0100
-Message-ID: <20161004145915.GZ19539@ZenIV.linux.org.uk>
-References: <20161003233054.eltv3coiweht3ui4@atomide.com>
- <20161004090041.GE17515@quack2.suse.cz>
- <20161004140231.fyfrc6rs2lb6z63v@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
+Date: Tue, 4 Oct 2016 09:39:48 -0600
+Message-ID: <20161004153948.GA21248@linux.intel.com>
+References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
+ <20161003105949.GP6457@quack2.suse.cz>
+ <20161003210557.GA28177@linux.intel.com>
+ <20161004055557.GB17515@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Tony Lindgren <tony@atomide.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161004140231.fyfrc6rs2lb6z63v@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161004055557.GB17515@quack2.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 04, 2016 at 10:02:31AM -0400, Theodore Ts'o wrote:
-> On Tue, Oct 04, 2016 at 11:00:41AM +0200, Jan Kara wrote:
-> > Never seen this but I suspect it is a fallout from Al's directory locking
-> > changes. In particular ext4_htree_fill_tree() builds rb-tree of found
-> > directory entries in file->private_data (and generally modifies the
-> > structure stored there) but after Al's changes we don't have exclusive
-> > access to struct file if I'm right so if two processes end up calling
-> > getdents() for the same 'struct file' we are doomed.
+On Tue, Oct 04, 2016 at 07:55:57AM +0200, Jan Kara wrote:
+> On Mon 03-10-16 15:05:57, Ross Zwisler wrote:
+> > > > @@ -623,22 +672,30 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
+> > > >  		error = radix_tree_preload(vmf->gfp_mask & ~__GFP_HIGHMEM);
+> > > >  		if (error)
+> > > >  			return ERR_PTR(error);
+> > > > +	} else if ((unsigned long)entry & RADIX_DAX_HZP && !hzp) {
+> > > > +		/* replacing huge zero page with PMD block mapping */
+> > > > +		unmap_mapping_range(mapping,
+> > > > +			(vmf->pgoff << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+> > > >  	}
+> > > >  
+> > > >  	spin_lock_irq(&mapping->tree_lock);
+> > > > -	new_entry = (void *)((unsigned long)RADIX_DAX_ENTRY(sector, false) |
+> > > > -		       RADIX_DAX_ENTRY_LOCK);
+> > > > +	if (hzp)
+> > > > +		new_entry = RADIX_DAX_HZP_ENTRY();
+> > > > +	else
+> > > > +		new_entry = RADIX_DAX_ENTRY(sector, new_type);
+> > > > +
+> > > >  	if (hole_fill) {
+> > > >  		__delete_from_page_cache(entry, NULL);
+> > > >  		/* Drop pagecache reference */
+> > > >  		put_page(entry);
+> > > > -		error = radix_tree_insert(page_tree, index, new_entry);
+> > > > +		error = __radix_tree_insert(page_tree, index,
+> > > > +				RADIX_DAX_ORDER(new_type), new_entry);
+> > > >  		if (error) {
+> > > >  			new_entry = ERR_PTR(error);
+> > > >  			goto unlock;
+> > > >  		}
+> > > >  		mapping->nrexceptional++;
+> > > > -	} else {
+> > > > +	} else if ((unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
+> > > >  		void **slot;
+> > > >  		void *ret;
+> > > 
+> > > Hum, I somewhat dislike how PTE and PMD paths differ here. But it's OK for
+> > > now I guess. Long term we might be better off to do away with zero pages
+> > > for PTEs as well and use exceptional entry and a single zero page like you
+> > > do for PMD. Because the special cases these zero pages cause are a
+> > > headache.
+> > 
+> > I've been thinking about this as well, and I do think we'd be better off with
+> > a single zero page for PTEs, as we have with PMDs.  It'd reduce the special
+> > casing in the DAX code, and it'd also ensure that we don't waste a bunch of
+> > time and memory creating read-only zero pages to service reads from holes.
+> > 
+> > I'll look into adding this for v5.
 > 
-> I haven't seen it either, and I've been doing a lot of testing on the
-> ext4 test branch.  So I'm guessing Tony has the only reliable repro
-> for the problem at the moment.  That being said, it shouldn't be that
-> hard to create a test case for this and add it to xfstests.
-> 
-> I'm pretty sure Jan is right about this, though, but it would be great
-> to a get a quick confirmation from Tony if at all possible.
+> Well, this would clash with the dirty bit cleaning series I have. So I'd
+> prefer to put this on a todo list and address it once existing series are
+> integrated...
 
-Jan is wrong - we do have per-struct-file serialization for getdents()
-et.al.  It might be a race between getdents() on *different* struct
-file for the same directory, but ->private_data is not a problem.
+Sure, that works.
+
+> > > > +	if (error)
+> > > > +		goto fallback;
+> > > > +	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+> > > > +		goto fallback;
+> > > > +
+> > > > +	vmf.pgoff = pgoff;
+> > > > +	vmf.flags = flags;
+> > > > +	vmf.gfp_mask = mapping_gfp_mask(mapping) | __GFP_FS | __GFP_IO;
+> > > 
+> > > I don't think you want __GFP_FS here - we have already gone through the
+> > > filesystem's pmd_fault() handler which called dax_iomap_pmd_fault() and
+> > > thus we hold various fs locks, freeze protection, ...
+> > 
+> > I copied this from __get_fault_gfp_mask() in mm/memory.c.  That function is
+> > used by do_page_mkwrite() and __do_fault(), and we eventually get this
+> > vmf->gfp_mask in the PTE fault code.  With the code as it is we get the same
+> > vmf->gfp_mask in both dax_iomap_fault() and dax_iomap_pmd_fault().  It seems
+> > like they should remain consistent - is it wrong to have __GFP_FS in
+> > dax_iomap_fault()?
+> 
+> The gfp_mask that propagates from __do_fault() or do_page_mkwrite() is fine
+> because at that point it is correct. But once we grab filesystem locks
+> which are not reclaim safe, we should update vmf->gfp_mask we pass further
+> down into DAX code to not contain __GFP_FS (that's a bug we apparently have
+> there). And inside DAX code, we definitely are not generally safe to add
+> __GFP_FS to mapping_gfp_mask(). Maybe we'd be better off propagating struct
+> vm_fault into this function, using passed gfp_mask there and make sure
+> callers update gfp_mask as appropriate.
+
+Yep, that makes sense to me.  In reviewing your set it also occurred to me that
+we might want to stick a struct vm_area_struct *vma pointer in the vmf, since
+you always need a vma when you are using a vmf, but we pass them as a pair
+everywhere.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
