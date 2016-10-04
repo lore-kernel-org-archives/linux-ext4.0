@@ -1,110 +1,120 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
-Date: Mon, 3 Oct 2016 23:18:55 -0400
-Message-ID: <20161004031855.thdifhchkxgjjl4e@thunk.org>
-References: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
+Date: Tue, 4 Oct 2016 07:55:57 +0200
+Message-ID: <20161004055557.GB17515@quack2.suse.cz>
+References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
+ <20161003105949.GP6457@quack2.suse.cz>
+ <20161003210557.GA28177@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Johannes Bauer <dfnsonfsduifb@gmx.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56646 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751636AbcJDDTO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Oct 2016 23:19:14 -0400
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161003210557.GA28177@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 03, 2016 at 12:52:20PM +0200, Johannes Bauer wrote:
-> Shows also a stacktrace with the same call path, also running on a
-> (different) Intel NUC, also running a 4.4.0 kernel. This pastebin is
-> nowhere referenced however, so I'm unsure who found it and where exactly
-> it was posted. Since the offending process in the unknown guy or girl's
-> pastebin was dd, however, I believe that he or she tried to deliberately
-> reproduce the problem.
+On Mon 03-10-16 15:05:57, Ross Zwisler wrote:
+> > > @@ -623,22 +672,30 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
+> > >  		error = radix_tree_preload(vmf->gfp_mask & ~__GFP_HIGHMEM);
+> > >  		if (error)
+> > >  			return ERR_PTR(error);
+> > > +	} else if ((unsigned long)entry & RADIX_DAX_HZP && !hzp) {
+> > > +		/* replacing huge zero page with PMD block mapping */
+> > > +		unmap_mapping_range(mapping,
+> > > +			(vmf->pgoff << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+> > >  	}
+> > >  
+> > >  	spin_lock_irq(&mapping->tree_lock);
+> > > -	new_entry = (void *)((unsigned long)RADIX_DAX_ENTRY(sector, false) |
+> > > -		       RADIX_DAX_ENTRY_LOCK);
+> > > +	if (hzp)
+> > > +		new_entry = RADIX_DAX_HZP_ENTRY();
+> > > +	else
+> > > +		new_entry = RADIX_DAX_ENTRY(sector, new_type);
+> > > +
+> > >  	if (hole_fill) {
+> > >  		__delete_from_page_cache(entry, NULL);
+> > >  		/* Drop pagecache reference */
+> > >  		put_page(entry);
+> > > -		error = radix_tree_insert(page_tree, index, new_entry);
+> > > +		error = __radix_tree_insert(page_tree, index,
+> > > +				RADIX_DAX_ORDER(new_type), new_entry);
+> > >  		if (error) {
+> > >  			new_entry = ERR_PTR(error);
+> > >  			goto unlock;
+> > >  		}
+> > >  		mapping->nrexceptional++;
+> > > -	} else {
+> > > +	} else if ((unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
+> > >  		void **slot;
+> > >  		void *ret;
+> > 
+> > Hum, I somewhat dislike how PTE and PMD paths differ here. But it's OK for
+> > now I guess. Long term we might be better off to do away with zero pages
+> > for PTEs as well and use exceptional entry and a single zero page like you
+> > do for PMD. Because the special cases these zero pages cause are a
+> > headache.
+> 
+> I've been thinking about this as well, and I do think we'd be better off with
+> a single zero page for PTEs, as we have with PMDs.  It'd reduce the special
+> casing in the DAX code, and it'd also ensure that we don't waste a bunch of
+> time and memory creating read-only zero pages to service reads from holes.
+> 
+> I'll look into adding this for v5.
 
-Have you tried using a 4.4.23 kernel?  There are a large number of bug
-fixes in the kernel betweeb 4.4.0 and 4.4.23.
+Well, this would clash with the dirty bit cleaning series I have. So I'd
+prefer to put this on a todo list and address it once existing series are
+integrated...
 
-The last time I've done a stable kernel test run was against 4.4.17,
-and it passed clean:
+> > > +	if (error)
+> > > +		goto fallback;
+> > > +	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+> > > +		goto fallback;
+> > > +
+> > > +	vmf.pgoff = pgoff;
+> > > +	vmf.flags = flags;
+> > > +	vmf.gfp_mask = mapping_gfp_mask(mapping) | __GFP_FS | __GFP_IO;
+> > 
+> > I don't think you want __GFP_FS here - we have already gone through the
+> > filesystem's pmd_fault() handler which called dax_iomap_pmd_fault() and
+> > thus we hold various fs locks, freeze protection, ...
+> 
+> I copied this from __get_fault_gfp_mask() in mm/memory.c.  That function is
+> used by do_page_mkwrite() and __do_fault(), and we eventually get this
+> vmf->gfp_mask in the PTE fault code.  With the code as it is we get the same
+> vmf->gfp_mask in both dax_iomap_fault() and dax_iomap_pmd_fault().  It seems
+> like they should remain consistent - is it wrong to have __GFP_FS in
+> dax_iomap_fault()?
 
-FSTESTIMG: gce-xfstests/xfstests-201608132226
-FSTESTVER: e2fsprogs	v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
-FSTESTVER: fio		fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
-FSTESTVER: quota		81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
-FSTESTVER: xfsprogs	v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
-FSTESTVER: xfstests-bld	75f1eb0 (Sat, 13 Aug 2016 22:18:57 -0400)
-FSTESTVER: xfstests	linux-v3.8-1149-g4e58a5b (Mon, 8 Aug 2016 10:50:34 -0400)
-FSTESTVER: kernel	4.4.17 #4 SMP Mon Aug 15 23:55:25 EDT 2016 x86_64
-FSTESTCFG: "all"
-FSTESTSET: "-g auto"
-FSTESTEXC: "ext4/022"
-FSTESTOPT: "aex"
-MNTOPTS: ""
-CPUS: "2"
-MEM: "7477.49"
-MEM: 7680 MB (Max capacity)
-BEGIN TEST 4k: Ext4 4k block Tue Aug 16 00:05:28 EDT 2016
-Passed all 224 tests
+The gfp_mask that propagates from __do_fault() or do_page_mkwrite() is fine
+because at that point it is correct. But once we grab filesystem locks
+which are not reclaim safe, we should update vmf->gfp_mask we pass further
+down into DAX code to not contain __GFP_FS (that's a bug we apparently have
+there). And inside DAX code, we definitely are not generally safe to add
+__GFP_FS to mapping_gfp_mask(). Maybe we'd be better off propagating struct
+vm_fault into this function, using passed gfp_mask there and make sure
+callers update gfp_mask as appropriate.
 
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-P.S.   Fixes between 4.4.0 and 4.4.17:
-
-% git log --oneline v4.4..v4.4.17 -- fs/ext4 fs/jbd2
-26015f0 ext4: verify extent header depth
-8b8de1c ext4: silence UBSAN in ext4_mb_init()
-12aa7d9 ext4: address UBSAN warning in mb_find_order_for_block()
-b2601bb ext4: fix oops on corrupted filesystem
-b2044c3 ext4: clean up error handling when orphan list is corrupted
-c5ce389 ext4: fix hang when processing corrupted orphaned inode list
-fa5613b ext4: iterate over buffer heads correctly in move_extent_per_page()
-2122834 ext4: fix races of writeback with punch hole and zero range
-1f7b7e9 ext4: fix races between buffered IO and collapse / insert range
-e096ade ext4: move unlocked dio protection from ext4_alloc_file_blocks()
-0b680de ext4: fix races between page faults and hole punching
-c745297 ext4: fix NULL pointer dereference in ext4_mark_inode_dirty()
-ee8516a ext4: ignore quota mount options if the quota feature is enabled
-321299a ext4: add lockdep annotations for i_data_sem
-93272be jbd2: fix FS corruption possibility in jbd2_journal_destroy() on umount path
-7c3d142 ext4: fix bh->b_state corruption
-bbfe21c ext4: don't read blocks from disk after extents being swapped
-600d41f ext4: fix potential integer overflow
-33f48f8 ext4: fix scheduling in atomic on group checksum failure
-b80b70e ext4 crypto: add missing locking for keyring_key access
-
-Fixes between 4.4.17 and 4.4.23:
-
-% git log --oneline v4.4.17..v4.4.23 -- fs/ext4 fs/jbd2
-bf63b9d fscrypto: require write access to mount to set encryption policy
-8d693a2 fscrypto: add authorization check for setting encryption policy
-d8aafd0 ext4: use __GFP_NOFAIL in ext4_free_blocks()
-1d12bad ext4: avoid modifying checksum fields directly during checksum verification
-77ae14d ext4: avoid deadlock when expanding inode size
-a79f1f7 ext4: properly align shifted xattrs when expanding inodes
-e6abdbf ext4: fix xattr shifting when expanding inodes part 2
-f2c06c7 ext4: fix xattr shifting when expanding inodes
-dfa0a22 ext4: validate that metadata blocks do not overlap superblock
-564e0f8 jbd2: make journal y2038 safe
-3a22cf0 ext4: fix reference counting bug on block allocation error
-db82c74 ext4: short-cut orphan cleanup on error
-f8d4d52 ext4: validate s_reserved_gdt_blocks on mount
-175f36c ext4: don't call ext4_should_journal_data() on the journal inode
-5a7f477 ext4: fix deadlock during page writeback
-9e38db2 ext4: check for extents that wrap around
-
-And note that not all fixes get backported.  Sometimes a patch is too
-large or too complex to backport.  Or sometimes we forget to tag a
-patch for a stable kernel backport that really should have been
-backported.  So trying to see if you can replicate the problem using
-the latest 4.8 kernel would also be a good thing to try.
-
-Finally, the oops was inside the memory allocator, so it's possible
-the problem was caused by a corrupted freelist, which could have been
-caused by a wild pointer dereference in any part of the kernel, not
-necessarily ext4.  Which is another reason to go to the latest 4.4.x
-kernel or to try the 4.8 kernel.  The bug in some other part of the
-subsystem may have since been fixed.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
