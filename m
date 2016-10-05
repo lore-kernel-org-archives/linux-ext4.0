@@ -1,106 +1,120 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Be more strict when verifying flags set via SETFLAGS ioctls
-Date: Wed,  5 Oct 2016 14:42:54 +0200
-Message-ID: <1475671375-22969-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/2] ext4: Inode flags diet
+Date: Wed,  5 Oct 2016 14:42:55 +0200
+Message-ID: <1475671375-22969-3-git-send-email-jack@suse.cz>
 References: <1475671375-22969-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43236 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:43235 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752220AbcJEMnC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1751598AbcJEMnC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 5 Oct 2016 08:43:02 -0400
 In-Reply-To: <1475671375-22969-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we just silently ignore flags that we don't understand (or
-that cannot be manipulated) through EXT4_IOC_SETFLAGS and
-EXT4_IOC_FSSETXATTR ioctls. This makes it problematic for the unused
-flags to be used in future (some app may be inadvertedly setting them
-and we won't notice until the flag gets used). Also this is inconsistent
-with other filesystems like XFS or BTRFS which return EOPNOTSUPP when
-they see a flag they cannot set.
+Remove 6 inode flags that were apparently never used and only take up
+space in inode flags field which is already full.
 
-ext4 has the additional problem that there are flags which are returned
-by EXT4_IOC_GETFLAGS ioctl but which cannot be modified via
-EXT4_IOC_SETFLAGS. So we have to be careful to ignore value of these
-flags and not fail the ioctl when they are set (as e.g. chattr(1) passes
-flags returned from EXT4_IOC_GETFLAGS to EXT4_IOC_SETFLAGS without any
-masking and thus we'd break this utility).
+There are also other inode flags of doubtful use (not used by current
+Linux kernel - IMAGIC, NOTAIL, EA_INODE) but let's leave them there for
+now since I'm not quite sure about their status.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/ioctl.c | 28 +++++++++++++++++++++++-----
- 2 files changed, 24 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h | 34 +++++-----------------------------
+ 1 file changed, 5 insertions(+), 29 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931386ec..a77a15df15b0 100644
+index a77a15df15b0..29605fb01cf8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -395,6 +395,7 @@ struct flex_groups {
- #define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
+@@ -363,19 +363,11 @@ struct flex_groups {
+ /*
+  * Inode flags
+  */
+-#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
+-#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
+-#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
+ #define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
+ #define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
+ #define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
+ #define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
+ #define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
+-/* Reserved for compression usage... */
+-#define EXT4_DIRTY_FL			0x00000100
+-#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
+-#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
+-	/* nb: was previously EXT2_ECOMPR_FL */
+ #define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
+ /* End compression flags --- maybe not all used */
+ #define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
+@@ -392,8 +384,8 @@ struct flex_groups {
+ #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
  
-+/* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
+-#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
++#define EXT4_FL_USER_VISIBLE		0x304BD8F8 /* User visible flags */
++#define EXT4_FL_USER_MODIFIABLE		0x204380F8 /* User modifiable flags */
+ 
+ /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
  #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
- 					 EXT4_IMMUTABLE_FL | \
- 					 EXT4_APPEND_FL | \
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 1bb7df5e4536..540bababfec1 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -412,6 +412,10 @@ static inline __u32 ext4_iflags_to_xflags(unsigned long iflags)
- 	return xflags;
- }
+@@ -404,11 +396,9 @@ struct flex_groups {
+ 					 EXT4_PROJINHERIT_FL)
  
-+#define EXT4_SUPPORTED_FS_XFLAGS (FS_XFLAG_SYNC | FS_XFLAG_IMMUTABLE | \
-+				  FS_XFLAG_APPEND | FS_XFLAG_NODUMP | \
-+				  FS_XFLAG_NOATIME | FS_XFLAG_PROJINHERIT)
-+
- /* Transfer xflags flags to internal */
- static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
+ /* Flags that should be inherited by new inodes from their parent. */
+-#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+-			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+-			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+-			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
+-			   EXT4_PROJINHERIT_FL)
++#define EXT4_FL_INHERITED (EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL | \
++			   EXT4_DIRSYNC_FL | EXT4_PROJINHERIT_FL)
+ 
+ /* Flags that are appropriate for regular files (all but dir-specific ones). */
+ #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+@@ -431,20 +421,12 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+  * Inode flags used for atomic set/get
+  */
+ enum {
+-	EXT4_INODE_SECRM	= 0,	/* Secure deletion */
+-	EXT4_INODE_UNRM		= 1,	/* Undelete */
+-	EXT4_INODE_COMPR	= 2,	/* Compress file */
+ 	EXT4_INODE_SYNC		= 3,	/* Synchronous updates */
+ 	EXT4_INODE_IMMUTABLE	= 4,	/* Immutable file */
+ 	EXT4_INODE_APPEND	= 5,	/* writes to file may only append */
+ 	EXT4_INODE_NODUMP	= 6,	/* do not dump file */
+ 	EXT4_INODE_NOATIME	= 7,	/* do not update atime */
+-/* Reserved for compression usage... */
+-	EXT4_INODE_DIRTY	= 8,
+-	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
+-	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
+ 	EXT4_INODE_ENCRYPT	= 11,	/* Encrypted file */
+-/* End compression flags --- maybe not all used */
+ 	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
+ 	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
+ 	EXT4_INODE_JOURNAL_DATA	= 14,	/* file data should be journaled */
+@@ -478,17 +460,11 @@ enum {
+ 
+ static inline void ext4_check_flag_values(void)
  {
-@@ -456,12 +460,22 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (get_user(flags, (int __user *) arg))
- 			return -EFAULT;
- 
-+		if (flags & ~EXT4_FL_USER_VISIBLE)
-+			return -EOPNOTSUPP;
-+		/*
-+		 * chattr(1) grabs flags via GETFLAGS, modifies the result and
-+		 * passes that to SETFLAGS. So we cannot easily make SETFLAGS
-+		 * more restrictive than just silently masking off visible but
-+		 * not settable flags as we always did.
-+		 */
-+		flags &= EXT4_FL_USER_MODIFIABLE;
-+		if (ext4_mask_flags(inode->i_mode, flags) != flags)
-+			return -EOPNOTSUPP;
-+
- 		err = mnt_want_write_file(filp);
- 		if (err)
- 			return err;
- 
--		flags = ext4_mask_flags(inode->i_mode, flags);
--
- 		inode_lock(inode);
- 		err = ext4_ioctl_setflags(inode, flags);
- 		inode_unlock(inode);
-@@ -866,13 +880,17 @@ resizefs_out:
- 		if (!inode_owner_or_capable(inode))
- 			return -EACCES;
- 
-+		if (fa.fsx_xflags & ~EXT4_SUPPORTED_FS_XFLAGS)
-+			return -EOPNOTSUPP;
-+
-+		flags = ext4_xflags_to_iflags(fa.fsx_xflags);
-+		if (ext4_mask_flags(inode->i_mode, flags) != flags)
-+			return -EOPNOTSUPP;
-+
- 		err = mnt_want_write_file(filp);
- 		if (err)
- 			return err;
- 
--		flags = ext4_xflags_to_iflags(fa.fsx_xflags);
--		flags = ext4_mask_flags(inode->i_mode, flags);
+-	CHECK_FLAG_VALUE(SECRM);
+-	CHECK_FLAG_VALUE(UNRM);
+-	CHECK_FLAG_VALUE(COMPR);
+ 	CHECK_FLAG_VALUE(SYNC);
+ 	CHECK_FLAG_VALUE(IMMUTABLE);
+ 	CHECK_FLAG_VALUE(APPEND);
+ 	CHECK_FLAG_VALUE(NODUMP);
+ 	CHECK_FLAG_VALUE(NOATIME);
+-	CHECK_FLAG_VALUE(DIRTY);
+-	CHECK_FLAG_VALUE(COMPRBLK);
+-	CHECK_FLAG_VALUE(NOCOMPR);
+ 	CHECK_FLAG_VALUE(ENCRYPT);
+ 	CHECK_FLAG_VALUE(INDEX);
+ 	CHECK_FLAG_VALUE(IMAGIC);
+-- 
+2.6.6
+
