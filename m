@@ -1,60 +1,50 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
-Date: Wed, 5 Oct 2016 07:50:20 +0200
-Message-ID: <20161005055020.GB20752@quack2.suse.cz>
-References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
- <20161003105949.GP6457@quack2.suse.cz>
- <20161003210557.GA28177@linux.intel.com>
- <20161004055557.GB17515@quack2.suse.cz>
- <20161004153948.GA21248@linux.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Frequent ext4 oopses with 4.4.0 on Intel NUC6i3SYB
+Date: Wed, 5 Oct 2016 08:20:53 +0200
+Message-ID: <20161005062053.GD20752@quack2.suse.cz>
+References: <fcb653b9-cd9e-5cec-1036-4b4c9e1d3e7b@gmx.de>
+ <20161004084136.GD17515@quack2.suse.cz>
+ <90dfe18f-9fe7-819d-c410-cdd160644ab7@gmx.de>
+ <2b7d6bd6-7d16-3c60-1b84-a172ba378402@gmx.de>
+ <CABYiri-UUT6zVGyNENp-aBJDj6Oikodc5ZA27Gzq5-bVDqjZ4g@mail.gmail.com>
+ <087b53e5-b23b-d3c2-6b8e-980bdcbf75c1@gmx.de>
+ <CABYiri_3qS6XgT04hCeF1AMuxY6W0k7QVEO-N0ZodeJTdG=xsw@mail.gmail.com>
+ <26892620-eac1-eed4-da46-da9f183d52b1@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrey Korolyov <andrey@xdel.ru>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org
+To: Johannes Bauer <dfnsonfsduifb@gmx.de>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161004153948.GA21248-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <26892620-eac1-eed4-da46-da9f183d52b1@gmx.de>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 04-10-16 09:39:48, Ross Zwisler wrote:
-> > The gfp_mask that propagates from __do_fault() or do_page_mkwrite() is fine
-> > because at that point it is correct. But once we grab filesystem locks
-> > which are not reclaim safe, we should update vmf->gfp_mask we pass further
-> > down into DAX code to not contain __GFP_FS (that's a bug we apparently have
-> > there). And inside DAX code, we definitely are not generally safe to add
-> > __GFP_FS to mapping_gfp_mask(). Maybe we'd be better off propagating struct
-> > vm_fault into this function, using passed gfp_mask there and make sure
-> > callers update gfp_mask as appropriate.
+On Tue 04-10-16 23:54:24, Johannes Bauer wrote:
+> > - disk accesses and corresponding power spikes are causing partial
+> > undervoltage condition somewhere where bits are relatively freely
+> > flipping on paths without parity checking, though this could be
+> > addressed only to an onboard power distributor, not to power source
+> > itself.
 > 
-> Yep, that makes sense to me.  In reviewing your set it also occurred to me that
-> we might want to stick a struct vm_area_struct *vma pointer in the vmf, since
-> you always need a vma when you are using a vmf, but we pass them as a pair
-> everywhere.
+> Huh that sounds like "defective hardware" to me, wouldn't it?
 
-Actually, vma pointer will be in struct vm_fault after my DAX
-write-protection series. So once that lands, we can clean up whatever
-duplicit function parameters...
+Yeah, from the frequency and the kind of failures, I actually don't think
+it's a kernel bug anymore. So I'd also suspect something like that bits on
+memory bus start to flip when the disk is loaded or something like that.
+
+If you say compilation on tmpfs is fine - can you try compiling kernel in
+tmpfs in a loop and then after it is running smoothly for a while start to
+load the disk by copying a lot of data there? Do the errors trigger?
 
 								Honza
-
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
