@@ -1,97 +1,85 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: fscrypt: Howto resolve hash collisions?
-Date: Wed, 5 Oct 2016 11:45:05 -0400
-Message-ID: <20161005154504.f72uovnew52jts4w@thunk.org>
-References: <859a9544-fe9d-4656-7b45-b25719c8eadc@nod.at>
+Subject: Re: [PATCH] fscrypto: make XTS tweak initialization
+ endian-independent
+Date: Wed, 5 Oct 2016 22:16:25 -0400
+Message-ID: <20161006021625.pothakzxpbztwuwb@thunk.org>
+References: <20161005170659.GA110549@google.com>
+ <20161005182307.GA1164@google.com>
+ <5c01fd8e-95e6-669c-9f9d-30ab5a7af9fd@nod.at>
+ <ac10ada8-40fc-e946-7593-efa08eb875d1@nod.at>
+ <20161006011714.GT27872@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>,
-        David Gstir <david@sigma-star.at>
-To: Richard Weinberger <richard@nod.at>
+Cc: Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        David Gstir <david@sigma-star.at>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        jaegeuk@kernel.org, Eric Biggers <ebiggers@google.com>,
+        Anand Jain <anand.jain@oracle.com>,
+        Tyler Hicks <tyhicks@canonical.com>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <859a9544-fe9d-4656-7b45-b25719c8eadc@nod.at>
+In-Reply-To: <20161006011714.GT27872@dastard>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 05, 2016 at 04:00:36PM +0200, Richard Weinberger wrote:
-> 
-> UBIFS uses the r5 hash algorithm for filenames and is able to resolve hash collisions.
-> Unless I miss something it is not possible to resolve hash collisions for bignames
-> in fscrypto....
->
-> What do I miss? Are ext4 and f2fs not able to resolve hash collisions and therefore
-> nobody noticed?
+On Thu, Oct 06, 2016 at 12:17:15PM +1100, Dave Chinner wrote:
+> This is the sanest approach, because encrypting filesystem internal
+> metadata may have some unintended consequences. e.g being unable to
+> perform forensic analysis of corruption or data loss events, or an
+> inability for tools like fsck to work without also implementing all
+> the encryption code in userspace and being provided with all the
+> keys needed to decrypt the metadata.
 
+Absolutely. 
 
-"Resolve hash collisions" is a fairly generic term.  There are many
-ways to resolve hash collisions, including linear probing --- which is
-what ext4 uses.
+> i.e. it's not just the kernel code we have to consider here when
+> discussing this level of encryption in filesystems - the impact
+> on the entire support ecosystem needs to be considered. A weakness
+> in a fsck tool will be just as serious as a weakness in the kernel
+> code, and there's a much larger amount of widely dispersed code that
+> would need to be encryption enabled by going down this path.
 
-Let's take a step back and understand what we're doing here.  The
-requirement which we're trying to support here is the ability for root
-to be able to delete encrypted files without having access to the key.
-For example, imagine a ChromeOS device which is shared between
-multiple users, and where each user's files are protected by a
-different key.  This means that while user A is logged in, even if
-there is a security exposure which allows a bad guy to execute code as
-root, the files of user B and C are not at risk.  However, if user A
-needs more disk space, one of the things things which a privileged
-service can do is to delete files in user B's and user C's cache
-directory, since cache files are safe to delete in order to make
-space.
+An approach that works fairly well, which doesn't require any
+userspace changes, is one where if you are using a hardware
+accelerated, in-line crypto engine, and where you are sending the key
+identifier to be used down through the block layer in the bio request,
+is to define a particular key as the "default" key to be used if a key
+is not specified in the bio request.
 
-So in order to do this, we need to be able to allow root to be able to
-run readdir on an encrypted directory, and get handles on directory
-entries which can be then sent back into the kernel so that system
-calls such as unlink(2) and opendir(2) can work.
+So if the file system doesn't send down an explicit key identifier for
+its metadata reads/write requests, the block device essentially acts
+like a dm-crypt device --- except the hardware is doing the encryption
+so it's nice and fast.
 
-For small files, we can just base-64 encode the encrypted directory,
-and then send that back.  However, base-64 encoding expands the size
-of the filename by (plus or minus) by 33%; and we can't send back a
-filename longer than 255 bytes through the syscall interface.
+This approach means that no changes are needed in the file system for
+encrypting and decrypting the metadata blocks, and it also means that
+no changes are needed in any of the e2fsprogs userspace utiliies
+(which except for debugfs and fuse2fs, only read metadata blocks).
+Well, resize2fs wouldn't work since it would try to move data blocks
+around, but eMMC memory is generally not resizeable, so it all works
+out at least for mobile devices, and if we really want to support this
+for resizeable devices, we could teach resize2fs a way to signal to
+the block device which blocks are data blocks and so the ICE layer
+should be passed during a file system shrink operation.
 
-To get around this, there is an alternate mechanism where the file
-system can encode an encrypted filename, and that's to send back a
-64-bit cookie to userspace via readdir(), and then when the user space
-sends the base-64 encoded filename to unlink(2), fscrypt will either
-provide the file system with the encrypted filename if it is short, or
-with the 64-bit cookie.  Because the fscrypto code was originally
-factored out of ext4, we use two 32-bit longs and name them "hash" and
-"minor_hash", but they don't actually have to be a hash.
+So if we move to a model where we move the actual block
+encryption/decryption into a dm-crypt like layer (instead of doing it
+in fs/ext4/page_io.c as we currently do for ext4's fs crypto support),
+we minimize the changes needed in the file systems --- since all we
+need to do is to pass the key identifier into the bio layer, and key
+identifier management can be done in the fs/crypto layer, and so on
+top of the other benefits, we get the ability to support generalized
+hardware ICE acceleration and metadata encryption for a relatively
+tiny investment of effort.
 
-For example, POSIX requires that file systems supports telldir()
-return a 64-bit cookie which will be valid in the face of intervening
-additions and deletions, and this cookie must be able to be fed back
-to seekdir() and resume the readdir() session from the location of the
-last telldir().  So you might be able to use whatever scheme you use
-to support telldir() and seekdir().  In retrospect, it probably would
-have been better if, when we refactored the code, to have made the
-interface be a 8 byte cookie.
+Yes, this won't work for ubifs, but ubifs is a bit of an outlier, and
+unless we think we want to support any other MTD file systems, we may
+just simply need make things flexible enough so that ubifs can do its
+own thing as far as hardware acceleration is concerned.
 
-It sounds like the main problem here is that Ubifs is using a 32-bit
-hash, and so the chances of collisions are much higher --- 1 in 65536,
-to be precise.  So the technique of using linear probing probably
-wouldn't work as well for Ubifs.  However, feel free to use the minor
-hash any which way you want.  The key is that you're starting with the
-encrypted filename in readdir, so you also know where the file is located.
+Cheers,
 
-I'm not sure which mechanism of "collision resolution" you're using,
-so at this point I can only make some conjections.  For example, are
-you using the mechanism of hash(name || counter), where you keep
-incrementing the counter until you find an empty slot in the your hash
-tree?  If so, what you could do is to figure out what counter value
-resulted in the location of the encrypted filename to that location in
-the hash tree, and you could store that counter value in the
-minor_hash field.
-
-Finally, if it would help, we could change the fs/crypt interface so
-that instead of using a 2x4 byte "cookie", we could make it be (for
-example) a 128 bit cookie.  However, given that ubifs must have some
-solution to the 64-bit telldir/seekdir cookie, maybe you can use that
-mechanism for handling the encrypted readdir() functionality.
-
-Hope this helps,
-
-						- Ted
+					- Ted
