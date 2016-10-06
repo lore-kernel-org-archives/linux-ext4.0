@@ -1,94 +1,122 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] fscrypto: make XTS tweak initialization
- endian-independent
-Date: Fri, 7 Oct 2016 09:23:51 +1100
-Message-ID: <20161006222351.GV27872@dastard>
-References: <20161005170659.GA110549@google.com>
- <20161005182307.GA1164@google.com>
- <5c01fd8e-95e6-669c-9f9d-30ab5a7af9fd@nod.at>
- <ac10ada8-40fc-e946-7593-efa08eb875d1@nod.at>
- <20161006011714.GT27872@dastard>
- <20161006021625.pothakzxpbztwuwb@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 4.9
+Date: Thu, 6 Oct 2016 15:16:21 -0400
+Message-ID: <20161006191621.3gsqnmm5jja4kar2@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        David Gstir <david@sigma-star.at>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        jaegeuk@kernel.org, Eric Biggers <ebiggers@google.com>,
-        Anand Jain <anand.jain@oracle.com>,
-        Tyler Hicks <tyhicks@canonical.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:32342 "EHLO
-        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752318AbcJFWX4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Oct 2016 18:23:56 -0400
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161006021625.pothakzxpbztwuwb@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Oct 05, 2016 at 10:16:25PM -0400, Theodore Ts'o wrote:
-> On Thu, Oct 06, 2016 at 12:17:15PM +1100, Dave Chinner wrote:
-> > This is the sanest approach, because encrypting filesystem internal
-> > metadata may have some unintended consequences. e.g being unable to
-> > perform forensic analysis of corruption or data loss events, or an
-> > inability for tools like fsck to work without also implementing all
-> > the encryption code in userspace and being provided with all the
-> > keys needed to decrypt the metadata.
-> 
-> Absolutely. 
-> 
-> > i.e. it's not just the kernel code we have to consider here when
-> > discussing this level of encryption in filesystems - the impact
-> > on the entire support ecosystem needs to be considered. A weakness
-> > in a fsck tool will be just as serious as a weakness in the kernel
-> > code, and there's a much larger amount of widely dispersed code that
-> > would need to be encryption enabled by going down this path.
-> 
-> An approach that works fairly well, which doesn't require any
-> userspace changes, is one where if you are using a hardware
-> accelerated, in-line crypto engine, and where you are sending the key
-> identifier to be used down through the block layer in the bio request,
-> is to define a particular key as the "default" key to be used if a key
-> is not specified in the bio request.
-> 
-> So if the file system doesn't send down an explicit key identifier for
-> its metadata reads/write requests, the block device essentially acts
-> like a dm-crypt device --- except the hardware is doing the encryption
-> so it's nice and fast.
+The following changes since commit b8927721ae9d5ac0582d29d7b8c267d465ad5f00:
 
-At which point, I have to ask, why not just use dm-crypt and
-implement a simple "use device key on bio contents if none has been
-specified by higher layer" mechanism to direct the encryption?  It's
-simple, you can still offload the crypto to your hardware, requires
-minimal extra plumbing, and no userspace tooling changes. This
-allows the user data on a dm-crypt to be encrypted with a user
-specified key so even is the device key is compromised their data is
-not (and vice versa).
+  Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4 (2016-08-29 12:37:11 -0700)
 
-As for non-block device filesystems like UBIFS, I'd suggest that
-their "storage layer" that the filesytem sits on top of could do the
-same thing - any request that doesn't have a key supplied gets
-encrypted using the device key. i.e. the filesystem layers use the
-same implementation, but the underlying storage device implements
-the encryption interface according to the requirements of the
-subsystem.
+are available in the git repository at:
 
-i.e. I don't think we should be trying to implement a single layer
-that supports both block and non-block filesystems here. However, we
-can still architect a solution where the filesystem level code is
-independent of the underlying storage encryption implementation.  In
-this sort of architecture, the filesystem only does key management
-and deals with unencrypted data and metadata, whilst the underlying
-storage layer implements the (hardware accelerated) encryption as
-the data passes through...
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-Cheers,
+for you to fetch changes up to 18017479cabaeb5c659d789f04ecf7939f8ee28f:
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+  ext4: remove unused variable (2016-09-30 02:14:56 -0400)
+
+----------------------------------------------------------------
+Lots of bug fixes and cleanups.
+
+----------------------------------------------------------------
+Chao Yu (1):
+      mbcache: fix to detect failure of register_shrinker
+
+Daeho Jeong (1):
+      ext4: reinforce check of i_dtime when clearing high fields of uid and gid
+
+Dmitry Monakhov (1):
+      ext4: improve ext4lazyinit scalability
+
+Eric Biggers (9):
+      ext4: fix memory leak when symlink decryption fails
+      fscrypto: improved validation when loading inode encryption metadata
+      fscrypto: remove unnecessary includes
+      fscrypto: rename completion callbacks to reflect usage
+      fscrypto: make filename crypto functions return 0 on success
+      blockgroup_lock.h: remove debris from bgl_lock_ptr() conversion
+      blockgroup_lock.h: simplify definition of NR_BG_LOCKS
+      ext4: do not unnecessarily null-terminate encrypted symlink data
+      fscrypto: use standard macros to compute length of fname ciphertext
+
+Eric Engestrom (1):
+      ext4: remove unused variable
+
+Eric Whitney (3):
+      ext4: enforce online defrag restriction for encrypted files
+      ext4: create function to read journal inode
+      ext4: use journal inode to determine journal overhead
+
+Fabian Frederick (4):
+      ext4: fix memory leak in ext4_insert_range()
+      ext4: remove unneeded test in ext4_alloc_file_blocks()
+      ext4: create EXT4_MAX_BLOCKS() macro
+      ext4: remove unused definition for MAX_32_NUM
+
+Geliang Tang (1):
+      jbd2: move more common code into journal_init_common()
+
+Jan Kara (14):
+      ext4: fixup free space calculations when expanding inodes
+      ext4: Check that external xattr value block is zero
+      ext4: remove checks for e_value_block
+      ext4: replace bogus assertion in ext4_xattr_shift_entries()
+      ext4: factor out xattr moving
+      ext4: remove (almost) unused variables from ext4_expand_extra_isize_ea()
+      ext4: factor out loop for freeing inode xattr space
+      ext4: enable quota enforcement based on mount options
+      ext4: cleanup ext4_sync_parent()
+      jbd2: fix lockdep annotation in add_transaction_credits()
+      ext4: Allow parallel DIO reads
+      ext4: allow unlocked direct IO when pages are cached
+      ext4: remove plugging from ext4_file_write_iter()
+      ext4: unmap metadata when zeroing blocks
+
+Kaho Ng (1):
+      ext4: remove old feature helpers
+
+Richard Weinberger (1):
+      ext4: require encryption feature for EXT4_IOC_SET_ENCRYPTION_POLICY
+
+Ross Zwisler (1):
+      ext4: allow DAX writeback for hole punch
+
+gmail (1):
+      ext4: release bh in make_indexed_dir
+
+wangguang (1):
+      ext4: bugfix for mmaped pages in mpage_release_unused_pages()
+
+ fs/crypto/crypto.c              |  11 +--
+ fs/crypto/fname.c               |  85 ++++++++---------
+ fs/crypto/keyinfo.c             |  71 +++++++++-----
+ fs/ext4/dir.c                   |   8 +-
+ fs/ext4/ext4.h                  |  35 +++----
+ fs/ext4/extents.c               |  27 ++----
+ fs/ext4/file.c                  |  10 +-
+ fs/ext4/fsync.c                 |   9 +-
+ fs/ext4/ialloc.c                |   2 +-
+ fs/ext4/inode.c                 |  71 +++++++-------
+ fs/ext4/ioctl.c                 |  11 +--
+ fs/ext4/move_extent.c           |   7 ++
+ fs/ext4/namei.c                 |  22 ++---
+ fs/ext4/page-io.c               |   4 +-
+ fs/ext4/super.c                 | 126 +++++++++++++++++++------
+ fs/ext4/symlink.c               |  10 +-
+ fs/ext4/xattr.c                 | 340 +++++++++++++++++++++++++++++++++++-------------------------------
+ fs/f2fs/dir.c                   |   6 +-
+ fs/f2fs/namei.c                 |   6 +-
+ fs/jbd2/journal.c               | 131 ++++++++++----------------
+ fs/jbd2/transaction.c           |   6 +-
+ fs/mbcache.c                    |   6 +-
+ include/linux/blockgroup_lock.h |  28 +-----
+ include/linux/fscrypto.h        |  24 -----
+ 24 files changed, 533 insertions(+), 523 deletions(-)
