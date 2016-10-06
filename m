@@ -1,57 +1,25 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/3] ext4: Add EXT4_JOURNAL_DATA_FL and EXT4_EXTENTS_FL to modifiable mask
-Date: Thu,  6 Oct 2016 13:04:32 +0200
-Message-ID: <1475751874-32114-2-git-send-email-jack@suse.cz>
-References: <1475751874-32114-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/3 v2] ext4: Inode flags handling
+Date: Thu,  6 Oct 2016 13:04:31 +0200
+Message-ID: <1475751874-32114-1-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53647 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:53645 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752979AbcJFLEi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1752097AbcJFLEi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Thu, 6 Oct 2016 07:04:38 -0400
-In-Reply-To: <1475751874-32114-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add EXT4_JOURNAL_DATA_FL and EXT4_EXTENTS_FL to EXT4_FL_USER_MODIFIABLE
-to recognize that they are modifiable by userspace. So far we got away
-without having them there because ext4_ioctl_setflags() treats them in a
-special way. But it was really confusing like that.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h  | 2 +-
- fs/ext4/ioctl.c | 3 +++
- 2 files changed, 4 insertions(+), 1 deletion(-)
+so these three patches implement what I had in mind when discussing ext4
+inode flags handling. What do you guys think? I've verified chattr(1)
+keeps working as expected, xfstests run has passed.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931386ec..0814c9570bf1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -393,7 +393,7 @@ struct flex_groups {
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
- #define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x204380FF /* User modifiable flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
- 
- #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
- 					 EXT4_IMMUTABLE_FL | \
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 1bb7df5e4536..e9433c155454 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -267,6 +267,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	for (i = 0, mask = 1; i < 32; i++, mask <<= 1) {
- 		if (!(mask & EXT4_FL_USER_MODIFIABLE))
- 			continue;
-+		/* These flags get special treatment later */
-+		if (mask == EXT4_JOURNAL_DATA_FL || mask == EXT4_EXTENTS_FL)
-+			continue;
- 		if (mask & flags)
- 			ext4_set_inode_flag(inode, i);
- 		else
--- 
-2.6.6
+Changes since v1:
+* fixed handling of EXTENTS and JOURNAL_DATA flags
+
+								Honza
 
