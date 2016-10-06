@@ -1,120 +1,140 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/3] ext4: Inode flags diet
-Date: Thu,  6 Oct 2016 13:04:34 +0200
-Message-ID: <1475751874-32114-4-git-send-email-jack@suse.cz>
-References: <1475751874-32114-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53653 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752880AbcJFLEi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 6 Oct 2016 07:04:38 -0400
-In-Reply-To: <1475751874-32114-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH v4 10/12] dax: add struct iomap based DAX PMD support
+Date: Thu, 6 Oct 2016 15:34:24 -0600
+Message-ID: <20161006213424.GA4569@linux.intel.com>
+References: <1475189370-31634-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475189370-31634-11-git-send-email-ross.zwisler@linux.intel.com>
+ <20161003105949.GP6457@quack2.suse.cz>
+ <20161003210557.GA28177@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20161003210557.GA28177-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Remove 6 inode flags that were apparently never used and only take up
-space in inode flags field which is already full.
+On Mon, Oct 03, 2016 at 03:05:57PM -0600, Ross Zwisler wrote:
+> On Mon, Oct 03, 2016 at 12:59:49PM +0200, Jan Kara wrote:
+> > On Thu 29-09-16 16:49:28, Ross Zwisler wrote:
+<>
+> > > +int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> > > +		pmd_t *pmd, unsigned int flags, struct iomap_ops *ops)
+> > > +{
+> > > +	struct address_space *mapping = vma->vm_file->f_mapping;
+> > > +	unsigned long pmd_addr = address & PMD_MASK;
+> > > +	bool write = flags & FAULT_FLAG_WRITE;
+> > > +	struct inode *inode = mapping->host;
+> > > +	struct iomap iomap = { 0 };
+> > > +	int error, result = 0;
+> > > +	pgoff_t size, pgoff;
+> > > +	struct vm_fault vmf;
+> > > +	void *entry;
+> > > +	loff_t pos;
+> > > +
+> > > +	/* Fall back to PTEs if we're going to COW */
+> > > +	if (write && !(vma->vm_flags & VM_SHARED)) {
+> > > +		split_huge_pmd(vma, pmd, address);
+> > > +		return VM_FAULT_FALLBACK;
+> > > +	}
+> > > +
+> > > +	/* If the PMD would extend outside the VMA */
+> > > +	if (pmd_addr < vma->vm_start)
+> > > +		return VM_FAULT_FALLBACK;
+> > > +	if ((pmd_addr + PMD_SIZE) > vma->vm_end)
+> > > +		return VM_FAULT_FALLBACK;
+> > > +
+> > > +	/*
+> > > +	 * Check whether offset isn't beyond end of file now. Caller is
+> > > +	 * supposed to hold locks serializing us with truncate / punch hole so
+> > > +	 * this is a reliable test.
+> > > +	 */
+> > > +	pgoff = linear_page_index(vma, pmd_addr);
+> > > +	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> > > +
+> > > +	if (pgoff >= size)
+> > > +		return VM_FAULT_SIGBUS;
+> > > +
+> > > +	/* If the PMD would extend beyond the file size */
+> > > +	if ((pgoff | PG_PMD_COLOUR) >= size)
+> > > +		return VM_FAULT_FALLBACK;
+> > > +
+> > > +	/*
+> > > +	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
+> > > +	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
+> > > +	 * the tree, for instance), it will return -EEXIST and we just fall
+> > > +	 * back to 4k entries.
+> > > +	 */
+> > > +	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
+> > > +	if (IS_ERR(entry))
+> > > +		return VM_FAULT_FALLBACK;
+> > > +
+> > > +	/*
+> > > +	 * Note that we don't use iomap_apply here.  We aren't doing I/O, only
+> > > +	 * setting up a mapping, so really we're using iomap_begin() as a way
+> > > +	 * to look up our filesystem block.
+> > > +	 */
+> > > +	pos = (loff_t)pgoff << PAGE_SHIFT;
+> > > +	error = ops->iomap_begin(inode, pos, PMD_SIZE, write ? IOMAP_WRITE : 0,
+> > > +			&iomap);
+> > 
+> > I'm not quite sure if it is OK to call ->iomap_begin() without ever calling
+> > ->iomap_end. Specifically the comment before iomap_apply() says:
+> > 
+> > "It is assumed that the filesystems will lock whatever resources they
+> > require in the iomap_begin call, and release them in the iomap_end call."
+> > 
+> > so what you do could result in unbalanced allocations / locks / whatever.
+> > Christoph?
+> 
+> I'll add the iomap_end() calls to both the PTE and PMD iomap fault handlers.
 
-There are also other inode flags of doubtful use (not used by current
-Linux kernel - IMAGIC, NOTAIL, EA_INODE) but let's leave them there for
-now since I'm not quite sure about their status.
+Interesting - adding iomap_end() calls to the DAX PTE fault handler causes an
+AA deadlock because we try and retake ei->dax_sem.  We take dax_sem in
+ext2_dax_fault() before calling into the DAX code, then if we end up going
+through the error path in ext2_iomap_end(), we call 
+  ext2_write_failed()
+    ext2_truncate_blocks()
+      dax_sem_down_write()
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h | 34 +++++-----------------------------
- 1 file changed, 5 insertions(+), 29 deletions(-)
+Where we try and take dax_sem again.  This error path is really only valid for
+I/O operations, but we happen to call it for page faults because 'written' in
+ext2_iomap_end() is just 0.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2874957e3ee2..c986ab0c9a1f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -363,19 +363,11 @@ struct flex_groups {
- /*
-  * Inode flags
-  */
--#define	EXT4_SECRM_FL			0x00000001 /* Secure deletion */
--#define	EXT4_UNRM_FL			0x00000002 /* Undelete */
--#define	EXT4_COMPR_FL			0x00000004 /* Compress file */
- #define EXT4_SYNC_FL			0x00000008 /* Synchronous updates */
- #define EXT4_IMMUTABLE_FL		0x00000010 /* Immutable file */
- #define EXT4_APPEND_FL			0x00000020 /* writes to file may only append */
- #define EXT4_NODUMP_FL			0x00000040 /* do not dump file */
- #define EXT4_NOATIME_FL			0x00000080 /* do not update atime */
--/* Reserved for compression usage... */
--#define EXT4_DIRTY_FL			0x00000100
--#define EXT4_COMPRBLK_FL		0x00000200 /* One or more compressed clusters */
--#define EXT4_NOCOMPR_FL			0x00000400 /* Don't compress */
--	/* nb: was previously EXT2_ECOMPR_FL */
- #define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
- /* End compression flags --- maybe not all used */
- #define EXT4_INDEX_FL			0x00001000 /* hash-indexed directory */
-@@ -392,8 +384,8 @@ struct flex_groups {
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
--#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x304BD8F8 /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x204BC0F8 /* User modifiable flags */
- 
- /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
- #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
-@@ -404,11 +396,9 @@ struct flex_groups {
- 					 EXT4_PROJINHERIT_FL)
- 
- /* Flags that should be inherited by new inodes from their parent. */
--#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
--			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
--			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
--			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
--			   EXT4_PROJINHERIT_FL)
-+#define EXT4_FL_INHERITED (EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-+			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL | \
-+			   EXT4_DIRSYNC_FL | EXT4_PROJINHERIT_FL)
- 
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
- #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-@@ -431,20 +421,12 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-  * Inode flags used for atomic set/get
-  */
- enum {
--	EXT4_INODE_SECRM	= 0,	/* Secure deletion */
--	EXT4_INODE_UNRM		= 1,	/* Undelete */
--	EXT4_INODE_COMPR	= 2,	/* Compress file */
- 	EXT4_INODE_SYNC		= 3,	/* Synchronous updates */
- 	EXT4_INODE_IMMUTABLE	= 4,	/* Immutable file */
- 	EXT4_INODE_APPEND	= 5,	/* writes to file may only append */
- 	EXT4_INODE_NODUMP	= 6,	/* do not dump file */
- 	EXT4_INODE_NOATIME	= 7,	/* do not update atime */
--/* Reserved for compression usage... */
--	EXT4_INODE_DIRTY	= 8,
--	EXT4_INODE_COMPRBLK	= 9,	/* One or more compressed clusters */
--	EXT4_INODE_NOCOMPR	= 10,	/* Don't compress */
- 	EXT4_INODE_ENCRYPT	= 11,	/* Encrypted file */
--/* End compression flags --- maybe not all used */
- 	EXT4_INODE_INDEX	= 12,	/* hash-indexed directory */
- 	EXT4_INODE_IMAGIC	= 13,	/* AFS directory */
- 	EXT4_INODE_JOURNAL_DATA	= 14,	/* file data should be journaled */
-@@ -478,17 +460,11 @@ enum {
- 
- static inline void ext4_check_flag_values(void)
- {
--	CHECK_FLAG_VALUE(SECRM);
--	CHECK_FLAG_VALUE(UNRM);
--	CHECK_FLAG_VALUE(COMPR);
- 	CHECK_FLAG_VALUE(SYNC);
- 	CHECK_FLAG_VALUE(IMMUTABLE);
- 	CHECK_FLAG_VALUE(APPEND);
- 	CHECK_FLAG_VALUE(NODUMP);
- 	CHECK_FLAG_VALUE(NOATIME);
--	CHECK_FLAG_VALUE(DIRTY);
--	CHECK_FLAG_VALUE(COMPRBLK);
--	CHECK_FLAG_VALUE(NOCOMPR);
- 	CHECK_FLAG_VALUE(ENCRYPT);
- 	CHECK_FLAG_VALUE(INDEX);
- 	CHECK_FLAG_VALUE(IMAGIC);
--- 
-2.6.6
+So...how should we handle this?  A few ideas:
 
+1) Just continue to omit the calls to iomap_end() in the DAX page fault
+handlers for now, and add them when there is useful work to be done in one of
+the filesystems.
+
+2) Add an IOMAP_FAULT flag to the flags passed into iomap_begin() and
+iomap_end() so make it explicit that we are calling as part of a fault handler
+and not an I/O operation, and use this to adjust the error handling in
+ext2_iomap_end().
+
+3) Just work around the existing error handling in ext2_iomap_end() by either
+unsetting IOMAP_WRITE or by setting 'written' to the size of the fault.
+
+For #2 or #3, probably add a comment explaining the deadlock and why we need
+to never call ext2_write_failed() while handling a page fault.
+
+Thoughts?
