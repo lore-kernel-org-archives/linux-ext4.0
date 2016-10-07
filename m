@@ -1,66 +1,111 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 01/17] ext4: allow DAX writeback for hole punch
-Date: Fri,  7 Oct 2016 15:08:48 -0600
-Message-ID: <1475874544-24842-2-git-send-email-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 13/17] dax: dax_iomap_fault() needs to call iomap_end()
+Date: Fri,  7 Oct 2016 15:09:00 -0600
+Message-ID: <1475874544-24842-14-git-send-email-ross.zwisler@linux.intel.com>
 References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1475874544-24842-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently when doing a DAX hole punch with ext4 we fail to do a writeback.
-This is because the logic around filemap_write_and_wait_range() in
-ext4_punch_hole() only looks for dirty page cache pages in the radix tree,
-not for dirty DAX exceptional entries.
+Currently iomap_end() doesn't do anything for DAX page faults for both ext2
+and XFS.  ext2_iomap_end() just checks for a write underrun, and
+xfs_file_iomap_end() checks to see if it needs to finish a delayed
+allocation.  However, in the future iomap_end() calls might be needed to
+make sure we have balanced allocations, locks, etc.  So, add calls to
+iomap_end() with appropriate error handling to dax_iomap_fault().
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Cc: <stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Suggested-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/dax.c | 31 ++++++++++++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3131747..0900cb4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3890,7 +3890,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- }
+diff --git a/fs/dax.c b/fs/dax.c
+index 7689ab0..5e8febe 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1187,7 +1187,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		goto unlock_entry;
+ 	if (WARN_ON_ONCE(iomap.offset + iomap.length < pos + PAGE_SIZE)) {
+ 		error = -EIO;		/* fs corruption? */
+-		goto unlock_entry;
++		goto finish_iomap;
+ 	}
  
- /*
-- * ext4_punch_hole: punches a hole in a file by releaseing the blocks
-+ * ext4_punch_hole: punches a hole in a file by releasing the blocks
-  * associated with the given offset and length
-  *
-  * @inode:  File inode
-@@ -3919,7 +3919,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	 * Write out all dirty pages to avoid race conditions
- 	 * Then release them.
- 	 */
--	if (mapping->nrpages && mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
-+	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY)) {
- 		ret = filemap_write_and_wait_range(mapping, offset,
- 						   offset + length - 1);
- 		if (ret)
+ 	sector = dax_iomap_sector(&iomap, pos);
+@@ -1209,7 +1209,14 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		}
+ 
+ 		if (error)
+-			goto unlock_entry;
++			goto finish_iomap;
++
++		if (ops->iomap_end) {
++			error = ops->iomap_end(inode, pos, PAGE_SIZE,
++					PAGE_SIZE, flags, &iomap);
++			if (error)
++				goto unlock_entry;
++		}
+ 		if (!radix_tree_exceptional_entry(entry)) {
+ 			vmf->page = entry;
+ 			return VM_FAULT_LOCKED;
+@@ -1230,8 +1237,15 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+-		if (!(vmf->flags & FAULT_FLAG_WRITE))
++		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
++			if (ops->iomap_end)  {
++				error = ops->iomap_end(inode, pos, PAGE_SIZE,
++						PAGE_SIZE, flags, &iomap);
++				if (error)
++					goto unlock_entry;
++			}
+ 			return dax_load_hole(mapping, entry, vmf);
++		}
+ 		/*FALLTHRU*/
+ 	default:
+ 		WARN_ON_ONCE(1);
+@@ -1239,6 +1253,17 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		break;
+ 	}
+ 
++ finish_iomap:
++	if (ops->iomap_end) {
++		if (error) {
++			/* keep previous error */
++			ops->iomap_end(inode, pos, PAGE_SIZE, PAGE_SIZE, flags,
++					&iomap);
++		} else {
++			error = ops->iomap_end(inode, pos, PAGE_SIZE,
++					PAGE_SIZE, flags, &iomap);
++		}
++	}
+  unlock_entry:
+ 	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
+  out:
 -- 
 2.7.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
