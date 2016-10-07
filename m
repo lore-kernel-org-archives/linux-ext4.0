@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 03/17] dax: remove buffer_size_valid()
-Date: Fri,  7 Oct 2016 15:08:50 -0600
-Message-ID: <1475874544-24842-4-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 12/17] dax: add dax_iomap_sector() helper function
+Date: Fri,  7 Oct 2016 15:08:59 -0600
+Message-ID: <1475874544-24842-13-git-send-email-ross.zwisler@linux.intel.com>
 References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,62 +27,51 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that ext4 properly sets bh.b_size when we call get_block() for a hole,
-rely on that value and remove the buffer_size_valid() sanity check.
+To be able to correctly calculate the sector from a file position and a
+struct iomap there is a complex little bit of logic that currently happens
+in both dax_iomap_actor() and dax_iomap_fault().  This will need to be
+repeated yet again in the DAX PMD fault handler when it is added, so break
+it out into a helper function.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 ---
- fs/dax.c | 22 +---------------------
- 1 file changed, 1 insertion(+), 21 deletions(-)
+ fs/dax.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index cc025f8..9b9be8a 100644
+index 982ccbb..7689ab0 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -123,19 +123,6 @@ static bool buffer_written(struct buffer_head *bh)
- 	return buffer_mapped(bh) && !buffer_unwritten(bh);
- }
+@@ -1023,6 +1023,11 @@ int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
+ EXPORT_SYMBOL_GPL(dax_truncate_page);
  
--/*
-- * When ext4 encounters a hole, it returns without modifying the buffer_head
-- * which means that we can't trust b_size.  To cope with this, we set b_state
-- * to 0 before calling get_block and, if any bit is set, we know we can trust
-- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
-- * and would save us time calling get_block repeatedly.
-- */
--static bool buffer_size_valid(struct buffer_head *bh)
--{
--	return bh->b_state != 0;
--}
--
--
- static sector_t to_sector(const struct buffer_head *bh,
- 		const struct inode *inode)
- {
-@@ -177,8 +164,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
- 				rc = get_block(inode, block, bh, rw == WRITE);
- 				if (rc)
- 					break;
--				if (!buffer_size_valid(bh))
--					bh->b_size = 1 << blkbits;
- 				bh_max = pos - first + bh->b_size;
- 				bdev = bh->b_bdev;
- 				/*
-@@ -1012,12 +997,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ #ifdef CONFIG_FS_IOMAP
++static inline sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
++{
++	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
++}
++
+ static loff_t
+ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		struct iomap *iomap)
+@@ -1048,8 +1053,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		struct blk_dax_ctl dax = { 0 };
+ 		ssize_t map_len;
  
- 	bdev = bh.b_bdev;
- 
--	/*
--	 * If the filesystem isn't willing to tell us the length of a hole,
--	 * just fall back to PTEs.  Calling get_block 512 times in a loop
--	 * would be silly.
--	 */
--	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
-+	if (bh.b_size < PMD_SIZE) {
- 		dax_pmd_dbg(&bh, address, "allocated block too small");
- 		return VM_FAULT_FALLBACK;
+-		dax.sector = iomap->blkno +
+-			(((pos & PAGE_MASK) - iomap->offset) >> 9);
++		dax.sector = dax_iomap_sector(iomap, pos);
+ 		dax.size = (length + offset + PAGE_SIZE - 1) & PAGE_MASK;
+ 		map_len = dax_map_atomic(iomap->bdev, &dax);
+ 		if (map_len < 0) {
+@@ -1186,7 +1190,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		goto unlock_entry;
  	}
+ 
+-	sector = iomap.blkno + (((pos & PAGE_MASK) - iomap.offset) >> 9);
++	sector = dax_iomap_sector(&iomap, pos);
+ 
+ 	if (vmf->cow_page) {
+ 		switch (iomap.type) {
 -- 
 2.7.4
