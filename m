@@ -1,7 +1,8 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v5 00/17] re-enable DAX PMD support
-Date: Fri,  7 Oct 2016 15:08:47 -0600
-Message-ID: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 04/17] ext2: remove support for DAX PMD faults
+Date: Fri,  7 Oct 2016 15:08:51 -0600
+Message-ID: <1475874544-24842-5-git-send-email-ross.zwisler@linux.intel.com>
+References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"Theodore Ts'o" <tytso@mit.edu>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -19,138 +20,90 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	linux-xfs@vger.kernel.org
 To: linux-kernel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-locking.  This series allows DAX PMDs to participate in the DAX radix tree
-based locking scheme so that they can be re-enabled.
+DAX PMD support was added via the following commit:
 
-Dave, can you please take this through the XFS tree as we discussed during
-the v4 review?
+commit e7b1ea2ad658 ("ext2: huge page fault support")
 
-Changes since v4:
- - Reworked the DAX flags handling to simplify things and get rid of
-   RADIX_DAX_PTE. (Jan & Christoph)
- - Moved RADIX_DAX_* macros to be inline functions in include/linux/dax.h.
-   (Christoph)
- - Got rid of unneeded macros RADIX_DAX_HZP_ENTRY() and
-   RADIX_DAX_EMPTY_ENTRY(), and instead just pass arbitrary flags to
-   radix_dax_entry().
- - Re-ordered the arguments to dax_wake_mapping_entry_waiter() to be more
-   consistent with the rest of the code. (Jan)
- - Moved radix_dax_order() inside of the #ifdef CONFIG_FS_DAX_PMD block.
-   This was causing a build error on various systems that don't define
-   PMD_SHIFT.
- - Patch 5 fixes what I believe is a missing error return in
-   ext2_iomap_end().
- - Fixed the page_start calculation for PMDs that was previously found in
-   dax_entry_start().  (Jan)  This code is now included directly in
-   dax_entry_waitqueue().  (Christoph)
- - dax_entry_waitqueue() now sets up the struct exceptional_entry_key() of
-   the caller as a service to reduce code duplication. (Christoph)
- - In grab_mapping_entry() we now hold the radix tree entry lock for PMD
-   downgrades while we release the tree_lock and do an
-   unmap_mapping_range().  (Jan)
- - Removed our last BUG_ON() in dax.c, replacing it with a WARN_ON_ONCE()
-   and an error return.
- - The dax_iomap_fault() and dax_iomap_pmd_fault() handlers both now call
-   ops->iomap_end() to ensure that we properly balance the
-   ops->iomap_begin() calls with respect to locking, allocations, etc.
-   (Jan)
- - Removed __GFP_FS from the vmf.gfp_mask used in dax_iomap_pmd_fault().
-   (Jan)
+I believe this path to be untested as ext2 doesn't reliably provide block
+allocations that are aligned to 2MiB.  In my testing I've been unable to
+get ext2 to actually fault in a PMD.  It always fails with a "pfn
+unaligned" message because the sector returned by ext2_get_block() isn't
+aligned.
 
-Thank you again to Jan, Christoph and Dave for their review feedback.
+I've tried various settings for the "stride" and "stripe_width" extended
+options to mkfs.ext2, without any luck.
 
-Here are some related things that are not included in this patch set, but
-which I plan on doing in the near future:
- - Add tracepoint support for the PTE and PMD based DAX fault handlers.
-   (Dave)
- - Move the DAX 4k zero page handling to use a single 4k zero page instead
-   of allocating pages on demand.  This will mirror the way that things are
-   done for the 2 MiB case, and will reduce the amount of memory we use
-   when reading 4k holes in DAX.
- - Change the API to the PMD fault hanlder so it takes a vmf, and at a
-   layer above DAX make sure that the vmf.gfp_mask given to DAX for both
-   PMD and PTE faults doesn't include __GFP_FS. (Jan)
+Since we can't reliably get PMDs, remove support so that we don't have an
+untested code path that we may someday traverse when we happen to get an
+aligned block allocation.  This should also make 4k DAX faults in ext2 a
+bit faster since they will no longer have to call the PMD fault handler
+only to get a response of VM_FAULT_FALLBACK.
 
-These work items will happen after review & integration with Jan's patch
-set for DAX radix tree cleaning.
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/file.c | 29 ++++++-----------------------
+ 1 file changed, 6 insertions(+), 23 deletions(-)
 
-This series was built upon xfs/xfs-4.9-reflink with PMD performance fixes
-from Toshi Kani and Dan Williams.  Dan's patch has already been merged for
-v4.8, and Toshi's patches are currently queued in Andrew Morton's mm tree
-for v4.9 inclusion.  These patches are not needed for correct operation,
-only for good performance.
-
-Here is a tree containing my changes:
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v5
-
-This tree has passed xfstests for ext2, ext4 and XFS both with and without
-DAX, and has passed targeted testing where I inserted, removed and flushed
-DAX PTEs and PMDs in every combination I could think of.
-
-Previously reported performance numbers:
-
-In some simple mmap I/O testing with FIO the use of PMD faults more than
-doubles I/O performance as compared with PTE faults.  Here is the FIO
-script I used for my testing:
-
-  [global]
-  bs=4k
-  size=2G
-  directory=/mnt/pmem0
-  ioengine=mmap
-  [randrw]
-  rw=randrw
-
-Here are the performance results with XFS using only pte faults:
-   READ: io=1022.7MB, aggrb=557610KB/s, minb=557610KB/s, maxb=557610KB/s, mint=1878msec, maxt=1878msec
-  WRITE: io=1025.4MB, aggrb=559084KB/s, minb=559084KB/s, maxb=559084KB/s, mint=1878msec, maxt=1878msec
-
-Here are performance numbers for that same test using PMD faults:
-   READ: io=1022.7MB, aggrb=1406.7MB/s, minb=1406.7MB/s, maxb=1406.7MB/s, mint=727msec, maxt=727msec
-  WRITE: io=1025.4MB, aggrb=1410.4MB/s, minb=1410.4MB/s, maxb=1410.4MB/s, mint=727msec, maxt=727msec
-
-This was done on a random lab machine with a PMEM device made from memmap'd
-RAM.  To get XFS to use PMD faults, I did the following:
-
-  mkfs.xfs -f -d su=2m,sw=1 /dev/pmem0
-  mount -o dax /dev/pmem0 /mnt/pmem0
-  xfs_io -c "extsize 2m" /mnt/pmem0
-
-Ross Zwisler (17):
-  ext4: allow DAX writeback for hole punch
-  ext4: tell DAX the size of allocation holes
-  dax: remove buffer_size_valid()
-  ext2: remove support for DAX PMD faults
-  ext2: return -EIO on ext2_iomap_end() failure
-  dax: make 'wait_table' global variable static
-  dax: remove the last BUG_ON() from fs/dax.c
-  dax: consistent variable naming for DAX entries
-  dax: coordinate locking for offsets in PMD range
-  dax: remove dax_pmd_fault()
-  dax: correct dax iomap code namespace
-  dax: add dax_iomap_sector() helper function
-  dax: dax_iomap_fault() needs to call iomap_end()
-  dax: move RADIX_DAX_* defines to dax.h
-  dax: add struct iomap based DAX PMD support
-  xfs: use struct iomap based DAX PMD fault path
-  dax: remove "depends on BROKEN" from FS_DAX_PMD
-
- fs/Kconfig          |   1 -
- fs/dax.c            | 718 ++++++++++++++++++++++++++++------------------------
- fs/ext2/file.c      |  35 +--
- fs/ext2/inode.c     |   4 +-
- fs/ext4/inode.c     |   7 +-
- fs/xfs/xfs_aops.c   |  26 +-
- fs/xfs/xfs_aops.h   |   3 -
- fs/xfs/xfs_file.c   |  10 +-
- include/linux/dax.h |  60 ++++-
- mm/filemap.c        |   6 +-
- 10 files changed, 466 insertions(+), 404 deletions(-)
-
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 0ca363d..0f257f8 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -107,27 +107,6 @@ static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	return ret;
+ }
+ 
+-static int ext2_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+-						pmd_t *pmd, unsigned int flags)
+-{
+-	struct inode *inode = file_inode(vma->vm_file);
+-	struct ext2_inode_info *ei = EXT2_I(inode);
+-	int ret;
+-
+-	if (flags & FAULT_FLAG_WRITE) {
+-		sb_start_pagefault(inode->i_sb);
+-		file_update_time(vma->vm_file);
+-	}
+-	down_read(&ei->dax_sem);
+-
+-	ret = dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block);
+-
+-	up_read(&ei->dax_sem);
+-	if (flags & FAULT_FLAG_WRITE)
+-		sb_end_pagefault(inode->i_sb);
+-	return ret;
+-}
+-
+ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 		struct vm_fault *vmf)
+ {
+@@ -154,7 +133,11 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 
+ static const struct vm_operations_struct ext2_dax_vm_ops = {
+ 	.fault		= ext2_dax_fault,
+-	.pmd_fault	= ext2_dax_pmd_fault,
++	/*
++	 * .pmd_fault is not supported for DAX because allocation in ext2
++	 * cannot be reliably aligned to huge page sizes and so pmd faults
++	 * will always fail and fail back to regular faults.
++	 */
+ 	.page_mkwrite	= ext2_dax_fault,
+ 	.pfn_mkwrite	= ext2_dax_pfn_mkwrite,
+ };
+@@ -166,7 +149,7 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 
+ 	file_accessed(file);
+ 	vma->vm_ops = &ext2_dax_vm_ops;
+-	vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
++	vma->vm_flags |= VM_MIXEDMAP;
+ 	return 0;
+ }
+ #else
 -- 
 2.7.4
 
