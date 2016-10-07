@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 05/17] ext2: return -EIO on ext2_iomap_end() failure
-Date: Fri,  7 Oct 2016 15:08:52 -0600
-Message-ID: <1475874544-24842-6-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 17/17] dax: remove "depends on BROKEN" from FS_DAX_PMD
+Date: Fri,  7 Oct 2016 15:09:04 -0600
+Message-ID: <1475874544-24842-18-git-send-email-ross.zwisler@linux.intel.com>
 References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,29 +27,25 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Right now we just return 0 for success, but we really want to let callers
-know about this failure.
+Now that DAX PMD faults are once again working and are now participating in
+DAX's radix tree locking scheme, allow their config option to be enabled.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- fs/ext2/inode.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/Kconfig | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index c7dbb46..368913c 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -830,8 +830,10 @@ ext2_iomap_end(struct inode *inode, loff_t offset, loff_t length,
- {
- 	if (iomap->type == IOMAP_MAPPED &&
- 	    written < length &&
--	    (flags & IOMAP_WRITE))
-+	    (flags & IOMAP_WRITE)) {
- 		ext2_write_failed(inode->i_mapping, offset + length);
-+		return -EIO;
-+	}
- 	return 0;
- }
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 2bc7ad7..b6f0fce 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -55,7 +55,6 @@ config FS_DAX_PMD
+ 	depends on FS_DAX
+ 	depends on ZONE_DEVICE
+ 	depends on TRANSPARENT_HUGEPAGE
+-	depends on BROKEN
+ 
+ endif # BLOCK
  
 -- 
 2.7.4
