@@ -1,102 +1,127 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v5 14/17] dax: move RADIX_DAX_* defines to dax.h
-Date: Fri,  7 Oct 2016 15:09:01 -0600
-Message-ID: <1475874544-24842-15-git-send-email-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH v5 16/17] xfs: use struct iomap based DAX PMD fault path
+Date: Fri,  7 Oct 2016 15:09:03 -0600
+Message-ID: <1475874544-24842-17-git-send-email-ross.zwisler@linux.intel.com>
 References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.com>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1475874544-24842-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-The RADIX_DAX_* defines currently mostly live in fs/dax.c, with just
-RADIX_DAX_ENTRY_LOCK being in include/linux/dax.h so it can be used in
-mm/filemap.c.  When we add PMD support, though, mm/filemap.c will also need
-access to the RADIX_DAX_PTE type so it can properly construct a 4k sized
-empty entry.
+Switch xfs_filemap_pmd_fault() from using dax_pmd_fault() to the new and
+improved dax_iomap_pmd_fault().  Also, now that it has no more users,
+remove xfs_get_blocks_dax_fault().
 
-Instead of shifting the defines between dax.c and dax.h as they are
-individually used in other code, just move them wholesale to dax.h so
-they'll be available when we need them.
-
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- fs/dax.c            | 14 --------------
- include/linux/dax.h | 15 ++++++++++++++-
- 2 files changed, 14 insertions(+), 15 deletions(-)
+ fs/xfs/xfs_aops.c | 26 +++++---------------------
+ fs/xfs/xfs_aops.h |  3 ---
+ fs/xfs/xfs_file.c |  2 +-
+ 3 files changed, 6 insertions(+), 25 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 5e8febe..ac3cd05 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -34,20 +34,6 @@
- #include <linux/iomap.h>
- #include "internal.h"
+diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+index 0e2a931..1c73d0a 100644
+--- a/fs/xfs/xfs_aops.c
++++ b/fs/xfs/xfs_aops.c
+@@ -1298,8 +1298,7 @@ __xfs_get_blocks(
+ 	sector_t		iblock,
+ 	struct buffer_head	*bh_result,
+ 	int			create,
+-	bool			direct,
+-	bool			dax_fault)
++	bool			direct)
+ {
+ 	struct xfs_inode	*ip = XFS_I(inode);
+ 	struct xfs_mount	*mp = ip->i_mount;
+@@ -1420,13 +1419,8 @@ __xfs_get_blocks(
+ 		if (ISUNWRITTEN(&imap))
+ 			set_buffer_unwritten(bh_result);
+ 		/* direct IO needs special help */
+-		if (create) {
+-			if (dax_fault)
+-				ASSERT(!ISUNWRITTEN(&imap));
+-			else
+-				xfs_map_direct(inode, bh_result, &imap, offset,
+-						is_cow);
+-		}
++		if (create)
++			xfs_map_direct(inode, bh_result, &imap, offset, is_cow);
+ 	}
  
--/*
-- * We use lowest available bit in exceptional entry for locking, other two
-- * bits to determine entry type. In total 3 special bits.
-- */
--#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
--#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
--#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
--#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
--#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
--#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
--#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
--		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
--		RADIX_TREE_EXCEPTIONAL_ENTRY))
+ 	/*
+@@ -1466,7 +1460,7 @@ xfs_get_blocks(
+ 	struct buffer_head	*bh_result,
+ 	int			create)
+ {
+-	return __xfs_get_blocks(inode, iblock, bh_result, create, false, false);
++	return __xfs_get_blocks(inode, iblock, bh_result, create, false);
+ }
+ 
+ int
+@@ -1476,17 +1470,7 @@ xfs_get_blocks_direct(
+ 	struct buffer_head	*bh_result,
+ 	int			create)
+ {
+-	return __xfs_get_blocks(inode, iblock, bh_result, create, true, false);
+-}
 -
- /* We choose 4096 entries - same as per-zone page wait tables */
- #define DAX_WAIT_TABLE_BITS 12
- #define DAX_WAIT_TABLE_ENTRIES (1 << DAX_WAIT_TABLE_BITS)
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index a3dfee4..e9ea78c 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -8,8 +8,21 @@
+-int
+-xfs_get_blocks_dax_fault(
+-	struct inode		*inode,
+-	sector_t		iblock,
+-	struct buffer_head	*bh_result,
+-	int			create)
+-{
+-	return __xfs_get_blocks(inode, iblock, bh_result, create, true, true);
++	return __xfs_get_blocks(inode, iblock, bh_result, create, true);
+ }
  
- struct iomap_ops;
+ /*
+diff --git a/fs/xfs/xfs_aops.h b/fs/xfs/xfs_aops.h
+index b3c6634..34dc00d 100644
+--- a/fs/xfs/xfs_aops.h
++++ b/fs/xfs/xfs_aops.h
+@@ -59,9 +59,6 @@ int	xfs_get_blocks(struct inode *inode, sector_t offset,
+ 		       struct buffer_head *map_bh, int create);
+ int	xfs_get_blocks_direct(struct inode *inode, sector_t offset,
+ 			      struct buffer_head *map_bh, int create);
+-int	xfs_get_blocks_dax_fault(struct inode *inode, sector_t offset,
+-			         struct buffer_head *map_bh, int create);
+-
+ int	xfs_end_io_direct_write(struct kiocb *iocb, loff_t offset,
+ 		ssize_t size, void *private);
+ int	xfs_setfilesize(struct xfs_inode *ip, xfs_off_t offset, size_t size);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 8f12152..7b13dda 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1750,7 +1750,7 @@ xfs_filemap_pmd_fault(
+ 	}
  
--/* We use lowest available exceptional entry bit for locking */
-+/*
-+ * We use lowest available bit in exceptional entry for locking, other two
-+ * bits to determine entry type. In total 3 special bits.
-+ */
-+#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
- #define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
-+#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-+#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-+#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
-+#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
-+#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
-+#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
-+		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
-+		RADIX_TREE_EXCEPTIONAL_ENTRY))
-+
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+-	ret = dax_pmd_fault(vma, addr, pmd, flags, xfs_get_blocks_dax_fault);
++	ret = dax_iomap_pmd_fault(vma, addr, pmd, flags, &xfs_iomap_ops);
+ 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
  
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		struct iomap_ops *ops);
+ 	if (flags & FAULT_FLAG_WRITE)
 -- 
 2.7.4
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
