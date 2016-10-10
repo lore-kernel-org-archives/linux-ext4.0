@@ -1,21 +1,24 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [PATCH] dax: correct dax iomap code namespace
-Date: Tue, 11 Oct 2016 07:19:58 +1100
-Message-ID: <20161010201958.GD23194@dastard>
-References: <20161009152803.GA20111@lst.de>
- <1476126244-27673-1-git-send-email-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH v5 13/17] dax: dax_iomap_fault() needs to call iomap_end()
+Date: Mon, 10 Oct 2016 16:05:50 -0600
+Message-ID: <20161010220550.GA22793@linux.intel.com>
+References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475874544-24842-14-git-send-email-ross.zwisler@linux.intel.com>
+ <20161010155004.GD19343@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
  Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1476126244-27673-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+In-Reply-To: <20161010155004.GD19343-jcswGhMUV9g@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -27,30 +30,31 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 10, 2016 at 01:04:04PM -0600, Ross Zwisler wrote:
-> The recently added DAX functions that use the new struct iomap data
-> structure were named iomap_dax_rw(), iomap_dax_fault() and
-> iomap_dax_actor().  These are actually defined in fs/dax.c, though, so
-> should be part of the "dax" namespace and not the "iomap" namespace.
-> Rename them to dax_iomap_rw(), dax_iomap_fault() and dax_iomap_actor()
-> respectively.
+On Mon, Oct 10, 2016 at 05:50:04PM +0200, Christoph Hellwig wrote:
+> On Fri, Oct 07, 2016 at 03:09:00PM -0600, Ross Zwisler wrote:
+> > Currently iomap_end() doesn't do anything for DAX page faults for both ext2
+> > and XFS.  ext2_iomap_end() just checks for a write underrun, and
+> > xfs_file_iomap_end() checks to see if it needs to finish a delayed
+> > allocation.  However, in the future iomap_end() calls might be needed to
+> > make sure we have balanced allocations, locks, etc.  So, add calls to
+> > iomap_end() with appropriate error handling to dax_iomap_fault().
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Suggested-by: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-> Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> ---
+> Is there a way to just have a single call to iomap_end at the end of
+> the function, after which we just return a previosuly setup return
+> value?
 > 
-> Dave, per Christoph's suggestion can you please send this to Linus for
-> v4.9?  This patch applies cleanly to both the current linux/master and the
-> current xfs/for-next.
+> e.g.
+> 
+> out:
+> 	if (ops->iomap_end) {
+> 		error = ops->iomap_end(inode, pos, PAGE_SIZE,
+> 				PAGE_SIZE, flags, &iomap);
+> 	}
+> 
+> 	if (error == -ENOMEM)
+> 		return VM_FAULT_OOM | major;
+> 	if (error < 0 && error != -EBUSY)
+> 		return VM_FAULT_SIGBUS | major;
+> 	return ret;
 
-I'll plan to send this for 4.9-rc2 or 4.9-rc3 in the first batch of
-fixes for the -rc1 merge.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+Sure, will do.
