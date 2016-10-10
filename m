@@ -1,9 +1,9 @@
 From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-Subject: Re: [PATCH v5 14/17] dax: move RADIX_DAX_* defines to dax.h
-Date: Mon, 10 Oct 2016 17:50:29 +0200
-Message-ID: <20161010155029.GE19343@lst.de>
+Subject: Re: [PATCH v5 15/17] dax: add struct iomap based DAX PMD support
+Date: Mon, 10 Oct 2016 17:59:17 +0200
+Message-ID: <20161010155917.GA19978@lst.de>
 References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475874544-24842-15-git-send-email-ross.zwisler@linux.intel.com>
+ <1475874544-24842-16-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -17,7 +17,7 @@ Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox
 To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1475874544-24842-15-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+In-Reply-To: <1475874544-24842-16-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -29,17 +29,30 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Oct 07, 2016 at 03:09:01PM -0600, Ross Zwisler wrote:
-> The RADIX_DAX_* defines currently mostly live in fs/dax.c, with just
-> RADIX_DAX_ENTRY_LOCK being in include/linux/dax.h so it can be used in
-> mm/filemap.c.  When we add PMD support, though, mm/filemap.c will also need
-> access to the RADIX_DAX_PTE type so it can properly construct a 4k sized
-> empty entry.
-> 
-> Instead of shifting the defines between dax.c and dax.h as they are
-> individually used in other code, just move them wholesale to dax.h so
-> they'll be available when we need them.
+On Fri, Oct 07, 2016 at 03:09:02PM -0600, Ross Zwisler wrote:
+> -	if (RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
+> +	if ((unsigned long)entry & RADIX_DAX_PMD)
 
-Looks fine, assuming that the macros get cleaned up in the next patches..
+Please introduce a proper inline helper that mask all the possible type
+bits out of the radix tree entry, and use them wherever you do the
+open cast.
 
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+>  restart:
+>  	spin_lock_irq(&mapping->tree_lock);
+>  	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+> +
+> +	if (entry) {
+> +		if (size_flag & RADIX_DAX_PMD) {
+> +			if (!radix_tree_exceptional_entry(entry) ||
+> +			    !((unsigned long)entry & RADIX_DAX_PMD)) {
+> +				entry = ERR_PTR(-EEXIST);
+> +				goto out_unlock;
+> +			}
+> +		} else { /* trying to grab a PTE entry */
+> +			if (radix_tree_exceptional_entry(entry) &&
+> +			    ((unsigned long)entry & RADIX_DAX_PMD) &&
+> +			    ((unsigned long)entry &
+> +			     (RADIX_DAX_HZP|RADIX_DAX_EMPTY))) {
+
+And when we do these cases N times next to each other we should
+have a local variable the valid flag bits of entry.
