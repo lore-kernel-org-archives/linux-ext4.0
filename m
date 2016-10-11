@@ -1,67 +1,77 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH v5 13/17] dax: dax_iomap_fault() needs to call iomap_end()
-Date: Tue, 11 Oct 2016 09:21:47 +0200
-Message-ID: <20161011072147.GE6952@quack2.suse.cz>
-References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475874544-24842-14-git-send-email-ross.zwisler@linux.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv3 11/41] thp: try to free page's buffers before attempt
+ split
+Date: Tue, 11 Oct 2016 17:40:31 +0200
+Message-ID: <20161011154031.GK6952@quack2.suse.cz>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-12-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1475874544-24842-14-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20160915115523.29737-12-kirill.shutemov@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 07-10-16 15:09:00, Ross Zwisler wrote:
-> Currently iomap_end() doesn't do anything for DAX page faults for both ext2
-> and XFS.  ext2_iomap_end() just checks for a write underrun, and
-> xfs_file_iomap_end() checks to see if it needs to finish a delayed
-> allocation.  However, in the future iomap_end() calls might be needed to
-> make sure we have balanced allocations, locks, etc.  So, add calls to
-> iomap_end() with appropriate error handling to dax_iomap_fault().
+On Thu 15-09-16 14:54:53, Kirill A. Shutemov wrote:
+> We want page to be isolated from the rest of the system before spliting
+> it. We rely on page count to be 2 for file pages to make sure nobody
+> uses the page: one pin to caller, one to radix-tree.
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Filesystems with backing storage can have page count increased if it has
+> buffers.
+> 
+> Let's try to free them, before attempt split. And remove one guarding
+> VM_BUG_ON_PAGE().
+> 
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ...
-> @@ -1239,6 +1253,17 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
->  		break;
->  	}
+> @@ -2041,6 +2041,23 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
+>  			goto out;
+>  		}
 >  
-> + finish_iomap:
-> +	if (ops->iomap_end) {
-> +		if (error) {
-> +			/* keep previous error */
-> +			ops->iomap_end(inode, pos, PAGE_SIZE, PAGE_SIZE, flags,
-> +					&iomap);
+> +		/* Try to free buffers before attempt split */
+> +		if (!PageSwapBacked(head) && PagePrivate(page)) {
+> +			/*
+> +			 * We cannot trigger writeback from here due possible
+> +			 * recursion if triggered from vmscan, only wait.
+> +			 *
+> +			 * Caller can trigger writeback it on its own, if safe.
+> +			 */
+> +			wait_on_page_writeback(head);
+> +
+> +			if (page_has_buffers(head) &&
+> +					!try_to_free_buffers(head)) {
+> +				ret = -EBUSY;
+> +				goto out;
+> +			}
 
-I think for the error case we should set number of 'written' bytes to 0 to
-tell fs to cancel what it has prepared. This is mostly cosmetic since the
-only case where I can imagine this would matter is shared write fault and
-in that case we have currently no error path but still it could bite us in
-the future.
-
-Other than that the patch looks good so you can add:
-
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Shouldn't you rather use try_to_release_page() here? Because filesystems
+have their ->releasepage() callbacks for freeing data associated with a
+page. It is not guaranteed page private data are buffers although it is
+true for ext4...
 
 								Honza
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
