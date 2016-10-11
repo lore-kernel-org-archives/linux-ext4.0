@@ -1,9 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv3 12/41] thp: handle write-protection faults for file THP
-Date: Tue, 11 Oct 2016 17:47:50 +0200
-Message-ID: <20161011154750.GL6952@quack2.suse.cz>
+Subject: Re: [PATCHv3 14/41] filemap: allocate huge page in
+ page_cache_read(), if allowed
+Date: Tue, 11 Oct 2016 18:15:45 +0200
+Message-ID: <20161011161545.GN6952@quack2.suse.cz>
 References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-13-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-15-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,52 +23,84 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20160915115523.29737-13-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20160915115523.29737-15-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 15-09-16 14:54:54, Kirill A. Shutemov wrote:
-> For filesystems that wants to be write-notified (has mkwrite), we will
-> encount write-protection faults for huge PMDs in shared mappings.
+On Thu 15-09-16 14:54:56, Kirill A. Shutemov wrote:
+> This patch adds basic functionality to put huge page into page cache.
 > 
-> The easiest way to handle them is to clear the PMD and let it refault as
-> wriable.
+> At the moment we only put huge pages into radix-tree if the range covered
+> by the huge page is empty.
+> 
+> We ignore shadow entires for now, just remove them from the tree before
+> inserting huge page.
+> 
+> Later we can add logic to accumulate information from shadow entires to
+> return to caller (average eviction time?).
 > 
 > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 > ---
->  mm/memory.c | 11 ++++++++++-
->  1 file changed, 10 insertions(+), 1 deletion(-)
+>  include/linux/fs.h      |   5 ++
+>  include/linux/pagemap.h |  21 ++++++-
+>  mm/filemap.c            | 148 +++++++++++++++++++++++++++++++++++++++++++-----
+>  3 files changed, 157 insertions(+), 17 deletions(-)
 > 
-> diff --git a/mm/memory.c b/mm/memory.c
-> index 83be99d9d8a1..aad8d5c6311f 100644
-> --- a/mm/memory.c
-> +++ b/mm/memory.c
-> @@ -3451,8 +3451,17 @@ static int wp_huge_pmd(struct fault_env *fe, pmd_t orig_pmd)
->  		return fe->vma->vm_ops->pmd_fault(fe->vma, fe->address, fe->pmd,
->  				fe->flags);
+...
+> @@ -663,16 +663,55 @@ static int __add_to_page_cache_locked(struct page *page,
+>  	page->index = offset;
 >  
-> +	if (fe->vma->vm_flags & VM_SHARED) {
-> +		/* Clear PMD */
-> +		zap_page_range_single(fe->vma, fe->address,
-> +				HPAGE_PMD_SIZE, NULL);
-> +		VM_BUG_ON(!pmd_none(*fe->pmd));
+>  	spin_lock_irq(&mapping->tree_lock);
+> -	error = page_cache_tree_insert(mapping, page, shadowp);
+> +	if (PageTransHuge(page)) {
+> +		struct radix_tree_iter iter;
+> +		void **slot;
+> +		void *p;
 > +
-> +		/* Refault to establish writable PMD */
-> +		return 0;
+> +		error = 0;
+> +
+> +		/* Wipe shadow entires */
+> +		radix_tree_for_each_slot(slot, &mapping->page_tree, &iter, offset) {
+> +			if (iter.index >= offset + HPAGE_PMD_NR)
+> +				break;
+> +
+> +			p = radix_tree_deref_slot_protected(slot,
+> +					&mapping->tree_lock);
+> +			if (!p)
+> +				continue;
+> +
+> +			if (!radix_tree_exception(p)) {
+> +				error = -EEXIST;
+> +				break;
+> +			}
+> +
+> +			mapping->nrexceptional--;
+> +			rcu_assign_pointer(*slot, NULL);
+
+I think you also need something like workingset_node_shadows_dec(node)
+here. It would be even better if you used something like
+clear_exceptional_entry() to have the logic in one place (you obviously
+need to factor out only part of clear_exceptional_entry() first).
+
+> +		}
+> +
+> +		if (!error)
+> +			error = __radix_tree_insert(&mapping->page_tree, offset,
+> +					compound_order(page), page);
+> +
+> +		if (!error) {
+> +			count_vm_event(THP_FILE_ALLOC);
+> +			mapping->nrpages += HPAGE_PMD_NR;
+> +			*shadowp = NULL;
+> +			__inc_node_page_state(page, NR_FILE_THPS);
+> +		}
+> +	} else {
+> +		error = page_cache_tree_insert(mapping, page, shadowp);
 > +	}
-> +
 
-Since we want to write-protect the page table entry on each page writeback
-and write-enable then on the next write, this is relatively expensive.
-Would it be that complicated to handle this fully in ->pmd_fault handler
-like we do for DAX?
-
-Maybe it doesn't have to be done now but longer term I guess it might make
-sense.
-
-Otherwise the patch looks good so feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+And I'd prefer to have this logic moved to page_cache_tree_insert() because
+logically it IMHO belongs there - it is a simply another case of handling
+of radix tree used for page cache.
 
 								Honza
 -- 
