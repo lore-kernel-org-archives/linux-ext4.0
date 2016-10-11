@@ -1,87 +1,89 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv3 12/41] thp: handle write-protection faults for file THP
-Date: Wed, 12 Oct 2016 00:47:26 +0300
-Message-ID: <20161011214726.GB27110@node.shutemov.name>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-13-kirill.shutemov@linux.intel.com>
- <20161011154750.GL6952@quack2.suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH v5 15/17] dax: add struct iomap based DAX PMD support
+Date: Tue, 11 Oct 2016 15:48:17 -0600
+Message-ID: <20161011214817.GB32165@linux.intel.com>
+References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475874544-24842-16-git-send-email-ross.zwisler@linux.intel.com>
+ <20161010155917.GA19978@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20161011154750.GL6952@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20161010155917.GA19978-jcswGhMUV9g@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 11, 2016 at 05:47:50PM +0200, Jan Kara wrote:
-> On Thu 15-09-16 14:54:54, Kirill A. Shutemov wrote:
-> > For filesystems that wants to be write-notified (has mkwrite), we will
-> > encount write-protection faults for huge PMDs in shared mappings.
-> > 
-> > The easiest way to handle them is to clear the PMD and let it refault as
-> > wriable.
-> > 
-> > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-> > ---
-> >  mm/memory.c | 11 ++++++++++-
-> >  1 file changed, 10 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/mm/memory.c b/mm/memory.c
-> > index 83be99d9d8a1..aad8d5c6311f 100644
-> > --- a/mm/memory.c
-> > +++ b/mm/memory.c
-> > @@ -3451,8 +3451,17 @@ static int wp_huge_pmd(struct fault_env *fe, pmd_t orig_pmd)
-> >  		return fe->vma->vm_ops->pmd_fault(fe->vma, fe->address, fe->pmd,
-> >  				fe->flags);
-> >  
-> > +	if (fe->vma->vm_flags & VM_SHARED) {
-> > +		/* Clear PMD */
-> > +		zap_page_range_single(fe->vma, fe->address,
-> > +				HPAGE_PMD_SIZE, NULL);
-> > +		VM_BUG_ON(!pmd_none(*fe->pmd));
+On Mon, Oct 10, 2016 at 05:59:17PM +0200, Christoph Hellwig wrote:
+> On Fri, Oct 07, 2016 at 03:09:02PM -0600, Ross Zwisler wrote:
+> > -	if (RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
+> > +	if ((unsigned long)entry & RADIX_DAX_PMD)
+> 
+> Please introduce a proper inline helper that mask all the possible type
+> bits out of the radix tree entry, and use them wherever you do the
+> open cast.
+
+Yea, this is messy.  I tried having temporary flags, but that's basically
+where we came from with the old 'type' thing which used to be
+RADIX_DAX_PTE|RADIX_DAX_PMD.  
+
+After playing with it a bit it seems like the cleanest way is to have a little
+flag test helper, like this:
+
+static int dax_flag_test(void *entry, int flags)
+{
+	return (unsigned long)entry & flags;
+}
+
+...
+
+		/*
+		 * Besides huge zero pages the only other thing that gets
+		 * downgraded are empty entries which don't need to be
+		 * unmapped.
+		 */
+		if (pmd_downgrade && dax_flag_test(entry, RADIX_DAX_HZP))
+			unmap_mapping_range(mapping,
+				(index << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+
+etc.   Please let me know if this is undesirable for some reason.  Vs keeping
+the flags in a local variable, this is good because a) it doesn't require
+callers to cast, and b) it makes operator precedence easy because the flags
+are a param, so no "flags & (flag1|flag2)" nesting, and c) we don't keep a
+local variable that could get out of sync with 'entry'.
+
+> >  restart:
+> >  	spin_lock_irq(&mapping->tree_lock);
+> >  	entry = get_unlocked_mapping_entry(mapping, index, &slot);
 > > +
-> > +		/* Refault to establish writable PMD */
-> > +		return 0;
-> > +	}
-> > +
+> > +	if (entry) {
+> > +		if (size_flag & RADIX_DAX_PMD) {
+> > +			if (!radix_tree_exceptional_entry(entry) ||
+> > +			    !((unsigned long)entry & RADIX_DAX_PMD)) {
+> > +				entry = ERR_PTR(-EEXIST);
+> > +				goto out_unlock;
+> > +			}
+> > +		} else { /* trying to grab a PTE entry */
+> > +			if (radix_tree_exceptional_entry(entry) &&
+> > +			    ((unsigned long)entry & RADIX_DAX_PMD) &&
+> > +			    ((unsigned long)entry &
+> > +			     (RADIX_DAX_HZP|RADIX_DAX_EMPTY))) {
 > 
-> Since we want to write-protect the page table entry on each page writeback
-> and write-enable then on the next write, this is relatively expensive.
-> Would it be that complicated to handle this fully in ->pmd_fault handler
-> like we do for DAX?
-> 
-> Maybe it doesn't have to be done now but longer term I guess it might make
-> sense.
-
-Right. This approach is just simplier to implement. We can rework it if it
-will show up on traces.
-
-> Otherwise the patch looks good so feel free to add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-
-Thanks!
-
--- 
- Kirill A. Shutemov
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> And when we do these cases N times next to each other we should
+> have a local variable the valid flag bits of entry.
