@@ -1,66 +1,75 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v5 09/17] dax: coordinate locking for offsets in PMD range
-Date: Tue, 11 Oct 2016 15:18:04 -0600
-Message-ID: <20161011211804.GA32165@linux.intel.com>
-References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
- <1475874544-24842-10-git-send-email-ross.zwisler@linux.intel.com>
- <20161011070409.GC6952@quack2.suse.cz>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCHv3 11/41] thp: try to free page's buffers before attempt
+ split
+Date: Wed, 12 Oct 2016 00:43:53 +0300
+Message-ID: <20161011214353.GA27110@node.shutemov.name>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-12-kirill.shutemov@linux.intel.com>
+ <20161011154031.GK6952@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
+Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
         Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-        linux-xfs@vger.kernel.org
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161011070409.GC6952@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161011154031.GK6952@quack2.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 11, 2016 at 09:04:09AM +0200, Jan Kara wrote:
-> On Fri 07-10-16 15:08:56, Ross Zwisler wrote:
-> > DAX radix tree locking currently locks entries based on the unique
-> > combination of the 'mapping' pointer and the pgoff_t 'index' for the entry.
-> > This works for PTEs, but as we move to PMDs we will need to have all the
-> > offsets within the range covered by the PMD to map to the same bit lock.
-> > To accomplish this, for ranges covered by a PMD entry we will instead lock
-> > based on the page offset of the beginning of the PMD entry.  The 'mapping'
-> > pointer is still used in the same way.
+On Tue, Oct 11, 2016 at 05:40:31PM +0200, Jan Kara wrote:
+> On Thu 15-09-16 14:54:53, Kirill A. Shutemov wrote:
+> > We want page to be isolated from the rest of the system before spliting
+> > it. We rely on page count to be 2 for file pages to make sure nobody
+> > uses the page: one pin to caller, one to radix-tree.
 > > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> 
-> The patch looks good to me. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> Just one thing which IMO deserves a comment below:
-> 
-> > @@ -448,9 +460,12 @@ restart:
-> >  }
+> > Filesystems with backing storage can have page count increased if it has
+> > buffers.
+> > 
+> > Let's try to free them, before attempt split. And remove one guarding
+> > VM_BUG_ON_PAGE().
+> > 
+> > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> ...
+> > @@ -2041,6 +2041,23 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
+> >  			goto out;
+> >  		}
 > >  
-> >  void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> > -				   pgoff_t index, bool wake_all)
-> > +		pgoff_t index, void *entry, bool wake_all)
-> >  {
-> > -	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
-> > +	struct exceptional_entry_key key;
-> > +	wait_queue_head_t *wq;
+> > +		/* Try to free buffers before attempt split */
+> > +		if (!PageSwapBacked(head) && PagePrivate(page)) {
+> > +			/*
+> > +			 * We cannot trigger writeback from here due possible
+> > +			 * recursion if triggered from vmscan, only wait.
+> > +			 *
+> > +			 * Caller can trigger writeback it on its own, if safe.
+> > +			 */
+> > +			wait_on_page_writeback(head);
 > > +
-> > +	wq = dax_entry_waitqueue(mapping, index, entry, &key);
+> > +			if (page_has_buffers(head) &&
+> > +					!try_to_free_buffers(head)) {
+> > +				ret = -EBUSY;
+> > +				goto out;
+> > +			}
 > 
-> So I believe we should comment above this function that the 'entry' it gets
-> may be invalid by the time it gets it (we call it without tree_lock held so
-> the passed entry may be changed in the radix tree as we work) but we use it
-> only to find appropriate waitqueue where tasks sleep waiting for that old
-> entry to unlock so we indeed wake up all tasks we need.
+> Shouldn't you rather use try_to_release_page() here? Because filesystems
+> have their ->releasepage() callbacks for freeing data associated with a
+> page. It is not guaranteed page private data are buffers although it is
+> true for ext4...
 
-Added, thanks for the suggestion.
+Fair enough. Will fix this.
+
+-- 
+ Kirill A. Shutemov
