@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v6 13/17] dax: move RADIX_DAX_* defines to dax.h
-Date: Wed, 12 Oct 2016 16:50:18 -0600
-Message-ID: <20161012225022.15507-14-ross.zwisler@linux.intel.com>
+Subject: [PATCH v6 07/17] dax: consistent variable naming for DAX entries
+Date: Wed, 12 Oct 2016 16:50:12 -0600
+Message-ID: <20161012225022.15507-8-ross.zwisler@linux.intel.com>
 References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,75 +27,121 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-The RADIX_DAX_* defines currently mostly live in fs/dax.c, with just
-RADIX_DAX_ENTRY_LOCK being in include/linux/dax.h so it can be used in
-mm/filemap.c.  When we add PMD support, though, mm/filemap.c will also need
-access to the RADIX_DAX_PTE type so it can properly construct a 4k sized
-empty entry.
+No functional change.
 
-Instead of shifting the defines between dax.c and dax.h as they are
-individually used in other code, just move them wholesale to dax.h so
-they'll be available when we need them.
+Consistently use the variable name 'entry' instead of 'ret' for DAX radix
+tree entries.  This was already happening in most of the code, so update
+get_unlocked_mapping_entry(), grab_mapping_entry() and
+dax_unlock_mapping_entry().
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c            | 14 --------------
- include/linux/dax.h | 15 ++++++++++++++-
- 2 files changed, 14 insertions(+), 15 deletions(-)
+ fs/dax.c | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 6edd89b..c45cc4d 100644
+index 98189ac..152a6e1 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -34,20 +34,6 @@
- #include <linux/iomap.h>
- #include "internal.h"
+@@ -357,7 +357,7 @@ static inline void *unlock_slot(struct address_space *mapping, void **slot)
+ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+ 					pgoff_t index, void ***slotp)
+ {
+-	void *ret, **slot;
++	void *entry, **slot;
+ 	struct wait_exceptional_entry_queue ewait;
+ 	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
  
--/*
-- * We use lowest available bit in exceptional entry for locking, other two
-- * bits to determine entry type. In total 3 special bits.
-- */
--#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
--#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
--#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
--#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
--#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
--#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
--#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
--		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
--		RADIX_TREE_EXCEPTIONAL_ENTRY))
--
- /* We choose 4096 entries - same as per-zone page wait tables */
- #define DAX_WAIT_TABLE_BITS 12
- #define DAX_WAIT_TABLE_ENTRIES (1 << DAX_WAIT_TABLE_BITS)
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index a3dfee4..e9ea78c 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -8,8 +8,21 @@
+@@ -367,13 +367,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+ 	ewait.key.index = index;
  
- struct iomap_ops;
+ 	for (;;) {
+-		ret = __radix_tree_lookup(&mapping->page_tree, index, NULL,
++		entry = __radix_tree_lookup(&mapping->page_tree, index, NULL,
+ 					  &slot);
+-		if (!ret || !radix_tree_exceptional_entry(ret) ||
++		if (!entry || !radix_tree_exceptional_entry(entry) ||
+ 		    !slot_locked(mapping, slot)) {
+ 			if (slotp)
+ 				*slotp = slot;
+-			return ret;
++			return entry;
+ 		}
+ 		prepare_to_wait_exclusive(wq, &ewait.wait,
+ 					  TASK_UNINTERRUPTIBLE);
+@@ -396,13 +396,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
+  */
+ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index)
+ {
+-	void *ret, **slot;
++	void *entry, **slot;
  
--/* We use lowest available exceptional entry bit for locking */
-+/*
-+ * We use lowest available bit in exceptional entry for locking, other two
-+ * bits to determine entry type. In total 3 special bits.
-+ */
-+#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 3)
- #define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
-+#define RADIX_DAX_PTE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-+#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-+#define RADIX_DAX_TYPE_MASK (RADIX_DAX_PTE | RADIX_DAX_PMD)
-+#define RADIX_DAX_TYPE(entry) ((unsigned long)entry & RADIX_DAX_TYPE_MASK)
-+#define RADIX_DAX_SECTOR(entry) (((unsigned long)entry >> RADIX_DAX_SHIFT))
-+#define RADIX_DAX_ENTRY(sector, pmd) ((void *)((unsigned long)sector << \
-+		RADIX_DAX_SHIFT | (pmd ? RADIX_DAX_PMD : RADIX_DAX_PTE) | \
-+		RADIX_TREE_EXCEPTIONAL_ENTRY))
-+
+ restart:
+ 	spin_lock_irq(&mapping->tree_lock);
+-	ret = get_unlocked_mapping_entry(mapping, index, &slot);
++	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+ 	/* No entry for given index? Make sure radix tree is big enough. */
+-	if (!ret) {
++	if (!entry) {
+ 		int err;
  
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		struct iomap_ops *ops);
+ 		spin_unlock_irq(&mapping->tree_lock);
+@@ -410,10 +410,10 @@ restart:
+ 				mapping_gfp_mask(mapping) & ~__GFP_HIGHMEM);
+ 		if (err)
+ 			return ERR_PTR(err);
+-		ret = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
++		entry = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
+ 			       RADIX_DAX_ENTRY_LOCK);
+ 		spin_lock_irq(&mapping->tree_lock);
+-		err = radix_tree_insert(&mapping->page_tree, index, ret);
++		err = radix_tree_insert(&mapping->page_tree, index, entry);
+ 		radix_tree_preload_end();
+ 		if (err) {
+ 			spin_unlock_irq(&mapping->tree_lock);
+@@ -425,11 +425,11 @@ restart:
+ 		/* Good, we have inserted empty locked entry into the tree. */
+ 		mapping->nrexceptional++;
+ 		spin_unlock_irq(&mapping->tree_lock);
+-		return ret;
++		return entry;
+ 	}
+ 	/* Normal page in radix tree? */
+-	if (!radix_tree_exceptional_entry(ret)) {
+-		struct page *page = ret;
++	if (!radix_tree_exceptional_entry(entry)) {
++		struct page *page = entry;
+ 
+ 		get_page(page);
+ 		spin_unlock_irq(&mapping->tree_lock);
+@@ -442,9 +442,9 @@ restart:
+ 		}
+ 		return page;
+ 	}
+-	ret = lock_slot(mapping, slot);
++	entry = lock_slot(mapping, slot);
+ 	spin_unlock_irq(&mapping->tree_lock);
+-	return ret;
++	return entry;
+ }
+ 
+ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+@@ -469,11 +469,11 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+ 
+ void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
+ {
+-	void *ret, **slot;
++	void *entry, **slot;
+ 
+ 	spin_lock_irq(&mapping->tree_lock);
+-	ret = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
+-	if (WARN_ON_ONCE(!ret || !radix_tree_exceptional_entry(ret) ||
++	entry = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
++	if (WARN_ON_ONCE(!entry || !radix_tree_exceptional_entry(entry) ||
+ 			 !slot_locked(mapping, slot))) {
+ 		spin_unlock_irq(&mapping->tree_lock);
+ 		return;
 -- 
 2.9.0
