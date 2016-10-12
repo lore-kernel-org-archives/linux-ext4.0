@@ -1,103 +1,201 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv3 13/41] truncate: make sure invalidate_mapping_pages()
- can discard huge pages
-Date: Wed, 12 Oct 2016 08:43:20 +0200
-Message-ID: <20161012064320.GA13896@quack2.suse.cz>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-14-kirill.shutemov@linux.intel.com>
- <20161011155815.GM6952@quack2.suse.cz>
- <20161011215349.GC27110@node.shutemov.name>
+Subject: Re: [PATCH v5 15/17] dax: add struct iomap based DAX PMD support
+Date: Wed, 12 Oct 2016 09:45:05 +0200
+Message-ID: <20161012074505.GC13896@quack2.suse.cz>
+References: <1475874544-24842-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1475874544-24842-16-git-send-email-ross.zwisler@linux.intel.com>
+ <20161011083152.GG6952@quack2.suse.cz>
+ <20161011225130.GC32165@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161011215349.GC27110@node.shutemov.name>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161011225130.GC32165@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 12-10-16 00:53:49, Kirill A. Shutemov wrote:
-> On Tue, Oct 11, 2016 at 05:58:15PM +0200, Jan Kara wrote:
-> > On Thu 15-09-16 14:54:55, Kirill A. Shutemov wrote:
-> > > invalidate_inode_page() has expectation about page_count() of the page
-> > > -- if it's not 2 (one to caller, one to radix-tree), it will not be
-> > > dropped. That condition almost never met for THPs -- tail pages are
-> > > pinned to the pagevec.
-> > > 
-> > > Let's drop them, before calling invalidate_inode_page().
-> > > 
-> > > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-> > > ---
-> > >  mm/truncate.c | 11 +++++++++++
-> > >  1 file changed, 11 insertions(+)
-> > > 
-> > > diff --git a/mm/truncate.c b/mm/truncate.c
-> > > index a01cce450a26..ce904e4b1708 100644
-> > > --- a/mm/truncate.c
-> > > +++ b/mm/truncate.c
-> > > @@ -504,10 +504,21 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
-> > >  				/* 'end' is in the middle of THP */
-> > >  				if (index ==  round_down(end, HPAGE_PMD_NR))
-> > >  					continue;
-> > > +				/*
-> > > +				 * invalidate_inode_page() expects
-> > > +				 * page_count(page) == 2 to drop page from page
-> > > +				 * cache -- drop tail pages references.
-> > > +				 */
-> > > +				get_page(page);
-> > > +				pagevec_release(&pvec);
+On Tue 11-10-16 16:51:30, Ross Zwisler wrote:
+> On Tue, Oct 11, 2016 at 10:31:52AM +0200, Jan Kara wrote:
+> > On Fri 07-10-16 15:09:02, Ross Zwisler wrote:
+> > > diff --git a/fs/dax.c b/fs/dax.c
+> > > index ac3cd05..e51d51f 100644
+> > > --- a/fs/dax.c
+> > > +++ b/fs/dax.c
+> > > @@ -281,7 +281,7 @@ static wait_queue_head_t *dax_entry_waitqueue(struct address_space *mapping,
+> > >  	 * queue to the start of that PMD.  This ensures that all offsets in
+> > >  	 * the range covered by the PMD map to the same bit lock.
+> > >  	 */
+> > > -	if (RADIX_DAX_TYPE(entry) == RADIX_DAX_PMD)
+> > > +	if ((unsigned long)entry & RADIX_DAX_PMD)
+> > >  		index &= ~((1UL << (PMD_SHIFT - PAGE_SHIFT)) - 1);
 > > 
-> > I'm not quite sure why this is needed. When you have multiorder entry in
-> > the radix tree for your huge page, then you should not get more entries in
-> > the pagevec for your huge page. What do I miss?
+> > I agree with Christoph - helper for masking type bits would make this
+> > nicer.
 > 
-> For compatibility reason find_get_entries() (which is called by
-> pagevec_lookup_entries()) collects all subpages of huge page in the range
-> (head/tails). See patch [07/41]
+> Fixed via a dax_flag_test() helper as I outlined in the mail to Christoph.  It
+> seems clean to me, but if you or Christoph feel strongly that it would be
+> cleaner as a local 'flags' variable, I'll make the change.
+
+One idea I had is that you could have helpers like:
+
+dax_is_pmd_entry()
+dax_is_pte_entry()
+dax_is_empty_entry()
+dax_is_hole_entry()
+
+And then you would use these helpers - all the flags would be hidden in the
+helpers so even if we decide to change the flagging scheme to compress
+things or so, it should be pretty local change.
+
+> > > -		entry = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
+> > > -			       RADIX_DAX_ENTRY_LOCK);
+> > > +
+> > > +		/*
+> > > +		 * Besides huge zero pages the only other thing that gets
+> > > +		 * downgraded are empty entries which don't need to be
+> > > +		 * unmapped.
+> > > +		 */
+> > > +		if (pmd_downgrade && ((unsigned long)entry & RADIX_DAX_HZP))
+> > > +			unmap_mapping_range(mapping,
+> > > +				(index << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+> > > +
+> > >  		spin_lock_irq(&mapping->tree_lock);
+> > > -		err = radix_tree_insert(&mapping->page_tree, index, entry);
+> > > +
+> > > +		if (pmd_downgrade) {
+> > > +			radix_tree_delete(&mapping->page_tree, index);
+> > > +			mapping->nrexceptional--;
+> > > +			dax_wake_mapping_entry_waiter(mapping, index, entry,
+> > > +					false);
+> > 
+> > You need to set 'wake_all' argument here to true. Otherwise there could be
+> > waiters waiting for non-existent entry forever...
 > 
-> So huge page, which is fully in the range it will be pinned up to
-> PAGEVEC_SIZE times.
+> Interesting.   Fixed, but let me make sure I understand.  So is the issue that
+> you could have say 2 tasks waiting on a PMD index that has been rounded down
+> to the PMD index via dax_entry_waitqueue()?
+> 
+> The person holding the lock on the entry would remove the PMD, insert a PTE
+> and wake just one of the PMD aligned waiters.  That waiter would wake up, do
+> something PTE based (since the PMD space is now polluted with PTEs), and then
+> wake any waiters on it's PTE index.  Meanwhile, the second waiter could sleep
+> forever on the PMD aligned index.  Is this correct?
 
-Yeah, I see. But then won't it be cleaner to provide iteration method that
-would add to pagevec each radix tree entry (regardless of its order) only
-once and then use it in places where we care? Instead of strange dances
-like you do here?
+Yes.
 
-Ultimately we could convert all the places to use these new iteration
-methods but I don't see that as immediately necessary and maybe there are
-places where getting all the subpages in the pagevec actually makes life
-simpler for us (please point me if you know about such place).
+> So, perhaps more succinctly:
+> 
+> Thread 1		Thread 2		Thread 3
+> --------		--------		--------
+> index 0x202, hold PMD lock 0x200
+> 			index 0x203, sleep on 0x200
+> 						index 0x204, sleep on 0x200
+> downgrade, removing 0x200
+> wake one waiter on 0x200
+> insert PTE @ 0x202
+> 			wake up, grab index 0x203
+> 			...
+> 			wake one waiter on index 0x203
+> 
+> 						... sleeps forever
+> Right?
+ 
+Exactly.
 
-On a somewhat unrelated note: I've noticed that you don't invalidate
-a huge page when only part of it should be invalidated. That actually
-breaks some assumptions filesystems make. In particular direct IO code
-assumes that if you do
+> > > @@ -608,22 +683,28 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
+> > >  		error = radix_tree_preload(vmf->gfp_mask & ~__GFP_HIGHMEM);
+> > >  		if (error)
+> > >  			return ERR_PTR(error);
+> > > +	} else if (((unsigned long)entry & RADIX_DAX_HZP) &&
+> > > +			!(flags & RADIX_DAX_HZP)) {
+> > > +		/* replacing huge zero page with PMD block mapping */
+> > > +		unmap_mapping_range(mapping,
+> > > +			(vmf->pgoff << PAGE_SHIFT) & PMD_MASK, PMD_SIZE, 0);
+> > >  	}
+> > >  
+> > >  	spin_lock_irq(&mapping->tree_lock);
+> > > -	new_entry = (void *)((unsigned long)RADIX_DAX_ENTRY(sector, false) |
+> > > -		       RADIX_DAX_ENTRY_LOCK);
+> > > +	new_entry = dax_radix_entry(sector, flags);
+> > > +
+> > 
+> > You've lost the RADIX_DAX_ENTRY_LOCK flag here?
+> 
+> Oh, nope, that's embedded in the dax_radix_entry() helper:
+> 
+> /* entries begin locked */
+> static inline void *dax_radix_entry(sector_t sector, unsigned long flags)
+> {
+> 	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
+> 			((unsigned long)sector << RADIX_DAX_SHIFT) |
+> 			RADIX_DAX_ENTRY_LOCK);
+> }
+> 
+> I'll s/dax_radix_entry/dax_radix_locked_entry/ or something to make this
+> clearer to the reader.
 
-	filemap_write_and_wait_range(inode, start, end);
-	invalidate_inode_pages2_range(inode, start, end);
+Yep, that would be better. Thanks!
 
-all the page cache covering start-end *will* be invalidated. Your skipping
-of partial pages breaks this assumption and thus can bring consistency
-issues (e.g. write done using direct IO won't be seen by following buffered
-read).
+> > >  	if (hole_fill) {
+> > >  		__delete_from_page_cache(entry, NULL);
+> > >  		/* Drop pagecache reference */
+> > >  		put_page(entry);
+> > > -		error = radix_tree_insert(page_tree, index, new_entry);
+> > > +		error = __radix_tree_insert(page_tree, index,
+> > > +				dax_radix_order(new_entry), new_entry);
+> > >  		if (error) {
+> > >  			new_entry = ERR_PTR(error);
+> > >  			goto unlock;
+> > >  		}
+> > >  		mapping->nrexceptional++;
+> > > -	} else {
+> > > +	} else if ((unsigned long)entry & (RADIX_DAX_HZP|RADIX_DAX_EMPTY)) {
+> > >  		void **slot;
+> > >  		void *ret;
+> > 
+> > Uh, why this condition need to change? Is it some protection so that we
+> > don't replace a mapped PMD entry with PTE one?
+> 
+> Yea, the logic was that if we have a radix tree that has PMDs in it, and some
+> new process comes along doing PTE faults, we can just leave the DAX mapped PMD
+> entries in the tree.  Locking, dirtying and flushing will happen on PMD basis
+> for all processes.
+
+Yup, I got this and I agree with that.
+
+> If you think this is dangerous or not worth the effort we can make it like the
+> hole case where any PTE sized faults will result in an unmap and a downgrade
+> to PTE sized entries in the radix tree.
+
+Ok, so probably I'm somewhat surprised that the logic that mapped PMD entry
+is not replaced by a PTE entry is handled down in
+dax_insert_mapping_entry(). But now looking at this it is just how we work
+in other cases as well so please just add a comment there.
+
+Longer term we may just shortcut the fault if grab_mapping_entry() will
+return us entry of type we can use. That can save us quite some work if
+several processes are mapping the same file. But again that's an
+optimization to do once the PMD, iomap, and page protection works settle.
 
 								Honza
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
