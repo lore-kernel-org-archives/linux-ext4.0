@@ -1,58 +1,88 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v6 06/17] dax: remove the last BUG_ON() from fs/dax.c
-Date: Wed, 12 Oct 2016 16:50:11 -0600
-Message-ID: <20161012225022.15507-7-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH v6 03/17] dax: remove buffer_size_valid()
+Date: Wed, 12 Oct 2016 16:50:08 -0600
+Message-ID: <20161012225022.15507-4-ross.zwisler@linux.intel.com>
 References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161012225022.15507-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Don't take down the kernel if we get an invalid 'from' and 'length'
-argument pair.  Just warn once and return an error.
+Now that ext4 properly sets bh.b_size when we call get_block() for a hole,
+rely on that value and remove the buffer_size_valid() sanity check.
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 ---
- fs/dax.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/dax.c | 22 +---------------------
+ 1 file changed, 1 insertion(+), 21 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index ac28cdf..98189ac 100644
+index cc025f8..9b9be8a 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1194,7 +1194,8 @@ int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
- 	/* Block boundary? Nothing to do */
- 	if (!length)
- 		return 0;
--	BUG_ON((offset + length) > PAGE_SIZE);
-+	if (WARN_ON_ONCE((offset + length) > PAGE_SIZE))
-+		return -EINVAL;
+@@ -123,19 +123,6 @@ static bool buffer_written(struct buffer_head *bh)
+ 	return buffer_mapped(bh) && !buffer_unwritten(bh);
+ }
  
- 	memset(&bh, 0, sizeof(bh));
- 	bh.b_bdev = inode->i_sb->s_bdev;
+-/*
+- * When ext4 encounters a hole, it returns without modifying the buffer_head
+- * which means that we can't trust b_size.  To cope with this, we set b_state
+- * to 0 before calling get_block and, if any bit is set, we know we can trust
+- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
+- * and would save us time calling get_block repeatedly.
+- */
+-static bool buffer_size_valid(struct buffer_head *bh)
+-{
+-	return bh->b_state != 0;
+-}
+-
+-
+ static sector_t to_sector(const struct buffer_head *bh,
+ 		const struct inode *inode)
+ {
+@@ -177,8 +164,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
+ 				rc = get_block(inode, block, bh, rw == WRITE);
+ 				if (rc)
+ 					break;
+-				if (!buffer_size_valid(bh))
+-					bh->b_size = 1 << blkbits;
+ 				bh_max = pos - first + bh->b_size;
+ 				bdev = bh->b_bdev;
+ 				/*
+@@ -1012,12 +997,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 
+ 	bdev = bh.b_bdev;
+ 
+-	/*
+-	 * If the filesystem isn't willing to tell us the length of a hole,
+-	 * just fall back to PTEs.  Calling get_block 512 times in a loop
+-	 * would be silly.
+-	 */
+-	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
++	if (bh.b_size < PMD_SIZE) {
+ 		dax_pmd_dbg(&bh, address, "allocated block too small");
+ 		return VM_FAULT_FALLBACK;
+ 	}
 -- 
 2.9.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
