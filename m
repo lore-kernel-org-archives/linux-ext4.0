@@ -1,79 +1,37 @@
-From: Joe Perches <joe@perches.com>
-Subject: [PATCH] ext4: super.c: Update logging style using PR_CONT
-Date: Tue, 11 Oct 2016 18:57:58 -0700
-Message-ID: <ac72258a7f35042014aede22502d947b59ada155.1476237454.git.joe@perches.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: ext4: remove another test in ext4_alloc_file_blocks()
+Date: Wed, 12 Oct 2016 09:00:02 +0300
+Message-ID: <20161012060002.GA12778@mwanda>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Fabian Frederick <fabf@skynet.be>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:19551 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753552AbcJLGCi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Oct 2016 02:02:38 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Recent commit require line continuing printks to use PR_CONT.
+Before commit c3fe493ccdb1 ('ext4: remove unneeded test in
+ext4_alloc_file_blocks()') then it was possible for "depth" to be -1
+but now, it's not possible that it is negative.
 
-Update super.c to use PR_CONT and use vsprintf extension %pV
-to avoid a printk/vprintk/printk("\n") sequence as well.
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/ext4/super.c | 21 +++++++++++----------
- 1 file changed, 11 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6db81fbcbaa6..20da99da0a34 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -597,14 +597,15 @@ void __ext4_std_error(struct super_block *sb, const char *function,
- void __ext4_abort(struct super_block *sb, const char *function,
- 		unsigned int line, const char *fmt, ...)
- {
-+	struct va_format vaf;
- 	va_list args;
- 
- 	save_error_info(sb, function, line);
- 	va_start(args, fmt);
--	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: ", sb->s_id,
--	       function, line);
--	vprintk(fmt, args);
--	printk("\n");
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: %pV\n",
-+	       sb->s_id, function, line, &vaf);
- 	va_end(args);
- 
- 	if ((sb->s_flags & MS_RDONLY) == 0) {
-@@ -2715,12 +2716,12 @@ static void print_daily_error_info(unsigned long arg)
- 		       es->s_first_error_func,
- 		       le32_to_cpu(es->s_first_error_line));
- 		if (es->s_first_error_ino)
--			printk(": inode %u",
-+			printk(KERN_CONT ": inode %u",
- 			       le32_to_cpu(es->s_first_error_ino));
- 		if (es->s_first_error_block)
--			printk(": block %llu", (unsigned long long)
-+			printk(KERN_CONT ": block %llu", (unsigned long long)
- 			       le64_to_cpu(es->s_first_error_block));
--		printk("\n");
-+		printk(KERN_CONT "\n");
- 	}
- 	if (es->s_last_error_time) {
- 		printk(KERN_NOTICE "EXT4-fs (%s): last error at time %u: %.*s:%d",
-@@ -2729,12 +2730,12 @@ static void print_daily_error_info(unsigned long arg)
- 		       es->s_last_error_func,
- 		       le32_to_cpu(es->s_last_error_line));
- 		if (es->s_last_error_ino)
--			printk(": inode %u",
-+			printk(KERN_CONT ": inode %u",
- 			       le32_to_cpu(es->s_last_error_ino));
- 		if (es->s_last_error_block)
--			printk(": block %llu", (unsigned long long)
-+			printk(KERN_CONT ": block %llu", (unsigned long long)
- 			       le64_to_cpu(es->s_last_error_block));
--		printk("\n");
-+		printk(KERN_CONT "\n");
- 	}
- 	mod_timer(&sbi->s_err_report, jiffies + 24*60*60*HZ);  /* Once a day */
- }
--- 
-2.10.0.rc2.1.g053435c
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c930a01..dca394c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4701,7 +4701,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+ 		/*
+ 		 * Recalculate credits when extent tree depth changes.
+ 		 */
+-		if (depth >= 0 && depth != ext_depth(inode)) {
++		if (depth != ext_depth(inode)) {
+ 			credits = ext4_chunk_trans_blocks(inode, len);
+ 			depth = ext_depth(inode);
+ 		}
