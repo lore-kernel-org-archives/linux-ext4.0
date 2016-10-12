@@ -1,7 +1,8 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v6 00/17] re-enable DAX PMD support
-Date: Wed, 12 Oct 2016 16:50:05 -0600
-Message-ID: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
+Subject: [PATCH v6 02/17] ext4: tell DAX the size of allocation holes
+Date: Wed, 12 Oct 2016 16:50:07 -0600
+Message-ID: <20161012225022.15507-3-ross.zwisler@linux.intel.com>
+References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -14,6 +15,7 @@ Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox
  Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
 To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161012225022.15507-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -25,71 +27,32 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-locking.  This series allows DAX PMDs to participate in the DAX radix tree
-based locking scheme so that they can be re-enabled.
+When DAX calls _ext4_get_block() and the file offset points to a hole we
+currently don't set bh->b_size.  This is current worked around via
+buffer_size_valid() in fs/dax.c.
 
-For now I'm still using the same baseline for this series as I did with v5.
-I'll update the baseline once v4.9-rc1 is released, dropping whatever patches
-have already been merged.
+_ext4_get_block() has the hole size information from ext4_map_blocks(), so
+populate bh->b_size so we can remove buffer_size_valid() in a later patch.
 
-Changes since v5:
- - Reworked the way that DAX radix tree flags were handled. The old
-   handling was correct but a bit hard for the reader to parse.  Hopefully
-   this new way is more readable & maintainable.  (Jan & Christoph)
- - Made the definition of dax_radix_order() conditional based on
-   CONFIG_FS_DAX_PMD.  This was necessary because PMD_SHIFT isn't defined
-   on all systems. (kbuild)
- - Dropped the incorrect patch "ext2: return -EIO on ext2_iomap_end()
-   failure".  (Jan)
- - A few error path fixes in grab_mapping_entry().  (Jan)
- - A few more comments in grab_mapping_entry(),
-   dax_wake_mapping_entry_waiter() and dax_insert_mapping_entry(). (Jan)
- - Removed the 'inline' keyword from dax_iomap_sector().  (Dan)
- - Cleaned up the path through ops->iomap_end() in both dax_iomap_fault()
-   and dax_iomap_pmd_fault().  We now pass 0 for the 'written' argument on
-   error conditions.  (Jan & Christoph)
- - Improved the naming of 'size' to 'max_pgoff' in dax_iomap_pmd_fault().
-   (Jan)
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+---
+ fs/ext4/inode.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Thank you to Jan and Christoph for their review feedback.
-
-Here is a tree containing my changes:
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v6
-
-This tree has passed xfstests for ext2, ext4 and XFS both with and without
-DAX, and has passed targeted testing where I inserted, removed and flushed
-DAX PTEs and PMDs in every combination I could think of.
-
-Ross Zwisler (17):
-  ext4: allow DAX writeback for hole punch
-  ext4: tell DAX the size of allocation holes
-  dax: remove buffer_size_valid()
-  ext2: remove support for DAX PMD faults
-  dax: make 'wait_table' global variable static
-  dax: remove the last BUG_ON() from fs/dax.c
-  dax: consistent variable naming for DAX entries
-  dax: coordinate locking for offsets in PMD range
-  dax: remove dax_pmd_fault()
-  dax: correct dax iomap code namespace
-  dax: add dax_iomap_sector() helper function
-  dax: dax_iomap_fault() needs to call iomap_end()
-  dax: move RADIX_DAX_* defines to dax.h
-  dax: move put_(un)locked_mapping_entry() in dax.c
-  dax: add struct iomap based DAX PMD support
-  xfs: use struct iomap based DAX PMD fault path
-  dax: remove "depends on BROKEN" from FS_DAX_PMD
-
- fs/Kconfig          |   1 -
- fs/dax.c            | 825 +++++++++++++++++++++++++++++-----------------------
- fs/ext2/file.c      |  35 +--
- fs/ext4/inode.c     |   7 +-
- fs/xfs/xfs_aops.c   |  26 +-
- fs/xfs/xfs_aops.h   |   3 -
- fs/xfs/xfs_file.c   |  10 +-
- include/linux/dax.h |  58 +++-
- mm/filemap.c        |   5 +-
- 9 files changed, 538 insertions(+), 432 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0900cb4..9075fac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -759,6 +759,9 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
+ 		ext4_update_bh_state(bh, map.m_flags);
+ 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
+ 		ret = 0;
++	} else if (ret == 0) {
++		/* hole case, need to fill in bh->b_size */
++		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
+ 	}
+ 	return ret;
+ }
 -- 
 2.9.0
