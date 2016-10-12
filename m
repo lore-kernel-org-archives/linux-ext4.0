@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v6 07/17] dax: consistent variable naming for DAX entries
-Date: Wed, 12 Oct 2016 16:50:12 -0600
-Message-ID: <20161012225022.15507-8-ross.zwisler@linux.intel.com>
+Subject: [PATCH v6 11/17] dax: add dax_iomap_sector() helper function
+Date: Wed, 12 Oct 2016 16:50:16 -0600
+Message-ID: <20161012225022.15507-12-ross.zwisler@linux.intel.com>
 References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,121 +27,53 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-No functional change.
-
-Consistently use the variable name 'entry' instead of 'ret' for DAX radix
-tree entries.  This was already happening in most of the code, so update
-get_unlocked_mapping_entry(), grab_mapping_entry() and
-dax_unlock_mapping_entry().
+To be able to correctly calculate the sector from a file position and a
+struct iomap there is a complex little bit of logic that currently happens
+in both dax_iomap_actor() and dax_iomap_fault().  This will need to be
+repeated yet again in the DAX PMD fault handler when it is added, so break
+it out into a helper function.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 34 +++++++++++++++++-----------------
- 1 file changed, 17 insertions(+), 17 deletions(-)
+ fs/dax.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 98189ac..152a6e1 100644
+index fdbd7a1..7737954 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -357,7 +357,7 @@ static inline void *unlock_slot(struct address_space *mapping, void **slot)
- static void *get_unlocked_mapping_entry(struct address_space *mapping,
- 					pgoff_t index, void ***slotp)
- {
--	void *ret, **slot;
-+	void *entry, **slot;
- 	struct wait_exceptional_entry_queue ewait;
- 	wait_queue_head_t *wq = dax_entry_waitqueue(mapping, index);
+@@ -1030,6 +1030,11 @@ int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
+ EXPORT_SYMBOL_GPL(dax_truncate_page);
  
-@@ -367,13 +367,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
- 	ewait.key.index = index;
+ #ifdef CONFIG_FS_IOMAP
++static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
++{
++	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
++}
++
+ static loff_t
+ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		struct iomap *iomap)
+@@ -1055,8 +1060,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		struct blk_dax_ctl dax = { 0 };
+ 		ssize_t map_len;
  
- 	for (;;) {
--		ret = __radix_tree_lookup(&mapping->page_tree, index, NULL,
-+		entry = __radix_tree_lookup(&mapping->page_tree, index, NULL,
- 					  &slot);
--		if (!ret || !radix_tree_exceptional_entry(ret) ||
-+		if (!entry || !radix_tree_exceptional_entry(entry) ||
- 		    !slot_locked(mapping, slot)) {
- 			if (slotp)
- 				*slotp = slot;
--			return ret;
-+			return entry;
- 		}
- 		prepare_to_wait_exclusive(wq, &ewait.wait,
- 					  TASK_UNINTERRUPTIBLE);
-@@ -396,13 +396,13 @@ static void *get_unlocked_mapping_entry(struct address_space *mapping,
-  */
- static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index)
- {
--	void *ret, **slot;
-+	void *entry, **slot;
- 
- restart:
- 	spin_lock_irq(&mapping->tree_lock);
--	ret = get_unlocked_mapping_entry(mapping, index, &slot);
-+	entry = get_unlocked_mapping_entry(mapping, index, &slot);
- 	/* No entry for given index? Make sure radix tree is big enough. */
--	if (!ret) {
-+	if (!entry) {
- 		int err;
- 
- 		spin_unlock_irq(&mapping->tree_lock);
-@@ -410,10 +410,10 @@ restart:
- 				mapping_gfp_mask(mapping) & ~__GFP_HIGHMEM);
- 		if (err)
- 			return ERR_PTR(err);
--		ret = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
-+		entry = (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY |
- 			       RADIX_DAX_ENTRY_LOCK);
- 		spin_lock_irq(&mapping->tree_lock);
--		err = radix_tree_insert(&mapping->page_tree, index, ret);
-+		err = radix_tree_insert(&mapping->page_tree, index, entry);
- 		radix_tree_preload_end();
- 		if (err) {
- 			spin_unlock_irq(&mapping->tree_lock);
-@@ -425,11 +425,11 @@ restart:
- 		/* Good, we have inserted empty locked entry into the tree. */
- 		mapping->nrexceptional++;
- 		spin_unlock_irq(&mapping->tree_lock);
--		return ret;
-+		return entry;
+-		dax.sector = iomap->blkno +
+-			(((pos & PAGE_MASK) - iomap->offset) >> 9);
++		dax.sector = dax_iomap_sector(iomap, pos);
+ 		dax.size = (length + offset + PAGE_SIZE - 1) & PAGE_MASK;
+ 		map_len = dax_map_atomic(iomap->bdev, &dax);
+ 		if (map_len < 0) {
+@@ -1193,7 +1197,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		goto unlock_entry;
  	}
- 	/* Normal page in radix tree? */
--	if (!radix_tree_exceptional_entry(ret)) {
--		struct page *page = ret;
-+	if (!radix_tree_exceptional_entry(entry)) {
-+		struct page *page = entry;
  
- 		get_page(page);
- 		spin_unlock_irq(&mapping->tree_lock);
-@@ -442,9 +442,9 @@ restart:
- 		}
- 		return page;
- 	}
--	ret = lock_slot(mapping, slot);
-+	entry = lock_slot(mapping, slot);
- 	spin_unlock_irq(&mapping->tree_lock);
--	return ret;
-+	return entry;
- }
+-	sector = iomap.blkno + (((pos & PAGE_MASK) - iomap.offset) >> 9);
++	sector = dax_iomap_sector(&iomap, pos);
  
- void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-@@ -469,11 +469,11 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
- 
- void dax_unlock_mapping_entry(struct address_space *mapping, pgoff_t index)
- {
--	void *ret, **slot;
-+	void *entry, **slot;
- 
- 	spin_lock_irq(&mapping->tree_lock);
--	ret = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
--	if (WARN_ON_ONCE(!ret || !radix_tree_exceptional_entry(ret) ||
-+	entry = __radix_tree_lookup(&mapping->page_tree, index, NULL, &slot);
-+	if (WARN_ON_ONCE(!entry || !radix_tree_exceptional_entry(entry) ||
- 			 !slot_locked(mapping, slot))) {
- 		spin_unlock_irq(&mapping->tree_lock);
- 		return;
+ 	if (vmf->cow_page) {
+ 		switch (iomap.type) {
 -- 
 2.9.0
