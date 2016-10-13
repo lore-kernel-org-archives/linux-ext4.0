@@ -1,38 +1,50 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: super.c: Update logging style using PR_CONT
-Date: Wed, 12 Oct 2016 18:13:28 -0400
-Message-ID: <20161012221328.pkglnedwbkigtrko@thunk.org>
-References: <ac72258a7f35042014aede22502d947b59ada155.1476237454.git.joe@perches.com>
- <20161012104157.GB14664@quack2.suse.cz>
- <1476282730.16823.7.camel@perches.com>
+Subject: Re: Test generic/299 stalling forever
+Date: Wed, 12 Oct 2016 22:15:52 -0400
+Message-ID: <20161013021552.l6afs2k5tjcsfp2k@thunk.org>
+References: <20150618155337.GA10439@thunk.org>
+ <20150618233430.GK20262@dastard>
+ <20160929043722.ypf3tnxsl6ovt653@thunk.org>
+ <20161012211407.GL23194@dastard>
+ <f1c80b32-9593-48e0-05e9-4c8b97380b49@fb.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Joe Perches <joe@perches.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        fstests@vger.kernel.org, tarasov@vasily.name
+To: Jens Axboe <axboe@fb.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56156 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933475AbcJMCQc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 Oct 2016 22:16:32 -0400
 Content-Disposition: inline
-In-Reply-To: <1476282730.16823.7.camel@perches.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <f1c80b32-9593-48e0-05e9-4c8b97380b49@fb.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 12, 2016 at 07:32:10AM -0700, Joe Perches wrote:
-> On Wed, 2016-10-12 at 12:41 +0200, Jan Kara wrote:
-> > On Tue 11-10-16 18:57:58, Joe Perches wrote:
-> > > Recent commit require line continuing printks to use PR_CONT.
-> > > 
-> > > Update super.c to use PR_CONT and use vsprintf extension %pV
-> > > to avoid a printk/vprintk/printk("\n") sequence as well.
-> > 
-> > 
-> > Looks good. You can add:
-> > 
-> > Reviewed-by: Jan Kara <jack@suse.cz>
+On Wed, Oct 12, 2016 at 03:19:25PM -0600, Jens Axboe wrote:
 > 
-> Except the subject and commit bodyis broken and should use KERN_CONT not PR_CONT
+> FWIW, this is the commit that fixes it:
 > 
-> Ted, can you please fix when applying or do you want a resubmit?
+> commit 39d13e67ef1f4b327c68431f8daf033a03920117
+> Author: Jens Axboe <axboe@fb.com>
+> Date:   Fri Aug 26 14:39:30 2016 -0600
+> 
+>     backend: check if we need to update rusage stats, if stat_mutex is busy
+> 
+> 2.14 and newer should not have the problem, but earlier versions may
+> depending on how old...
 
-I'll fix it up, no worries!.
+Unfortunately, I'm still seeing hangs in generic/299 with the latest version of fio:
 
-					- Ted
+fio 	  fio-2.14-10-g0a301e9 (Fri, 23 Sep 2016 11:57:00 -0600)
+
+If I use an older fio, it reliably does not hang.  What can I do to
+help debug this?
+
+As I said, I can attach to the hanging fio using a gdb and give you
+stackdumps for all of the threads if that would be helpful.
+
+	       	      	  	     - Ted
+
+
