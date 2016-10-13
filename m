@@ -1,50 +1,83 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypto: make XTS tweak initialization
- endian-independent
-Date: Wed, 12 Oct 2016 23:39:53 -0400
-Message-ID: <20161013033953.sgohuvud5krlupf3@thunk.org>
-References: <1475258329-146528-1-git-send-email-ebiggers@google.com>
-	<CAFLxGvyCHwWms8wJf1gU0hRj__Q0Z2F2wKuZ3sYNfp8wQ9S4PQ@mail.gmail.com>
-	<20161003180340.GA54410@google.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv3 17/41] filemap: handle huge pages in
+ filemap_fdatawait_range()
+Date: Thu, 13 Oct 2016 11:44:41 +0200
+Message-ID: <20161013094441.GC26241@quack2.suse.cz>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-18-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Richard Weinberger <richard.weinberger@gmail.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	jaegeuk@kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161003180340.GA54410@google.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+In-Reply-To: <20160915115523.29737-18-kirill.shutemov@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 30, 2016 at 7:58 PM, Eric Biggers <ebiggers@google.com> wrote:
-> The XTS tweak (or IV) was initialized differently on little endian and
-> big endian systems.  Because the ciphertext depends on the XTS tweak, it
-> was not possible to use an encrypted filesystem created by a little
-> endian system on a big endian system and vice versa, even if they shared
-> the same PAGE_SIZE.  Fix this by always using little endian.
->
-> This will break hypothetical big endian users of ext4 or f2fs
-> encryption.  However, all users we are aware of are little endian, and
-> it's believed that "real" big endian users are unlikely to exist yet.
-> So this might as well be fixed now before it's too late.
->
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+On Thu 15-09-16 14:54:59, Kirill A. Shutemov wrote:
+> We writeback whole huge page a time.
 
-Thanks, applied.
+This is one of the things I don't understand. Firstly I didn't see where
+changes of writeback like this would happen (maybe they come later).
+Secondly I'm not sure why e.g. writeback should behave atomically wrt huge
+pages. Is this because radix-tree multiorder entry tracks dirtiness for us
+at that granularity? BTW, can you also explain why do we need multiorder
+entries? What do they solve for us?
 
-					- Ted
+I'm sorry for these basic questions but I'd just like to understand how is
+this supposed to work...
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most 
-engaging tech sites, SlashDot.org! http://sdm.link/slashdot
+								Honza
+
+
+> 
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> ---
+>  mm/filemap.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 05b42d3e5ed8..53da93156e60 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -372,9 +372,14 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
+>  			if (page->index > end)
+>  				continue;
+>  
+> +			page = compound_head(page);
+>  			wait_on_page_writeback(page);
+>  			if (TestClearPageError(page))
+>  				ret = -EIO;
+> +			if (PageTransHuge(page)) {
+> +				index = page->index + HPAGE_PMD_NR;
+> +				i += index - pvec.pages[i]->index - 1;
+> +			}
+>  		}
+>  		pagevec_release(&pvec);
+>  		cond_resched();
+> -- 
+> 2.9.3
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
