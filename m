@@ -1,33 +1,37 @@
-From: <yypaloma.depping@gmx.de>
-Subject: 70585903820941 linux-ext4
-Date: Sat, 15 Oct 2016 05:24:28 -0000
-Message-ID: <147650906830.30466.18102050947762896184@vnpt.vn>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: correct endianness conversion in
+ __xattr_check_inode()
+Date: Sat, 15 Oct 2016 09:44:45 -0400
+Message-ID: <20161015134445.tckdundg7pgsurnk@thunk.org>
+References: <1476205286-136713-1-git-send-email-ebiggers@google.com>
+ <20161012103646.GA14664@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_4743778_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Biggers <ebiggers@google.com>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.vnpt.vn ([14.186.123.223]:55569 "HELO vnpt.vn"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750762AbcJOFZB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 15 Oct 2016 01:25:01 -0400
-Content-Disposition: attachment
+Received: from imap.thunk.org ([74.207.234.97]:35544 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754452AbcJONpj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 15 Oct 2016 09:45:39 -0400
+Content-Disposition: inline
+In-Reply-To: <20161012103646.GA14664@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBBQAAAAIAJcpT0mdD3anuwIAAMECAAAOAAAASU5GT18yNDQ3Mi56aXB1Unsw0wEA/o2YbE1h
-WHWHZJodaobksWOZZmbzaMpFHaYym7BueV053OadZ8cx18mOO69xm47QXas4xjyiZFm5y2va2am1
-nUfIf13fd/d99333/flRSfrHzAEAMAKeoSjEwav1o9Z6ACA7BgCw/ZYYQqDcxmCxHhjnJBajpHKU
-YRZq/m6oxhjuAcpt4UkFs5HIEQnWbdCi1S+oYJIXamUpQJDj1TauzHmcX+85th3vTIrdyzX/Uztg
-SYkibMGIdQvivC0H4cMYtZ71mTGarOV+TkKNPVniQOdrjBunSAGZSPHbIeS3utasAR1qs0lW6LOH
-aQ9f3ZrGB8Eh47CNuWqE7tKHqAYCR7H+SuDW3KjapYXscrLITg9nqJH6WgmYnQYV9n0Fs7wYJEu7
-OJoIRLOJZNLplZ4tX0K80fKcz53u0RPh9hjd5aVCYfCaq6jg50nU82ZhOgOBdpIG8oWE3mZszNmI
-zBdTrlXZ+E+pc9H3UZiE5OEZa4yoa72Fbe6DhqSIG2TaZd8GI44COqFQXtHmV8wQJvUE6RGmSmY5
-U8Hhlfb0Ka91d3aAf6OV5OJufVHxiS63pOiAp1GCxoXj3UUJhuXcAUhqgWPPa35c1JOtCKoxIi82
-RylMu64hy+tzlI7ajGGnfBX3ZtE4MoOoYdt6p+cOAgvTK22svO2MR7C9MfiNxVl6NVdzETyUFq/f
-p2sjskQmo/BE3woez3TJ50c5XxqLawqUZUty1dw3iw6qql6L9rnODiardt6M7SLifgwWhe38WqGt
-bqj9N6WqnbIyphgnHqHUUu4aisbKDNqhdfgNWc/msvZB0qy3i1cRUhr0Her+PjERgiQFll4gV5n0
-q21ppxGPdwEqCaSHA/53pvPAX9gcyD/XMj7qQYAVcG/CMlmOnAIBR4Ax4YeZSjIwPNzs886+k/QO
-0h9QSwECPwAUAAAACACXKU9JnQ92p7sCAADBAgAADgAkAAAAAAAAACAAAAAAAAAASU5GT18yNDQ3
-Mi56aXAKACAAAAAAAAEAGABozxdv3SbSAWjPF2/dJtIBaM8Xb90m0gFQSwUGAAAAAAEAAQBgAAAA
-5wIAAAAA
+On Wed, Oct 12, 2016 at 12:36:46PM +0200, Jan Kara wrote:
+> On Tue 11-10-16 10:01:26, Eric Biggers wrote:
+> > It should be cpu_to_le32(), not le32_to_cpu().  No change in behavior.
+> > 
+> > Found with sparse, and this was the only endianness warning in fs/ext4/.
+> > 
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> 
+> Looks good. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+
+Thanks, applied
+
+						- Ted
