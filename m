@@ -1,33 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypto: lock inode while setting encryption policy
-Date: Sat, 15 Oct 2016 09:54:01 -0400
-Message-ID: <20161015135401.3lc3liibnigf5seq@thunk.org>
-References: <1475087688-4048-1-git-send-email-ebiggers@google.com>
- <ea8b7140-f04e-380d-b5ae-263f029c0624@nod.at>
+Subject: Re: [PATCH] ext4: Add missing KERN_CONT to a few more debugging uses
+Date: Sat, 15 Oct 2016 10:10:48 -0400
+Message-ID: <20161015141048.b522ymjtwtpcvpsa@thunk.org>
+References: <98ce665bb759e671506bf269041238553a3df8f1.1476384526.git.joe@perches.com>
+ <979B5118-0012-411A-B094-3045A9989CBB@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers@google.com>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        jaegeuk@kernel.org
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Joe Perches <joe@perches.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <ea8b7140-f04e-380d-b5ae-263f029c0624@nod.at>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <979B5118-0012-411A-B094-3045A9989CBB@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Sep 29, 2016 at 07:20:20PM +0200, Richard Weinberger wrote:
-> On 28.09.2016 20:34, Eric Biggers wrote:
-> > i_rwsem needs to be acquired while setting an encryption policy so that
-> > concurrent calls to FS_IOC_SET_ENCRYPTION_POLICY are correctly
-> > serialized (especially the ->get_context() + ->set_context() pair), and
-> > so that new files cannot be created in the directory during or after the
-> > ->empty_dir() check.
+On Thu, Oct 13, 2016 at 03:23:11PM -0600, Andreas Dilger wrote:
+> On Oct 13, 2016, at 12:50 PM, Joe Perches <joe@perches.com> wrote:
 > > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > Recent commits require line continuing printks to always use
+> > pr_cont or KERN_CONT.  Add these markings to a few more printks.
+> > 
+> > Miscellaneaous:
+> > 
+> > o Integrate the ea_idebug and ea_bdebug macros to use a single
+> >  call to printk(KERN_DEBUG instead of 3 separate printks
+> > o Use the more common varargs macro style
+> > 
+> > Signed-off-by: Joe Perches <joe@perches.com>
 > 
-> Reviewed-by: Richard Weinberger <richard@nod.at>
+> Looks fine.
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Thanks, applied.
+Applied, thanks.
 
 					- Ted
