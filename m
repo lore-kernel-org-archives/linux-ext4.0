@@ -1,290 +1,116 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] fscrypto: move ioctl processing more fully into
-	common code
-Date: Mon, 17 Oct 2016 09:54:06 -0700
-Message-ID: <1476723246-47420-1-git-send-email-ebiggers@google.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH 00/28] Reenable maybe-uninitialized warnings
+Date: Tue, 18 Oct 2016 00:03:28 +0200
+Message-ID: <20161017220342.1627073-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jaegeuk@kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu,
-	Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-s390@vger.kernel.org, linux-ext4@vger.kernel.org,
+ Herbert Xu <herbert@gondor.apana.org.au>, Arnd Bergmann <arnd@arndb.de>,
+ netdev@vger.kernel.org, x86@kernel.org, ceph-devel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+ linux-crypto@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ Martin Schwidefsky <schwidefsky@de.ibm.com>, netfilter-devel@vger.kernel.org,
+ Ilya Dryomov <idryomov@gmail.com>, Mauro Carvalho Chehab <mchehab@kernel.org>,
+ "David S. Miller" <davem@davemloft.net>, linux-media@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Multiple bugs were recently fixed in the "set encryption policy" ioctl.
-To make it clear that fscrypt_process_policy() and fscrypt_get_policy()
-implement ioctls and therefore their implementations must take standard
-security and correctness precautions, rename them to
-fscrypt_ioctl_set_policy() and fscrypt_ioctl_get_policy().  Make the
-latter take in a struct file * to make it consistent with the former.
-
-In addition, make the common functions do the copies to and from
-userspace rather than duplicating this code within each filesystem, and
-memset the policy to 0 to make it clear there is no stack leak.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/crypto/policy.c       | 36 +++++++++++++++++++++++-------------
- fs/ext4/ext4.h           |  4 ++--
- fs/ext4/ioctl.c          | 34 +++++-----------------------------
- fs/f2fs/f2fs.h           |  4 ++--
- fs/f2fs/file.c           | 19 ++-----------------
- include/linux/fscrypto.h | 12 ++++++------
- 6 files changed, 40 insertions(+), 69 deletions(-)
-
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index 6865663..fa30618 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -93,16 +93,19 @@ static int create_encryption_context_from_policy(struct inode *inode,
- 	return inode->i_sb->s_cop->set_context(inode, &ctx, sizeof(ctx), NULL);
- }
- 
--int fscrypt_process_policy(struct file *filp,
--				const struct fscrypt_policy *policy)
-+int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
- {
-+	struct fscrypt_policy policy;
- 	struct inode *inode = file_inode(filp);
- 	int ret;
- 
-+	if (copy_from_user(&policy, arg, sizeof(policy)))
-+		return -EFAULT;
-+
- 	if (!inode_owner_or_capable(inode))
- 		return -EACCES;
- 
--	if (policy->version != 0)
-+	if (policy.version != 0)
- 		return -EINVAL;
- 
- 	ret = mnt_want_write_file(filp);
-@@ -120,9 +123,9 @@ int fscrypt_process_policy(struct file *filp,
- 			ret = -ENOTEMPTY;
- 		else
- 			ret = create_encryption_context_from_policy(inode,
--								    policy);
-+								    &policy);
- 	} else if (!is_encryption_context_consistent_with_policy(inode,
--								 policy)) {
-+								 &policy)) {
- 		printk(KERN_WARNING
- 		       "%s: Policy inconsistent with encryption context\n",
- 		       __func__);
-@@ -134,11 +137,13 @@ int fscrypt_process_policy(struct file *filp,
- 	mnt_drop_write_file(filp);
- 	return ret;
- }
--EXPORT_SYMBOL(fscrypt_process_policy);
-+EXPORT_SYMBOL(fscrypt_ioctl_set_policy);
- 
--int fscrypt_get_policy(struct inode *inode, struct fscrypt_policy *policy)
-+int fscrypt_ioctl_get_policy(struct file *filp, void __user *arg)
- {
-+	struct inode *inode = file_inode(filp);
- 	struct fscrypt_context ctx;
-+	struct fscrypt_policy policy;
- 	int res;
- 
- 	if (!inode->i_sb->s_cop->get_context ||
-@@ -151,15 +156,20 @@ int fscrypt_get_policy(struct inode *inode, struct fscrypt_policy *policy)
- 	if (ctx.format != FS_ENCRYPTION_CONTEXT_FORMAT_V1)
- 		return -EINVAL;
- 
--	policy->version = 0;
--	policy->contents_encryption_mode = ctx.contents_encryption_mode;
--	policy->filenames_encryption_mode = ctx.filenames_encryption_mode;
--	policy->flags = ctx.flags;
--	memcpy(&policy->master_key_descriptor, ctx.master_key_descriptor,
-+	memset(&policy, 0, sizeof(policy));
-+
-+	policy.version = 0;
-+	policy.contents_encryption_mode = ctx.contents_encryption_mode;
-+	policy.filenames_encryption_mode = ctx.filenames_encryption_mode;
-+	policy.flags = ctx.flags;
-+	memcpy(policy.master_key_descriptor, ctx.master_key_descriptor,
- 				FS_KEY_DESCRIPTOR_SIZE);
-+
-+	if (copy_to_user(arg, &policy, sizeof(policy)))
-+		return -EFAULT;
- 	return 0;
- }
--EXPORT_SYMBOL(fscrypt_get_policy);
-+EXPORT_SYMBOL(fscrypt_ioctl_get_policy);
- 
- int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
- {
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 282a51b..bd8bc3b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2338,8 +2338,8 @@ static inline void ext4_fname_free_filename(struct ext4_filename *fname) { }
- #define fscrypt_pullback_bio_page	fscrypt_notsupp_pullback_bio_page
- #define fscrypt_restore_control_page	fscrypt_notsupp_restore_control_page
- #define fscrypt_zeroout_range		fscrypt_notsupp_zeroout_range
--#define fscrypt_process_policy		fscrypt_notsupp_process_policy
--#define fscrypt_get_policy		fscrypt_notsupp_get_policy
-+#define fscrypt_ioctl_set_policy	fscrypt_notsupp_ioctl_set_policy
-+#define fscrypt_ioctl_get_policy	fscrypt_notsupp_ioctl_get_policy
- #define fscrypt_has_permitted_context	fscrypt_notsupp_has_permitted_context
- #define fscrypt_inherit_context		fscrypt_notsupp_inherit_context
- #define fscrypt_get_encryption_info	fscrypt_notsupp_get_encryption_info
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bf5ae8e..7008386 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -765,22 +765,12 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 	}
- 	case EXT4_IOC_PRECACHE_EXTENTS:
- 		return ext4_ext_precache(inode);
--	case EXT4_IOC_SET_ENCRYPTION_POLICY: {
--#ifdef CONFIG_EXT4_FS_ENCRYPTION
--		struct fscrypt_policy policy;
- 
-+	case EXT4_IOC_SET_ENCRYPTION_POLICY:
- 		if (!ext4_has_feature_encrypt(sb))
- 			return -EOPNOTSUPP;
-+		return fscrypt_ioctl_set_policy(filp, (const void __user *)arg);
- 
--		if (copy_from_user(&policy,
--				   (struct fscrypt_policy __user *)arg,
--				   sizeof(policy)))
--			return -EFAULT;
--		return fscrypt_process_policy(filp, &policy);
--#else
--		return -EOPNOTSUPP;
--#endif
--	}
- 	case EXT4_IOC_GET_ENCRYPTION_PWSALT: {
- 		int err, err2;
- 		struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -817,23 +807,9 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			return -EFAULT;
- 		return 0;
- 	}
--	case EXT4_IOC_GET_ENCRYPTION_POLICY: {
--#ifdef CONFIG_EXT4_FS_ENCRYPTION
--		struct fscrypt_policy policy;
--		int err = 0;
--
--		if (!ext4_encrypted_inode(inode))
--			return -ENOENT;
--		err = fscrypt_get_policy(inode, &policy);
--		if (err)
--			return err;
--		if (copy_to_user((void __user *)arg, &policy, sizeof(policy)))
--			return -EFAULT;
--		return 0;
--#else
--		return -EOPNOTSUPP;
--#endif
--	}
-+	case EXT4_IOC_GET_ENCRYPTION_POLICY:
-+		return fscrypt_ioctl_get_policy(filp, (void __user *)arg);
-+
- 	case EXT4_IOC_FSGETXATTR:
- 	{
- 		struct fsxattr fa;
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index 9e8de18..8e94b7b 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -2453,8 +2453,8 @@ static inline bool f2fs_may_encrypt(struct inode *inode)
- #define fscrypt_pullback_bio_page	fscrypt_notsupp_pullback_bio_page
- #define fscrypt_restore_control_page	fscrypt_notsupp_restore_control_page
- #define fscrypt_zeroout_range		fscrypt_notsupp_zeroout_range
--#define fscrypt_process_policy		fscrypt_notsupp_process_policy
--#define fscrypt_get_policy		fscrypt_notsupp_get_policy
-+#define fscrypt_ioctl_set_policy	fscrypt_notsupp_ioctl_set_policy
-+#define fscrypt_ioctl_get_policy	fscrypt_notsupp_ioctl_get_policy
- #define fscrypt_has_permitted_context	fscrypt_notsupp_has_permitted_context
- #define fscrypt_inherit_context		fscrypt_notsupp_inherit_context
- #define fscrypt_get_encryption_info	fscrypt_notsupp_get_encryption_info
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index c786507..f0c83f7 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -1752,31 +1752,16 @@ static bool uuid_is_nonzero(__u8 u[16])
- 
- static int f2fs_ioc_set_encryption_policy(struct file *filp, unsigned long arg)
- {
--	struct fscrypt_policy policy;
- 	struct inode *inode = file_inode(filp);
- 
--	if (copy_from_user(&policy, (struct fscrypt_policy __user *)arg,
--							sizeof(policy)))
--		return -EFAULT;
--
- 	f2fs_update_time(F2FS_I_SB(inode), REQ_TIME);
- 
--	return fscrypt_process_policy(filp, &policy);
-+	return fscrypt_ioctl_set_policy(filp, (const void __user *)arg);
- }
- 
- static int f2fs_ioc_get_encryption_policy(struct file *filp, unsigned long arg)
- {
--	struct fscrypt_policy policy;
--	struct inode *inode = file_inode(filp);
--	int err;
--
--	err = fscrypt_get_policy(inode, &policy);
--	if (err)
--		return err;
--
--	if (copy_to_user((struct fscrypt_policy __user *)arg, &policy, sizeof(policy)))
--		return -EFAULT;
--	return 0;
-+	return fscrypt_ioctl_get_policy(filp, (void __user *)arg);
- }
- 
- static int f2fs_ioc_get_encryption_pwsalt(struct file *filp, unsigned long arg)
-diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
-index ff8b11b..e6e53a3 100644
---- a/include/linux/fscrypto.h
-+++ b/include/linux/fscrypto.h
-@@ -250,8 +250,8 @@ extern void fscrypt_restore_control_page(struct page *);
- extern int fscrypt_zeroout_range(struct inode *, pgoff_t, sector_t,
- 						unsigned int);
- /* policy.c */
--extern int fscrypt_process_policy(struct file *, const struct fscrypt_policy *);
--extern int fscrypt_get_policy(struct inode *, struct fscrypt_policy *);
-+extern int fscrypt_ioctl_set_policy(struct file *, const void __user *);
-+extern int fscrypt_ioctl_get_policy(struct file *, void __user *);
- extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
- extern int fscrypt_inherit_context(struct inode *, struct inode *,
- 					void *, bool);
-@@ -320,14 +320,14 @@ static inline int fscrypt_notsupp_zeroout_range(struct inode *i, pgoff_t p,
- }
- 
- /* policy.c */
--static inline int fscrypt_notsupp_process_policy(struct file *f,
--				const struct fscrypt_policy *p)
-+static inline int fscrypt_notsupp_ioctl_set_policy(struct file *f,
-+				const void __user *arg)
- {
- 	return -EOPNOTSUPP;
- }
- 
--static inline int fscrypt_notsupp_get_policy(struct inode *i,
--				struct fscrypt_policy *p)
-+static inline int fscrypt_notsupp_ioctl_get_policy(struct file *f,
-+				void __user *arg)
- {
- 	return -EOPNOTSUPP;
- }
--- 
-2.8.0.rc3.226.g39d4020
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most 
-engaging tech sites, SlashDot.org! http://sdm.link/slashdot
+VGhpcyBpcyBhIHNldCBvZiBwYXRjaGVzIHRoYXQgSSBob3BlIHRvIGdldCBpbnRvIHY0LjkgaW4g
+c29tZSBmb3JtCmluIG9yZGVyIHRvIHR1cm4gb24gdGhlIC1XbWF5YmUtdW5pbml0aWFsaXplZCB3
+YXJuaW5ncyBhZ2Fpbi4KCkFmdGVyIHRhbGtpbmcgdG8gTGludXMgaW4gcGVyc29uIGF0IExpbmFy
+byBDb25uZWN0IGFib3V0IHRoaXMsIEkKc3BlbnQgc29tZSB0aW1lIG9uIGZpbmRpbmcgYWxsIHRo
+ZSByZW1haW5pbmcgd2FybmluZ3MsIGFuZCB0aGlzCmlzIHRoZSByZXN1bHRpbmcgcGF0Y2ggc2Vy
+aWVzLiBNb3JlIGRldGFpbHMgYXJlIGluIHRoZSBkZXNjcmlwdGlvbgpvZiB0aGUgbGFzdCBwYXRj
+aCB0aGF0IGFjdHVhbGx5IGVuYWJsZXMgdGhlIHdhcm5pbmcuCgpMZXQgbWUga25vdyBpZiB0aGVy
+ZSBhcmUgb3RoZXIgd2FybmluZ3MgdGhhdCBJIG1pc3NlZCwgYW5kIHdoZXRoZXIKeW91IHRoaW5r
+IHRoZXNlIGFyZSBzdGlsbCBhcHByb3ByaWF0ZSBmb3IgdjQuOSBvciBub3QuCkEgY291cGxlIG9m
+IHBhdGNoZXMgYXJlIG5vbi1vYnZpb3VzLCBhbmQgY291bGQgdXNlIHNvbWUgbW9yZQpkZXRhaWxl
+ZCByZXZpZXcuCgoJQXJuZAoKQXJuZCBCZXJnbWFubiAoMjgpOgogIFt2Ml0gbmV0ZmlsdGVyOiBu
+Zl90YWJsZXM6IGF2b2lkIHVuaW5pdGlhbGl6ZWQgdmFyaWFibGUgd2FybmluZwogIFt2Ml0gbXRk
+OiBtdGs6IGF2b2lkIHdhcm5pbmcgaW4gbXRrX2VjY19lbmNvZGUKICBbdjJdIGluZmluaWJhbmQ6
+IHNodXQgdXAgYSBtYXliZS11bmluaXRpYWxpemVkIHdhcm5pbmcKICBmMmZzOiByZXBsYWNlIGEg
+YnVpbGQtdGltZSB3YXJuaW5nIHdpdGggcnVudGltZSBXQVJOX09OCiAgZXh0MjogYXZvaWQgYm9n
+dXMgLVdtYXliZS11bmluaXRpYWxpemVkIHdhcm5pbmcKICBORlN2NC4xOiB3b3JrIGFyb3VuZCAt
+V21heWJlLXVuaW5pdGlhbGl6ZWQgd2FybmluZwogIGNlcGg6IGF2b2lkIGZhbHNlIHBvc2l0aXZl
+IG1heWJlLXVuaW5pdGlhbGl6ZWQgd2FybmluZwogIHN0YWdpbmc6IGx1c3RyZTogcmVzdG9yZSBp
+bml0aWFsaXphdGlvbiBvZiByZXR1cm4gY29kZQogIHN0YWdpbmc6IGx1c3RyZTogcmVtb3ZlIGJy
+b2tlbiBkZWFkIGNvZGUgaW4KICAgIGNmc19jcHRfdGFibGVfY3JlYXRlX3BhdHRlcm4KICBVQkk6
+IGZpeCB1bmluaXRpYWxpemVkIGFjY2VzcyBvZiB2aWRfaGRyIHBvaW50ZXIKICBibG9jazogcmRi
+OiBmYWxzZS1wb3N0aXZlIGdjYy00LjkgLVdtYXliZS11bmluaXRpYWxpemVkCiAgW21lZGlhXSBy
+YzogcHJpbnQgY29ycmVjdCB2YXJpYWJsZSBmb3IgejhmMDgxMQogIFttZWRpYV0gZGliMDcwMDog
+Zml4IHVuaW5pdGlhbGl6ZWQgZGF0YSBvbiAncmVwZWF0JyBldmVudAogIGlpbzogYWNjZWw6IHNj
+YTMwMDBfY29yZTogYXZvaWQgcG90ZW50aWFsbHkgdW5pbml0aWFsaXplZCB2YXJpYWJsZQogIGNy
+eXB0bzogYWVzbmk6IGF2b2lkIC1XbWF5YmUtdW5pbml0aWFsaXplZCB3YXJuaW5nCiAgcGNtY2lh
+OiBmaXggcmV0dXJuIHZhbHVlIG9mIHNvY19wY21jaWFfcmVndWxhdG9yX3NldAogIHNwaTogZnNs
+LWVzcGk6IGF2b2lkIHByb2Nlc3NpbmcgdW5pbml0YWxpemVkIGRhdGEgb24gZXJyb3IKICBkcm06
+IGF2b2lkIHVuaW5pdGlhbGl6ZWQgdGltZXN0YW1wIHVzZSBpbiB3YWl0X3ZibGFuawogIGJyY21m
+bWFjOiBhdm9pZCBtYXliZS11bmluaXRpYWxpemVkIHdhcm5pbmcgaW4gYnJjbWZfY2ZnODAyMTFf
+c3RhcnRfYXAKICBuZXQ6IGJjbTYzeHg6IGF2b2lkIHJlZmVyZW5jaW5nIHVuaW5pdGlhbGl6ZWQg
+dmFyaWFibGUKICBuZXQvaHlwZXJ2OiBhdm9pZCB1bmluaXRpYWxpemVkIHZhcmlhYmxlCiAgeDg2
+OiBhcG06IGF2b2lkIHVuaW5pdGlhbGl6ZWQgZGF0YQogIHg4NjogbWFyayB0YXJnZXQgYWRkcmVz
+cyBhcyBvdXRwdXQgaW4gJ2luc2InIGFzbQogIHg4NjogbWF0aC1lbXU6IHBvc3NpYmxlIHVuaW5p
+dGlhbGl6ZWQgdmFyaWFibGUgdXNlCiAgczM5MDogcGNpOiBkb24ndCBwcmludCB1bmluaXRpYWxp
+emVkIGRhdGEgZm9yIGRlYnVnZ2luZwogIG5pb3MyOiBmaXggdGltZXIgaW5pdGNhbGwgcmV0dXJu
+IHZhbHVlCiAgcm9ja2VyOiBmaXggbWF5YmUtdW5pbml0aWFsaXplZCB3YXJuaW5nCiAgS2J1aWxk
+OiBicmluZyBiYWNrIC1XbWF5YmUtdW5pbml0aWFsaXplZCB3YXJuaW5nCgogTWFrZWZpbGUgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMTAgKy0KIGFyY2gvYXJj
+L01ha2VmaWxlICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgICA0ICstCiBhcmNo
+L25pb3MyL2tlcm5lbC90aW1lLmMgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAgMSArCiBh
+cmNoL3MzOTAvcGNpL3BjaV9kbWEuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAgMiAr
+LQogYXJjaC94ODYvY3J5cHRvL2Flc25pLWludGVsX2dsdWUuYyAgICAgICAgICAgICAgICAgfCAx
+MjEgKysrKysrKysrKysrKy0tLS0tLS0tCiBhcmNoL3g4Ni9pbmNsdWRlL2FzbS9pby5oICAgICAg
+ICAgICAgICAgICAgICAgICAgICB8ICAgNCArLQogYXJjaC94ODYva2VybmVsL2FwbV8zMi5jICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDUgKy0KIGFyY2gveDg2L21hdGgtZW11L01ha2Vm
+aWxlICAgICAgICAgICAgICAgICAgICAgICAgIHwgICA0ICstCiBhcmNoL3g4Ni9tYXRoLWVtdS9y
+ZWdfY29tcGFyZS5jICAgICAgICAgICAgICAgICAgICB8ICAxNiArLS0KIGRyaXZlcnMvYmxvY2sv
+cmJkLmMgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAxICsKIGRyaXZlcnMvZ3B1
+L2RybS9kcm1faXJxLmMgICAgICAgICAgICAgICAgICAgICAgICAgIHwgICA0ICstCiBkcml2ZXJz
+L2luZmluaWJhbmQvY29yZS9jbWEuYyAgICAgICAgICAgICAgICAgICAgICB8ICA1NiArKysrKy0t
+LS0tCiBkcml2ZXJzL21lZGlhL2kyYy9pci1rYmQtaTJjLmMgICAgICAgICAgICAgICAgICAgICB8
+ICAgMiArLQogZHJpdmVycy9tZWRpYS91c2IvZHZiLXVzYi9kaWIwNzAwX2NvcmUuYyAgICAgICAg
+ICAgfCAgMTAgKy0KIGRyaXZlcnMvbXRkL25hbmQvbXRrX2VjYy5jICAgICAgICAgICAgICAgICAg
+ICAgICAgIHwgIDE5ICsrLS0KIGRyaXZlcnMvbXRkL3ViaS9lYmEuYyAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIHwgICAyICstCiBkcml2ZXJzL25ldC9ldGhlcm5ldC9icm9hZGNvbS9iY202
+M3h4X2VuZXQuYyAgICAgICB8ICAgMyArLQogZHJpdmVycy9uZXQvZXRoZXJuZXQvcm9ja2VyL3Jv
+Y2tlcl9vZmRwYS5jICAgICAgICAgfCAgIDQgKy0KIGRyaXZlcnMvbmV0L2h5cGVydi9uZXR2c2Nf
+ZHJ2LmMgICAgICAgICAgICAgICAgICAgIHwgICAyICstCiAuLi4vYnJvYWRjb20vYnJjbTgwMjEx
+L2JyY21mbWFjL2NmZzgwMjExLmMgICAgICAgICB8ICAgMiArLQogZHJpdmVycy9wY21jaWEvc29j
+X2NvbW1vbi5jICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDIgKy0KIGRyaXZlcnMvc3BpL3Nw
+aS1mc2wtZXNwaS5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAyICstCiBkcml2ZXJzL3N0
+YWdpbmcvaWlvL2FjY2VsL3NjYTMwMDBfY29yZS5jICAgICAgICAgICB8ICAgMiArCiAuLi4vc3Rh
+Z2luZy9sdXN0cmUvbG5ldC9saWJjZnMvbGludXgvbGludXgtY3B1LmMgICB8ICAgNyAtLQogZHJp
+dmVycy9zdGFnaW5nL2x1c3RyZS9sdXN0cmUvbG92L2xvdl9wYWNrLmMgICAgICAgfCAgIDIgKwog
+ZnMvY2VwaC9zdXBlci5jICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDMg
+Ky0KIGZzL2V4dDIvaW5vZGUuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwg
+ICA3ICstCiBmcy9mMmZzL2RhdGEuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICB8ICAgNyArKwogZnMvbmZzL25mczRzZXNzaW9uLmMgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgfCAgMTAgKy0KIG5ldC9uZXRmaWx0ZXIvbmZ0X3JhbmdlLmMgICAgICAgICAgICAgICAg
+ICAgICAgICAgIHwgIDEwICstCiBzY3JpcHRzL01ha2VmaWxlLnVic2FuICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICB8ICAgNCArCiAzMSBmaWxlcyBjaGFuZ2VkLCAxODcgaW5zZXJ0aW9ucygr
+KSwgMTQxIGRlbGV0aW9ucygtKQoKLS0gCkNjOiB4ODZAa2VybmVsLm9yZwpDYzogbGludXgtbWVk
+aWFAdmdlci5rZXJuZWwub3JnCkNjOiBNYXVybyBDYXJ2YWxobyBDaGVoYWIgPG1jaGVoYWJAa2Vy
+bmVsLm9yZz4KQ2M6IE1hcnRpbiBTY2h3aWRlZnNreSA8c2Nod2lkZWZza3lAZGUuaWJtLmNvbT4K
+Q2M6IGxpbnV4LXMzOTBAdmdlci5rZXJuZWwub3JnCkNjOiBJbHlhIERyeW9tb3YgPGlkcnlvbW92
+QGdtYWlsLmNvbT4KQ2M6IGRyaS1kZXZlbEBsaXN0cy5mcmVlZGVza3RvcC5vcmcKQ2M6IGxpbnV4
+LW10ZEBsaXN0cy5pbmZyYWRlYWQub3JnCkNjOiBIZXJiZXJ0IFh1IDxoZXJiZXJ0QGdvbmRvci5h
+cGFuYS5vcmcuYXU+CkNjOiBsaW51eC1jcnlwdG9Admdlci5rZXJuZWwub3JnCkNjOiAiRGF2aWQg
+Uy4gTWlsbGVyIiA8ZGF2ZW1AZGF2ZW1sb2Z0Lm5ldD4KQ2M6IG5ldGRldkB2Z2VyLmtlcm5lbC5v
+cmcKQ2M6IEdyZWcgS3JvYWgtSGFydG1hbiA8Z3JlZ2toQGxpbnV4Zm91bmRhdGlvbi5vcmc+CkNj
+OiBjZXBoLWRldmVsQHZnZXIua2VybmVsLm9yZwpDYzogbGludXgtZjJmcy1kZXZlbEBsaXN0cy5z
+b3VyY2Vmb3JnZS5uZXQKQ2M6IGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnCkNjOiBuZXRmaWx0
+ZXItZGV2ZWxAdmdlci5rZXJuZWwub3JnCjIuOS4wCgpfX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fXwpkcmktZGV2ZWwgbWFpbGluZyBsaXN0CmRyaS1kZXZlbEBs
+aXN0cy5mcmVlZGVza3RvcC5vcmcKaHR0cHM6Ly9saXN0cy5mcmVlZGVza3RvcC5vcmcvbWFpbG1h
+bi9saXN0aW5mby9kcmktZGV2ZWwK
