@@ -1,112 +1,67 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH v7 15/17] dax: add struct iomap based DAX PMD support
-Date: Mon, 17 Oct 2016 11:36:55 +0530
-Message-ID: <87a8e3tsow.fsf@linux.vnet.ibm.com>
-References: <20161013154224.GB30680@quack2.suse.cz> <1476386619-2727-1-git-send-email-ross.zwisler@linux.intel.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v6 17/17] dax: remove "depends on BROKEN" from FS_DAX_PMD
+Date: Mon, 17 Oct 2016 11:09:37 +0200
+Message-ID: <20161017090937.GG3359@quack2.suse.cz>
+References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
+ <20161012225022.15507-18-ross.zwisler@linux.intel.com>
+ <87eg3ftt4r.fsf@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-        Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1476386619-2727-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <87eg3ftt4r.fsf-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Ross Zwisler <ross.zwisler@linux.intel.com> writes:
+On Mon 17-10-16 11:27:24, Aneesh Kumar K.V wrote:
+> Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> writes:
+> 
+> > Now that DAX PMD faults are once again working and are now participating in
+> > DAX's radix tree locking scheme, allow their config option to be enabled.
+> >
+> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> > ---
+> >  fs/Kconfig | 1 -
+> >  1 file changed, 1 deletion(-)
+> >
+> > diff --git a/fs/Kconfig b/fs/Kconfig
+> > index 2bc7ad7..b6f0fce 100644
+> > --- a/fs/Kconfig
+> > +++ b/fs/Kconfig
+> > @@ -55,7 +55,6 @@ config FS_DAX_PMD
+> >  	depends on FS_DAX
+> >  	depends on ZONE_DEVICE
+> >  	depends on TRANSPARENT_HUGEPAGE
+> > -	depends on BROKEN
+> >  
+> >  endif # BLOCK
+> 
+> 
+> This series made dax_pmd_fault return VM_FAULT_FALLBACK in [PATCH v6 09/17] dax: remove dax_pmd_fault(). 
+> That essentially disable dax pmd for ext4. Any plans to fix that ?
 
-> DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-> locking.  This patch allows DAX PMDs to participate in the DAX radix tree
-> based locking scheme so that they can be re-enabled using the new struct
-> iomap based fault handlers.
->
-> There are currently three types of DAX 4k entries: 4k zero pages, 4k DAX
-> mappings that have an associated block allocation, and 4k DAX empty
-> entries.  The empty entries exist to provide locking for the duration of a
-> given page fault.
->
-> This patch adds three equivalent 2MiB DAX entries: Huge Zero Page (HZP)
-> entries, PMD DAX entries that have associated block allocations, and 2 MiB
-> DAX empty entries.
->
-> Unlike the 4k case where we insert a struct page* into the radix tree for
-> 4k zero pages, for HZP we insert a DAX exceptional entry with the new
-> RADIX_DAX_HZP flag set.  This is because we use a single 2 MiB zero page in
-> every 2MiB hole mapping, and it doesn't make sense to have that same struct
-> page* with multiple entries in multiple trees.  This would cause contention
-> on the single page lock for the one Huge Zero Page, and it would break the
-> page->index and page->mapping associations that are assumed to be valid in
-> many other places in the kernel.
->
-> One difficult use case is when one thread is trying to use 4k entries in
-> radix tree for a given offset, and another thread is using 2 MiB entries
-> for that same offset.  The current code handles this by making the 2 MiB
-> user fall back to 4k entries for most cases.  This was done because it is
-> the simplest solution, and because the use of 2MiB pages is already
-> opportunistic.
->
-> If we were to try to upgrade from 4k pages to 2MiB pages for a given range,
-> we run into the problem of how we lock out 4k page faults for the entire
-> 2MiB range while we clean out the radix tree so we can insert the 2MiB
-> entry.  We can solve this problem if we need to, but I think that the cases
-> where both 2MiB entries and 4K entries are being used for the same range
-> will be rare enough and the gain small enough that it probably won't be
-> worth the complexity.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/dax.c            | 378 +++++++++++++++++++++++++++++++++++++++++++++++-----
->  include/linux/dax.h |  55 ++++++--
->  mm/filemap.c        |   3 +-
->  3 files changed, 386 insertions(+), 50 deletions(-)
->
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 0582c7c..153cfd5 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -76,6 +76,26 @@ static void dax_unmap_atomic(struct block_device *bdev,
->  	blk_queue_exit(bdev->bd_queue);
->  }
->  
-> +static int dax_is_pmd_entry(void *entry)
-> +{
-> +	return (unsigned long)entry & RADIX_DAX_PMD;
-> +}
-> +
-> +static int dax_is_pte_entry(void *entry)
-> +{
-> +	return !((unsigned long)entry & RADIX_DAX_PMD);
-> +}
-> +
-> +static int dax_is_zero_entry(void *entry)
-> +{
-> +	return (unsigned long)entry & RADIX_DAX_HZP;
-> +}
+I'm working on converting ext4 to the new iomap infrastructure. Once that
+is done, it can use new DAX helpers for PMD faults easily.
 
-How about dax_is_pmd_zero_entry() ?
-
-
-> +
-> +static int dax_is_empty_entry(void *entry)
-> +{
-> +	return (unsigned long)entry & RADIX_DAX_EMPTY;
-> +}
-> +
-
--aneesh
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
