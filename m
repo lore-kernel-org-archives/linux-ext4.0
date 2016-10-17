@@ -1,55 +1,57 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] partinfo: fix some build errors
-Date: Sat, 15 Oct 2016 10:57:55 -0700
-Message-ID: <20161015175755.GA5611@birch.djwong.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Subject: Re: [PATCH v6 17/17] dax: remove "depends on BROKEN" from FS_DAX_PMD
+Date: Mon, 17 Oct 2016 11:27:24 +0530
+Message-ID: <87eg3ftt4r.fsf@linux.vnet.ibm.com>
+References: <20161012225022.15507-1-ross.zwisler@linux.intel.com>
+ <20161012225022.15507-18-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:46519 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751453AbcJOR6B (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Oct 2016 13:58:01 -0400
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161012225022.15507-18-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Fix some missing header files and library link targets.
+Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> writes:
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- misc/Makefile.in |    4 ++--
- misc/partinfo.c  |    2 ++
- 2 files changed, 4 insertions(+), 2 deletions(-)
+> Now that DAX PMD faults are once again working and are now participating in
+> DAX's radix tree locking scheme, allow their config option to be enabled.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> ---
+>  fs/Kconfig | 1 -
+>  1 file changed, 1 deletion(-)
+>
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 2bc7ad7..b6f0fce 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -55,7 +55,6 @@ config FS_DAX_PMD
+>  	depends on FS_DAX
+>  	depends on ZONE_DEVICE
+>  	depends on TRANSPARENT_HUGEPAGE
+> -	depends on BROKEN
+>  
+>  endif # BLOCK
 
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index d6436c2..370fdac 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -157,9 +157,9 @@ findsuper: findsuper.o
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o findsuper findsuper.o $(LIBS) $(SYSLIBS)
- 
--partinfo: partinfo.o
-+partinfo: partinfo.o $(DEPLIBCOM_ERR)
- 	$(E) "	LD $@"
--	$(Q) $(CC) $(ALL_LDFLAGS) -o partinfo partinfo.o
-+	$(Q) $(CC) $(ALL_LDFLAGS) -o partinfo partinfo.o $(LIBCOM_ERR)
- 
- e2initrd_helper: e2initrd_helper.o $(DEPLIBS) $(DEPLIBBLKID) $(LIBEXT2FS)
- 	$(E) "	LD $@"
-diff --git a/misc/partinfo.c b/misc/partinfo.c
-index 2b69c89..b79d183 100644
---- a/misc/partinfo.c
-+++ b/misc/partinfo.c
-@@ -18,7 +18,9 @@
- #include <unistd.h>
- #include <stdlib.h>
- #include <errno.h>
-+#include <string.h>
- #include "support/nls-enable.h"
-+#include "et/com_err.h"
- 
- #if defined(__linux__) && defined(_IO) && !defined(BLKGETSIZE)
- #define BLKGETSIZE _IO(0x12,96)	/* return device size */
+
+This series made dax_pmd_fault return VM_FAULT_FALLBACK in [PATCH v6 09/17] dax: remove dax_pmd_fault(). 
+That essentially disable dax pmd for ext4. Any plans to fix that ?
+
+-aneesh
