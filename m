@@ -1,38 +1,47 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 05/28] ext2: avoid bogus -Wmaybe-uninitialized warning
-Date: Tue, 18 Oct 2016 11:30:18 +0200
-Message-ID: <20161018093018.GK3359@quack2.suse.cz>
-References: <20161017220342.1627073-1-arnd@arndb.de>
- <20161017220557.1688282-5-arnd@arndb.de>
- <20161018051529.GA24233@infradead.org>
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Subject: Re: [PATCH] fscrypto: move ioctl processing more fully into common code
+Date: Tue, 18 Oct 2016 14:22:07 +0200
+Message-ID: <CAFLxGvz8KV=zzy=fijEuK7qtCivS=A2BBpNvNksv4J06KTSmZw@mail.gmail.com>
+References: <1476723246-47420-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Arnd Bergmann <arnd@arndb.de>, Jan Kara <jack@suse.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-        Dave Chinner <david@fromorbit.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Matthew Wilcox <matthew.r.wilcox@intel.com>,
-        Carlos Maiolino <cmaiolino@redhat.com>,
-        linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161018051529.GA24233@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        "Theodore Ts'o" <tytso@mit.edu>, jaegeuk@kernel.org,
+        David Gstir <david@sigma-star.at>
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1476723246-47420-1-git-send-email-ebiggers@google.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 17-10-16 22:15:29, Christoph Hellwig wrote:
-> Thanks Arnd, this looks fine to me:
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+Eric,
 
-Thanks! I have pulled the patch into my tree and will push it to Linus.
+On Mon, Oct 17, 2016 at 6:54 PM, Eric Biggers <ebiggers@google.com> wrote:
+> Multiple bugs were recently fixed in the "set encryption policy" ioctl.
+> To make it clear that fscrypt_process_policy() and fscrypt_get_policy()
+> implement ioctls and therefore their implementations must take standard
+> security and correctness precautions, rename them to
+> fscrypt_ioctl_set_policy() and fscrypt_ioctl_get_policy().  Make the
+> latter take in a struct file * to make it consistent with the former.
+>
+> In addition, make the common functions do the copies to and from
+> userspace rather than duplicating this code within each filesystem, and
+> memset the policy to 0 to make it clear there is no stack leak.
+>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/crypto/policy.c       | 36 +++++++++++++++++++++++-------------
+>  fs/ext4/ext4.h           |  4 ++--
+>  fs/ext4/ioctl.c          | 34 +++++-----------------------------
+>  fs/f2fs/f2fs.h           |  4 ++--
+>  fs/f2fs/file.c           | 19 ++-----------------
+>  include/linux/fscrypto.h | 12 ++++++------
+>  6 files changed, 40 insertions(+), 69 deletions(-)
 
-								Honza
+Hmm, are you sure the change is worth it?
+The patch basically moves a copy_from/to_user() from ext4/f2fs into fscrypto.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks,
+//richard
