@@ -1,12 +1,13 @@
-From: Christoph Hellwig <hch@infradead.org>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 05/28] ext2: avoid bogus -Wmaybe-uninitialized warning
-Date: Mon, 17 Oct 2016 22:15:29 -0700
-Message-ID: <20161018051529.GA24233@infradead.org>
+Date: Tue, 18 Oct 2016 11:30:18 +0200
+Message-ID: <20161018093018.GK3359@quack2.suse.cz>
 References: <20161017220342.1627073-1-arnd@arndb.de>
  <20161017220557.1688282-5-arnd@arndb.de>
+ <20161018051529.GA24233@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>,
+Cc: Arnd Bergmann <arnd@arndb.de>, Jan Kara <jack@suse.com>,
         Linus Torvalds <torvalds@linux-foundation.org>,
         linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
         Dave Chinner <david@fromorbit.com>,
@@ -17,17 +18,21 @@ Cc: Jan Kara <jack@suse.com>,
         Matthew Wilcox <matthew.r.wilcox@intel.com>,
         Carlos Maiolino <cmaiolino@redhat.com>,
         linux-ext4@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:53986 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755736AbcJRFPf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Oct 2016 01:15:35 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161017220557.1688282-5-arnd@arndb.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161018051529.GA24233@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Thanks Arnd, this looks fine to me:
+On Mon 17-10-16 22:15:29, Christoph Hellwig wrote:
+> Thanks Arnd, this looks fine to me:
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Thanks! I have pulled the patch into my tree and will push it to Linus.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
