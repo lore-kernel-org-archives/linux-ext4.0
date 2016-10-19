@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v8 01/16] ext4: tell DAX the size of allocation holes
-Date: Wed, 19 Oct 2016 13:34:20 -0600
-Message-ID: <1476905675-32581-2-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v8 05/16] dax: remove the last BUG_ON() from fs/dax.c
+Date: Wed, 19 Oct 2016 13:34:24 -0600
+Message-ID: <1476905675-32581-6-git-send-email-ross.zwisler@linux.intel.com>
 References: <1476905675-32581-1-git-send-email-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
 	"Theodore Ts'o" <tytso@mit.edu>,
@@ -24,33 +24,30 @@ In-Reply-To: <1476905675-32581-1-git-send-email-ross.zwisler@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-When DAX calls _ext4_get_block() and the file offset points to a hole we
-currently don't set bh->b_size.  This is current worked around via
-buffer_size_valid() in fs/dax.c.
-
-_ext4_get_block() has the hole size information from ext4_map_blocks(), so
-populate bh->b_size so we can remove buffer_size_valid() in a later patch.
+Don't take down the kernel if we get an invalid 'from' and 'length'
+argument pair.  Just warn once and return an error.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/dax.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9c06472..3d58b2b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -767,6 +767,9 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 		ext4_update_bh_state(bh, map.m_flags);
- 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 		ret = 0;
-+	} else if (ret == 0) {
-+		/* hole case, need to fill in bh->b_size */
-+		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 	}
- 	return ret;
- }
+diff --git a/fs/dax.c b/fs/dax.c
+index e52e754..219fa2b 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1194,7 +1194,8 @@ int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
+ 	/* Block boundary? Nothing to do */
+ 	if (!length)
+ 		return 0;
+-	BUG_ON((offset + length) > PAGE_SIZE);
++	if (WARN_ON_ONCE((offset + length) > PAGE_SIZE))
++		return -EINVAL;
+ 
+ 	memset(&bh, 0, sizeof(bh));
+ 	bh.b_bdev = inode->i_sb->s_bdev;
 -- 
 2.7.4
 
