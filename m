@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v8 02/16] dax: remove buffer_size_valid()
-Date: Wed, 19 Oct 2016 13:34:21 -0600
-Message-ID: <1476905675-32581-3-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v8 11/16] dax: dax_iomap_fault() needs to call iomap_end()
+Date: Wed, 19 Oct 2016 13:34:30 -0600
+Message-ID: <1476905675-32581-12-git-send-email-ross.zwisler@linux.intel.com>
 References: <1476905675-32581-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,62 +27,105 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that ext4 properly sets bh.b_size when we call get_block() for a hole,
-rely on that value and remove the buffer_size_valid() sanity check.
+Currently iomap_end() doesn't do anything for DAX page faults for both ext2
+and XFS.  ext2_iomap_end() just checks for a write underrun, and
+xfs_file_iomap_end() checks to see if it needs to finish a delayed
+allocation.  However, in the future iomap_end() calls might be needed to
+make sure we have balanced allocations, locks, etc.  So, add calls to
+iomap_end() with appropriate error handling to dax_iomap_fault().
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 ---
- fs/dax.c | 22 +---------------------
- 1 file changed, 1 insertion(+), 21 deletions(-)
+ fs/dax.c | 37 +++++++++++++++++++++++++++++--------
+ 1 file changed, 29 insertions(+), 8 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 014defd..b09817a 100644
+index 7737954..6edd89b 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -123,19 +123,6 @@ static bool buffer_written(struct buffer_head *bh)
- 	return buffer_mapped(bh) && !buffer_unwritten(bh);
- }
+@@ -1165,6 +1165,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	struct iomap iomap = { 0 };
+ 	unsigned flags = 0;
+ 	int error, major = 0;
++	int locked_status = 0;
+ 	void *entry;
  
--/*
-- * When ext4 encounters a hole, it returns without modifying the buffer_head
-- * which means that we can't trust b_size.  To cope with this, we set b_state
-- * to 0 before calling get_block and, if any bit is set, we know we can trust
-- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
-- * and would save us time calling get_block repeatedly.
-- */
--static bool buffer_size_valid(struct buffer_head *bh)
--{
--	return bh->b_state != 0;
--}
--
--
- static sector_t to_sector(const struct buffer_head *bh,
- 		const struct inode *inode)
- {
-@@ -177,8 +164,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
- 				rc = get_block(inode, block, bh, rw == WRITE);
- 				if (rc)
- 					break;
--				if (!buffer_size_valid(bh))
--					bh->b_size = 1 << blkbits;
- 				bh_max = pos - first + bh->b_size;
- 				bdev = bh->b_bdev;
- 				/*
-@@ -1012,12 +997,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 
- 	bdev = bh.b_bdev;
- 
--	/*
--	 * If the filesystem isn't willing to tell us the length of a hole,
--	 * just fall back to PTEs.  Calling get_block 512 times in a loop
--	 * would be silly.
--	 */
--	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
-+	if (bh.b_size < PMD_SIZE) {
- 		dax_pmd_dbg(&bh, address, "allocated block too small");
- 		return VM_FAULT_FALLBACK;
+ 	/*
+@@ -1194,7 +1195,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		goto unlock_entry;
+ 	if (WARN_ON_ONCE(iomap.offset + iomap.length < pos + PAGE_SIZE)) {
+ 		error = -EIO;		/* fs corruption? */
+-		goto unlock_entry;
++		goto finish_iomap;
  	}
+ 
+ 	sector = dax_iomap_sector(&iomap, pos);
+@@ -1216,13 +1217,15 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		}
+ 
+ 		if (error)
+-			goto unlock_entry;
++			goto finish_iomap;
+ 		if (!radix_tree_exceptional_entry(entry)) {
+ 			vmf->page = entry;
+-			return VM_FAULT_LOCKED;
++			locked_status = VM_FAULT_LOCKED;
++		} else {
++			vmf->entry = entry;
++			locked_status = VM_FAULT_DAX_LOCKED;
+ 		}
+-		vmf->entry = entry;
+-		return VM_FAULT_DAX_LOCKED;
++		goto finish_iomap;
+ 	}
+ 
+ 	switch (iomap.type) {
+@@ -1237,8 +1240,10 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+-		if (!(vmf->flags & FAULT_FLAG_WRITE))
+-			return dax_load_hole(mapping, entry, vmf);
++		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
++			locked_status = dax_load_hole(mapping, entry, vmf);
++			break;
++		}
+ 		/*FALLTHRU*/
+ 	default:
+ 		WARN_ON_ONCE(1);
+@@ -1246,14 +1251,30 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		break;
+ 	}
+ 
++ finish_iomap:
++	if (ops->iomap_end) {
++		if (error) {
++			/* keep previous error */
++			ops->iomap_end(inode, pos, PAGE_SIZE, 0, flags,
++					&iomap);
++		} else {
++			error = ops->iomap_end(inode, pos, PAGE_SIZE,
++					PAGE_SIZE, flags, &iomap);
++		}
++	}
+  unlock_entry:
+-	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
++	if (!locked_status || error)
++		put_locked_mapping_entry(mapping, vmf->pgoff, entry);
+  out:
+ 	if (error == -ENOMEM)
+ 		return VM_FAULT_OOM | major;
+ 	/* -EBUSY is fine, somebody else faulted on the same PTE */
+ 	if (error < 0 && error != -EBUSY)
+ 		return VM_FAULT_SIGBUS | major;
++	if (locked_status) {
++		WARN_ON_ONCE(error); /* -EBUSY from ops->iomap_end? */
++		return locked_status;
++	}
+ 	return VM_FAULT_NOPAGE | major;
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_fault);
 -- 
 2.7.4
