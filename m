@@ -1,8 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v8 16/16] dax: remove "depends on BROKEN" from FS_DAX_PMD
-Date: Wed, 19 Oct 2016 13:34:35 -0600
-Message-ID: <1476905675-32581-17-git-send-email-ross.zwisler@linux.intel.com>
-References: <1476905675-32581-1-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v8 00/16] re-enable DAX PMD support
+Date: Wed, 19 Oct 2016 13:34:19 -0600
+Message-ID: <1476905675-32581-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -15,7 +14,6 @@ Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox
  Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
 To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1476905675-32581-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -27,26 +25,45 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that DAX PMD faults are once again working and are now participating in
-DAX's radix tree locking scheme, allow their config option to be enabled.
+DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+locking.  This series allows DAX PMDs to participate in the DAX radix tree
+based locking scheme so that they can be re-enabled.
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
----
- fs/Kconfig | 1 -
- 1 file changed, 1 deletion(-)
+Changes since v7:
+ - Rebased on v4.9-rc1, dropping one ext4 patch that had already been merged.
+ - Added Reviewed-by tags from Jan Kara.
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 4bd03a2..8e9e5f41 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -55,7 +55,6 @@ config FS_DAX_PMD
- 	depends on FS_DAX
- 	depends on ZONE_DEVICE
- 	depends on TRANSPARENT_HUGEPAGE
--	depends on BROKEN
- 
- endif # BLOCK
- 
+Here is a tree containing my changes:
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v8
+
+Ross Zwisler (16):
+  ext4: tell DAX the size of allocation holes
+  dax: remove buffer_size_valid()
+  ext2: remove support for DAX PMD faults
+  dax: make 'wait_table' global variable static
+  dax: remove the last BUG_ON() from fs/dax.c
+  dax: consistent variable naming for DAX entries
+  dax: coordinate locking for offsets in PMD range
+  dax: remove dax_pmd_fault()
+  dax: correct dax iomap code namespace
+  dax: add dax_iomap_sector() helper function
+  dax: dax_iomap_fault() needs to call iomap_end()
+  dax: move RADIX_DAX_* defines to dax.h
+  dax: move put_(un)locked_mapping_entry() in dax.c
+  dax: add struct iomap based DAX PMD support
+  xfs: use struct iomap based DAX PMD fault path
+  dax: remove "depends on BROKEN" from FS_DAX_PMD
+
+ fs/Kconfig          |   1 -
+ fs/dax.c            | 826 +++++++++++++++++++++++++++++-----------------------
+ fs/ext2/file.c      |  35 +--
+ fs/ext4/inode.c     |   3 +
+ fs/xfs/xfs_aops.c   |  26 +-
+ fs/xfs/xfs_aops.h   |   3 -
+ fs/xfs/xfs_file.c   |  10 +-
+ include/linux/dax.h |  58 +++-
+ mm/filemap.c        |   5 +-
+ 9 files changed, 537 insertions(+), 430 deletions(-)
+
 -- 
 2.7.4
