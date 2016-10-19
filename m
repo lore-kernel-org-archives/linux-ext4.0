@@ -1,38 +1,48 @@
-From: Jens Axboe <axboe@fb.com>
-Subject: Re: Test generic/299 stalling forever
-Date: Wed, 19 Oct 2016 08:06:44 -0600
-Message-ID: <7856791a-0795-9183-6057-6ce8fd0e3d58@fb.com>
-References: <20150618155337.GA10439@thunk.org>
- <20150618233430.GK20262@dastard> <20160929043722.ypf3tnxsl6ovt653@thunk.org>
- <20161012211407.GL23194@dastard>
- <f1c80b32-9593-48e0-05e9-4c8b97380b49@fb.com>
- <20161013021552.l6afs2k5tjcsfp2k@thunk.org>
- <ffc283a7-58ef-66b9-3c5b-75703d24ea0d@fb.com>
- <20161013231923.j2fidfbtzdp66x3t@thunk.org>
- <20161018180107.fscbfm66yidwhey4@thunk.org>
+From: Michael Halcrow <mhalcrow@google.com>
+Subject: Re: [RFD] Common userspace tool for fscypto
+Date: Wed, 19 Oct 2016 10:36:00 -0700
+Message-ID: <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
+References: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>, <linux-ext4@vger.kernel.org>,
-        <fstests@vger.kernel.org>, <tarasov@vasily.name>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20161018180107.fscbfm66yidwhey4@thunk.org>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>, kzak@redhat.com,
+        "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Eric Biggers <ebiggers@google.com>,
+        David Gstir <david@sigma-star.at>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f178.google.com ([209.85.216.178]:36817 "EHLO
+        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752401AbcJSRgW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Oct 2016 13:36:22 -0400
+Received: by mail-qt0-f178.google.com with SMTP id m5so29249186qtb.3
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Oct 2016 10:36:21 -0700 (PDT)
+In-Reply-To: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/18/2016 12:01 PM, Theodore Ts'o wrote:
-> Jens, ping?
+On Wed, Oct 19, 2016 at 4:35 AM, Richard Weinberger <richard@nod.at> wrote:
+> Hi!
 >
-> Have you had a chance to take a look at the stack traces?  Is there
-> any other debugging information I can get for you?
+> Since file level encryption has more than one user, currently ext4, f2fs and soon ubifs
+> it would be nice to have a single tool to control fscrypto from userspace.
+>
+> For ext4 we have already at least two tools, one as part of e2fsprogs and another
+> one on github[0]. IMHO the latter one is much more user friendly and intuitive to use.
+> I as unable to find the userspace tool for f2fs.
+>
+> That said, what about implementing such a tool as part of util-linux to control
+> fscrypto? We (David and I) would volunteer.
 
-I'll take a look today. I agree, this definitely looks like a fio
-bug. But not related to the mutex issue for the stat part, all verifier
-threads are waiting to be woken up, but the main thread is done.
+While discussing several changes we have staged for release (we're
+trying to minimize churn by batching a large set of format changes all
+at once), we've recently recognized this need on my team and were
+planning on starting work on exactly what you propose.
 
-I'll see if I can reproduce. If not, I may ask you to dump more info
-from the hung processes.
-
--- 
-Jens Axboe
+> Thanks,
+> //richard
+>
+> [0] https://github.com/gdelugre/ext4-crypt
