@@ -1,109 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Test generic/299 stalling forever
-Date: Wed, 19 Oct 2016 16:32:33 -0400
-Message-ID: <20161019203233.mbbmskpn5ekgl7og@thunk.org>
-References: <20150618233430.GK20262@dastard>
- <20160929043722.ypf3tnxsl6ovt653@thunk.org>
- <20161012211407.GL23194@dastard>
- <f1c80b32-9593-48e0-05e9-4c8b97380b49@fb.com>
- <20161013021552.l6afs2k5tjcsfp2k@thunk.org>
- <ffc283a7-58ef-66b9-3c5b-75703d24ea0d@fb.com>
- <20161013231923.j2fidfbtzdp66x3t@thunk.org>
- <20161018180107.fscbfm66yidwhey4@thunk.org>
- <7856791a-0795-9183-6057-6ce8fd0e3d58@fb.com>
- <30fef8cd-67cc-da49-77d9-9d1a833f8a48@fb.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        fstests@vger.kernel.org, tarasov@vasily.name
-To: Jens Axboe <axboe@fb.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <30fef8cd-67cc-da49-77d9-9d1a833f8a48@fb.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Thomas De Schampheleire <patrickdepinguin@gmail.com>
+Subject: [PATCH] plausible: fix compilation on RHEL 5.x due to missing magic define
+Date: Thu, 20 Oct 2016 09:25:05 +0200
+Message-ID: <1476948305-563-1-git-send-email-patrickdepinguin@gmail.com>
+Cc: Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lf0-f67.google.com ([209.85.215.67]:33348 "EHLO
+        mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756877AbcJTHZ2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Oct 2016 03:25:28 -0400
+Received: by mail-lf0-f67.google.com with SMTP id l131so5995965lfl.0
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Oct 2016 00:25:27 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 19, 2016 at 11:49:12AM -0600, Jens Axboe wrote:
-> 
-> Number of cores/nodes?
-> Memory size?
+From: Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
 
-I'm using a gce n1-standard-2 VM.  So that's two CPU's and 7680M.
+RHEL 5.x does have magic.h, but it does not define all expected symbols. In
+particular, the NO_CHECK symbols were only added in file 4.20 and RHEL 5.x
+is using 4.17.
 
-Each CPU is a virtual CPU is implemented as a single hardware
-hyper-thread on a 2.3 GHz Intel Xeon E5 v3 (Haswell).  (I was using a
-GCE zone that has Haswell processors; different GCE zones may have
-different processors.  See [1] and [2] for more details.)
+Add substitute defines to allow continued usage of magic but without the
+requested exclude checks.
 
-[1] https://cloud.google.com/compute/docs/machine-types
-[2] https://cloud.google.com/compute/docs/regions-zones/regions-zones
+Signed-off-by: Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
+---
+ lib/support/plausible.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-> Rough speed and size of the device?
+Note: instead of filling in the actual (current) values for these defines, we
+could also have filled them with zero as libmagic will not recognize them
+anyway.
 
-I'm using a GCE PD backed by a SSD.  To a first approximation, you can
-think of it as a KVM qcow file stored on a fast flash device.  I'm
-running LVM on the disk, and the fio is running on a 5 gig LVM volume.
+diff --git a/lib/support/plausible.c b/lib/support/plausible.c
+index 6f0c4bc..0636061 100644
+--- a/lib/support/plausible.c
++++ b/lib/support/plausible.c
+@@ -43,6 +43,17 @@ static const char *(*dl_magic_file)(magic_t, const char *);
+ static int (*dl_magic_load)(magic_t, const char *);
+ static void (*dl_magic_close)(magic_t);
+ 
++/*
++ * NO_CHECK functionality was only added in file 4.20.
++ * Older systems like RHEL 5.x still have file 4.17
++ */
++#ifndef MAGIC_NO_CHECK_COMPRESS
++#define MAGIC_NO_CHECK_COMPRESS 0x0001000
++#endif
++#ifndef MAGIC_NO_CHECK_ELF
++#define MAGIC_NO_CHECK_ELF 0x0010000
++#endif
++
+ #ifdef HAVE_DLOPEN
+ #include <dlfcn.h>
+ 
+-- 
+2.7.3
 
-> Any special mkfs options?
-
-No.  This particular error will trigger on 4k block file systems, 1k
-block file systems, 4k file system swith journals disabled, etc.  It's
-fairly insensitive to the file system configuration.
-
-> And whatever else might be relevant.
-
-Note that the generic/299 test is running fio in an an ENOSPC hitter
-configuration, where there is an antangonist thread which is
-constantly allocating all of the disk space available and then freeing
-it all:
-
-# FSQA Test No. 299
-#
-# AIO/DIO stress test
-# Run random AIO/DIO activity and fallocate/truncate simultaneously
-# Test will operate on huge sparsed files so ENOSPC is expected.
-
-
-So some of the AIO/DIO operations will be failing with an error, and
-and I suspect that's very likely relevant to reproducing the failure.
-
-The actual guts of the test from generic/299[1]:
-
-[1] https://git.kernel.org/cgit/fs/xfs/xfstests-dev.git/tree/tests/generic/299
-
-_workout()
-{
-	echo ""
-	echo "Run fio with random aio-dio pattern"
-	echo ""
-	cat $fio_config >>  $seqres.full
-	run_check $FIO_PROG $fio_config &
-	pid=$!
-	echo "Start fallocate/truncate loop"
-
-	for ((i=0; ; i++))
-	do
-	    for ((k=1; k <= NUM_JOBS; k++))
-	    do
-		$XFS_IO_PROG -f -c "falloc 0 $FILE_SIZE" \
-			$SCRATCH_MNT/direct_aio.$k.0 >> $seqres.full 2>&1
-	    done
-	    for ((k=1; k <= NUM_JOBS; k++))
-	    do
-		$XFS_IO_PROG -c "truncate  0" \
-			$SCRATCH_MNT/direct_aio.$k.0 >> $seqres.full 2>&1
-	    done
-	    # Following like will check that pid is still run.
-	    # Once fio exit we can stop fallocate/truncate loop
-	    pgrep -f "$FIO_PROG" > /dev/null 2>&1 || break
-	done
-	wait $pid
-}
-
-So what's happening is that generic/299 is looping in the
-fallocate/truncate loop until fio exits, but since fio never exits, so
-it ends up looping forever.
-
-Cheers,
-
-					- Ted
