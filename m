@@ -1,277 +1,188 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/1 linux-next] ext4: make online resizing conditional
-Date: Thu, 20 Oct 2016 14:46:16 -0600
-Message-ID: <C741A09F-9926-4861-9744-71EE0494738B@dilger.ca>
-References: <20161020183734.18024-1-fabf@skynet.be>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_2CFC065F-36CA-4AE1-A06D-2E1184A056A4"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Fabian Frederick <fabf@skynet.be>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20161020183734.18024-1-fabf@skynet.be>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: ext4 lockdep splat with v4.9-rc1
+Date: Thu, 20 Oct 2016 20:06:16 -0600
+Message-ID: <20161021020616.GA25426@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+In my DAX PMD regression testing I hit the lockdep splat at the end of this
+mail.  I've tried to reproduce it multiple times, but haven't been able to.
+I'm hoping that the lockdep splat contains enough information by itself to be
+useful.
 
---Apple-Mail=_2CFC065F-36CA-4AE1-A06D-2E1184A056A4
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+This testing was done with v8 of my DAX PMD series, but I don't think my
+series modifies any of the locks in the splat so I think the problem should
+exist with v4.9-rc1 as well.
 
-On Oct 20, 2016, at 12:37 PM, Fabian Frederick <fabf@skynet.be> wrote:
->=20
-> This patch tries to address the following comment in ext4/resize.c
-> "This could probably be made into a module, because it is not often in =
-use."
->=20
-> Having ext4 resizing in a module would give a lot of depmod dependency =
-cycles
-> but we can make it an option.
->=20
-> resize.h has been added for more readability.
->=20
-> Tried the following resizing:
-> dd if=3D/dev/zero of=3Dddext4 bs=3D1M count=3D100
-> losetup -f ddext4
-> mkfs -t ext4 /dev/loop0
-> losetup -D
-> dd if=3D/dev/zero of=3Dddappend bs=3D1M count=3D50
-> cat ddappend >> ddext4
-> losetup -f ddext4
-> mount /dev/loop0 /mnt
-> resize2fs /dev/loop0
->=20
-> With option disabled:
-> "Operation not supported While checking for on-line resizing support"
+Here's the tree I was testing with, mostly so you can easily match up line
+numbers from the lockdep splat:
 
-Patch looks mostly good, some comments and cleanups below.
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v8
 
-> Signed-off-by: Fabian Frederick <fabf@skynet.be>
-> ---
-> fs/ext4/Kconfig  |  7 +++++++
-> fs/ext4/Makefile |  3 ++-
-> fs/ext4/ext4.h   | 12 ------------
-> fs/ext4/ioctl.c  |  1 +
-> fs/ext4/resize.c |  2 +-
-> fs/ext4/resize.h | 42 ++++++++++++++++++++++++++++++++++++++++++
-> 6 files changed, 53 insertions(+), 14 deletions(-)
-> create mode 100644 fs/ext4/resize.h
->=20
-> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-> index e38039f..2ec35c3 100644
-> --- a/fs/ext4/Kconfig
-> +++ b/fs/ext4/Kconfig
-> @@ -122,3 +122,10 @@ config EXT4_DEBUG
-> 	  If you select Y here, then you will be able to turn on =
-debugging
-> 	  with a command such as:
-> 		echo 1 > /sys/module/ext4/parameters/mballoc_debug
-> +
-> +config EXT4_RESIZE
-> +	bool "EXT4 resize"
-> +	depends on EXT4_FS
-> +	default y
-> +	help
-> +	  Support online ext4 partition resizing.
-> diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-> index 354103f..efe6579 100644
-> --- a/fs/ext4/Makefile
-> +++ b/fs/ext4/Makefile
-> @@ -5,10 +5,11 @@
-> obj-$(CONFIG_EXT4_FS) +=3D ext4.o
->=20
-> ext4-y	:=3D balloc.o bitmap.o dir.o file.o fsync.o ialloc.o =
-inode.o page-io.o \
-> -		ioctl.o namei.o super.o symlink.o hash.o resize.o =
-extents.o \
-> +		ioctl.o namei.o super.o symlink.o hash.o extents.o \
-> 		ext4_jbd2.o migrate.o mballoc.o block_validity.o =
-move_extent.o \
-> 		mmp.o indirect.o extents_status.o xattr.o xattr_user.o \
-> 		xattr_trusted.o inline.o readpage.o sysfs.o
->=20
-> ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+=3D acl.o
-> ext4-$(CONFIG_EXT4_FS_SECURITY)		+=3D xattr_security.o
-> +ext4-$(CONFIG_EXT4_RESIZE)		+=3D resize.o
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 282a51b..819a07b 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2555,14 +2555,6 @@ extern int ext4_generic_delete_entry(handle_t =
-*handle,
-> 				     int csum_size);
-> extern bool ext4_empty_dir(struct inode *inode);
->=20
-> -/* resize.c */
-> -extern int ext4_group_add(struct super_block *sb,
-> -				struct ext4_new_group_data *input);
-> -extern int ext4_group_extend(struct super_block *sb,
-> -				struct ext4_super_block *es,
-> -				ext4_fsblk_t n_blocks_count);
-> -extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t =
-n_blocks_count);
-> -
-> /* super.c */
-> extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
-> extern int ext4_calculate_overhead(struct super_block *sb);
-> @@ -3239,10 +3231,6 @@ static inline void =
-ext4_inode_resume_unlocked_dio(struct inode *inode)
-> 					    EXT4_WQ_HASH_SZ])
-> extern wait_queue_head_t ext4__ioend_wq[EXT4_WQ_HASH_SZ];
->=20
-> -#define EXT4_RESIZING	0
-> -extern int ext4_resize_begin(struct super_block *sb);
-> -extern void ext4_resize_end(struct super_block *sb);
-> -
-> static inline void ext4_set_io_unwritten_flag(struct inode *inode,
-> 					      struct ext4_io_end =
-*io_end)
-> {
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index bf5ae8e..81d28d2 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -18,6 +18,7 @@
-> #include <asm/uaccess.h>
-> #include "ext4_jbd2.h"
-> #include "ext4.h"
-> +#include "resize.h"
->=20
-> /**
->  * Swap memory between @a and @b for @len bytes.
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index cf68100..8192194 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -5,7 +5,6 @@
->  *
->  * Copyright (C) 2001, 2002 Andreas Dilger <adilger@clusterfs.com>
->  *
-> - * This could probably be made into a module, because it is not often =
-in use.
+Here's the lockdep splat, run through kasan_symbolize.py:
 
-This comment is probably still valid?
+run fstests generic/323 at 2016-10-19 18:03:15
 
->  */
->=20
->=20
-> @@ -15,6 +14,7 @@
-> #include <linux/slab.h>
->=20
-> #include "ext4_jbd2.h"
-> +#include "resize.h"
->=20
-> int ext4_resize_begin(struct super_block *sb)
-> {
-> diff --git a/fs/ext4/resize.h b/fs/ext4/resize.h
-> new file mode 100644
-> index 0000000..1375434
-> --- /dev/null
-> +++ b/fs/ext4/resize.h
-> @@ -0,0 +1,42 @@
-> +/*
-> + * linux/fs/ext4/resize.h
-> + *
-> + */
-> +
-> +#define EXT4_RESIZING	0
+======================================================
+[ INFO: possible circular locking dependency detected ]
+4.9.0-rc1-00016-g362bae7-dirty #1 Tainted: G            E
+-------------------------------------------------------
+aio-last-ref-he/17703 is trying to acquire lock:
+ ([ 3888.807595] &mm->mmap_sem
+){++++++}[ 3888.808540] , at:
+[<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
 
-Moving this here is a bit confusing, since it has no context of what it =
-is
-used for.  This only makes sense together with =
-ext4_resize_{begin,end}(),
-so it should be declared below, inside CONFIG_EXT4_RESIZE.
+but task is already holding lock:
+ ([ 3888.812678] &sb->s_type->i_mutex_key
+#14[ 3888.813750] ){++++++}
+, at: [ 3888.814538] [<ffffffff8133ece3>] ext4_direct_IO+0x103/0x810
 
-It also wouldn't hurt to rename this something like EXT4_RESIZE_ACTIVE,
-and add to the comment at s_resize_flags indicating it is using
-EXT4_RESIZE_* bits.
+which lock already depends on the new lock.
 
-> +
-> +#if IS_ENABLED(CONFIG_EXT4_RESIZE)
+the existing dependency chain (in reverse order) is:
 
-IS_ENABLED() seems unnecessary, as most CONFIG_* symbols are checked via
+-> #3[ 3888.820884]  (
+&sb->s_type->i_mutex_key[ 3888.821933] #14
+){++++++}[ 3888.822650] :
+[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
+[<ffffffff81b2ab87>] down_write+0x47/0xb0 kernel/locking/rwsem.c:52
+[<     inline     >] inode_lock ./include/linux/fs.h:740
+[<ffffffff81301cd8>] vfs_load_quota_inode+0x428/0x570 fs/quota/dquot.c:2305
+[<ffffffff8130208f>] dquot_quota_on+0x4f/0x60 fs/quota/dquot.c:2413
+[<ffffffff8135ad1f>] ext4_quota_on+0x11f/0x1b0 fs/ext4/super.c:5262
+[<     inline     >] quota_quotaon fs/quota/quota.c:91
+[<     inline     >] do_quotactl fs/quota/quota.c:724
+[<     inline     >] SYSC_quotactl fs/quota/quota.c:873
+[<ffffffff813079ec>] SyS_quotactl+0x50c/0x8b0 fs/quota/quota.c:832
+[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
 
-#ifdef CONFIG_EXT4_RESIZE
+-> #2[ 3888.838137]  (
+&s->s_dquot.dqonoff_mutex[ 3888.839219] ){+.+...}
+:
+[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
+[<     inline     >] __mutex_lock_common kernel/locking/mutex.c:521
+[<ffffffff81b299cc>] mutex_lock_nested+0x6c/0x3b0 kernel/locking/mutex.c:621
+[<ffffffff81302649>] dquot_writeback_dquots+0x39/0x270 fs/quota/dquot.c:620
+[<ffffffff81354417>] ext4_sync_fs+0x67/0x2b0 fs/ext4/super.c:4666
+[<     inline     >] __sync_filesystem fs/sync.c:38
+[<ffffffff812c7d72>] sync_filesystem+0x42/0xa0 fs/sync.c:63
+[<ffffffff8128da5a>] freeze_super+0xaa/0x190 fs/super.c:1372
+[<     inline     >] ioctl_fsfreeze fs/ioctl.c:555
+[<ffffffff812a1365>] do_vfs_ioctl+0x575/0x6e0 fs/ioctl.c:653
+[<     inline     >] SYSC_ioctl fs/ioctl.c:694
+[<ffffffff812a1549>] SyS_ioctl+0x79/0x90 fs/ioctl.c:685
+[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
 
-Is there some reason to use IS_ENABLED() for this?  My quick reading of
-the ugly macro series this uses is for CONFIG_ values that may be 0 or =
-1,
-and #ifdef CONFIG_* is fine for values that may be "y" or "m".
+-> #1[ 3888.859411]  (
+sb_pagefaults[ 3888.860194] ){++++.+}
+:
+[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
+[<     inline     >] percpu_down_read_preempt_disable ./include/linux/percpu-rwsem.h:35
+[<     inline     >] percpu_down_read ./include/linux/percpu-rwsem.h:58
+[<ffffffff8128e135>] __sb_start_write+0xa5/0x1b0 fs/super.c:1252
+[<     inline     >] sb_start_pagefault ./include/linux/fs.h:1577
+[<ffffffff81340fa3>] ext4_page_mkwrite+0x63/0x4c0 fs/ext4/inode.c:5666
+[<ffffffff81226a14>] do_page_mkwrite+0x74/0x120 mm/memory.c:2054
+[<     inline     >] wp_page_shared mm/memory.c:2319
+[<ffffffff812283e7>] do_wp_page+0x1f7/0x890 mm/memory.c:2423
+[<     inline     >] handle_pte_fault mm/memory.c:3542
+[<     inline     >] __handle_mm_fault mm/memory.c:3614
+[<ffffffff8122b56d>] handle_mm_fault+0xa7d/0x16c0 mm/memory.c:3651
+[<ffffffff81073bdb>] __do_page_fault+0x26b/0x4c0 arch/x86/mm/fault.c:1397
+[<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
+[<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
+[<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
 
-> +extern int ext4_resize_fs(struct super_block *, ext4_fsblk_t);
-> +extern int ext4_resize_begin(struct super_block *);
-> +extern void ext4_resize_end(struct super_block *);
-> +extern int ext4_group_add(struct super_block *, struct =
-ext4_new_group_data *);
-> +extern int ext4_group_extend(struct super_block *, struct =
-ext4_super_block *,
-> +			     ext4_fsblk_t);
-> +#else
-> +static int ext4_resize_begin(struct super_block *sb)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> +static void ext4_resize_end(struct super_block *sb)
-> +{
-> +}
-> +
-> +static inline int ext4_group_add(struct super_block *sb,
-> +				 struct ext4_new_group_data *input)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> +static inline int ext4_group_extend(struct super_block *sb,
-> +		struct ext4_super_block *es, ext4_fsblk_t =
-n_blocks_count)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +
-> +static inline int ext4_resize_fs(struct super_block *sb,
-> +				 ext4_fsblk_t n_blocks_count)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
-> +#endif
-> --
-> 2.9.3
->=20
+-> #0[ 3888.882554]  (
+&mm->mmap_sem[ 3888.883331] ){++++++}
+:
+[<     inline     >] check_prev_add kernel/locking/lockdep.c:1829
+[<     inline     >] check_prevs_add kernel/locking/lockdep.c:1939
+[<     inline     >] validate_chain kernel/locking/lockdep.c:2266
+[<ffffffff8111023e>] __lock_acquire+0x10fe/0x1290 kernel/locking/lockdep.c:3335
+[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
+[<ffffffff81b2aade>] down_read+0x3e/0xa0 kernel/locking/rwsem.c:22
+[<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
+[<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
+[<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
+[<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
+[<     inline     >] dax_io fs/dax.c:207
+[<ffffffff812e767f>] dax_do_io+0x17f/0x5a0 fs/dax.c:262
+[<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3553
+[<ffffffff8133f19c>] ext4_direct_IO+0x5bc/0x810 fs/ext4/inode.c:3595
+[<ffffffff811ec096>] generic_file_read_iter+0x286/0x8f0 mm/filemap.c:1942
+[<ffffffff812e5361>] aio_run_iocb+0x131/0x2c0 fs/aio.c:1466
+[<     inline     >] io_submit_one fs/aio.c:1568
+[<ffffffff812e64c6>] do_io_submit+0x336/0x7d0 fs/aio.c:1626
+[<     inline     >] SYSC_io_submit fs/aio.c:1651
+[<ffffffff812e6970>] SyS_io_submit+0x10/0x20 fs/aio.c:1648
+[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
 
+other info that might help us debug this:
 
-Cheers, Andreas
+Chain exists of:
+  [ 3888.916374] &mm->mmap_sem
+ --> [ 3888.917234] &s->s_dquot.dqonoff_mutex
+ --> [ 3888.918375] &sb->s_type->i_mutex_key
+#14[ 3888.919448]
 
+ Possible unsafe locking scenario:
 
+       CPU0                    CPU1
+       ----                    ----
+  lock([ 3888.924882] &sb->s_type->i_mutex_key
+#14[ 3888.925954] );
+                               lock([ 3888.927657] &s->s_dquot.dqonoff_mutex
+);
+                               lock([ 3888.930351] &sb->s_type->i_mutex_key
+#14[ 3888.931421] );
+  lock([ 3888.932425] &mm->mmap_sem
+);
 
+ * DEADLOCK *
 
+1 lock held by aio-last-ref-he/17703:
+ #0: [ 3888.936982]  (
+&sb->s_type->i_mutex_key[ 3888.938028] #14
+){++++++}[ 3888.938750] , at:
+[<     inline     >] inode_lock_shared ./include/linux/fs.h:750
+[<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3551
+[<ffffffff8133ece3>] ext4_direct_IO+0x103/0x810 fs/ext4/inode.c:3595
 
-
---Apple-Mail=_2CFC065F-36CA-4AE1-A06D-2E1184A056A4
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBWAktGHKl2rkXzB/gAQgZ0Q//XzZbin7mk3Qy8aRpR0gMTMVuEB16QTur
-ezB+2svUbRB56Pnm6nN9VTSK9qdOO7lUrWF1Hb9kTIwn98DYkmP7Wz8rlCx/cw+m
-AQ4pXLlIW+jTCuNIpqdRT062rXmK1iavsLm9JeKwmIcx+rrw54qyE7O/YJML3pM8
-VRMdRnI7VVjtep5Uv6ASJepBzYDWedPKyd6dpehk9DVlyRy5391JYnBCORp8woNn
-6Ujg8YB2LfZFsEo0UvWp6qYusqc8EFcq72RJjIvxeS8+dm91ZSboOePa17Hjn3oK
-k84hN5VaG3tY6QeksywmzuoProNahDuctmBrjIwV7o9mlLVSs57VzFyvvNpV2NgU
-kbxiMEh1zTgSlqJpa8F7c0W7UxBG+ikBdNnHlfl8IiRmPXZp8IN7/piCZ+5We2Q0
-D6B6Ab9oe8jUQrf+xE94UsuoLhP88AFRKsNLzzf4EEvLUJP1zuTz1QDQPRu8FY5y
-qWZmT7xe3+97PKbgmgMlVVfF01x6Q+oj1urPG/yV0FF3DWkHGLA4MB9MS0KY+JdP
-ddjJa/2nfbCLzVsl6BDOpjKL4y6sAJP9M88dNYaap3W+ZzhQsDnvI1zEL2GbeihJ
-qlv2iRyhX8Z9hQ9KYB1IMsq9Zi4cODxZXsuaRA5HhanDZ0pPT419aAvI9MvNvJ60
-OLdrtzpIbwk=
-=HFQu
------END PGP SIGNATURE-----
-
---Apple-Mail=_2CFC065F-36CA-4AE1-A06D-2E1184A056A4--
+stack backtrace:
+CPU: 1 PID: 17703 Comm: aio-last-ref-he Tainted: G            E   4.9.0-rc1-00016-g362bae7-dirty #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.1-1.fc24 04/01/2014
+ ffffc9001471f750 ffffffff815edbe3 ffffffff82f71ac0 ffffffff82ee1540
+ ffffc9001471f790 ffffffff8110d8ae 0000000010bf9a40 ffff880510bfa250
+ ffff880510bf9a40 ffff880510bfa218 0000000000000001 0000000000000000
+Call Trace:
+ [<     inline     >] __dump_stack lib/dump_stack.c:15
+ [<ffffffff815edbe3>] dump_stack+0x86/0xc3 lib/dump_stack.c:51
+ [<ffffffff8110d8ae>] print_circular_bug+0x1be/0x210 kernel/locking/lockdep.c:1202
+ [<     inline     >] check_prev_add kernel/locking/lockdep.c:1829
+ [<     inline     >] check_prevs_add kernel/locking/lockdep.c:1939
+ [<     inline     >] validate_chain kernel/locking/lockdep.c:2266
+ [<ffffffff8111023e>] __lock_acquire+0x10fe/0x1290 kernel/locking/lockdep.c:3335
+ [<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
+ [<ffffffff81b2aade>] down_read+0x3e/0xa0 kernel/locking/rwsem.c:22
+ [<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
+ [<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
+ [<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
+ [<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
+ [<     inline     >] dax_io fs/dax.c:207
+ [<ffffffff812e767f>] dax_do_io+0x17f/0x5a0 fs/dax.c:262
+ [<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3553
+ [<ffffffff8133f19c>] ext4_direct_IO+0x5bc/0x810 fs/ext4/inode.c:3595
+ [<ffffffff811ec096>] generic_file_read_iter+0x286/0x8f0 mm/filemap.c:1942
+ [<ffffffff812e5361>] aio_run_iocb+0x131/0x2c0 fs/aio.c:1466
+ [<     inline     >] io_submit_one fs/aio.c:1568
+ [<ffffffff812e64c6>] do_io_submit+0x336/0x7d0 fs/aio.c:1626
+ [<     inline     >] SYSC_io_submit fs/aio.c:1651
+ [<ffffffff812e6970>] SyS_io_submit+0x10/0x20 fs/aio.c:1648
+ [<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
