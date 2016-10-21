@@ -1,51 +1,34 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: ext4: remove another test in ext4_alloc_file_blocks()
-Date: Fri, 21 Oct 2016 11:54:35 +0200
-Message-ID: <20161021095435.GC8271@quack2.suse.cz>
-References: <20161012060002.GA12778@mwanda>
+Subject: Re: ext4 lockdep splat with v4.9-rc1
+Date: Fri, 21 Oct 2016 12:05:25 +0200
+Message-ID: <20161021100525.GA28926@quack2.suse.cz>
+References: <20161021020616.GA25426@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Fabian Frederick <fabf@skynet.be>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161012060002.GA12778@mwanda>
-Sender: kernel-janitors-owner@vger.kernel.org
+In-Reply-To: <20161021020616.GA25426@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 12-10-16 09:00:02, Dan Carpenter wrote:
-> Before commit c3fe493ccdb1 ('ext4: remove unneeded test in
-> ext4_alloc_file_blocks()') then it was possible for "depth" to be -1
-> but now, it's not possible that it is negative.
+On Thu 20-10-16 20:06:16, Ross Zwisler wrote:
+> In my DAX PMD regression testing I hit the lockdep splat at the end of this
+> mail.  I've tried to reproduce it multiple times, but haven't been able to.
+> I'm hoping that the lockdep splat contains enough information by itself to be
+> useful.
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> This testing was done with v8 of my DAX PMD series, but I don't think my
+> series modifies any of the locks in the splat so I think the problem should
+> exist with v4.9-rc1 as well.
 
-Looks good. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+Thanks for report. Yes, I'm aware of the problem and it started happening
+after update of lockdep instrumentation in the fs freezing code. I didn't
+get to fixing it yet.
 
 								Honza
-
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index c930a01..dca394c 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4701,7 +4701,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
->  		/*
->  		 * Recalculate credits when extent tree depth changes.
->  		 */
-> -		if (depth >= 0 && depth != ext_depth(inode)) {
-> +		if (depth != ext_depth(inode)) {
->  			credits = ext4_chunk_trans_blocks(inode, len);
->  			depth = ext_depth(inode);
->  		}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
