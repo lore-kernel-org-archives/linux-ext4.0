@@ -1,46 +1,51 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: generic/095 triggers lockdep warning in 4.9-rc1
-Date: Fri, 21 Oct 2016 09:32:57 +0200
-Message-ID: <20161021073257.GA8271@quack2.suse.cz>
-References: <20161020180400.GA2172@localhost.localdomain>
+Subject: Re: ext4: remove another test in ext4_alloc_file_blocks()
+Date: Fri, 21 Oct 2016 11:54:35 +0200
+Message-ID: <20161021095435.GC8271@quack2.suse.cz>
+References: <20161012060002.GA12778@mwanda>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33484 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754916AbcJUHdA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 21 Oct 2016 03:33:00 -0400
+Cc: Theodore Ts'o <tytso@mit.edu>, Fabian Frederick <fabf@skynet.be>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161020180400.GA2172@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161012060002.GA12778@mwanda>
+Sender: kernel-janitors-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 20-10-16 14:04:00, Eric Whitney wrote:
-> As reported in today's concall, generic/095 triggered a lockdep warning
-> during my regression run on a 4.9-rc1 kernel in the 4k test case using the
-> latest xfstests-bld test appliance.  The warning is attached below, and
-> involves both ext4's direct I/O path and the quota code.
+On Wed 12-10-16 09:00:02, Dan Carpenter wrote:
+> Before commit c3fe493ccdb1 ('ext4: remove unneeded test in
+> ext4_alloc_file_blocks()') then it was possible for "depth" to be -1
+> but now, it's not possible that it is negative.
 > 
-> This failure is difficult to reproduce - 120 out of 120 subsequent trials in
-> the 4k test case completed successfully.  No generic/095 failures occurred in
-> any other test appliance test case during regression.  Also, I've not seen
-> this particular failure in regression runs prior to 4.9-rc1.
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Thanks for report. I've already seen that report in my testing as well and
-I'm actually able to reproduce it pretty reliably. It is a result of
-changes in lockdep annotation of fs freezing - in particular commit
-f1a9622037cd370460fd06bb7e28d0f01ceb8ef1 "fs/super.c: don't fool lockdep in
-freeze_super() and thaw_super() paths". And it is a real deadlock
-possibility although it is probably close to impossible to hit in practice.
+Looks good. You can add:
 
-The immediate problem is with lock ranking of dqonoff_mutex which ranks
-above fault freeze protection but during fs freezing it gets acquired with
-fault freeze protection held. It it on my todo list to look into fixing
-this but it won't be trivial so I didn't get to it yet.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index c930a01..dca394c 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4701,7 +4701,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
+>  		/*
+>  		 * Recalculate credits when extent tree depth changes.
+>  		 */
+> -		if (depth >= 0 && depth != ext_depth(inode)) {
+> +		if (depth != ext_depth(inode)) {
+>  			credits = ext4_chunk_trans_blocks(inode, len);
+>  			depth = ext_depth(inode);
+>  		}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
