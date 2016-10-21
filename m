@@ -1,188 +1,98 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: ext4 lockdep splat with v4.9-rc1
-Date: Thu, 20 Oct 2016 20:06:16 -0600
-Message-ID: <20161021020616.GA25426@linux.intel.com>
+From: <paloma.depping@gmx.de>
+Subject: (unknown)
+Date: Fri, 21 Oct 2016 06:09:17 -0000
+Message-ID: <147703015757.13761.7722066862724432912@sfr.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_8059230588653_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 13.55.25.93.rev.sfr.net ([93.25.55.13]:41874 "HELO sfr.net"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S932170AbcJUGJ0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 21 Oct 2016 02:09:26 -0400
+Subject: 
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In my DAX PMD regression testing I hit the lockdep splat at the end of this
-mail.  I've tried to reproduce it multiple times, but haven't been able to.
-I'm hoping that the lockdep splat contains enough information by itself to be
-useful.
-
-This testing was done with v8 of my DAX PMD series, but I don't think my
-series modifies any of the locks in the splat so I think the problem should
-exist with v4.9-rc1 as well.
-
-Here's the tree I was testing with, mostly so you can easily match up line
-numbers from the lockdep splat:
-
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v8
-
-Here's the lockdep splat, run through kasan_symbolize.py:
-
-run fstests generic/323 at 2016-10-19 18:03:15
-
-======================================================
-[ INFO: possible circular locking dependency detected ]
-4.9.0-rc1-00016-g362bae7-dirty #1 Tainted: G            E
--------------------------------------------------------
-aio-last-ref-he/17703 is trying to acquire lock:
- ([ 3888.807595] &mm->mmap_sem
-){++++++}[ 3888.808540] , at:
-[<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
-
-but task is already holding lock:
- ([ 3888.812678] &sb->s_type->i_mutex_key
-#14[ 3888.813750] ){++++++}
-, at: [ 3888.814538] [<ffffffff8133ece3>] ext4_direct_IO+0x103/0x810
-
-which lock already depends on the new lock.
-
-the existing dependency chain (in reverse order) is:
-
--> #3[ 3888.820884]  (
-&sb->s_type->i_mutex_key[ 3888.821933] #14
-){++++++}[ 3888.822650] :
-[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
-[<ffffffff81b2ab87>] down_write+0x47/0xb0 kernel/locking/rwsem.c:52
-[<     inline     >] inode_lock ./include/linux/fs.h:740
-[<ffffffff81301cd8>] vfs_load_quota_inode+0x428/0x570 fs/quota/dquot.c:2305
-[<ffffffff8130208f>] dquot_quota_on+0x4f/0x60 fs/quota/dquot.c:2413
-[<ffffffff8135ad1f>] ext4_quota_on+0x11f/0x1b0 fs/ext4/super.c:5262
-[<     inline     >] quota_quotaon fs/quota/quota.c:91
-[<     inline     >] do_quotactl fs/quota/quota.c:724
-[<     inline     >] SYSC_quotactl fs/quota/quota.c:873
-[<ffffffff813079ec>] SyS_quotactl+0x50c/0x8b0 fs/quota/quota.c:832
-[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
-
--> #2[ 3888.838137]  (
-&s->s_dquot.dqonoff_mutex[ 3888.839219] ){+.+...}
-:
-[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
-[<     inline     >] __mutex_lock_common kernel/locking/mutex.c:521
-[<ffffffff81b299cc>] mutex_lock_nested+0x6c/0x3b0 kernel/locking/mutex.c:621
-[<ffffffff81302649>] dquot_writeback_dquots+0x39/0x270 fs/quota/dquot.c:620
-[<ffffffff81354417>] ext4_sync_fs+0x67/0x2b0 fs/ext4/super.c:4666
-[<     inline     >] __sync_filesystem fs/sync.c:38
-[<ffffffff812c7d72>] sync_filesystem+0x42/0xa0 fs/sync.c:63
-[<ffffffff8128da5a>] freeze_super+0xaa/0x190 fs/super.c:1372
-[<     inline     >] ioctl_fsfreeze fs/ioctl.c:555
-[<ffffffff812a1365>] do_vfs_ioctl+0x575/0x6e0 fs/ioctl.c:653
-[<     inline     >] SYSC_ioctl fs/ioctl.c:694
-[<ffffffff812a1549>] SyS_ioctl+0x79/0x90 fs/ioctl.c:685
-[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
-
--> #1[ 3888.859411]  (
-sb_pagefaults[ 3888.860194] ){++++.+}
-:
-[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
-[<     inline     >] percpu_down_read_preempt_disable ./include/linux/percpu-rwsem.h:35
-[<     inline     >] percpu_down_read ./include/linux/percpu-rwsem.h:58
-[<ffffffff8128e135>] __sb_start_write+0xa5/0x1b0 fs/super.c:1252
-[<     inline     >] sb_start_pagefault ./include/linux/fs.h:1577
-[<ffffffff81340fa3>] ext4_page_mkwrite+0x63/0x4c0 fs/ext4/inode.c:5666
-[<ffffffff81226a14>] do_page_mkwrite+0x74/0x120 mm/memory.c:2054
-[<     inline     >] wp_page_shared mm/memory.c:2319
-[<ffffffff812283e7>] do_wp_page+0x1f7/0x890 mm/memory.c:2423
-[<     inline     >] handle_pte_fault mm/memory.c:3542
-[<     inline     >] __handle_mm_fault mm/memory.c:3614
-[<ffffffff8122b56d>] handle_mm_fault+0xa7d/0x16c0 mm/memory.c:3651
-[<ffffffff81073bdb>] __do_page_fault+0x26b/0x4c0 arch/x86/mm/fault.c:1397
-[<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
-[<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
-[<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
-
--> #0[ 3888.882554]  (
-&mm->mmap_sem[ 3888.883331] ){++++++}
-:
-[<     inline     >] check_prev_add kernel/locking/lockdep.c:1829
-[<     inline     >] check_prevs_add kernel/locking/lockdep.c:1939
-[<     inline     >] validate_chain kernel/locking/lockdep.c:2266
-[<ffffffff8111023e>] __lock_acquire+0x10fe/0x1290 kernel/locking/lockdep.c:3335
-[<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
-[<ffffffff81b2aade>] down_read+0x3e/0xa0 kernel/locking/rwsem.c:22
-[<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
-[<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
-[<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
-[<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
-[<     inline     >] dax_io fs/dax.c:207
-[<ffffffff812e767f>] dax_do_io+0x17f/0x5a0 fs/dax.c:262
-[<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3553
-[<ffffffff8133f19c>] ext4_direct_IO+0x5bc/0x810 fs/ext4/inode.c:3595
-[<ffffffff811ec096>] generic_file_read_iter+0x286/0x8f0 mm/filemap.c:1942
-[<ffffffff812e5361>] aio_run_iocb+0x131/0x2c0 fs/aio.c:1466
-[<     inline     >] io_submit_one fs/aio.c:1568
-[<ffffffff812e64c6>] do_io_submit+0x336/0x7d0 fs/aio.c:1626
-[<     inline     >] SYSC_io_submit fs/aio.c:1651
-[<ffffffff812e6970>] SyS_io_submit+0x10/0x20 fs/aio.c:1648
-[<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
-
-other info that might help us debug this:
-
-Chain exists of:
-  [ 3888.916374] &mm->mmap_sem
- --> [ 3888.917234] &s->s_dquot.dqonoff_mutex
- --> [ 3888.918375] &sb->s_type->i_mutex_key
-#14[ 3888.919448]
-
- Possible unsafe locking scenario:
-
-       CPU0                    CPU1
-       ----                    ----
-  lock([ 3888.924882] &sb->s_type->i_mutex_key
-#14[ 3888.925954] );
-                               lock([ 3888.927657] &s->s_dquot.dqonoff_mutex
-);
-                               lock([ 3888.930351] &sb->s_type->i_mutex_key
-#14[ 3888.931421] );
-  lock([ 3888.932425] &mm->mmap_sem
-);
-
- * DEADLOCK *
-
-1 lock held by aio-last-ref-he/17703:
- #0: [ 3888.936982]  (
-&sb->s_type->i_mutex_key[ 3888.938028] #14
-){++++++}[ 3888.938750] , at:
-[<     inline     >] inode_lock_shared ./include/linux/fs.h:750
-[<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3551
-[<ffffffff8133ece3>] ext4_direct_IO+0x103/0x810 fs/ext4/inode.c:3595
-
-stack backtrace:
-CPU: 1 PID: 17703 Comm: aio-last-ref-he Tainted: G            E   4.9.0-rc1-00016-g362bae7-dirty #1
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.1-1.fc24 04/01/2014
- ffffc9001471f750 ffffffff815edbe3 ffffffff82f71ac0 ffffffff82ee1540
- ffffc9001471f790 ffffffff8110d8ae 0000000010bf9a40 ffff880510bfa250
- ffff880510bf9a40 ffff880510bfa218 0000000000000001 0000000000000000
-Call Trace:
- [<     inline     >] __dump_stack lib/dump_stack.c:15
- [<ffffffff815edbe3>] dump_stack+0x86/0xc3 lib/dump_stack.c:51
- [<ffffffff8110d8ae>] print_circular_bug+0x1be/0x210 kernel/locking/lockdep.c:1202
- [<     inline     >] check_prev_add kernel/locking/lockdep.c:1829
- [<     inline     >] check_prevs_add kernel/locking/lockdep.c:1939
- [<     inline     >] validate_chain kernel/locking/lockdep.c:2266
- [<ffffffff8111023e>] __lock_acquire+0x10fe/0x1290 kernel/locking/lockdep.c:3335
- [<ffffffff81110828>] lock_acquire+0xe8/0x1d0 kernel/locking/lockdep.c:3746
- [<ffffffff81b2aade>] down_read+0x3e/0xa0 kernel/locking/rwsem.c:22
- [<ffffffff81073d26>] __do_page_fault+0x3b6/0x4c0 arch/x86/mm/fault.c:1343
- [<ffffffff81073f08>] trace_do_page_fault+0x58/0x270 arch/x86/mm/fault.c:1490
- [<ffffffff8106ddfa>] do_async_page_fault+0x1a/0xa0 arch/x86/kernel/kvm.c:265
- [<ffffffff81b2f588>] async_page_fault+0x28/0x30 arch/x86/entry/entry_64.S:1015
- [<     inline     >] dax_io fs/dax.c:207
- [<ffffffff812e767f>] dax_do_io+0x17f/0x5a0 fs/dax.c:262
- [<     inline     >] ext4_direct_IO_read fs/ext4/inode.c:3553
- [<ffffffff8133f19c>] ext4_direct_IO+0x5bc/0x810 fs/ext4/inode.c:3595
- [<ffffffff811ec096>] generic_file_read_iter+0x286/0x8f0 mm/filemap.c:1942
- [<ffffffff812e5361>] aio_run_iocb+0x131/0x2c0 fs/aio.c:1466
- [<     inline     >] io_submit_one fs/aio.c:1568
- [<ffffffff812e64c6>] do_io_submit+0x336/0x7d0 fs/aio.c:1626
- [<     inline     >] SYSC_io_submit fs/aio.c:1651
- [<ffffffff812e6970>] SyS_io_submit+0x10/0x20 fs/aio.c:1648
- [<ffffffff81b2e081>] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:209
+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
