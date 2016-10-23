@@ -1,10 +1,8 @@
-From: Jens Axboe <axboe@fb.com>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: Test generic/299 stalling forever
-Date: Sun, 23 Oct 2016 08:32:49 -0600
-Message-ID: <53fe5a98-6ff9-4fa1-e84c-8a3e16cc0f50@fb.com>
-References: <20161012211407.GL23194@dastard>
- <f1c80b32-9593-48e0-05e9-4c8b97380b49@fb.com>
- <20161013021552.l6afs2k5tjcsfp2k@thunk.org>
+Date: Sun, 23 Oct 2016 15:33:20 -0400
+Message-ID: <20161023193320.rlzlaxdi4vbyu7of@thunk.org>
+References: <20161013021552.l6afs2k5tjcsfp2k@thunk.org>
  <ffc283a7-58ef-66b9-3c5b-75703d24ea0d@fb.com>
  <20161013231923.j2fidfbtzdp66x3t@thunk.org>
  <20161018180107.fscbfm66yidwhey4@thunk.org>
@@ -13,72 +11,63 @@ References: <20161012211407.GL23194@dastard>
  <20161019203233.mbbmskpn5ekgl7og@thunk.org>
  <1fb60e7c-a558-80df-09da-d3c36863a461@fb.com>
  <20161021221551.sdv4hgw33zjxnkvu@thunk.org>
+ <53fe5a98-6ff9-4fa1-e84c-8a3e16cc0f50@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Dave Chinner <david@fromorbit.com>, <linux-ext4@vger.kernel.org>,
-        <fstests@vger.kernel.org>, <tarasov@vasily.name>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:41834 "EHLO
-        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754677AbcJWOdR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 23 Oct 2016 10:33:17 -0400
-In-Reply-To: <20161021221551.sdv4hgw33zjxnkvu@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        fstests@vger.kernel.org, tarasov@vasily.name
+To: Jens Axboe <axboe@fb.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <53fe5a98-6ff9-4fa1-e84c-8a3e16cc0f50@fb.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 10/21/2016 04:15 PM, Theodore Ts'o wrote:
-> On Thu, Oct 20, 2016 at 08:22:00AM -0600, Jens Axboe wrote:
->>> So what's happening is that generic/299 is looping in the
->>> fallocate/truncate loop until fio exits, but since fio never exits, so
->>> it ends up looping forever.
->>
->> I'm setting up the GCE now, I've had the tests running for about 24h now
->> on another test box and haven't been able to trigger any hangs. I'll
->> match your setup as closely as I can, hopefully that'll work.
->
-> Any luck reproducing the problem?
->
-> On Wed, Oct 19, 2016 at 08:06:44AM -0600, Jens Axboe wrote:
->>
->> I'll take a look today. I agree, this definitely looks like a fio
->> bug. But not related to the mutex issue for the stat part, all verifier
->> threads are waiting to be woken up, but the main thread is done.
->>
->
-> I was taking a closer look at this, and it does look ike it's related
-> to the stat_mutex.  The main thread (according to gdb) seems to be
-> stuck in this loop in backend.c line 1738 (in thread_main):
->
-> 		do {
-> 			check_update_rusage(td);
-> 			if (!fio_mutex_down_trylock(stat_mutex))
-> 				break;
-> 			usleep(1000);   <----- line 1738
-> 		} while (1);
->
-> So it looks like it's not able to grab the stat_mutex.  But I can't
-> figure out how the stat_mutex could be down.  None of the strack
-> traces seem to show that, and I've looked at all of the places where
-> stat_mutex is taken, and it doesn't look like stat_mutex should ever
-> be down for more than, say, a second?
->
-> So as a temporary workaround, I'm considering adding a check to see if
-> we stay stuck in this loop for than a thousand times, and if so, print
-> an error to stderr and then call _exit(1), or maybe just break out two
-> levels by jumping to line 1778 at "td_set_runstate(td, TD_FINISHING)"
-> and just give up on the usage statistics (since for xfstests we really
-> don't care about the usage stats).
+On Sun, Oct 23, 2016 at 08:32:49AM -0600, Jens Axboe wrote:
+> 
+> Very strange. Can you see who the owner is of stat_mutex->lock, that's
+> the pthread_mutex_t they are sleeping on.
+> 
+> For now, I'll apply the work-around you sent. I haven't been able to
+> reproduce this, but knowing that it's the stat_mutex will allow me to
+> better make up a test case to hit it.
 
-Very strange. Can you see who the owner is of stat_mutex->lock, that's
-the pthread_mutex_t they are sleeping on.
+Well, that's the wierd thing.  I can't see anything that could be
+holding the stat_mutex.  This is from a somewhat older version of fio
+(fio-2.14-27-gafd2cef) but there when things wedged, there were four
+threads hanging here (with the exact same stack trace):
 
-For now, I'll apply the work-around you sent. I haven't been able to
-reproduce this, but knowing that it's the stat_mutex will allow me to
-better make up a test case to hit it.
+Thread 5 (Thread 0x7fb3ddfed700 (LWP 19800)):
+#0  pthread_cond_wait@@GLIBC_2.3.2 () at ../nptl/sysdeps/unix/sysv/linux/x86_64/pthread_cond_wait.S:185
+#1  0x000000000043987b in verify_async_thread (data=0x7fb3c7590610) at verify.c:1241
+#2  0x00007fb3dd85d0a4 in start_thread (arg=0x7fb3ddfed700) at pthread_create.c:309
+#3  0x00007fb3dd38e62d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
 
--- 
-Jens Axboe
+... and the main thread was hanging here:
 
+Thread 1 (Thread 0x7fb3de190740 (LWP 19781)):
+#0  0x00007fb3dd35ff2d in nanosleep () at ../sysdeps/unix/syscall-template.S:81
+#1  0x00007fb3dd387fb4 in usleep (useconds=<optimized out>) at ../sysdeps/unix/sysv/linux/usleep.c:32
+#2  0x000000000045b541 in thread_main (data=0x18fca000) at backend.c:1738
+#3  0x000000000045d4d3 in run_threads (sk_out=sk_out@entry=0x0) at backend.c:2268
+#4  0x000000000045d80d in fio_backend (sk_out=sk_out@entry=0x0) at backend.c:2400
+#5  0x000000000040cbc8 in main (argc=2, argv=0x7ffd24b952e8, envp=<optimized out>) at fio.c:65
+
+
+The verify threads were waiting td->verify_cond, which it looks like
+the main thread was supposed to wakeup in its shutdown sequence when
+it calls verify_async_exit(), or if there was work to be done via the
+verify_io_u_async() end_io callback.  But the verify threads don't
+take the stat_mutex, and the only places that take the stat_mutex in
+stat.c and backend.c don't hold it for long, and I can't see any
+longjumps or other progam flow discontinuities that could have left
+stat_mutex locked.
+
+I'm not an expert on pthreads debugging; is there some way to figure
+out ala CONFIG_PROVE_LOCKiNG, which thread took the mutex, and at what
+line number?  Or would we need to to try hacking in some kind of mutex
+debugging code into fio_mutex_down(), et. al.?
+
+Cheers,
+
+					- Ted
