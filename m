@@ -1,11 +1,13 @@
 From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv4 18/43] block: define BIO_MAX_PAGES to HPAGE_PMD_NR if
- huge page cache enabled
-Date: Tue, 25 Oct 2016 15:54:31 +0300
-Message-ID: <20161025125431.GA22787@node.shutemov.name>
-References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
- <20161025001342.76126-19-kirill.shutemov@linux.intel.com>
- <20161025072122.GA21708@infradead.org>
+Subject: Re: [PATCHv3 17/41] filemap: handle huge pages in
+ filemap_fdatawait_range()
+Date: Mon, 24 Oct 2016 14:36:25 +0300
+Message-ID: <20161024113625.GC2849@node.shutemov.name>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-18-kirill.shutemov@linux.intel.com>
+ <20161013094441.GC26241@quack2.suse.cz>
+ <20161013120844.GA2906@node>
+ <20161013131802.GC27186@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
@@ -22,30 +24,43 @@ Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
 	linux-block@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161025072122.GA21708@infradead.org>
+In-Reply-To: <20161013131802.GC27186@quack2.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 25, 2016 at 12:21:22AM -0700, Christoph Hellwig wrote:
-> On Tue, Oct 25, 2016 at 03:13:17AM +0300, Kirill A. Shutemov wrote:
-> > We are going to do IO a huge page a time. So we need BIO_MAX_PAGES to be
-> > at least HPAGE_PMD_NR. For x86-64, it's 512 pages.
+On Thu, Oct 13, 2016 at 03:18:02PM +0200, Jan Kara wrote:
+> On Thu 13-10-16 15:08:44, Kirill A. Shutemov wrote:
+> > On Thu, Oct 13, 2016 at 11:44:41AM +0200, Jan Kara wrote:
+> > > On Thu 15-09-16 14:54:59, Kirill A. Shutemov wrote:
+> > > > We writeback whole huge page a time.
+> > > 
+> > > This is one of the things I don't understand. Firstly I didn't see where
+> > > changes of writeback like this would happen (maybe they come later).
+> > > Secondly I'm not sure why e.g. writeback should behave atomically wrt huge
+> > > pages. Is this because radix-tree multiorder entry tracks dirtiness for us
+> > > at that granularity?
+> > 
+> > We track dirty/writeback on per-compound pages: meaning we have one
+> > dirty/writeback flag for whole compound page, not on every individual
+> > 4k subpage. The same story for radix-tree tags.
+> > 
+> > > BTW, can you also explain why do we need multiorder entries? What do
+> > > they solve for us?
+> > 
+> > It helps us having coherent view on tags in radix-tree: no matter which
+> > index we refer from the range huge page covers we will get the same
+> > answer on which tags set.
 > 
-> NAK.  The maximum bio size should not depend on an obscure vm config,
-> please send a standalone patch increasing the size to the block list,
-> with a much long explanation.  Also you can't simply increase the size
-> of the largers pool, we'll probably need more pools instead, or maybe
-> even implement a similar chaining scheme as we do for struct
-> scatterlist.
+> OK, understand that. But why do we need a coherent view? For which purposes
+> exactly do we care that it is not just a bunch of 4k pages that happen to
+> be physically contiguous and thus can be mapped in one PMD?
 
-The size of required pool depends on architecture: different architectures
-has different (huge page size)/(base page size).
-
-Would it be okay if I add one more pool with size equal to HPAGE_PMD_NR,
-if it's bigger than than BIO_MAX_PAGES and huge pages are enabled?
+My understanding is that things like PageDirty() should be handled on the
+same granularity as PAGECACHE_TAG_DIRTY, otherwise things can go horribly
+wrong...
 
 -- 
  Kirill A. Shutemov
