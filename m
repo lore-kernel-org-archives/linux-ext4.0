@@ -1,38 +1,40 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] fscrypto: remove unneeded Kconfig dependencies
-Date: Mon, 24 Oct 2016 14:17:27 -0700
-Message-ID: <20161024211727.GB83082@google.com>
-References: <1477340226-144248-1-git-send-email-ebiggers@google.com>
- <c1c3502a-0364-fc31-fa7f-19125f7e0413@nod.at>
+Subject: Re: [PATCH] MAINTAINERS: fscrypto: recommend linux-fsdevel for
+ fscrypto patches
+Date: Mon, 24 Oct 2016 15:58:26 -0700
+Message-ID: <20161024225826.GC83082@google.com>
+References: <1477340955-145575-1-git-send-email-ebiggers@google.com>
+ <8426b631-dc03-b45a-ec58-fc3ae5cdf0c9@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu,
-        jaegeuk@kernel.org
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org, tytso@mit.edu, jaegeuk@kernel.org
 To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <c1c3502a-0364-fc31-fa7f-19125f7e0413@nod.at>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <8426b631-dc03-b45a-ec58-fc3ae5cdf0c9@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 24, 2016 at 10:41:08PM +0200, Richard Weinberger wrote:
-> FWIW, Strictly speaking we could also get rid of the dependency on BLOCK.
-> Only very few functions in fs/crypto/crypto.c use block specific functions,
-> these could be placed in a different file.
-> The use case would be very small systems with UBIFS and encrypted files.
-> i.e. kexec() style bootloaders.
-> 
-> Thanks,
-> //richard
+On Mon, Oct 24, 2016 at 10:44:41PM +0200, Richard Weinberger wrote:
+> That's a very good idea!
+> Do we also have designated git tree for fscrypto?
+> As soon UBIFS file encryption is mainline I'll have to monitor changes
+> to fscrypto very closely because changes in fscrypto could introduce
+> changes in the on-flash format of UBIFS.
+> i.e. a subtle change in filename encryption... :-)
 
-Yes, that makes sense if UBIFS is going to be using the code too.  Feel free to
-propose a patch.  As I understand it, the assumption would be that if a
-filesystem needs the block-specific functions in fs/crypto/, then it itself
-would necessarily already depend on CONFIG_BLOCK.  It should work to just
-conditionally compile the block-specific functions based on CONFIG_BLOCK, either
-via #ifdefs or by having a separate file like fs/crypto/block.c and putting
-'fscrypto-$(CONFIG_BLOCK) += block.o' in fs/crypto/Makefile.  The separate file
-sounds preferable.
+There isn't yet a dedicated fscrypto tree.  Ted has been taking in most of my
+fscrypto patches through the ext4 tree.
+
+This was discussed briefly before, but as designed filesystems do not need to be
+aware of the format of the xattr (fscrypt_context) or the format of the
+encrypted data per se.  Thus, new modes/formats can be introduced without
+requiring changes to filesystem-specific code.  The point that was brought up is
+whether some filesystems would additionally like to track in their superblock
+which encryption modes and flags are used and either deny mounts or warn at
+mount-time if some are unrecognized.  So it should be decided soon if UBIFS is
+going to do that or not.
 
 Eric
