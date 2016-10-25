@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 18/43] block: define BIO_MAX_PAGES to HPAGE_PMD_NR if huge page cache enabled
-Date: Tue, 25 Oct 2016 03:13:17 +0300
-Message-ID: <20161025001342.76126-19-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 17/43] HACK: readahead: alloc huge pages, if allowed
+Date: Tue, 25 Oct 2016 03:13:16 +0300
+Message-ID: <20161025001342.76126-18-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,45 +25,68 @@ In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We are going to do IO a huge page a time. So we need BIO_MAX_PAGES to be
-at least HPAGE_PMD_NR. For x86-64, it's 512 pages.
+Most page cache allocation happens via readahead (sync or async), so if
+we want to have significant number of huge pages in page cache we need
+to find a ways to allocate them from readahead.
+
+Unfortunately, huge pages doesn't fit into current readahead design:
+128 max readahead window, assumption on page size, PageReadahead() to
+track hit/miss.
+
+I haven't found a ways to get it right yet.
+
+This patch just allocates huge page if allowed, but doesn't really
+provide any readahead if huge page is allocated. We read out 2M a time
+and I would expect spikes in latancy without readahead.
+
+Therefore HACK.
+
+Having that said, I don't think it should prevent huge page support to
+be applied. Future will show if lacking readahead is a big deal with
+huge pages in page cache.
+
+Any suggestions are welcome.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- block/bio.c         | 3 ++-
- include/linux/bio.h | 4 ++++
- 2 files changed, 6 insertions(+), 1 deletion(-)
+ mm/readahead.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
-diff --git a/block/bio.c b/block/bio.c
-index db85c5753a76..a69062bda3e0 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -44,7 +44,8 @@
-  */
- #define BV(x) { .nr_vecs = x, .name = "biovec-"__stringify(x) }
- static struct biovec_slab bvec_slabs[BVEC_POOL_NR] __read_mostly = {
--	BV(1), BV(4), BV(16), BV(64), BV(128), BV(BIO_MAX_PAGES),
-+	BV(1), BV(4), BV(16), BV(64), BV(128),
-+	{ .nr_vecs = BIO_MAX_PAGES, .name ="biovec-max_pages" },
- };
- #undef BV
+diff --git a/mm/readahead.c b/mm/readahead.c
+index c8a955b1297e..f46a9080f6a9 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 		if (page_offset > end_index)
+ 			break;
  
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 97cb48f03dc7..19d0fae9cdd0 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -38,7 +38,11 @@
- #define BIO_BUG_ON
- #endif
- 
-+#ifdef CONFIG_TRANSPARENT_HUGE_PAGECACHE
-+#define BIO_MAX_PAGES		(HPAGE_PMD_NR > 256 ? HPAGE_PMD_NR : 256)
-+#else
- #define BIO_MAX_PAGES		256
-+#endif
- 
- #define bio_prio(bio)			(bio)->bi_ioprio
- #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
++		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
++				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
++				page_cache_allow_huge(mapping, page_offset)) {
++			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
++					HPAGE_PMD_ORDER);
++			if (page) {
++				prep_transhuge_page(page);
++				page->index = round_down(page_offset,
++						HPAGE_PMD_NR);
++				list_add(&page->lru, &page_pool);
++				ret++;
++				goto start_io;
++			}
++		}
++
+ 		rcu_read_lock();
+ 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
+ 		rcu_read_unlock();
+@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 			SetPageReadahead(page);
+ 		ret++;
+ 	}
+-
++start_io:
+ 	/*
+ 	 * Now start the IO.  We ignore I/O errors - if the page is not
+ 	 * uptodate then the caller will launch readpage again, and
 -- 
 2.9.3
 
