@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 15/43] filemap: allocate huge page in pagecache_get_page(), if allowed
-Date: Tue, 25 Oct 2016 03:13:14 +0300
-Message-ID: <20161025001342.76126-16-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 18/43] block: define BIO_MAX_PAGES to HPAGE_PMD_NR if huge page cache enabled
+Date: Tue, 25 Oct 2016 03:13:17 +0300
+Message-ID: <20161025001342.76126-19-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,64 +25,45 @@ In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Write path allocate pages using pagecache_get_page(). We should be able
-to allocate huge pages there, if it's allowed. As usually, fallback to
-small pages, if failed.
+We are going to do IO a huge page a time. So we need BIO_MAX_PAGES to be
+at least HPAGE_PMD_NR. For x86-64, it's 512 pages.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/filemap.c | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
+ block/bio.c         | 3 ++-
+ include/linux/bio.h | 4 ++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index ca4536f2035e..954720092cf8 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1352,13 +1352,16 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
+diff --git a/block/bio.c b/block/bio.c
+index db85c5753a76..a69062bda3e0 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -44,7 +44,8 @@
+  */
+ #define BV(x) { .nr_vecs = x, .name = "biovec-"__stringify(x) }
+ static struct biovec_slab bvec_slabs[BVEC_POOL_NR] __read_mostly = {
+-	BV(1), BV(4), BV(16), BV(64), BV(128), BV(BIO_MAX_PAGES),
++	BV(1), BV(4), BV(16), BV(64), BV(128),
++	{ .nr_vecs = BIO_MAX_PAGES, .name ="biovec-max_pages" },
+ };
+ #undef BV
  
- no_page:
- 	if (!page && (fgp_flags & FGP_CREAT)) {
-+		pgoff_t hoffset;
- 		int err;
- 		if ((fgp_flags & FGP_WRITE) && mapping_cap_account_dirty(mapping))
- 			gfp_mask |= __GFP_WRITE;
- 		if (fgp_flags & FGP_NOFS)
- 			gfp_mask &= ~__GFP_FS;
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 97cb48f03dc7..19d0fae9cdd0 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -38,7 +38,11 @@
+ #define BIO_BUG_ON
+ #endif
  
--		page = __page_cache_alloc(gfp_mask);
-+		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
-+no_huge:	if (!page)
-+			page = __page_cache_alloc(gfp_mask);
- 		if (!page)
- 			return NULL;
++#ifdef CONFIG_TRANSPARENT_HUGE_PAGECACHE
++#define BIO_MAX_PAGES		(HPAGE_PMD_NR > 256 ? HPAGE_PMD_NR : 256)
++#else
+ #define BIO_MAX_PAGES		256
++#endif
  
-@@ -1369,14 +1372,25 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
- 		if (fgp_flags & FGP_ACCESSED)
- 			__SetPageReferenced(page);
- 
--		err = add_to_page_cache_lru(page, mapping, offset,
-+		if (PageTransHuge(page))
-+			hoffset = round_down(offset, HPAGE_PMD_NR);
-+		else
-+			hoffset = offset;
-+
-+		err = add_to_page_cache_lru(page, mapping, hoffset,
- 				gfp_mask & GFP_RECLAIM_MASK);
- 		if (unlikely(err)) {
-+			if (PageTransHuge(page)) {
-+				put_page(page);
-+				page = NULL;
-+				goto no_huge;
-+			}
- 			put_page(page);
- 			page = NULL;
- 			if (err == -EEXIST)
- 				goto repeat;
- 		}
-+		page += offset - hoffset;
- 	}
- 
- 	return page;
+ #define bio_prio(bio)			(bio)->bi_ioprio
+ #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
 -- 
 2.9.3
 
