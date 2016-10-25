@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 20/43] mm: make write_cache_pages() work on huge pages
-Date: Tue, 25 Oct 2016 03:13:19 +0300
-Message-ID: <20161025001342.76126-21-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 19/43] brd: make it handle huge pages
+Date: Tue, 25 Oct 2016 03:13:18 +0300
+Message-ID: <20161025001342.76126-20-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,95 +25,79 @@ In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We writeback whole huge page a time. Let's adjust iteration this way.
+Do not assume length of bio segment is never larger than PAGE_SIZE.
+With huge pages it's HPAGE_PMD_SIZE (2M on x86-64).
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/mm.h      |  1 +
- include/linux/pagemap.h |  1 +
- mm/page-writeback.c     | 17 ++++++++++++-----
- 3 files changed, 14 insertions(+), 5 deletions(-)
+ drivers/block/brd.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 3a191853faaa..315df8051d06 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1056,6 +1056,7 @@ extern pgoff_t __page_file_index(struct page *page);
-  */
- static inline pgoff_t page_index(struct page *page)
- {
-+	page = compound_head(page);
- 	if (unlikely(PageSwapCache(page)))
- 		return __page_file_index(page);
- 	return page->index;
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 712343108d31..f9aa8bede15e 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -528,6 +528,7 @@ static inline void wait_on_page_locked(struct page *page)
-  */
- static inline void wait_on_page_writeback(struct page *page)
- {
-+	page = compound_head(page);
- 	if (PageWriteback(page))
- 		wait_on_page_bit(page, PG_writeback);
+diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+index 0c76d4016eeb..4214163350d2 100644
+--- a/drivers/block/brd.c
++++ b/drivers/block/brd.c
+@@ -202,12 +202,15 @@ static int copy_to_brd_setup(struct brd_device *brd, sector_t sector, size_t n)
+ 	size_t copy;
+ 
+ 	copy = min_t(size_t, n, PAGE_SIZE - offset);
++	n -= copy;
+ 	if (!brd_insert_page(brd, sector))
+ 		return -ENOSPC;
+-	if (copy < n) {
++	while (n) {
+ 		sector += copy >> SECTOR_SHIFT;
+ 		if (!brd_insert_page(brd, sector))
+ 			return -ENOSPC;
++		copy = min_t(size_t, n, PAGE_SIZE);
++		n -= copy;
+ 	}
+ 	return 0;
  }
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 439cc63ad903..c76fc90b7039 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2200,7 +2200,7 @@ int write_cache_pages(struct address_space *mapping,
- 			 * mapping. However, page->index will not change
- 			 * because we have a reference on the page.
- 			 */
--			if (page->index > end) {
-+			if (page_to_pgoff(page) > end) {
- 				/*
- 				 * can't be range_cyclic (1st pass) because
- 				 * end == -1 in that case.
-@@ -2209,7 +2209,12 @@ int write_cache_pages(struct address_space *mapping,
- 				break;
- 			}
+@@ -242,6 +245,7 @@ static void copy_to_brd(struct brd_device *brd, const void *src,
+ 	size_t copy;
  
--			done_index = page->index;
-+			done_index = page_to_pgoff(page);
-+			if (PageTransCompound(page)) {
-+				index = round_up(index + 1, HPAGE_PMD_NR);
-+				i += HPAGE_PMD_NR -
-+					done_index % HPAGE_PMD_NR - 1;
-+			}
+ 	copy = min_t(size_t, n, PAGE_SIZE - offset);
++	n -= copy;
+ 	page = brd_lookup_page(brd, sector);
+ 	BUG_ON(!page);
  
- 			lock_page(page);
+@@ -249,10 +253,11 @@ static void copy_to_brd(struct brd_device *brd, const void *src,
+ 	memcpy(dst + offset, src, copy);
+ 	kunmap_atomic(dst);
  
-@@ -2221,7 +2226,7 @@ int write_cache_pages(struct address_space *mapping,
- 			 * even if there is now a new, dirty page at the same
- 			 * pagecache address.
- 			 */
--			if (unlikely(page->mapping != mapping)) {
-+			if (unlikely(page_mapping(page) != mapping)) {
- continue_unlock:
- 				unlock_page(page);
- 				continue;
-@@ -2259,7 +2264,8 @@ int write_cache_pages(struct address_space *mapping,
- 					 * not be suitable for data integrity
- 					 * writeout).
- 					 */
--					done_index = page->index + 1;
-+					done_index = compound_head(page)->index
-+						+ hpage_nr_pages(page);
- 					done = 1;
- 					break;
- 				}
-@@ -2271,7 +2277,8 @@ int write_cache_pages(struct address_space *mapping,
- 			 * keep going until we have written all the pages
- 			 * we tagged for writeback prior to entering this loop.
- 			 */
--			if (--wbc->nr_to_write <= 0 &&
-+			wbc->nr_to_write -= hpage_nr_pages(page);
-+			if (wbc->nr_to_write <= 0 &&
- 			    wbc->sync_mode == WB_SYNC_NONE) {
- 				done = 1;
- 				break;
+-	if (copy < n) {
++	while (n) {
+ 		src += copy;
+ 		sector += copy >> SECTOR_SHIFT;
+-		copy = n - copy;
++		copy = min_t(size_t, n, PAGE_SIZE);
++		n -= copy;
+ 		page = brd_lookup_page(brd, sector);
+ 		BUG_ON(!page);
+ 
+@@ -274,6 +279,7 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
+ 	size_t copy;
+ 
+ 	copy = min_t(size_t, n, PAGE_SIZE - offset);
++	n -= copy;
+ 	page = brd_lookup_page(brd, sector);
+ 	if (page) {
+ 		src = kmap_atomic(page);
+@@ -282,10 +288,11 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
+ 	} else
+ 		memset(dst, 0, copy);
+ 
+-	if (copy < n) {
++	while (n) {
+ 		dst += copy;
+ 		sector += copy >> SECTOR_SHIFT;
+-		copy = n - copy;
++		copy = min_t(size_t, n, PAGE_SIZE);
++		n -= copy;
+ 		page = brd_lookup_page(brd, sector);
+ 		if (page) {
+ 			src = kmap_atomic(page);
 -- 
 2.9.3
 
