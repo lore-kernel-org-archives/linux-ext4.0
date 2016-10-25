@@ -1,40 +1,112 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] MAINTAINERS: fscrypto: recommend linux-fsdevel for
- fscrypto patches
-Date: Mon, 24 Oct 2016 15:58:26 -0700
-Message-ID: <20161024225826.GC83082@google.com>
-References: <1477340955-145575-1-git-send-email-ebiggers@google.com>
- <8426b631-dc03-b45a-ec58-fc3ae5cdf0c9@nod.at>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, jaegeuk@kernel.org
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <8426b631-dc03-b45a-ec58-fc3ae5cdf0c9@nod.at>
-Sender: linux-kernel-owner@vger.kernel.org
+From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 02/43] radix tree test suite: Allow GFP_ATOMIC allocations to fail
+Date: Tue, 25 Oct 2016 03:13:01 +0300
+Message-ID: <20161025001342.76126-3-kirill.shutemov@linux.intel.com>
+References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        Matthew Wilcox <willy@linux.intel.com>,
+        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 24, 2016 at 10:44:41PM +0200, Richard Weinberger wrote:
-> That's a very good idea!
-> Do we also have designated git tree for fscrypto?
-> As soon UBIFS file encryption is mainline I'll have to monitor changes
-> to fscrypto very closely because changes in fscrypto could introduce
-> changes in the on-flash format of UBIFS.
-> i.e. a subtle change in filename encryption... :-)
+From: Matthew Wilcox <willy@linux.intel.com>
 
-There isn't yet a dedicated fscrypto tree.  Ted has been taking in most of my
-fscrypto patches through the ext4 tree.
+In order to test the preload code, it is necessary to fail GFP_ATOMIC
+allocations, which requires defining GFP_KERNEL and GFP_ATOMIC properly.
+Remove the obsolete __GFP_WAIT and copy the definitions of the __GFP
+flags which are used from the kernel include files.  We also need the
+real definition of gfpflags_allow_blocking() to persuade the radix tree
+to actually use its preallocated nodes.
 
-This was discussed briefly before, but as designed filesystems do not need to be
-aware of the format of the xattr (fscrypt_context) or the format of the
-encrypted data per se.  Thus, new modes/formats can be introduced without
-requiring changes to filesystem-specific code.  The point that was brought up is
-whether some filesystems would additionally like to track in their superblock
-which encryption modes and flags are used and either deny mounts or warn at
-mount-time if some are unrecognized.  So it should be decided soon if UBIFS is
-going to do that or not.
+Signed-off-by: Matthew Wilcox <willy@linux.intel.com>
+Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+---
+ tools/testing/radix-tree/linux.c      |  7 ++++++-
+ tools/testing/radix-tree/linux/gfp.h  | 22 +++++++++++++++++++---
+ tools/testing/radix-tree/linux/slab.h |  5 -----
+ 3 files changed, 25 insertions(+), 9 deletions(-)
 
-Eric
+diff --git a/tools/testing/radix-tree/linux.c b/tools/testing/radix-tree/linux.c
+index 154823737b20..3cfb04e98e2f 100644
+--- a/tools/testing/radix-tree/linux.c
++++ b/tools/testing/radix-tree/linux.c
+@@ -33,7 +33,12 @@ mempool_t *mempool_create(int min_nr, mempool_alloc_t *alloc_fn,
+ 
+ void *kmem_cache_alloc(struct kmem_cache *cachep, int flags)
+ {
+-	void *ret = malloc(cachep->size);
++	void *ret;
++
++	if (flags & __GFP_NOWARN)
++		return NULL;
++
++	ret = malloc(cachep->size);
+ 	if (cachep->ctor)
+ 		cachep->ctor(ret);
+ 	uatomic_inc(&nr_allocated);
+diff --git a/tools/testing/radix-tree/linux/gfp.h b/tools/testing/radix-tree/linux/gfp.h
+index 5201b915f631..5b09b2ce6c33 100644
+--- a/tools/testing/radix-tree/linux/gfp.h
++++ b/tools/testing/radix-tree/linux/gfp.h
+@@ -3,8 +3,24 @@
+ 
+ #define __GFP_BITS_SHIFT 26
+ #define __GFP_BITS_MASK ((gfp_t)((1 << __GFP_BITS_SHIFT) - 1))
+-#define __GFP_WAIT 1
+-#define __GFP_ACCOUNT 0
+-#define __GFP_NOWARN 0
++
++#define __GFP_HIGH		0x20u
++#define __GFP_IO		0x40u
++#define __GFP_FS		0x80u
++#define __GFP_NOWARN		0x200u
++#define __GFP_ATOMIC		0x80000u
++#define __GFP_ACCOUNT		0x100000u
++#define __GFP_DIRECT_RECLAIM	0x400000u
++#define __GFP_KSWAPD_RECLAIM	0x2000000u
++
++#define __GFP_RECLAIM		(__GFP_DIRECT_RECLAIM|__GFP_KSWAPD_RECLAIM)
++
++#define GFP_ATOMIC		(__GFP_HIGH|__GFP_ATOMIC|__GFP_KSWAPD_RECLAIM)
++#define GFP_KERNEL		(__GFP_RECLAIM | __GFP_IO | __GFP_FS)
++
++static inline bool gfpflags_allow_blocking(const gfp_t gfp_flags)
++{
++	return !!(gfp_flags & __GFP_DIRECT_RECLAIM);
++}
+ 
+ #endif
+diff --git a/tools/testing/radix-tree/linux/slab.h b/tools/testing/radix-tree/linux/slab.h
+index 6d5a34770fd4..452e2bf502e3 100644
+--- a/tools/testing/radix-tree/linux/slab.h
++++ b/tools/testing/radix-tree/linux/slab.h
+@@ -7,11 +7,6 @@
+ #define SLAB_PANIC 2
+ #define SLAB_RECLAIM_ACCOUNT    0x00020000UL            /* Objects are reclaimable */
+ 
+-static inline int gfpflags_allow_blocking(gfp_t mask)
+-{
+-	return 1;
+-}
+-
+ struct kmem_cache {
+ 	int size;
+ 	void (*ctor)(void *);
+-- 
+2.9.3
+
