@@ -1,72 +1,38 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv3 17/41] filemap: handle huge pages in
- filemap_fdatawait_range()
-Date: Mon, 24 Oct 2016 14:36:25 +0300
-Message-ID: <20161024113625.GC2849@node.shutemov.name>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-18-kirill.shutemov@linux.intel.com>
- <20161013094441.GC26241@quack2.suse.cz>
- <20161013120844.GA2906@node>
- <20161013131802.GC27186@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: allow inode expansion for nojournal file systems
+Date: Tue, 25 Oct 2016 19:05:21 -0400
+Message-ID: <20161025230521.dut6yubmg3gpf4d5@thunk.org>
+References: <20161025211405.GA15502@localhost.localdomain>
+ <AAF1FFC4-7D4B-4E62-89D2-8C7978D16C35@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43066 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932449AbcJYXFZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Oct 2016 19:05:25 -0400
 Content-Disposition: inline
-In-Reply-To: <20161013131802.GC27186@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <AAF1FFC4-7D4B-4E62-89D2-8C7978D16C35@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 13, 2016 at 03:18:02PM +0200, Jan Kara wrote:
-> On Thu 13-10-16 15:08:44, Kirill A. Shutemov wrote:
-> > On Thu, Oct 13, 2016 at 11:44:41AM +0200, Jan Kara wrote:
-> > > On Thu 15-09-16 14:54:59, Kirill A. Shutemov wrote:
-> > > > We writeback whole huge page a time.
-> > > 
-> > > This is one of the things I don't understand. Firstly I didn't see where
-> > > changes of writeback like this would happen (maybe they come later).
-> > > Secondly I'm not sure why e.g. writeback should behave atomically wrt huge
-> > > pages. Is this because radix-tree multiorder entry tracks dirtiness for us
-> > > at that granularity?
-> > 
-> > We track dirty/writeback on per-compound pages: meaning we have one
-> > dirty/writeback flag for whole compound page, not on every individual
-> > 4k subpage. The same story for radix-tree tags.
-> > 
-> > > BTW, can you also explain why do we need multiorder entries? What do
-> > > they solve for us?
-> > 
-> > It helps us having coherent view on tags in radix-tree: no matter which
-> > index we refer from the range huge page covers we will get the same
-> > answer on which tags set.
-> 
-> OK, understand that. But why do we need a coherent view? For which purposes
-> exactly do we care that it is not just a bunch of 4k pages that happen to
-> be physically contiguous and thus can be mapped in one PMD?
+On Tue, Oct 25, 2016 at 03:54:16PM -0600, Andreas Dilger wrote:
+> I think the reason we required that the filesystem be journaled to expand
+> the inode reserved space is to ensure that the update was an all-or-nothing
+> approach.  If there are in-inode xattrs that need to be moved to an external
+> xattr block, and that block needs allocation and such, it is possible that
+> a nojournal filesystem could result in the xattrs being moved and the inode
+> is written (w/o the xattrs), but the xattr block is not written to disk
+> before a crash.
 
-My understanding is that things like PageDirty() should be handled on the
-same granularity as PAGECACHE_TAG_DIRTY, otherwise things can go horribly
-wrong...
+In nojournal mode, any number of failures can cause data loss.  For
+example, we could be splitting a node in an extent tree, or in a htree
+directory block, and we can end up losing data if we crash at an
+inconvenient time.  The chances of losing half of an interior node of
+an extent tree block after a crash is going to be the same, and the
+data loss form such same is going to be far worse than the loss if we
+are unluck expanding an inode and moving xattrs to an external block....
 
--- 
- Kirill A. Shutemov
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+    	   	     	      	  - Ted
