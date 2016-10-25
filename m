@@ -1,27 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] partinfo: fix some build errors
-Date: Tue, 25 Oct 2016 13:28:45 -0400
-Message-ID: <20161025172845.mskmsgmcsyt5q4bz@thunk.org>
-References: <20161015175755.GA5611@birch.djwong.org>
+Subject: Re: [PATCH] mke2fs: Avoid crashes / infinite loops for absurdly
+ large devices
+Date: Tue, 25 Oct 2016 14:09:47 -0400
+Message-ID: <20161025180947.7oqbnhonzzpm5qob@thunk.org>
+References: <1477397504-5663-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41986 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:42132 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932321AbcJYR2r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Oct 2016 13:28:47 -0400
+        id S1755059AbcJYSJv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Oct 2016 14:09:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20161015175755.GA5611@birch.djwong.org>
+In-Reply-To: <1477397504-5663-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 15, 2016 at 10:57:55AM -0700, Darrick J. Wong wrote:
-> Fix some missing header files and library link targets.
+On Tue, Oct 25, 2016 at 02:11:44PM +0200, Jan Kara wrote:
+> When a device reports absurdly high size, some arithmetics in mke2fs can
+> overflow (e.g. number of block descriptors) and we end in an infinite
+> loop. Fix that by checking and refusing insanely large devices.
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
