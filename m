@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 42/43] mm, fs, ext4: expand use of page_mapping() and page_to_pgoff()
-Date: Tue, 25 Oct 2016 03:13:41 +0300
-Message-ID: <20161025001342.76126-43-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 09/43] mm, rmap: account file thp pages
+Date: Tue, 25 Oct 2016 03:13:08 +0300
+Message-ID: <20161025001342.76126-10-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,233 +25,207 @@ In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-With huge pages in page cache we see tail pages in more code paths.
-This patch replaces direct access to struct page fields with macros
-which can handle tail pages properly.
+Let's add FileHugePages and FilePmdMapped fields into meminfo and smaps.
+It indicates how many times we allocate and map file THP.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c         |  2 +-
- fs/ext4/inode.c     |  4 ++--
- mm/filemap.c        | 26 ++++++++++++++------------
- mm/memory.c         |  4 ++--
- mm/page-writeback.c |  2 +-
- mm/truncate.c       |  5 +++--
- 6 files changed, 23 insertions(+), 20 deletions(-)
+ drivers/base/node.c    |  6 ++++++
+ fs/proc/meminfo.c      |  4 ++++
+ fs/proc/task_mmu.c     |  5 ++++-
+ include/linux/mmzone.h |  2 ++
+ mm/filemap.c           |  3 ++-
+ mm/huge_memory.c       |  5 ++++-
+ mm/page_alloc.c        |  5 +++++
+ mm/rmap.c              | 12 ++++++++----
+ mm/vmstat.c            |  2 ++
+ 9 files changed, 37 insertions(+), 7 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 670290820325..eea5e9dc0c16 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -630,7 +630,7 @@ static void __set_page_dirty(struct page *page, struct address_space *mapping,
- 	unsigned long flags;
+diff --git a/drivers/base/node.c b/drivers/base/node.c
+index 5548f9686016..45be0ddb84ed 100644
+--- a/drivers/base/node.c
++++ b/drivers/base/node.c
+@@ -116,6 +116,8 @@ static ssize_t node_read_meminfo(struct device *dev,
+ 		       "Node %d AnonHugePages:  %8lu kB\n"
+ 		       "Node %d ShmemHugePages: %8lu kB\n"
+ 		       "Node %d ShmemPmdMapped: %8lu kB\n"
++		       "Node %d FileHugePages: %8lu kB\n"
++		       "Node %d FilePmdMapped: %8lu kB\n"
+ #endif
+ 			,
+ 		       nid, K(node_page_state(pgdat, NR_FILE_DIRTY)),
+@@ -139,6 +141,10 @@ static ssize_t node_read_meminfo(struct device *dev,
+ 		       nid, K(node_page_state(pgdat, NR_SHMEM_THPS) *
+ 				       HPAGE_PMD_NR),
+ 		       nid, K(node_page_state(pgdat, NR_SHMEM_PMDMAPPED) *
++				       HPAGE_PMD_NR),
++		       nid, K(node_page_state(pgdat, NR_FILE_THPS) *
++				       HPAGE_PMD_NR),
++		       nid, K(node_page_state(pgdat, NR_FILE_PMDMAPPED) *
+ 				       HPAGE_PMD_NR));
+ #else
+ 		       nid, K(sum_zone_node_page_state(nid, NR_SLAB_UNRECLAIMABLE)));
+diff --git a/fs/proc/meminfo.c b/fs/proc/meminfo.c
+index 8a428498d6b2..8396843be7a7 100644
+--- a/fs/proc/meminfo.c
++++ b/fs/proc/meminfo.c
+@@ -146,6 +146,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
+ 		    global_node_page_state(NR_SHMEM_THPS) * HPAGE_PMD_NR);
+ 	show_val_kb(m, "ShmemPmdMapped: ",
+ 		    global_node_page_state(NR_SHMEM_PMDMAPPED) * HPAGE_PMD_NR);
++	show_val_kb(m, "FileHugePages: ",
++		    global_node_page_state(NR_FILE_THPS) * HPAGE_PMD_NR);
++	show_val_kb(m, "FilePmdMapped: ",
++		    global_node_page_state(NR_FILE_PMDMAPPED) * HPAGE_PMD_NR);
+ #endif
  
- 	spin_lock_irqsave(&mapping->tree_lock, flags);
--	if (page->mapping) {	/* Race with truncate? */
-+	if (page_mapping(page)) {	/* Race with truncate? */
- 		WARN_ON_ONCE(warn && !PageUptodate(page));
- 		account_page_dirtied(page, mapping);
- 		radix_tree_tag_set(&mapping->page_tree,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 95b64a7cee67..76e98e5b3c5e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1230,7 +1230,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 	}
- 
- 	lock_page(page);
--	if (page->mapping != mapping) {
-+	if (page_mapping(page) != mapping) {
- 		/* The page got truncated from under us */
- 		unlock_page(page);
- 		put_page(page);
-@@ -2970,7 +2970,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	}
- 
- 	lock_page(page);
--	if (page->mapping != mapping) {
-+	if (page_mapping(page) != mapping) {
- 		/* The page got truncated from under us */
- 		unlock_page(page);
- 		put_page(page);
+ #ifdef CONFIG_CMA
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 35b92d81692f..bb8b7f93528e 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -442,6 +442,7 @@ struct mem_size_stats {
+ 	unsigned long anonymous;
+ 	unsigned long anonymous_thp;
+ 	unsigned long shmem_thp;
++	unsigned long file_thp;
+ 	unsigned long swap;
+ 	unsigned long shared_hugetlb;
+ 	unsigned long private_hugetlb;
+@@ -577,7 +578,7 @@ static void smaps_pmd_entry(pmd_t *pmd, unsigned long addr,
+ 	else if (is_zone_device_page(page))
+ 		/* pass */;
+ 	else
+-		VM_BUG_ON_PAGE(1, page);
++		mss->file_thp += HPAGE_PMD_SIZE;
+ 	smaps_account(mss, page, true, pmd_young(*pmd), pmd_dirty(*pmd));
+ }
+ #else
+@@ -772,6 +773,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
+ 		   "Anonymous:      %8lu kB\n"
+ 		   "AnonHugePages:  %8lu kB\n"
+ 		   "ShmemPmdMapped: %8lu kB\n"
++		   "FilePmdMapped:  %8lu kB\n"
+ 		   "Shared_Hugetlb: %8lu kB\n"
+ 		   "Private_Hugetlb: %7lu kB\n"
+ 		   "Swap:           %8lu kB\n"
+@@ -790,6 +792,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
+ 		   mss.anonymous >> 10,
+ 		   mss.anonymous_thp >> 10,
+ 		   mss.shmem_thp >> 10,
++		   mss.file_thp >> 10,
+ 		   mss.shared_hugetlb >> 10,
+ 		   mss.private_hugetlb >> 10,
+ 		   mss.swap >> 10,
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index 7f2ae99e5daf..20c5fce13697 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -163,6 +163,8 @@ enum node_stat_item {
+ 	NR_SHMEM,		/* shmem pages (included tmpfs/GEM pages) */
+ 	NR_SHMEM_THPS,
+ 	NR_SHMEM_PMDMAPPED,
++	NR_FILE_THPS,
++	NR_FILE_PMDMAPPED,
+ 	NR_ANON_THPS,
+ 	NR_UNSTABLE_NFS,	/* NFS unstable pages */
+ 	NR_VMSCAN_WRITE,
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 85274c4ca2c9..8815e63a5fe5 100644
+index 23fbbb61725c..e9376610ad3c 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -510,7 +510,7 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- 			struct page *page = pvec.pages[i];
- 
- 			/* until radix tree lookup accepts end_index */
--			if (page->index > end)
-+			if (page_to_pgoff(page) > end)
- 				continue;
- 
- 			page = compound_head(page);
-@@ -1348,12 +1348,12 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
- 		}
- 
- 		/* Has the page been truncated? */
--		if (unlikely(page->mapping != mapping)) {
-+		if (unlikely(page_mapping(page) != mapping)) {
- 			unlock_page(page);
- 			put_page(page);
- 			goto repeat;
- 		}
--		VM_BUG_ON_PAGE(page->index != offset, page);
-+		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
+@@ -293,7 +293,8 @@ void __delete_from_page_cache(struct page *page, void *shadow)
+ 		if (PageTransHuge(page))
+ 			__dec_node_page_state(page, NR_SHMEM_THPS);
+ 	} else {
+-		VM_BUG_ON_PAGE(PageTransHuge(page) && !PageHuge(page), page);
++		if (PageTransHuge(page) && !PageHuge(page))
++			__dec_node_page_state(page, NR_FILE_THPS);
  	}
- 
- 	if (page && (fgp_flags & FGP_ACCESSED))
-@@ -1647,7 +1647,8 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
- 		 * otherwise we can get both false positives and false
- 		 * negatives, which is just confusing to the caller.
- 		 */
--		if (page->mapping == NULL || page_to_pgoff(page) != index) {
-+		if (page_mapping(page) == NULL ||
-+				page_to_pgoff(page) != index) {
- 			put_page(page);
- 			break;
- 		}
-@@ -1954,7 +1955,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
- 			if (!trylock_page(page))
- 				goto page_not_up_to_date;
- 			/* Did it get truncated before we got the lock? */
--			if (!page->mapping)
-+			if (!page_mapping(page))
- 				goto page_not_up_to_date_locked;
- 			if (!mapping->a_ops->is_partially_uptodate(page,
- 							offset, iter->count))
-@@ -2034,7 +2035,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
- 
- page_not_up_to_date_locked:
- 		/* Did it get truncated before we got the lock? */
--		if (!page->mapping) {
-+		if (!page_mapping(page)) {
- 			unlock_page(page);
- 			put_page(page);
- 			continue;
-@@ -2070,7 +2071,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
- 			if (unlikely(error))
- 				goto readpage_error;
- 			if (!PageUptodate(page)) {
--				if (page->mapping == NULL) {
-+				if (page_mapping(page) == NULL) {
- 					/*
- 					 * invalidate_mapping_pages got it
- 					 */
-@@ -2369,12 +2370,12 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	}
- 
- 	/* Did it get truncated? */
--	if (unlikely(page->mapping != mapping)) {
-+	if (unlikely(page_mapping(page) != mapping)) {
- 		unlock_page(page);
- 		put_page(page);
- 		goto retry_find;
- 	}
--	VM_BUG_ON_PAGE(page->index != offset, page);
-+	VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
  
  	/*
- 	 * We have a locked page in the page cache, now we need to check
-@@ -2550,7 +2551,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vma->vm_file);
- 	lock_page(page);
--	if (page->mapping != inode->i_mapping) {
-+	if (page_mapping(page) != inode->i_mapping) {
- 		unlock_page(page);
- 		ret = VM_FAULT_NOPAGE;
- 		goto out;
-@@ -2699,7 +2700,7 @@ static struct page *do_read_cache_page(struct address_space *mapping,
- 	lock_page(page);
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 9888dbec1d01..e7cda8e86f2c 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -1892,7 +1892,10 @@ static void __split_huge_page(struct page *page, struct list_head *list,
+ 		struct radix_tree_iter iter;
+ 		void **slot;
  
- 	/* Case c or d, restart the operation */
--	if (!page->mapping) {
-+	if (!page_mapping(page)) {
- 		unlock_page(page);
- 		put_page(page);
- 		goto repeat;
-@@ -3155,12 +3156,13 @@ EXPORT_SYMBOL(generic_file_write_iter);
-  */
- int try_to_release_page(struct page *page, gfp_t gfp_mask)
- {
--	struct address_space * const mapping = page->mapping;
-+	struct address_space * const mapping = page_mapping(page);
+-		__dec_node_page_state(head, NR_SHMEM_THPS);
++		if (PageSwapBacked(page))
++			__dec_node_page_state(page, NR_SHMEM_THPS);
++		else
++			__dec_node_page_state(page, NR_FILE_THPS);
  
- 	BUG_ON(!PageLocked(page));
- 	if (PageWriteback(page))
- 		return 0;
- 
-+	page = compound_head(page);
- 	if (mapping && mapping->a_ops->releasepage)
- 		return mapping->a_ops->releasepage(page, gfp_mask);
- 	return try_to_free_buffers(page);
-diff --git a/mm/memory.c b/mm/memory.c
-index e8c04d1d87b8..5b8d8aba69a7 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2056,7 +2056,7 @@ static int do_page_mkwrite(struct vm_area_struct *vma, struct page *page,
- 		return ret;
- 	if (unlikely(!(ret & VM_FAULT_LOCKED))) {
- 		lock_page(page);
--		if (!page->mapping) {
-+		if (!page_mapping(page)) {
- 			unlock_page(page);
- 			return 0; /* retry */
+ 		radix_tree_split(&mapping->page_tree, head->index, 0);
+ 		radix_tree_for_each_slot(slot, &mapping->page_tree, &iter,
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 2b3bf6767d54..447499b7054d 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -4293,6 +4293,8 @@ void show_free_areas(unsigned int filter)
+ #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+ 			" shmem_thp: %lukB"
+ 			" shmem_pmdmapped: %lukB"
++			" file_thp: %lukB"
++			" file_pmdmapped: %lukB"
+ 			" anon_thp: %lukB"
+ #endif
+ 			" writeback_tmp:%lukB"
+@@ -4315,6 +4317,9 @@ void show_free_areas(unsigned int filter)
+ 			K(node_page_state(pgdat, NR_SHMEM_THPS) * HPAGE_PMD_NR),
+ 			K(node_page_state(pgdat, NR_SHMEM_PMDMAPPED)
+ 					* HPAGE_PMD_NR),
++			K(node_page_state(pgdat, NR_FILE_THPS) * HPAGE_PMD_NR),
++			K(node_page_state(pgdat, NR_FILE_PMDMAPPED)
++					* HPAGE_PMD_NR),
+ 			K(node_page_state(pgdat, NR_ANON_THPS) * HPAGE_PMD_NR),
+ #endif
+ 			K(node_page_state(pgdat, NR_SHMEM)),
+diff --git a/mm/rmap.c b/mm/rmap.c
+index 1ef36404e7b2..48c7310639bd 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -1281,8 +1281,10 @@ void page_add_file_rmap(struct page *page, bool compound)
  		}
-@@ -2104,7 +2104,7 @@ static inline int wp_page_reuse(struct fault_env *fe, pte_t orig_pte,
- 
- 		dirtied = set_page_dirty(page);
- 		VM_BUG_ON_PAGE(PageAnon(page), page);
--		mapping = page->mapping;
-+		mapping = page_mapping(page);
- 		unlock_page(page);
- 		put_page(page);
- 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index f903c09940c4..2cfc5010d13e 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2857,7 +2857,7 @@ EXPORT_SYMBOL(mapping_tagged);
-  */
- void wait_for_stable_page(struct page *page)
- {
--	if (bdi_cap_stable_pages_required(inode_to_bdi(page->mapping->host)))
-+	if (bdi_cap_stable_pages_required(inode_to_bdi(page_mapping(page)->host)))
- 		wait_on_page_writeback(page);
- }
- EXPORT_SYMBOL_GPL(wait_for_stable_page);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 59bc1b4260d1..afeedf2d8871 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -612,6 +612,7 @@ invalidate_complete_page2(struct address_space *mapping, struct page *page)
- {
- 	unsigned long flags;
- 
-+	page = compound_head(page);
- 	if (page->mapping != mapping)
- 		return 0;
- 
-@@ -640,7 +641,7 @@ static int do_launder_page(struct address_space *mapping, struct page *page)
- {
- 	if (!PageDirty(page))
- 		return 0;
--	if (page->mapping != mapping || mapping->a_ops->launder_page == NULL)
-+	if (page_mapping(page) != mapping || mapping->a_ops->launder_page == NULL)
- 		return 0;
- 	return mapping->a_ops->launder_page(page);
- }
-@@ -688,7 +689,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 
- 			lock_page(page);
- 			WARN_ON(page_to_pgoff(page) != index);
--			if (page->mapping != mapping) {
-+			if (page_mapping(page) != mapping) {
- 				unlock_page(page);
- 				continue;
- 			}
+ 		if (!atomic_inc_and_test(compound_mapcount_ptr(page)))
+ 			goto out;
+-		VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
+-		__inc_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		if (PageSwapBacked(page))
++			__inc_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		else
++			__inc_node_page_state(page, NR_FILE_PMDMAPPED);
+ 	} else {
+ 		if (PageTransCompound(page) && page_mapping(page)) {
+ 			VM_WARN_ON_ONCE(!PageLocked(page));
+@@ -1322,8 +1324,10 @@ static void page_remove_file_rmap(struct page *page, bool compound)
+ 		}
+ 		if (!atomic_add_negative(-1, compound_mapcount_ptr(page)))
+ 			goto out;
+-		VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
+-		__dec_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		if (PageSwapBacked(page))
++			__dec_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		else
++			__dec_node_page_state(page, NR_FILE_PMDMAPPED);
+ 	} else {
+ 		if (!atomic_add_negative(-1, &page->_mapcount))
+ 			goto out;
+diff --git a/mm/vmstat.c b/mm/vmstat.c
+index 604f26a4f696..04dc6bd8ee43 100644
+--- a/mm/vmstat.c
++++ b/mm/vmstat.c
+@@ -967,6 +967,8 @@ const char * const vmstat_text[] = {
+ 	"nr_shmem",
+ 	"nr_shmem_hugepages",
+ 	"nr_shmem_pmdmapped",
++	"nr_file_hugepaged",
++	"nr_file_pmdmapped",
+ 	"nr_anon_transparent_hugepages",
+ 	"nr_unstable",
+ 	"nr_vmscan_write",
 -- 
 2.9.3
 
