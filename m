@@ -1,264 +1,69 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 30/43] mm: account huge pages to dirty, writaback, reclaimable, etc.
-Date: Tue, 25 Oct 2016 03:13:29 +0300
-Message-ID: <20161025001342.76126-31-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 36/43] ext4: handle huge pages in ext4_da_write_end()
+Date: Tue, 25 Oct 2016 03:13:35 +0300
+Message-ID: <20161025001342.76126-37-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-block-owner@vger.kernel.org>
 In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We need to account huge pages according to its size to get background
-writaback work properly.
+Call ext4_da_should_update_i_disksize() for head page with offset
+relative to head page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/fs-writeback.c           | 10 ++++---
- include/linux/backing-dev.h | 10 +++++++
- include/linux/memcontrol.h  |  5 ++--
- mm/migrate.c                |  1 +
- mm/page-writeback.c         | 67 +++++++++++++++++++++++++++++----------------
- 5 files changed, 64 insertions(+), 29 deletions(-)
+ fs/ext4/inode.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 05713a5da083..2feb8677e69e 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -366,8 +366,9 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
- 		struct page *page = radix_tree_deref_slot_protected(slot,
- 							&mapping->tree_lock);
- 		if (likely(page) && PageDirty(page)) {
--			__dec_wb_stat(old_wb, WB_RECLAIMABLE);
--			__inc_wb_stat(new_wb, WB_RECLAIMABLE);
-+			int nr = hpage_nr_pages(page);
-+			__add_wb_stat(old_wb, WB_RECLAIMABLE, -nr);
-+			__add_wb_stat(new_wb, WB_RECLAIMABLE, nr);
- 		}
- 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1eae6801846c..59cd2b113eb2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3015,7 +3015,6 @@ static int ext4_da_write_end(struct file *file,
+ 	int ret = 0, ret2;
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	loff_t new_i_size;
+-	unsigned long start, end;
+ 	int write_mode = (int)(unsigned long)fsdata;
  
-@@ -376,9 +377,10 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
- 		struct page *page = radix_tree_deref_slot_protected(slot,
- 							&mapping->tree_lock);
- 		if (likely(page)) {
-+			int nr = hpage_nr_pages(page);
- 			WARN_ON_ONCE(!PageWriteback(page));
--			__dec_wb_stat(old_wb, WB_WRITEBACK);
--			__inc_wb_stat(new_wb, WB_WRITEBACK);
-+			__add_wb_stat(old_wb, WB_WRITEBACK, -nr);
-+			__add_wb_stat(new_wb, WB_WRITEBACK, nr);
- 		}
- 	}
+ 	if (write_mode == FALL_BACK_TO_NONDELALLOC)
+@@ -3023,8 +3022,6 @@ static int ext4_da_write_end(struct file *file,
+ 				      len, copied, page, fsdata);
  
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 43b93a947e61..e63487f78824 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -61,6 +61,16 @@ static inline void __add_wb_stat(struct bdi_writeback *wb,
- 	__percpu_counter_add(&wb->stat[item], amount, WB_STAT_BATCH);
- }
+ 	trace_ext4_da_write_end(inode, pos, len, copied);
+-	start = pos & (PAGE_SIZE - 1);
+-	end = start + copied - 1;
  
-+static inline void add_wb_stat(struct bdi_writeback *wb,
-+				 enum wb_stat_item item, s64 amount)
-+{
-+	unsigned long flags;
-+
-+	local_irq_save(flags);
-+	__add_wb_stat(wb, item, amount);
-+	local_irq_restore(flags);
-+}
-+
- static inline void __inc_wb_stat(struct bdi_writeback *wb,
- 				 enum wb_stat_item item)
- {
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 61d20c17f3b7..d24092581442 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -29,6 +29,7 @@
- #include <linux/mmzone.h>
- #include <linux/writeback.h>
- #include <linux/page-flags.h>
-+#include <linux/mm.h>
- 
- struct mem_cgroup;
- struct page;
-@@ -506,13 +507,13 @@ static inline void mem_cgroup_update_page_stat(struct page *page,
- static inline void mem_cgroup_inc_page_stat(struct page *page,
- 					    enum mem_cgroup_stat_index idx)
- {
--	mem_cgroup_update_page_stat(page, idx, 1);
-+	mem_cgroup_update_page_stat(page, idx, hpage_nr_pages(page));
- }
- 
- static inline void mem_cgroup_dec_page_stat(struct page *page,
- 					    enum mem_cgroup_stat_index idx)
- {
--	mem_cgroup_update_page_stat(page, idx, -1);
-+	mem_cgroup_update_page_stat(page, idx, -hpage_nr_pages(page));
- }
- 
- unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 99250aee1ac1..bfc722959d3e 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -505,6 +505,7 @@ int migrate_page_move_mapping(struct address_space *mapping,
- 	 * are mapped to swap space.
+ 	/*
+ 	 * generic_write_end() will run mark_inode_dirty() if i_size
+@@ -3033,8 +3030,10 @@ static int ext4_da_write_end(struct file *file,
  	 */
- 	if (newzone != oldzone) {
-+		BUG_ON(PageTransHuge(page));
- 		__dec_node_state(oldzone->zone_pgdat, NR_FILE_PAGES);
- 		__inc_node_state(newzone->zone_pgdat, NR_FILE_PAGES);
- 		if (PageSwapBacked(page) && !PageSwapCache(page)) {
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index c76fc90b7039..f903c09940c4 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2421,19 +2421,22 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
- 
- 	if (mapping_cap_account_dirty(mapping)) {
- 		struct bdi_writeback *wb;
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
- 
- 		inode_attach_wb(inode, page);
- 		wb = inode_to_wb(inode);
- 
- 		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--		__inc_node_page_state(page, NR_FILE_DIRTY);
--		__inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		__inc_node_page_state(page, NR_DIRTIED);
--		__inc_wb_stat(wb, WB_RECLAIMABLE);
--		__inc_wb_stat(wb, WB_DIRTIED);
--		task_io_account_write(PAGE_SIZE);
--		current->nr_dirtied++;
--		this_cpu_inc(bdp_ratelimits);
-+		__mod_node_page_state(pgdat, NR_FILE_DIRTY, nr);
-+		__mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
-+		__mod_node_page_state(pgdat, NR_DIRTIED, nr);
-+		__add_wb_stat(wb, WB_RECLAIMABLE, nr);
-+		__add_wb_stat(wb, WB_DIRTIED, nr);
-+		task_io_account_write(nr * PAGE_SIZE);
-+		current->nr_dirtied += nr;
-+		this_cpu_add(bdp_ratelimits, nr);
- 	}
- }
- EXPORT_SYMBOL(account_page_dirtied);
-@@ -2447,11 +2450,15 @@ void account_page_cleaned(struct page *page, struct address_space *mapping,
- 			  struct bdi_writeback *wb)
- {
- 	if (mapping_cap_account_dirty(mapping)) {
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
- 		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--		dec_node_page_state(page, NR_FILE_DIRTY);
--		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		dec_wb_stat(wb, WB_RECLAIMABLE);
--		task_io_account_cancelled_write(PAGE_SIZE);
-+		mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+		add_wb_stat(wb, WB_RECLAIMABLE, -nr);
-+		task_io_account_cancelled_write(PAGE_SIZE * nr);
- 	}
- }
- 
-@@ -2511,14 +2518,16 @@ void account_page_redirty(struct page *page)
- 	struct address_space *mapping = page->mapping;
- 
- 	if (mapping && mapping_cap_account_dirty(mapping)) {
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
- 		struct inode *inode = mapping->host;
- 		struct bdi_writeback *wb;
- 		bool locked;
- 
- 		wb = unlocked_inode_to_wb_begin(inode, &locked);
--		current->nr_dirtied--;
--		dec_node_page_state(page, NR_DIRTIED);
--		dec_wb_stat(wb, WB_DIRTIED);
-+		current->nr_dirtied -= nr;
-+		mod_node_page_state(pgdat, NR_DIRTIED, -nr);
-+		add_wb_stat(wb, WB_DIRTIED, -nr);
- 		unlocked_inode_to_wb_end(inode, locked);
- 	}
- }
-@@ -2704,10 +2713,14 @@ int clear_page_dirty_for_io(struct page *page)
- 		 */
- 		wb = unlocked_inode_to_wb_begin(inode, &locked);
- 		if (TestClearPageDirty(page)) {
-+			struct zone *zone = page_zone(page);
-+			pg_data_t *pgdat = page_pgdat(page);
-+			int nr = hpage_nr_pages(page);
-+
- 			mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--			dec_node_page_state(page, NR_FILE_DIRTY);
--			dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--			dec_wb_stat(wb, WB_RECLAIMABLE);
-+			mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
-+			mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+			add_wb_stat(wb, WB_RECLAIMABLE, -nr);
- 			ret = 1;
- 		}
- 		unlocked_inode_to_wb_end(inode, locked);
-@@ -2751,10 +2764,14 @@ int test_clear_page_writeback(struct page *page)
- 		ret = TestClearPageWriteback(page);
- 	}
- 	if (ret) {
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
- 		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
--		dec_node_page_state(page, NR_WRITEBACK);
--		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		inc_node_page_state(page, NR_WRITTEN);
-+		mod_node_page_state(pgdat, NR_WRITEBACK, -nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+		mod_node_page_state(pgdat, NR_WRITTEN, nr);
- 	}
- 	unlock_page_memcg(page);
- 	return ret;
-@@ -2806,9 +2823,13 @@ int __test_set_page_writeback(struct page *page, bool keep_write)
- 		ret = TestSetPageWriteback(page);
- 	}
- 	if (!ret) {
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
- 		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
--		inc_node_page_state(page, NR_WRITEBACK);
--		inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
-+		mod_node_page_state(pgdat, NR_WRITEBACK, nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
- 	}
- 	unlock_page_memcg(page);
- 	return ret;
+ 	new_i_size = pos + copied;
+ 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
++		struct page *head = compound_head(page);
++		unsigned long end = (pos & ~hpage_mask(head)) + copied - 1;
+ 		if (ext4_has_inline_data(inode) ||
+-		    ext4_da_should_update_i_disksize(page, end)) {
++		    ext4_da_should_update_i_disksize(head, end)) {
+ 			ext4_update_i_disksize(inode, new_i_size);
+ 			/* We need to mark inode dirty even if
+ 			 * new_i_size is less that inode->i_size
 -- 
 2.9.3
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
