@@ -1,137 +1,111 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 31/43] ext4: make ext4_mpage_readpages() hugepage-aware
-Date: Tue, 25 Oct 2016 03:13:30 +0300
-Message-ID: <20161025001342.76126-32-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 35/43] ext4: make ext4_block_write_begin() aware about huge pages
+Date: Tue, 25 Oct 2016 03:13:34 +0300
+Message-ID: <20161025001342.76126-36-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This patch modifies ext4_mpage_readpages() to deal with huge pages.
-
-We read out 2M at once, so we have to alloc (HPAGE_PMD_NR *
-blocks_per_page) sector_t for that. I'm not entirely happy with kmalloc
-in this codepath, but don't see any other option.
+It simply matches changes to __block_write_begin_int().
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/readpage.c | 39 +++++++++++++++++++++++++++++++++------
- 1 file changed, 33 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 35 +++++++++++++++++++++--------------
+ 1 file changed, 21 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index a81b829d56de..af8436a4702c 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -104,12 +104,12 @@ int ext4_mpage_readpages(struct address_space *mapping,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c1728d2bf47b..1eae6801846c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1087,9 +1087,8 @@ int do_journal_get_write_access(handle_t *handle,
+ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 				  get_block_t *get_block)
+ {
+-	unsigned from = pos & (PAGE_SIZE - 1);
+-	unsigned to = from + len;
+-	struct inode *inode = page->mapping->host;
++	unsigned from, to;
++	struct inode *inode = page_mapping(page)->host;
+ 	unsigned block_start, block_end;
+ 	sector_t block;
+ 	int err = 0;
+@@ -1097,10 +1096,14 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	unsigned bbits;
+ 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
+ 	bool decrypt = false;
++	bool uptodate = PageUptodate(page);
  
- 	struct inode *inode = mapping->host;
- 	const unsigned blkbits = inode->i_blkbits;
--	const unsigned blocks_per_page = PAGE_SIZE >> blkbits;
- 	const unsigned blocksize = 1 << blkbits;
- 	sector_t block_in_file;
- 	sector_t last_block;
- 	sector_t last_block_in_file;
--	sector_t blocks[MAX_BUF_PER_PAGE];
-+	sector_t blocks_on_stack[MAX_BUF_PER_PAGE];
-+	sector_t *blocks = blocks_on_stack;
- 	unsigned page_block;
- 	struct block_device *bdev = inode->i_sb->s_bdev;
- 	int length;
-@@ -122,8 +122,9 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 	map.m_flags = 0;
++	page = compound_head(page);
++	from = pos & ~hpage_mask(page);
++	to = from + len;
+ 	BUG_ON(!PageLocked(page));
+-	BUG_ON(from > PAGE_SIZE);
+-	BUG_ON(to > PAGE_SIZE);
++	BUG_ON(from > hpage_size(page));
++	BUG_ON(to > hpage_size(page));
+ 	BUG_ON(from > to);
  
- 	for (; nr_pages; nr_pages--) {
--		int fully_mapped = 1;
--		unsigned first_hole = blocks_per_page;
-+		int fully_mapped = 1, nr = nr_pages;
-+		unsigned blocks_per_page = PAGE_SIZE >> blkbits;
-+		unsigned first_hole;
- 
- 		prefetchw(&page->flags);
- 		if (pages) {
-@@ -138,10 +139,32 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 			goto confused;
- 
- 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
--		last_block = block_in_file + nr_pages * blocks_per_page;
-+
-+		if (PageTransHuge(page) &&
-+				IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE)) {
-+			BUILD_BUG_ON(BIO_MAX_PAGES < HPAGE_PMD_NR);
-+			nr = HPAGE_PMD_NR * blocks_per_page;
-+			/* XXX: need a better solution ? */
-+			blocks = ext4_kvmalloc(sizeof(sector_t) * nr, GFP_NOFS);
-+			if (!blocks) {
-+				if (pages) {
-+					delete_from_page_cache(page);
-+					goto next_page;
+ 	if (!page_has_buffers(page))
+@@ -1113,10 +1116,8 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	    block++, block_start = block_end, bh = bh->b_this_page) {
+ 		block_end = block_start + blocksize;
+ 		if (block_end <= from || block_start >= to) {
+-			if (PageUptodate(page)) {
+-				if (!buffer_uptodate(bh))
+-					set_buffer_uptodate(bh);
+-			}
++			if (uptodate && !buffer_uptodate(bh))
++				set_buffer_uptodate(bh);
+ 			continue;
+ 		}
+ 		if (buffer_new(bh))
+@@ -1129,19 +1130,25 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 			if (buffer_new(bh)) {
+ 				unmap_underlying_metadata(bh->b_bdev,
+ 							  bh->b_blocknr);
+-				if (PageUptodate(page)) {
++				if (uptodate) {
+ 					clear_buffer_new(bh);
+ 					set_buffer_uptodate(bh);
+ 					mark_buffer_dirty(bh);
+ 					continue;
+ 				}
+-				if (block_end > to || block_start < from)
+-					zero_user_segments(page, to, block_end,
+-							   block_start, from);
++				if (block_end > to || block_start < from) {
++					BUG_ON(to - from  > PAGE_SIZE);
++					zero_user_segments(page +
++							block_start / PAGE_SIZE,
++							to % PAGE_SIZE,
++							(block_start % PAGE_SIZE) + blocksize,
++							block_start % PAGE_SIZE,
++							from % PAGE_SIZE);
 +				}
-+				return -ENOMEM;
-+			}
-+
-+			blocks_per_page *= HPAGE_PMD_NR;
-+			last_block = block_in_file + blocks_per_page;
-+		} else {
-+			blocks = blocks_on_stack;
-+			last_block = block_in_file + nr * blocks_per_page;
-+		}
-+
- 		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
- 		if (last_block > last_block_in_file)
- 			last_block = last_block_in_file;
-+		first_hole = blocks_per_page;
- 		page_block = 0;
- 
- 		/*
-@@ -213,6 +236,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 				continue;
  			}
  		}
- 		if (first_hole != blocks_per_page) {
-+			if (PageTransHuge(page))
-+				goto confused;
- 			zero_user_segment(page, first_hole << blkbits,
- 					  PAGE_SIZE);
- 			if (first_hole == 0) {
-@@ -248,7 +273,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 					goto set_error_page;
- 			}
- 			bio = bio_alloc(GFP_KERNEL,
--				min_t(int, nr_pages, BIO_MAX_PAGES));
-+				min_t(int, nr, BIO_MAX_PAGES));
- 			if (!bio) {
- 				if (ctx)
- 					fscrypt_release_ctx(ctx);
-@@ -289,5 +314,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 	BUG_ON(pages && !list_empty(pages));
- 	if (bio)
- 		submit_bio(bio);
-+	if (blocks != blocks_on_stack)
-+		kfree(blocks);
- 	return 0;
- }
+-		if (PageUptodate(page)) {
++		if (uptodate) {
+ 			if (!buffer_uptodate(bh))
+ 				set_buffer_uptodate(bh);
+ 			continue;
 -- 
 2.9.3
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
