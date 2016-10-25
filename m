@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv4 23/43] thp: make thp_get_unmapped_area() respect S_HUGE_MODE
-Date: Tue, 25 Oct 2016 03:13:22 +0300
-Message-ID: <20161025001342.76126-24-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv4 28/43] truncate: make invalidate_inode_pages2_range() aware about huge pages
+Date: Tue, 25 Oct 2016 03:13:27 +0300
+Message-ID: <20161025001342.76126-29-kirill.shutemov@linux.intel.com>
 References: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,32 +25,71 @@ In-Reply-To: <20161025001342.76126-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We want mmap(NULL) to return PMD-aligned address if the inode can have
-huge pages in page cache.
+For huge pages we need to unmap whole range covered by the huge page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/huge_memory.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ mm/truncate.c | 27 +++++++++++++++++++--------
+ 1 file changed, 19 insertions(+), 8 deletions(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 40fe91ac383c..2c1524a8d5d4 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -518,10 +518,12 @@ unsigned long thp_get_unmapped_area(struct file *filp, unsigned long addr,
- 		unsigned long len, unsigned long pgoff, unsigned long flags)
- {
- 	loff_t off = (loff_t)pgoff << PAGE_SHIFT;
-+	struct inode *inode = filp->f_mapping->host;
- 
- 	if (addr)
- 		goto out;
--	if (!IS_DAX(filp->f_mapping->host) || !IS_ENABLED(CONFIG_FS_DAX_PMD))
-+	if ((inode->i_flags & S_HUGE_MODE) == S_HUGE_NEVER &&
-+			(!IS_DAX(inode) || !IS_ENABLED(CONFIG_FS_DAX_PMD)))
- 		goto out;
- 
- 	addr = __thp_get_unmapped_area(filp, len, off, flags, PMD_SIZE);
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 7bb9d197a9e8..59bc1b4260d1 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -693,27 +693,34 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 				continue;
+ 			}
+ 			wait_on_page_writeback(page);
++			page = compound_head(page);
++
+ 			if (page_mapped(page)) {
++				loff_t begin, len;
++
++				begin = page->index << PAGE_SHIFT;
++
+ 				if (!did_range_unmap) {
+ 					/*
+ 					 * Zap the rest of the file in one hit.
+ 					 */
++					len = (loff_t)(1 + end - page->index) <<
++						PAGE_SHIFT;
++					if (len < hpage_size(page))
++						len = hpage_size(page);
+ 					unmap_mapping_range(mapping,
+-					   (loff_t)index << PAGE_SHIFT,
+-					   (loff_t)(1 + end - index)
+-							 << PAGE_SHIFT,
+-							 0);
++							begin, len, 0);
+ 					did_range_unmap = 1;
+ 				} else {
+ 					/*
+ 					 * Just zap this page
+ 					 */
+-					unmap_mapping_range(mapping,
+-					   (loff_t)index << PAGE_SHIFT,
+-					   PAGE_SIZE, 0);
++					len = hpage_size(page);
++					unmap_mapping_range(mapping, begin,
++							len, 0 );
+ 				}
+ 			}
+-			BUG_ON(page_mapped(page));
++			VM_BUG_ON_PAGE(page_mapped(page), page);
+ 			ret2 = do_launder_page(mapping, page);
+ 			if (ret2 == 0) {
+ 				if (!invalidate_complete_page2(mapping, page))
+@@ -722,6 +729,10 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 			if (ret2 < 0)
+ 				ret = ret2;
+ 			unlock_page(page);
++			if (PageTransHuge(page)) {
++				index = page->index + HPAGE_PMD_NR - 1;
++				break;
++			}
+ 		}
+ 		pagevec_remove_exceptionals(&pvec);
+ 		pagevec_release(&pvec);
 -- 
 2.9.3
 
