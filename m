@@ -1,57 +1,39 @@
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [BUG] softlockup observed with 64k block size on ppc64
-Date: Tue, 25 Oct 2016 18:49:54 +0530
-Message-ID: <17387849.5EiRHCrpou@localhost.localdomain>
-References: <369354227.RU6GsvOxus@localhost.localdomain> <20161025081319.GC16260@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: resizing file system fails when file system block size is
+ smaller than page size
+Date: Tue, 25 Oct 2016 13:19:36 -0400
+Message-ID: <20161025171936.uk2l7arhwmbrlib5@thunk.org>
+References: <CAA1ppbijDUUH2AN40qkoC-w88sz6BBSz89rtvXPiT089pHYgqQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jerry Lee <jerrylee@qnap.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:59968 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S935062AbcJYNUD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Oct 2016 09:20:03 -0400
-Received: from pps.filterd (m0098404.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.17/8.16.0.17) with SMTP id u9PDF9dr006344
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2016 09:20:03 -0400
-Received: from e23smtp07.au.ibm.com (e23smtp07.au.ibm.com [202.81.31.140])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 26a7gcjjsm-1
-        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2016 09:20:02 -0400
-Received: from localhost
-        by e23smtp07.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Tue, 25 Oct 2016 23:20:00 +1000
-Received: from d23relay10.au.ibm.com (d23relay10.au.ibm.com [9.190.26.77])
-        by d23dlp03.au.ibm.com (Postfix) with ESMTP id 9EA3A3578053
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Oct 2016 00:19:57 +1100 (EST)
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-        by d23relay10.au.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u9PDJvh561210826
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Oct 2016 00:19:57 +1100
-Received: from d23av01.au.ibm.com (localhost [127.0.0.1])
-        by d23av01.au.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id u9PDJvZR021925
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Oct 2016 00:19:57 +1100
-In-Reply-To: <20161025081319.GC16260@quack2.suse.cz>
+Received: from imap.thunk.org ([74.207.234.97]:41942 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1759445AbcJYRTj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Oct 2016 13:19:39 -0400
+Content-Disposition: inline
+In-Reply-To: <CAA1ppbijDUUH2AN40qkoC-w88sz6BBSz89rtvXPiT089pHYgqQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday, October 25, 2016 10:13:19 AM Jan Kara wrote:
-> Hi!
+On Fri, Sep 09, 2016 at 07:36:06PM +0800, Jerry Lee wrote:
 > 
-> On Mon 24-10-16 14:10:02, Chandan Rajendra wrote:
-> > The following soft lockup occurs when fstests' ext4/303 test is executed with
-> > 64k block size on a ppc64 machine running linux-4.8 kernel.
+> I have a file system with 4K block size on a 32K page size platform, and
+> something strange happened when expanding the file system from size 17TB to
+> 20TB.  It seems that the new file system size is not calculated correctly.
 > 
-> Thanks for report! I had a look into the code and I'm not sure why this
-> happens. Is this reproducible? Did it happen also with older kernels?
+> $ resize2fs /dev/mapper/dev
+> resize2fs 1.43.3 (04-Sep-2016)
+> Filesystem at /dev/mapper/dev is mounted on /share/DATA; on-line
+> resizing required
+> resize2fs: On-line shrinking not supported
+> 
+> After digging into the issue, I find that the following operation makes the
+> high 32bit of the new_size variable be wiped out and results in a smaller
+> size compared to the currently used block counts.
 
-Yes, This issue can be recreated every single time the test is executed. The
-bug is present atleast from linux-v4.0 version. I haven't verified if the bug
-is present in earlier versions of the kernel.
+Thanks for the report; I've applied your suggested fix.
 
--- 
-chandan
-
+       	       	       	    	    - Ted
