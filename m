@@ -1,39 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: resizing file system fails when file system block size is
- smaller than page size
-Date: Tue, 25 Oct 2016 13:19:36 -0400
-Message-ID: <20161025171936.uk2l7arhwmbrlib5@thunk.org>
-References: <CAA1ppbijDUUH2AN40qkoC-w88sz6BBSz89rtvXPiT089pHYgqQ@mail.gmail.com>
+Subject: Re: plausible: fix compilation on RHEL 5.x due to missing magic
+ define
+Date: Tue, 25 Oct 2016 13:23:21 -0400
+Message-ID: <20161025172321.ntnqqnvrjdctwsui@thunk.org>
+References: <1476948305-563-1-git-send-email-patrickdepinguin@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jerry Lee <jerrylee@qnap.com>
+Cc: linux-ext4@vger.kernel.org,
+        Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
+To: Thomas De Schampheleire <patrickdepinguin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41942 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:41966 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1759445AbcJYRTj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Oct 2016 13:19:39 -0400
+        id S933170AbcJYRXX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Oct 2016 13:23:23 -0400
 Content-Disposition: inline
-In-Reply-To: <CAA1ppbijDUUH2AN40qkoC-w88sz6BBSz89rtvXPiT089pHYgqQ@mail.gmail.com>
+In-Reply-To: <1476948305-563-1-git-send-email-patrickdepinguin@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 09, 2016 at 07:36:06PM +0800, Jerry Lee wrote:
+On Thu, Oct 20, 2016 at 09:25:05AM +0200, Thomas De Schampheleire wrote:
+> From: Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
 > 
-> I have a file system with 4K block size on a 32K page size platform, and
-> something strange happened when expanding the file system from size 17TB to
-> 20TB.  It seems that the new file system size is not calculated correctly.
+> RHEL 5.x does have magic.h, but it does not define all expected symbols. In
+> particular, the NO_CHECK symbols were only added in file 4.20 and RHEL 5.x
+> is using 4.17.
 > 
-> $ resize2fs /dev/mapper/dev
-> resize2fs 1.43.3 (04-Sep-2016)
-> Filesystem at /dev/mapper/dev is mounted on /share/DATA; on-line
-> resizing required
-> resize2fs: On-line shrinking not supported
+> Add substitute defines to allow continued usage of magic but without the
+> requested exclude checks.
 > 
-> After digging into the issue, I find that the following operation makes the
-> high 32bit of the new_size variable be wiped out and results in a smaller
-> size compared to the currently used block counts.
+> Signed-off-by: Thomas De Schampheleire <thomas.de_schampheleire@nokia.com>
 
-Thanks for the report; I've applied your suggested fix.
+Thanks, applied.
 
-       	       	       	    	    - Ted
+					- Ted
