@@ -1,49 +1,55 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] mke2fs: Avoid crashes / infinite loops for absurdly large devices
-Date: Tue, 25 Oct 2016 14:11:44 +0200
-Message-ID: <1477397504-5663-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 182261] New: Deleted files reappear
+Date: Tue, 25 Oct 2016 13:10:15 +0000
+Message-ID: <bug-182261-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47416 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.136]:56736 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758821AbcJYMLs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Oct 2016 08:11:48 -0400
+        id S1758853AbcJYNK1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Oct 2016 09:10:27 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id 8C16220306
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2016 13:10:21 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+        by mail.kernel.org (Postfix) with ESMTP id C2299202F8
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Oct 2016 13:10:15 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a device reports absurdly high size, some arithmetics in mke2fs can
-overflow (e.g. number of block descriptors) and we end in an infinite
-loop. Fix that by checking and refusing insanely large devices.
+https://bugzilla.kernel.org/show_bug.cgi?id=182261
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- misc/mke2fs.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+            Bug ID: 182261
+           Summary: Deleted files reappear
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.14 - 4.8.4
+          Hardware: Intel
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: shomari.sharpe@gmail.com
+        Regression: No
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index d98e71e0d706..6a83bd9fe2af 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2089,6 +2089,18 @@ profile_error:
- 			EXT2_BLOCK_SIZE(&fs_param));
- 		exit(1);
- 	}
-+	/*
-+	 * Guard against group descriptor count overflowing... Mostly to avoid
-+	 * strange results for absurdly large devices.
-+	 */
-+	if (fs_blocks_count > ((1ULL << (fs_param.s_log_block_size + 3 + 32)) - 1)) {
-+		fprintf(stderr, _("%s: Size of device (0x%llx blocks) %s "
-+				  "too big to create\n\t"
-+				  "a filesystem using a blocksize of %d.\n"),
-+			program_name, fs_blocks_count, device_name,
-+			EXT2_BLOCK_SIZE(&fs_param));
-+		exit(1);
-+	}
- 
- 	ext2fs_blocks_count_set(&fs_param, fs_blocks_count);
- 
+Hi I have been noticing this problem intermittently for a while now starting
+with kernel 3.14. Files I delete days/weeks ago reappear mysteriously and they
+are fully intact. My most recent encounter is using my Xubuntu system with the
+following config:
+
+ext2 = /boot
+luks/ext4 = / (root) 
+
+
+I deleted 4.7.6 / 4.8.0 kernels from my boot and also the /lib/modules for each
+and compiled and installed 4.8.4 only to notice that the files reappeared.
+
 -- 
-2.6.6
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
