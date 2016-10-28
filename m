@@ -1,7 +1,7 @@
 From: Tejun Heo <tj@kernel.org>
-Subject: [PATCH 3/4] mutex: add mutex_lock_io()
-Date: Fri, 28 Oct 2016 12:58:11 -0400
-Message-ID: <1477673892-28940-4-git-send-email-tj@kernel.org>
+Subject: [PATCH 4/4] jbd2: use mutex_lock_io() for journal->j_checkpoint_mutex
+Date: Fri, 28 Oct 2016 12:58:12 -0400
+Message-ID: <1477673892-28940-5-git-send-email-tj@kernel.org>
 References: <1477673892-28940-1-git-send-email-tj@kernel.org>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, kernel-team@fb.com, mingbo@fb.com,
@@ -14,98 +14,119 @@ In-Reply-To: <1477673892-28940-1-git-send-email-tj@kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We sometimes end up propagating IO blocking through mutexes; however,
-because there currently is no way of annotating mutex sleeps as
-iowait, there are cases where iowait and /proc/stat:procs_blocked
-report misleading numbers obscuring the actual state of the system.
+When an ext4 fs is bogged down by a lot of metadata IOs (in the
+reported case, it was deletion of millions of files, but any massive
+amount of journal writes would do), after the journal is filled up,
+tasks which try to access the filesystem and aren't currently
+performing the journal writes end up waiting in
+__jbd2_log_wait_for_space() for journal->j_checkpoint_mutex.
 
-This patch adds mutex_lock_io() so that mutex sleeps can be marked as
-iowait in those cases.
+Because those mutex sleeps aren't marked as iowait, this condition can
+lead to misleadingly low iowait and /proc/stat:procs_blocked.  While
+iowait propagation is far from strict, this condition can be triggered
+fairly easily and annotating these sleeps correctly helps initial
+diagnosis quite a bit.
+
+Use the new mutex_lock_io() for journal->j_checkpoint_mutex so that
+these sleeps are properly marked as iowait.
 
 Signed-off-by: Tejun Heo <tj@kernel.org>
+Reported-by: Mingbo Wan <mingbo@fb.com>
 Cc: Linus Torvalds <torvalds@linux-foundation.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>
 Cc: Ingo Molnar <mingo@redhat.com>
 Cc: Peter Zijlstra <peterz@infradead.org>
 Cc: Jens Axboe <axboe@kernel.dk>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org
 ---
- include/linux/mutex.h  |  4 ++++
- kernel/locking/mutex.c | 24 ++++++++++++++++++++++++
- 2 files changed, 28 insertions(+)
+ fs/jbd2/commit.c  |  2 +-
+ fs/jbd2/journal.c | 14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/mutex.h b/include/linux/mutex.h
-index 2cb7531..5d77ddd 100644
---- a/include/linux/mutex.h
-+++ b/include/linux/mutex.h
-@@ -142,10 +142,12 @@ extern int __must_check mutex_lock_interruptible_nested(struct mutex *lock,
- 					unsigned int subclass);
- extern int __must_check mutex_lock_killable_nested(struct mutex *lock,
- 					unsigned int subclass);
-+extern void mutex_lock_io_nested(struct mutex *lock, unsigned int subclass);
- 
- #define mutex_lock(lock) mutex_lock_nested(lock, 0)
- #define mutex_lock_interruptible(lock) mutex_lock_interruptible_nested(lock, 0)
- #define mutex_lock_killable(lock) mutex_lock_killable_nested(lock, 0)
-+#define mutex_lock_io(lock) mutex_lock_io_nested(lock, 0)
- 
- #define mutex_lock_nest_lock(lock, nest_lock)				\
- do {									\
-@@ -157,11 +159,13 @@ do {									\
- extern void mutex_lock(struct mutex *lock);
- extern int __must_check mutex_lock_interruptible(struct mutex *lock);
- extern int __must_check mutex_lock_killable(struct mutex *lock);
-+extern void mutex_lock_io(struct mutex *lock);
- 
- # define mutex_lock_nested(lock, subclass) mutex_lock(lock)
- # define mutex_lock_interruptible_nested(lock, subclass) mutex_lock_interruptible(lock)
- # define mutex_lock_killable_nested(lock, subclass) mutex_lock_killable(lock)
- # define mutex_lock_nest_lock(lock, nest_lock) mutex_lock(lock)
-+# define mutex_lock_nest_io(lock, nest_lock) mutex_io(lock)
- #endif
- 
- /*
-diff --git a/kernel/locking/mutex.c b/kernel/locking/mutex.c
-index a70b90d..a37709c 100644
---- a/kernel/locking/mutex.c
-+++ b/kernel/locking/mutex.c
-@@ -653,6 +653,20 @@ mutex_lock_interruptible_nested(struct mutex *lock, unsigned int subclass)
- 
- EXPORT_SYMBOL_GPL(mutex_lock_interruptible_nested);
- 
-+void __sched
-+mutex_lock_io_nested(struct mutex *lock, unsigned int subclass)
-+{
-+	int token;
-+
-+	might_sleep();
-+
-+	token = io_schedule_prepare();
-+	__mutex_lock_common(lock, TASK_UNINTERRUPTIBLE,
-+			    subclass, NULL, _RET_IP_, NULL, 0);
-+	io_schedule_finish(token);
-+}
-+EXPORT_SYMBOL_GPL(mutex_lock_io_nested);
-+
- static inline int
- ww_mutex_deadlock_injection(struct ww_mutex *lock, struct ww_acquire_ctx *ctx)
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 31f8ca0..e772881 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -392,7 +392,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	/* Do we need to erase the effects of a prior jbd2_journal_flush? */
+ 	if (journal->j_flags & JBD2_FLUSHED) {
+ 		jbd_debug(3, "super block updated\n");
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		/*
+ 		 * We hold j_checkpoint_mutex so tail cannot change under us.
+ 		 * We don't need any special data guarantees for writing sb
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 927da49..0aa7d06 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -944,7 +944,7 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+  */
+ void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
  {
-@@ -816,6 +830,16 @@ int __sched mutex_lock_killable(struct mutex *lock)
- }
- EXPORT_SYMBOL(mutex_lock_killable);
+-	mutex_lock(&journal->j_checkpoint_mutex);
++	mutex_lock_io(&journal->j_checkpoint_mutex);
+ 	if (tid_gt(tid, journal->j_tail_sequence))
+ 		__jbd2_update_log_tail(journal, tid, block);
+ 	mutex_unlock(&journal->j_checkpoint_mutex);
+@@ -1304,7 +1304,7 @@ static int journal_reset(journal_t *journal)
+ 		journal->j_flags |= JBD2_FLUSHED;
+ 	} else {
+ 		/* Lock here to make assertions happy... */
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		/*
+ 		 * Update log tail information. We use WRITE_FUA since new
+ 		 * transaction will start reusing journal space and so we
+@@ -1691,7 +1691,7 @@ int jbd2_journal_destroy(journal_t *journal)
+ 	spin_lock(&journal->j_list_lock);
+ 	while (journal->j_checkpoint_transactions != NULL) {
+ 		spin_unlock(&journal->j_list_lock);
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		err = jbd2_log_do_checkpoint(journal);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 		/*
+@@ -1713,7 +1713,7 @@ int jbd2_journal_destroy(journal_t *journal)
  
-+void __sched mutex_lock_io(struct mutex *lock)
-+{
-+	int token;
-+
-+	token = io_schedule_prepare();
-+	mutex_lock(lock);
-+	io_schedule_finish(token);
-+}
-+EXPORT_SYMBOL_GPL(mutex_lock_io);
-+
- __visible void __sched
- __mutex_lock_slowpath(atomic_t *lock_count)
- {
+ 	if (journal->j_sb_buffer) {
+ 		if (!is_journal_aborted(journal)) {
+-			mutex_lock(&journal->j_checkpoint_mutex);
++			mutex_lock_io(&journal->j_checkpoint_mutex);
+ 
+ 			write_lock(&journal->j_state_lock);
+ 			journal->j_tail_sequence =
+@@ -1954,7 +1954,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	spin_lock(&journal->j_list_lock);
+ 	while (!err && journal->j_checkpoint_transactions != NULL) {
+ 		spin_unlock(&journal->j_list_lock);
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		err = jbd2_log_do_checkpoint(journal);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 		spin_lock(&journal->j_list_lock);
+@@ -1964,7 +1964,7 @@ int jbd2_journal_flush(journal_t *journal)
+ 	if (is_journal_aborted(journal))
+ 		return -EIO;
+ 
+-	mutex_lock(&journal->j_checkpoint_mutex);
++	mutex_lock_io(&journal->j_checkpoint_mutex);
+ 	if (!err) {
+ 		err = jbd2_cleanup_journal_tail(journal);
+ 		if (err < 0) {
+@@ -2024,7 +2024,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+ 	err = jbd2_journal_skip_recovery(journal);
+ 	if (write) {
+ 		/* Lock to make assertions happy... */
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		jbd2_mark_journal_empty(journal, WRITE_FUA);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	}
 -- 
 2.7.4
 
