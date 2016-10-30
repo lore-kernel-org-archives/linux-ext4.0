@@ -1,42 +1,106 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 00/60] block: support multipage bvec
-Date: Mon, 31 Oct 2016 08:25:19 -0700
-Message-ID: <20161031152519.GA25791@infradead.org>
-References: <1477728600-12938-1-git-send-email-tom.leiming@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv3 17/41] filemap: handle huge pages in
+ filemap_fdatawait_range()
+Date: Sun, 30 Oct 2016 18:31:35 +0100
+Message-ID: <20161030173135.GC17039@quack2.suse.cz>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-18-kirill.shutemov@linux.intel.com>
+ <20161013094441.GC26241@quack2.suse.cz>
+ <20161013120844.GA2906@node>
+ <20161013131802.GC27186@quack2.suse.cz>
+ <20161024113625.GC2849@node.shutemov.name>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <axboe@fb.com>, linux-kernel@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	"Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
+Cc: Jan Kara <jack@suse.cz>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Bart Van Assche <bart.vanassche@sandisk.com>,
-	"open list:GFS2 FILE SYSTEM" <cluster-devel@redhat.com>,
-	Coly Li <colyli@suse.de>, Dan Williams <dan.j.williams@intel.com>,
-	"open list:DEVICE-MAPPER  (LVM)" <dm-devel@redhat.com>,
-	"open list:DRBD DRIVER" <drbd-dev@lists.linbit.com>,
-	Eric Wheeler <git@linux.ewheeler.net>,
-	Guoqing Jiang <gqjiang@suse.com>, Hannes Reinecke <hare@suse.com>,
-	Hannes Reinecke <hare@suse.de>, Jiri Kosina <jkosina@suse.cz>,
-	Joe Perches <joe@perches.com>,
-	Johannes Berg <johannes.berg@intel.com>,
-	Johannes Thumshirn <jthumshirn@suse.de>,
-	Keith Busch <keith.busch@in
-To: Ming Lei <tom.leiming@gmail.com>
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill@shutemov.name>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1477728600-12938-1-git-send-email-tom.leiming@gmail.com>
+In-Reply-To: <20161024113625.GC2849@node.shutemov.name>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Ming,
+On Mon 24-10-16 14:36:25, Kirill A. Shutemov wrote:
+> On Thu, Oct 13, 2016 at 03:18:02PM +0200, Jan Kara wrote:
+> > On Thu 13-10-16 15:08:44, Kirill A. Shutemov wrote:
+> > > On Thu, Oct 13, 2016 at 11:44:41AM +0200, Jan Kara wrote:
+> > > > On Thu 15-09-16 14:54:59, Kirill A. Shutemov wrote:
+> > > > > We writeback whole huge page a time.
+> > > > 
+> > > > This is one of the things I don't understand. Firstly I didn't see where
+> > > > changes of writeback like this would happen (maybe they come later).
+> > > > Secondly I'm not sure why e.g. writeback should behave atomically wrt huge
+> > > > pages. Is this because radix-tree multiorder entry tracks dirtiness for us
+> > > > at that granularity?
+> > > 
+> > > We track dirty/writeback on per-compound pages: meaning we have one
+> > > dirty/writeback flag for whole compound page, not on every individual
+> > > 4k subpage. The same story for radix-tree tags.
+> > > 
+> > > > BTW, can you also explain why do we need multiorder entries? What do
+> > > > they solve for us?
+> > > 
+> > > It helps us having coherent view on tags in radix-tree: no matter which
+> > > index we refer from the range huge page covers we will get the same
+> > > answer on which tags set.
+> > 
+> > OK, understand that. But why do we need a coherent view? For which purposes
+> > exactly do we care that it is not just a bunch of 4k pages that happen to
+> > be physically contiguous and thus can be mapped in one PMD?
+> 
+> My understanding is that things like PageDirty() should be handled on the
+> same granularity as PAGECACHE_TAG_DIRTY, otherwise things can go horribly
+> wrong...
 
-can you send a first patch just doing the obvious cleanups like
-converting to bio_add_page and replacing direct poking into the
-bio with the proper accessors?  That should help reducing the
-actual series to a sane size, and it should also help to cut
-down the Cc list.
+Yeah, I agree with that. My question was rather aiming in the direction:
+Why don't we keep PageDirty and PAGECACHE_TAG_DIRTY on a page granularity?
+Why do we push all this to happen only in the head page?
+
+In your coverletter of the latest version (BTW thanks for expanding
+explanations there) you write:
+  - head page (the first subpage) on LRU represents whole huge page;
+  - head page's flags represent state of whole huge page (with few
+    exceptions);
+  - mm can't migrate subpages of the compound page individually;
+
+So the fact that flags of a head page represent flags of each individual
+page is the decision that I'm questioning, at least for PageDirty and
+PageWriteback flags. I'm asking because frankly, I don't like the series
+much. IMHO too many places need to know about huge pages and things will
+get broken frequently. And from filesystem POV I don't really see why a
+filesystem should care about huge pages *at all*. Sure functions allocating
+pages into page cache need to care, sure functions mapping pages into page
+tables need to care. But nobody else should need to be aware we are playing
+some huge page games... At least that is my idea how things ought to work
+;)
+
+Your solution seems to go more towards the direction where we have two
+different sizes of pages in the system and everyone has to cope with it.
+But I'd also note that you go only half way there - e.g. page lookup
+functions still work with subpages, some places still use PAGE_SIZE &
+page->index, ... - so the result is a strange mix.
+
+So what are the reasons for having pages forming a huge page bound so
+tightly?
+
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
