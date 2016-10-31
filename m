@@ -1,62 +1,45 @@
-From: Ming Lei <tom.leiming@gmail.com>
-Subject: [PATCH 50/60] ext4: convert to bio_for_each_segment_all_rd()
-Date: Sat, 29 Oct 2016 16:08:49 +0800
-Message-ID: <1477728600-12938-51-git-send-email-tom.leiming@gmail.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 00/60] block: support multipage bvec
+Date: Mon, 31 Oct 2016 08:25:19 -0700
+Message-ID: <20161031152519.GA25791@infradead.org>
 References: <1477728600-12938-1-git-send-email-tom.leiming@gmail.com>
-Cc: linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>,
-        Ming Lei <tom.leiming@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org (open list:EXT4 FILE SYSTEM)
-To: Jens Axboe <axboe@fb.com>, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <axboe@fb.com>, linux-kernel@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@infradead.org>,
+	"Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Bart Van Assche <bart.vanassche@sandisk.com>,
+	"open list:GFS2 FILE SYSTEM" <cluster-devel@redhat.com>,
+	Coly Li <colyli@suse.de>, Dan Williams <dan.j.williams@intel.com>,
+	"open list:DEVICE-MAPPER  (LVM)" <dm-devel@redhat.com>,
+	"open list:DRBD DRIVER" <drbd-dev@lists.linbit.com>,
+	Eric Wheeler <git@linux.ewheeler.net>,
+	Guoqing Jiang <gqjiang@suse.com>, Hannes Reinecke <hare@suse.com>,
+	Hannes Reinecke <hare@suse.de>, Jiri Kosina <jkosina@suse.cz>,
+	Joe Perches <joe@perches.com>,
+	Johannes Berg <johannes.berg@intel.com>,
+	Johannes Thumshirn <jthumshirn@suse.de>,
+	Keith Busch <keith.busch@in
+To: Ming Lei <tom.leiming@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
 In-Reply-To: <1477728600-12938-1-git-send-email-tom.leiming@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Ming Lei <tom.leiming@gmail.com>
----
- fs/ext4/page-io.c  | 3 ++-
- fs/ext4/readpage.c | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+Hi Ming,
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 0094923e5ebf..abde26af55e7 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -63,8 +63,9 @@ static void ext4_finish_bio(struct bio *bio)
- {
- 	int i;
- 	struct bio_vec *bvec;
-+	struct bvec_iter_all bia;
- 
--	bio_for_each_segment_all(bvec, bio, i) {
-+	bio_for_each_segment_all_rd(bvec, bio, i, bia) {
- 		struct page *page = bvec->bv_page;
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 		struct page *data_page = NULL;
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index a81b829d56de..b30444fd9333 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -71,6 +71,7 @@ static void mpage_end_io(struct bio *bio)
- {
- 	struct bio_vec *bv;
- 	int i;
-+	struct bvec_iter_all bia;
- 
- 	if (ext4_bio_encrypted(bio)) {
- 		if (bio->bi_error) {
-@@ -80,7 +81,7 @@ static void mpage_end_io(struct bio *bio)
- 			return;
- 		}
- 	}
--	bio_for_each_segment_all(bv, bio, i) {
-+	bio_for_each_segment_all_rd(bv, bio, i, bia) {
- 		struct page *page = bv->bv_page;
- 
- 		if (!bio->bi_error) {
--- 
-2.7.4
+can you send a first patch just doing the obvious cleanups like
+converting to bio_add_page and replacing direct poking into the
+bio with the proper accessors?  That should help reducing the
+actual series to a sane size, and it should also help to cut
+down the Cc list.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
