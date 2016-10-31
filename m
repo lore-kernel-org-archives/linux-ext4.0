@@ -1,108 +1,45 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
- do_generic_file_read()
-Date: Mon, 31 Oct 2016 21:10:35 +0300
-Message-ID: <20161031181035.GA7007@node.shutemov.name>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
- <20161013093313.GB26241@quack2.suse.cz>
+From: Ming Lei <tom.leiming@gmail.com>
+Subject: Re: [PATCH 00/60] block: support multipage bvec
+Date: Tue, 1 Nov 2016 06:52:08 +0800
+Message-ID: <CACVXFVN7Cnf8CqsnQwJEeOJTQr=qmHWLrieO++0XXcK3=mWQCw@mail.gmail.com>
+References: <1477728600-12938-1-git-send-email-tom.leiming@gmail.com> <20161031152519.GA25791@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Cc: Jens Axboe <axboe@fb.com>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-block <linux-block@vger.kernel.org>,
+	Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+	"Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>, Bart Van Assche <bart.vanassche@sandisk.com>,
+	"open list:GFS2 FILE SYSTEM" <cluster-devel@redhat.com>, Coly Li <colyli@suse.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	"open list:DEVICE-MAPPER (LVM)" <dm-devel@redhat.com>, "open list:DRBD DRIVER" <drbd-dev@lists.linbit.com>,
+	Eric Wheeler <git@linux.ewheeler.net>, Guoqing Jiang <gqjiang@suse.com>,
+	Hannes Reinecke <hare@suse.com>, Hannes Reinecke <hare@suse.de>, Jiri Kosina <jkosina@suse.cz>,
+	Joe Perches <joe@perches.com>, Johannes Berg <johannes.berg@intel.com>,
+	Johannes Thumshirn <jthumshirn@suse.de>, Kei
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161013093313.GB26241@quack2.suse.cz>
+In-Reply-To: <20161031152519.GA25791@infradead.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-[ My mail system got broken and original reply didn't get to through. Resent. ]
-
-On Thu, Oct 13, 2016 at 11:33:13AM +0200, Jan Kara wrote:
-> On Thu 15-09-16 14:54:57, Kirill A. Shutemov wrote:
-> > Most of work happans on head page. Only when we need to do copy data to
-> > userspace we find relevant subpage.
-> > 
-> > We are still limited by PAGE_SIZE per iteration. Lifting this limitation
-> > would require some more work.
+On Mon, Oct 31, 2016 at 11:25 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> Hi Ming,
 >
-> Hum, I'm kind of lost.
+> can you send a first patch just doing the obvious cleanups like
+> converting to bio_add_page and replacing direct poking into the
+> bio with the proper accessors?  That should help reducing the
 
-The limitation here comes from how copy_page_to_iter() and
-copy_page_from_iter() work wrt. highmem: it can only handle one small
-page a time.
+OK, that is just the 1st part of the patchset.
 
-On write side, we also have problem with assuming small page: write length
-and offset within page calculated before we know if small or huge page is
-allocated. It's not easy to fix. Looks like it would require change in
-->write_begin() interface to accept len > PAGE_SIZE.
+> actual series to a sane size, and it should also help to cut
+> down the Cc list.
+>
 
-> Can you point me to some design document / email that would explain some
-> high level ideas how are huge pages in page cache supposed to work?
 
-I'll elaborate more in cover letter to next revision.
 
-> When are we supposed to operate on the head page and when on subpage?
-
-It's case-by-case. See above explanation why we're limited to PAGE_SIZE
-here.
-
-> What is protected by the page lock of the head page?
-
-Whole huge page. As with anon pages.
-
-> Do page locks of subpages play any role?
-
-lock_page() on any subpage would lock whole huge page.
-
-> If understand right, e.g.  pagecache_get_page() will return subpages but
-> is it generally safe to operate on subpages individually or do we have
-> to be aware that they are part of a huge page?
-
-I tried to make it as transparent as possible: page flag operations will
-be redirected to head page, if necessary. Things like page_mapping() and
-page_to_pgoff() know about huge pages.
-
-Direct access to struct page fields must be avoided for tail pages as most
-of them doesn't have meaning you would expect for small pages.
-
-> If I understand the motivation right, it is mostly about being able to mmap
-> PMD-sized chunks to userspace. So my naive idea would be that we could just
-> implement it by allocating PMD sized chunks of pages when adding pages to
-> page cache, we don't even have to read them all unless we come from PMD
-> fault path.
-
-Well, no. We have one PG_{uptodate,dirty,writeback,mappedtodisk,etc}
-per-hugepage, one common list of buffer heads...
-
-PG_dirty and PG_uptodate behaviour inhered from anon-THP (where handling
-it otherwise doesn't make sense) and handling it differently for file-THP
-is nightmare from maintenance POV.
-
-> Reclaim may need to be aware not to split pages unnecessarily
-> but that's about it. So I'd like to understand what's wrong with this
-> naive idea and why do filesystems need to be aware that someone wants to
-> map in PMD sized chunks...
-
-In addition to flags, THP uses some space in struct page of tail pages to
-encode additional information. See compound_{mapcount,head,dtor,order},
-page_deferred_list().
-
---
- Kirill A. Shutemov
+Thanks,
+Ming Lei
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
