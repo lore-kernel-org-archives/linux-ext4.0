@@ -1,108 +1,165 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 08/11] ext4: Convert DAX faults to iomap infrastructure
-Date: Tue,  1 Nov 2016 22:06:18 +0100
-Message-ID: <1478034381-19037-9-git-send-email-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/11] ext4: Convert DAX reads to iomap infrastructure
+Date: Tue,  1 Nov 2016 22:06:14 +0100
+Message-ID: <1478034381-19037-5-git-send-email-jack@suse.cz>
 References: <1478034381-19037-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1478034381-19037-1-git-send-email-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Ted Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
+        Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1478034381-19037-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Convert DAX faults to use iomap infrastructure. We would not have to start
-transaction in ext4_dax_fault() anymore since ext4_iomap_begin takes
-care of that but so far we do that to avoid lock inversion of
-transaction start with DAX entry lock which gets acquired in
-dax_iomap_fault() before calling ->iomap_begin handler.
+Implement basic iomap_begin function that handles reading and use it for
+DAX reads.
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/file.c  |  9 +++++----
- fs/ext4/inode.c | 18 ++++++++++++++++++
- 3 files changed, 24 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/file.c  | 40 +++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/inode.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 95 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 098b39910001..2714eb6174ab 100644
+index 282a51b07c57..098b39910001 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -3272,6 +3272,7 @@ static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
+@@ -3271,6 +3271,8 @@ static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
+ 	return IS_ALIGNED(off, blksize) && IS_ALIGNED(len, blksize);
  }
  
- extern struct iomap_ops ext4_iomap_ops;
-+extern struct iomap_ops ext4_iomap_fault_ops;
- 
++extern struct iomap_ops ext4_iomap_ops;
++
  #endif	/* __KERNEL__ */
  
+ #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index d7ab0e90d1b8..da44e49c8276 100644
+index 55f8b922b76d..28ebc2418dc2 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -273,7 +273,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	if (IS_ERR(handle))
- 		result = VM_FAULT_SIGBUS;
- 	else
--		result = dax_fault(vma, vmf, ext4_dax_get_block);
-+		result = dax_iomap_fault(vma, vmf, &ext4_iomap_fault_ops);
+@@ -31,6 +31,44 @@
+ #include "xattr.h"
+ #include "acl.h"
  
- 	if (write) {
- 		if (!IS_ERR(handle))
-@@ -307,9 +307,10 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
- 
- 	if (IS_ERR(handle))
- 		result = VM_FAULT_SIGBUS;
--	else
--		result = dax_pmd_fault(vma, addr, pmd, flags,
--					 ext4_dax_get_block);
-+	else {
-+		result = dax_iomap_pmd_fault(vma, addr, pmd, flags,
-+					     &ext4_iomap_fault_ops);
++#ifdef CONFIG_FS_DAX
++static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
++{
++	struct inode *inode = iocb->ki_filp->f_mapping->host;
++	ssize_t ret;
++
++	inode_lock_shared(inode);
++	/*
++	 * Recheck under inode lock - at this point we are sure it cannot
++	 * change anymore
++	 */
++	if (!IS_DAX(inode)) {
++		inode_unlock_shared(inode);
++		/* Fallback to buffered IO in case we cannot support DAX */
++		return generic_file_read_iter(iocb, to);
 +	}
++	ret = dax_iomap_rw(iocb, to, &ext4_iomap_ops);
++	inode_unlock_shared(inode);
++
++	file_accessed(iocb->ki_filp);
++	return ret;
++}
++#endif
++
++static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
++{
++	struct inode *inode = iocb->ki_filp->f_mapping->host;
++
++	if (!iov_iter_count(to))
++		return 0; /* skip atime */
++
++#ifdef CONFIG_FS_DAX
++	if (IS_DAX(inode))
++		return ext4_dax_read_iter(iocb, to);
++#endif
++	return generic_file_read_iter(iocb, to);
++}
++
+ /*
+  * Called when an inode is released. Note that this is different
+  * from ext4_file_open: open gets called at every open, but release
+@@ -691,7 +729,7 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
  
- 	if (write) {
- 		if (!IS_ERR(handle))
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= ext4_llseek,
+-	.read_iter	= generic_file_read_iter,
++	.read_iter	= ext4_file_read_iter,
+ 	.write_iter	= ext4_file_write_iter,
+ 	.unlocked_ioctl = ext4_ioctl,
+ #ifdef CONFIG_COMPAT
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 635518dde20e..001fef06ea97 100644
+index 4cbd1b24c237..cc10145ea98b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3419,11 +3419,29 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+@@ -37,6 +37,7 @@
+ #include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/bitops.h>
++#include <linux/iomap.h>
+ 
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+@@ -3305,6 +3306,59 @@ int ext4_dax_get_block(struct inode *inode, sector_t iblock,
+ 	clear_buffer_new(bh_result);
  	return 0;
  }
- 
-+/*
-+ * For faults we don't allocate any blocks outside of isize and we don't want
-+ * to change it so we use a dedicated function for it...
-+ */
-+static int ext4_iomap_fault_end(struct inode *inode, loff_t offset,
-+				loff_t length, ssize_t written, unsigned flags,
-+				struct iomap *iomap)
++
++static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
++			    unsigned flags, struct iomap *iomap)
 +{
++	unsigned int blkbits = inode->i_blkbits;
++	unsigned long first_block = offset >> blkbits;
++	unsigned long last_block = (offset + length - 1) >> blkbits;
++	struct ext4_map_blocks map;
++	int ret;
++
 +	if (flags & IOMAP_WRITE)
-+		ext4_journal_stop(ext4_journal_current_handle());
++		return -EIO;
++
++	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
++		return -ERANGE;
++
++	map.m_lblk = first_block;
++	map.m_len = last_block - first_block + 1;
++
++	ret = ext4_map_blocks(NULL, inode, &map, 0);
++	if (ret < 0)
++		return ret;
++
++	iomap->flags = 0;
++	iomap->bdev = inode->i_sb->s_bdev;
++	iomap->offset = first_block << blkbits;
++
++	if (ret == 0) {
++		iomap->type = IOMAP_HOLE;
++		iomap->blkno = IOMAP_NULL_BLOCK;
++		iomap->length = (u64)map.m_len << blkbits;
++	} else {
++		if (map.m_flags & EXT4_MAP_MAPPED) {
++			iomap->type = IOMAP_MAPPED;
++		} else if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++			iomap->type = IOMAP_UNWRITTEN;
++		} else {
++			WARN_ON_ONCE(1);
++			return -EIO;
++		}
++		iomap->blkno = (sector_t)map.m_pblk << (blkbits - 9);
++		iomap->length = (u64)map.m_len << blkbits;
++	}
++
++	if (map.m_flags & EXT4_MAP_NEW)
++		iomap->flags |= IOMAP_F_NEW;
 +	return 0;
 +}
 +
- struct iomap_ops ext4_iomap_ops = {
- 	.iomap_begin		= ext4_iomap_begin,
- 	.iomap_end		= ext4_iomap_end,
- };
- 
-+struct iomap_ops ext4_iomap_fault_ops = {
++struct iomap_ops ext4_iomap_ops = {
 +	.iomap_begin		= ext4_iomap_begin,
-+	.iomap_end		= ext4_iomap_fault_end,
 +};
 +
  #else
@@ -110,3 +167,4 @@ index 635518dde20e..001fef06ea97 100644
  int ext4_dax_get_block(struct inode *inode, sector_t iblock,
 -- 
 2.6.6
+
