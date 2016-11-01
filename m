@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v9 02/16] dax: remove buffer_size_valid()
-Date: Tue,  1 Nov 2016 13:54:04 -0600
-Message-ID: <1478030058-1422-3-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v9 04/16] dax: make 'wait_table' global variable static
+Date: Tue,  1 Nov 2016 13:54:06 -0600
+Message-ID: <1478030058-1422-5-git-send-email-ross.zwisler@linux.intel.com>
 References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,62 +27,32 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that ext4 properly sets bh.b_size when we call get_block() for a hole,
-rely on that value and remove the buffer_size_valid() sanity check.
+The global 'wait_table' variable is only used within fs/dax.c, and
+generates the following sparse warning:
+
+fs/dax.c:39:19: warning: symbol 'wait_table' was not declared. Should it be static?
+
+Make it static so it has scope local to fs/dax.c, and to make sparse happy.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 22 +---------------------
- 1 file changed, 1 insertion(+), 21 deletions(-)
+ fs/dax.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 014defd..b09817a 100644
+index b09817a..e52e754 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -123,19 +123,6 @@ static bool buffer_written(struct buffer_head *bh)
- 	return buffer_mapped(bh) && !buffer_unwritten(bh);
- }
+@@ -52,7 +52,7 @@
+ #define DAX_WAIT_TABLE_BITS 12
+ #define DAX_WAIT_TABLE_ENTRIES (1 << DAX_WAIT_TABLE_BITS)
  
--/*
-- * When ext4 encounters a hole, it returns without modifying the buffer_head
-- * which means that we can't trust b_size.  To cope with this, we set b_state
-- * to 0 before calling get_block and, if any bit is set, we know we can trust
-- * b_size.  Unfortunate, really, since ext4 knows precisely how long a hole is
-- * and would save us time calling get_block repeatedly.
-- */
--static bool buffer_size_valid(struct buffer_head *bh)
--{
--	return bh->b_state != 0;
--}
--
--
- static sector_t to_sector(const struct buffer_head *bh,
- 		const struct inode *inode)
+-wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
++static wait_queue_head_t wait_table[DAX_WAIT_TABLE_ENTRIES];
+ 
+ static int __init init_dax_wait_table(void)
  {
-@@ -177,8 +164,6 @@ static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
- 				rc = get_block(inode, block, bh, rw == WRITE);
- 				if (rc)
- 					break;
--				if (!buffer_size_valid(bh))
--					bh->b_size = 1 << blkbits;
- 				bh_max = pos - first + bh->b_size;
- 				bdev = bh->b_bdev;
- 				/*
-@@ -1012,12 +997,7 @@ int dax_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 
- 	bdev = bh.b_bdev;
- 
--	/*
--	 * If the filesystem isn't willing to tell us the length of a hole,
--	 * just fall back to PTEs.  Calling get_block 512 times in a loop
--	 * would be silly.
--	 */
--	if (!buffer_size_valid(&bh) || bh.b_size < PMD_SIZE) {
-+	if (bh.b_size < PMD_SIZE) {
- 		dax_pmd_dbg(&bh, address, "allocated block too small");
- 		return VM_FAULT_FALLBACK;
- 	}
 -- 
 2.7.4
