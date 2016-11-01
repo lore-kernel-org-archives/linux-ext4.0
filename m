@@ -1,7 +1,7 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 09/11] ext4: Rip out DAX handling from direct IO path
-Date: Tue,  1 Nov 2016 22:06:19 +0100
-Message-ID: <1478034381-19037-10-git-send-email-jack@suse.cz>
+Subject: [PATCH 08/11] ext4: Convert DAX faults to iomap infrastructure
+Date: Tue,  1 Nov 2016 22:06:18 +0100
+Message-ID: <1478034381-19037-9-git-send-email-jack@suse.cz>
 References: <1478034381-19037-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -22,101 +22,91 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Reads and writes for DAX inodes should no longer end up in direct IO
-code. Rip out the support and add a warning.
+Convert DAX faults to use iomap infrastructure. We would not have to start
+transaction in ext4_dax_fault() anymore since ext4_iomap_begin takes
+care of that but so far we do that to avoid lock inversion of
+transaction start with DAX entry lock which gets acquired in
+dax_iomap_fault() before calling ->iomap_begin handler.
 
 Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/inode.c | 49 +++++++++++++++----------------------------------
- 1 file changed, 15 insertions(+), 34 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/file.c  |  9 +++++----
+ fs/ext4/inode.c | 18 ++++++++++++++++++
+ 3 files changed, 24 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 098b39910001..2714eb6174ab 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3272,6 +3272,7 @@ static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
+ }
+ 
+ extern struct iomap_ops ext4_iomap_ops;
++extern struct iomap_ops ext4_iomap_fault_ops;
+ 
+ #endif	/* __KERNEL__ */
+ 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d7ab0e90d1b8..da44e49c8276 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -273,7 +273,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+-		result = dax_fault(vma, vmf, ext4_dax_get_block);
++		result = dax_iomap_fault(vma, vmf, &ext4_iomap_fault_ops);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -307,9 +307,10 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+-	else
+-		result = dax_pmd_fault(vma, addr, pmd, flags,
+-					 ext4_dax_get_block);
++	else {
++		result = dax_iomap_pmd_fault(vma, addr, pmd, flags,
++					     &ext4_iomap_fault_ops);
++	}
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 001fef06ea97..e236b84fc079 100644
+index 635518dde20e..001fef06ea97 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3571,19 +3571,7 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
- 	iocb->private = NULL;
- 	if (overwrite)
- 		get_block_func = ext4_dio_get_block_overwrite;
--	else if (IS_DAX(inode)) {
--		/*
--		 * We can avoid zeroing for aligned DAX writes beyond EOF. Other
--		 * writes need zeroing either because they can race with page
--		 * faults or because they use partial blocks.
--		 */
--		if (round_down(offset, 1<<inode->i_blkbits) >= inode->i_size &&
--		    ext4_aligned_io(inode, offset, count))
--			get_block_func = ext4_dio_get_block;
--		else
--			get_block_func = ext4_dax_get_block;
--		dio_flags = DIO_LOCKING;
--	} else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
-+	else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
- 		   round_down(offset, 1 << inode->i_blkbits) >= inode->i_size) {
- 		get_block_func = ext4_dio_get_block;
- 		dio_flags = DIO_LOCKING | DIO_SKIP_HOLES;
-@@ -3597,14 +3585,9 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
- #endif
--	if (IS_DAX(inode)) {
--		ret = dax_do_io(iocb, inode, iter, get_block_func,
--				ext4_end_io_dio, dio_flags);
--	} else
--		ret = __blockdev_direct_IO(iocb, inode,
--					   inode->i_sb->s_bdev, iter,
--					   get_block_func,
--					   ext4_end_io_dio, NULL, dio_flags);
-+	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev, iter,
-+				   get_block_func, ext4_end_io_dio, NULL,
-+				   dio_flags);
+@@ -3419,11 +3419,29 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+ 	return 0;
+ }
  
- 	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
- 						EXT4_STATE_DIO_UNWRITTEN)) {
-@@ -3673,6 +3656,7 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- {
- 	struct address_space *mapping = iocb->ki_filp->f_mapping;
- 	struct inode *inode = mapping->host;
-+	size_t count = iov_iter_count(iter);
- 	ssize_t ret;
- 
- 	/*
-@@ -3681,19 +3665,12 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- 	 * we are protected against page writeback as well.
- 	 */
- 	inode_lock_shared(inode);
--	if (IS_DAX(inode)) {
--		ret = dax_do_io(iocb, inode, iter, ext4_dio_get_block, NULL, 0);
--	} else {
--		size_t count = iov_iter_count(iter);
--
--		ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
--						   iocb->ki_pos + count);
--		if (ret)
--			goto out_unlock;
--		ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
--					   iter, ext4_dio_get_block,
--					   NULL, NULL, 0);
--	}
-+	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
-+					   iocb->ki_pos + count);
-+	if (ret)
-+		goto out_unlock;
-+	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
-+				   iter, ext4_dio_get_block, NULL, NULL, 0);
- out_unlock:
- 	inode_unlock_shared(inode);
- 	return ret;
-@@ -3722,6 +3699,10 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	if (ext4_has_inline_data(inode))
- 		return 0;
- 
-+	/* DAX uses iomap path now */
-+	if (WARN_ON_ONCE(IS_DAX(inode)))
-+		return 0;
++/*
++ * For faults we don't allocate any blocks outside of isize and we don't want
++ * to change it so we use a dedicated function for it...
++ */
++static int ext4_iomap_fault_end(struct inode *inode, loff_t offset,
++				loff_t length, ssize_t written, unsigned flags,
++				struct iomap *iomap)
++{
++	if (flags & IOMAP_WRITE)
++		ext4_journal_stop(ext4_journal_current_handle());
++	return 0;
++}
 +
- 	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
- 	if (iov_iter_rw(iter) == READ)
- 		ret = ext4_direct_IO_read(iocb, iter);
+ struct iomap_ops ext4_iomap_ops = {
+ 	.iomap_begin		= ext4_iomap_begin,
+ 	.iomap_end		= ext4_iomap_end,
+ };
+ 
++struct iomap_ops ext4_iomap_fault_ops = {
++	.iomap_begin		= ext4_iomap_begin,
++	.iomap_end		= ext4_iomap_fault_end,
++};
++
+ #else
+ /* Just define empty function, it will never get called. */
+ int ext4_dax_get_block(struct inode *inode, sector_t iblock,
 -- 
 2.6.6
