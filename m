@@ -1,91 +1,114 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v9 00/16] re-enable DAX PMD support
-Date: Tue,  1 Nov 2016 13:54:02 -0600
-Message-ID: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v9 03/16] ext2: remove support for DAX PMD faults
+Date: Tue,  1 Nov 2016 13:54:05 -0600
+Message-ID: <1478030058-1422-4-git-send-email-ross.zwisler@linux.intel.com>
+References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-locking.  This series allows DAX PMDs to participate in the DAX radix tree
-based locking scheme so that they can be re-enabled.
+DAX PMD support was added via the following commit:
 
-Previously we had talked about this series going through the XFS tree, but
-Jan has a patch set that will need to build on this series and it heavily
-modifies the MM code.  I think he would prefer that series to go through
-Andrew Morton's -MM tree, so it probably makes sense for this series to go
-through that same tree.
+commit e7b1ea2ad658 ("ext2: huge page fault support")
 
-For reference, here is the series from Jan that I was talking about:
-https://marc.info/?l=linux-mm&m=147499252322902&w=2
+I believe this path to be untested as ext2 doesn't reliably provide block
+allocations that are aligned to 2MiB.  In my testing I've been unable to
+get ext2 to actually fault in a PMD.  It always fails with a "pfn
+unaligned" message because the sector returned by ext2_get_block() isn't
+aligned.
 
-Andrew, can you please pick this up for the v4.10 merge window?
-This series is currently based on v4.9-rc3.  I tried to rebase onto a -mm
-branch or tag, but couldn't find one that contained the DAX iomap changes
-that were merged as part of the v4.9 merge window.  I'm happy to rebase &
-test on a v4.9-rc* based -MM branch or tag whenever they are available.
+I've tried various settings for the "stride" and "stripe_width" extended
+options to mkfs.ext2, without any luck.
 
-Changes since v8:
-- Rebased onto v4.9-rc3.
-- Updated the DAX PMD fault path so that on fallback we always check to see
-  if we are dealing with a transparent huge page, and if we are we will
-  split it.  This was already happening for one of the fallback cases via a
-  patch from Toshi, and Jan hit a deadlock in another fallback case where
-  the same splitting was needed.  (Jan & Toshi)
+Since we can't reliably get PMDs, remove support so that we don't have an
+untested code path that we may someday traverse when we happen to get an
+aligned block allocation.  This should also make 4k DAX faults in ext2 a
+bit faster since they will no longer have to call the PMD fault handler
+only to get a response of VM_FAULT_FALLBACK.
 
-This series has passed all my xfstests testing, including the test that was
-hitting the deadlock with v8.
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/file.c | 29 ++++++-----------------------
+ 1 file changed, 6 insertions(+), 23 deletions(-)
 
-Here is a tree containing my changes:
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v9
-
-Ross Zwisler (16):
-  ext4: tell DAX the size of allocation holes
-  dax: remove buffer_size_valid()
-  ext2: remove support for DAX PMD faults
-  dax: make 'wait_table' global variable static
-  dax: remove the last BUG_ON() from fs/dax.c
-  dax: consistent variable naming for DAX entries
-  dax: coordinate locking for offsets in PMD range
-  dax: remove dax_pmd_fault()
-  dax: correct dax iomap code namespace
-  dax: add dax_iomap_sector() helper function
-  dax: dax_iomap_fault() needs to call iomap_end()
-  dax: move RADIX_DAX_* defines to dax.h
-  dax: move put_(un)locked_mapping_entry() in dax.c
-  dax: add struct iomap based DAX PMD support
-  xfs: use struct iomap based DAX PMD fault path
-  dax: remove "depends on BROKEN" from FS_DAX_PMD
-
- fs/Kconfig          |   1 -
- fs/dax.c            | 826 +++++++++++++++++++++++++++++-----------------------
- fs/ext2/file.c      |  35 +--
- fs/ext4/inode.c     |   3 +
- fs/xfs/xfs_aops.c   |  26 +-
- fs/xfs/xfs_aops.h   |   3 -
- fs/xfs/xfs_file.c   |  10 +-
- include/linux/dax.h |  58 +++-
- mm/filemap.c        |   5 +-
- 9 files changed, 537 insertions(+), 430 deletions(-)
-
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index a0e1478..fb88b51 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -107,27 +107,6 @@ static int ext2_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	return ret;
+ }
+ 
+-static int ext2_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+-						pmd_t *pmd, unsigned int flags)
+-{
+-	struct inode *inode = file_inode(vma->vm_file);
+-	struct ext2_inode_info *ei = EXT2_I(inode);
+-	int ret;
+-
+-	if (flags & FAULT_FLAG_WRITE) {
+-		sb_start_pagefault(inode->i_sb);
+-		file_update_time(vma->vm_file);
+-	}
+-	down_read(&ei->dax_sem);
+-
+-	ret = dax_pmd_fault(vma, addr, pmd, flags, ext2_get_block);
+-
+-	up_read(&ei->dax_sem);
+-	if (flags & FAULT_FLAG_WRITE)
+-		sb_end_pagefault(inode->i_sb);
+-	return ret;
+-}
+-
+ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 		struct vm_fault *vmf)
+ {
+@@ -154,7 +133,11 @@ static int ext2_dax_pfn_mkwrite(struct vm_area_struct *vma,
+ 
+ static const struct vm_operations_struct ext2_dax_vm_ops = {
+ 	.fault		= ext2_dax_fault,
+-	.pmd_fault	= ext2_dax_pmd_fault,
++	/*
++	 * .pmd_fault is not supported for DAX because allocation in ext2
++	 * cannot be reliably aligned to huge page sizes and so pmd faults
++	 * will always fail and fail back to regular faults.
++	 */
+ 	.page_mkwrite	= ext2_dax_fault,
+ 	.pfn_mkwrite	= ext2_dax_pfn_mkwrite,
+ };
+@@ -166,7 +149,7 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 
+ 	file_accessed(file);
+ 	vma->vm_ops = &ext2_dax_vm_ops;
+-	vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
++	vma->vm_flags |= VM_MIXEDMAP;
+ 	return 0;
+ }
+ #else
 -- 
 2.7.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
