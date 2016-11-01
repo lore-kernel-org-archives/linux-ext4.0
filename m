@@ -1,52 +1,42 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 05/11] ext4: Use iomap for zeroing blocks in DAX mode
-Date: Tue,  1 Nov 2016 22:06:15 +0100
-Message-ID: <1478034381-19037-6-git-send-email-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 02/11] ext4: Allow unaligned unlocked DAX IO
+Date: Tue,  1 Nov 2016 22:06:12 +0100
+Message-ID: <1478034381-19037-3-git-send-email-jack@suse.cz>
 References: <1478034381-19037-1-git-send-email-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1478034381-19037-1-git-send-email-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Ted Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
+        Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1478034381-19037-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use iomap infrastructure for zeroing blocks when in DAX mode.
-ext4_iomap_begin() handles read requests just fine and that's all that
-is needed for iomap_zero_range().
+Currently we don't allow unaligned writes without inode_lock. This is
+because zeroing of partial blocks could cause data corruption for racing
+unaligned writes to the same block. However DAX handles zeroing during
+block allocation and thus zeroing of partial blocks cannot race. Allow
+DAX unaligned IO to run without inode_lock.
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/file.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cc10145ea98b..ac26a390f14c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3844,8 +3844,10 @@ static int ext4_block_zero_page_range(handle_t *handle,
- 	if (length > max || length < 0)
- 		length = max;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index a6a7becb9465..55f8b922b76d 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -161,7 +161,8 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
  
--	if (IS_DAX(inode))
--		return dax_zero_page_range(inode, from, length, ext4_get_block);
-+	if (IS_DAX(inode)) {
-+		return iomap_zero_range(inode, from, length, NULL,
-+					&ext4_iomap_ops);
-+	}
- 	return __ext4_block_zero_page_range(handle, mapping, from, length);
- }
+ 	iocb->private = &overwrite;
+ 	/* Check whether we do a DIO overwrite or not */
+-	if (o_direct && ext4_should_dioread_nolock(inode) && !unaligned_aio &&
++	if (((o_direct && !unaligned_aio) || IS_DAX(inode)) &&
++	    ext4_should_dioread_nolock(inode) &&
+ 	    ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from)))
+ 		overwrite = 1;
  
 -- 
 2.6.6
+
