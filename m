@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v9 10/16] dax: add dax_iomap_sector() helper function
-Date: Tue,  1 Nov 2016 13:54:12 -0600
-Message-ID: <1478030058-1422-11-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v9 05/16] dax: remove the last BUG_ON() from fs/dax.c
+Date: Tue,  1 Nov 2016 13:54:07 -0600
+Message-ID: <1478030058-1422-6-git-send-email-ross.zwisler@linux.intel.com>
 References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,53 +27,29 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-To be able to correctly calculate the sector from a file position and a
-struct iomap there is a complex little bit of logic that currently happens
-in both dax_iomap_actor() and dax_iomap_fault().  This will need to be
-repeated yet again in the DAX PMD fault handler when it is added, so break
-it out into a helper function.
+Don't take down the kernel if we get an invalid 'from' and 'length'
+argument pair.  Just warn once and return an error.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/dax.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index fdbd7a1..7737954 100644
+index e52e754..219fa2b 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1030,6 +1030,11 @@ int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
- EXPORT_SYMBOL_GPL(dax_truncate_page);
+@@ -1194,7 +1194,8 @@ int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
+ 	/* Block boundary? Nothing to do */
+ 	if (!length)
+ 		return 0;
+-	BUG_ON((offset + length) > PAGE_SIZE);
++	if (WARN_ON_ONCE((offset + length) > PAGE_SIZE))
++		return -EINVAL;
  
- #ifdef CONFIG_FS_IOMAP
-+static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
-+{
-+	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
-+}
-+
- static loff_t
- dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		struct iomap *iomap)
-@@ -1055,8 +1060,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		struct blk_dax_ctl dax = { 0 };
- 		ssize_t map_len;
- 
--		dax.sector = iomap->blkno +
--			(((pos & PAGE_MASK) - iomap->offset) >> 9);
-+		dax.sector = dax_iomap_sector(iomap, pos);
- 		dax.size = (length + offset + PAGE_SIZE - 1) & PAGE_MASK;
- 		map_len = dax_map_atomic(iomap->bdev, &dax);
- 		if (map_len < 0) {
-@@ -1193,7 +1197,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 		goto unlock_entry;
- 	}
- 
--	sector = iomap.blkno + (((pos & PAGE_MASK) - iomap.offset) >> 9);
-+	sector = dax_iomap_sector(&iomap, pos);
- 
- 	if (vmf->cow_page) {
- 		switch (iomap.type) {
+ 	memset(&bh, 0, sizeof(bh));
+ 	bh.b_bdev = inode->i_sb->s_bdev;
 -- 
 2.7.4
