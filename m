@@ -1,151 +1,85 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
- do_generic_file_read()
-Date: Tue, 1 Nov 2016 17:39:40 +0100
-Message-ID: <20161101163940.GA5459@quack2.suse.cz>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
- <20161013093313.GB26241@quack2.suse.cz>
- <20161031181035.GA7007@node.shutemov.name>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 186551] New: mkfs.ext4 tries to discard sector beyond the end
+ of the device
+Date: Tue, 01 Nov 2016 17:30:21 +0000
+Message-ID: <bug-186551-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161031181035.GA7007@node.shutemov.name>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:49238 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751317AbcKARaY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 1 Nov 2016 13:30:24 -0400
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id D30A720386
+        for <linux-ext4@vger.kernel.org>; Tue,  1 Nov 2016 17:30:22 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id BC2ED2024F
+        for <linux-ext4@vger.kernel.org>; Tue,  1 Nov 2016 17:30:21 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 31-10-16 21:10:35, Kirill A. Shutemov wrote:
-> [ My mail system got broken and original reply didn't get to through. Resent. ]
+https://bugzilla.kernel.org/show_bug.cgi?id=186551
 
-OK, this answers some of my questions from previous email so disregard that
-one.
+            Bug ID: 186551
+           Summary: mkfs.ext4 tries to discard sector beyond the end of
+                    the device
+           Product: File System
+           Version: 2.5
+    Kernel Version: 3.10.0-327.36.3.el7.x86_64
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: tom@vincze.org
+        Regression: No
 
-> On Thu, Oct 13, 2016 at 11:33:13AM +0200, Jan Kara wrote:
-> > On Thu 15-09-16 14:54:57, Kirill A. Shutemov wrote:
-> > > Most of work happans on head page. Only when we need to do copy data to
-> > > userspace we find relevant subpage.
-> > > 
-> > > We are still limited by PAGE_SIZE per iteration. Lifting this limitation
-> > > would require some more work.
-> >
-> > Hum, I'm kind of lost.
-> 
-> The limitation here comes from how copy_page_to_iter() and
-> copy_page_from_iter() work wrt. highmem: it can only handle one small
-> page a time.
-> 
-> On write side, we also have problem with assuming small page: write length
-> and offset within page calculated before we know if small or huge page is
-> allocated. It's not easy to fix. Looks like it would require change in
-> ->write_begin() interface to accept len > PAGE_SIZE.
->
-> > Can you point me to some design document / email that would explain some
-> > high level ideas how are huge pages in page cache supposed to work?
-> 
-> I'll elaborate more in cover letter to next revision.
-> 
-> > When are we supposed to operate on the head page and when on subpage?
-> 
-> It's case-by-case. See above explanation why we're limited to PAGE_SIZE
-> here.
-> 
-> > What is protected by the page lock of the head page?
-> 
-> Whole huge page. As with anon pages.
-> 
-> > Do page locks of subpages play any role?
-> 
-> lock_page() on any subpage would lock whole huge page.
-> 
-> > If understand right, e.g.  pagecache_get_page() will return subpages but
-> > is it generally safe to operate on subpages individually or do we have
-> > to be aware that they are part of a huge page?
-> 
-> I tried to make it as transparent as possible: page flag operations will
-> be redirected to head page, if necessary. Things like page_mapping() and
-> page_to_pgoff() know about huge pages.
-> 
-> Direct access to struct page fields must be avoided for tail pages as most
-> of them doesn't have meaning you would expect for small pages.
+800GB Intel P3700 SSD has 195,352,576 4k sectors, but mkfs.ext4 tried to
+discard sector 1,530,955,776 that is beyond the end of the device.
 
-OK, good to know.
+# mkfs.ext4 /dev/nvme0n1p1
+mke2fs 1.42.9 (28-Dec-2013)
+Discarding device blocks: failed - Input/output error
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=0 blocks, Stripe width=0 blocks
+48840704 inodes, 195352576 blocks
+9767628 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=2344615936
+5962 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks: 
+    32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+    4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968, 
+    102400000
 
-> > If I understand the motivation right, it is mostly about being able to mmap
-> > PMD-sized chunks to userspace. So my naive idea would be that we could just
-> > implement it by allocating PMD sized chunks of pages when adding pages to
-> > page cache, we don't even have to read them all unless we come from PMD
-> > fault path.
-> 
-> Well, no. We have one PG_{uptodate,dirty,writeback,mappedtodisk,etc}
-> per-hugepage, one common list of buffer heads...
-> 
-> PG_dirty and PG_uptodate behaviour inhered from anon-THP (where handling
-> it otherwise doesn't make sense) and handling it differently for file-THP
-> is nightmare from maintenance POV.
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done     
 
-But the complexity of two different page sizes for page cache and *each*
-filesystem that wants to support it does not make the maintenance easy
-either. So I'm not convinced that using the same rules for anon-THP and
-file-THP is a clear win. And if we have these two options neither of which
-has negligible maintenance cost, I'd also like to see more justification
-for why it is a good idea to have file-THP for normal filesystems. Do you
-have any performance numbers that show it is a win under some realistic
-workload?
+[61825.159172] blk_update_request: I/O error, dev nvme0n1, sector 1530955776
 
-I'd also note that having PMD-sized pages has some obvious disadvantages as
-well:
+# parted /dev/nvme0n1 "unit s" "print"
+Model: Unknown (unknown)
+Disk /dev/nvme0n1: 195353046s
+Sector size (logical/physical): 4096B/4096B
+Partition Table: gpt
+Disk Flags: 
 
-1) I'm not sure buffer head handling code will quite scale to 512 or even
-2048 buffer_heads on a linked list referenced from a page. It may work but
-I suspect the performance will suck. 
+Number  Start  End         Size        File system  Name     Flags
+ 1      256s   195352831s  195352576s               primary
 
-2) PMD-sized pages result in increased space & memory usage.
-
-3) In ext4 we have to estimate how much metadata we may need to modify when
-allocating blocks underlying a page in the worst case (you don't seem to
-update this estimate in your patch set). With 2048 blocks underlying a page,
-each possibly in a different block group, it is a lot of metadata forcing
-us to reserve a large transaction (not sure if you'll be able to even
-reserve such large transaction with the default journal size), which again
-makes things slower.
-
-4) As you have noted some places like write_begin() still depend on 4k
-pages which creates a strange mix of places that use subpages and that use
-head pages.
-
-All this would be a non-issue (well, except 2 I guess) if we just didn't
-expose filesystems to the fact that something like file-THP exists.
-
-> > Reclaim may need to be aware not to split pages unnecessarily
-> > but that's about it. So I'd like to understand what's wrong with this
-> > naive idea and why do filesystems need to be aware that someone wants to
-> > map in PMD sized chunks...
-> 
-> In addition to flags, THP uses some space in struct page of tail pages to
-> encode additional information. See compound_{mapcount,head,dtor,order},
-> page_deferred_list().
-
-Thanks, I'll check that.
-
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
