@@ -1,42 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] ext4: Allow unaligned unlocked DAX IO
-Date: Tue,  1 Nov 2016 22:06:12 +0100
-Message-ID: <1478034381-19037-3-git-send-email-jack@suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 07/11] ext4: Avoid split extents for DAX writes
+Date: Tue,  1 Nov 2016 22:06:17 +0100
+Message-ID: <1478034381-19037-8-git-send-email-jack@suse.cz>
 References: <1478034381-19037-1-git-send-email-jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
-        Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1478034381-19037-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1478034381-19037-1-git-send-email-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Currently we don't allow unaligned writes without inode_lock. This is
-because zeroing of partial blocks could cause data corruption for racing
-unaligned writes to the same block. However DAX handles zeroing during
-block allocation and thus zeroing of partial blocks cannot race. Allow
-DAX unaligned IO to run without inode_lock.
+Currently mapping of blocks for DAX writes happen with
+EXT4_GET_BLOCKS_PRE_IO flag set. That has a result that each
+ext4_map_blocks() call creates a separate written extent, although it
+could be merged to the neighboring extents in the extent tree.  The
+reason for using this flag is that in case the extent is unwritten, we
+need to convert it to written one and zero it out. However this "convert
+mapped range to written" operation is already implemented by
+ext4_map_blocks() for the case of data writes into unwritten extent. So
+just use flags for that mode of operation, simplify the code, and avoid
+unnecessary split extents.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/file.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c | 17 -----------------
+ 1 file changed, 17 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index a6a7becb9465..55f8b922b76d 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -161,7 +161,8 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d07d003ebce2..635518dde20e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3346,7 +3346,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 			return PTR_ERR(handle);
  
- 	iocb->private = &overwrite;
- 	/* Check whether we do a DIO overwrite or not */
--	if (o_direct && ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-+	if (((o_direct && !unaligned_aio) || IS_DAX(inode)) &&
-+	    ext4_should_dioread_nolock(inode) &&
- 	    ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from)))
- 		overwrite = 1;
+ 		ret = ext4_map_blocks(handle, inode, &map,
+-				      EXT4_GET_BLOCKS_PRE_IO |
+ 				      EXT4_GET_BLOCKS_CREATE_ZERO);
+ 		if (ret < 0) {
+ 			ext4_journal_stop(handle);
+@@ -3355,22 +3354,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 				goto retry;
+ 			return ret;
+ 		}
+-		/* For DAX writes we need to zero out unwritten extents */
+-		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+-			/*
+-			 * We are protected by i_mmap_sem or i_rwsem so we know
+-			 * block cannot go away from under us even though we
+-			 * dropped i_data_sem. Convert extent to written and
+-			 * write zeros there.
+-			 */
+-			ret = ext4_map_blocks(handle, inode, &map,
+-					      EXT4_GET_BLOCKS_CONVERT |
+-					      EXT4_GET_BLOCKS_CREATE_ZERO);
+-			if (ret < 0) {
+-				ext4_journal_stop(handle);
+-				return ret;
+-			}
+-		}
+ 	}
  
+ 	iomap->flags = 0;
 -- 
 2.6.6
-
