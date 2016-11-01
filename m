@@ -1,170 +1,28 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 04/11] ext4: Convert DAX reads to iomap infrastructure
-Date: Tue,  1 Nov 2016 22:06:14 +0100
-Message-ID: <1478034381-19037-5-git-send-email-jack@suse.cz>
-References: <1478034381-19037-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 0/11] ext4: Convert ext4 DAX IO to iomap framework
+Date: Tue,  1 Nov 2016 22:06:10 +0100
+Message-ID: <1478034381-19037-1-git-send-email-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
         linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
         Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1478034381-19037-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Implement basic iomap_begin function that handles reading and use it for
-DAX reads.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/file.c  | 40 +++++++++++++++++++++++++++++++++++++++-
- fs/ext4/inode.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 95 insertions(+), 1 deletion(-)
+this patch set converts ext4 DAX IO paths to the new iomap framework and
+removes the old bh-based DAX functions. As a result ext4 gains PMD page
+fault support, also some other minor bugs get fixed. The patch set is based
+on Ross' DAX PMD page fault support series [1]. It passes xfstests both in
+DAX and non-DAX mode.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 282a51b07c57..098b39910001 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3271,6 +3271,8 @@ static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
- 	return IS_ALIGNED(off, blksize) && IS_ALIGNED(len, blksize);
- }
- 
-+extern struct iomap_ops ext4_iomap_ops;
-+
- #endif	/* __KERNEL__ */
- 
- #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 55f8b922b76d..28ebc2418dc2 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -31,6 +31,44 @@
- #include "xattr.h"
- #include "acl.h"
- 
-+#ifdef CONFIG_FS_DAX
-+static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
-+{
-+	struct inode *inode = iocb->ki_filp->f_mapping->host;
-+	ssize_t ret;
-+
-+	inode_lock_shared(inode);
-+	/*
-+	 * Recheck under inode lock - at this point we are sure it cannot
-+	 * change anymore
-+	 */
-+	if (!IS_DAX(inode)) {
-+		inode_unlock_shared(inode);
-+		/* Fallback to buffered IO in case we cannot support DAX */
-+		return generic_file_read_iter(iocb, to);
-+	}
-+	ret = dax_iomap_rw(iocb, to, &ext4_iomap_ops);
-+	inode_unlock_shared(inode);
-+
-+	file_accessed(iocb->ki_filp);
-+	return ret;
-+}
-+#endif
-+
-+static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
-+{
-+	struct inode *inode = iocb->ki_filp->f_mapping->host;
-+
-+	if (!iov_iter_count(to))
-+		return 0; /* skip atime */
-+
-+#ifdef CONFIG_FS_DAX
-+	if (IS_DAX(inode))
-+		return ext4_dax_read_iter(iocb, to);
-+#endif
-+	return generic_file_read_iter(iocb, to);
-+}
-+
- /*
-  * Called when an inode is released. Note that this is different
-  * from ext4_file_open: open gets called at every open, but release
-@@ -691,7 +729,7 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
- 
- const struct file_operations ext4_file_operations = {
- 	.llseek		= ext4_llseek,
--	.read_iter	= generic_file_read_iter,
-+	.read_iter	= ext4_file_read_iter,
- 	.write_iter	= ext4_file_write_iter,
- 	.unlocked_ioctl = ext4_ioctl,
- #ifdef CONFIG_COMPAT
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4cbd1b24c237..cc10145ea98b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -37,6 +37,7 @@
- #include <linux/printk.h>
- #include <linux/slab.h>
- #include <linux/bitops.h>
-+#include <linux/iomap.h>
- 
- #include "ext4_jbd2.h"
- #include "xattr.h"
-@@ -3305,6 +3306,59 @@ int ext4_dax_get_block(struct inode *inode, sector_t iblock,
- 	clear_buffer_new(bh_result);
- 	return 0;
- }
-+
-+static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
-+			    unsigned flags, struct iomap *iomap)
-+{
-+	unsigned int blkbits = inode->i_blkbits;
-+	unsigned long first_block = offset >> blkbits;
-+	unsigned long last_block = (offset + length - 1) >> blkbits;
-+	struct ext4_map_blocks map;
-+	int ret;
-+
-+	if (flags & IOMAP_WRITE)
-+		return -EIO;
-+
-+	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+		return -ERANGE;
-+
-+	map.m_lblk = first_block;
-+	map.m_len = last_block - first_block + 1;
-+
-+	ret = ext4_map_blocks(NULL, inode, &map, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	iomap->flags = 0;
-+	iomap->bdev = inode->i_sb->s_bdev;
-+	iomap->offset = first_block << blkbits;
-+
-+	if (ret == 0) {
-+		iomap->type = IOMAP_HOLE;
-+		iomap->blkno = IOMAP_NULL_BLOCK;
-+		iomap->length = (u64)map.m_len << blkbits;
-+	} else {
-+		if (map.m_flags & EXT4_MAP_MAPPED) {
-+			iomap->type = IOMAP_MAPPED;
-+		} else if (map.m_flags & EXT4_MAP_UNWRITTEN) {
-+			iomap->type = IOMAP_UNWRITTEN;
-+		} else {
-+			WARN_ON_ONCE(1);
-+			return -EIO;
-+		}
-+		iomap->blkno = (sector_t)map.m_pblk << (blkbits - 9);
-+		iomap->length = (u64)map.m_len << blkbits;
-+	}
-+
-+	if (map.m_flags & EXT4_MAP_NEW)
-+		iomap->flags |= IOMAP_F_NEW;
-+	return 0;
-+}
-+
-+struct iomap_ops ext4_iomap_ops = {
-+	.iomap_begin		= ext4_iomap_begin,
-+};
-+
- #else
- /* Just define empty function, it will never get called. */
- int ext4_dax_get_block(struct inode *inode, sector_t iblock,
--- 
-2.6.6
+The question is how shall we merge this. If Dave is pulling PMD patches through
+XFS tree, then these patches could go there as well (chances for conflicts
+with other ext4 stuff are relatively low) or Dave could just export a stable
+branch with PMD series which Ted would just pull...
 
+								Honza
+
+[1] http://www.spinics.net/lists/linux-mm/msg115247.html
