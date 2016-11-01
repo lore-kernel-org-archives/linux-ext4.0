@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v9 01/16] ext4: tell DAX the size of allocation holes
-Date: Tue,  1 Nov 2016 13:54:03 -0600
-Message-ID: <1478030058-1422-2-git-send-email-ross.zwisler@linux.intel.com>
+Subject: [PATCH v9 16/16] dax: remove "depends on BROKEN" from FS_DAX_PMD
+Date: Tue,  1 Nov 2016 13:54:18 -0600
+Message-ID: <1478030058-1422-17-git-send-email-ross.zwisler@linux.intel.com>
 References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,32 +27,26 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-When DAX calls _ext4_get_block() and the file offset points to a hole we
-currently don't set bh->b_size.  This is current worked around via
-buffer_size_valid() in fs/dax.c.
-
-_ext4_get_block() has the hole size information from ext4_map_blocks(), so
-populate bh->b_size so we can remove buffer_size_valid() in a later patch.
+Now that DAX PMD faults are once again working and are now participating in
+DAX's radix tree locking scheme, allow their config option to be enabled.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/Kconfig | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9c06472..3d58b2b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -767,6 +767,9 @@ static int _ext4_get_block(struct inode *inode, sector_t iblock,
- 		ext4_update_bh_state(bh, map.m_flags);
- 		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 		ret = 0;
-+	} else if (ret == 0) {
-+		/* hole case, need to fill in bh->b_size */
-+		bh->b_size = inode->i_sb->s_blocksize * map.m_len;
- 	}
- 	return ret;
- }
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 4bd03a2..8e9e5f41 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -55,7 +55,6 @@ config FS_DAX_PMD
+ 	depends on FS_DAX
+ 	depends on ZONE_DEVICE
+ 	depends on TRANSPARENT_HUGEPAGE
+-	depends on BROKEN
+ 
+ endif # BLOCK
+ 
 -- 
 2.7.4
