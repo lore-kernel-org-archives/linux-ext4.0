@@ -1,32 +1,70 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH 11/11] dax: Rip out get_block based IO support
-Date: Wed, 2 Nov 2016 07:31:00 -0700
-Message-ID: <20161102143100.GC18387@infradead.org>
-References: <1478034381-19037-1-git-send-email-jack@suse.cz>
- <1478034381-19037-12-git-send-email-jack@suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
+ do_generic_file_read()
+Date: Wed, 2 Nov 2016 07:36:12 -0700
+Message-ID: <20161102143612.GA4790@infradead.org>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
+ <20161013093313.GB26241@quack2.suse.cz>
+ <20161031181035.GA7007@node.shutemov.name>
+ <20161101163940.GA5459@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Kirill A. Shutemov" <kirill@shutemov.name>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1478034381-19037-12-git-send-email-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161101163940.GA5459@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 01, 2016 at 10:06:21PM +0100, Jan Kara wrote:
-> No one uses functions using the get_block callback anymore. Rip them
-> out.
+On Tue, Nov 01, 2016 at 05:39:40PM +0100, Jan Kara wrote:
+> I'd also note that having PMD-sized pages has some obvious disadvantages as
+> well:
+> 
+> 1) I'm not sure buffer head handling code will quite scale to 512 or even
+> 2048 buffer_heads on a linked list referenced from a page. It may work but
+> I suspect the performance will suck. 
 
-Documentation/filesystems/dax.txt will also need some updates for this.
+buffer_head handling always sucks.  For the iomap based bufferd write
+path I plan to support a buffer_head-less mode for the block size ==
+PAGE_SIZE case in 4.11 latest, but if I get enough other things of my
+plate in time even for 4.10.  I think that's the right way to go for
+THP, especially if we require the fs to allocate the whole huge page
+as a single extent, similar to the DAX PMD mapping case.
+
+> 2) PMD-sized pages result in increased space & memory usage.
+
+How so?
+
+> 3) In ext4 we have to estimate how much metadata we may need to modify when
+> allocating blocks underlying a page in the worst case (you don't seem to
+> update this estimate in your patch set). With 2048 blocks underlying a page,
+> each possibly in a different block group, it is a lot of metadata forcing
+> us to reserve a large transaction (not sure if you'll be able to even
+> reserve such large transaction with the default journal size), which again
+> makes things slower.
+
+As said above I think we should only use huge page mappings if there is
+a single underlying extent, same as in DAX to keep the complexity down.
+
+> 4) As you have noted some places like write_begin() still depend on 4k
+> pages which creates a strange mix of places that use subpages and that use
+> head pages.
+
+Just use the iomap bufferd I/O code and all these issues will go away.
