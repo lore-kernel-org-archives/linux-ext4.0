@@ -1,56 +1,62 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [RFC 4/6] ext4: Initialize timestamps limits
-Date: Wed,  2 Nov 2016 08:04:54 -0700
-Message-ID: <1478099096-25637-5-git-send-email-deepa.kernel@gmail.com>
-References: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/11] ext4: Convert ext4 DAX IO to iomap framework
+Date: Thu, 3 Nov 2016 09:23:55 +1100
+Message-ID: <20161102222355.GI14023@dastard>
+References: <1478034381-19037-1-git-send-email-jack@suse.cz>
+ <20161101221235.GB9920@dastard>
+ <20161101224550.GA2314@linux.intel.com>
+ <20161101230903.GA20418@quack2.suse.cz>
+ <20161102130353.nt3oqodrik4hnfk6@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: tytso@mit.edu, arnd@arndb.de, y2038@lists.linaro.org,
- gregkh@linuxfoundation.org, Andreas Dilger <adilger.kernel@dilger.ca>,
- viro@zeniv.linux.org.uk, tglx@linutronix.de, linux-ext4@vger.kernel.org,
- akpm@linux-foundation.org
-To: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nvdimm@ml01.01.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20161102130353.nt3oqodrik4hnfk6@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ZXh0NCBoYXMgZGlmZmVyZW50IG92ZXJmbG93IGxpbWl0cyBmb3IgbWF4IGZpbGVzeXN0ZW0KdGlt
-ZXN0YW1wcyBiYXNlZCBvbiB0aGUgZXh0cmEgYnl0ZXMgYXZhaWxhYmxlLgoKU2lnbmVkLW9mZi1i
-eTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+CkNjOiAiVGhlb2RvcmUg
-VHMnbyIgPHR5dHNvQG1pdC5lZHU+CkNjOiBBbmRyZWFzIERpbGdlciA8YWRpbGdlci5rZXJuZWxA
-ZGlsZ2VyLmNhPgpDYzogbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcKLS0tCiBmcy9leHQ0L2V4
-dDQuaCAgfCA0ICsrKysKIGZzL2V4dDQvc3VwZXIuYyB8IDcgKysrKysrLQogMiBmaWxlcyBjaGFu
-Z2VkLCAxMCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0
-NC9leHQ0LmggYi9mcy9leHQ0L2V4dDQuaAppbmRleCA2Nzg5Mzc5Li5mY2EzMzlhIDEwMDY0NAot
-LS0gYS9mcy9leHQ0L2V4dDQuaAorKysgYi9mcy9leHQ0L2V4dDQuaApAQCAtMTYzNSw2ICsxNjM1
-LDEwIEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBleHQ0X2NsZWFyX3N0YXRlX2ZsYWdzKHN0cnVjdCBl
-eHQ0X2lub2RlX2luZm8gKmVpKQogCiAjZGVmaW5lIEVYVDRfR09PRF9PTERfSU5PREVfU0laRSAx
-MjgKIAorI2RlZmluZSBFWFQ0X0VYVFJBX1RJTUVTVEFNUF9NQVgJKCgoczY0KTEgPDwgMzQpIC0g
-MSAgKyBTMzJfTUlOKQorI2RlZmluZSBFWFQ0X05PTl9FWFRSQV9USU1FU1RBTVBfTUFYCVkyMDM4
-X0VYUElSWV9USU1FU1RBTVAKKyNkZWZpbmUgRVhUNF9USU1FU1RBTVBfTUlOCQlTMzJfTUlOCisK
-IC8qCiAgKiBGZWF0dXJlIHNldCBkZWZpbml0aW9ucwogICovCmRpZmYgLS1naXQgYS9mcy9leHQ0
-L3N1cGVyLmMgYi9mcy9leHQ0L3N1cGVyLmMKaW5kZXggYWIwMGJmZi4uZWJkMDM5ZCAxMDA2NDQK
-LS0tIGEvZnMvZXh0NC9zdXBlci5jCisrKyBiL2ZzL2V4dDQvc3VwZXIuYwpAQCAtMzYzMyw4ICsz
-NjMzLDEzIEBAIHN0YXRpYyBpbnQgZXh0NF9maWxsX3N1cGVyKHN0cnVjdCBzdXBlcl9ibG9jayAq
-c2IsIHZvaWQgKmRhdGEsIGludCBzaWxlbnQpCiAJCQkgICAgICAgc2JpLT5zX2lub2RlX3NpemUp
-OwogCQkJZ290byBmYWlsZWRfbW91bnQ7CiAJCX0KLQkJaWYgKHNiaS0+c19pbm9kZV9zaXplID4g
-RVhUNF9HT09EX09MRF9JTk9ERV9TSVpFKQorCQlpZiAoc2JpLT5zX2lub2RlX3NpemUgPiBFWFQ0
-X0dPT0RfT0xEX0lOT0RFX1NJWkUpIHsKIAkJCXNiLT5zX3RpbWVfZ3JhbiA9IDEgPDwgKEVYVDRf
-RVBPQ0hfQklUUyAtIDIpOworCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X0VYVFJBX1RJTUVTVEFN
-UF9NQVg7CisJCX0gZWxzZQorCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X05PTl9FWFRSQV9USU1F
-U1RBTVBfTUFYOworCisJCXNiLT5zX3RpbWVfbWluID0gRVhUNF9USU1FU1RBTVBfTUlOOwogCX0K
-IAogCXNiaS0+c19kZXNjX3NpemUgPSBsZTE2X3RvX2NwdShlcy0+c19kZXNjX3NpemUpOwotLSAK
-Mi43LjQKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClky
-MDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGlu
-YXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
+On Wed, Nov 02, 2016 at 09:03:53AM -0400, Theodore Ts'o wrote:
+> On Wed, Nov 02, 2016 at 12:09:03AM +0100, Jan Kara wrote:
+> > > > I plan to grab Ross's PMD series in the next couple of days and I'll
+> > > > push it out as a stable topic branch once I've sanity tested it.  I
+> > > > don't really want to take a big chunk of ext4 stuff through the XFS
+> > > > tree if it can be avoided....
+> > > 
+> > > Yea, we also need to figure out how to get Jan's "dax: Clear dirty bits after
+> > > flushing caches" set merged, which is mostly MM stuff and I think will go
+> > > through akpm's tree?  That set is also based on my PMD stuff.
+> > 
+> > Yeah, I've spoken to Andrew and he wants to take the MM changes through his
+> > tree. I'll talk to him how to make this happen given the patches the series
+> > depends on but the series still needs some review so "how to merge" is not
+> > exactly a question of the day...
+> 
+> I assume there isn't a convenient git tree I can pull for the purposes
+> of testing Jan's patch series and for the purposes of seeing how
+> everything fits together?
+
+I think Jan posted a test branch with all the current stuff under
+review in it here:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
+
+> In other words, as far as I understand
+> things there currently isn't an unstable topic branch I can pull for
+> the purposes of review and testing, but hopefully Dave will make a
+> stable topic branch in a few days.  Is that right?
+
+I've got the dax-pmd topic branch running regression tests right
+now. I'm hoping that all goes well and if it does I'll get it out
+by the end of the day.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
