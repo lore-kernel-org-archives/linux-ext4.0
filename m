@@ -1,51 +1,60 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
- do_generic_file_read()
-Date: Wed, 2 Nov 2016 07:37:49 -0700
-Message-ID: <20161102143749.GB4790@infradead.org>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
- <20161013093313.GB26241@quack2.suse.cz>
- <20161031181035.GA7007@node.shutemov.name>
- <20161101163940.GA5459@quack2.suse.cz>
- <20161102083204.GB13949@node.shutemov.name>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: [RFC 0/6] vfs: Add timestamp range check support
+Date: Wed,  2 Nov 2016 08:04:50 -0700
+Message-ID: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
-Return-path: <linux-block-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161102083204.GB13949@node.shutemov.name>
-Sender: linux-block-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: tytso@mit.edu, arnd@arndb.de, y2038@lists.linaro.org,
+ gregkh@linuxfoundation.org, linux-afs@lists.infradead.org,
+ Andreas Dilger <adilger.kernel@dilger.ca>, viro@zeniv.linux.org.uk,
+ tglx@linutronix.de, linux-ext4@vger.kernel.org, akpm@linux-foundation.org
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 02, 2016 at 11:32:04AM +0300, Kirill A. Shutemov wrote:
-> Yes, buffer_head list doesn't scale. That's the main reason (along with 4)
-> why syscall-based IO sucks. We spend a lot of time looking for desired
-> block.
-> 
-> We need to switch to some other data structure for storing buffer_heads.
-> Is there a reason why we have list there in first place?
-> Why not just array?
-> 
-> I will look into it, but this sounds like a separate infrastructure change
-> project.
-
-We're working on it with the iomap code.  And yes, it's really something
-that needs to be done before we can consider the THP patches.  Same for
-the biovec thing were we really need the > PAGE_SIZE bio_vecs first.
+VGhlIHNlcmllcyBpcyBhaW1lZCBhdCBhZGRpbmcgdGltZXN0YW1wIGNoZWNraW5nIGFuZCBwb2xp
+Y3kKcmVsYXRlZCB0byBpdCB0byB2ZnMuCgpUaGUgc2VyaWVzIHdhcyBkZXZlbG9wZWQgd2l0aCBk
+aXNjdXNzaW9ucyBhbmQgZ3VpZGFuY2UgZnJvbQpBcm5kIEJlcmdtYW5uLgoKVGhlIG9yaWdpbmFs
+IGlkZWEgZm9yIHRoZSBzZXJpZXMgd2FzIHRoZSBkaXNjdXNzaW9uOgpodHRwczovL2xrbWwub3Jn
+L2xrbWwvMjAxNC81LzMwLzU1MQoKUGF0Y2hlcyA1IGFuZCA2IGNhbiBiZSBtZXJnZWQgb25seSBh
+ZnRlciB2ZnMgaXMgdHJhbnNpdGlvbmVkCnRvIHVzZSA2NCBiaXQgdGltZXN0YW1wcyBhcyBub3Rl
+ZCBpbiB0aGUgcmVzcGVjdGl2ZSBjb21taXQKdGV4dHMuCgpUaGUgc2VyaWVzIG9ubHkgaW5jbHVk
+ZXMgYWRkaW5nIHJhbmdlIGxpbWl0cyB0byBmaWxlc3lzdGVtczoKZXh0NCBhbmQgYWZzIGFzIGV4
+YW1wbGVzIHRvIGtlZXAgdGhlIHNlcmllcyBzaW1wbGUuCkV2ZXJ5IGZpbGVzeXN0ZW0gd2lsbCBi
+ZSB1cGRhdGVkIHRvIGFkZCB0aGVzZSBsaW1pdHMuCgpUaGVyZSBpcyBhbiBleHQ0IGN1cnJlbnRf
+dGltZSgpIGFwaSByZXBsYWNlbWVudCBwYXRjaCB0aGF0IHRoZQpzZXJpZXMgZGVwZW5kcyBvbjoK
+aHR0cHM6Ly9sa21sLm9yZy9sa21sLzIwMTYvNi85LzM4IC4KVGhpcyBuZWVkcyByZXBvc3Rpbmcg
+dG8gdGhlIG1haWxpbmcgbGlzdC4KClRoZSBicmFuY2ggZm9yIHRoZSB0cmVlIGFsb25nIHdpdGgg
+ZGVwZW5kZW5jeSBjYW4gYmUgZm91bmQgYXQKCmh0dHBzOi8vZ2l0aHViLmNvbS9kZWVwYS1odWIv
+dmZzLmdpdCByZWZzL2hlYWRzL3Zmc190aW1lc3RhbXBfcG9saWN5CgpEZWVwYSBEaW5hbWFuaSAo
+Nik6CiAgdmZzOiBBZGQgZmlsZSB0aW1lc3RhbXAgcmFuZ2Ugc3VwcG9ydAogIHZmczogQWRkIGNo
+ZWNrcyBmb3IgZmlsZXN5c3RlbSB0aW1lc3RhbXAgbGltaXRzCiAgYWZzOiBBZGQgdGltZSBsaW1p
+dHMgaW4gdGhlIHN1cGVyIGJsb2NrCiAgZXh0NDogSW5pdGlhbGl6ZSB0aW1lc3RhbXBzIGxpbWl0
+cwogIHZmczogQWRkIHRpbWVzdGFtcF90cnVuY2F0ZSgpIGFwaQogIHV0aW1lczogQ2xhbXAgdGhl
+IHRpbWVzdGFtcHMgYmVmb3JlIHVwZGF0ZQoKIGZzL2Fmcy9zdXBlci5jICAgICAgICAgIHwgIDIg
+KysKIGZzL2V4dDQvZXh0NC5oICAgICAgICAgIHwgIDQgKysrKwogZnMvZXh0NC9zdXBlci5jICAg
+ICAgICAgfCAgNyArKysrKystCiBmcy9pbm9kZS5jICAgICAgICAgICAgICB8IDM3ICsrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKy0KIGZzL2ludGVybmFsLmggICAgICAgICAgIHwg
+IDIgKysKIGZzL2xpYmZzLmMgICAgICAgICAgICAgIHwgIDQgKysrKwogZnMvbmFtZXNwYWNlLmMg
+ICAgICAgICAgfCAxMiArKysrKysrKysrKysKIGZzL3N1cGVyLmMgICAgICAgICAgICAgIHwgIDgg
+KysrKysrKysKIGZzL3V0aW1lcy5jICAgICAgICAgICAgIHwgMTcgKysrKysrKysrKysrKy0tLS0K
+IGluY2x1ZGUvbGludXgvZnMuaCAgICAgIHwgIDQgKysrKwogaW5jbHVkZS9saW51eC90aW1lNjQu
+aCAgfCAgNiArKysrKysKIGluY2x1ZGUvdWFwaS9saW51eC9mcy5oIHwgIDYgKysrKystCiBrZXJu
+ZWwvc3lzY3RsLmMgICAgICAgICB8ICA3ICsrKysrKysKIDEzIGZpbGVzIGNoYW5nZWQsIDEwOSBp
+bnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQoKLS0gCjIuNy40CgpDYzogbGludXgtYWZzQGxp
+c3RzLmluZnJhZGVhZC5vcmcKQ2M6ICJUaGVvZG9yZSBUcydvIiA8dHl0c29AbWl0LmVkdT4KQ2M6
+IEFuZHJlYXMgRGlsZ2VyIDxhZGlsZ2VyLmtlcm5lbEBkaWxnZXIuY2E+CkNjOiBsaW51eC1leHQ0
+QHZnZXIua2VybmVsLm9yZwoKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBz
+Oi8vbGlzdHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
