@@ -1,101 +1,101 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
- do_generic_file_read()
-Date: Thu, 3 Nov 2016 18:56:02 +0100
-Message-ID: <20161103175602.GB24234@quack2.suse.cz>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
- <20161013093313.GB26241@quack2.suse.cz>
- <20161031181035.GA7007@node.shutemov.name>
- <20161101163940.GA5459@quack2.suse.cz>
- <20161102143612.GA4790@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        "Kirill A. Shutemov" <kirill@shutemov.name>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161102143612.GA4790@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: ext4_mb_mark_free_simple: Fix integer value truncation
+Date: Thu, 3 Nov 2016 13:32:33 -0600
+Message-ID: <2AE0DCBF-5AB6-47B2-B9F6-B738AFF2EAF2@dilger.ca>
+References: <1478164472-28376-1-git-send-email-chandan@linux.vnet.ibm.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_2264933D-DB6D-41EA-B647-76D0486ABEF0"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+        aneesh.kumar@linux.vnet.ibm.com, linuxppc-dev@lists.ozlabs.org
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f65.google.com ([209.85.218.65]:35909 "EHLO
+        mail-oi0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756858AbcKCTcj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Nov 2016 15:32:39 -0400
+Received: by mail-oi0-f65.google.com with SMTP id 128so8424266oih.3
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Nov 2016 12:32:39 -0700 (PDT)
+In-Reply-To: <1478164472-28376-1-git-send-email-chandan@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 02-11-16 07:36:12, Christoph Hellwig wrote:
-> On Tue, Nov 01, 2016 at 05:39:40PM +0100, Jan Kara wrote:
-> > I'd also note that having PMD-sized pages has some obvious disadvantages as
-> > well:
-> > 
-> > 1) I'm not sure buffer head handling code will quite scale to 512 or even
-> > 2048 buffer_heads on a linked list referenced from a page. It may work but
-> > I suspect the performance will suck. 
-> 
-> buffer_head handling always sucks.  For the iomap based bufferd write
-> path I plan to support a buffer_head-less mode for the block size ==
-> PAGE_SIZE case in 4.11 latest, but if I get enough other things of my
-> plate in time even for 4.10.  I think that's the right way to go for
-> THP, especially if we require the fs to allocate the whole huge page
-> as a single extent, similar to the DAX PMD mapping case.
 
-Yeah, if we require whole THP to be backed by a single extent, things get
-simpler. But still there's the issue that ext4 cannot easily use iomap code
-for buffered writes because of the data exposure issue we already talked
-about - well, ext4 could actually work (it supports unwritten extents) but
-old compatibility modes won't work and I'd strongly prefer not to have two
-independent write paths in ext4... But I'll put more thought into this, I
-have some idea how we could hack around the problem even for on-disk formats
-that don't support unwritten extents. The trick we could use is that we'd
-just mark the range of file as unwritten in memory in extent cache we have,
-that should protect us against exposing uninitialized pages in racing
-faults.
+--Apple-Mail=_2264933D-DB6D-41EA-B647-76D0486ABEF0
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> > 2) PMD-sized pages result in increased space & memory usage.
-> 
-> How so?
+On Nov 3, 2016, at 3:14 AM, Chandan Rajendra =
+<chandan@linux.vnet.ibm.com> wrote:
+>=20
+> 'border' variable is set to a value of 2 times the block size of the
+> underlying filesystem. With 64k block size, the resulting value won't
+> fit into a 16-bit variable. Hence this commit changes the data type of
+> 'border' to 'unsigned int'.
+>=20
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 
-Well, memory usage is clear I guess - if the files are smaller than THP
-size, or if you don't use all the 4k pages that are forming THP you are
-wasting memory. Sure it can be somewhat controlled by the heuristics
-deciding when to use THP in pagecache and when to fall back to 4k pages.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Regarding space usage - it is mostly the case for sparse mmaped IO where
-you always have to allocate (and write out) all the blocks underlying a THP
-that gets written to, even though you may only need 4K from that area...
+> ---
+> fs/ext4/mballoc.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index f418f55..a937ac7 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -669,7 +669,7 @@ static void ext4_mb_mark_free_simple(struct =
+super_block *sb,
+> 	ext4_grpblk_t min;
+> 	ext4_grpblk_t max;
+> 	ext4_grpblk_t chunk;
+> -	unsigned short border;
+> +	unsigned int border;
+>=20
+> 	BUG_ON(len > EXT4_CLUSTERS_PER_GROUP(sb));
+>=20
+> --
+> 2.5.5
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> > 3) In ext4 we have to estimate how much metadata we may need to modify when
-> > allocating blocks underlying a page in the worst case (you don't seem to
-> > update this estimate in your patch set). With 2048 blocks underlying a page,
-> > each possibly in a different block group, it is a lot of metadata forcing
-> > us to reserve a large transaction (not sure if you'll be able to even
-> > reserve such large transaction with the default journal size), which again
-> > makes things slower.
-> 
-> As said above I think we should only use huge page mappings if there is
-> a single underlying extent, same as in DAX to keep the complexity down.
-> 
-> > 4) As you have noted some places like write_begin() still depend on 4k
-> > pages which creates a strange mix of places that use subpages and that use
-> > head pages.
-> 
-> Just use the iomap bufferd I/O code and all these issues will go away.
 
-Yep, the above two things would make things somewhat less ugly I agree.
+Cheers, Andreas
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+
+
+
+
+--Apple-Mail=_2264933D-DB6D-41EA-B647-76D0486ABEF0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBWBuQ0XKl2rkXzB/gAQgNCRAApGlZNtWZQfASdJqkdx6QATtnnxR+jml9
+dkt8VR49Efs1+nlptxrBNvcGSc9YF4Z0RzyKSIDHN3ZT8lXc7j5bZxP9YgRLTlmv
++9+l/3Kou3wUQeY2iChGNUksVNRPljsAD8ecUnNuJCpqU5V3B6n0SfLHhZEomCzE
+0O/QRfROthE7CRAMyJw137+iyrWTyzpweYWyVcoJx0JAsVVTJnH8LXCNzGsnFdUi
+ybv5Rxl9Z20kpUtXNuE9ersFzeIjuLjId/nF3XzWuaVRmNRtlNt72YSZj4rJddS8
+R/9AmHZ0HFtNvHYZiJOd0NuRGMnGGi8vsxMMkHQ1ajD7Q6nvigxUecyJauMQaqKI
+c99RLoUa7XhaPWaN4IB+gD+Ex+Vab0rNPi/p/B4DvnAUWOdwjAMarZkHY8KMGBrh
+5AetJa3B34rB7f3vgaglMC1K58pGkI7f7o14+bD9YvkaXIKw5yWaq1NSfDy5wG0w
+RItinF22T5Hc9R+S0niMikxb8KwSR5YF4sDqWl+KKZDHSdK6ooBfhPxOoRhGy49w
+MP91O9mvaalz8NiM73CnFogNPoOqvwolf91ALQKLIWgmvbrZ0qdSi5Z+6CQD53f0
+XYQR8EwJkur4517RR2J1ZmMybBzRhB6svUdGaiTU44IEqaghjrWL5KpTf+IllAZ8
+X6aBMupYdr8=
+=SwRD
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_2264933D-DB6D-41EA-B647-76D0486ABEF0--
