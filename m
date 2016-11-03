@@ -1,91 +1,101 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v9 00/16] re-enable DAX PMD support
-Date: Thu, 3 Nov 2016 11:51:02 -0600
-Message-ID: <20161103175102.GA11784@linux.intel.com>
-References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
- <20161103015826.GI9920@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
+ do_generic_file_read()
+Date: Thu, 3 Nov 2016 18:56:02 +0100
+Message-ID: <20161103175602.GB24234@quack2.suse.cz>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
+ <20161013093313.GB26241@quack2.suse.cz>
+ <20161031181035.GA7007@node.shutemov.name>
+ <20161101163940.GA5459@quack2.suse.cz>
+ <20161102143612.GA4790@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Jan Kara <jack@suse.cz>,
+        "Kirill A. Shutemov" <kirill@shutemov.name>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161103015826.GI9920@dastard>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20161102143612.GA4790@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 03, 2016 at 12:58:26PM +1100, Dave Chinner wrote:
-> On Tue, Nov 01, 2016 at 01:54:02PM -0600, Ross Zwisler wrote:
-> > DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
-> > locking.  This series allows DAX PMDs to participate in the DAX radix tree
-> > based locking scheme so that they can be re-enabled.
+On Wed 02-11-16 07:36:12, Christoph Hellwig wrote:
+> On Tue, Nov 01, 2016 at 05:39:40PM +0100, Jan Kara wrote:
+> > I'd also note that having PMD-sized pages has some obvious disadvantages as
+> > well:
+> > 
+> > 1) I'm not sure buffer head handling code will quite scale to 512 or even
+> > 2048 buffer_heads on a linked list referenced from a page. It may work but
+> > I suspect the performance will suck. 
 > 
-> I've seen patch 0/16 - where did you send the other 16? I need to
-> pick up the bug fix that is in this patch set...
+> buffer_head handling always sucks.  For the iomap based bufferd write
+> path I plan to support a buffer_head-less mode for the block size ==
+> PAGE_SIZE case in 4.11 latest, but if I get enough other things of my
+> plate in time even for 4.10.  I think that's the right way to go for
+> THP, especially if we require the fs to allocate the whole huge page
+> as a single extent, similar to the DAX PMD mapping case.
 
-I CC'd your "david@fromorbit.com" address on the entire set, as well as all
-the usual lists (linux-xfs, linux-fsdevel, linux-nvdimm, etc).
+Yeah, if we require whole THP to be backed by a single extent, things get
+simpler. But still there's the issue that ext4 cannot easily use iomap code
+for buffered writes because of the data exposure issue we already talked
+about - well, ext4 could actually work (it supports unwritten extents) but
+old compatibility modes won't work and I'd strongly prefer not to have two
+independent write paths in ext4... But I'll put more thought into this, I
+have some idea how we could hack around the problem even for on-disk formats
+that don't support unwritten extents. The trick we could use is that we'd
+just mark the range of file as unwritten in memory in extent cache we have,
+that should protect us against exposing uninitialized pages in racing
+faults.
 
-They are also available via the libnvdimm patchwork:
-
-https://patchwork.kernel.org/project/linux-nvdimm/list/
-
-or via my tree:
-
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v9
-
-The only patch that is different between v8 and v9 is:
-[PATCH v9 14/16] dax: add struct iomap based DAX PMD support
-
-> > Previously we had talked about this series going through the XFS tree, but
-> > Jan has a patch set that will need to build on this series and it heavily
-> > modifies the MM code.  I think he would prefer that series to go through
-> > Andrew Morton's -MM tree, so it probably makes sense for this series to go
-> > through that same tree.
+> > 2) PMD-sized pages result in increased space & memory usage.
 > 
-> Seriously, I was 10 minutes away from pushing out the previous
-> version of this patchset as a stable topic branch, just like has
-> been discussed and several times over the past week.  Indeed, I
-> mentioned that I was planning on pushing out this topic branch today
-> not more than 4 hours ago, and you were on the cc list.
+> How so?
 
-I'm confused - I sent v9 of this series out 2 days ago, on Tuesday?
-I have seen multiple messages from you this week saying you were going to pick
-this series up, but I saw them all after I had already sent this series out.
+Well, memory usage is clear I guess - if the files are smaller than THP
+size, or if you don't use all the 4k pages that are forming THP you are
+wasting memory. Sure it can be somewhat controlled by the heuristics
+deciding when to use THP in pagecache and when to fall back to 4k pages.
 
-> The -mm tree is not the place to merge patchsets with dependencies
-> like this because it's an unstable, rebasing tree. Hence it cannot
-> be shared and used as the base of common development between
-> multiple git trees like we have for the fs/ subsystem.
+Regarding space usage - it is mostly the case for sparse mmaped IO where
+you always have to allocate (and write out) all the blocks underlying a THP
+that gets written to, even though you may only need 4K from that area...
+
+> > 3) In ext4 we have to estimate how much metadata we may need to modify when
+> > allocating blocks underlying a page in the worst case (you don't seem to
+> > update this estimate in your patch set). With 2048 blocks underlying a page,
+> > each possibly in a different block group, it is a lot of metadata forcing
+> > us to reserve a large transaction (not sure if you'll be able to even
+> > reserve such large transaction with the default journal size), which again
+> > makes things slower.
 > 
-> This needs to go out as a stable topic branch so that other
-> dependent work can reliably build on top of it for the next merge
-> window. e.g. the ext4 DAX iomap patch series that is likely to be
-> merged through the ext4 tree, so it needs a stable branch. There's
-> iomap direct IO patches for XFS pending, and they conflict with this
-> patchset. i.e. we need a stable git base to work from...
+> As said above I think we should only use huge page mappings if there is
+> a single underlying extent, same as in DAX to keep the complexity down.
+> 
+> > 4) As you have noted some places like write_begin() still depend on 4k
+> > pages which creates a strange mix of places that use subpages and that use
+> > head pages.
+> 
+> Just use the iomap bufferd I/O code and all these issues will go away.
 
-Yea, my apologies.  Really this comes down to a lack of understanding on my
-part about about which series should be merged via which maintainers, and how
-stable topic branches can be shared.  I didn't realize that if you make a
-stable branch that could be easily used by other trees, and that for example
-Jan's MM or ext4 based patches could be merged by another maintainer but be
-based on your topic branch.
+Yep, the above two things would make things somewhat less ugly I agree.
 
-Sorry for the confusion, I was just trying to figure out a way that Jan's
-changes could also be merged.  Please do pick up v9 of my PMD set. :)
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
