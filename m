@@ -1,69 +1,89 @@
-From: Pavan Kondeti <pkondeti@codeaurora.org>
-Subject: Re: [PATCH 1/4] sched: move IO scheduling accounting from
- io_schedule_timeout() to __schedule()
-Date: Thu, 3 Nov 2016 21:03:45 +0530
-Message-ID: <CAEU1=P=xnwZwqZE_XLF2b5ZOv_iPwQWYmXBwpvgEVn3_EckhSA@mail.gmail.com>
-References: <1477673892-28940-1-git-send-email-tj@kernel.org> <1477673892-28940-2-git-send-email-tj@kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [RFC] A proposal for adding case insensitive lookups to ext4
+Date: Thu, 3 Nov 2016 13:28:42 -0400
+Message-ID: <20161103172842.q7avc7rztny3zndd@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        mingo@redhat.com, Peter Zijlstra <peterz@infradead.org>,
-        axboe@kernel.dk, tytso@mit.edu, jack@suse.com,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-team@fb.com, mingbo@fb.com
-To: Tejun Heo <tj@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1477673892-28940-2-git-send-email-tj@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: guy@linux.com, jra@google.com, drosen@google.com
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:46596 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1758233AbcKCR2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Nov 2016 13:28:48 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Tejun,
+HTML version (which will get updated in response to comments):
 
-> diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-> index 94732d1..f6baa38 100644
-> --- a/kernel/sched/core.c
-> +++ b/kernel/sched/core.c
-> @@ -3336,11 +3336,17 @@ static void __sched notrace __schedule(bool preempt)
->         unsigned long *switch_count;
->         struct pin_cookie cookie;
->         struct rq *rq;
-> -       int cpu;
-> +       int cpu, in_iowait;
->
->         cpu = smp_processor_id();
->         rq = cpu_rq(cpu);
->         prev = rq->curr;
-> +       in_iowait = prev->in_iowait;
-> +
-> +       if (in_iowait) {
-> +               delayacct_blkio_start();
-> +               atomic_inc(&rq->nr_iowait);
-> +       }
->
->         schedule_debug(prev);
->
-> @@ -3406,6 +3412,11 @@ static void __sched notrace __schedule(bool preempt)
->         }
->
->         balance_callback(rq);
-> +
-> +       if (in_iowait) {
-> +               atomic_dec(&rq->nr_iowait);
-> +               delayacct_blkio_end();
-> +       }
->  }
+     https://thunk.org/tytso/casei-fs.html
 
-I think, the nr_iowait update can go wrong here.
 
-When the task migrates to a different CPU upon wakeup, this rq points
-to a different CPU from the one on which nr_iowait is incremented
-before.
+# A proposal for adding case insensitive lookups to ext4
 
-Thanks,
-Pavan
+## Theodore Ts'o
+## Version 0.10
 
--- 
-Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
-Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a
-Linux Foundation Collaborative Project
+### Introduction
+
+Over the years there has been a desire to add case insensitive lookups
+to ext 2/3/4.  The reason why this hasn't happened is doing it right
+is hard.  Unfortunately, the workarounds that people have been using
+in the absense of first class support for case insensitive lookups are
+slow, and evade all of the problems that make this problem hard
+anyway.
+
+Hence, I think it's worthwhile to outline what could be done to allow
+ext4 to support case insensitive that would be more efficient and less
+hacky than some other solutions (e.g., slow FUSE file systems and
+hacky wrapfs-based solutions that are subject to crashes when run
+under fsstress).
+
+This proposal does not make any on-disk format changes, but rather
+adds a mount option which causes lookups to be case insensitive, while
+case would be preserved in the directory entries when they are created
+and returned via readdir().
+
+### Changes to be made to ext4
+
+1.  If case-insensitivity is enabled, override the default dcache hash
+and compare operations to ones that are case insensitive in ext4's
+dcache_operations structure.
+
+2.  In ext4_lookup(), if case insensitivity is enabled, and the
+directory lookup does not succeed, fall back to a linear search of the
+directory using using a case insensitive compare.  (This is slow, but
+it's faster compared to doing this in userspace).
+
+### Limitations
+
+1.  Like all of the FUSE and in-kernel searches, case insensitivity
+will be implemented using strcasecmp and tolower().  This implies that
+only ASCII case folding will be accepted.  One of the problems of
+using Unicode is that it is not a fixed target.  The case folding
+algorithm is changing as new scripts are added; if someone wants to
+add support for Unicode case folding, it should be added to the
+kernel, with someone assigned with the headache of updating the case
+folding algorithm when new versions of Unicode are issued.
+
+2.  If the lookup is done using the filename as it is stored in the
+directory, lookups will be O(1) if the dir_index (htree) ext4 file
+system feature is enabled (which is the default).  It might be
+possible to use a case insensitive hash for the htree feature.
+However, if we do this, then the hash could be broken by changes to
+use Unicode, and if we do implement this with Unicode 8.0.0 support,
+the on-disk format could be broken by future Unicode updates.  So
+adding support for case O(1) lookups when case is not preserved by the
+filename provided by the user is highly unlikely.  (I will note that
+none of the kludges commonly in use support Unicode anyway, so this
+proposal is no worse than those kludges, and my personal approach is
+to exert a very strong Somebody Else's Problem field and hope someone
+else comes up with a solution for us.)
+
+3.  Some of the hacky alternatives are also trying to support
+Android's "unique" file permissions scheme.  Support for this is out
+of scope for this proposal, although I do acknowledge we will need to
+come up with a clean way of implementing those permissions-related
+requirements before we have a complete, clean, bug-free, upstreamable
+solution for Android.
