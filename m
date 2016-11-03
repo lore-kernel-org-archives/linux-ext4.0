@@ -1,89 +1,91 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [RFC] A proposal for adding case insensitive lookups to ext4
-Date: Thu, 3 Nov 2016 13:28:42 -0400
-Message-ID: <20161103172842.q7avc7rztny3zndd@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v9 00/16] re-enable DAX PMD support
+Date: Thu, 3 Nov 2016 11:51:02 -0600
+Message-ID: <20161103175102.GA11784@linux.intel.com>
+References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
+ <20161103015826.GI9920@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: guy@linux.com, jra@google.com, drosen@google.com
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46596 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758233AbcKCR2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 3 Nov 2016 13:28:48 -0400
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161103015826.GI9920@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-HTML version (which will get updated in response to comments):
+On Thu, Nov 03, 2016 at 12:58:26PM +1100, Dave Chinner wrote:
+> On Tue, Nov 01, 2016 at 01:54:02PM -0600, Ross Zwisler wrote:
+> > DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> > locking.  This series allows DAX PMDs to participate in the DAX radix tree
+> > based locking scheme so that they can be re-enabled.
+> 
+> I've seen patch 0/16 - where did you send the other 16? I need to
+> pick up the bug fix that is in this patch set...
 
-     https://thunk.org/tytso/casei-fs.html
+I CC'd your "david@fromorbit.com" address on the entire set, as well as all
+the usual lists (linux-xfs, linux-fsdevel, linux-nvdimm, etc).
 
+They are also available via the libnvdimm patchwork:
 
-# A proposal for adding case insensitive lookups to ext4
+https://patchwork.kernel.org/project/linux-nvdimm/list/
 
-## Theodore Ts'o
-## Version 0.10
+or via my tree:
 
-### Introduction
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_pmd_v9
 
-Over the years there has been a desire to add case insensitive lookups
-to ext 2/3/4.  The reason why this hasn't happened is doing it right
-is hard.  Unfortunately, the workarounds that people have been using
-in the absense of first class support for case insensitive lookups are
-slow, and evade all of the problems that make this problem hard
-anyway.
+The only patch that is different between v8 and v9 is:
+[PATCH v9 14/16] dax: add struct iomap based DAX PMD support
 
-Hence, I think it's worthwhile to outline what could be done to allow
-ext4 to support case insensitive that would be more efficient and less
-hacky than some other solutions (e.g., slow FUSE file systems and
-hacky wrapfs-based solutions that are subject to crashes when run
-under fsstress).
+> > Previously we had talked about this series going through the XFS tree, but
+> > Jan has a patch set that will need to build on this series and it heavily
+> > modifies the MM code.  I think he would prefer that series to go through
+> > Andrew Morton's -MM tree, so it probably makes sense for this series to go
+> > through that same tree.
+> 
+> Seriously, I was 10 minutes away from pushing out the previous
+> version of this patchset as a stable topic branch, just like has
+> been discussed and several times over the past week.  Indeed, I
+> mentioned that I was planning on pushing out this topic branch today
+> not more than 4 hours ago, and you were on the cc list.
 
-This proposal does not make any on-disk format changes, but rather
-adds a mount option which causes lookups to be case insensitive, while
-case would be preserved in the directory entries when they are created
-and returned via readdir().
+I'm confused - I sent v9 of this series out 2 days ago, on Tuesday?
+I have seen multiple messages from you this week saying you were going to pick
+this series up, but I saw them all after I had already sent this series out.
 
-### Changes to be made to ext4
+> The -mm tree is not the place to merge patchsets with dependencies
+> like this because it's an unstable, rebasing tree. Hence it cannot
+> be shared and used as the base of common development between
+> multiple git trees like we have for the fs/ subsystem.
+> 
+> This needs to go out as a stable topic branch so that other
+> dependent work can reliably build on top of it for the next merge
+> window. e.g. the ext4 DAX iomap patch series that is likely to be
+> merged through the ext4 tree, so it needs a stable branch. There's
+> iomap direct IO patches for XFS pending, and they conflict with this
+> patchset. i.e. we need a stable git base to work from...
 
-1.  If case-insensitivity is enabled, override the default dcache hash
-and compare operations to ones that are case insensitive in ext4's
-dcache_operations structure.
+Yea, my apologies.  Really this comes down to a lack of understanding on my
+part about about which series should be merged via which maintainers, and how
+stable topic branches can be shared.  I didn't realize that if you make a
+stable branch that could be easily used by other trees, and that for example
+Jan's MM or ext4 based patches could be merged by another maintainer but be
+based on your topic branch.
 
-2.  In ext4_lookup(), if case insensitivity is enabled, and the
-directory lookup does not succeed, fall back to a linear search of the
-directory using using a case insensitive compare.  (This is slow, but
-it's faster compared to doing this in userspace).
+Sorry for the confusion, I was just trying to figure out a way that Jan's
+changes could also be merged.  Please do pick up v9 of my PMD set. :)
 
-### Limitations
-
-1.  Like all of the FUSE and in-kernel searches, case insensitivity
-will be implemented using strcasecmp and tolower().  This implies that
-only ASCII case folding will be accepted.  One of the problems of
-using Unicode is that it is not a fixed target.  The case folding
-algorithm is changing as new scripts are added; if someone wants to
-add support for Unicode case folding, it should be added to the
-kernel, with someone assigned with the headache of updating the case
-folding algorithm when new versions of Unicode are issued.
-
-2.  If the lookup is done using the filename as it is stored in the
-directory, lookups will be O(1) if the dir_index (htree) ext4 file
-system feature is enabled (which is the default).  It might be
-possible to use a case insensitive hash for the htree feature.
-However, if we do this, then the hash could be broken by changes to
-use Unicode, and if we do implement this with Unicode 8.0.0 support,
-the on-disk format could be broken by future Unicode updates.  So
-adding support for case O(1) lookups when case is not preserved by the
-filename provided by the user is highly unlikely.  (I will note that
-none of the kludges commonly in use support Unicode anyway, so this
-proposal is no worse than those kludges, and my personal approach is
-to exert a very strong Somebody Else's Problem field and hope someone
-else comes up with a solution for us.)
-
-3.  Some of the hacky alternatives are also trying to support
-Android's "unique" file permissions scheme.  Support for this is out
-of scope for this proposal, although I do acknowledge we will need to
-come up with a clean way of implementing those permissions-related
-requirements before we have a complete, clean, bug-free, upstreamable
-solution for Android.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
