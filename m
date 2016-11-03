@@ -1,46 +1,57 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC 0/6] vfs: Add timestamp range check support
-Date: Thu, 3 Nov 2016 09:48:27 +1100
-Message-ID: <20161102224827.GJ14023@dastard>
-References: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
+Subject: Re: [PATCH v9 00/16] re-enable DAX PMD support
+Date: Thu, 3 Nov 2016 12:58:26 +1100
+Message-ID: <20161103015826.GI9920@dastard>
+References: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        arnd@arndb.de, tglx@linutronix.de, gregkh@linuxfoundation.org,
-        akpm@linux-foundation.org, tytso@mit.edu, viro@zeniv.linux.org.uk,
-        y2038@lists.linaro.org, linux-afs@lists.infradead.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <mawilcox@microsoft.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <1478030058-1422-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 02, 2016 at 08:04:50AM -0700, Deepa Dinamani wrote:
-> The series is aimed at adding timestamp checking and policy
-> related to it to vfs.
-> 
-> The series was developed with discussions and guidance from
-> Arnd Bergmann.
-> 
-> The original idea for the series was the discussion:
-> https://lkml.org/lkml/2014/5/30/551
-> 
-> Patches 5 and 6 can be merged only after vfs is transitioned
-> to use 64 bit timestamps as noted in the respective commit
-> texts.
-> 
-> The series only includes adding range limits to filesystems:
-> ext4 and afs as examples to keep the series simple.
-> Every filesystem will be updated to add these limits.
+On Tue, Nov 01, 2016 at 01:54:02PM -0600, Ross Zwisler wrote:
+> DAX PMDs have been disabled since Jan Kara introduced DAX radix tree based
+> locking.  This series allows DAX PMDs to participate in the DAX radix tree
+> based locking scheme so that they can be re-enabled.
 
-We're going to need regression tests for this to ensure that it
-works properly and that we don't inadvertantly break it in future.
-Can you write some xfstests that exercise this functionality and
-validate that the mount behaviour, clamping and range limiting is
-working as intended?
+I've seen patch 0/16 - where did you send the other 16? I need to
+pick up the bug fix that is in this patch set...
+
+> Previously we had talked about this series going through the XFS tree, but
+> Jan has a patch set that will need to build on this series and it heavily
+> modifies the MM code.  I think he would prefer that series to go through
+> Andrew Morton's -MM tree, so it probably makes sense for this series to go
+> through that same tree.
+
+Seriously, I was 10 minutes away from pushing out the previous
+version of this patchset as a stable topic branch, just like has
+been discussed and several times over the past week.  Indeed, I
+mentioned that I was planning on pushing out this topic branch today
+not more than 4 hours ago, and you were on the cc list.
+
+The -mm tree is not the place to merge patchsets with dependencies
+like this because it's an unstable, rebasing tree. Hence it cannot
+be shared and used as the base of common development between
+multiple git trees like we have for the fs/ subsystem.
+
+This needs to go out as a stable topic branch so that other
+dependent work can reliably build on top of it for the next merge
+window. e.g. the ext4 DAX iomap patch series that is likely to be
+merged through the ext4 tree, so it needs a stable branch. There's
+iomap direct IO patches for XFS pending, and they conflict with this
+patchset. i.e. we need a stable git base to work from...
 
 Cheers,
 
@@ -48,3 +59,9 @@ Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
