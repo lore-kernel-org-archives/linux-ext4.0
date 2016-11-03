@@ -1,45 +1,69 @@
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: ext4_mb_mark_free_simple: Fix integer value truncation
-Date: Thu,  3 Nov 2016 14:44:32 +0530
-Message-ID: <1478164472-28376-1-git-send-email-chandan@linux.vnet.ibm.com>
-Cc: jack@suse.cz, Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
- aneesh.kumar@linux.vnet.ibm.com, linuxppc-dev@lists.ozlabs.org
-To: linux-ext4@vger.kernel.org
-Return-path: <linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@lists.ozlabs.org>
-List-Unsubscribe: <https://lists.ozlabs.org/options/linuxppc-dev>,
- <mailto:linuxppc-dev-request@lists.ozlabs.org?subject=unsubscribe>
-List-Archive: <http://lists.ozlabs.org/pipermail/linuxppc-dev/>
-List-Post: <mailto:linuxppc-dev@lists.ozlabs.org>
-List-Help: <mailto:linuxppc-dev-request@lists.ozlabs.org?subject=help>
-List-Subscribe: <https://lists.ozlabs.org/listinfo/linuxppc-dev>,
- <mailto:linuxppc-dev-request@lists.ozlabs.org?subject=subscribe>
-Errors-To: linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@lists.ozlabs.org
-Sender: "Linuxppc-dev"
- <linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@lists.ozlabs.org>
+From: Pavan Kondeti <pkondeti@codeaurora.org>
+Subject: Re: [PATCH 1/4] sched: move IO scheduling accounting from
+ io_schedule_timeout() to __schedule()
+Date: Thu, 3 Nov 2016 21:03:45 +0530
+Message-ID: <CAEU1=P=xnwZwqZE_XLF2b5ZOv_iPwQWYmXBwpvgEVn3_EckhSA@mail.gmail.com>
+References: <1477673892-28940-1-git-send-email-tj@kernel.org> <1477673892-28940-2-git-send-email-tj@kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        mingo@redhat.com, Peter Zijlstra <peterz@infradead.org>,
+        axboe@kernel.dk, tytso@mit.edu, jack@suse.com,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel-team@fb.com, mingbo@fb.com
+To: Tejun Heo <tj@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1477673892-28940-2-git-send-email-tj@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-'border' variable is set to a value of 2 times the block size of the
-underlying filesystem. With 64k block size, the resulting value won't
-fit into a 16-bit variable. Hence this commit changes the data type of
-'border' to 'unsigned int'.
+Hi Tejun,
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/ext4/mballoc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+> index 94732d1..f6baa38 100644
+> --- a/kernel/sched/core.c
+> +++ b/kernel/sched/core.c
+> @@ -3336,11 +3336,17 @@ static void __sched notrace __schedule(bool preempt)
+>         unsigned long *switch_count;
+>         struct pin_cookie cookie;
+>         struct rq *rq;
+> -       int cpu;
+> +       int cpu, in_iowait;
+>
+>         cpu = smp_processor_id();
+>         rq = cpu_rq(cpu);
+>         prev = rq->curr;
+> +       in_iowait = prev->in_iowait;
+> +
+> +       if (in_iowait) {
+> +               delayacct_blkio_start();
+> +               atomic_inc(&rq->nr_iowait);
+> +       }
+>
+>         schedule_debug(prev);
+>
+> @@ -3406,6 +3412,11 @@ static void __sched notrace __schedule(bool preempt)
+>         }
+>
+>         balance_callback(rq);
+> +
+> +       if (in_iowait) {
+> +               atomic_dec(&rq->nr_iowait);
+> +               delayacct_blkio_end();
+> +       }
+>  }
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index f418f55..a937ac7 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -669,7 +669,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
- 	ext4_grpblk_t min;
- 	ext4_grpblk_t max;
- 	ext4_grpblk_t chunk;
--	unsigned short border;
-+	unsigned int border;
- 
- 	BUG_ON(len > EXT4_CLUSTERS_PER_GROUP(sb));
- 
+I think, the nr_iowait update can go wrong here.
+
+When the task migrates to a different CPU upon wakeup, this rq points
+to a different CPU from the one on which nr_iowait is incremented
+before.
+
+Thanks,
+Pavan
+
 -- 
-2.5.5
+Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a
+Linux Foundation Collaborative Project
