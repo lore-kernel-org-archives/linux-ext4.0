@@ -1,83 +1,136 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/6] ext4: Use clean_bdev_aliases() instead of iteration
-Date: Fri,  4 Nov 2016 18:08:13 +0100
-Message-ID: <1478279296-6575-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 1/6] fs: Provide function to unmap metadata for a range of blocks
+Date: Fri,  4 Nov 2016 18:08:11 +0100
+Message-ID: <1478279296-6575-2-git-send-email-jack@suse.cz>
 References: <1478279296-6575-1-git-send-email-jack@suse.cz>
 Cc: Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         ocfs2-devel@oss.oracle.com, Evgeniy Dushistov <dushistov@mail.ru>,
         linux-ntfs-dev@lists.sourceforge.net, Jan Kara <jack@suse.cz>
 To: Jens Axboe <axboe@kernel.dk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35635 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936486AbcKDRI1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 4 Nov 2016 13:08:27 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1478279296-6575-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Use clean_bdev_aliases() instead of iterating through blocks one by one.
+Provide function equivalent to unmap_underlying_metadata() for a range
+of blocks. We somewhat optimize the function to use pagevec lookups
+instead of looking up buffer heads one by one and use page lock to pin
+buffer heads instead of mapping's private_lock to improve scalability.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c | 13 ++-----------
- fs/ext4/inode.c   | 15 ++++-----------
- 2 files changed, 6 insertions(+), 22 deletions(-)
+ fs/buffer.c                 | 76 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/buffer_head.h |  2 ++
+ 2 files changed, 78 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c930a0110fb4..dd5b74dfa018 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3777,14 +3777,6 @@ static int ext4_convert_unwritten_extents_endio(handle_t *handle,
- 	return err;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index b205a629001d..05f30838cec3 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -43,6 +43,7 @@
+ #include <linux/bitops.h>
+ #include <linux/mpage.h>
+ #include <linux/bit_spinlock.h>
++#include <linux/pagevec.h>
+ #include <trace/events/block.h>
+ 
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+@@ -1636,6 +1637,81 @@ void unmap_underlying_metadata(struct block_device *bdev, sector_t block)
  }
+ EXPORT_SYMBOL(unmap_underlying_metadata);
  
--static void unmap_underlying_metadata_blocks(struct block_device *bdev,
--			sector_t block, int count)
--{
--	int i;
--	for (i = 0; i < count; i++)
--                unmap_underlying_metadata(bdev, block + i);
--}
--
++/**
++ * clean_bdev_aliases: clean a range of buffers in block device
++ * @bdev: Block device to clean buffers in
++ * @block: Start of a range of blocks to clean
++ * @len: Number of blocks to clean
++ *
++ * We are taking a range of blocks for data and we don't want writeback of any
++ * buffer-cache aliases starting from return from this function and until the
++ * moment when something will explicitly mark the buffer dirty (hopefully that
++ * will not happen until we will free that block ;-) We don't even need to mark
++ * it not-uptodate - nobody can expect anything from a newly allocated buffer
++ * anyway. We used to used unmap_buffer() for such invalidation, but that was
++ * wrong. We definitely don't want to mark the alias unmapped, for example - it
++ * would confuse anyone who might pick it with bread() afterwards...
++ *
++ * Also..  Note that bforget() doesn't lock the buffer.  So there can be
++ * writeout I/O going on against recently-freed buffers.  We don't wait on that
++ * I/O in bforget() - it's more efficient to wait on the I/O only if we really
++ * need to.  That happens here.
++ */
++void clean_bdev_aliases(struct block_device *bdev, sector_t block, sector_t len)
++{
++	struct inode *bd_inode = bdev->bd_inode;
++	struct address_space *bd_mapping = bd_inode->i_mapping;
++	struct pagevec pvec;
++	pgoff_t index = block >> (PAGE_SHIFT - bd_inode->i_blkbits);
++	pgoff_t end;
++	int i;
++	struct buffer_head *bh;
++	struct buffer_head *head;
++
++	end = (block + len - 1) >> (PAGE_SHIFT - bd_inode->i_blkbits);
++	pagevec_init(&pvec, 0);
++	while (index <= end && pagevec_lookup(&pvec, bd_mapping, index,
++			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1)) {
++		for (i = 0; i < pagevec_count(&pvec); i++) {
++			struct page *page = pvec.pages[i];
++
++			index = page->index;
++			if (index > end)
++				break;
++			if (!page_has_buffers(page))
++				continue;
++			/*
++			 * We use page lock instead of bd_mapping->private_lock
++			 * to pin buffers here since we can afford to sleep and
++			 * it scales better than a global spinlock lock.
++			 */
++			lock_page(page);
++			/* Recheck when the page is locked which pins bhs */
++			if (!page_has_buffers(page))
++				goto unlock_page;
++			head = page_buffers(page);
++			bh = head;
++			do {
++				if (!buffer_mapped(bh))
++					goto next;
++				if (bh->b_blocknr >= block + len)
++					break;
++				clear_buffer_dirty(bh);
++				wait_on_buffer(bh);
++				clear_buffer_req(bh);
++next:
++				bh = bh->b_this_page;
++			} while (bh != head);
++unlock_page:
++			unlock_page(page);
++		}
++		pagevec_release(&pvec);
++		cond_resched();
++		index++;
++	}
++}
++EXPORT_SYMBOL(clean_bdev_aliases);
++
  /*
-  * Handle EOFBLOCKS_FL flag, clearing it if necessary
-  */
-@@ -4121,9 +4113,8 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
- 	 * new.
- 	 */
- 	if (allocated > map->m_len) {
--		unmap_underlying_metadata_blocks(inode->i_sb->s_bdev,
--					newblock + map->m_len,
--					allocated - map->m_len);
-+		clean_bdev_aliases(inode->i_sb->s_bdev, newblock + map->m_len,
-+				   allocated - map->m_len);
- 		allocated = map->m_len;
- 	}
- 	map->m_len = allocated;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9c064727ed62..7c7cc4ae4b8e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -654,12 +654,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		if (flags & EXT4_GET_BLOCKS_ZERO &&
- 		    map->m_flags & EXT4_MAP_MAPPED &&
- 		    map->m_flags & EXT4_MAP_NEW) {
--			ext4_lblk_t i;
--
--			for (i = 0; i < map->m_len; i++) {
--				unmap_underlying_metadata(inode->i_sb->s_bdev,
--							  map->m_pblk + i);
--			}
-+			clean_bdev_aliases(inode->i_sb->s_bdev, map->m_pblk,
-+					   map->m_len);
- 			ret = ext4_issue_zeroout(inode, map->m_lblk,
- 						 map->m_pblk, map->m_len);
- 			if (ret) {
-@@ -2360,11 +2356,8 @@ static int mpage_map_one_extent(handle_t *handle, struct mpage_da_data *mpd)
+  * Size is a power-of-two in the range 512..PAGE_SIZE,
+  * and the case we care about most is PAGE_SIZE.
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index ebbacd14d450..9c9c73ce7d4f 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -169,6 +169,8 @@ void invalidate_inode_buffers(struct inode *);
+ int remove_inode_buffers(struct inode *inode);
+ int sync_mapping_buffers(struct address_space *mapping);
+ void unmap_underlying_metadata(struct block_device *bdev, sector_t block);
++void clean_bdev_aliases(struct block_device *bdev, sector_t block,
++			sector_t len);
  
- 	BUG_ON(map->m_len == 0);
- 	if (map->m_flags & EXT4_MAP_NEW) {
--		struct block_device *bdev = inode->i_sb->s_bdev;
--		int i;
+ void mark_buffer_async_write(struct buffer_head *bh);
+ void __wait_on_buffer(struct buffer_head *);
+-- 
+2.6.6
+
