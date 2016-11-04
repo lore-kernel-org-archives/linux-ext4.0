@@ -1,109 +1,97 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC] A proposal for adding case insensitive lookups to ext4
-Date: Fri, 4 Nov 2016 17:51:05 -0400
-Message-ID: <20161104215105.waabpcf7zganrdbr@thunk.org>
-References: <20161103172842.q7avc7rztny3zndd@thunk.org>
- <E33408BD-68CC-49E4-9B32-EC06DB057509@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, guy@linux.com,
-        jra@google.com, drosen@google.com
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Richacl and ext4 vs. xfs
+Date: Fri, 4 Nov 2016 16:48:05 -0600
+Message-ID: <D3B85625-6E65-42A4-9935-17D5C9D65414@dilger.ca>
+References: <CAH2r5msxM2spe2vH-mvrL-8MbYaaiAaQFU=Jhy_53NCLb079xQ@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_75FE99F5-FF3B-414D-A9B1-90E1A0EF8D7E"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: samba-technical <samba-technical@lists.samba.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Steve French <smfrench@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50714 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753302AbcKDVvP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 4 Nov 2016 17:51:15 -0400
-Content-Disposition: inline
-In-Reply-To: <E33408BD-68CC-49E4-9B32-EC06DB057509@dilger.ca>
+Received: from mail-it0-f51.google.com ([209.85.214.51]:38213 "EHLO
+        mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752056AbcKDWsK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Nov 2016 18:48:10 -0400
+Received: by mail-it0-f51.google.com with SMTP id q124so12449038itd.1
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Nov 2016 15:48:09 -0700 (PDT)
+In-Reply-To: <CAH2r5msxM2spe2vH-mvrL-8MbYaaiAaQFU=Jhy_53NCLb079xQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 04, 2016 at 10:14:03AM -0600, Andreas Dilger wrote:
-> > 2.  In ext4_lookup(), if case insensitivity is enabled, and the
-> > directory lookup does not succeed, fall back to a linear search of the
-> > directory using using a case insensitive compare.  (This is slow, but
-> > it's faster compared to doing this in userspace).
+
+--Apple-Mail=_75FE99F5-FF3B-414D-A9B1-90E1A0EF8D7E
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+[added linux-ext4 to CC list]
+
+On Nov 4, 2016, at 1:19 PM, Steve French <smfrench@gmail.com> wrote:
 > 
-> Does it make sense to flag directories with whether entries are inserted
-> with the case-insensitive hash?  That allows the common case of having
-> case insensitivity always enabled or disabled working optimally.  Falling
-> back to linear search for every negative lookup would be prohibitive for
-> large directories.
+> Andreas,
+> I had been working on getting some VMs together to experiment with a
+> few different Richacl configurations and it looks like the e2fsprogs
+> git hub repo with richacl enhanced ext4 utilities may need to be
+> updated or have an incompatibility with current kernels (See e2fsprogs
+> github link at http://www.bestbits.at/richacl/ ).  XFS worked ok.
+> 
+> Fedora 24 Workstation, created two extra disks
+> /dev/sdb for xfs
+> /dev/sdc for ext4
+> 
+> Built and installed Andreas's 4.9.0-rc1 based kernel richacl branch
+> and the other repos (xfsprogs, richacl etc.).    Had no problem
+> formatting and using /dev/sdb1 as xfs, but once I installed e2fsprogs
+> from Andreas's tree I couldn't boot the system (removed e2fsprogs and
+> the ext4 partition and booted fine).  With Andreas's e2fsprogs I
+> couldn't boot 4.9.0-rc1
 
-I'm proposing that we not make any on-disk format changes for now.
-It's true that this means that we need to degrade to a O(N) brute
-force search, and that it is undefined if there are two files that are
-the same when case folding is enabled (e.g., if there is both a
-Makefile and makefile in the directory).
+What version of e2fsprogs is (the other) Andreas' tree based on?  The
+newer e2fsprogs-1.43 has support for metadata checksums, but this should
+be off by default in the released version.  The testing version had it
+enabled by default.
 
-However, the horrible hacks that people have been using have these
-problems *already*.  Doing it in the kernel has a number of
-advantages: (1) it's faster since the FUSE hack or the userspace hack
-doesn't have to transfer the contents of the directory to userspace to
-do the case insensitive search, and (2) the O(N) search only happens
-in the cold cache case since we can rely on the dcache to cache the
-case-folded filename.  So it's far better than especially the FUSE and
-Samba implementations of case-folded lookups that I've seen.
+With the working e2fsprogs, you could run:
+
+ dumpe2fs -h /dev/sdb1 | grep -i feature
+
+and see what features are enabled (in particular metadata_csum, and maybe
+if the RichACL has its own feature flag)?
+
+Cheers, Andreas
 
 
-> What happens if filenames that collide after case folding are already
-> existing in the filesystem
 
-As in the current schemes, it's undefined which file you get.
 
-In practice it doesn't seem to be an issue since very often the
-directory starts empty and all of the file creates would be done in a
-case insensitive fashion.
 
-> Is this conflating the htree ASCII case folding problem with Unicode?
-> It would still be possible to insert names into the htree using the hash
-> of the ASCII-folded names, regardless of what is done for Unicode folding.
-> Changing the folding method would make the filesystem slow with large
-> directories (possibly unusable for very large directories), but that could
-> be fixed by running "e2fsck -fD" on the filesystem to reindex directories.
 
-Well, the issue is that I assume the ASCII case folding is not going
-to be long-term acceptible.  So sooner or later someone is going to
-want to try to insert a Unicode-8 case folding system into the kernel.
-I just don't want to have to deal with that mess.  (I don't get paid
-enough to deal with I18N, so this is going to be a situation of
-'patches gratefully accepted').  So committing to an on-disk format
-when eventually people will want to add Unicode seems like more work
-than it's worth.
+--Apple-Mail=_75FE99F5-FF3B-414D-A9B1-90E1A0EF8D7E
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
 
-Eventually if we do want to use a case insensitive hash for the
-hash_tree, we'd have to add a new read-only feature, store the case
-folding algorithm used in the superblock, and then handle the
-conversion cases with tune2fs and/or e2fsck -fD, etc.  That's all a
-huge amount of work, and see previous comments of I'm not getting paid
-enough to deal with I18N.  So it's very likely that we wouldn't
-support converting from ASCII to Unicode 8 (again, unless someone
-wants to send me patches), or deal with what happens some number of
-years from now when the Unicode consortium publishes Unicode 9 (e.g.,
-how quickly do we need to support Unicode 9, etc.)
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
 
-It's basically a question of tradeing off developer time with fast
-lookups when case insensitivity is turned on and the case is coming
-from the user (as opposed to coming from readdir) and the case is
-incorrect.  In the past, we've let the perfect be the enemy of the
-good.   And getting "perfect" is a massive pain in the tuckus.
+iQIVAwUBWB0QJXKl2rkXzB/gAQhY6Q//WsFh3qtXviXcWghVesgRgXxedHMdzEK+
+qV9yS/Qf0tz8cYK3jRanwKetwYMUwGuRgmW8OiGL9AmrS09XHuNu57ZB5VNt4l1O
+rrPumeJZ7iut+l5hZrPSUJw5InxxDrKdJvdklv5hQYwaumM0IprjIPctEn+cIi3L
+T4nwVUfrLELH9BZtJhoOIMDjQ/hfc1NuR+Upg5FHLSR3ZVJKB7d37AOXa5pC6l+T
+DJvmCV+hShbFiImAYG1sReUU/rTHkuz22QeKfYCqAqT8JtCrgl7/dRoSWB35m9ou
+SFyOPFSuYIlyd8CguFtUzOCVWTSIHIXL6zjT/yKCvWxy8xKDF2XK0Z9k/6kkkiV/
+DcZb1V3R5a1CedGCPjuC2Wpc43cXSWMQPlI+EpaoO+HASCoJVxPBaAixQ+dGHAbo
+rexBh2JT/A9jhmgWOkYnjmK7hFrFVxaFyQHKwYSJCTF1T8O+kfeAgoXxxV6u/QT3
+Ead6ZtHcQqH8xPvyi1y3Dkk1UDobMZCk4AD2PFp3dJb8CuZ56h/vUplLhVHeXdJn
+TsjWJTwnsnqJTa/Kzk0UQbiARCXbszrFNno/J9E+dJBNYMLx4cHdc5Y+8XDpZafB
+DmCB9hSwuMi9Z7UKJgrdimwI75y2XWObuc1FbwX3lHsDldi0FZXsXmshE9LmBPiD
+JE5fuHIueTs=
+=Cy85
+-----END PGP SIGNATURE-----
 
-So a very explicit goal in this proposal is to do something very low
-effort, and not painting ourselves into the corner.  Which is why
-doing something which does not have any on-disk format changes was a
-key part of the design.
-
-If someone wants to do something "right", which means e2fsprogs and
-kernel changes, getting the Unicode translation code into the kernel
-(and dealing with the bikeshedding that will probably happen when we
-try to get generic Unicode support into the kernel), and that someone
-is a reasonably experienced ext4 developer so I'm not forced to
-reimplement prototype code, I'm certainly willing to entertain the
-discussion.  But the main reason why we havne't had this for decades
-was because (a) at least initially the people who ext4 to support case
-folding wanted us to support mutliple codepages instead of just
-Unicode/UTF-8, and (b) most of the ext4 developers aren't paid enough
-to deal with I18N.  :-)
-
-     	    	 	    	   	       - Ted
+--Apple-Mail=_75FE99F5-FF3B-414D-A9B1-90E1A0EF8D7E--
