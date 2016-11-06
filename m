@@ -1,49 +1,62 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: Re: [RFC 0/6] vfs: Add timestamp range check support
-Date: Sun, 6 Nov 2016 13:14:05 -0800
-Message-ID: <CABeXuvq5LyREPV1OqFvXb7HKXxQ9hQBh4G5oYTg-jchRwKa-EA@mail.gmail.com>
-References: <1478099096-25637-1-git-send-email-deepa.kernel@gmail.com>
- <1206C36E-9CB4-47B3-A891-8EA94C3220E0@dilger.ca> <CABeXuvoCANJohBWy4mpJFiYvJj0XNHKVpW1RWhXVrd9ZjT5FSQ@mail.gmail.com>
- <147897712.8Iuj6e9dPp@wuerfel>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 187051] "orphan list check failed" error in ext4
+Date: Sun, 06 Nov 2016 23:48:20 +0000
+Message-ID: <bug-187051-13602-vfCnJwPQ8L@https.bugzilla.kernel.org/>
+References: <bug-187051-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        y2038 Mailman List <y2038@lists.linaro.org>,
-        linux-afs@lists.infradead.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:34498 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750727AbcKFVOG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Nov 2016 16:14:06 -0500
-In-Reply-To: <147897712.8Iuj6e9dPp@wuerfel>
+Received: from mail.kernel.org ([198.145.29.136]:44734 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751175AbcKFXsY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 6 Nov 2016 18:48:24 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id C4AA12026D
+        for <linux-ext4@vger.kernel.org>; Sun,  6 Nov 2016 23:48:22 +0000 (UTC)
+Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
+        by mail.kernel.org (Postfix) with ESMTP id B9F392025A
+        for <linux-ext4@vger.kernel.org>; Sun,  6 Nov 2016 23:48:20 +0000 (UTC)
+In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 6, 2016 at 12:28 PM, Arnd Bergmann <arnd@arndb.de> wrote:
-> On Sunday, November 6, 2016 9:44:33 AM CET Deepa Dinamani wrote:
->> I will post xfs tests that validate mount and range checking.
->> I will keep the policy same as what the RFC suggests for now.
->>
->> Clamping can be verified once vfs is transitioned to using time64_t.
->
-> Won't it already work as expected on 64-bit architectures as they
-> have a 64-bit time_t?
+https://bugzilla.kernel.org/show_bug.cgi?id=187051
 
-Yes, on 64 bit architectures, it should work fine.
-32 bit machines will have wrong clamped timestamps though for some filesystems.
+Theodore Tso <tytso@mit.edu> changed:
 
-I can post a test for clamping that only works on 64 bit machines.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-Thanks,
--Deepa
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+We really badly need the logs to be able to understand more of what's going on.
+
+This error doesn't represent an on-disk corruption, but rather an inconsistency
+in an in-memory data structure.  As such, reformatting and reloading from
+backups wasn't necessary, and it's not surprising e2fsck didn't find anything.
+
+What the error means is that at the time when the kernel tried to release an
+inode from memory, it was apparently on the orphan linked list.   This is a
+"should never happen" situation, and indicates either a kernel bug in ext4, a
+hardware induced memory bit-flip, or a kernel bug somewhere else that involved
+a wild pointer dereference that corrupted the data structure in question.  This
+is why we really need the logs to see what might have happened.   The dump of
+the data structure is critical here.
+
+It doesn't make sense that the inode "points to a folder in /usr/share".  Do
+you mean that the inode literally corresponds to a directory?    Directories
+never are on the orphan list; only regular files, and only when they are being
+deleted or truncated, or a few other specialized circumstances.   And once the
+deletion or truncation is completed, they are removed from the orphan list, as
+well as the linked list.   So something is really wrong, and the logs would be
+very helpful to try to figure out what might be going on.
+
+The good news is your data shouldn't be at risk, and if you can come up with a
+solid reproduction case, that would be especially helpful, especially if we can
+reproduce it on another machine.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
