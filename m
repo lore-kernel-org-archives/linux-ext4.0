@@ -1,62 +1,90 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 187051] "orphan list check failed" error in ext4
-Date: Sun, 06 Nov 2016 23:48:20 +0000
-Message-ID: <bug-187051-13602-vfCnJwPQ8L@https.bugzilla.kernel.org/>
-References: <bug-187051-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC] A proposal for adding case insensitive lookups to ext4
+Date: Mon, 7 Nov 2016 10:57:22 +1100
+Message-ID: <20161106235722.GG28177@dastard>
+References: <20161103172842.q7avc7rztny3zndd@thunk.org>
+ <E33408BD-68CC-49E4-9B32-EC06DB057509@dilger.ca>
+ <20161104215105.waabpcf7zganrdbr@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        guy@linux.com, jra@google.com, drosen@google.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:44734 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751175AbcKFXsY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 6 Nov 2016 18:48:24 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id C4AA12026D
-        for <linux-ext4@vger.kernel.org>; Sun,  6 Nov 2016 23:48:22 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id B9F392025A
-        for <linux-ext4@vger.kernel.org>; Sun,  6 Nov 2016 23:48:20 +0000 (UTC)
-In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:7801 "EHLO
+        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751146AbcKFX5x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Nov 2016 18:57:53 -0500
+Content-Disposition: inline
+In-Reply-To: <20161104215105.waabpcf7zganrdbr@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=187051
+On Fri, Nov 04, 2016 at 05:51:05PM -0400, Theodore Ts'o wrote:
+> On Fri, Nov 04, 2016 at 10:14:03AM -0600, Andreas Dilger wrote:
+> > > 2.  In ext4_lookup(), if case insensitivity is enabled, and the
+> > > directory lookup does not succeed, fall back to a linear search of the
+> > > directory using using a case insensitive compare.  (This is slow, but
+> > > it's faster compared to doing this in userspace).
+> > 
+> > Does it make sense to flag directories with whether entries are inserted
+> > with the case-insensitive hash?  That allows the common case of having
+> > case insensitivity always enabled or disabled working optimally.  Falling
+> > back to linear search for every negative lookup would be prohibitive for
+> > large directories.
+> 
+> I'm proposing that we not make any on-disk format changes for now.
+> It's true that this means that we need to degrade to a O(N) brute
+> force search, and that it is undefined if there are two files that are
+> the same when case folding is enabled (e.g., if there is both a
+> Makefile and makefile in the directory).
 
-Theodore Tso <tytso@mit.edu> changed:
+FYI, avoiding having to degrade to brute-force searches is why XFS
+added a mkfs option for ascii-ci support.  It is there to indicate
+that the directory name hashes are lower-case, case-insensitive
+hashes on disk. This means that all case versions of the filename
+hash to the same value and collisions can be resolved without
+changing any of the existing search code.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+We did this with a simple abstraction:
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-We really badly need the logs to be able to understand more of what's going on.
+static struct xfs_nameops xfs_ascii_ci_nameops = {
+        .hashname       = xfs_ascii_ci_hashname,
+	.compname       = xfs_ascii_ci_compname,
+};
 
-This error doesn't represent an on-disk corruption, but rather an inconsistency
-in an in-memory data structure.  As such, reformatting and reloading from
-backups wasn't necessary, and it's not surprising e2fsck didn't find anything.
+Where ->hashname() calculates the hash, and ->compname() compares
+the hash on disk for a match during lookup.
 
-What the error means is that at the time when the kernel tried to release an
-inode from memory, it was apparently on the orphan linked list.   This is a
-"should never happen" situation, and indicates either a kernel bug in ext4, a
-hardware induced memory bit-flip, or a kernel bug somewhere else that involved
-a wild pointer dereference that corrupted the data structure in question.  This
-is why we really need the logs to see what might have happened.   The dump of
-the data structure is critical here.
+Otherwise, the only difference is the lookup path to instantiate the
+dentry differently depending on whether it was an exact match or CI
+match (see xfs_vn_ci_lookup()).
 
-It doesn't make sense that the inode "points to a folder in /usr/share".  Do
-you mean that the inode literally corresponds to a directory?    Directories
-never are on the orphan list; only regular files, and only when they are being
-deleted or truncated, or a few other specialized circumstances.   And once the
-deletion or truncation is completed, they are removed from the orphan list, as
-well as the linked list.   So something is really wrong, and the logs would be
-very helpful to try to figure out what might be going on.
+As on-disk changes go, this one should be relatively simple as
+there is no actual structural change. :P
 
-The good news is your data shouldn't be at risk, and if you can come up with a
-solid reproduction case, that would be especially helpful, especially if we can
-reproduce it on another machine.
+> If someone wants to do something "right", which means e2fsprogs and
+> kernel changes, getting the Unicode translation code into the kernel
+> (and dealing with the bikeshedding that will probably happen when we
+> try to get generic Unicode support into the kernel), and that someone
 
+Already happened once with an attempt to get unicode case folding
+into XFS. Unfortunately, SGI disappeared before review was completed
+and so it never got finalised and merged. However, the code is out
+there and so we have pretty much a full implementation of unicode
+case folding code out there. The v3 RFC (which contains links back
+to the previous two versions and discussions) can be found here:
+
+http://oss.sgi.com/archives/xfs/2014-10/msg00067.html
+
+That's the place to start if people want to pick this up - I'd
+suggest a generic interface similar to what has been done with the
+fs encryption code is the way to proceed with this....
+
+Cheers,
+
+Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
