@@ -1,53 +1,88 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 187051] "orphan list check failed" error in ext4
-Date: Mon, 07 Nov 2016 10:40:32 +0000
-Message-ID: <bug-187051-13602-MNNoK5uJPZ@https.bugzilla.kernel.org/>
-References: <bug-187051-13602@https.bugzilla.kernel.org/>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
+ do_generic_file_read()
+Date: Mon, 7 Nov 2016 14:13:05 +0300
+Message-ID: <20161107111305.GB13280@node.shutemov.name>
+References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
+ <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
+ <20161013093313.GB26241@quack2.suse.cz>
+ <20161031181035.GA7007@node.shutemov.name>
+ <20161101163940.GA5459@quack2.suse.cz>
+ <20161102143612.GA4790@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:35844 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750980AbcKGKkh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 7 Nov 2016 05:40:37 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id A8A6E20222
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2016 10:40:34 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-        by mail.kernel.org (Postfix) with ESMTP id 7EBCD201F2
-        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2016 10:40:32 +0000 (UTC)
-In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20161102143612.GA4790@infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=187051
+On Wed, Nov 02, 2016 at 07:36:12AM -0700, Christoph Hellwig wrote:
+> On Tue, Nov 01, 2016 at 05:39:40PM +0100, Jan Kara wrote:
+> > I'd also note that having PMD-sized pages has some obvious disadvantages as
+> > well:
+> > 
+> > 1) I'm not sure buffer head handling code will quite scale to 512 or even
+> > 2048 buffer_heads on a linked list referenced from a page. It may work but
+> > I suspect the performance will suck. 
+> 
+> buffer_head handling always sucks.  For the iomap based bufferd write
+> path I plan to support a buffer_head-less mode for the block size ==
+> PAGE_SIZE case in 4.11 latest, but if I get enough other things of my
+> plate in time even for 4.10.  I think that's the right way to go for
+> THP, especially if we require the fs to allocate the whole huge page
+> as a single extent, similar to the DAX PMD mapping case.
+> 
+> > 2) PMD-sized pages result in increased space & memory usage.
+> 
+> How so?
+> 
+> > 3) In ext4 we have to estimate how much metadata we may need to modify when
+> > allocating blocks underlying a page in the worst case (you don't seem to
+> > update this estimate in your patch set). With 2048 blocks underlying a page,
+> > each possibly in a different block group, it is a lot of metadata forcing
+> > us to reserve a large transaction (not sure if you'll be able to even
+> > reserve such large transaction with the default journal size), which again
+> > makes things slower.
+> 
+> As said above I think we should only use huge page mappings if there is
+> a single underlying extent, same as in DAX to keep the complexity down.
 
---- Comment #2 from Hussam Al-Tayeb <me@hussam.eu.org> ---
-I will post a backtrace of the crash if it happens again.
-I had written down the output of the inode check on a paper.
+It looks like a huge limitation to me.
 
-debugfs -R 'ncheck 54264316' /dev/dm-0 
-debugfs 1.43.3 (04-Sep-2016)
-Inode Pathname
-54264316 /usr/share/help/oc/totem/figures
+> > 4) As you have noted some places like write_begin() still depend on 4k
+> > pages which creates a strange mix of places that use subpages and that use
+> > head pages.
+> 
+> Just use the iomap bufferd I/O code and all these issues will go away.
 
-I should be more or less correct since I wrote the whole thing on paper.
-The folder itself exists.
+Not really.
 
-The only thing I remember which may have touched this folder since it was last
-modified on the 25th of october is that I rebooted to the rescue usb disk once
-and did a e4defrag. but I do no even remember the date when I did so.
-
-tune2fs -l /dev/mapper/root says:
-Mount count:              1
-Maximum mount count:      1
-My hard disks are all fscked at reboots.
-
-I will monitor if this happens again and post a full log.
-Thank you for the instructions.
+I'm looking onto iomap_write_actor(): we still calculate 'offset' and
+'bytes' based on PAGE_SIZE before we even get the page.
+This way we limit outself to PAGE_SIZE per-iteration.
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+ Kirill A. Shutemov
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
