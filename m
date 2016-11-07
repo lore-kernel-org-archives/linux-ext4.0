@@ -1,47 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC] A proposal for adding case insensitive lookups to ext4
-Date: Mon, 7 Nov 2016 00:42:42 -0500
-Message-ID: <20161107054242.m6q4rufasjpysnvp@thunk.org>
-References: <20161103172842.q7avc7rztny3zndd@thunk.org>
- <E33408BD-68CC-49E4-9B32-EC06DB057509@dilger.ca>
- <20161104215105.waabpcf7zganrdbr@thunk.org>
- <20161106235722.GG28177@dastard>
- <20161107001456.muvwkwlqxucrzpzi@thunk.org>
- <20161107043035.GH28177@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        guy@linux.com, jra@google.com, drosen@google.com, hch@infradead.org
-To: Dave Chinner <david@fromorbit.com>
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: ext4_mb_seq_groups_show: Fix stack memory corruption
+Date: Mon,  7 Nov 2016 12:15:41 +0530
+Message-ID: <1478501141-15651-1-git-send-email-chandan@linux.vnet.ibm.com>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        jack@suse.cz, adilger@dilger.ca
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54444 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750731AbcKGFmt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 7 Nov 2016 00:42:49 -0500
-Content-Disposition: inline
-In-Reply-To: <20161107043035.GH28177@dastard>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:36155 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751226AbcKGGpv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Nov 2016 01:45:51 -0500
+Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.17/8.16.0.17) with SMTP id uA76hund117604
+        for <linux-ext4@vger.kernel.org>; Mon, 7 Nov 2016 01:45:51 -0500
+Received: from e36.co.us.ibm.com (e36.co.us.ibm.com [32.97.110.154])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 26j5qvntrc-1
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Nov 2016 01:45:50 -0500
+Received: from localhost
+        by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Sun, 6 Nov 2016 23:45:50 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 07, 2016 at 03:30:35PM +1100, Dave Chinner wrote:
-> 
-> OK, as long people are ok with things going wonky when the
-> filesystem is mounted without those mount options, I'm not really
-> fussed...
+The number of 'counters' elements needed in 'struct sg' is
+super_block->s_blocksize_bits + 2. Presently we have 16 'counters'
+elements in the array. This is insufficient for block sizes >= 32k. In
+such cases the memcpy operation performed in ext4_mb_seq_groups_show()
+would cause stack memory corruption.
 
-There are apparently NAS boxes that export the same directory with
-case insensitive Samba and case sensitive NFS exports at the same
-time, which would have all of these problems, and people apparently
-don't complain much.
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+---
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I agree we need to warn people in the documentation that if the file
-system is initially mounted w/o case folding, and they create files
-such as Readme and README in the same directory, and then mount the
-file system with case folding, which file they get will be a bit Wonky
---- specifically, "Readme" and "README" will get the file which is an
-exact match, but it is undefined which file "ReAdMe" will return.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a937ac7..67e6fcb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2287,7 +2287,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	struct ext4_group_info *grinfo;
+ 	struct sg {
+ 		struct ext4_group_info info;
+-		ext4_grpblk_t counters[16];
++		ext4_grpblk_t counters[16 + 2];
+ 	} sg;
+ 
+ 	group--;
+-- 
+2.5.5
 
-Personally, I don't plan to lose any sleep over the issue.  :-)
-
-	      	    	    	     	   - Ted
