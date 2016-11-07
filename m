@@ -1,49 +1,53 @@
-From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH V2 linux-next] ext4: fix block_validity definition
-Date: Mon,  7 Nov 2016 08:25:40 +0100
-Message-ID: <1478503540-4003-1-git-send-email-fabf@skynet.be>
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Fabian Frederick <fabf@skynet.be>
-To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 187051] "orphan list check failed" error in ext4
+Date: Mon, 07 Nov 2016 10:40:32 +0000
+Message-ID: <bug-187051-13602-MNNoK5uJPZ@https.bugzilla.kernel.org/>
+References: <bug-187051-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:35844 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750980AbcKGKkh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 7 Nov 2016 05:40:37 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id A8A6E20222
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2016 10:40:34 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id 7EBCD201F2
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Nov 2016 10:40:32 +0000 (UTC)
+In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Fix ext4 documentation according to commit 45f1a9c3f63d
-("ext4: enable block_validity by default")
+https://bugzilla.kernel.org/show_bug.cgi?id=187051
 
-Also fix some typos.
+--- Comment #2 from Hussam Al-Tayeb <me@hussam.eu.org> ---
+I will post a backtrace of the crash if it happens again.
+I had written down the output of the inode check on a paper.
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
-V2: Replace beginning of the definition (suggested by Darrick). 
+debugfs -R 'ncheck 54264316' /dev/dm-0 
+debugfs 1.43.3 (04-Sep-2016)
+Inode Pathname
+54264316 /usr/share/help/oc/totem/figures
 
- Documentation/filesystems/ext4.txt | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+I should be more or less correct since I wrote the whole thing on paper.
+The folder itself exists.
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 6c0108e..1d92713 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -351,14 +351,13 @@ nouid32			Disables 32-bit UIDs and GIDs.  This is for
- 			interoperability  with  older kernels which only
- 			store and expect 16-bit values.
- 
--block_validity		This options allows to enables/disables the in-kernel
-+block_validity(*)	These options enable or disable the in-kernel
- noblock_validity	facility for tracking filesystem metadata blocks
- 			within internal data structures. This allows multi-
- 			block allocator and other routines to quickly locate
- 			extents which might overlap with filesystem metadata
--			blocks. This option is intended for debugging
--			purposes and since it negatively affects the
--			performance, it is off by default.
-+			blocks. Initially intended for debugging, it's now
-+			enabled by default.
- 
- dioread_lock		Controls whether or not ext4 should use the DIO read
- dioread_nolock		locking. If the dioread_nolock option is specified
+The only thing I remember which may have touched this folder since it was last
+modified on the 25th of october is that I rebooted to the rescue usb disk once
+and did a e4defrag. but I do no even remember the date when I did so.
+
+tune2fs -l /dev/mapper/root says:
+Mount count:              1
+Maximum mount count:      1
+My hard disks are all fscked at reboots.
+
+I will monitor if this happens again and post a full log.
+Thank you for the instructions.
+
 -- 
-2.7.4
+You are receiving this mail because:
+You are watching the assignee of the bug.
