@@ -1,47 +1,52 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC] A proposal for adding case insensitive lookups to ext4
-Date: Mon, 7 Nov 2016 15:30:35 +1100
-Message-ID: <20161107043035.GH28177@dastard>
-References: <20161103172842.q7avc7rztny3zndd@thunk.org>
- <E33408BD-68CC-49E4-9B32-EC06DB057509@dilger.ca>
- <20161104215105.waabpcf7zganrdbr@thunk.org>
- <20161106235722.GG28177@dastard>
- <20161107001456.muvwkwlqxucrzpzi@thunk.org>
+From: Andy Lutomirski <luto@amacapital.net>
+Subject: Re: [PATCH 1/2] fscrypto: don't use on-stack buffer for filename encryption
+Date: Sun, 6 Nov 2016 21:00:55 -0800
+Message-ID: <CALCETrVL1pz7UwCoeKm9ZqwqAx5bxy31V=xe_si2r33M2cREiw@mail.gmail.com>
+References: <1478210582-86338-1-git-send-email-ebiggers@google.com> <20161105151349.e5ap547uno3hfit7@kmo-pixel>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        guy@linux.com, jra@google.com, drosen@google.com, hch@infradead.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:4236 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751187AbcKGEay (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Nov 2016 23:30:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20161107001456.muvwkwlqxucrzpzi@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-crypto@vger.kernel.org, Eric Biggers <ebiggers@google.com>,
+        Richard Weinberger <richard@nod.at>, jaegeuk@kernel.org,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "Ted Ts'o" <tytso@mit.edu>
+To: Kent Overstreet <kent.overstreet@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20161105151349.e5ap547uno3hfit7@kmo-pixel>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Nov 06, 2016 at 07:14:56PM -0500, Theodore Ts'o wrote:
-> I talked to Christoph at the Plumbers Closing party, and he suggested
-> that we get something simple in first which (a) assumes no on-disk
-> format changes, (b) does everything in the VFS layer, by using a
-> MS_CASE_FOLD, uses a case-insensitive dentry hash, and which degrades
-> to a brute force search in the VFS by using readdir interfaces if the
-> direct lookup does not succeed, and (c) at least initially assumes
-> only ASCII.
-> 
-> This could be extended by individual file systems who are willing to
-> make on-disk format changes.
+On Nov 5, 2016 8:13 AM, "Kent Overstreet" <kent.overstreet@gmail.com> wrote:
+>
+> On Thu, Nov 03, 2016 at 03:03:01PM -0700, Eric Biggers wrote:
+> > With the new (in 4.9) option to use a virtually-mapped stack
+> > (CONFIG_VMAP_STACK), stack buffers cannot be used as input/output for
+> > the scatterlist crypto API because they may not be directly mappable to
+> > struct page.  For short filenames, fname_encrypt() was encrypting a
+> > stack buffer holding the padded filename.  Fix it by encrypting the
+> > filename in-place in the output buffer, thereby making the temporary
+> > buffer unnecessary.
+> >
+> > This bug could most easily be observed in a CONFIG_DEBUG_SG kernel
+> > because this allowed the BUG in sg_set_buf() to be triggered.
+> >
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+>
+> > -             alloc_buf = kmalloc(ciphertext_len, GFP_NOFS);
+> > -             if (!alloc_buf)
+> > -                     return -ENOMEM;
+> > -             workbuf = alloc_buf;
+>
+> Vmalloc memory does have struct pages - you just need to use vmalloc_to_page()
+> instead of virt_to_page. Look at drivers/md/bcache/util.c bch_bio_map() if you
+> want an example.
+>
+> It would be better to just fix the sg code to handle vmalloc memory, instead of
+> adding a kmalloc() that can fail (and an error path that inevitably won't be
+> tested).
 
-OK, as long people are ok with things going wonky when the
-filesystem is mounted without those mount options, I'm not really
-fussed...
+Probably not, because (a) vmalloc_to_page is slow and (b) stack
+buffers can span physically noncontiguous pages.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I think it's best to either avoid stack buffers or to teach crypto about kiov.
