@@ -1,130 +1,150 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv3 15/41] filemap: handle huge pages in
- do_generic_file_read()
-Date: Mon, 7 Nov 2016 14:07:36 +0300
-Message-ID: <20161107110736.GA13280@node.shutemov.name>
-References: <20160915115523.29737-1-kirill.shutemov@linux.intel.com>
- <20160915115523.29737-16-kirill.shutemov@linux.intel.com>
- <20161013093313.GB26241@quack2.suse.cz>
- <20161031181035.GA7007@node.shutemov.name>
- <20161101163940.GA5459@quack2.suse.cz>
- <20161102083204.GB13949@node.shutemov.name>
- <20161103204012.GC24234@quack2.suse.cz>
+From: Richard Weinberger <richard@nod.at>
+Subject: Re: [PATCH 1/2] fscrypto: don't use on-stack buffer for filename
+ encryption
+Date: Mon, 7 Nov 2016 14:15:37 +0100
+Message-ID: <5e29849c-158b-0492-380e-7dc9fbef95df@nod.at>
+References: <1478210582-86338-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161103204012.GC24234@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-crypto@vger.kernel.org, tytso@mit.edu, jaegeuk@kernel.org,
+        luto@kernel.org
+To: Eric Biggers <ebiggers@google.com>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from b.ns.miles-group.at ([95.130.255.144]:44724 "EHLO radon.swed.at"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752759AbcKGNPl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 7 Nov 2016 08:15:41 -0500
+In-Reply-To: <1478210582-86338-1-git-send-email-ebiggers@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 03, 2016 at 09:40:12PM +0100, Jan Kara wrote:
-> On Wed 02-11-16 11:32:04, Kirill A. Shutemov wrote:
-> > Yes, buffer_head list doesn't scale. That's the main reason (along with 4)
-> > why syscall-based IO sucks. We spend a lot of time looking for desired
-> > block.
-> > 
-> > We need to switch to some other data structure for storing buffer_heads.
-> > Is there a reason why we have list there in first place?
-> > Why not just array?
-> > 
-> > I will look into it, but this sounds like a separate infrastructure change
-> > project.
+On 03.11.2016 23:03, Eric Biggers wrote:
+> With the new (in 4.9) option to use a virtually-mapped stack
+> (CONFIG_VMAP_STACK), stack buffers cannot be used as input/output for
+> the scatterlist crypto API because they may not be directly mappable to
+> struct page.  For short filenames, fname_encrypt() was encrypting a
+
+As Kent and Andy pointed out, they are but here are dragons.
+The pages can be non-linear and on platforms with different cache architectures
+extra flush operations may be needed.
+
+> stack buffer holding the padded filename.  Fix it by encrypting the
+> filename in-place in the output buffer, thereby making the temporary
+> buffer unnecessary.
 > 
-> As Christoph said iomap code should help you with that and make things
-> simpler. If things go as we imagine, we should be able to pretty much avoid
-> buffer heads. But it will take some time to get there.
-
-Just to clarify: is it show-stopper or we can live with buffer_head list
-for now?
-
-> > > 2) PMD-sized pages result in increased space & memory usage.
-> > 
-> > Space? Do you mean disk space? Not really: we still don't write beyond
-> > i_size or into holes.
-> > 
-> > Behaviour wrt to holes may change with mmap()-IO as we have less
-> > granularity, but the same can be seen just between different
-> > architectures: 4k vs. 64k base page size.
+> This bug could most easily be observed in a CONFIG_DEBUG_SG kernel
+> because this allowed the BUG in sg_set_buf() to be triggered.
 > 
-> Yes, I meant different granularity of mmap based IO. And I agree it isn't a
-> new problem but the scale of the problem is much larger with 2MB pages than
-> with say 64K pages. And actually the overhead of higher IO granularity of
-> 64K pages has been one of the reasons we have switched SLES PPC kernels
-> from 64K pages to 4K pages (we've got complaints from customers). 
-
-I guess fadvise()/madvise() hints for opt-in/opt-out should be good enough
-to deal with this. I probably need to wire them up.
-
-> > > 3) In ext4 we have to estimate how much metadata we may need to modify when
-> > > allocating blocks underlying a page in the worst case (you don't seem to
-> > > update this estimate in your patch set). With 2048 blocks underlying a page,
-> > > each possibly in a different block group, it is a lot of metadata forcing
-> > > us to reserve a large transaction (not sure if you'll be able to even
-> > > reserve such large transaction with the default journal size), which again
-> > > makes things slower.
-> > 
-> > I didn't saw this on profiles. And xfstests looks fine. I probably need to
-> > run them with 1k blocks once again.
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/crypto/fname.c | 53 +++++++++++++++++++++--------------------------------
+>  1 file changed, 21 insertions(+), 32 deletions(-)
 > 
-> You wouldn't see this in profiles - it is a correctness thing. And it won't
-> be triggered unless the file is heavily fragmented which likely does not
-> happen with any test in xfstests. If it happens you'll notice though - the
-> filesystem will just report error and shut itself down.
+> diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+> index 9a28133..9b774f4 100644
+> --- a/fs/crypto/fname.c
+> +++ b/fs/crypto/fname.c
+> @@ -39,65 +39,54 @@ static void fname_crypt_complete(struct crypto_async_request *req, int res)
+>  static int fname_encrypt(struct inode *inode,
+>  			const struct qstr *iname, struct fscrypt_str *oname)
+>  {
+> -	u32 ciphertext_len;
+>  	struct skcipher_request *req = NULL;
+>  	DECLARE_FS_COMPLETION_RESULT(ecr);
+>  	struct fscrypt_info *ci = inode->i_crypt_info;
+>  	struct crypto_skcipher *tfm = ci->ci_ctfm;
+>  	int res = 0;
+>  	char iv[FS_CRYPTO_BLOCK_SIZE];
+> -	struct scatterlist src_sg, dst_sg;
+> +	struct scatterlist sg;
+>  	int padding = 4 << (ci->ci_flags & FS_POLICY_FLAGS_PAD_MASK);
+> -	char *workbuf, buf[32], *alloc_buf = NULL;
+> -	unsigned lim;
+> +	unsigned int lim;
+> +	unsigned int cryptlen;
+>  
+>  	lim = inode->i_sb->s_cop->max_namelen(inode);
+>  	if (iname->len <= 0 || iname->len > lim)
+>  		return -EIO;
+>  
+> -	ciphertext_len = max(iname->len, (u32)FS_CRYPTO_BLOCK_SIZE);
+> -	ciphertext_len = round_up(ciphertext_len, padding);
+> -	ciphertext_len = min(ciphertext_len, lim);
+> +	/*
+> +	 * Copy the filename to the output buffer for encrypting in-place and
+> +	 * pad it with the needed number of NUL bytes.
+> +	 */
+> +	cryptlen = max_t(unsigned int, iname->len, FS_CRYPTO_BLOCK_SIZE);
+> +	cryptlen = round_up(cryptlen, padding);
+> +	cryptlen = min(cryptlen, lim);
+> +	memcpy(oname->name, iname->name, iname->len);
+> +	memset(oname->name + iname->len, 0, cryptlen - iname->len);
+>  
+> -	if (ciphertext_len <= sizeof(buf)) {
+> -		workbuf = buf;
+> -	} else {
+> -		alloc_buf = kmalloc(ciphertext_len, GFP_NOFS);
+> -		if (!alloc_buf)
+> -			return -ENOMEM;
+> -		workbuf = alloc_buf;
+> -	}
+> +	/* Initialize the IV */
+> +	memset(iv, 0, FS_CRYPTO_BLOCK_SIZE);
 
-Any suggestion how I can simulate this situation?
+You can initialize it with iv = {0} at the beginning such that you don't
+need the memset here.
 
-> > The numbers below generated with fio. The working set is relatively small,
-> > so it fits into page cache and writing set doesn't hit dirty_ratio.
-> > 
-> > I think the mmap performance should be enough to justify initial inclusion
-> > of an experimental feature: it useful for workloads that targets mmap()-IO.
-> > It will take time to get feature mature anyway.
-> 
-> I agree it will take time for feature to mature so I'me fine with
-> suboptimal performance in some cases. But I'm not fine with some of the
-> hacks you do currently because code maintenability is an issue even if
-> people don't actually use the feature...
+> -	/* Allocate request */
+> +	/* Set up the encryption request */
+>  	req = skcipher_request_alloc(tfm, GFP_NOFS);
+>  	if (!req) {
+>  		printk_ratelimited(KERN_ERR
+> -			"%s: crypto_request_alloc() failed\n", __func__);
+> -		kfree(alloc_buf);
+> +			"%s: skcipher_request_alloc() failed\n", __func__);
+>  		return -ENOMEM;
+>  	}
+>  	skcipher_request_set_callback(req,
+>  			CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+>  			fname_crypt_complete, &ecr);
+> +	sg_init_one(&sg, oname->name, cryptlen);
+> +	skcipher_request_set_crypt(req, &sg, &sg, cryptlen, iv);
+>  
+> -	/* Copy the input */
+> -	memcpy(workbuf, iname->name, iname->len);
+> -	if (iname->len < ciphertext_len)
+> -		memset(workbuf + iname->len, 0, ciphertext_len - iname->len);
+> -
+> -	/* Initialize IV */
+> -	memset(iv, 0, FS_CRYPTO_BLOCK_SIZE);
+> -
+> -	/* Create encryption request */
+> -	sg_init_one(&src_sg, workbuf, ciphertext_len);
+> -	sg_init_one(&dst_sg, oname->name, ciphertext_len);
+> -	skcipher_request_set_crypt(req, &src_sg, &dst_sg, ciphertext_len, iv);
+> +	/* Do the encryption */
+>  	res = crypto_skcipher_encrypt(req);
+>  	if (res == -EINPROGRESS || res == -EBUSY) {
+> +		/* Request is being completed asynchronously; wait for it */
+>  		wait_for_completion(&ecr.completion);
+>  		res = ecr.res;
+>  	}
+> -	kfree(alloc_buf);
+>  	skcipher_request_free(req);
+>  	if (res < 0) {
+>  		printk_ratelimited(KERN_ERR
+> @@ -105,7 +94,7 @@ static int fname_encrypt(struct inode *inode,
+>  		return res;
+>  	}
+>  
+> -	oname->len = ciphertext_len;
+> +	oname->len = cryptlen;
+>  	return 0;
+>  }
 
-Hm. Okay, I'll try to check what I can do to make it more maintainable.
-My worry is that it will make the patchset even bigger...
+Reviewed-by: Richard Weinberger <richard@nod.at>
 
-> > Configuration:
-> >  - 2x E5-2697v2, 64G RAM;
-> >  - INTEL SSDSC2CW24;
-> >  - IO request size is 4k;
-> >  - 8 processes, 512MB data set each;
-> 
-> The numbers indeed look interesting for mmaped case. Can you post the fio
-> cmdline? I'd like to compare profiles...
-
-	fio \
-		--directory=/mnt/ \
-		--name="$engine-$rw" \
-		--ioengine="$engine" \
-		--rw="$rw" \
-		--size=512M \
-		--invalidate=1 \
-		--numjobs=8 \
-		--runtime=60 \
-		--time_based \
-		--group_reporting
-
--- 
- Kirill A. Shutemov
+Thanks,
+//richard
