@@ -1,8 +1,9 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/11 v2] ext4: Convert ext4 DAX IO to iomap framework
-Date: Wed, 9 Nov 2016 10:17:39 +1100
-Message-ID: <20161108231739.GQ28177@dastard>
+Subject: Re: [PATCH 07/11] dax: Introduce IOMAP_FAULT flag
+Date: Wed, 9 Nov 2016 10:21:14 +1100
+Message-ID: <20161108232114.GR28177@dastard>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
+ <1478603297-11793-8-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
@@ -12,35 +13,21 @@ Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
+In-Reply-To: <1478603297-11793-8-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 08, 2016 at 12:08:06PM +0100, Jan Kara wrote:
-> Hello,
+On Tue, Nov 08, 2016 at 12:08:13PM +0100, Jan Kara wrote:
+> Introduce a flag telling iomap operations whether they are handling a
+> fault or other IO. That may influence behavior wrt inode size and
+> similar things.
 > 
-> this is a second revision of my patches to convert ext4 DAX IO paths to the new
-> iomap framework and removes the old bh-based DAX functions. As a result ext4
-> gains PMD page fault support, also some other minor bugs get fixed. The patch
-> set is based on Ross' DAX PMD page fault support series [1]. It passes xfstests
-> both in DAX and non-DAX mode.
-> 
-> I have pushed out updated version of these patches including the follow-up
-> DAX patches to:
-> 
-> git://get.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
-> 
-> for easy testing. Once Dave pushes out a stable branch with Ross' patches, we
-> pull those into ext4 tree and then pull these patches on top of that (provided
-> nobody will have other objections to the current series).
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Done:
+Looks fine.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git dax-4.10-iomap-pmd
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
 
-Cheers,
-
-Dave.
 -- 
 Dave Chinner
 david@fromorbit.com
