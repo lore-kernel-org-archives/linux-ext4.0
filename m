@@ -1,42 +1,153 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/11 v2] ext4: Convert ext4 DAX IO to iomap framework
-Date: Tue,  8 Nov 2016 12:08:06 +0100
-Message-ID: <1478603297-11793-1-git-send-email-jack@suse.cz>
+Subject: [PATCH 01/11] ext4: Factor out checks from ext4_file_write_iter()
+Date: Tue,  8 Nov 2016 12:08:07 +0100
+Message-ID: <1478603297-11793-2-git-send-email-jack@suse.cz>
+References: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         Ross Zwisler <ross.zwisler@linux.intel.com>,
         Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34457 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34464 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752961AbcKHLKE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1753126AbcKHLKE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 8 Nov 2016 06:10:04 -0500
+In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Factor out checks of 'from' and whether we are overwriting out of
+ext4_file_write_iter() so that the function is easier to follow.
 
-this is a second revision of my patches to convert ext4 DAX IO paths to the new
-iomap framework and removes the old bh-based DAX functions. As a result ext4
-gains PMD page fault support, also some other minor bugs get fixed. The patch
-set is based on Ross' DAX PMD page fault support series [1]. It passes xfstests
-both in DAX and non-DAX mode.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/file.c | 97 ++++++++++++++++++++++++++++++----------------------------
+ 1 file changed, 50 insertions(+), 47 deletions(-)
 
-I have pushed out updated version of these patches including the follow-up
-DAX patches to:
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2a822d30e73f..9facb4dc5c70 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -88,6 +88,51 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
+ 	return 0;
+ }
+ 
++/* Is IO overwriting allocated and initialized blocks? */
++static bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len)
++{
++	struct ext4_map_blocks map;
++	unsigned int blkbits = inode->i_blkbits;
++	int err, blklen;
++
++	if (pos + len > i_size_read(inode))
++		return false;
++
++	map.m_lblk = pos >> blkbits;
++	map.m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
++	blklen = map.m_len;
++
++	err = ext4_map_blocks(NULL, inode, &map, 0);
++	/*
++	 * 'err==len' means that all of the blocks have been preallocated,
++	 * regardless of whether they have been initialized or not. To exclude
++	 * unwritten extents, we need to check m_flags.
++	 */
++	return err == blklen && (map.m_flags & EXT4_MAP_MAPPED);
++}
++
++static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	ssize_t ret;
++
++	ret = generic_write_checks(iocb, from);
++	if (ret <= 0)
++		return ret;
++	/*
++	 * If we have encountered a bitmap-format file, the size limit
++	 * is smaller than s_maxbytes, which is for extent-mapped files.
++	 */
++	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
++		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++
++		if (iocb->ki_pos >= sbi->s_bitmap_maxbytes)
++			return -EFBIG;
++		iov_iter_truncate(from, sbi->s_bitmap_maxbytes - iocb->ki_pos);
++	}
++	return iov_iter_count(from);
++}
++
+ static ssize_t
+ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+@@ -98,7 +143,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	ssize_t ret;
+ 
+ 	inode_lock(inode);
+-	ret = generic_write_checks(iocb, from);
++	ret = ext4_write_checks(iocb, from);
+ 	if (ret <= 0)
+ 		goto out;
+ 
+@@ -114,53 +159,11 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		ext4_unwritten_wait(inode);
+ 	}
+ 
+-	/*
+-	 * If we have encountered a bitmap-format file, the size limit
+-	 * is smaller than s_maxbytes, which is for extent-mapped files.
+-	 */
+-	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+-		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+-
+-		if (iocb->ki_pos >= sbi->s_bitmap_maxbytes) {
+-			ret = -EFBIG;
+-			goto out;
+-		}
+-		iov_iter_truncate(from, sbi->s_bitmap_maxbytes - iocb->ki_pos);
+-	}
+-
+ 	iocb->private = &overwrite;
+-	if (o_direct) {
+-		size_t length = iov_iter_count(from);
+-		loff_t pos = iocb->ki_pos;
+-
+-		/* check whether we do a DIO overwrite or not */
+-		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
+-		    pos + length <= i_size_read(inode)) {
+-			struct ext4_map_blocks map;
+-			unsigned int blkbits = inode->i_blkbits;
+-			int err, len;
+-
+-			map.m_lblk = pos >> blkbits;
+-			map.m_len = EXT4_MAX_BLOCKS(length, pos, blkbits);
+-			len = map.m_len;
+-
+-			err = ext4_map_blocks(NULL, inode, &map, 0);
+-			/*
+-			 * 'err==len' means that all of blocks has
+-			 * been preallocated no matter they are
+-			 * initialized or not.  For excluding
+-			 * unwritten extents, we need to check
+-			 * m_flags.  There are two conditions that
+-			 * indicate for initialized extents.  1) If we
+-			 * hit extent cache, EXT4_MAP_MAPPED flag is
+-			 * returned; 2) If we do a real lookup,
+-			 * non-flags are returned.  So we should check
+-			 * these two conditions.
+-			 */
+-			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
+-				overwrite = 1;
+-		}
+-	}
++	/* Check whether we do a DIO overwrite or not */
++	if (o_direct && ext4_should_dioread_nolock(inode) && !unaligned_aio &&
++	    ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from)))
++		overwrite = 1;
+ 
+ 	ret = __generic_file_write_iter(iocb, from);
+ 	inode_unlock(inode);
+-- 
+2.6.6
 
-git://get.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
-
-for easy testing. Once Dave pushes out a stable branch with Ross' patches, we
-pull those into ext4 tree and then pull these patches on top of that (provided
-nobody will have other objections to the current series).
-
-Changes since v1:
-* Changed ext4_iomap_begin() and ext4_iomap_end() to not keep transaction
-  handle running between these two functions as that causes lock ordering
-  issues.
-
-								Honza
-
-[1] http://www.spinics.net/lists/linux-mm/msg115875.html
