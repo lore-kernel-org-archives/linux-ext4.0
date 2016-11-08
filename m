@@ -1,444 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/11] dax: Rip out get_block based IO support
-Date: Tue,  8 Nov 2016 12:08:17 +0100
-Message-ID: <1478603297-11793-12-git-send-email-jack@suse.cz>
-References: <1478603297-11793-1-git-send-email-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: <paloma.depping@gmx.de>
+Subject: 47323 linux-ext4
+Date: Tue, 08 Nov 2016 12:46:09 -0000
+Message-ID: <147860916900.11001.18300263379164218461@telkom.net.id>
+Mime-Version: 1.0
+Content-Type: application/zip; name="EMAIL_60201778350150_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 210.subnet180-250-59.speedy.telkom.net.id ([180.250.59.210]:39760
+        "HELO telkom.net.id" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with SMTP id S932477AbcKHMq7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2016 07:46:59 -0500
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-No one uses functions using the get_block callback anymore. Rip them
-out and update documentation.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- Documentation/filesystems/dax.txt |  21 ++-
- fs/dax.c                          | 315 --------------------------------------
- include/linux/dax.h               |  12 --
- 3 files changed, 10 insertions(+), 338 deletions(-)
-
-diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.txt
-index 23d18b8a49d5..b870867d0321 100644
---- a/Documentation/filesystems/dax.txt
-+++ b/Documentation/filesystems/dax.txt
-@@ -58,22 +58,21 @@ Implementation Tips for Filesystem Writers
- Filesystem support consists of
- - adding support to mark inodes as being DAX by setting the S_DAX flag in
-   i_flags
--- implementing the direct_IO address space operation, and calling
--  dax_do_io() instead of blockdev_direct_IO() if S_DAX is set
-+- implementing ->read_iter and ->write_iter operations which use dax_iomap_rw()
-+  when inode has S_DAX flag set
- - implementing an mmap file operation for DAX files which sets the
-   VM_MIXEDMAP and VM_HUGEPAGE flags on the VMA, and setting the vm_ops to
--  include handlers for fault, pmd_fault and page_mkwrite (which should
--  probably call dax_fault(), dax_pmd_fault() and dax_mkwrite(), passing the
--  appropriate get_block() callback)
--- calling dax_truncate_page() instead of block_truncate_page() for DAX files
--- calling dax_zero_page_range() instead of zero_user() for DAX files
-+  include handlers for fault, pmd_fault, page_mkwrite, pfn_mkwrite (which
-+  should probably call dax_iomap_fault(), dax_iomap_pmd_fault(),
-+  dax_pfn_mkwrite() passing the appropriate iomap operations)
-+- calling iomap_zero_range() passing appropriate iomap operations instead of
-+  block_truncate_page() for DAX files
- - ensuring that there is sufficient locking between reads, writes,
-   truncates and page faults
- 
--The get_block() callback passed to the DAX functions may return
--uninitialised extents.  If it does, it must ensure that simultaneous
--calls to get_block() (for example by a page-fault racing with a read()
--or a write()) work correctly.
-+The iomap handlers for allocating blocks must make sure that allocated blocks
-+are zeroed out and converted to written extents before being returned to avoid
-+exposure of uninitialized data through mmap.
- 
- These filesystems may be used for inspiration:
- - ext2: see Documentation/filesystems/ext2.txt
-diff --git a/fs/dax.c b/fs/dax.c
-index 28af41b9da3a..ad131cd2605d 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -116,168 +116,6 @@ struct page *read_dax_sector(struct block_device *bdev, sector_t n)
- 	return page;
- }
- 
--static bool buffer_written(struct buffer_head *bh)
--{
--	return buffer_mapped(bh) && !buffer_unwritten(bh);
--}
--
--static sector_t to_sector(const struct buffer_head *bh,
--		const struct inode *inode)
--{
--	sector_t sector = bh->b_blocknr << (inode->i_blkbits - 9);
--
--	return sector;
--}
--
--static ssize_t dax_io(struct inode *inode, struct iov_iter *iter,
--		      loff_t start, loff_t end, get_block_t get_block,
--		      struct buffer_head *bh)
--{
--	loff_t pos = start, max = start, bh_max = start;
--	bool hole = false;
--	struct block_device *bdev = NULL;
--	int rw = iov_iter_rw(iter), rc;
--	long map_len = 0;
--	struct blk_dax_ctl dax = {
--		.addr = ERR_PTR(-EIO),
--	};
--	unsigned blkbits = inode->i_blkbits;
--	sector_t file_blks = (i_size_read(inode) + (1 << blkbits) - 1)
--								>> blkbits;
--
--	if (rw == READ)
--		end = min(end, i_size_read(inode));
--
--	while (pos < end) {
--		size_t len;
--		if (pos == max) {
--			long page = pos >> PAGE_SHIFT;
--			sector_t block = page << (PAGE_SHIFT - blkbits);
--			unsigned first = pos - (block << blkbits);
--			long size;
--
--			if (pos == bh_max) {
--				bh->b_size = PAGE_ALIGN(end - pos);
--				bh->b_state = 0;
--				rc = get_block(inode, block, bh, rw == WRITE);
--				if (rc)
--					break;
--				bh_max = pos - first + bh->b_size;
--				bdev = bh->b_bdev;
--				/*
--				 * We allow uninitialized buffers for writes
--				 * beyond EOF as those cannot race with faults
--				 */
--				WARN_ON_ONCE(
--					(buffer_new(bh) && block < file_blks) ||
--					(rw == WRITE && buffer_unwritten(bh)));
--			} else {
--				unsigned done = bh->b_size -
--						(bh_max - (pos - first));
--				bh->b_blocknr += done >> blkbits;
--				bh->b_size -= done;
--			}
--
--			hole = rw == READ && !buffer_written(bh);
--			if (hole) {
--				size = bh->b_size - first;
--			} else {
--				dax_unmap_atomic(bdev, &dax);
--				dax.sector = to_sector(bh, inode);
--				dax.size = bh->b_size;
--				map_len = dax_map_atomic(bdev, &dax);
--				if (map_len < 0) {
--					rc = map_len;
--					break;
--				}
--				dax.addr += first;
--				size = map_len - first;
--			}
--			/*
--			 * pos + size is one past the last offset for IO,
--			 * so pos + size can overflow loff_t at extreme offsets.
--			 * Cast to u64 to catch this and get the true minimum.
--			 */
--			max = min_t(u64, pos + size, end);
--		}
--
--		if (iov_iter_rw(iter) == WRITE) {
--			len = copy_from_iter_pmem(dax.addr, max - pos, iter);
--		} else if (!hole)
--			len = copy_to_iter((void __force *) dax.addr, max - pos,
--					iter);
--		else
--			len = iov_iter_zero(max - pos, iter);
--
--		if (!len) {
--			rc = -EFAULT;
--			break;
--		}
--
--		pos += len;
--		if (!IS_ERR(dax.addr))
--			dax.addr += len;
--	}
--
--	dax_unmap_atomic(bdev, &dax);
--
--	return (pos == start) ? rc : pos - start;
--}
--
--/**
-- * dax_do_io - Perform I/O to a DAX file
-- * @iocb: The control block for this I/O
-- * @inode: The file which the I/O is directed at
-- * @iter: The addresses to do I/O from or to
-- * @get_block: The filesystem method used to translate file offsets to blocks
-- * @end_io: A filesystem callback for I/O completion
-- * @flags: See below
-- *
-- * This function uses the same locking scheme as do_blockdev_direct_IO:
-- * If @flags has DIO_LOCKING set, we assume that the i_mutex is held by the
-- * caller for writes.  For reads, we take and release the i_mutex ourselves.
-- * If DIO_LOCKING is not set, the filesystem takes care of its own locking.
-- * As with do_blockdev_direct_IO(), we increment i_dio_count while the I/O
-- * is in progress.
-- */
--ssize_t dax_do_io(struct kiocb *iocb, struct inode *inode,
--		  struct iov_iter *iter, get_block_t get_block,
--		  dio_iodone_t end_io, int flags)
--{
--	struct buffer_head bh;
--	ssize_t retval = -EINVAL;
--	loff_t pos = iocb->ki_pos;
--	loff_t end = pos + iov_iter_count(iter);
--
--	memset(&bh, 0, sizeof(bh));
--	bh.b_bdev = inode->i_sb->s_bdev;
--
--	if ((flags & DIO_LOCKING) && iov_iter_rw(iter) == READ)
--		inode_lock(inode);
--
--	/* Protects against truncate */
--	if (!(flags & DIO_SKIP_DIO_COUNT))
--		inode_dio_begin(inode);
--
--	retval = dax_io(inode, iter, pos, end, get_block, &bh);
--
--	if ((flags & DIO_LOCKING) && iov_iter_rw(iter) == READ)
--		inode_unlock(inode);
--
--	if (end_io) {
--		int err;
--
--		err = end_io(iocb, pos, retval, bh.b_private);
--		if (err)
--			retval = err;
--	}
--
--	if (!(flags & DIO_SKIP_DIO_COUNT))
--		inode_dio_end(inode);
--	return retval;
--}
--EXPORT_SYMBOL_GPL(dax_do_io);
--
- /*
-  * DAX radix tree locking
-  */
-@@ -920,105 +758,6 @@ static int dax_insert_mapping(struct address_space *mapping,
- }
- 
- /**
-- * dax_fault - handle a page fault on a DAX file
-- * @vma: The virtual memory area where the fault occurred
-- * @vmf: The description of the fault
-- * @get_block: The filesystem method used to translate file offsets to blocks
-- *
-- * When a page fault occurs, filesystems may call this helper in their
-- * fault handler for DAX files. dax_fault() assumes the caller has done all
-- * the necessary locking for the page fault to proceed successfully.
-- */
--int dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
--			get_block_t get_block)
--{
--	struct file *file = vma->vm_file;
--	struct address_space *mapping = file->f_mapping;
--	struct inode *inode = mapping->host;
--	void *entry;
--	struct buffer_head bh;
--	unsigned long vaddr = (unsigned long)vmf->virtual_address;
--	unsigned blkbits = inode->i_blkbits;
--	sector_t block;
--	pgoff_t size;
--	int error;
--	int major = 0;
--
--	/*
--	 * Check whether offset isn't beyond end of file now. Caller is supposed
--	 * to hold locks serializing us with truncate / punch hole so this is
--	 * a reliable test.
--	 */
--	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
--	if (vmf->pgoff >= size)
--		return VM_FAULT_SIGBUS;
--
--	memset(&bh, 0, sizeof(bh));
--	block = (sector_t)vmf->pgoff << (PAGE_SHIFT - blkbits);
--	bh.b_bdev = inode->i_sb->s_bdev;
--	bh.b_size = PAGE_SIZE;
--
--	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
--	if (IS_ERR(entry)) {
--		error = PTR_ERR(entry);
--		goto out;
--	}
--
--	error = get_block(inode, block, &bh, 0);
--	if (!error && (bh.b_size < PAGE_SIZE))
--		error = -EIO;		/* fs corruption? */
--	if (error)
--		goto unlock_entry;
--
--	if (vmf->cow_page) {
--		struct page *new_page = vmf->cow_page;
--		if (buffer_written(&bh))
--			error = copy_user_dax(bh.b_bdev, to_sector(&bh, inode),
--					bh.b_size, new_page, vaddr);
--		else
--			clear_user_highpage(new_page, vaddr);
--		if (error)
--			goto unlock_entry;
--		if (!radix_tree_exceptional_entry(entry)) {
--			vmf->page = entry;
--			return VM_FAULT_LOCKED;
--		}
--		vmf->entry = entry;
--		return VM_FAULT_DAX_LOCKED;
--	}
--
--	if (!buffer_mapped(&bh)) {
--		if (vmf->flags & FAULT_FLAG_WRITE) {
--			error = get_block(inode, block, &bh, 1);
--			count_vm_event(PGMAJFAULT);
--			mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
--			major = VM_FAULT_MAJOR;
--			if (!error && (bh.b_size < PAGE_SIZE))
--				error = -EIO;
--			if (error)
--				goto unlock_entry;
--		} else {
--			return dax_load_hole(mapping, entry, vmf);
--		}
--	}
--
--	/* Filesystem should not return unwritten buffers to us! */
--	WARN_ON_ONCE(buffer_unwritten(&bh) || buffer_new(&bh));
--	error = dax_insert_mapping(mapping, bh.b_bdev, to_sector(&bh, inode),
--			bh.b_size, &entry, vma, vmf);
-- unlock_entry:
--	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
-- out:
--	if (error == -ENOMEM)
--		return VM_FAULT_OOM | major;
--	/* -EBUSY is fine, somebody else faulted on the same PTE */
--	if ((error < 0) && (error != -EBUSY))
--		return VM_FAULT_SIGBUS | major;
--	return VM_FAULT_NOPAGE | major;
--}
--EXPORT_SYMBOL_GPL(dax_fault);
--
--/**
-  * dax_pfn_mkwrite - handle first write to DAX page
-  * @vma: The virtual memory area where the fault occurred
-  * @vmf: The description of the fault
-@@ -1078,60 +817,6 @@ int __dax_zero_page_range(struct block_device *bdev, sector_t sector,
- }
- EXPORT_SYMBOL_GPL(__dax_zero_page_range);
- 
--/**
-- * dax_zero_page_range - zero a range within a page of a DAX file
-- * @inode: The file being truncated
-- * @from: The file offset that is being truncated to
-- * @length: The number of bytes to zero
-- * @get_block: The filesystem method used to translate file offsets to blocks
-- *
-- * This function can be called by a filesystem when it is zeroing part of a
-- * page in a DAX file.  This is intended for hole-punch operations.  If
-- * you are truncating a file, the helper function dax_truncate_page() may be
-- * more convenient.
-- */
--int dax_zero_page_range(struct inode *inode, loff_t from, unsigned length,
--							get_block_t get_block)
--{
--	struct buffer_head bh;
--	pgoff_t index = from >> PAGE_SHIFT;
--	unsigned offset = from & (PAGE_SIZE-1);
--	int err;
--
--	/* Block boundary? Nothing to do */
--	if (!length)
--		return 0;
--	if (WARN_ON_ONCE((offset + length) > PAGE_SIZE))
--		return -EINVAL;
--
--	memset(&bh, 0, sizeof(bh));
--	bh.b_bdev = inode->i_sb->s_bdev;
--	bh.b_size = PAGE_SIZE;
--	err = get_block(inode, index, &bh, 0);
--	if (err < 0 || !buffer_written(&bh))
--		return err;
--
--	return __dax_zero_page_range(bh.b_bdev, to_sector(&bh, inode),
--			offset, length);
--}
--EXPORT_SYMBOL_GPL(dax_zero_page_range);
--
--/**
-- * dax_truncate_page - handle a partial page being truncated in a DAX file
-- * @inode: The file being truncated
-- * @from: The file offset that is being truncated to
-- * @get_block: The filesystem method used to translate file offsets to blocks
-- *
-- * Similar to block_truncate_page(), this function can be called by a
-- * filesystem when it is truncating a DAX file to handle the partial page.
-- */
--int dax_truncate_page(struct inode *inode, loff_t from, get_block_t get_block)
--{
--	unsigned length = PAGE_ALIGN(from) - from;
--	return dax_zero_page_range(inode, from, length, get_block);
--}
--EXPORT_SYMBOL_GPL(dax_truncate_page);
--
- #ifdef CONFIG_FS_IOMAP
- static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
- {
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 8d1a5c47945f..0afade8bd3d7 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -38,13 +38,8 @@ static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
- 
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		struct iomap_ops *ops);
--ssize_t dax_do_io(struct kiocb *, struct inode *, struct iov_iter *,
--		  get_block_t, dio_iodone_t, int flags);
--int dax_zero_page_range(struct inode *, loff_t from, unsigned len, get_block_t);
--int dax_truncate_page(struct inode *, loff_t from, get_block_t);
- int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 			struct iomap_ops *ops);
--int dax_fault(struct vm_area_struct *, struct vm_fault *, get_block_t);
- int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
- void dax_wake_mapping_entry_waiter(struct address_space *mapping,
- 		pgoff_t index, void *entry, bool wake_all);
-@@ -73,12 +68,6 @@ static inline int __dax_zero_page_range(struct block_device *bdev,
- }
- #endif
- 
--static inline int dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
--				pmd_t *pmd, unsigned int flags, get_block_t gb)
--{
--	return VM_FAULT_FALLBACK;
--}
--
- #ifdef CONFIG_FS_DAX_PMD
- static inline unsigned int dax_radix_order(void *entry)
- {
-@@ -101,7 +90,6 @@ static inline int dax_iomap_pmd_fault(struct vm_area_struct *vma,
- }
- #endif
- int dax_pfn_mkwrite(struct vm_area_struct *, struct vm_fault *);
--#define dax_mkwrite(vma, vmf, gb)	dax_fault(vma, vmf, gb)
- 
- static inline bool vma_is_dax(struct vm_area_struct *vma)
- {
--- 
-2.6.6
-
+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
+AAAA
