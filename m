@@ -1,64 +1,33 @@
-From: <paloma.depping@gmx.de>
-Subject: 47323 linux-ext4
-Date: Tue, 08 Nov 2016 12:46:09 -0000
-Message-ID: <147860916900.11001.18300263379164218461@telkom.net.id>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 187051] "orphan list check failed" error in ext4
+Date: Tue, 08 Nov 2016 15:15:59 +0000
+Message-ID: <bug-187051-13602-GoGYnqdWSX@https.bugzilla.kernel.org/>
+References: <bug-187051-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_60201778350150_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 210.subnet180-250-59.speedy.telkom.net.id ([180.250.59.210]:39760
-        "HELO telkom.net.id" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with SMTP id S932477AbcKHMq7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Nov 2016 07:46:59 -0500
-Content-Disposition: attachment
+Received: from mail.kernel.org ([198.145.29.136]:53368 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752068AbcKHPQD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 8 Nov 2016 10:16:03 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id 97C5220138
+        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2016 15:16:01 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id B667320218
+        for <linux-ext4@vger.kernel.org>; Tue,  8 Nov 2016 15:15:59 +0000 (UTC)
+In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-AAAA
+https://bugzilla.kernel.org/show_bug.cgi?id=187051
+
+--- Comment #7 from Theodore Tso <tytso@mit.edu> ---
+Well, yes, but in this case the directory hasn't been deleted, as I understand
+the original bug report.  And you can't truncate a directory....
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
