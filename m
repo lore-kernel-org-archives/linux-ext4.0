@@ -1,118 +1,69 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/11] ext4: Rip out DAX handling from direct IO path
-Date: Tue,  8 Nov 2016 12:08:15 +0100
-Message-ID: <1478603297-11793-10-git-send-email-jack@suse.cz>
+Subject: [PATCH 06/11] ext4: Avoid split extents for DAX writes
+Date: Tue,  8 Nov 2016 12:08:12 +0100
+Message-ID: <1478603297-11793-7-git-send-email-jack@suse.cz>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         Ross Zwisler <ross.zwisler@linux.intel.com>,
         Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34647 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933062AbcKHLKk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 8 Nov 2016 06:10:40 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Reads and writes for DAX inodes should no longer end up in direct IO
-code. Rip out the support and add a warning.
+Currently mapping of blocks for DAX writes happen with
+EXT4_GET_BLOCKS_PRE_IO flag set. That has a result that each
+ext4_map_blocks() call creates a separate written extent, although it
+could be merged to the neighboring extents in the extent tree.  The
+reason for using this flag is that in case the extent is unwritten, we
+need to convert it to written one and zero it out. However this "convert
+mapped range to written" operation is already implemented by
+ext4_map_blocks() for the case of data writes into unwritten extent. So
+just use flags for that mode of operation, simplify the code, and avoid
+unnecessary split extents.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 49 +++++++++++++++----------------------------------
- 1 file changed, 15 insertions(+), 34 deletions(-)
+ fs/ext4/inode.c | 17 -----------------
+ 1 file changed, 17 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4d71c7bc3524..72886e3bf0d3 100644
+index a7079cab645a..3192ec0768d4 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3594,19 +3594,7 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
- 	iocb->private = NULL;
- 	if (overwrite)
- 		get_block_func = ext4_dio_get_block_overwrite;
--	else if (IS_DAX(inode)) {
--		/*
--		 * We can avoid zeroing for aligned DAX writes beyond EOF. Other
--		 * writes need zeroing either because they can race with page
--		 * faults or because they use partial blocks.
--		 */
--		if (round_down(offset, 1<<inode->i_blkbits) >= inode->i_size &&
--		    ext4_aligned_io(inode, offset, count))
--			get_block_func = ext4_dio_get_block;
--		else
--			get_block_func = ext4_dax_get_block;
--		dio_flags = DIO_LOCKING;
--	} else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
-+	else if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) ||
- 		   round_down(offset, 1 << inode->i_blkbits) >= inode->i_size) {
- 		get_block_func = ext4_dio_get_block;
- 		dio_flags = DIO_LOCKING | DIO_SKIP_HOLES;
-@@ -3620,14 +3608,9 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
- #endif
--	if (IS_DAX(inode)) {
--		ret = dax_do_io(iocb, inode, iter, get_block_func,
--				ext4_end_io_dio, dio_flags);
--	} else
--		ret = __blockdev_direct_IO(iocb, inode,
--					   inode->i_sb->s_bdev, iter,
--					   get_block_func,
--					   ext4_end_io_dio, NULL, dio_flags);
-+	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev, iter,
-+				   get_block_func, ext4_end_io_dio, NULL,
-+				   dio_flags);
+@@ -3351,7 +3351,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 			return PTR_ERR(handle);
  
- 	if (ret > 0 && !overwrite && ext4_test_inode_state(inode,
- 						EXT4_STATE_DIO_UNWRITTEN)) {
-@@ -3696,6 +3679,7 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- {
- 	struct address_space *mapping = iocb->ki_filp->f_mapping;
- 	struct inode *inode = mapping->host;
-+	size_t count = iov_iter_count(iter);
- 	ssize_t ret;
+ 		ret = ext4_map_blocks(handle, inode, &map,
+-				      EXT4_GET_BLOCKS_PRE_IO |
+ 				      EXT4_GET_BLOCKS_CREATE_ZERO);
+ 		if (ret < 0) {
+ 			ext4_journal_stop(handle);
+@@ -3360,22 +3359,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 				goto retry;
+ 			return ret;
+ 		}
+-		/* For DAX writes we need to zero out unwritten extents */
+-		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+-			/*
+-			 * We are protected by i_mmap_sem or i_rwsem so we know
+-			 * block cannot go away from under us even though we
+-			 * dropped i_data_sem. Convert extent to written and
+-			 * write zeros there.
+-			 */
+-			ret = ext4_map_blocks(handle, inode, &map,
+-					      EXT4_GET_BLOCKS_CONVERT |
+-					      EXT4_GET_BLOCKS_CREATE_ZERO);
+-			if (ret < 0) {
+-				ext4_journal_stop(handle);
+-				return ret;
+-			}
+-		}
  
- 	/*
-@@ -3704,19 +3688,12 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- 	 * we are protected against page writeback as well.
- 	 */
- 	inode_lock_shared(inode);
--	if (IS_DAX(inode)) {
--		ret = dax_do_io(iocb, inode, iter, ext4_dio_get_block, NULL, 0);
--	} else {
--		size_t count = iov_iter_count(iter);
--
--		ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
--						   iocb->ki_pos + count);
--		if (ret)
--			goto out_unlock;
--		ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
--					   iter, ext4_dio_get_block,
--					   NULL, NULL, 0);
--	}
-+	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
-+					   iocb->ki_pos + count);
-+	if (ret)
-+		goto out_unlock;
-+	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
-+				   iter, ext4_dio_get_block, NULL, NULL, 0);
- out_unlock:
- 	inode_unlock_shared(inode);
- 	return ret;
-@@ -3745,6 +3722,10 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	if (ext4_has_inline_data(inode))
- 		return 0;
- 
-+	/* DAX uses iomap path now */
-+	if (WARN_ON_ONCE(IS_DAX(inode)))
-+		return 0;
-+
- 	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
- 	if (iov_iter_rw(iter) == READ)
- 		ret = ext4_direct_IO_read(iocb, iter);
+ 		/*
+ 		 * If we added blocks beyond i_size we need to make sure they
 -- 
 2.6.6
 
