@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 06/11] ext4: Avoid split extents for DAX writes
-Date: Tue,  8 Nov 2016 12:08:12 +0100
-Message-ID: <1478603297-11793-7-git-send-email-jack@suse.cz>
+Subject: [PATCH 08/11] ext4: Convert DAX faults to iomap infrastructure
+Date: Tue,  8 Nov 2016 12:08:14 +0100
+Message-ID: <1478603297-11793-9-git-send-email-jack@suse.cz>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
@@ -13,57 +13,79 @@ In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently mapping of blocks for DAX writes happen with
-EXT4_GET_BLOCKS_PRE_IO flag set. That has a result that each
-ext4_map_blocks() call creates a separate written extent, although it
-could be merged to the neighboring extents in the extent tree.  The
-reason for using this flag is that in case the extent is unwritten, we
-need to convert it to written one and zero it out. However this "convert
-mapped range to written" operation is already implemented by
-ext4_map_blocks() for the case of data writes into unwritten extent. So
-just use flags for that mode of operation, simplify the code, and avoid
-unnecessary split extents.
+Convert DAX faults to use iomap infrastructure. We would not have to start
+transaction in ext4_dax_fault() anymore since ext4_iomap_begin takes
+care of that but so far we do that to avoid lock inversion of
+transaction start with DAX entry lock which gets acquired in
+dax_iomap_fault() before calling ->iomap_begin handler.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 17 -----------------
- 1 file changed, 17 deletions(-)
+ fs/ext4/file.c  |  9 +++++----
+ fs/ext4/inode.c | 14 +++++++++-----
+ 2 files changed, 14 insertions(+), 9 deletions(-)
 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 1953fe34f9fe..b5f184493c57 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -275,7 +275,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+ 	else
+-		result = dax_fault(vma, vmf, ext4_dax_get_block);
++		result = dax_iomap_fault(vma, vmf, &ext4_iomap_ops);
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
+@@ -309,9 +309,10 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+ 
+ 	if (IS_ERR(handle))
+ 		result = VM_FAULT_SIGBUS;
+-	else
+-		result = dax_pmd_fault(vma, addr, pmd, flags,
+-					 ext4_dax_get_block);
++	else {
++		result = dax_iomap_pmd_fault(vma, addr, pmd, flags,
++					     &ext4_iomap_ops);
++	}
+ 
+ 	if (write) {
+ 		if (!IS_ERR(handle))
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a7079cab645a..3192ec0768d4 100644
+index 3192ec0768d4..4d71c7bc3524 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3351,7 +3351,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 			return PTR_ERR(handle);
- 
- 		ret = ext4_map_blocks(handle, inode, &map,
--				      EXT4_GET_BLOCKS_PRE_IO |
- 				      EXT4_GET_BLOCKS_CREATE_ZERO);
- 		if (ret < 0) {
- 			ext4_journal_stop(handle);
-@@ -3360,22 +3359,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 				goto retry;
- 			return ret;
+@@ -3361,12 +3361,16 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
  		}
--		/* For DAX writes we need to zero out unwritten extents */
--		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
--			/*
--			 * We are protected by i_mmap_sem or i_rwsem so we know
--			 * block cannot go away from under us even though we
--			 * dropped i_data_sem. Convert extent to written and
--			 * write zeros there.
--			 */
--			ret = ext4_map_blocks(handle, inode, &map,
--					      EXT4_GET_BLOCKS_CONVERT |
--					      EXT4_GET_BLOCKS_CREATE_ZERO);
--			if (ret < 0) {
--				ext4_journal_stop(handle);
--				return ret;
--			}
--		}
  
  		/*
- 		 * If we added blocks beyond i_size we need to make sure they
+-		 * If we added blocks beyond i_size we need to make sure they
++		 * If we added blocks beyond i_size, we need to make sure they
+ 		 * will get truncated if we crash before updating i_size in
+-		 * ext4_iomap_end().
++		 * ext4_iomap_end(). For faults we don't need to do that (and
++		 * even cannot because for orphan list operations inode_lock is
++		 * required) - if we happen to instantiate block beyond i_size,
++		 * it is because we race with truncate which has already added
++		 * the inode to the orphan list.
+ 		 */
+-		if (first_block + map.m_len >
+-		    (inode->i_size + (1 << blkbits) - 1) >> blkbits) {
++		if (!(flags & IOMAP_FAULT) && first_block + map.m_len >
++		    (i_size_read(inode) + (1 << blkbits) - 1) >> blkbits) {
+ 			int err;
+ 
+ 			err = ext4_orphan_add(handle, inode);
+@@ -3412,7 +3416,7 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+ 	int blkbits = inode->i_blkbits;
+ 	bool truncate = false;
+ 
+-	if (!(flags & IOMAP_WRITE))
++	if (!(flags & IOMAP_WRITE) || (flags & IOMAP_FAULT))
+ 		return 0;
+ 
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
 -- 
 2.6.6
 
