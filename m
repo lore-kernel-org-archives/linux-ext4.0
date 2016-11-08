@@ -1,72 +1,46 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 1/4] sched: move IO scheduling accounting from
- io_schedule_timeout() to __schedule()
-Date: Tue, 8 Nov 2016 17:51:02 -0500
-Message-ID: <20161108225102.GA6460@htj.duckdns.org>
-References: <1477673892-28940-1-git-send-email-tj@kernel.org>
- <1477673892-28940-2-git-send-email-tj@kernel.org>
- <CAEU1=P=xnwZwqZE_XLF2b5ZOv_iPwQWYmXBwpvgEVn3_EckhSA@mail.gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 0/11 v2] ext4: Convert ext4 DAX IO to iomap framework
+Date: Wed, 9 Nov 2016 10:17:39 +1100
+Message-ID: <20161108231739.GQ28177@dastard>
+References: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        mingo@redhat.com, Peter Zijlstra <peterz@infradead.org>,
-        axboe@kernel.dk, tytso@mit.edu, jack@suse.com,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-team@fb.com, mingbo@fb.com
-To: Pavan Kondeti <pkondeti@codeaurora.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAEU1=P=xnwZwqZE_XLF2b5ZOv_iPwQWYmXBwpvgEVn3_EckhSA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
-
-On Thu, Nov 03, 2016 at 09:03:45PM +0530, Pavan Kondeti wrote:
-> > diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-> > index 94732d1..f6baa38 100644
-> > --- a/kernel/sched/core.c
-> > +++ b/kernel/sched/core.c
-> > @@ -3336,11 +3336,17 @@ static void __sched notrace __schedule(bool preempt)
-> >         unsigned long *switch_count;
-> >         struct pin_cookie cookie;
-> >         struct rq *rq;
-> > -       int cpu;
-> > +       int cpu, in_iowait;
-> >
-> >         cpu = smp_processor_id();
-> >         rq = cpu_rq(cpu);
-> >         prev = rq->curr;
-> > +       in_iowait = prev->in_iowait;
-> > +
-> > +       if (in_iowait) {
-> > +               delayacct_blkio_start();
-> > +               atomic_inc(&rq->nr_iowait);
-> > +       }
-> >
-> >         schedule_debug(prev);
-> >
-> > @@ -3406,6 +3412,11 @@ static void __sched notrace __schedule(bool preempt)
-> >         }
-> >
-> >         balance_callback(rq);
-> > +
-> > +       if (in_iowait) {
-> > +               atomic_dec(&rq->nr_iowait);
-> > +               delayacct_blkio_end();
-> > +       }
-> >  }
+On Tue, Nov 08, 2016 at 12:08:06PM +0100, Jan Kara wrote:
+> Hello,
 > 
-> I think, the nr_iowait update can go wrong here.
+> this is a second revision of my patches to convert ext4 DAX IO paths to the new
+> iomap framework and removes the old bh-based DAX functions. As a result ext4
+> gains PMD page fault support, also some other minor bugs get fixed. The patch
+> set is based on Ross' DAX PMD page fault support series [1]. It passes xfstests
+> both in DAX and non-DAX mode.
 > 
-> When the task migrates to a different CPU upon wakeup, this rq points
-> to a different CPU from the one on which nr_iowait is incremented
-> before.
+> I have pushed out updated version of these patches including the follow-up
+> DAX patches to:
+> 
+> git://get.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
+> 
+> for easy testing. Once Dave pushes out a stable branch with Ross' patches, we
+> pull those into ext4 tree and then pull these patches on top of that (provided
+> nobody will have other objections to the current series).
 
-Ah, you're right, it should remember the original rq.
+Done:
 
-Thanks.
+git://git.kernel.org/pub/scm/linux/kernel/git/dgc/linux-xfs.git dax-4.10-iomap-pmd
 
+Cheers,
+
+Dave.
 -- 
-tejun
+Dave Chinner
+david@fromorbit.com
