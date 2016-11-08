@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/11] dax: Introduce IOMAP_FAULT flag
-Date: Tue,  8 Nov 2016 12:08:13 +0100
-Message-ID: <1478603297-11793-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 05/11] ext4: DAX iomap write support
+Date: Tue,  8 Nov 2016 12:08:11 +0100
+Message-ID: <1478603297-11793-6-git-send-email-jack@suse.cz>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
@@ -13,67 +13,225 @@ In-Reply-To: <1478603297-11793-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Introduce a flag telling iomap operations whether they are handling a
-fault or other IO. That may influence behavior wrt inode size and
-similar things.
+Implement DAX writes using the new iomap infrastructure instead of
+overloading the direct IO path.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c              | 4 ++--
- fs/iomap.c            | 5 +++--
- include/linux/iomap.h | 1 +
- 3 files changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/file.c  |  40 ++++++++++++++++++
+ fs/ext4/inode.c | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 160 insertions(+), 6 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 281e91a63367..28af41b9da3a 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1266,7 +1266,7 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
- 	sector_t sector;
- 	struct iomap iomap = { 0 };
--	unsigned flags = 0;
-+	unsigned flags = IOMAP_FAULT;
- 	int error, major = 0;
- 	int locked_status = 0;
- 	void *entry;
-@@ -1467,7 +1467,7 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 	struct address_space *mapping = vma->vm_file->f_mapping;
- 	unsigned long pmd_addr = address & PMD_MASK;
- 	bool write = flags & FAULT_FLAG_WRITE;
--	unsigned int iomap_flags = write ? IOMAP_WRITE : 0;
-+	unsigned int iomap_flags = (write ? IOMAP_WRITE : 0) | IOMAP_FAULT;
- 	struct inode *inode = mapping->host;
- 	int result = VM_FAULT_FALLBACK;
- 	struct iomap iomap = { 0 };
-diff --git a/fs/iomap.c b/fs/iomap.c
-index a8ee8c33ca78..13dd413b2b9c 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -467,8 +467,9 @@ int iomap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 1f25c644cb12..1953fe34f9fe 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -169,6 +169,41 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ 	return iov_iter_count(from);
+ }
  
- 	offset = page_offset(page);
- 	while (length > 0) {
--		ret = iomap_apply(inode, offset, length, IOMAP_WRITE,
--				ops, page, iomap_page_mkwrite_actor);
-+		ret = iomap_apply(inode, offset, length,
-+				IOMAP_WRITE | IOMAP_FAULT, ops, page,
-+				iomap_page_mkwrite_actor);
- 		if (unlikely(ret <= 0))
- 			goto out_unlock;
- 		offset += ret;
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 7892f55a1866..f185156de74d 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -49,6 +49,7 @@ struct iomap {
- #define IOMAP_WRITE		(1 << 0) /* writing, must allocate blocks */
- #define IOMAP_ZERO		(1 << 1) /* zeroing operation, may skip holes */
- #define IOMAP_REPORT		(1 << 2) /* report extent status, e.g. FIEMAP */
-+#define IOMAP_FAULT		(1 << 3) /* mapping for page fault */
++#ifdef CONFIG_FS_DAX
++static ssize_t
++ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	ssize_t ret;
++	bool overwrite = false;
++
++	inode_lock(inode);
++	ret = ext4_write_checks(iocb, from);
++	if (ret <= 0)
++		goto out;
++	ret = file_remove_privs(iocb->ki_filp);
++	if (ret)
++		goto out;
++	ret = file_update_time(iocb->ki_filp);
++	if (ret)
++		goto out;
++
++	if (ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from))) {
++		overwrite = true;
++		downgrade_write(&inode->i_rwsem);
++	}
++	ret = dax_iomap_rw(iocb, from, &ext4_iomap_ops);
++out:
++	if (!overwrite)
++		inode_unlock(inode);
++	else
++		inode_unlock_shared(inode);
++	if (ret > 0)
++		ret = generic_write_sync(iocb, ret);
++	return ret;
++}
++#endif
++
+ static ssize_t
+ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+@@ -178,6 +213,11 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	int overwrite = 0;
+ 	ssize_t ret;
  
- struct iomap_ops {
- 	/*
++#ifdef CONFIG_FS_DAX
++	if (IS_DAX(inode))
++		return ext4_dax_write_iter(iocb, from);
++#endif
++
+ 	inode_lock(inode);
+ 	ret = ext4_write_checks(iocb, from);
+ 	if (ret <= 0)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index df017ce3e52d..a7079cab645a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3321,18 +3321,79 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	struct ext4_map_blocks map;
+ 	int ret;
+ 
+-	if (flags & IOMAP_WRITE)
+-		return -EIO;
+-
+ 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+ 		return -ERANGE;
+ 
+ 	map.m_lblk = first_block;
+ 	map.m_len = last_block - first_block + 1;
+ 
+-	ret = ext4_map_blocks(NULL, inode, &map, 0);
+-	if (ret < 0)
+-		return ret;
++	if (!(flags & IOMAP_WRITE)) {
++		ret = ext4_map_blocks(NULL, inode, &map, 0);
++	} else {
++		int dio_credits;
++		handle_t *handle;
++		int retries = 0;
++
++		/* Trim mapping request to maximum we can map at once for DIO */
++		if (map.m_len > DIO_MAX_BLOCKS)
++			map.m_len = DIO_MAX_BLOCKS;
++		dio_credits = ext4_chunk_trans_blocks(inode, map.m_len);
++retry:
++		/*
++		 * Either we allocate blocks and then we don't get unwritten
++		 * extent so we have reserved enough credits, or the blocks
++		 * are already allocated and unwritten and in that case
++		 * extent conversion fits in the credits as well.
++		 */
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
++					    dio_credits);
++		if (IS_ERR(handle))
++			return PTR_ERR(handle);
++
++		ret = ext4_map_blocks(handle, inode, &map,
++				      EXT4_GET_BLOCKS_PRE_IO |
++				      EXT4_GET_BLOCKS_CREATE_ZERO);
++		if (ret < 0) {
++			ext4_journal_stop(handle);
++			if (ret == -ENOSPC &&
++			    ext4_should_retry_alloc(inode->i_sb, &retries))
++				goto retry;
++			return ret;
++		}
++		/* For DAX writes we need to zero out unwritten extents */
++		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++			/*
++			 * We are protected by i_mmap_sem or i_rwsem so we know
++			 * block cannot go away from under us even though we
++			 * dropped i_data_sem. Convert extent to written and
++			 * write zeros there.
++			 */
++			ret = ext4_map_blocks(handle, inode, &map,
++					      EXT4_GET_BLOCKS_CONVERT |
++					      EXT4_GET_BLOCKS_CREATE_ZERO);
++			if (ret < 0) {
++				ext4_journal_stop(handle);
++				return ret;
++			}
++		}
++
++		/*
++		 * If we added blocks beyond i_size we need to make sure they
++		 * will get truncated if we crash before updating i_size in
++		 * ext4_iomap_end().
++		 */
++		if (first_block + map.m_len >
++		    (inode->i_size + (1 << blkbits) - 1) >> blkbits) {
++			int err;
++
++			err = ext4_orphan_add(handle, inode);
++			if (err < 0) {
++				ext4_journal_stop(handle);
++				return err;
++			}
++		}
++		ext4_journal_stop(handle);
++	}
+ 
+ 	iomap->flags = 0;
+ 	iomap->bdev = inode->i_sb->s_bdev;
+@@ -3360,8 +3421,61 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	return 0;
+ }
+ 
++static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
++			  ssize_t written, unsigned flags, struct iomap *iomap)
++{
++	int ret = 0;
++	handle_t *handle;
++	int blkbits = inode->i_blkbits;
++	bool truncate = false;
++
++	if (!(flags & IOMAP_WRITE))
++		return 0;
++
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto orphan_del;
++	}
++	if (ext4_update_inode_size(inode, offset + written))
++		ext4_mark_inode_dirty(handle, inode);
++	/*
++	 * We may need to truncate allocated but not written blocks beyond EOF.
++	 */
++	if (iomap->offset + iomap->length > 
++	    ALIGN(inode->i_size, 1 << blkbits)) {
++		ext4_lblk_t written_blk, end_blk;
++
++		written_blk = (offset + written) >> blkbits;
++		end_blk = (offset + length) >> blkbits;
++		if (written_blk < end_blk && ext4_can_truncate(inode))
++			truncate = true;
++	}
++	/*
++	 * Remove inode from orphan list if we were extending a inode and
++	 * everything went fine.
++	 */
++	if (!truncate && inode->i_nlink &&
++	    !list_empty(&EXT4_I(inode)->i_orphan))
++		ext4_orphan_del(handle, inode);
++	ext4_journal_stop(handle);
++	if (truncate) {
++		ext4_truncate_failed_write(inode);
++orphan_del:
++		/*
++		 * If truncate failed early the inode might still be on the
++		 * orphan list; we need to make sure the inode is removed from
++		 * the orphan list in that case.
++		 */
++		if (inode->i_nlink)
++			ext4_orphan_del(NULL, inode);
++	}
++	return ret;
++}
++
+ struct iomap_ops ext4_iomap_ops = {
+ 	.iomap_begin		= ext4_iomap_begin,
++	.iomap_end		= ext4_iomap_end,
+ };
+ 
+ #else
 -- 
 2.6.6
 
