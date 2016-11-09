@@ -1,7 +1,7 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH 07/11] dax: Introduce IOMAP_FAULT flag
-Date: Wed, 9 Nov 2016 10:21:14 +1100
-Message-ID: <20161108232114.GR28177@dastard>
+Date: Wed, 9 Nov 2016 07:03:33 -0800
+Message-ID: <20161109150333.GA15463@infradead.org>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
  <1478603297-11793-8-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
@@ -24,10 +24,8 @@ On Tue, Nov 08, 2016 at 12:08:13PM +0100, Jan Kara wrote:
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-Looks fine.
+Looks fine in general - I'm a bit worried about which flags combinations
+are valid, but as this is my fault I'll sort it out after we get your
+series in:
 
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
-
--- 
-Dave Chinner
-david@fromorbit.com
+Reviewed-by: Christoph Hellwig <hch@lst.de>
