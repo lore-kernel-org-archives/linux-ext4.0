@@ -1,79 +1,63 @@
-From: <rlm85310@cox.net>
-Subject: 4042 linux-ext4
-Date: Fri, 11 Nov 2016 06:11:49 -0000
-Message-ID: <147884470926.30549.13993709083117293139@hinet.net>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 02/11] ext4: Let S_DAX set only if DAX is really supported
+Date: Fri, 11 Nov 2016 11:08:57 +0100
+Message-ID: <20161111100857.GC2730@quack2.suse.cz>
+References: <1478603297-11793-1-git-send-email-jack@suse.cz>
+ <1478603297-11793-3-git-send-email-jack@suse.cz>
+ <20161110214639.GB27200@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="MESSAGE_6613113_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 1-175-143-14.dynamic.hinet.net ([1.175.143.14]:52736 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750738AbcKKGLz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Nov 2016 01:11:55 -0500
-Content-Disposition: attachment
+Received: from mx2.suse.de ([195.135.220.15]:33675 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751566AbcKKKJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Nov 2016 05:09:00 -0500
+Content-Disposition: inline
+In-Reply-To: <20161110214639.GB27200@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-AC4NAAAAAA==
+On Thu 10-11-16 14:46:39, Ross Zwisler wrote:
+> On Tue, Nov 08, 2016 at 12:08:08PM +0100, Jan Kara wrote:
+> > Currently we have S_DAX set inode->i_flags for a regular file whenever
+> > ext4 is mounted with dax mount option. However in some cases we cannot
+> > really do DAX - e.g. when inode is marked to use data journalling, when
+> > inode data is being encrypted, or when inode is stored inline. Make sure
+> > S_DAX flag is appropriately set/cleared in these cases.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> <>
+> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> > index 20da99da0a34..b3108e6fa5f3 100644
+> > --- a/fs/ext4/super.c
+> > +++ b/fs/ext4/super.c
+> > @@ -1126,6 +1126,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+> >  			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> >  			ext4_clear_inode_state(inode,
+> >  					EXT4_STATE_MAY_INLINE_DATA);
+> > +			/*
+> > +			 * Update inode->i_flags - e.g. S_DAX may get disabled
+> > +			 */
+> > +			ext4_set_inode_flags(inode);
+> >  		}
+> >  		return res;
+> >  	}
+> > @@ -1140,6 +1144,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+> >  			len, 0);
+> >  	if (!res) {
+> >  		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> > +		/* Update inode->i_flags - e.g. S_DAX may get disabled */
+> 
+> Missing call to ext4_set_inode_flags(inode)?
+
+Yeah, fixed. Thanks!
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
