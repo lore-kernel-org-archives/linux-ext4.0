@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 02/11] ext4: Let S_DAX set only if DAX is really supported
-Date: Fri, 11 Nov 2016 11:08:57 +0100
-Message-ID: <20161111100857.GC2730@quack2.suse.cz>
+Subject: Re: [PATCH 03/11] ext4: Convert DAX reads to iomap infrastructure
+Date: Fri, 11 Nov 2016 11:17:51 +0100
+Message-ID: <20161111101750.GD2730@quack2.suse.cz>
 References: <1478603297-11793-1-git-send-email-jack@suse.cz>
- <1478603297-11793-3-git-send-email-jack@suse.cz>
- <20161110214639.GB27200@linux.intel.com>
+ <1478603297-11793-4-git-send-email-jack@suse.cz>
+ <20161110215431.GC27200@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
@@ -12,50 +12,89 @@ Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
         Christoph Hellwig <hch@infradead.org>
 To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33675 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34268 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751566AbcKKKJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Nov 2016 05:09:00 -0500
+        id S1750714AbcKKKRy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Nov 2016 05:17:54 -0500
 Content-Disposition: inline
-In-Reply-To: <20161110214639.GB27200@linux.intel.com>
+In-Reply-To: <20161110215431.GC27200@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 10-11-16 14:46:39, Ross Zwisler wrote:
-> On Tue, Nov 08, 2016 at 12:08:08PM +0100, Jan Kara wrote:
-> > Currently we have S_DAX set inode->i_flags for a regular file whenever
-> > ext4 is mounted with dax mount option. However in some cases we cannot
-> > really do DAX - e.g. when inode is marked to use data journalling, when
-> > inode data is being encrypted, or when inode is stored inline. Make sure
-> > S_DAX flag is appropriately set/cleared in these cases.
+On Thu 10-11-16 14:54:31, Ross Zwisler wrote:
+> On Tue, Nov 08, 2016 at 12:08:09PM +0100, Jan Kara wrote:
+> > Implement basic iomap_begin function that handles reading and use it for
+> > DAX reads.
 > > 
 > > Signed-off-by: Jan Kara <jack@suse.cz>
 > > ---
-> <>
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 20da99da0a34..b3108e6fa5f3 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -1126,6 +1126,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
-> >  			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> >  			ext4_clear_inode_state(inode,
-> >  					EXT4_STATE_MAY_INLINE_DATA);
-> > +			/*
-> > +			 * Update inode->i_flags - e.g. S_DAX may get disabled
-> > +			 */
-> > +			ext4_set_inode_flags(inode);
-> >  		}
-> >  		return res;
-> >  	}
-> > @@ -1140,6 +1144,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
-> >  			len, 0);
-> >  	if (!res) {
-> >  		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> > +		/* Update inode->i_flags - e.g. S_DAX may get disabled */
+> >  fs/ext4/ext4.h  |  2 ++
+> >  fs/ext4/file.c  | 38 +++++++++++++++++++++++++++++++++++++-
+> >  fs/ext4/inode.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  3 files changed, 93 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 282a51b07c57..098b39910001 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -3271,6 +3271,8 @@ static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
+> >  	return IS_ALIGNED(off, blksize) && IS_ALIGNED(len, blksize);
+> >  }
+> >  
+> > +extern struct iomap_ops ext4_iomap_ops;
+> > +
+> >  #endif	/* __KERNEL__ */
+> >  
+> >  #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
+> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> > index 9facb4dc5c70..1f25c644cb12 100644
+> > --- a/fs/ext4/file.c
+> > +++ b/fs/ext4/file.c
+> > @@ -31,6 +31,42 @@
+> >  #include "xattr.h"
+> >  #include "acl.h"
+> >  
+> > +#ifdef CONFIG_FS_DAX
+> > +static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
+> > +{
+> > +	struct inode *inode = file_inode(iocb->ki_filp);
+> > +	ssize_t ret;
+> > +
+> > +	inode_lock_shared(inode);
+> > +	/*
+> > +	 * Recheck under inode lock - at this point we are sure it cannot
+> > +	 * change anymore
+> > +	 */
+> > +	if (!IS_DAX(inode)) {
+> > +		inode_unlock_shared(inode);
+> > +		/* Fallback to buffered IO in case we cannot support DAX */
+> > +		return generic_file_read_iter(iocb, to);
 > 
-> Missing call to ext4_set_inode_flags(inode)?
+> Is this not also racy, since we've just dropped the inode lock?  What's to
+> prevent this sequence?
+> 
+> Thread 0				Thread 1
+> --------				--------
+> ext4_file_read_iter()
+>   IS_DAX() returns true
+>   					changes S_DAX to false
+>   ext4_dax_read_iter()
+>     inode_lock_shared()
+>     IS_DAX() returns false
+>     inode_unlock_shared()
+>   					changes S_DAX to true
+>     generic_file_read_iter() on a DAX inode
+> 
+> 
+> Or are we okay in this scenario?
 
-Yeah, fixed. Thanks!
+Yup, I'm aware of this. The real problem is that there's no way to
+serialize with buffered reads for ext4 (they take only page locks) so
+currently you can have buffered reads in flight when inode gets switched to
+DAX mode. I agree there is a potential for breakage and it needs to be
+resolved eventually but the problem is not new and these patches don't make
+it really any worse so I just somewhat fixed it up by patch 2/11 and left
+full solution to a separate patch set.
 
 								Honza
 -- 
