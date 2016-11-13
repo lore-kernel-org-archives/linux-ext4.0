@@ -1,101 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: allow ext4_ext_truncate() to return an error
-Date: Sun, 13 Nov 2016 17:33:12 -0500
-Message-ID: <20161113223312.10531-2-tytso@mit.edu>
-References: <20161113223312.10531-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: don't lock buffer in ext4_commit_super if holding spinlock
+Date: Sun, 13 Nov 2016 17:32:56 -0500
+Message-ID: <20161113223256.10468-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54130 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:54084 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935048AbcKMWdV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Nov 2016 17:33:21 -0500
-In-Reply-To: <20161113223312.10531-1-tytso@mit.edu>
+        id S934791AbcKMWdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 13 Nov 2016 17:33:03 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Return errors to the caller instead of declaring the file system
-corrupted.
+If there is an error reported in mballoc via ext4_grp_locked_error(),
+the code is holding a spinlock, so ext4_commit_super() must not try to
+lock the buffer head, or else it will trigger a BUG:
 
+  BUG: sleeping function called from invalid context at ./include/linux/buffer_head.h:358
+  in_atomic(): 1, irqs_disabled(): 0, pid: 993, name: mount
+  CPU: 0 PID: 993 Comm: mount Not tainted 4.9.0-rc1-clouder1 #62
+  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.8.1-0-g4adadbd-20150316_085822-nilsson.home.kraxel.org 04/01/2014
+   ffff880006423548 ffffffff81318c89 ffffffff819ecdd0 0000000000000166
+   ffff880006423558 ffffffff810810b0 ffff880006423580 ffffffff81081153
+   ffff880006e5a1a0 ffff88000690e400 0000000000000000 ffff8800064235c0
+  Call Trace:
+    [<ffffffff81318c89>] dump_stack+0x67/0x9e
+    [<ffffffff810810b0>] ___might_sleep+0xf0/0x140
+    [<ffffffff81081153>] __might_sleep+0x53/0xb0
+    [<ffffffff8126c1dc>] ext4_commit_super+0x19c/0x290
+    [<ffffffff8126e61a>] __ext4_grp_locked_error+0x14a/0x230
+    [<ffffffff81081153>] ? __might_sleep+0x53/0xb0
+    [<ffffffff812822be>] ext4_mb_generate_buddy+0x1de/0x320
+
+Since ext4_grp_locked_error() calls ext4_commit_super with sync == 0
+(and it is the only caller which does so), avoid locking and unlocking
+the buffer in this case.
+
+This can result in races with ext4_commit_super() if there are other
+problems (which is what commit 4743f83990614 was trying to address),
+but a Warning is better than BUG.
+
+Fixes: 4743f83990614
+Cc: stable@vger.kernel.org
+Reported-by: Nikolay Borisov <kernel@kyup.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |  2 +-
- fs/ext4/extents.c | 15 +++++++--------
- fs/ext4/inode.c   |  4 +++-
- 3 files changed, 11 insertions(+), 10 deletions(-)
+ fs/ext4/super.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index be2282dcde7d..54211c7876f8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3128,7 +3128,7 @@ extern int ext4_ext_writepage_trans_blocks(struct inode *, int);
- extern int ext4_ext_index_trans_blocks(struct inode *inode, int extents);
- extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			       struct ext4_map_blocks *map, int flags);
--extern void ext4_ext_truncate(handle_t *, struct inode *);
-+extern int ext4_ext_truncate(handle_t *, struct inode *);
- extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 				 ext4_lblk_t end);
- extern void ext4_ext_init(struct super_block *);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c930a0110fb4..d3b119499c53 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4631,7 +4631,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	return err ? err : allocated;
- }
- 
--void ext4_ext_truncate(handle_t *handle, struct inode *inode)
-+int ext4_ext_truncate(handle_t *handle, struct inode *inode)
- {
- 	struct super_block *sb = inode->i_sb;
- 	ext4_lblk_t last_block;
-@@ -4645,7 +4645,9 @@ void ext4_ext_truncate(handle_t *handle, struct inode *inode)
- 
- 	/* we have to know where to truncate from in crash case */
- 	EXT4_I(inode)->i_disksize = inode->i_size;
--	ext4_mark_inode_dirty(handle, inode);
-+	err = ext4_mark_inode_dirty(handle, inode);
-+	if (err)
-+		return err;
- 
- 	last_block = (inode->i_size + sb->s_blocksize - 1)
- 			>> EXT4_BLOCK_SIZE_BITS(sb);
-@@ -4657,12 +4659,9 @@ void ext4_ext_truncate(handle_t *handle, struct inode *inode)
- 		congestion_wait(BLK_RW_ASYNC, HZ/50);
- 		goto retry;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e4f61c39328a..ff6f3ab09c7e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4537,7 +4537,8 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 				&EXT4_SB(sb)->s_freeinodes_counter));
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	ext4_superblock_csum_set(sb);
+-	lock_buffer(sbh);
++	if (sync)
++		lock_buffer(sbh);
+ 	if (buffer_write_io_error(sbh)) {
+ 		/*
+ 		 * Oh, dear.  A previous attempt to write the
+@@ -4553,8 +4554,8 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 		set_buffer_uptodate(sbh);
  	}
--	if (err) {
--		ext4_std_error(inode->i_sb, err);
--		return;
--	}
--	err = ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
--	ext4_std_error(inode->i_sb, err);
-+	if (err)
-+		return err;
-+	return ext4_ext_remove_space(inode, last_block, EXT_MAX_BLOCKS - 1);
- }
- 
- static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 40ea090d2e0e..7f32899c9701 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4167,11 +4167,13 @@ int ext4_truncate(struct inode *inode)
- 	ext4_discard_preallocations(inode);
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		ext4_ext_truncate(handle, inode);
-+		err = ext4_ext_truncate(handle, inode);
- 	else
- 		ext4_ind_truncate(handle, inode);
- 
- 	up_write(&ei->i_data_sem);
-+	if (err)
-+		goto out_stop;
- 
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
+ 	mark_buffer_dirty(sbh);
+-	unlock_buffer(sbh);
+ 	if (sync) {
++		unlock_buffer(sbh);
+ 		error = __sync_dirty_buffer(sbh,
+ 			test_opt(sb, BARRIER) ? WRITE_FUA : WRITE_SYNC);
+ 		if (error)
 -- 
 2.11.0.rc0.7.gbe5a750
 
