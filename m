@@ -1,204 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: allow ext4_truncate() to return an error
-Date: Sun, 13 Nov 2016 17:33:11 -0500
-Message-ID: <20161113223312.10531-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54126 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934791AbcKMWdV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Nov 2016 17:33:21 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 06/11] ext4: Avoid split extents for DAX writes
+Date: Mon, 14 Nov 2016 09:54:19 +0100
+Message-ID: <20161114085419.GC2524@quack2.suse.cz>
+References: <1478603297-11793-1-git-send-email-jack@suse.cz>
+ <1478603297-11793-7-git-send-email-jack@suse.cz>
+ <20161111202547.GA1569@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20161111202547.GA1569@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This allows us to properly propagate errors back up to
-ext4_truncate()'s callers.  This also means we no longer have to
-silently ignore some errors (e.g., when trying to add the inode to the
-orphan inode list).
+On Fri 11-11-16 13:25:47, Ross Zwisler wrote:
+> On Tue, Nov 08, 2016 at 12:08:12PM +0100, Jan Kara wrote:
+> > Currently mapping of blocks for DAX writes happen with
+> > EXT4_GET_BLOCKS_PRE_IO flag set. That has a result that each
+> > ext4_map_blocks() call creates a separate written extent, although it
+> > could be merged to the neighboring extents in the extent tree.  The
+> > reason for using this flag is that in case the extent is unwritten, we
+> > need to convert it to written one and zero it out. However this "convert
+> > mapped range to written" operation is already implemented by
+> > ext4_map_blocks() for the case of data writes into unwritten extent. So
+> > just use flags for that mode of operation, simplify the code, and avoid
+> > unnecessary split extents.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> The code that this patch modifies was just introduced in the previous patch.
+> Is there a reason to keep both patches, or would it be cleaner just to squash
+> them and have one patch that introduces the code as you intend for it to end
+> up?
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/ext4.h  |  2 +-
- fs/ext4/inode.c | 41 ++++++++++++++++++++++++++---------------
- fs/ext4/ioctl.c |  7 +++++--
- fs/ext4/super.c |  6 ++++--
- 4 files changed, 36 insertions(+), 20 deletions(-)
+Well, the previous patch just mostly moved the block allocation logic from
+dedicated DAX get_block function into iomap_begin(). This patch changes the
+block allocation logic so I prefer to keep them separate - mostly for the
+sake of documenting the change how allocation of blocks for DAX works in the
+changelog.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 282a51b07c57..be2282dcde7d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2491,7 +2491,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
- extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
--extern void ext4_truncate(struct inode *);
-+extern int ext4_truncate(struct inode *);
- extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
- extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
- extern void ext4_set_inode_flags(struct inode *);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9c064727ed62..40ea090d2e0e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -261,8 +261,15 @@ void ext4_evict_inode(struct inode *inode)
- 			     "couldn't mark inode dirty (err %d)", err);
- 		goto stop_handle;
- 	}
--	if (inode->i_blocks)
--		ext4_truncate(inode);
-+	if (inode->i_blocks) {
-+		err = ext4_truncate(inode);
-+		if (err) {
-+			ext4_error(inode->i_sb,
-+				   "couldn't truncate inode %lu (err %d)",
-+				   inode->i_ino, err);
-+			goto stop_handle;
-+		}
-+	}
- 
- 	/*
- 	 * ext4_ext_truncate() doesn't reserve any slop when it
-@@ -4091,10 +4098,11 @@ int ext4_inode_attach_jinode(struct inode *inode)
-  * that's fine - as long as they are linked from the inode, the post-crash
-  * ext4_truncate() run will find them and release them.
-  */
--void ext4_truncate(struct inode *inode)
-+int ext4_truncate(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	unsigned int credits;
-+	int err = 0;
- 	handle_t *handle;
- 	struct address_space *mapping = inode->i_mapping;
- 
-@@ -4108,7 +4116,7 @@ void ext4_truncate(struct inode *inode)
- 	trace_ext4_truncate_enter(inode);
- 
- 	if (!ext4_can_truncate(inode))
--		return;
-+		return 0;
- 
- 	ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
- 
-@@ -4120,13 +4128,13 @@ void ext4_truncate(struct inode *inode)
- 
- 		ext4_inline_data_truncate(inode, &has_inline);
- 		if (has_inline)
--			return;
-+			return 0;
- 	}
- 
- 	/* If we zero-out tail of the page, we have to create jinode for jbd2 */
- 	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
- 		if (ext4_inode_attach_jinode(inode) < 0)
--			return;
-+			return 0;
- 	}
- 
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-@@ -4135,10 +4143,8 @@ void ext4_truncate(struct inode *inode)
- 		credits = ext4_blocks_for_truncate(inode);
- 
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
--	if (IS_ERR(handle)) {
--		ext4_std_error(inode->i_sb, PTR_ERR(handle));
--		return;
--	}
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
- 
- 	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
- 		ext4_block_truncate_page(handle, mapping, inode->i_size);
-@@ -4152,7 +4158,8 @@ void ext4_truncate(struct inode *inode)
- 	 * Implication: the file must always be in a sane, consistent
- 	 * truncatable state while each transaction commits.
- 	 */
--	if (ext4_orphan_add(handle, inode))
-+	err = ext4_orphan_add(handle, inode);
-+	if (err)
- 		goto out_stop;
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
-@@ -4185,6 +4192,7 @@ void ext4_truncate(struct inode *inode)
- 	ext4_journal_stop(handle);
- 
- 	trace_ext4_truncate_exit(inode);
-+	return err;
- }
- 
- /*
-@@ -5199,12 +5207,15 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 		 * in data=journal mode to make pages freeable.
- 		 */
- 		truncate_pagecache(inode, inode->i_size);
--		if (shrink)
--			ext4_truncate(inode);
-+		if (shrink) {
-+			rc = ext4_truncate(inode);
-+			if (rc)
-+				error = rc;
-+		}
- 		up_write(&EXT4_I(inode)->i_mmap_sem);
- 	}
- 
--	if (!rc) {
-+	if (!error) {
- 		setattr_copy(inode, attr);
- 		mark_inode_dirty(inode);
- 	}
-@@ -5216,7 +5227,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
- 
--	if (!rc && (ia_valid & ATTR_MODE))
-+	if (!error && (ia_valid & ATTR_MODE))
- 		rc = posix_acl_chmod(inode, inode->i_mode);
- 
- err_out:
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bf5ae8ebbc97..99862a3726fc 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -248,8 +248,11 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 			err = -EOPNOTSUPP;
- 			goto flags_out;
- 		}
--	} else if (oldflags & EXT4_EOFBLOCKS_FL)
--		ext4_truncate(inode);
-+	} else if (oldflags & EXT4_EOFBLOCKS_FL) {
-+		err = ext4_truncate(inode);
-+		if (err)
-+			goto flags_out;
-+	}
- 
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
- 	if (IS_ERR(handle)) {
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 20da99da0a34..e4f61c39328a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2330,7 +2330,7 @@ static void ext4_orphan_cleanup(struct super_block *sb,
- 				struct ext4_super_block *es)
- {
- 	unsigned int s_flags = sb->s_flags;
--	int nr_orphans = 0, nr_truncates = 0;
-+	int ret, nr_orphans = 0, nr_truncates = 0;
- #ifdef CONFIG_QUOTA
- 	int i;
- #endif
-@@ -2412,7 +2412,9 @@ static void ext4_orphan_cleanup(struct super_block *sb,
- 				  inode->i_ino, inode->i_size);
- 			inode_lock(inode);
- 			truncate_inode_pages(inode->i_mapping, inode->i_size);
--			ext4_truncate(inode);
-+			ret = ext4_truncate(inode);
-+			if (ret)
-+				ext4_std_error(inode->i_sb, ret);
- 			inode_unlock(inode);
- 			nr_truncates++;
- 		} else {
+								Honza
+
 -- 
-2.11.0.rc0.7.gbe5a750
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
