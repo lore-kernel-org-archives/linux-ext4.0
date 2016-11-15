@@ -1,151 +1,42 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] ext4: avoid lockdep warning when inheriting encryption context
-Date: Mon, 14 Nov 2016 13:03:36 -0800
-Message-ID: <1479157416-144246-1-git-send-email-ebiggers@google.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@google.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: ext4_mb_mark_free_simple: Fix integer value
+ truncation
+Date: Mon, 14 Nov 2016 21:24:20 -0500
+Message-ID: <20161115022420.7bgsyq3yz6sxv3sk@thunk.org>
+References: <1478164472-28376-1-git-send-email-chandan@linux.vnet.ibm.com>
+ <2AE0DCBF-5AB6-47B2-B9F6-B738AFF2EAF2@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, jack@suse.cz,
+        aneesh.kumar@linux.vnet.ibm.com, linuxppc-dev@lists.ozlabs.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f45.google.com ([74.125.83.45]:36070 "EHLO
-        mail-pg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S937874AbcKNVLC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Nov 2016 16:11:02 -0500
-Received: by mail-pg0-f45.google.com with SMTP id f188so57925279pgc.3
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Nov 2016 13:11:01 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:37142 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932906AbcKOCY1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 14 Nov 2016 21:24:27 -0500
+Content-Disposition: inline
+In-Reply-To: <2AE0DCBF-5AB6-47B2-B9F6-B738AFF2EAF2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On a lockdep-enabled kernel, xfstests generic/027 fails due to a lockdep
-warning when run on ext4 mounted with -o test_dummy_encryption:
+On Thu, Nov 03, 2016 at 01:32:33PM -0600, Andreas Dilger wrote:
+> On Nov 3, 2016, at 3:14 AM, Chandan Rajendra <chandan@linux.vnet.ibm.com> wrote:
+> > 
+> > 'border' variable is set to a value of 2 times the block size of the
+> > underlying filesystem. With 64k block size, the resulting value won't
+> > fit into a 16-bit variable. Hence this commit changes the data type of
+> > 'border' to 'unsigned int'.
+> > 
+> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-    xfs_io/4594 is trying to acquire lock:
-     (jbd2_handle
-    ){++++.+}, at:
-    [<ffffffff813096ef>] jbd2_log_wait_commit+0x5/0x11b
+Applied, with a change in the commit summary:
 
-    but task is already holding lock:
-     (jbd2_handle
-    ){++++.+}, at:
-    [<ffffffff813000de>] start_this_handle+0x354/0x3d8
+    ext4: fix mballoc breakage with 64k block size
 
-The abbreviated call stack is:
+Many thanks!!
 
- [<ffffffff813096ef>] ? jbd2_log_wait_commit+0x5/0x11b
- [<ffffffff8130972a>] jbd2_log_wait_commit+0x40/0x11b
- [<ffffffff813096ef>] ? jbd2_log_wait_commit+0x5/0x11b
- [<ffffffff8130987b>] ? __jbd2_journal_force_commit+0x76/0xa6
- [<ffffffff81309896>] __jbd2_journal_force_commit+0x91/0xa6
- [<ffffffff813098b9>] jbd2_journal_force_commit_nested+0xe/0x18
- [<ffffffff812a6049>] ext4_should_retry_alloc+0x72/0x79
- [<ffffffff812f0c1f>] ext4_xattr_set+0xef/0x11f
- [<ffffffff812cc35b>] ext4_set_context+0x3a/0x16b
- [<ffffffff81258123>] fscrypt_inherit_context+0xe3/0x103
- [<ffffffff812ab611>] __ext4_new_inode+0x12dc/0x153a
- [<ffffffff812bd371>] ext4_create+0xb7/0x161
-
-When a file is created in an encrypted directory, ext4_set_context() is
-called to set an encryption context on the new file.  This calls
-ext4_xattr_set(), which contains a retry loop where the journal is
-forced to commit if an ENOSPC error is encountered.
-
-If the task actually were to wait for the journal to commit in this
-case, then it would deadlock because a handle remains open from
-__ext4_new_inode(), so the running transaction can't be committed yet.
-Fortunately, __jbd2_journal_force_commit() avoids the deadlock by not
-allowing the running transaction to be committed while the current task
-has it open.  However, the above lockdep warning is still triggered.
-
-Fix the problem by passing the handle through the 'fs_data' argument to
-ext4_set_context(), then using ext4_xattr_set_handle() instead of
-ext4_xattr_set().  And in the case where no journal handle is specified
-and ext4_set_context() has to open one, add an ENOSPC retry loop since
-in that case it is the outermost transaction.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/ialloc.c |  3 +--
- fs/ext4/super.c  | 32 ++++++++++++++++++++++----------
- 2 files changed, 23 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 170421e..f543281 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1115,8 +1115,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	}
- 
- 	if (encrypt) {
--		/* give pointer to avoid set_context with journal ops. */
--		err = fscrypt_inherit_context(dir, inode, &encrypt, true);
-+		err = fscrypt_inherit_context(dir, inode, handle, true);
- 		if (err)
- 			goto fail_free_drop;
- 	}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ff6f3ab..22d50cb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1114,14 +1114,22 @@ static int ext4_prepare_context(struct inode *inode)
- static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 							void *fs_data)
- {
--	handle_t *handle;
--	int res, res2;
-+	handle_t *handle = fs_data;
-+	int res, res2, retries = 0;
- 
--	/* fs_data is null when internally used. */
--	if (fs_data) {
--		res  = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
--				EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, ctx,
--				len, 0);
-+	/*
-+	 * If a journal handle was specified, then the encryption context is
-+	 * being set on a new inode via inheritance and is part of a larger
-+	 * transaction to create the inode.  Otherwise the encryption context is
-+	 * being set on an existing inode in its own transaction.  Only in the
-+	 * latter case should the "retry on ENOSPC" logic be used.
-+	 */
-+
-+	if (handle) {
-+		res = ext4_xattr_set_handle(handle, inode,
-+					    EXT4_XATTR_INDEX_ENCRYPTION,
-+					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-+					    ctx, len, 0);
- 		if (!res) {
- 			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
- 			ext4_clear_inode_state(inode,
-@@ -1130,14 +1138,15 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 		return res;
- 	}
- 
-+retry:
- 	handle = ext4_journal_start(inode, EXT4_HT_MISC,
- 			ext4_jbd2_credits_xattr(inode));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
--	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
--			EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, ctx,
--			len, 0);
-+	res = ext4_xattr_set_handle(handle, inode, EXT4_XATTR_INDEX_ENCRYPTION,
-+				    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-+				    ctx, len, 0);
- 	if (!res) {
- 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
- 		res = ext4_mark_inode_dirty(handle, inode);
-@@ -1145,6 +1154,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
- 	}
- 	res2 = ext4_journal_stop(handle);
-+
-+	if (res == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
- 	if (!res)
- 		res = res2;
- 	return res;
--- 
-2.8.0.rc3.226.g39d4020
-
+					- Ted
