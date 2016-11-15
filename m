@@ -1,39 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH V2] ext4: ext4_mb_seq_groups_show: Fix stack memory
- corruption
-Date: Mon, 14 Nov 2016 21:35:08 -0500
-Message-ID: <20161115023508.wqtx3a3smpbjiwz7@thunk.org>
-References: <1478756764-4459-1-git-send-email-chandan@linux.vnet.ibm.com>
- <20161110171346.GA31098@quack2.suse.cz>
+Subject: Re: [PATCH] ext4: allow inode expansion for nojournal file systems
+Date: Mon, 14 Nov 2016 21:52:32 -0500
+Message-ID: <20161115025232.6vfs6v2mkpq3ttae@thunk.org>
+References: <20161025211405.GA15502@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        linux-ext4@vger.kernel.org, adilger@dilger.ca
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37264 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37594 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933258AbcKOCfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Nov 2016 21:35:12 -0500
+        id S933542AbcKOCwh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 14 Nov 2016 21:52:37 -0500
 Content-Disposition: inline
-In-Reply-To: <20161110171346.GA31098@quack2.suse.cz>
+In-Reply-To: <20161025211405.GA15502@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 10, 2016 at 06:13:46PM +0100, Jan Kara wrote:
-> On Thu 10-11-16 11:16:04, Chandan Rajendra wrote:
-> > The number of 'counters' elements needed in 'struct sg' is
-> > super_block->s_blocksize_bits + 2. Presently we have 16 'counters'
-> > elements in the array. This is insufficient for block sizes >= 32k. In
-> > such cases the memcpy operation performed in ext4_mb_seq_groups_show()
-> > would cause stack memory corruption.
-> > 
-> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+On Tue, Oct 25, 2016 at 05:14:05PM -0400, Eric Whitney wrote:
+> Runs of xfstest ext4/022 on nojournal file systems result in failures
+> because the inodes of some of its test files do not expand as expected.
+> The cause is a conditional in ext4_mark_inode_dirty() that prevents inode
+> expansion unless the test file system has a journal.  Remove this
+> unnecessary restriction.
 > 
-> Looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-Applied, thanks!
+Thanks, applied.
 
 					- Ted
