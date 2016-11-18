@@ -1,62 +1,52 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] ext4: use more strict checks for inodes_per_block on mount
-Date: Fri, 18 Nov 2016 13:38:41 -0500
-Message-ID: <20161118183842.25682-3-tytso@mit.edu>
+Subject: [PATCH 4/4] ext4: add sanity checking to count_overhead()
+Date: Fri, 18 Nov 2016 13:38:42 -0500
+Message-ID: <20161118183842.25682-4-tytso@mit.edu>
 References: <20161118183842.25682-1-tytso@mit.edu>
-Cc: kernel@kyup.com, bp@alien8.de, Theodore Ts'o <tytso@mit.edu>,
-        stable@vger.kernel.org
+Cc: kernel@kyup.com, bp@alien8.de, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:57942 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753338AbcKRSit (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Nov 2016 13:38:49 -0500
 In-Reply-To: <20161118183842.25682-1-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Centralize the checks for inodes_per_block and be more strict to make
-sure the inodes_per_block_group can't end up being zero.
+The commit "ext4: sanity check the block and cluster size at mount
+time" should prevent any problems, but in case the superblock is
+modified while the file system is mounted, add an extra safety check
+to make sure we won't overrun the allocated buffer.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Cc: stable@vger.kernel.org
 ---
- fs/ext4/super.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ fs/ext4/super.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 404e6f3c1bed..689c02df1af4 100644
+index 689c02df1af4..2d8a49d74f56 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3668,12 +3668,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
- 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
--	if (EXT4_INODE_SIZE(sb) == 0 || EXT4_INODES_PER_GROUP(sb) == 0)
--		goto cantfind_ext4;
- 
- 	sbi->s_inodes_per_block = blocksize / EXT4_INODE_SIZE(sb);
- 	if (sbi->s_inodes_per_block == 0)
- 		goto cantfind_ext4;
-+	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
-+	    sbi->s_inodes_per_group > blocksize * 8) {
-+		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
-+			 sbi->s_blocks_per_group);
-+		goto failed_mount;
-+	}
- 	sbi->s_itb_per_group = sbi->s_inodes_per_group /
- 					sbi->s_inodes_per_block;
- 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
-@@ -3756,13 +3760,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+@@ -3195,10 +3195,15 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
+ 			ext4_set_bit(s++, buf);
+ 			count++;
+ 		}
+-		for (j = ext4_bg_num_gdb(sb, grp); j > 0; j--) {
+-			ext4_set_bit(EXT4_B2C(sbi, s++), buf);
+-			count++;
++		j = ext4_bg_num_gdb(sb, grp);
++		if (s + j > EXT4_BLOCKS_PER_GROUP(sb)) {
++			ext4_error(sb, "Invalid number of block group "
++				   "descriptor blocks: %d", j);
++			j = EXT4_BLOCKS_PER_GROUP(sb) - s;
+ 		}
++		count += j;
++		for (; j > 0; j--)
++			ext4_set_bit(EXT4_B2C(sbi, s++), buf);
  	}
- 	sbi->s_cluster_ratio = clustersize / blocksize;
- 
--	if (sbi->s_inodes_per_group > blocksize * 8) {
--		ext4_msg(sb, KERN_ERR,
--		       "#inodes per group too big: %lu",
--		       sbi->s_inodes_per_group);
--		goto failed_mount;
--	}
--
- 	/* Do we have standard group size of clustersize * 8 blocks ? */
- 	if (sbi->s_blocks_per_group == clustersize << 3)
- 		set_opt2(sb, STD_GROUP_SIZE);
+ 	if (!count)
+ 		return 0;
 -- 
 2.11.0.rc0.7.gbe5a750
+
