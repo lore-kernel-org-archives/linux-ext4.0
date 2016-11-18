@@ -1,60 +1,72 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/10] ext2: Use iomap_zero_range() for zeroing truncated page in DAX path
-Date: Fri, 18 Nov 2016 09:47:09 +0100
-Message-ID: <1479458830-22955-10-git-send-email-jack@suse.cz>
+Subject: [PATCH 06/10] ext4: Avoid split extents for DAX writes
+Date: Fri, 18 Nov 2016 09:47:06 +0100
+Message-ID: <1479458830-22955-7-git-send-email-jack@suse.cz>
 References: <1479458830-22955-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>,
         Ross Zwisler <ross.zwisler@linux.intel.com>,
         Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56232 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56227 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752657AbcKRIrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1752652AbcKRIrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Fri, 18 Nov 2016 03:47:25 -0500
 In-Reply-To: <1479458830-22955-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently the last user of ext2_get_blocks() for DAX inodes was
-dax_truncate_page(). Convert that to iomap_zero_range() so that all DAX
-IO uses the iomap path.
+Currently mapping of blocks for DAX writes happen with
+EXT4_GET_BLOCKS_PRE_IO flag set. That has a result that each
+ext4_map_blocks() call creates a separate written extent, although it
+could be merged to the neighboring extents in the extent tree.  The
+reason for using this flag is that in case the extent is unwritten, we
+need to convert it to written one and zero it out. However this "convert
+mapped range to written" operation is already implemented by
+ext4_map_blocks() for the case of data writes into unwritten extent. So
+just use flags for that mode of operation, simplify the code, and avoid
+unnecessary split extents.
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/inode.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 17 -----------------
+ 1 file changed, 17 deletions(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 41b8b44a391c..046b642f3585 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -850,6 +850,9 @@ struct iomap_ops ext2_iomap_ops = {
- 	.iomap_begin		= ext2_iomap_begin,
- 	.iomap_end		= ext2_iomap_end,
- };
-+#else
-+/* Define empty ops for !CONFIG_FS_DAX case to avoid ugly ifdefs */
-+struct iomap_ops ext2_iomap_ops;
- #endif /* CONFIG_FS_DAX */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a7079cab645a..3192ec0768d4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3351,7 +3351,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 			return PTR_ERR(handle);
  
- int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-@@ -1293,9 +1296,11 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+ 		ret = ext4_map_blocks(handle, inode, &map,
+-				      EXT4_GET_BLOCKS_PRE_IO |
+ 				      EXT4_GET_BLOCKS_CREATE_ZERO);
+ 		if (ret < 0) {
+ 			ext4_journal_stop(handle);
+@@ -3360,22 +3359,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 				goto retry;
+ 			return ret;
+ 		}
+-		/* For DAX writes we need to zero out unwritten extents */
+-		if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+-			/*
+-			 * We are protected by i_mmap_sem or i_rwsem so we know
+-			 * block cannot go away from under us even though we
+-			 * dropped i_data_sem. Convert extent to written and
+-			 * write zeros there.
+-			 */
+-			ret = ext4_map_blocks(handle, inode, &map,
+-					      EXT4_GET_BLOCKS_CONVERT |
+-					      EXT4_GET_BLOCKS_CREATE_ZERO);
+-			if (ret < 0) {
+-				ext4_journal_stop(handle);
+-				return ret;
+-			}
+-		}
  
- 	inode_dio_wait(inode);
- 
--	if (IS_DAX(inode))
--		error = dax_truncate_page(inode, newsize, ext2_get_block);
--	else if (test_opt(inode->i_sb, NOBH))
-+	if (IS_DAX(inode)) {
-+		error = iomap_zero_range(inode, newsize,
-+					 PAGE_ALIGN(newsize) - newsize, NULL,
-+					 &ext2_iomap_ops);
-+	} else if (test_opt(inode->i_sb, NOBH))
- 		error = nobh_truncate_page(inode->i_mapping,
- 				newsize, ext2_get_block);
- 	else
+ 		/*
+ 		 * If we added blocks beyond i_size we need to make sure they
 -- 
 2.6.6
 
