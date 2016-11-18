@@ -1,62 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: use more strict checks for inodes_per_block on mount
-Date: Thu, 17 Nov 2016 23:26:10 -0500
-Message-ID: <20161118042610.13464-3-tytso@mit.edu>
+Subject: [PATCH 1/3] ext4: sanity check the block and cluster size at mount time
+Date: Thu, 17 Nov 2016 23:26:08 -0500
+Message-ID: <20161118042610.13464-1-tytso@mit.edu>
 References: <5ce3de05-2f37-6758-1178-ecf520c87d4f@kyup.com>
- <20161118042610.13464-1-tytso@mit.edu>
 Cc: kernel@kyup.com, bp@alien8.de, Theodore Ts'o <tytso@mit.edu>,
         stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20161118042610.13464-1-tytso@mit.edu>
+In-Reply-To: <5ce3de05-2f37-6758-1178-ecf520c87d4f@kyup.com>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Centralize the checks for inodes_per_block and be more strict to make
-sure the inodes_per_block_group can't end up being zero.
+If the block size or cluster size is insane, reject the mount.  This
+is important for security reasons (although we shouldn't be just
+depending on this check).
 
+Ref: http://www.securityfocus.com/archive/1/539661
+Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1332506
+Reported-by: Borislav Petkov <bp@alien8.de>
+Reported-by: Nikolay Borisov <kernel@kyup.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/super.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/super.c | 17 ++++++++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 53d6d463ac4d..bdf1e5ee8642 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -235,6 +235,7 @@ struct ext4_io_submit {
+ #define	EXT4_MAX_BLOCK_SIZE		65536
+ #define EXT4_MIN_BLOCK_LOG_SIZE		10
+ #define EXT4_MAX_BLOCK_LOG_SIZE		16
++#define EXT4_MAX_CLUSTER_LOG_SIZE	30
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3009c03220d6..6638a0415997 100644
+index 35ccbdc2d64e..12f50ef56fe1 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3666,12 +3666,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
- 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
--	if (EXT4_INODE_SIZE(sb) == 0 || EXT4_INODES_PER_GROUP(sb) == 0)
--		goto cantfind_ext4;
- 
- 	sbi->s_inodes_per_block = blocksize / EXT4_INODE_SIZE(sb);
- 	if (sbi->s_inodes_per_block == 0)
- 		goto cantfind_ext4;
-+	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
-+	    sbi->s_inodes_per_group > blocksize * 8) {
-+		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
-+			 sbi->s_blocks_per_group);
+@@ -3567,7 +3567,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+ 	    blocksize > EXT4_MAX_BLOCK_SIZE) {
+ 		ext4_msg(sb, KERN_ERR,
+-		       "Unsupported filesystem blocksize %d", blocksize);
++		       "Unsupported filesystem blocksize %d (%d)",
++			 blocksize, le32_to_cpu(es->s_log_block_size));
 +		goto failed_mount;
 +	}
- 	sbi->s_itb_per_group = sbi->s_inodes_per_group /
- 					sbi->s_inodes_per_block;
- 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
-@@ -3754,13 +3758,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
++	if (le32_to_cpu(es->s_log_block_size) >
++	    (EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Invalid log block size: %u",
++			 le32_to_cpu(es->s_log_block_size));
+ 		goto failed_mount;
  	}
- 	sbi->s_cluster_ratio = clustersize / blocksize;
  
--	if (sbi->s_inodes_per_group > blocksize * 8) {
--		ext4_msg(sb, KERN_ERR,
--		       "#inodes per group too big: %lu",
--		       sbi->s_inodes_per_group);
--		goto failed_mount;
--	}
--
- 	/* Do we have standard group size of clustersize * 8 blocks ? */
- 	if (sbi->s_blocks_per_group == clustersize << 3)
- 		set_opt2(sb, STD_GROUP_SIZE);
+@@ -3699,6 +3707,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				 "block size (%d)", clustersize, blocksize);
+ 			goto failed_mount;
+ 		}
++		if (le32_to_cpu(es->s_log_cluster_size) >
++		    (EXT4_MAX_CLUSTER_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Invalid log cluster size: %u",
++				 le32_to_cpu(es->s_log_cluster_size));
++			goto failed_mount;
++		}
+ 		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
+ 			le32_to_cpu(es->s_log_block_size);
+ 		sbi->s_clusters_per_group =
 -- 
 2.11.0.rc0.7.gbe5a750
