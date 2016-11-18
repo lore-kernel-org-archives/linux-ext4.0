@@ -1,94 +1,114 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/10] ext4: Convert DAX faults to iomap infrastructure
-Date: Fri, 18 Nov 2016 09:47:07 +0100
-Message-ID: <1479458830-22955-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 02/10] ext4: Let S_DAX set only if DAX is really supported
+Date: Fri, 18 Nov 2016 09:47:02 +0100
+Message-ID: <1479458830-22955-3-git-send-email-jack@suse.cz>
 References: <1479458830-22955-1-git-send-email-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>,
         Ross Zwisler <ross.zwisler@linux.intel.com>,
         Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56260 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56214 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752646AbcKRIr0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 18 Nov 2016 03:47:26 -0500
+        id S1752654AbcKRIrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Nov 2016 03:47:25 -0500
 In-Reply-To: <1479458830-22955-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Convert DAX faults to use iomap infrastructure. We would not have to start
-transaction in ext4_dax_fault() anymore since ext4_iomap_begin takes
-care of that but so far we do that to avoid lock inversion of
-transaction start with DAX entry lock which gets acquired in
-dax_iomap_fault() before calling ->iomap_begin handler.
+Currently we have S_DAX set inode->i_flags for a regular file whenever
+ext4 is mounted with dax mount option. However in some cases we cannot
+really do DAX - e.g. when inode is marked to use data journalling, when
+inode data is being encrypted, or when inode is stored inline. Make sure
+S_DAX flag is appropriately set/cleared in these cases.
 
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c  |  9 +++++----
- fs/ext4/inode.c | 14 +++++++++-----
- 2 files changed, 14 insertions(+), 9 deletions(-)
+ fs/ext4/inline.c | 10 ++++++++++
+ fs/ext4/inode.c  |  9 ++++++++-
+ fs/ext4/super.c  |  6 ++++++
+ 3 files changed, 24 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 1953fe34f9fe..b5f184493c57 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -275,7 +275,7 @@ static int ext4_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	if (IS_ERR(handle))
- 		result = VM_FAULT_SIGBUS;
- 	else
--		result = dax_fault(vma, vmf, ext4_dax_get_block);
-+		result = dax_iomap_fault(vma, vmf, &ext4_iomap_ops);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index f74d5ee2cdec..c29678965c3c 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -299,6 +299,11 @@ static int ext4_create_inline_data(handle_t *handle,
+ 	EXT4_I(inode)->i_inline_size = len + EXT4_MIN_INLINE_DATA_SIZE;
+ 	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
+ 	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	/*
++	 * Propagate changes to inode->i_flags as well - e.g. S_DAX may
++	 * get cleared
++	 */
++	ext4_set_inode_flags(inode);
+ 	get_bh(is.iloc.bh);
+ 	error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
  
- 	if (write) {
- 		if (!IS_ERR(handle))
-@@ -309,9 +309,10 @@ static int ext4_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+@@ -442,6 +447,11 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
+ 		}
+ 	}
+ 	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	/*
++	 * Propagate changes to inode->i_flags as well - e.g. S_DAX may
++	 * get set.
++	 */
++	ext4_set_inode_flags(inode);
  
- 	if (IS_ERR(handle))
- 		result = VM_FAULT_SIGBUS;
--	else
--		result = dax_pmd_fault(vma, addr, pmd, flags,
--					 ext4_dax_get_block);
-+	else {
-+		result = dax_iomap_pmd_fault(vma, addr, pmd, flags,
-+					     &ext4_iomap_ops);
-+	}
- 
- 	if (write) {
- 		if (!IS_ERR(handle))
+ 	get_bh(is.iloc.bh);
+ 	error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3192ec0768d4..4d71c7bc3524 100644
+index 3d58b2b477e8..5337828c68a7 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3361,12 +3361,16 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+@@ -4355,7 +4355,9 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
++	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
++	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
++	    !ext4_encrypted_inode(inode))
+ 		new_fl |= S_DAX;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
+@@ -5623,6 +5625,11 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
+ 	}
+ 	ext4_set_aops(inode);
++	/*
++	 * Update inode->i_flags after EXT4_INODE_JOURNAL_DATA was updated.
++	 * E.g. S_DAX may get cleared / set.
++	 */
++	ext4_set_inode_flags(inode);
+ 
+ 	jbd2_journal_unlock_updates(journal);
+ 	percpu_up_write(&sbi->s_journal_flag_rwsem);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 20da99da0a34..d5b94cc6a74e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1126,6 +1126,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+ 			ext4_clear_inode_state(inode,
+ 					EXT4_STATE_MAY_INLINE_DATA);
++			/*
++			 * Update inode->i_flags - e.g. S_DAX may get disabled
++			 */
++			ext4_set_inode_flags(inode);
  		}
- 
- 		/*
--		 * If we added blocks beyond i_size we need to make sure they
-+		 * If we added blocks beyond i_size, we need to make sure they
- 		 * will get truncated if we crash before updating i_size in
--		 * ext4_iomap_end().
-+		 * ext4_iomap_end(). For faults we don't need to do that (and
-+		 * even cannot because for orphan list operations inode_lock is
-+		 * required) - if we happen to instantiate block beyond i_size,
-+		 * it is because we race with truncate which has already added
-+		 * the inode to the orphan list.
- 		 */
--		if (first_block + map.m_len >
--		    (inode->i_size + (1 << blkbits) - 1) >> blkbits) {
-+		if (!(flags & IOMAP_FAULT) && first_block + map.m_len >
-+		    (i_size_read(inode) + (1 << blkbits) - 1) >> blkbits) {
- 			int err;
- 
- 			err = ext4_orphan_add(handle, inode);
-@@ -3412,7 +3416,7 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
- 	int blkbits = inode->i_blkbits;
- 	bool truncate = false;
- 
--	if (!(flags & IOMAP_WRITE))
-+	if (!(flags & IOMAP_WRITE) || (flags & IOMAP_FAULT))
- 		return 0;
- 
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 		return res;
+ 	}
+@@ -1140,6 +1144,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			len, 0);
+ 	if (!res) {
+ 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
++		/* Update inode->i_flags - e.g. S_DAX may get disabled */
++		ext4_set_inode_flags(inode);
+ 		res = ext4_mark_inode_dirty(handle, inode);
+ 		if (res)
+ 			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
 -- 
 2.6.6
 
