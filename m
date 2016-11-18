@@ -1,117 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/4] ext4: fix in-superblock mount options processing
-Date: Fri, 18 Nov 2016 13:38:40 -0500
-Message-ID: <20161118183842.25682-2-tytso@mit.edu>
-References: <20161118183842.25682-1-tytso@mit.edu>
+Subject: [PATCH 1/4] ext4: sanity check the block and cluster size at mount time
+Date: Fri, 18 Nov 2016 13:38:39 -0500
+Message-ID: <20161118183842.25682-1-tytso@mit.edu>
 Cc: kernel@kyup.com, bp@alien8.de, Theodore Ts'o <tytso@mit.edu>,
         stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57946 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753808AbcKRSit (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 18 Nov 2016 13:38:49 -0500
-In-Reply-To: <20161118183842.25682-1-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Fix a large number of problems with how we handle mount options in the
-superblock.  For one, if the string in the superblock is long enough
-that it is not null terminated, we could run off the end of the string
-and try to interpret superblocks fields as characters.  It's unlikely
-this will cause a security problem, but it could result in an invalid
-parse.  Also, parse_options is destructive to the string, so in some
-cases if there is a comma-separated string, it would be modified in
-the superblock.  (Fortunately it only happens on file systems with a
-1k block size.)
+If the block size or cluster size is insane, reject the mount.  This
+is important for security reasons (although we shouldn't be just
+depending on this check).
 
+Ref: http://www.securityfocus.com/archive/1/539661
+Ref: https://bugzilla.redhat.com/show_bug.cgi?id=1332506
+Reported-by: Borislav Petkov <bp@alien8.de>
+Reported-by: Nikolay Borisov <kernel@kyup.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/super.c | 38 +++++++++++++++++++++++---------------
- 1 file changed, 23 insertions(+), 15 deletions(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/super.c | 17 ++++++++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 53d6d463ac4d..bdf1e5ee8642 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -235,6 +235,7 @@ struct ext4_io_submit {
+ #define	EXT4_MAX_BLOCK_SIZE		65536
+ #define EXT4_MIN_BLOCK_LOG_SIZE		10
+ #define EXT4_MAX_BLOCK_LOG_SIZE		16
++#define EXT4_MAX_CLUSTER_LOG_SIZE	30
+ #ifdef __KERNEL__
+ # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+ #else
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0f9ae4ce33d6..404e6f3c1bed 100644
+index 35ccbdc2d64e..0f9ae4ce33d6 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3303,7 +3303,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	char *orig_data = kstrdup(data, GFP_KERNEL);
- 	struct buffer_head *bh;
- 	struct ext4_super_block *es = NULL;
--	struct ext4_sb_info *sbi;
-+	struct ext4_sb_info *sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
- 	ext4_fsblk_t block;
- 	ext4_fsblk_t sb_block = get_sb_block(&data);
- 	ext4_fsblk_t logical_sb_block;
-@@ -3322,16 +3322,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
- 	ext4_group_t first_not_zeroed;
- 
--	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
--	if (!sbi)
--		goto out_free_orig;
-+	if ((data && !orig_data) || !sbi)
-+		goto out_free_base;
- 
- 	sbi->s_blockgroup_lock =
- 		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
--	if (!sbi->s_blockgroup_lock) {
--		kfree(sbi);
--		goto out_free_orig;
--	}
-+	if (!sbi->s_blockgroup_lock)
-+		goto out_free_base;
-+
- 	sb->s_fs_info = sbi;
- 	sbi->s_sb = sb;
- 	sbi->s_inode_readahead_blks = EXT4_DEF_INODE_READAHEAD_BLKS;
-@@ -3477,11 +3475,19 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	 */
- 	sbi->s_li_wait_mult = EXT4_DEF_LI_WAIT_MULT;
- 
--	if (!parse_options((char *) sbi->s_es->s_mount_opts, sb,
--			   &journal_devnum, &journal_ioprio, 0)) {
--		ext4_msg(sb, KERN_WARNING,
--			 "failed to parse options in superblock: %s",
--			 sbi->s_es->s_mount_opts);
-+	if (sbi->s_es->s_mount_opts[0]) {
-+		char *s_mount_opts = kstrndup(sbi->s_es->s_mount_opts,
-+					      sizeof(sbi->s_es->s_mount_opts),
-+					      GFP_KERNEL);
-+		if (!s_mount_opts)
-+			goto failed_mount;
-+		if (!parse_options(s_mount_opts, sb, &journal_devnum,
-+				   &journal_ioprio, 0)) {
-+			ext4_msg(sb, KERN_WARNING,
-+				 "failed to parse options in superblock: %s",
-+				 s_mount_opts);
-+		}
-+		kfree(s_mount_opts);
+@@ -3567,7 +3567,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+ 	    blocksize > EXT4_MAX_BLOCK_SIZE) {
+ 		ext4_msg(sb, KERN_ERR,
+-		       "Unsupported filesystem blocksize %d", blocksize);
++		       "Unsupported filesystem blocksize %d (%d log_block_size)",
++			 blocksize, le32_to_cpu(es->s_log_block_size));
++		goto failed_mount;
++	}
++	if (le32_to_cpu(es->s_log_block_size) >
++	    (EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Invalid log block size: %u",
++			 le32_to_cpu(es->s_log_block_size));
+ 		goto failed_mount;
  	}
- 	sbi->s_def_mount_opt = sbi->s_mount_opt;
- 	if (!parse_options((char *) data, sb, &journal_devnum,
-@@ -4162,7 +4168,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  
- 	if (___ratelimit(&ext4_mount_msg_ratelimit, "EXT4-fs mount"))
- 		ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
--			 "Opts: %s%s%s", descr, sbi->s_es->s_mount_opts,
-+			 "Opts: %.*s%s%s", descr,
-+			 (int) sizeof(sbi->s_es->s_mount_opts),
-+			 sbi->s_es->s_mount_opts,
- 			 *sbi->s_es->s_mount_opts ? "; " : "", orig_data);
- 
- 	if (es->s_error_count)
-@@ -4241,8 +4249,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- out_fail:
- 	sb->s_fs_info = NULL;
- 	kfree(sbi->s_blockgroup_lock);
-+out_free_base:
- 	kfree(sbi);
--out_free_orig:
- 	kfree(orig_data);
- 	return err ? err : ret;
- }
+@@ -3699,6 +3707,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				 "block size (%d)", clustersize, blocksize);
+ 			goto failed_mount;
+ 		}
++		if (le32_to_cpu(es->s_log_cluster_size) >
++		    (EXT4_MAX_CLUSTER_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Invalid log cluster size: %u",
++				 le32_to_cpu(es->s_log_cluster_size));
++			goto failed_mount;
++		}
+ 		sbi->s_cluster_bits = le32_to_cpu(es->s_log_cluster_size) -
+ 			le32_to_cpu(es->s_log_block_size);
+ 		sbi->s_clusters_per_group =
 -- 
 2.11.0.rc0.7.gbe5a750
-
