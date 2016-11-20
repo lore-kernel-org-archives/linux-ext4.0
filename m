@@ -1,42 +1,24 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 4.9
-Date: Sat, 19 Nov 2016 21:29:38 -0500
-Message-ID: <20161120022938.xkpiypxk3hn6yjez@thunk.org>
+From: Sky Finance <loan@skfn.org>
+Subject: QUICK LOAN OFFER
+Date: Sat, 19 Nov 2016 22:08:43 -0800
+Message-ID: <20161120064138.3ECA12239D4C__10492.1423284852$1479635183$gmane$org@mail.ponyexpress.kz>
+Reply-To: skyfinance001@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 8BIT
+To: Recipients <loan@skfn.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.ponyexpress.kz ([178.88.184.100]:39776 "EHLO
+        mail.ponyexpress.kz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753173AbcKTJqB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Nov 2016 04:46:01 -0500
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit bc33b0ca11e3df467777a4fa7639ba488c9d4911:
+Do You Need A Loan Of Any Kind ? If Yes Email Now For More Info Contact us on: skyfinance001@gmail.com
 
-  Linux 4.9-rc4 (2016-11-05 16:23:36 -0700)
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_stable
-
-for you to fetch changes up to 8cdf3372fe8368f56315e66bea9f35053c418093:
-
-  ext4: sanity check the block and cluster size at mount time (2016-11-19 20:58:15 -0500)
-
-----------------------------------------------------------------
-A security fix (so a maliciously corrupted file system image won't
-panic the kernel) and some fixes for CONFIG_VMAP_STACK.
-
-----------------------------------------------------------------
-Eric Biggers (2):
-      fscrypto: don't use on-stack buffer for filename encryption
-      fscrypto: don't use on-stack buffer for key derivation
-
-Theodore Ts'o (1):
-      ext4: sanity check the block and cluster size at mount time
-
- fs/crypto/fname.c   | 53 +++++++++++++++++++++--------------------------------
- fs/crypto/keyinfo.c | 16 +++++++++++++---
- fs/ext4/ext4.h      |  1 +
- fs/ext4/super.c     | 17 ++++++++++++++++-
- 4 files changed, 51 insertions(+), 36 deletions(-)
