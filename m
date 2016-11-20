@@ -1,10 +1,9 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/4] generic: add utilities for testing filesystem
- encryption
-Date: Mon, 21 Nov 2016 08:33:13 +1100
-Message-ID: <20161120213313.GI28177@dastard>
+Subject: Re: [PATCH 2/4] generic: test setting and getting encryption policies
+Date: Mon, 21 Nov 2016 09:07:18 +1100
+Message-ID: <20161120220718.GJ28177@dastard>
 References: <1479412027-34416-1-git-send-email-ebiggers@google.com>
- <1479412027-34416-2-git-send-email-ebiggers@google.com>
+ <1479412027-34416-3-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -15,186 +14,216 @@ Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
 To: Eric Biggers <ebiggers@google.com>
 Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1479412027-34416-2-git-send-email-ebiggers@google.com>
+In-Reply-To: <1479412027-34416-3-git-send-email-ebiggers@google.com>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 17, 2016 at 11:47:04AM -0800, Eric Biggers wrote:
-> Add utilities for testing the filesystem-level encryption feature
-> currently supported by ext4 and f2fs.  Tests will be able to source
-> common/encrypt and call _begin_encryption_test to set up an
-> encryption-capable filesystem on the scratch device, or skip the test
-> when not supported.
-> 
-> A program fscrypt_util is also added to expose filesystem
-> encryption-related commands to shell scripts.
+On Thu, Nov 17, 2016 at 11:47:05AM -0800, Eric Biggers wrote:
+> Several kernel bugs were recently fixed regarding the constraints for
+> setting encryption policies.  Add tests for these cases and a few more.
+
+more comments below, but in general this sort of test should be
+driven through xfs_io command line parameters.
+
+i.e. we put all the functionality into the xfs_io comaand interface,
+and it just passes through whatever the test script tells it. In
+this case, the set_policy command needs several options to set
+different parts of the policy appropriately.
+
+The reason we tend to put this sort of thing into xfs_io is that
+when we need to write a new test, all the commands we need to
+construct specific policies/contexts already exist and we don't have
+to write new helpers for each test....
+
 > 
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 > ---
->  .gitignore         |   1 +
->  common/encrypt     |  89 ++++++++++++++++
->  src/Makefile       |   2 +-
->  src/fscrypt_util.c | 306 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  4 files changed, 397 insertions(+), 1 deletion(-)
->  create mode 100755 common/encrypt
->  create mode 100644 src/fscrypt_util.c
+>  src/fscrypt_util.c    | 82 +++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/400     | 88 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/400.out | 24 ++++++++++++++
+>  tests/generic/group   |  1 +
+>  4 files changed, 195 insertions(+)
+>  create mode 100755 tests/generic/400
+>  create mode 100644 tests/generic/400.out
 > 
-> diff --git a/.gitignore b/.gitignore
-> index 915d2d8..7040f67 100644
-> --- a/.gitignore
-> +++ b/.gitignore
-> @@ -54,6 +54,7 @@
->  /src/fill
->  /src/fill2
->  /src/fs_perms
-> +/src/fscrypt_util
->  /src/fssum
->  /src/fstest
->  /src/fsync-tester
-> diff --git a/common/encrypt b/common/encrypt
-> new file mode 100755
-> index 0000000..599d16f
-> --- /dev/null
-> +++ b/common/encrypt
-> @@ -0,0 +1,89 @@
-> +#!/bin/bash
-> +#
-> +# Common functions for testing filesystem-level encryption
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (C) 2016 Google, Inc.
-> +#
-> +# Author: Eric Biggers <ebiggers@google.com>
-> +#
-> +# This program is free software; you can redistribute it and/or modify
-> +# it under the terms of the GNU General Public License as published by
-> +# the Free Software Foundation; either version 2 of the License, or
-> +# (at your option) any later version.
-> +#
-> +# This program is distributed in the hope that it will be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
+> diff --git a/src/fscrypt_util.c b/src/fscrypt_util.c
+> index de63667..9428cb4 100644
+> --- a/src/fscrypt_util.c
+> +++ b/src/fscrypt_util.c
+> @@ -96,6 +96,7 @@ usage(void)
+>  "    fscrypt_util gen_key\n"
+>  "    fscrypt_util rm_key KEYDESC\n"
+>  "    fscrypt_util set_policy KEYDESC DIR\n"
+> +"    fscrypt_util test_ioctl_validation DIR\n"
+>  );
+>  	exit(2);
+>  }
+> @@ -276,6 +277,86 @@ static int set_policy(int argc, char **argv)
+>  	return 0;
+>  }
+>  
+> +/*
+> + * Test that the kernel does basic validation of the arguments to
+> + * FS_IOC_SET_ENCRYPTION_POLICY and FS_IOC_GET_ENCRYPTION_POLICY.
+> + */
+> +static int test_ioctl_validation(int argc, char **argv)
+> +{
+> +	const char *dir;
+> +	int fd;
+> +	struct fscrypt_policy policy;
+> +
+> +	if (argc != 1)
+> +		usage();
+> +	dir = argv[0];
+> +
+> +	fd = open(dir, O_RDONLY);
+> +	if (fd < 0)
+> +		die_errno("%s: Unable to open", dir);
+> +
+> +	/* trying to get encryption policy for unencrypted file */
+> +	if (ioctl(fd, FS_IOC_GET_ENCRYPTION_POLICY, NULL) != -1 ||
+> +	    (errno != ENODATA && errno != ENOENT)) {
+> +		die("expected FS_IOC_GET_ENCRYPTION_POLICY to fail with "
+> +		    "ENODATA or ENOENT when unencrypted file specified");
+> +	}
+
+Can we format these in the normal way? i.e.
+
+	error = ioctl();
+	if (error < 0 &&
+	    (errno exceptions))
+		die()
+
+Also, shouldn't a get without an args parameter always return
+EINVAL, regardless of whether the underlying file is encrypted or
+not?
+
+> +	/* invalid pointer */
+> +	if (ioctl(fd, FS_IOC_SET_ENCRYPTION_POLICY, NULL) != -1 ||
+> +	    errno != EFAULT) {
+> +		die("expected FS_IOC_SET_ENCRYPTION_POLICY to fail with "
+> +		    "EFAULT when invalid pointer specified");
+> +	}
+
+>From the command line, shouldn't this be triggered by "set_policy
+NULL"?
+
+> +	/* invalid flags */
+> +	init_policy_default(&policy);
+> +	policy.flags = 0xFF;
+> +	if (ioctl(fd, FS_IOC_SET_ENCRYPTION_POLICY, &policy) != -1 ||
+> +	    errno != EINVAL) {
+> +		die("expected FS_IOC_SET_ENCRYPTION_POLICY to fail with "
+> +		    "EINVAL when invalid flags specified");
+> +	}
+
+"set_policy -f 0xff"
+
+> +
+> +	/* invalid encryption modes */
+> +	init_policy_default(&policy);
+> +	policy.contents_encryption_mode = 0xFF;
+> +	policy.filenames_encryption_mode = 0xFF;
+> +	if (ioctl(fd, FS_IOC_SET_ENCRYPTION_POLICY, &policy) != -1 ||
+> +	    errno != EINVAL) {
+> +		die("expected FS_IOC_SET_ENCRYPTION_POLICY to fail with "
+> +		    "EINVAL when invalid encryption modes specified");
+> +	}
+
+"set_policy -c 0xff -n 0xff"
+
+> +
+> +	/* invalid policy version */
+> +	init_policy_default(&policy);
+> +	policy.version = 0xFF;
+> +	if (ioctl(fd, FS_IOC_SET_ENCRYPTION_POLICY, &policy) != -1 ||
+> +	    errno != EINVAL) {
+> +		die("expected FS_IOC_SET_ENCRYPTION_POLICY to fail with "
+> +		    "EINVAL when invalid policy version specified");
+> +	}
+
+"set_policy -v 0xff"
+
+> +
+> +	/* success case */
+> +	init_policy_default(&policy);
+> +	if (ioctl(fd, FS_IOC_SET_ENCRYPTION_POLICY, &policy) != 0)
+> +		die_errno("expected FS_IOC_SET_ENCRYPTION_POLICY to succeed");
+
+"set_policy default"
+
+> +	verify_policy(dir, fd, &policy);
+> +
+> +	/* invalid pointer (get) */
+> +	if (ioctl(fd, FS_IOC_GET_ENCRYPTION_POLICY, NULL) != -1 ||
+> +	    errno != EFAULT) {
+> +		die("expected FS_IOC_GET_ENCRYPTION_POLICY to fail with "
+> +		    "EFAULT when invalid pointer specified");
+> +	}
+
+EINVAL - this should never get to copyout to generate EFAULT, so
+should not require separate tests for having no policy vs a valid
+policy.
+
+These should all be in a single xfstest that "tests ioctl validity",
+rather than appended to a "set_policy behaviour" test.
+
 > +# You should have received a copy of the GNU General Public License
 > +# along with this program; if not, see <http://www.gnu.org/licenses/>.
 > +#-----------------------------------------------------------------------
 > +
-> +. ./common/rc
-
-Tests will already have included common/rc before this file, so we
-do not source it here.
-
-
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +here=`pwd`
+> +echo "QA output created by $seq"
 > +
-> +# Begin an encryption test.  This creates the scratch filesystem with encryption
-> +# enabled and mounts it, or skips the test if encryption isn't supported.
-> +_begin_encryption_test() {
+> +. ./common/encrypt
+
+This is not the way to include all the required scripts, as I
+mentioned in my last email....
+
+Also, please do not gut the test script preamble - it's there in the
+new test template for good reason and that is that all the common
+code that is included relies on the setup it does. e.g. this means $tmp
+is not properly set, so any common code that has been included that
+does 'rm -rf $tmp/*' if going to erase your root filesystem.
+
+> +_require_user
+> +_begin_encryption_test
 > +
-> +	_supported_os Linux
-> +	_supported_fs ext4 f2fs
-
-These go in the tests, not here.
-
+> +cd $SCRATCH_MNT
 > +
-> +	# We use a dedicated test program 'fscrypt_util' for making API calls
-> +	# related to encryption.  We aren't using 'e4crypt' because 'e4crypt' is
-> +	# currently ext4-specific, and with a test program we can easily include
-> +	# test-only commands and other functionality or behavior that wouldn't
-> +	# make sense in a real program.
-> +	_require_test_program fscrypt_util
+> +_require_user
+> +_begin_encryption_test
 > +
-> +	# The 'test_dummy_encryption' mount option interferes with trying to use
-> +	# encryption for real.  So skip the real encryption tests if the
-> +	# 'test_dummy_encryption' mount option was specified.
-> +	if echo "$MOUNT_OPTIONS" | grep -q "test_dummy_encryption"; then
-> +		_notrun "Dummy encryption is on; skipping real encryption tests"
-> +	fi
+> +cd $SCRATCH_MNT
 
-_requires_real_encryption()
+... because mounting scratch without having first run _scratch_mkfs
+is just wrong. People familiar with xfstests setup are going to look
+at this and think the test is broken, because it doesn't
+_require_scratch, it doesn't run mkfs or mount, etc....
 
-In each test.
+> +# Should *not* be able to set an encryption policy on a directory on a
+> +# filesystem mounted readonly.  Regression test for ba63f23d69a3: "fscrypto:
+> +# require write access to mount to set encryption policy".  Test both a regular
+> +# readonly filesystem and a read-write filesystem remounted with "ro,bind",
+> +# which creates a readonly mount for a read-write filesystem.
+> +echo -e "\n*** Setting encryption policy on readonly filesystem ***"
+> +mkdir readonly_mnt_dir
+> +_scratch_mount -o ro,remount
 
+scratch_remount ro
 
-> +
-> +	# Make a filesystem on the scratch device with the encryption feature
-> +	# enabled.  If this fails then probably the userspace tools (e.g.
-> +	# e2fsprogs or f2fs-tools) are too old to understand encryption.
-> +	_require_scratch
-> +	if ! _scratch_mkfs_encrypted >/dev/null; then
-> +		_notrun "$FSTYP userspace tools do not support encryption"
-> +	fi
-> +
-> +	# Try to mount the filesystem.  If this fails then probably the kernel
-> +	# isn't aware of encryption.
-> +	if ! _scratch_mount &> /dev/null; then
-> +		_notrun "kernel is unaware of $FSTYP encryption feature"
-> +	fi
-> +
-> +	# The kernel may be aware of encryption without supporting it.  For
-> +	# example, for ext4 this is the case with kernels configured with
-> +	# CONFIG_EXT4_FS_ENCRYPTION=n.  Detect support for encryption by trying
-> +	# to set an encryption policy.  (For ext4 we could instead check for the
-> +	# presence of /sys/fs/ext4/features/encryption, but this is broken on
-> +	# some older kernels and is ext4-specific anyway.)
-> +	mkdir $SCRATCH_MNT/tmpdir
-> +	if src/fscrypt_util set_policy 0000111122223333 $SCRATCH_MNT/tmpdir \
-> +		2>&1 >/dev/null |
-> +		egrep -q 'Inappropriate ioctl for device|Operation not supported'
-> +	then
-> +		_notrun "kernel does not support $FSTYP encryption"
-> +	fi
-> +	rmdir $SCRATCH_MNT/tmpdir
+> +$FSCRYPT_UTIL set_policy 0000111122223333 readonly_mnt_dir
+> +_scratch_mount -o rw,remount
 
-And this should all be in a _requires_encryption() function.
+scratch_remount rw
 
-> +}
-> +
-> +_scratch_mkfs_encrypted() {
-> +	case $FSTYP in
-> +	ext4)
-> +		# ext4 encryption requires block size = PAGE_SIZE.
-> +		MKFS_OPTIONS="-O encrypt -b $(getconf PAGE_SIZE)" _scratch_mkfs
-> +		;;
-> +	*)
-> +		MKFS_OPTIONS="-O encrypt" _scratch_mkfs
-> +		;;
-> +	esac
-> +}
+> +_scratch_mount -o remount,ro,bind
 
-THis completely overrides any user supplied mkfs options, which we
-try to avoid doing. Instead, this should simply be
-
-	_scratch_mkfs -O encrypt
-
-so that _scratch_mkfs_encrypted() fails if there are conflicting
-mkfs options specified. This means _requires_encryption() will
-not_run the test when this occurrs...
-
-
-> +FSCRYPT_UTIL=`pwd`/src/fscrypt_util
-
-_require_test_program fscrypt_util
-
-FSCRYPT_UTIL=src/fscrypt_util
-
-> diff --git a/src/fscrypt_util.c b/src/fscrypt_util.c
-> new file mode 100644
-> index 0000000..de63667
-> --- /dev/null
-> +++ b/src/fscrypt_util.c
-
-....
-
-Ok, can we get this added to xfs_io rather than a stand-alone
-fstests helper? There are three clear commands here:
-
-	{"gen_key", gen_key},
-	{"rm_key", rm_key},
-	{"set_policy", set_policy},
-
-So it should plug straight into the xfs_io command parsing
-infrastructure without much change at all.
+Umm, what does a bind mount do when there's no source/target
+directory? Whatever you are doing here is not documented in the
+mount(8) man page....
 
 Cheers,
 
