@@ -1,56 +1,52 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] ext4: fix reading new encrypted symlinks on no-journal
- filesystems
-Date: Mon, 21 Nov 2016 15:19:24 -0800
-Message-ID: <20161121231924.GG30672@google.com>
-References: <1479318627-143193-1-git-send-email-ebiggers@google.com>
- <2FD4E662-B708-4C34-B1FC-8D42083322A2@dilger.ca>
- <20161118184704.GA73496@google.com>
- <75C88E0E-FF89-4D20-B11C-8F705E249BDD@dilger.ca>
+Subject: Re: [PATCH 4/4] generic: test locking when setting encryption policy
+Date: Mon, 21 Nov 2016 15:41:06 -0800
+Message-ID: <20161121234106.GH30672@google.com>
+References: <1479412027-34416-1-git-send-email-ebiggers@google.com>
+ <1479412027-34416-5-git-send-email-ebiggers@google.com>
+ <20161120223536.GL28177@dastard>
+ <20161121192519.GE30672@google.com>
+ <20161121213251.GL31101@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f180.google.com ([209.85.192.180]:33975 "EHLO
-        mail-pf0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755091AbcKUXT2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2016 18:19:28 -0500
-Received: by mail-pf0-f180.google.com with SMTP id c4so167448pfb.1
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2016 15:19:28 -0800 (PST)
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        David Gstir <david@sigma-star.at>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <75C88E0E-FF89-4D20-B11C-8F705E249BDD@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161121213251.GL31101@dastard>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 18, 2016 at 02:52:22PM -0700, Andreas Dilger wrote:
+On Tue, Nov 22, 2016 at 08:32:51AM +1100, Dave Chinner wrote:
 > 
-> > Yes, this would be a much nicer way to detect fast symlinks.
-> > 
-> > The only thing I'd be concerned about is the possibility of pre-existing
-> > "slow" symlinks that actually have targets short enough to be "fast"
-> > symlinks, perhaps in filesystems created by old drivers or by external
-> > tools.  If such links happened to work before, then a change to check
-> > i_size would break them.
-> > 
-> > This may not be an issue in practice.  I checked some old ext4 versions,
-> > ext2 from Linux 0.99.7, e2fsprogs, Android's ext4_utils, and FreeBSD's
-> > ext2 driver.
-> > They all create "fast" symlinks if the length of the symlink target length
-> > excluding the terminating null (i_size) is < 60.
+> This means that reproducing the race condition is going to be
+> machine dependent regardless of how the test is written.
 > 
-> I did a similar analysis with similar results.
+> In cases like this for XFS, we tend towards adding a debug sysfs
+> file to introduce a delay into the code that allows the race to be
+> triggered reliably. The delay is only included in CONFIG_XFS_DEBUG=y
+> builds, and the test is conditional on the sysfs file being present.
+> 
+> e.g. xfs/051 uses a log recovery delay to allow us to reliably
+> trigger IO errors in the middle of log recovery and hence exercise
+> the IO error failure paths in the middle of recovery. This made an
+> extremely unreliable reproducer into a test case that triggered
+> reliably on every machine the test is run on....
+> 
+> Can something like this be done in this case?
 > 
 
-Ted, what would you say about Andreas' suggestion to use i_size to distinguish
-fast symlinks from slow symlinks?
+I'd really rather not do something like that just for this test, which is really
+just testing that the kernel does inode_lock()/inode_unlock() in
+fscrypt_process_policy().  It would be more worthwhile if the testing-only
+kernel code would help expose many race conditions, not just this one particular
+race in this particular ioctl.
 
-It looks like this was discussed some years ago but the discussion died out and
-no change was made: see https://www.spinics.net/lists/linux-ext4/msg05693.html
-
-Given the investigation I did it seems it would very likely be safe, but we can
-never be 100% sure it won't break some obscure tool or (version of a tool) to
-create symlinks on ext2/ext3/ext4 filesystems we don't know about.
+So if you don't want to have the C version of this test in xfstests, I think it
+should just be dropped from the series.
 
 Eric
