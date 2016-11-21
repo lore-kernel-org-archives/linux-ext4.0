@@ -1,35 +1,42 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/4] generic: test locking when setting encryption policy
-Date: Mon, 21 Nov 2016 09:35:36 +1100
-Message-ID: <20161120223536.GL28177@dastard>
-References: <1479412027-34416-1-git-send-email-ebiggers@google.com>
- <1479412027-34416-5-git-send-email-ebiggers@google.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        David Gstir <david@sigma-star.at>
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1479412027-34416-5-git-send-email-ebiggers@google.com>
-Sender: fstests-owner@vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH] ext4: remove unused function ext4_aligned_io()
+Date: Sun, 20 Nov 2016 22:02:17 -0700
+Message-ID: <1479704537-21069-1-git-send-email-ross.zwisler@linux.intel.com>
+References: <1479458830-22955-9-git-send-email-jack@suse.cz>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1479458830-22955-9-git-send-email-jack@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 17, 2016 at 11:47:07AM -0800, Eric Biggers wrote:
-> This test tries to reproduce (with a moderate chance of success on ext4)
-> a race condition where a file could be created in a directory
-> concurrently to an encryption policy being set on that directory,
-> causing the directory to become corrupted.
+The last user of ext4_aligned_io() was the DAX path in
+ext4_direct_IO_write().  This usage was removed by Jan Kara's patch
+entitled "ext4: Rip out DAX handling from direct IO path".
 
-Why can't this be done with shell loops rather than requiring a
-helper application?
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
+ fs/ext4/ext4.h | 7 -------
+ 1 file changed, 7 deletions(-)
 
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8b76311..8a8a9b2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3262,13 +3262,6 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+ 	}
+ }
+ 
+-static inline bool ext4_aligned_io(struct inode *inode, loff_t off, loff_t len)
+-{
+-	int blksize = 1 << inode->i_blkbits;
+-
+-	return IS_ALIGNED(off, blksize) && IS_ALIGNED(len, blksize);
+-}
+-
+ extern struct iomap_ops ext4_iomap_ops;
+ 
+ #endif	/* __KERNEL__ */
 -- 
-Dave Chinner
-david@fromorbit.com
+2.7.4
