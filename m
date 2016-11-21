@@ -1,12 +1,11 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 1/4] generic: add utilities for testing filesystem
- encryption
-Date: Tue, 22 Nov 2016 08:08:49 +1100
-Message-ID: <20161121210849.GI31101@dastard>
+Subject: Re: [PATCH 2/4] generic: test setting and getting encryption policies
+Date: Tue, 22 Nov 2016 08:21:40 +1100
+Message-ID: <20161121212140.GJ31101@dastard>
 References: <1479412027-34416-1-git-send-email-ebiggers@google.com>
- <1479412027-34416-2-git-send-email-ebiggers@google.com>
- <20161120213313.GI28177@dastard>
- <20161121184050.GB30672@google.com>
+ <1479412027-34416-3-git-send-email-ebiggers@google.com>
+ <20161120220718.GJ28177@dastard>
+ <20161121191145.GC30672@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -17,70 +16,90 @@ Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
 To: Eric Biggers <ebiggers@google.com>
 Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161121184050.GB30672@google.com>
+In-Reply-To: <20161121191145.GC30672@google.com>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 21, 2016 at 10:40:50AM -0800, Eric Biggers wrote:
-> Hi Dave, thanks for reviewing.
+On Mon, Nov 21, 2016 at 11:11:45AM -0800, Eric Biggers wrote:
+> On Mon, Nov 21, 2016 at 09:07:18AM +1100, Dave Chinner wrote:
+> > Also, shouldn't a get without an args parameter always return
+> > EINVAL, regardless of whether the underlying file is encrypted or
+> > not?
+> > 
 > 
-> On Mon, Nov 21, 2016 at 08:33:13AM +1100, Dave Chinner wrote:
+> For most syscalls/ioctls, including this one (FS_IOC_GET_ENCRYPTION_POLICY),
+> it's not expected for the kernel to check that a userspace pointer is NULL as
+> opposed to some other random invalid value.  It will only notice at the very end
+> of the operation, when copying data to userspace, in which case it's expected to
+> fail with EFAULT.
+
+Ok, makes sense.
+
+> > These should all be in a single xfstest that "tests ioctl
+> > validity", rather than appended to a "set_policy behaviour"
+> > test.
+> 
+> Yes this may make sense.  It gets a little blurry when you talk
+> about testing behavior like "an encryption policy cannot be set on
+> a directory", since that's a type of validation too.
+
+Yes, it's a a type of validation, but I see it as a completely
+different class of validation. That is, one set of tests is doing
+boundary condition testing on the ioctl (i.e. does it reject invalid
+input?), the other is doing behavioural tests (i.e. does it behave
+correctly on different types of inodes given otherwise valid input?).
+
+> > > +seq=`basename $0`
+> > > +seqres=$RESULT_DIR/$seq
+> > > +here=`pwd`
+> > > +echo "QA output created by $seq"
 > > > +
-> > > +. ./common/rc
+> > > +. ./common/encrypt
 > > 
-> > Tests will already have included common/rc before this file, so we
-> > do not source it here.
-> ...
-> > These go in the tests, not here.
-> ...
-> > _requires_real_encryption()
+> > This is not the way to include all the required scripts, as I
+> > mentioned in my last email....
 > > 
-> > In each test.
-> ...
-> > And this should all be in a _requires_encryption() function.
+> > Also, please do not gut the test script preamble - it's there in the
+> > new test template for good reason and that is that all the common
+> > code that is included relies on the setup it does. e.g. this means $tmp
+> > is not properly set, so any common code that has been included that
+> > does 'rm -rf $tmp/*' if going to erase your root filesystem.
 > > 
 > 
-> I'll do all of these.  Of course the intent was to avoid duplicating code in
-> each test, but I will use the more verbose style if that's preferred.  I assume
-> you'd also prefer explicitly formatting and mounting the scratch device in each
-> test even though _require_encryption would already have to do that?
+> Will do.  I think it's pretty riduculous for xfstests to potentially erase your
+> root filesystem if you don't set some random variable though...
 
-Yes, because in future _require_encryption may change to no require
-touching the scratch device. Also, checking for encryption may
-create a filesystem with different configuration than the one we
-want to test. So it's better to be consistent across all tests and
-require the scratch_mkfs call in each test so we know the exact
-state of the filesystem before the test starts....
+$tmp is /not a random variable/. It is required to be set in every
+test. The common code is unlikely to need to do something like "rm -rf
+$tmp/*" but it does require it to be set. The rm -rf commands are more
+likely to be found in test specific _cleanup functions which should
+be defined immediately after $tmp....
 
-> > Ok, can we get this added to xfs_io rather than a stand-alone
-> > fstests helper? There are three clear commands here:
+> What would be nice is for there to be a preamble that all the tests source that
+> handles these boilerplate tasks.
+
+Just use the 'new' script to generate your test templates, and you
+don't have to care.
+
+> > > +_scratch_mount -o remount,ro,bind
 > > 
-> > 	{"gen_key", gen_key},
-> > 	{"rm_key", rm_key},
-> > 	{"set_policy", set_policy},
-> > 
-> > So it should plug straight into the xfs_io command parsing
-> > infrastructure without much change at all.
+> > Umm, what does a bind mount do when there's no source/target
+> > directory? Whatever you are doing here is not documented in the
+> > mount(8) man page....
 > 
-> I see that xfs_io is part of xfsprogs, not xfstests.  Does it make sense to add
-> filesystem encryption commands to xfs_io even though XFS doesn't support them
-> yet?  Currently only ext4 and f2fs support filesystem encryption via this common
-> API.  (ubifs support has been proposed too.)
+> As I noted in the comment above this is creating a readonly mount for a
+> read-write filesystem.
 
-Yes, because it is in the plan to support the generic encryption in
-XFS, too. It'll just take us a little while to get to it, but it
-won't hurt to support these operations ahead of that time...
+I realise that. I was commenting on it not being done in the
+documented way...
 
-> If we do go that route then it should be considered only adding
-> "set_policy" and "get_policy" commands, and for "gen_key" and
-> "rm_key" instead using shell wrappers around 'keyctl' instead.
-> gen_key and rm_key don't touch the filesystem at all; they only
-> work with the keyring.  It's possible to use 'keyctl padd' to add
-> a fscrypt key, though it's not completely trivial because you'd
-> have to use 'echo -e' to generate the C structure 'struct
-> fscrypt_key' with mode = 0, raw = actual key in binary, size = 64.
+[snip the crazy]
 
-Sounds fine to me.
+> Perhaps using the new mount syntax to set up a bind mount on a different
+> directory, rather than reusing the same directory, would make things less
+> confusing?
+
+Yes, that's a good idea...
 
 Cheers,
 
