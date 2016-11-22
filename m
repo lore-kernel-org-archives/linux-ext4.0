@@ -1,75 +1,128 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH] ext4: disable pwsalt ioctl when encryption disabled by config
-Date: Mon, 21 Nov 2016 16:23:12 -0800
-Message-ID: <1479774192-11528-1-git-send-email-ebiggers@google.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Eric Biggers <ebiggers@google.com>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: JBD2: Spotted dirty metadata buffer....
+Date: Mon, 21 Nov 2016 17:49:36 -0700
+Message-ID: <FB4C6A4A-2A9F-4AE2-9CA2-E2C1F881A651@dilger.ca>
+References: <1744886.OgPgGFoXj7@stwm.de>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_C5C63D01-413B-4B29-8036-C59A341D5188"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Wolfgang Walter <linux@stwm.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f170.google.com ([209.85.192.170]:32882 "EHLO
-        mail-pf0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753973AbcKVAXX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2016 19:23:23 -0500
-Received: by mail-pf0-f170.google.com with SMTP id d2so434061pfd.0
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2016 16:23:22 -0800 (PST)
+Received: from mail-it0-f51.google.com ([209.85.214.51]:35200 "EHLO
+        mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753695AbcKVAtn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Nov 2016 19:49:43 -0500
+Received: by mail-it0-f51.google.com with SMTP id c20so5361295itb.0
+        for <linux-ext4@vger.kernel.org>; Mon, 21 Nov 2016 16:49:42 -0800 (PST)
+In-Reply-To: <1744886.OgPgGFoXj7@stwm.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On a CONFIG_EXT4_FS_ENCRYPTION=n kernel, the ioctls to get and set
-encryption policies were disabled but EXT4_IOC_GET_ENCRYPTION_PWSALT was
-not.  But there's no good reason to expose the pwsalt ioctl if the
-kernel doesn't support encryption.  The pwsalt ioctl was also disabled
-pre-4.8 (via ext4_sb_has_crypto() previously returning 0 when encryption
-was disabled by config) and seems to have been enabled by mistake when
-ext4 encryption was refactored to use fs/crypto/.  So let's disable it
-again.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/ioctl.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+--Apple-Mail=_C5C63D01-413B-4B29-8036-C59A341D5188
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=iso-8859-1
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a0db5d9..a8957d9 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -191,6 +191,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	return err;
- }
- 
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
- static int uuid_is_zero(__u8 u[16])
- {
- 	int	i;
-@@ -200,6 +201,7 @@ static int uuid_is_zero(__u8 u[16])
- 			return 0;
- 	return 1;
- }
-+#endif
- 
- static int ext4_ioctl_setflags(struct inode *inode,
- 			       unsigned int flags)
-@@ -782,6 +784,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- #endif
- 	}
- 	case EXT4_IOC_GET_ENCRYPTION_PWSALT: {
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
- 		int err, err2;
- 		struct ext4_sb_info *sbi = EXT4_SB(sb);
- 		handle_t *handle;
-@@ -816,6 +819,9 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 				 sbi->s_es->s_encrypt_pw_salt, 16))
- 			return -EFAULT;
- 		return 0;
-+#else
-+		return -EOPNOTSUPP;
-+#endif
- 	}
- 	case EXT4_IOC_GET_ENCRYPTION_POLICY: {
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
--- 
-2.8.0.rc3.226.g39d4020
+On Nov 21, 2016, at 8:28 AM, Wolfgang Walter <linux@stwm.de> wrote:
+>=20
+> Hello,
+>=20
+> I'm testing EXT4 with an external journal (data=3Djournal). When =
+writing I rather often get
+>=20
+> 	JBD2: Spotted dirty metadata buffer (dev =3D dm-22, blocknr =3D =
+1008028301). There's a risk of filesystem corruption in case of system =
+crash.
 
+Can you please determine what file this block belongs to and/or what =
+kind
+of metadata block it is.  You can check "dumpe2fs /dev/dm-22" to list =
+all
+of the metadata blocks, and if it isn't listed as filesystem metadata, =
+you
+can run "debugfs -c -R 'icheck 1008028301' /dev/dm-22" to find which =
+file
+this block belongs to, then "debugfs -c -R 'ncheck <inum>' /dev/dm-22" =
+after
+you have the inode number.
+
+> No other message is logged. If I unmount the filesystem an do an =
+forced fsck, all seems fine.
+
+This is likely a bug in the code, marking a block dirty without setting
+up the journaling for it correctly.  A few bugs like this were fixed a
+while ago by Eric, but those fixes should be in 4.8.8.
+
+> The filesystem as it's journal are on a LV (which is again backed by =
+DRBD). The journal, too.
+>=20
+> I'm using stable kernel 4.8.8.
+>=20
+> I created the journal with:
+>=20
+> 	mkfs.ext4 -O journal_dev -v -b 4096  -L jdyn /dev/export/jdyn
+>=20
+> I created the filesystem with:
+>=20
+> 	mkfs.ext4 -J device=3DUUID=3D625d871f-c278-4acb-916d-774dc78dbd8a =
+-v -b 4096 -E =
+stride=3D$((512/4)),stripe_width=3D$((512/4*3)),lazy_itable_init=3D0,nodis=
+card -O inline_data,mmp -L dyn /dev/export/dyn
+
+It may be that inline_data is the culprit, since this is a relatively =
+new
+feature that isn't widely used yet.
+
+Cheers, Andreas
+
+> I tested it also with data=3Dwriteback. I didn't see these errors =
+then.
+>=20
+> Regards,
+> --
+> Wolfgang Walter
+> Studentenwerk M=FCnchen
+> Anstalt des =F6ffentlichen Rechts
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C5C63D01-413B-4B29-8036-C59A341D5188
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBWDOWIXKl2rkXzB/gAQj39w/+LJyhyUcJCtMhmxNAE0m8dZ+NnfKgUDuC
+cxyOnlU1WvkNx+B647NJYektpz7y/fFv8K+jSpG7D3/8ULmYWvMaL9CpxB8TI5Ne
+pCEWSkBKfzqJyzhRF78rpNHWeCjKG9Tt9AINempdDqXBHbViBuSKtvvK3R+fx+lk
+AppMt1l/blb5jsLCD7gR1TxLU4B3WFOBV2sYMYJKwkx6Q93WRWtia+x7m0EKNSdd
+cy9alYeFW4F5vwm8/p/MwyPnmXGtNLYyilLxjd7bxeMVVuWqB1htX+pAubT6VBDI
+HRp14zMwmAyA6Dt/FK9IEoVvazxs0kTQLJnng7hqbbzued30QO81Ic4HRiL2DccJ
+RvjYtJCVIGU2hTbjMgN2fTbh3me7ZYs2AK/ZQFIQeJRwnX9jZyMIxZfut511CfdA
+eaql5LTI7oPlVAFDwBaQhEW8dwg2ogL4CXYSytMLp5/KGIKLCXki5UBHCFb1UggR
+7TjT837wjHibBlMaUZ3qjOYSXio/jd1GyQkTArN498rgwHXK7c4BzhDpTkdxyb2c
+5hTnPG2fz61TegPHKiPGyRxa+ghdK8ASwsUrauz6T3Tx+3vTqnLS9Gu88DIJ77kn
+o5sZms0JIhAAObOJZuHy2gLZ2v1v5FlvmywaNW0Xj6dQktlfPxBo3mDH1uzGXTA4
+h/NeUGEQ8mg=
+=1kK2
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_C5C63D01-413B-4B29-8036-C59A341D5188--
