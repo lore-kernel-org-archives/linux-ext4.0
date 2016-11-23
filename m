@@ -1,140 +1,141 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH 2/6] dax: remove leading space from labels
-Date: Wed, 23 Nov 2016 11:44:18 -0700
-Message-ID: <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH 5/6] dax: add tracepoints to dax_pmd_load_hole()
+Date: Wed, 23 Nov 2016 11:44:21 -0700
+Message-ID: <1479926662-21718-6-git-send-email-ross.zwisler@linux.intel.com>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-No functional change.
+Add tracepoints to dax_pmd_load_hole(), following the same logging
+conventions as the tracepoints in dax_iomap_pmd_fault().
 
-As of this commit:
+Here is an example PMD fault showing the new tracepoints:
 
-commit 218dd85887da (".gitattributes: set git diff driver for C source code
-files")
+read_big-1393  [007] ....    32.133809: dax_pmd_fault: shared mapping read
+address 0x10400000 vm_start 0x10200000 vm_end 0x10600000 pgoff 0x200
+max_pgoff 0x1400
 
-git-diff and git-format-patch both generate diffs whose hunks are correctly
-prefixed by function names instead of labels, even if those labels aren't
-indented with spaces.
+read_big-1393  [007] ....    32.134067: dax_pmd_load_hole: shared mapping
+read address 0x10400000 zero_page ffffea0002b98000 radix_entry 0x1e
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+read_big-1393  [007] ....    32.134069: dax_pmd_fault_done: shared mapping
+read address 0x10400000 vm_start 0x10200000 vm_end 0x10600000 pgoff 0x200
+max_pgoff 0x1400 NOPAGE
+
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- fs/dax.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
+ fs/dax.c                      | 13 +++++++++----
+ include/trace/events/fs_dax.h | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 4 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index d8fe3eb..cc8a069 100644
+index 1aa7616..2824414 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -422,7 +422,7 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
- 		return page;
- 	}
- 	entry = lock_slot(mapping, slot);
-- out_unlock:
-+out_unlock:
- 	spin_unlock_irq(&mapping->tree_lock);
- 	return entry;
- }
-@@ -557,7 +557,7 @@ static int dax_load_hole(struct address_space *mapping, void **entry,
- 				   vmf->gfp_mask | __GFP_ZERO);
- 	if (!page)
- 		return VM_FAULT_OOM;
-- out:
-+out:
- 	vmf->page = page;
- 	ret = finish_fault(vmf);
- 	vmf->page = NULL;
-@@ -659,7 +659,7 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
- 	}
- 	if (vmf->flags & FAULT_FLAG_WRITE)
- 		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
-- unlock:
-+unlock:
- 	spin_unlock_irq(&mapping->tree_lock);
- 	if (hole_fill) {
- 		radix_tree_preload_end();
-@@ -812,12 +812,12 @@ static int dax_writeback_one(struct block_device *bdev,
- 	spin_lock_irq(&mapping->tree_lock);
- 	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_DIRTY);
- 	spin_unlock_irq(&mapping->tree_lock);
-- unmap:
-+unmap:
- 	dax_unmap_atomic(bdev, &dax);
- 	put_locked_mapping_entry(mapping, index, entry);
- 	return ret;
+@@ -1269,32 +1269,37 @@ static int dax_pmd_load_hole(struct vm_area_struct *vma, pmd_t *pmd,
+ 	struct address_space *mapping = vma->vm_file->f_mapping;
+ 	unsigned long pmd_addr = address & PMD_MASK;
+ 	struct page *zero_page;
++	void *ret = NULL;
+ 	spinlock_t *ptl;
+ 	pmd_t pmd_entry;
+-	void *ret;
  
-- put_unlocked:
-+put_unlocked:
- 	put_unlocked_mapping_entry(mapping, index, entry2);
- 	spin_unlock_irq(&mapping->tree_lock);
- 	return ret;
-@@ -1193,11 +1193,11 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
- 		break;
+ 	zero_page = mm_get_huge_zero_page(vma->vm_mm);
+ 
+ 	if (unlikely(!zero_page))
+-		return VM_FAULT_FALLBACK;
++		goto fallback;
+ 
+ 	ret = dax_insert_mapping_entry(mapping, vmf, *entryp, 0,
+ 			RADIX_DAX_PMD | RADIX_DAX_HZP);
+ 	if (IS_ERR(ret))
+-		return VM_FAULT_FALLBACK;
++		goto fallback;
+ 	*entryp = ret;
+ 
+ 	ptl = pmd_lock(vma->vm_mm, pmd);
+ 	if (!pmd_none(*pmd)) {
+ 		spin_unlock(ptl);
+-		return VM_FAULT_FALLBACK;
++		goto fallback;
  	}
  
-- error_unlock_entry:
-+error_unlock_entry:
- 	vmf_ret = dax_fault_return(error) | major;
-- unlock_entry:
-+unlock_entry:
- 	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
-- finish_iomap:
-+finish_iomap:
- 	if (ops->iomap_end) {
- 		int copied = PAGE_SIZE;
- 
-@@ -1254,7 +1254,7 @@ static int dax_pmd_insert_mapping(struct vm_area_struct *vma, pmd_t *pmd,
- 
- 	return vmf_insert_pfn_pmd(vma, address, pmd, dax.pfn, write);
- 
-- unmap_fallback:
-+unmap_fallback:
- 	dax_unmap_atomic(bdev, &dax);
- 	return VM_FAULT_FALLBACK;
- }
-@@ -1378,9 +1378,9 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 		break;
- 	}
- 
-- unlock_entry:
-+unlock_entry:
- 	put_locked_mapping_entry(mapping, pgoff, entry);
-- finish_iomap:
-+finish_iomap:
- 	if (ops->iomap_end) {
- 		int copied = PMD_SIZE;
- 
-@@ -1395,7 +1395,7 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
- 		ops->iomap_end(inode, pos, PMD_SIZE, copied, iomap_flags,
- 				&iomap);
- 	}
-- fallback:
+ 	pmd_entry = mk_pmd(zero_page, vma->vm_page_prot);
+ 	pmd_entry = pmd_mkhuge(pmd_entry);
+ 	set_pmd_at(vma->vm_mm, pmd_addr, pmd, pmd_entry);
+ 	spin_unlock(ptl);
++	trace_dax_pmd_load_hole(vma, address, zero_page, ret);
+ 	return VM_FAULT_NOPAGE;
++
 +fallback:
- 	if (result == VM_FAULT_FALLBACK) {
- 		split_huge_pmd(vma, pmd, address);
- 		count_vm_event(THP_FAULT_FALLBACK);
++	trace_dax_pmd_load_hole_fallback(vma, address, zero_page, ret);
++	return VM_FAULT_FALLBACK;
+ }
+ 
+ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+diff --git a/include/trace/events/fs_dax.h b/include/trace/events/fs_dax.h
+index f9ed4eb..8814b1a 100644
+--- a/include/trace/events/fs_dax.h
++++ b/include/trace/events/fs_dax.h
+@@ -54,6 +54,38 @@ DEFINE_EVENT(dax_pmd_fault_class, name, \
+ DEFINE_PMD_FAULT_EVENT(dax_pmd_fault);
+ DEFINE_PMD_FAULT_EVENT(dax_pmd_fault_done);
+ 
++DECLARE_EVENT_CLASS(dax_pmd_load_hole_class,
++	TP_PROTO(struct vm_area_struct *vma, unsigned long address,
++		struct page *zero_page, void *radix_entry),
++	TP_ARGS(vma, address, zero_page, radix_entry),
++	TP_STRUCT__entry(
++		__field(unsigned long, vm_flags)
++		__field(unsigned long, address)
++		__field(struct page *, zero_page)
++		__field(void *, radix_entry)
++	),
++	TP_fast_assign(
++		__entry->vm_flags = vma->vm_flags;
++		__entry->address = address;
++		__entry->zero_page = zero_page;
++		__entry->radix_entry = radix_entry;
++	),
++	TP_printk("%s mapping read address %#lx zero_page %p radix_entry %#lx",
++		__entry->vm_flags & VM_SHARED ? "shared" : "private",
++		__entry->address,
++		__entry->zero_page,
++		(unsigned long)__entry->radix_entry
++	)
++)
++
++#define DEFINE_PMD_LOAD_HOLE_EVENT(name) \
++DEFINE_EVENT(dax_pmd_load_hole_class, name, \
++	TP_PROTO(struct vm_area_struct *vma, unsigned long address, \
++		struct page *zero_page, void *radix_entry), \
++	TP_ARGS(vma, address, zero_page, radix_entry))
++
++DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole);
++DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole_fallback);
+ 
+ #endif /* _TRACE_FS_DAX_H */
+ 
 -- 
 2.7.4
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
