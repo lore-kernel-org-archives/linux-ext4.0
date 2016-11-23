@@ -1,70 +1,57 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH 0/6] introduce DAX tracepoint support
-Date: Wed, 23 Nov 2016 11:44:16 -0700
-Message-ID: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH 4/6] dax: update MAINTAINERS entries for FS DAX
+Date: Wed, 23 Nov 2016 11:44:20 -0700
+Message-ID: <1479926662-21718-5-git-send-email-ross.zwisler@linux.intel.com>
+References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Tracepoints are the standard way to capture debugging and tracing
-information in many parts of the kernel, including the XFS and ext4
-filesystems.  This series creates a tracepoint header for FS DAX and add
-the first few DAX tracepoints to the PMD fault handler.  This allows the
-tracing for DAX to be done in the same way as the filesystem tracing so
-that developers can look at them together and get a coherent idea of what
-the system is doing.                                                            
-                                                                                
-I do intend to add tracepoints to the normal 4k DAX fault path and to the       
-DAX I/O path, but I wanted to get feedback on the PMD tracepoints before I      
-went any further.                                                               
-                                                                                
-This series is based on Jan Kara's "dax: Clear dirty bits after flushing        
-caches" series:                                                                 
-                                                                                
-https://lists.01.org/pipermail/linux-nvdimm/2016-November/007864.html           
-                                                                                
-I've pushed a git tree with this work here:                                     
-                                                                                
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=dax_tracepoints
+Add the new include/trace/events/fs_dax.h tracepoint header, update
+Matthew's email address and add myself as a maintainer for filesystem DAX.
 
-Ross Zwisler (6):
-  dax: fix build breakage with ext4, dax and !iomap
-  dax: remove leading space from labels
-  dax: add tracepoint infrastructure, PMD tracing
-  dax: update MAINTAINERS entries for FS DAX
-  dax: add tracepoints to dax_pmd_load_hole()
-  dax: add tracepoints to dax_pmd_insert_mapping()
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Suggested-by: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
+---
+ MAINTAINERS | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
- MAINTAINERS                   |   4 +-
- fs/Kconfig                    |   1 +
- fs/dax.c                      |  78 ++++++++++++++----------
- fs/ext2/Kconfig               |   1 -
- include/linux/mm.h            |  14 +++++
- include/linux/pfn_t.h         |   6 ++
- include/trace/events/fs_dax.h | 135 ++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 206 insertions(+), 33 deletions(-)
- create mode 100644 include/trace/events/fs_dax.h
-
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 2a58eea..8fef4bf 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -3855,10 +3855,12 @@ S:	Maintained
+ F:	drivers/i2c/busses/i2c-diolan-u2c.c
+ 
+ DIRECT ACCESS (DAX)
+-M:	Matthew Wilcox <willy-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
++M:	Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
++M:	Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+ L:	linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+ S:	Supported
+ F:	fs/dax.c
++F:	include/trace/events/fs_dax.h
+ 
+ DIRECTORY NOTIFICATION (DNOTIFY)
+ M:	Eric Paris <eparis-FjpueFixGhCM4zKIHC2jIg@public.gmane.org>
 -- 
 2.7.4
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
