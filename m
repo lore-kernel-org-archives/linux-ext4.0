@@ -1,141 +1,104 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 5/6] dax: add tracepoints to dax_pmd_load_hole()
-Date: Wed, 23 Nov 2016 11:44:21 -0700
-Message-ID: <1479926662-21718-6-git-send-email-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
+Date: Wed, 23 Nov 2016 11:44:17 -0700
+Message-ID: <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Add tracepoints to dax_pmd_load_hole(), following the same logging
-conventions as the tracepoints in dax_iomap_pmd_fault().
+With the current Kconfig setup it is possible to have the following:
 
-Here is an example PMD fault showing the new tracepoints:
+CONFIG_EXT4_FS=y
+CONFIG_FS_DAX=y
+CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
 
-read_big-1393  [007] ....    32.133809: dax_pmd_fault: shared mapping read
-address 0x10400000 vm_start 0x10200000 vm_end 0x10600000 pgoff 0x200
-max_pgoff 0x1400
+With this config we get build failures in ext4_dax_fault() because the
+iomap functions in fs/dax.c are missing:
 
-read_big-1393  [007] ....    32.134067: dax_pmd_load_hole: shared mapping
-read address 0x10400000 zero_page ffffea0002b98000 radix_entry 0x1e
+fs/built-in.o: In function `ext4_dax_fault':
+file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
+file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
+fs/built-in.o: In function `ext4_file_read_iter':
+file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
+fs/built-in.o: In function `ext4_file_write_iter':
+file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
+file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
+fs/built-in.o: In function `ext4_block_zero_page_range':
+inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
 
-read_big-1393  [007] ....    32.134069: dax_pmd_fault_done: shared mapping
-read address 0x10400000 vm_start 0x10200000 vm_end 0x10600000 pgoff 0x200
-max_pgoff 0x1400 NOPAGE
+Now that the struct buffer_head based DAX fault paths and I/O path have
+been removed we really depend on iomap support being present for DAX.  Make
+this explicit by selecting FS_IOMAP if we compile in DAX support.
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- fs/dax.c                      | 13 +++++++++----
- include/trace/events/fs_dax.h | 32 ++++++++++++++++++++++++++++++++
- 2 files changed, 41 insertions(+), 4 deletions(-)
+ fs/Kconfig      | 1 +
+ fs/dax.c        | 2 --
+ fs/ext2/Kconfig | 1 -
+ 3 files changed, 1 insertion(+), 3 deletions(-)
 
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 8e9e5f41..18024bf 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -38,6 +38,7 @@ config FS_DAX
+ 	bool "Direct Access (DAX) support"
+ 	depends on MMU
+ 	depends on !(ARM || MIPS || SPARC)
++	select FS_IOMAP
+ 	help
+ 	  Direct Access (DAX) can be used on memory-backed block devices.
+ 	  If the block device supports DAX and the filesystem supports DAX,
 diff --git a/fs/dax.c b/fs/dax.c
-index 1aa7616..2824414 100644
+index be39633..d8fe3eb 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1269,32 +1269,37 @@ static int dax_pmd_load_hole(struct vm_area_struct *vma, pmd_t *pmd,
- 	struct address_space *mapping = vma->vm_file->f_mapping;
- 	unsigned long pmd_addr = address & PMD_MASK;
- 	struct page *zero_page;
-+	void *ret = NULL;
- 	spinlock_t *ptl;
- 	pmd_t pmd_entry;
--	void *ret;
- 
- 	zero_page = mm_get_huge_zero_page(vma->vm_mm);
- 
- 	if (unlikely(!zero_page))
--		return VM_FAULT_FALLBACK;
-+		goto fallback;
- 
- 	ret = dax_insert_mapping_entry(mapping, vmf, *entryp, 0,
- 			RADIX_DAX_PMD | RADIX_DAX_HZP);
- 	if (IS_ERR(ret))
--		return VM_FAULT_FALLBACK;
-+		goto fallback;
- 	*entryp = ret;
- 
- 	ptl = pmd_lock(vma->vm_mm, pmd);
- 	if (!pmd_none(*pmd)) {
- 		spin_unlock(ptl);
--		return VM_FAULT_FALLBACK;
-+		goto fallback;
- 	}
- 
- 	pmd_entry = mk_pmd(zero_page, vma->vm_page_prot);
- 	pmd_entry = pmd_mkhuge(pmd_entry);
- 	set_pmd_at(vma->vm_mm, pmd_addr, pmd, pmd_entry);
- 	spin_unlock(ptl);
-+	trace_dax_pmd_load_hole(vma, address, zero_page, ret);
- 	return VM_FAULT_NOPAGE;
-+
-+fallback:
-+	trace_dax_pmd_load_hole_fallback(vma, address, zero_page, ret);
-+	return VM_FAULT_FALLBACK;
+@@ -968,7 +968,6 @@ int __dax_zero_page_range(struct block_device *bdev, sector_t sector,
  }
+ EXPORT_SYMBOL_GPL(__dax_zero_page_range);
  
- int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
-diff --git a/include/trace/events/fs_dax.h b/include/trace/events/fs_dax.h
-index f9ed4eb..8814b1a 100644
---- a/include/trace/events/fs_dax.h
-+++ b/include/trace/events/fs_dax.h
-@@ -54,6 +54,38 @@ DEFINE_EVENT(dax_pmd_fault_class, name, \
- DEFINE_PMD_FAULT_EVENT(dax_pmd_fault);
- DEFINE_PMD_FAULT_EVENT(dax_pmd_fault_done);
- 
-+DECLARE_EVENT_CLASS(dax_pmd_load_hole_class,
-+	TP_PROTO(struct vm_area_struct *vma, unsigned long address,
-+		struct page *zero_page, void *radix_entry),
-+	TP_ARGS(vma, address, zero_page, radix_entry),
-+	TP_STRUCT__entry(
-+		__field(unsigned long, vm_flags)
-+		__field(unsigned long, address)
-+		__field(struct page *, zero_page)
-+		__field(void *, radix_entry)
-+	),
-+	TP_fast_assign(
-+		__entry->vm_flags = vma->vm_flags;
-+		__entry->address = address;
-+		__entry->zero_page = zero_page;
-+		__entry->radix_entry = radix_entry;
-+	),
-+	TP_printk("%s mapping read address %#lx zero_page %p radix_entry %#lx",
-+		__entry->vm_flags & VM_SHARED ? "shared" : "private",
-+		__entry->address,
-+		__entry->zero_page,
-+		(unsigned long)__entry->radix_entry
-+	)
-+)
-+
-+#define DEFINE_PMD_LOAD_HOLE_EVENT(name) \
-+DEFINE_EVENT(dax_pmd_load_hole_class, name, \
-+	TP_PROTO(struct vm_area_struct *vma, unsigned long address, \
-+		struct page *zero_page, void *radix_entry), \
-+	TP_ARGS(vma, address, zero_page, radix_entry))
-+
-+DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole);
-+DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole_fallback);
- 
- #endif /* _TRACE_FS_DAX_H */
+-#ifdef CONFIG_FS_IOMAP
+ static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
+ {
+ 	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
+@@ -1405,4 +1404,3 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_pmd_fault);
+ #endif /* CONFIG_FS_DAX_PMD */
+-#endif /* CONFIG_FS_IOMAP */
+diff --git a/fs/ext2/Kconfig b/fs/ext2/Kconfig
+index 36bea5a..c634874e 100644
+--- a/fs/ext2/Kconfig
++++ b/fs/ext2/Kconfig
+@@ -1,6 +1,5 @@
+ config EXT2_FS
+ 	tristate "Second extended fs support"
+-	select FS_IOMAP if FS_DAX
+ 	help
+ 	  Ext2 is a standard Linux file system for hard disks.
  
 -- 
 2.7.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
