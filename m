@@ -1,150 +1,90 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/6] dax: remove leading space from labels
-Date: Thu, 24 Nov 2016 10:11:40 +0100
-Message-ID: <20161124091140.GB24138@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
+Date: Thu, 24 Nov 2016 10:16:26 +0100
+Message-ID: <20161124091626.GC24138@quack2.suse.cz>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>, Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <1479926662-21718-4-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-11-16 11:44:18, Ross Zwisler wrote:
-> No functional change.
+On Wed 23-11-16 11:44:19, Ross Zwisler wrote:
+> Tracepoints are the standard way to capture debugging and tracing
+> information in many parts of the kernel, including the XFS and ext4
+> filesystems.  Create a tracepoint header for FS DAX and add the first DAX
+> tracepoints to the PMD fault handler.  This allows the tracing for DAX to
+> be done in the same way as the filesystem tracing so that developers can
+> look at them together and get a coherent idea of what the system is doing.
 > 
-> As of this commit:
+> I added both an entry and exit tracepoint because future patches will add
+> tracepoints to child functions of dax_iomap_pmd_fault() like
+> dax_pmd_load_hole() and dax_pmd_insert_mapping(). We want those messages to
+> be wrapped by the parent function tracepoints so the code flow is more
+> easily understood.  Having entry and exit tracepoints for faults also
+> allows us to easily see what filesystems functions were called during the
+> fault.  These filesystem functions get executed via iomap_begin() and
+> iomap_end() calls, for example, and will have their own tracepoints.
 > 
-> commit 218dd85887da (".gitattributes: set git diff driver for C source code
-> files")
+> For PMD faults we primarily want to understand the faulting address and
+> whether it fell back to 4k faults.  If it fell back to 4k faults the
+> tracepoints should let us understand why.
 > 
-> git-diff and git-format-patch both generate diffs whose hunks are correctly
-> prefixed by function names instead of labels, even if those labels aren't
-> indented with spaces.
+> I named the new tracepoint header file "fs_dax.h" to allow for device DAX
+> to have its own separate tracing header in the same directory at some
+> point.
+> 
+> Here is an example output for these events from a successful PMD fault:
+> 
+> big-2057  [000] ....   136.396855: dax_pmd_fault: shared mapping write
+> address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
+> max_pgoff 0x1400
+> 
+> big-2057  [000] ....   136.397943: dax_pmd_fault_done: shared mapping write
+> address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
+> max_pgoff 0x1400 NOPAGE
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> Suggested-by: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
 
-Fine by me. I just have some 4 remaining DAX patches (will send them out
-today) and they will clash with this. So I'd prefer if this happened after
-they are merged...
+Looks good. Just one minor comment:
+
+> +	TP_printk("%s mapping %s address %#lx vm_start %#lx vm_end %#lx "
+> +		"pgoff %#lx max_pgoff %#lx %s",
+> +		__entry->vm_flags & VM_SHARED ? "shared" : "private",
+> +		__entry->flags & FAULT_FLAG_WRITE ? "write" : "read",
+> +		__entry->address,
+> +		__entry->vm_start,
+> +		__entry->vm_end,
+> +		__entry->pgoff,
+> +		__entry->max_pgoff,
+> +		__print_flags(__entry->result, "|", VM_FAULT_RESULT_TRACE)
+> +	)
+> +)
+
+I think it may be useful to dump full 'flags', not just FAULT_FLAG_WRITE...
 
 								Honza
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  fs/dax.c | 24 ++++++++++++------------
->  1 file changed, 12 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index d8fe3eb..cc8a069 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -422,7 +422,7 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
->  		return page;
->  	}
->  	entry = lock_slot(mapping, slot);
-> - out_unlock:
-> +out_unlock:
->  	spin_unlock_irq(&mapping->tree_lock);
->  	return entry;
->  }
-> @@ -557,7 +557,7 @@ static int dax_load_hole(struct address_space *mapping, void **entry,
->  				   vmf->gfp_mask | __GFP_ZERO);
->  	if (!page)
->  		return VM_FAULT_OOM;
-> - out:
-> +out:
->  	vmf->page = page;
->  	ret = finish_fault(vmf);
->  	vmf->page = NULL;
-> @@ -659,7 +659,7 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
->  	}
->  	if (vmf->flags & FAULT_FLAG_WRITE)
->  		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
-> - unlock:
-> +unlock:
->  	spin_unlock_irq(&mapping->tree_lock);
->  	if (hole_fill) {
->  		radix_tree_preload_end();
-> @@ -812,12 +812,12 @@ static int dax_writeback_one(struct block_device *bdev,
->  	spin_lock_irq(&mapping->tree_lock);
->  	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_DIRTY);
->  	spin_unlock_irq(&mapping->tree_lock);
-> - unmap:
-> +unmap:
->  	dax_unmap_atomic(bdev, &dax);
->  	put_locked_mapping_entry(mapping, index, entry);
->  	return ret;
->  
-> - put_unlocked:
-> +put_unlocked:
->  	put_unlocked_mapping_entry(mapping, index, entry2);
->  	spin_unlock_irq(&mapping->tree_lock);
->  	return ret;
-> @@ -1193,11 +1193,11 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
->  		break;
->  	}
->  
-> - error_unlock_entry:
-> +error_unlock_entry:
->  	vmf_ret = dax_fault_return(error) | major;
-> - unlock_entry:
-> +unlock_entry:
->  	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
-> - finish_iomap:
-> +finish_iomap:
->  	if (ops->iomap_end) {
->  		int copied = PAGE_SIZE;
->  
-> @@ -1254,7 +1254,7 @@ static int dax_pmd_insert_mapping(struct vm_area_struct *vma, pmd_t *pmd,
->  
->  	return vmf_insert_pfn_pmd(vma, address, pmd, dax.pfn, write);
->  
-> - unmap_fallback:
-> +unmap_fallback:
->  	dax_unmap_atomic(bdev, &dax);
->  	return VM_FAULT_FALLBACK;
->  }
-> @@ -1378,9 +1378,9 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
->  		break;
->  	}
->  
-> - unlock_entry:
-> +unlock_entry:
->  	put_locked_mapping_entry(mapping, pgoff, entry);
-> - finish_iomap:
-> +finish_iomap:
->  	if (ops->iomap_end) {
->  		int copied = PMD_SIZE;
->  
-> @@ -1395,7 +1395,7 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
->  		ops->iomap_end(inode, pos, PMD_SIZE, copied, iomap_flags,
->  				&iomap);
->  	}
-> - fallback:
-> +fallback:
->  	if (result == VM_FAULT_FALLBACK) {
->  		split_huge_pmd(vma, pmd, address);
->  		count_vm_event(THP_FAULT_FALLBACK);
-> -- 
-> 2.7.4
-> 
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
