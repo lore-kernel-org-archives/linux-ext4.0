@@ -1,118 +1,150 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
-Date: Thu, 24 Nov 2016 10:02:39 +0100
-Message-ID: <20161124090239.GA24138@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/6] dax: remove leading space from labels
+Date: Thu, 24 Nov 2016 10:11:40 +0100
+Message-ID: <20161124091140.GB24138@quack2.suse.cz>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>, Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1479926662-21718-2-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
-> With the current Kconfig setup it is possible to have the following:
+On Wed 23-11-16 11:44:18, Ross Zwisler wrote:
+> No functional change.
 > 
-> CONFIG_EXT4_FS=y
-> CONFIG_FS_DAX=y
-> CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
+> As of this commit:
 > 
-> With this config we get build failures in ext4_dax_fault() because the
-> iomap functions in fs/dax.c are missing:
+> commit 218dd85887da (".gitattributes: set git diff driver for C source code
+> files")
 > 
-> fs/built-in.o: In function `ext4_dax_fault':
-> file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
-> file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
-> fs/built-in.o: In function `ext4_file_read_iter':
-> file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
-> fs/built-in.o: In function `ext4_file_write_iter':
-> file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
-> file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
-> fs/built-in.o: In function `ext4_block_zero_page_range':
-> inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
-> 
-> Now that the struct buffer_head based DAX fault paths and I/O path have
-> been removed we really depend on iomap support being present for DAX.  Make
-> this explicit by selecting FS_IOMAP if we compile in DAX support.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> git-diff and git-format-patch both generate diffs whose hunks are correctly
+> prefixed by function names instead of labels, even if those labels aren't
+> indented with spaces.
 
-I've sent the same patch to Ted yesterday and he will probably queue it on
-top of ext4 iomap patches. If it doesn't happen for some reason, feel free
-to add:
-
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Fine by me. I just have some 4 remaining DAX patches (will send them out
+today) and they will clash with this. So I'd prefer if this happened after
+they are merged...
 
 								Honza
-
-> ---
->  fs/Kconfig      | 1 +
->  fs/dax.c        | 2 --
->  fs/ext2/Kconfig | 1 -
->  3 files changed, 1 insertion(+), 3 deletions(-)
 > 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 8e9e5f41..18024bf 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -38,6 +38,7 @@ config FS_DAX
->  	bool "Direct Access (DAX) support"
->  	depends on MMU
->  	depends on !(ARM || MIPS || SPARC)
-> +	select FS_IOMAP
->  	help
->  	  Direct Access (DAX) can be used on memory-backed block devices.
->  	  If the block device supports DAX and the filesystem supports DAX,
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  fs/dax.c | 24 ++++++++++++------------
+>  1 file changed, 12 insertions(+), 12 deletions(-)
+> 
 > diff --git a/fs/dax.c b/fs/dax.c
-> index be39633..d8fe3eb 100644
+> index d8fe3eb..cc8a069 100644
 > --- a/fs/dax.c
 > +++ b/fs/dax.c
-> @@ -968,7 +968,6 @@ int __dax_zero_page_range(struct block_device *bdev, sector_t sector,
+> @@ -422,7 +422,7 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
+>  		return page;
+>  	}
+>  	entry = lock_slot(mapping, slot);
+> - out_unlock:
+> +out_unlock:
+>  	spin_unlock_irq(&mapping->tree_lock);
+>  	return entry;
 >  }
->  EXPORT_SYMBOL_GPL(__dax_zero_page_range);
+> @@ -557,7 +557,7 @@ static int dax_load_hole(struct address_space *mapping, void **entry,
+>  				   vmf->gfp_mask | __GFP_ZERO);
+>  	if (!page)
+>  		return VM_FAULT_OOM;
+> - out:
+> +out:
+>  	vmf->page = page;
+>  	ret = finish_fault(vmf);
+>  	vmf->page = NULL;
+> @@ -659,7 +659,7 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
+>  	}
+>  	if (vmf->flags & FAULT_FLAG_WRITE)
+>  		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
+> - unlock:
+> +unlock:
+>  	spin_unlock_irq(&mapping->tree_lock);
+>  	if (hole_fill) {
+>  		radix_tree_preload_end();
+> @@ -812,12 +812,12 @@ static int dax_writeback_one(struct block_device *bdev,
+>  	spin_lock_irq(&mapping->tree_lock);
+>  	radix_tree_tag_clear(page_tree, index, PAGECACHE_TAG_DIRTY);
+>  	spin_unlock_irq(&mapping->tree_lock);
+> - unmap:
+> +unmap:
+>  	dax_unmap_atomic(bdev, &dax);
+>  	put_locked_mapping_entry(mapping, index, entry);
+>  	return ret;
 >  
-> -#ifdef CONFIG_FS_IOMAP
->  static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
->  {
->  	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
-> @@ -1405,4 +1404,3 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+> - put_unlocked:
+> +put_unlocked:
+>  	put_unlocked_mapping_entry(mapping, index, entry2);
+>  	spin_unlock_irq(&mapping->tree_lock);
+>  	return ret;
+> @@ -1193,11 +1193,11 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+>  		break;
+>  	}
+>  
+> - error_unlock_entry:
+> +error_unlock_entry:
+>  	vmf_ret = dax_fault_return(error) | major;
+> - unlock_entry:
+> +unlock_entry:
+>  	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
+> - finish_iomap:
+> +finish_iomap:
+>  	if (ops->iomap_end) {
+>  		int copied = PAGE_SIZE;
+>  
+> @@ -1254,7 +1254,7 @@ static int dax_pmd_insert_mapping(struct vm_area_struct *vma, pmd_t *pmd,
+>  
+>  	return vmf_insert_pfn_pmd(vma, address, pmd, dax.pfn, write);
+>  
+> - unmap_fallback:
+> +unmap_fallback:
+>  	dax_unmap_atomic(bdev, &dax);
+>  	return VM_FAULT_FALLBACK;
 >  }
->  EXPORT_SYMBOL_GPL(dax_iomap_pmd_fault);
->  #endif /* CONFIG_FS_DAX_PMD */
-> -#endif /* CONFIG_FS_IOMAP */
-> diff --git a/fs/ext2/Kconfig b/fs/ext2/Kconfig
-> index 36bea5a..c634874e 100644
-> --- a/fs/ext2/Kconfig
-> +++ b/fs/ext2/Kconfig
-> @@ -1,6 +1,5 @@
->  config EXT2_FS
->  	tristate "Second extended fs support"
-> -	select FS_IOMAP if FS_DAX
->  	help
->  	  Ext2 is a standard Linux file system for hard disks.
+> @@ -1378,9 +1378,9 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		break;
+>  	}
 >  
+> - unlock_entry:
+> +unlock_entry:
+>  	put_locked_mapping_entry(mapping, pgoff, entry);
+> - finish_iomap:
+> +finish_iomap:
+>  	if (ops->iomap_end) {
+>  		int copied = PMD_SIZE;
+>  
+> @@ -1395,7 +1395,7 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>  		ops->iomap_end(inode, pos, PMD_SIZE, copied, iomap_flags,
+>  				&iomap);
+>  	}
+> - fallback:
+> +fallback:
+>  	if (result == VM_FAULT_FALLBACK) {
+>  		split_huge_pmd(vma, pmd, address);
+>  		count_vm_event(THP_FAULT_FALLBACK);
 > -- 
 > 2.7.4
 > 
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
