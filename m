@@ -1,160 +1,56 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 6/6] dax: add tracepoints to dax_pmd_insert_mapping()
-Date: Wed, 23 Nov 2016 11:44:22 -0700
-Message-ID: <1479926662-21718-7-git-send-email-ross.zwisler@linux.intel.com>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: [RFC 4/6] ext4: Initialize timestamps limits
+Date: Wed, 23 Nov 2016 16:47:48 -0800
+Message-ID: <1479948470-2397-5-git-send-email-deepa.kernel@gmail.com>
+References: <1479948470-2397-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1479926662-21718-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: tytso@mit.edu, arnd@arndb.de, y2038@lists.linaro.org,
+ gregkh@linuxfoundation.org, Andreas Dilger <adilger.kernel@dilger.ca>,
+ viro@zeniv.linux.org.uk, tglx@linutronix.de, linux-ext4@vger.kernel.org,
+ akpm@linux-foundation.org
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <1479948470-2397-1-git-send-email-deepa.kernel@gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Add tracepoints to dax_pmd_insert_mapping(), following the same logging
-conventions as the tracepoints in dax_iomap_pmd_fault().
-
-Here is an example PMD fault showing the new tracepoints:
-
-big-1544  [006] ....    48.153479: dax_pmd_fault: shared mapping write
-address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
-max_pgoff 0x1400
-
-big-1544  [006] ....    48.155230: dax_pmd_insert_mapping: shared mapping
-write address 0x10505000 length 0x200000 pfn 0x100600 DEV|MAP radix_entry
-0xc000e
-
-big-1544  [006] ....    48.155266: dax_pmd_fault_done: shared mapping write
-address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
-max_pgoff 0x1400 NOPAGE
-
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
----
- fs/dax.c                      | 10 +++++++---
- include/linux/pfn_t.h         |  6 ++++++
- include/trace/events/fs_dax.h | 42 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 55 insertions(+), 3 deletions(-)
-
-diff --git a/fs/dax.c b/fs/dax.c
-index 2824414..d6ba4a3 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1236,10 +1236,10 @@ static int dax_pmd_insert_mapping(struct vm_area_struct *vma, pmd_t *pmd,
- 		.size = PMD_SIZE,
- 	};
- 	long length = dax_map_atomic(bdev, &dax);
--	void *ret;
-+	void *ret = NULL;
- 
- 	if (length < 0) /* dax_map_atomic() failed */
--		return VM_FAULT_FALLBACK;
-+		goto fallback;
- 	if (length < PMD_SIZE)
- 		goto unmap_fallback;
- 	if (pfn_t_to_pfn(dax.pfn) & PG_PMD_COLOUR)
-@@ -1252,13 +1252,17 @@ static int dax_pmd_insert_mapping(struct vm_area_struct *vma, pmd_t *pmd,
- 	ret = dax_insert_mapping_entry(mapping, vmf, *entryp, dax.sector,
- 			RADIX_DAX_PMD);
- 	if (IS_ERR(ret))
--		return VM_FAULT_FALLBACK;
-+		goto fallback;
- 	*entryp = ret;
- 
-+	trace_dax_pmd_insert_mapping(vma, address, write, length, dax.pfn, ret);
- 	return vmf_insert_pfn_pmd(vma, address, pmd, dax.pfn, write);
- 
- unmap_fallback:
- 	dax_unmap_atomic(bdev, &dax);
-+fallback:
-+	trace_dax_pmd_insert_mapping_fallback(vma, address, write, length,
-+			dax.pfn, ret);
- 	return VM_FAULT_FALLBACK;
- }
- 
-diff --git a/include/linux/pfn_t.h b/include/linux/pfn_t.h
-index a3d90b9..033fc7b 100644
---- a/include/linux/pfn_t.h
-+++ b/include/linux/pfn_t.h
-@@ -15,6 +15,12 @@
- #define PFN_DEV (1ULL << (BITS_PER_LONG_LONG - 3))
- #define PFN_MAP (1ULL << (BITS_PER_LONG_LONG - 4))
- 
-+#define PFN_FLAGS_TRACE \
-+	{ PFN_SG_CHAIN,	"SG_CHAIN" }, \
-+	{ PFN_SG_LAST,	"SG_LAST" }, \
-+	{ PFN_DEV,	"DEV" }, \
-+	{ PFN_MAP,	"MAP" }
-+
- static inline pfn_t __pfn_to_pfn_t(unsigned long pfn, u64 flags)
- {
- 	pfn_t pfn_t = { .val = pfn | (flags & PFN_FLAGS_MASK), };
-diff --git a/include/trace/events/fs_dax.h b/include/trace/events/fs_dax.h
-index 8814b1a..a03f820 100644
---- a/include/trace/events/fs_dax.h
-+++ b/include/trace/events/fs_dax.h
-@@ -87,6 +87,48 @@ DEFINE_EVENT(dax_pmd_load_hole_class, name, \
- DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole);
- DEFINE_PMD_LOAD_HOLE_EVENT(dax_pmd_load_hole_fallback);
- 
-+DECLARE_EVENT_CLASS(dax_pmd_insert_mapping_class,
-+	TP_PROTO(struct vm_area_struct *vma, unsigned long address, int write,
-+		long length, pfn_t pfn, void *radix_entry),
-+	TP_ARGS(vma, address, write, length, pfn, radix_entry),
-+	TP_STRUCT__entry(
-+		__field(unsigned long, vm_flags)
-+		__field(unsigned long, address)
-+		__field(int, write)
-+		__field(long, length)
-+		__field(u64, pfn_val)
-+		__field(void *, radix_entry)
-+	),
-+	TP_fast_assign(
-+		__entry->vm_flags = vma->vm_flags;
-+		__entry->address = address;
-+		__entry->write = write;
-+		__entry->length = length;
-+		__entry->pfn_val = pfn.val;
-+		__entry->radix_entry = radix_entry;
-+	),
-+	TP_printk("%s mapping %s address %#lx length %#lx pfn %#llx %s"
-+		" radix_entry %#lx",
-+		__entry->vm_flags & VM_SHARED ? "shared" : "private",
-+		__entry->write ? "write" : "read",
-+		__entry->address,
-+		__entry->length,
-+		__entry->pfn_val & ~PFN_FLAGS_MASK,
-+		__print_flags(__entry->pfn_val & PFN_FLAGS_MASK, "|",
-+			PFN_FLAGS_TRACE),
-+		(unsigned long)__entry->radix_entry
-+	)
-+)
-+
-+#define DEFINE_PMD_INSERT_MAPPING_EVENT(name) \
-+DEFINE_EVENT(dax_pmd_insert_mapping_class, name, \
-+	TP_PROTO(struct vm_area_struct *vma, unsigned long address, \
-+		int write, long length, pfn_t pfn, void *radix_entry), \
-+	TP_ARGS(vma, address, write, length, pfn, radix_entry))
-+
-+DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping);
-+DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping_fallback);
-+
- #endif /* _TRACE_FS_DAX_H */
- 
- /* This part must be outside protection */
--- 
-2.7.4
+ZXh0NCBoYXMgZGlmZmVyZW50IG92ZXJmbG93IGxpbWl0cyBmb3IgbWF4IGZpbGVzeXN0ZW0KdGlt
+ZXN0YW1wcyBiYXNlZCBvbiB0aGUgZXh0cmEgYnl0ZXMgYXZhaWxhYmxlLgoKU2lnbmVkLW9mZi1i
+eTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+CkNjOiAiVGhlb2RvcmUg
+VHMnbyIgPHR5dHNvQG1pdC5lZHU+CkNjOiBBbmRyZWFzIERpbGdlciA8YWRpbGdlci5rZXJuZWxA
+ZGlsZ2VyLmNhPgpDYzogbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcKLS0tCiBmcy9leHQ0L2V4
+dDQuaCAgfCA0ICsrKysKIGZzL2V4dDQvc3VwZXIuYyB8IDcgKysrKysrLQogMiBmaWxlcyBjaGFu
+Z2VkLCAxMCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0
+NC9leHQ0LmggYi9mcy9leHQ0L2V4dDQuaAppbmRleCBhZmYyMDRmLi5lMTVjMDgxIDEwMDY0NAot
+LS0gYS9mcy9leHQ0L2V4dDQuaAorKysgYi9mcy9leHQ0L2V4dDQuaApAQCAtMTYzNiw2ICsxNjM2
+LDEwIEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBleHQ0X2NsZWFyX3N0YXRlX2ZsYWdzKHN0cnVjdCBl
+eHQ0X2lub2RlX2luZm8gKmVpKQogCiAjZGVmaW5lIEVYVDRfR09PRF9PTERfSU5PREVfU0laRSAx
+MjgKIAorI2RlZmluZSBFWFQ0X0VYVFJBX1RJTUVTVEFNUF9NQVgJKCgoczY0KTEgPDwgMzQpIC0g
+MSAgKyBTMzJfTUlOKQorI2RlZmluZSBFWFQ0X05PTl9FWFRSQV9USU1FU1RBTVBfTUFYCVkyMDM4
+X0VYUElSWV9USU1FU1RBTVAKKyNkZWZpbmUgRVhUNF9USU1FU1RBTVBfTUlOCQlTMzJfTUlOCisK
+IC8qCiAgKiBGZWF0dXJlIHNldCBkZWZpbml0aW9ucwogICovCmRpZmYgLS1naXQgYS9mcy9leHQ0
+L3N1cGVyLmMgYi9mcy9leHQ0L3N1cGVyLmMKaW5kZXggNzJiNDU5ZC4uMDUxOWM1MiAxMDA2NDQK
+LS0tIGEvZnMvZXh0NC9zdXBlci5jCisrKyBiL2ZzL2V4dDQvc3VwZXIuYwpAQCAtMzY3Miw4ICsz
+NjcyLDEzIEBAIHN0YXRpYyBpbnQgZXh0NF9maWxsX3N1cGVyKHN0cnVjdCBzdXBlcl9ibG9jayAq
+c2IsIHZvaWQgKmRhdGEsIGludCBzaWxlbnQpCiAJCQkgICAgICAgc2JpLT5zX2lub2RlX3NpemUp
+OwogCQkJZ290byBmYWlsZWRfbW91bnQ7CiAJCX0KLQkJaWYgKHNiaS0+c19pbm9kZV9zaXplID4g
+RVhUNF9HT09EX09MRF9JTk9ERV9TSVpFKQorCQlpZiAoc2JpLT5zX2lub2RlX3NpemUgPiBFWFQ0
+X0dPT0RfT0xEX0lOT0RFX1NJWkUpIHsKIAkJCXNiLT5zX3RpbWVfZ3JhbiA9IDEgPDwgKEVYVDRf
+RVBPQ0hfQklUUyAtIDIpOworCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X0VYVFJBX1RJTUVTVEFN
+UF9NQVg7CisJCX0gZWxzZQorCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X05PTl9FWFRSQV9USU1F
+U1RBTVBfTUFYOworCisJCXNiLT5zX3RpbWVfbWluID0gRVhUNF9USU1FU1RBTVBfTUlOOwogCX0K
+IAogCXNiaS0+c19kZXNjX3NpemUgPSBsZTE2X3RvX2NwdShlcy0+c19kZXNjX3NpemUpOwotLSAK
+Mi43LjQKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClky
+MDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGlu
+YXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
