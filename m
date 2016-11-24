@@ -1,224 +1,47 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext4: allow ext4_truncate() to return an error
-Date: Thu, 24 Nov 2016 13:45:42 +0100
-Message-ID: <20161124124542.GH24138@quack2.suse.cz>
-References: <20161113223312.10531-1-tytso@mit.edu>
+Subject: Re: external journal an data= option
+Date: Thu, 24 Nov 2016 14:50:09 +0100
+Message-ID: <20161124135009.GI24138@quack2.suse.cz>
+References: <5330915.k0A4yo7VY8@stwm.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33600 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936133AbcKXMpp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Nov 2016 07:45:45 -0500
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Wolfgang Walter <linux@stwm.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161113223312.10531-1-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <5330915.k0A4yo7VY8@stwm.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 13-11-16 17:33:11, Ted Tso wrote:
-> This allows us to properly propagate errors back up to
-> ext4_truncate()'s callers.  This also means we no longer have to
-> silently ignore some errors (e.g., when trying to add the inode to the
-> orphan inode list).
+Hi,
+
+On Mon 21-11-16 16:39:53, Wolfgang Walter wrote:
+> while testing ext4 with an external journal I found the following problem with 
+> longterm kernel 4.4.30:
 > 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> I could mount the filesystem without specifying the option data=....
+> 
+> It seems that it is then mounted with data=ordered and indeed this is what
+> 
+> 	cat /proc/mounts
+> 
+> shows.
 
-Looks good. You can add:
+Yes, that is correct.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+> But I could not change any option afterwards with -o remount. It always said 
+> that data=ordered is not valid with an external journal.
+> 
+> If I mount with explicitly stating data=writeback or data=journal remount 
+> works fine.
+> 
+> So It seems that ext4 does forbid (at least in 4.4.30) data=ordered as an 
+> option but uses it implicitly as default mode even with an external journal.
+
+Can you show the exact error message and the set of mount options you use?
+I'm not aware we would refuse data=ordered mode due to external journal...
 
 								Honza
-
-> ---
->  fs/ext4/ext4.h  |  2 +-
->  fs/ext4/inode.c | 41 ++++++++++++++++++++++++++---------------
->  fs/ext4/ioctl.c |  7 +++++--
->  fs/ext4/super.c |  6 ++++--
->  4 files changed, 36 insertions(+), 20 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 282a51b07c57..be2282dcde7d 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2491,7 +2491,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
->  extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
->  extern int ext4_inode_attach_jinode(struct inode *inode);
->  extern int ext4_can_truncate(struct inode *inode);
-> -extern void ext4_truncate(struct inode *);
-> +extern int ext4_truncate(struct inode *);
->  extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
->  extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
->  extern void ext4_set_inode_flags(struct inode *);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9c064727ed62..40ea090d2e0e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -261,8 +261,15 @@ void ext4_evict_inode(struct inode *inode)
->  			     "couldn't mark inode dirty (err %d)", err);
->  		goto stop_handle;
->  	}
-> -	if (inode->i_blocks)
-> -		ext4_truncate(inode);
-> +	if (inode->i_blocks) {
-> +		err = ext4_truncate(inode);
-> +		if (err) {
-> +			ext4_error(inode->i_sb,
-> +				   "couldn't truncate inode %lu (err %d)",
-> +				   inode->i_ino, err);
-> +			goto stop_handle;
-> +		}
-> +	}
->  
->  	/*
->  	 * ext4_ext_truncate() doesn't reserve any slop when it
-> @@ -4091,10 +4098,11 @@ int ext4_inode_attach_jinode(struct inode *inode)
->   * that's fine - as long as they are linked from the inode, the post-crash
->   * ext4_truncate() run will find them and release them.
->   */
-> -void ext4_truncate(struct inode *inode)
-> +int ext4_truncate(struct inode *inode)
->  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	unsigned int credits;
-> +	int err = 0;
->  	handle_t *handle;
->  	struct address_space *mapping = inode->i_mapping;
->  
-> @@ -4108,7 +4116,7 @@ void ext4_truncate(struct inode *inode)
->  	trace_ext4_truncate_enter(inode);
->  
->  	if (!ext4_can_truncate(inode))
-> -		return;
-> +		return 0;
->  
->  	ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
->  
-> @@ -4120,13 +4128,13 @@ void ext4_truncate(struct inode *inode)
->  
->  		ext4_inline_data_truncate(inode, &has_inline);
->  		if (has_inline)
-> -			return;
-> +			return 0;
->  	}
->  
->  	/* If we zero-out tail of the page, we have to create jinode for jbd2 */
->  	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
->  		if (ext4_inode_attach_jinode(inode) < 0)
-> -			return;
-> +			return 0;
->  	}
->  
->  	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-> @@ -4135,10 +4143,8 @@ void ext4_truncate(struct inode *inode)
->  		credits = ext4_blocks_for_truncate(inode);
->  
->  	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-> -	if (IS_ERR(handle)) {
-> -		ext4_std_error(inode->i_sb, PTR_ERR(handle));
-> -		return;
-> -	}
-> +	if (IS_ERR(handle))
-> +		return PTR_ERR(handle);
->  
->  	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
->  		ext4_block_truncate_page(handle, mapping, inode->i_size);
-> @@ -4152,7 +4158,8 @@ void ext4_truncate(struct inode *inode)
->  	 * Implication: the file must always be in a sane, consistent
->  	 * truncatable state while each transaction commits.
->  	 */
-> -	if (ext4_orphan_add(handle, inode))
-> +	err = ext4_orphan_add(handle, inode);
-> +	if (err)
->  		goto out_stop;
->  
->  	down_write(&EXT4_I(inode)->i_data_sem);
-> @@ -4185,6 +4192,7 @@ void ext4_truncate(struct inode *inode)
->  	ext4_journal_stop(handle);
->  
->  	trace_ext4_truncate_exit(inode);
-> +	return err;
->  }
->  
->  /*
-> @@ -5199,12 +5207,15 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  		 * in data=journal mode to make pages freeable.
->  		 */
->  		truncate_pagecache(inode, inode->i_size);
-> -		if (shrink)
-> -			ext4_truncate(inode);
-> +		if (shrink) {
-> +			rc = ext4_truncate(inode);
-> +			if (rc)
-> +				error = rc;
-> +		}
->  		up_write(&EXT4_I(inode)->i_mmap_sem);
->  	}
->  
-> -	if (!rc) {
-> +	if (!error) {
->  		setattr_copy(inode, attr);
->  		mark_inode_dirty(inode);
->  	}
-> @@ -5216,7 +5227,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  	if (orphan && inode->i_nlink)
->  		ext4_orphan_del(NULL, inode);
->  
-> -	if (!rc && (ia_valid & ATTR_MODE))
-> +	if (!error && (ia_valid & ATTR_MODE))
->  		rc = posix_acl_chmod(inode, inode->i_mode);
->  
->  err_out:
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index bf5ae8ebbc97..99862a3726fc 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -248,8 +248,11 @@ static int ext4_ioctl_setflags(struct inode *inode,
->  			err = -EOPNOTSUPP;
->  			goto flags_out;
->  		}
-> -	} else if (oldflags & EXT4_EOFBLOCKS_FL)
-> -		ext4_truncate(inode);
-> +	} else if (oldflags & EXT4_EOFBLOCKS_FL) {
-> +		err = ext4_truncate(inode);
-> +		if (err)
-> +			goto flags_out;
-> +	}
->  
->  	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
->  	if (IS_ERR(handle)) {
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 20da99da0a34..e4f61c39328a 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2330,7 +2330,7 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->  				struct ext4_super_block *es)
->  {
->  	unsigned int s_flags = sb->s_flags;
-> -	int nr_orphans = 0, nr_truncates = 0;
-> +	int ret, nr_orphans = 0, nr_truncates = 0;
->  #ifdef CONFIG_QUOTA
->  	int i;
->  #endif
-> @@ -2412,7 +2412,9 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->  				  inode->i_ino, inode->i_size);
->  			inode_lock(inode);
->  			truncate_inode_pages(inode->i_mapping, inode->i_size);
-> -			ext4_truncate(inode);
-> +			ret = ext4_truncate(inode);
-> +			if (ret)
-> +				ext4_std_error(inode->i_sb, ret);
->  			inode_unlock(inode);
->  			nr_truncates++;
->  		} else {
-> -- 
-> 2.11.0.rc0.7.gbe5a750
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
