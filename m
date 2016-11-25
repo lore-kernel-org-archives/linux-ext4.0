@@ -1,78 +1,83 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
-Date: Fri, 25 Nov 2016 07:37:47 +0000
-Message-ID: <20161125073747.GU1555@ZenIV.linux.org.uk>
+Date: Fri, 25 Nov 2016 11:51:26 -0800
+Message-ID: <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
  <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
- <20161124173220.GR1555@ZenIV.linux.org.uk>
- <20161125024918.GX31101@dastard>
- <20161125041419.GT1555@ZenIV.linux.org.uk>
- <20161125070642.GZ31101@dastard>
+ <20161124173220.GR1555@ZenIV.linux.org.uk> <20161125024918.GX31101@dastard>
+ <20161125041419.GT1555@ZenIV.linux.org.uk> <20161125070642.GZ31101@dastard> <20161125073747.GU1555@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-kernel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.cz>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-        Linus Torvalds <torvalds@linux-foundation.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161125070642.GZ31101@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Dave Chinner <david@fromorbit.com>, Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>, Dan Williams <dan.j.williams@intel.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>, Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20161125073747.GU1555@ZenIV.linux.org.uk>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 25, 2016 at 06:06:42PM +1100, Dave Chinner wrote:
+On Thu, Nov 24, 2016 at 11:37 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+>
+> My impression is that nobody (at least kernel-side) wants them to be
+> a stable ABI, so long as nobody in userland screams about their code
+> being broken, everything is fine.  As usual, if nobody notices an ABI
+> change, it hasn't happened.  The question is what happens when somebody
+> does.
 
-> > Tell that to Linus.  You had been in the room, IIRC, when that had been
-> > brought up this year in Santa Fe.
-> 
-> No, I wasn't at KS or plumbers, so this is all news to me.
+Right. There is basically _no_ "stable API" for the kernel anywhere,
+it's just an issue of "you can't break workflow for normal people".
 
-Sorry, thought you had been at KS ;-/  My apologies...
+And if somebody writes his own trace scripts, and some random trace
+point goes away (or changes semantics), that's easy: he can just fix
+his script. Tracepoints aren't ever going to be stable in that sense.
 
-[snip bloody good points I fully agree with]
+But when then somebody writes a trace script that is so useful that
+distros pick it up, and people start using it and depending on it,
+then _that_ trace point may well have become effectively locked in
+stone.
 
-> I understand why there is a desire for stable tracepoints, and
-> that's why I suggested that there should be an in-kernel API to
-> declare stable tracepoints. That way we can have the best of both
-> worlds - tracepoints that applications need to be stable can be
-> declared, reviewed and explicitly marked as stable in full knowledge
-> of what that implies. The rest of the vast body of tracepoints can
-> be left as mutable with no stability or existence guarantees so that
-> developers can continue to treat them in a way that best suits
-> problem diagnosis without compromising the future development of the
-> code being traced. If userspace finds some of those tracepoints
-> useful, then they can be taken through the process of making them
-> into a maintainable stable form and being marked as such.
+That's happened once already with the whole powertop thing. It didn't
+get all that widely spread, and the fix was largely to improve on
+powertop to the point where it wasn't a problem any more, but we've
+clearly had one case of this happening.
 
-My impression is that nobody (at least kernel-side) wants them to be
-a stable ABI, so long as nobody in userland screams about their code
-being broken, everything is fine.  As usual, if nobody notices an ABI
-change, it hasn't happened.  The question is what happens when somebody
-does.
+But I suspect that something like powertop is fairly unusual. There is
+certainly room for similar things in the VFS layer (think "better
+vmstat that uses tracepoints"), but I suspect the bulk of tracepoints
+are going to be for random debugging (so that developers can say
+"please run this script") rather than for an actual user application
+kind of situation.
 
-> We already have distros mounting the tracing subsystem on
-> /sys/kernel/tracing. Expose all the stable tracepoints there, and
-> leave all the other tracepoints under /sys/kernel/debug/tracing.
-> Simple, clear separation between stable and mutable diagnostic
-> tracepoints for users, combined with a simple, clear in-kernel API
-> and process for making tracepoints stable....
+So I don't think we should be _too_ afraid of tracepoints either. When
+being too anti-tracepoint is a bigger practical problem than the
+possible problems down the line, the balance is wrong.
 
-Yep.  That kind of separation would be my preference as well - ideally,
-with review for stable ones being a lot less casual that for unstable;
-AFAICS what happens now is that we have no mechanisms for marking them as
-stable or unstable and everything keeps going on hope that nobody will
-cause a mess by creating such a userland dependency.  So far it's been mostly
-working, but as the set of tracepoints (and their use) gets wider and wider,
-IMO it's only matter of time until we get seriously screwed that way.
+As long as tracepoints make sense from a higher standpoint (ie not
+just random implementation detail of the day), and they aren't
+everywhere, they are unlikely to cause much problem.
 
-Basically, we are gambling on the next one to be cast in stone by userland
-dependency being sane enough to make it possible to maintain it indefinitely
-and I don't like the odds.
+We do have filesystem code that is just disgusting. As an example:
+fs/afs/ tends to have these crazy "_enter()/_exit()" macros in every
+single function. If you want that, use the function tracer. That seems
+to be just debugging code that has been left around for others to
+stumble over. I do *not* believe that we should encourage that kind of
+"machine gun spray" use of tracepoints.
+
+But tracing actual high-level things like IO and faults? I think that
+makes perfect sense, as long as the data that is collected is also the
+actual event data, and not so much a random implementation issue of
+the day.
+
+             Linus
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
