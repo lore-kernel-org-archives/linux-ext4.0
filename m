@@ -1,64 +1,74 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/4] generic: test locking when setting encryption policy
-Date: Fri, 25 Nov 2016 10:26:29 +1100
-Message-ID: <20161124232629.GW31101@dastard>
-References: <1479412027-34416-1-git-send-email-ebiggers@google.com>
- <1479412027-34416-5-git-send-email-ebiggers@google.com>
- <20161120223536.GL28177@dastard>
- <20161121192519.GE30672@google.com>
- <20161121213251.GL31101@dastard>
- <20161121234106.GH30672@google.com>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
+Date: Fri, 25 Nov 2016 13:49:18 +1100
+Message-ID: <20161125024918.GX31101@dastard>
+References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
+ <20161124173220.GR1555@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        David Gstir <david@sigma-star.at>
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20161121234106.GH30672@google.com>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20161124173220.GR1555-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 21, 2016 at 03:41:06PM -0800, Eric Biggers wrote:
-> On Tue, Nov 22, 2016 at 08:32:51AM +1100, Dave Chinner wrote:
-> > 
-> > This means that reproducing the race condition is going to be
-> > machine dependent regardless of how the test is written.
-> > 
-> > In cases like this for XFS, we tend towards adding a debug sysfs
-> > file to introduce a delay into the code that allows the race to be
-> > triggered reliably. The delay is only included in CONFIG_XFS_DEBUG=y
-> > builds, and the test is conditional on the sysfs file being present.
-> > 
-> > e.g. xfs/051 uses a log recovery delay to allow us to reliably
-> > trigger IO errors in the middle of log recovery and hence exercise
-> > the IO error failure paths in the middle of recovery. This made an
-> > extremely unreliable reproducer into a test case that triggered
-> > reliably on every machine the test is run on....
-> > 
-> > Can something like this be done in this case?
-> > 
+On Thu, Nov 24, 2016 at 05:32:20PM +0000, Al Viro wrote:
+> On Wed, Nov 23, 2016 at 11:44:19AM -0700, Ross Zwisler wrote:
+> > Tracepoints are the standard way to capture debugging and tracing
+> > information in many parts of the kernel, including the XFS and ext4
+> > filesystems.  Create a tracepoint header for FS DAX and add the first DAX
+> > tracepoints to the PMD fault handler.  This allows the tracing for DAX to
+> > be done in the same way as the filesystem tracing so that developers can
+> > look at them together and get a coherent idea of what the system is doing.
 > 
-> I'd really rather not do something like that just for this test, which is really
-> just testing that the kernel does inode_lock()/inode_unlock() in
-> fscrypt_process_policy().  It would be more worthwhile if the testing-only
-> kernel code would help expose many race conditions, not just this one particular
-> race in this particular ioctl.
+> 	It also has one hell of potential for becoming a massive nuisance.
+> Keep in mind that if any userland code becomes dependent on those - that's it,
+> they have become parts of stable userland ABI and are to be maintained
+> indefinitely.  Don't expect "tracepoints are special case" to prevent that.
 
-OK.
+I call bullshit just like I always do when someone spouts this
+"tracepoints are stable ABI" garbage.
 
-> So if you don't want to have the C version of this test in
-> xfstests, I think it should just be dropped from the series.
+If we want to provide stable tracepoints, then we need to /create a
+stable tracepoint API/ and convert all the tracepoints that /need
+to be stable/ to use it. Then developers only need to be careful
+about modifying code around the /explicitly stable/ tracepoints and
+we avoid retrospectively locking the kernel implementation into a
+KABI so tight we can't do anything anymore....
 
-If there's no other alternative, a test written in C is better than
-nothing.
+Quite frankly, anyone that wants to stop us from
+adding/removing/changing tracepoints or the code that they are
+reporting information about "because ABI" can go take a long walk
+off a short cliff.  Diagnostic tracepoints are not part of the
+stable ABI. End of story.
 
-Thanks!
+> 	So treat anything you add in that manner as potential stable ABI
+> you might have to keep around forever.  It's *not* a glorified debugging
+> printk.
 
--Dave.
+trace_printk() is the glorified debugging printk for tracing, not
+trace events.
+
+Cheers,
+
+Dave.
 -- 
 Dave Chinner
-david@fromorbit.com
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
