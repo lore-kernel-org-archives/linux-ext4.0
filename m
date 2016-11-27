@@ -1,224 +1,70 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] fscrypt: move non-public structures and constants to fscrypt_private.h
-Date: Sat, 26 Nov 2016 23:41:54 -0500
-Message-ID: <20161127044155.23022-3-tytso@mit.edu>
-References: <20161127044155.23022-1-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
+From: Eric Biggers <ebiggers@google.com>
+Subject: [PATCH 5/5] mbcache: document that "find" functions only return reusable entries
+Date: Sat, 26 Nov 2016 22:18:01 -0800
+Message-ID: <1480227481-98535-5-git-send-email-ebiggers@google.com>
+References: <1480227481-98535-1-git-send-email-ebiggers@google.com>
+Cc: Jan Kara <jack@suse.cz>, Andreas Gruenbacher <agruenba@redhat.com>,
+        Eric Biggers <ebiggers@google.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60642 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753237AbcK0EmM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 26 Nov 2016 23:42:12 -0500
-In-Reply-To: <20161127044155.23022-1-tytso@mit.edu>
+Received: from mail-pg0-f41.google.com ([74.125.83.41]:33637 "EHLO
+        mail-pg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751546AbcK0GSd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Nov 2016 01:18:33 -0500
+Received: by mail-pg0-f41.google.com with SMTP id 3so44465641pgd.0
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Nov 2016 22:18:33 -0800 (PST)
+In-Reply-To: <1480227481-98535-1-git-send-email-ebiggers@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/crypto/crypto.c          |  2 +-
- fs/crypto/fscrypt_private.h | 71 +++++++++++++++++++++++++++++++++++++++++++++
- fs/crypto/policy.c          |  2 +-
- include/linux/fscrypto.h    | 68 ++-----------------------------------------
- 4 files changed, 76 insertions(+), 67 deletions(-)
+mb_cache_entry_find_first() and mb_cache_entry_find_next() only return
+cache entries with the 'e_reusable' bit set.  This should be documented.
 
-diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index 56f98f45cece..4d9d221b1d60 100644
---- a/fs/crypto/crypto.c
-+++ b/fs/crypto/crypto.c
-@@ -27,7 +27,7 @@
- #include <linux/bio.h>
- #include <linux/dcache.h>
- #include <linux/namei.h>
--#include <linux/fscrypto.h>
-+#include "fscrypt_private.h"
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/mbcache.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index bf65906..b19be42 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -155,12 +155,12 @@ static struct mb_cache_entry *__entry_find(struct mb_cache *cache,
+ }
  
- static unsigned int num_prealloc_crypto_pages = 32;
- static unsigned int num_prealloc_crypto_ctxs = 128;
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index bb92f0c0961b..c98b2a7fb6d3 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -13,6 +13,77 @@
+ /*
+- * mb_cache_entry_find_first - find the first entry in cache with given key
++ * mb_cache_entry_find_first - find the first reusable entry with the given key
+  * @cache: cache where we should search
+  * @key: key to look for
+  *
+- * Search in @cache for entry with key @key. Grabs reference to the first
+- * entry found and returns the entry.
++ * Search in @cache for a reusable entry with key @key. Grabs reference to the
++ * first reusable entry found and returns the entry.
+  */
+ struct mb_cache_entry *mb_cache_entry_find_first(struct mb_cache *cache,
+ 						 u32 key)
+@@ -170,14 +170,14 @@ struct mb_cache_entry *mb_cache_entry_find_first(struct mb_cache *cache,
+ EXPORT_SYMBOL(mb_cache_entry_find_first);
  
- #include <linux/fscrypto.h>
- 
-+#define FS_FNAME_CRYPTO_DIGEST_SIZE	32
-+
-+/* Encryption parameters */
-+#define FS_XTS_TWEAK_SIZE		16
-+#define FS_AES_128_ECB_KEY_SIZE		16
-+#define FS_AES_256_GCM_KEY_SIZE		32
-+#define FS_AES_256_CBC_KEY_SIZE		32
-+#define FS_AES_256_CTS_KEY_SIZE		32
-+#define FS_AES_256_XTS_KEY_SIZE		64
-+#define FS_MAX_KEY_SIZE			64
-+
-+#define FS_KEY_DESC_PREFIX		"fscrypt:"
-+#define FS_KEY_DESC_PREFIX_SIZE		8
-+
-+#define FS_KEY_DERIVATION_NONCE_SIZE		16
-+
-+/**
-+ * Encryption context for inode
-+ *
-+ * Protector format:
-+ *  1 byte: Protector format (1 = this version)
-+ *  1 byte: File contents encryption mode
-+ *  1 byte: File names encryption mode
-+ *  1 byte: Flags
-+ *  8 bytes: Master Key descriptor
-+ *  16 bytes: Encryption Key derivation nonce
-+ */
-+struct fscrypt_context {
-+	u8 format;
-+	u8 contents_encryption_mode;
-+	u8 filenames_encryption_mode;
-+	u8 flags;
-+	u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
-+	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
-+} __packed;
-+
-+#define FS_ENCRYPTION_CONTEXT_FORMAT_V1		1
-+
-+/* This is passed in from userspace into the kernel keyring */
-+struct fscrypt_key {
-+	u32 mode;
-+	u8 raw[FS_MAX_KEY_SIZE];
-+	u32 size;
-+} __packed;
-+
-+/*
-+ * A pointer to this structure is stored in the file system's in-core
-+ * representation of an inode.
-+ */
-+struct fscrypt_info {
-+	u8 ci_data_mode;
-+	u8 ci_filename_mode;
-+	u8 ci_flags;
-+	struct crypto_skcipher *ci_ctfm;
-+	struct key *ci_keyring_key;
-+	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
-+};
-+
-+#define FS_CTX_REQUIRES_FREE_ENCRYPT_FL		0x00000001
-+#define FS_WRITE_PATH_FL			0x00000002
-+
-+struct fscrypt_completion_result {
-+	struct completion completion;
-+	int res;
-+};
-+
-+#define DECLARE_FS_COMPLETION_RESULT(ecr) \
-+	struct fscrypt_completion_result ecr = { \
-+		COMPLETION_INITIALIZER((ecr).completion), 0 }
-+
-+
- /* crypto.c */
- int fscrypt_initialize(void);
- 
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index b96a10e3cf78..6ed7c2eebeec 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -10,8 +10,8 @@
- 
- #include <linux/random.h>
- #include <linux/string.h>
--#include <linux/fscrypto.h>
- #include <linux/mount.h>
-+#include "fscrypt_private.h"
- 
- static int inode_has_encryption_context(struct inode *inode)
- {
-diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
-index ce2ebdee6a89..71e8a20711ec 100644
---- a/include/linux/fscrypto.h
-+++ b/include/linux/fscrypto.h
-@@ -18,9 +18,6 @@
- #include <crypto/skcipher.h>
- #include <uapi/linux/fs.h>
- 
--#define FS_KEY_DERIVATION_NONCE_SIZE		16
--#define FS_ENCRYPTION_CONTEXT_FORMAT_V1		1
--
- #define FS_POLICY_FLAGS_PAD_4		0x00
- #define FS_POLICY_FLAGS_PAD_8		0x01
- #define FS_POLICY_FLAGS_PAD_16		0x02
-@@ -35,56 +32,10 @@
- #define FS_ENCRYPTION_MODE_AES_256_CBC		3
- #define FS_ENCRYPTION_MODE_AES_256_CTS		4
- 
--/**
-- * Encryption context for inode
-- *
-- * Protector format:
-- *  1 byte: Protector format (1 = this version)
-- *  1 byte: File contents encryption mode
-- *  1 byte: File names encryption mode
-- *  1 byte: Flags
-- *  8 bytes: Master Key descriptor
-- *  16 bytes: Encryption Key derivation nonce
-- */
--struct fscrypt_context {
--	u8 format;
--	u8 contents_encryption_mode;
--	u8 filenames_encryption_mode;
--	u8 flags;
--	u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
--	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
--} __packed;
--
--/* Encryption parameters */
--#define FS_XTS_TWEAK_SIZE		16
--#define FS_AES_128_ECB_KEY_SIZE		16
--#define FS_AES_256_GCM_KEY_SIZE		32
--#define FS_AES_256_CBC_KEY_SIZE		32
--#define FS_AES_256_CTS_KEY_SIZE		32
--#define FS_AES_256_XTS_KEY_SIZE		64
--#define FS_MAX_KEY_SIZE			64
--
--#define FS_KEY_DESC_PREFIX		"fscrypt:"
--#define FS_KEY_DESC_PREFIX_SIZE		8
--
--/* This is passed in from userspace into the kernel keyring */
--struct fscrypt_key {
--	u32 mode;
--	u8 raw[FS_MAX_KEY_SIZE];
--	u32 size;
--} __packed;
--
--struct fscrypt_info {
--	u8 ci_data_mode;
--	u8 ci_filename_mode;
--	u8 ci_flags;
--	struct crypto_skcipher *ci_ctfm;
--	struct key *ci_keyring_key;
--	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
--};
-+#define FS_CRYPTO_BLOCK_SIZE		16
- 
--#define FS_CTX_REQUIRES_FREE_ENCRYPT_FL		0x00000001
--#define FS_WRITE_PATH_FL			0x00000002
-+struct fscrypt_info;
-+struct fscrypt_ctx;
- 
- struct fscrypt_ctx {
- 	union {
-@@ -102,19 +53,6 @@ struct fscrypt_ctx {
- 	u8 mode;				/* Encryption mode for tfm */
- };
- 
--struct fscrypt_completion_result {
--	struct completion completion;
--	int res;
--};
--
--#define DECLARE_FS_COMPLETION_RESULT(ecr) \
--	struct fscrypt_completion_result ecr = { \
--		COMPLETION_INITIALIZER((ecr).completion), 0 }
--
--#define FS_FNAME_NUM_SCATTER_ENTRIES	4
--#define FS_CRYPTO_BLOCK_SIZE		16
--#define FS_FNAME_CRYPTO_DIGEST_SIZE	32
+ /*
+- * mb_cache_entry_find_next - find next entry in cache with the same
++ * mb_cache_entry_find_next - find next reusable entry with the same key
+  * @cache: cache where we should search
+  * @entry: entry to start search from
+  *
+- * Finds next entry in the hash chain which has the same key as @entry.
+- * If @entry is unhashed (which can happen when deletion of entry races
+- * with the search), finds the first entry in the hash chain. The function
+- * drops reference to @entry and returns with a reference to the found entry.
++ * Finds next reusable entry in the hash chain which has the same key as @entry.
++ * If @entry is unhashed (which can happen when deletion of entry races with the
++ * search), finds the first reusable entry in the hash chain. The function drops
++ * reference to @entry and returns with a reference to the found entry.
+  */
+ struct mb_cache_entry *mb_cache_entry_find_next(struct mb_cache *cache,
+ 						struct mb_cache_entry *entry)
+-- 
+2.8.0.rc3.226.g39d4020
+
