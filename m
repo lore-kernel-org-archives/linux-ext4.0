@@ -1,42 +1,51 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH 3/5] mbcache: remove unnecessary module_get/module_put
-Date: Sat, 26 Nov 2016 22:17:59 -0800
-Message-ID: <1480227481-98535-3-git-send-email-ebiggers@google.com>
-References: <1480227481-98535-1-git-send-email-ebiggers@google.com>
+Subject: [PATCH 1/5] mbcache: correctly handle 'e_referenced' bit
+Date: Sat, 26 Nov 2016 22:17:57 -0800
+Message-ID: <1480227481-98535-1-git-send-email-ebiggers@google.com>
 Cc: Jan Kara <jack@suse.cz>, Andreas Gruenbacher <agruenba@redhat.com>,
         Eric Biggers <ebiggers@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f171.google.com ([209.85.192.171]:33648 "EHLO
-        mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751516AbcK0GSd (ORCPT
+Received: from mail-pg0-f52.google.com ([74.125.83.52]:36644 "EHLO
+        mail-pg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751157AbcK0GSd (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Nov 2016 01:18:33 -0500
-Received: by mail-pf0-f171.google.com with SMTP id d2so19603561pfd.0
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Nov 2016 22:18:29 -0800 (PST)
-In-Reply-To: <1480227481-98535-1-git-send-email-ebiggers@google.com>
+Received: by mail-pg0-f52.google.com with SMTP id f188so44197938pgc.3
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Nov 2016 22:18:12 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When mbcache is built as a module, any modules that use it (ext2 and/or
-ext4) will depend on its symbols directly, incrementing its reference
-count.  Therefore, there is no need to do module_get/module_put.
+mbcache entries have an 'e_referenced' bit which users can set with
+mb_cache_entry_touch() to indicate that an entry should be given another
+pass through the LRU list before the shrinker can delete it.  However,
+mb_cache_shrink() actually would, when seeing an e_referenced entry at
+the front of the list (the least-recently used end), place it right at
+the front of the list again.  The next iteration would then remove the
+entry from the list and delete it.  Consequently, e_referenced had
+essentially no effect, so ext2/ext4 xattr blocks would sometimes not be
+reused as often as expected.
 
-Also note that since the module_get/module_put were in the mbcache
-module itself, executing those lines of code was already dependent on
-another reference to the mbcache module being held.
+Fix this by making the shrinker move e_referenced entries to the back of
+the list rather than the front.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/mbcache.c | 5 -----
- 1 file changed, 5 deletions(-)
+ fs/mbcache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/mbcache.c b/fs/mbcache.c
-index c56ab21..07c5d7d 100644
+index c5bd19f..31e54c2 100644
 --- a/fs/mbcache.c
 +++ b/fs/mbcache.c
-@@ -344,9 +344,6 @@ struct mb_cache *mb_cache_create(int bucket_bits)
- 	int bucket_count = 1 << bucket_bits;
- 	int i;
- 
--	if (!try_module_get(THIS_MODULE))
--		return NULL;
+@@ -286,7 +286,7 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
+ 					 struct mb_cache_entry, e_list);
+ 		if (entry->e_referenced) {
+ 			entry->e_referenced = 0;
+-			list_move_tail(&cache->c_list, &entry->e_list);
++			list_move_tail(&entry->e_list, &cache->c_list);
+ 			continue;
+ 		}
+ 		list_del_init(&entry->e_list);
+-- 
+2.8.0.rc3.226.g39d4020
+
