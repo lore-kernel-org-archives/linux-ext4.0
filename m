@@ -1,76 +1,94 @@
 From: Eric Biggers <ebiggers@google.com>
-Subject: [PATCH 1/3] ext4: forbid i_extra_isize not divisible by 4
-Date: Sat, 26 Nov 2016 22:39:44 -0800
-Message-ID: <1480228786-106775-1-git-send-email-ebiggers@google.com>
+Subject: [PATCH 3/3] ext4: correctly detect when an xattr value has an invalid size
+Date: Sat, 26 Nov 2016 22:39:46 -0800
+Message-ID: <1480228786-106775-3-git-send-email-ebiggers@google.com>
+References: <1480228786-106775-1-git-send-email-ebiggers@google.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Eric Biggers <ebiggers@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f177.google.com ([209.85.192.177]:35612 "EHLO
-        mail-pf0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751542AbcK0GlA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Nov 2016 01:41:00 -0500
-Received: by mail-pf0-f177.google.com with SMTP id i88so19556611pfk.2
-        for <linux-ext4@vger.kernel.org>; Sat, 26 Nov 2016 22:41:00 -0800 (PST)
+Received: from mail-pg0-f46.google.com ([74.125.83.46]:34620 "EHLO
+        mail-pg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751546AbcK0GlG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Nov 2016 01:41:06 -0500
+Received: by mail-pg0-f46.google.com with SMTP id x23so44556902pgx.1
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Nov 2016 22:41:06 -0800 (PST)
+In-Reply-To: <1480228786-106775-1-git-send-email-ebiggers@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-i_extra_isize not divisible by 4 is problematic for several reasons:
+It was possible for an xattr value to have a very large size, which
+would then pass validation on 32-bit architectures due to a pointer
+wraparound.  Fix this by validating the size in a way which avoids
+pointer wraparound.
 
-- It causes the in-inode xattr space to be misaligned, but the xattr
-  header and entries are not declared __packed to express this
-  possibility.  This may cause poor performance or incorrect code
-  generation on some platforms.
-- When validating the xattr entries we can read past the end of the
-  inode if the size available for xattrs is not a multiple of 4.
-- It allows the nonsensical i_extra_isize=1, which doesn't even leave
-  enough room for i_extra_isize itself.
-
-Therefore, update ext4_iget() to consider i_extra_isize not divisible by
-4 to be an error, like the case where i_extra_isize is too large.
-
-This also matches the rule recently added to e2fsck for determining
-whether an inode has valid i_extra_isize.
+It was also possible that a value's size would fit in the available
+space but its padded size would not.  This would cause an out-of-bounds
+memory write in ext4_xattr_set_entry when replacing the xattr value.
+For example, if an xattr value of unpadded size 253 bytes went until the
+very end of the inode or block, then using setxattr(2) to replace this
+xattr's value with 256 bytes would cause a write to the 3 bytes past the
+end of the inode or buffer, and the new xattr value would be incorrectly
+truncated.  Fix this by requiring that the padded size fit in the
+available space rather than the unpadded size.
 
 This patch shouldn't have any noticeable effect on
-non-corrupted/non-malicious filesystems, since the size of ext4_inode
-has always been a multiple of 4.
+non-corrupted/non-malicious filesystems.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/inode.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/ext4/xattr.c | 27 +++++++++++++++++++++------
+ 1 file changed, 21 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 861f848..bc99ebe 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4564,10 +4564,12 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
- 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
--		    EXT4_INODE_SIZE(inode->i_sb)) {
--			EXT4_ERROR_INODE(inode, "bad extra_isize (%u != %u)",
--				EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize,
--				EXT4_INODE_SIZE(inode->i_sb));
-+			EXT4_INODE_SIZE(inode->i_sb) ||
-+		    (ei->i_extra_isize & 3)) {
-+			EXT4_ERROR_INODE(inode,
-+					 "bad extra_isize %u (inode size %u)",
-+					 ei->i_extra_isize,
-+					 EXT4_INODE_SIZE(inode->i_sb));
- 			ret = -EFSCORRUPTED;
- 			goto bad_inode;
- 		}
-@@ -4685,6 +4687,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 		if (ei->i_extra_isize == 0) {
- 			/* The extra space is currently unused. Use it. */
-+			BUILD_BUG_ON(sizeof(struct ext4_inode) & 3);
- 			ei->i_extra_isize = sizeof(struct ext4_inode) -
- 					    EXT4_GOOD_OLD_INODE_SIZE;
- 		} else {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 59c9ec7..5a94fa52 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -185,6 +185,7 @@ ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
+ {
+ 	struct ext4_xattr_entry *e = entry;
+ 
++	/* Find the end of the names list */
+ 	while (!IS_LAST_ENTRY(e)) {
+ 		struct ext4_xattr_entry *next = EXT4_XATTR_NEXT(e);
+ 		if ((void *)next >= end)
+@@ -192,15 +193,29 @@ ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
+ 		e = next;
+ 	}
+ 
++	/* Check the values */
+ 	while (!IS_LAST_ENTRY(entry)) {
+ 		if (entry->e_value_block != 0)
+ 			return -EFSCORRUPTED;
+-		if (entry->e_value_size != 0 &&
+-		    (value_start + le16_to_cpu(entry->e_value_offs) <
+-		     (void *)e + sizeof(__u32) ||
+-		     value_start + le16_to_cpu(entry->e_value_offs) +
+-		    le32_to_cpu(entry->e_value_size) > end))
+-			return -EFSCORRUPTED;
++		if (entry->e_value_size != 0) {
++			u16 offs = le16_to_cpu(entry->e_value_offs);
++			u32 size = le32_to_cpu(entry->e_value_size);
++			void *value;
++
++			/*
++			 * The value cannot overlap the names, and the value
++			 * with padding cannot extend beyond 'end'.  Check both
++			 * the padded and unpadded sizes, since the size may
++			 * overflow to 0 when adding padding.
++			 */
++			if (offs > end - value_start)
++				return -EFSCORRUPTED;
++			value = value_start + offs;
++			if (value < (void *)e + sizeof(u32) ||
++			    size > end - value ||
++			    EXT4_XATTR_SIZE(size) > end - value)
++				return -EFSCORRUPTED;
++		}
+ 		entry = EXT4_XATTR_NEXT(entry);
+ 	}
+ 
 -- 
 2.8.0.rc3.226.g39d4020
 
