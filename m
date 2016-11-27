@@ -1,48 +1,68 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] fscrypto: move ioctl processing more fully
- into common code
-Date: Sat, 26 Nov 2016 20:20:48 -0800
-Message-ID: <20161127042048.GA34163@google.com>
-References: <1476723246-47420-1-git-send-email-ebiggers@google.com>
-	<20161127000901.wuyl6t6wp6qhmkrs@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <20161127000901.wuyl6t6wp6qhmkrs@thunk.org>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/4] fscrypt: unexport fscrypt_initialize()
+Date: Sat, 26 Nov 2016 23:41:53 -0500
+Message-ID: <20161127044155.23022-2-tytso@mit.edu>
+References: <20161127044155.23022-1-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:60644 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753286AbcK0EmM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 26 Nov 2016 23:42:12 -0500
+In-Reply-To: <20161127044155.23022-1-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 26, 2016 at 07:09:01PM -0500, Theodore Ts'o wrote:
-> On Mon, Oct 17, 2016 at 09:54:06AM -0700, Eric Biggers wrote:
-> > In addition, make the common functions do the copies to and from
-> > userspace rather than duplicating this code within each filesystem, and
-> > memset the policy to 0 to make it clear there is no stack leak.
-> 
-> I don't see any point of doing this, given that we initialize all
-> parts of the fscrypt_policy structure; and since this structure is
-> part of UAPI, we can't change it without breaking userspace.
-> 
-> I'll apply this with the memset (and the above comment in the commit
-> description) removed.
-> 
-> 					- Ted
+The fscrypt_initalize() function isn't used outside fs/crypto, so
+there's no point making it be an exported symbol.
 
-I guess I'm okay with that, since struct fscrypt_policy won't have any padding
-bytes because its members are all bytes.  Plus it's marked __packed, though I
-think that was a mistake given that the struct isn't stored on disk directly.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/crypto/crypto.c          | 1 -
+ fs/crypto/fscrypt_private.h | 3 +++
+ include/linux/fscrypto.h    | 1 -
+ 3 files changed, 3 insertions(+), 2 deletions(-)
 
-Eric
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index b6029785714c..56f98f45cece 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -540,7 +540,6 @@ int fscrypt_initialize(void)
+ 	mutex_unlock(&fscrypt_init_mutex);
+ 	return res;
+ }
+-EXPORT_SYMBOL(fscrypt_initialize);
+ 
+ /**
+  * fscrypt_init() - Set up for fs encryption.
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index 7c31108728e4..bb92f0c0961b 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -13,6 +13,9 @@
+ 
+ #include <linux/fscrypto.h>
+ 
++/* crypto.c */
++int fscrypt_initialize(void);
++
+ /* keyinfo.c */
+ extern int fscrypt_get_crypt_info(struct inode *);
+ 
+diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
+index 2f8894f0696c..ce2ebdee6a89 100644
+--- a/include/linux/fscrypto.h
++++ b/include/linux/fscrypto.h
+@@ -244,7 +244,6 @@ static inline void fscrypt_set_d_op(struct dentry *dentry)
+ #if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+ /* crypto.c */
+ extern struct kmem_cache *fscrypt_info_cachep;
+-int fscrypt_initialize(void);
+ 
+ extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
+ extern void fscrypt_release_ctx(struct fscrypt_ctx *);
+-- 
+2.11.0.rc0.7.gbe5a750
 
-------------------------------------------------------------------------------
