@@ -1,53 +1,93 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypto: move ioctl processing more fully into common
- code
-Date: Sun, 27 Nov 2016 12:39:34 -0500
-Message-ID: <20161127173934.uz5cyjxuisainys4@thunk.org>
-References: <1476723246-47420-1-git-send-email-ebiggers@google.com>
- <20161127000901.wuyl6t6wp6qhmkrs@thunk.org>
- <20161127042048.GA34163@google.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
+Date: Mon, 28 Nov 2016 09:42:08 +1100
+Message-ID: <20161127224208.GA31101@dastard>
+References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
+ <20161124173220.GR1555@ZenIV.linux.org.uk>
+ <20161125024918.GX31101@dastard>
+ <20161125041419.GT1555@ZenIV.linux.org.uk>
+ <20161125070642.GZ31101@dastard>
+ <20161125073747.GU1555@ZenIV.linux.org.uk>
+ <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, jaegeuk@kernel.org
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.cz>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161127042048.GA34163@google.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Nov 26, 2016 at 08:20:48PM -0800, Eric Biggers wrote:
+On Fri, Nov 25, 2016 at 11:51:26AM -0800, Linus Torvalds wrote:
+> On Thu, Nov 24, 2016 at 11:37 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+> >
+> > My impression is that nobody (at least kernel-side) wants them to be
+> > a stable ABI, so long as nobody in userland screams about their code
+> > being broken, everything is fine.  As usual, if nobody notices an ABI
+> > change, it hasn't happened.  The question is what happens when somebody
+> > does.
 > 
-> I guess I'm okay with that, since struct fscrypt_policy won't have any padding
-> bytes because its members are all bytes.  Plus it's marked __packed, though I
-> think that was a mistake given that the struct isn't stored on disk directly.
->
+> Right. There is basically _no_ "stable API" for the kernel anywhere,
+> it's just an issue of "you can't break workflow for normal people".
+> 
+> And if somebody writes his own trace scripts, and some random trace
+> point goes away (or changes semantics), that's easy: he can just fix
+> his script. Tracepoints aren't ever going to be stable in that sense.
+> 
+> But when then somebody writes a trace script that is so useful that
+> distros pick it up, and people start using it and depending on it,
+> then _that_ trace point may well have become effectively locked in
+> stone.
 
-It wouldn't have mattered if wasn't marked __packed, since the first
-four fields are __u8, and the master_key_descriptor is a 4 byte
-aligned __u8 array of size 8.
+And that's exactly why we need a method of marking tracepoints as
+stable. How else are we going to know whether a specific tracepoint
+is stable if the kernel code doesn't document that it's stable? And
+how are we going to know why it's considered stable if there isn't a
+commit message that explains why it was made stable?
 
-The use of __packed in the fscrypt code came from Michael, and I
-suspect it's more of a Microsoft thing, since his previous experience
-was as the architect for Bitlocker.  It's actually pretty rare that we
-use __packed in Linux kernel sources in general, and in ext4
-specifically.
+> We do have filesystem code that is just disgusting. As an example:
+> fs/afs/ tends to have these crazy "_enter()/_exit()" macros in every
+> single function. If you want that, use the function tracer. That seems
+> to be just debugging code that has been left around for others to
+> stumble over. I do *not* believe that we should encourage that kind of
+> "machine gun spray" use of tracepoints.
 
-Personally, I tend to depend on __uNN declaration and various
-assumptions that we make about "sane" packing rules which are assumed
-by the kernel.  See how the on-disk ext4 superblock is defined; that's
-not the only place where we make assumptions about sane structure
-packing, and anyone who tried porting Linux to a 18-bit or 36-bit
-architecture would have lots of other problems, even if a modern Linux
-kernel could be made small enough to fit in the memory available to a
-PDP-10 or a PDP-15. :-)
+Inappropriate use of tracepoints is a different problem. The issue
+here is getting rid of the uncertainty caused by the handwavy
+"tracepoints a mutable until someone, somewhere decides to use it in
+userspace" policy.
 
-We probably could remove a few of them, but I haven't bothered, since
-in general they aren't doing any harm.
+> But tracing actual high-level things like IO and faults? I think that
+> makes perfect sense, as long as the data that is collected is also the
+> actual event data, and not so much a random implementation issue of
+> the day.
+
+IME, a tracepoint that doesn't expose detailed context specific
+information isn't really useful for complex problem diagnosis...
 
 Cheers,
 
-					- Ted
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
 
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
