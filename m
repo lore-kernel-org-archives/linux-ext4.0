@@ -1,122 +1,224 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/4] fscrypt: rename get_crypt_info() to fscrypt_get_crypt_info()
-Date: Sat, 26 Nov 2016 23:41:52 -0500
-Message-ID: <20161127044155.23022-1-tytso@mit.edu>
+Subject: [PATCH 3/4] fscrypt: move non-public structures and constants to fscrypt_private.h
+Date: Sat, 26 Nov 2016 23:41:54 -0500
+Message-ID: <20161127044155.23022-3-tytso@mit.edu>
+References: <20161127044155.23022-1-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
         jaegeuk@kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: Linux Filesystem Development List <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60648 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:60642 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753239AbcK0EmM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1753237AbcK0EmM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Sat, 26 Nov 2016 23:42:12 -0500
+In-Reply-To: <20161127044155.23022-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To avoid namespace collisions, rename get_crypt_info() to
-fscrypt_get_crypt_info().  The function is only used inside the
-fs/crypto directory, so declare it in the new header file,
-fscrypt_private.h.
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/crypto/fname.c           |  4 ++--
- fs/crypto/fscrypt_private.h | 19 +++++++++++++++++++
- fs/crypto/keyinfo.c         |  6 +++---
- include/linux/fscrypto.h    |  1 -
- 4 files changed, 24 insertions(+), 6 deletions(-)
- create mode 100644 fs/crypto/fscrypt_private.h
+ fs/crypto/crypto.c          |  2 +-
+ fs/crypto/fscrypt_private.h | 71 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/crypto/policy.c          |  2 +-
+ include/linux/fscrypto.h    | 68 ++-----------------------------------------
+ 4 files changed, 76 insertions(+), 67 deletions(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 6b45d9caeeb0..56ad9d195f18 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -12,7 +12,7 @@
- 
- #include <linux/scatterlist.h>
- #include <linux/ratelimit.h>
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index 56f98f45cece..4d9d221b1d60 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -27,7 +27,7 @@
+ #include <linux/bio.h>
+ #include <linux/dcache.h>
+ #include <linux/namei.h>
 -#include <linux/fscrypto.h>
 +#include "fscrypt_private.h"
  
- /**
-  * fname_crypt_complete() - completion callback for filename crypto
-@@ -350,7 +350,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
- 		fname->disk_name.len = iname->len;
- 		return 0;
- 	}
--	ret = get_crypt_info(dir);
-+	ret = fscrypt_get_crypt_info(dir);
- 	if (ret && ret != -EOPNOTSUPP)
- 		return ret;
- 
+ static unsigned int num_prealloc_crypto_pages = 32;
+ static unsigned int num_prealloc_crypto_ctxs = 128;
 diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-new file mode 100644
-index 000000000000..7c31108728e4
---- /dev/null
+index bb92f0c0961b..c98b2a7fb6d3 100644
+--- a/fs/crypto/fscrypt_private.h
 +++ b/fs/crypto/fscrypt_private.h
-@@ -0,0 +1,19 @@
-+/*
-+ * fscrypt_private.h
-+ *
-+ * Copyright (C) 2015, Google, Inc.
-+ *
-+ * This contains encryption key functions.
-+ *
-+ * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
-+ */
-+
-+#ifndef _FSCRYPT_PRIVATE_H
-+#define _FSCRYPT_PRIVATE_H
-+
-+#include <linux/fscrypto.h>
-+
-+/* keyinfo.c */
-+extern int fscrypt_get_crypt_info(struct inode *);
-+
-+#endif /* _FSCRYPT_PRIVATE_H */
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 67fb6d8876d0..35d3317a27b3 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -10,7 +10,7 @@
+@@ -13,6 +13,77 @@
  
- #include <keys/user-type.h>
- #include <linux/scatterlist.h>
+ #include <linux/fscrypto.h>
+ 
++#define FS_FNAME_CRYPTO_DIGEST_SIZE	32
++
++/* Encryption parameters */
++#define FS_XTS_TWEAK_SIZE		16
++#define FS_AES_128_ECB_KEY_SIZE		16
++#define FS_AES_256_GCM_KEY_SIZE		32
++#define FS_AES_256_CBC_KEY_SIZE		32
++#define FS_AES_256_CTS_KEY_SIZE		32
++#define FS_AES_256_XTS_KEY_SIZE		64
++#define FS_MAX_KEY_SIZE			64
++
++#define FS_KEY_DESC_PREFIX		"fscrypt:"
++#define FS_KEY_DESC_PREFIX_SIZE		8
++
++#define FS_KEY_DERIVATION_NONCE_SIZE		16
++
++/**
++ * Encryption context for inode
++ *
++ * Protector format:
++ *  1 byte: Protector format (1 = this version)
++ *  1 byte: File contents encryption mode
++ *  1 byte: File names encryption mode
++ *  1 byte: Flags
++ *  8 bytes: Master Key descriptor
++ *  16 bytes: Encryption Key derivation nonce
++ */
++struct fscrypt_context {
++	u8 format;
++	u8 contents_encryption_mode;
++	u8 filenames_encryption_mode;
++	u8 flags;
++	u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
++	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
++} __packed;
++
++#define FS_ENCRYPTION_CONTEXT_FORMAT_V1		1
++
++/* This is passed in from userspace into the kernel keyring */
++struct fscrypt_key {
++	u32 mode;
++	u8 raw[FS_MAX_KEY_SIZE];
++	u32 size;
++} __packed;
++
++/*
++ * A pointer to this structure is stored in the file system's in-core
++ * representation of an inode.
++ */
++struct fscrypt_info {
++	u8 ci_data_mode;
++	u8 ci_filename_mode;
++	u8 ci_flags;
++	struct crypto_skcipher *ci_ctfm;
++	struct key *ci_keyring_key;
++	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
++};
++
++#define FS_CTX_REQUIRES_FREE_ENCRYPT_FL		0x00000001
++#define FS_WRITE_PATH_FL			0x00000002
++
++struct fscrypt_completion_result {
++	struct completion completion;
++	int res;
++};
++
++#define DECLARE_FS_COMPLETION_RESULT(ecr) \
++	struct fscrypt_completion_result ecr = { \
++		COMPLETION_INITIALIZER((ecr).completion), 0 }
++
++
+ /* crypto.c */
+ int fscrypt_initialize(void);
+ 
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index b96a10e3cf78..6ed7c2eebeec 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -10,8 +10,8 @@
+ 
+ #include <linux/random.h>
+ #include <linux/string.h>
 -#include <linux/fscrypto.h>
+ #include <linux/mount.h>
 +#include "fscrypt_private.h"
  
- static void derive_crypt_complete(struct crypto_async_request *req, int rc)
+ static int inode_has_encryption_context(struct inode *inode)
  {
-@@ -178,7 +178,7 @@ static void put_crypt_info(struct fscrypt_info *ci)
- 	kmem_cache_free(fscrypt_info_cachep, ci);
- }
- 
--int get_crypt_info(struct inode *inode)
-+int fscrypt_get_crypt_info(struct inode *inode)
- {
- 	struct fscrypt_info *crypt_info;
- 	struct fscrypt_context ctx;
-@@ -327,7 +327,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 		 (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
- 					       (1 << KEY_FLAG_REVOKED) |
- 					       (1 << KEY_FLAG_DEAD)))))
--		return get_crypt_info(inode);
-+		return fscrypt_get_crypt_info(inode);
- 	return 0;
- }
- EXPORT_SYMBOL(fscrypt_get_encryption_info);
 diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
-index be94684dc05f..2f8894f0696c 100644
+index ce2ebdee6a89..71e8a20711ec 100644
 --- a/include/linux/fscrypto.h
 +++ b/include/linux/fscrypto.h
-@@ -265,7 +265,6 @@ extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
- extern int fscrypt_inherit_context(struct inode *, struct inode *,
- 					void *, bool);
- /* keyinfo.c */
--extern int get_crypt_info(struct inode *);
- extern int fscrypt_get_encryption_info(struct inode *);
- extern void fscrypt_put_encryption_info(struct inode *, struct fscrypt_info *);
+@@ -18,9 +18,6 @@
+ #include <crypto/skcipher.h>
+ #include <uapi/linux/fs.h>
  
--- 
-2.11.0.rc0.7.gbe5a750
-
+-#define FS_KEY_DERIVATION_NONCE_SIZE		16
+-#define FS_ENCRYPTION_CONTEXT_FORMAT_V1		1
+-
+ #define FS_POLICY_FLAGS_PAD_4		0x00
+ #define FS_POLICY_FLAGS_PAD_8		0x01
+ #define FS_POLICY_FLAGS_PAD_16		0x02
+@@ -35,56 +32,10 @@
+ #define FS_ENCRYPTION_MODE_AES_256_CBC		3
+ #define FS_ENCRYPTION_MODE_AES_256_CTS		4
+ 
+-/**
+- * Encryption context for inode
+- *
+- * Protector format:
+- *  1 byte: Protector format (1 = this version)
+- *  1 byte: File contents encryption mode
+- *  1 byte: File names encryption mode
+- *  1 byte: Flags
+- *  8 bytes: Master Key descriptor
+- *  16 bytes: Encryption Key derivation nonce
+- */
+-struct fscrypt_context {
+-	u8 format;
+-	u8 contents_encryption_mode;
+-	u8 filenames_encryption_mode;
+-	u8 flags;
+-	u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+-	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
+-} __packed;
+-
+-/* Encryption parameters */
+-#define FS_XTS_TWEAK_SIZE		16
+-#define FS_AES_128_ECB_KEY_SIZE		16
+-#define FS_AES_256_GCM_KEY_SIZE		32
+-#define FS_AES_256_CBC_KEY_SIZE		32
+-#define FS_AES_256_CTS_KEY_SIZE		32
+-#define FS_AES_256_XTS_KEY_SIZE		64
+-#define FS_MAX_KEY_SIZE			64
+-
+-#define FS_KEY_DESC_PREFIX		"fscrypt:"
+-#define FS_KEY_DESC_PREFIX_SIZE		8
+-
+-/* This is passed in from userspace into the kernel keyring */
+-struct fscrypt_key {
+-	u32 mode;
+-	u8 raw[FS_MAX_KEY_SIZE];
+-	u32 size;
+-} __packed;
+-
+-struct fscrypt_info {
+-	u8 ci_data_mode;
+-	u8 ci_filename_mode;
+-	u8 ci_flags;
+-	struct crypto_skcipher *ci_ctfm;
+-	struct key *ci_keyring_key;
+-	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
+-};
++#define FS_CRYPTO_BLOCK_SIZE		16
+ 
+-#define FS_CTX_REQUIRES_FREE_ENCRYPT_FL		0x00000001
+-#define FS_WRITE_PATH_FL			0x00000002
++struct fscrypt_info;
++struct fscrypt_ctx;
+ 
+ struct fscrypt_ctx {
+ 	union {
+@@ -102,19 +53,6 @@ struct fscrypt_ctx {
+ 	u8 mode;				/* Encryption mode for tfm */
+ };
+ 
+-struct fscrypt_completion_result {
+-	struct completion completion;
+-	int res;
+-};
+-
+-#define DECLARE_FS_COMPLETION_RESULT(ecr) \
+-	struct fscrypt_completion_result ecr = { \
+-		COMPLETION_INITIALIZER((ecr).completion), 0 }
+-
+-#define FS_FNAME_NUM_SCATTER_ENTRIES	4
+-#define FS_CRYPTO_BLOCK_SIZE		16
+-#define FS_FNAME_CRYPTO_DIGEST_SIZE	32
