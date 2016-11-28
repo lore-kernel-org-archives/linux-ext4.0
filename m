@@ -1,74 +1,63 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
-Date: Mon, 28 Nov 2016 12:15:04 -0700
-Message-ID: <20161128191504.GB6637@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 2/6] dax: remove leading space from labels
+Date: Mon, 28 Nov 2016 12:20:35 -0700
+Message-ID: <20161128192035.GC6637@linux.intel.com>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
- <20161124090239.GA24138@quack2.suse.cz>
+ <1479926662-21718-3-git-send-email-ross.zwisler@linux.intel.com>
+ <20161124091140.GB24138@quack2.suse.cz>
+ <CAPcyv4g=4OAskS3x31H5yx0T+suDbpwQpSyDtb+36rwmKCGMng@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Linux MM <linux-mm@kvack.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161124090239.GA24138-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <CAPcyv4g=4OAskS3x31H5yx0T+suDbpwQpSyDtb+36rwmKCGMng@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 24, 2016 at 10:02:39AM +0100, Jan Kara wrote:
-> On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
-> > With the current Kconfig setup it is possible to have the following:
-> > 
-> > CONFIG_EXT4_FS=y
-> > CONFIG_FS_DAX=y
-> > CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
-> > 
-> > With this config we get build failures in ext4_dax_fault() because the
-> > iomap functions in fs/dax.c are missing:
-> > 
-> > fs/built-in.o: In function `ext4_dax_fault':
-> > file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
-> > file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
-> > fs/built-in.o: In function `ext4_file_read_iter':
-> > file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
-> > fs/built-in.o: In function `ext4_file_write_iter':
-> > file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
-> > file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
-> > fs/built-in.o: In function `ext4_block_zero_page_range':
-> > inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
-> > 
-> > Now that the struct buffer_head based DAX fault paths and I/O path have
-> > been removed we really depend on iomap support being present for DAX.  Make
-> > this explicit by selecting FS_IOMAP if we compile in DAX support.
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+On Thu, Nov 24, 2016 at 11:42:38AM -0800, Dan Williams wrote:
+> On Thu, Nov 24, 2016 at 1:11 AM, Jan Kara <jack@suse.cz> wrote:
+> > On Wed 23-11-16 11:44:18, Ross Zwisler wrote:
+> >> No functional change.
+> >>
+> >> As of this commit:
+> >>
+> >> commit 218dd85887da (".gitattributes: set git diff driver for C source code
+> >> files")
+> >>
+> >> git-diff and git-format-patch both generate diffs whose hunks are correctly
+> >> prefixed by function names instead of labels, even if those labels aren't
+> >> indented with spaces.
+> >
+> > Fine by me. I just have some 4 remaining DAX patches (will send them out
+> > today) and they will clash with this. So I'd prefer if this happened after
+> > they are merged...
 > 
-> I've sent the same patch to Ted yesterday and he will probably queue it on
-> top of ext4 iomap patches. If it doesn't happen for some reason, feel free
-> to add:
-> 
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Let's just leave them alone, it's not like this thrash buys us
+> anything at this point.  We can just stop including spaces in new
+> code.
 
-Cool, looks like Ted has pulled in your patch.
+Honestly I'm not sure which is better.  I understand your argument about not
+introducing "thrash" for cleanup like this, but at the same time knowingly
+leaving inconsistencies in the code style just because seems...gross?
 
-I think we still eventually want this patch because it cleans up our handling
-of FS_IOMAP.  With your patch we select it separately in both ext4 & ext2
-based on whether we include DAX, and we still have #ifdefs in fs/dax.c for
-FS_IOMAP.
+In any case, sure Jan, if this patch happens lets do it after your remaining
+DAX patches.
 
-I'll pull your most recent patch into my baseline & rework this patch.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
