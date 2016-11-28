@@ -1,50 +1,74 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH 1/5] mbcache: correctly handle 'e_referenced' bit
-Date: Mon, 28 Nov 2016 09:32:43 -0800
-Message-ID: <20161128173243.GA137838@google.com>
-References: <1480227481-98535-1-git-send-email-ebiggers@google.com>
- <20161128104420.GF2590@quack2.suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
+Date: Mon, 28 Nov 2016 12:15:04 -0700
+Message-ID: <20161128191504.GB6637@linux.intel.com>
+References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
+ <20161124090239.GA24138@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f54.google.com ([74.125.83.54]:34303 "EHLO
-        mail-pg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753352AbcK1Rcr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2016 12:32:47 -0500
-Received: by mail-pg0-f54.google.com with SMTP id x23so59103641pgx.1
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2016 09:32:46 -0800 (PST)
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20161128104420.GF2590@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161124090239.GA24138-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 28, 2016 at 11:44:20AM +0100, Jan Kara wrote:
-> On Sat 26-11-16 22:17:57, Eric Biggers wrote:
-> > mbcache entries have an 'e_referenced' bit which users can set with
-> > mb_cache_entry_touch() to indicate that an entry should be given another
-> > pass through the LRU list before the shrinker can delete it.  However,
-> > mb_cache_shrink() actually would, when seeing an e_referenced entry at
-> > the front of the list (the least-recently used end), place it right at
-> > the front of the list again.  The next iteration would then remove the
-> > entry from the list and delete it.  Consequently, e_referenced had
-> > essentially no effect, so ext2/ext4 xattr blocks would sometimes not be
-> > reused as often as expected.
+On Thu, Nov 24, 2016 at 10:02:39AM +0100, Jan Kara wrote:
+> On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
+> > With the current Kconfig setup it is possible to have the following:
 > > 
-> > Fix this by making the shrinker move e_referenced entries to the back of
-> > the list rather than the front.
+> > CONFIG_EXT4_FS=y
+> > CONFIG_FS_DAX=y
+> > CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
 > > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > With this config we get build failures in ext4_dax_fault() because the
+> > iomap functions in fs/dax.c are missing:
+> > 
+> > fs/built-in.o: In function `ext4_dax_fault':
+> > file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
+> > file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
+> > fs/built-in.o: In function `ext4_file_read_iter':
+> > file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
+> > fs/built-in.o: In function `ext4_file_write_iter':
+> > file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
+> > file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
+> > fs/built-in.o: In function `ext4_block_zero_page_range':
+> > inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
+> > 
+> > Now that the struct buffer_head based DAX fault paths and I/O path have
+> > been removed we really depend on iomap support being present for DAX.  Make
+> > this explicit by selecting FS_IOMAP if we compile in DAX support.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 > 
-> Bah, good spotting. You can add:
+> I've sent the same patch to Ted yesterday and he will probably queue it on
+> top of ext4 iomap patches. If it doesn't happen for some reason, feel free
+> to add:
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> BTW, how did you find out?
-> 
+> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-Nothing special --- I just happened to notice while reading over the code.
+Cool, looks like Ted has pulled in your patch.
 
-Eric
+I think we still eventually want this patch because it cleans up our handling
+of FS_IOMAP.  With your patch we select it separately in both ext4 & ext2
+based on whether we include DAX, and we still have #ifdefs in fs/dax.c for
+FS_IOMAP.
+
+I'll pull your most recent patch into my baseline & rework this patch.
