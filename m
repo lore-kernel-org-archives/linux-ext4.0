@@ -1,7 +1,7 @@
 From: coral@hi-chem.co.nz
 Subject: RE: BALANCE PAYMENT
-Date: Mon, 28 Nov 2016 19:03:29 +1300
-Message-ID: <20161128190329.73523v7tu3895cq8__48519.0571322621$1480316057$gmane$org@webmail.quickstart.net.nz>
+Date: Mon, 28 Nov 2016 19:03:21 +1300
+Message-ID: <20161128190321.209626hitws1p8kg__763.128969311033$1480316391$gmane$org@webmail.quickstart.net.nz>
 Mime-Version: 1.0
 Content-Type: text/plain;
         charset=ISO-8859-1;
@@ -10,10 +10,10 @@ Content-Type: text/plain;
 Content-Transfer-Encoding: 7bit
 To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mbx2.quickstart.net.nz ([202.46.160.132]:47114 "EHLO
+Received: from mbx2.quickstart.net.nz ([202.46.160.132]:47426 "EHLO
         smtp.quickstart.net.nz" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1754283AbcK1GyC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2016 01:54:02 -0500
+        with ESMTP id S1750878AbcK1G7q (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2016 01:59:46 -0500
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
