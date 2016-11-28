@@ -1,81 +1,33 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
-Date: Mon, 28 Nov 2016 01:45:10 +0000
-Message-ID: <20161128014510.GZ1555@ZenIV.linux.org.uk>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
- <20161124173220.GR1555@ZenIV.linux.org.uk>
- <20161125024918.GX31101@dastard>
- <20161125041419.GT1555@ZenIV.linux.org.uk>
- <20161125070642.GZ31101@dastard>
- <20161125073747.GU1555@ZenIV.linux.org.uk>
- <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
- <20161127224208.GA31101@dastard>
- <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
+From: coral@hi-chem.co.nz
+Subject: RE: BALANCE PAYMENT
+Date: Mon, 28 Nov 2016 19:03:29 +1300
+Message-ID: <20161128190329.73523v7tu3895cq8__48519.0571322621$1480316057$gmane$org@webmail.quickstart.net.nz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain;
+        charset=ISO-8859-1;
+        DelSp="Yes";
+        format="flowed"
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mbx2.quickstart.net.nz ([202.46.160.132]:47114 "EHLO
+        smtp.quickstart.net.nz" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1754283AbcK1GyC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Nov 2016 01:54:02 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 27, 2016 at 04:58:43PM -0800, Linus Torvalds wrote:
-> You are living in some unrealistic dream-world where you think you can
-> get the right tracepoint on the first try.
-> 
-> So there is no way in hell I would ever mark any tracepoint "stable"
-> until it has had a fair amount of use, and there are useful tools that
-> actually make use of it, and it has shown itself to be the right
-> trace-point.
-> 
-> And once that actually happens, what's the advantage of marking it
-> stable? None. It's a catch-22. Before it has uses and has been tested
-> and found to be good, it's not stable. And after, it's pointless.
-> 
-> So at no point does such a "stable" tracepoint marking make sense. At
-> most, you end up adding a comment saying "this tracepoint is used by
-> tools such-and-such".
+Dear Sir/s,
 
-I can't speak for Dave, but I suspect that it's more about "this, this and
-that tracepoints are purely internal and we can and will change them whenever
-we bloody feel like that; stick your fingers in those and they _will_ get
-crushed".
+Please see attached.
 
-Incidentally, take a look at
-        trace_ocfs2_file_aio_read(inode, filp, filp->f_path.dentry,
-                        (unsigned long long)OCFS2_I(inode)->ip_blkno,
-                        filp->f_path.dentry->d_name.len,
-                        filp->f_path.dentry->d_name.name,
-                        to->nr_segs);   /* GRRRRR */
-Note that there is nothing whatsoever protecting the use of ->d_name in
-there (not that poking in iov_iter guts was a good idea).  Besides, suppose
-something *did* grab a hold of that one a while ago.  What would we have
-to do to avoid stepping on its toes every time when somebody call ocfs2
-->splice_read(), which has recently started to go through ->read_iter()
-calls?  Prepend something like if (!(to->type & ITER_PIPE)) to it?
 
-I'm very tempted to just go and remove it, along with its analogues.
-If nothing else, the use of ->d_name *is* racy, and while it might be
-tolerable for occasional debugging, for anything in heavier use it's
-asking for trouble...
+Thanks and regards,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Accounts Department
+Al Omraniya Trading Co. LLC
+P.O. Box: 10757, Al Khabaisi Area,
+Deira 2, Dubai, U.A.E.
+Tel: +971 4 268 2730 / Fax: +971 4 268 4117
+
