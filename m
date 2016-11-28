@@ -1,102 +1,66 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
-Date: Mon, 28 Nov 2016 20:09:23 +1100
-Message-ID: <20161128090923.GB31101@dastard>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
- <20161124173220.GR1555@ZenIV.linux.org.uk>
- <20161125024918.GX31101@dastard>
- <20161125041419.GT1555@ZenIV.linux.org.uk>
- <20161125070642.GZ31101@dastard>
- <20161125073747.GU1555@ZenIV.linux.org.uk>
- <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
- <20161127224208.GA31101@dastard>
- <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] mbcache: correctly handle 'e_referenced' bit
+Date: Mon, 28 Nov 2016 11:44:20 +0100
+Message-ID: <20161128104420.GF2590@quack2.suse.cz>
+References: <1480227481-98535-1-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:39253 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754384AbcK1KoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 28 Nov 2016 05:44:22 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1480227481-98535-1-git-send-email-ebiggers@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 27, 2016 at 04:58:43PM -0800, Linus Torvalds wrote:
-> On Sun, Nov 27, 2016 at 2:42 PM, Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > And that's exactly why we need a method of marking tracepoints as
-> > stable. How else are we going to know whether a specific tracepoint
-> > is stable if the kernel code doesn't document that it's stable?
+On Sat 26-11-16 22:17:57, Eric Biggers wrote:
+> mbcache entries have an 'e_referenced' bit which users can set with
+> mb_cache_entry_touch() to indicate that an entry should be given another
+> pass through the LRU list before the shrinker can delete it.  However,
+> mb_cache_shrink() actually would, when seeing an e_referenced entry at
+> the front of the list (the least-recently used end), place it right at
+> the front of the list again.  The next iteration would then remove the
+> entry from the list and delete it.  Consequently, e_referenced had
+> essentially no effect, so ext2/ext4 xattr blocks would sometimes not be
+> reused as often as expected.
 > 
-> You are living in some unrealistic dream-world where you think you can
-> get the right tracepoint on the first try.
-
-No, I'm  under no illusions that we'd get stable tracepoints right
-the first go. I don't care about how we stabilise stable
-tracepoints, because nothing I maintain will use stable tracepoints.
-However, I will point out that we have /already solved these ABI
-development problems/.
-
-$ ls Documentation/ABI/
-obsolete  README  removed  stable  testing
-$
-
-Expands this to include stable tracepoints, not just sysfs files.
-New stable stuff gets classified as "testing" meaning it is supposed
-to be stable but may change before being declared officially stable.
-"stable" is obvious, are "obsolete" and "removed".
-
-
-> So there is no way in hell I would ever mark any tracepoint "stable"
-> until it has had a fair amount of use, and there are useful tools that
-> actually make use of it, and it has shown itself to be the right
-> trace-point.
+> Fix this by making the shrinker move e_referenced entries to the back of
+> the list rather than the front.
 > 
-> And once that actually happens, what's the advantage of marking it
-> stable? None. It's a catch-22. Before it has uses and has been tested
-> and found to be good, it's not stable. And after, it's pointless.
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-And that "catch-22" is *precisely the problem we need to solve*.
+Bah, good spotting. You can add:
 
-Pointing out that there's a catch-22 doesn't help anyone - all the
-developers that are telling you that they really need a way to mark
-stable tracepoints already understand this catch-22 and they want a
-way to avoid it.  Being able to either say "this is stable and we'll
-support it forever" or "this will never be stable so use at your own
-risk" is a simple way of avoiding the catch-22. If an unstable
-tracepoint is useful to applications *and it can be implemented in a
-maintainable, stable form* then it can go through the process of
-being made stable and documented in Documentation/ABI/stable.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Problem is solved, catch-22 is gone.
+BTW, how did you find out?
 
-All we want is some method of making a clear, unambiguous statement
-about the nature of a specific tracepoint and a process for
-transitioning a tracepoint to a stable, maintainable form. We do it
-for other ABI interfaces, so why can't we do this for tracepoints?
-
-Cheers,
-
-Dave.
+								Honza
+> ---
+>  fs/mbcache.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index c5bd19f..31e54c2 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -286,7 +286,7 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
+>  					 struct mb_cache_entry, e_list);
+>  		if (entry->e_referenced) {
+>  			entry->e_referenced = 0;
+> -			list_move_tail(&cache->c_list, &entry->e_list);
+> +			list_move_tail(&entry->e_list, &cache->c_list);
+>  			continue;
+>  		}
+>  		list_del_init(&entry->e_list);
+> -- 
+> 2.8.0.rc3.226.g39d4020
+> 
 -- 
-Dave Chinner
-david@fromorbit.com
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
