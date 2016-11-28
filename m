@@ -1,7 +1,7 @@
-From: Jan Kara <jack@suse.cz>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
-Date: Mon, 28 Nov 2016 09:33:27 +0100
-Message-ID: <20161128083327.GA2590@quack2.suse.cz>
+Date: Mon, 28 Nov 2016 20:09:23 +1100
+Message-ID: <20161128090923.GB31101@dastard>
 References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
  <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
  <20161124173220.GR1555@ZenIV.linux.org.uk>
@@ -10,12 +10,11 @@ References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
  <20161125070642.GZ31101@dastard>
  <20161125073747.GU1555@ZenIV.linux.org.uk>
  <CA+55aFy5=74ad4tByQJYnkyX079z59yn02koJ_G8kfxamjvPDw@mail.gmail.com>
- <20161125214840.kexe5mj2yn4jtazi@thunk.org>
+ <20161127224208.GA31101@dastard>
+ <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Dave Chinner <david@fromorbit.com>,
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
 	Ross Zwisler <ross.zwisler@linux.intel.com>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
@@ -27,48 +26,74 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-mm <linux-mm@kvack.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@ml01.01.org>
-To: Theodore Ts'o <tytso@mit.edu>
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161125214840.kexe5mj2yn4jtazi@thunk.org>
+In-Reply-To: <CA+55aFwmCVZECoMszXZkJ8tSpG5+Ynt-5EKxKqDepNtjUv5vkg@mail.gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 25-11-16 16:48:40, Ted Tso wrote:
-> On Fri, Nov 25, 2016 at 11:51:26AM -0800, Linus Torvalds wrote:
-> > We do have filesystem code that is just disgusting. As an example:
-> > fs/afs/ tends to have these crazy "_enter()/_exit()" macros in every
-> > single function. If you want that, use the function tracer. That seems
-> > to be just debugging code that has been left around for others to
-> > stumble over. I do *not* believe that we should encourage that kind of
-> > "machine gun spray" use of tracepoints.
+On Sun, Nov 27, 2016 at 04:58:43PM -0800, Linus Torvalds wrote:
+> On Sun, Nov 27, 2016 at 2:42 PM, Dave Chinner <david@fromorbit.com> wrote:
+> >
+> > And that's exactly why we need a method of marking tracepoints as
+> > stable. How else are we going to know whether a specific tracepoint
+> > is stable if the kernel code doesn't document that it's stable?
 > 
-> There is a reason why people want to be able to do that, and that's
-> because kprobes doesn't give you access to the arguments and return
-> codes to the functions.  Maybe there could be a way to do this more
-> easily using DWARF information and EBPF magic, perhaps?  It won't help
-> for inlined functions, of course, but most of the functions where
-> people want to do this aren't generally functions which are going to
-> be inlined, but rather things like write_begin, writepages, which are
-> called via a struct ops table and so will never be inlined to begin
-> with.
+> You are living in some unrealistic dream-world where you think you can
+> get the right tracepoint on the first try.
 
-Actually, you can print register & stack contents from a kprobe and you can
-get a function return value from a kretprobe (see
-Documentation/trace/kprobetrace.txt). Since calling convention is fixed
-(arg 1 in RDI, arg 2 in RSI...) you can relatively easily dump function
-arguments on entry and dump return value on return for arbitrary function
-of your choice. I was already debugging issues like that several times (in
-VFS actually because of missing trace points ;)). You can even create a
-kprobe to dump register contents in the middle of the function (although
-there it takes more effort reading the dissasembly to see what you are
-interested in).
+No, I'm  under no illusions that we'd get stable tracepoints right
+the first go. I don't care about how we stabilise stable
+tracepoints, because nothing I maintain will use stable tracepoints.
+However, I will point out that we have /already solved these ABI
+development problems/.
 
-								Honza
+$ ls Documentation/ABI/
+obsolete  README  removed  stable  testing
+$
+
+Expands this to include stable tracepoints, not just sysfs files.
+New stable stuff gets classified as "testing" meaning it is supposed
+to be stable but may change before being declared officially stable.
+"stable" is obvious, are "obsolete" and "removed".
+
+
+> So there is no way in hell I would ever mark any tracepoint "stable"
+> until it has had a fair amount of use, and there are useful tools that
+> actually make use of it, and it has shown itself to be the right
+> trace-point.
+> 
+> And once that actually happens, what's the advantage of marking it
+> stable? None. It's a catch-22. Before it has uses and has been tested
+> and found to be good, it's not stable. And after, it's pointless.
+
+And that "catch-22" is *precisely the problem we need to solve*.
+
+Pointing out that there's a catch-22 doesn't help anyone - all the
+developers that are telling you that they really need a way to mark
+stable tracepoints already understand this catch-22 and they want a
+way to avoid it.  Being able to either say "this is stable and we'll
+support it forever" or "this will never be stable so use at your own
+risk" is a simple way of avoiding the catch-22. If an unstable
+tracepoint is useful to applications *and it can be implemented in a
+maintainable, stable form* then it can go through the process of
+being made stable and documented in Documentation/ABI/stable.
+
+Problem is solved, catch-22 is gone.
+
+All we want is some method of making a clear, unambiguous statement
+about the nature of a specific tracepoint and a process for
+transitioning a tracepoint to a stable, maintainable form. We do it
+for other ABI interfaces, so why can't we do this for tracepoints?
+
+Cheers,
+
+Dave.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
