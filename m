@@ -1,97 +1,94 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/6] dax: add tracepoint infrastructure, PMD tracing
-Date: Tue, 29 Nov 2016 13:02:33 +1100
-Message-ID: <20161129020233.GE28177@dastard>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-4-git-send-email-ross.zwisler@linux.intel.com>
- <20161125030059.GY31101@dastard>
- <20161128224651.GA1243@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-kernel@vger.kernel.org,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Jan Kara <jack@suse.cz>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161128224651.GA1243@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: [PATCH] ext4: validate s_first_meta_bg at mount time
+Date: Tue, 29 Nov 2016 13:57:17 +0800
+Message-ID: <20161129055717.4154-1-guaneryu@gmail.com>
+Cc: tytso@mit.edu, Eryu Guan <guaneryu@gmail.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:35254 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753135AbcK2GaJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2016 01:30:09 -0500
+Received: by mail-pg0-f68.google.com with SMTP id p66so15386603pga.2
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Nov 2016 22:30:09 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 28, 2016 at 03:46:51PM -0700, Ross Zwisler wrote:
-> On Fri, Nov 25, 2016 at 02:00:59PM +1100, Dave Chinner wrote:
-> > On Wed, Nov 23, 2016 at 11:44:19AM -0700, Ross Zwisler wrote:
-> > > Tracepoints are the standard way to capture debugging and tracing
-> > > information in many parts of the kernel, including the XFS and ext4
-> > > filesystems.  Create a tracepoint header for FS DAX and add the first DAX
-> > > tracepoints to the PMD fault handler.  This allows the tracing for DAX to
-> > > be done in the same way as the filesystem tracing so that developers can
-> > > look at them together and get a coherent idea of what the system is doing.
-> > > 
-> > > I added both an entry and exit tracepoint because future patches will add
-> > > tracepoints to child functions of dax_iomap_pmd_fault() like
-> > > dax_pmd_load_hole() and dax_pmd_insert_mapping(). We want those messages to
-> > > be wrapped by the parent function tracepoints so the code flow is more
-> > > easily understood.  Having entry and exit tracepoints for faults also
-> > > allows us to easily see what filesystems functions were called during the
-> > > fault.  These filesystem functions get executed via iomap_begin() and
-> > > iomap_end() calls, for example, and will have their own tracepoints.
-> > > 
-> > > For PMD faults we primarily want to understand the faulting address and
-> > > whether it fell back to 4k faults.  If it fell back to 4k faults the
-> > > tracepoints should let us understand why.
-> > > 
-> > > I named the new tracepoint header file "fs_dax.h" to allow for device DAX
-> > > to have its own separate tracing header in the same directory at some
-> > > point.
-> > > 
-> > > Here is an example output for these events from a successful PMD fault:
-> > > 
-> > > big-2057  [000] ....   136.396855: dax_pmd_fault: shared mapping write
-> > > address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
-> > > max_pgoff 0x1400
-> > > 
-> > > big-2057  [000] ....   136.397943: dax_pmd_fault_done: shared mapping write
-> > > address 0x10505000 vm_start 0x10200000 vm_end 0x10700000 pgoff 0x200
-> > > max_pgoff 0x1400 NOPAGE
-> > 
-> > Can we make the output use the same format as most of the filesystem
-> > code? i.e. the output starts with backing device + inode number like
-> > so:
-> > 
-> > 	xfs_ilock:            dev 8:96 ino 0x493 flags ILOCK_EXCL....
-> > 
-> > This way we can filter the output easily across both dax and
-> > filesystem tracepoints with 'grep "ino 0x493"'...
-> 
-> I think I can include the inode number, which I have via mapping->host.  Am I
-> correct in assuming "struct inode.i_ino" will always be the same as
-> "struct xfs_inode.i_ino"?
+Ralf Spenneberg reported that he hit a kernel crash when mounting a
+modified ext4 image. And it turns out that kernel crashed when
+calculating fs overhead (ext4_calculate_overhead()), this is because
+the image has very large s_first_meta_bg (debug code shows it's
+842150400), and ext4 overruns the memory in count_overhead() when
+setting bitmap buffer, which is PAGE_SIZE.
 
-Yes - just use inode.i_ino.
+ext4_calculate_overhead():
+  buf = get_zeroed_page(GFP_NOFS);  <=== PAGE_SIZE buffer
+  blks = count_overhead(sb, i, buf);
 
-> Unfortunately I don't have access to the major/minor (the dev_t) until I call
-> iomap_begin(). 
+count_overhead():
+  for (j = ext4_bg_num_gdb(sb, grp); j > 0; j--) { <=== j = 842150400
+          ext4_set_bit(EXT4_B2C(sbi, s++), buf);   <=== buffer overrun
+          count++;
+  }
 
-In general, filesystem tracing uses inode->sb->s_dev as the
-identifier. NFS, gfs2, XFS, ext4 and others all use this.
+This can be reproduced easily for me by this script:
 
-Cheers,
+  #!/bin/bash
+  rm -f fs.img
+  mkdir -p /mnt/ext4
+  fallocate -l 16M fs.img
+  mke2fs -t ext4 -O bigalloc,meta_bg,^resize_inode -F fs.img
+  debugfs -w -R "ssv first_meta_bg 842150400" fs.img
+  mount -o loop fs.img /mnt/ext4
 
-Dave.
+Fix it by validating s_first_meta_bg first at mount time, and
+refusing to mount if its value exceeds the largest possible meta_bg
+number.
+
+Reported-by: Ralf Spenneberg <ralf@os-t.de>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+---
+
+In e2fsprogs, we avoided a similar buffer overrun:
+f66e6ce libext2fs: avoid buffer overflow if s_first_meta_bg is too big
+
+and e2fsck could detect & fix large s_first_meta_bg:
+7a4352d e2fsck: fix file systems with an overly large s_first_meta_bg
+
+But I suspect that there's an off-by-one bug in e2fsck code, shouldn't the
+upper boundary of s_first_meta_bg be (fs->desc_blocks - 1)? Something like:
+
+ e2fsck/super.c:643
+        if (ext2fs_has_feature_meta_bg(fs->super) &&
+ -           (fs->super->s_first_meta_bg > fs->desc_blocks)) {
+ -               pctx.group = fs->desc_blocks;
+ +           (fs->super->s_first_meta_bg >= fs->desc_blocks)) {
+ +               pctx.group = fs->desc_blocks - 1;
+                pctx.num = fs->super->s_first_meta_bg;
+
+ fs/ext4/super.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 52b0530..8f46a07 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3814,6 +3814,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
++	if (ext4_has_feature_meta_bg(sb)) {
++		if (le32_to_cpu(es->s_first_meta_bg) >= db_count) {
++			ext4_msg(sb, KERN_WARNING,
++				 "first meta block group too large: %u "
++				 "(group descriptor block count %u)",
++				 le32_to_cpu(es->s_first_meta_bg), db_count);
++			goto failed_mount;
++		}
++	}
+ 	sbi->s_group_desc = ext4_kvmalloc(db_count *
+ 					  sizeof(struct buffer_head *),
+ 					  GFP_KERNEL);
 -- 
-Dave Chinner
-david@fromorbit.com
+2.9.3
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
