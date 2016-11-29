@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 19/36] fs: make block_page_mkwrite() aware about huge pages
-Date: Tue, 29 Nov 2016 14:22:47 +0300
-Message-ID: <20161129112304.90056-20-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 24/36] ext4: make ext4_mpage_readpages() hugepage-aware
+Date: Tue, 29 Nov 2016 14:22:52 +0300
+Message-ID: <20161129112304.90056-25-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,50 +25,31 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Adjust check on whether part of the page beyond file size and apply
-compound_head() and page_mapping() where appropriate.
+As BIO_MAX_PAGES is smaller (on x86) than HPAGE_PMD_NR, we cannot use
+the optimization ext4_mpage_readpages() provides.
+
+So, for huge pages, we fallback directly to block_read_full_page().
+
+This should be re-visited once we get multipage bvec upstream.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/ext4/readpage.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 7d333621ccfb..8e000021513c 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2544,7 +2544,7 @@ EXPORT_SYMBOL(block_commit_write);
- int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 			 get_block_t get_block)
- {
--	struct page *page = vmf->page;
-+	struct page *page = compound_head(vmf->page);
- 	struct inode *inode = file_inode(vma->vm_file);
- 	unsigned long end;
- 	loff_t size;
-@@ -2552,7 +2552,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index a81b829d56de..b865df0c0973 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -134,7 +134,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 				goto next_page;
+ 		}
  
- 	lock_page(page);
- 	size = i_size_read(inode);
--	if ((page->mapping != inode->i_mapping) ||
-+	if ((page_mapping(page) != inode->i_mapping) ||
- 	    (page_offset(page) > size)) {
- 		/* We overload EFAULT to mean page got truncated */
- 		ret = -EFAULT;
-@@ -2560,10 +2560,10 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	}
+-		if (page_has_buffers(page))
++		if (page_has_buffers(page) || PageTransHuge(page))
+ 			goto confused;
  
- 	/* page is wholly or partially inside EOF */
--	if (((page->index + 1) << PAGE_SHIFT) > size)
--		end = size & ~PAGE_MASK;
-+	if (((page->index + hpage_nr_pages(page)) << PAGE_SHIFT) > size)
-+		end = size & ~hpage_mask(page);
- 	else
--		end = PAGE_SIZE;
-+		end = hpage_size(page);
- 
- 	ret = __block_write_begin(page, 0, end, get_block);
- 	if (!ret)
+ 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
 -- 
 2.10.2
 
