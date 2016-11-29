@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 16/36] thp: make thp_get_unmapped_area() respect S_HUGE_MODE
-Date: Tue, 29 Nov 2016 14:22:44 +0300
-Message-ID: <20161129112304.90056-17-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 11/36] HACK: readahead: alloc huge pages, if allowed
+Date: Tue, 29 Nov 2016 14:22:39 +0300
+Message-ID: <20161129112304.90056-12-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,32 +25,68 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We want mmap(NULL) to return PMD-aligned address if the inode can have
+Most page cache allocation happens via readahead (sync or async), so if
+we want to have significant number of huge pages in page cache we need
+to find a ways to allocate them from readahead.
+
+Unfortunately, huge pages doesn't fit into current readahead design:
+128 max readahead window, assumption on page size, PageReadahead() to
+track hit/miss.
+
+I haven't found a ways to get it right yet.
+
+This patch just allocates huge page if allowed, but doesn't really
+provide any readahead if huge page is allocated. We read out 2M a time
+and I would expect spikes in latancy without readahead.
+
+Therefore HACK.
+
+Having that said, I don't think it should prevent huge page support to
+be applied. Future will show if lacking readahead is a big deal with
 huge pages in page cache.
+
+Any suggestions are welcome.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/huge_memory.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ mm/readahead.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index a15d566b14f6..9c6ba124ba50 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -518,10 +518,12 @@ unsigned long thp_get_unmapped_area(struct file *filp, unsigned long addr,
- 		unsigned long len, unsigned long pgoff, unsigned long flags)
- {
- 	loff_t off = (loff_t)pgoff << PAGE_SHIFT;
-+	struct inode *inode = filp->f_mapping->host;
+diff --git a/mm/readahead.c b/mm/readahead.c
+index fb4c99f85618..87e38b522645 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 		if (page_offset > end_index)
+ 			break;
  
- 	if (addr)
- 		goto out;
--	if (!IS_DAX(filp->f_mapping->host) || !IS_ENABLED(CONFIG_FS_DAX_PMD))
-+	if ((inode->i_flags & S_HUGE_MODE) == S_HUGE_NEVER &&
-+			(!IS_DAX(inode) || !IS_ENABLED(CONFIG_FS_DAX_PMD)))
- 		goto out;
- 
- 	addr = __thp_get_unmapped_area(filp, len, off, flags, PMD_SIZE);
++		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
++				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
++				page_cache_allow_huge(mapping, page_offset)) {
++			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
++					HPAGE_PMD_ORDER);
++			if (page) {
++				prep_transhuge_page(page);
++				page->index = round_down(page_offset,
++						HPAGE_PMD_NR);
++				list_add(&page->lru, &page_pool);
++				ret++;
++				goto start_io;
++			}
++		}
++
+ 		rcu_read_lock();
+ 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
+ 		rcu_read_unlock();
+@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 			SetPageReadahead(page);
+ 		ret++;
+ 	}
+-
++start_io:
+ 	/*
+ 	 * Now start the IO.  We ignore I/O errors - if the page is not
+ 	 * uptodate then the caller will launch readpage again, and
 -- 
 2.10.2
 
