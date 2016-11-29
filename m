@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 11/36] HACK: readahead: alloc huge pages, if allowed
-Date: Tue, 29 Nov 2016 14:22:39 +0300
-Message-ID: <20161129112304.90056-12-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 20/36] truncate: make truncate_inode_pages_range() aware about huge pages
+Date: Tue, 29 Nov 2016 14:22:48 +0300
+Message-ID: <20161129112304.90056-21-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,68 +25,220 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Most page cache allocation happens via readahead (sync or async), so if
-we want to have significant number of huge pages in page cache we need
-to find a ways to allocate them from readahead.
+As with shmem_undo_range(), truncate_inode_pages_range() removes huge
+pages, if it fully within range.
 
-Unfortunately, huge pages doesn't fit into current readahead design:
-128 max readahead window, assumption on page size, PageReadahead() to
-track hit/miss.
+Partial truncate of huge pages zero out this part of THP.
 
-I haven't found a ways to get it right yet.
+Unlike with shmem, it doesn't prevent us having holes in the middle of
+huge page we still can skip writeback not touched buffers.
 
-This patch just allocates huge page if allowed, but doesn't really
-provide any readahead if huge page is allocated. We read out 2M a time
-and I would expect spikes in latancy without readahead.
-
-Therefore HACK.
-
-Having that said, I don't think it should prevent huge page support to
-be applied. Future will show if lacking readahead is a big deal with
-huge pages in page cache.
-
-Any suggestions are welcome.
+With memory-mapped IO we would loose holes in some cases when we have
+THP in page cache, since we cannot track access on 4k level in this
+case.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/readahead.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ fs/buffer.c        |  2 +-
+ include/linux/mm.h |  9 +++++-
+ mm/truncate.c      | 86 ++++++++++++++++++++++++++++++++++++++++++++----------
+ 3 files changed, 80 insertions(+), 17 deletions(-)
 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index fb4c99f85618..87e38b522645 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 		if (page_offset > end_index)
- 			break;
- 
-+		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
-+				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
-+				page_cache_allow_huge(mapping, page_offset)) {
-+			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
-+					HPAGE_PMD_ORDER);
-+			if (page) {
-+				prep_transhuge_page(page);
-+				page->index = round_down(page_offset,
-+						HPAGE_PMD_NR);
-+				list_add(&page->lru, &page_pool);
-+				ret++;
-+				goto start_io;
-+			}
-+		}
-+
- 		rcu_read_lock();
- 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
- 		rcu_read_unlock();
-@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 			SetPageReadahead(page);
- 		ret++;
- 	}
--
-+start_io:
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 8e000021513c..24daf7b9bdb0 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1534,7 +1534,7 @@ void block_invalidatepage(struct page *page, unsigned int offset,
  	/*
- 	 * Now start the IO.  We ignore I/O errors - if the page is not
- 	 * uptodate then the caller will launch readpage again, and
+ 	 * Check for overflow
+ 	 */
+-	BUG_ON(stop > PAGE_SIZE || stop < length);
++	BUG_ON(stop > hpage_size(page) || stop < length);
+ 
+ 	head = page_buffers(page);
+ 	bh = head;
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 582844ca0b23..59e74dc57359 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1328,8 +1328,15 @@ int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+-extern void do_invalidatepage(struct page *page, unsigned int offset,
++extern void __do_invalidatepage(struct page *page, unsigned int offset,
+ 			      unsigned int length);
++static inline void do_invalidatepage(struct page *page, unsigned int offset,
++		unsigned int length)
++{
++	if (page_has_private(page))
++		__do_invalidatepage(page, offset, length);
++}
++
+ 
+ int __set_page_dirty_nobuffers(struct page *page);
+ int __set_page_dirty_no_writeback(struct page *page);
+diff --git a/mm/truncate.c b/mm/truncate.c
+index eb3a3a45feb6..d2d95f283ec3 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -70,12 +70,12 @@ static void clear_exceptional_entry(struct address_space *mapping,
+  * point.  Because the caller is about to free (and possibly reuse) those
+  * blocks on-disk.
+  */
+-void do_invalidatepage(struct page *page, unsigned int offset,
++void __do_invalidatepage(struct page *page, unsigned int offset,
+ 		       unsigned int length)
+ {
+ 	void (*invalidatepage)(struct page *, unsigned int, unsigned int);
+ 
+-	invalidatepage = page->mapping->a_ops->invalidatepage;
++	invalidatepage = page_mapping(page)->a_ops->invalidatepage;
+ #ifdef CONFIG_BLOCK
+ 	if (!invalidatepage)
+ 		invalidatepage = block_invalidatepage;
+@@ -100,8 +100,7 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
+ 	if (page->mapping != mapping)
+ 		return -EIO;
+ 
+-	if (page_has_private(page))
+-		do_invalidatepage(page, 0, PAGE_SIZE);
++	do_invalidatepage(page, 0, hpage_size(page));
+ 
+ 	/*
+ 	 * Some filesystems seem to re-dirty the page even after
+@@ -273,13 +272,35 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 				unlock_page(page);
+ 				continue;
+ 			}
++
++			if (PageTransHuge(page)) {
++				int j, first = 0, last = HPAGE_PMD_NR - 1;
++
++				if (start > page->index)
++					first = start & (HPAGE_PMD_NR - 1);
++				if (index == round_down(end, HPAGE_PMD_NR))
++					last = (end - 1) & (HPAGE_PMD_NR - 1);
++
++				/* Range starts or ends in the middle of THP */
++				if (first != 0 || last != HPAGE_PMD_NR - 1) {
++					int off, len;
++					for (j = first; j <= last; j++)
++						clear_highpage(page + j);
++					off = first * PAGE_SIZE;
++					len = (last + 1) * PAGE_SIZE - off;
++					do_invalidatepage(page, off, len);
++					unlock_page(page);
++					continue;
++				}
++			}
++
+ 			truncate_inode_page(mapping, page);
+ 			unlock_page(page);
+ 		}
+ 		pagevec_remove_exceptionals(&pvec);
++		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
+ 		pagevec_release(&pvec);
+ 		cond_resched();
+-		index++;
+ 	}
+ 
+ 	if (partial_start) {
+@@ -294,9 +315,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 			wait_on_page_writeback(page);
+ 			zero_user_segment(page, partial_start, top);
+ 			cleancache_invalidate_page(mapping, page);
+-			if (page_has_private(page))
+-				do_invalidatepage(page, partial_start,
+-						  top - partial_start);
++			if (page_has_private(page)) {
++				int off = page - compound_head(page);
++				do_invalidatepage(compound_head(page),
++						off * PAGE_SIZE + partial_start,
++						top - partial_start);
++			}
+ 			unlock_page(page);
+ 			put_page(page);
+ 		}
+@@ -307,9 +331,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 			wait_on_page_writeback(page);
+ 			zero_user_segment(page, 0, partial_end);
+ 			cleancache_invalidate_page(mapping, page);
+-			if (page_has_private(page))
+-				do_invalidatepage(page, 0,
+-						  partial_end);
++			if (page_has_private(page)) {
++				int off = page - compound_head(page);
++				do_invalidatepage(compound_head(page),
++						off * PAGE_SIZE,
++						partial_end);
++			}
+ 			unlock_page(page);
+ 			put_page(page);
+ 		}
+@@ -323,7 +350,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 
+ 	index = start;
+ 	for ( ; ; ) {
+-		cond_resched();
++restart:	cond_resched();
+ 		if (!pagevec_lookup_entries(&pvec, mapping, index,
+ 			min(end - index, (pgoff_t)PAGEVEC_SIZE), indices)) {
+ 			/* If all gone from start onwards, we're done */
+@@ -346,8 +373,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 			index = indices[i];
+ 			if (index >= end) {
+ 				/* Restart punch to make sure all gone */
+-				index = start - 1;
+-				break;
++				index = start;
++				goto restart;
+ 			}
+ 
+ 			if (radix_tree_exceptional_entry(page)) {
+@@ -358,12 +385,41 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 			lock_page(page);
+ 			WARN_ON(page_to_index(page) != index);
+ 			wait_on_page_writeback(page);
++
++			if (PageTransHuge(page)) {
++				int j, first = 0, last = HPAGE_PMD_NR - 1;
++
++				if (start > page->index)
++					first = start & (HPAGE_PMD_NR - 1);
++				if (index == round_down(end, HPAGE_PMD_NR))
++					last = (end - 1) & (HPAGE_PMD_NR - 1);
++
++				/*
++				 * On Partial thp truncate due 'start' in
++				 * middle of THP: don't need to look on these
++				 * pages again on !pvec.nr restart.
++				 */
++				start = page->index + HPAGE_PMD_NR;
++
++				/* Range starts or ends in the middle of THP */
++				if (first != 0 || last != HPAGE_PMD_NR - 1) {
++					int off, len;
++					for (j = first; j <= last; j++)
++						clear_highpage(page + j);
++					off = first * PAGE_SIZE;
++					len = (last + 1) * PAGE_SIZE - off;
++					do_invalidatepage(page, off, len);
++					unlock_page(page);
++					continue;
++				}
++			}
++
+ 			truncate_inode_page(mapping, page);
+ 			unlock_page(page);
+ 		}
+ 		pagevec_remove_exceptionals(&pvec);
++		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
+ 		pagevec_release(&pvec);
+-		index++;
+ 	}
+ 	cleancache_invalidate_inode(mapping);
+ }
 -- 
 2.10.2
 
