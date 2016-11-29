@@ -1,100 +1,98 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 25/36] ext4: make ext4_writepage() work on huge pages
-Date: Tue, 29 Nov 2016 14:22:53 +0300
-Message-ID: <20161129112304.90056-26-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 21/36] truncate: make invalidate_inode_pages2_range() aware about huge pages
+Date: Tue, 29 Nov 2016 14:22:49 +0300
+Message-ID: <20161129112304.90056-22-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:37259 "EHLO mga01.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757249AbcK2LXm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Nov 2016 06:23:42 -0500
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Change ext4_writepage() and underlying ext4_bio_write_page().
-
-It basically removes assumption on page size, infer it from struct page
-instead.
+For huge pages we need to unmap whole range covered by the huge page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c   | 10 +++++-----
- fs/ext4/page-io.c | 11 +++++++++--
- 2 files changed, 14 insertions(+), 7 deletions(-)
+ mm/truncate.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ebccc535b15e..fa4467e4b129 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2037,10 +2037,10 @@ static int ext4_writepage(struct page *page,
- 
- 	trace_ext4_writepage(page);
- 	size = i_size_read(inode);
--	if (page->index == size >> PAGE_SHIFT)
--		len = size & ~PAGE_MASK;
--	else
--		len = PAGE_SIZE;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index d2d95f283ec3..6df4b06a190f 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -656,27 +656,32 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 				continue;
+ 			}
+ 			wait_on_page_writeback(page);
 +
-+	len = hpage_size(page);
-+	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
-+			len = size & ~hpage_mask(page);
- 
- 	page_bufs = page_buffers(page);
- 	/*
-@@ -2064,7 +2064,7 @@ static int ext4_writepage(struct page *page,
- 				   ext4_bh_delay_or_unwritten)) {
- 		redirty_page_for_writepage(wbc, page);
- 		if ((current->flags & PF_MEMALLOC) ||
--		    (inode->i_sb->s_blocksize == PAGE_SIZE)) {
-+		    (inode->i_sb->s_blocksize == hpage_size(page))) {
- 			/*
- 			 * For memory cleaning there's no point in writing only
- 			 * some buffers. So just bail out. Warn if we came here
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index d83b0f3c5fe9..360c74daec5c 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -413,6 +413,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(PageWriteback(page));
-+	BUG_ON(PageTail(page));
- 
- 	if (keep_towrite)
- 		set_page_writeback_keepwrite(page);
-@@ -429,8 +430,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	 * the page size, the remaining memory is zeroed when mapped, and
- 	 * writes to that region are not written out to the file."
- 	 */
--	if (len < PAGE_SIZE)
--		zero_user_segment(page, len, PAGE_SIZE);
-+	if (len < hpage_size(page)) {
-+		page += len / PAGE_SIZE;
-+		if (len % PAGE_SIZE)
-+			zero_user_segment(page, len % PAGE_SIZE, PAGE_SIZE);
-+		while (page + 1 == compound_head(page))
-+			clear_highpage(++page);
-+		page = compound_head(page);
-+	}
- 	/*
- 	 * In the first loop we prepare and mark buffers to submit. We have to
- 	 * mark all buffers in the page before submitting so that
+ 			if (page_mapped(page)) {
++				loff_t begin, len;
++
++				begin = index << PAGE_SHIFT;
+ 				if (!did_range_unmap) {
+ 					/*
+ 					 * Zap the rest of the file in one hit.
+ 					 */
++					len = (loff_t)(1 + end - index) <<
++						PAGE_SHIFT;
++					if (len < hpage_size(page))
++						len = hpage_size(page);
+ 					unmap_mapping_range(mapping,
+-					   (loff_t)index << PAGE_SHIFT,
+-					   (loff_t)(1 + end - index)
+-							 << PAGE_SHIFT,
+-							 0);
++							begin, len, 0);
+ 					did_range_unmap = 1;
+ 				} else {
+ 					/*
+ 					 * Just zap this page
+ 					 */
+-					unmap_mapping_range(mapping,
+-					   (loff_t)index << PAGE_SHIFT,
+-					   PAGE_SIZE, 0);
++					len = hpage_size(page);
++					unmap_mapping_range(mapping, begin,
++							len, 0);
+ 				}
+ 			}
+-			BUG_ON(page_mapped(page));
++			VM_BUG_ON_PAGE(page_mapped(page), page);
+ 			ret2 = do_launder_page(mapping, page);
+ 			if (ret2 == 0) {
+ 				if (!invalidate_complete_page2(mapping, page))
+@@ -687,9 +692,9 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 			unlock_page(page);
+ 		}
+ 		pagevec_remove_exceptionals(&pvec);
++		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
+ 		pagevec_release(&pvec);
+ 		cond_resched();
+-		index++;
+ 	}
+ 	cleancache_invalidate_inode(mapping);
+ 	return ret;
 -- 
 2.10.2
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
