@@ -1,76 +1,32 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 29/36] ext4: handle huge pages in ext4_da_write_end()
-Date: Tue, 29 Nov 2016 14:22:57 +0300
-Message-ID: <20161129112304.90056-30-kirill.shutemov@linux.intel.com>
-References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/3] ext4: Add EXT4_JOURNAL_DATA_FL and EXT4_EXTENTS_FL
+ to modifiable mask
+Date: Tue, 29 Nov 2016 11:16:50 -0500
+Message-ID: <20161129161650.3ytp3e7ouv6urjcs@thunk.org>
+References: <1475751874-32114-1-git-send-email-jack@suse.cz>
+ <1475751874-32114-2-git-send-email-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56400 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755355AbcK2QQ5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Nov 2016 11:16:57 -0500
+Content-Disposition: inline
+In-Reply-To: <1475751874-32114-2-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Call ext4_da_should_update_i_disksize() for head page with offset
-relative to head page.
+On Thu, Oct 06, 2016 at 01:04:32PM +0200, Jan Kara wrote:
+> Add EXT4_JOURNAL_DATA_FL and EXT4_EXTENTS_FL to EXT4_FL_USER_MODIFIABLE
+> to recognize that they are modifiable by userspace. So far we got away
+> without having them there because ext4_ioctl_setflags() treats them in a
+> special way. But it was really confusing like that.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
----
- fs/ext4/inode.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+Thanks, applied.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 21662bcbbbcb..e89249c03d2f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3019,7 +3019,6 @@ static int ext4_da_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
--	unsigned long start, end;
- 	int write_mode = (int)(unsigned long)fsdata;
- 
- 	if (write_mode == FALL_BACK_TO_NONDELALLOC)
-@@ -3027,8 +3026,6 @@ static int ext4_da_write_end(struct file *file,
- 				      len, copied, page, fsdata);
- 
- 	trace_ext4_da_write_end(inode, pos, len, copied);
--	start = pos & (PAGE_SIZE - 1);
--	end = start + copied - 1;
- 
- 	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -3037,8 +3034,10 @@ static int ext4_da_write_end(struct file *file,
- 	 */
- 	new_i_size = pos + copied;
- 	if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
-+		struct page *head = compound_head(page);
-+		unsigned long end = (pos & ~hpage_mask(head)) + copied - 1;
- 		if (ext4_has_inline_data(inode) ||
--		    ext4_da_should_update_i_disksize(page, end)) {
-+		    ext4_da_should_update_i_disksize(head, end)) {
- 			ext4_update_i_disksize(inode, new_i_size);
- 			/* We need to mark inode dirty even if
- 			 * new_i_size is less that inode->i_size
--- 
-2.10.2
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
