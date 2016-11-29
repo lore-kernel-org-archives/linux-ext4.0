@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 27/36] ext4: handle huge pages in __ext4_block_zero_page_range()
-Date: Tue, 29 Nov 2016 14:22:55 +0300
-Message-ID: <20161129112304.90056-28-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 32/36] ext4: make EXT4_IOC_MOVE_EXT work with huge pages
+Date: Tue, 29 Nov 2016 14:23:00 +0300
+Message-ID: <20161129112304.90056-33-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,46 +25,61 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-As the function handles zeroing range only within one block, the
-required changes are trivial, just remove assuption on page size.
+Adjust how we find relevant block within page and how we clear the
+required part of the page.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/ext4/move_extent.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 387aa857770b..d3143dfe9962 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3776,7 +3776,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
- {
- 	ext4_fsblk_t index = from >> PAGE_SHIFT;
--	unsigned offset = from & (PAGE_SIZE-1);
-+	unsigned offset;
- 	unsigned blocksize, pos;
- 	ext4_lblk_t iblock;
- 	struct inode *inode = mapping->host;
-@@ -3789,6 +3789,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	if (!page)
- 		return -ENOMEM;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 6fc14def0c70..2efa9deb47a9 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -210,7 +210,9 @@ mext_page_mkuptodate(struct page *page, unsigned from, unsigned to)
+ 				return err;
+ 			}
+ 			if (!buffer_mapped(bh)) {
+-				zero_user(page, block_start, blocksize);
++				zero_user(page + block_start / PAGE_SIZE,
++						block_start % PAGE_SIZE,
++						blocksize);
+ 				set_buffer_uptodate(bh);
+ 				continue;
+ 			}
+@@ -267,10 +269,11 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	unsigned int tmp_data_size, data_size, replaced_size;
+ 	int i, err2, jblocks, retries = 0;
+ 	int replaced_count = 0;
+-	int from = data_offset_in_page << orig_inode->i_blkbits;
++	int from;
+ 	int blocks_per_page = PAGE_SIZE >> orig_inode->i_blkbits;
+ 	struct super_block *sb = orig_inode->i_sb;
+ 	struct buffer_head *bh = NULL;
++	int diff;
  
-+	page = compound_head(page);
-+	offset = from & ~hpage_mask(page);
-+
- 	blocksize = inode->i_sb->s_blocksize;
- 
- 	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
-@@ -3845,7 +3848,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 		if (err)
- 			goto unlock;
+ 	/*
+ 	 * It needs twice the amount of ordinary journal buffers because
+@@ -355,6 +358,9 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 		goto unlock_pages;
  	}
--	zero_user(page, offset, length);
-+	zero_user(page + offset / PAGE_SIZE, offset % PAGE_SIZE, length);
- 	BUFFER_TRACE(bh, "zeroed end of block");
- 
- 	if (ext4_should_journal_data(inode)) {
+ data_copy:
++	diff = (pagep[0] - compound_head(pagep[0])) * blocks_per_page;
++	from = (data_offset_in_page + diff) << orig_inode->i_blkbits;
++	pagep[0] = compound_head(pagep[0]);
+ 	*err = mext_page_mkuptodate(pagep[0], from, from + replaced_size);
+ 	if (*err)
+ 		goto unlock_pages;
+@@ -384,7 +390,7 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 	if (!page_has_buffers(pagep[0]))
+ 		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
+ 	bh = page_buffers(pagep[0]);
+-	for (i = 0; i < data_offset_in_page; i++)
++	for (i = 0; i < data_offset_in_page + diff; i++)
+ 		bh = bh->b_this_page;
+ 	for (i = 0; i < block_len_in_page; i++) {
+ 		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
 -- 
 2.10.2
 
