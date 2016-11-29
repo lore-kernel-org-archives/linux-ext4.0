@@ -1,195 +1,100 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 18/36] fs: make block_write_{begin,end}() be able to handle huge pages
-Date: Tue, 29 Nov 2016 14:22:46 +0300
-Message-ID: <20161129112304.90056-19-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 25/36] ext4: make ext4_writepage() work on huge pages
+Date: Tue, 29 Nov 2016 14:22:53 +0300
+Message-ID: <20161129112304.90056-26-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:37259 "EHLO mga01.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1757249AbcK2LXm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Nov 2016 06:23:42 -0500
 In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-It's more or less straight-forward.
+Change ext4_writepage() and underlying ext4_bio_write_page().
 
-Most changes are around getting offset/len withing page right and zero
-out desired part of the page.
+It basically removes assumption on page size, infer it from struct page
+instead.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c | 70 +++++++++++++++++++++++++++++++++++--------------------------
- 1 file changed, 40 insertions(+), 30 deletions(-)
+ fs/ext4/inode.c   | 10 +++++-----
+ fs/ext4/page-io.c | 11 +++++++++--
+ 2 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 090f7edfa6b7..7d333621ccfb 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1902,6 +1902,7 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
- {
- 	unsigned int block_start, block_end;
- 	struct buffer_head *head, *bh;
-+	bool uptodate = PageUptodate(page);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ebccc535b15e..fa4467e4b129 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2037,10 +2037,10 @@ static int ext4_writepage(struct page *page,
  
- 	BUG_ON(!PageLocked(page));
- 	if (!page_has_buffers(page))
-@@ -1912,21 +1913,21 @@ void page_zero_new_buffers(struct page *page, unsigned from, unsigned to)
- 	do {
- 		block_end = block_start + bh->b_size;
- 
--		if (buffer_new(bh)) {
--			if (block_end > from && block_start < to) {
--				if (!PageUptodate(page)) {
--					unsigned start, size;
-+		if (buffer_new(bh) && block_end > from && block_start < to) {
-+			if (!uptodate) {
-+				unsigned start, size;
- 
--					start = max(from, block_start);
--					size = min(to, block_end) - start;
-+				start = max(from, block_start);
-+				size = min(to, block_end) - start;
- 
--					zero_user(page, start, size);
--					set_buffer_uptodate(bh);
--				}
--
--				clear_buffer_new(bh);
--				mark_buffer_dirty(bh);
-+				zero_user(page + block_start / PAGE_SIZE,
-+						start % PAGE_SIZE,
-+						size);
-+				set_buffer_uptodate(bh);
- 			}
+ 	trace_ext4_writepage(page);
+ 	size = i_size_read(inode);
+-	if (page->index == size >> PAGE_SHIFT)
+-		len = size & ~PAGE_MASK;
+-	else
+-		len = PAGE_SIZE;
 +
-+			clear_buffer_new(bh);
-+			mark_buffer_dirty(bh);
- 		}
++	len = hpage_size(page);
++	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
++			len = size & ~hpage_mask(page);
  
- 		block_start = block_end;
-@@ -1992,18 +1993,21 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
- int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 		get_block_t *get_block, struct iomap *iomap)
- {
--	unsigned from = pos & (PAGE_SIZE - 1);
--	unsigned to = from + len;
--	struct inode *inode = page->mapping->host;
-+	unsigned from, to;
-+	struct inode *inode = page_mapping(page)->host;
- 	unsigned block_start, block_end;
- 	sector_t block;
- 	int err = 0;
- 	unsigned blocksize, bbits;
- 	struct buffer_head *bh, *head, *wait[2], **wait_bh=wait;
-+	bool uptodate = PageUptodate(page);
+ 	page_bufs = page_buffers(page);
+ 	/*
+@@ -2064,7 +2064,7 @@ static int ext4_writepage(struct page *page,
+ 				   ext4_bh_delay_or_unwritten)) {
+ 		redirty_page_for_writepage(wbc, page);
+ 		if ((current->flags & PF_MEMALLOC) ||
+-		    (inode->i_sb->s_blocksize == PAGE_SIZE)) {
++		    (inode->i_sb->s_blocksize == hpage_size(page))) {
+ 			/*
+ 			 * For memory cleaning there's no point in writing only
+ 			 * some buffers. So just bail out. Warn if we came here
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index d83b0f3c5fe9..360c74daec5c 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -413,6 +413,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
  
-+	page = compound_head(page);
-+	from = pos & ~hpage_mask(page);
-+	to = from + len;
  	BUG_ON(!PageLocked(page));
--	BUG_ON(from > PAGE_SIZE);
--	BUG_ON(to > PAGE_SIZE);
-+	BUG_ON(from > hpage_size(page));
-+	BUG_ON(to > hpage_size(page));
- 	BUG_ON(from > to);
+ 	BUG_ON(PageWriteback(page));
++	BUG_ON(PageTail(page));
  
- 	head = create_page_buffers(page, inode, 0);
-@@ -2016,10 +2020,8 @@ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 	    block++, block_start=block_end, bh = bh->b_this_page) {
- 		block_end = block_start + blocksize;
- 		if (block_end <= from || block_start >= to) {
--			if (PageUptodate(page)) {
--				if (!buffer_uptodate(bh))
--					set_buffer_uptodate(bh);
--			}
-+			if (uptodate && !buffer_uptodate(bh))
-+				set_buffer_uptodate(bh);
- 			continue;
- 		}
- 		if (buffer_new(bh))
-@@ -2036,23 +2038,28 @@ int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 
- 			if (buffer_new(bh)) {
- 				clean_bdev_bh_alias(bh);
--				if (PageUptodate(page)) {
-+				if (uptodate) {
- 					clear_buffer_new(bh);
- 					set_buffer_uptodate(bh);
- 					mark_buffer_dirty(bh);
- 					continue;
- 				}
--				if (block_end > to || block_start < from)
--					zero_user_segments(page,
--						to, block_end,
--						block_start, from);
-+				if (block_end > to || block_start < from) {
-+					BUG_ON(to - from  > PAGE_SIZE);
-+					zero_user_segments(page +
-+							block_start / PAGE_SIZE,
-+						to % PAGE_SIZE,
-+						(block_start % PAGE_SIZE) + blocksize,
-+						block_start % PAGE_SIZE,
-+						from % PAGE_SIZE);
-+				}
- 				continue;
- 			}
- 		}
--		if (PageUptodate(page)) {
-+		if (uptodate) {
- 			if (!buffer_uptodate(bh))
- 				set_buffer_uptodate(bh);
--			continue; 
-+			continue;
- 		}
- 		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
- 		    !buffer_unwritten(bh) &&
-@@ -2089,6 +2096,7 @@ static int __block_commit_write(struct inode *inode, struct page *page,
- 	unsigned blocksize;
- 	struct buffer_head *bh, *head;
- 
-+	VM_BUG_ON_PAGE(PageTail(page), page);
- 	bh = head = page_buffers(page);
- 	blocksize = bh->b_size;
- 
-@@ -2102,7 +2110,8 @@ static int __block_commit_write(struct inode *inode, struct page *page,
- 			set_buffer_uptodate(bh);
- 			mark_buffer_dirty(bh);
- 		}
--		clear_buffer_new(bh);
-+		if (buffer_new(bh))
-+			clear_buffer_new(bh);
- 
- 		block_start = block_end;
- 		bh = bh->b_this_page;
-@@ -2155,7 +2164,8 @@ int block_write_end(struct file *file, struct address_space *mapping,
- 	struct inode *inode = mapping->host;
- 	unsigned start;
- 
--	start = pos & (PAGE_SIZE - 1);
-+	page = compound_head(page);
-+	start = pos & ~hpage_mask(page);
- 
- 	if (unlikely(copied < len)) {
- 		/*
+ 	if (keep_towrite)
+ 		set_page_writeback_keepwrite(page);
+@@ -429,8 +430,14 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	 * the page size, the remaining memory is zeroed when mapped, and
+ 	 * writes to that region are not written out to the file."
+ 	 */
+-	if (len < PAGE_SIZE)
+-		zero_user_segment(page, len, PAGE_SIZE);
++	if (len < hpage_size(page)) {
++		page += len / PAGE_SIZE;
++		if (len % PAGE_SIZE)
++			zero_user_segment(page, len % PAGE_SIZE, PAGE_SIZE);
++		while (page + 1 == compound_head(page))
++			clear_highpage(++page);
++		page = compound_head(page);
++	}
+ 	/*
+ 	 * In the first loop we prepare and mark buffers to submit. We have to
+ 	 * mark all buffers in the page before submitting so that
 -- 
 2.10.2
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
