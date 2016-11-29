@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 34/36] ext4: make fallocate() operations work with huge pages
-Date: Tue, 29 Nov 2016 14:23:02 +0300
-Message-ID: <20161129112304.90056-35-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 33/36] ext4: fix SEEK_DATA/SEEK_HOLE for huge pages
+Date: Tue, 29 Nov 2016 14:23:01 +0300
+Message-ID: <20161129112304.90056-34-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,68 +25,75 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-__ext4_block_zero_page_range() adjusted to calculate starting iblock
-correctry for huge pages.
+ext4_find_unwritten_pgoff() needs few tweaks to work with huge pages.
+Mostly trivial page_mapping()/page_to_pgoff() and adjustment to how we
+find relevant block.
 
-ext4_{collapse,insert}_range() requires page cache invalidation. We need
-the invalidation to be aligning to huge page border if huge pages are
-possible in page cache.
-
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Signe-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/extents.c | 10 ++++++++--
- fs/ext4/inode.c   |  3 +--
- 2 files changed, 9 insertions(+), 4 deletions(-)
+ fs/ext4/file.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7d29ef0f5f5c..99632945b3f5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5501,7 +5501,10 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * Need to round down offset to be aligned with page size boundary
- 	 * for page size > block size.
- 	 */
--	ioffset = round_down(offset, PAGE_SIZE);
-+	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
-+		ioffset = round_down(offset, HPAGE_PMD_SIZE);
-+	else
-+		ioffset = round_down(offset, PAGE_SIZE);
- 	/*
- 	 * Write tail of the last page before removed range since it will get
- 	 * removed from the page cache below.
-@@ -5650,7 +5653,10 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * Need to round down to align start offset to page size boundary
- 	 * for page size > block size.
- 	 */
--	ioffset = round_down(offset, PAGE_SIZE);
-+	if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE))
-+		ioffset = round_down(offset, HPAGE_PMD_SIZE);
-+	else
-+		ioffset = round_down(offset, PAGE_SIZE);
- 	/* Write out all dirty pages */
- 	ret = filemap_write_and_wait_range(inode->i_mapping, ioffset,
- 			LLONG_MAX);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ff4f460d3625..263b53ace613 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3807,7 +3807,6 @@ void ext4_set_aops(struct inode *inode)
- static int __ext4_block_zero_page_range(handle_t *handle,
- 		struct address_space *mapping, loff_t from, loff_t length)
- {
--	ext4_fsblk_t index = from >> PAGE_SHIFT;
- 	unsigned offset;
- 	unsigned blocksize, pos;
- 	ext4_lblk_t iblock;
-@@ -3826,7 +3825,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index b5f184493c57..7998ac1483c4 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -547,7 +547,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			 * range, it will be a hole.
+ 			 */
+ 			if (lastoff < endoff && whence == SEEK_HOLE &&
+-			    page->index > end) {
++			    page_to_pgoff(page) > end) {
+ 				found = 1;
+ 				*offset = lastoff;
+ 				goto out;
+@@ -555,7 +555,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
  
- 	blocksize = inode->i_sb->s_blocksize;
+ 			lock_page(page);
  
--	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
-+	iblock = page->index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
+-			if (unlikely(page->mapping != inode->i_mapping)) {
++			if (unlikely(page_mapping(page) != inode->i_mapping)) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -566,8 +566,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			}
  
- 	if (!page_has_buffers(page))
- 		create_empty_buffers(page, blocksize, 0);
+ 			if (page_has_buffers(page)) {
++				int diff;
+ 				lastoff = page_offset(page);
+ 				bh = head = page_buffers(page);
++				diff = (page - compound_head(page)) << inode->i_blkbits;
++				while (diff--)
++					bh = bh->b_this_page;
+ 				do {
+ 					if (buffer_uptodate(bh) ||
+ 					    buffer_unwritten(bh)) {
+@@ -588,8 +592,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 				} while (bh != head);
+ 			}
+ 
+-			lastoff = page_offset(page) + PAGE_SIZE;
++			lastoff = page_offset(page) + hpage_size(page);
+ 			unlock_page(page);
++			if (PageTransCompound(page)) {
++				i++;
++				break;
++			}
+ 		}
+ 
+ 		/*
+@@ -602,7 +610,9 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			break;
+ 		}
+ 
+-		index = pvec.pages[i - 1]->index + 1;
++		index = page_to_pgoff(pvec.pages[i - 1]) + 1;
++		if (PageTransCompound(pvec.pages[i - 1]))
++			index = round_up(index, HPAGE_PMD_NR);
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
+ 
 -- 
 2.10.2
 
