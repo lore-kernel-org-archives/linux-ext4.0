@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 13/36] mm: make write_cache_pages() work on huge pages
-Date: Tue, 29 Nov 2016 14:22:41 +0300
-Message-ID: <20161129112304.90056-14-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 14/36] thp: introduce hpage_size() and hpage_mask()
+Date: Tue, 29 Nov 2016 14:22:42 +0300
+Message-ID: <20161129112304.90056-15-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,95 +25,49 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We writeback whole huge page a time. Let's adjust iteration this way.
+Introduce new helpers which return size/mask of the page:
+HPAGE_PMD_SIZE/HPAGE_PMD_MASK if the page is PageTransHuge() and
+PAGE_SIZE/PAGE_MASK otherwise.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/mm.h      |  1 +
- include/linux/pagemap.h |  1 +
- mm/page-writeback.c     | 17 ++++++++++++-----
- 3 files changed, 14 insertions(+), 5 deletions(-)
+ include/linux/huge_mm.h | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 4424784ac374..582844ca0b23 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1045,6 +1045,7 @@ extern pgoff_t __page_file_index(struct page *page);
-  */
- static inline pgoff_t page_index(struct page *page)
- {
-+	page = compound_head(page);
- 	if (unlikely(PageSwapCache(page)))
- 		return __page_file_index(page);
- 	return page->index;
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index e530e7b3b6b2..faa3fa173939 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -546,6 +546,7 @@ static inline void wait_on_page_locked(struct page *page)
-  */
- static inline void wait_on_page_writeback(struct page *page)
- {
-+	page = compound_head(page);
- 	if (PageWriteback(page))
- 		wait_on_page_bit(page, PG_writeback);
+diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+index 97e478d6b690..e5c9c26d2439 100644
+--- a/include/linux/huge_mm.h
++++ b/include/linux/huge_mm.h
+@@ -142,6 +142,20 @@ static inline int hpage_nr_pages(struct page *page)
+ 	return 1;
  }
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 290e8b7d3181..47d5b12c460e 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2209,7 +2209,7 @@ int write_cache_pages(struct address_space *mapping,
- 			 * mapping. However, page->index will not change
- 			 * because we have a reference on the page.
- 			 */
--			if (page->index > end) {
-+			if (page_to_pgoff(page) > end) {
- 				/*
- 				 * can't be range_cyclic (1st pass) because
- 				 * end == -1 in that case.
-@@ -2218,7 +2218,12 @@ int write_cache_pages(struct address_space *mapping,
- 				break;
- 			}
  
--			done_index = page->index;
-+			done_index = page_to_pgoff(page);
-+			if (PageTransCompound(page)) {
-+				index = round_up(index + 1, HPAGE_PMD_NR);
-+				i += HPAGE_PMD_NR -
-+					done_index % HPAGE_PMD_NR - 1;
-+			}
++static inline int hpage_size(struct page *page)
++{
++	if (unlikely(PageTransHuge(page)))
++		return HPAGE_PMD_SIZE;
++	return PAGE_SIZE;
++}
++
++static inline unsigned long hpage_mask(struct page *page)
++{
++	if (unlikely(PageTransHuge(page)))
++		return HPAGE_PMD_MASK;
++	return PAGE_MASK;
++}
++
+ extern int do_huge_pmd_numa_page(struct vm_fault *vmf, pmd_t orig_pmd);
  
- 			lock_page(page);
+ extern struct page *huge_zero_page;
+@@ -167,6 +181,8 @@ void mm_put_huge_zero_page(struct mm_struct *mm);
+ #define HPAGE_PMD_SIZE ({ BUILD_BUG(); 0; })
  
-@@ -2230,7 +2235,7 @@ int write_cache_pages(struct address_space *mapping,
- 			 * even if there is now a new, dirty page at the same
- 			 * pagecache address.
- 			 */
--			if (unlikely(page->mapping != mapping)) {
-+			if (unlikely(page_mapping(page) != mapping)) {
- continue_unlock:
- 				unlock_page(page);
- 				continue;
-@@ -2268,7 +2273,8 @@ int write_cache_pages(struct address_space *mapping,
- 					 * not be suitable for data integrity
- 					 * writeout).
- 					 */
--					done_index = page->index + 1;
-+					done_index = compound_head(page)->index
-+						+ hpage_nr_pages(page);
- 					done = 1;
- 					break;
- 				}
-@@ -2280,7 +2286,8 @@ int write_cache_pages(struct address_space *mapping,
- 			 * keep going until we have written all the pages
- 			 * we tagged for writeback prior to entering this loop.
- 			 */
--			if (--wbc->nr_to_write <= 0 &&
-+			wbc->nr_to_write -= hpage_nr_pages(page);
-+			if (wbc->nr_to_write <= 0 &&
- 			    wbc->sync_mode == WB_SYNC_NONE) {
- 				done = 1;
- 				break;
+ #define hpage_nr_pages(x) 1
++#define hpage_size(x) PAGE_SIZE
++#define hpage_mask(x) PAGE_MASK
+ 
+ #define transparent_hugepage_enabled(__vma) 0
+ 
 -- 
 2.10.2
 
