@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 03/36] page-flags: relax page flag policy for few flags
-Date: Tue, 29 Nov 2016 14:22:31 +0300
-Message-ID: <20161129112304.90056-4-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 08/36] filemap: handle huge pages in do_generic_file_read()
+Date: Tue, 29 Nov 2016 14:22:36 +0300
+Message-ID: <20161129112304.90056-9-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,47 +25,47 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-These flags are in use for filesystems with backing storage: PG_error,
-PG_writeback and PG_readahead.
+Most of work happans on head page. Only when we need to do copy data to
+userspace we find relevant subpage.
+
+We are still limited by PAGE_SIZE per iteration. Lifting this limitation
+would require some more work.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/page-flags.h | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ mm/filemap.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index 74e4dda91238..a2bef9a41bcf 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -253,7 +253,7 @@ static inline int TestClearPage##uname(struct page *page) { return 0; }
- 	TESTSETFLAG_FALSE(uname) TESTCLEARFLAG_FALSE(uname)
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 74341f8b831e..6a2f9ea521fb 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1749,6 +1749,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 			if (unlikely(page == NULL))
+ 				goto no_cached_page;
+ 		}
++		page = compound_head(page);
+ 		if (PageReadahead(page)) {
+ 			page_cache_async_readahead(mapping,
+ 					ra, filp, page,
+@@ -1830,7 +1831,8 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 		 * now we can copy it to user space...
+ 		 */
  
- __PAGEFLAG(Locked, locked, PF_NO_TAIL)
--PAGEFLAG(Error, error, PF_NO_COMPOUND) TESTCLEARFLAG(Error, error, PF_NO_COMPOUND)
-+PAGEFLAG(Error, error, PF_NO_TAIL) TESTCLEARFLAG(Error, error, PF_NO_TAIL)
- PAGEFLAG(Referenced, referenced, PF_HEAD)
- 	TESTCLEARFLAG(Referenced, referenced, PF_HEAD)
- 	__SETPAGEFLAG(Referenced, referenced, PF_HEAD)
-@@ -293,15 +293,15 @@ PAGEFLAG(OwnerPriv1, owner_priv_1, PF_ANY)
-  * Only test-and-set exist for PG_writeback.  The unconditional operators are
-  * risky: they bypass page accounting.
-  */
--TESTPAGEFLAG(Writeback, writeback, PF_NO_COMPOUND)
--	TESTSCFLAG(Writeback, writeback, PF_NO_COMPOUND)
-+TESTPAGEFLAG(Writeback, writeback, PF_NO_TAIL)
-+	TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
- PAGEFLAG(MappedToDisk, mappedtodisk, PF_NO_TAIL)
- 
- /* PG_readahead is only used for reads; PG_reclaim is only for writes */
- PAGEFLAG(Reclaim, reclaim, PF_NO_TAIL)
- 	TESTCLEARFLAG(Reclaim, reclaim, PF_NO_TAIL)
--PAGEFLAG(Readahead, reclaim, PF_NO_COMPOUND)
--	TESTCLEARFLAG(Readahead, reclaim, PF_NO_COMPOUND)
-+PAGEFLAG(Readahead, reclaim, PF_NO_TAIL)
-+	TESTCLEARFLAG(Readahead, reclaim, PF_NO_TAIL)
- 
- #ifdef CONFIG_HIGHMEM
- /*
+-		ret = copy_page_to_iter(page, offset, nr, iter);
++		ret = copy_page_to_iter(page + index - page->index, offset,
++				nr, iter);
+ 		offset += ret;
+ 		index += offset >> PAGE_SHIFT;
+ 		offset &= ~PAGE_MASK;
+@@ -2248,6 +2250,7 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * because there really aren't any performance issues here
+ 	 * and we need to check for errors.
+ 	 */
++	page = compound_head(page);
+ 	ClearPageError(page);
+ 	error = mapping->a_ops->readpage(file, page);
+ 	if (!error) {
 -- 
 2.10.2
 
