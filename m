@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 24/36] ext4: make ext4_mpage_readpages() hugepage-aware
-Date: Tue, 29 Nov 2016 14:22:52 +0300
-Message-ID: <20161129112304.90056-25-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 26/36] ext4: handle huge pages in ext4_page_mkwrite()
+Date: Tue, 29 Nov 2016 14:22:54 +0300
+Message-ID: <20161129112304.90056-27-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,31 +25,51 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-As BIO_MAX_PAGES is smaller (on x86) than HPAGE_PMD_NR, we cannot use
-the optimization ext4_mpage_readpages() provides.
-
-So, for huge pages, we fallback directly to block_read_full_page().
-
-This should be re-visited once we get multipage bvec upstream.
+Trivial: remove assumption on page size.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/readpage.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/inode.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index a81b829d56de..b865df0c0973 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -134,7 +134,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 				goto next_page;
- 		}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fa4467e4b129..387aa857770b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5759,7 +5759,7 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
  
--		if (page_has_buffers(page))
-+		if (page_has_buffers(page) || PageTransHuge(page))
- 			goto confused;
+ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ {
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	loff_t size;
+ 	unsigned long len;
+ 	int ret;
+@@ -5795,10 +5795,10 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 		goto out;
+ 	}
  
- 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
+-	if (page->index == size >> PAGE_SHIFT)
+-		len = size & ~PAGE_MASK;
+-	else
+-		len = PAGE_SIZE;
++	len = hpage_size(page);
++	if (page->index + hpage_nr_pages(page) - 1 == size >> PAGE_SHIFT)
++		len = size & ~hpage_mask(page);
++
+ 	/*
+ 	 * Return if we have all the buffers mapped. This avoids the need to do
+ 	 * journal_start/journal_stop which can block and take a long time
+@@ -5829,7 +5829,8 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	ret = block_page_mkwrite(vma, vmf, get_block);
+ 	if (!ret && ext4_should_journal_data(inode)) {
+ 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
+-			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
++			  hpage_size(page), NULL,
++			  do_journal_get_write_access)) {
+ 			unlock_page(page);
+ 			ret = VM_FAULT_SIGBUS;
+ 			ext4_journal_stop(handle);
 -- 
 2.10.2
 
