@@ -1,38 +1,19 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [RFD] Common userspace tool for fscypto
-Date: Tue, 29 Nov 2016 21:48:16 +0100
-Message-ID: <f9bc005b-4e25-d705-e091-5f930e4246b1@nod.at>
-References: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
- <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
+From: Lopez Omar <olopez@artba.org>
+Subject: Donation
+Date: Tue, 29 Nov 2016 20:53:56 +0100
+Message-ID: <f4bf02d0-f38b-4edd-ba30-13ac08bd5213@artbavs04.artba.org>
+Reply-To: g_mackenzie@rogers.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>, kzak@redhat.com,
-        Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>,
-        David Gstir <david@sigma-star.at>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Michael Halcrow <mhalcrow@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 8BIT
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from artbavs04.artba.org ([50.241.138.188]:44993 "EHLO
+        artbavs04.artba.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754530AbcK2U6s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2016 15:58:48 -0500
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Michael,
-
-On 19.10.2016 19:36, Michael Halcrow wrote:
->> That said, what about implementing such a tool as part of util-linux to control
->> fscrypto? We (David and I) would volunteer.
-> 
-> While discussing several changes we have staged for release (we're
-> trying to minimize churn by batching a large set of format changes all
-> at once), we've recently recognized this need on my team and were
-> planning on starting work on exactly what you propose.
-
-Did this plan already materialize? :-)
-
-Thanks,
-//richard
+Hello, My name is Gloria C. Mackenzie, i have a Monetary Donation to make for less privilege and yourself and your organization, am writing you with a friend's email, please contact me on g_mackenzie@rogers.com
