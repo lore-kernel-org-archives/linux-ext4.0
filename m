@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 21/36] truncate: make invalidate_inode_pages2_range() aware about huge pages
-Date: Tue, 29 Nov 2016 14:22:49 +0300
-Message-ID: <20161129112304.90056-22-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 19/36] fs: make block_page_mkwrite() aware about huge pages
+Date: Tue, 29 Nov 2016 14:22:47 +0300
+Message-ID: <20161129112304.90056-20-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,69 +25,50 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages we need to unmap whole range covered by the huge page.
+Adjust check on whether part of the page beyond file size and apply
+compound_head() and page_mapping() where appropriate.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/truncate.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ fs/buffer.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index d2d95f283ec3..6df4b06a190f 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -656,27 +656,32 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 				continue;
- 			}
- 			wait_on_page_writeback(page);
-+
- 			if (page_mapped(page)) {
-+				loff_t begin, len;
-+
-+				begin = index << PAGE_SHIFT;
- 				if (!did_range_unmap) {
- 					/*
- 					 * Zap the rest of the file in one hit.
- 					 */
-+					len = (loff_t)(1 + end - index) <<
-+						PAGE_SHIFT;
-+					if (len < hpage_size(page))
-+						len = hpage_size(page);
- 					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   (loff_t)(1 + end - index)
--							 << PAGE_SHIFT,
--							 0);
-+							begin, len, 0);
- 					did_range_unmap = 1;
- 				} else {
- 					/*
- 					 * Just zap this page
- 					 */
--					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   PAGE_SIZE, 0);
-+					len = hpage_size(page);
-+					unmap_mapping_range(mapping, begin,
-+							len, 0);
- 				}
- 			}
--			BUG_ON(page_mapped(page));
-+			VM_BUG_ON_PAGE(page_mapped(page), page);
- 			ret2 = do_launder_page(mapping, page);
- 			if (ret2 == 0) {
- 				if (!invalidate_complete_page2(mapping, page))
-@@ -687,9 +692,9 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 			unlock_page(page);
- 		}
- 		pagevec_remove_exceptionals(&pvec);
-+		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
- 		pagevec_release(&pvec);
- 		cond_resched();
--		index++;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 7d333621ccfb..8e000021513c 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2544,7 +2544,7 @@ EXPORT_SYMBOL(block_commit_write);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 			 get_block_t get_block)
+ {
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	unsigned long end;
+ 	loff_t size;
+@@ -2552,7 +2552,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 
+ 	lock_page(page);
+ 	size = i_size_read(inode);
+-	if ((page->mapping != inode->i_mapping) ||
++	if ((page_mapping(page) != inode->i_mapping) ||
+ 	    (page_offset(page) > size)) {
+ 		/* We overload EFAULT to mean page got truncated */
+ 		ret = -EFAULT;
+@@ -2560,10 +2560,10 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  	}
- 	cleancache_invalidate_inode(mapping);
- 	return ret;
+ 
+ 	/* page is wholly or partially inside EOF */
+-	if (((page->index + 1) << PAGE_SHIFT) > size)
+-		end = size & ~PAGE_MASK;
++	if (((page->index + hpage_nr_pages(page)) << PAGE_SHIFT) > size)
++		end = size & ~hpage_mask(page);
+ 	else
+-		end = PAGE_SIZE;
++		end = hpage_size(page);
+ 
+ 	ret = __block_write_begin(page, 0, end, get_block);
+ 	if (!ret)
 -- 
 2.10.2
 
