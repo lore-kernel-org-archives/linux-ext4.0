@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv5 30/36] ext4: make ext4_da_page_release_reservation() aware about huge pages
-Date: Tue, 29 Nov 2016 14:22:58 +0300
-Message-ID: <20161129112304.90056-31-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv5 27/36] ext4: handle huge pages in __ext4_block_zero_page_range()
+Date: Tue, 29 Nov 2016 14:22:55 +0300
+Message-ID: <20161129112304.90056-28-kirill.shutemov@linux.intel.com>
 References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,39 +25,46 @@ In-Reply-To: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages 'stop' must be within HPAGE_PMD_SIZE.
-Let's use hpage_size() in the BUG_ON().
-
-We also need to change how we calculate lblk for cluster deallocation.
+As the function handles zeroing range only within one block, the
+required changes are trivial, just remove assuption on page size.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/ext4/inode.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e89249c03d2f..035256019e16 100644
+index 387aa857770b..d3143dfe9962 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1572,7 +1572,7 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	int num_clusters;
- 	ext4_fsblk_t lblk;
+@@ -3776,7 +3776,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
+ {
+ 	ext4_fsblk_t index = from >> PAGE_SHIFT;
+-	unsigned offset = from & (PAGE_SIZE-1);
++	unsigned offset;
+ 	unsigned blocksize, pos;
+ 	ext4_lblk_t iblock;
+ 	struct inode *inode = mapping->host;
+@@ -3789,6 +3789,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	if (!page)
+ 		return -ENOMEM;
  
--	BUG_ON(stop > PAGE_SIZE || stop < length);
-+	BUG_ON(stop > hpage_size(page) || stop < length);
++	page = compound_head(page);
++	offset = from & ~hpage_mask(page);
++
+ 	blocksize = inode->i_sb->s_blocksize;
  
- 	head = page_buffers(page);
- 	bh = head;
-@@ -1607,7 +1607,8 @@ static void ext4_da_page_release_reservation(struct page *page,
- 	 * need to release the reserved space for that cluster. */
- 	num_clusters = EXT4_NUM_B2C(sbi, to_release);
- 	while (num_clusters > 0) {
--		lblk = (page->index << (PAGE_SHIFT - inode->i_blkbits)) +
-+		lblk = ((page->index + offset / PAGE_SIZE) <<
-+				(PAGE_SHIFT - inode->i_blkbits)) +
- 			((num_clusters - 1) << sbi->s_cluster_bits);
- 		if (sbi->s_cluster_ratio == 1 ||
- 		    !ext4_find_delalloc_cluster(inode, lblk))
+ 	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
+@@ -3845,7 +3848,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		if (err)
+ 			goto unlock;
+ 	}
+-	zero_user(page, offset, length);
++	zero_user(page + offset / PAGE_SIZE, offset % PAGE_SIZE, length);
+ 	BUFFER_TRACE(bh, "zeroed end of block");
+ 
+ 	if (ext4_should_journal_data(inode)) {
 -- 
 2.10.2
 
