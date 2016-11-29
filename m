@@ -1,37 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] ext4: Inode flags diet
-Date: Tue, 29 Nov 2016 11:25:07 -0500
-Message-ID: <20161129162507.tp4zwqpqetmt7yxp@thunk.org>
-References: <1475751874-32114-1-git-send-email-jack@suse.cz>
- <1475751874-32114-4-git-send-email-jack@suse.cz>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 1/6] ext2: Return BH_New buffers for zeroed blocks
+Date: Tue, 29 Nov 2016 10:48:11 -0700
+Message-ID: <20161129174811.GA30208@linux.intel.com>
+References: <1479980796-26161-1-git-send-email-jack@suse.cz>
+ <1479980796-26161-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, Johannes Weiner <hannes@cmpxchg.org>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:56664 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751268AbcK2QZK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Nov 2016 11:25:10 -0500
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1475751874-32114-4-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1479980796-26161-2-git-send-email-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Oct 06, 2016 at 01:04:34PM +0200, Jan Kara wrote:
-> Remove 6 inode flags that were apparently never used and only take up
-> space in inode flags field which is already full.
+On Thu, Nov 24, 2016 at 10:46:31AM +0100, Jan Kara wrote:
+> So far we did not return BH_New buffers from ext2_get_blocks() when we
+> allocated and zeroed-out a block for DAX inode to avoid racy zeroing in
+> DAX code. This zeroing is gone these days so we can remove the
+> workaround.
 > 
-> There are also other inode flags of doubtful use (not used by current
-> Linux kernel - IMAGIC, NOTAIL, EA_INODE) but let's leave them there for
-> now since I'm not quite sure about their status.
-> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
-The secure delete flag was honored by ext2, although not by ext3 or ext4
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-As for the rest --- you've picked up on my secret plan --- which was
-to keep them around to make sure people didn't try to allocate any
-flags without thinking *really* hard about it.  :-)
-
-      	      	       		     	   	- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
