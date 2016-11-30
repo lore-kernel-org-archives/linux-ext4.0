@@ -1,115 +1,77 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/6] dax: Avoid page invalidation races and unnecessary
- radix tree traversals
-Date: Wed, 30 Nov 2016 09:23:18 +0100
-Message-ID: <20161130082318.GE16667@quack2.suse.cz>
-References: <1479980796-26161-1-git-send-email-jack@suse.cz>
- <1479980796-26161-4-git-send-email-jack@suse.cz>
- <20161129223138.GB16608@linux.intel.com>
+From: Richard Weinberger <richard@nod.at>
+Subject: Re: [RFD] Common userspace tool for fscypto
+Date: Wed, 30 Nov 2016 09:27:28 +0100
+Message-ID: <3d354949-0051-3f3a-f8ac-8dd99e9adc0f@nod.at>
+References: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
+ <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
+ <f9bc005b-4e25-d705-e091-5f930e4246b1@nod.at>
+ <CAKpBdu1+k94WmwxeZ2Hyu5=ifNprPA0YedRm2xps-ooyVHTwhg@mail.gmail.com>
+ <87d9b3aa-684d-856a-0dcd-f960923f2484@nod.at>
+ <20161130000407.GB107713@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org, Johannes Weiner <hannes@cmpxchg.org>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161129223138.GB16608@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: Joe Richey <joerichey@google.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, kzak@redhat.com,
+        Theodore Ts'o <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        David Gstir <david@sigma-star.at>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Eric Biggers <ebiggers@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from b.ns.miles-group.at ([95.130.255.144]:44724 "EHLO radon.swed.at"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1754392AbcK3I1d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Nov 2016 03:27:33 -0500
+In-Reply-To: <20161130000407.GB107713@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 29-11-16 15:31:38, Ross Zwisler wrote:
-> On Thu, Nov 24, 2016 at 10:46:33AM +0100, Jan Kara wrote:
-> > Currently each filesystem (possibly through generic_file_direct_write()
-> > or iomap_dax_rw()) takes care of invalidating page tables and evicting
+Eric,
+
+On 30.11.2016 01:04, Eric Biggers wrote:
+> On Tue, Nov 29, 2016 at 10:59:28PM +0100, Richard Weinberger wrote:
+>>
+>> Do you also plan to address d/page cache related issues?
+>> i.e. when two users are logged into the system user rw
+>> is able to see decrypted file names and contents in /home/dags/
+>> if user dags installs a key and accessed a file.
+>>
 > 
-> Just some nits about the commit message: the DAX I/O path function is now
-> called dax_iomap_rw(), and no filesystems still use
-> generic_file_direct_write() for DAX so you can probably remove it from the
-> changelog - up to you.
+> As far as I know, there are no plans to make it possible for one user to see
+> plaintext while another user sees ciphertext.  Fundamentally, the dentry, inode,
+> and page caches are shared systemwide.  This cannot be changed by using
+> namespaces; it can only be changed by doing something like an ecryptfs-style
+> stacked mount where the plaintext and ciphertext are actually exposed by
+> different filesystems.  And it was a fundamental design goal of ext4 encryption
+> to not do a stacked mount.
 
-Yeah, good spotting. Many things have changed through rebases. I've fixed
-up the changelog to reflect current state.
+Well, we could over-mount /home/rw with an empty directory for every user except rw.
 
-> Aside from that:
-> Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-
-Thanks.
-
-								Honza
-
+> So the expectation is that to restrict access by other users once a key has been
+> provisioned, file permissions should be used.
 > 
-> > hole pages from the radix tree when write(2) to the file happens. This
-> > invalidation is only necessary when there is some block allocation
-> > resulting from write(2). Furthermore in current place the invalidation
-> > is racy wrt page fault instantiating a hole page just after we have
-> > invalidated it.
-> > 
-> > So perform the page invalidation inside dax_do_io() where we can do it
-> > only when really necessary and after blocks have been allocated so
-> > nobody will be instantiating new hole pages anymore.
-> > 
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/dax.c | 28 +++++++++++-----------------
-> >  1 file changed, 11 insertions(+), 17 deletions(-)
-> > 
-> > diff --git a/fs/dax.c b/fs/dax.c
-> > index 4534f0e232e9..ddf77ef2ca18 100644
-> > --- a/fs/dax.c
-> > +++ b/fs/dax.c
-> > @@ -984,6 +984,17 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
-> >  	if (WARN_ON_ONCE(iomap->type != IOMAP_MAPPED))
-> >  		return -EIO;
-> >  
-> > +	/*
-> > +	 * Write can allocate block for an area which has a hole page mapped
-> > +	 * into page tables. We have to tear down these mappings so that data
-> > +	 * written by write(2) is visible in mmap.
-> > +	 */
-> > +	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-> > +		invalidate_inode_pages2_range(inode->i_mapping,
-> > +					      pos >> PAGE_SHIFT,
-> > +					      (end - 1) >> PAGE_SHIFT);
-> > +	}
-> > +
-> >  	while (pos < end) {
-> >  		unsigned offset = pos & (PAGE_SIZE - 1);
-> >  		struct blk_dax_ctl dax = { 0 };
-> > @@ -1042,23 +1053,6 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
-> >  	if (iov_iter_rw(iter) == WRITE)
-> >  		flags |= IOMAP_WRITE;
-> >  
-> > -	/*
-> > -	 * Yes, even DAX files can have page cache attached to them:  A zeroed
-> > -	 * page is inserted into the pagecache when we have to serve a write
-> > -	 * fault on a hole.  It should never be dirtied and can simply be
-> > -	 * dropped from the pagecache once we get real data for the page.
-> > -	 *
-> > -	 * XXX: This is racy against mmap, and there's nothing we can do about
-> > -	 * it. We'll eventually need to shift this down even further so that
-> > -	 * we can check if we allocated blocks over a hole first.
-> > -	 */
-> > -	if (mapping->nrpages) {
-> > -		ret = invalidate_inode_pages2_range(mapping,
-> > -				pos >> PAGE_SHIFT,
-> > -				(pos + iov_iter_count(iter) - 1) >> PAGE_SHIFT);
-> > -		WARN_ON_ONCE(ret);
-> > -	}
-> > -
-> >  	while (iov_iter_count(iter)) {
-> >  		ret = iomap_apply(inode, pos, iov_iter_count(iter), flags, ops,
-> >  				iter, dax_iomap_actor);
-> > -- 
-> > 2.6.6
-> > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+>> Or files in /home/dags/ are still readable even after
+>> user dags purged the key.
+> 
+> If you revoke the key (with 'keyctl revoke') rather than unlink the key (with
+> 'keyctl unlink') then it actually does appear to work currently.  The difference
+> is that revoking the key is a modification of the key, whereas unlinking the key
+> is only removing a link to the key without affecting any links which the kernel
+> may have internally or which userspace may have in other keyrings.  Revocation
+> (but not unlinking) is detected by fscrypt_get_encryption_info() when someone
+> tries to open an encrypted file or directory.  There's also a d_revalidate
+> dentry operation which cause a dentry to be invalidated if it's a plaintext name
+> but the directory key is no longer valid, or if it's a ciphertext name but the
+> directory key is now valid.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Ahh, in my quick and dirty tests I've always used purge. Let me try revoke. :)
+
+BTW: This limitations needs to be clearly documented somewhere.
+Usually an user thinks that only she can access encrypted files...
+
+Thanks,
+//richard
