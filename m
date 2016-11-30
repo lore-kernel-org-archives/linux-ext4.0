@@ -1,155 +1,180 @@
-From: Joe Richey <joerichey@google.com>
-Subject: Re: Idea behind EXT4_IOC_GET_ENCRYPTION_PWSALT?
-Date: Tue, 29 Nov 2016 16:44:53 -0800
-Message-ID: <CAKpBdu3OUUjqVAwDTNUaVoyuPRun_t6U9gi1prgyoswzYPuOow@mail.gmail.com>
-References: <bd1bb80f-f22c-1118-4438-f23372bad066@nod.at>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 2/6] mm: Invalidate DAX radix tree entries only if
+ appropriate
+Date: Wed, 30 Nov 2016 09:08:41 +0100
+Message-ID: <20161130080841.GD16667@quack2.suse.cz>
+References: <1479980796-26161-1-git-send-email-jack@suse.cz>
+ <1479980796-26161-3-git-send-email-jack@suse.cz>
+ <20161129193403.GA12396@cmpxchg.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256;
-        boundary="94eb2c08676666c88905427a03d5"
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Michael Halcrow <mhalcrow@google.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, muslukhovi@gmail.com,
-        David Gstir <david@sigma-star.at>
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <bd1bb80f-f22c-1118-4438-f23372bad066@nod.at>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20161129193403.GA12396-druUgvl0LCNAfugRpC6u6w@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
---94eb2c08676666c88905427a03d5
-Content-Type: text/plain; charset=UTF-8
+Hi Johannes,
 
-Richard,
+On Tue 29-11-16 14:34:03, Johannes Weiner wrote:
+> On Thu, Nov 24, 2016 at 10:46:32AM +0100, Jan Kara wrote:
+> > @@ -452,16 +452,37 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+> >  		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
+> >  }
+> >  
+> > +static int __dax_invalidate_mapping_entry(struct address_space *mapping,
+> > +					  pgoff_t index, bool trunc)
+> > +{
+> > +	int ret = 0;
+> > +	void *entry;
+> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
+> > +
+> > +	spin_lock_irq(&mapping->tree_lock);
+> > +	entry = get_unlocked_mapping_entry(mapping, index, NULL);
+> > +	if (!entry || !radix_tree_exceptional_entry(entry))
+> > +		goto out;
+> > +	if (!trunc &&
+> > +	    (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+> > +	     radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE)))
+> > +		goto out;
+> > +	radix_tree_delete(page_tree, index);
+> 
+> You could use the new __radix_tree_replace() here and save a second
+> tree lookup.
 
-Our current design for fscrypt (tentative name for the userspace
-filesystem encryption manager) does not use the global filesystem salt
-(EXT4_IOC_GET_ENCRYPTION_PWSALT), we are planning on having a
-different salt for each password used in the system. We are using
-planning on using Argon2id as the password stretching algorithm, so
-we'll have costs for memory, time, and parallelism stored for each
-password as well as a salt.
+Hum, I'd need to return 'node' from get_unlocked_mapping_entry(). So
+probably I'll do it in a patch separate from this fix. But thanks for
+suggestion.
 
-I can't speak to other uses of the ioctl.
+> > +/*
+> > + * Invalidate exceptional DAX entry if easily possible. This handles DAX
+> > + * entries for invalidate_inode_pages() so we evict the entry only if we can
+> > + * do so without blocking.
+> > + */
+> > +int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index)
+> > +{
+> > +	int ret = 0;
+> > +	void *entry, **slot;
+> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
+> > +
+> > +	spin_lock_irq(&mapping->tree_lock);
+> > +	entry = __radix_tree_lookup(page_tree, index, NULL, &slot);
+> > +	if (!entry || !radix_tree_exceptional_entry(entry) ||
+> > +	    slot_locked(mapping, slot))
+> > +		goto out;
+> > +	if (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+> > +	    radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
+> > +		goto out;
+> > +	radix_tree_delete(page_tree, index);
+> 
+> Ditto for __radix_tree_replace().
 
-Joe
+Yes, here I can do it easily rightaway.
 
+> > @@ -30,14 +30,6 @@ static void clear_exceptional_entry(struct address_space *mapping,
+> >  	struct radix_tree_node *node;
+> >  	void **slot;
+> >  
+> > -	/* Handled by shmem itself */
+> > -	if (shmem_mapping(mapping))
+> > -		return;
+> > -
+> > -	if (dax_mapping(mapping)) {
+> > -		dax_delete_mapping_entry(mapping, index);
+> > -		return;
+> > -	}
+> >  	spin_lock_irq(&mapping->tree_lock);
+> >  	/*
+> >  	 * Regular page slots are stabilized by the page lock even
+> > @@ -70,6 +62,56 @@ static void clear_exceptional_entry(struct address_space *mapping,
+> >  	spin_unlock_irq(&mapping->tree_lock);
+> >  }
+> >  
+> > +/*
+> > + * Unconditionally remove exceptional entry. Usually called from truncate path.
+> > + */
+> > +static void truncate_exceptional_entry(struct address_space *mapping,
+> > +				       pgoff_t index, void *entry)
+> > +{
+> > +	/* Handled by shmem itself */
+> > +	if (shmem_mapping(mapping))
+> > +		return;
+> > +
+> > +	if (dax_mapping(mapping)) {
+> > +		dax_delete_mapping_entry(mapping, index);
+> > +		return;
+> > +	}
+> > +	clear_exceptional_entry(mapping, index, entry);
+> > +}
+> > +
+> > +/*
+> > + * Invalidate exceptional entry if easily possible. This handles exceptional
+> > + * entries for invalidate_inode_pages() so for DAX it evicts only unlocked and
+> > + * clean entries.
+> > + */
+> > +static int invalidate_exceptional_entry(struct address_space *mapping,
+> > +					pgoff_t index, void *entry)
+> > +{
+> > +	/* Handled by shmem itself */
+> > +	if (shmem_mapping(mapping))
+> > +		return 1;
+> > +	if (dax_mapping(mapping))
+> > +		return dax_invalidate_mapping_entry(mapping, index);
+> > +	clear_exceptional_entry(mapping, index, entry);
+> > +	return 1;
+> > +}
+> > +
+> > +/*
+> > + * Invalidate exceptional entry if clean. This handles exceptional entries for
+> > + * invalidate_inode_pages2() so for DAX it evicts only clean entries.
+> > + */
+> > +static int invalidate_exceptional_entry2(struct address_space *mapping,
+> > +					 pgoff_t index, void *entry)
+> > +{
+> > +	/* Handled by shmem itself */
+> > +	if (shmem_mapping(mapping))
+> > +		return 1;
+> > +	if (dax_mapping(mapping))
+> > +		return dax_invalidate_clean_mapping_entry(mapping, index);
+> > +	clear_exceptional_entry(mapping, index, entry);
+> > +	return 1;
+> > +}
+> 
+> The way these functions are split out looks fine to me.
+> 
+> Now that clear_exceptional_entry() doesn't handle shmem and DAX
+> anymore, only shadows, could you rename it to clear_shadow_entry()?
 
-On Tue, Nov 29, 2016 at 1:30 PM, Richard Weinberger <richard@nod.at> wrote:
-> Hi!
->
-> As the subject states, I'm a bit confused wrt. EXT4_IOC_GET_ENCRYPTION_PWSALT.
-> Will common fscrypt userspace depend on it?
->
-> IIUC you want to store some salt to seed the user password.
-> But what if /home/rw and /home/dags have different keys? Is it okay
-> to use the same salt for both keys?
-> Or is it an ad-hoc solution to allow an encrypted filesystem root
-> because you need a way to store the seed on the same filesystem but not as
-> file since all files are encrypted?
-> Wouldn't a xattr stored in the filesystem root directory also do it?
->
-> Long story short, I'm not sure whether we really need this ioctl command
-> in UBIFS and what the designated semantics are. :-)
->
-> Thanks,
-> //richard
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Sure. Done.
 
---94eb2c08676666c88905427a03d5
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
+> The naming situation with truncate, invalidate, invalidate2 worries me
+> a bit. They aren't great names to begin with, but now DAX uses yet
+> another terminology for what state prevents a page from being dropped.
+> Can we switch to truncate, invalidate, and invalidate_sync throughout
+> truncate.c and then have DAX follow that naming too? Or maybe you can
+> think of better names. But neither invalidate2 and invalidate_clean
+> don't seem to capture it quite right ;)
 
-MIIS7QYJKoZIhvcNAQcCoIIS3jCCEtoCAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGg
-ghBTMIIEXDCCA0SgAwIBAgIOSBtqDm4P/739RPqw/wcwDQYJKoZIhvcNAQELBQAwZDELMAkGA1UE
-BhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExOjA4BgNVBAMTMUdsb2JhbFNpZ24gUGVy
-c29uYWxTaWduIFBhcnRuZXJzIENBIC0gU0hBMjU2IC0gRzIwHhcNMTYwNjE1MDAwMDAwWhcNMjEw
-NjE1MDAwMDAwWjBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEiMCAG
-A1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
-AQoCggEBALR23lKtjlZW/17kthzYcMHHKFgywfc4vLIjfq42NmMWbXkNUabIgS8KX4PnIFsTlD6F
-GO2fqnsTygvYPFBSMX4OCFtJXoikP2CQlEvO7WooyE94tqmqD+w0YtyP2IB5j4KvOIeNv1Gbnnes
-BIUWLFxs1ERvYDhmk+OrvW7Vd8ZfpRJj71Rb+QQsUpkyTySaqALXnyztTDp1L5d1bABJN/bJbEU3
-Hf5FLrANmognIu+Npty6GrA6p3yKELzTsilOFmYNWg7L838NS2JbFOndl+ce89gM36CW7vyhszi6
-6LqqzJL8MsmkP53GGhf11YMP9EkmawYouMDP/PwQYhIiUO0CAwEAAaOCASIwggEeMA4GA1UdDwEB
-/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwEgYDVR0TAQH/BAgwBgEB/wIB
-ADAdBgNVHQ4EFgQUyzgSsMeZwHiSjLMhleb0JmLA4D8wHwYDVR0jBBgwFoAUJiSSix/TRK+xsBtt
-r+500ox4AAMwSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDovL2NybC5nbG9iYWxzaWduLmNvbS9ncy9n
-c3BlcnNvbmFsc2lnbnB0bnJzc2hhMmcyLmNybDBMBgNVHSAERTBDMEEGCSsGAQQBoDIBKDA0MDIG
-CCsGAQUFBwIBFiZodHRwczovL3d3dy5nbG9iYWxzaWduLmNvbS9yZXBvc2l0b3J5LzANBgkqhkiG
-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
-QAYIKwYBBQUHMAKGNGh0dHA6Ly9zZWN1cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L2dzaHZzbWlt
-ZWNhMS5jcnQwHQYDVR0OBBYEFIzdacNPR4CxZxcfYVOn0kurxuOYMB8GA1UdIwQYMBaAFMs4ErDH
-mcB4koyzIZXm9CZiwOA/MEwGA1UdIARFMEMwQQYJKwYBBAGgMgEoMDQwMgYIKwYBBQUHAgEWJmh0
-dHBzOi8vd3d3Lmdsb2JhbHNpZ24uY29tL3JlcG9zaXRvcnkvMDsGA1UdHwQ0MDIwMKAuoCyGKmh0
-dHA6Ly9jcmwuZ2xvYmFsc2lnbi5jb20vZ3NodnNtaW1lY2ExLmNybDAOBgNVHQ8BAf8EBAMCBaAw
-HQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4IBAQAESPQix4jl
-tO0Y5E5w9HIuLMT775Dc8T4ddEq1WlwZwiC3+wUvycRlBmLTD/9Kl9VkZEymqwP3OkzHsmWyAcmU
-JXvwDIgWqmHjrGhxO6/GWC1Z/+LD9aY1iCEjzSBxUpkyAdON+QcdabM8rQjGaeIISC3DA7luQACW
-xcTkDKtxV+KG54Nh6lBI52Xee/vUkgWP8zF7AskYoh7WXIlT++pUvLsLXyzQ+2/q7uo6WvqqAEBi
-nBKGKtVwFRuIWJqdfix5Cw0tPOmyIvgphEL/HnVQNilaYDSly0p9fNPYjP5YAPB+3hHschaYY4TC
-eU9cXFsl1/C1pCe51dT7ZblpgjqZMYICXjCCAloCAQEwXDBMMQswCQYDVQQGEwJCRTEZMBcGA1UE
-ChMQR2xvYmFsU2lnbiBudi1zYTEiMCAGA1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMQIM
-PV9GeTJlm18T4QwsMA0GCWCGSAFlAwQCAQUAoIHUMC8GCSqGSIb3DQEJBDEiBCC0jSA9/60X357o
-71nJrEhWtCVth/gc13VTJcOLFh8TIjAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3
-DQEJBTEPFw0xNjExMzAwMDQ0NTRaMGkGCSqGSIb3DQEJDzFcMFowCwYJYIZIAWUDBAEqMAsGCWCG
-SAFlAwQBFjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwCwYJKoZIhvcNAQEKMAsGCSqGSIb3DQEB
-BzALBglghkgBZQMEAgEwDQYJKoZIhvcNAQEBBQAEggEALWB/WAnw7Oviabz/8a7t+yyhsZw8w9b1
-6fP4xXXalWlIGxcrnN/Lsyk2DHYUbu8MwGa2clr6szSdsMrLVpOK5UtZLi1lshl4wzoi5njZGLqd
-NFDeuwvchq3InmFgL7Lyca/HVtQGfAkDJ9JA33cPRMd7SkIvlVwRjU8ofFPBMb367EF+Z0lycUDu
-MSjZzCJdu7QQ5hKvrLk0AewNMuvDY17fiXBWBmuBQvpgAa03EI4jJ3AwXquBvB6jtMfFz28bh4/d
-86lwk1dMFUHXtl1bwWmKOzEHAiUwF8fMCklGZICsbG86hTEpyEJAnfRgtGFF5vZfCYqXXUHKH5Ma
-68FHnQ==
---94eb2c08676666c88905427a03d5--
+Yeah, the naming is confusing. I like the invalidate_sync proposal however
+renaming invalidate_inode_pages2() to invalidate_inode_pages_sync() is a
+larger undertaking - grep shows 51 places need to be changed. So I don't
+want to do it in this patch set. I can call the function
+dax_invalidate_mapping_entry_sync() if it makes you happier and do the rest
+later... OK?
+
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
