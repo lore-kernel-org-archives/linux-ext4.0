@@ -1,44 +1,85 @@
-From: <jeffrey.faulkenberg@triadunit2.org>
-Subject: (unknown)
-Date: Wed, 30 Nov 2016 20:44:35 -0000
-Message-ID: <148053867576.10159.895065935365558693@classic.com.np>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [RFD] Common userspace tool for fscypto
+Date: Wed, 30 Nov 2016 16:00:35 -0500
+Message-ID: <20161130210035.kqiyf6ifrza36w5l@thunk.org>
+References: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
+ <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
+ <f9bc005b-4e25-d705-e091-5f930e4246b1@nod.at>
+ <CAKpBdu1+k94WmwxeZ2Hyu5=ifNprPA0YedRm2xps-ooyVHTwhg@mail.gmail.com>
+ <87d9b3aa-684d-856a-0dcd-f960923f2484@nod.at>
 Mime-Version: 1.0
-Content-Type: application/zip; name="MESSAGE_4570313393_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cust18-136.classic.com.np ([103.51.18.136]:51837 "HELO
-        classic.com.np" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with SMTP id S1755356AbcK3Uom (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2016 15:44:42 -0500
-Content-Disposition: attachment
-Subject: 
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Joe Richey <joerichey@google.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, kzak@redhat.com,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Eric Biggers <ebiggers@google.com>,
+        David Gstir <david@sigma-star.at>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <87d9b3aa-684d-856a-0dcd-f960923f2484@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-UEsDBAoAAgAAAMEUgUmqKlPXEgUAABIFAAAFABwANS56aXBVVAkAA6k4P1ipOD9YdXgLAAEEAAAA
-AAQAAAAAUEsDBBQAAgAIAMEUgUlctlBmdAQAAPk9AAAEABwANS5qc1VUCQADqTg/WKk4P1h1eAsA
-AQQAAAAABAAAAADtm8tu20YUhtf2UwxmUUpIylgJ0roRhCJxancRJ0Vl1AFULShyKFLmTSNeTBV9
-91KS1Ypq0aKcL0EW9oILSfg958y5/uewdLSonIUSI5GoSlwWiZuHadKTZfNFVtZx2HyTB+FqqFVe
-6GT32WT7tCOVzPPg68F0KPvD09AXvUleZyr1RRUmXlpNJ2dTMRoJq0g85YeJ8qy+eK21U9uZTvN0
-8+OJFehwFqdW88vtSYanm3+t42Jxp4JB8+HE+sp6Kv7/Y3Pqqb1D7/V3sOWyjnzlLtS6OjeAbqmq
-K8j2IRu1yr9OKZ4IM7jmiozhpLDG5iCuDs1BshwASeY2o2J5GUYQkhrX5LWvckXCxR9mkJwL5UJI
-uTU8QOr3+se+HatSzfNvurm1jBqJdzj392oe+nXH+ACGhtKBVKcFBQRZmSyBKFVU5hjrlHSbMoDU
-c25+YXIEYNyOSfW4mkQLM3P5cps80YWmkoNDHotKDZJKCvvMgNoWWkX1SnPbWponeBn5pFRUKsbu
-T64rKmD2IaAhEDWBvE2kbOksyfv2qTASDCAgMaKAsMANxI2kMMeo1pBAKSBQcA4dxr6irinH+kEg
-xqN58BcUTa8gRYUp4Bg9UjTrgkR79WvzRwJu8G7RchnouDyoW5KVuV1JyzzlI9k+hGo02aPa/aX5
-iaSiWtkB0cpiid6CgKw+6ZsCbYxpQhlSWSLQphZVWUHVtv9BUS7UXVRk6Syvv+tIU8YblnIzadmz
-lH3x2+lJpRbh+mUDuR+bTMz0cTumWFsN0DQPN36A0+jgxM3ruyR0v92Mjbbid5ZZXmC8pgOSLQsg
-irdokakhHz2mCbycLXDmVJ8BlPX72h4iUGW9QpWl4g/QwWYED9Qy0yZWnsTLWhcr/+zRuT+9c3+Z
-0d5GRw+BioBO/chI6yCdpYNHE/1c+ecaNYmP1yTau+fm2rI/Qnd3/Y4U7ccbEu3mpyMvcn3lOqvZ
-i0c/+gyh/vVb87wv374xH5vKMdDBSeXER9Y0q72o1ulqtlnf2LcI3S3qim2mxxk79AzRQXF0SfF7
-kQcUhdrU5OXzI+MoIidxXnxZhiFvVAwhZe+BwWOsWmrf+lRWxMX9hl7YVTzdtZZS9i8TJh5e/XCY
-3J52m2/lwCIKVTe/ekZGhGcViVZR0347JI+VoGsRUUGiecj6KzXEA3ooG3CWNENtHAiaXgzMkYAB
-nU2FkQBYrvseXV4aEQ2WByzV5MYJ4+y4ZsXy60oRU96/FQD7Fm3SKbUBe3CtsmFq8OLGw0xSHg5m
-ThbpTCudm12A/FmtSHvP0gR9QUC9IeFSrz4ax4Ru6M9VkL406uPlGE3GmiLyM2xjCNjuiqiXUN5T
-GwftpqEV0kxixwOD8omahj58zlt2OgYUSu1Wbh/maLnHTknt5d0Aa2LgO1ot9R0wS0/EjkngNCkv
-IjQ8o6no3xiB/aCuu/lotGGCeAE39qheVd1T5iig3l66R6s4/2DadGVrzLg91KYof8qu3mIjA3D9
-oOUNf5ZozdX8/gdQSwECHgMUAAIACADBFIFJXLZQZnQEAAD5PQAABAAYAAAAAAABAAAApIEAAAAA
-NS5qc1VUBQADqTg/WHV4CwABBAAAAAAEAAAAAFBLBQYAAAAAAQABAEoAAACyBAAAAABQSwECHgMK
-AAIAAADBFIFJqipT1xIFAAASBQAABQAYAAAAAAAAAAAApIEAAAAANS56aXBVVAUAA6k4P1h1eAsA
-AQQAAAAABAAAAABQSwUGAAAAAAEAAQBLAAAAUQUAAAAA
+On Tue, Nov 29, 2016 at 10:59:28PM +0100, Richard Weinberger wrote:
+> Thanks for your quick response!
+> I hoped you had already some code, but having a decent design document
+> is also nice. I'm eager to read it.
+
+To be clear, the design document which Joe is working on is only
+addressing a new way of transforming a password or passphrase into a
+key.  Previouly, we used PBKDF2 using a per-file system salt.  (Well,
+that's what e4crypt used.  Android used a completely random key that
+was protected by the user's pin or passphrase --- possibly stored in
+ARM TrustZone on some handsets.)
+
+The goal is to come up with something that works well with
+single-signon (i.e., can be integrated into PAM), as well as removable
+storage devices and directories that are protected by some passphrase
+other than the user's login for those people who are especially
+security conscious.  It should also handle the password change case.
+
+It probably won't cover key recovery initially (that's probably more
+of a V2 or V3 thing), but the design should accomodate that.
+
+> Do you also plan to address d/page cache related issues?
+> i.e. when two users are logged into the system user rw
+> is able to see decrypted file names and contents in /home/dags/
+> if user dags installs a key and accessed a file.
+> 
+> Or files in /home/dags/ are still readable even after
+> user dags purged the key.
+> 
+> The tool could play games with CLONE_NEWNS to hide directories.
+> To provide a correct "logout" we could expose shrink_dcache_parent()
+> to usespace such that the emerging tool can purge the key and flush
+> the dcache on the encrypted directory. But I fear exposing shrink_dcache_parent()
+> is not a good idea. :-)
+
+Right now, the best thing I can suggest is "echo 3 >
+/proc/sys/vm/drop_caches" in executed PAM module on when the user
+terminates their login session.  If you're really paranoid, make sure
+all processes running under the user's pid are terminated with extreme
+prejudice first.
+
+We don't have a good solution for a high security directory (e.g.,
+$HOME/bitcoin) where you want to drop its keys and cached data in the
+middle of a user login session today.  The drop_caches solution
+doesn't work well on a time sharing system since it drops *all*
+caches.  Also, if you have anything keeping pages or file descriptors,
+etc., pinned, the drop_cache solution won't address that either.
+
+I suspect any realistic solution will require changes that will need
+to be run by the Al Viro and the MM folks, and may require adding
+something like BSD's revoke(2) functionality.  To be honest, this
+isn't a particularly high priority item at the moment for me or
+Michael's team at the moment, so if someone wants to work on it, feel
+free.  As they say, high quality patches are always accepted.  :-)
+
+Cheers,
+
+					- Ted
