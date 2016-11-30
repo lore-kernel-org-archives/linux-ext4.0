@@ -1,56 +1,46 @@
-From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [PATCHv5 22/36] mm, hugetlb: switch hugetlbfs to multi-order
- radix-tree entries
-Date: Wed, 30 Nov 2016 16:15:34 +0300
-Message-ID: <20161130131534.3k35cigsn36d7ku6@black.fi.intel.com>
-References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com>
- <20161129112304.90056-23-kirill.shutemov@linux.intel.com>
- <017501d24aee$d9a189c0$8ce49d40$@alibaba-inc.com>
+From: Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>
+Subject: Re: [PATCH 2/6] mm: Invalidate DAX radix tree entries only if
+ appropriate
+Date: Wed, 30 Nov 2016 10:59:44 -0500
+Message-ID: <20161130155944.GA12630@cmpxchg.org>
+References: <1479980796-26161-1-git-send-email-jack@suse.cz>
+ <1479980796-26161-3-git-send-email-jack@suse.cz>
+ <20161129193403.GA12396@cmpxchg.org>
+ <20161130080841.GD16667@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: 'Theodore Ts'o' <tytso@mit.edu>,
-        'Andreas Dilger' <adilger.kernel@dilger.ca>,
-        'Jan Kara' <jack@suse.com>,
-        'Andrew Morton' <akpm@linux-foundation.org>,
-        'Alexander Viro' <viro@zeniv.linux.org.uk>,
-        'Hugh Dickins' <hughd@google.com>,
-        'Andrea Arcangeli' <aarcange@redhat.com>,
-        'Dave Hansen' <dave.hansen@intel.com>,
-        'Vlastimil Babka' <vbabka@suse.cz>,
-        'Matthew Wilcox' <willy@infradead.org>,
-        'Ross Zwisler' <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        'Naoya Horiguchi' <n-horiguchi@ah.jp.nec.com>
-To: Hillf Danton <hillf.zj@alibaba-inc.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <017501d24aee$d9a189c0$8ce49d40$@alibaba-inc.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20161130080841.GD16667-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 30, 2016 at 05:48:05PM +0800, Hillf Danton wrote:
-> On Tuesday, November 29, 2016 7:23 PM Kirill A. Shutemov wrote:
-> > @@ -607,10 +605,10 @@ static long hugetlbfs_fallocate(struct file *file, int mode, loff_t offset,
-> >  		}
-> > 
-> >  		/* Set numa allocation policy based on index */
-> > -		hugetlb_set_vma_policy(&pseudo_vma, inode, index);
-> > +		hugetlb_set_vma_policy(&pseudo_vma, inode, index >> huge_page_order(h));
-> > 
-> >  		/* addr is the offset within the file (zero based) */
-> > -		addr = index * hpage_size;
-> > +		addr = index << PAGE_SHIFT & ~huge_page_mask(h);
-> > 
-> >  		/* mutex taken here, fault path and hole punch */
-> >  		hash = hugetlb_fault_mutex_hash(h, mm, &pseudo_vma, mapping,
+On Wed, Nov 30, 2016 at 09:08:41AM +0100, Jan Kara wrote:
+> > The naming situation with truncate, invalidate, invalidate2 worries me
+> > a bit. They aren't great names to begin with, but now DAX uses yet
+> > another terminology for what state prevents a page from being dropped.
+> > Can we switch to truncate, invalidate, and invalidate_sync throughout
+> > truncate.c and then have DAX follow that naming too? Or maybe you can
+> > think of better names. But neither invalidate2 and invalidate_clean
+> > don't seem to capture it quite right ;)
 > 
-> Seems we can't use index in computing hash as long as it isn't in huge page size.
+> Yeah, the naming is confusing. I like the invalidate_sync proposal however
+> renaming invalidate_inode_pages2() to invalidate_inode_pages_sync() is a
+> larger undertaking - grep shows 51 places need to be changed. So I don't
+> want to do it in this patch set. I can call the function
+> dax_invalidate_mapping_entry_sync() if it makes you happier and do the rest
+> later... OK?
 
-Look at changes in hugetlb_fault_mutex_hash(): we shift the index right by
-huge_page_order(), before calculating the hash. I don't see a problem
-here.
-
--- 
- Kirill A. Shutemov
+Yep, that sounds reasonable on both counts.
