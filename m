@@ -1,70 +1,155 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [RFD] Common userspace tool for fscypto
-Date: Tue, 29 Nov 2016 16:04:07 -0800
-Message-ID: <20161130000407.GB107713@google.com>
-References: <0bef3877-060e-b722-0354-3a5508219e23@nod.at>
- <CA+POJK10M3_GhP_Ge4qkQF4gSNMUXVr5kem9Ak4EDmVRvRUg7g@mail.gmail.com>
- <f9bc005b-4e25-d705-e091-5f930e4246b1@nod.at>
- <CAKpBdu1+k94WmwxeZ2Hyu5=ifNprPA0YedRm2xps-ooyVHTwhg@mail.gmail.com>
- <87d9b3aa-684d-856a-0dcd-f960923f2484@nod.at>
+From: Joe Richey <joerichey@google.com>
+Subject: Re: Idea behind EXT4_IOC_GET_ENCRYPTION_PWSALT?
+Date: Tue, 29 Nov 2016 16:44:53 -0800
+Message-ID: <CAKpBdu3OUUjqVAwDTNUaVoyuPRun_t6U9gi1prgyoswzYPuOow@mail.gmail.com>
+References: <bd1bb80f-f22c-1118-4438-f23372bad066@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Joe Richey <joerichey@google.com>,
-        Michael Halcrow <mhalcrow@google.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, kzak@redhat.com,
-        Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        David Gstir <david@sigma-star.at>,
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256;
+        boundary="94eb2c08676666c88905427a03d5"
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+        Michael Halcrow <mhalcrow@google.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, muslukhovi@gmail.com,
+        David Gstir <david@sigma-star.at>
 To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f53.google.com ([74.125.83.53]:34000 "EHLO
-        mail-pg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755359AbcK3AEb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Nov 2016 19:04:31 -0500
-Received: by mail-pg0-f53.google.com with SMTP id x23so74870784pgx.1
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Nov 2016 16:04:13 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <87d9b3aa-684d-856a-0dcd-f960923f2484@nod.at>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <bd1bb80f-f22c-1118-4438-f23372bad066@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Nov 29, 2016 at 10:59:28PM +0100, Richard Weinberger wrote:
-> 
-> Do you also plan to address d/page cache related issues?
-> i.e. when two users are logged into the system user rw
-> is able to see decrypted file names and contents in /home/dags/
-> if user dags installs a key and accessed a file.
-> 
+--94eb2c08676666c88905427a03d5
+Content-Type: text/plain; charset=UTF-8
 
-As far as I know, there are no plans to make it possible for one user to see
-plaintext while another user sees ciphertext.  Fundamentally, the dentry, inode,
-and page caches are shared systemwide.  This cannot be changed by using
-namespaces; it can only be changed by doing something like an ecryptfs-style
-stacked mount where the plaintext and ciphertext are actually exposed by
-different filesystems.  And it was a fundamental design goal of ext4 encryption
-to not do a stacked mount.
+Richard,
 
-So the expectation is that to restrict access by other users once a key has been
-provisioned, file permissions should be used.
+Our current design for fscrypt (tentative name for the userspace
+filesystem encryption manager) does not use the global filesystem salt
+(EXT4_IOC_GET_ENCRYPTION_PWSALT), we are planning on having a
+different salt for each password used in the system. We are using
+planning on using Argon2id as the password stretching algorithm, so
+we'll have costs for memory, time, and parallelism stored for each
+password as well as a salt.
 
-> Or files in /home/dags/ are still readable even after
-> user dags purged the key.
+I can't speak to other uses of the ioctl.
 
-If you revoke the key (with 'keyctl revoke') rather than unlink the key (with
-'keyctl unlink') then it actually does appear to work currently.  The difference
-is that revoking the key is a modification of the key, whereas unlinking the key
-is only removing a link to the key without affecting any links which the kernel
-may have internally or which userspace may have in other keyrings.  Revocation
-(but not unlinking) is detected by fscrypt_get_encryption_info() when someone
-tries to open an encrypted file or directory.  There's also a d_revalidate
-dentry operation which cause a dentry to be invalidated if it's a plaintext name
-but the directory key is no longer valid, or if it's a ciphertext name but the
-directory key is now valid.
+Joe
 
-There is however still work needed to make key revocation interact sanely with
-ongoing filesystem operations.
 
-Eric
+On Tue, Nov 29, 2016 at 1:30 PM, Richard Weinberger <richard@nod.at> wrote:
+> Hi!
+>
+> As the subject states, I'm a bit confused wrt. EXT4_IOC_GET_ENCRYPTION_PWSALT.
+> Will common fscrypt userspace depend on it?
+>
+> IIUC you want to store some salt to seed the user password.
+> But what if /home/rw and /home/dags have different keys? Is it okay
+> to use the same salt for both keys?
+> Or is it an ad-hoc solution to allow an encrypted filesystem root
+> because you need a way to store the seed on the same filesystem but not as
+> file since all files are encrypted?
+> Wouldn't a xattr stored in the filesystem root directory also do it?
+>
+> Long story short, I'm not sure whether we really need this ioctl command
+> in UBIFS and what the designated semantics are. :-)
+>
+> Thanks,
+> //richard
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--94eb2c08676666c88905427a03d5
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIIS7QYJKoZIhvcNAQcCoIIS3jCCEtoCAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGg
+ghBTMIIEXDCCA0SgAwIBAgIOSBtqDm4P/739RPqw/wcwDQYJKoZIhvcNAQELBQAwZDELMAkGA1UE
+BhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExOjA4BgNVBAMTMUdsb2JhbFNpZ24gUGVy
+c29uYWxTaWduIFBhcnRuZXJzIENBIC0gU0hBMjU2IC0gRzIwHhcNMTYwNjE1MDAwMDAwWhcNMjEw
+NjE1MDAwMDAwWjBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEiMCAG
+A1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+AQoCggEBALR23lKtjlZW/17kthzYcMHHKFgywfc4vLIjfq42NmMWbXkNUabIgS8KX4PnIFsTlD6F
+GO2fqnsTygvYPFBSMX4OCFtJXoikP2CQlEvO7WooyE94tqmqD+w0YtyP2IB5j4KvOIeNv1Gbnnes
+BIUWLFxs1ERvYDhmk+OrvW7Vd8ZfpRJj71Rb+QQsUpkyTySaqALXnyztTDp1L5d1bABJN/bJbEU3
+Hf5FLrANmognIu+Npty6GrA6p3yKELzTsilOFmYNWg7L838NS2JbFOndl+ce89gM36CW7vyhszi6
+6LqqzJL8MsmkP53GGhf11YMP9EkmawYouMDP/PwQYhIiUO0CAwEAAaOCASIwggEeMA4GA1UdDwEB
+/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwEgYDVR0TAQH/BAgwBgEB/wIB
+ADAdBgNVHQ4EFgQUyzgSsMeZwHiSjLMhleb0JmLA4D8wHwYDVR0jBBgwFoAUJiSSix/TRK+xsBtt
+r+500ox4AAMwSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDovL2NybC5nbG9iYWxzaWduLmNvbS9ncy9n
+c3BlcnNvbmFsc2lnbnB0bnJzc2hhMmcyLmNybDBMBgNVHSAERTBDMEEGCSsGAQQBoDIBKDA0MDIG
+CCsGAQUFBwIBFiZodHRwczovL3d3dy5nbG9iYWxzaWduLmNvbS9yZXBvc2l0b3J5LzANBgkqhkiG
+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
+QAYIKwYBBQUHMAKGNGh0dHA6Ly9zZWN1cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L2dzaHZzbWlt
+ZWNhMS5jcnQwHQYDVR0OBBYEFIzdacNPR4CxZxcfYVOn0kurxuOYMB8GA1UdIwQYMBaAFMs4ErDH
+mcB4koyzIZXm9CZiwOA/MEwGA1UdIARFMEMwQQYJKwYBBAGgMgEoMDQwMgYIKwYBBQUHAgEWJmh0
+dHBzOi8vd3d3Lmdsb2JhbHNpZ24uY29tL3JlcG9zaXRvcnkvMDsGA1UdHwQ0MDIwMKAuoCyGKmh0
+dHA6Ly9jcmwuZ2xvYmFsc2lnbi5jb20vZ3NodnNtaW1lY2ExLmNybDAOBgNVHQ8BAf8EBAMCBaAw
+HQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4IBAQAESPQix4jl
+tO0Y5E5w9HIuLMT775Dc8T4ddEq1WlwZwiC3+wUvycRlBmLTD/9Kl9VkZEymqwP3OkzHsmWyAcmU
+JXvwDIgWqmHjrGhxO6/GWC1Z/+LD9aY1iCEjzSBxUpkyAdON+QcdabM8rQjGaeIISC3DA7luQACW
+xcTkDKtxV+KG54Nh6lBI52Xee/vUkgWP8zF7AskYoh7WXIlT++pUvLsLXyzQ+2/q7uo6WvqqAEBi
+nBKGKtVwFRuIWJqdfix5Cw0tPOmyIvgphEL/HnVQNilaYDSly0p9fNPYjP5YAPB+3hHschaYY4TC
+eU9cXFsl1/C1pCe51dT7ZblpgjqZMYICXjCCAloCAQEwXDBMMQswCQYDVQQGEwJCRTEZMBcGA1UE
+ChMQR2xvYmFsU2lnbiBudi1zYTEiMCAGA1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMQIM
+PV9GeTJlm18T4QwsMA0GCWCGSAFlAwQCAQUAoIHUMC8GCSqGSIb3DQEJBDEiBCC0jSA9/60X357o
+71nJrEhWtCVth/gc13VTJcOLFh8TIjAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3
+DQEJBTEPFw0xNjExMzAwMDQ0NTRaMGkGCSqGSIb3DQEJDzFcMFowCwYJYIZIAWUDBAEqMAsGCWCG
+SAFlAwQBFjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwCwYJKoZIhvcNAQEKMAsGCSqGSIb3DQEB
+BzALBglghkgBZQMEAgEwDQYJKoZIhvcNAQEBBQAEggEALWB/WAnw7Oviabz/8a7t+yyhsZw8w9b1
+6fP4xXXalWlIGxcrnN/Lsyk2DHYUbu8MwGa2clr6szSdsMrLVpOK5UtZLi1lshl4wzoi5njZGLqd
+NFDeuwvchq3InmFgL7Lyca/HVtQGfAkDJ9JA33cPRMd7SkIvlVwRjU8ofFPBMb367EF+Z0lycUDu
+MSjZzCJdu7QQ5hKvrLk0AewNMuvDY17fiXBWBmuBQvpgAa03EI4jJ3AwXquBvB6jtMfFz28bh4/d
+86lwk1dMFUHXtl1bwWmKOzEHAiUwF8fMCklGZICsbG86hTEpyEJAnfRgtGFF5vZfCYqXXUHKH5Ma
+68FHnQ==
+--94eb2c08676666c88905427a03d5--
