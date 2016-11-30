@@ -1,86 +1,44 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
-Date: Wed, 30 Nov 2016 12:04:31 -0700
-Message-ID: <20161130190431.GA11793@linux.intel.com>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
- <20161124090239.GA24138@quack2.suse.cz>
- <20161128191504.GB6637@linux.intel.com>
- <20161129085303.GA7550@quack2.suse.cz>
+From: <jeffrey.faulkenberg@triadunit2.org>
+Subject: (unknown)
+Date: Wed, 30 Nov 2016 20:44:35 -0000
+Message-ID: <148053867576.10159.895065935365558693@classic.com.np>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20161129085303.GA7550-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="MESSAGE_4570313393_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cust18-136.classic.com.np ([103.51.18.136]:51837 "HELO
+        classic.com.np" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with SMTP id S1755356AbcK3Uom (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Nov 2016 15:44:42 -0500
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 29, 2016 at 09:53:03AM +0100, Jan Kara wrote:
-> On Mon 28-11-16 12:15:04, Ross Zwisler wrote:
-> > On Thu, Nov 24, 2016 at 10:02:39AM +0100, Jan Kara wrote:
-> > > On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
-> > > > With the current Kconfig setup it is possible to have the following:
-> > > > 
-> > > > CONFIG_EXT4_FS=y
-> > > > CONFIG_FS_DAX=y
-> > > > CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
-> > > > 
-> > > > With this config we get build failures in ext4_dax_fault() because the
-> > > > iomap functions in fs/dax.c are missing:
-> > > > 
-> > > > fs/built-in.o: In function `ext4_dax_fault':
-> > > > file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
-> > > > file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
-> > > > fs/built-in.o: In function `ext4_file_read_iter':
-> > > > file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
-> > > > fs/built-in.o: In function `ext4_file_write_iter':
-> > > > file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
-> > > > file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
-> > > > fs/built-in.o: In function `ext4_block_zero_page_range':
-> > > > inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
-> > > > 
-> > > > Now that the struct buffer_head based DAX fault paths and I/O path have
-> > > > been removed we really depend on iomap support being present for DAX.  Make
-> > > > this explicit by selecting FS_IOMAP if we compile in DAX support.
-> > > > 
-> > > > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> > > 
-> > > I've sent the same patch to Ted yesterday and he will probably queue it on
-> > > top of ext4 iomap patches. If it doesn't happen for some reason, feel free
-> > > to add:
-> > > 
-> > > Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> > 
-> > Cool, looks like Ted has pulled in your patch.
-> > 
-> > I think we still eventually want this patch because it cleans up our handling
-> > of FS_IOMAP.  With your patch we select it separately in both ext4 & ext2
-> > based on whether we include DAX, and we still have #ifdefs in fs/dax.c for
-> > FS_IOMAP.
-> 
-> Actually, based on Dave's request I've also sent Ted updated version which
-> did select FS_IOMAP in CONFIG_DAX section. However Ted didn't pull that
-> patch (yet?). Anyway, I don't care whose patch gets merged, I just wanted
-> to notify you of possible conflict.
-
-Can you please CC me on these patches in the future?  I also don't care whose
-patches end up fixing this, but I want to make sure we end up in a world where
-the "select FS_IOMAP" just happens directly for FS_DAX in fs/Kconfig so that
-I can get rid of the unnecessary #ifdefs in fs/dax.c for CONFIG_FS_IOMAP.
+UEsDBAoAAgAAAMEUgUmqKlPXEgUAABIFAAAFABwANS56aXBVVAkAA6k4P1ipOD9YdXgLAAEEAAAA
+AAQAAAAAUEsDBBQAAgAIAMEUgUlctlBmdAQAAPk9AAAEABwANS5qc1VUCQADqTg/WKk4P1h1eAsA
+AQQAAAAABAAAAADtm8tu20YUhtf2UwxmUUpIylgJ0roRhCJxancRJ0Vl1AFULShyKFLmTSNeTBV9
+91KS1Ypq0aKcL0EW9oILSfg958y5/uewdLSonIUSI5GoSlwWiZuHadKTZfNFVtZx2HyTB+FqqFVe
+6GT32WT7tCOVzPPg68F0KPvD09AXvUleZyr1RRUmXlpNJ2dTMRoJq0g85YeJ8qy+eK21U9uZTvN0
+8+OJFehwFqdW88vtSYanm3+t42Jxp4JB8+HE+sp6Kv7/Y3Pqqb1D7/V3sOWyjnzlLtS6OjeAbqmq
+K8j2IRu1yr9OKZ4IM7jmiozhpLDG5iCuDs1BshwASeY2o2J5GUYQkhrX5LWvckXCxR9mkJwL5UJI
+uTU8QOr3+se+HatSzfNvurm1jBqJdzj392oe+nXH+ACGhtKBVKcFBQRZmSyBKFVU5hjrlHSbMoDU
+c25+YXIEYNyOSfW4mkQLM3P5cps80YWmkoNDHotKDZJKCvvMgNoWWkX1SnPbWponeBn5pFRUKsbu
+T64rKmD2IaAhEDWBvE2kbOksyfv2qTASDCAgMaKAsMANxI2kMMeo1pBAKSBQcA4dxr6irinH+kEg
+xqN58BcUTa8gRYUp4Bg9UjTrgkR79WvzRwJu8G7RchnouDyoW5KVuV1JyzzlI9k+hGo02aPa/aX5
+iaSiWtkB0cpiid6CgKw+6ZsCbYxpQhlSWSLQphZVWUHVtv9BUS7UXVRk6Syvv+tIU8YblnIzadmz
+lH3x2+lJpRbh+mUDuR+bTMz0cTumWFsN0DQPN36A0+jgxM3ruyR0v92Mjbbid5ZZXmC8pgOSLQsg
+irdokakhHz2mCbycLXDmVJ8BlPX72h4iUGW9QpWl4g/QwWYED9Qy0yZWnsTLWhcr/+zRuT+9c3+Z
+0d5GRw+BioBO/chI6yCdpYNHE/1c+ecaNYmP1yTau+fm2rI/Qnd3/Y4U7ccbEu3mpyMvcn3lOqvZ
+i0c/+gyh/vVb87wv374xH5vKMdDBSeXER9Y0q72o1ulqtlnf2LcI3S3qim2mxxk79AzRQXF0SfF7
+kQcUhdrU5OXzI+MoIidxXnxZhiFvVAwhZe+BwWOsWmrf+lRWxMX9hl7YVTzdtZZS9i8TJh5e/XCY
+3J52m2/lwCIKVTe/ekZGhGcViVZR0347JI+VoGsRUUGiecj6KzXEA3ooG3CWNENtHAiaXgzMkYAB
+nU2FkQBYrvseXV4aEQ2WByzV5MYJ4+y4ZsXy60oRU96/FQD7Fm3SKbUBe3CtsmFq8OLGw0xSHg5m
+ThbpTCudm12A/FmtSHvP0gR9QUC9IeFSrz4ax4Ru6M9VkL406uPlGE3GmiLyM2xjCNjuiqiXUN5T
+GwftpqEV0kxixwOD8omahj58zlt2OgYUSu1Wbh/maLnHTknt5d0Aa2LgO1ot9R0wS0/EjkngNCkv
+IjQ8o6no3xiB/aCuu/lotGGCeAE39qheVd1T5iig3l66R6s4/2DadGVrzLg91KYof8qu3mIjA3D9
+oOUNf5ZozdX8/gdQSwECHgMUAAIACADBFIFJXLZQZnQEAAD5PQAABAAYAAAAAAABAAAApIEAAAAA
+NS5qc1VUBQADqTg/WHV4CwABBAAAAAAEAAAAAFBLBQYAAAAAAQABAEoAAACyBAAAAABQSwECHgMK
+AAIAAADBFIFJqipT1xIFAAASBQAABQAYAAAAAAAAAAAApIEAAAAANS56aXBVVAUAA6k4P1h1eAsA
+AQQAAAAABAAAAABQSwUGAAAAAAEAAQBLAAAAUQUAAAAA
