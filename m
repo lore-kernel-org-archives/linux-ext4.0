@@ -1,180 +1,115 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 2/6] mm: Invalidate DAX radix tree entries only if
- appropriate
-Date: Wed, 30 Nov 2016 09:08:41 +0100
-Message-ID: <20161130080841.GD16667@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/6] dax: Avoid page invalidation races and unnecessary
+ radix tree traversals
+Date: Wed, 30 Nov 2016 09:23:18 +0100
+Message-ID: <20161130082318.GE16667@quack2.suse.cz>
 References: <1479980796-26161-1-git-send-email-jack@suse.cz>
- <1479980796-26161-3-git-send-email-jack@suse.cz>
- <20161129193403.GA12396@cmpxchg.org>
+ <1479980796-26161-4-git-send-email-jack@suse.cz>
+ <20161129223138.GB16608@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, Johannes Weiner <hannes@cmpxchg.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161129193403.GA12396-druUgvl0LCNAfugRpC6u6w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161129223138.GB16608@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Johannes,
-
-On Tue 29-11-16 14:34:03, Johannes Weiner wrote:
-> On Thu, Nov 24, 2016 at 10:46:32AM +0100, Jan Kara wrote:
-> > @@ -452,16 +452,37 @@ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> >  		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
-> >  }
-> >  
-> > +static int __dax_invalidate_mapping_entry(struct address_space *mapping,
-> > +					  pgoff_t index, bool trunc)
-> > +{
-> > +	int ret = 0;
-> > +	void *entry;
-> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
-> > +
-> > +	spin_lock_irq(&mapping->tree_lock);
-> > +	entry = get_unlocked_mapping_entry(mapping, index, NULL);
-> > +	if (!entry || !radix_tree_exceptional_entry(entry))
-> > +		goto out;
-> > +	if (!trunc &&
-> > +	    (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
-> > +	     radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE)))
-> > +		goto out;
-> > +	radix_tree_delete(page_tree, index);
+On Tue 29-11-16 15:31:38, Ross Zwisler wrote:
+> On Thu, Nov 24, 2016 at 10:46:33AM +0100, Jan Kara wrote:
+> > Currently each filesystem (possibly through generic_file_direct_write()
+> > or iomap_dax_rw()) takes care of invalidating page tables and evicting
 > 
-> You could use the new __radix_tree_replace() here and save a second
-> tree lookup.
+> Just some nits about the commit message: the DAX I/O path function is now
+> called dax_iomap_rw(), and no filesystems still use
+> generic_file_direct_write() for DAX so you can probably remove it from the
+> changelog - up to you.
 
-Hum, I'd need to return 'node' from get_unlocked_mapping_entry(). So
-probably I'll do it in a patch separate from this fix. But thanks for
-suggestion.
+Yeah, good spotting. Many things have changed through rebases. I've fixed
+up the changelog to reflect current state.
 
-> > +/*
-> > + * Invalidate exceptional DAX entry if easily possible. This handles DAX
-> > + * entries for invalidate_inode_pages() so we evict the entry only if we can
-> > + * do so without blocking.
-> > + */
-> > +int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index)
-> > +{
-> > +	int ret = 0;
-> > +	void *entry, **slot;
-> > +	struct radix_tree_root *page_tree = &mapping->page_tree;
-> > +
-> > +	spin_lock_irq(&mapping->tree_lock);
-> > +	entry = __radix_tree_lookup(page_tree, index, NULL, &slot);
-> > +	if (!entry || !radix_tree_exceptional_entry(entry) ||
-> > +	    slot_locked(mapping, slot))
-> > +		goto out;
-> > +	if (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
-> > +	    radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
-> > +		goto out;
-> > +	radix_tree_delete(page_tree, index);
-> 
-> Ditto for __radix_tree_replace().
+> Aside from that:
+> Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Yes, here I can do it easily rightaway.
-
-> > @@ -30,14 +30,6 @@ static void clear_exceptional_entry(struct address_space *mapping,
-> >  	struct radix_tree_node *node;
-> >  	void **slot;
-> >  
-> > -	/* Handled by shmem itself */
-> > -	if (shmem_mapping(mapping))
-> > -		return;
-> > -
-> > -	if (dax_mapping(mapping)) {
-> > -		dax_delete_mapping_entry(mapping, index);
-> > -		return;
-> > -	}
-> >  	spin_lock_irq(&mapping->tree_lock);
-> >  	/*
-> >  	 * Regular page slots are stabilized by the page lock even
-> > @@ -70,6 +62,56 @@ static void clear_exceptional_entry(struct address_space *mapping,
-> >  	spin_unlock_irq(&mapping->tree_lock);
-> >  }
-> >  
-> > +/*
-> > + * Unconditionally remove exceptional entry. Usually called from truncate path.
-> > + */
-> > +static void truncate_exceptional_entry(struct address_space *mapping,
-> > +				       pgoff_t index, void *entry)
-> > +{
-> > +	/* Handled by shmem itself */
-> > +	if (shmem_mapping(mapping))
-> > +		return;
-> > +
-> > +	if (dax_mapping(mapping)) {
-> > +		dax_delete_mapping_entry(mapping, index);
-> > +		return;
-> > +	}
-> > +	clear_exceptional_entry(mapping, index, entry);
-> > +}
-> > +
-> > +/*
-> > + * Invalidate exceptional entry if easily possible. This handles exceptional
-> > + * entries for invalidate_inode_pages() so for DAX it evicts only unlocked and
-> > + * clean entries.
-> > + */
-> > +static int invalidate_exceptional_entry(struct address_space *mapping,
-> > +					pgoff_t index, void *entry)
-> > +{
-> > +	/* Handled by shmem itself */
-> > +	if (shmem_mapping(mapping))
-> > +		return 1;
-> > +	if (dax_mapping(mapping))
-> > +		return dax_invalidate_mapping_entry(mapping, index);
-> > +	clear_exceptional_entry(mapping, index, entry);
-> > +	return 1;
-> > +}
-> > +
-> > +/*
-> > + * Invalidate exceptional entry if clean. This handles exceptional entries for
-> > + * invalidate_inode_pages2() so for DAX it evicts only clean entries.
-> > + */
-> > +static int invalidate_exceptional_entry2(struct address_space *mapping,
-> > +					 pgoff_t index, void *entry)
-> > +{
-> > +	/* Handled by shmem itself */
-> > +	if (shmem_mapping(mapping))
-> > +		return 1;
-> > +	if (dax_mapping(mapping))
-> > +		return dax_invalidate_clean_mapping_entry(mapping, index);
-> > +	clear_exceptional_entry(mapping, index, entry);
-> > +	return 1;
-> > +}
-> 
-> The way these functions are split out looks fine to me.
-> 
-> Now that clear_exceptional_entry() doesn't handle shmem and DAX
-> anymore, only shadows, could you rename it to clear_shadow_entry()?
-
-Sure. Done.
-
-> The naming situation with truncate, invalidate, invalidate2 worries me
-> a bit. They aren't great names to begin with, but now DAX uses yet
-> another terminology for what state prevents a page from being dropped.
-> Can we switch to truncate, invalidate, and invalidate_sync throughout
-> truncate.c and then have DAX follow that naming too? Or maybe you can
-> think of better names. But neither invalidate2 and invalidate_clean
-> don't seem to capture it quite right ;)
-
-Yeah, the naming is confusing. I like the invalidate_sync proposal however
-renaming invalidate_inode_pages2() to invalidate_inode_pages_sync() is a
-larger undertaking - grep shows 51 places need to be changed. So I don't
-want to do it in this patch set. I can call the function
-dax_invalidate_mapping_entry_sync() if it makes you happier and do the rest
-later... OK?
+Thanks.
 
 								Honza
+
+> 
+> > hole pages from the radix tree when write(2) to the file happens. This
+> > invalidation is only necessary when there is some block allocation
+> > resulting from write(2). Furthermore in current place the invalidation
+> > is racy wrt page fault instantiating a hole page just after we have
+> > invalidated it.
+> > 
+> > So perform the page invalidation inside dax_do_io() where we can do it
+> > only when really necessary and after blocks have been allocated so
+> > nobody will be instantiating new hole pages anymore.
+> > 
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/dax.c | 28 +++++++++++-----------------
+> >  1 file changed, 11 insertions(+), 17 deletions(-)
+> > 
+> > diff --git a/fs/dax.c b/fs/dax.c
+> > index 4534f0e232e9..ddf77ef2ca18 100644
+> > --- a/fs/dax.c
+> > +++ b/fs/dax.c
+> > @@ -984,6 +984,17 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+> >  	if (WARN_ON_ONCE(iomap->type != IOMAP_MAPPED))
+> >  		return -EIO;
+> >  
+> > +	/*
+> > +	 * Write can allocate block for an area which has a hole page mapped
+> > +	 * into page tables. We have to tear down these mappings so that data
+> > +	 * written by write(2) is visible in mmap.
+> > +	 */
+> > +	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
+> > +		invalidate_inode_pages2_range(inode->i_mapping,
+> > +					      pos >> PAGE_SHIFT,
+> > +					      (end - 1) >> PAGE_SHIFT);
+> > +	}
+> > +
+> >  	while (pos < end) {
+> >  		unsigned offset = pos & (PAGE_SIZE - 1);
+> >  		struct blk_dax_ctl dax = { 0 };
+> > @@ -1042,23 +1053,6 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+> >  	if (iov_iter_rw(iter) == WRITE)
+> >  		flags |= IOMAP_WRITE;
+> >  
+> > -	/*
+> > -	 * Yes, even DAX files can have page cache attached to them:  A zeroed
+> > -	 * page is inserted into the pagecache when we have to serve a write
+> > -	 * fault on a hole.  It should never be dirtied and can simply be
+> > -	 * dropped from the pagecache once we get real data for the page.
+> > -	 *
+> > -	 * XXX: This is racy against mmap, and there's nothing we can do about
+> > -	 * it. We'll eventually need to shift this down even further so that
+> > -	 * we can check if we allocated blocks over a hole first.
+> > -	 */
+> > -	if (mapping->nrpages) {
+> > -		ret = invalidate_inode_pages2_range(mapping,
+> > -				pos >> PAGE_SHIFT,
+> > -				(pos + iov_iter_count(iter) - 1) >> PAGE_SHIFT);
+> > -		WARN_ON_ONCE(ret);
+> > -	}
+> > -
+> >  	while (iov_iter_count(iter)) {
+> >  		ret = iomap_apply(inode, pos, iov_iter_count(iter), flags, ops,
+> >  				iter, dax_iomap_actor);
+> > -- 
+> > 2.6.6
+> > 
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
