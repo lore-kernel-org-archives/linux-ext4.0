@@ -1,35 +1,73 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
 Subject: Re: [PATCH 5/6] dax: Call ->iomap_begin without entry lock during
  dax fault
-Date: Thu, 1 Dec 2016 15:24:47 -0700
-Message-ID: <20161201222447.GB13739@linux.intel.com>
+Date: Thu, 1 Dec 2016 16:27:04 -0700
+Message-ID: <20161201232704.GC13739@linux.intel.com>
 References: <1479980796-26161-1-git-send-email-jack@suse.cz>
  <1479980796-26161-6-git-send-email-jack@suse.cz>
+ <20161201222447.GB13739@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-        linux-nvdimm@lists.01.org, Johannes Weiner <hannes@cmpxchg.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:6627 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932182AbcLAWYt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Dec 2016 17:24:49 -0500
+To: Ross Zwisler <ross.zwisler@linux.intel.com>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	Johannes Weiner <hannes@cmpxchg.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1479980796-26161-6-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161201222447.GB13739@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 24, 2016 at 10:46:35AM +0100, Jan Kara wrote:
-> Currently ->iomap_begin() handler is called with entry lock held. If the
-> filesystem held any locks between ->iomap_begin() and ->iomap_end()
-> (such as ext4 which will want to hold transaction open), this would cause
-> lock inversion with the iomap_apply() from standard IO path which first
-> calls ->iomap_begin() and only then calls ->actor() callback which grabs
-> entry locks for DAX.
+On Thu, Dec 01, 2016 at 03:24:47PM -0700, Ross Zwisler wrote:
+> On Thu, Nov 24, 2016 at 10:46:35AM +0100, Jan Kara wrote:
+> > Currently ->iomap_begin() handler is called with entry lock held. If the
+> > filesystem held any locks between ->iomap_begin() and ->iomap_end()
+> > (such as ext4 which will want to hold transaction open), this would cause
+> > lock inversion with the iomap_apply() from standard IO path which first
+> > calls ->iomap_begin() and only then calls ->actor() callback which grabs
+> > entry locks for DAX.
+> 
+> I don't see the dax_iomap_actor() grabbing any entry locks for DAX?  Is this
+> an issue currently, or are you just trying to make the code consistent so we
+> don't run into issues in the future?
 
-I don't see the dax_iomap_actor() grabbing any entry locks for DAX?  Is this
-an issue currently, or are you just trying to make the code consistent so we
-don't run into issues in the future?
+Ah, I see that you use this new ordering in patch 6/6 so that you can change
+your interaction with the ext4 journal.  I'm still curious if we have a lock
+ordering inversion within DAX, but if this ordering helps you with ext4, good
+enough.
+
+One quick comment:
+
+> @@ -1337,19 +1353,10 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+>        */                                                                     
+>       entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);              
+>       if (IS_ERR(entry))                                                      
+> -             goto fallback;                                                  
+> +             goto finish_iomap;                                              
+>                                                                               
+> -     /*                                                                      
+> -      * Note that we don't use iomap_apply here.  We aren't doing I/O, only  
+> -      * setting up a mapping, so really we're using iomap_begin() as a way   
+> -      * to look up our filesystem block.                                     
+> -      */                                                                     
+> -     pos = (loff_t)pgoff << PAGE_SHIFT;                                      
+> -     error = ops->iomap_begin(inode, pos, PMD_SIZE, iomap_flags, &iomap);    
+> -     if (error)                                                              
+> -             goto unlock_entry;                                              
+>       if (iomap.offset + iomap.length < pos + PMD_SIZE)                       
+> -             goto finish_iomap;                                              
+> +             goto unlock_entry;       
+
+I think this offset+length bounds check could be moved along with the
+iomap_begin() call up above the grab_mapping_entry().  You would then goto
+'finish_iomap' if you hit this error condition, allowing you to avoid grabbing
+and releasing of the mapping entry.
+
+Other than that one small nit, this looks fine to me:
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
