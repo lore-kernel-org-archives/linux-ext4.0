@@ -1,8 +1,7 @@
 From: Richard Weinberger <richard@nod.at>
-Subject: [PATCH 1/6] ext4: Move is_32bit_api() to generic code
-Date: Thu,  1 Dec 2016 23:02:16 +0100
-Message-ID: <1480629741-18375-2-git-send-email-richard@nod.at>
-References: <1480629741-18375-1-git-send-email-richard@nod.at>
+Subject: [PATCH 0/6] UBIFS NFS export support
+Date: Thu,  1 Dec 2016 23:02:15 +0100
+Message-ID: <1480629741-18375-1-git-send-email-richard@nod.at>
 Cc: david@sigma-star.at, tytso@mit.edu, dedekind1@gmail.com,
         adrian.hunter@intel.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
@@ -10,55 +9,35 @@ Cc: david@sigma-star.at, tytso@mit.edu, dedekind1@gmail.com,
         Richard Weinberger <richard@nod.at>
 To: linux-mtd@lists.infradead.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1480629741-18375-1-git-send-email-richard@nod.at>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Since UBIFS will also use this function, move it to compat.h.
+Adding fscrypto support to UBIFS forced us to implement 64bit
+cookies. Using this building block we can finally implement
+export operations and allow UBIFS being exported via NFS.
+This series adds the last missing bits.
 
-Signed-off-by: Richard Weinberger <richard@nod.at>
----
- fs/ext4/dir.c          | 9 ---------
- include/linux/compat.h | 2 ++
- 2 files changed, 2 insertions(+), 9 deletions(-)
+It can be obtained from:
+git://git.infradead.org/users/rw/linux.git ubifs_export_v1
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index e8b365000d73..464e6e99d744 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -290,15 +290,6 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 	return err;
- }
- 
--static inline int is_32bit_api(void)
--{
--#ifdef CONFIG_COMPAT
--	return in_compat_syscall();
--#else
--	return (BITS_PER_LONG == 32);
--#endif
--}
--
- /*
-  * These functions convert from the major/minor hash to an f_pos
-  * value for dx directories
-diff --git a/include/linux/compat.h b/include/linux/compat.h
-index 63609398ef9f..8412382e8d08 100644
---- a/include/linux/compat.h
-+++ b/include/linux/compat.h
-@@ -730,11 +730,13 @@ asmlinkage long compat_sys_fanotify_mark(int, unsigned int, __u32, __u32,
- #ifndef in_compat_syscall
- static inline bool in_compat_syscall(void) { return is_compat_task(); }
- #endif
-+static inline int is_32bit_api(void) { return in_compat_syscall(); }
- 
- #else
- 
- #define is_compat_task() (0)
- static inline bool in_compat_syscall(void) { return false; }
-+static inline int is_32bit_api(void) { return BITS_PER_LONG == 32; }
- 
- #endif /* CONFIG_COMPAT */
- 
+Richard Weinberger (6):
+  ext4: Move is_32bit_api() to generic code
+  ubifs: Provide a custom llseek for directories
+  ubifs: Use 64bit readdir cookies
+  ubifs: Maintain a parent pointer
+  ubifs: Implement export_operations
+  ubifs: Wire up NFS support
+
+ fs/ext4/dir.c          |  9 ------
+ fs/ubifs/dir.c         | 88 ++++++++++++++++++++++++++++++++++++++------------
+ fs/ubifs/journal.c     |  5 ++-
+ fs/ubifs/key.h         | 59 +++++++++++++++++++++++++++++++++
+ fs/ubifs/sb.c          |  2 ++
+ fs/ubifs/super.c       | 35 ++++++++++++++++++++
+ fs/ubifs/ubifs-media.h | 18 +++++++++--
+ fs/ubifs/ubifs.h       |  6 ++++
+ include/linux/compat.h |  2 ++
+ 9 files changed, 190 insertions(+), 34 deletions(-)
+
 -- 
 2.7.3
