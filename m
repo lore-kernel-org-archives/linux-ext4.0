@@ -1,38 +1,73 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: validate s_first_meta_bg at mount time
-Date: Thu, 1 Dec 2016 15:09:44 -0500
-Message-ID: <20161201200944.ar2mvwxxgzchah66@thunk.org>
-References: <20161129055717.4154-1-guaneryu@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eryu Guan <guaneryu@gmail.com>
+From: Richard Weinberger <richard@nod.at>
+Subject: [PATCH 6/6] ubifs: Wire up NFS support
+Date: Thu,  1 Dec 2016 23:02:21 +0100
+Message-ID: <1480629741-18375-7-git-send-email-richard@nod.at>
+References: <1480629741-18375-1-git-send-email-richard@nod.at>
+Cc: david@sigma-star.at, tytso@mit.edu, dedekind1@gmail.com,
+        adrian.hunter@intel.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+        akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+        Richard Weinberger <richard@nod.at>
+To: linux-mtd@lists.infradead.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55106 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750975AbcLAUJq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Dec 2016 15:09:46 -0500
-Content-Disposition: inline
-In-Reply-To: <20161129055717.4154-1-guaneryu@gmail.com>
+Received: from mail.sigma-star.at ([95.130.255.111]:46002 "EHLO
+        mail.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1760774AbcLAWCk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2016 17:02:40 -0500
+In-Reply-To: <1480629741-18375-1-git-send-email-richard@nod.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 29, 2016 at 01:57:17PM +0800, Eryu Guan wrote:
-> Ralf Spenneberg reported that he hit a kernel crash when mounting a
-> modified ext4 image. And it turns out that kernel crashed when
-> calculating fs overhead (ext4_calculate_overhead()), this is because
-> the image has very large s_first_meta_bg (debug code shows it's
-> 842150400), and ext4 overruns the memory in count_overhead() when
-> setting bitmap buffer, which is PAGE_SIZE.
->...
-> Fix it by validating s_first_meta_bg first at mount time, and
-> refusing to mount if its value exceeds the largest possible meta_bg
-> number.
-> 
-> Reported-by: Ralf Spenneberg <ralf@os-t.de>
-> Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+Since we have 64bit readdir cookies and export operations
+we can finally enable NFS export support for UBIFS.
 
-Thanks, applied.  And yes, I do believe you are right about e2fsck
-having an off-by-one error.  Will fix.
+Signed-off-by: Richard Weinberger <richard@nod.at>
+---
+ fs/ubifs/dir.c   | 9 ++-------
+ fs/ubifs/super.c | 3 +++
+ 2 files changed, 5 insertions(+), 7 deletions(-)
 
-					- Ted
+diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
+index 5485d836af21..13d13afd2976 100644
+--- a/fs/ubifs/dir.c
++++ b/fs/ubifs/dir.c
+@@ -289,11 +289,8 @@ static struct dentry *ubifs_lookup(struct inode *dir, struct dentry *dentry,
+ done:
+ 	kfree(dent);
+ 	fscrypt_free_filename(&nm);
+-	/*
+-	 * Note, d_splice_alias() would be required instead if we supported
+-	 * NFS.
+-	 */
+-	d_add(dentry, inode);
++
++	d_splice_alias(inode, dentry);
+ 	return NULL;
+ 
+ out_dent:
+@@ -524,8 +521,6 @@ static unsigned int vfs_dent_type(uint8_t type)
+  * properly by means of saving full directory entry name in the private field
+  * of the file description object.
+  *
+- * This means that UBIFS cannot support NFS which requires full
+- * 'seekdir()'/'telldir()' support.
+  */
+ static int ubifs_readdir(struct file *file, struct dir_context *ctx)
+ {
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index be5b697d8214..4cb7f641f35c 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -2092,6 +2092,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto out_unlock;
+ 	}
+ 
++	if (c->parent_pointer && c->double_hash)
++		sb->s_export_op = &ubifs_export_ops;
++
+ 	/* Read the root inode */
+ 	root = ubifs_iget(sb, UBIFS_ROOT_INO);
+ 	if (IS_ERR(root)) {
+-- 
+2.7.3
+
