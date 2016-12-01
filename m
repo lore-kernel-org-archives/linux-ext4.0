@@ -1,95 +1,129 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
-Date: Thu, 1 Dec 2016 08:53:56 +0100
-Message-ID: <20161201075356.GA12804@quack2.suse.cz>
-References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
- <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
- <20161124090239.GA24138@quack2.suse.cz>
- <20161128191504.GB6637@linux.intel.com>
- <20161129085303.GA7550@quack2.suse.cz>
- <20161130190431.GA11793@linux.intel.com>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: LSF/MM 2017: Call for Proposals
+Date: Thu, 01 Dec 2016 09:11:46 -0500
+Message-ID: <1480601506.2511.7.camel@poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20161130190431.GA11793-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Cc: "lsf-pc@lists.linux-foundation.org" <lsf-pc@lists.linux-foundation.org>
+To: linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-ide@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+ linux-nfs@vger.kernel.org,  linux-scsi@vger.kernel.org, "xfs@oss.sgi.com"
+ <xfs@oss.sgi.com>,  ceph-devel@vger.kernel.org,
+ linux-nvme@lists.infradead.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 30-11-16 12:04:31, Ross Zwisler wrote:
-> On Tue, Nov 29, 2016 at 09:53:03AM +0100, Jan Kara wrote:
-> > On Mon 28-11-16 12:15:04, Ross Zwisler wrote:
-> > > On Thu, Nov 24, 2016 at 10:02:39AM +0100, Jan Kara wrote:
-> > > > On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
-> > > > > With the current Kconfig setup it is possible to have the following:
-> > > > > 
-> > > > > CONFIG_EXT4_FS=y
-> > > > > CONFIG_FS_DAX=y
-> > > > > CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
-> > > > > 
-> > > > > With this config we get build failures in ext4_dax_fault() because the
-> > > > > iomap functions in fs/dax.c are missing:
-> > > > > 
-> > > > > fs/built-in.o: In function `ext4_dax_fault':
-> > > > > file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
-> > > > > file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
-> > > > > fs/built-in.o: In function `ext4_file_read_iter':
-> > > > > file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
-> > > > > fs/built-in.o: In function `ext4_file_write_iter':
-> > > > > file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
-> > > > > file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
-> > > > > fs/built-in.o: In function `ext4_block_zero_page_range':
-> > > > > inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
-> > > > > 
-> > > > > Now that the struct buffer_head based DAX fault paths and I/O path have
-> > > > > been removed we really depend on iomap support being present for DAX.  Make
-> > > > > this explicit by selecting FS_IOMAP if we compile in DAX support.
-> > > > > 
-> > > > > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> > > > 
-> > > > I've sent the same patch to Ted yesterday and he will probably queue it on
-> > > > top of ext4 iomap patches. If it doesn't happen for some reason, feel free
-> > > > to add:
-> > > > 
-> > > > Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> > > 
-> > > Cool, looks like Ted has pulled in your patch.
-> > > 
-> > > I think we still eventually want this patch because it cleans up our handling
-> > > of FS_IOMAP.  With your patch we select it separately in both ext4 & ext2
-> > > based on whether we include DAX, and we still have #ifdefs in fs/dax.c for
-> > > FS_IOMAP.
-> > 
-> > Actually, based on Dave's request I've also sent Ted updated version which
-> > did select FS_IOMAP in CONFIG_DAX section. However Ted didn't pull that
-> > patch (yet?). Anyway, I don't care whose patch gets merged, I just wanted
-> > to notify you of possible conflict.
-> 
-> Can you please CC me on these patches in the future?  I also don't care whose
-> patches end up fixing this, but I want to make sure we end up in a world where
-> the "select FS_IOMAP" just happens directly for FS_DAX in fs/Kconfig so that
-> I can get rid of the unnecessary #ifdefs in fs/dax.c for CONFIG_FS_IOMAP.
+The annual Linux Storage, Filesystem and Memory Management (LSF/MM)
+Summit for 2017 will be held on March 20th and 21st at the Hyatt
+Cambridge, Cambridge, MA. LSF/MM is an invitation-only technical
+workshop to map out improvements to the Linux storage, filesystem and
+memory management subsystems that will make their way into the mainline
+kernel within the coming years.
 
-Sure, will do.
+    http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
 
-								Honza
+Like last year, LSF/MM will be colocated with the Linux Foundation Vault
+conference which takes place on March 22nd and 23rd in the same Venue.
+For those that do not know, Vault is designed to be an event where open
+source storage and filesystem practitioners meet storage implementors
+and, as such, it would be of benefit for LSF/MM attendees to attend.
+
+Unlike past years, Vault admission is not free for LSF/MM attendees this
+year unless they're giving a talk. There is a discount for LSF/MM
+attendees, however we would also like to encourage folks to submit talk
+proposals to speak at the Vault conference.
+
+    http://events.linuxfoundation.org/events/vault
+
+On behalf of the committee I am issuing a call for agenda proposals that
+are suitable for cross-track discussion as well as technical subjects
+for the breakout sessions.
+
+If advance notice is required for visa applications then please point
+that out in your proposal or request to attend, and submit the topic
+as soon as possible.
+
+1) Proposals for agenda topics should be sent before January 15th, 2016
+to:
+
+    lsf-pc@lists.linux-foundation.org
+
+and cc the Linux list or lists that are relevant for the topic in
+question:
+
+    ATA:   linux-ide@vger.kernel.org
+    Block: linux-block@vger.kernel.org
+    FS:    linux-fsdevel@vger.kernel.org
+    MM:    linux-mm@kvack.org
+    SCSI:  linux-scsi@vger.kernel.org
+    NVMe:  linux-nvme@lists.infradead.org
+
+Please tag your proposal with [LSF/MM TOPIC] to make it easier to track.
+In addition, please make sure to start a new thread for each topic
+rather than following up to an existing one.  Agenda topics and
+attendees will be selected by the program committee, but the final
+agenda will be formed by consensus of the attendees on the day.
+
+2) Requests to attend the summit for those that are not proposing a
+topic should be sent to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Please summarise what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM
+ATTEND] and send it as a new thread so there is less chance of it
+getting lost.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions although the final numbers will depend on the room sizes at
+the venue.
+
+Brief presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we
+expect that written minutes will be published as we did in previous
+years:
+
+2016: https://lwn.net/Articles/lsfmm2016/
+
+2015: https://lwn.net/Articles/lsfmm2015/
+
+2014: http://lwn.net/Articles/LSFMM2014/
+
+2013: http://lwn.net/Articles/548089/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Thank you on behalf of the program committee:
+
+Storage:
+    James Bottomley
+    Martin K. Petersen (track chair)
+    Sagi Grimberg
+
+Filesystems:
+    Anna Schumaker
+    Chris Mason
+    Eric Sandeen
+    Jan Kara
+    Jeff Layton (summit chair)
+    Josef Bacik (track chair)
+    Trond Myklebust
+
+MM:
+    Johannes Weiner
+    Rik van Riel (track chair)
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+Jeff Layton <jlayton@poochiereds.net>
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
