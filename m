@@ -1,82 +1,46 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] ext4: fix reading new encrypted symlinks on no-journal
- filesystems
-Date: Thu, 1 Dec 2016 11:57:31 -0800
-Message-ID: <20161201195731.GA131121@google.com>
-References: <1479318627-143193-1-git-send-email-ebiggers@google.com>
- <2FD4E662-B708-4C34-B1FC-8D42083322A2@dilger.ca>
- <20161118184704.GA73496@google.com>
- <75C88E0E-FF89-4D20-B11C-8F705E249BDD@dilger.ca>
- <20161121231924.GG30672@google.com>
- <4CB8CE8B-8AFE-4266-9983-4B2555702EF3@dilger.ca>
- <20161201192705.nys7rs2py5q342ju@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] ext4: correctly detect when an xattr value has an
+ invalid size
+Date: Thu, 1 Dec 2016 15:00:09 -0500
+Message-ID: <20161201200009.w34cs5n2zovzx4fx@thunk.org>
+References: <1480228786-106775-1-git-send-email-ebiggers@google.com>
+ <1480228786-106775-3-git-send-email-ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+To: Eric Biggers <ebiggers@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f53.google.com ([74.125.83.53]:36788 "EHLO
-        mail-pg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934004AbcLAT5f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Dec 2016 14:57:35 -0500
-Received: by mail-pg0-f53.google.com with SMTP id f188so97961016pgc.3
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Dec 2016 11:57:35 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:54906 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751997AbcLAUAL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 1 Dec 2016 15:00:11 -0500
 Content-Disposition: inline
-In-Reply-To: <20161201192705.nys7rs2py5q342ju@thunk.org>
+In-Reply-To: <1480228786-106775-3-git-send-email-ebiggers@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 01, 2016 at 02:27:05PM -0500, Theodore Ts'o wrote:
-> So in the long term I think we can move to using i_size to determine
-> fast symlinks, but I think there's a bigger issue hiding here, which
-> is that we shouldn't be using delayed allocation for symlinks in the
-> first place.  In the first place, symlinks will never be more than a
-> block, so there's no advantage in using delalloc.  In the second
-> place, it means that on a crash the symlink could invalid (zero
-> length) --- and on a commit the symlink should be commited to disk.
+On Sat, Nov 26, 2016 at 10:39:46PM -0800, Eric Biggers wrote:
+> It was possible for an xattr value to have a very large size, which
+> would then pass validation on 32-bit architectures due to a pointer
+> wraparound.  Fix this by validating the size in a way which avoids
+> pointer wraparound.
 > 
-> Eric, do you have a test case which verifies this?  Normally I would
-> think this rarely happens because the dentry cache should hide this
-> particular issue.  I think a simpler fix up, which also avoids the
-> "symlink could be lost on a crash" problem, is this:
+> It was also possible that a value's size would fit in the available
+> space but its padded size would not.  This would cause an out-of-bounds
+> memory write in ext4_xattr_set_entry when replacing the xattr value.
+> For example, if an xattr value of unpadded size 253 bytes went until the
+> very end of the inode or block, then using setxattr(2) to replace this
+> xattr's value with 256 bytes would cause a write to the 3 bytes past the
+> end of the inode or buffer, and the new xattr value would be incorrectly
+> truncated.  Fix this by requiring that the padded size fit in the
+> available space rather than the unpadded size.
 > 
+> This patch shouldn't have any noticeable effect on
+> non-corrupted/non-malicious filesystems.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b48ca0392b9c..4ffb680780e5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2902,7 +2902,8 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
->  
->  	index = pos >> PAGE_SHIFT;
->  
-> -	if (ext4_nonda_switch(inode->i_sb)) {
-> +	if (ext4_nonda_switch(inode->i_sb) ||
-> +	    S_ISLNK(inode->i_mode)) {
->  		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
->  		return ext4_write_begin(file, mapping, pos,
->  					len, flags, pagep, fsdata);
-> 
-> 
-> 					     	    - Ted
-> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Hi Ted,
+Thanks, applied.
 
-The problem of a slow encrypted symlink being misinterpreted as a fast one can
-be reproduced by generic/360 if you run it just right:
-
-	kvm-xfstests -c nojournal -m test_dummy_encryption generic/360
-
-It can also be reproduced by generic/402 from v2 of my encryption xfstests
-patchset with 'kvm-xfstests -c nojournal generic/402'.  But running that one
-requires applying xfstests and xfsprogs patches (until they get upstream).
-
-The problem can be reliably reproduced because the symlink target is not cached
-by the VFS.  ext4_encrypted_get_link() gets called whenever the symlink is
-followed or whenever someone does sys_readlink.
-
-I agree that delayed allocation doesn't make sense for symlinks so your proposed
-fix is better.  I verified that it passes both of the xfstests mentioned above.
-
-Eric
+					- Ted
