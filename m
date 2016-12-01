@@ -1,67 +1,95 @@
-From: "Hillf Danton" <hillf.zj@alibaba-inc.com>
-Subject: Re: [PATCHv5 22/36] mm, hugetlb: switch hugetlbfs to multi-order radix-tree entries
-Date: Thu, 01 Dec 2016 11:10:52 +0800
-Message-ID: <018c01d24b80$86b85490$9428fdb0$@alibaba-inc.com>
-References: <20161129112304.90056-1-kirill.shutemov@linux.intel.com> <20161129112304.90056-23-kirill.shutemov@linux.intel.com> <017501d24aee$d9a189c0$8ce49d40$@alibaba-inc.com> <20161130131534.3k35cigsn36d7ku6@black.fi.intel.com>
-Reply-To: "Hillf Danton" <hillf.zj@alibaba-inc.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 1/6] dax: fix build breakage with ext4, dax and !iomap
+Date: Thu, 1 Dec 2016 08:53:56 +0100
+Message-ID: <20161201075356.GA12804@quack2.suse.cz>
+References: <1479926662-21718-1-git-send-email-ross.zwisler@linux.intel.com>
+ <1479926662-21718-2-git-send-email-ross.zwisler@linux.intel.com>
+ <20161124090239.GA24138@quack2.suse.cz>
+ <20161128191504.GB6637@linux.intel.com>
+ <20161129085303.GA7550@quack2.suse.cz>
+ <20161130190431.GA11793@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: "'Theodore Ts'o'" <tytso@mit.edu>,
-	"'Andreas Dilger'" <adilger.kernel@dilger.ca>,
-	"'Jan Kara'" <jack@suse.com>,
-	"'Andrew Morton'" <akpm@linux-foundation.org>,
-	"'Alexander Viro'" <viro@zeniv.linux.org.uk>,
-	"'Hugh Dickins'" <hughd@google.com>,
-	"'Andrea Arcangeli'" <aarcange@redhat.com>,
-	"'Dave Hansen'" <dave.hansen@intel.com>,
-	"'Vlastimil Babka'" <vbabka@suse.cz>,
-	"'Matthew Wilcox'" <willy@infradead.org>,
-	"'Ross Zwisler'" <ross.zwisler@linux.intel.com>,
-	<linux-ext4@vger.kernel.org>,
-	<linux-fsdevel@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>,
-	<linux-mm@kvack.org>,
-	<linux-block@vger.kernel.org>,
-	"'Naoya Horiguchi'" <n-horiguchi@ah.jp.nec.com>
-To: "'Kirill A. Shutemov'" <kirill.shutemov@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20161130131534.3k35cigsn36d7ku6@black.fi.intel.com>
-Content-Language: zh-cn
-Sender: owner-linux-mm@kvack.org
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20161130190431.GA11793-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wednesday, November 30, 2016 9:16 PM Kirill A. Shutemov wrote:
-> On Wed, Nov 30, 2016 at 05:48:05PM +0800, Hillf Danton wrote:
-> > On Tuesday, November 29, 2016 7:23 PM Kirill A. Shutemov wrote:
-> > > @@ -607,10 +605,10 @@ static long hugetlbfs_fallocate(struct file *file, int mode, loff_t offset,
-> > >  		}
-> > >
-> > >  		/* Set numa allocation policy based on index */
-> > > -		hugetlb_set_vma_policy(&pseudo_vma, inode, index);
-> > > +		hugetlb_set_vma_policy(&pseudo_vma, inode, index >> huge_page_order(h));
-> > >
-> > >  		/* addr is the offset within the file (zero based) */
-> > > -		addr = index * hpage_size;
-> > > +		addr = index << PAGE_SHIFT & ~huge_page_mask(h);
-> > >
-> > >  		/* mutex taken here, fault path and hole punch */
-> > >  		hash = hugetlb_fault_mutex_hash(h, mm, &pseudo_vma, mapping,
-> >
-> > Seems we can't use index in computing hash as long as it isn't in huge page size.
+On Wed 30-11-16 12:04:31, Ross Zwisler wrote:
+> On Tue, Nov 29, 2016 at 09:53:03AM +0100, Jan Kara wrote:
+> > On Mon 28-11-16 12:15:04, Ross Zwisler wrote:
+> > > On Thu, Nov 24, 2016 at 10:02:39AM +0100, Jan Kara wrote:
+> > > > On Wed 23-11-16 11:44:17, Ross Zwisler wrote:
+> > > > > With the current Kconfig setup it is possible to have the following:
+> > > > > 
+> > > > > CONFIG_EXT4_FS=y
+> > > > > CONFIG_FS_DAX=y
+> > > > > CONFIG_FS_IOMAP=n	# this is in fs/Kconfig & isn't user accessible
+> > > > > 
+> > > > > With this config we get build failures in ext4_dax_fault() because the
+> > > > > iomap functions in fs/dax.c are missing:
+> > > > > 
+> > > > > fs/built-in.o: In function `ext4_dax_fault':
+> > > > > file.c:(.text+0x7f3ac): undefined reference to `dax_iomap_fault'
+> > > > > file.c:(.text+0x7f404): undefined reference to `dax_iomap_fault'
+> > > > > fs/built-in.o: In function `ext4_file_read_iter':
+> > > > > file.c:(.text+0x7fc54): undefined reference to `dax_iomap_rw'
+> > > > > fs/built-in.o: In function `ext4_file_write_iter':
+> > > > > file.c:(.text+0x7fe9a): undefined reference to `dax_iomap_rw'
+> > > > > file.c:(.text+0x7feed): undefined reference to `dax_iomap_rw'
+> > > > > fs/built-in.o: In function `ext4_block_zero_page_range':
+> > > > > inode.c:(.text+0x85c0d): undefined reference to `iomap_zero_range'
+> > > > > 
+> > > > > Now that the struct buffer_head based DAX fault paths and I/O path have
+> > > > > been removed we really depend on iomap support being present for DAX.  Make
+> > > > > this explicit by selecting FS_IOMAP if we compile in DAX support.
+> > > > > 
+> > > > > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> > > > 
+> > > > I've sent the same patch to Ted yesterday and he will probably queue it on
+> > > > top of ext4 iomap patches. If it doesn't happen for some reason, feel free
+> > > > to add:
+> > > > 
+> > > > Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> > > 
+> > > Cool, looks like Ted has pulled in your patch.
+> > > 
+> > > I think we still eventually want this patch because it cleans up our handling
+> > > of FS_IOMAP.  With your patch we select it separately in both ext4 & ext2
+> > > based on whether we include DAX, and we still have #ifdefs in fs/dax.c for
+> > > FS_IOMAP.
+> > 
+> > Actually, based on Dave's request I've also sent Ted updated version which
+> > did select FS_IOMAP in CONFIG_DAX section. However Ted didn't pull that
+> > patch (yet?). Anyway, I don't care whose patch gets merged, I just wanted
+> > to notify you of possible conflict.
 > 
-> Look at changes in hugetlb_fault_mutex_hash(): we shift the index right by
-> huge_page_order(), before calculating the hash. I don't see a problem
-> here.
-> 
-You are right. I missed that critical point.
+> Can you please CC me on these patches in the future?  I also don't care whose
+> patches end up fixing this, but I want to make sure we end up in a world where
+> the "select FS_IOMAP" just happens directly for FS_DAX in fs/Kconfig so that
+> I can get rid of the unnecessary #ifdefs in fs/dax.c for CONFIG_FS_IOMAP.
 
-thanks
-Hillf
+Sure, will do.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
