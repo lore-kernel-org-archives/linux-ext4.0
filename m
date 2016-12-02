@@ -1,40 +1,51 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 4/6] ubifs: Maintain a parent pointer
-Date: Fri, 2 Dec 2016 11:36:37 +0100
-Message-ID: <c8633ae8-9f17-8366-aae1-4bdbe4b8b141@nod.at>
-References: <1480629741-18375-1-git-send-email-richard@nod.at>
- <1480629741-18375-5-git-send-email-richard@nod.at>
- <20161202092840.i67lhgglzlnugwpd@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-mtd@lists.infradead.org, david@sigma-star.at, tytso@mit.edu,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org
-To: Marcus Folkesson <marcus.folkesson@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20161202092840.i67lhgglzlnugwpd@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fix reading new encrypted symlinks on no-journal file systems
+Date: Fri,  2 Dec 2016 12:14:22 -0500
+Message-ID: <20161202171422.20724-1-tytso@mit.edu>
+References: <20161201195731.GA131121@google.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>
+To: ebiggers@google.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:47000 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750781AbcLBROZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 2 Dec 2016 12:14:25 -0500
+In-Reply-To: <20161201195731.GA131121@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02.12.2016 10:28, Marcus Folkesson wrote:
-> On Thu, Dec 01, 2016 at 11:02:19PM +0100, Richard Weinberger wrote:
->>  
->> +	if (new_dir != old_dir) {
->> +		fst_inode_ui->parent_inum = new_dir->i_ino;
->> +		snd_inode_ui->parent_inum = old_dir->i_ino;
->> +	}
->> +
->>  	if (old_dir != new_dir) {
->>  		if (S_ISDIR(fst_inode->i_mode) && !S_ISDIR(snd_inode->i_mode)) {
->>  			inc_nlink(new_dir);
-> 
-> Insignificant thing, but use the existing if-statment instead?
+On a filesystem with no journal, a symlink longer than about 32
+characters (exact length depending on padding for encryption) could not
+be followed or read immediately after being created in an encrypted
+directory.  This happened because when the symlink data went through the
+delayed allocation path instead of the journaling path, the symlink was
+incorrectly detected as a "fast" symlink rather than a "slow" symlink
+until its data was written out.
 
-Of course.
-I moved the line around and oversaw the existing branch. :)
+To fix this, disable delayed allocation for symlinks, since there is
+no benefit for delayed allocation anyway.
 
-Thanks,
-//richard
+Reported-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/inode.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 59a518ad6bb2..a1eac0054203 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2902,7 +2902,8 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 
+ 	index = pos >> PAGE_SHIFT;
+ 
+-	if (ext4_nonda_switch(inode->i_sb)) {
++	if (ext4_nonda_switch(inode->i_sb) ||
++	    S_ISLNK(inode->i_mode)) {
+ 		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
+ 		return ext4_write_begin(file, mapping, pos,
+ 					len, flags, pagep, fsdata);
+-- 
+2.11.0.rc0.7.gbe5a750
+
