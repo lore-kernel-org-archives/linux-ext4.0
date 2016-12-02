@@ -1,63 +1,51 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
- permission flags
-Date: Fri, 2 Dec 2016 10:57:42 +0100
-Message-ID: <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
-References: <1476190256-1677-1-git-send-email-agruenba@redhat.com> <1476190256-1677-4-git-send-email-agruenba@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/6] dax: Call ->iomap_begin without entry lock during
+ dax fault
+Date: Fri, 2 Dec 2016 11:08:18 +0100
+Message-ID: <20161202100818.GA26086@quack2.suse.cz>
+References: <1479980796-26161-1-git-send-email-jack@suse.cz>
+ <1479980796-26161-6-git-send-email-jack@suse.cz>
+ <20161201222447.GB13739@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-api@vger.kernel.org
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1476190256-1677-4-git-send-email-agruenba@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org, Johannes Weiner <hannes@cmpxchg.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20161201222447.GB13739@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> Normally, deleting a file requires MAY_WRITE access to the parent
-> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-> to the parent directory or with MAY_DELETE_SELF access to the file.
->
-> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-> when checking for delete access inside a directory, and MAY_DELETE_SELF
-> when checking for delete access to a file itself.
->
-> The MAY_DELETE_SELF permission overrides the sticky directory check.
+On Thu 01-12-16 15:24:47, Ross Zwisler wrote:
+> On Thu, Nov 24, 2016 at 10:46:35AM +0100, Jan Kara wrote:
+> > Currently ->iomap_begin() handler is called with entry lock held. If the
+> > filesystem held any locks between ->iomap_begin() and ->iomap_end()
+> > (such as ext4 which will want to hold transaction open), this would cause
+> > lock inversion with the iomap_apply() from standard IO path which first
+> > calls ->iomap_begin() and only then calls ->actor() callback which grabs
+> > entry locks for DAX.
+> 
+> I don't see the dax_iomap_actor() grabbing any entry locks for DAX?  Is this
+> an issue currently, or are you just trying to make the code consistent so we
+> don't run into issues in the future?
 
-And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
-since from the point of view of the inode we are not doing anything at
-all.  The modifications are all in the parent(s), and that's where the
-permission checks need to be.
+So dax_iomap_actor() copies data from / to user provided buffer. That can
+fault and if the buffer happens to be mmaped file on DAX filesystem, the
+fault will end up grabbing entry locks. Sample evil test:
 
-> @@ -2780,14 +2780,20 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
->         BUG_ON(victim->d_parent->d_inode != dir);
->         audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->
-> -       error = inode_permission(dir, mask);
-> +       error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-> +       if (!error && check_sticky(dir, inode))
-> +               error = -EPERM;
-> +       if (error && IS_RICHACL(inode) &&
-> +           inode_permission(inode, MAY_DELETE_SELF) == 0 &&
-> +           inode_permission(dir, mask) == 0)
-> +               error = 0;
+	fd = open("some_file", O_RDWR);
+	buf = mmap(NULL, 65536, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	write(fd, buf, 4096);
 
-Why is MAY_WRITE missing here?  Everything not aware of
-MAY_DELETE_SELF (e.g. LSMs) will still need MAY_WRITE otherwise this
-is going to be a loophole.
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-Thanks,
-Miklos
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
