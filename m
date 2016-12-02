@@ -1,35 +1,63 @@
-From: Marcus Folkesson <marcus.folkesson@gmail.com>
-Subject: Re: [PATCH 4/6] ubifs: Maintain a parent pointer
-Date: Fri, 2 Dec 2016 10:28:40 +0100
-Message-ID: <20161202092840.i67lhgglzlnugwpd@gmail.com>
-References: <1480629741-18375-1-git-send-email-richard@nod.at>
- <1480629741-18375-5-git-send-email-richard@nod.at>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
+ permission flags
+Date: Fri, 2 Dec 2016 10:57:42 +0100
+Message-ID: <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
+References: <1476190256-1677-1-git-send-email-agruenba@redhat.com> <1476190256-1677-4-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mtd@lists.infradead.org, david@sigma-star.at, tytso@mit.edu,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org
-To: Richard Weinberger <richard@nod.at>
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-api@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1480629741-18375-5-git-send-email-richard@nod.at>
+In-Reply-To: <1476190256-1677-4-git-send-email-agruenba@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 01, 2016 at 11:02:19PM +0100, Richard Weinberger wrote:
->  
-> +	if (new_dir != old_dir) {
-> +		fst_inode_ui->parent_inum = new_dir->i_ino;
-> +		snd_inode_ui->parent_inum = old_dir->i_ino;
-> +	}
-> +
->  	if (old_dir != new_dir) {
->  		if (S_ISDIR(fst_inode->i_mode) && !S_ISDIR(snd_inode->i_mode)) {
->  			inc_nlink(new_dir);
+On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> Normally, deleting a file requires MAY_WRITE access to the parent
+> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+> to the parent directory or with MAY_DELETE_SELF access to the file.
+>
+> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+> when checking for delete access inside a directory, and MAY_DELETE_SELF
+> when checking for delete access to a file itself.
+>
+> The MAY_DELETE_SELF permission overrides the sticky directory check.
 
-Insignificant thing, but use the existing if-statment instead?
+And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
+since from the point of view of the inode we are not doing anything at
+all.  The modifications are all in the parent(s), and that's where the
+permission checks need to be.
 
-Cheers,
-Marcus Folkesson
+> @@ -2780,14 +2780,20 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+>         BUG_ON(victim->d_parent->d_inode != dir);
+>         audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+>
+> -       error = inode_permission(dir, mask);
+> +       error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
+> +       if (!error && check_sticky(dir, inode))
+> +               error = -EPERM;
+> +       if (error && IS_RICHACL(inode) &&
+> +           inode_permission(inode, MAY_DELETE_SELF) == 0 &&
+> +           inode_permission(dir, mask) == 0)
+> +               error = 0;
+
+Why is MAY_WRITE missing here?  Everything not aware of
+MAY_DELETE_SELF (e.g. LSMs) will still need MAY_WRITE otherwise this
+is going to be a loophole.
+
+Thanks,
+Miklos
