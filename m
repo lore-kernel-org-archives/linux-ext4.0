@@ -1,73 +1,44 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 5/6] dax: Call ->iomap_begin without entry lock during
- dax fault
-Date: Thu, 1 Dec 2016 16:27:04 -0700
-Message-ID: <20161201232704.GC13739@linux.intel.com>
-References: <1479980796-26161-1-git-send-email-jack@suse.cz>
- <1479980796-26161-6-git-send-email-jack@suse.cz>
- <20161201222447.GB13739@linux.intel.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: [PATCH v27 02/21] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR
+ permission flags
+Date: Fri, 2 Dec 2016 10:22:58 +0100
+Message-ID: <CAELBmZAF7stgY3DxaeZLd2Nt+c5rTnVC_yFORGxxN1HHoctPaQ@mail.gmail.com>
+References: <1476190256-1677-1-git-send-email-agruenba@redhat.com> <1476190256-1677-3-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-	Johannes Weiner <hannes@cmpxchg.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161201222447.GB13739@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-api@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1476190256-1677-3-git-send-email-agruenba@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 01, 2016 at 03:24:47PM -0700, Ross Zwisler wrote:
-> On Thu, Nov 24, 2016 at 10:46:35AM +0100, Jan Kara wrote:
-> > Currently ->iomap_begin() handler is called with entry lock held. If the
-> > filesystem held any locks between ->iomap_begin() and ->iomap_end()
-> > (such as ext4 which will want to hold transaction open), this would cause
-> > lock inversion with the iomap_apply() from standard IO path which first
-> > calls ->iomap_begin() and only then calls ->actor() callback which grabs
-> > entry locks for DAX.
-> 
-> I don't see the dax_iomap_actor() grabbing any entry locks for DAX?  Is this
-> an issue currently, or are you just trying to make the code consistent so we
-> don't run into issues in the future?
+On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> Richacls distinguish between creating non-directories and directories. To
+> support that, add an isdir parameter to may_create(). When checking
+> inode_permission() for create permission, pass in an additional
+> MAY_CREATE_FILE or MAY_CREATE_DIR mask flag.
+>
+> Add may_replace() to allow checking for delete and create access when
+> replacing an existing file in vfs_rename().
 
-Ah, I see that you use this new ordering in patch 6/6 so that you can change
-your interaction with the ext4 journal.  I'm still curious if we have a lock
-ordering inversion within DAX, but if this ordering helps you with ext4, good
-enough.
+That works for plain rename, but not for RENAME_EXCHANGE: is_dir and
+new_is_dir may be different, which means we can be deleting a
+non-directory *and* creating a directory in one dir and vice versa in
+the other.
 
-One quick comment:
-
-> @@ -1337,19 +1353,10 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
->        */                                                                     
->       entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);              
->       if (IS_ERR(entry))                                                      
-> -             goto fallback;                                                  
-> +             goto finish_iomap;                                              
->                                                                               
-> -     /*                                                                      
-> -      * Note that we don't use iomap_apply here.  We aren't doing I/O, only  
-> -      * setting up a mapping, so really we're using iomap_begin() as a way   
-> -      * to look up our filesystem block.                                     
-> -      */                                                                     
-> -     pos = (loff_t)pgoff << PAGE_SHIFT;                                      
-> -     error = ops->iomap_begin(inode, pos, PMD_SIZE, iomap_flags, &iomap);    
-> -     if (error)                                                              
-> -             goto unlock_entry;                                              
->       if (iomap.offset + iomap.length < pos + PMD_SIZE)                       
-> -             goto finish_iomap;                                              
-> +             goto unlock_entry;       
-
-I think this offset+length bounds check could be moved along with the
-iomap_begin() call up above the grab_mapping_entry().  You would then goto
-'finish_iomap' if you hit this error condition, allowing you to avoid grabbing
-and releasing of the mapping entry.
-
-Other than that one small nit, this looks fine to me:
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Thanks,
+Miklos
