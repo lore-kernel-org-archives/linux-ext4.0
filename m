@@ -1,44 +1,35 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH v27 02/21] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR
- permission flags
-Date: Fri, 2 Dec 2016 10:22:58 +0100
-Message-ID: <CAELBmZAF7stgY3DxaeZLd2Nt+c5rTnVC_yFORGxxN1HHoctPaQ@mail.gmail.com>
-References: <1476190256-1677-1-git-send-email-agruenba@redhat.com> <1476190256-1677-3-git-send-email-agruenba@redhat.com>
+From: Marcus Folkesson <marcus.folkesson@gmail.com>
+Subject: Re: [PATCH 4/6] ubifs: Maintain a parent pointer
+Date: Fri, 2 Dec 2016 10:28:40 +0100
+Message-ID: <20161202092840.i67lhgglzlnugwpd@gmail.com>
+References: <1480629741-18375-1-git-send-email-richard@nod.at>
+ <1480629741-18375-5-git-send-email-richard@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-api@vger.kernel.org
-To: Andreas Gruenbacher <agruenba@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mtd@lists.infradead.org, david@sigma-star.at, tytso@mit.edu,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+        linux-ext4@vger.kernel.org
+To: Richard Weinberger <richard@nod.at>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1476190256-1677-3-git-send-email-agruenba@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <1480629741-18375-5-git-send-email-richard@nod.at>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> Richacls distinguish between creating non-directories and directories. To
-> support that, add an isdir parameter to may_create(). When checking
-> inode_permission() for create permission, pass in an additional
-> MAY_CREATE_FILE or MAY_CREATE_DIR mask flag.
->
-> Add may_replace() to allow checking for delete and create access when
-> replacing an existing file in vfs_rename().
+On Thu, Dec 01, 2016 at 11:02:19PM +0100, Richard Weinberger wrote:
+>  
+> +	if (new_dir != old_dir) {
+> +		fst_inode_ui->parent_inum = new_dir->i_ino;
+> +		snd_inode_ui->parent_inum = old_dir->i_ino;
+> +	}
+> +
+>  	if (old_dir != new_dir) {
+>  		if (S_ISDIR(fst_inode->i_mode) && !S_ISDIR(snd_inode->i_mode)) {
+>  			inc_nlink(new_dir);
 
-That works for plain rename, but not for RENAME_EXCHANGE: is_dir and
-new_is_dir may be different, which means we can be deleting a
-non-directory *and* creating a directory in one dir and vice versa in
-the other.
+Insignificant thing, but use the existing if-statment instead?
 
-Thanks,
-Miklos
+Cheers,
+Marcus Folkesson
