@@ -1,29 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1 linux-next] ext4: fix block_validity definition
-Date: Sat, 3 Dec 2016 16:44:21 -0500
-Message-ID: <20161203214421.ykmrs5rtzuduz4es@thunk.org>
-References: <1477251814-9938-1-git-send-email-fabf@skynet.be>
- <20161023201003.GA5245@birch.djwong.org>
+Subject: Re: ext4: remove another test in ext4_alloc_file_blocks()
+Date: Sat, 3 Dec 2016 16:47:58 -0500
+Message-ID: <20161203214758.4jo2dhgjm5ujqzhw@thunk.org>
+References: <20161012060002.GA12778@mwanda>
+ <20161021095435.GC8271@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Fabian Frederick <fabf@skynet.be>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161023201003.GA5245@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161021095435.GC8271@quack2.suse.cz>
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I've applied this patch with some further cleanups.  The documentation
-for the mount options now reads:
+On Fri, Oct 21, 2016 at 11:54:35AM +0200, Jan Kara wrote:
+> On Wed 12-10-16 09:00:02, Dan Carpenter wrote:
+> > Before commit c3fe493ccdb1 ('ext4: remove unneeded test in
+> > ext4_alloc_file_blocks()') then it was possible for "depth" to be -1
+> > but now, it's not possible that it is negative.
+> > 
+> > Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> 
+> Looks good. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-block_validity(*)	These options enable or disable the in-kernel
-noblock_validity	facility for tracking filesystem metadata blocks
-			within internal data structures.  This allows multi-
-			block allocator and other routines to notice
-			bugs or corrupted allocation bitmaps which cause
-			blocks to be allocated which overlap with
-			filesystem metadata blocks.
+Applied, thanks.
 
-						- Ted
+					- Ted
