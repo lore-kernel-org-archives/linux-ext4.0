@@ -1,48 +1,72 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 1/4] sched: move IO scheduling accounting from
- io_schedule_timeout() to __schedule()
-Date: Tue, 6 Dec 2016 16:30:32 -0500
-Message-ID: <20161206213032.GC26314@mtj.duckdns.org>
-References: <1477673892-28940-1-git-send-email-tj@kernel.org>
- <1477673892-28940-2-git-send-email-tj@kernel.org>
- <20161028182712.GM3142@twins.programming.kicks-ass.net>
- <20161028190702.GL3157@twins.programming.kicks-ass.net>
- <20161028191231.GA29044@htj.duckdns.org>
- <20161029032126.GH3568@worktop.programming.kicks-ass.net>
- <20161031164556.GC26364@mtj.duckdns.org>
+From: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
+Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
+ permission flags
+Date: Tue, 6 Dec 2016 13:36:28 -0800
+Message-ID: <20161206213628.GD4498@jra3>
+References: <1476190256-1677-1-git-send-email-agruenba@redhat.com>
+ <1476190256-1677-4-git-send-email-agruenba@redhat.com>
+ <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
+ <20161206201529.GA1203@fieldses.org>
+ <20161206203347.GC4498@jra3>
+ <CAJfpegsvoZfzUXyCJrxXAG6dxk8HMCGMEKA0E-6FzWNGkM17Tw@mail.gmail.com>
+Reply-To: Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tejun Heo <htejun@fb.com>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, mingo@redhat.com, axboe@kernel.dk,
-        tytso@mit.edu, jack@suse.com, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-team@fb.com, mingbo@fb.com
-To: Peter Zijlstra <peterz@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+        Andreas Gruenbacher <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+        Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+        Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+        Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>,
+        Trond Myklebust <trond.myklebust-7I+n7zu2hftEKMMhf/gKZA@public.gmane.org>,
+        Anna Schumaker <anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+        Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+        "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        Linux NFS list <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Miklos Szeredi <miklos-sUDqSbJrdHQHWmgEVkV9KA@public.gmane.org>
+Return-path: <linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20161031164556.GC26364@mtj.duckdns.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAJfpegsvoZfzUXyCJrxXAG6dxk8HMCGMEKA0E-6FzWNGkM17Tw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-cifs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
-
-On Mon, Oct 31, 2016 at 10:45:56AM -0600, Tejun Heo wrote:
-> Tracking the owners of mutexes and rwsems does help quite a bit.  I
-> don't think it's as simple as inheriting io sleep state from the
-> current owner tho.  The owner might be running or in a non-IO sleep
-> when others try to grab the mutex.  It is an option to ignore those
-> cases but this would have a real possibility to lead to surprising
-> results in some corner cases.  If we choose to propagate dynamically,
-> it becomes an a lot more complex problem and I don't think it'd be
-> justfiable.
+On Tue, Dec 06, 2016 at 10:25:22PM +0100, Miklos Szeredi wrote:
+> On Tue, Dec 6, 2016 at 10:13 PM, Jeremy Allison <jra-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org> wrote:
+> > On Tue, Dec 06, 2016 at 03:15:29PM -0500, J. Bruce Fields wrote:
+> >> On Fri, Dec 02, 2016 at 10:57:42AM +0100, Miklos Szeredi wrote:
+> >> > On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
+> >> > <agruenba-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
+> >> > > Normally, deleting a file requires MAY_WRITE access to the parent
+> >> > > directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+> >> > > to the parent directory or with MAY_DELETE_SELF access to the file.
+> >> > >
+> >> > > To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+> >> > > when checking for delete access inside a directory, and MAY_DELETE_SELF
+> >> > > when checking for delete access to a file itself.
+> >> > >
+> >> > > The MAY_DELETE_SELF permission overrides the sticky directory check.
+> >> >
+> >> > And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
+> >> > since from the point of view of the inode we are not doing anything at
+> >> > all.  The modifications are all in the parent(s), and that's where the
+> >> > permission checks need to be.
+> >>
+> >> I'm having a hard time finding an authoritative reference here (Samba
+> >> people might be able to help), but my understanding is that Windows
+> >> gives this a meaning something like "may I delete a link to this file".
+> >>
+> >> (And not even "may I delete the *last* link to this file", which might
+> >> also sound more logical.)
+> >
+> > I just did a recent patch here. In Samba we now check for
+> > SEC_DIR_ADD_FILE/SEC_DIR_ADD_SUBDIR on the target directory
+> > (depending on if the object being moved is a file or dir).
 > 
-> Unless there can be a simple enough and reliable solution, I think
-> it'd be better to stick with explicit marking.
+> And MAY_DELETE_SELF as well, for rename?  That's really counterintuitive for me.
 
-Just posted the fixed version for the first patch.  Any more thoughts
-on this?
-
-Thanks.
-
--- 
-tejun
+Yeah on the source handle we insist on DELETE_ACCESS|FILE_WRITE_ATTRIBUTES
+permissions also.
