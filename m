@@ -1,66 +1,118 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
- permission flags
-Date: Tue, 6 Dec 2016 22:25:22 +0100
-Message-ID: <CAJfpegsvoZfzUXyCJrxXAG6dxk8HMCGMEKA0E-6FzWNGkM17Tw@mail.gmail.com>
-References: <1476190256-1677-1-git-send-email-agruenba@redhat.com>
- <1476190256-1677-4-git-send-email-agruenba@redhat.com> <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
- <20161206201529.GA1203@fieldses.org> <20161206203347.GC4498@jra3>
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH v2 1/4] sched: move IO scheduling accounting from
+ io_schedule_timeout() to __schedule()
+Date: Tue, 6 Dec 2016 16:29:35 -0500
+Message-ID: <20161206212935.GB26314@mtj.duckdns.org>
+References: <1477673892-28940-1-git-send-email-tj@kernel.org>
+ <1477673892-28940-2-git-send-email-tj@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-To: Jeremy Allison <jra@samba.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20161206203347.GC4498@jra3>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, kernel-team@fb.com, mingbo@fb.com
+To: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        mingo@redhat.com, peterz@infradead.org, axboe@kernel.dk,
+        tytso@mit.edu, jack@suse.com, adilger.kernel@dilger.ca
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:36607 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751471AbcLFV3i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2016 16:29:38 -0500
+Content-Disposition: inline
+In-Reply-To: <1477673892-28940-2-git-send-email-tj@kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 6, 2016 at 10:13 PM, Jeremy Allison <jra@samba.org> wrote:
-> On Tue, Dec 06, 2016 at 03:15:29PM -0500, J. Bruce Fields wrote:
->> On Fri, Dec 02, 2016 at 10:57:42AM +0100, Miklos Szeredi wrote:
->> > On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
->> > <agruenba@redhat.com> wrote:
->> > > Normally, deleting a file requires MAY_WRITE access to the parent
->> > > directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
->> > > to the parent directory or with MAY_DELETE_SELF access to the file.
->> > >
->> > > To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
->> > > when checking for delete access inside a directory, and MAY_DELETE_SELF
->> > > when checking for delete access to a file itself.
->> > >
->> > > The MAY_DELETE_SELF permission overrides the sticky directory check.
->> >
->> > And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
->> > since from the point of view of the inode we are not doing anything at
->> > all.  The modifications are all in the parent(s), and that's where the
->> > permission checks need to be.
->>
->> I'm having a hard time finding an authoritative reference here (Samba
->> people might be able to help), but my understanding is that Windows
->> gives this a meaning something like "may I delete a link to this file".
->>
->> (And not even "may I delete the *last* link to this file", which might
->> also sound more logical.)
->
-> I just did a recent patch here. In Samba we now check for
-> SEC_DIR_ADD_FILE/SEC_DIR_ADD_SUBDIR on the target directory
-> (depending on if the object being moved is a file or dir).
+For an interface to support blocking for IOs, it must call
+io_schedule() instead of schedule().  This makes it tedious to add IO
+blocking to existing interfaces as the switching between schedule()
+and io_schedule() is often buried deep.
 
-And MAY_DELETE_SELF as well, for rename?  That's really counterintuitive for me.
+As we already have a way to mark the task as IO scheduling, this can
+be made easier by separating out io_schedule() into multiple steps so
+that IO schedule preparation can be performed before invoking a
+blocking interface and the actual accounting happens inside
+schedule().
 
-Thanks,
-Miklos
+io_schedule_timeout() does the following three things prior to calling
+schedule_timeout().
+
+ 1. Mark the task as scheduling for IO.
+ 2. Flush out plugged IOs.
+ 3. Account the IO scheduling.
+
+#1 and #2 can be performed in the prepartaion step while #3 must be
+done close to the actual scheduling.  This patch moves #3 into
+__schedule() so that later patches can separate out preparation and
+finish steps from io_schedule().
+
+v2: Remember the rq in @prev_rq and use it for decrementing nr_iowait
+    to avoid misattributing the count after the task gets migrated to
+    another CPU.  Noticed by Pavan.
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Pavan Kondeti <pkondeti@codeaurora.org>
+---
+ kernel/sched/core.c |   23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
+
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -3335,12 +3335,18 @@ static void __sched notrace __schedule(b
+ 	struct task_struct *prev, *next;
+ 	unsigned long *switch_count;
+ 	struct pin_cookie cookie;
+-	struct rq *rq;
+-	int cpu;
++	struct rq *rq, *prev_rq;
++	int cpu, in_iowait;
+ 
+ 	cpu = smp_processor_id();
+-	rq = cpu_rq(cpu);
++	rq = prev_rq = cpu_rq(cpu);
+ 	prev = rq->curr;
++	in_iowait = prev->in_iowait;
++
++	if (in_iowait) {
++		delayacct_blkio_start();
++		atomic_inc(&rq->nr_iowait);
++	}
+ 
+ 	schedule_debug(prev);
+ 
+@@ -3406,6 +3412,11 @@ static void __sched notrace __schedule(b
+ 	}
+ 
+ 	balance_callback(rq);
++
++	if (in_iowait) {
++		atomic_dec(&prev_rq->nr_iowait);
++		delayacct_blkio_end();
++	}
+ }
+ 
+ void __noreturn do_task_dead(void)
+@@ -5063,19 +5074,13 @@ EXPORT_SYMBOL_GPL(yield_to);
+ long __sched io_schedule_timeout(long timeout)
+ {
+ 	int old_iowait = current->in_iowait;
+-	struct rq *rq;
+ 	long ret;
+ 
+ 	current->in_iowait = 1;
+ 	blk_schedule_flush_plug(current);
+ 
+-	delayacct_blkio_start();
+-	rq = raw_rq();
+-	atomic_inc(&rq->nr_iowait);
+ 	ret = schedule_timeout(timeout);
+ 	current->in_iowait = old_iowait;
+-	atomic_dec(&rq->nr_iowait);
+-	delayacct_blkio_end();
+ 
+ 	return ret;
+ }
