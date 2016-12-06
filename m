@@ -1,62 +1,60 @@
-From: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
-Subject: patch ext4: fix data exposure after a crash still work ?
-Date: Tue, 6 Dec 2016 09:52:01 +0000
-Message-ID: <b9885defb2ad439a92c8a64c73e26dba@SGPMBX1004.APAC.bosch.com>
+From: Renaud Mariana <rmariana@online.net>
+Subject: HUGE slowdown when doing dpkg with ext4 over nbd
+Date: Tue, 6 Dec 2016 14:13:50 +0100 (CET)
+Message-ID: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6-v.fe.bosch.de ([139.15.237.11]:26731 "EHLO
-        smtp6-v.fe.bosch.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751865AbcLFJwH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Dec 2016 04:52:07 -0500
-Content-Language: en-US
+Received: from mail.online.net ([62.210.16.11]:43163 "EHLO mail.online.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751592AbcLFNVy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Dec 2016 08:21:54 -0500
+Received: from localhost (localhost [127.0.0.1])
+        by mail.online.net (Postfix) with ESMTP id 6A26FBCC7C4
+        for <linux-ext4@vger.kernel.org>; Tue,  6 Dec 2016 14:13:51 +0100 (CET)
+Received: from mail.online.net ([127.0.0.1])
+        by localhost (mail.online.net [127.0.0.1]) (amavisd-new, port 10032)
+        with ESMTP id GpwRVUiYNARb for <linux-ext4@vger.kernel.org>;
+        Tue,  6 Dec 2016 14:13:50 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+        by mail.online.net (Postfix) with ESMTP id D6CBEBCC7C3
+        for <linux-ext4@vger.kernel.org>; Tue,  6 Dec 2016 14:13:50 +0100 (CET)
+Received: from mail.online.net ([127.0.0.1])
+        by localhost (mail.online.net [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id MQ2MfHXAqAVz for <linux-ext4@vger.kernel.org>;
+        Tue,  6 Dec 2016 14:13:50 +0100 (CET)
+Received: from mail.online.net (mail.online.net [62.210.16.11])
+        by mail.online.net (Postfix) with ESMTP id B8375BCC7C4
+        for <linux-ext4@vger.kernel.org>; Tue,  6 Dec 2016 14:13:50 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Kara
+Hello,
 
-Since we move to kernel 3.18 stable branch. i found the patch " ext4: fix data exposure after a crash " not available but I found below commit which mentioned that patch.
-I want to check with you whether " ext4: fix data exposure after a crash " still needed currently ?
-I guess yes but I want to confirm with you.
-Thanks
-Huang weller
+We have noticed a HUGE slowdown when doing dpkg with ext4 over nbd (qemu-nbd as a server)
 
-ext4: fix deadlock during page writeback
-[ Upstream commit 646caa9c8e196880b41cd3e3d33a2ebc752bdb85 ]
+dpkg times with default mkfs & mount options is :
 
-Commit 06bd3c36a733 (ext4: fix data exposure after a crash) uncovered a
-deadlock in ext4_writepages() which was previously much harder to hit.
-After this commit xfstest generic/130 reproduces the deadlock on small
-filesystems.
+- ext4: 10 mn
+- xfs : 30s.
 
-The problem happens when ext4_do_update_inode() sets LARGE_FILE feature
-and marks current inode handle as synchronous. That subsequently results
-in ext4_journal_stop() called from ext4_writepages() to block waiting for
-transaction commit while still holding page locks, reference to io_end,
-and some prepared bio in mpd structure each of which can possibly block
-transaction commit from completing and thus results in deadlock.
+Disabling extents : 
+mkfs.ext4 -O ^extend
+fixed the pb that is ext4 is as fast as xfs.
 
-Fix the problem by releasing page locks, io_end reference, and
-submitting prepared bio before calling ext4_journal_stop().
-
-[ Changed to defer the call to ext4_journal_stop() only if the handle
-  is synchronous.  --tytso ]
+Any ideas ?
+Renaud
 
 
-Best regards
+Details :
 
- Weller HUANG
+xnbd-client  --blocksize 4096  qemu-nbd-ip 10000 /dev/nbd0
+mkfs.ext4 /dev/nbd0
+mount /dev/nbd0 /newroot
 
-Base SW (CM/ESW12-CN) 
-Bosch Automotive Products (Suzhou) Co. Ltd | No. 126, Su Hong Xi Road
-Suzhou Industrial Park | Suzhou P.R.China | P.R.CHINA 
-Tel. +86(512)6767-4518 | Weller.Huang@cn.bosch.com
+wget https://download.elastic.co/kibana/kibana/kibana-4.6.1-amd64.deb
+time dpkg -i kibana-4.6.1-amd64.deb
 
-Sitz: Suzhou, Registergericht: State Administration of Industry & Commerce, P.R.China 
-Board of Directors: Yudong Chen, Patrick Leinenbach, Liming Chen
-
-
-
+kibana installs many small files (23209 entries) under /opt/kibana
