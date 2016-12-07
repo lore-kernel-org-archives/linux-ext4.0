@@ -1,28 +1,31 @@
 From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
-Date: Wed, 7 Dec 2016 11:12:32 -0700
-Message-ID: <452CC006-0197-45C0-BA00-CDA0F8132965@dilger.ca>
+Date: Wed, 7 Dec 2016 11:16:42 -0700
+Message-ID: <53212988-1445-45A4-B56F-0F240013B64C@dilger.ca>
 References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net> <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca> <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net> <AB04C067-920D-483D-9653-FDCD3AB1B42B@dilger.ca>
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_1B5619F0-9CCA-4FEC-B68B-54668EDCB394"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; boundary="Apple-Mail=_37B44C29-2EC6-466A-8AAC-D81F6C33D98C"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        debian-dpkg@lists.debian.org
 To: Renaud Mariana <rmariana@online.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:35518 "EHLO
-        mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932166AbcLGSMi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2016 13:12:38 -0500
-Received: by mail-io0-f172.google.com with SMTP id a124so725566493ioe.2
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Dec 2016 10:12:37 -0800 (PST)
+Received: from mail-io0-f173.google.com ([209.85.223.173]:34867 "EHLO
+        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753008AbcLGSQu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2016 13:16:50 -0500
+Received: by mail-io0-f173.google.com with SMTP id a124so725788006ioe.2
+        for <linux-ext4@vger.kernel.org>; Wed, 07 Dec 2016 10:16:49 -0800 (PST)
 In-Reply-To: <AB04C067-920D-483D-9653-FDCD3AB1B42B@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_1B5619F0-9CCA-4FEC-B68B-54668EDCB394
+--Apple-Mail=_37B44C29-2EC6-466A-8AAC-D81F6C33D98C
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain;
 	charset=us-ascii
+
+Add debian-dpkg mailing list to CC.
 
 On Dec 7, 2016, at 10:58 AM, Andreas Dilger <adilger@dilger.ca> wrote:
 > 
@@ -62,10 +65,6 @@ On Dec 7, 2016, at 10:58 AM, Andreas Dilger <adilger@dilger.ca> wrote:
 > preallocate the space for the file so that it is (largely) contiguous on
 > disk and overwrites will not result in random block allocation.
 
-It would probably be worthwhile to file a ticket in the Debian BTS:
-https://bugs.debian.org/cgi-bin/pkgreport.cgi?dist=unstable;package=dpkg
-
-with your information, so that there is something to submit a patch against.
 
 Cheers, Andreas
 
@@ -74,7 +73,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_1B5619F0-9CCA-4FEC-B68B-54668EDCB394
+--Apple-Mail=_37B44C29-2EC6-466A-8AAC-D81F6C33D98C
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -85,19 +84,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBWEhREXKl2rkXzB/gAQifKBAAm/DOImco8TDbj3WQ786Ml25QL/PwO1qI
-GIPC+mJP2V5KYShHWFwDOTKZZA6tRXCoKOiJU2iYW6gn3jA4iz+GPq380CO10nt3
-U7XuKlHeze3j1BnnL4vUuMMm/Q6DGfem3JMCvFcGNmqdWyK+msby09dbJaNCBIBk
-3HloEw6OyDwCcVQGWR2OF0Z1JaSqAKRMkYVz+TIpK9+xYAMV04+i+1xeyGMgYjnT
-yYnS8uFQL1zNFOjBAYC61c7oy62RMWJRimFtEVJUGysZO1rtQ0MU+jCxhdeEO+m+
-I2XDhZtHCf9bFWZ21kWprG7qwvc+GskKMyJxSe/0ugmKWXMtvvp8m85shtwJQD2I
-zhMnl02J/epTjfrfA7Cure18iAE0Uv3ItI7V6Bn20Qm5meid/23l7qG23jE9Q77h
-RsyEnHfbjWvVYN5DeAgCcfBoHGbdHNWRpmI8ihijyeR97jPXswH+xGUSnWoum+VI
-oBikVmztXjfYS6LVhM3aMxeacbIg9RM7pucYD1NocWyPponZqQOxnX16LBwvrrs1
-6kg/KJwHeSRVjgD5BAmkC4fnM0Ux7IB2TfaAMnohSQrTa53TkDuLpYuJ/nCpKyN2
-nQBT5/WljDzNtWnTJMm1V2xD8YnRqdHBm8yIQpt7OdSbR59E60m8zLnl1jASySNy
-A+9QbxKGQ+Q=
-=Z07v
+iQIVAwUBWEhSC3Kl2rkXzB/gAQjKIQ/+KXcg5X1kfUa8SJDMmAZwZRexT+xwZ9a8
+20wEcH8618gvMY+6OqwZ0fFFwY6r1bIuW2ecZE0L5ikMvarYQzLoTeIsWlNX7a8U
+RaEj6xHQ6SLRU60J5x3q8wU8Q/ScGFYtqz41RZu1itvbl85QMW/uWix0zhu51Opz
+XH1Hh1T6AAr6Bdzb572eHYaK1ClAda8MNBnfc4xoha0yBSkEwfGIcGbx8Ixi5335
+LPdN1xcwYc12+3v/Le2EvuEVQVl5eAL/0mQpqGHhAtfYywqAxSeLn2wjJ5OCuVAh
+E0/zP/HH3jceY2CIg7WzB1g62yS4snmU/GViPhN4H2we7hMHPOrLVZHx0y9xH7tI
+OZCWzQl2DXRIXYobkj37mCGoTM/lfiFiVgkLkVg3BeWVtHKdcQsJn2CekXGR6XIW
+E2/qKuT/TzXeBMosWgV6XeCzU3o2tHMdnowsm75keXQEMIhvIj7JmS+8FTk0LH6J
+2po+PmJ1Tx/cG9IvGmKngE0hAXRZ0cYNFTbnjSxpvhxDOnyhRrZHSJB/Z4zFTDUF
+R8KFdHVY3WKEIccFxSW3DN9lv8GQtCZVBXFQejdPUNSWucxtb74rs1EeB87t4NO0
+nl49cAsbujwNqXxFkN4oOtABaFsb8iaEyrSsjJsoDzjaK0PUgWZdaa7DFvHY4sbT
+mQrn7bZHqgw=
+=sqxQ
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_1B5619F0-9CCA-4FEC-B68B-54668EDCB394--
+--Apple-Mail=_37B44C29-2EC6-466A-8AAC-D81F6C33D98C--
