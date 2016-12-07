@@ -1,50 +1,45 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: [PATCH 1/2] test: add f_mke2fs_baddisk
-Date: Wed,  7 Dec 2016 17:14:18 +0400
-Message-ID: <1481116459-8770-1-git-send-email-dmonakhov@openvz.org>
-Cc: tytso@mit.edu, Dmitry Monakhov <dmonakhov@openvz.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] test: add f_mke2fs_baddisk
+Date: Wed, 7 Dec 2016 09:19:41 -0500
+Message-ID: <20161207141941.vs6zt5wblze34u23@thunk.org>
+References: <1481116459-8770-1-git-send-email-dmonakhov@openvz.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Dmitry Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:6559 "EHLO relay.sw.ru"
+Received: from imap.thunk.org ([74.207.234.97]:57676 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932163AbcLGNcB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Dec 2016 08:32:01 -0500
+        id S1751726AbcLGOTo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Dec 2016 09:19:44 -0500
+Content-Disposition: inline
+In-Reply-To: <1481116459-8770-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Check what mke2fs will return non zero error on broken device.
+On Wed, Dec 07, 2016 at 05:14:18PM +0400, Dmitry Monakhov wrote:
+> Check what mke2fs will return non zero error on broken device.
+> 
+> Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@openvz.org>
----
- tests/f_mke2fs_baddisk/script | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
- create mode 100644 tests/f_mke2fs_baddisk/script
+Most developers don't run "make check" as root.  So at minimum the
+test should check to see if it is running as root, or be able to deal
+with dmsetup failing due to permissions check.
 
-diff --git a/tests/f_mke2fs_baddisk/script b/tests/f_mke2fs_baddisk/script
-new file mode 100644
-index 0000000..a0659c7
---- /dev/null
-+++ b/tests/f_mke2fs_baddisk/script
-@@ -0,0 +1,19 @@
-+test_description="mke2fs /dev/mapper/bad_disk should fail"
-+
-+OUT=$test_name.log
-+
-+dmsetup create -v bad_disk --table '0 1148681097 error' > $OUT 2>&1
-+echo mke2fs /dev/mapper/bad_disk  >> $OUT
-+$MKE2FS  /dev/mapper/bad_disk  >> $OUT 2>&1
-+status=$?
-+sleep 1
-+dmsetup remove --retry bad_disk >> $OUT 2>&1
-+
-+if [ "$status" = 0 ] ; then
-+     ln -f $test_name.log $test_name.failed
-+     echo "$test_name: $test_description: failed"
-+else
-+     echo "$test_name: $test_description: ok"
-+     touch $test_name.ok
-+
-+fi
--- 
-2.7.4
+I wouldn't object if there was some environment variable, say SUDO or
+DOROOT, which, if set, would prefix the commands which require root
+with $DOROOT such that if the developer is willing to enable running
+specific commands as root, that was allowed for the regression test.
 
+Alternatively the long-term plan that I have is to allow pathnames to
+be specified using a URL-like scheme, e.g.;
+
+   unix://path/to/filename
+   test://unix/path/to/filename
+
+Which would allow us to define a proper test mock I/O manager that
+would allow for these sorts of tests without requiring root.
+
+Cheers,
+
+					- Ted
