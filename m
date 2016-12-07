@@ -1,106 +1,198 @@
-From: Sergey Karamov <skaramov@google.com>
-Subject: [PATCH] ext4: do not perform data journaling when data is encrypted.
-Date: Wed,  7 Dec 2016 12:22:32 -0800
-Message-ID: <1481142152-8666-1-git-send-email-skaramov@google.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-        Sergey Karamov <skaramov@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f179.google.com ([209.85.192.179]:33115 "EHLO
-        mail-pf0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752343AbcLGUWv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2016 15:22:51 -0500
-Received: by mail-pf0-f179.google.com with SMTP id d2so78969593pfd.0
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Dec 2016 12:22:50 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH v3 1/4] sched: move IO scheduling accounting from
+ io_schedule_timeout() into scheduler
+Date: Wed, 7 Dec 2016 15:48:41 -0500
+Message-ID: <20161207204841.GA22296@htj.duckdns.org>
+References: <1477673892-28940-1-git-send-email-tj@kernel.org>
+ <1477673892-28940-2-git-send-email-tj@kernel.org>
+ <20161206212935.GB26314@mtj.duckdns.org>
+ <20161207093510.GE3107@twins.programming.kicks-ass.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        mingo@redhat.com, axboe@kernel.dk, tytso@mit.edu, jack@suse.com,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel-team@fb.com, mingbo@fb.com
+To: Peter Zijlstra <peterz@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20161207093510.GE3107@twins.programming.kicks-ass.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently data journalling is incompatible with encryption: enabling both
-at the same time has never been supported by design, and would result in
-unpredictable behavior. However, users are not precluded from turning on
-both features simultaneously. This change programmatically replaces data
-journaling for encrypted regular files with ordered data journaling mode.
+Hello,
 
-Background:
-Journaling encrypted data has not been supported because it operates on
-buffer heads of the page in the page cache. Namely, when the commit
-happens, which could be up to five seconds after caching, the commit
-thread uses the buffer heads attached to the page to copy the contents of
-the page to the journal. With encryption, it would have been required to
-keep the bounce buffer with ciphertext for up to the aforementioned five
-seconds, since the page cache can only hold plaintext and could not be
-used for journaling. Alternatively, it would be required to setup the
-journal to initiate a callback at the commit time to perform deferred
-encryption - in this case, not only would the data have to be written
-twice, but it would also have to be encrypted twice. This level of
-complexity was not justified for a mode that in practice is very rarely
-used because of the overhead from the data journalling.
+Yeah, that works.  Here's v3 based on your patch.  The other patches
+still apply correctly.
 
-Solution:
-If data=journaled has been set as a mount option for a filesystem, or if
-journaling is enabled on a regular file, do not perform journaling if the
-file is also encrypted, instead fall back to the data=ordered mode for the
-file.
+Thanks.
 
-Rationale:
-The intent is to allow seamless and proper filesystem operation when
-journaling and encryption have both been enabled, and have these two
-conflicting features gracefully resolved by the filesystem.
+------ 8< ------
+For an interface to support blocking for IOs, it must call
+io_schedule() instead of schedule().  This makes it tedious to add IO
+blocking to existing interfaces as the switching between schedule()
+and io_schedule() is often buried deep.
 
-Signed-off-by: Sergey Karamov <skaramov@google.com>
+As we already have a way to mark the task as IO scheduling, this can
+be made easier by separating out io_schedule() into multiple steps so
+that IO schedule preparation can be performed before invoking a
+blocking interface and the actual accounting happens inside the
+scheduler.
 
-Change-Id: I6a4882118aed537f45a4fcb36740647b215b78c5
+io_schedule_timeout() does the following three things prior to calling
+schedule_timeout().
+
+ 1. Mark the task as scheduling for IO.
+ 2. Flush out plugged IOs.
+ 3. Account the IO scheduling.
+
+#1 and #2 can be performed in the prepartaion step while #3 must be
+done close to the actual scheduling.  This patch moves #3 into the
+scheduler so that later patches can separate out preparation and
+finish steps from io_schedule().
+
+v3: Replaced with PeterZ's implementation which performs nr_iowait
+    accounting in the sleep and wake up path to avoid unnecessarily
+    burdening non sleeping paths in __schedule().
+
+v2: Remember the rq in @prev_rq and use it for decrementing nr_iowait
+    to avoid misattributing the count after the task gets migrated to
+    another CPU.  Noticed by Pavan.
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Patch-originally-by: Peter Zijlstra <peterz@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Pavan Kondeti <pkondeti@codeaurora.org>
 ---
- fs/ext4/ext4_jbd2.h | 14 ++++++++------
- fs/ext4/super.c     |  5 +++++
- 2 files changed, 13 insertions(+), 6 deletions(-)
+ kernel/sched/core.c |   68 ++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 61 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index b1d52c1..f976111 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -414,17 +414,19 @@ static inline int ext4_inode_journal_mode(struct inode *inode)
- 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
- 	/* We do not support data journalling with delayed allocation */
- 	if (!S_ISREG(inode->i_mode) ||
--	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
--		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
--	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
--	    !test_opt(inode->i_sb, DELALLOC))
-+	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
-+	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
-+	    !test_opt(inode->i_sb, DELALLOC))) {
-+		/* We do not support data journalling for encrypted data */
-+		if (S_ISREG(inode->i_mode) && ext4_encrypted_inode(inode))
-+			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
- 		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -2085,11 +2085,24 @@ try_to_wake_up(struct task_struct *p, un
+ 	p->sched_contributes_to_load = !!task_contributes_to_load(p);
+ 	p->state = TASK_WAKING;
+ 
++	if (p->in_iowait) {
++		delayacct_blkio_end();
++		atomic_dec(&task_rq(p)->nr_iowait);
 +	}
- 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
- 		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
- 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
- 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
--	else
--		BUG();
-+	BUG();
++
+ 	cpu = select_task_rq(p, p->wake_cpu, SD_BALANCE_WAKE, wake_flags);
+ 	if (task_cpu(p) != cpu) {
+ 		wake_flags |= WF_MIGRATED;
+ 		set_task_cpu(p, cpu);
+ 	}
++
++#else /* CONFIG_SMP */
++
++	if (p->in_iowait) {
++		delayacct_blkio_end();
++		atomic_dec(&task_rq(p)->nr_iowait);
++	}
++
+ #endif /* CONFIG_SMP */
+ 
+ 	ttwu_queue(p, cpu, wake_flags);
+@@ -2139,8 +2152,13 @@ static void try_to_wake_up_local(struct
+ 
+ 	trace_sched_waking(p);
+ 
+-	if (!task_on_rq_queued(p))
++	if (!task_on_rq_queued(p)) {
++		if (p->in_iowait) {
++			delayacct_blkio_end();
++			atomic_dec(&rq->nr_iowait);
++		}
+ 		ttwu_activate(rq, p, ENQUEUE_WAKEUP);
++	}
+ 
+ 	ttwu_do_wakeup(rq, p, 0, cookie);
+ 	ttwu_stat(p, smp_processor_id(), 0);
+@@ -2948,6 +2966,36 @@ unsigned long long nr_context_switches(v
+ 	return sum;
  }
  
- static inline int ext4_should_journal_data(struct inode *inode)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 20da99d..18a1722 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3505,6 +3505,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 				 "both data=journal and dax");
- 			goto failed_mount;
- 		}
-+		if (ext4_has_feature_encrypt(sb)) {
-+			ext4_msg(sb, KERN_WARNING,
-+				 "encrypted files will use data=ordered "
-+				 "instead of data journaling mode");
-+		}
- 		if (test_opt(sb, DELALLOC))
- 			clear_opt(sb, DELALLOC);
- 	} else {
--- 
-2.8.0.rc3.226.g39d4020
-
++/*
++ * IO-wait accounting, and how its mostly bollocks (on SMP).
++ *
++ * The idea behind IO-wait account is to account the idle time that we could
++ * have spend running if it were not for IO. That is, if we were to improve the
++ * storage performance, we'd have a proportional reduction in IO-wait time.
++ *
++ * This all works nicely on UP, where, when a task blocks on IO, we account
++ * idle time as IO-wait, because if the storage were faster, it could've been
++ * running and we'd not be idle.
++ *
++ * This has been extended to SMP, by doing the same for each CPU. This however
++ * is broken.
++ *
++ * Imagine for instance the case where two tasks block on one CPU, only the one
++ * CPU will have IO-wait accounted, while the other has regular idle. Even
++ * though, if the storage were faster, both could've ran at the same time,
++ * utilising both CPUs.
++ *
++ * This means, that when looking globally, the current IO-wait accounting on
++ * SMP is a lower bound, by reason of under accounting.
++ *
++ * Worse, since the numbers are provided per CPU, they are sometimes
++ * interpreted per CPU, and that is nonsensical. A blocked task isn't strictly
++ * associated with any one particular CPU, it can wake to another CPU than it
++ * blocked on. This means the per CPU IO-wait number is meaningless.
++ *
++ * Task CPU affinities can make all that even more 'interesting'.
++ */
++
+ unsigned long nr_iowait(void)
+ {
+ 	unsigned long i, sum = 0;
+@@ -2958,6 +3006,13 @@ unsigned long nr_iowait(void)
+ 	return sum;
+ }
+ 
++/*
++ * Consumers of these two interfaces, like for example the cpufreq menu
++ * governor are using nonsensical data. Boosting frequency for a CPU that has
++ * IO-wait which might not even end up running the task when it does become
++ * runnable.
++ */
++
+ unsigned long nr_iowait_cpu(int cpu)
+ {
+ 	struct rq *this = cpu_rq(cpu);
+@@ -3369,6 +3424,11 @@ static void __sched notrace __schedule(b
+ 			deactivate_task(rq, prev, DEQUEUE_SLEEP);
+ 			prev->on_rq = 0;
+ 
++			if (prev->in_iowait) {
++				atomic_inc(&rq->nr_iowait);
++				delayacct_blkio_start();
++			}
++
+ 			/*
+ 			 * If a worker went to sleep, notify and ask workqueue
+ 			 * whether it wants to wake up a task to maintain
+@@ -5063,19 +5123,13 @@ EXPORT_SYMBOL_GPL(yield_to);
+ long __sched io_schedule_timeout(long timeout)
+ {
+ 	int old_iowait = current->in_iowait;
+-	struct rq *rq;
+ 	long ret;
+ 
+ 	current->in_iowait = 1;
+ 	blk_schedule_flush_plug(current);
+ 
+-	delayacct_blkio_start();
+-	rq = raw_rq();
+-	atomic_inc(&rq->nr_iowait);
+ 	ret = schedule_timeout(timeout);
+ 	current->in_iowait = old_iowait;
+-	atomic_dec(&rq->nr_iowait);
+-	delayacct_blkio_end();
+ 
+ 	return ret;
+ }
