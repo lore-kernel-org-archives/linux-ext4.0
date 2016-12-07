@@ -1,56 +1,37 @@
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: LSF/MM 2017: Call for Proposals
-Date: Wed, 07 Dec 2016 06:57:06 -0800
-Message-ID: <1481122626.2354.14.camel@HansenPartnership.com>
-References: <1480601506.2511.7.camel@poochiereds.net>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
+Date: Wed, 7 Dec 2016 08:24:22 -0800
+Message-ID: <20161207162422.GA11436@infradead.org>
+References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net>
+ <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca>
+ <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "lsf-pc@lists.linux-foundation.org" <lsf-pc@lists.linux-foundation.org>
-To: Jeff Layton <jlayton@poochiereds.net>, linux-block@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-mm@kvack.org,  linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
- "xfs@oss.sgi.com" <xfs@oss.sgi.com>, ceph-devel@vger.kernel.org,
- linux-nvme@lists.infradead.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1480601506.2511.7.camel@poochiereds.net>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Renaud Mariana <rmariana@online.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:41210 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752815AbcLGQYs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2016 11:24:48 -0500
+Content-Disposition: inline
+In-Reply-To: <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2016-12-01 at 09:11 -0500, Jeff Layton wrote:
-> 1) Proposals for agenda topics should be sent before January 15th, 
-> 2016 to:
-> 
->     lsf-pc@lists.linux-foundation.org
-> 
-> and cc the Linux list or lists that are relevant for the topic in
-> question:
-> 
->     ATA:   linux-ide@vger.kernel.org
->     Block: linux-block@vger.kernel.org
->     FS:    linux-fsdevel@vger.kernel.org
->     MM:    linux-mm@kvack.org
->     SCSI:  linux-scsi@vger.kernel.org
->     NVMe:  linux-nvme@lists.infradead.org
-> 
-> Please tag your proposal with [LSF/MM TOPIC] to make it easier to 
-> track.
+We had a pretty similar issue lately with SCSI, and I suspect it's
+something similar.  There are two interrelated issues:
 
-Just on this point, since there seems to be a lot of confusion: lsf-pc
-is the list for contacting the programme committee, so you cannot
-subscribe to it.
+ - dpkg uses fallocate where it absolutely shouldn't - it creates
+   new files with typically a single write call, so fallocate doesn't
+   help anything, but actively hurts.
+ - For small enough regions ext4 does not create unwritten extents
+   but zeroes data on disk, and whenever zeroing out the data is
+   expensive this really shows up.  The SCSI case was a device
+   that has a horrible slow WRITE_SAME implementation, but for nbd
+   we'll just write the zero page repeatedly.
 
-There is no -discuss equivalent, like kernel summit has, because we
-expect you to cc the relevant existing mailing list and have the
-discussion there instead rather than expecting people to subscribe to a
-new list.
-
-James
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Patching out the stupid fallocate in dpkg will speed ext4 up a lot
+(especially for small files) and will probably speed XFS up a tiny
+bit as well.  But all my mails to the dpkg folks were simply ignored
+unfortunately.
