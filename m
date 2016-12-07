@@ -1,127 +1,106 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
-Date: Wed, 7 Dec 2016 13:14:22 -0700
-Message-ID: <18255D8F-F475-44F0-81C3-5E86AE1E554C@dilger.ca>
-References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net> <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca> <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net> <AB04C067-920D-483D-9653-FDCD3AB1B42B@dilger.ca> <53212988-1445-45A4-B56F-0F240013B64C@dilger.ca> <8760mv4mhi.fsf@turtle.gmx.de>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_DEB1CE01-E749-45D8-B872-7888CC2963D6"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Renaud Mariana <rmariana@online.net>,
- Ext4 Developers List <linux-ext4@vger.kernel.org>,
- debian-dpkg@lists.debian.org
-To: Sven Joachim <svenjoac@gmx.de>
-Return-path: <bounce-debian-dpkg=debian-dpkg=m.gmane.org@lists.debian.org>
-In-Reply-To: <8760mv4mhi.fsf@turtle.gmx.de>
-Resent-Message-ID: <_e34wo2r4oK.A.VM.72GSYB@bendel>
-List-URL: <https://lists.debian.org/debian-dpkg/>
-List-Post: <mailto:debian-dpkg@lists.debian.org>
-List-Help: <mailto:debian-dpkg-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-dpkg-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-dpkg-request@lists.debian.org?subject=unsubscribe>
-List-Archive: https://lists.debian.org/msgid-search/18255D8F-F475-44F0-81C3-5E86AE1E554C@dilger.ca
-List-Id: linux-ext4.vger.kernel.org
+From: Sergey Karamov <skaramov@google.com>
+Subject: [PATCH] ext4: do not perform data journaling when data is encrypted.
+Date: Wed,  7 Dec 2016 12:22:32 -0800
+Message-ID: <1481142152-8666-1-git-send-email-skaramov@google.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        Sergey Karamov <skaramov@google.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f179.google.com ([209.85.192.179]:33115 "EHLO
+        mail-pf0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752343AbcLGUWv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Dec 2016 15:22:51 -0500
+Received: by mail-pf0-f179.google.com with SMTP id d2so78969593pfd.0
+        for <linux-ext4@vger.kernel.org>; Wed, 07 Dec 2016 12:22:50 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Currently data journalling is incompatible with encryption: enabling both
+at the same time has never been supported by design, and would result in
+unpredictable behavior. However, users are not precluded from turning on
+both features simultaneously. This change programmatically replaces data
+journaling for encrypted regular files with ordered data journaling mode.
 
---Apple-Mail=_DEB1CE01-E749-45D8-B872-7888CC2963D6
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Background:
+Journaling encrypted data has not been supported because it operates on
+buffer heads of the page in the page cache. Namely, when the commit
+happens, which could be up to five seconds after caching, the commit
+thread uses the buffer heads attached to the page to copy the contents of
+the page to the journal. With encryption, it would have been required to
+keep the bounce buffer with ciphertext for up to the aforementioned five
+seconds, since the page cache can only hold plaintext and could not be
+used for journaling. Alternatively, it would be required to setup the
+journal to initiate a callback at the commit time to perform deferred
+encryption - in this case, not only would the data have to be written
+twice, but it would also have to be encrypted twice. This level of
+complexity was not justified for a mode that in practice is very rarely
+used because of the overhead from the data journalling.
 
-On Dec 7, 2016, at 11:34 AM, Sven Joachim <svenjoac@gmx.de> wrote:
->=20
-> On 2016-12-07 11:16 -0700, Andreas Dilger wrote:
->=20
->> Add debian-dpkg mailing list to CC.
->>=20
->> On Dec 7, 2016, at 10:58 AM, Andreas Dilger <adilger@dilger.ca> =
-wrote:
->>>=20
->>> On Dec 7, 2016, at 2:52 AM, Renaud Mariana <rmariana@online.net> =
-wrote:
->>>>=20
->>>> Here are my answers, hope it will help solve this issue, thanks.
->>>>=20
->>>> Recap:
->>>> dpkg kibana on ext4 over a nbd device takes 10 minutes
->>>> with xfs it's only 30s.
->>>> with ext4 no extends only 30s.
->>>>=20
->>>>=20
->>>> kernels :
->>>> 4.5.7 has this issue as older kernel like 4.4.34
->>>> The issue is also when nbd client & server run on same host
->>>>=20
->>>>=20
->>>> How small are the files?
->>>> here is the histogram of file sizes : =
-http://pasteboard.co/6HC3nKyk2.png
->>>> We can see 5000 files around 512 Bytes.
->>>=20
->>> Definitely there is no value to use fallocate for 512-byte files, or =
-any
->>> of the files that can be written in a single write() syscall.  I'd =
-expect
->>> any reasonable tool to be using a write buffer of at least 2-4MB =
-these
->>> days to get good performance, so writes below the buffer size =
-shouldn't
->>> use fallocate() at all.
->=20
-> It should be noted that the latest dpkg (1.18.15) only uses fallocate
-> for files which are at least 16 KiB in size[1], so it would be nice if
-> Renaud could recheck with that version, or cherry-pick the patch into
-> whatever version he uses.
+Solution:
+If data=journaled has been set as a mount option for a filesystem, or if
+journaling is enabled on a regular file, do not perform journaling if the
+file is also encrypted, instead fall back to the data=ordered mode for the
+file.
 
-Any particular reason you chose 16KB for the fallocate() limit?  If the
-write() is being submitted in a single call and isn't outrageously large
-(i.e. over tens of MB), then there isn't any real benefit from =
-fallocate()
-since ext4, XFS, btrfs will already do delayed block allocation based on
-the file size size so it will always get a contiguous allocation on disk
-if there is free space available.  I'm assuming that you aren't doing
-sync writes when extracting the files from the .deb?
+Rationale:
+The intent is to allow seamless and proper filesystem operation when
+journaling and encryption have both been enabled, and have these two
+conflicting features gracefully resolved by the filesystem.
 
-My recommendation would be to avoid fallocate() until the file size is
-larger than 1MB or more (ext4 will automatically preallocate up to 8MB
-actually, but not sure about other filesystems).  I was trying to look
-through the dpkg code to see what buffer sizes are used for writes, but
-that was not very easy to find.
+Signed-off-by: Sergey Karamov <skaramov@google.com>
 
-> 1. =
-https://anonscm.debian.org/cgit/dpkg/dpkg.git/commit/?id=3Da971ad91437af88=
-80cad4703695dcf12ee45959b
+Change-Id: I6a4882118aed537f45a4fcb36740647b215b78c5
+---
+ fs/ext4/ext4_jbd2.h | 14 ++++++++------
+ fs/ext4/super.c     |  5 +++++
+ 2 files changed, 13 insertions(+), 6 deletions(-)
 
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index b1d52c1..f976111 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -414,17 +414,19 @@ static inline int ext4_inode_journal_mode(struct inode *inode)
+ 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+ 	/* We do not support data journalling with delayed allocation */
+ 	if (!S_ISREG(inode->i_mode) ||
+-	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
+-		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+-	    !test_opt(inode->i_sb, DELALLOC))
++	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
++	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
++	    !test_opt(inode->i_sb, DELALLOC))) {
++		/* We do not support data journalling for encrypted data */
++		if (S_ISREG(inode->i_mode) && ext4_encrypted_inode(inode))
++			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
+ 		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
++	}
+ 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
+ 		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
+ 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
+ 		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+-	else
+-		BUG();
++	BUG();
+ }
+ 
+ static inline int ext4_should_journal_data(struct inode *inode)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 20da99d..18a1722 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3505,6 +3505,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				 "both data=journal and dax");
+ 			goto failed_mount;
+ 		}
++		if (ext4_has_feature_encrypt(sb)) {
++			ext4_msg(sb, KERN_WARNING,
++				 "encrypted files will use data=ordered "
++				 "instead of data journaling mode");
++		}
+ 		if (test_opt(sb, DELALLOC))
+ 			clear_opt(sb, DELALLOC);
+ 	} else {
+-- 
+2.8.0.rc3.226.g39d4020
 
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_DEB1CE01-E749-45D8-B872-7888CC2963D6
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBWEhtoHKl2rkXzB/gAQi1cw//evVCaS3KRrW0hP5UR7GuL+2fNZYVhUzs
-bIiLD32SSeke0OtBXGVOdzvC0JrGnifYpHcyaqbybag8wiA1YVErc3kASTBJ8FI8
-eLrnyZ7hzFts0Lh1nzRUwrb0LB+ugZAdGXqsa09+x57IiCNxz4ZlRLO+F8ifCtB/
-xcyX3ofwPsA4y1YlNSEsjdMk0IqLKOHOKm7nrXJk25FcsgzyNLFUNo3Hn5dxQB36
-0Fp7YAObqniQ31Gn0D4+rYkU1nd+DZXXdZ2OlewYC4ukrdKvhVfksPpGEEsOsxR9
-pSERQRG5DK9RiXWQ6wVVOCv4ZeSyS87oq8weqCk5fDDga6SJ89bkGAhSEQPEdZI6
-Q0cHdPnxs8x/HTltgwsfwAixgt/SH1GL8oaqviGgpUydoFy/Ug2rkr8/TDZ65JMr
-mZKEL0BToa87QUfUqdZb9dC+EjPlAYXk0qJlo0pEPhCBkJHB2WeYyEwmJ+D56aM3
-qXwEnO12pAYDcIWUO+YRuluuOuSLxmaNQI8h6g3O6gRyy1NT9sG6+v5YwcfYMyNQ
-bUTC1NdW9XA86KEUMnij/6LZfalOO772Gy0RTORz6MUpnuFgo6uYE86eZdabcy2k
-vTzTpTIZySLrn7yD6iCjJ/Rq420PwE1EnbsUdafoMG9gK5fYLpL4TR4B4eX6OB+5
-z5fq/7VgGFg=
-=StbF
------END PGP SIGNATURE-----
-
---Apple-Mail=_DEB1CE01-E749-45D8-B872-7888CC2963D6--
