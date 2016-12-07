@@ -1,35 +1,35 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: [patch] ext4: return -ENOMEM instead of success
-Date: Wed, 7 Dec 2016 14:21:06 +0300
-Message-ID: <20161207112106.GB5507@elgon.mountain>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: patch ext4: fix data exposure after a crash still work ?
+Date: Wed, 7 Dec 2016 12:47:32 +0100
+Message-ID: <20161207114732.GD8394@quack2.suse.cz>
+References: <b9885defb2ad439a92c8a64c73e26dba@SGPMBX1004.APAC.bosch.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>, Tao Ma <boyu.mt@taobao.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59781 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751515AbcLGLrf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Dec 2016 06:47:35 -0500
 Content-Disposition: inline
-Sender: kernel-janitors-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <b9885defb2ad439a92c8a64c73e26dba@SGPMBX1004.APAC.bosch.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-We should set the error code if kzalloc() fails.
+Hi!
 
-Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+On Tue 06-12-16 09:52:01, HUANG Weller (CM/ESW12-CN) wrote:
+> Since we move to kernel 3.18 stable branch. i found the patch " ext4: fix data exposure after a crash " not available but I found below commit which mentioned that patch.
+> I want to check with you whether " ext4: fix data exposure after a crash " still needed currently ?
+> I guess yes but I want to confirm with you.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 9b67f75bdcf7..437df6a1a841 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -341,8 +341,10 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,
- 
- 	len -= EXT4_MIN_INLINE_DATA_SIZE;
- 	value = kzalloc(len, GFP_NOFS);
--	if (!value)
-+	if (!value) {
-+		error = -ENOMEM;
- 		goto out;
-+	}
- 
- 	error = ext4_xattr_ibody_get(inode, i.name_index, i.name,
- 				     value, len);
+Yes, it is still needed. Actually, I've already backported the fix to
+3.12-based kernel we use for our distribution kernel. Probably I should
+push it to official 3.12-stable kernel as well.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
