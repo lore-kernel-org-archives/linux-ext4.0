@@ -1,43 +1,35 @@
-From: Renaud Mariana <rmariana@online.net>
-Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
-Date: Wed, 7 Dec 2016 10:52:48 +0100 (CET)
-Message-ID: <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net>
-References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net> <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: [patch] ext4: return -ENOMEM instead of success
+Date: Wed, 7 Dec 2016 14:21:06 +0300
+Message-ID: <20161207112106.GB5507@elgon.mountain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.online.net ([62.210.16.11]:55191 "EHLO mail.online.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751512AbcLGJxW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Dec 2016 04:53:22 -0500
-In-Reply-To: <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Tao Ma <boyu.mt@taobao.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: kernel-janitors-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+We should set the error code if kzalloc() fails.
 
-Here are my answers, hope it will help solve this issue, thanks.
+Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Recap:
-dpkg kibana on ext4 over a nbd device takes 10 minutes 
-with xfs it's only 30s.
-with ext4 no extends only 30s.
-
-
-kernels :
-4.5.7 has this issue as older kernel like 4.4.34 
-The issue is also when nbd client & server run on same host 
-
-
-How small are the files?
-here is the histogram of file sizes : http://pasteboard.co/6HC3nKyk2.png
-We can see 5000 files around 512 Bytes.
-
-dpkg using fallocate() ?
-Yes, there are 16044 calls by the same process
-what are these uninitialized extents ?
-
-
-Cheers, Renaud
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 9b67f75bdcf7..437df6a1a841 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -341,8 +341,10 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,
+ 
+ 	len -= EXT4_MIN_INLINE_DATA_SIZE;
+ 	value = kzalloc(len, GFP_NOFS);
+-	if (!value)
++	if (!value) {
++		error = -ENOMEM;
+ 		goto out;
++	}
+ 
+ 	error = ext4_xattr_ibody_get(inode, i.name_index, i.name,
+ 				     value, len);
