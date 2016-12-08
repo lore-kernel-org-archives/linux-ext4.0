@@ -1,86 +1,50 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Thu, 8 Dec 2016 14:51:46 +0100
-Message-ID: <20161208135145.GD26530@dhcp22.suse.cz>
-References: <20161208103300.23217-1-mhocko@kernel.org>
- <86cabb7a-1756-4d12-7ba4-776f66f6bb86@redhat.com>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: LSF/MM 2017: Call for Proposals
+Date: Thu, 08 Dec 2016 07:30:43 -0800
+Message-ID: <1481211043.2361.1.camel@HansenPartnership.com>
+References: <1480601506.2511.7.camel@poochiereds.net>
+	 <1481122626.2354.14.camel@HansenPartnership.com>
+	 <20161208122619.GA26535@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Anatoly Stepanov <astepanov@cloudlinux.com>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-security-module@vger.kernel.org
-To: David Hildenbrand <david@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-block@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-mm@kvack.org,  linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+ "xfs@oss.sgi.com" <xfs@oss.sgi.com>, ceph-devel@vger.kernel.org,
+ linux-nvme@lists.infradead.org,  "lsf-pc@lists.linux-foundation.org"
+ <lsf-pc@lists.linux-foundation.org>
+To: Michal Hocko <mhocko@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <86cabb7a-1756-4d12-7ba4-776f66f6bb86@redhat.com>
+In-Reply-To: <20161208122619.GA26535@dhcp22.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 08-12-16 14:00:20, David Hildenbrand wrote:
-> Am 08.12.2016 um 11:33 schrieb Michal Hocko:
-> > From: Michal Hocko <mhocko@suse.com>
+On Thu, 2016-12-08 at 13:26 +0100, Michal Hocko wrote:
+> On Wed 07-12-16 06:57:06, James Bottomley wrote:
+> [...]
+> > Just on this point, since there seems to be a lot of confusion: lsf
+> > -pc
+> > is the list for contacting the programme committee, so you cannot
+> > subscribe to it.
 > > 
-> > Using kmalloc with the vmalloc fallback for larger allocations is a
-> > common pattern in the kernel code. Yet we do not have any common helper
-> > for that and so users have invented their own helpers. Some of them are
-> > really creative when doing so. Let's just add kv[mz]alloc and make sure
-> > it is implemented properly. This implementation makes sure to not make
-> > a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
-> > to not warn about allocation failures. This also rules out the OOM
-> > killer as the vmalloc is a more approapriate fallback than a disruptive
-> > user visible action.
-> > 
-> > This patch also changes some existing users and removes helpers which
-> > are specific for them. In some cases this is not possible (e.g.
-> > ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
-> > broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
-> > in general (note that the page table allocation is GFP_KERNEL). Those
-> > need to be fixed separately.
-> > 
-> > apparmor has already claimed kv[mz]alloc so remove those and use
-> > __aa_kvmalloc instead to prevent from the naming clashes.
-> > 
-> > Cc: Paolo Bonzini <pbonzini@redhat.com>
-> > Cc: Mike Snitzer <snitzer@redhat.com>
-> > Cc: dm-devel@redhat.com
-> > Cc: "Michael S. Tsirkin" <mst@redhat.com>
-> > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > Cc: kvm@vger.kernel.org
-> > Cc: linux-ext4@vger.kernel.org
-> > Cc: linux-f2fs-devel@lists.sourceforge.net
-> > Cc: linux-security-module@vger.kernel.org
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
+> > There is no -discuss equivalent, like kernel summit has, because we
+> > expect you to cc the relevant existing mailing list and have the
+> > discussion there instead rather than expecting people to subscribe
+> > to a
+> > new list.
 > 
-> I remember yet another similar user in arch/s390/kvm/kvm-s390.c
-> -> kvm_s390_set_skeys()
-> 
-> ...
-> keys = kmalloc_array(args->count, sizeof(uint8_t),
->                      GFP_KERNEL | __GFP_NOWARN);
-> if (!keys)
->         vmalloc(sizeof(uint8_t) * args->count);
-> ...
-> 
-> would kvmalloc_array make sense? (it would even make the code here
-> less error prone and better to read)
+> There used to be lsf@lists.linux-foundation.org. Is it not active
+> anymore?
 
-Well, if there are more users like that then why not. I just do not want
-to duplicate the whole kmalloc API right now. The above could be
-trivially changed to kvmalloc(args->count * sizeof(uint8_t), GFP_KERNEL)
-so a special API might not be really needed. 
+Not until we get the list of invitees sorted out.  And then it's only
+for stuff actually to do with lsf (like logistics, bof or session
+requests or other meetups).  Any technical stuff should still be cc'd
+to the relevant mailing list.
 
--- 
-Michal Hocko
-SUSE Labs
+James
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
