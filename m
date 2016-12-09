@@ -1,114 +1,133 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Filesystem size problem.
-Date: Fri, 9 Dec 2016 13:29:48 -0700
-Message-ID: <6B4536F9-A059-45AC-8A14-85879FC4AC79@dilger.ca>
-References: <CAEUYfyP7U9L4mB12awB_YWEqixh9R8RpRZXjYTG6mpiZeBW4OQ@mail.gmail.com> <CAEUYfyOTkgczw5=T3PLcquT1qAcF4b2aKUEvsbX2DH5QBs5yJg@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_9537550F-2A32-4B45-A833-63A508E6E910"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: linux-ext4@vger.kernel.org
-To: Simon Matthews <simon.d.matthews@gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
+Date: Sat, 10 Dec 2016 08:31:21 +1100
+Message-ID: <20161209213121.GP4326@dastard>
+References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net>
+ <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca>
+ <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net>
+ <AB04C067-920D-483D-9653-FDCD3AB1B42B@dilger.ca>
+ <53212988-1445-45A4-B56F-0F240013B64C@dilger.ca>
+ <8760mv4mhi.fsf@turtle.gmx.de>
+ <20161209012521.GM4326@dastard>
+ <7A0D8B8E-7D71-4281-A7F5-65836412DBDE@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Renaud Mariana <rmariana@online.net>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        debian-dpkg@lists.debian.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f178.google.com ([209.85.223.178]:35236 "EHLO
-        mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752316AbcLIU3z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2016 15:29:55 -0500
-Received: by mail-io0-f178.google.com with SMTP id h30so76930161iod.2
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Dec 2016 12:29:55 -0800 (PST)
-In-Reply-To: <CAEUYfyOTkgczw5=T3PLcquT1qAcF4b2aKUEvsbX2DH5QBs5yJg@mail.gmail.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:31454 "EHLO
+        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751214AbcLIVcu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2016 16:32:50 -0500
+Content-Disposition: inline
+In-Reply-To: <7A0D8B8E-7D71-4281-A7F5-65836412DBDE@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Dec 09, 2016 at 01:28:05PM -0700, Andreas Dilger wrote:
+> On Dec 8, 2016, at 6:25 PM, Dave Chinner <david@fromorbit.com> wrote:
+> > 
+> > On Wed, Dec 07, 2016 at 07:34:17PM +0100, Sven Joachim wrote:
+> >> On 2016-12-07 11:16 -0700, Andreas Dilger wrote:
+> >> 
+> >>> Add debian-dpkg mailing list to CC.
+> >>> 
+> >>> On Dec 7, 2016, at 10:58 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+> >>>> 
+> >>>> On Dec 7, 2016, at 2:52 AM, Renaud Mariana <rmariana@online.net> wrote:
+> >>>>> 
+> >>>>> Here are my answers, hope it will help solve this issue, thanks.
+> >>>>> 
+> >>>>> Recap:
+> >>>>> dpkg kibana on ext4 over a nbd device takes 10 minutes
+> >>>>> with xfs it's only 30s.
+> >>>>> with ext4 no extends only 30s.
+> >>>>> 
+> >>>>> 
+> >>>>> kernels :
+> >>>>> 4.5.7 has this issue as older kernel like 4.4.34
+> >>>>> The issue is also when nbd client & server run on same host
+> >>>>> 
+> >>>>> 
+> >>>>> How small are the files?
+> >>>>> here is the histogram of file sizes : http://pasteboard.co/6HC3nKyk2.png
+> >>>>> We can see 5000 files around 512 Bytes.
+> >>>> 
+> >>>> Definitely there is no value to use fallocate for 512-byte files, or any
+> >>>> of the files that can be written in a single write() syscall.  I'd expect
+> >>>> any reasonable tool to be using a write buffer of at least 2-4MB these
+> >>>> days to get good performance, so writes below the buffer size shouldn't
+> >>>> use fallocate() at all.
+> >> 
+> >> It should be noted that the latest dpkg (1.18.15) only uses fallocate
+> >> for files which are at least 16 KiB in size[1], so it would be nice if
+> >> Renaud could recheck with that version, or cherry-pick the patch into
+> >> whatever version he uses.
+> > 
+> > The fallocate() call should be removed completely. Applications
+> > should not be attempting to control file allocation like this as it
+> > defeats all the optimisations that filesystems use to optimise IO
+> > patterns and minimise filesystem fragmentation (e.g. delayed
+> > allocation).
+> > 
+> > There is /rarely/ a need for applications to use fallocate() to
+> > manage fragmentation - especailly as excessive use of fallocate()
+> > actively harms performance and accelerates filesystem aging.
+> > 
+> > Unless an application has a specific, repeatable performance problem
+> > due to file fragmentation, it should not be using fallocate() to
+> > allocate file space.
+> 
+> I'm not sure I'd go so far as to say that fallocate() should be removed
+> completely.  Isn't that the best (only) way for an application to tell
+> the filesystem that it is about to write a file of X size
 
---Apple-Mail=_9537550F-2A32-4B45-A833-63A508E6E910
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+That's most definitely not what preallocation is for. Filesystems
+optimise the "growing file via sequential writes at EOF" case just
+fine - using fallocate for this sort of thing is simply defeats all
+the writeback optimisations and improvements we've developed over
+the past 20 years for this /very common/ workload...
 
-On Dec 8, 2016, at 10:40 PM, Simon Matthews <simon.d.matthews@gmail.com> =
-wrote:
->=20
-> I have an ext3 filesystem that will not mount under newer versions of
-> the kernel and I hope someone here can help.
->=20
-> Obviously, one solution is "backup and re-create from scratch". I have
-> the backups, but I hope that there may be a quicker method to fix the
-> issues.
->=20
-> The root issue is that the filesystem is very slightly smaller than
-> the allocated space. The filesystem exists on a MDRAID device and I
-> think that when I converted the MDRAID to a newer metadata version, it
-> truncated the available size, slightly. However, how I got here isn't
-> really important, fixing it now is.
+> and try to
+> find a suitable amount of free space for it?
 
-Running "e2fsck -fy" should fix this.  I'd recommend to use the latest
-version of e2fsck.
+fallocate() does give a guarantee than a subsequent write won't
+ENOSPC, but "suitable" is very dependent on context. This contenxt
+is something
+applications don't have - they have no idea what allocation
+optimisations are required to provide fast, efficient IO, and have
+no idea that different filesystems will require /different
+optimisations/. 
 
-Cheers, Andreas
+e.g. btrfs will probably also suffer horribly under fallocate usage
+like what dpkg is doing, and I can tell you for certain it will make
+a mess of XFS filesystems, too....
 
->=20
-> With an slightly older kernel (4.0.5), the filesystem can be mounted.
-> With 4.4.26, the ext3 support is provided by the ext4 subsystem and it
-> appears that it will not accept the size issues. dmesg showed this
-> from the mount attempt:
->=20
-> md5: detected capacity change from 0 to 2839999799296
-> [ 1162.508338] EXT4-fs (md5): mounting ext3 file system using the ext4 =
-subsystem
-> [ 1162.508560] EXT4-fs (md5): bad geometry: block count 693359344
-> exceeds size of device (693359326 blocks)
->=20
-> As I stated, the difference is very small, so it was working OK for a =
-long time.
->=20
-> My attempts to re-size the filesystem did not work. I don't have the
-> error messages available. Getting the system up and running was more
-> important at the time.
->=20
-> Apart from "backup and re-create", how can I fix this? What would be
-> the correct options to use with resize2fs (if that is the correct
-> approach)? fsck gave me some serious warnings about possibly
-> destroying the filesystem, so I did not want to do this without
-> advice.
->=20
-> Simon
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Otherwise, if the file
+> is large and/or written slowly and/or the system has memory pressure
+> the filesystem (even with delalloc) can't make a good decision about
+> allocation.
 
+None of which are the case for dpkg. Nor is it the case for /most
+applications/. And fallocate actually makes memory pressure
+problems worse, because it defeats writeback optimisations to
+maximise dirty page cleaning rates...
 
-Cheers, Andreas
+Preallocation is *not a general purpose tool*. It's for applications
+that have performance problems caused by known, repeatable
+fragmentation or file layout issue.
 
+> However, fallocate() won't really help if the file size
+> is small (e.g. a few MB) since that can easily fit into RAM and will
+> be written to disk in a single chunk.
 
+In my experience, the list of "where fallocate is harmful" is quite
+a bit larger than the list of "where fallocate is beneficial". This
+is just one example of where it's harmful. 
 
-
-
-
---Apple-Mail=_9537550F-2A32-4B45-A833-63A508E6E910
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBWEsUPXKl2rkXzB/gAQgcgQ/+PoR9a4NqbQmpnOYcN50/u8OAVnJ6OXyV
-6sWOGQkuzIGW0zn57Sp0IV9OhZwPpjx+gsUgTGLQQN+kJx3dLsQtCe2IzdLM0ADn
-ziDhl/JdlNAJvi0TNOwZd+76qZ3wG9vYnT+ciHpjfZIspdsHr0I8RZ/+yUM/mKE7
-1taivvq3dbB7A5JAK/PmeUd2PIblIFh+ddwQMIyB2ilQSqXWs/d0OsWGyEEd16+O
-t8A+J/udWVjMRTlxRU7ROUAQ8bEMXq5hSYgo8Ru+NJiZmuZxVB2pwy9jcxXJnYls
-COGTiH4INQH+R4u1UYN7nks7E5zBYjtHnIXVes/XrTsuXCpf133b1M20T6LuPrQT
-WfDyCdOYS54mFgmNcM1oNqHj7wwd7pPf03bOKlivc0coe+FRrnNixATRCBzvie51
-TqLYnlFuK1q2kMsSzQlZC2CwZf/qm5z9PtN/1h+d4/n39A0UJv0A3wvNl2u5OeE5
-xAl99+M6jFuUCrhdkSXUf2UMnlZUtkNHV2xgOtiy0bQOSmsshsFzgY85Nbi7Mx+X
-WuIbpDAF+MPGz8iZ+mkaW/qYYxv+lOCoq8lXZXDjonAPa4VXx2Jc30SVXeIEFhqz
-tfXrWlP95KpvFqKHAIjWWxLASXU//9GGiWVVl7vSY+ECRv1nXXFhq/ziM4GNAtAR
-5S/13WrJ8Fc=
-=W6qq
------END PGP SIGNATURE-----
-
---Apple-Mail=_9537550F-2A32-4B45-A833-63A508E6E910--
+-Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
