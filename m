@@ -1,62 +1,65 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Fri, 9 Dec 2016 07:51:54 +0100
-Message-ID: <20161209065154.GD12012@dhcp22.suse.cz>
-References: <20161208103300.23217-1-mhocko@kernel.org>
- <20161209014417.GN4326@dastard>
- <20161209020016.GX1555@ZenIV.linux.org.uk>
- <20161209062224.GB12012@dhcp22.suse.cz>
- <20161209063803.GY1555@ZenIV.linux.org.uk>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/6] mm: Invalidate DAX radix tree entries only if
+ appropriate
+Date: Fri, 9 Dec 2016 13:02:33 +0100
+Message-ID: <20161209120233.GA9876@quack2.suse.cz>
+References: <1479980796-26161-1-git-send-email-jack@suse.cz>
+ <1479980796-26161-3-git-send-email-jack@suse.cz>
+ <20161129193403.GA12396@cmpxchg.org>
+ <20161130080841.GD16667@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-mm@kvack.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Anatoly Stepanov <astepanov@cloudlinux.com>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-security-module@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org
+To: Johannes Weiner <hannes@cmpxchg.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161209063803.GY1555@ZenIV.linux.org.uk>
+In-Reply-To: <20161130080841.GD16667@quack2.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 09-12-16 06:38:04, Al Viro wrote:
-> On Fri, Dec 09, 2016 at 07:22:25AM +0100, Michal Hocko wrote:
-> 
-> > > Easier to handle those in vmalloc() itself.
+Hi,
+
+On Wed 30-11-16 09:08:41, Jan Kara wrote:
+> > > +static int __dax_invalidate_mapping_entry(struct address_space *mapping,
+> > > +					  pgoff_t index, bool trunc)
+> > > +{
+> > > +	int ret = 0;
+> > > +	void *entry;
+> > > +	struct radix_tree_root *page_tree = &mapping->page_tree;
+> > > +
+> > > +	spin_lock_irq(&mapping->tree_lock);
+> > > +	entry = get_unlocked_mapping_entry(mapping, index, NULL);
+> > > +	if (!entry || !radix_tree_exceptional_entry(entry))
+> > > +		goto out;
+> > > +	if (!trunc &&
+> > > +	    (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+> > > +	     radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE)))
+> > > +		goto out;
+> > > +	radix_tree_delete(page_tree, index);
 > > 
-> > I think there were some attempts in the past but some of the code paths
-> > are burried too deep and adding gfp_mask all the way down there seemed
-> > like a major surgery.
+> > You could use the new __radix_tree_replace() here and save a second
+> > tree lookup.
 > 
-> No need to propagate gfp_mask - the same trick XFS is doing right now can
-> be done in vmalloc.c in a couple of places and that's it; I'll resurrect the
-> patches and post them tomorrow after I get some sleep.
+> Hum, I'd need to return 'node' from get_unlocked_mapping_entry(). So
+> probably I'll do it in a patch separate from this fix. But thanks for
+> suggestion.
 
-That would work as an immediate mitigation. No question about that but
-what I've tried to point out in the reply to Dave is that longerm we
-shouldn't hide this trickiness inside the vmalloc and rather handle
-those users who are requesting NOFS/NOIO context from vmalloc. We
-already have a scope api for NOIO and I want to add the same for NOFS.
-I believe that much more sane approach is to use the API at those places
-which really start/stop reclaim recursion dangerous scope (e.g. the
-transaction context) rather than using GFP_NOFS randomly because this
-approach has proven to not work properly over years. We have so many
-place using GFP_NOFS just because nobody bothered to think whether it is
-needed but it must be safe for sure that it is not funny.
+So I did this and quickly spotted a problem that when you use
+__radix_tree_replace() to clear an entry, it will leave tags for that entry
+set and that results in surprises. So I think I'll leave the code with
+radix_tree_delete() for now.
 
+It would probably make sense to make __radix_tree_replace() to clear tags
+when we replace entry with NULL or at least WARN if some tags are set...
+What do you think?
+
+								Honza
 -- 
-Michal Hocko
-SUSE Labs
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
