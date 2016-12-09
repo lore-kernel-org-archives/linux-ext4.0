@@ -1,11 +1,13 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
 Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Fri, 9 Dec 2016 12:44:17 +1100
-Message-ID: <20161209014417.GN4326@dastard>
+Date: Fri, 9 Dec 2016 02:00:17 +0000
+Message-ID: <20161209020016.GX1555@ZenIV.linux.org.uk>
 References: <20161208103300.23217-1-mhocko@kernel.org>
+ <20161209014417.GN4326@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>,
+Cc: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+	Andrew Morton <akpm@linux-foundation.org>,
 	Vlastimil Babka <vbabka@suse.cz>,
 	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
 	Johannes Weiner <hannes@cmpxchg.org>,
@@ -17,44 +19,42 @@ Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>,
 	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
 	linux-security-module@vger.kernel.org
-To: Michal Hocko <mhocko@kernel.org>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161208103300.23217-1-mhocko@kernel.org>
+In-Reply-To: <20161209014417.GN4326@dastard>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 08, 2016 at 11:33:00AM +0100, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
+On Fri, Dec 09, 2016 at 12:44:17PM +1100, Dave Chinner wrote:
+> On Thu, Dec 08, 2016 at 11:33:00AM +0100, Michal Hocko wrote:
+> > From: Michal Hocko <mhocko@suse.com>
+> > 
+> > Using kmalloc with the vmalloc fallback for larger allocations is a
+> > common pattern in the kernel code. Yet we do not have any common helper
+> > for that and so users have invented their own helpers. Some of them are
+> > really creative when doing so. Let's just add kv[mz]alloc and make sure
+> > it is implemented properly. This implementation makes sure to not make
+> > a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
+> > to not warn about allocation failures. This also rules out the OOM
+> > killer as the vmalloc is a more approapriate fallback than a disruptive
+> > user visible action.
+> > 
+> > This patch also changes some existing users and removes helpers which
+> > are specific for them. In some cases this is not possible (e.g.
+> > ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
+> > broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
+> > in general (note that the page table allocation is GFP_KERNEL). Those
+> > need to be fixed separately.
 > 
-> Using kmalloc with the vmalloc fallback for larger allocations is a
-> common pattern in the kernel code. Yet we do not have any common helper
-> for that and so users have invented their own helpers. Some of them are
-> really creative when doing so. Let's just add kv[mz]alloc and make sure
-> it is implemented properly. This implementation makes sure to not make
-> a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
-> to not warn about allocation failures. This also rules out the OOM
-> killer as the vmalloc is a more approapriate fallback than a disruptive
-> user visible action.
-> 
-> This patch also changes some existing users and removes helpers which
-> are specific for them. In some cases this is not possible (e.g.
-> ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
-> broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
-> in general (note that the page table allocation is GFP_KERNEL). Those
-> need to be fixed separately.
+> See fs/xfs/kmem.c::kmem_zalloc_large(), which is XFS's version of
+> kvmalloc() that is GFP_NOFS/GFP_NOIO safe. Any generic API for this
+> functionality will have to play these memalloc_noio_save/
+> memalloc_noio_restore games to ensure they are GFP_NOFS safe....
 
-See fs/xfs/kmem.c::kmem_zalloc_large(), which is XFS's version of
-kvmalloc() that is GFP_NOFS/GFP_NOIO safe. Any generic API for this
-functionality will have to play these memalloc_noio_save/
-memalloc_noio_restore games to ensure they are GFP_NOFS safe....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Easier to handle those in vmalloc() itself.  The problem I have with these
+helpers is that different places have different cutoff thresholds for
+switch from kmalloc to vmalloc; has anyone done an analysis of those?
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
