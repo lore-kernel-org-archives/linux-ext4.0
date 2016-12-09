@@ -1,58 +1,83 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: LSF/MM 2017: Call for Proposals
-Date: Thu, 8 Dec 2016 16:37:40 +0100
-Message-ID: <20161208153740.GF26530@dhcp22.suse.cz>
-References: <1480601506.2511.7.camel@poochiereds.net>
- <1481122626.2354.14.camel@HansenPartnership.com>
- <20161208122619.GA26535@dhcp22.suse.cz>
- <1481211043.2361.1.camel@HansenPartnership.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: HUGE slowdown when doing dpkg with ext4 over nbd
+Date: Fri, 9 Dec 2016 12:25:21 +1100
+Message-ID: <20161209012521.GM4326@dastard>
+References: <1621417488.8583313.1481030030711.JavaMail.zimbra@online.net>
+ <78AEFE7B-685B-4B4E-A15E-E3F6D99DD343@dilger.ca>
+ <1339224178.8897979.1481104368542.JavaMail.zimbra@online.net>
+ <AB04C067-920D-483D-9653-FDCD3AB1B42B@dilger.ca>
+ <53212988-1445-45A4-B56F-0F240013B64C@dilger.ca>
+ <8760mv4mhi.fsf@turtle.gmx.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-block@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-	linux-scsi@vger.kernel.org, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	ceph-devel@vger.kernel.org, linux-nvme@lists.infradead.org,
-	"lsf-pc@lists.linux-foundation.org" <lsf-pc@lists.linux-foundation.org>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Return-path: <owner-linux-mm@kvack.org>
+To: Andreas Dilger <adilger@dilger.ca>,
+        Renaud Mariana <rmariana@online.net>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        debian-dpkg@lists.debian.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:46960 "EHLO
+        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752013AbcLIBZm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Dec 2016 20:25:42 -0500
 Content-Disposition: inline
-In-Reply-To: <1481211043.2361.1.camel@HansenPartnership.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <8760mv4mhi.fsf@turtle.gmx.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 08-12-16 07:30:43, James Bottomley wrote:
-> On Thu, 2016-12-08 at 13:26 +0100, Michal Hocko wrote:
-> > On Wed 07-12-16 06:57:06, James Bottomley wrote:
-> > [...]
-> > > Just on this point, since there seems to be a lot of confusion: lsf
-> > > -pc
-> > > is the list for contacting the programme committee, so you cannot
-> > > subscribe to it.
-> > > 
-> > > There is no -discuss equivalent, like kernel summit has, because we
-> > > expect you to cc the relevant existing mailing list and have the
-> > > discussion there instead rather than expecting people to subscribe
-> > > to a
-> > > new list.
-> > 
-> > There used to be lsf@lists.linux-foundation.org. Is it not active
-> > anymore?
+On Wed, Dec 07, 2016 at 07:34:17PM +0100, Sven Joachim wrote:
+> On 2016-12-07 11:16 -0700, Andreas Dilger wrote:
 > 
-> Not until we get the list of invitees sorted out.  And then it's only
-> for stuff actually to do with lsf (like logistics, bof or session
-> requests or other meetups).  Any technical stuff should still be cc'd
-> to the relevant mailing list.
+> > Add debian-dpkg mailing list to CC.
+> >
+> > On Dec 7, 2016, at 10:58 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+> >> 
+> >> On Dec 7, 2016, at 2:52 AM, Renaud Mariana <rmariana@online.net> wrote:
+> >>> 
+> >>> Here are my answers, hope it will help solve this issue, thanks.
+> >>> 
+> >>> Recap:
+> >>> dpkg kibana on ext4 over a nbd device takes 10 minutes
+> >>> with xfs it's only 30s.
+> >>> with ext4 no extends only 30s.
+> >>> 
+> >>> 
+> >>> kernels :
+> >>> 4.5.7 has this issue as older kernel like 4.4.34
+> >>> The issue is also when nbd client & server run on same host
+> >>> 
+> >>> 
+> >>> How small are the files?
+> >>> here is the histogram of file sizes : http://pasteboard.co/6HC3nKyk2.png
+> >>> We can see 5000 files around 512 Bytes.
+> >> 
+> >> Definitely there is no value to use fallocate for 512-byte files, or any
+> >> of the files that can be written in a single write() syscall.  I'd expect
+> >> any reasonable tool to be using a write buffer of at least 2-4MB these
+> >> days to get good performance, so writes below the buffer size shouldn't
+> >> use fallocate() at all.
+> 
+> It should be noted that the latest dpkg (1.18.15) only uses fallocate
+> for files which are at least 16 KiB in size[1], so it would be nice if
+> Renaud could recheck with that version, or cherry-pick the patch into
+> whatever version he uses.
 
-OK, I tend to forget about that. Thanks for the clarification!
+The fallocate() call should be removed completely. Applications
+should not be attempting to control file allocation like this as it
+defeats all the optimisations that filesystems use to optimise IO
+patterns and minimise filesystem fragmentation (e.g. delayed
+allocation).
+
+There is /rarely/ a need for applications to use fallocate() to
+manage fragmentation - especailly as excessive use of fallocate()
+actively harms performance and accelerates filesystem aging.
+
+Unless an application has a specific, repeatable performance problem
+due to file fragmentation, it should not be using fallocate() to
+allocate file space.
+
+Cheers,
+
+Dave.
 -- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Dave Chinner
+david@fromorbit.com
