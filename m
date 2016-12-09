@@ -1,10 +1,11 @@
-From: Michal Hocko <mhocko@kernel.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
 Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Fri, 9 Dec 2016 07:22:25 +0100
-Message-ID: <20161209062224.GB12012@dhcp22.suse.cz>
+Date: Fri, 9 Dec 2016 06:38:04 +0000
+Message-ID: <20161209063803.GY1555@ZenIV.linux.org.uk>
 References: <20161208103300.23217-1-mhocko@kernel.org>
  <20161209014417.GN4326@dastard>
  <20161209020016.GX1555@ZenIV.linux.org.uk>
+ <20161209062224.GB12012@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Dave Chinner <david@fromorbit.com>, linux-mm@kvack.org,
@@ -20,61 +21,24 @@ Cc: Dave Chinner <david@fromorbit.com>, linux-mm@kvack.org,
 	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
 	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
 	linux-security-module@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+To: Michal Hocko <mhocko@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161209020016.GX1555@ZenIV.linux.org.uk>
+In-Reply-To: <20161209062224.GB12012@dhcp22.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 09-12-16 02:00:17, Al Viro wrote:
-> On Fri, Dec 09, 2016 at 12:44:17PM +1100, Dave Chinner wrote:
-> > On Thu, Dec 08, 2016 at 11:33:00AM +0100, Michal Hocko wrote:
-> > > From: Michal Hocko <mhocko@suse.com>
-> > > 
-> > > Using kmalloc with the vmalloc fallback for larger allocations is a
-> > > common pattern in the kernel code. Yet we do not have any common helper
-> > > for that and so users have invented their own helpers. Some of them are
-> > > really creative when doing so. Let's just add kv[mz]alloc and make sure
-> > > it is implemented properly. This implementation makes sure to not make
-> > > a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
-> > > to not warn about allocation failures. This also rules out the OOM
-> > > killer as the vmalloc is a more approapriate fallback than a disruptive
-> > > user visible action.
-> > > 
-> > > This patch also changes some existing users and removes helpers which
-> > > are specific for them. In some cases this is not possible (e.g.
-> > > ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
-> > > broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
-> > > in general (note that the page table allocation is GFP_KERNEL). Those
-> > > need to be fixed separately.
-> > 
-> > See fs/xfs/kmem.c::kmem_zalloc_large(), which is XFS's version of
-> > kvmalloc() that is GFP_NOFS/GFP_NOIO safe. Any generic API for this
-> > functionality will have to play these memalloc_noio_save/
-> > memalloc_noio_restore games to ensure they are GFP_NOFS safe....
+On Fri, Dec 09, 2016 at 07:22:25AM +0100, Michal Hocko wrote:
+
+> > Easier to handle those in vmalloc() itself.
 > 
-> Easier to handle those in vmalloc() itself.
+> I think there were some attempts in the past but some of the code paths
+> are burried too deep and adding gfp_mask all the way down there seemed
+> like a major surgery.
 
-I think there were some attempts in the past but some of the code paths
-are burried too deep and adding gfp_mask all the way down there seemed
-like a major surgery.
-
-> The problem I have with these
-> helpers is that different places have different cutoff thresholds for
-> switch from kmalloc to vmalloc; has anyone done an analysis of those?
-
-Yes, I have noticed some creativity as well. Some of them didn't bother
-to kmalloc at all for size > PAGE_SIZE. Some where playing tricks with
-PAGE_ALLOC_COSTLY_ORDER. I believe the right thing to do is to simply do
-not hammer the system with size > PAGE_SZE which means __GFP_NORETRY for
-them and fallback to vmalloc on the failure (basically what
-seq_buf_alloc did). I cannot offer any numbers but at least
-seq_buf_alloc has proven to do the right thing over time.
-
--- 
-Michal Hocko
-SUSE Labs
+No need to propagate gfp_mask - the same trick XFS is doing right now can
+be done in vmalloc.c in a couple of places and that's it; I'll resurrect the
+patches and post them tomorrow after I get some sleep.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
