@@ -1,70 +1,69 @@
-From: Simon Matthews <simon.d.matthews@gmail.com>
-Subject: Fwd: Filesystem size problem.
-Date: Thu, 8 Dec 2016 21:40:36 -0800
-Message-ID: <CAEUYfyOTkgczw5=T3PLcquT1qAcF4b2aKUEvsbX2DH5QBs5yJg@mail.gmail.com>
-References: <CAEUYfyP7U9L4mB12awB_YWEqixh9R8RpRZXjYTG6mpiZeBW4OQ@mail.gmail.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
+Date: Fri, 9 Dec 2016 07:18:00 +0100
+Message-ID: <20161209061759.GA12012@dhcp22.suse.cz>
+References: <20161208103300.23217-1-mhocko@kernel.org>
+ <20161209014417.GN4326@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f176.google.com ([209.85.216.176]:34700 "EHLO
-        mail-qt0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932351AbcLIFkh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Dec 2016 00:40:37 -0500
-Received: by mail-qt0-f176.google.com with SMTP id n6so7357937qtd.1
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Dec 2016 21:40:37 -0800 (PST)
-In-Reply-To: <CAEUYfyP7U9L4mB12awB_YWEqixh9R8RpRZXjYTG6mpiZeBW4OQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Anatoly Stepanov <astepanov@cloudlinux.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Paolo Bonzini <pbonzini@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+	"Michael S. Tsirkin" <mst@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-security-module@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20161209014417.GN4326@dastard>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Forwarding this to linux-ext4 list because the linux-admin list
-appears to be very quiet.
+On Fri 09-12-16 12:44:17, Dave Chinner wrote:
+> On Thu, Dec 08, 2016 at 11:33:00AM +0100, Michal Hocko wrote:
+> > From: Michal Hocko <mhocko@suse.com>
+> > 
+> > Using kmalloc with the vmalloc fallback for larger allocations is a
+> > common pattern in the kernel code. Yet we do not have any common helper
+> > for that and so users have invented their own helpers. Some of them are
+> > really creative when doing so. Let's just add kv[mz]alloc and make sure
+> > it is implemented properly. This implementation makes sure to not make
+> > a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
+> > to not warn about allocation failures. This also rules out the OOM
+> > killer as the vmalloc is a more approapriate fallback than a disruptive
+> > user visible action.
+> > 
+> > This patch also changes some existing users and removes helpers which
+> > are specific for them. In some cases this is not possible (e.g.
+> > ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
+> > broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
+> > in general (note that the page table allocation is GFP_KERNEL). Those
+> > need to be fixed separately.
+> 
+> See fs/xfs/kmem.c::kmem_zalloc_large(), which is XFS's version of
+> kvmalloc() that is GFP_NOFS/GFP_NOIO safe. Any generic API for this
+> functionality will have to play these memalloc_noio_save/
+> memalloc_noio_restore games to ensure they are GFP_NOFS safe....
 
-Please accept my apologies in advance if this is the wrong forum for
-this question!
+Well, I didn't want to play this games in the generic kvmalloc, at least
+not now, because all the converted users didn't really need it so far
+and I believe that the existing users need a) inspection to check
+whether NO{FS,IO} context is really needed and b) I still believe that
+the scope nofs api should be used longterm rather than an explicit
+GFP_NOFS. I am already working on ext[34] code.
 
-Simon
+-- 
+Michal Hocko
+SUSE Labs
 
----------- Forwarded message ----------
-From: Simon Matthews <simon.d.matthews@gmail.com>
-Date: Thu, Dec 8, 2016 at 8:29 PM
-Subject: Filesystem size problem.
-To: linux-admin@vger.kernel.org
-
-
-I have an ext3 filesystem that will not mount under newer versions of
-the kernel and I hope someone here can help.
-
-Obviously, one solution is "backup and re-create from scratch". I have
-the backups, but I hope that there may be a quicker method to fix the
-issues.
-
-The root issue is that the filesystem is very slightly smaller than
-the allocated space. The filesystem exists on a MDRAID device and I
-think that when I converted the MDRAID to a newer metadata version, it
-truncated the available size, slightly. However, how I got here isn't
-really important, fixing it now is.
-
-With an slightly older kernel (4.0.5), the filesystem can be mounted.
-With 4.4.26, the ext3 support is provided by the ext4 subsystem and it
-appears that it will not accept the size issues. dmesg showed this
-from the mount attempt:
-
-md5: detected capacity change from 0 to 2839999799296
-[ 1162.508338] EXT4-fs (md5): mounting ext3 file system using the ext4 subsystem
-[ 1162.508560] EXT4-fs (md5): bad geometry: block count 693359344
-exceeds size of device (693359326 blocks)
-
-As I stated, the difference is very small, so it was working OK for a long time.
-
-My attempts to re-size the filesystem did not work. I don't have the
-error messages available. Getting the system up and running was more
-important at the time.
-
-Apart from "backup and re-create", how can I fix this? What would be
-the correct options to use with resize2fs (if that is the correct
-approach)? fsck gave me some serious warnings about possibly
-destroying the filesystem, so I did not want to do this without
-advice.
-
-Simon
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
