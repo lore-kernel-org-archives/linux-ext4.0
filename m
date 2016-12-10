@@ -1,30 +1,29 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [patch] ext4: return -ENOMEM instead of success
-Date: Sat, 10 Dec 2016 09:58:34 -0500
-Message-ID: <20161210145834.i6uizxma4625kb2p@thunk.org>
-References: <20161207112106.GB5507@elgon.mountain>
+Subject: Re: [PATCH] ext4: reject inodes with negative size
+Date: Sat, 10 Dec 2016 09:55:25 -0500
+Message-ID: <20161210145525.pnrwrz37fyyz3327@thunk.org>
+References: <20161206235740.GA16804@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tao Ma <boyu.mt@taobao.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41074 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:41072 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751130AbcLJWte (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 10 Dec 2016 17:49:34 -0500
+        id S1751130AbcLJWtd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 10 Dec 2016 17:49:33 -0500
 Content-Disposition: inline
-In-Reply-To: <20161207112106.GB5507@elgon.mountain>
+In-Reply-To: <20161206235740.GA16804@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 07, 2016 at 02:21:06PM +0300, Dan Carpenter wrote:
-> We should set the error code if kzalloc() fails.
+On Tue, Dec 06, 2016 at 03:57:40PM -0800, Darrick J. Wong wrote:
+> Don't load an inode with a negative size; this causes integer overflow
+> problems in the VFS.
 > 
-> Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Thanks, applied.
+Thanks, applied.  I added a call to EXT4_ERROR_INODE() so the file
+system would be marked corrupted.
 
-					- Ted
+				- Ted
