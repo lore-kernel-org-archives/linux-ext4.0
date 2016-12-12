@@ -1,88 +1,253 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/6] dax: Avoid page invalidation races and unnecessary radix tree traversals
-Date: Mon, 12 Dec 2016 17:47:05 +0100
-Message-ID: <20161212164708.23244-4-jack@suse.cz>
+Subject: [PATCH 5/6] dax: Call ->iomap_begin without entry lock during dax fault
+Date: Mon, 12 Dec 2016 17:47:07 +0100
+Message-ID: <20161212164708.23244-6-jack@suse.cz>
 References: <20161212164708.23244-1-jack@suse.cz>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	<linux-mm@kvack.org>,
-	<linux-ext4@vger.kernel.org>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Jan Kara <jack@suse.cz>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>, <linux-mm@kvack.org>,
+        <linux-ext4@vger.kernel.org>, Johannes Weiner <hannes@cmpxchg.org>,
+        Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:50824 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753397AbcLLQrZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Dec 2016 11:47:25 -0500
 In-Reply-To: <20161212164708.23244-1-jack@suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently dax_iomap_rw() takes care of invalidating page tables and
-evicting hole pages from the radix tree when write(2) to the file
-happens. This invalidation is only necessary when there is some block
-allocation resulting from write(2). Furthermore in current place the
-invalidation is racy wrt page fault instantiating a hole page just after
-we have invalidated it.
+Currently ->iomap_begin() handler is called with entry lock held. If the
+filesystem held any locks between ->iomap_begin() and ->iomap_end()
+(such as ext4 which will want to hold transaction open), this would cause
+lock inversion with the iomap_apply() from standard IO path which first
+calls ->iomap_begin() and only then calls ->actor() callback which grabs
+entry locks for DAX (if it faults when copying from/to user provided
+buffers).
 
-So perform the page invalidation inside dax_iomap_actor() where we can
-do it only when really necessary and after blocks have been allocated so
-nobody will be instantiating new hole pages anymore.
+Fix the problem by nesting grabbing of entry lock inside ->iomap_begin()
+- ->iomap_end() pair.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c | 28 +++++++++++-----------------
- 1 file changed, 11 insertions(+), 17 deletions(-)
+ fs/dax.c | 121 ++++++++++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 66 insertions(+), 55 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 71863f0d51f7..97858dd5dab6 100644
+index e186bba0a642..51b03e91d3e2 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -986,6 +986,17 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 	if (WARN_ON_ONCE(iomap->type != IOMAP_MAPPED))
- 		return -EIO;
+@@ -1079,6 +1079,15 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_rw);
  
-+	/*
-+	 * Write can allocate block for an area which has a hole page mapped
-+	 * into page tables. We have to tear down these mappings so that data
-+	 * written by write(2) is visible in mmap.
-+	 */
-+	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-+		invalidate_inode_pages2_range(inode->i_mapping,
-+					      pos >> PAGE_SHIFT,
-+					      (end - 1) >> PAGE_SHIFT);
-+	}
++static int dax_fault_return(int error)
++{
++	if (error == 0)
++		return VM_FAULT_NOPAGE;
++	if (error == -ENOMEM)
++		return VM_FAULT_OOM;
++	return VM_FAULT_SIGBUS;
++}
 +
- 	while (pos < end) {
- 		unsigned offset = pos & (PAGE_SIZE - 1);
- 		struct blk_dax_ctl dax = { 0 };
-@@ -1044,23 +1055,6 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	if (iov_iter_rw(iter) == WRITE)
- 		flags |= IOMAP_WRITE;
+ /**
+  * dax_iomap_fault - handle a page fault on a DAX file
+  * @vma: The virtual memory area where the fault occurred
+@@ -1111,12 +1120,6 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	if (pos >= i_size_read(inode))
+ 		return VM_FAULT_SIGBUS;
  
--	/*
--	 * Yes, even DAX files can have page cache attached to them:  A zeroed
--	 * page is inserted into the pagecache when we have to serve a write
--	 * fault on a hole.  It should never be dirtied and can simply be
--	 * dropped from the pagecache once we get real data for the page.
--	 *
--	 * XXX: This is racy against mmap, and there's nothing we can do about
--	 * it. We'll eventually need to shift this down even further so that
--	 * we can check if we allocated blocks over a hole first.
--	 */
--	if (mapping->nrpages) {
--		ret = invalidate_inode_pages2_range(mapping,
--				pos >> PAGE_SHIFT,
--				(pos + iov_iter_count(iter) - 1) >> PAGE_SHIFT);
--		WARN_ON_ONCE(ret);
+-	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
+-	if (IS_ERR(entry)) {
+-		error = PTR_ERR(entry);
+-		goto out;
 -	}
 -
- 	while (iov_iter_count(iter)) {
- 		ret = iomap_apply(inode, pos, iov_iter_count(iter), flags, ops,
- 				iter, dax_iomap_actor);
+ 	if ((vmf->flags & FAULT_FLAG_WRITE) && !vmf->cow_page)
+ 		flags |= IOMAP_WRITE;
+ 
+@@ -1127,9 +1130,15 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	 */
+ 	error = ops->iomap_begin(inode, pos, PAGE_SIZE, flags, &iomap);
+ 	if (error)
+-		goto unlock_entry;
++		return dax_fault_return(error);
+ 	if (WARN_ON_ONCE(iomap.offset + iomap.length < pos + PAGE_SIZE)) {
+-		error = -EIO;		/* fs corruption? */
++		vmf_ret = dax_fault_return(-EIO);	/* fs corruption? */
++		goto finish_iomap;
++	}
++
++	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
++	if (IS_ERR(entry)) {
++		vmf_ret = dax_fault_return(PTR_ERR(entry));
+ 		goto finish_iomap;
+ 	}
+ 
+@@ -1152,13 +1161,13 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		}
+ 
+ 		if (error)
+-			goto finish_iomap;
++			goto error_unlock_entry;
+ 
+ 		__SetPageUptodate(vmf->cow_page);
+ 		vmf_ret = finish_fault(vmf);
+ 		if (!vmf_ret)
+ 			vmf_ret = VM_FAULT_DONE_COW;
+-		goto finish_iomap;
++		goto unlock_entry;
+ 	}
+ 
+ 	switch (iomap.type) {
+@@ -1170,12 +1179,15 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		}
+ 		error = dax_insert_mapping(mapping, iomap.bdev, sector,
+ 				PAGE_SIZE, &entry, vma, vmf);
++		/* -EBUSY is fine, somebody else faulted on the same PTE */
++		if (error == -EBUSY)
++			error = 0;
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+ 		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
+ 			vmf_ret = dax_load_hole(mapping, &entry, vmf);
+-			goto finish_iomap;
++			goto unlock_entry;
+ 		}
+ 		/*FALLTHRU*/
+ 	default:
+@@ -1184,30 +1196,25 @@ int dax_iomap_fault(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 		break;
+ 	}
+ 
+- finish_iomap:
+-	if (ops->iomap_end) {
+-		if (error || (vmf_ret & VM_FAULT_ERROR)) {
+-			/* keep previous error */
+-			ops->iomap_end(inode, pos, PAGE_SIZE, 0, flags,
+-					&iomap);
+-		} else {
+-			error = ops->iomap_end(inode, pos, PAGE_SIZE,
+-					PAGE_SIZE, flags, &iomap);
+-		}
+-	}
++ error_unlock_entry:
++	vmf_ret = dax_fault_return(error) | major;
+  unlock_entry:
+ 	put_locked_mapping_entry(mapping, vmf->pgoff, entry);
+- out:
+-	if (error == -ENOMEM)
+-		return VM_FAULT_OOM | major;
+-	/* -EBUSY is fine, somebody else faulted on the same PTE */
+-	if (error < 0 && error != -EBUSY)
+-		return VM_FAULT_SIGBUS | major;
+-	if (vmf_ret) {
+-		WARN_ON_ONCE(error); /* -EBUSY from ops->iomap_end? */
+-		return vmf_ret;
++ finish_iomap:
++	if (ops->iomap_end) {
++		int copied = PAGE_SIZE;
++
++		if (vmf_ret & VM_FAULT_ERROR)
++			copied = 0;
++		/*
++		 * The fault is done by now and there's no way back (other
++		 * thread may be already happily using PTE we have installed).
++		 * Just ignore error from ->iomap_end since we cannot do much
++		 * with it.
++		 */
++		ops->iomap_end(inode, pos, PAGE_SIZE, copied, flags, &iomap);
+ 	}
+-	return VM_FAULT_NOPAGE | major;
++	return vmf_ret;
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_fault);
+ 
+@@ -1332,16 +1339,6 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 		goto fallback;
+ 
+ 	/*
+-	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
+-	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
+-	 * the tree, for instance), it will return -EEXIST and we just fall
+-	 * back to 4k entries.
+-	 */
+-	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
+-	if (IS_ERR(entry))
+-		goto fallback;
+-
+-	/*
+ 	 * Note that we don't use iomap_apply here.  We aren't doing I/O, only
+ 	 * setting up a mapping, so really we're using iomap_begin() as a way
+ 	 * to look up our filesystem block.
+@@ -1349,10 +1346,21 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 	pos = (loff_t)pgoff << PAGE_SHIFT;
+ 	error = ops->iomap_begin(inode, pos, PMD_SIZE, iomap_flags, &iomap);
+ 	if (error)
+-		goto unlock_entry;
++		goto fallback;
++
+ 	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+ 		goto finish_iomap;
+ 
++	/*
++	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
++	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
++	 * the tree, for instance), it will return -EEXIST and we just fall
++	 * back to 4k entries.
++	 */
++	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
++	if (IS_ERR(entry))
++		goto finish_iomap;
++
+ 	vmf.pgoff = pgoff;
+ 	vmf.flags = flags;
+ 	vmf.gfp_mask = mapping_gfp_mask(mapping) | __GFP_IO;
+@@ -1365,7 +1373,7 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+ 		if (WARN_ON_ONCE(write))
+-			goto finish_iomap;
++			goto unlock_entry;
+ 		result = dax_pmd_load_hole(vma, pmd, &vmf, address, &iomap,
+ 				&entry);
+ 		break;
+@@ -1374,20 +1382,23 @@ int dax_iomap_pmd_fault(struct vm_area_struct *vma, unsigned long address,
+ 		break;
+ 	}
+ 
++ unlock_entry:
++	put_locked_mapping_entry(mapping, pgoff, entry);
+  finish_iomap:
+ 	if (ops->iomap_end) {
+-		if (result == VM_FAULT_FALLBACK) {
+-			ops->iomap_end(inode, pos, PMD_SIZE, 0, iomap_flags,
+-					&iomap);
+-		} else {
+-			error = ops->iomap_end(inode, pos, PMD_SIZE, PMD_SIZE,
+-					iomap_flags, &iomap);
+-			if (error)
+-				result = VM_FAULT_FALLBACK;
+-		}
++		int copied = PMD_SIZE;
++
++		if (result == VM_FAULT_FALLBACK)
++			copied = 0;
++		/*
++		 * The fault is done by now and there's no way back (other
++		 * thread may be already happily using PMD we have installed).
++		 * Just ignore error from ->iomap_end since we cannot do much
++		 * with it.
++		 */
++		ops->iomap_end(inode, pos, PMD_SIZE, copied, iomap_flags,
++				&iomap);
+ 	}
+- unlock_entry:
+-	put_locked_mapping_entry(mapping, pgoff, entry);
+  fallback:
+ 	if (result == VM_FAULT_FALLBACK) {
+ 		split_huge_pmd(vma, pmd, address);
 -- 
 2.10.2
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
