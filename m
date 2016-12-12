@@ -1,84 +1,78 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [ext4]  e2ae766c1b:
- BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
-Date: Mon, 12 Dec 2016 15:13:29 -0700
-Message-ID: <20161212221329.GB3622@linux.intel.com>
-References: <20161212101321.GA37214@inn.lkp.intel.com>
- <20161212163518.GA20728@quack2.suse.cz>
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Subject: Re: [PATCH 1/6] ext4: Move is_32bit_api() to generic code
+Date: Mon, 12 Dec 2016 23:18:35 +0100
+Message-ID: <CAFLxGvzZL8KaYQw=A+oURnfBV7TzM0-bemRhTZzWp_8W3rdfdQ@mail.gmail.com>
+References: <1480629741-18375-1-git-send-email-richard@nod.at> <1480629741-18375-2-git-send-email-richard@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, kernel test robot <xiaolong.ye-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lkp-JC7UmRfGjtg@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20161212163518.GA20728-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        David Gstir <david@sigma-star.at>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        adilger.kernel@dilger.ca,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-ext4@vger.kernel.org
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1480629741-18375-2-git-send-email-richard@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 12, 2016 at 05:35:18PM +0100, Jan Kara wrote:
-> On Mon 12-12-16 18:13:21, kernel test robot wrote:
-> > FYI, we noticed the following commit:
-> > 
-> > commit: e2ae766c1b030271b5099b25674e2131d1d1e8c1 ("ext4: convert DAX faults to iomap infrastructure")
-> > https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-> > 
-> > in testcase: nvml
-> > with following parameters:
-> > 
-> > 	group: vmem
-> > 	test: pmem
-> > 	nr_pmem: 1
-> > 	fs: ext4
-> > 	mount_option: dax
-> > 
-> > 
-> > 
-> > on test machine: 64 threads Intel(R) Xeon(R) CPU E5-4650 0 @ 2.70GHz with 64G memory
-> > 
-> > caused below changes:
-> > 
-> > 
-> > +------------------------------------------------+------------+------------+
-> > |                                                | 96f8ba3dd6 | e2ae766c1b |
-> > +------------------------------------------------+------------+------------+
-> > | boot_successes                                 | 2          | 2          |
-> > | boot_failures                                  | 2          | 2          |
-> > | BUG:kernel_hang_in_test_stage                  | 2          |            |
-> > | WARNING:at_fs/sysfs/dir.c:#sysfs_warn_dup      | 0          | 2          |
-> > | calltrace:parport_pc_init                      | 0          | 2          |
-> > | calltrace:SyS_finit_module                     | 0          | 2          |
-> > | WARNING:at_lib/kobject.c:#kobject_add_internal | 0          | 2          |
-> > +------------------------------------------------+------------+------------+
-> > 
-> > 
-> > 
-> > user  :notice: [  325.592182] vmem_aligned_alloc/TEST1: SETUP (check/pmem/debug)
-> > 
-> > user  :notice: [  325.603973] vmem_aligned_alloc/TEST1: START: vmem_aligned_alloc
-> > kern  :err   : [  325.608906] BUG: sleeping function called from invalid context at kernel/locking/rwsem.c:51
-> > kern  :err   : [  325.608908] in_atomic(): 1, irqs_disabled(): 0, pid: 24813, name: vmem_aligned_al
-> > kern  :warn  : [  325.608914] CPU: 44 PID: 24813 Comm: vmem_aligned_al Tainted: G           O    4.9.0-rc4-00045-ge2ae766 #1
-> > kern  :warn  : [  325.608916] Hardware name: Intel Corporation LH Pass/S4600LH...., BIOS SE5C600.86B.99.02.1047.032320122259 03/23/2012
-> > kern  :warn  : [  325.608922]  ffffc9002c1f7be0
-> > kern  :warn  : [  325.608923]  ffffffff81466af9
-> > kern  :warn  : [  325.608924]  ffff880fea2425c0
-> 
-> I think this is actually a bug introduced by Ross' PMD support. Attached
-> patch should fix it. Ross, can you check it please?
+On Thu, Dec 1, 2016 at 11:02 PM, Richard Weinberger <richard@nod.at> wrote:
+> Since UBIFS will also use this function, move it to compat.h.
+>
+> Signed-off-by: Richard Weinberger <richard@nod.at>
+> ---
+>  fs/ext4/dir.c          | 9 ---------
+>  include/linux/compat.h | 2 ++
+>  2 files changed, 2 insertions(+), 9 deletions(-)
+>
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index e8b365000d73..464e6e99d744 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -290,15 +290,6 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>         return err;
+>  }
+>
+> -static inline int is_32bit_api(void)
+> -{
+> -#ifdef CONFIG_COMPAT
+> -       return in_compat_syscall();
+> -#else
+> -       return (BITS_PER_LONG == 32);
+> -#endif
+> -}
+> -
+>  /*
+>   * These functions convert from the major/minor hash to an f_pos
+>   * value for dx directories
+> diff --git a/include/linux/compat.h b/include/linux/compat.h
+> index 63609398ef9f..8412382e8d08 100644
+> --- a/include/linux/compat.h
+> +++ b/include/linux/compat.h
+> @@ -730,11 +730,13 @@ asmlinkage long compat_sys_fanotify_mark(int, unsigned int, __u32, __u32,
+>  #ifndef in_compat_syscall
+>  static inline bool in_compat_syscall(void) { return is_compat_task(); }
+>  #endif
+> +static inline int is_32bit_api(void) { return in_compat_syscall(); }
+>
+>  #else
+>
+>  #define is_compat_task() (0)
+>  static inline bool in_compat_syscall(void) { return false; }
+> +static inline int is_32bit_api(void) { return BITS_PER_LONG == 32; }
+>
+>  #endif /* CONFIG_COMPAT */
 
-Yep, that patch looks good.   You can add:
+Just realized that this patch didn't get any feedback.
+Ted, are you fine with it?
 
-Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Anyway, exportable UBIFS has to wait until the next merge window.
 
-And I turned on CONFIG_DEBUG_ATOMIC_SLEEP in my test config.  :)
+-- 
+Thanks,
+//richard
