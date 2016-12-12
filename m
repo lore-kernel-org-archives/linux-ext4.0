@@ -1,38 +1,84 @@
-From: Johannes Weiner <hannes@cmpxchg.org>
-Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
-Date: Mon, 12 Dec 2016 12:51:33 -0500
-Message-ID: <20161212175133.GB8688@cmpxchg.org>
-References: <20161212164708.23244-1-jack@suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [ext4]  e2ae766c1b:
+ BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
+Date: Mon, 12 Dec 2016 15:13:29 -0700
+Message-ID: <20161212221329.GB3622@linux.intel.com>
+References: <20161212101321.GA37214@inn.lkp.intel.com>
+ <20161212163518.GA20728@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-mm@kvack.org, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gum.cmpxchg.org ([85.214.110.215]:52280 "EHLO gum.cmpxchg.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753724AbcLLRvh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Dec 2016 12:51:37 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, kernel test robot <xiaolong.ye-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+ LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lkp-JC7UmRfGjtg@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20161212164708.23244-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20161212163518.GA20728-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 12, 2016 at 05:47:02PM +0100, Jan Kara wrote:
-> Hello,
+On Mon, Dec 12, 2016 at 05:35:18PM +0100, Jan Kara wrote:
+> On Mon 12-12-16 18:13:21, kernel test robot wrote:
+> > FYI, we noticed the following commit:
+> > 
+> > commit: e2ae766c1b030271b5099b25674e2131d1d1e8c1 ("ext4: convert DAX faults to iomap infrastructure")
+> > https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+> > 
+> > in testcase: nvml
+> > with following parameters:
+> > 
+> > 	group: vmem
+> > 	test: pmem
+> > 	nr_pmem: 1
+> > 	fs: ext4
+> > 	mount_option: dax
+> > 
+> > 
+> > 
+> > on test machine: 64 threads Intel(R) Xeon(R) CPU E5-4650 0 @ 2.70GHz with 64G memory
+> > 
+> > caused below changes:
+> > 
+> > 
+> > +------------------------------------------------+------------+------------+
+> > |                                                | 96f8ba3dd6 | e2ae766c1b |
+> > +------------------------------------------------+------------+------------+
+> > | boot_successes                                 | 2          | 2          |
+> > | boot_failures                                  | 2          | 2          |
+> > | BUG:kernel_hang_in_test_stage                  | 2          |            |
+> > | WARNING:at_fs/sysfs/dir.c:#sysfs_warn_dup      | 0          | 2          |
+> > | calltrace:parport_pc_init                      | 0          | 2          |
+> > | calltrace:SyS_finit_module                     | 0          | 2          |
+> > | WARNING:at_lib/kobject.c:#kobject_add_internal | 0          | 2          |
+> > +------------------------------------------------+------------+------------+
+> > 
+> > 
+> > 
+> > user  :notice: [  325.592182] vmem_aligned_alloc/TEST1: SETUP (check/pmem/debug)
+> > 
+> > user  :notice: [  325.603973] vmem_aligned_alloc/TEST1: START: vmem_aligned_alloc
+> > kern  :err   : [  325.608906] BUG: sleeping function called from invalid context at kernel/locking/rwsem.c:51
+> > kern  :err   : [  325.608908] in_atomic(): 1, irqs_disabled(): 0, pid: 24813, name: vmem_aligned_al
+> > kern  :warn  : [  325.608914] CPU: 44 PID: 24813 Comm: vmem_aligned_al Tainted: G           O    4.9.0-rc4-00045-ge2ae766 #1
+> > kern  :warn  : [  325.608916] Hardware name: Intel Corporation LH Pass/S4600LH...., BIOS SE5C600.86B.99.02.1047.032320122259 03/23/2012
+> > kern  :warn  : [  325.608922]  ffffc9002c1f7be0
+> > kern  :warn  : [  325.608923]  ffffffff81466af9
+> > kern  :warn  : [  325.608924]  ffff880fea2425c0
 > 
-> this is the third revision of my fixes of races when invalidating hole pages in
-> DAX mappings. See changelogs for details. The series is based on my patches to
-> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
-> dependency because we really need to closely track dirtiness (and cleanness!)
-> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
-> bits leading to missed cache flushes on fsync(2).
-> 
-> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
-> 
-> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
-> patches to some tree once DAX write-protection patches are merged.  I'm hoping
-> to get at least first three patches merged for 4.10-rc2... Thanks!
+> I think this is actually a bug introduced by Ross' PMD support. Attached
+> patch should fix it. Ross, can you check it please?
 
-LGTM, thanks Jan
+Yep, that patch looks good.   You can add:
+
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+
+And I turned on CONFIG_DEBUG_ATOMIC_SLEEP in my test config.  :)
