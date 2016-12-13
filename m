@@ -1,89 +1,64 @@
-From: "Huang\, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [LKP] [ext4] e2ae766c1b:
- BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
-Date: Tue, 13 Dec 2016 09:27:51 +0800
-Message-ID: <87mvg08voo.fsf@yhuang-dev.intel.com>
-References: <20161212101321.GA37214@inn.lkp.intel.com>
- <20161212163518.GA20728@quack2.suse.cz>
+From: Simon Matthews <simon.d.matthews@gmail.com>
+Subject: Re: Filesystem size problem.
+Date: Mon, 12 Dec 2016 18:48:44 -0800
+Message-ID: <CAEUYfyN373=Eacbu=jL-YPfcmLC0VjvMc++__eVUAJb++gq6Ug@mail.gmail.com>
+References: <CAEUYfyP7U9L4mB12awB_YWEqixh9R8RpRZXjYTG6mpiZeBW4OQ@mail.gmail.com>
+ <CAEUYfyOTkgczw5=T3PLcquT1qAcF4b2aKUEvsbX2DH5QBs5yJg@mail.gmail.com>
+ <6B4536F9-A059-45AC-8A14-85879FC4AC79@dilger.ca> <46f8665e-c3b5-b2e9-346b-4bbb380bb6e2@redhat.com>
+ <7393F8E6-AD83-430E-AE3E-A800DAB91FD3@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, kernel test robot <xiaolong.ye-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lkp-JC7UmRfGjtg@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20161212163518.GA20728-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org> (Jan Kara's message of
- "Mon, 12 Dec 2016 17:35:18 +0100")
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:34079 "EHLO
+        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752880AbcLMCsq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Dec 2016 21:48:46 -0500
+Received: by mail-qk0-f172.google.com with SMTP id q130so103595054qke.1
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Dec 2016 18:48:46 -0800 (PST)
+In-Reply-To: <7393F8E6-AD83-430E-AE3E-A800DAB91FD3@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> writes:
-
-> On Mon 12-12-16 18:13:21, kernel test robot wrote:
->> FYI, we noticed the following commit:
->> 
->> commit: e2ae766c1b030271b5099b25674e2131d1d1e8c1 ("ext4: convert DAX faults to iomap infrastructure")
->> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
->> 
->> in testcase: nvml
->> with following parameters:
->> 
->> 	group: vmem
->> 	test: pmem
->> 	nr_pmem: 1
->> 	fs: ext4
->> 	mount_option: dax
->> 
->> 
->> 
->> on test machine: 64 threads Intel(R) Xeon(R) CPU E5-4650 0 @ 2.70GHz with 64G memory
->> 
->> caused below changes:
->> 
->> 
->> +------------------------------------------------+------------+------------+
->> |                                                | 96f8ba3dd6 | e2ae766c1b |
->> +------------------------------------------------+------------+------------+
->> | boot_successes                                 | 2          | 2          |
->> | boot_failures                                  | 2          | 2          |
->> | BUG:kernel_hang_in_test_stage                  | 2          |            |
->> | WARNING:at_fs/sysfs/dir.c:#sysfs_warn_dup      | 0          | 2          |
->> | calltrace:parport_pc_init                      | 0          | 2          |
->> | calltrace:SyS_finit_module                     | 0          | 2          |
->> | WARNING:at_lib/kobject.c:#kobject_add_internal | 0          | 2          |
->> +------------------------------------------------+------------+------------+
->> 
->> 
->> 
->> user  :notice: [  325.592182] vmem_aligned_alloc/TEST1: SETUP (check/pmem/debug)
->> 
->> user  :notice: [  325.603973] vmem_aligned_alloc/TEST1: START: vmem_aligned_alloc
->> kern  :err   : [  325.608906] BUG: sleeping function called from invalid context at kernel/locking/rwsem.c:51
->> kern  :err   : [  325.608908] in_atomic(): 1, irqs_disabled(): 0, pid: 24813, name: vmem_aligned_al
->> kern  :warn  : [  325.608914] CPU: 44 PID: 24813 Comm: vmem_aligned_al Tainted: G           O    4.9.0-rc4-00045-ge2ae766 #1
->> kern  :warn  : [  325.608916] Hardware name: Intel Corporation LH Pass/S4600LH...., BIOS SE5C600.86B.99.02.1047.032320122259 03/23/2012
->> kern  :warn  : [  325.608922]  ffffc9002c1f7be0
->> kern  :warn  : [  325.608923]  ffffffff81466af9
->> kern  :warn  : [  325.608924]  ffff880fea2425c0
+On Mon, Dec 12, 2016 at 2:36 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Dec 9, 2016, at 9:35 PM, Eric Sandeen <sandeen@redhat.com> wrote:
+>>
+>> On 12/9/16 2:29 PM, Andreas Dilger wrote:
+>>> On Dec 8, 2016, at 10:40 PM, Simon Matthews <simon.d.matthews@gmail.com> wrote:
+>>>>
+>>>> I have an ext3 filesystem that will not mount under newer versions of
+>>>> the kernel and I hope someone here can help.
+>>>>
+>>>> Obviously, one solution is "backup and re-create from scratch". I have
+>>>> the backups, but I hope that there may be a quicker method to fix the
+>>>> issues.
+>>>>
+>>>> The root issue is that the filesystem is very slightly smaller than
+>>>> the allocated space.
+>>
+>> So the device is now smaller than the filesystem thinks, right?
+>>
+>>> The filesystem exists on a MDRAID device and I
+>>>> think that when I converted the MDRAID to a newer metadata version, it
+>>>> truncated the available size, slightly. However, how I got here isn't
+>>>> really important, fixing it now is.
+>>>
+>>> Running "e2fsck -fy" should fix this.  I'd recommend to use the latest
+>>> version of e2fsck.
+>>
+>> Reaslly?  e2fsck can change total blocks in the superblock to accomodate a
+>> shrunken device?  That's a new one for me...
 >
-> I think this is actually a bug introduced by Ross' PMD support. Attached
-> patch should fix it. Ross, can you check it please?
+> Strange, I thought this case was handled properly by e2fsck.
+>
+> You could probably fix this with:
+>
+> # debugfs -R "ssv blocks_count 693359326" /dev/md5
 
-Hi, Jan
 
-Could you provide a git tree commit for me to test it?  If you want it
-to be tested by 0day.
 
-Best Regards,
-Huang, Ying
+"probably"?
 
-> 								Honza
+How safe or dangerous is this? Does the filesystem have to be unmounted first?
+
+Simon
