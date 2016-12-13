@@ -1,91 +1,58 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: superblock completely overwritten
-Date: Tue, 13 Dec 2016 10:13:47 -0800
-Message-ID: <20161213181346.GA6354@birch.djwong.org>
-References: <trinity-fba1c40f-e300-43ee-a4cd-f9d7f48ecef2-1481643547528@3capp-gmx-bs76>
- <7a0b791c-8a9f-23e5-02a2-cd903024ef06@redhat.com>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
+Date: Tue, 13 Dec 2016 10:57:23 -0800
+Message-ID: <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
+References: <20161212164708.23244-1-jack@suse.cz>
+ <20161213115209.GG15362@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Heinz Nimmervoll <bt1now@gmx.at>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:20770 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932886AbcLMSNz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2016 13:13:55 -0500
-Content-Disposition: inline
-In-Reply-To: <7a0b791c-8a9f-23e5-02a2-cd903024ef06@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161213115209.GG15362-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 13, 2016 at 10:15:25AM -0600, Eric Sandeen wrote:
-> On 12/13/16 9:39 AM, Heinz Nimmervoll wrote:
-> > I still got no answer for my problem thats why I try it here... hopefully you could help me out.
-> >  
-> > System:
-> > 
-> > Embedded board with Atmel SAM9x25
-> > Debian Wheezy Kernel 3.11.6
-> > 32GB Samsung SDHC card with ext4 root- partition (journal activated)
-> >  
-> > 
-> > After system running two weeks or so superblock from rootfs (ext4) at block 0 got overwritten with "trash data".
-> > This is happening with like 20% of the embedded devices.
-> >  
-> > hex comparision between faulty and good superblock starting at byte 1024:
-> >  
-> > Before (good):
-> >  
-> > 00000000  00 ee 02 00 00 b8 0b 00  00 96 00 00 ab a9 05 00  |................|
-> > 00000010  c3 0c 02 00 00 00 00 00  02 00 00 00 02 00 00 00  |................|
-> > 00000020  00 80 00 00 00 80 00 00  40 1f 00 00 9e 68 46 58  |........@....hFX|
-> > 00000030  9e 68 46 58 2e 00 64 00  53 ef 01 00 01 00 00 00  |.hFX..d.S.......|
-> 
-> <snip>
-> 
-> >  
-> > After (corrupted):
-> >  
-> > 00000000  00 00 00 00 a4 81 00 00  dd 00 00 00 24 8e 5d 54  |............$.]T|
-> > 00000010  7e 8e 5d 54 18 a6 9f 41  00 00 00 00 00 00 01 00  |~.]T...A........|
-> > 00000020  08 00 00 00 00 00 08 00  01 00 00 00 0a f3 01 00  |................|
-> > 00000030  04 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |................|
+On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> On Mon 12-12-16 17:47:02, Jan Kara wrote:
+>> Hello,
+>>
+>> this is the third revision of my fixes of races when invalidating hole pages in
+>> DAX mappings. See changelogs for details. The series is based on my patches to
+>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
+>> dependency because we really need to closely track dirtiness (and cleanness!)
+>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
+>> bits leading to missed cache flushes on fsync(2).
+>>
+>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
+>>
+>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
+>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
+>> to get at least first three patches merged for 4.10-rc2... Thanks!
+>
+> OK, with the final ack from Johannes and since this is mostly DAX stuff,
+> can we take this through NVDIMM tree and push to Linus either late in the
+> merge window or for -rc2? These patches require my DAX patches sitting in mm
+> tree so they can be included in any git tree only once those patches land
+> in Linus' tree (which may happen only once Dave and Ted push out their
+> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
+> Dan?
+>
 
-81a4?  f30a?  That looks like an inode block (i_mode 0x81a4) and an
-extent tree root (eh_magic 0xf30a), shifted up by 4 bytes before being
-written onto sector 0.
-
-> <snip>
-> 
-> > - How is it possible, that even the magic number (and everything else) got overwritten?
-> > - Why could it ever be overwritten?
-> 
-> I don't think anyone here can tell you what happened, it is almost certainly not
-> an ext4 bug.  Could be a driver bug, or an admin running a stray "dd" command,
-> or some other utility gone astray, or ... anything, really.
-
-Bad/malicious SDHC card would be my guess?  (Are you doing power fail
-testing?)
-
---D
-
-> As a very long shot, what does "blkid" or "file -s" tell you about the block device
-> after it's been overwritten?  Perhaps it will recognize a signature.
-> 
-> Otherwise, you could do something like a modified kernel to trap any IO to block
-> zero on the device and issue a printk about the process which is doing it, filtering
-> out any expected ext4 accesses.
-> 
-> -Eric
->   
-> > Thank you so much!
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I like the -rc2 plan better than sending a pull request based on some
+random point in the middle of the merge window. I can give Linus a
+heads up in my initial nvdimm pull request for -rc1 that for
+coordination purposes we'll be sending this set of follow-on DAX
+cleanups for -rc2.
