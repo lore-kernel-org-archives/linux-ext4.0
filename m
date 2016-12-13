@@ -1,66 +1,112 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
-Date: Tue, 13 Dec 2016 12:52:09 +0100
-Message-ID: <20161213115209.GG15362@quack2.suse.cz>
-References: <20161212164708.23244-1-jack@suse.cz>
+From: "Heinz Nimmervoll" <bt1now@gmx.at>
+Subject: superblock completely overwritten
+Date: Tue, 13 Dec 2016 16:39:07 +0100
+Message-ID: <trinity-fba1c40f-e300-43ee-a4cd-f9d7f48ecef2-1481643547528@3capp-gmx-bs76>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, Johannes Weiner <hannes@cmpxchg.org>,
-	Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
-	linux-nvdimm@lists.01.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161212164708.23244-1-jack@suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mout.gmx.net ([212.227.17.22]:59418 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932493AbcLMPjJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 13 Dec 2016 10:39:09 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 12-12-16 17:47:02, Jan Kara wrote:
-> Hello,
-> 
-> this is the third revision of my fixes of races when invalidating hole pages in
-> DAX mappings. See changelogs for details. The series is based on my patches to
-> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
-> dependency because we really need to closely track dirtiness (and cleanness!)
-> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
-> bits leading to missed cache flushes on fsync(2).
-> 
-> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
-> 
-> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
-> patches to some tree once DAX write-protection patches are merged.  I'm hoping
-> to get at least first three patches merged for 4.10-rc2... Thanks!
+I still got no answer for my problem thats why I try it here... hopefully you could help me out.
+ 
+System:
 
-OK, with the final ack from Johannes and since this is mostly DAX stuff,
-can we take this through NVDIMM tree and push to Linus either late in the
-merge window or for -rc2? These patches require my DAX patches sitting in mm
-tree so they can be included in any git tree only once those patches land
-in Linus' tree (which may happen only once Dave and Ted push out their
-stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
-Dan?
+Embedded board with Atmel SAM9x25
+Debian Wheezy Kernel 3.11.6
+32GB Samsung SDHC card with ext4 root- partition (journal activated)
+ 
 
-								Honza
+After system running two weeks or so superblock from rootfs (ext4) at block 0 got overwritten with "trash data".
+This is happening with like 20% of the embedded devices.
+ 
+hex comparision between faulty and good superblock starting at byte 1024:
+ 
+Before (good):
+ 
+00000000  00 ee 02 00 00 b8 0b 00  00 96 00 00 ab a9 05 00  |................|
+00000010  c3 0c 02 00 00 00 00 00  02 00 00 00 02 00 00 00  |................|
+00000020  00 80 00 00 00 80 00 00  40 1f 00 00 9e 68 46 58  |........@....hFX|
+00000030  9e 68 46 58 2e 00 64 00  53 ef 01 00 01 00 00 00  |.hFX..d.S.......|
+00000040  0f 35 ff 55 00 00 00 00  00 00 00 00 01 00 00 00  |.5.U............|
+00000050  00 00 00 00 0b 00 00 00  00 01 00 00 3c 00 00 00  |............<...|
+00000060  46 02 00 00 7b 00 00 00  3b 9e 9c 82 4d 90 4d ed  |F...{...;...M.M.|
+00000070  84 41 3a 05 5c 37 fb a8  72 6f 6f 74 66 73 00 00  |.A:.\7..rootfs..|
+00000080  00 00 00 00 00 00 00 00  2f 6d 65 64 69 61 2f 76  |......../media/v|
+00000090  69 72 74 75 61 6c 73 69  67 69 2f 72 6f 6f 74 66  |irtualsigi/rootf|
+000000a0  73 00 73 00 00 00 00 00  00 00 00 00 00 00 00 00  |s.s.............|
+000000b0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000000c0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 bb 00  |................|
+000000d0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000000e0  08 00 00 00 00 00 00 00  00 00 00 00 41 41 7f 29  |............AA.)|
+000000f0  b2 43 48 94 ab 07 f8 fa  38 1c 2e 33 01 01 00 00  |.CH.....8..3....|
+00000100  0c 00 00 00 00 00 00 00  b8 40 6a 52 0a f3 01 00  |.........@jR....|
+00000110  04 00 00 00 00 00 00 00  00 00 00 00 00 40 00 00  |.............@..|
+00000120  00 00 05 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000130  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000140  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 04  |................|
+00000150  00 00 00 00 00 00 00 00  00 00 00 00 1c 00 1c 00  |................|
+00000160  02 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000170  00 00 00 00 04 00 00 00  cd 8a 94 00 00 00 00 00  |................|
+00000180  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+ 
+After (corrupted):
+ 
+00000000  00 00 00 00 a4 81 00 00  dd 00 00 00 24 8e 5d 54  |............$.]T|
+00000010  7e 8e 5d 54 18 a6 9f 41  00 00 00 00 00 00 01 00  |~.]T...A........|
+00000020  08 00 00 00 00 00 08 00  01 00 00 00 0a f3 01 00  |................|
+00000030  04 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |................|
+00000040  54 b2 01 00 00 00 00 00  00 00 00 00 00 00 00 00  |T...............|
+00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000060  00 00 00 00 00 00 00 00  86 2a 63 08 00 00 00 00  |.........*c.....|
+00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000080  00 00 00 00 1c 00 00 00  60 c9 e6 31 00 00 00 00  |........`..1....|
+00000090  00 00 00 00 7c 8e 5d 54  9c b0 2a ec 00 00 00 00  |....|.]T..*.....|
+000000a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+00000100  00 00 00 00 a4 81 00 00  0f 00 00 00 67 4d 6b 52  |............gMkR|
+00000110  67 4d 6b 52 63 87 84 4f  00 00 00 00 00 00 01 00  |gMkRc..O........|
+00000120  08 00 00 00 00 00 08 00  01 00 00 00 0a f3 01 00  |................|
+00000130  04 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |................|
+00000140  74 07 03 00 00 00 00 00  00 00 00 00 00 00 00 00  |t...............|
+00000150  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000160  00 00 00 00 00 00 00 00  19 1e 79 cd 00 00 00 00  |..........y.....|
+00000170  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000180  00 00 00 00 1c 00 00 00  e4 14 dc e7 00 00 00 00  |................|
+00000190  98 6a 83 72 67 4d 6b 52  98 6a 83 72 00 00 00 00  |.j.rgMkR.j.r....|
+000001a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+00000200  00 00 00 00 a4 81 00 00  88 0c 00 00 44 8c 5d 54  |............D.]T|
+00000210  4d 8c 5d 54 9c 8e 52 54  00 00 00 00 00 00 01 00  |M.]T..RT........|
+00000220  08 00 00 00 00 00 08 00  01 00 00 00 0a f3 01 00  |................|
+00000230  04 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |................|
+00000240  7b e0 01 00 00 00 00 00  00 00 00 00 00 00 00 00  |{...............|
+00000250  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000260  00 00 00 00 00 00 00 00  4e 09 63 08 00 00 00 00  |........N.c.....|
+00000270  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000280  00 00 00 00 1c 00 00 00  f8 b4 6f 14 00 00 00 00  |..........o.....|
+00000290  00 00 00 00 48 8c 5d 54  28 cc 55 82 00 00 00 00  |....H.]T(.U.....|
+000002a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+00000300  00 00 00 00 a4 81 00 00  94 05 00 00 68 4d 6b 52  |............hMkR|
+00000310  69 4d 6b 52 54 0f df 4f  00 00 00 00 00 00 01 00  |iMkRT..O........|
+00000320  08 00 00 00 00 00 08 00  01 00 00 00 0a f3 01 00  |................|
+00000330  04 00 00 00 00 00 00 00  00 00 00 00 01 00 00 00  |................|
+00000340  8c 07 03 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000350  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000360  00 00 00 00 00 00 00 00  27 1e 79 cd 00 00 00 00  |........'.y.....|
+00000370  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000380  00 00 00 00 1c 00 00 00  b0 07 a2 3a 00 00 00 00  |...........:....|
+00000390  04 a9 de 29 68 4d 6b 52  04 a9 de 29 00 00 00 00  |...)hMkR...)....|
+000003a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
 
-> 
-> Changes since v2:
-> * Added Reviewed-by tags
-> * Fixed commit message of patch 3
-> * Slightly simplified dax_iomap_pmd_fault()
-> * Renamed truncation functions to express better what they do
-> 
-> Changes since v1:
-> * Rebased on top of patches in mm tree
-> * Added some Reviewed-by tags
-> * renamed some functions based on review feedback
-> 
-> 								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+- How is it possible, that even the magic number (and everything else) got overwritten?
+- Why could it ever be overwritten?
+ 
+Thank you so much!
