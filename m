@@ -1,120 +1,82 @@
-From: "Huang\, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [LKP] [ext4] e2ae766c1b:
- BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
-Date: Wed, 14 Dec 2016 11:11:09 +0800
-Message-ID: <87lgvjfbn6.fsf@yhuang-dev.intel.com>
-References: <20161212101321.GA37214@inn.lkp.intel.com>
- <20161212163518.GA20728@quack2.suse.cz>
- <87mvg08voo.fsf@yhuang-dev.intel.com>
- <20161213114208.GF15362@quack2.suse.cz>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
+Date: Wed, 14 Dec 2016 09:59:16 +0100
+Message-ID: <20161214085916.GB25573@dhcp22.suse.cz>
+References: <20161208103300.23217-1-mhocko@kernel.org>
+ <20161213101451.GB10492@dhcp22.suse.cz>
+ <1481666853.29291.33.camel@perches.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, kernel test robot <xiaolong.ye-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "Huang, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lkp-JC7UmRfGjtg@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20161213114208.GF15362-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org> (Jan Kara's message of
- "Tue, 13 Dec 2016 12:42:08 +0100")
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
+	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Anatoly Stepanov <astepanov@cloudlinux.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Paolo Bonzini <pbonzini@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+	"Michael S. Tsirkin" <mst@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-security-module@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Joe Perches <joe@perches.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1481666853.29291.33.camel@perches.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> writes:
+On Tue 13-12-16 14:07:33, Joe Perches wrote:
+> On Tue, 2016-12-13 at 11:14 +0100, Michal Hocko wrote:
+> > Are there any more comments or objections to this patch? Is this a good
+> > start or kv[mz]alloc has to provide a way to cover GFP_NOFS users as
+> > well in the initial version.
+> 
+> Did Andrew Morton ever comment on this?
+> I believe he was the primary objector in the past.
+> 
+> Last I recollect was over a year ago:
+> 
+> https://lkml.org/lkml/2015/7/7/1050
 
-> On Tue 13-12-16 09:27:51, Huang, Ying wrote:
->> Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> writes:
->> 
->> > On Mon 12-12-16 18:13:21, kernel test robot wrote:
->> >> FYI, we noticed the following commit:
->> >> 
->> >> commit: e2ae766c1b030271b5099b25674e2131d1d1e8c1 ("ext4: convert DAX faults to iomap infrastructure")
->> >> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
->> >> 
->> >> in testcase: nvml
->> >> with following parameters:
->> >> 
->> >> 	group: vmem
->> >> 	test: pmem
->> >> 	nr_pmem: 1
->> >> 	fs: ext4
->> >> 	mount_option: dax
->> >> 
->> >> 
->> >> 
->> >> on test machine: 64 threads Intel(R) Xeon(R) CPU E5-4650 0 @ 2.70GHz with 64G memory
->> >> 
->> >> caused below changes:
->> >> 
->> >> 
->> >> +------------------------------------------------+------------+------------+
->> >> |                                                | 96f8ba3dd6 | e2ae766c1b |
->> >> +------------------------------------------------+------------+------------+
->> >> | boot_successes                                 | 2          | 2          |
->> >> | boot_failures                                  | 2          | 2          |
->> >> | BUG:kernel_hang_in_test_stage                  | 2          |            |
->> >> | WARNING:at_fs/sysfs/dir.c:#sysfs_warn_dup      | 0          | 2          |
->> >> | calltrace:parport_pc_init                      | 0          | 2          |
->> >> | calltrace:SyS_finit_module                     | 0          | 2          |
->> >> | WARNING:at_lib/kobject.c:#kobject_add_internal | 0          | 2          |
->> >> +------------------------------------------------+------------+------------+
->> >> 
->> >> 
->> >> 
->> >> user  :notice: [  325.592182] vmem_aligned_alloc/TEST1: SETUP (check/pmem/debug)
->> >> 
->> >> user  :notice: [  325.603973] vmem_aligned_alloc/TEST1: START: vmem_aligned_alloc
->> >> kern  :err   : [  325.608906] BUG: sleeping function called from invalid context at kernel/locking/rwsem.c:51
->> >> kern  :err   : [  325.608908] in_atomic(): 1, irqs_disabled(): 0, pid: 24813, name: vmem_aligned_al
->> >> kern  :warn  : [  325.608914] CPU: 44 PID: 24813 Comm: vmem_aligned_al Tainted: G           O    4.9.0-rc4-00045-ge2ae766 #1
->> >> kern  :warn  : [  325.608916] Hardware name: Intel Corporation LH Pass/S4600LH...., BIOS SE5C600.86B.99.02.1047.032320122259 03/23/2012
->> >> kern  :warn  : [  325.608922]  ffffc9002c1f7be0
->> >> kern  :warn  : [  325.608923]  ffffffff81466af9
->> >> kern  :warn  : [  325.608924]  ffff880fea2425c0
->> >
->> > I think this is actually a bug introduced by Ross' PMD support. Attached
->> > patch should fix it. Ross, can you check it please?
->> 
->> Hi, Jan
->> 
->> Could you provide a git tree commit for me to test it?  If you want it
->> to be tested by 0day.
->
-> Thanks for the offer! I've pushed out the latest version of my DAX patches
-> including the above fix to
->
-> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
+Let me quote:
+: Sigh.  We've resisted doing this because vmalloc() is somewhat of a bad
+: thing, and we don't want to make it easy for people to do bad things.
+: 
+: And vmalloc is bad because a) it's slow and b) it does GFP_KERNEL
+: allocations for page tables and c) it is susceptible to arena
+: fragmentation.
+: 
+: We'd prefer that people fix their junk so it doesn't depend upon large
+: contiguous allocations.  This isn't userspace - kernel space is hostile
+: and kernel code should be robust.
+: 
+: So I dunno.  Should we continue to make it a bit more awkward to use
+: vmalloc()?  Probably that tactic isn't being very successful - people
+: will just go ahead and open-code it.  And given the surprising amount
+: of stuff you've placed in kvmalloc_node(), they'll implement it
+: incorrectly...
+: 
+: How about we compromise: add kvmalloc_node(), but include a BUG_ON("you
+: suck") to it?
 
-The test result of the head and its parent is as follow,
+While I agree with some of those points, the reality really sucks,
+though. We have tried the same tactic with __GFP_NOFAIL and failed as
+well. I guess we should just bite the bullet and provide an api which is
+so common that people keep reinventing their own ways around that, many
+times wrongly or suboptimally. BUG_ON("you suck") is just not going to
+help much I am afraid.
 
-=========================================================================================
-compiler/fs/group/kconfig/mount_option/nr_pmem/rootfs/tbox_group/test/testcase:
-  gcc-6/ext4/vmem/x86_64-rhel-7.2/dax/1/debian-x86_64-2016-08-31.cgz/lkp-sbx04/pmem/nvml
+What do you think Andrew?
+-- 
+Michal Hocko
+SUSE Labs
 
-commit: 
-  c6207e9b753f466bc2e41455dc7611869d439d4e
-  4393b9bdd5043e550f1bcaf7f4e9c413d0088425
-
-c6207e9b753f466b 4393b9bdd5043e550f1bcaf7f4 
----------------- -------------------------- 
-       fail:runs  %reproduction    fail:runs
-           |             |             |    
-          3:3         -100%            :3     dmesg.BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
-          3:3         -100%            :3     kmsg.in_atomic():#,irqs_disabled():#,pid:#,name:vmem_aligned_al
-          3:3         -100%            :3     kmsg.in_atomic():#,irqs_disabled():#,pid:#,name:vmem_multiple_p
-
-The bug has been fixed.  Feel free to add,
-
-Tested-by: "Huang, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-
-Best Regards,
-Huang, Ying
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
