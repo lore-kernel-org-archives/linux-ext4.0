@@ -1,13 +1,15 @@
 From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Wed, 14 Dec 2016 09:59:16 +0100
-Message-ID: <20161214085916.GB25573@dhcp22.suse.cz>
+Date: Wed, 14 Dec 2016 10:05:02 +0100
+Message-ID: <20161214090502.GC25573@dhcp22.suse.cz>
 References: <20161208103300.23217-1-mhocko@kernel.org>
  <20161213101451.GB10492@dhcp22.suse.cz>
- <1481666853.29291.33.camel@perches.com>
+ <C2C892CD-BAF7-4E72-927D-B79D95A9B7FA@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
+Cc: Linux MM <linux-mm@kvack.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Vlastimil Babka <vbabka@suse.cz>,
 	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
 	Johannes Weiner <hannes@cmpxchg.org>,
 	Anatoly Stepanov <astepanov@cloudlinux.com>,
@@ -19,58 +21,52 @@ Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
 	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
 	linux-security-module@vger.kernel.org,
 	Dave Chinner <david@fromorbit.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Joe Perches <joe@perches.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <1481666853.29291.33.camel@perches.com>
+In-Reply-To: <C2C892CD-BAF7-4E72-927D-B79D95A9B7FA@dilger.ca>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 13-12-16 14:07:33, Joe Perches wrote:
-> On Tue, 2016-12-13 at 11:14 +0100, Michal Hocko wrote:
+On Tue 13-12-16 13:55:46, Andreas Dilger wrote:
+> On Dec 13, 2016, at 3:14 AM, Michal Hocko <mhocko@kernel.org> wrote:
+> > 
 > > Are there any more comments or objections to this patch? Is this a good
 > > start or kv[mz]alloc has to provide a way to cover GFP_NOFS users as
 > > well in the initial version.
 > 
-> Did Andrew Morton ever comment on this?
-> I believe he was the primary objector in the past.
+> I'm in favour of this cleanup as a starting point.  I definitely agree
+> that this same functionality is in use in a number of places and should
+> be consolidated.
 > 
-> Last I recollect was over a year ago:
+> The vmalloc() from GFP_NOFS can be addressed separately in later patches.
+> That is an issue for several filesystems, and while XFS works around this,
+> it would be better to lift that out of the filesystem code into the VM.
+
+Well, my longer term plan is to change how GFP_NOFS is used from the fs
+code rather than tweak the VM layer. The current situation with the nofs
+is messy and confusing. In many contexts it is used without a good
+reason - just to be sure that nothing will break. I strongly believe
+that we should use a scope api [1] which marks whole regions of
+potentially reclaim dangerous code paths and all the allocations within
+that region will inherit the nofs protection automatically. That would
+solve the vmalloc(GFP_NOFS) problem as well. The route to get there is
+no short or easy. I am planning to repost the scope patchset hopefully
+soon with ext4 converted.
+
+[1] http://lkml.kernel.org/r/1461671772-1269-1-git-send-email-mhocko@kernel.org
+
+> Really, there are several of things about vmalloc() that could improve
+> if we decided to move it out of the dog house and allow it to become a
+> first class citizen, but that needs a larger discussion, and you can
+> already do a lot of cleanup with just the introduction of kvmalloc().
 > 
-> https://lkml.org/lkml/2015/7/7/1050
+> Since this is changing the ext4 code, you can add my:
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Let me quote:
-: Sigh.  We've resisted doing this because vmalloc() is somewhat of a bad
-: thing, and we don't want to make it easy for people to do bad things.
-: 
-: And vmalloc is bad because a) it's slow and b) it does GFP_KERNEL
-: allocations for page tables and c) it is susceptible to arena
-: fragmentation.
-: 
-: We'd prefer that people fix their junk so it doesn't depend upon large
-: contiguous allocations.  This isn't userspace - kernel space is hostile
-: and kernel code should be robust.
-: 
-: So I dunno.  Should we continue to make it a bit more awkward to use
-: vmalloc()?  Probably that tactic isn't being very successful - people
-: will just go ahead and open-code it.  And given the surprising amount
-: of stuff you've placed in kvmalloc_node(), they'll implement it
-: incorrectly...
-: 
-: How about we compromise: add kvmalloc_node(), but include a BUG_ON("you
-: suck") to it?
-
-While I agree with some of those points, the reality really sucks,
-though. We have tried the same tactic with __GFP_NOFAIL and failed as
-well. I guess we should just bite the bullet and provide an api which is
-so common that people keep reinventing their own ways around that, many
-times wrongly or suboptimally. BUG_ON("you suck") is just not going to
-help much I am afraid.
-
-What do you think Andrew?
+thanks!
 -- 
 Michal Hocko
 SUSE Labs
