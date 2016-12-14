@@ -1,138 +1,120 @@
-From: Simon Matthews <simon.d.matthews@gmail.com>
-Subject: Re: Filesystem size problem.
-Date: Tue, 13 Dec 2016 17:43:56 -0800
-Message-ID: <CAEUYfyOZWQHCb8SWzSxq5Fs+o6pqOUz4_kDZG4qTO8McKqBizw@mail.gmail.com>
-References: <CAEUYfyP7U9L4mB12awB_YWEqixh9R8RpRZXjYTG6mpiZeBW4OQ@mail.gmail.com>
- <CAEUYfyOTkgczw5=T3PLcquT1qAcF4b2aKUEvsbX2DH5QBs5yJg@mail.gmail.com>
- <6B4536F9-A059-45AC-8A14-85879FC4AC79@dilger.ca> <46f8665e-c3b5-b2e9-346b-4bbb380bb6e2@redhat.com>
- <7393F8E6-AD83-430E-AE3E-A800DAB91FD3@dilger.ca> <CAEUYfyN373=Eacbu=jL-YPfcmLC0VjvMc++__eVUAJb++gq6Ug@mail.gmail.com>
- <33CFACFE-D772-4961-A94A-42479ECCB173@dilger.ca>
+From: "Huang\, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [LKP] [ext4] e2ae766c1b:
+ BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
+Date: Wed, 14 Dec 2016 11:11:09 +0800
+Message-ID: <87lgvjfbn6.fsf@yhuang-dev.intel.com>
+References: <20161212101321.GA37214@inn.lkp.intel.com>
+ <20161212163518.GA20728@quack2.suse.cz>
+ <87mvg08voo.fsf@yhuang-dev.intel.com>
+ <20161213114208.GF15362@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:34994 "EHLO
-        mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753149AbcLNBn6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Dec 2016 20:43:58 -0500
-Received: by mail-qk0-f173.google.com with SMTP id n204so5139238qke.2
-        for <linux-ext4@vger.kernel.org>; Tue, 13 Dec 2016 17:43:58 -0800 (PST)
-In-Reply-To: <33CFACFE-D772-4961-A94A-42479ECCB173@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, kernel test robot <xiaolong.ye-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+ LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "Huang, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lkp-JC7UmRfGjtg@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161213114208.GF15362-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org> (Jan Kara's message of
+ "Tue, 13 Dec 2016 12:42:08 +0100")
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 13, 2016 at 12:48 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Dec 12, 2016, at 7:48 PM, Simon Matthews <simon.d.matthews@gmail.com> wrote:
->>
->> On Mon, Dec 12, 2016 at 2:36 PM, Andreas Dilger <adilger@dilger.ca> wrote:
->>> On Dec 9, 2016, at 9:35 PM, Eric Sandeen <sandeen@redhat.com> wrote:
->>>>
->>>> On 12/9/16 2:29 PM, Andreas Dilger wrote:
->>>>> On Dec 8, 2016, at 10:40 PM, Simon Matthews <simon.d.matthews@gmail.com> wrote:
->>>>>>
->>>>>> I have an ext3 filesystem that will not mount under newer versions of
->>>>>> the kernel and I hope someone here can help.
->>>>>>
->>>>>> Obviously, one solution is "backup and re-create from scratch". I have
->>>>>> the backups, but I hope that there may be a quicker method to fix the
->>>>>> issues.
->>>>>>
->>>>>> The root issue is that the filesystem is very slightly smaller than
->>>>>> the allocated space.
->>>>
->>>> So the device is now smaller than the filesystem thinks, right?
->>>>
->>>>>> The filesystem exists on a MDRAID device and I think that when I
->>>>>> converted the MDRAID to a newer metadata version, it truncated the
->>>>>> available size, slightly. However, how I got here isn't really
->>>>>> important, fixing it now is.
->>>>>
->>>>> Running "e2fsck -fy" should fix this.  I'd recommend to use the latest
->>>>> version of e2fsck.
->>>>
->>>> Reaslly?  e2fsck can change total blocks in the superblock to accomodate
->>>> a shrunken device?  That's a new one for me...
->>>
->>> Strange, I thought this case was handled properly by e2fsck.
->>>
->>> You could probably fix this with:
->>>
->>> # debugfs -w -R "ssv blocks_count 693359326" /dev/md5
->>
->>
->> "probably"?
->>
->> How safe or dangerous is this? Does the filesystem have to be unmounted first?
->
-> The filesystem *definitely* needs to be unmounted first.
->
-> I wouldn't classify this change as being super dangerous, because it is
-> only removing a few blocks from the end of the filesystem, and e2fsck
-> should handle the case where inodes reference blocks beyond EOFS as any
-> other corrupt blocks.  I don't think that is likely to happen in this
-> case, unless your filesystem is extremely full, since extN filesystems
-> front-end bias allocations to the faster part of the storage device.
->
-> That said, I haven't tested this process[*], and if you are concerned that
-> it may eat your data (that is always possible) you should make a backup.
-> You should probably make a backup even if you aren't going to do this, as
-> that is always a good idea.  As with any free advice you on the internet
-> YMMV, and the final decision is up to you.
->
-> The other option is to make a new filesystem on a second set of storage
-> and then copy the old files over.  That also has benefits that the old
-> filesystem acts as your backup, you get any new features enabled in ext4
-> when the filesystem is newly formatted, and the files will likely be laid
-> laid out on disk contiguously during the copy, so it will defragment the
-> filesystem (not that ext4 needs this very much).
->
-> PS: I added "-w" to the debugfs command above, or it would have failed
+Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> writes:
 
-Thanks for this. I think that the best solution is to get new drives
-and build a new ext4 filesystem on those.
+> On Tue 13-12-16 09:27:51, Huang, Ying wrote:
+>> Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> writes:
+>> 
+>> > On Mon 12-12-16 18:13:21, kernel test robot wrote:
+>> >> FYI, we noticed the following commit:
+>> >> 
+>> >> commit: e2ae766c1b030271b5099b25674e2131d1d1e8c1 ("ext4: convert DAX faults to iomap infrastructure")
+>> >> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+>> >> 
+>> >> in testcase: nvml
+>> >> with following parameters:
+>> >> 
+>> >> 	group: vmem
+>> >> 	test: pmem
+>> >> 	nr_pmem: 1
+>> >> 	fs: ext4
+>> >> 	mount_option: dax
+>> >> 
+>> >> 
+>> >> 
+>> >> on test machine: 64 threads Intel(R) Xeon(R) CPU E5-4650 0 @ 2.70GHz with 64G memory
+>> >> 
+>> >> caused below changes:
+>> >> 
+>> >> 
+>> >> +------------------------------------------------+------------+------------+
+>> >> |                                                | 96f8ba3dd6 | e2ae766c1b |
+>> >> +------------------------------------------------+------------+------------+
+>> >> | boot_successes                                 | 2          | 2          |
+>> >> | boot_failures                                  | 2          | 2          |
+>> >> | BUG:kernel_hang_in_test_stage                  | 2          |            |
+>> >> | WARNING:at_fs/sysfs/dir.c:#sysfs_warn_dup      | 0          | 2          |
+>> >> | calltrace:parport_pc_init                      | 0          | 2          |
+>> >> | calltrace:SyS_finit_module                     | 0          | 2          |
+>> >> | WARNING:at_lib/kobject.c:#kobject_add_internal | 0          | 2          |
+>> >> +------------------------------------------------+------------+------------+
+>> >> 
+>> >> 
+>> >> 
+>> >> user  :notice: [  325.592182] vmem_aligned_alloc/TEST1: SETUP (check/pmem/debug)
+>> >> 
+>> >> user  :notice: [  325.603973] vmem_aligned_alloc/TEST1: START: vmem_aligned_alloc
+>> >> kern  :err   : [  325.608906] BUG: sleeping function called from invalid context at kernel/locking/rwsem.c:51
+>> >> kern  :err   : [  325.608908] in_atomic(): 1, irqs_disabled(): 0, pid: 24813, name: vmem_aligned_al
+>> >> kern  :warn  : [  325.608914] CPU: 44 PID: 24813 Comm: vmem_aligned_al Tainted: G           O    4.9.0-rc4-00045-ge2ae766 #1
+>> >> kern  :warn  : [  325.608916] Hardware name: Intel Corporation LH Pass/S4600LH...., BIOS SE5C600.86B.99.02.1047.032320122259 03/23/2012
+>> >> kern  :warn  : [  325.608922]  ffffc9002c1f7be0
+>> >> kern  :warn  : [  325.608923]  ffffffff81466af9
+>> >> kern  :warn  : [  325.608924]  ffff880fea2425c0
+>> >
+>> > I think this is actually a bug introduced by Ross' PMD support. Attached
+>> > patch should fix it. Ross, can you check it please?
+>> 
+>> Hi, Jan
+>> 
+>> Could you provide a git tree commit for me to test it?  If you want it
+>> to be tested by 0day.
+>
+> Thanks for the offer! I've pushed out the latest version of my DAX patches
+> including the above fix to
+>
+> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dax
 
-It's always best to know that I have options.
+The test result of the head and its parent is as follow,
 
-We are using nfsv3 because performance of nfsv4 was terrible. Do you
-have any idea if nfsv4 will work better with ext4?
+=========================================================================================
+compiler/fs/group/kconfig/mount_option/nr_pmem/rootfs/tbox_group/test/testcase:
+  gcc-6/ext4/vmem/x86_64-rhel-7.2/dax/1/debian-x86_64-2016-08-31.cgz/lkp-sbx04/pmem/nvml
 
-Simon
+commit: 
+  c6207e9b753f466bc2e41455dc7611869d439d4e
+  4393b9bdd5043e550f1bcaf7f4e9c413d0088425
 
->
-> Cheers, Andreas
->
-> [*] I did just try this on a test filesystem and it worked OK for me:
->
-> [root@mookie ~]# dumpe2fs -h /dev/dm-53 | grep "Block count"
-> dumpe2fs 1.42.13.wc5 (15-Apr-2016)
-> Block count:              2621440
-> [root@mookie ~]# debugfs -w -R "ssv blocks_count 2621400" /dev/dm-53
-> debugfs 1.42.13.wc5 (15-Apr-2016)
-> [root@mookie ~]# e2fsck -fn /dev/dm-53
-> e2fsck 1.42.13.wc5 (15-Apr-2016)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> Free blocks count wrong for group #79 (26047, counted=26007).
-> Fix? no
->
-> Free blocks count wrong (2226761, counted=2226721).
-> Fix? no
->
-> Padding at end of block bitmap is not set. Fix? no
->
->
-> myth_2-MDT0000: ********** WARNING: Filesystem still has errors **********
->
-> myth_2-MDT0000: 1010990/2621440 files (0.1% non-contiguous), 394639/2621400 blocks
-> [root@mookie ~]# e2fsck -fp /dev/dm-53
-> myth_2-MDT0000: Padding at end of block bitmap is not set. FIXED.
-> myth_2-MDT0000: 1010990/2621440 files (0.1% non-contiguous), 394679/2621400 blocks
->
->
->
->
->
+c6207e9b753f466b 4393b9bdd5043e550f1bcaf7f4 
+---------------- -------------------------- 
+       fail:runs  %reproduction    fail:runs
+           |             |             |    
+          3:3         -100%            :3     dmesg.BUG:sleeping_function_called_from_invalid_context_at_kernel/locking/rwsem.c
+          3:3         -100%            :3     kmsg.in_atomic():#,irqs_disabled():#,pid:#,name:vmem_aligned_al
+          3:3         -100%            :3     kmsg.in_atomic():#,irqs_disabled():#,pid:#,name:vmem_multiple_p
+
+The bug has been fixed.  Feel free to add,
+
+Tested-by: "Huang, Ying" <ying.huang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+
+Best Regards,
+Huang, Ying
