@@ -1,70 +1,64 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: [PATCH 7/9] jbd2: make the whole kjournald2 kthread NOFS safe
-Date: Thu, 15 Dec 2016 15:07:13 +0100
-Message-ID: <20161215140715.12732-8-mhocko@kernel.org>
-References: <20161215140715.12732-1-mhocko@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org,
-	logfs@logfs.org,
-	linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: <linux-mm@kvack.org>,
-	<linux-fsdevel@vger.kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20161215140715.12732-1-mhocko@kernel.org>
-Sender: owner-linux-mm@kvack.org
+From: Dexuan Cui <decui@microsoft.com>
+Subject: RE: Big I/O requests are split into small ones due to unaligned ext4
+ partition boundary?
+Date: Thu, 15 Dec 2016 13:53:52 +0000
+Message-ID: <MWHPR03MB2669356D00948A188BB50BCEBF9D0@MWHPR03MB2669.namprd03.prod.outlook.com>
+References: <MWHPR03MB26692343C35CE591E277A816BF9D0@MWHPR03MB2669.namprd03.prod.outlook.com>
+ <CACVXFVMfuqT6ZoCECaCyhiM1hosZzAjpgv1kibbpqizxKT2f3w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Jens Axboe <axboe@kernel.dk>, Theodore Ts'o <tytso@mit.edu>,
+        "Andreas Dilger" <adilger.kernel@dilger.ca>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Abel Hu <Chou.Hu@microsoft.com>,
+        Thomas Shao <huishao@microsoft.com>,
+        Matthew Wilcox <matthew@wil.cx>,
+        Long Li <longli@microsoft.com>,
+        KY Srinivasan <kys@microsoft.com>
+To: Ming Lei <tom.leiming@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CACVXFVMfuqT6ZoCECaCyhiM1hosZzAjpgv1kibbpqizxKT2f3w@mail.gmail.com>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Michal Hocko <mhocko@suse.com>
-
-kjournald2 is central to the transaction commit processing. As such any
-potential allocation from this kernel thread has to be GFP_NOFS. Make
-sure to mark the whole kernel thread GFP_NOFS by the memalloc_nofs_save.
-
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- fs/jbd2/journal.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8ed971eeab44..6dad8c5d6ddf 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -206,6 +206,13 @@ static int kjournald2(void *arg)
- 	wake_up(&journal->j_wait_done_commit);
- 
- 	/*
-+	 * Make sure that no allocations from this kernel thread will ever recurse
-+	 * to the fs layer because we are responsible for the transaction commit
-+	 * and any fs involvement might get stuck waiting for the trasn. commit.
-+	 */
-+	memalloc_nofs_save();
-+
-+	/*
- 	 * And now, wait forever for commit wakeup events.
- 	 */
- 	write_lock(&journal->j_state_lock);
--- 
-2.10.2
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+PiBGcm9tOiBNaW5nIExlaSBbbWFpbHRvOnRvbS5sZWltaW5nQGdtYWlsLmNvbV0NCj4gU2VudDog
+VGh1cnNkYXksIERlY2VtYmVyIDE1LCAyMDE2IDIwOjQzDQo+IA0KPiBPbiBUaHUsIERlYyAxNSwg
+MjAxNiBhdCA3OjQ3IFBNLCBEZXh1YW4gQ3VpIDxkZWN1aUBtaWNyb3NvZnQuY29tPiB3cm90ZToN
+Cj4gPiBIaSwgd2hlbiBJIHJ1biAibWtmcy5leHQ0IC9kZXYvc2RjMiIgaW4gYSBMaW51eCB2aXJ0
+dWFsIG1hY2hpbmUgb24gSHlwZXItViwNCj4gPiB3aGVyZSBhIGRpc2sgSU9QUz01MDAgbGltaXQg
+aXMgYXBwbGllZCBieSBtZSBbMF0sICB0aGUgY29tbWFuZCB0YWtlcyBtdWNoDQo+ID4gbW9yZSB0
+aW1lLCBpZiB0aGUgZXh0NCBwYXJ0aXRpb24gYm91bmRhcnkgaXMgbm90IHByb3Blcmx5IGFsaWdu
+ZWQ6DQo+ID4NCj4gPiBFeGFtcGxlIDEgWzFdOiBpdCB0YWtlcyB+NyBtaW51dGVzIHdpdGggYXZl
+cmFnZSB3TUIvcyA9IDAuMyAgIChzbG93KQ0KPiA+IEV4YW1wbGUgMiBbMl06IGl0IHRha2VzIH4z
+LjUgbWludXRlcyB3aXRoIGF2ZXJhZ2Ugd01CL3MgPSAwLjYgKHNsb3cpDQo+ID4gRXhhbXBsZSAz
+IFszXTogaXQgdGFrZXMgfjAuNSBtaW51dGUgd2l0aCBhdmVyYWdlIHdNQi9zID0gNCAoZXhwZWN0
+ZWQpDQo+ID4NCj4gPiBzdHJhY2Ugc2hvd3MgdGhlIG1rZnMuZXh0MyBwcm9ncmFtIGNhbGxzIHNl
+ZWsoKS93cml0ZSgpIGEgbG90IGFuZCBtb3N0IG9mDQo+ID4gdGhlIHdyaXRlcyB1c2UgMzJLQiBi
+dWZmZXJzICh0aGlzIHNob3VsZCBiZSBiaWcgZW5vdWdoKSwgYW5kIHRoZSBwcm9ncmFtDQo+ID4g
+b25seSBpbnZva2VzIGZzeW5jKCkgb25jZSwgYWZ0ZXIgaXQgaXNzdWVzIGFsbCB0aGUgd3JpdGVz
+IC0tIHRoZSBmc3luYygpIHRha2VzDQo+ID4+OTklIG9mIHRoZSB0aW1lLg0KPiA+DQo+ID4gQnkg
+bG9nZ2luZyBTQ1NJIGNvbW1hbmRzLCB0aGUgU0NTSSBXcml0ZSgxMCkgY29tbWFuZCBpcyB1c2Vk
+IGhlcmUgZm9yIHRoZQ0KPiA+IHVzZXJzcGFjZSAzMktCIHdyaXRlOg0KPiA+IGluIGV4YW1wbGUg
+MSwgKmVhY2gqIGNvbW1hbmQgd3JpdGVzIDEgb3IgMiBzZWN0b3JzIG9ubHkgKDEgc2VjdG9yID0g
+NTEyDQo+IGJ5dGVzKTsNCj4gPiBpbiBleGFtcGxlIDIsICplYWNoKiBjb21tYW5kIHdyaXRlcyAy
+IG9yIDQgc2VjdG9ycyBvbmx5Ow0KPiA+IGluIGV4YW1wbGUgMywgZWFjaCBjb21tYW5kIHdyaXRl
+cyAxMDI0IHNlY3RvcnMuDQo+ID4NCj4gPiBJdCBsb29rcyB0aGUga2VybmVsIGJsb2NrIEkvTyBs
+YXllciBjYW4gc29tZWhvdyBzcGxpdCBiaWcgdXNlci1zcGFjZSBidWZmZXJzDQo+ID4gaW50byBy
+ZWFsbHkgc21hbGwgd3JpdGUgcmVxdWVzdHMgKDEsIDIsIGFuZCA0IHNlY3RvcnMpPw0KPiA+IFRo
+aXMgbG9va3MgcmVhbGx5IHN0cmFuZ2UgdG8gbWUuDQo+ID4NCj4gPiBOb3RlOiBpbiBteSB0ZXN0
+LCB0aGlzIHN0cmFuZ2UgaXNzdWUgaGFwcGVucyB0byA0LjQgYW5kIHRoZSBtYWlubGluZSA0Ljkg
+a2VybmVscywNCj4gPiBidXQgdGhlIHN0YWJsZSAzLjE4LjQ1IGtlcm5lbCBkb2Vzbid0IGhhdmUg
+dGhlIGlzc3VlLCBpLmUuIGFsbCB0aGUgMyBhYm92ZSB0ZXN0DQo+ID4gZXhhbXBsZXMgY2FuIGZp
+bmlzaCBpbiB+MC41IG1pbnV0ZS4NCj4gPg0KPiA+IEFueSBjb21tZW50Pw0KPiANCj4gSSByZW1l
+bWJlciB0aGF0IHdlIGRpc2N1c3NlZCB0aGlzIGtpbmQgb2YgaXNzdWUsIHBsZWFzZSBzZWUgdGhl
+IGRpc2N1c3Npb25bMV0NCj4gYW5kIGNoZWNrIGlmIHRoZSBwYXRjaFsyXSBjYW4gZml4IHlvdXIg
+aXNzdWUuDQo+IA0KPiBbMV0gaHR0cDovL21hcmMuaW5mby8/dD0xNDU4MDU1MjU1MDAwMDImcj0x
+Jnc9Mg0KPiBbMl0gaHR0cDovL21hcmMuaW5mby8/bD1saW51eC1rZXJuZWwmbT0xNDU5MzQzMjU0
+MjkxNTImdz0yDQo+IA0KPiBNaW5nDQogDQpUaGFuayB5b3UgdmVyeSBtdWNoLCBNaW5nISBUaGUg
+cGF0Y2ggY2FuIGZpeCBteSBpc3N1ZSENCkl0IGxvb2tzIHlvdXIgcGF0Y2ggd2FzIG5vdCBtZXJn
+ZWQgaW50byB0aGUgdXBzdHJlYW0gc29tZWhvdy4NCldvdWxkIHlvdSBwbGVhc2Ugc3VibWl0IHRo
+ZSBwYXRjaCBhZ2Fpbj8NCg0KVGhhbmtzLA0KLS0gRGV4dWFuDQo=
