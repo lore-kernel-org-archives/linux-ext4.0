@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 2/3] fscrypt: fix renaming and linking special
-	files
-Date: Thu, 15 Dec 2016 11:19:43 -0800
-Message-ID: <1481829584-50218-2-git-send-email-ebiggers3@gmail.com>
+Subject: [PATCH 3/3] fscrypt: consolidate
+	fscrypt_has_permitted_context() checks
+Date: Thu, 15 Dec 2016 11:19:44 -0800
+Message-ID: <1481829584-50218-3-git-send-email-ebiggers3@gmail.com>
 References: <1481829584-50218-1-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,40 +26,131 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Attempting to link a device node, named pipe, or socket file into an
-encrypted directory through rename(2) or link(2) always failed with
-EPERM.  This happened because fscrypt_permitted_context() saw that the
-file was unencrypted and forbid creating the link.  This behavior was
-unexpected because such files are never encrypted; only regular files,
-directories, and symlinks can be encrypted.
+Now that fscrypt_has_permitted_context() compares the fscrypt_context
+rather than the fscrypt_info when needed, it is no longer necessary to
+delay fscrypt_has_permitted_context() from ->lookup() to ->open() for
+regular files, as introduced in commit ff978b09f973 ("ext4 crypto: move
+context consistency check to ext4_file_open()").  Therefore the check in
+->open(), along with the dget_parent() hack, can be removed.
 
-To fix this, make fscrypt_has_permitted_context() always return true on
-special files.
+It's also no longer necessary to check the file type before calling
+fscrypt_has_permitted_context().
 
-This will be covered by a test in my encryption xfstests patchset.
+This patch makes these changes for both ext4 and f2fs.
 
-Fixes: 9bd8212f981e ("ext4 crypto: add encryption policy and password salt support")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/policy.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/ext4/file.c  | 12 ------------
+ fs/ext4/namei.c | 10 ++--------
+ fs/f2fs/file.c  | 15 +++++----------
+ fs/f2fs/namei.c |  7 ++-----
+ 4 files changed, 9 insertions(+), 35 deletions(-)
 
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index 5de0633..2e50cbc 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -198,6 +198,11 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
- 	if (!cops->is_encrypted(parent))
- 		return 1;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index b5f1844..2123cd8 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -398,7 +398,6 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct vfsmount *mnt = filp->f_path.mnt;
+-	struct dentry *dir;
+ 	struct path path;
+ 	char buf[64], *cp;
+ 	int ret;
+@@ -443,17 +442,6 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 			return -ENOKEY;
+ 	}
  
-+	/* No restrictions on file types which are never encrypted */
-+	if (!S_ISREG(child->i_mode) && !S_ISDIR(child->i_mode) &&
-+	    !S_ISLNK(child->i_mode))
-+		return 1;
+-	dir = dget_parent(file_dentry(filp));
+-	if (ext4_encrypted_inode(d_inode(dir)) &&
+-			!fscrypt_has_permitted_context(d_inode(dir), inode)) {
+-		ext4_warning(inode->i_sb,
+-			     "Inconsistent encryption contexts: %lu/%lu",
+-			     (unsigned long) d_inode(dir)->i_ino,
+-			     (unsigned long) inode->i_ino);
+-		dput(dir);
+-		return -EPERM;
+-	}
+-	dput(dir);
+ 	/*
+ 	 * Set up the jbd2_inode if we are opening the inode for
+ 	 * writing and the journal is present
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index eadba91..eb8b064 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1612,17 +1612,11 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 			return ERR_PTR(-EFSCORRUPTED);
+ 		}
+ 		if (!IS_ERR(inode) && ext4_encrypted_inode(dir) &&
+-		    (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
+ 		    !fscrypt_has_permitted_context(dir, inode)) {
+-			int nokey = ext4_encrypted_inode(inode) &&
+-				!fscrypt_has_encryption_key(inode);
+-			iput(inode);
+-			if (nokey)
+-				return ERR_PTR(-ENOKEY);
+ 			ext4_warning(inode->i_sb,
+ 				     "Inconsistent encryption contexts: %lu/%lu",
+-				     (unsigned long) dir->i_ino,
+-				     (unsigned long) inode->i_ino);
++				     dir->i_ino, inode->i_ino);
++			iput(inode);
+ 			return ERR_PTR(-EPERM);
+ 		}
+ 	}
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 49f10dc..381d39b 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -443,23 +443,18 @@ static int f2fs_file_mmap(struct file *file, struct vm_area_struct *vma)
+ static int f2fs_file_open(struct inode *inode, struct file *filp)
+ {
+ 	int ret = generic_file_open(inode, filp);
+-	struct dentry *dir;
+ 
+-	if (!ret && f2fs_encrypted_inode(inode)) {
++	if (ret)
++		return ret;
 +
- 	/* Encrypted directories must not contain unencrypted files */
- 	if (!cops->is_encrypted(child))
- 		return 0;
++	if (f2fs_encrypted_inode(inode)) {
+ 		ret = fscrypt_get_encryption_info(inode);
+ 		if (ret)
+ 			return -EACCES;
+ 		if (!fscrypt_has_encryption_key(inode))
+ 			return -ENOKEY;
+ 	}
+-	dir = dget_parent(file_dentry(filp));
+-	if (f2fs_encrypted_inode(d_inode(dir)) &&
+-			!fscrypt_has_permitted_context(d_inode(dir), inode)) {
+-		dput(dir);
+-		return -EPERM;
+-	}
+-	dput(dir);
+-	return ret;
++	return 0;
+ }
+ 
+ int truncate_data_blocks_range(struct dnode_of_data *dn, int count)
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index db33b56..980f783 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -322,11 +322,8 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 			goto err_out;
+ 	}
+ 	if (!IS_ERR(inode) && f2fs_encrypted_inode(dir) &&
+-			(S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
+-			!fscrypt_has_permitted_context(dir, inode)) {
+-		bool nokey = f2fs_encrypted_inode(inode) &&
+-			!fscrypt_has_encryption_key(inode);
+-		err = nokey ? -ENOKEY : -EPERM;
++	    !fscrypt_has_permitted_context(dir, inode)) {
++		err = -EPERM;
+ 		goto err_out;
+ 	}
+ 	return d_splice_alias(inode, dentry);
 -- 
 2.8.0.rc3.226.g39d4020
 
