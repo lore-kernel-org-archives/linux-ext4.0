@@ -1,9 +1,10 @@
 From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 1/3] fscrypt: fix loophole in
- one-encryption-policy-per-tree enforcement
-Date: Fri, 16 Dec 2016 13:18:46 +0100
-Message-ID: <7ed75b90-864a-2dc2-83a0-943c300d0698@nod.at>
+Subject: Re: [PATCH 3/3] fscrypt: consolidate fscrypt_has_permitted_context()
+ checks
+Date: Fri, 16 Dec 2016 13:22:51 +0100
+Message-ID: <5de5b934-5709-ca29-c277-99d93539b1c0@nod.at>
 References: <1481829584-50218-1-git-send-email-ebiggers3@gmail.com>
+ <1481829584-50218-3-git-send-email-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
@@ -13,31 +14,39 @@ Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         David Gstir <david@sigma-star.at>,
         Eric Biggers <ebiggers@google.com>
 To: Eric Biggers <ebiggers3@gmail.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1481829584-50218-1-git-send-email-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from b.ns.miles-group.at ([95.130.255.144]:44723 "EHLO radon.swed.at"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1759577AbcLPMWy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Dec 2016 07:22:54 -0500
+In-Reply-To: <1481829584-50218-3-git-send-email-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 On 15.12.2016 20:19, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> Filesystem encryption is designed to enforce that all files in an
-> encrypted directory tree use the same encryption policy.  Operations
-> that violate this constraint are supposed to fail with EPERM.  There was
-> one case that was missed, however: the cross-rename operation (i.e.
-> renameat2 with RENAME_EXCHANGE) allowed two files with different
-> encryption policies to be exchanged, provided that neither encryption
-> key was available.
+> Now that fscrypt_has_permitted_context() compares the fscrypt_context
+> rather than the fscrypt_info when needed, it is no longer necessary to
+> delay fscrypt_has_permitted_context() from ->lookup() to ->open() for
+> regular files, as introduced in commit ff978b09f973 ("ext4 crypto: move
+> context consistency check to ext4_file_open()").  Therefore the check in
+> ->open(), along with the dget_parent() hack, can be removed.
 > 
-> To fix this, when we can't compare the fscrypt_info structs because the
-> key is unavailable, compare the fscrypt_context structs instead.
+> It's also no longer necessary to check the file type before calling
+> fscrypt_has_permitted_context().
 > 
-> This will be covered by a test in my encryption xfstests patchset.
+> This patch makes these changes for both ext4 and f2fs.
 > 
-> Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/ext4/file.c  | 12 ------------
+>  fs/ext4/namei.c | 10 ++--------
+>  fs/f2fs/file.c  | 15 +++++----------
+>  fs/f2fs/namei.c |  7 ++-----
+>  4 files changed, 9 insertions(+), 35 deletions(-)
 
-Reviewed-by: Richard Weinberger <richard@nod.at>
+Can please also take care of UBIFS? :-)
 
 Thanks,
 //richard
