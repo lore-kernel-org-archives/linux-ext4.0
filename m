@@ -1,69 +1,40 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 2/9 v2] xfs: introduce and use KM_NOLOCKDEP to silence
- reclaim lockdep false positives
-Date: Fri, 16 Dec 2016 23:01:21 +0100
-Message-ID: <20161216220121.GC7645@dhcp22.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-3-mhocko@kernel.org>
- <20161216154041.GA7645@dhcp22.suse.cz>
- <20161216163749.GE8447@bfoster.bfoster>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Creating a mailing list, git tree, and patchwork project for
+ fscrypt
+Date: Fri, 16 Dec 2016 17:04:19 -0500
+Message-ID: <20161216220419.znasf5wjkpb7qazr@thunk.org>
+References: <20161216203732.g65wjf2wgc6rsijy@thunk.org>
+ <20161216205330.GB14264@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Brian Foster <bfoster@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
+        ebiggers@google.com, mhalcrow@google.com, richard@nod.at,
+        linux-ext4@vger.kernel.org, linux-f2fs@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20161216163749.GE8447@bfoster.bfoster>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20161216205330.GB14264@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 16-12-16 11:37:50, Brian Foster wrote:
-> On Fri, Dec 16, 2016 at 04:40:41PM +0100, Michal Hocko wrote:
-> > Updated patch after Mike noticed a BUG_ON when KM_NOLOCKDEP is used.
-> > ---
-> > From 1497e713e11639157aef21cae29052cb3dc7ab44 Mon Sep 17 00:00:00 2001
-> > From: Michal Hocko <mhocko@suse.com>
-> > Date: Thu, 15 Dec 2016 13:06:43 +0100
-> > Subject: [PATCH] xfs: introduce and use KM_NOLOCKDEP to silence reclaim
-> >  lockdep false positives
-> > 
-> > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
-> > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
-> > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
-> > KM_NOFS tags to keep lockdep happy") and use the new flag for them
-> > instead. There is really no reason to make these allocations contexts
-> > weaker just because of the lockdep which even might not be enabled
-> > in most cases.
-> > 
+On Fri, Dec 16, 2016 at 12:53:30PM -0800, Eric Biggers wrote:
+> Sounds great!
 > 
-> Hi Michal,
-> 
-> I haven't gone back to fully grok b17cb364dbbb ("xfs: fix missing
-> KM_NOFS tags to keep lockdep happy"), so I'm not really familiar with
-> the original problem. FWIW, there was another KM_NOFS instance added by
-> that commit in xlog_cil_prepare_log_vecs() that is now in
-> xlog_cil_alloc_shadow_bufs(). Perhaps Dave can confirm whether the
-> original issue still applies..?
+> I guess it will be "fscrypt" and not "fscrypto"?  There has been some confusion
+> about which term to use but it seems to be settling on "fscrypt".
 
-Yes, I've noticed that but the reworked code looked sufficiently
-different that I didn't dare to simply convert it.
--- 
-Michal Hocko
-SUSE Labs
+It was originally fscrypt, but then fscrypto crept in when we
+refactored the out to the fs/crypto directory from fs/ext4.  I was
+planning on cleaning that up before we had too many file systems users
+of fscrypt that we would need to synchronzie with, but it'll be easier
+to do this as a separate git tree.  We can either do it at the very
+beginning of the merge window (and have all of the file systems pull
+the change into fs/crypt), or I can work with Linus to do it right
+after the next next merge window closes.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+My preferences would be for the former, given where we are in the
+development cycle.
+
+Any objections?
+
+					- Ted
