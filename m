@@ -1,222 +1,105 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: [DEBUG PATCH 1/2] mm, debug: report when GFP_NO{FS,IO} is used explicitly from memalloc_no{fs,io}_{save,restore} context
-Date: Fri, 16 Dec 2016 13:46:27 +0100
-Message-ID: <20161216124628.26846-2-mhocko@kernel.org>
+From: Mike Galbraith <umgwanakikbuti@gmail.com>
+Subject: Re: [PATCH 0/9 v2] scope GFP_NOFS api
+Date: Fri, 16 Dec 2016 16:05:58 +0100
+Message-ID: <1481900758.31172.20.camel@gmail.com>
 References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161216124628.26846-1-mhocko@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org,
-	logfs@logfs.org,
-	linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: <linux-mm@kvack.org>,
-	<linux-fsdevel@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, Dave Chinner
+ <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>, Chris Mason
+ <clm@fb.com>,  David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+ ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+ linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+ linux-ntfs-dev@lists.sourceforge.net,
+ linux-f2fs-devel@lists.sourceforge.net,  linux-afs@lists.infradead.org,
+ LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>, "Peter
+ Zijlstra (Intel)" <peterz@infradead.org>
+To: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20161216124628.26846-1-mhocko@kernel.org>
+In-Reply-To: <20161215140715.12732-1-mhocko@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Michal Hocko <mhocko@suse.com>
+On Thu, 2016-12-15 at 15:07 +0100, Michal Hocko wrote:
+> Hi,
+> I have posted the previous version here [1]. Since then I have added a
+> support to suppress reclaim lockdep warnings (__GFP_NOLOCKDEP) to allow
+> removing GFP_NOFS usage motivated by the lockdep false positives. On top
+> of that I've tried to convert few KM_NOFS usages to use the new flag in
+> the xfs code base. This would need a review from somebody familiar with
+> xfs of course.
 
-THIS PATCH IS FOR TESTING ONLY AND NOT MEANT TO HIT LINUS TREE
+The wild ass guess below prevents the xfs explosion below when running
+ltp zram tests.
 
-It is desirable to reduce the direct GFP_NO{FS,IO} usage at minimum and
-prefer scope usage defined by memalloc_no{fs,io}_{save,restore} API.
-
-Let's help this process and add a debugging tool to catch when an
-explicit allocation request for GFP_NO{FS,IO} is done from the scope
-context. The printed stacktrace should help to identify the caller
-and evaluate whether it can be changed to use a wider context or whether
-it is called from another potentially dangerous context which needs
-a scope protection as well.
-
-The checks have to be enabled explicitly by debug_scope_gfp kernel
-command line parameter.
-
-Signed-off-by: Michal Hocko <mhocko@suse.com>
 ---
- include/linux/sched.h | 14 +++++++++++--
- include/linux/slab.h  |  3 +++
- mm/page_alloc.c       | 58 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 73 insertions(+), 2 deletions(-)
+ fs/xfs/kmem.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 1c9fbcbcfcc8..288946bfc326 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -1988,6 +1988,8 @@ struct task_struct {
- 	/* A live task holds one reference. */
- 	atomic_t stack_refcount;
- #endif
-+	unsigned long nofs_caller;
-+	unsigned long noio_caller;
- /* CPU-specific state of this task */
- 	struct thread_struct thread;
- /*
-@@ -2345,6 +2347,8 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
- #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
- #define used_math() tsk_used_math(current)
- 
-+extern void debug_scope_gfp_context(gfp_t gfp_mask);
-+
- /*
-  * Applies per-task gfp context to the given allocation flags.
-  * PF_MEMALLOC_NOIO implies GFP_NOIO
-@@ -2363,25 +2367,31 @@ static inline gfp_t current_gfp_context(gfp_t flags)
- 	return flags;
- }
- 
--static inline unsigned int memalloc_noio_save(void)
-+static inline unsigned int __memalloc_noio_save(unsigned long caller)
+--- a/fs/xfs/kmem.h
++++ b/fs/xfs/kmem.h
+@@ -45,7 +45,7 @@ kmem_flags_convert(xfs_km_flags_t flags)
  {
- 	unsigned int flags = current->flags & PF_MEMALLOC_NOIO;
- 	current->flags |= PF_MEMALLOC_NOIO;
-+	current->noio_caller = caller;
- 	return flags;
- }
+ 	gfp_t	lflags;
  
-+#define memalloc_noio_save()	__memalloc_noio_save(_RET_IP_)
-+
- static inline void memalloc_noio_restore(unsigned int flags)
- {
- 	current->flags = (current->flags & ~PF_MEMALLOC_NOIO) | flags;
- }
+-	BUG_ON(flags & ~(KM_SLEEP|KM_NOSLEEP|KM_NOFS|KM_MAYFAIL|KM_ZERO));
++	BUG_ON(flags & ~(KM_SLEEP|KM_NOSLEEP|KM_NOFS|KM_MAYFAIL|KM_ZERO|KM_NOLOCKDEP));
  
--static inline unsigned int memalloc_nofs_save(void)
-+static inline unsigned int __memalloc_nofs_save(unsigned long caller)
- {
- 	unsigned int flags = current->flags & PF_MEMALLOC_NOFS;
- 	current->flags |= PF_MEMALLOC_NOFS;
-+	current->nofs_caller = caller;
- 	return flags;
- }
- 
-+#define memalloc_nofs_save()	__memalloc_nofs_save(_RET_IP_)
-+
- static inline void memalloc_nofs_restore(unsigned int flags)
- {
- 	current->flags = (current->flags & ~PF_MEMALLOC_NOFS) | flags;
-diff --git a/include/linux/slab.h b/include/linux/slab.h
-index 084b12bad198..6559668e29db 100644
---- a/include/linux/slab.h
-+++ b/include/linux/slab.h
-@@ -477,6 +477,7 @@ static __always_inline void *kmalloc_large(size_t size, gfp_t flags)
-  */
- static __always_inline void *kmalloc(size_t size, gfp_t flags)
- {
-+	debug_scope_gfp_context(flags);
- 	if (__builtin_constant_p(size)) {
- 		if (size > KMALLOC_MAX_CACHE_SIZE)
- 			return kmalloc_large(size, flags);
-@@ -517,6 +518,7 @@ static __always_inline int kmalloc_size(int n)
- 
- static __always_inline void *kmalloc_node(size_t size, gfp_t flags, int node)
- {
-+	debug_scope_gfp_context(flags);
- #ifndef CONFIG_SLOB
- 	if (__builtin_constant_p(size) &&
- 		size <= KMALLOC_MAX_CACHE_SIZE && !(flags & GFP_DMA)) {
-@@ -575,6 +577,7 @@ int memcg_update_all_caches(int num_memcgs);
-  */
- static inline void *kmalloc_array(size_t n, size_t size, gfp_t flags)
- {
-+	debug_scope_gfp_context(flags);
- 	if (size != 0 && n > SIZE_MAX / size)
- 		return NULL;
- 	if (__builtin_constant_p(n) && __builtin_constant_p(size))
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index e701be6b930a..9e35fb2a8681 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -3734,6 +3734,63 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
- 	return page;
- }
- 
-+static bool debug_scope_gfp;
-+
-+static int __init enable_debug_scope_gfp(char *unused)
-+{
-+	debug_scope_gfp = true;
-+	return 0;
-+}
-+
-+/*
-+ * spit the stack trace if the given gfp_mask clears flags which are context
-+ * wide cleared. Such a caller can remove special flags clearing and rely on
-+ * the context wide mask.
-+ */
-+void debug_scope_gfp_context(gfp_t gfp_mask)
-+{
-+	gfp_t restrict_mask;
-+
-+	if (likely(!debug_scope_gfp))
-+		return;
-+
-+	/* both NOFS, NOIO are irrelevant when direct reclaim is disabled */
-+	if (!(gfp_mask & __GFP_DIRECT_RECLAIM))
-+		return;
-+
-+	if (current->flags & PF_MEMALLOC_NOIO)
-+		restrict_mask = __GFP_IO;
-+	else if ((current->flags & PF_MEMALLOC_NOFS) && (gfp_mask & __GFP_IO))
-+		restrict_mask = __GFP_FS;
-+	else
-+		return;
-+
-+	if ((gfp_mask & restrict_mask) != restrict_mask) {
-+		/*
-+		 * If you see this this warning then the code does:
-+		 * memalloc_no{fs,io}_save()
-+		 * ...
-+		 *    foo()
-+		 *      alloc_page(GFP_NO{FS,IO})
-+		 * ...
-+		 * memalloc_no{fs,io}_restore()
-+		 *
-+		 * allocation which is unnecessary because the scope gfp
-+		 * context will do that for all allocation requests already.
-+		 * If foo() is called from multiple contexts then make sure other
-+		 * contexts are safe wrt. GFP_NO{FS,IO} semantic and either add
-+		 * scope protection into particular paths or change the gfp mask
-+		 * to GFP_KERNEL.
-+		 */
-+		pr_info("Unnecesarily specific gfp mask:%#x(%pGg) for the %s task wide context from %ps\n", gfp_mask, &gfp_mask,
-+				(current->flags & PF_MEMALLOC_NOIO)?"NOIO":"NOFS",
-+				(void*)((current->flags & PF_MEMALLOC_NOIO)?current->noio_caller:current->nofs_caller));
-+		dump_stack();
-+	}
-+}
-+EXPORT_SYMBOL(debug_scope_gfp_context);
-+early_param("debug_scope_gfp", enable_debug_scope_gfp);
-+
- /*
-  * This is the 'heart' of the zoned buddy allocator.
-  */
-@@ -3798,6 +3855,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
- 	}
- 
- 	/* First allocation attempt */
-+	debug_scope_gfp_context(gfp_mask);
- 	page = get_page_from_freelist(alloc_mask, order, alloc_flags, &ac);
- 	if (likely(page))
- 		goto out;
--- 
-2.10.2
+ 	if (flags & KM_NOSLEEP) {
+ 		lflags = GFP_ATOMIC | __GFP_NOWARN;
+
+[  108.775501] ------------[ cut here ]------------
+[  108.775503] kernel BUG at fs/xfs/kmem.h:48!
+[  108.775504] invalid opcode: 0000 [#1] SMP
+[  108.775505] Dumping ftrace buffer:
+[  108.775508]    (ftrace buffer empty)
+[  108.775508] Modules linked in: xfs(E) libcrc32c(E) btrfs(E) xor(E) raid6_pq(E) zram(E) ebtable_filter(E) ebtables(E) fuse(E) bridge(E) stp(E) llc(E) iscsi_ibft(E) iscsi_boot_sysfs(E) ip6t_REJECT(E) xt_tcpudp(E) nf_conntrack_ipv6(E) nf_defrag_ipv6(E) ip6table_raw(E) ipt_REJECT(E) iptable_raw(E) iptable_filter(E) ip6table_mangle(E) nf_conntrack_netbios_ns(E) nf_conntrack_broadcast(E) nf_conntrack_ipv4(E) nf_defrag_ipv4(E) ip_tables(E) xt_conntrack(E) nf_conntrack(E) ip6table_filter(E) ip6_tables(E) x_tables(E) nls_iso8859_1(E) nls_cp437(E) x86_pkg_temp_thermal(E) intel_powerclamp(E) coretemp(E) kvm_intel(E) nfsd(E) kvm(E) auth_rpcgss(E) nfs_acl(E) lockd(E) snd_hda_codec_realtek(E) snd_hda_codec_hdmi(E) pl2303(E) grace(E) snd_hda_codec_generic(E) usbserial(E) irqbypass(E) snd_hda_intel(E) 
+ snd_hda_codec(E)
+[  108.775523]  snd_hwdep(E) sunrpc(E) snd_hda_core(E) crct10dif_pclmul(E) mei_me(E) mei(E) serio_raw(E) snd_pcm(E) crc32_pclmul(E) snd_timer(E) crc32c_intel(E) aesni_intel(E) aes_x86_64(E) crypto_simd(E) iTCO_wdt(E) iTCO_vendor_support(E) lpc_ich(E) mfd_core(E) snd(E) soundcore(E) joydev(E) fan(E) shpchp(E) tpm_infineon(E) cryptd(E) battery(E) thermal(E) pcspkr(E) glue_helper(E) usblp(E) intel_smartconnect(E) i2c_i801(E) efivarfs(E) hid_logitech_hidpp(E) hid_logitech_dj(E) hid_generic(E) usbhid(E) nouveau(E) wmi(E) i2c_algo_bit(E) ahci(E) libahci(E) drm_kms_helper(E) syscopyarea(E) sysfillrect(E) sysimgblt(E) fb_sys_fops(E) ehci_pci(E) xhci_pci(E) ttm(E) ehci_hcd(E) xhci_hcd(E) r8169(E) libata(E) mii(E) drm(E) usbcore(E) fjes(E) video(E) button(E) af_packet(E) sd_mod(E) vfat(E) fat(E) ext
+ 4(E) crc16(E)
+[  108.775540]  jbd2(E) mbcache(E) dm_mod(E) loop(E) sg(E) scsi_mod(E) autofs4(E)
+[  108.775544] CPU: 5 PID: 4495 Comm: mount Tainted: G            E   4.10.0-master #4
+[  108.775545] Hardware name: MEDION MS-7848/MS-7848, BIOS M7848W08.20C 09/23/2013
+[  108.775546] task: ffff8803f9e54e00 task.stack: ffffc900018fc000
+[  108.775565] RIP: 0010:kmem_flags_convert.part.0+0x4/0x6 [xfs]
+[  108.775565] RSP: 0018:ffffc900018ffcd8 EFLAGS: 00010202
+[  108.775566] RAX: ffff8803f630a800 RBX: ffff8803f6b20000 RCX: 0000000000001000
+[  108.775567] RDX: 0000000000001000 RSI: 0000000000000031 RDI: 00000000000000b0
+[  108.775568] RBP: ffffc900018ffcd8 R08: 0000000000019fe0 R09: ffff8803f6b20000
+[  108.775568] R10: 0000000000000005 R11: 0000000000010641 R12: ffff88041e21ea00
+[  108.775569] R13: ffff8803f6b20000 R14: 0000000000000000 R15: 00000000fffffff4
+[  108.775570] FS:  00007f1cbee9e840(0000) GS:ffff88041ed40000(0000) knlGS:0000000000000000
+[  108.775571] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  108.775571] CR2: 00007f5d4b6ed000 CR3: 00000003fbf13000 CR4: 00000000001406e0
+[  108.775572] Call Trace:
+[  108.775588]  kmem_alloc+0x100/0x100 [xfs]
+[  108.775591]  ? kstrndup+0x49/0x60
+[  108.775605]  xfs_alloc_buftarg+0x23/0xd0 [xfs]
+[  108.775619]  xfs_open_devices+0x8c/0x170 [xfs]
+[  108.775621]  ? sb_set_blocksize+0x1d/0x50
+[  108.775633]  xfs_fs_fill_super+0x234/0x580 [xfs]
+[  108.775635]  mount_bdev+0x184/0x1c0
+[  108.775647]  ? xfs_test_remount_options.isra.15+0x60/0x60 [xfs]
+[  108.775658]  xfs_fs_mount+0x15/0x20 [xfs]
+[  108.775659]  mount_fs+0x15/0x90
+[  108.775661]  vfs_kern_mount+0x67/0x130
+[  108.775663]  do_mount+0x190/0xbd0
+[  108.775664]  ? memdup_user+0x42/0x60
+[  108.775665]  SyS_mount+0x83/0xd0
+[  108.775668]  entry_SYSCALL_64_fastpath+0x1a/0xa9
+[  108.775669] RIP: 0033:0x7f1cbe7bf78a
+[  108.775669] RSP: 002b:00007ffc99215198 EFLAGS: 00000202 ORIG_RAX: 00000000000000a5
+[  108.775670] RAX: ffffffffffffffda RBX: 00007f1cbeabb3b8 RCX: 00007f1cbe7bf78a
+[  108.775671] RDX: 000055715a611690 RSI: 000055715a60d270 RDI: 000055715a60d2d0
+[  108.775671] RBP: 000055715a60d120 R08: 0000000000000000 R09: 00007f1cbea7c678
+[  108.775672] R10: 00000000c0ed0000 R11: 0000000000000202 R12: 00007f1cbecc8e78
+[  108.775672] R13: 00000000ffffffff R14: 0000000000000000 R15: 000055715a60d060
+[  108.775673] Code: ff 74 05 e8 c2 17 64 e0 48 8b 3d 6b ec 03 00 48 85 ff 74 05 e8 b1 17 64 e0 48 8b 3d 32 ec 03 00 e8 25 a6 74 e0 5d c3 55 48 89 e5 <0f> 0b 55 48 89 e5 e8 f4 53 ff ff 48 c7 c7 40 78 b7 a0 e8 18 01 
+[  108.775700] RIP: kmem_flags_convert.part.0+0x4/0x6 [xfs] RSP: ffffc900018ffcd8
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
