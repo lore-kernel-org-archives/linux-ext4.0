@@ -1,58 +1,103 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] Quota, fsnotify, and ext2 changes for 4.10-rc1
-Date: Mon, 19 Dec 2016 10:34:42 +0100
-Message-ID: <20161219093442.GD17598@quack2.suse.cz>
+Subject: Re: [PATCH 8/9] Revert "ext4: avoid deadlocks in the writeback path
+ by using sb_getblk_gfp"
+Date: Fri, 16 Dec 2016 09:41:26 +0100
+Message-ID: <20161216084126.GF26608@quack2.suse.cz>
+References: <20161215140715.12732-1-mhocko@kernel.org>
+ <20161215140715.12732-9-mhocko@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	logfs@logfs.org, linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Michal Hocko <mhocko@suse.com>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161215140715.12732-9-mhocko@kernel.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-  Hello Linus,
+On Thu 15-12-16 15:07:14, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
+> 
+> This reverts commit c45653c341f5c8a0ce19c8f0ad4678640849cb86 because
+> sb_getblk_gfp is not really needed as
+> sb_getblk
+>   __getblk_gfp
+>     __getblk_slow
+>       grow_buffers
+>         grow_dev_page
+> 	  gfp_mask = mapping_gfp_constraint(inode->i_mapping, ~__GFP_FS) | gfp
+> 
+> so __GFP_FS is cleared unconditionally and therefore the above commit
+> didn't have any real effect in fact.
+> 
+> This patch should not introduce any functional change. The main point
+> of this change is to reduce explicit GFP_NOFS usage inside ext4 code to
+> make the review of the remaining usage easier.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
 
-  could you please pull from
+Looks good to me. You can add:
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-to get changes to locking of some quota operations from dedicated quota mutex
-to s_umount semaphore, a fsnotify fix and a simple ext2 fix.
-
-Top of the tree is 5716863e0f82. The full shortlog is:
-
-Darrick J. Wong (1):
-      ext2: reject inodes with negative size
-
-Jan Kara (8):
-      fs: Provide function to get superblock with exclusive s_umount
-      quota: Hold s_umount in exclusive mode when enabling / disabling quotas
-      quota: Use s_umount protection for quota operations
-      ocfs2: Protect periodic quota syncing with s_umount semaphore
-      quota: Remove dqonoff_mutex from dquot_scan_active()
-      ocfs2: Use s_umount for quota recovery protection
-      quota: Remove dqonoff_mutex
-      fsnotify: Fix possible use-after-free in inode iteration on umount
-
-The diffstat is
-
- fs/ext2/inode.c         |   4 ++
- fs/notify/inode_mark.c  |  45 ++++------------
- fs/ocfs2/quota_global.c |  10 +++-
- fs/ocfs2/quota_local.c  |  11 ++--
- fs/ocfs2/super.c        |   1 -
- fs/quota/dquot.c        | 134 +++++++++++++++++-------------------------------
- fs/quota/quota.c        |  22 +++++---
- fs/super.c              |  81 +++++++++++++++++++++--------
- include/linux/fs.h      |   2 +
- include/linux/quota.h   |   1 -
- 10 files changed, 151 insertions(+), 160 deletions(-)
-
-							Thanks
 								Honza
 
+> ---
+>  fs/ext4/extents.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index b1f8416923ab..ef815eb72389 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -518,7 +518,7 @@ __read_extent_tree_block(const char *function, unsigned int line,
+>  	struct buffer_head		*bh;
+>  	int				err;
+>  
+> -	bh = sb_getblk_gfp(inode->i_sb, pblk, __GFP_MOVABLE | GFP_NOFS);
+> +	bh = sb_getblk(inode->i_sb, pblk);
+>  	if (unlikely(!bh))
+>  		return ERR_PTR(-ENOMEM);
+>  
+> @@ -1096,7 +1096,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
+>  		err = -EFSCORRUPTED;
+>  		goto cleanup;
+>  	}
+> -	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
+> +	bh = sb_getblk(inode->i_sb, newblock);
+>  	if (unlikely(!bh)) {
+>  		err = -ENOMEM;
+>  		goto cleanup;
+> @@ -1290,7 +1290,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
+>  	if (newblock == 0)
+>  		return err;
+>  
+> -	bh = sb_getblk_gfp(inode->i_sb, newblock, __GFP_MOVABLE | GFP_NOFS);
+> +	bh = sb_getblk(inode->i_sb, newblock);
+>  	if (unlikely(!bh))
+>  		return -ENOMEM;
+>  	lock_buffer(bh);
+> -- 
+> 2.10.2
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
