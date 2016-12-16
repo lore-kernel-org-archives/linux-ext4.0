@@ -1,40 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Creating a mailing list, git tree, and patchwork project for
- fscrypt
-Date: Fri, 16 Dec 2016 17:04:19 -0500
-Message-ID: <20161216220419.znasf5wjkpb7qazr@thunk.org>
-References: <20161216203732.g65wjf2wgc6rsijy@thunk.org>
- <20161216205330.GB14264@gmail.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] fscrypt: Factor out bio specific functions
+Date: Fri, 16 Dec 2016 14:14:28 -0800
+Message-ID: <20161216221428.GC14264@gmail.com>
+References: <20161216105006.10207-1-richard@nod.at>
+ <72D4D0FB-F56D-4457-9660-4CFF7B4CFB6E@sigma-star.at>
+ <48d4de8e-6e57-cbad-7556-03aa788c815a@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
-        ebiggers@google.com, mhalcrow@google.com, richard@nod.at,
-        linux-ext4@vger.kernel.org, linux-f2fs@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: David Gstir <david@sigma-star.at>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
+        hch@infradead.org, arnd@arndb.de, dedekind1@gmail.com,
+        linux-mtd@lists.infradead.org, adrian.hunter@intel.com,
+        linux-ext4@vger.kernel.org, ebiggers@google.com,
+        rdunlap@infradead.org
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:33178 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758564AbcLPWOj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Dec 2016 17:14:39 -0500
 Content-Disposition: inline
-In-Reply-To: <20161216205330.GB14264@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <48d4de8e-6e57-cbad-7556-03aa788c815a@nod.at>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 16, 2016 at 12:53:30PM -0800, Eric Biggers wrote:
-> Sounds great!
+On Fri, Dec 16, 2016 at 09:48:19PM +0100, Richard Weinberger wrote:
+> On 16.12.2016 16:37, David Gstir wrote:
+> >> @@ -349,33 +347,10 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+> >> 		err = do_page_crypto(inode, FS_ENCRYPT, lblk,
+> >> 					ZERO_PAGE(0), ciphertext_page,
+> >> 					PAGE_SIZE, 0, GFP_NOFS);
+> >> +		err = fscrypt_bio_submit_page(inode, pblk, ciphertext_page);
+> > 
+> > Any specific reason why you didn't just move the whole fscrypt_zeroout_range() to bio.c?
 > 
-> I guess it will be "fscrypt" and not "fscrypto"?  There has been some confusion
-> about which term to use but it seems to be settling on "fscrypt".
+> The function depends other internal functions of crypto.c which I didn't want to
+> export.
+> At the end of the day it's a matter of taste. I found it less ugly to keep
+> fscrypt_zeroout_range() in crypto.c than exposing internal stuff.
+> 
 
-It was originally fscrypt, but then fscrypto crept in when we
-refactored the out to the fs/crypto directory from fs/ext4.  I was
-planning on cleaning that up before we had too many file systems users
-of fscrypt that we would need to synchronzie with, but it'll be easier
-to do this as a separate git tree.  We can either do it at the very
-beginning of the merge window (and have all of the file systems pull
-the change into fs/crypt), or I can work with Linus to do it right
-after the next next merge window closes.
+Hmm, it still seems weird to define fscrypt_zeroout_range() when it can't
+actually be used.  It looks like the problem is specifically the use of
+alloc_bounce_page() and do_page_crypto().  Would it be that bad to make those
+available in fscrypt_internal.h (not exported to filesystems)?
 
-My preferences would be for the former, given where we are in the
-development cycle.
+Also, it seems the actual problem is that fscrypt_zeroout_range() tries to be
+clever and reuse one bounce page over and over.  But this seems very inefficient
+because it has to wait for each block to be synchronously written out before
+moving on to the next.  I'm thinking it really should be updated to work more
+like the normal write path, and then it could use fscrypt_encrypt_page()...
 
-Any objections?
-
-					- Ted
+Eric
