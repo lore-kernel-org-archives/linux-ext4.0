@@ -1,47 +1,53 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 2/3] fscrypt: fix renaming and linking special files
-Date: Fri, 16 Dec 2016 13:22:55 +0100
-Message-ID: <078aca9a-5239-18dd-6317-9d6f03c42770@nod.at>
-References: <1481829584-50218-1-git-send-email-ebiggers3@gmail.com>
- <1481829584-50218-2-git-send-email-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        David Gstir <david@sigma-star.at>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from b.ns.miles-group.at ([95.130.255.144]:44725 "EHLO radon.swed.at"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1757362AbcLPMW6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Dec 2016 07:22:58 -0500
-In-Reply-To: <1481829584-50218-2-git-send-email-ebiggers3@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: [DEBUG PATCH 0/2] debug explicit GFP_NO{FS,IO} usage from the scope context
+Date: Fri, 16 Dec 2016 13:46:26 +0100
+Message-ID: <20161216124628.26846-1-mhocko@kernel.org>
+References: <20161215140715.12732-1-mhocko@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Chris Mason <clm@fb.com>,
+	David Sterba <dsterba@suse.cz>,
+	Jan Kara <jack@suse.cz>,
+	ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org,
+	logfs@logfs.org,
+	linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org,
+	LKML <linux-kernel@vger.kernel.org>
+To: <linux-mm@kvack.org>,
+	<linux-fsdevel@vger.kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20161215140715.12732-1-mhocko@kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 15.12.2016 20:19, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Attempting to link a device node, named pipe, or socket file into an
-> encrypted directory through rename(2) or link(2) always failed with
-> EPERM.  This happened because fscrypt_permitted_context() saw that the
-> file was unencrypted and forbid creating the link.  This behavior was
-> unexpected because such files are never encrypted; only regular files,
-> directories, and symlinks can be encrypted.
-> 
-> To fix this, make fscrypt_has_permitted_context() always return true on
-> special files.
-> 
-> This will be covered by a test in my encryption xfstests patchset.
-> 
-> Fixes: 9bd8212f981e ("ext4 crypto: add encryption policy and password salt support")
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+Hi,
+I've forgot to add the following two patches which should help to
+identify explicit GFP_NO{FS,IO} usage from withing a scope context. Such
+a usage can be changed to the full GFP_KERNEL because all the calls
+from within the NO{FS,IO} scope will drop the __GFP_FS resp. __GFP_IO
+automatically and if the function is called outside of the scope then
+we do not need to restrict it to NOFS/NOIO as long as all the reclaim
+recursion unsafe contexts are marked properly. This means that each
+such a reported allocation site has to be checked before converted.
 
-Reviewed-by: Richard Weinberger <richard@nod.at>
+The debugging has to be enabled explicitly by a kernel command line
+parameter and then it reports the stack trace of the allocation and
+also the function which has started the current scope.
 
-Thanks,
-//richard
+These two patches are _not_ intended to be merged and they are only
+aimed at debugging.
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
