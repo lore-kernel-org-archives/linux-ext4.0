@@ -1,67 +1,71 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: Creating a mailing list, git tree, and patchwork project for
- fscrypt
-Date: Fri, 16 Dec 2016 14:25:09 -0800
-Message-ID: <20161216222509.GD14264@gmail.com>
-References: <20161216203732.g65wjf2wgc6rsijy@thunk.org>
- <20161216205330.GB14264@gmail.com>
- <20161216220419.znasf5wjkpb7qazr@thunk.org>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
+Date: Fri, 16 Dec 2016 17:35:35 -0800
+Message-ID: <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
+References: <20161212164708.23244-1-jack@suse.cz>
+ <20161213115209.GG15362@quack2.suse.cz>
+ <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, jaegeuk@kernel.org,
-        ebiggers@google.com, mhalcrow@google.com, richard@nod.at,
-        linux-ext4@vger.kernel.org, linux-f2fs@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:34730 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758080AbcLPWZM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Dec 2016 17:25:12 -0500
-Content-Disposition: inline
-In-Reply-To: <20161216220419.znasf5wjkpb7qazr@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 16, 2016 at 05:04:19PM -0500, Theodore Ts'o wrote:
-> On Fri, Dec 16, 2016 at 12:53:30PM -0800, Eric Biggers wrote:
-> > Sounds great!
-> > 
-> > I guess it will be "fscrypt" and not "fscrypto"?  There has been some confusion
-> > about which term to use but it seems to be settling on "fscrypt".
-> 
-> It was originally fscrypt, but then fscrypto crept in when we
-> refactored the out to the fs/crypto directory from fs/ext4.  I was
-> planning on cleaning that up before we had too many file systems users
-> of fscrypt that we would need to synchronzie with, but it'll be easier
-> to do this as a separate git tree.  We can either do it at the very
-> beginning of the merge window (and have all of the file systems pull
-> the change into fs/crypt), or I can work with Linus to do it right
-> after the next next merge window closes.
-> 
-> My preferences would be for the former, given where we are in the
-> development cycle.
-> 
+On Tue, Dec 13, 2016 at 10:57 AM, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org> wrote:
+> On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+>> On Mon 12-12-16 17:47:02, Jan Kara wrote:
+>>> Hello,
+>>>
+>>> this is the third revision of my fixes of races when invalidating hole pages in
+>>> DAX mappings. See changelogs for details. The series is based on my patches to
+>>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
+>>> dependency because we really need to closely track dirtiness (and cleanness!)
+>>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
+>>> bits leading to missed cache flushes on fsync(2).
+>>>
+>>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
+>>>
+>>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
+>>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
+>>> to get at least first three patches merged for 4.10-rc2... Thanks!
+>>
+>> OK, with the final ack from Johannes and since this is mostly DAX stuff,
+>> can we take this through NVDIMM tree and push to Linus either late in the
+>> merge window or for -rc2? These patches require my DAX patches sitting in mm
+>> tree so they can be included in any git tree only once those patches land
+>> in Linus' tree (which may happen only once Dave and Ted push out their
+>> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
+>> Dan?
+>>
+>
+> I like the -rc2 plan better than sending a pull request based on some
+> random point in the middle of the merge window. I can give Linus a
+> heads up in my initial nvdimm pull request for -rc1 that for
+> coordination purposes we'll be sending this set of follow-on DAX
+> cleanups for -rc2.
 
-I'm fine with fscrypt.  With regards to the cleanup, are you referring to
-renaming the header fscrypto.h to fscrypt.h?  Fortunately there aren't a lot
-places that "fscrypto" actually appears in the tree --- basically just that
-header, the module name, a couple log messages, and the MAINTAINERS file:
+So what's still pending for -rc2? I want to be explicit about what I'm
+requesting Linus be prepared to receive after -rc1. The libnvdimm pull
+request is very light this time around since I ended up deferring the
+device-dax-subdivision topic until 4.11 and sub-section memory hotplug
+didn't make the cutoff for -mm. We can spend some of that goodwill on
+your patches ;-).
 
-	MAINTAINERS:FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
-	MAINTAINERS:F:  include/linux/fscrypto.h
-	fs/crypto/Makefile:obj-$(CONFIG_FS_ENCRYPTION)  += fscrypto.o
-	fs/crypto/Makefile:fscrypto-y := crypto.o fname.o policy.o keyinfo.o
-	fs/crypto/Makefile:fscrypto-$(CONFIG_BLOCK) += bio.o
-	fs/crypto/fscrypt_private.h:#include <linux/fscrypto.h>
-	fs/crypto/keyinfo.c:            pr_warn_once("fscrypto: unsupported contents encryption mode "
-	fs/crypto/keyinfo.c:            pr_warn_once("fscrypto: unsupported filenames encryption mode "
-	fs/crypto/keyinfo.c:    pr_warn_once("fscrypto: unsupported file type %d for inode %lu\n",
-	fs/ext4/ext4.h:#include <linux/fscrypto.h>
-	fs/ext4/page-io.c:#include <linux/fscrypto.h>
-	fs/f2fs/f2fs.h:#include <linux/fscrypto.h>
-	fs/ubifs/ubifs.h:#include <linux/fscrypto.h>
-	include/linux/fscrypto.h:#ifndef _LINUX_FSCRYPTO_H
-	include/linux/fscrypto.h:#define _LINUX_FSCRYPTO_H
-	include/linux/fscrypto.h:#endif /* _LINUX_FSCRYPTO_H */
-
-Eric
+I can roll them into libnvdimm-for-next now for the integration
+testing coverage, rebase to -rc1 when it's out, wait for your thumbs
+up on the testing and send a pull request on the 23rd.
