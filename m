@@ -1,88 +1,40 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
-Date: Mon, 19 Dec 2016 10:56:23 +0100
-Message-ID: <20161219095623.GE17598@quack2.suse.cz>
-References: <20161212164708.23244-1-jack@suse.cz>
- <20161213115209.GG15362@quack2.suse.cz>
- <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
- <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] fscrypt: Factor out bio specific functions
+Date: Mon, 19 Dec 2016 02:39:29 -0800
+Message-ID: <20161219103929.GA16197@infradead.org>
+References: <20161216105006.10207-1-richard@nod.at>
+ <72D4D0FB-F56D-4457-9660-4CFF7B4CFB6E@sigma-star.at>
+ <48d4de8e-6e57-cbad-7556-03aa788c815a@nod.at>
+ <20161216221428.GC14264@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Linux MM <linux-mm@kvack.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Richard Weinberger <richard@nod.at>,
+        David Gstir <david@sigma-star.at>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel@vger.kernel.org, jaegeuk@kernel.org, tytso@mit.edu,
+        hch@infradead.org, arnd@arndb.de, dedekind1@gmail.com,
+        linux-mtd@lists.infradead.org, adrian.hunter@intel.com,
+        linux-ext4@vger.kernel.org, ebiggers@google.com,
+        rdunlap@infradead.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20161216221428.GC14264@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 16-12-16 17:35:35, Dan Williams wrote:
-> On Tue, Dec 13, 2016 at 10:57 AM, Dan Williams <dan.j.williams@intel.com> wrote:
-> > On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack@suse.cz> wrote:
-> >> On Mon 12-12-16 17:47:02, Jan Kara wrote:
-> >>> Hello,
-> >>>
-> >>> this is the third revision of my fixes of races when invalidating hole pages in
-> >>> DAX mappings. See changelogs for details. The series is based on my patches to
-> >>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
-> >>> dependency because we really need to closely track dirtiness (and cleanness!)
-> >>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
-> >>> bits leading to missed cache flushes on fsync(2).
-> >>>
-> >>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
-> >>>
-> >>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
-> >>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
-> >>> to get at least first three patches merged for 4.10-rc2... Thanks!
-> >>
-> >> OK, with the final ack from Johannes and since this is mostly DAX stuff,
-> >> can we take this through NVDIMM tree and push to Linus either late in the
-> >> merge window or for -rc2? These patches require my DAX patches sitting in mm
-> >> tree so they can be included in any git tree only once those patches land
-> >> in Linus' tree (which may happen only once Dave and Ted push out their
-> >> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
-> >> Dan?
-> >>
-> >
-> > I like the -rc2 plan better than sending a pull request based on some
-> > random point in the middle of the merge window. I can give Linus a
-> > heads up in my initial nvdimm pull request for -rc1 that for
-> > coordination purposes we'll be sending this set of follow-on DAX
-> > cleanups for -rc2.
-> 
-> So what's still pending for -rc2? I want to be explicit about what I'm
-> requesting Linus be prepared to receive after -rc1. The libnvdimm pull
-> request is very light this time around since I ended up deferring the
-> device-dax-subdivision topic until 4.11 and sub-section memory hotplug
-> didn't make the cutoff for -mm. We can spend some of that goodwill on
-> your patches ;-).
+On Fri, Dec 16, 2016 at 02:14:28PM -0800, Eric Biggers wrote:
+> Hmm, it still seems weird to define fscrypt_zeroout_range() when it can't
+> actually be used.  It looks like the problem is specifically the use of
+> alloc_bounce_page() and do_page_crypto().  Would it be that bad to make those
+> available in fscrypt_internal.h (not exported to filesystems)?
 
-;-) So I'd like all these 6 patches to go for rc2. The first three patches
-fix invalidation of exceptional DAX entries (a bug which is there for a
-long time) - without these patches data loss can occur on power failure
-even though user called fsync(2). The other three patches change locking of
-DAX faults so that ->iomap_begin() is called in a more relaxed locking
-context and we are safe to start a transaction there for ext4.
+Sounds good to me.
 
-> I can roll them into libnvdimm-for-next now for the integration
-> testing coverage, rebase to -rc1 when it's out, wait for your thumbs
-> up on the testing and send a pull request on the 23rd.
+> Also, it seems the actual problem is that fscrypt_zeroout_range() tries to be
+> clever and reuse one bounce page over and over.  But this seems very inefficient
+> because it has to wait for each block to be synchronously written out before
+> moving on to the next.  I'm thinking it really should be updated to work more
+> like the normal write path, and then it could use fscrypt_encrypt_page()...
 
-Yup, all prerequisites are merged now so you can pick these patches up.
-Thanks! Note that I'll be on vacation on Dec 23 - Jan 1.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+That sounds even better, but might take a little more time.
