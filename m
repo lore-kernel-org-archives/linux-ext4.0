@@ -1,107 +1,82 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 6/9] jbd2: mark the transaction context with the scope
- GFP_NOFS context
-Date: Fri, 16 Dec 2016 09:39:35 +0100
-Message-ID: <20161216083935.GD26608@quack2.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-7-mhocko@kernel.org>
+Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
+Date: Mon, 19 Dec 2016 10:56:23 +0100
+Message-ID: <20161219095623.GE17598@quack2.suse.cz>
+References: <20161212164708.23244-1-jack@suse.cz>
+ <20161213115209.GG15362@quack2.suse.cz>
+ <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
+ <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: Michal Hocko <mhocko@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Linux MM <linux-mm@kvack.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161215140715.12732-7-mhocko@kernel.org>
+In-Reply-To: <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 15-12-16 15:07:12, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
+On Fri 16-12-16 17:35:35, Dan Williams wrote:
+> On Tue, Dec 13, 2016 at 10:57 AM, Dan Williams <dan.j.williams@intel.com> wrote:
+> > On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack@suse.cz> wrote:
+> >> On Mon 12-12-16 17:47:02, Jan Kara wrote:
+> >>> Hello,
+> >>>
+> >>> this is the third revision of my fixes of races when invalidating hole pages in
+> >>> DAX mappings. See changelogs for details. The series is based on my patches to
+> >>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
+> >>> dependency because we really need to closely track dirtiness (and cleanness!)
+> >>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
+> >>> bits leading to missed cache flushes on fsync(2).
+> >>>
+> >>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
+> >>>
+> >>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
+> >>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
+> >>> to get at least first three patches merged for 4.10-rc2... Thanks!
+> >>
+> >> OK, with the final ack from Johannes and since this is mostly DAX stuff,
+> >> can we take this through NVDIMM tree and push to Linus either late in the
+> >> merge window or for -rc2? These patches require my DAX patches sitting in mm
+> >> tree so they can be included in any git tree only once those patches land
+> >> in Linus' tree (which may happen only once Dave and Ted push out their
+> >> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
+> >> Dan?
+> >>
+> >
+> > I like the -rc2 plan better than sending a pull request based on some
+> > random point in the middle of the merge window. I can give Linus a
+> > heads up in my initial nvdimm pull request for -rc1 that for
+> > coordination purposes we'll be sending this set of follow-on DAX
+> > cleanups for -rc2.
 > 
-> now that we have memalloc_nofs_{save,restore} api we can mark the whole
-> transaction context as implicitly GFP_NOFS. All allocations will
-> automatically inherit GFP_NOFS this way. This means that we do not have
-> to mark any of those requests with GFP_NOFS and moreover all the
-> ext4_kv[mz]alloc(GFP_NOFS) are also safe now because even the hardcoded
-> GFP_KERNEL allocations deep inside the vmalloc will be NOFS now.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> So what's still pending for -rc2? I want to be explicit about what I'm
+> requesting Linus be prepared to receive after -rc1. The libnvdimm pull
+> request is very light this time around since I ended up deferring the
+> device-dax-subdivision topic until 4.11 and sub-section memory hotplug
+> didn't make the cutoff for -mm. We can spend some of that goodwill on
+> your patches ;-).
 
-Looks good to me. You can add:
+;-) So I'd like all these 6 patches to go for rc2. The first three patches
+fix invalidation of exceptional DAX entries (a bug which is there for a
+long time) - without these patches data loss can occur on power failure
+even though user called fsync(2). The other three patches change locking of
+DAX faults so that ->iomap_begin() is called in a more relaxed locking
+context and we are safe to start a transaction there for ext4.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+> I can roll them into libnvdimm-for-next now for the integration
+> testing coverage, rebase to -rc1 when it's out, wait for your thumbs
+> up on the testing and send a pull request on the 23rd.
+
+Yup, all prerequisites are merged now so you can pick these patches up.
+Thanks! Note that I'll be on vacation on Dec 23 - Jan 1.
 
 								Honza
-
-> ---
->  fs/jbd2/transaction.c | 11 +++++++++++
->  include/linux/jbd2.h  |  2 ++
->  2 files changed, 13 insertions(+)
-> 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index e1652665bd93..35a5d3d76182 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -388,6 +388,11 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
->  
->  	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
->  	jbd2_journal_free_transaction(new_transaction);
-> +	/*
-> +	 * Make sure that no allocations done while the transaction is
-> +	 * open is going to recurse back to the fs layer.
-> +	 */
-> +	handle->saved_alloc_context = memalloc_nofs_save();
->  	return 0;
->  }
->  
-> @@ -466,6 +471,7 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
->  	trace_jbd2_handle_start(journal->j_fs_dev->bd_dev,
->  				handle->h_transaction->t_tid, type,
->  				line_no, nblocks);
-> +
->  	return handle;
->  }
->  EXPORT_SYMBOL(jbd2__journal_start);
-> @@ -1760,6 +1766,11 @@ int jbd2_journal_stop(handle_t *handle)
->  	if (handle->h_rsv_handle)
->  		jbd2_journal_free_reserved(handle->h_rsv_handle);
->  free_and_exit:
-> +	/*
-> +	 * scope of th GFP_NOFS context is over here and so we can
-> +	 * restore the original alloc context.
-> +	 */
-> +	memalloc_nofs_restore(handle->saved_alloc_context);
->  	jbd2_free_handle(handle);
->  	return err;
->  }
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index dfaa1f4dcb0c..606b6bce3a5b 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -491,6 +491,8 @@ struct jbd2_journal_handle
->  
->  	unsigned long		h_start_jiffies;
->  	unsigned int		h_requested_credits;
-> +
-> +	unsigned int		saved_alloc_context;
->  };
->  
->  
-> -- 
-> 2.10.2
-> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
