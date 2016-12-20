@@ -1,52 +1,86 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH] ext4: convert swap_inode_data() over to use swap() on most of the fields
-Date: Tue, 20 Dec 2016 10:55:41 -0500
-Message-ID: <1482249341-21113-1-git-send-email-jlayton@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Joe Perches <joe@perches.com>
+Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
+Date: Tue, 20 Dec 2016 09:38:22 -0800
+Message-ID: <1482255502.1984.21.camel@perches.com>
+References: <20161208103300.23217-1-mhocko@kernel.org>
+         <20161213101451.GB10492@dhcp22.suse.cz>
+         <1481666853.29291.33.camel@perches.com>
+         <20161214085916.GB25573@dhcp22.suse.cz>
+         <20161220135016.GH3769@dhcp22.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
+        David Rientjes <rientjes@google.com>,
+        Mel Gorman <mgorman@suse.de>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Anatoly Stepanov <astepanov@cloudlinux.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-security-module@vger.kernel.org,
+        Dave Chinner <david@fromorbit.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mikulas Patocka <mpatocka@redhat.com>
+To: Michal Hocko <mhocko@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-security-module-owner@vger.kernel.org>
+In-Reply-To: <20161220135016.GH3769@dhcp22.suse.cz>
+Sender: owner-linux-security-module@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-For some odd reason, it forces a byte-by-byte copy of each field. A
-plain old swap() on most of these fields would be more efficient. We
-do need to retain one memswap however as that field is an array.
+On Tue, 2016-12-20 at 14:50 +0100, Michal Hocko wrote:
+> On Wed 14-12-16 09:59:16, Michal Hocko wrote:
+> > On Tue 13-12-16 14:07:33, Joe Perches wrote:
+> > > On Tue, 2016-12-13 at 11:14 +0100, Michal Hocko wrote:
+> > > > Are there any more comments or objections to this patch? Is this a good
+> > > > start or kv[mz]alloc has to provide a way to cover GFP_NOFS users as
+> > > > well in the initial version.
+> > > 
+> > > Did Andrew Morton ever comment on this?
+> > > I believe he was the primary objector in the past.
+> > > 
+> > > Last I recollect was over a year ago:
+> > > 
+> > > https://lkml.org/lkml/2015/7/7/1050
+> > 
+> > Let me quote:
+> > : Sigh.  We've resisted doing this because vmalloc() is somewhat of a bad
+> > : thing, and we don't want to make it easy for people to do bad things.
+> > : 
+> > : And vmalloc is bad because a) it's slow and b) it does GFP_KERNEL
+> > : allocations for page tables and c) it is susceptible to arena
+> > : fragmentation.
+> > : 
+> > : We'd prefer that people fix their junk so it doesn't depend upon large
+> > : contiguous allocations.  This isn't userspace - kernel space is hostile
+> > : and kernel code should be robust.
+> > : 
+> > : So I dunno.  Should we continue to make it a bit more awkward to use
+> > : vmalloc()?  Probably that tactic isn't being very successful - people
+> > : will just go ahead and open-code it.  And given the surprising amount
+> > : of stuff you've placed in kvmalloc_node(), they'll implement it
+> > : incorrectly...
+> > : 
+> > : How about we compromise: add kvmalloc_node(), but include a BUG_ON("you
+> > : suck") to it?
+> > 
+> > While I agree with some of those points, the reality really sucks,
+> > though. We have tried the same tactic with __GFP_NOFAIL and failed as
+> > well. I guess we should just bite the bullet and provide an api which is
+> > so common that people keep reinventing their own ways around that, many
+> > times wrongly or suboptimally. BUG_ON("you suck") is just not going to
+> > help much I am afraid.
+> > 
+> > What do you think Andrew?
+> 
+> So what are we going to do about this patch?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/ext4/ioctl.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+Well if Andrew doesn't object again, it should probably be applied.
+Unless his silence here acts like a pocket-veto.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 49fd1371bfa2..fb844da4836f 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -60,18 +60,16 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	ei1 = EXT4_I(inode1);
- 	ei2 = EXT4_I(inode2);
- 
--	memswap(&inode1->i_flags, &inode2->i_flags, sizeof(inode1->i_flags));
--	memswap(&inode1->i_version, &inode2->i_version,
--		  sizeof(inode1->i_version));
--	memswap(&inode1->i_blocks, &inode2->i_blocks,
--		  sizeof(inode1->i_blocks));
--	memswap(&inode1->i_bytes, &inode2->i_bytes, sizeof(inode1->i_bytes));
--	memswap(&inode1->i_atime, &inode2->i_atime, sizeof(inode1->i_atime));
--	memswap(&inode1->i_mtime, &inode2->i_mtime, sizeof(inode1->i_mtime));
-+	swap(inode1->i_flags, inode2->i_flags);
-+	swap(inode1->i_version, inode2->i_version);
-+	swap(inode1->i_blocks, inode2->i_blocks);
-+	swap(inode1->i_bytes, inode2->i_bytes);
-+	swap(inode1->i_atime, inode2->i_atime);
-+	swap(inode1->i_mtime, inode2->i_mtime);
- 
- 	memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
--	memswap(&ei1->i_flags, &ei2->i_flags, sizeof(ei1->i_flags));
--	memswap(&ei1->i_disksize, &ei2->i_disksize, sizeof(ei1->i_disksize));
-+	swap(ei1->i_flags, ei2->i_flags);
-+	swap(ei1->i_disksize, ei2->i_disksize);
- 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
- 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
- 
--- 
-2.7.4
+Andrew?  Anything to add?
+
