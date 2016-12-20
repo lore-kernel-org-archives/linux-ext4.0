@@ -1,86 +1,43 @@
-From: Joe Perches <joe@perches.com>
-Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Tue, 20 Dec 2016 09:38:22 -0800
-Message-ID: <1482255502.1984.21.camel@perches.com>
-References: <20161208103300.23217-1-mhocko@kernel.org>
-         <20161213101451.GB10492@dhcp22.suse.cz>
-         <1481666853.29291.33.camel@perches.com>
-         <20161214085916.GB25573@dhcp22.suse.cz>
-         <20161220135016.GH3769@dhcp22.suse.cz>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
+Date: Tue, 20 Dec 2016 12:09:45 -0800
+Message-ID: <CAPcyv4gYeQ+ZjJZU07Co5OHvgPsdU4vmYPOfUyMxJTqmMRktnw@mail.gmail.com>
+References: <20161212164708.23244-1-jack@suse.cz>
+ <20161213115209.GG15362@quack2.suse.cz>
+ <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
+ <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
+ <20161219095623.GE17598@quack2.suse.cz>
+ <CAPcyv4jjLg=Nyxusz5Hp8OaJ9fi0Xf6LHW37jgVbxKoOYHjNQw@mail.gmail.com>
+ <20161220075942.GB496@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
-        David Rientjes <rientjes@google.com>,
-        Mel Gorman <mgorman@suse.de>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Anatoly Stepanov <astepanov@cloudlinux.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-security-module@vger.kernel.org,
-        Dave Chinner <david@fromorbit.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mikulas Patocka <mpatocka@redhat.com>
-To: Michal Hocko <mhocko@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <20161220135016.GH3769@dhcp22.suse.cz>
-Sender: owner-linux-security-module@vger.kernel.org
+Cc: "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20161220075942.GB496-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2016-12-20 at 14:50 +0100, Michal Hocko wrote:
-> On Wed 14-12-16 09:59:16, Michal Hocko wrote:
-> > On Tue 13-12-16 14:07:33, Joe Perches wrote:
-> > > On Tue, 2016-12-13 at 11:14 +0100, Michal Hocko wrote:
-> > > > Are there any more comments or objections to this patch? Is this a good
-> > > > start or kv[mz]alloc has to provide a way to cover GFP_NOFS users as
-> > > > well in the initial version.
-> > > 
-> > > Did Andrew Morton ever comment on this?
-> > > I believe he was the primary objector in the past.
-> > > 
-> > > Last I recollect was over a year ago:
-> > > 
-> > > https://lkml.org/lkml/2015/7/7/1050
-> > 
-> > Let me quote:
-> > : Sigh.  We've resisted doing this because vmalloc() is somewhat of a bad
-> > : thing, and we don't want to make it easy for people to do bad things.
-> > : 
-> > : And vmalloc is bad because a) it's slow and b) it does GFP_KERNEL
-> > : allocations for page tables and c) it is susceptible to arena
-> > : fragmentation.
-> > : 
-> > : We'd prefer that people fix their junk so it doesn't depend upon large
-> > : contiguous allocations.  This isn't userspace - kernel space is hostile
-> > : and kernel code should be robust.
-> > : 
-> > : So I dunno.  Should we continue to make it a bit more awkward to use
-> > : vmalloc()?  Probably that tactic isn't being very successful - people
-> > : will just go ahead and open-code it.  And given the surprising amount
-> > : of stuff you've placed in kvmalloc_node(), they'll implement it
-> > : incorrectly...
-> > : 
-> > : How about we compromise: add kvmalloc_node(), but include a BUG_ON("you
-> > : suck") to it?
-> > 
-> > While I agree with some of those points, the reality really sucks,
-> > though. We have tried the same tactic with __GFP_NOFAIL and failed as
-> > well. I guess we should just bite the bullet and provide an api which is
-> > so common that people keep reinventing their own ways around that, many
-> > times wrongly or suboptimally. BUG_ON("you suck") is just not going to
-> > help much I am afraid.
-> > 
-> > What do you think Andrew?
-> 
-> So what are we going to do about this patch?
+On Mon, Dec 19, 2016 at 11:59 PM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> On Mon 19-12-16 13:51:53, Dan Williams wrote:
+[..]
+> Yes, but I've accounted for that. Checking the libnvdimm-pending branch I
+> see you missed "ext2: Return BH_New buffers for zeroed blocks" which was
+> the first patch in the series. The subject is a slight misnomer since it is
+> about setting IOMAP_F_NEW flag instead these days but still it is needed...
+> Otherwise the DAX invalidation code would not propely invalidate zero pages
+> in the radix tree in response to writes for ext2.
 
-Well if Andrew doesn't object again, it should probably be applied.
-Unless his silence here acts like a pocket-veto.
-
-Andrew?  Anything to add?
-
+Ok, thanks. Updated libnvdimm-pending pushed out.
