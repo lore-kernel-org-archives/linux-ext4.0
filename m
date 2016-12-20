@@ -1,64 +1,80 @@
 From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 2/9] xfs: introduce and use KM_NOLOCKDEP to silence
- reclaim lockdep false positives
-Date: Tue, 20 Dec 2016 09:38:18 +0100
-Message-ID: <20161220083818.GB3769@dhcp22.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-3-mhocko@kernel.org>
- <20161219212413.GN4326@dastard>
+Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
+Date: Tue, 20 Dec 2016 14:50:16 +0100
+Message-ID: <20161220135016.GH3769@dhcp22.suse.cz>
+References: <20161208103300.23217-1-mhocko@kernel.org>
+ <20161213101451.GB10492@dhcp22.suse.cz>
+ <1481666853.29291.33.camel@perches.com>
+ <20161214085916.GB25573@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-mm@kvack.org, Vlastimil Babka <vbabka@suse.cz>,
+	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+	Johannes Weiner <hannes@cmpxchg.org>,
+	Anatoly Stepanov <astepanov@cloudlinux.com>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Paolo Bonzini <pbonzini@redhat.com>,
+	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+	"Michael S. Tsirkin" <mst@redhat.com>,
+	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-security-module@vger.kernel.org,
+	Dave Chinner <david@fromorbit.com>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Joe Perches <joe@perches.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20161219212413.GN4326@dastard>
+In-Reply-To: <20161214085916.GB25573@dhcp22.suse.cz>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 20-12-16 08:24:13, Dave Chinner wrote:
-> On Thu, Dec 15, 2016 at 03:07:08PM +0100, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
+On Wed 14-12-16 09:59:16, Michal Hocko wrote:
+> On Tue 13-12-16 14:07:33, Joe Perches wrote:
+> > On Tue, 2016-12-13 at 11:14 +0100, Michal Hocko wrote:
+> > > Are there any more comments or objections to this patch? Is this a good
+> > > start or kv[mz]alloc has to provide a way to cover GFP_NOFS users as
+> > > well in the initial version.
 > > 
-> > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
-> > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
-> > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
-> > KM_NOFS tags to keep lockdep happy") and use the new flag for them
-> > instead. There is really no reason to make these allocations contexts
-> > weaker just because of the lockdep which even might not be enabled
-> > in most cases.
+> > Did Andrew Morton ever comment on this?
+> > I believe he was the primary objector in the past.
 > > 
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
+> > Last I recollect was over a year ago:
+> > 
+> > https://lkml.org/lkml/2015/7/7/1050
 > 
-> I'd suggest that it might be better to drop this patch for now -
-> it's not necessary for the context flag changeover but does
-> introduce a risk of regressions if the conversion is wrong.
+> Let me quote:
+> : Sigh.  We've resisted doing this because vmalloc() is somewhat of a bad
+> : thing, and we don't want to make it easy for people to do bad things.
+> : 
+> : And vmalloc is bad because a) it's slow and b) it does GFP_KERNEL
+> : allocations for page tables and c) it is susceptible to arena
+> : fragmentation.
+> : 
+> : We'd prefer that people fix their junk so it doesn't depend upon large
+> : contiguous allocations.  This isn't userspace - kernel space is hostile
+> : and kernel code should be robust.
+> : 
+> : So I dunno.  Should we continue to make it a bit more awkward to use
+> : vmalloc()?  Probably that tactic isn't being very successful - people
+> : will just go ahead and open-code it.  And given the surprising amount
+> : of stuff you've placed in kvmalloc_node(), they'll implement it
+> : incorrectly...
+> : 
+> : How about we compromise: add kvmalloc_node(), but include a BUG_ON("you
+> : suck") to it?
 > 
-> Hence I think this is better as a completely separate series
-> which audits and changes all the unnecessary KM_NOFS allocations
-> in one go. I've never liked whack-a-mole style changes like this -
-> do it once, do it properly....
+> While I agree with some of those points, the reality really sucks,
+> though. We have tried the same tactic with __GFP_NOFAIL and failed as
+> well. I guess we should just bite the bullet and provide an api which is
+> so common that people keep reinventing their own ways around that, many
+> times wrongly or suboptimally. BUG_ON("you suck") is just not going to
+> help much I am afraid.
+> 
+> What do you think Andrew?
 
-OK, fair enough. I thought it might be better to have an example user so
-that others can follow but as you say, the risk of regression is really
-there and these kind of changes definitely need a throughout review.
-
-I am not sure I will be able to post more of those changes because that
-requires an intimate knowledge of the fs so I hope somebody can take
-over there and follow up.
-
-Thanks!
+So what are we going to do about this patch?
 -- 
 Michal Hocko
 SUSE Labs
