@@ -1,7 +1,7 @@
-From: Eric Biggers <ebiggers3@gmail.com>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
-Date: Mon, 19 Dec 2016 14:40:29 -0800
-Message-ID: <20161219224029.GE37112@gmail.com>
+Date: Mon, 19 Dec 2016 21:56:59 -0800
+Message-ID: <20161220055659.GA9734@infradead.org>
 References: <20161219103929.GA16197@infradead.org>
  <20161219112532.18863-1-richard@nod.at>
 Mime-Version: 1.0
@@ -18,20 +18,6 @@ In-Reply-To: <20161219112532.18863-1-richard@nod.at>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 19, 2016 at 12:25:32PM +0100, Richard Weinberger wrote:
-> That way we can get rid of the direct dependency on CONFIG_BLOCK.
-> 
-> Reported-by: Arnd Bergmann <arnd@arndb.de>
-> Reported-by: Randy Dunlap <rdunlap@infradead.org>
-> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
-> Signed-off-by: Richard Weinberger <richard@nod.at>
-> ---
-> Changes since v1:
->  - Moved fscrypt_zeroout_range() also to bio.c
+Looks fine,
 
-Reviewed-by: Eric Biggers <ebiggers@google.com>
-
-Thanks,
-
-Eric
+Reviewed-by: Christoph Hellwig <hch@lst.de>
