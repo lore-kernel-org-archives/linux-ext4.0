@@ -1,39 +1,106 @@
-From: David Gstir <david@sigma-star.at>
-Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
-Date: Tue, 20 Dec 2016 07:42:14 +0100
-Message-ID: <C1B6C185-6DF1-4118-80E4-7B2FE33225E1@sigma-star.at>
-References: <20161219103929.GA16197@infradead.org> <20161219112532.18863-1-richard@nod.at>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: text/plain; charset=us-ascii
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
+Date: Tue, 20 Dec 2016 08:59:42 +0100
+Message-ID: <20161220075942.GB496@quack2.suse.cz>
+References: <20161212164708.23244-1-jack@suse.cz>
+ <20161213115209.GG15362@quack2.suse.cz>
+ <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
+ <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
+ <20161219095623.GE17598@quack2.suse.cz>
+ <CAPcyv4jjLg=Nyxusz5Hp8OaJ9fi0Xf6LHW37jgVbxKoOYHjNQw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jaegeuk@kernel.org, tytso@mit.edu, hch@infradead.org,
-        arnd@arndb.de, dedekind1@gmail.com, linux-mtd@lists.infradead.org,
-        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
-        ebiggers@google.com, rdunlap@infradead.org
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20161219112532.18863-1-richard@nod.at>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4jjLg=Nyxusz5Hp8OaJ9fi0Xf6LHW37jgVbxKoOYHjNQw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-
-> On 19.12.2016, at 12:25, Richard Weinberger <richard@nod.at> wrote:
+On Mon 19-12-16 13:51:53, Dan Williams wrote:
+> On Mon, Dec 19, 2016 at 1:56 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> > On Fri 16-12-16 17:35:35, Dan Williams wrote:
+> >> On Tue, Dec 13, 2016 at 10:57 AM, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org> wrote:
+> >> > On Tue, Dec 13, 2016 at 3:52 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> >> >> On Mon 12-12-16 17:47:02, Jan Kara wrote:
+> >> >>> Hello,
+> >> >>>
+> >> >>> this is the third revision of my fixes of races when invalidating hole pages in
+> >> >>> DAX mappings. See changelogs for details. The series is based on my patches to
+> >> >>> write-protect DAX PTEs which are currently carried in mm tree. This is a hard
+> >> >>> dependency because we really need to closely track dirtiness (and cleanness!)
+> >> >>> of radix tree entries in DAX mappings in order to avoid discarding valid dirty
+> >> >>> bits leading to missed cache flushes on fsync(2).
+> >> >>>
+> >> >>> The tests have passed xfstests for xfs and ext4 in DAX and non-DAX mode.
+> >> >>>
+> >> >>> Johannes, are you OK with patch 2/6 in its current form? I'd like to push these
+> >> >>> patches to some tree once DAX write-protection patches are merged.  I'm hoping
+> >> >>> to get at least first three patches merged for 4.10-rc2... Thanks!
+> >> >>
+> >> >> OK, with the final ack from Johannes and since this is mostly DAX stuff,
+> >> >> can we take this through NVDIMM tree and push to Linus either late in the
+> >> >> merge window or for -rc2? These patches require my DAX patches sitting in mm
+> >> >> tree so they can be included in any git tree only once those patches land
+> >> >> in Linus' tree (which may happen only once Dave and Ted push out their
+> >> >> stuff - this is the most convoluted merge window I'd ever to deal with ;-)...
+> >> >> Dan?
+> >> >>
+> >> >
+> >> > I like the -rc2 plan better than sending a pull request based on some
+> >> > random point in the middle of the merge window. I can give Linus a
+> >> > heads up in my initial nvdimm pull request for -rc1 that for
+> >> > coordination purposes we'll be sending this set of follow-on DAX
+> >> > cleanups for -rc2.
+> >>
+> >> So what's still pending for -rc2? I want to be explicit about what I'm
+> >> requesting Linus be prepared to receive after -rc1. The libnvdimm pull
+> >> request is very light this time around since I ended up deferring the
+> >> device-dax-subdivision topic until 4.11 and sub-section memory hotplug
+> >> didn't make the cutoff for -mm. We can spend some of that goodwill on
+> >> your patches ;-).
+> >
+> > ;-) So I'd like all these 6 patches to go for rc2. The first three patches
+> > fix invalidation of exceptional DAX entries (a bug which is there for a
+> > long time) - without these patches data loss can occur on power failure
+> > even though user called fsync(2). The other three patches change locking of
+> > DAX faults so that ->iomap_begin() is called in a more relaxed locking
+> > context and we are safe to start a transaction there for ext4.
+> >
+> >> I can roll them into libnvdimm-for-next now for the integration
+> >> testing coverage, rebase to -rc1 when it's out, wait for your thumbs
+> >> up on the testing and send a pull request on the 23rd.
+> >
+> > Yup, all prerequisites are merged now so you can pick these patches up.
+> > Thanks! Note that I'll be on vacation on Dec 23 - Jan 1.
 > 
-> That way we can get rid of the direct dependency on CONFIG_BLOCK.
-> 
-> Reported-by: Arnd Bergmann <arnd@arndb.de>
-> Reported-by: Randy Dunlap <rdunlap@infradead.org>
-> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
-> Signed-off-by: Richard Weinberger <richard@nod.at>
-> ---
-> Changes since v1:
-> - Moved fscrypt_zeroout_range() also to bio.c
+> Sounds good, the contents are now out on libnvdimm-pending awaiting
+> 0day-run before moving them over to libnvdimm-for-next, also it's down
+> to 5 patches since it seems that the "dax: Fix sleep in atomic contex
+> in grab_mapping_entry()" change went upstream already.
 
-Looks good to me.
+Yes, but I've accounted for that. Checking the libnvdimm-pending branch I
+see you missed "ext2: Return BH_New buffers for zeroed blocks" which was
+the first patch in the series. The subject is a slight misnomer since it is
+about setting IOMAP_F_NEW flag instead these days but still it is needed...
+Otherwise the DAX invalidation code would not propely invalidate zero pages
+in the radix tree in response to writes for ext2.
 
-Reviewed-by: David Gstir <david@sigma-star.at>
-
-- David
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
