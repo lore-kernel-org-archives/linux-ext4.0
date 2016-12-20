@@ -1,43 +1,92 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 0/6 v3] dax: Page invalidation fixes
-Date: Tue, 20 Dec 2016 12:09:45 -0800
-Message-ID: <CAPcyv4gYeQ+ZjJZU07Co5OHvgPsdU4vmYPOfUyMxJTqmMRktnw@mail.gmail.com>
-References: <20161212164708.23244-1-jack@suse.cz>
- <20161213115209.GG15362@quack2.suse.cz>
- <CAPcyv4giLyY8pWP09V5BmUM+sfGO-VJCtkfV6L-RFS+0XQsT9Q@mail.gmail.com>
- <CAPcyv4jqN+GkO7pL0QE0vM50MmqPZ1aD2G3YmziKvp+4+oh5gQ@mail.gmail.com>
- <20161219095623.GE17598@quack2.suse.cz>
- <CAPcyv4jjLg=Nyxusz5Hp8OaJ9fi0Xf6LHW37jgVbxKoOYHjNQw@mail.gmail.com>
- <20161220075942.GB496@quack2.suse.cz>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 2/9] xfs: introduce and use KM_NOLOCKDEP to silence
+ reclaim lockdep false positives
+Date: Wed, 21 Dec 2016 08:39:01 +1100
+Message-ID: <20161220213901.GQ4326@dastard>
+References: <20161215140715.12732-1-mhocko@kernel.org>
+ <20161215140715.12732-3-mhocko@kernel.org>
+ <20161219212413.GN4326@dastard>
+ <20161219220619.GA7296@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>, Johannes Weiner <hannes-druUgvl0LCNAfugRpC6u6w@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20161220075942.GB496-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, logfs@logfs.org,
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Michal Hocko <mhocko@suse.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20161219220619.GA7296@birch.djwong.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Dec 19, 2016 at 11:59 PM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
-> On Mon 19-12-16 13:51:53, Dan Williams wrote:
-[..]
-> Yes, but I've accounted for that. Checking the libnvdimm-pending branch I
-> see you missed "ext2: Return BH_New buffers for zeroed blocks" which was
-> the first patch in the series. The subject is a slight misnomer since it is
-> about setting IOMAP_F_NEW flag instead these days but still it is needed...
-> Otherwise the DAX invalidation code would not propely invalidate zero pages
-> in the radix tree in response to writes for ext2.
+On Mon, Dec 19, 2016 at 02:06:19PM -0800, Darrick J. Wong wrote:
+> On Tue, Dec 20, 2016 at 08:24:13AM +1100, Dave Chinner wrote:
+> > On Thu, Dec 15, 2016 at 03:07:08PM +0100, Michal Hocko wrote:
+> > > From: Michal Hocko <mhocko@suse.com>
+> > > 
+> > > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
+> > > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
+> > > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
+> > > KM_NOFS tags to keep lockdep happy") and use the new flag for them
+> > > instead. There is really no reason to make these allocations contexts
+> > > weaker just because of the lockdep which even might not be enabled
+> > > in most cases.
+> > > 
+> > > Signed-off-by: Michal Hocko <mhocko@suse.com>
+> > 
+> > I'd suggest that it might be better to drop this patch for now -
+> > it's not necessary for the context flag changeover but does
+> > introduce a risk of regressions if the conversion is wrong.
+> 
+> I was just about to write in that while I didn't see anything obviously
+> wrong with the NOFS removals, I also don't know for sure that we can't
+> end up recursively in those code paths (specifically the directory
+> traversal thing).
 
-Ok, thanks. Updated libnvdimm-pending pushed out.
+The issue is with code paths that can be called from both inside and
+outside transaction context - lockdep complains when it sees an
+allocation path that is used with both GFP_NOFS and GFP_KERNEL
+context, as it doesn't know that the GFP_KERNEL usage is safe or
+not.
+
+So things like the directory buffer path, which can be called from
+readdir without a transaction context, have various KM_NOFS flags
+scattered through it so that lockdep doesn't get all upset every
+time readdir is called...
+
+There are other cases like this - btree manipulation via bunmapi()
+can be called without transaction context to remove delayed alloc
+extents, and that puts all of the btree cursor and  incore extent
+list handling in the same boat (all those allocations are KM_NOFS),
+etc.
+
+So it's not really recursion that is the problem here - it's
+different allocation contexts that lockdep can't know about unless
+it's told about them. We've done that with KM_NOFS in the past; in
+future we should use this KM_NOLOCKDEP flag, though I'd prefer a
+better name for it. e.g. KM_NOTRANS to indicate that the allocation
+can occur both inside and outside of transaction context....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
