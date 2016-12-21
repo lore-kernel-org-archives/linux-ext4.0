@@ -1,52 +1,80 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 24/30] IMA: switch IMA over to new i_version API
-Date: Wed, 21 Dec 2016 12:03:41 -0500
-Message-ID: <1482339827-7882-25-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 13/30] affs: convert to new i_version API
+Date: Wed, 21 Dec 2016 12:03:30 -0500
+Message-ID: <1482339827-7882-14-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
-
-This change is straightforward, but I have some serious doubts about
-this code.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- security/integrity/ima/ima_api.c  | 2 +-
- security/integrity/ima/ima_main.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/affs/amigaffs.c | 4 ++--
+ fs/affs/dir.c      | 4 ++--
+ fs/affs/super.c    | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/security/integrity/ima/ima_api.c b/security/integrity/ima/ima_api.c
-index 9df26a2b75ba..1f676313c30b 100644
---- a/security/integrity/ima/ima_api.c
-+++ b/security/integrity/ima/ima_api.c
-@@ -204,7 +204,7 @@ int ima_collect_measurement(struct integrity_iint_cache *iint,
- 	} hash;
+diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
+index 0ec65c133b93..00aff7cfc883 100644
+--- a/fs/affs/amigaffs.c
++++ b/fs/affs/amigaffs.c
+@@ -59,7 +59,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
+ 	affs_brelse(dir_bh);
  
- 	if (!(iint->flags & IMA_COLLECTED)) {
--		u64 i_version = file_inode(file)->i_version;
-+		u64 i_version = inode_get_iversion(file_inode(file));
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+-	dir->i_version++;
++	inode_inc_iversion_locked(dir);
+ 	mark_inode_dirty(dir);
  
- 		if (file->f_flags & O_DIRECT) {
- 			audit_cause = "failed(directio)";
-diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
-index 423d111b3b94..8d95cf42d20c 100644
---- a/security/integrity/ima/ima_main.c
-+++ b/security/integrity/ima/ima_main.c
-@@ -122,7 +122,7 @@ static void ima_check_last_writer(struct integrity_iint_cache *iint,
+ 	return 0;
+@@ -113,7 +113,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
+ 	affs_brelse(bh);
  
- 	inode_lock(inode);
- 	if (atomic_read(&inode->i_writecount) == 1) {
--		if ((iint->version != inode->i_version) ||
-+		if (inode_cmp_iversion(inode, iint->version) ||
- 		    (iint->flags & IMA_NEW_FILE)) {
- 			iint->flags &= ~(IMA_DONE_MASK | IMA_NEW_FILE);
- 			iint->measured_pcrs = 0;
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+-	dir->i_version++;
++	inode_inc_iversion_locked(dir);
+ 	mark_inode_dirty(dir);
+ 
+ 	return retval;
+diff --git a/fs/affs/dir.c b/fs/affs/dir.c
+index f1e7294381c5..a587d57668e3 100644
+--- a/fs/affs/dir.c
++++ b/fs/affs/dir.c
+@@ -79,7 +79,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 	 * we can jump directly to where we left off.
+ 	 */
+ 	ino = (u32)(long)file->private_data;
+-	if (ino && file->f_version == inode->i_version) {
++	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
+ 		pr_debug("readdir() left off=%d\n", ino);
+ 		goto inside;
+ 	}
+@@ -129,7 +129,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 		} while (ino);
+ 	}
+ done:
+-	file->f_version = inode->i_version;
++	file->f_version = inode_get_iversion(inode);
+ 	file->private_data = (void *)(long)ino;
+ 	affs_brelse(fh_bh);
+ 
+diff --git a/fs/affs/super.c b/fs/affs/super.c
+index d6384863192c..b3ebf90f9798 100644
+--- a/fs/affs/super.c
++++ b/fs/affs/super.c
+@@ -99,7 +99,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
+ 	if (!i)
+ 		return NULL;
+ 
+-	i->vfs_inode.i_version = 1;
++	inode_set_iversion(&i->vfs_inode, 1);
+ 	i->i_lc = NULL;
+ 	i->i_ext_bh = NULL;
+ 	i->i_pa_cnt = 0;
 -- 
 2.7.4
-
