@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 13/30] affs: convert to new i_version API
-Date: Wed, 21 Dec 2016 12:03:30 -0500
-Message-ID: <1482339827-7882-14-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 20/30] nfsd: convert to new i_version API
+Date: Wed, 21 Dec 2016 12:03:37 -0500
+Message-ID: <1482339827-7882-21-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
@@ -12,69 +12,54 @@ In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Mostly just making sure we use the "get" wrappers so we know when
+it is being fetched for later use.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/affs/amigaffs.c | 4 ++--
- fs/affs/dir.c      | 4 ++--
- fs/affs/super.c    | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs3xdr.c | 2 +-
+ fs/nfsd/nfs4xdr.c | 2 +-
+ fs/nfsd/nfsfh.h   | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
-index 0ec65c133b93..00aff7cfc883 100644
---- a/fs/affs/amigaffs.c
-+++ b/fs/affs/amigaffs.c
-@@ -59,7 +59,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
- 	affs_brelse(dir_bh);
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index dba2ff8eaa68..a645b1dbc4e3 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -260,7 +260,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+ 		printk("nfsd: inode locked twice during operation.\n");
  
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
--	dir->i_version++;
-+	inode_inc_iversion_locked(dir);
- 	mark_inode_dirty(dir);
- 
- 	return 0;
-@@ -113,7 +113,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
- 	affs_brelse(bh);
- 
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
--	dir->i_version++;
-+	inode_inc_iversion_locked(dir);
- 	mark_inode_dirty(dir);
- 
- 	return retval;
-diff --git a/fs/affs/dir.c b/fs/affs/dir.c
-index f1e7294381c5..a587d57668e3 100644
---- a/fs/affs/dir.c
-+++ b/fs/affs/dir.c
-@@ -79,7 +79,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 	 * we can jump directly to where we left off.
- 	 */
- 	ino = (u32)(long)file->private_data;
--	if (ino && file->f_version == inode->i_version) {
-+	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
- 		pr_debug("readdir() left off=%d\n", ino);
- 		goto inside;
+ 	err = fh_getattr(fhp, &fhp->fh_post_attr);
+-	fhp->fh_post_change = d_inode(fhp->fh_dentry)->i_version;
++	fhp->fh_post_change = inode_get_iversion(d_inode(fhp->fh_dentry));
+ 	if (err) {
+ 		fhp->fh_post_saved = false;
+ 		/* Grab the ctime anyway - set_change_info might use it */
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 7ecf16be4a44..98bd030f849a 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1969,7 +1969,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
+ {
+ 	if (IS_I_VERSION(inode)) {
+-		p = xdr_encode_hyper(p, inode->i_version);
++		p = xdr_encode_hyper(p, inode_get_iversion(inode));
+ 	} else {
+ 		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+ 		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index f84fe6bf9aee..7a66065f6e74 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -253,7 +253,7 @@ fill_pre_wcc(struct svc_fh *fhp)
+ 		fhp->fh_pre_mtime = inode->i_mtime;
+ 		fhp->fh_pre_ctime = inode->i_ctime;
+ 		fhp->fh_pre_size  = inode->i_size;
+-		fhp->fh_pre_change = inode->i_version;
++		fhp->fh_pre_change = inode_get_iversion(inode);
+ 		fhp->fh_pre_saved = true;
  	}
-@@ -129,7 +129,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 		} while (ino);
- 	}
- done:
--	file->f_version = inode->i_version;
-+	file->f_version = inode_get_iversion(inode);
- 	file->private_data = (void *)(long)ino;
- 	affs_brelse(fh_bh);
- 
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index d6384863192c..b3ebf90f9798 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -99,7 +99,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
- 	if (!i)
- 		return NULL;
- 
--	i->vfs_inode.i_version = 1;
-+	inode_set_iversion(&i->vfs_inode, 1);
- 	i->i_lc = NULL;
- 	i->i_ext_bh = NULL;
- 	i->i_pa_cnt = 0;
+ }
 -- 
 2.7.4
