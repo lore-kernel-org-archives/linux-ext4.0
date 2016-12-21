@@ -1,77 +1,45 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [RFC PATCH] mm: introduce kv[mz]alloc helpers
-Date: Wed, 21 Dec 2016 09:45:06 +0100
-Message-ID: <20161221084505.GA31118@dhcp22.suse.cz>
-References: <20161208103300.23217-1-mhocko@kernel.org>
- <20161213101451.GB10492@dhcp22.suse.cz>
- <1481666853.29291.33.camel@perches.com>
- <20161214085916.GB25573@dhcp22.suse.cz>
- <20161220135016.GH3769@dhcp22.suse.cz>
- <1482255502.1984.21.camel@perches.com>
- <20161220141341.de8b22fd66ea9bc6c4fcf962@linux-foundation.org>
- <20161221065922.GB16502@dhcp22.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Joe Perches <joe@perches.com>, linux-mm@kvack.org,
-	Vlastimil Babka <vbabka@suse.cz>,
-	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Anatoly Stepanov <astepanov@cloudlinux.com>,
-	LKML <linux-kernel@vger.kernel.org>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, kvm@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-security-module@vger.kernel.org,
-	Dave Chinner <david@fromorbit.com>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Mikulas Patocka <mpatocka@redhat.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20161221065922.GB16502@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [RFC PATCH v1 01/30] lustre: don't set f_version in ll_readdir
+Date: Wed, 21 Dec 2016 12:03:18 -0500
+Message-ID: <1482339827-7882-2-git-send-email-jlayton@redhat.com>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It seems that this email didn't get delivered due to some stupid gmail
-spam policy. Let me try to repost via a different relay. Sorry to those
-who have seen the original message and get a duplicate now.
+f_version is only ever used by filesystem-specific code, and nothing in
+lustre ever looks at it.
 
-On Wed 21-12-16 08:03:53, Michal Hocko wrote:
-> On Tue 20-12-16 14:13:41, Andrew Morton wrote:
-> > On Tue, 20 Dec 2016 09:38:22 -0800 Joe Perches <joe@perches.com> wrote:
-> > 
-> > > > So what are we going to do about this patch?
-> > > 
-> > > Well if Andrew doesn't object again, it should probably be applied.
-> > > Unless his silence here acts like a pocket-veto.
-> > > 
-> > > Andrew?  Anything to add?
-> > 
-> > I guess we should give in to reality and do this, or something like it.
-> > But Al said he was going to dig out some patches for us to consider?
-> 
-> Al wanted to cover vmalloc GFP_NOFS context _inside_ the vmalloc
-> code.  This is mostly orthogonal to this patch I believe. Besides
-> that I _think_ that it would be better to convert those vmalloc(NOFS)
-> users to the scope api rather than tweak the vmalloc. One reason to go
-> that way is that those vmalloc(NOFS) users need to be checked anyway
-> and something tells me that some of them can really be changed to
-> GFP_KERNEL.
-> 
-> This helper is clear about its gfp mask expectation and complain loudly
-> if somebody wants something unexpected which is a good start I believe.
-> -- 
-> Michal Hocko
-> SUSE Labs
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ drivers/staging/lustre/lustre/llite/dir.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
+diff --git a/drivers/staging/lustre/lustre/llite/dir.c b/drivers/staging/lustre/lustre/llite/dir.c
+index ea5d247a3f70..1d288ec5f03e 100644
+--- a/drivers/staging/lustre/lustre/llite/dir.c
++++ b/drivers/staging/lustre/lustre/llite/dir.c
+@@ -367,8 +367,6 @@ static int ll_readdir(struct file *filp, struct dir_context *ctx)
+ 	}
+ 	ctx->pos = pos;
+ 	ll_finish_md_op_data(op_data);
+-	filp->f_version = inode->i_version;
+-
+ out:
+ 	if (!rc)
+ 		ll_stats_ops_tally(sbi, LPROC_LL_READDIR, 1);
+@@ -1671,7 +1669,6 @@ static loff_t ll_dir_seek(struct file *file, loff_t offset, int origin)
+ 			else
+ 				fd->lfd_pos = offset;
+ 			file->f_pos = offset;
+-			file->f_version = 0;
+ 		}
+ 		ret = offset;
+ 	}
 -- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.7.4
