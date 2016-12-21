@@ -1,81 +1,69 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 15/30] btrfs: convert to new i_version API
-Date: Wed, 21 Dec 2016 12:03:32 -0500
-Message-ID: <1482339827-7882-16-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 14/30] afs: convert to new i_version API
+Date: Wed, 21 Dec 2016 12:03:31 -0500
+Message-ID: <1482339827-7882-15-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:45758 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S936248AbcLUREC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Dec 2016 12:04:02 -0500
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+For AFS, it's generally treated as an opaque value.
+
+Note that AFS has quite a different definition for this counter. AFS
+only increments it on changes to the data, not for the metadata. We'll
+need to reconcile that somehow if we ever want to present this to
+userspace via statx.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/btrfs/delayed-inode.c | 4 ++--
- fs/btrfs/inode.c         | 4 ++--
- fs/btrfs/tree-log.c      | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ fs/afs/fsclient.c | 2 +-
+ fs/afs/inode.c    | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/btrfs/delayed-inode.c b/fs/btrfs/delayed-inode.c
-index 80982a83c9fd..5e1015705c8b 100644
---- a/fs/btrfs/delayed-inode.c
-+++ b/fs/btrfs/delayed-inode.c
-@@ -1744,7 +1744,7 @@ static void fill_stack_inode_item(struct btrfs_trans_handle *trans,
- 	btrfs_set_stack_inode_nbytes(inode_item, inode_get_bytes(inode));
- 	btrfs_set_stack_inode_generation(inode_item,
- 					 BTRFS_I(inode)->generation);
--	btrfs_set_stack_inode_sequence(inode_item, inode->i_version);
-+	btrfs_set_stack_inode_sequence(inode_item, inode_get_iversion(inode));
- 	btrfs_set_stack_inode_transid(inode_item, trans->transid);
- 	btrfs_set_stack_inode_rdev(inode_item, inode->i_rdev);
- 	btrfs_set_stack_inode_flags(inode_item, BTRFS_I(inode)->flags);
-@@ -1798,7 +1798,7 @@ int btrfs_fill_inode(struct inode *inode, u32 *rdev)
- 	BTRFS_I(inode)->generation = btrfs_stack_inode_generation(inode_item);
-         BTRFS_I(inode)->last_trans = btrfs_stack_inode_transid(inode_item);
+diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
+index 31c616ab9b40..7958001a2bf7 100644
+--- a/fs/afs/fsclient.c
++++ b/fs/afs/fsclient.c
+@@ -108,7 +108,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
+ 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_server;
+ 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
+ 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
+-		vnode->vfs_inode.i_version	= data_version;
++		inode_set_iversion(&vnode->vfs_inode, data_version);
+ 	}
  
--	inode->i_version = btrfs_stack_inode_sequence(inode_item);
-+	inode_set_iversion_read(inode, btrfs_stack_inode_sequence(inode_item));
- 	inode->i_rdev = 0;
- 	*rdev = btrfs_stack_inode_rdev(inode_item);
- 	BTRFS_I(inode)->flags = btrfs_stack_inode_flags(inode_item);
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index f2b281ad7af6..a56a45a3e992 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -3732,7 +3732,7 @@ static int btrfs_read_locked_inode(struct inode *inode)
- 	BTRFS_I(inode)->generation = btrfs_inode_generation(leaf, inode_item);
- 	BTRFS_I(inode)->last_trans = btrfs_inode_transid(leaf, inode_item);
+ 	expected_version = status->data_version;
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 86cc7264c21c..ec3a0274dc95 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -77,7 +77,7 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+-	inode->i_version	= vnode->status.data_version;
++	inode_set_iversion(inode, vnode->status.data_version);
+ 	inode->i_mapping->a_ops	= &afs_fs_aops;
  
--	inode->i_version = btrfs_inode_sequence(leaf, inode_item);
-+	inode_set_iversion_read(inode, btrfs_inode_sequence(leaf, inode_item));
- 	inode->i_generation = BTRFS_I(inode)->generation;
- 	inode->i_rdev = 0;
- 	rdev = btrfs_inode_rdev(leaf, inode_item);
-@@ -3903,7 +3903,7 @@ static void fill_inode_item(struct btrfs_trans_handle *trans,
- 				     &token);
- 	btrfs_set_token_inode_generation(leaf, item, BTRFS_I(inode)->generation,
- 					 &token);
--	btrfs_set_token_inode_sequence(leaf, item, inode->i_version, &token);
-+	btrfs_set_token_inode_sequence(leaf, item, inode_get_iversion(inode), &token);
- 	btrfs_set_token_inode_transid(leaf, item, trans->transid, &token);
- 	btrfs_set_token_inode_rdev(leaf, item, inode->i_rdev, &token);
- 	btrfs_set_token_inode_flags(leaf, item, BTRFS_I(inode)->flags, &token);
-diff --git a/fs/btrfs/tree-log.c b/fs/btrfs/tree-log.c
-index f10bf5213ed8..4acc4d27383a 100644
---- a/fs/btrfs/tree-log.c
-+++ b/fs/btrfs/tree-log.c
-@@ -3585,7 +3585,7 @@ static void fill_inode_item(struct btrfs_trans_handle *trans,
- 	btrfs_set_token_inode_nbytes(leaf, item, inode_get_bytes(inode),
- 				     &token);
+ 	/* check to see whether a symbolic link is really a mountpoint */
+@@ -182,7 +182,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
+ 	inode->i_ctime.tv_nsec	= 0;
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+-	inode->i_version	= 0;
++	inode_set_iversion(inode, 0);
+ 	inode->i_generation	= 0;
  
--	btrfs_set_token_inode_sequence(leaf, item, inode->i_version, &token);
-+	btrfs_set_token_inode_sequence(leaf, item, inode_get_iversion(inode), &token);
- 	btrfs_set_token_inode_transid(leaf, item, trans->transid, &token);
- 	btrfs_set_token_inode_rdev(leaf, item, inode->i_rdev, &token);
- 	btrfs_set_token_inode_flags(leaf, item, BTRFS_I(inode)->flags, &token);
+ 	set_bit(AFS_VNODE_PSEUDODIR, &vnode->flags);
 -- 
 2.7.4
 
