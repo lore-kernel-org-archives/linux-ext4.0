@@ -1,195 +1,211 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 18/30] ext4: convert to new i_version API
-Date: Wed, 21 Dec 2016 12:03:35 -0500
-Message-ID: <1482339827-7882-19-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 30/30] fs: convert i_version counter over to an atomic64_t
+Date: Wed, 21 Dec 2016 12:03:47 -0500
+Message-ID: <1482339827-7882-31-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:55810 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S964946AbcLURER (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Dec 2016 12:04:17 -0500
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+The spinlock is only used to serialize callers that want to increment
+the counter. We can achieve the same thing with an atomic64_t and
+get the i_lock out of this codepath.
+
+Drop the I_VERS_BUMP flag, and instead, borrow the most significant bit
+in the counter to use as the flag. With this change, we can stop taking
+the i_lock in this codepath, and can use atomics instead to manage the
+thing.
+
+On the query side, if the flag is already set, then we just return the
+counter value. Otherwise, we set the flag in our in-memory copy and use
+cmpxchg to swap it into place if it hasn't changed. If it has, then we
+use the value from the cmpxchg as the new "old" value and try again.
+
+When we go to bump the thing, we fetch the value and check the flag bit.
+If it's clear then we don't need to do anything if the update isn't
+being forced.
+
+If we do need to update, then we clear the flag in our in-memory copy
+and bump the counter (handling any overflow into the flag bit by
+resetting the counter to zero). We then do a cmpxchg to swap the updated
+value into place if it hasn't changed. If it has changed, then we use
+the value we got back from cmpxchg to try again.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/ext4/dir.c    |  8 ++++----
- fs/ext4/inline.c |  6 +++---
- fs/ext4/inode.c  | 12 ++++++++----
- fs/ext4/ioctl.c  |  2 +-
- fs/ext4/namei.c  |  8 ++++----
- fs/ext4/super.c  |  2 +-
- 6 files changed, 21 insertions(+), 17 deletions(-)
+ include/linux/fs.h | 82 ++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 48 insertions(+), 34 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index e8b365000d73..cd84f15d3d41 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -207,7 +207,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 		 * readdir(2), then we might be pointing to an invalid
- 		 * dirent right now.  Scan from the start of the block
- 		 * to make sure. */
--		if (file->f_version != inode->i_version) {
-+		if (inode_cmp_iversion(inode, file->f_version)) {
- 			for (i = 0; i < sb->s_blocksize && i < offset; ) {
- 				de = (struct ext4_dir_entry_2 *)
- 					(bh->b_data + i);
-@@ -226,7 +226,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 			offset = i;
- 			ctx->pos = (ctx->pos & ~(sb->s_blocksize - 1))
- 				| offset;
--			file->f_version = inode->i_version;
-+			file->f_version = inode_get_iversion(inode);
- 		}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 917557faa8e8..401e38d76171 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -621,7 +621,7 @@ struct inode {
+ 		struct hlist_head	i_dentry;
+ 		struct rcu_head		i_rcu;
+ 	};
+-	u64			i_version;
++	atomic64_t		i_version;
+ 	atomic_t		i_count;
+ 	atomic_t		i_dio_count;
+ 	atomic_t		i_writecount;
+@@ -1909,9 +1909,6 @@ static inline bool HAS_UNMAPPED_ID(struct inode *inode)
+  *			wb stat updates to grab mapping->tree_lock.  See
+  *			inode_switch_wb_work_fn() for details.
+  *
+- * I_VERS_BUMP		inode->i_version counter must be bumped on the next
+- * 			change. See the inode_*_iversion functions.
+- *
+  * Q: What is the difference between I_WILL_FREE and I_FREEING?
+  */
+ #define I_DIRTY_SYNC		(1 << 0)
+@@ -1932,7 +1929,6 @@ static inline bool HAS_UNMAPPED_ID(struct inode *inode)
+ #define __I_DIRTY_TIME_EXPIRED	12
+ #define I_DIRTY_TIME_EXPIRED	(1 << __I_DIRTY_TIME_EXPIRED)
+ #define I_WB_SWITCH		(1 << 13)
+-#define I_VERS_BUMP		(1 << 14)
  
- 		while (ctx->pos < inode->i_size
-@@ -567,10 +567,10 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
- 		 * cached entries.
- 		 */
- 		if ((!info->curr_node) ||
--		    (file->f_version != inode->i_version)) {
-+		    inode_cmp_iversion(inode, file->f_version)) {
- 			info->curr_node = NULL;
- 			free_rb_tree_fname(&info->root);
--			file->f_version = inode->i_version;
-+			file->f_version = inode_get_iversion(inode);
- 			ret = ext4_htree_fill_tree(file, info->curr_hash,
- 						   info->curr_minor_hash,
- 						   &info->next_hash);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 437df6a1a841..6a3d173cb9ec 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1042,7 +1042,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	 */
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	ext4_update_dx_flag(dir);
--	dir->i_version++;
-+	inode_inc_iversion_locked(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 	return 1;
+ #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
+ #define I_DIRTY_ALL (I_DIRTY | I_DIRTY_TIME)
+@@ -1965,6 +1961,14 @@ static inline void inode_dec_link_count(struct inode *inode)
+ 	mark_inode_dirty(inode);
  }
-@@ -1496,7 +1496,7 @@ int ext4_read_inline_dir(struct file *file,
- 	 * dirent right now.  Scan from the start of the inline
- 	 * dir to make sure.
- 	 */
--	if (file->f_version != inode->i_version) {
-+	if (inode_cmp_iversion(inode, file->f_version)) {
- 		for (i = 0; i < extra_size && i < offset;) {
- 			/*
- 			 * "." is with offset 0 and
-@@ -1528,7 +1528,7 @@ int ext4_read_inline_dir(struct file *file,
- 		}
- 		offset = i;
- 		ctx->pos = offset;
--		file->f_version = inode->i_version;
-+		file->f_version = inode_get_iversion(inode);
- 	}
  
- 	while (ctx->pos < extra_size) {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 88d57af1b516..5603e1782c65 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4709,12 +4709,14 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	EXT4_EINODE_GET_XTIME(i_crtime, ei, raw_inode);
- 
- 	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
--		inode->i_version = le32_to_cpu(raw_inode->i_disk_version);
-+		u64 ivers = le32_to_cpu(raw_inode->i_disk_version);
++/*
++ * We borrow the top bit in the i_version to use as a flag to tell us whether
++ * it has been queried since we last bumped it. If it has, then we must bump
++ * it and set the flag. Note that this means that we have to handle wrapping
++ * manually.
++ */
++#define INODE_I_VERSION_QUERIED		(1ULL<<63)
 +
- 		if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
--				inode->i_version |=
-+				ivers |=
- 		    (__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
- 		}
-+		inode_set_iversion_read(inode, ivers);
- 	}
+ /**
+  * inode_set_iversion - set i_version to a particular value
+  * @inode: inode to set
+@@ -1976,7 +1980,7 @@ static inline void inode_dec_link_count(struct inode *inode)
+ static inline void
+ inode_set_iversion(struct inode *inode, const u64 new)
+ {
+-	inode->i_version = new;
++	atomic64_set(&inode->i_version, new);
+ }
  
- 	ret = 0;
-@@ -5000,11 +5002,13 @@ static int ext4_do_update_inode(handle_t *handle,
- 	}
+ /**
+@@ -1992,10 +1996,7 @@ inode_set_iversion(struct inode *inode, const u64 new)
+ static inline void
+ inode_set_iversion_read(struct inode *inode, const u64 new)
+ {
+-	spin_lock(&inode->i_lock);
+-	inode_set_iversion(inode, new);
+-	inode->i_state |= I_VERS_BUMP;
+-	spin_unlock(&inode->i_lock);
++	inode_set_iversion(inode, new | INODE_I_VERSION_QUERIED);
+ }
  
- 	if (likely(!test_opt2(inode->i_sb, HURD_COMPAT))) {
--		raw_inode->i_disk_version = cpu_to_le32(inode->i_version);
-+		u64 ivers = inode_get_iversion_raw(inode);
+ /**
+@@ -2010,16 +2011,26 @@ inode_set_iversion_read(struct inode *inode, const u64 new)
+ static inline bool
+ inode_inc_iversion(struct inode *inode, bool force)
+ {
+-	bool ret = false;
++	u64 cur, old, new;
 +
-+		raw_inode->i_disk_version = cpu_to_le32(ivers);
- 		if (ei->i_extra_isize) {
- 			if (EXT4_FITS_IN_INODE(raw_inode, ei, i_version_hi))
- 				raw_inode->i_version_hi =
--					cpu_to_le32(inode->i_version >> 32);
-+					cpu_to_le32(ivers >> 32);
- 			raw_inode->i_extra_isize =
- 				cpu_to_le16(ei->i_extra_isize);
- 		}
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index fb844da4836f..7e1d56e3def0 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -139,7 +139,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 		i_gid_write(inode_bl, 0);
- 		inode_bl->i_flags = 0;
- 		ei_bl->i_flags = 0;
--		inode_bl->i_version = 1;
-+		inode_set_iversion(inode_bl, 1);
- 		i_size_write(inode_bl, 0);
- 		inode_bl->i_mode = S_IFREG;
- 		if (ext4_has_feature_extents(sb)) {
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index eadba919f26b..a8f812162dd6 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1943,7 +1943,7 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
- 	 */
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	ext4_update_dx_flag(dir);
--	dir->i_version++;
-+	inode_inc_iversion_locked(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
-@@ -2350,7 +2350,7 @@ int ext4_generic_delete_entry(handle_t *handle,
- 					blocksize);
- 			else
- 				de->inode = 0;
--			dir->i_version++;
-+			inode_inc_iversion_locked(dir);
- 			return 0;
- 		}
- 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
-@@ -2980,7 +2980,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 			     "empty directory '%.*s' has too many links (%u)",
- 			     dentry->d_name.len, dentry->d_name.name,
- 			     inode->i_nlink);
--	inode->i_version++;
-+	inode_inc_iversion_locked(inode);
- 	clear_nlink(inode);
- 	/* There's no need to set i_disksize: the fact that i_nlink is
- 	 * zero will ensure that the right thing happens during any
-@@ -3379,7 +3379,7 @@ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
- 	ent->de->inode = cpu_to_le32(ino);
- 	if (ext4_has_feature_filetype(ent->dir->i_sb))
- 		ent->de->file_type = file_type;
--	ent->dir->i_version++;
-+	inode_inc_iversion(ent->dir);
- 	ent->dir->i_ctime = ent->dir->i_mtime =
- 		current_time(ent->dir);
- 	ext4_mark_inode_dirty(handle, ent->dir);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 63a6b6332682..7938d852733b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -921,7 +921,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	if (!ei)
- 		return NULL;
++	cur = (u64)atomic64_read(&inode->i_version);
++	for (;;) {
++		/* If flag is clear then we needn't do anything */
++		if (!force && !(cur & INODE_I_VERSION_QUERIED))
++			return false;
++
++		new = (cur & ~INODE_I_VERSION_QUERIED) + 1;
++
++		/* Did we overflow into flag bit? Reset to 0 if so. */
++		if (unlikely(new == INODE_I_VERSION_QUERIED))
++			new = 0;
  
--	ei->vfs_inode.i_version = 1;
-+	inode_set_iversion(&ei->vfs_inode, 1);
- 	spin_lock_init(&ei->i_raw_lock);
- 	INIT_LIST_HEAD(&ei->i_prealloc_list);
- 	spin_lock_init(&ei->i_prealloc_lock);
--- 
-2.7.4
+-	spin_lock(&inode->i_lock);
+-	if (force || (inode->i_state & I_VERS_BUMP)) {
+-		inode->i_version++;
+-		inode->i_state &= ~I_VERS_BUMP;
+-		ret = true;
++		old = atomic64_cmpxchg(&inode->i_version, cur, new);
++		if (likely(old == cur))
++			break;
++		cur = old;
+ 	}
+-	spin_unlock(&inode->i_lock);
+-	return ret;
++	return true;
+ }
+ 
+ /**
+@@ -2027,8 +2038,9 @@ inode_inc_iversion(struct inode *inode, bool force)
+  * @inode: inode to be updated
+  *
+  * Increment the i_version field in the inode. This version is usable
+- * when there is some other sort of lock in play that would prevent
+- * concurrent increments (typically inode->i_rwsem for write).
++ * when there is some other sort of lock in play (e.g. i_rwsem for write)
++ * that would prevent concurrent incrementors, and is typically used on
++ * directories or other non-regular files.
+  */
+ static inline void
+ inode_inc_iversion_locked(struct inode *inode)
+@@ -2047,7 +2059,7 @@ inode_inc_iversion_locked(struct inode *inode)
+ static inline u64
+ inode_get_iversion_raw(const struct inode *inode)
+ {
+-	return inode->i_version;
++	return atomic64_read(&inode->i_version) & ~INODE_I_VERSION_QUERIED;
+ }
+ 
+ /**
+@@ -2060,13 +2072,20 @@ inode_get_iversion_raw(const struct inode *inode)
+ static inline u64
+ inode_get_iversion(struct inode *inode)
+ {
+-	u64 ret;
++	u64 cur, old, new;
+ 
+-	spin_lock(&inode->i_lock);
+-	inode->i_state |= I_VERS_BUMP;
+-	ret = inode->i_version;
+-	spin_unlock(&inode->i_lock);
+-	return ret;
++	cur = atomic64_read(&inode->i_version);
++	for (;;) {
++		if (cur & INODE_I_VERSION_QUERIED)
++			return (cur & ~INODE_I_VERSION_QUERIED);
++
++		new = (cur | INODE_I_VERSION_QUERIED);
++		old = atomic64_cmpxchg(&inode->i_version, cur, new);
++		if (old == cur)
++			break;
++		cur = old;
++	}
++	return cur;
+ }
+ 
+ /**
+@@ -2080,7 +2099,7 @@ inode_get_iversion(struct inode *inode)
+ static inline s64
+ inode_cmp_iversion(const struct inode *inode, const u64 old)
+ {
+-	return (s64)inode->i_version - (s64)old;
++	return (s64)(atomic64_read(&inode->i_version) << 1) - (s64)(old << 1);
+ }
+ 
+ /**
+@@ -2093,12 +2112,7 @@ inode_cmp_iversion(const struct inode *inode, const u64 old)
+ static inline bool
+ inode_iversion_need_inc(struct inode *inode)
+ {
+-	bool ret;
