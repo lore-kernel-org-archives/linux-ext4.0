@@ -1,37 +1,48 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 02/30] ecryptfs: remove unnecessary i_version bump
-Date: Wed, 21 Dec 2016 12:03:19 -0500
-Message-ID: <1482339827-7882-3-git-send-email-jlayton@redhat.com>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Sam Voss <samuel.voss@rockwellcollins.com>
+Subject: [PATCH] debugfs: ls -p can print invalid characters
+Date: Wed, 21 Dec 2016 13:11:45 -0600
+Message-ID: <1482347505-11200-1-git-send-email-samuel.voss@rockwellcollins.com>
+Cc: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>,
+        Samuel Voss <samuel.voss@rockwellcollins.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from secvs01.rockwellcollins.com ([205.175.225.240]:60441 "EHLO
+        secvs01.rockwellcollins.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753541AbcLUTXF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Dec 2016 14:23:05 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ecryptfs bumps the i_version counter when a new inode is
-instantiated, but never touches it again.
+From: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+The recent modification to the "ls -p" function can print out characters
+that the other ls functions do not print out. Adding a slight change to
+use the same print function for all of the ls options.
+
+Signed-off-by: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
+Signed-off-by: Samuel Voss <samuel.voss@rockwellcollins.com>
 ---
- fs/ecryptfs/inode.c | 1 -
- 1 file changed, 1 deletion(-)
+ debugfs/ls.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index e7413f82d27b..9493e8614de1 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -64,7 +64,6 @@ static int ecryptfs_inode_set(struct inode *inode, void *opaque)
- 	/* i_size will be overwritten for encrypted regular files */
- 	fsstack_copy_inode_size(inode, lower_inode);
- 	inode->i_ino = lower_inode->i_ino;
--	inode->i_version++;
- 	inode->i_mapping->a_ops = &ecryptfs_aops;
- 
- 	if (S_ISLNK(inode->i_mode))
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index 057e3f6..cb40627 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -122,8 +122,10 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 				return 0;
+ 		} else
+ 			memset(&inode, 0, sizeof(struct ext2_inode));
+-		fprintf(ls->f,"/%u/%06o/%d/%d/%*s/", ino, inode.i_mode,
+-			inode.i_uid, inode.i_gid, thislen, dirent->name);
++		fprintf(ls->f,"/%u/%06o/%d/%d/", ino, inode.i_mode,
++			inode.i_uid, inode.i_gid);
++		print_filename(ls->f, dirent, options);
++		fputc('/', ls->f);
+ 		if (LINUX_S_ISDIR(inode.i_mode))
+ 			fprintf(ls->f, "/");
+ 		else
 -- 
-2.7.4
+1.9.1
 
