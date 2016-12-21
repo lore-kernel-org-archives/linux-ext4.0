@@ -1,69 +1,52 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 05/30] hpfs: don't bother with the i_version counter
-Date: Wed, 21 Dec 2016 12:03:22 -0500
-Message-ID: <1482339827-7882-6-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 24/30] IMA: switch IMA over to new i_version API
+Date: Wed, 21 Dec 2016 12:03:41 -0500
+Message-ID: <1482339827-7882-25-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Nothing uses it on HPFS.
+This change is straightforward, but I have some serious doubts about
+this code.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/hpfs/dir.c   | 1 -
- fs/hpfs/dnode.c | 2 --
- fs/hpfs/super.c | 1 -
- 3 files changed, 4 deletions(-)
+ security/integrity/ima/ima_api.c  | 2 +-
+ security/integrity/ima/ima_main.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/hpfs/dir.c b/fs/hpfs/dir.c
-index 7b9150c2e75c..1a9fded00378 100644
---- a/fs/hpfs/dir.c
-+++ b/fs/hpfs/dir.c
-@@ -149,7 +149,6 @@ static int hpfs_readdir(struct file *file, struct dir_context *ctx)
- 			if (unlikely(ret < 0))
- 				goto out;
- 			ctx->pos = ((loff_t) hpfs_de_as_down_as_possible(inode->i_sb, hpfs_inode->i_dno) << 4) + 1;
--			file->f_version = inode->i_version;
- 		}
- 		next_pos = ctx->pos;
- 		if (!(de = map_pos_dirent(inode, &next_pos, &qbh))) {
-diff --git a/fs/hpfs/dnode.c b/fs/hpfs/dnode.c
-index 86ab7e790b4e..454acb0a009a 100644
---- a/fs/hpfs/dnode.c
-+++ b/fs/hpfs/dnode.c
-@@ -418,7 +418,6 @@ int hpfs_add_dirent(struct inode *i,
- 		c = 1;
- 		goto ret;
- 	}	
--	i->i_version++;
- 	c = hpfs_add_to_dnode(i, dno, name, namelen, new_de, 0);
- 	ret:
- 	return c;
-@@ -725,7 +724,6 @@ int hpfs_remove_dirent(struct inode *i, dnode_secno dno, struct hpfs_dirent *de,
- 			return 2;
- 		}
- 	}
--	i->i_version++;
- 	for_all_poss(i, hpfs_pos_del, (t = get_pos(dnode, de)) + 1, 1);
- 	hpfs_delete_de(i->i_sb, dnode, de);
- 	hpfs_mark_4buffers_dirty(qbh);
-diff --git a/fs/hpfs/super.c b/fs/hpfs/super.c
-index 82067ca22f2b..2fd66c854255 100644
---- a/fs/hpfs/super.c
-+++ b/fs/hpfs/super.c
-@@ -235,7 +235,6 @@ static struct inode *hpfs_alloc_inode(struct super_block *sb)
- 	ei = kmem_cache_alloc(hpfs_inode_cachep, GFP_NOFS);
- 	if (!ei)
- 		return NULL;
--	ei->vfs_inode.i_version = 1;
- 	return &ei->vfs_inode;
- }
+diff --git a/security/integrity/ima/ima_api.c b/security/integrity/ima/ima_api.c
+index 9df26a2b75ba..1f676313c30b 100644
+--- a/security/integrity/ima/ima_api.c
++++ b/security/integrity/ima/ima_api.c
+@@ -204,7 +204,7 @@ int ima_collect_measurement(struct integrity_iint_cache *iint,
+ 	} hash;
  
+ 	if (!(iint->flags & IMA_COLLECTED)) {
+-		u64 i_version = file_inode(file)->i_version;
++		u64 i_version = inode_get_iversion(file_inode(file));
+ 
+ 		if (file->f_flags & O_DIRECT) {
+ 			audit_cause = "failed(directio)";
+diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
+index 423d111b3b94..8d95cf42d20c 100644
+--- a/security/integrity/ima/ima_main.c
++++ b/security/integrity/ima/ima_main.c
+@@ -122,7 +122,7 @@ static void ima_check_last_writer(struct integrity_iint_cache *iint,
+ 
+ 	inode_lock(inode);
+ 	if (atomic_read(&inode->i_writecount) == 1) {
+-		if ((iint->version != inode->i_version) ||
++		if (inode_cmp_iversion(inode, iint->version) ||
+ 		    (iint->flags & IMA_NEW_FILE)) {
+ 			iint->flags &= ~(IMA_DONE_MASK | IMA_NEW_FILE);
+ 			iint->measured_pcrs = 0;
 -- 
 2.7.4
+
