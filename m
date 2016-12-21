@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [RFC PATCH v1 07/30] nilfs2: remove inode->i_version initialization
-Date: Wed, 21 Dec 2016 12:03:24 -0500
-Message-ID: <1482339827-7882-8-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 04/30] f2fs: don't bother setting i_version
+Date: Wed, 21 Dec 2016 12:03:21 -0500
+Message-ID: <1482339827-7882-5-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
@@ -12,24 +12,24 @@ In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It's never used in nilfs2.
+It's not used in f2fs currently. Just remove the initialization.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nilfs2/super.c | 1 -
+ fs/f2fs/super.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
-index 12eeae62a2b1..d157f6f96d9a 100644
---- a/fs/nilfs2/super.c
-+++ b/fs/nilfs2/super.c
-@@ -160,7 +160,6 @@ struct inode *nilfs_alloc_inode(struct super_block *sb)
- 	ii->i_bh = NULL;
- 	ii->i_state = 0;
- 	ii->i_cno = 0;
--	ii->vfs_inode.i_version = 1;
- 	nilfs_mapping_init(&ii->i_btnode_cache, &ii->vfs_inode);
- 	return &ii->vfs_inode;
- }
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 702638e21c76..78cceb0bed9e 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -572,7 +572,6 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
+ 	init_once((void *) fi);
+ 
+ 	/* Initialize f2fs-specific inode info */
+-	fi->vfs_inode.i_version = 1;
+ 	atomic_set(&fi->dirty_pages, 0);
+ 	fi->i_current_depth = 1;
+ 	fi->i_advise = 0;
 -- 
 2.7.4
