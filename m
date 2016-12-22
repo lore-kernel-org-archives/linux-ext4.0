@@ -1,78 +1,203 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
- optimization
-Date: Thu, 22 Dec 2016 09:42:04 -0500
-Message-ID: <1482417724.3924.39.camel@redhat.com>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-         <20161222084549.GA8833@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20161222084549.GA8833@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+From: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Subject: [PATCH] ext4: move halfmd4 into hash.c directly
+Date: Thu, 22 Dec 2016 17:46:53 +0100
+Message-ID: <20161222164653.26414-1-Jason@zx2c4.com>
+Cc: "Jason A. Donenfeld" <Jason@zx2c4.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2016-12-22 at 00:45 -0800, Christoph Hellwig wrote:
-> On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
-> > 
-> > Only btrfs, ext4, and xfs implement it for data changes. Because of
-> > this, these filesystems must log the inode to disk whenever the
-> > i_version counter changes. That has a non-zero performance impact,
-> > especially on write-heavy workloads, because we end up dirtying the
-> > inode metadata on every write, not just when the times change. [1]
-> 
-> Do you have numbers to justify these changes?
+The "half md4" transform should not be used by any new code. And
+fortunately, it's only used now by ext4. Since ext4 supports several
+hashing methods, at some point it might be desirable to move to
+something like SipHash. As an intermediate step, remove half md4 from
+cryptohash.h and lib, and make it just a local function in ext4's
+hash.c. There's precedent for doing this; the other function ext can use
+for its hashes -- TEA -- is also implemented in the same place. Also, by
+being a local function, this might allow gcc to perform some additional
+optimizations.
 
-I have numbers. As to whether they justify the changes, I'm not sure.
-This helps a lot on a (admittedly nonsensical) 1-byte write workload. On
-XFS, with this fio jobfile:
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/hash.c             | 69 +++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/cryptohash.h |  2 --
+ lib/halfmd4.c              | 67 --------------------------------------------
+ 3 files changed, 68 insertions(+), 70 deletions(-)
+ delete mode 100644 lib/halfmd4.c
 
---------------------8<------------------
-[global]
-direct=0
-size=2g
-filesize=512m
-bsrange=1-1
-timeout=60
-numjobs=1
-directory=/mnt/scratch
-
-[f1]
-filename=randwrite
-rw=randwrite
---------------------8<------------------
-
-Unpatched kernel:
-  WRITE: io=7707KB, aggrb=128KB/s, minb=128KB/s, maxb=128KB/s, mint=60000msec, maxt=60000msec
-
-Patched kernel:
-  WRITE: io=12701KB, aggrb=211KB/s, minb=211KB/s, maxb=211KB/s, mint=60000msec, maxt=60000msec
-
-So quite a difference there and it's pretty consistent across runs. If I
-change the jobfile to have "direct=1" and "bsrange=4k-4k", then any
-variation between the two doesn't seem to be significant (numbers vary
-as much between runs on the same kernels and are roughly the same).
-
-Playing with buffered I/O sizes between 1 byte and 4k shows that as the
-I/O sizes get larger, this makes less difference (which is what I'd
-expect).
-
-Previous testing with ext4 shows roughly the same results. btrfs shows
-some benefit here but significantly less than with ext4 or xfs. Not sure
-why that is yet -- maybe CoW effects?
-
-That said, I don't have a great test rig for this. I'm using VMs with a
-dedicated LVM volume that's on a random SSD I had laying around. It
-could use testing on a wider set of configurations and workloads.
-
-I was also hoping that others may have workloads that they think might
-be (postively or negatively) affected by these changes. If you can think
-of any in particular, then I'm interested to hear about them.
-
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index e026aa941fd5..4d743d8f72fd 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -10,7 +10,8 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/cryptohash.h>
++#include <linux/compiler.h>
++#include <linux/bitops.h>
+ #include "ext4.h"
+ 
+ #define DELTA 0x9E3779B9
+@@ -32,6 +33,72 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 	buf[1] += b1;
+ }
+ 
++/* F, G and H are basic MD4 functions: selection, majority, parity */
++#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
++#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
++#define H(x, y, z) ((x) ^ (y) ^ (z))
++/*
++ * The generic round function.  The application is so specific that
++ * we don't bother protecting all the arguments with parens, as is generally
++ * good macro practice, in favor of extra legibility.
++ * Rotation is separate from addition to prevent recomputation
++ */
++#define ROUND(f, a, b, c, d, x, s)	\
++	(a += f(b, c, d) + x, a = rol32(a, s))
++#define K1 0
++#define K2 013240474631UL
++#define K3 015666365641UL
++/*
++ * Basic cut-down MD4 transform.  Returns only 32 bits of result.
++ */
++static __u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
++{
++	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
++
++	/* Round 1 */
++	ROUND(F, a, b, c, d, in[0] + K1,  3);
++	ROUND(F, d, a, b, c, in[1] + K1,  7);
++	ROUND(F, c, d, a, b, in[2] + K1, 11);
++	ROUND(F, b, c, d, a, in[3] + K1, 19);
++	ROUND(F, a, b, c, d, in[4] + K1,  3);
++	ROUND(F, d, a, b, c, in[5] + K1,  7);
++	ROUND(F, c, d, a, b, in[6] + K1, 11);
++	ROUND(F, b, c, d, a, in[7] + K1, 19);
++
++	/* Round 2 */
++	ROUND(G, a, b, c, d, in[1] + K2,  3);
++	ROUND(G, d, a, b, c, in[3] + K2,  5);
++	ROUND(G, c, d, a, b, in[5] + K2,  9);
++	ROUND(G, b, c, d, a, in[7] + K2, 13);
++	ROUND(G, a, b, c, d, in[0] + K2,  3);
++	ROUND(G, d, a, b, c, in[2] + K2,  5);
++	ROUND(G, c, d, a, b, in[4] + K2,  9);
++	ROUND(G, b, c, d, a, in[6] + K2, 13);
++
++	/* Round 3 */
++	ROUND(H, a, b, c, d, in[3] + K3,  3);
++	ROUND(H, d, a, b, c, in[7] + K3,  9);
++	ROUND(H, c, d, a, b, in[2] + K3, 11);
++	ROUND(H, b, c, d, a, in[6] + K3, 15);
++	ROUND(H, a, b, c, d, in[1] + K3,  3);
++	ROUND(H, d, a, b, c, in[5] + K3,  9);
++	ROUND(H, c, d, a, b, in[0] + K3, 11);
++	ROUND(H, b, c, d, a, in[4] + K3, 15);
++
++	buf[0] += a;
++	buf[1] += b;
++	buf[2] += c;
++	buf[3] += d;
++
++	return buf[1]; /* "most hashed" word */
++}
++#undef ROUND
++#undef K1
++#undef K2
++#undef K3
++#undef F
++#undef G
++#undef H
+ 
+ /* The old legacy hash */
+ static __u32 dx_hack_hash_unsigned(const char *name, int len)
+diff --git a/include/linux/cryptohash.h b/include/linux/cryptohash.h
+index f4754282c9c2..3252799832cf 100644
+--- a/include/linux/cryptohash.h
++++ b/include/linux/cryptohash.h
+@@ -15,6 +15,4 @@ void sha_transform(__u32 *digest, const char *data, __u32 *W);
+ 
+ void md5_transform(__u32 *hash, __u32 const *in);
+ 
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8]);
+-
+ #endif
+diff --git a/lib/halfmd4.c b/lib/halfmd4.c
+deleted file mode 100644
+index 137e861d9690..000000000000
+--- a/lib/halfmd4.c
++++ /dev/null
+@@ -1,67 +0,0 @@
+-#include <linux/compiler.h>
+-#include <linux/export.h>
+-#include <linux/cryptohash.h>
+-#include <linux/bitops.h>
+-
+-/* F, G and H are basic MD4 functions: selection, majority, parity */
+-#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
+-#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
+-#define H(x, y, z) ((x) ^ (y) ^ (z))
+-
+-/*
+- * The generic round function.  The application is so specific that
+- * we don't bother protecting all the arguments with parens, as is generally
+- * good macro practice, in favor of extra legibility.
+- * Rotation is separate from addition to prevent recomputation
+- */
+-#define ROUND(f, a, b, c, d, x, s)	\
+-	(a += f(b, c, d) + x, a = rol32(a, s))
+-#define K1 0
+-#define K2 013240474631UL
+-#define K3 015666365641UL
+-
+-/*
+- * Basic cut-down MD4 transform.  Returns only 32 bits of result.
+- */
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
+-{
+-	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
+-
+-	/* Round 1 */
+-	ROUND(F, a, b, c, d, in[0] + K1,  3);
+-	ROUND(F, d, a, b, c, in[1] + K1,  7);
+-	ROUND(F, c, d, a, b, in[2] + K1, 11);
+-	ROUND(F, b, c, d, a, in[3] + K1, 19);
+-	ROUND(F, a, b, c, d, in[4] + K1,  3);
+-	ROUND(F, d, a, b, c, in[5] + K1,  7);
+-	ROUND(F, c, d, a, b, in[6] + K1, 11);
+-	ROUND(F, b, c, d, a, in[7] + K1, 19);
+-
+-	/* Round 2 */
+-	ROUND(G, a, b, c, d, in[1] + K2,  3);
+-	ROUND(G, d, a, b, c, in[3] + K2,  5);
+-	ROUND(G, c, d, a, b, in[5] + K2,  9);
+-	ROUND(G, b, c, d, a, in[7] + K2, 13);
+-	ROUND(G, a, b, c, d, in[0] + K2,  3);
+-	ROUND(G, d, a, b, c, in[2] + K2,  5);
+-	ROUND(G, c, d, a, b, in[4] + K2,  9);
+-	ROUND(G, b, c, d, a, in[6] + K2, 13);
+-
+-	/* Round 3 */
+-	ROUND(H, a, b, c, d, in[3] + K3,  3);
+-	ROUND(H, d, a, b, c, in[7] + K3,  9);
+-	ROUND(H, c, d, a, b, in[2] + K3, 11);
+-	ROUND(H, b, c, d, a, in[6] + K3, 15);
+-	ROUND(H, a, b, c, d, in[1] + K3,  3);
+-	ROUND(H, d, a, b, c, in[5] + K3,  9);
+-	ROUND(H, c, d, a, b, in[0] + K3, 11);
+-	ROUND(H, b, c, d, a, in[4] + K3, 15);
+-
+-	buf[0] += a;
+-	buf[1] += b;
+-	buf[2] += c;
+-	buf[3] += d;
+-
+-	return buf[1]; /* "most hashed" word */
+-}
+-EXPORT_SYMBOL(half_md4_transform);
 -- 
-Jeff Layton <jlayton@redhat.com>
+2.11.0
