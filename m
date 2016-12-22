@@ -1,48 +1,102 @@
-From: Sam Voss <samuel.voss@rockwellcollins.com>
-Subject: [PATCH] debugfs: ls -p can print invalid characters
-Date: Wed, 21 Dec 2016 13:11:45 -0600
-Message-ID: <1482347505-11200-1-git-send-email-samuel.voss@rockwellcollins.com>
-Cc: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>,
-        Samuel Voss <samuel.voss@rockwellcollins.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from secvs01.rockwellcollins.com ([205.175.225.240]:60441 "EHLO
-        secvs01.rockwellcollins.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753541AbcLUTXF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Dec 2016 14:23:05 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [RFC PATCH v1 30/30] fs: convert i_version counter over to an atomic64_t
+Date: Thu, 22 Dec 2016 10:38:36 +0200
+Message-ID: <CAOQ4uxi_z1DK4tM3DVTtyAM8matJk+KqakUnaequsEXS2En9Xg@mail.gmail.com>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com> <1482339827-7882-31-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Ext4 <linux-ext4@vger.kernel.org>,
+        Linux Btrfs <linux-btrfs@vger.kernel.org>,
+        linux-xfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1482339827-7882-31-git-send-email-jlayton@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
+On Wed, Dec 21, 2016 at 7:03 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> The spinlock is only used to serialize callers that want to increment
+> the counter. We can achieve the same thing with an atomic64_t and
+> get the i_lock out of this codepath.
+>
 
-The recent modification to the "ls -p" function can print out characters
-that the other ls functions do not print out. Adding a slight change to
-use the same print function for all of the ls options.
+Cool work! See some nits and suggestions below.
 
-Signed-off-by: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
-Signed-off-by: Samuel Voss <samuel.voss@rockwellcollins.com>
----
- debugfs/ls.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+> +/*
+> + * We borrow the top bit in the i_version to use as a flag to tell us whether
+> + * it has been queried since we last bumped it. If it has, then we must bump
+> + * it and set the flag. Note that this means that we have to handle wrapping
+> + * manually.
+> + */
+> +#define INODE_I_VERSION_QUERIED                (1ULL<<63)
+> +
+>  /**
+>   * inode_set_iversion - set i_version to a particular value
+>   * @inode: inode to set
+> @@ -1976,7 +1980,7 @@ static inline void inode_dec_link_count(struct inode *inode)
+>  static inline void
+>  inode_set_iversion(struct inode *inode, const u64 new)
+>  {
+> -       inode->i_version = new;
+> +       atomic64_set(&inode->i_version, new);
+>  }
+>
 
-diff --git a/debugfs/ls.c b/debugfs/ls.c
-index 057e3f6..cb40627 100644
---- a/debugfs/ls.c
-+++ b/debugfs/ls.c
-@@ -122,8 +122,10 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
- 				return 0;
- 		} else
- 			memset(&inode, 0, sizeof(struct ext2_inode));
--		fprintf(ls->f,"/%u/%06o/%d/%d/%*s/", ino, inode.i_mode,
--			inode.i_uid, inode.i_gid, thislen, dirent->name);
-+		fprintf(ls->f,"/%u/%06o/%d/%d/", ino, inode.i_mode,
-+			inode.i_uid, inode.i_gid);
-+		print_filename(ls->f, dirent, options);
-+		fputc('/', ls->f);
- 		if (LINUX_S_ISDIR(inode.i_mode))
- 			fprintf(ls->f, "/");
- 		else
--- 
-1.9.1
+Maybe needs an overflow sanity check !(new & INODE_I_VERSION_QUERIED)??
+See API change suggestion below.
 
+
+>  /**
+> @@ -2010,16 +2011,26 @@ inode_set_iversion_read(struct inode *inode, const u64 new)
+>  static inline bool
+>  inode_inc_iversion(struct inode *inode, bool force)
+>  {
+> -       bool ret = false;
+> +       u64 cur, old, new;
+> +
+> +       cur = (u64)atomic64_read(&inode->i_version);
+> +       for (;;) {
+> +               /* If flag is clear then we needn't do anything */
+> +               if (!force && !(cur & INODE_I_VERSION_QUERIED))
+> +                       return false;
+> +
+> +               new = (cur & ~INODE_I_VERSION_QUERIED) + 1;
+> +
+> +               /* Did we overflow into flag bit? Reset to 0 if so. */
+> +               if (unlikely(new == INODE_I_VERSION_QUERIED))
+> +                       new = 0;
+>
+
+Did you consider changing f_version type and the signature of the new
+i_version API to set/get s64 instead of u64?
+
+It makes a bit more sense from API users perspective to know that
+the valid range for version is >=0.
+
+file->f_version is not the only struct member used to store&compare
+i_version. nfs and xfs have other struct members for that, but even
+if all those members are not changed to type s64, the explicit cast
+to (s64) and back to (u64) will serve as a good documentation in
+the code about the valid range of version in the new API.
+
+>  /**
+> @@ -2080,7 +2099,7 @@ inode_get_iversion(struct inode *inode)
+>  static inline s64
+>  inode_cmp_iversion(const struct inode *inode, const u64 old)
+>  {
+> -       return (s64)inode->i_version - (s64)old;
+> +       return (s64)(atomic64_read(&inode->i_version) << 1) - (s64)(old << 1);
+>  }
+>
+
+IMO, it is better for the API to determine that 'old' is valid a value
+returned from
+inode_get_iversion* and therefore should not have the MSB set.
+Unless the reason you chose to shift those 2 values is because it is cheaper
+then masking INODE_I_VERSION_QUERIED??
+
+
+Cheers,
+Amir.
