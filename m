@@ -1,226 +1,143 @@
-From: "Jason A. Donenfeld" <Jason@zx2c4.com>
-Subject: [PATCH v2] ext4: move halfmd4 into hash.c directly
-Date: Thu, 22 Dec 2016 20:24:51 +0100
-Message-ID: <20161222192451.902-1-Jason@zx2c4.com>
-References: <201612230300.EAlEsz6x%fengguang.wu@intel.com>
-Cc: "Jason A. Donenfeld" <Jason@zx2c4.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <201612230300.EAlEsz6x%fengguang.wu@intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 190931] New: Talk.Help}= ((1844+762^^+8448())Looking for
+ Customer care to resolve all FB Call at our customer Care Number FB help Line
+ Phone number
+Date: Thu, 22 Dec 2016 22:49:51 +0000
+Message-ID: <bug-190931-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:52770 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750979AbcLVWtz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Dec 2016 17:49:55 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id AE71E203E3
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Dec 2016 22:49:53 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id 26D28203AE
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Dec 2016 22:49:52 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The "half md4" transform should not be used by any new code. And
-fortunately, it's only used now by ext4. Since ext4 supports several
-hashing methods, at some point it might be desirable to move to
-something like SipHash. As an intermediate step, remove half md4 from
-cryptohash.h and lib, and make it just a local function in ext4's
-hash.c. There's precedent for doing this; the other function ext can use
-for its hashes -- TEA -- is also implemented in the same place. Also, by
-being a local function, this might allow gcc to perform some additional
-optimizations.
+https://bugzilla.kernel.org/show_bug.cgi?id=190931
 
-Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
----
-Changes v1->v2:
+            Bug ID: 190931
+           Summary: Talk.Help}= ((1844+762^^+8448())Looking for Customer
+                    care to resolve all FB Call at our customer Care
+                    Number FB help Line Phone number
+           Product: File System
+           Version: 2.5
+    Kernel Version: Talk.Help}= ((1844+762^^+8448())Looking for Customer
+                    care to resolve all FB Call at our customer Care
+                    Number FB help Line Phone number
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext2
+          Assignee: fs_ext2@kernel-bugs.osdl.org
+          Reporter: penilo@stromox.com
+        Regression: No
 
-  - While changing the branches around, the change to the makefile was left
-    out. This revision fixes that, and so this should now actually build.
-    Sorry about that.
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+Talk.Help}= ((1844+762^^+8448())Looking for Customer care to resolve all FB
+Call at our customer Care Number FB help Line Phone number
+
+https://java.net/bugzilla/show_bug.cgi?id=194818
+https://eventgrid.com/Events/28134/1844-762-8448-facebook-customer-service-phone-number-toll-free-facebook-tfn
+https://eventgrid.com/Events/28136/facebook-technical-support-18447628448-facebook-customer-service-phone-number-for-oregon-usa
+http://wikis.ala.org/yalsa/index.php/Facebook_Tech_Support_Number_(18447628448)_Facebook_customer_service_phone_number_toll_free_for_Utah_USA
+https://eventgrid.com/Events/28139/facebook-tech-support-number-18447628448-facebook-customer-service-phone-number-toll-free-for-utah-usa
+http://wiki.technicpack.net/1844-762-8448_Facebook_Technical_Support_On_Facebook_Customer_Service_Phone_Number_(18447628448)_For_Michigan_USA
+https://eventgrid.com/Events/28142/1844-762-8448-facebook-technical-support-on-facebook-customer-service-phone-number-18447628448-for-michigan-usa
+http://wikis.ala.org/yalsa/index.php/1844-762-8448_Facebook_Technical_Support_On_Facebook_Customer_Service_Phone_Number_(18447628448)_For_Michigan_USA
+https://eventgrid.com/Events/28144/1844-762-8448-facebook-technical-support-on-facebook-customer-service-phone-number-18447628448-for-michigan-usa
+http://wiki.technicpack.net/Facebook_Technical_Support_Number_(1844-762-8448)_Facebook_Customer_Service_Number_Toll_Free_For_Naveda_USA
+https://eventgrid.com/Events/28145/facebook-technical-support-number-1844-762-8448-facebook-customer-service-phone-number-toll-free-for-naveda-usa
 
 
- fs/ext4/hash.c             | 69 +++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/cryptohash.h |  2 --
- lib/Makefile               |  2 +-
- lib/halfmd4.c              | 67 --------------------------------------------
- 4 files changed, 69 insertions(+), 71 deletions(-)
- delete mode 100644 lib/halfmd4.c
+(23:15:39) https://answers.launchpad.net/inkscape/+question/408287
+https://answers.launchpad.net/inkscape/+question/408280
+https://answers.launchpad.net/inkscape/+question/408281
+https://answers.launchpad.net/inkscape/+question/408283
+https://answers.launchpad.net/inkscape/+question/408282
 
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index e026aa941fd5..4d743d8f72fd 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -10,7 +10,8 @@
-  */
- 
- #include <linux/fs.h>
--#include <linux/cryptohash.h>
-+#include <linux/compiler.h>
-+#include <linux/bitops.h>
- #include "ext4.h"
- 
- #define DELTA 0x9E3779B9
-@@ -32,6 +33,72 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
- 	buf[1] += b1;
- }
- 
-+/* F, G and H are basic MD4 functions: selection, majority, parity */
-+#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
-+#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
-+#define H(x, y, z) ((x) ^ (y) ^ (z))
-+/*
-+ * The generic round function.  The application is so specific that
-+ * we don't bother protecting all the arguments with parens, as is generally
-+ * good macro practice, in favor of extra legibility.
-+ * Rotation is separate from addition to prevent recomputation
-+ */
-+#define ROUND(f, a, b, c, d, x, s)	\
-+	(a += f(b, c, d) + x, a = rol32(a, s))
-+#define K1 0
-+#define K2 013240474631UL
-+#define K3 015666365641UL
-+/*
-+ * Basic cut-down MD4 transform.  Returns only 32 bits of result.
-+ */
-+static __u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
-+{
-+	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
-+
-+	/* Round 1 */
-+	ROUND(F, a, b, c, d, in[0] + K1,  3);
-+	ROUND(F, d, a, b, c, in[1] + K1,  7);
-+	ROUND(F, c, d, a, b, in[2] + K1, 11);
-+	ROUND(F, b, c, d, a, in[3] + K1, 19);
-+	ROUND(F, a, b, c, d, in[4] + K1,  3);
-+	ROUND(F, d, a, b, c, in[5] + K1,  7);
-+	ROUND(F, c, d, a, b, in[6] + K1, 11);
-+	ROUND(F, b, c, d, a, in[7] + K1, 19);
-+
-+	/* Round 2 */
-+	ROUND(G, a, b, c, d, in[1] + K2,  3);
-+	ROUND(G, d, a, b, c, in[3] + K2,  5);
-+	ROUND(G, c, d, a, b, in[5] + K2,  9);
-+	ROUND(G, b, c, d, a, in[7] + K2, 13);
-+	ROUND(G, a, b, c, d, in[0] + K2,  3);
-+	ROUND(G, d, a, b, c, in[2] + K2,  5);
-+	ROUND(G, c, d, a, b, in[4] + K2,  9);
-+	ROUND(G, b, c, d, a, in[6] + K2, 13);
-+
-+	/* Round 3 */
-+	ROUND(H, a, b, c, d, in[3] + K3,  3);
-+	ROUND(H, d, a, b, c, in[7] + K3,  9);
-+	ROUND(H, c, d, a, b, in[2] + K3, 11);
-+	ROUND(H, b, c, d, a, in[6] + K3, 15);
-+	ROUND(H, a, b, c, d, in[1] + K3,  3);
-+	ROUND(H, d, a, b, c, in[5] + K3,  9);
-+	ROUND(H, c, d, a, b, in[0] + K3, 11);
-+	ROUND(H, b, c, d, a, in[4] + K3, 15);
-+
-+	buf[0] += a;
-+	buf[1] += b;
-+	buf[2] += c;
-+	buf[3] += d;
-+
-+	return buf[1]; /* "most hashed" word */
-+}
-+#undef ROUND
-+#undef K1
-+#undef K2
-+#undef K3
-+#undef F
-+#undef G
-+#undef H
- 
- /* The old legacy hash */
- static __u32 dx_hack_hash_unsigned(const char *name, int len)
-diff --git a/include/linux/cryptohash.h b/include/linux/cryptohash.h
-index f4754282c9c2..3252799832cf 100644
---- a/include/linux/cryptohash.h
-+++ b/include/linux/cryptohash.h
-@@ -15,6 +15,4 @@ void sha_transform(__u32 *digest, const char *data, __u32 *W);
- 
- void md5_transform(__u32 *hash, __u32 const *in);
- 
--__u32 half_md4_transform(__u32 buf[4], __u32 const in[8]);
--
- #endif
-diff --git a/lib/Makefile b/lib/Makefile
-index 50144a3aeebd..3f539d1333b6 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -31,7 +31,7 @@ lib-$(CONFIG_HAS_DMA) += dma-noop.o
- lib-y	+= kobject.o klist.o
- obj-y	+= lockref.o
- 
--obj-y += bcd.o div64.o sort.o parser.o halfmd4.o debug_locks.o random32.o \
-+obj-y += bcd.o div64.o sort.o parser.o debug_locks.o random32.o \
- 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
- 	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iov_iter.o clz_ctz.o \
- 	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
-diff --git a/lib/halfmd4.c b/lib/halfmd4.c
-deleted file mode 100644
-index 137e861d9690..000000000000
---- a/lib/halfmd4.c
-+++ /dev/null
-@@ -1,67 +0,0 @@
--#include <linux/compiler.h>
--#include <linux/export.h>
--#include <linux/cryptohash.h>
--#include <linux/bitops.h>
--
--/* F, G and H are basic MD4 functions: selection, majority, parity */
--#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
--#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
--#define H(x, y, z) ((x) ^ (y) ^ (z))
--
--/*
-- * The generic round function.  The application is so specific that
-- * we don't bother protecting all the arguments with parens, as is generally
-- * good macro practice, in favor of extra legibility.
-- * Rotation is separate from addition to prevent recomputation
-- */
--#define ROUND(f, a, b, c, d, x, s)	\
--	(a += f(b, c, d) + x, a = rol32(a, s))
--#define K1 0
--#define K2 013240474631UL
--#define K3 015666365641UL
--
--/*
-- * Basic cut-down MD4 transform.  Returns only 32 bits of result.
-- */
--__u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
--{
--	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
--
--	/* Round 1 */
--	ROUND(F, a, b, c, d, in[0] + K1,  3);
--	ROUND(F, d, a, b, c, in[1] + K1,  7);
--	ROUND(F, c, d, a, b, in[2] + K1, 11);
--	ROUND(F, b, c, d, a, in[3] + K1, 19);
--	ROUND(F, a, b, c, d, in[4] + K1,  3);
--	ROUND(F, d, a, b, c, in[5] + K1,  7);
--	ROUND(F, c, d, a, b, in[6] + K1, 11);
--	ROUND(F, b, c, d, a, in[7] + K1, 19);
--
--	/* Round 2 */
--	ROUND(G, a, b, c, d, in[1] + K2,  3);
--	ROUND(G, d, a, b, c, in[3] + K2,  5);
--	ROUND(G, c, d, a, b, in[5] + K2,  9);
--	ROUND(G, b, c, d, a, in[7] + K2, 13);
--	ROUND(G, a, b, c, d, in[0] + K2,  3);
--	ROUND(G, d, a, b, c, in[2] + K2,  5);
--	ROUND(G, c, d, a, b, in[4] + K2,  9);
--	ROUND(G, b, c, d, a, in[6] + K2, 13);
--
--	/* Round 3 */
--	ROUND(H, a, b, c, d, in[3] + K3,  3);
--	ROUND(H, d, a, b, c, in[7] + K3,  9);
--	ROUND(H, c, d, a, b, in[2] + K3, 11);
--	ROUND(H, b, c, d, a, in[6] + K3, 15);
--	ROUND(H, a, b, c, d, in[1] + K3,  3);
--	ROUND(H, d, a, b, c, in[5] + K3,  9);
--	ROUND(H, c, d, a, b, in[0] + K3, 11);
--	ROUND(H, b, c, d, a, in[4] + K3, 15);
--
--	buf[0] += a;
--	buf[1] += b;
--	buf[2] += c;
--	buf[3] += d;
--
--	return buf[1]; /* "most hashed" word */
--}
--EXPORT_SYMBOL(half_md4_transform);
+
+(23:18:35)
+https://www.linkedin.com/pulse/1844-762-8448-facebook-technical-support-phone-number-amaresh-pradhan-4
+
+(23:23:42)
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448-facebook-customer-number-facebook-customer-phone-number-quebec-canada
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448-facebook-customer-number-facebook-customer-phone-number-alberta-canada
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-ontario-canada
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-entucky-united
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-new-york-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/topics
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-numberr-florida-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-ohio-united-states
+http://wiki.technicpack.net/(((t.e.a)))%2B1844-762-8448facebook_customer_service_phone_number_*_facebook_customer_service_numberr,Florida,united_states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-georgia-united-states
+https://eventgrid.com/Events/28137/tea-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-numberiowa-united-state
+https://eventgrid.com/Events/28138/tea-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-numberiowa-united-state
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-telephone-number-michigan-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-illinois-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-number-tennessee-united-states
+https://eventgrid.com/Events/28140/tea-1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-numbernew-jerseyunited-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1-844-762-8448-facebook-customer-number-facebook-customer-phone-number-nevada-united-states-d3ef91fa-3ffe-4db9-b9db-a7eb6408454e
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1-844-762-8448facebook-customer-number-facebook-customerphone-number-georgia-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448-facebook-customer-number-facebook-customer-phone-number-south-carolina-united-states
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448-facebook-customer-number-facebook-customer-phone-number-north-carolina-united-states-d9994566-8030-4897-a861-10c29dadfd67
+https://www.lonelyplanet.com/thorntree/forums/americas-united-states-of-america/united-states/t-e-a-1844-762-8448-facebook-customer-number-facebook-customer-phone-number-pennsylvania-united-states
+https://facebookcustomernumber18447628448site.wordpress.com/2016/12/22/t-e-a1844-762-8448facebook-customer-service-phone-number-facebook-customer-service-numbertexasunitfacebook
+customer phone number - 1.8.4.4.7.62.8.4.4.8
+Facebook customer care phone number    1.8.4.4.7.6.2.8.4.4.8 Facebook support
+telephone number usa Facebook contact number customer service   
+1.8.4.4.7.6.2.8.4.4.8 Facebook support telephone number Facebook company phone
+number    1.8.4.4.7.6.2.8.4.4.8 Facebook tech support number
+FACEBOOK Contact Number 1 844 762 8448
+
+FACEBOOK Customer Service phone number,FACEBOOK helpline phone number here.
+Describe FACEBOOK help desk phone number,FACEBOOK helpline phone number here.
+FACEBOOK Payroll support phone number, 1-844-762-8448 FACEBOOK tech support
+number Call, 1-844-762-8448 for all type help by FACEBOOK tech support phone
+number, 1.8.4.4.7.6.2.8.4.4.8 Intuit FACEBOOK Tech Support Phone Number,
+1844-762-8448 FACEBOOK Help Desk Phone Number, 1844-762-8448 FACEBOOK tech
+support number, FACEBOOK technical support phone number, 1844-762-8448 @
+FACEBOOK phone number, 1844-762-8448 FACEBOOK technical support number,
+1844-762-8448 FACEBOOK support phone number, 1844-762-8448 FACEBOOK technical
+support, FACEBOOK Customer Service Phone Number, FACEBOOK Customer Service
+Number, FACEBOOK Customer Support Phone Number, 1.8.4.4.7.6.2.8.4.4.8 FACEBOOK
+Customer Support Number, FACEBOOK Customer Service Helpline Number, FACEBOOK
+Customer Care Number, FACEBOOK support team phone number, FACEBOOK help
+number-FACEBOOK Helpline Number; FACEBOOK help phone number-FACEBOOK Helpline
+Number, FACEBOOK Tech Support Toll free Number, FACEBOOK Support Telephone
+Number, FACEBOOK Tech Support Telephone number, FACEBOOK Tech Support contact
+number, FACEBOOK support contact number, FACEBOOK technical support contact
+number. Call, FACEBOOK tech support phone number, Intuit FACEBOOK Tech Support
+Phone Number, FACEBOOK Help Desk Phone Number, FACEBOOK tech support number,
+FACEBOOK technical support phone number, FACEBOOK phone number, FACEBOOK
+technical support number
+________________________________________
+https://www.eventbrite.com/e/29533371108?aff=efbneb
+https://www.eventbrite.com/e/facebook-customer-support-number-18447628448-facebook-support-phone-number-tickets-29619526802
+https://www.lonelyplanet.com/thorntree/forums/americas-central-america/topics/how-to-contact-facebook-1-844-762-8448-facebook-phone-number-facebook-customer-service-number-1-844-762-8448
+https://www.linkedin.com/pulse/facebook-support-phone-number-1-8447628448-customer-services-texus
+https://www.eventbrite.com/e/facebook-customer-1-844-762-8448-service-phone-tickets-29957595976
+
 -- 
-2.11.0
+You are receiving this mail because:
+You are watching the assignee of the bug.
