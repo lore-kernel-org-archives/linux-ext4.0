@@ -1,43 +1,72 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 191151] New: error
-Date: Mon, 26 Dec 2016 02:35:07 +0000
-Message-ID: <bug-191151-13602@https.bugzilla.kernel.org/>
+From: yi zhang <yi.zhang@huawei.com>
+Subject: [RFC PATCH] ext4: increase the protection of drop nlink and ext4  inode destroy
+Date: Mon, 26 Dec 2016 20:34:17 +0800
+Message-ID: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:40332 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754595AbcLZCfL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 25 Dec 2016 21:35:11 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id 531F320450
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Dec 2016 02:35:09 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id 8F57620425
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Dec 2016 02:35:07 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <yi.zhang@huawei.com>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=191151
+Because of the disk and hardware issue, the ext4 filesystem have 
+many errors, the inode->i_nlink of ext4 becomes zero abnormally 
+but the dentry is still positive, it will cause memory corruption 
+after the following process:
 
-            Bug ID: 191151
-           Summary: error
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.10
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: idenshe@daum.net
-        Regression: No
+ 1) Due to the inode->i_nlink is 0, this inode will be added into
+the orhpan list,
+ 2) ext4_rename() cover this inode, and drop_nlink() will reverse
+the inode->i_nlink to 0xFFFFFFFF,
+ 3) iput() add this inode to LRU,
+ 4) evict() will call destroy_inode() to destroy this inode but
+skip removing it from the orphan list,
+ 5) after this, the inode's memory address space will be used by
+other module, when the ext4 filesystem change the orphan list, it will
+trample other module's data and then may cause oops.
 
+Although we cannot avoid hardware and disk errors, we can control the
+softwore error in the ext4 module, do not affect other modules and
+increase the difficulty of locating problems.
+
+This patch avoid inode->i_nlink reverse and remove the inode form the
+orphan list when destroy it if the list is not empty.
+Signed-off-by: yi zhang <yi.zhang@huawei.com>
+---
+ fs/ext4/super.c | 1 +
+ fs/inode.c      | 5 ++++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 52b0530..617327e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -975,6 +975,7 @@ static void ext4_destroy_inode(struct inode *inode)
+ 				EXT4_I(inode), sizeof(struct ext4_inode_info),
+ 				true);
+ 		dump_stack();
++		ext4_orphan_del(NULL, inode);
+ 	}
+ 	call_rcu(&inode->i_rcu, ext4_i_callback);
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index 88110fd..079d383 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -279,7 +279,10 @@ static void destroy_inode(struct inode *inode)
+  */
+ void drop_nlink(struct inode *inode)
+ {
+-	WARN_ON(inode->i_nlink == 0);
++	if (WARN(inode->i_nlink == 0, "inode %lu nlink"
++		" is already 0", inode->i_ino))
++		return;
++
+ 	inode->__i_nlink--;
+ 	if (!inode->i_nlink)
+ 		atomic_long_inc(&inode->i_sb->s_remove_count);
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.5.0
+
