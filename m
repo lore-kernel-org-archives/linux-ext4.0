@@ -1,71 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Richard Weinberger <richard@nod.at>
 Subject: Re: [PATCH 3/6] ubifs: Use 64bit readdir cookies
-Date: Thu, 29 Dec 2016 10:34:07 -0500
-Message-ID: <20161229153407.GA29149@fieldses.org>
+Date: Thu, 29 Dec 2016 16:49:54 +0100
+Message-ID: <fe46ea3c-ef8f-40ba-f4ab-8dfe8faafb0b@nod.at>
 References: <1480629741-18375-1-git-send-email-richard@nod.at>
  <1480629741-18375-4-git-send-email-richard@nod.at>
  <20161229025835.GC21325@fieldses.org>
  <bf60916c-e0f2-387c-ce21-325ad8977539@nod.at>
+ <20161229153407.GA29149@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
 Cc: linux-mtd@lists.infradead.org, david@sigma-star.at, tytso@mit.edu,
         dedekind1@gmail.com, adrian.hunter@intel.com,
         linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         adilger.kernel@dilger.ca, akpm@linux-foundation.org,
         linux-ext4@vger.kernel.org
-To: Richard Weinberger <richard@nod.at>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <bf60916c-e0f2-387c-ce21-325ad8977539@nod.at>
-Sender: linux-kernel-owner@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20161229153407.GA29149@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 29, 2016 at 10:19:27AM +0100, Richard Weinberger wrote:
-> Bruce,
-> 
-> On 29.12.2016 03:58, J. Bruce Fields wrote:
-> > On Thu, Dec 01, 2016 at 11:02:18PM +0100, Richard Weinberger wrote:
-> >> This is the first step to support proper telldir/seekdir()
-> >> in UBIFS.
-> >> Let's report 64bit cookies in readdir(). The cookie is a combination
-> >> of the entry key plus the double hash value.
-> > 
-> > Would it be possible to explain what that means in a little detail, for
-> > a ubifs-ignoramus?
-> > 
-> > I'm just curious how it meets the requirements for nfs exports.
-> 
-> Traditionally UBIFS had 32bit readdir() cookies, ctx->pos was a 32bit
-> integer.
-> This integer is the 32bit key out the UBIFS index tree.
-> 
-> In ->lookup(), UBIFS computes the r5 hash of the requested file name
-> which will be used as search key. Since the chance is high to face a hash
-> collision in the 32bit space, UBIFS also does a string compare
-> to find the correct directory entry for the given file name.
-> 
-> For NFS, and fscrypt, UBIFS has to offer a way to lookup a directory
-> entry by a given cookie without knowing the file name.
-> So, UBIFS has no chance to detect or handle a hash collision.
-> 
-> To deal with that UBIFS uses a similar trick as ext4 does, it stores
-> another unique identifier of the file name which can be used as cookie.
-> While ext4 stores two 32bit hash values, therefore the name double hash,
-> which will be combined to a single 64bit cookie, UBIFS stores additionally
-> a 32bit random number which will be generated upon directory entry creation.
-> Using the 32bit hash value and the 32bit nonce it can provide a 64bit
-> cookie.
-> 
-> Lookup via cookie works like a regular lookup but instead of comparing
-> strings it compares the nonce values.
-> 
-> That way UBIFS can provide a 64bit readdir() cookie which is required for NFS3.
+Bruce,
 
-Sounds good.  And if a matching entry isn't found (as in the case of a
-concurrent unlink), what happens?  The answer must be the same as for
-ext4, but I've forgotten the details....  I guess it must find the next
-highest cookie (thinking of the cookie as a 64-bit integer of some kind)
-that exists in the directory.  And that must be the same order that
-readdir normally returns entries in.
+On 29.12.2016 16:34, J. Bruce Fields wrote:
+>> That way UBIFS can provide a 64bit readdir() cookie which is required for NFS3.
+> 
+> Sounds good.  And if a matching entry isn't found (as in the case of a
+> concurrent unlink), what happens?  The answer must be the same as for
+> ext4, but I've forgotten the details....  I guess it must find the next
+> highest cookie (thinking of the cookie as a 64-bit integer of some kind)
+> that exists in the directory.  And that must be the same order that
+> readdir normally returns entries in.
 
---b.
+If a 64bit cookie is not found, the lookup function returns -ENOENT.
+In UBIFS we cannot just select a higher or lower key (cookie in this case),
+since it is the B-tree key and would point to a completely different
+entry.
+
+So, in case of a concurrent unlink() one would succeed and one fail with
+-ENOENT. Unless I miss something that seems okay to me.
+
+Thanks,
+//richard
