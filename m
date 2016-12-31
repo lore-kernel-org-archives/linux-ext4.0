@@ -1,49 +1,53 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 3/6] ubifs: Use 64bit readdir cookies
-Date: Thu, 29 Dec 2016 18:05:54 +0100
-Message-ID: <6ba02247-cb0e-e925-207e-4ea3fc37b9b7@nod.at>
-References: <1480629741-18375-1-git-send-email-richard@nod.at>
- <1480629741-18375-4-git-send-email-richard@nod.at>
- <20161229025835.GC21325@fieldses.org>
- <bf60916c-e0f2-387c-ce21-325ad8977539@nod.at>
- <20161229153407.GA29149@fieldses.org>
- <fe46ea3c-ef8f-40ba-f4ab-8dfe8faafb0b@nod.at>
- <20161229161534.GA29261@fieldses.org>
- <224abf2f-c820-5df1-6292-42c1e2d47933@nod.at>
- <20161229165920.GA29744@fieldses.org>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [RFC PATCH] ext4: increase the protection of drop nlink and ext4 inode destroy
+Date: Sat, 31 Dec 2016 17:59:13 -0500
+Message-ID: <141922.1483225153@turing-police.cc.vt.edu>
+References: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: multipart/signed; boundary="==_Exmh_1483225153_2772P";
+         micalg=pgp-sha1; protocol="application/pgp-signature"
 Content-Transfer-Encoding: 7bit
-Cc: david@sigma-star.at, tytso@mit.edu, dedekind1@gmail.com,
- adrian.hunter@intel.com, linux-kernel@vger.kernel.org,
- linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
- adilger.kernel@dilger.ca, akpm@linux-foundation.org,
- linux-ext4@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
-In-Reply-To: <20161229165920.GA29744@fieldses.org>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca
+To: yi zhang <yi.zhang@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 29.12.2016 17:59, J. Bruce Fields wrote:
-> OK, good.  So the random nonce is stored with the entry, and the hash
-> you can always recalculate from the filename, so if you return entries
-> in nonce+hash order, then you can keep that order stable even across
-> deletes and renames.
+--==_Exmh_1483225153_2772P
+Content-Type: text/plain; charset=us-ascii
 
-Yes.
+On Mon, 26 Dec 2016 20:34:17 +0800, yi zhang said:
+> Because of the disk and hardware issue, the ext4 filesystem have
+> many errors, the inode->i_nlink of ext4 becomes zero abnormally
+> but the dentry is still positive, it will cause memory corruption
+> after the following process:
+>
+>  1) Due to the inode->i_nlink is 0, this inode will be added into
+> the orhpan list,
 
-Thanks,
-//richard
+> +	if (WARN(inode->i_nlink == 0, "inode %lu nlink"
+> +		" is already 0", inode->i_ino))
 
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
+Can we get the filesystem? Or at least the device major/minor? If a system
+has multiple large ext4 filesystems, it would be helpful to know which
+one is having the problem.
+
+--==_Exmh_1483225153_2772P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Comment: Exmh version 2.5 07/13/2001
+
+iQEVAwUBWGg4QY0DS38y7CIcAQIwYwf/YCbanNpTT/1qBJEdRkRSDQ2CDXhrsWfE
+eMgzqNkA/3J+kjpJYS+jnRJTqdYU78Hph+SuOY6TF9nAQv6XH49Zs6oeXx+9NqxK
+oV36KCMq+KNd9sIRyK+zrD6muhGi5otzaygIa3ft5xzntkKlr5C/zAV+C79MGukB
+dYEwLtFGZAVvm3187ooMXAw17MGgZVhsgRv9sLPF8c26n6cAPhG6MRf6kFVLTgX2
+JlG3bsMnt3kR06OB/31OCPK4SyuInJupejYzGIWzPK9i8tFy4yv0Ohbq73HLKrIY
+icm/GrRlap/SjGLowVtNDOyvsaqat9YDUKSXI8ZW25sSjUxr6/6LCg==
+=qSJX
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1483225153_2772P--
