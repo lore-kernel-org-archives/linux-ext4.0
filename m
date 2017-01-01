@@ -1,33 +1,32 @@
-From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH V2 2/2 linux-next] ext4: return -EACCES on inode_owner_or_capable() error
-Date: Sun,  1 Jan 2017 12:04:43 +0100
-Message-ID: <1483268683-32295-1-git-send-email-fabf@skynet.be>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        fabf@skynet.be
-To: tytso@mit.edu, Andreas Dilger <adilger.kernel@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
+Date: Sun, 1 Jan 2017 16:47:25 -0500
+Message-ID: <20170101214725.g67msbedmpx27waz@thunk.org>
+References: <20161219103929.GA16197@infradead.org>
+ <20161219112532.18863-1-richard@nod.at>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jaegeuk@kernel.org, hch@infradead.org, arnd@arndb.de,
+        dedekind1@gmail.com, linux-mtd@lists.infradead.org,
+        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
+        ebiggers@google.com, rdunlap@infradead.org, david@sigma-star.at
+To: Richard Weinberger <richard@nod.at>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20161219112532.18863-1-richard@nod.at>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-like other cases in ext4_ioctl()
+On Mon, Dec 19, 2016 at 12:25:32PM +0100, Richard Weinberger wrote:
+> That way we can get rid of the direct dependency on CONFIG_BLOCK.
+> 
+> Reported-by: Arnd Bergmann <arnd@arndb.de>
+> Reported-by: Randy Dunlap <rdunlap@infradead.org>
+> Suggested-by: Christoph Hellwig <hch@infradead.org>
+> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
+> Signed-off-by: Richard Weinberger <richard@nod.at>
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/ext4/ioctl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index f665c02..3926657 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -504,7 +504,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		int err;
- 
- 		if (!inode_owner_or_capable(inode))
--			return -EPERM;
-+			return -EACCES;
- 
- 		if (ext4_has_metadata_csum(inode->i_sb)) {
- 			ext4_warning(sb, "Setting inode version is not "
--- 
-2.7.4
+					- Ted
