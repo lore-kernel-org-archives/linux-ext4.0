@@ -1,132 +1,72 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH] mm: introduce kv[mz]alloc helpers
-Date: Tue, 3 Jan 2017 11:33:29 +0100
-Message-ID: <20170103103328.GE30111@dhcp22.suse.cz>
-References: <20170102133700.1734-1-mhocko@kernel.org>
- <74a00631-ab1f-b818-6608-1554bcd7cbc1@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
+Date: Tue, 3 Jan 2017 09:28:36 -0500
+Message-ID: <20170103142836.no7rp3hphj3czjto@thunk.org>
+References: <20161219103929.GA16197@infradead.org>
+ <20161219112532.18863-1-richard@nod.at>
+ <20170101214725.g67msbedmpx27waz@thunk.org>
+ <dd8b8365-e84a-7f8e-384d-4900523e761e@nod.at>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
-	Johannes Weiner <hannes@cmpxchg.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-mm@kvack.org,
-	LKML <linux-kernel@vger.kernel.org>, kvm@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Joe Perches <joe@perches.com>,
-	Anatoly Stepanov <astepanov@cloudlinux.com>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	Mike Snitzer <snitzer@redhat.com>,
-	"Michael S. Tsirkin" <mst@redhat.com>,
-	Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>
-To: Vlastimil Babka <vbabka@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jaegeuk@kernel.org, hch@infradead.org, arnd@arndb.de,
+        dedekind1@gmail.com, linux-mtd@lists.infradead.org,
+        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
+        ebiggers@google.com, rdunlap@infradead.org, david@sigma-star.at
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <74a00631-ab1f-b818-6608-1554bcd7cbc1@suse.cz>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <dd8b8365-e84a-7f8e-384d-4900523e761e@nod.at>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 03-01-17 11:23:04, Vlastimil Babka wrote:
-> On 01/02/2017 02:37 PM, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
-> > 
-> > Using kmalloc with the vmalloc fallback for larger allocations is a
-> > common pattern in the kernel code. Yet we do not have any common helper
-> > for that and so users have invented their own helpers. Some of them are
-> > really creative when doing so. Let's just add kv[mz]alloc and make sure
-> > it is implemented properly. This implementation makes sure to not make
-> > a large memory pressure for > PAGE_SZE requests (__GFP_NORETRY) and also
-> > to not warn about allocation failures. This also rules out the OOM
-> > killer as the vmalloc is a more approapriate fallback than a disruptive
-> > user visible action.
-> > 
-> > This patch also changes some existing users and removes helpers which
-> > are specific for them. In some cases this is not possible (e.g.
-> > ext4_kvmalloc, libcfs_kvzalloc, __aa_kvmalloc) because those seems to be
-> > broken and require GFP_NO{FS,IO} context which is not vmalloc compatible
-> > in general (note that the page table allocation is GFP_KERNEL). Those
-> > need to be fixed separately.
-> > 
-> > apparmor has already claimed kv[mz]alloc so remove those and use
-> > __aa_kvmalloc instead to prevent from the naming clashes.
-> > 
-> > Changes since v1
-> > - define __vmalloc_node_flags for CONFIG_MMU=n
-> > 
-> > Cc: Anatoly Stepanov <astepanov@cloudlinux.com>
-> > Cc: Paolo Bonzini <pbonzini@redhat.com>
-> > Cc: Mike Snitzer <snitzer@redhat.com>
-> > Cc: "Michael S. Tsirkin" <mst@redhat.com>
-> > Cc: "Theodore Ts'o" <tytso@mit.edu>
-> > Reviewed-by: Andreas Dilger <adilger@dilger.ca> # ext4 part
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
+On Tue, Jan 03, 2017 at 10:49:26AM +0100, Richard Weinberger wrote:
+> Ted,
 > 
-> Acked-by: Vlastimil Babka <vbabka@suse.cz>
-> (but with a small fix and suggestion below)
-
-Thanks!
-
-> 
-> > --- a/mm/util.c
-> > +++ b/mm/util.c
-> > @@ -346,6 +346,46 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
-> >  }
-> >  EXPORT_SYMBOL(vm_mmap);
+> Am 01.01.2017 um 22:47 schrieb Theodore Ts'o:
+> > On Mon, Dec 19, 2016 at 12:25:32PM +0100, Richard Weinberger wrote:
+> >> That way we can get rid of the direct dependency on CONFIG_BLOCK.
+> >>
+> >> Reported-by: Arnd Bergmann <arnd@arndb.de>
+> >> Reported-by: Randy Dunlap <rdunlap@infradead.org>
+> >> Suggested-by: Christoph Hellwig <hch@infradead.org>
+> >> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
+> >> Signed-off-by: Richard Weinberger <richard@nod.at>
 > > 
-> > +/**
-> > + * kvmalloc_node - allocate contiguous memory from SLAB with vmalloc fallback
-> > + * @size: size of the request.
-> > + * @flags: gfp mask for the allocation - must be compatible with GFP_KERNEL.
-> > + * @node: numa node to allocate from
-> > + *
-> > + * Uses kmalloc to get the memory but if the allocation fails then falls back
-> > + * to the vmalloc allocator. Use kvfree for freeing the memory.
-> > + */
-> > +void *kvmalloc_node(size_t size, gfp_t flags, int node)
-> > +{
-> > +	gfp_t kmalloc_flags = flags;
-> > +	void *ret;
-> > +
-> > +	/*
-> > +	 * vmalloc uses GFP_KERNEL for some internal allocations (e.g page tables)
-> > +	 * so the given set of flags has to be compatible.
-> > +	 */
-> > +	WARN_ON((flags & GFP_KERNEL) != GFP_KERNEL);
+> > Applied, thanks.
 > 
-> Wouldn't a _ONCE be sufficient? It's unlikely that multiple wrong call sites
-> appear out of the blue, but we don't want to flood the log from a single
-> frequently called site. No strong feelings though.
+> Just to make sure, this fixes a build error and should
+> go into Linus' tree ASAP.
 
-Fair enough, I will make it WARN_ON_ONCE. I wish WARN_ON_ONCE would be
-more clever, though. We can lose information about different call sites.
-I was thinking about how to deal with it and I stackdepot sounds like it
-could help here. But this is off-topic...
+I didn't consider this a build error since it could be fixed via a
+config change.  And it is a pretty big patch, even if it is mostly
+moving (not that git recognized it as such)...
 
-> > +
-> > +	/*
-> > +	 * Make sure that larger requests are not too disruptive - no OOM
-> > +	 * killer and no allocation failure warnings as we have a fallback
-> > +	 */
-> > +	if (size > PAGE_SIZE)
-> > +		kmalloc_flags |= __GFP_NORETRY | __GFP_NOWARN;
-> > +
-> > +	ret = kmalloc_node(size, kmalloc_flags, node);
-> > +
-> > +	/*
-> > +	 * It doesn't really make sense to fallback to vmalloc for sub page
-> > +	 * requests
-> > +	 */
-> > +	if (ret || size < PAGE_SIZE)
-> 
-> This should be size <= PAGE_SIZE.
+git show --stat -M 58ae74683ae2c07cd717a91799edb50231061938
+commit 58ae74683ae2c07cd717a91799edb50231061938
+Author: Richard Weinberger <richard@nod.at>
+Date:   Mon Dec 19 12:25:32 2016 +0100
 
-You are right of course!
--- 
-Michal Hocko
-SUSE Labs
+    fscrypt: factor out bio specific functions
+    
+    That way we can get rid of the direct dependency on CONFIG_BLOCK.
+    
+    Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
+    Reported-by: Arnd Bergmann <arnd@arndb.de>
+    Reported-by: Randy Dunlap <rdunlap@infradead.org>
+    Reviewed-by: Eric Biggers <ebiggers@google.com>
+    Reviewed-by: Christoph Hellwig <hch@lst.de>
+    Reviewed-by: David Gstir <david@sigma-star.at>
+    Signed-off-by: Richard Weinberger <richard@nod.at>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+ fs/crypto/Kconfig           |   1 -
+ fs/crypto/Makefile          |   1 +
+ fs/crypto/bio.c             | 145 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/crypto/crypto.c          | 157 +++++++++----------------------------------------------------------------------------
+ fs/crypto/fscrypt_private.h |  16 ++++++++-
+ include/linux/fscrypto.h    |  11 +++---
+ 6 files changed, 184 insertions(+), 147 deletions(-)
+
+						- Ted
+						
