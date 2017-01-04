@@ -1,62 +1,70 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
-Date: Wed, 4 Jan 2017 23:52:12 +0100
-Message-ID: <6262f05a-6ab4-58dd-c782-b62fd38596dc@nod.at>
-References: <20161219103929.GA16197@infradead.org>
- <20161219112532.18863-1-richard@nod.at>
- <20170101214725.g67msbedmpx27waz@thunk.org>
- <dd8b8365-e84a-7f8e-384d-4900523e761e@nod.at>
- <20170103142836.no7rp3hphj3czjto@thunk.org>
- <20170104201043.GA21696@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [RFC PATCH] ext4: increase the protection of drop nlink and ext4
+ inode destroy
+Date: Wed, 4 Jan 2017 13:54:24 -0800
+Message-ID: <20170104215424.GB14021@birch.djwong.org>
+References: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
+ <141922.1483225153@turing-police.cc.vt.edu>
+ <10c6fa5d-a7bb-a87c-11ad-8d30230a6075@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-To: Eric Biggers <ebiggers3@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jaegeuk@kernel.org, hch@infradead.org, arnd@arndb.de,
-        dedekind1@gmail.com, linux-mtd@lists.infradead.org,
-        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
-        ebiggers@google.com, rdunlap@infradead.org, david@sigma-star.at
+Content-Type: text/plain; charset=us-ascii
+Cc: Valdis.Kletnieks@vt.edu, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca
+To: "zhangyi (F)" <yi.zhang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from b.ns.miles-group.at ([95.130.255.144]:44724 "EHLO radon.swed.at"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S965477AbdADWwX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 4 Jan 2017 17:52:23 -0500
-In-Reply-To: <20170104201043.GA21696@gmail.com>
+Received: from aserp1050.oracle.com ([141.146.126.70]:40971 "EHLO
+        aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1032093AbdADW6n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2017 17:58:43 -0500
+Content-Disposition: inline
+In-Reply-To: <10c6fa5d-a7bb-a87c-11ad-8d30230a6075@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Am 04.01.2017 um 21:10 schrieb Eric Biggers:
-> On Tue, Jan 03, 2017 at 09:28:36AM -0500, Theodore Ts'o wrote:
->> On Tue, Jan 03, 2017 at 10:49:26AM +0100, Richard Weinberger wrote:
->>> Ted,
->>>
->>> Am 01.01.2017 um 22:47 schrieb Theodore Ts'o:
->>>> On Mon, Dec 19, 2016 at 12:25:32PM +0100, Richard Weinberger wrote:
->>>>> That way we can get rid of the direct dependency on CONFIG_BLOCK.
->>>>>
->>>>> Reported-by: Arnd Bergmann <arnd@arndb.de>
->>>>> Reported-by: Randy Dunlap <rdunlap@infradead.org>
->>>>> Suggested-by: Christoph Hellwig <hch@infradead.org>
->>>>> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
->>>>> Signed-off-by: Richard Weinberger <richard@nod.at>
->>>>
->>>> Applied, thanks.
->>>
->>> Just to make sure, this fixes a build error and should
->>> go into Linus' tree ASAP.
->>
->> I didn't consider this a build error since it could be fixed via a
->> config change.  And it is a pretty big patch, even if it is mostly
->> moving (not that git recognized it as such)...
->>
+On Wed, Jan 04, 2017 at 04:29:33PM +0800, zhangyi (F) wrote:
+> On 2017/1/1 6:59, Valdis.Kletnieks@vt.edu said:
+> > On Mon, 26 Dec 2016 20:34:17 +0800, yi zhang said:
+> >> Because of the disk and hardware issue, the ext4 filesystem have
+> >> many errors, the inode->i_nlink of ext4 becomes zero abnormally
+> >> but the dentry is still positive, it will cause memory corruption
+> >> after the following process:
+> >>
+> >>  1) Due to the inode->i_nlink is 0, this inode will be added into
+> >> the orhpan list,
+> > 
+> >> +	if (WARN(inode->i_nlink == 0, "inode %lu nlink"
+> >> +		" is already 0", inode->i_ino))
+> > 
+> > Can we get the filesystem? Or at least the device major/minor? If a system
+> > has multiple large ext4 filesystems, it would be helpful to know which
+> > one is having the problem.
+> > 
 > 
-> I thought you're supposed to be able to build the kernel no matter how it's
-> configured.  If this patch is really too large for 4.10 then perhaps we should
-> make FS_ENCRYPTION select CONFIG_BLOCK instead?
+>         if (WARN(inode->i_nlink == 0,
+> -               "inode %lu nlink is already 0", inode->i_ino))
+> +               "inode %lu nlink is already 0, dev=%u:%u",
+> +               inode->i_ino, MAJOR(inode->i_sb->s_dev), MINOR(inode->i_sb->s_dev)))
+>                 return;
+> 
+> We can modify as above, it's enough to know which filesystem is having the
+> problem, what do you think?
 
-My initial plan was a config fix but hch asked to fix the root cause right now.
-https://lkml.org/lkml/2016/12/16/118
+Why not:
 
-Thanks,
-//richard
+if (inode->i_nlink == 0) {
+	ext4_warning_inode(inode, "nlink is already 0");
+	return;
+}
+
+?
+
+--D
+
+> 
+> yi zhang
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
