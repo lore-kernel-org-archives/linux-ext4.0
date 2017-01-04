@@ -1,48 +1,36 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] ext4: increase the protection of drop nlink and ext4
- inode destroy
-Date: Wed, 4 Jan 2017 18:35:50 -0500
-Message-ID: <20170104233550.oy7nzc3rxppmejbk@thunk.org>
-References: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
- <141922.1483225153@turing-police.cc.vt.edu>
- <10c6fa5d-a7bb-a87c-11ad-8d30230a6075@huawei.com>
- <20170104215424.GB14021@birch.djwong.org>
+Subject: Re: [PATCH 3/3] ext4: Find desired extent in
+ ext4_ext_shift_extents() using binsearch
+Date: Wed, 4 Jan 2017 18:58:18 -0500
+Message-ID: <20170104235818.v3fwchrjnxnhuble@thunk.org>
+References: <20170102125450.22807-1-roman.penyaev@profitbricks.com>
+ <20170102125450.22807-4-roman.penyaev@profitbricks.com>
+ <20170103144041.t5lmorkdqqljnwvl@thunk.org>
+ <CAJrWOzAsAyhpBOSm=Ot=iffqwCV7w8jGXLFieTxY11VTo9rOpA@mail.gmail.com>
+ <20170103221510.dkrxqav7qrq772ji@thunk.org>
+ <CAJrWOzA467XZOpZmaGr6_z+nwNAxJZXYFmb4azS7Haag4dtWAQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "zhangyi (F)" <yi.zhang@huawei.com>, Valdis.Kletnieks@vt.edu,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41016 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S969710AbdADXf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 4 Jan 2017 18:35:59 -0500
+Cc: Namjae Jeon <namjae.jeon@samsung.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Roman Penyaev <roman.penyaev@profitbricks.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170104215424.GB14021@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAJrWOzA467XZOpZmaGr6_z+nwNAxJZXYFmb4azS7Haag4dtWAQ@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 04, 2017 at 01:54:24PM -0800, Darrick J. Wong wrote:
-> 
-> if (inode->i_nlink == 0) {
-> 	ext4_warning_inode(inode, "nlink is already 0");
-> 	return;
-> }
+It looks like the original (before your patch) 1k failures due to a
+bug introduced via the block.git tree, which has since been fixed in
+Linus's mainline tree as of today.  It wouldn't surprise me if the bug
+interacted poorly your changes, so things will probably better with
+your patches applied directly on top of the tip of Linus's tree.
 
-We can't do that because the place where Zhangyi is proposing to
-change is in fs/inode.c:drop_nlink(), so we can't add a call to
-ext4_error() or ext4_warning().
+That being said, it looks like there were still regressions introduced
+on the 4k configuration, so I'm in the middle of rerunning my baseline
+and trying out your patches as well.
 
-So how exactly how did we get into this state?  When we read the inode
-into memory, if i_nlink is zero, we declare the file system as
-corrupted immediately.
+Cheers,
 
-So I assume this is happening the on-disk i_links_count (which is read
-into inode->i_nlink) was too low.  So I think the way we should be
-handling this is in unlink and rename, before we let i_nlink drop to
-zero, we need to check to see if there are other dcache entries
-pointing at the inode.  If so, we need to call ext4_error(), and in
-the errors=continue case, return EFSCORRUPTED (aka EUCLEAN).
-
-    		    	  	 	      - Ted
+					- Ted
