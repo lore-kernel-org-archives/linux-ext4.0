@@ -1,56 +1,75 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
-Date: Wed, 4 Jan 2017 12:10:43 -0800
-Message-ID: <20170104201043.GA21696@gmail.com>
-References: <20161219103929.GA16197@infradead.org>
- <20161219112532.18863-1-richard@nod.at>
- <20170101214725.g67msbedmpx27waz@thunk.org>
- <dd8b8365-e84a-7f8e-384d-4900523e761e@nod.at>
- <20170103142836.no7rp3hphj3czjto@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>, Richard Weinberger <richard@nod.at>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jaegeuk@kernel.org, hch@infradead.org, arnd@arndb.de,
-        dedekind1@gmail.com, linux-mtd@lists.infradead.org,
-        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
-        ebiggers@google.com, rdunlap@infradead.org, david@sigma-star.at
+From: Liu Bo <bo.li.liu@oracle.com>
+Subject: [PATCH] Ext4: cleanup fsxattr related stuff
+Date: Wed,  4 Jan 2017 13:43:45 -0800
+Message-ID: <1483566225-25115-1-git-send-email-bo.li.liu@oracle.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:35491 "EHLO
-        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1757339AbdADULY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2017 15:11:24 -0500
-Content-Disposition: inline
-In-Reply-To: <20170103142836.no7rp3hphj3czjto@thunk.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:26026 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935214AbdADVgL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Jan 2017 16:36:11 -0500
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id v04LaApi020805
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-ext4@vger.kernel.org>; Wed, 4 Jan 2017 21:36:10 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id v04LaAdM008639
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-ext4@vger.kernel.org>; Wed, 4 Jan 2017 21:36:10 GMT
+Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id v04La9aJ026991
+        for <linux-ext4@vger.kernel.org>; Wed, 4 Jan 2017 21:36:10 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 03, 2017 at 09:28:36AM -0500, Theodore Ts'o wrote:
-> On Tue, Jan 03, 2017 at 10:49:26AM +0100, Richard Weinberger wrote:
-> > Ted,
-> > 
-> > Am 01.01.2017 um 22:47 schrieb Theodore Ts'o:
-> > > On Mon, Dec 19, 2016 at 12:25:32PM +0100, Richard Weinberger wrote:
-> > >> That way we can get rid of the direct dependency on CONFIG_BLOCK.
-> > >>
-> > >> Reported-by: Arnd Bergmann <arnd@arndb.de>
-> > >> Reported-by: Randy Dunlap <rdunlap@infradead.org>
-> > >> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> > >> Fixes: d475a507457b ("ubifs: Add skeleton for fscrypto")
-> > >> Signed-off-by: Richard Weinberger <richard@nod.at>
-> > > 
-> > > Applied, thanks.
-> > 
-> > Just to make sure, this fixes a build error and should
-> > go into Linus' tree ASAP.
-> 
-> I didn't consider this a build error since it could be fixed via a
-> config change.  And it is a pretty big patch, even if it is mostly
-> moving (not that git recognized it as such)...
-> 
+These definitions have made themselves into include/uapi/linux/fs.h.
 
-I thought you're supposed to be able to build the kernel no matter how it's
-configured.  If this patch is really too large for 4.10 then perhaps we should
-make FS_ENCRYPTION select CONFIG_BLOCK instead?
+Signed-off-by: Liu Bo <bo.li.liu@oracle.com>
+---
+ fs/ext4/ext4.h | 37 -------------------------------------
+ 1 file changed, 37 deletions(-)
 
-Eric
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2163c1e..11f59a0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -639,43 +639,6 @@ enum {
+ #define EXT4_IOC_GET_ENCRYPTION_PWSALT	FS_IOC_GET_ENCRYPTION_PWSALT
+ #define EXT4_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
+ 
+-#ifndef FS_IOC_FSGETXATTR
+-/* Until the uapi changes get merged for project quota... */
+-
+-#define FS_IOC_FSGETXATTR		_IOR('X', 31, struct fsxattr)
+-#define FS_IOC_FSSETXATTR		_IOW('X', 32, struct fsxattr)
+-
+-/*
+- * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
+- */
+-struct fsxattr {
+-	__u32		fsx_xflags;	/* xflags field value (get/set) */
+-	__u32		fsx_extsize;	/* extsize field value (get/set)*/
+-	__u32		fsx_nextents;	/* nextents field value (get)	*/
+-	__u32		fsx_projid;	/* project identifier (get/set) */
+-	unsigned char	fsx_pad[12];
+-};
+-
+-/*
+- * Flags for the fsx_xflags field
+- */
+-#define FS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
+-#define FS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
+-#define FS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
+-#define FS_XFLAG_APPEND		0x00000010	/* all writes append */
+-#define FS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
+-#define FS_XFLAG_NOATIME	0x00000040	/* do not update access time */
+-#define FS_XFLAG_NODUMP		0x00000080	/* do not include in backups */
+-#define FS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
+-#define FS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
+-#define FS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
+-#define FS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
+-#define FS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
+-#define FS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
+-#define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
+-#define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this */
+-#endif /* !defined(FS_IOC_FSGETXATTR) */
