@@ -1,80 +1,88 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [RFC PATCH] ext4: increase the protection of drop nlink and ext4
- inode destroy
-Date: Thu, 5 Jan 2017 09:38:38 -0800
-Message-ID: <20170105173838.GC14021@birch.djwong.org>
-References: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
- <141922.1483225153@turing-police.cc.vt.edu>
- <10c6fa5d-a7bb-a87c-11ad-8d30230a6075@huawei.com>
- <20170104215424.GB14021@birch.djwong.org>
- <20170104233550.oy7nzc3rxppmejbk@thunk.org>
- <5505c121-8038-1b72-423a-42f36257e959@huawei.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: don't allow encrypted operations without keys
+Date: Thu, 5 Jan 2017 11:26:19 -0800
+Message-ID: <20170105192619.GF21696@gmail.com>
+References: <20161228034812.ikoat5x3e7ucnac7@thunk.org>
+ <20161228052252.10314-1-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Valdis.Kletnieks@vt.edu,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca
-To: "zhangyi (F)" <yi.zhang@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Filesystem Development List
+        <linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org,
+        richard@nod.at, ebiggers@google.com
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5505c121-8038-1b72-423a-42f36257e959@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20161228052252.10314-1-tytso@mit.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 05, 2017 at 03:24:14PM +0800, zhangyi (F) wrote:
+Hi Ted,
+
+On Wed, Dec 28, 2016 at 12:22:52AM -0500, Theodore Ts'o wrote:
+> While we allow deletes without the key, the following should not be
+> permitted:
 > 
-> On 2017/1/5 7:35, Theodore Ts'o wrote:
-> > 
-> > So how exactly how did we get into this state?  When we read the inode
-> > into memory, if i_nlink is zero, we declare the file system as
-> > corrupted immediately.
-> > 
-> > So I assume this is happening the on-disk i_links_count (which is read
-> > into inode->i_nlink) was too low.  So I think the way we should be
-> > handling this is in unlink and rename, before we let i_nlink drop to
-
-D'oh, /me failed to notice the patch was against fs/inode.c, not
-fs/ext4/inode.c.  Sorry for the noise.
-
-> > zero, we need to check to see if there are other dcache entries
-> > pointing at the inode.  If so, we need to call ext4_error(), and in
-> > the errors=continue case, return EFSCORRUPTED (aka EUCLEAN).
-> > 
+> # cd /vdc/encrypted-dir-without-key
+> # ls -l
+> total 4
+> -rw-r--r-- 1 root root   0 Dec 27 22:35 6,LKNRJsp209FbXoSvJWzB
+> -rw-r--r-- 1 root root 286 Dec 27 22:35 uRJ5vJh9gE7vcomYMqTAyD
+> # mv uRJ5vJh9gE7vcomYMqTAyD  6,LKNRJsp209FbXoSvJWzB
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/namei.c | 12 ++++++++++++
+>  1 file changed, 12 insertions(+)
 > 
 > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index eadba919f26b..45a5ba558074 100644
 > --- a/fs/ext4/namei.c
 > +++ b/fs/ext4/namei.c
-> @@ -3662,6 +3662,11 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
->         }
-> 
->         if (new.inode) {
-> +               if (new.inode->i_nlink == 0) {
-> +                       ext4_warning_inode(new.inode, "Removing file '%.*s' with no links",
-> +                                      new.dentry->d_name.len, new.dentry->d_name.name);
-> +                       set_nlink(new.inode, 1);
+> @@ -3525,6 +3525,12 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  			EXT4_I(old_dentry->d_inode)->i_projid)))
+>  		return -EXDEV;
+>  
+> +	if ((ext4_encrypted_inode(old_dir) &&
+> +	     !fscrypt_has_encryption_key(old_dir)) ||
+> +	    (ext4_encrypted_inode(new_dir) &&
+> +	     !fscrypt_has_encryption_key(new_dir)))
+> +		return -ENOKEY;
+> +
+>  	retval = dquot_initialize(old.dir);
+>  	if (retval)
+>  		return retval;
+> @@ -3725,6 +3731,12 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	int retval;
+>  	struct timespec ctime;
+>  
+> +	if ((ext4_encrypted_inode(old_dir) &&
+> +	     !fscrypt_has_encryption_key(old_dir)) ||
+> +	    (ext4_encrypted_inode(new_dir) &&
+> +	     !fscrypt_has_encryption_key(new_dir)))
+> +		return -ENOKEY;
+> +
+>  	if ((ext4_encrypted_inode(old_dir) ||
+>  	     ext4_encrypted_inode(new_dir)) &&
+>  	    (old_dir != new_dir) &&
 
-Not sure we need to dump the dentry d_name, but I guess it can't hurt.
+I'm fine with this, with the understanding that it relies on ext4_lookup()
+calling fscrypt_get_encryption_info() (via fscrypt_has_permitted_context()) when
+looking up the directory.  I also suggest moving the fscrypt_permitted_context()
+check in ext4_rename() up to be next to the new check, so that the fscrypt hooks
+are grouped together and are consistent with ext4_cross_rename().
 
-> +               }
->                 ext4_dec_count(handle, new.inode);
->                 new.inode->i_ctime = ext4_current_time(new.inode);
->         }
-> 
-> Because the filesystem have many errors, and the reason of i_nlink becomes
-> zero is unknown, the on-disk i_links_count was too low may be one reason.  I
-> think we can add i_nlink check in ext4_rename just like ext4_unlink did, it
-> can avoid inversion under any case.
+I can also write/update an xfstest to test this.
 
-Er... yes, you could add the same hunk to ext4_unlink.
+Something I'm thinking about is making things easier for filesystems by having
+functions like "fscrypt_rename_hook()" which would handle all these needed
+checks.  It would be easy to do with out-of-line functions in fs/crypto/, but we
+don't want to be making ->is_encrypted() calls through the fscrypt_operations
+all the time, when an inlined call to ext4_encrypted_inode() (or f2fs or
+ubifs_encrypted_inode()) is much faster.  I think it could be implemented as
+efficiently as now if the hooks were defined in a header and called a macro like
+"fs_encrypted_inode()" which filesystems would have to #define first.  It would
+be a little ugly, but at least it would be less error-prone than having multiple
+filesystems replicate these increasingly complex checks.
 
---D
-
-> 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Eric
