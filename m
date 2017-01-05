@@ -1,40 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: don't allow encrypted operations without keys
-Date: Thu, 5 Jan 2017 15:15:54 -0500
-Message-ID: <20170105201554.zolkpxdr27jdw25v@thunk.org>
-References: <20161228034812.ikoat5x3e7ucnac7@thunk.org>
- <20161228052252.10314-1-tytso@mit.edu>
- <20170105192619.GF21696@gmail.com>
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Linux Foundation's open source file & storage conference
+	CFP
+Date: Thu, 5 Jan 2017 17:30:06 -0500
+Message-ID: <6e0276dd-7388-c6bf-ed6e-02649bd4f464@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Filesystem Development List
-        <linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org,
-        richard@nod.at, ebiggers@google.com
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170105192619.GF21696@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Transfer-Encoding: 7bit
+To: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        dm-devel@redhat.com, linux-scsi@vger.kernel.org,
+        samba-devel@redhat.com, linux-raid@vger.kernel.org
+Return-path: <dm-devel-bounces@redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 05, 2017 at 11:26:19AM -0800, Eric Biggers wrote:
-> Something I'm thinking about is making things easier for filesystems by having
-> functions like "fscrypt_rename_hook()" which would handle all these needed
-> checks.  It would be easy to do with out-of-line functions in fs/crypto/, but we
-> don't want to be making ->is_encrypted() calls through the fscrypt_operations
-> all the time, when an inlined call to ext4_encrypted_inode() (or f2fs or
-> ubifs_encrypted_inode()) is much faster.  I think it could be implemented as
-> efficiently as now if the hooks were defined in a header and called a macro like
-> "fs_encrypted_inode()" which filesystems would have to #define first.  It would
-> be a little ugly, but at least it would be less error-prone than having multiple
-> filesystems replicate these increasingly complex checks.
+Hi all,
 
-We could make things a lot simpler and a lot more efficient by adding
-make flags at the VFS level in struct super and struct inode meaning
-"file systems has fscrypt enabled", and "the inode is encrypted using
-fscrypt".  That way, we wouldn't need to go through through
-fscrypt_operations to do these tests.  We could just set the flags
-appropriately when the struct inode or struct super is instantiated.
+The CFP for the Linux Foundation's Vault conference is coming close to an end. 
+The event is being held this year in Cambridge, Massachusetts on the days 
+following the LSF/MM summit.
 
-   	      	    	    		       	  - Ted
+The first two year's events have been solid, focused events in my (slightly 
+biased) opinion, so worth submitting to and definitely worth attending.
+
+Submit a Proposal to Speak at Vault, Linux Storage and Filesystems Conference. 
+Vault will be held alongside LSF-MM Summit on March 22 & 23 in Cambridge, MA. To 
+submit (by 1/14) visit http://events.linuxfoundation.org/events/vault/program/cfp
+
+Happy to answer any questions about the event.
+
+Ric
