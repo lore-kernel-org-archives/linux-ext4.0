@@ -1,110 +1,217 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH] mm: introduce kv[mz]alloc helpers
-Date: Fri, 6 Jan 2017 16:10:35 +0100
-Message-ID: <20170106151034.GR5556@dhcp22.suse.cz>
-References: <20170102133700.1734-1-mhocko@kernel.org>
- <20170104142022.GL25453@dhcp22.suse.cz>
- <6ab0f90a-4ead-d7a2-74e3-200c49b7d2b3@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        David Rientjes <rientjes@google.com>,
-        Mel Gorman <mgorman@suse.de>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-mm@kvack.org,
-        LKML <linux-kernel@vger.kernel.org>, kvm@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Joe Perches <joe@perches.com>,
-        Anatoly Stepanov <astepanov@cloudlinux.com>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Mike Snitzer <snitzer@redhat.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>
-To: Vlastimil Babka <vbabka@suse.cz>
-Return-path: <kvm-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <6ab0f90a-4ead-d7a2-74e3-200c49b7d2b3@suse.cz>
-Sender: kvm-owner@vger.kernel.org
+From: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Subject: [PATCH] ext4: move halfmd4 into hash.c directly
+Date: Fri,  6 Jan 2017 19:29:01 +0100
+Message-ID: <20170106182901.4412-1-Jason@zx2c4.com>
+Cc: "Jason A. Donenfeld" <Jason@zx2c4.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 06-01-17 15:36:04, Vlastimil Babka wrote:
-> On 01/04/2017 03:20 PM, Michal Hocko wrote:
-> > diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
-> > index 2ff499680cc6..0a5cc1237afe 100644
-> > --- a/net/netfilter/x_tables.c
-> > +++ b/net/netfilter/x_tables.c
-> > @@ -712,17 +712,8 @@ EXPORT_SYMBOL(xt_check_entry_offsets);
-> >   */
-> >  unsigned int *xt_alloc_entry_offsets(unsigned int size)
-> >  {
-> > -	unsigned int *off;
-> > +	return kvmalloc(size * sizeof(unsigned int), GFP_KERNEL);;
-> >  
-> > -	off = kcalloc(size, sizeof(unsigned int), GFP_KERNEL | __GFP_NOWARN);
-> > -
-> > -	if (off)
-> > -		return off;
-> > -
-> > -	if (size < (SIZE_MAX / sizeof(unsigned int)))
-> > -		off = vmalloc(size * sizeof(unsigned int));
-> > -
-> > -	return off;
-> 
-> This one seems to have tried hard to avoid the multiplication overflow
-> by using kcalloc() and doing the size check before vmalloc(), so I
-> wonder if it's safe to just remove the checks completely?
+The "half md4" transform should not be used by any new code. And
+fortunately, it's only used now by ext4. Since ext4 supports several
+hashing methods, at some point it might be desirable to move to
+something like SipHash. As an intermediate step, remove half md4 from
+cryptohash.h and lib, and make it just a local function in ext4's
+hash.c. There's precedent for doing this; the other function ext can use
+for its hashes -- TEA -- is also implemented in the same place. Also, by
+being a local function, this might allow gcc to perform some additional
+optimizations.
 
-Tetsuo has already pointed that out and it is fixed in my loacal
-version.
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/hash.c             | 69 +++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/cryptohash.h |  2 --
+ lib/Makefile               |  2 +-
+ lib/halfmd4.c              | 67 --------------------------------------------
+ 4 files changed, 69 insertions(+), 71 deletions(-)
+ delete mode 100644 lib/halfmd4.c
+
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index e026aa941fd5..4d743d8f72fd 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -10,7 +10,8 @@
+  */
  
-> >  }
-> >  EXPORT_SYMBOL(xt_alloc_entry_offsets);
-> >  
-> > diff --git a/net/sched/sch_fq.c b/net/sched/sch_fq.c
-> > index 86309a3156a5..5678eff40f61 100644
-> > --- a/net/sched/sch_fq.c
-> > +++ b/net/sched/sch_fq.c
-> > @@ -624,16 +624,6 @@ static void fq_rehash(struct fq_sched_data *q,
-> >  	q->stat_gc_flows += fcnt;
-> >  }
-> >  
-> > -static void *fq_alloc_node(size_t sz, int node)
-> > -{
-> > -	void *ptr;
-> > -
-> > -	ptr = kmalloc_node(sz, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, node);
-> 
-> Another patch 3 material?
-
-I will just drop this part for now. c3bd85495aef6 doesn't say a word about why
-it needs __GFP_REPEAT. I will ask Eric.
+ #include <linux/fs.h>
+-#include <linux/cryptohash.h>
++#include <linux/compiler.h>
++#include <linux/bitops.h>
+ #include "ext4.h"
  
-> > -	if (!ptr)
-> > -		ptr = vmalloc_node(sz, node);
-> > -	return ptr;
-> > -}
-> > -
-> >  static void fq_free(void *addr)
-> >  {
-> >  	kvfree(addr);
-> > @@ -650,7 +640,7 @@ static int fq_resize(struct Qdisc *sch, u32 log)
-> >  		return 0;
-> >  
-> >  	/* If XPS was setup, we can allocate memory on right NUMA node */
-> > -	array = fq_alloc_node(sizeof(struct rb_root) << log,
-> > +	array = kvmalloc_node(sizeof(struct rb_root) << log, GFP_KERNEL,
-> >  			      netdev_queue_numa_node_read(sch->dev_queue));
-> >  	if (!array)
-> >  		return -ENOMEM;
-> 
-> With that fixed,
-> 
-> Acked-by: Vlastimil Babka <vbabka@suse.cz>
-
-Thanks!
-
+ #define DELTA 0x9E3779B9
+@@ -32,6 +33,72 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 	buf[1] += b1;
+ }
+ 
++/* F, G and H are basic MD4 functions: selection, majority, parity */
++#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
++#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
++#define H(x, y, z) ((x) ^ (y) ^ (z))
++/*
++ * The generic round function.  The application is so specific that
++ * we don't bother protecting all the arguments with parens, as is generally
++ * good macro practice, in favor of extra legibility.
++ * Rotation is separate from addition to prevent recomputation
++ */
++#define ROUND(f, a, b, c, d, x, s)	\
++	(a += f(b, c, d) + x, a = rol32(a, s))
++#define K1 0
++#define K2 013240474631UL
++#define K3 015666365641UL
++/*
++ * Basic cut-down MD4 transform.  Returns only 32 bits of result.
++ */
++static __u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
++{
++	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
++
++	/* Round 1 */
++	ROUND(F, a, b, c, d, in[0] + K1,  3);
++	ROUND(F, d, a, b, c, in[1] + K1,  7);
++	ROUND(F, c, d, a, b, in[2] + K1, 11);
++	ROUND(F, b, c, d, a, in[3] + K1, 19);
++	ROUND(F, a, b, c, d, in[4] + K1,  3);
++	ROUND(F, d, a, b, c, in[5] + K1,  7);
++	ROUND(F, c, d, a, b, in[6] + K1, 11);
++	ROUND(F, b, c, d, a, in[7] + K1, 19);
++
++	/* Round 2 */
++	ROUND(G, a, b, c, d, in[1] + K2,  3);
++	ROUND(G, d, a, b, c, in[3] + K2,  5);
++	ROUND(G, c, d, a, b, in[5] + K2,  9);
++	ROUND(G, b, c, d, a, in[7] + K2, 13);
++	ROUND(G, a, b, c, d, in[0] + K2,  3);
++	ROUND(G, d, a, b, c, in[2] + K2,  5);
++	ROUND(G, c, d, a, b, in[4] + K2,  9);
++	ROUND(G, b, c, d, a, in[6] + K2, 13);
++
++	/* Round 3 */
++	ROUND(H, a, b, c, d, in[3] + K3,  3);
++	ROUND(H, d, a, b, c, in[7] + K3,  9);
++	ROUND(H, c, d, a, b, in[2] + K3, 11);
++	ROUND(H, b, c, d, a, in[6] + K3, 15);
++	ROUND(H, a, b, c, d, in[1] + K3,  3);
++	ROUND(H, d, a, b, c, in[5] + K3,  9);
++	ROUND(H, c, d, a, b, in[0] + K3, 11);
++	ROUND(H, b, c, d, a, in[4] + K3, 15);
++
++	buf[0] += a;
++	buf[1] += b;
++	buf[2] += c;
++	buf[3] += d;
++
++	return buf[1]; /* "most hashed" word */
++}
++#undef ROUND
++#undef K1
++#undef K2
++#undef K3
++#undef F
++#undef G
++#undef H
+ 
+ /* The old legacy hash */
+ static __u32 dx_hack_hash_unsigned(const char *name, int len)
+diff --git a/include/linux/cryptohash.h b/include/linux/cryptohash.h
+index f4754282c9c2..3252799832cf 100644
+--- a/include/linux/cryptohash.h
++++ b/include/linux/cryptohash.h
+@@ -15,6 +15,4 @@ void sha_transform(__u32 *digest, const char *data, __u32 *W);
+ 
+ void md5_transform(__u32 *hash, __u32 const *in);
+ 
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8]);
+-
+ #endif
+diff --git a/lib/Makefile b/lib/Makefile
+index bc4073a8cd08..19ea76149a37 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -31,7 +31,7 @@ lib-$(CONFIG_HAS_DMA) += dma-noop.o
+ lib-y	+= kobject.o klist.o
+ obj-y	+= lockref.o
+ 
+-obj-y += bcd.o div64.o sort.o parser.o halfmd4.o debug_locks.o random32.o \
++obj-y += bcd.o div64.o sort.o parser.o debug_locks.o random32.o \
+ 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
+ 	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iov_iter.o clz_ctz.o \
+ 	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
+diff --git a/lib/halfmd4.c b/lib/halfmd4.c
+deleted file mode 100644
+index 137e861d9690..000000000000
+--- a/lib/halfmd4.c
++++ /dev/null
+@@ -1,67 +0,0 @@
+-#include <linux/compiler.h>
+-#include <linux/export.h>
+-#include <linux/cryptohash.h>
+-#include <linux/bitops.h>
+-
+-/* F, G and H are basic MD4 functions: selection, majority, parity */
+-#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
+-#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
+-#define H(x, y, z) ((x) ^ (y) ^ (z))
+-
+-/*
+- * The generic round function.  The application is so specific that
+- * we don't bother protecting all the arguments with parens, as is generally
+- * good macro practice, in favor of extra legibility.
+- * Rotation is separate from addition to prevent recomputation
+- */
+-#define ROUND(f, a, b, c, d, x, s)	\
+-	(a += f(b, c, d) + x, a = rol32(a, s))
+-#define K1 0
+-#define K2 013240474631UL
+-#define K3 015666365641UL
+-
+-/*
+- * Basic cut-down MD4 transform.  Returns only 32 bits of result.
+- */
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
+-{
+-	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
+-
+-	/* Round 1 */
+-	ROUND(F, a, b, c, d, in[0] + K1,  3);
+-	ROUND(F, d, a, b, c, in[1] + K1,  7);
+-	ROUND(F, c, d, a, b, in[2] + K1, 11);
+-	ROUND(F, b, c, d, a, in[3] + K1, 19);
+-	ROUND(F, a, b, c, d, in[4] + K1,  3);
+-	ROUND(F, d, a, b, c, in[5] + K1,  7);
+-	ROUND(F, c, d, a, b, in[6] + K1, 11);
+-	ROUND(F, b, c, d, a, in[7] + K1, 19);
+-
+-	/* Round 2 */
+-	ROUND(G, a, b, c, d, in[1] + K2,  3);
+-	ROUND(G, d, a, b, c, in[3] + K2,  5);
+-	ROUND(G, c, d, a, b, in[5] + K2,  9);
+-	ROUND(G, b, c, d, a, in[7] + K2, 13);
+-	ROUND(G, a, b, c, d, in[0] + K2,  3);
+-	ROUND(G, d, a, b, c, in[2] + K2,  5);
+-	ROUND(G, c, d, a, b, in[4] + K2,  9);
+-	ROUND(G, b, c, d, a, in[6] + K2, 13);
+-
+-	/* Round 3 */
+-	ROUND(H, a, b, c, d, in[3] + K3,  3);
+-	ROUND(H, d, a, b, c, in[7] + K3,  9);
+-	ROUND(H, c, d, a, b, in[2] + K3, 11);
+-	ROUND(H, b, c, d, a, in[6] + K3, 15);
+-	ROUND(H, a, b, c, d, in[1] + K3,  3);
+-	ROUND(H, d, a, b, c, in[5] + K3,  9);
+-	ROUND(H, c, d, a, b, in[0] + K3, 11);
+-	ROUND(H, b, c, d, a, in[4] + K3, 15);
+-
+-	buf[0] += a;
+-	buf[1] += b;
+-	buf[2] += c;
+-	buf[3] += d;
+-
+-	return buf[1]; /* "most hashed" word */
+-}
+-EXPORT_SYMBOL(half_md4_transform);
 -- 
-Michal Hocko
-SUSE Labs
+2.11.0
