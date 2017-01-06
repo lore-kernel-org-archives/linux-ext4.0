@@ -1,77 +1,149 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [BUG v4.10-rc1] fzero returns EIO on DAX mount
-Date: Fri, 6 Jan 2017 18:32:39 +0800
-Message-ID: <20170106103239.GY1859@eguan.usersys.redhat.com>
+From: Vlastimil Babka <vbabka@suse.cz>
+Subject: Re: [PATCH] mm: support __GFP_REPEAT in kvmalloc_node
+Date: Fri, 6 Jan 2017 13:09:36 +0100
+Message-ID: <49b2c2de-5d50-1f61-5ddf-e72c52017534@suse.cz>
+References: <20170102133700.1734-1-mhocko@kernel.org>
+ <20170104181229.GB10183@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: chaitanya.kulkarni@hgst.com, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: linux-block@vger.kernel.org
-Return-path: <linux-block-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-block-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: David Rientjes <rientjes@google.com>, Mel Gorman <mgorman@suse.de>,
+ Johannes Weiner <hannes@cmpxchg.org>, Al Viro <viro@zeniv.linux.org.uk>,
+ linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>,
+ kvm@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org,
+ Joe Perches <joe@perches.com>, Anatoly Stepanov <astepanov@cloudlinux.com>,
+ Paolo Bonzini <pbonzini@redhat.com>, Mike Snitzer <snitzer@redhat.com>,
+ "Michael S. Tsirkin" <mst@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger@dilger.ca>
+To: Michal Hocko <mhocko@kernel.org>,
+ Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170104181229.GB10183@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+On 01/04/2017 07:12 PM, Michal Hocko wrote:
+> While checking opencoded users I've encountered that vhost code would
+> really like to use kvmalloc with __GFP_REPEAT [1] so the following patch
+> adds support for __GFP_REPEAT and converts both vhost users.
+> 
+> So currently I am sitting on 3 patches. I will wait for more feedback -
+> especially about potential split ups or cleanups few more days and then
+> repost the whole series.
+> 
+> [1] http://lkml.kernel.org/r/20170104150800.GO25453@dhcp22.suse.cz
+> ---
+> From 0b92e4d2e040524b878d4e7b9ee88fbad5284b33 Mon Sep 17 00:00:00 2001
+> From: Michal Hocko <mhocko@suse.com>
+> Date: Wed, 4 Jan 2017 18:01:39 +0100
+> Subject: [PATCH] mm: support __GFP_REPEAT in kvmalloc_node
+> 
+> vhost code uses __GFP_REPEAT when allocating vhost_virtqueue resp.
+> vhost_vsock because it would really like to prefer kmalloc to the
+> vmalloc fallback - see 23cc5a991c7a ("vhost-net: extend device
+> allocation to vmalloc") for more context. Michael Tsirkin has also
+> noted:
+> "
+> __GFP_REPEAT overhead is during allocation time.  Using vmalloc means all
+> accesses are slowed down.  Allocation is not on data path, accesses are.
+> "
+> 
+> Let's teach kvmalloc_node to handle __GFP_REPEAT properly. There are two
+> things to be careful about. First we should prevent from the OOM killer
+> and so have to involve __GFP_NORETRY by default and secondly override
+> __GFP_REPEAT for !costly order requests as the __GFP_REPEAT is ignored
+> for !costly orders.
+> 
+> This patch shouldn't introduce any functional change.
 
-I hit a regression in my xfstests run on DAX mount with 4.10-rc1 and rc2
-kernel, some fzero/fpunch/ftruncate operations start returning EIO, extN
-and xfs are all affected. 4.9 kernel is doing well.
+Which is because the converted usages are always used for costly order,
+right.
 
-This is a simple reproducer:
+> 
+> Cc: "Michael S. Tsirkin" <mst@redhat.com>
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> ---
+>  drivers/vhost/net.c   | 9 +++------
+>  drivers/vhost/vsock.c | 9 +++------
+>  mm/util.c             | 9 +++++++--
+>  3 files changed, 13 insertions(+), 14 deletions(-)
+> 
+> diff --git a/drivers/vhost/net.c b/drivers/vhost/net.c
+> index 5dc34653274a..105cd04c7414 100644
+> --- a/drivers/vhost/net.c
+> +++ b/drivers/vhost/net.c
+> @@ -797,12 +797,9 @@ static int vhost_net_open(struct inode *inode, struct file *f)
+>  	struct vhost_virtqueue **vqs;
+>  	int i;
+>  
+> -	n = kmalloc(sizeof *n, GFP_KERNEL | __GFP_NOWARN | __GFP_REPEAT);
+> -	if (!n) {
+> -		n = vmalloc(sizeof *n);
+> -		if (!n)
+> -			return -ENOMEM;
+> -	}
+> +	n = kvmalloc(sizeof *n, GFP_KERNEL | __GFP_REPEAT);
+> +	if (!n)
+> +		return -ENOMEM;
+>  	vqs = kmalloc(VHOST_NET_VQ_MAX * sizeof(*vqs), GFP_KERNEL);
+>  	if (!vqs) {
+>  		kvfree(n);
+> diff --git a/drivers/vhost/vsock.c b/drivers/vhost/vsock.c
+> index bbbf588540ed..7e0159867553 100644
+> --- a/drivers/vhost/vsock.c
+> +++ b/drivers/vhost/vsock.c
+> @@ -455,12 +455,9 @@ static int vhost_vsock_dev_open(struct inode *inode, struct file *file)
+>  	/* This struct is large and allocation could fail, fall back to vmalloc
+>  	 * if there is no other way.
+>  	 */
+> -	vsock = kzalloc(sizeof(*vsock), GFP_KERNEL | __GFP_NOWARN | __GFP_REPEAT);
+> -	if (!vsock) {
+> -		vsock = vmalloc(sizeof(*vsock));
+> -		if (!vsock)
+> -			return -ENOMEM;
+> -	}
+> +	vsock = kvmalloc(sizeof(*vsock), GFP_KERNEL | __GFP_REPEAT);
+> +	if (!vsock)
+> +		return -ENOMEM;
+>  
+>  	vqs = kmalloc_array(ARRAY_SIZE(vsock->vqs), sizeof(*vqs), GFP_KERNEL);
+>  	if (!vqs) {
+> diff --git a/mm/util.c b/mm/util.c
+> index 8e4ea6cbe379..a2bfb85e60e5 100644
+> --- a/mm/util.c
+> +++ b/mm/util.c
+> @@ -348,8 +348,13 @@ void *kvmalloc_node(size_t size, gfp_t flags, int node)
+>  	 * Make sure that larger requests are not too disruptive - no OOM
+>  	 * killer and no allocation failure warnings as we have a fallback
+>  	 */
+> -	if (size > PAGE_SIZE)
+> -		kmalloc_flags |= __GFP_NORETRY | __GFP_NOWARN;
+> +	if (size > PAGE_SIZE) {
+> +		kmalloc_flags |= __GFP_NOWARN;
+> +
+> +		if (!(kmalloc_flags & __GFP_REPEAT) ||
+> +				(size <= PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER))
+> +			kmalloc_flags |= __GFP_NORETRY;
 
-	modprobe brd rd_size=$((1024*1024))
-	mkfs -t ext4 -F /dev/ram0
-	mount -o dax /dev/ram0 /mnt/ext4
-	xfs_io -fc "pwrite 0 1024" -c "fzero 0 1024" /mnt/ext4/testfile
+I think this would be more understandable for me if it was written in
+the opposite way, i.e. "if we have costly __GFP_REPEAT allocation, don't
+use __GFP_NORETRY", but nevermind, seems correct to me wrt current
+handling of both flags in the page allocator. And it serves as a good
+argument to have this wrapper in mm/ as we are hopefully more likely to
+keep it working as intended with future changes, than all the opencoded
+variants.
 
-The last xfs_io returns:
-	wrote 1024/1024 bytes at offset 0
-	1 KiB, 1 ops; 0.0000 sec (17.013 KiB/sec and 17.0132 ops/sec)
-	fallocate: Input/output error
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
 
-And git bisect pointed the first bad commit to
+> +	}
+>  
+>  	ret = kmalloc_node(size, kmalloc_flags, node);
+>  
+> 
 
-e73c23ff736e1ea371dfa419d7bf8e77ee53044a
-Author: Chaitanya Kulkarni <chaitanya.kulkarni@hgst.com>
-Date:   Wed Nov 30 12:28:58 2016 -0800
-
-    block: add async variant of blkdev_issue_zeroout
-
-    Similar to __blkdev_issue_discard this variant allows submitting
-    the final bio asynchronously and chaining multiple ranges
-    into a single completion.
-
-    Signed-off-by: Chaitanya Kulkarni <chaitanya.kulkarni@hgst.com>
-    Reviewed-by: Christoph Hellwig <hch@lst.de>
-    Signed-off-by: Jens Axboe <axboe@fb.com>
-
-I've confirmed that "reverting" it fixed all the new test failures, by
-"reverting" I mean revert it when it's the top.
-
-A preliminary investigation shows that it's submit_bio_wait() in
-blkdev_issue_zeroout() where EIO is returned.
-
-block/blk-lib.c:blkdev_issue_zeroout
-        ret = __blkdev_issue_zeroout(bdev, sector, nr_sects, gfp_mask,                                                                                                                         
-                        &bio, discard);                                                                                                                                                        
-        if (ret == 0 && bio) {                                                                                                                                                                 
-                ret = submit_bio_wait(bio);                                                                                                                                                    
-                bio_put(bio);                                                                                                                                                                  
-        }
-
-Thanks,
-Eryu
-
-P.S. failed xfstests cases
-
-xfs:
-generic/008 generic/029 generic/030 generic/074 generic/075 generic/086
-generic/091 generic/112 generic/127 generic/135 generic/231 generic/263
-generic/392 xfs/071 xfs/190 xfs/229 xfs/290
-
-ext4:
-generic/008 generic/075 generic/091 generic/112 generic/127 generic/263
-
-ext2,ext3:
-generic/091 generic/127 generic/263
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
