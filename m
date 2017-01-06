@@ -1,7 +1,8 @@
 From: Michal Hocko <mhocko@kernel.org>
-Subject: [PATCH 0/8 v3] scope GFP_NOFS api
-Date: Fri,  6 Jan 2017 15:10:59 +0100
-Message-ID: <20170106141107.23953-1-mhocko@kernel.org>
+Subject: [PATCH 5/8] jbd2: mark the transaction context with the scope GFP_NOFS context
+Date: Fri,  6 Jan 2017 15:11:04 +0100
+Message-ID: <20170106141107.23953-6-mhocko@kernel.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
 	Dave Chinner <david@fromorbit.com>,
 	djwong@kernel.org,
@@ -22,71 +23,81 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 	linux-f2fs-devel@lists.sourceforge.net,
 	linux-afs@lists.infradead.org,
 	LKML <linux-kernel@vger.kernel.org>,
-	Brian Foster <bfoster@redhat.com>,
-	Michal Hocko <mhocko@suse.com>,
-	"Peter Zijlstra (Intel)" <peterz@infradead.org>
+	Michal Hocko <mhocko@suse.com>
 To: <linux-mm@kvack.org>,
 	<linux-fsdevel@vger.kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170106141107.23953-1-mhocko@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
-I have posted the previous version here [1]. Since then I've added some
-reviewed bys and fixed some minor issues. I've dropped patch 2 [2] based
-on Dave's request [3]. I agree that this can be done later and doing
-all at once. I still think that __GFP_NOLOCKDEP should be added by this
-series to make the further development easier.
+From: Michal Hocko <mhocko@suse.com>
 
-There didn't seem to be any real objections and so I think we should go
-and merge this and build further on top. I would like to get rid of all
-explicit GFP_NOFS usage in ext4 code. I have something half baked already
-and will send it later on. I also hope we can get further with the xfs
-as well.
+now that we have memalloc_nofs_{save,restore} api we can mark the whole
+transaction context as implicitly GFP_NOFS. All allocations will
+automatically inherit GFP_NOFS this way. This means that we do not have
+to mark any of those requests with GFP_NOFS and moreover all the
+ext4_kv[mz]alloc(GFP_NOFS) are also safe now because even the hardcoded
+GFP_KERNEL allocations deep inside the vmalloc will be NOFS now.
 
-I haven't heard anything from btrfs or other filesystems guys which is a
-bit unfortunate but I do not want to wait for them to much longer, they
-can join the effort later on.
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 11 +++++++++++
+ include/linux/jbd2.h  |  2 ++
+ 2 files changed, 13 insertions(+)
 
-The patchset is based on next-20170106
-
-Diffstat says
- fs/ext4/acl.c             |  6 +++---
- fs/ext4/extents.c         |  8 ++++----
- fs/ext4/resize.c          |  4 ++--
- fs/ext4/xattr.c           |  4 ++--
- fs/jbd2/journal.c         |  7 +++++++
- fs/jbd2/transaction.c     | 11 +++++++++++
- fs/xfs/kmem.c             | 10 +++++-----
- fs/xfs/kmem.h             |  2 +-
- fs/xfs/libxfs/xfs_btree.c |  2 +-
- fs/xfs/xfs_aops.c         |  6 +++---
- fs/xfs/xfs_buf.c          |  8 ++++----
- fs/xfs/xfs_trans.c        | 12 ++++++------
- include/linux/gfp.h       | 18 +++++++++++++++++-
- include/linux/jbd2.h      |  2 ++
- include/linux/sched.h     | 32 ++++++++++++++++++++++++++------
- kernel/locking/lockdep.c  |  6 +++++-
- lib/radix-tree.c          |  2 ++
- mm/page_alloc.c           |  8 +++++---
- mm/vmscan.c               |  6 +++---
- 19 files changed, 109 insertions(+), 45 deletions(-)
-
-Shortlog:
-Michal Hocko (8):
-      lockdep: allow to disable reclaim lockup detection
-      xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
-      mm: introduce memalloc_nofs_{save,restore} API
-      xfs: use memalloc_nofs_{save,restore} instead of memalloc_noio*
-      jbd2: mark the transaction context with the scope GFP_NOFS context
-      jbd2: make the whole kjournald2 kthread NOFS safe
-      Revert "ext4: avoid deadlocks in the writeback path by using sb_getblk_gfp"
-      Revert "ext4: fix wrong gfp type under transaction"
-
-[1] http://lkml.kernel.org/r/20161215140715.12732-1-mhocko@kernel.org
-[2] http://lkml.kernel.org/r/20161215140715.12732-3-mhocko@kernel.org
-[3] http://lkml.kernel.org/r/20161219212413.GN4326@dastard
-
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index e1652665bd93..35a5d3d76182 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -388,6 +388,11 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 
+ 	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
+ 	jbd2_journal_free_transaction(new_transaction);
++	/*
++	 * Make sure that no allocations done while the transaction is
++	 * open is going to recurse back to the fs layer.
++	 */
++	handle->saved_alloc_context = memalloc_nofs_save();
+ 	return 0;
+ }
+ 
+@@ -466,6 +471,7 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+ 	trace_jbd2_handle_start(journal->j_fs_dev->bd_dev,
+ 				handle->h_transaction->t_tid, type,
+ 				line_no, nblocks);
++
+ 	return handle;
+ }
+ EXPORT_SYMBOL(jbd2__journal_start);
+@@ -1760,6 +1766,11 @@ int jbd2_journal_stop(handle_t *handle)
+ 	if (handle->h_rsv_handle)
+ 		jbd2_journal_free_reserved(handle->h_rsv_handle);
+ free_and_exit:
++	/*
++	 * scope of th GFP_NOFS context is over here and so we can
++	 * restore the original alloc context.
++	 */
++	memalloc_nofs_restore(handle->saved_alloc_context);
+ 	jbd2_free_handle(handle);
+ 	return err;
+ }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index dfaa1f4dcb0c..606b6bce3a5b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -491,6 +491,8 @@ struct jbd2_journal_handle
+ 
+ 	unsigned long		h_start_jiffies;
+ 	unsigned int		h_requested_credits;
++
++	unsigned int		saved_alloc_context;
+ };
+ 
+ 
+-- 
+2.11.0
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
