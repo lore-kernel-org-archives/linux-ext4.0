@@ -1,38 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2 2/2] ext4: Do not populate extents tree with outdated
- offsets while shifting extents
-Date: Sat, 7 Jan 2017 16:27:46 -0500
-Message-ID: <20170107212746.6bqohlvik7laij7i@thunk.org>
-References: <20170106202601.32722-1-roman.penyaev@profitbricks.com>
- <20170106202601.32722-3-roman.penyaev@profitbricks.com>
+From: Richard Weinberger <richard@nod.at>
+Subject: Re: [PATCH v2] fscrypt: Factor out bio specific functions
+Date: Sat, 7 Jan 2017 23:40:15 +0100
+Message-ID: <21de1dd8-b491-8c59-e874-6834978f1e2e@nod.at>
+References: <20161219103929.GA16197@infradead.org>
+ <20161219112532.18863-1-richard@nod.at>
+ <20170101214725.g67msbedmpx27waz@thunk.org>
+ <dd8b8365-e84a-7f8e-384d-4900523e761e@nod.at>
+ <20170103142836.no7rp3hphj3czjto@thunk.org>
+ <20170104201043.GA21696@gmail.com>
+ <20170107192406.56p7ppbdfkjii4vy@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Namjae Jeon <namjae.jeon@samsung.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Roman Pen <roman.penyaev@profitbricks.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50926 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754551AbdAGV1v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 7 Jan 2017 16:27:51 -0500
-Content-Disposition: inline
-In-Reply-To: <20170106202601.32722-3-roman.penyaev@profitbricks.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers3@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jaegeuk@kernel.org, hch@infradead.org, arnd@arndb.de,
+        dedekind1@gmail.com, linux-mtd@lists.infradead.org,
+        adrian.hunter@intel.com, linux-ext4@vger.kernel.org,
+        ebiggers@google.com, rdunlap@infradead.org, david@sigma-star.at
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170107192406.56p7ppbdfkjii4vy@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 06, 2017 at 09:26:01PM +0100, Roman Pen wrote:
-> Inside ext4_ext_shift_extents() function ext4_find_extent() is called
-> without EXT4_EX_NOCACHE flag, which should prevent cache population.
-> 
-> This leads to oudated offsets in the extents tree and wrong blocks
-> afterwards.
-> 
-> Patch fixes the problem providing EXT4_EX_NOCACHE flag for each
-> ext4_find_extents() call inside ext4_ext_shift_extents function.
-> 
-> Signed-off-by: Roman Pen <roman.penyaev@profitbricks.com>
+Ted,
 
-Thanks, applied.
+Am 07.01.2017 um 20:24 schrieb Theodore Ts'o:
+> On Wed, Jan 04, 2017 at 12:10:43PM -0800, Eric Biggers wrote:
+>>
+>> I thought you're supposed to be able to build the kernel no matter how it's
+>> configured.  If this patch is really too large for 4.10 then perhaps we should
+>> make FS_ENCRYPTION select CONFIG_BLOCK instead?
+> 
+> We already have FS_ENCRYPTIOn depending on BLOCK, so this is *not*
+> fixing a build break.
 
-					- Ted
+Kconfig is tricky. We face a build error with CONFIG_BLOCK=n with UBIFS_FS_ENCRYPTION enabled.
+UBIFS file encryption does "select FS_ENCRYPTION" just like ext4 and f2fs.
+This will enable ENCRYPTION even when no block support is available.
+
+I can make UBIFS depend on BLOCK as intermediate fix.
+But the real fix is this patch.
+
+Thanks,
+//richard
