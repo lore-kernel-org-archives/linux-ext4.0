@@ -1,78 +1,78 @@
-From: Roman Pen <roman.penyaev@profitbricks.com>
-Subject: [PATCH v2 2/2] ext4: Do not populate extents tree with outdated offsets while shifting extents
-Date: Fri,  6 Jan 2017 21:26:01 +0100
-Message-ID: <20170106202601.32722-3-roman.penyaev@profitbricks.com>
-References: <20170106202601.32722-1-roman.penyaev@profitbricks.com>
-Cc: Roman Pen <roman.penyaev@profitbricks.com>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wj0-f170.google.com ([209.85.210.170]:36496 "EHLO
-        mail-wj0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S938474AbdAFU0S (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Jan 2017 15:26:18 -0500
-Received: by mail-wj0-f170.google.com with SMTP id ew7so28693352wjc.3
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Jan 2017 12:26:17 -0800 (PST)
-In-Reply-To: <20170106202601.32722-1-roman.penyaev@profitbricks.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: yi zhang <yi.zhang@huawei.com>
+Subject: [PATCH v3] ext4: increase the protection of nlink dec and ext4 inode destroy
+Date: Sat, 7 Jan 2017 11:22:38 +0800
+Message-ID: <1483759358-7188-1-git-send-email-yi.zhang@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <yi.zhang@huawei.com>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Inside ext4_ext_shift_extents() function ext4_find_extent() is called
-without EXT4_EX_NOCACHE flag, which should prevent cache population.
+Because of the disk and hardware issue, the ext4 filesystem have
+many errors, the inode->i_nlink of ext4 becomes zero abnormally
+but the dentry is still positive, it will cause memory corruption
+after the following process:
 
-This leads to oudated offsets in the extents tree and wrong blocks
-afterwards.
+ 1) Due to the inode->i_nlink is 0, this inode will be added into
+the orhpan list,
+ 2) ext4_rename() cover this inode, and drop_nlink() will reverse
+the inode->i_nlink to 0xFFFFFFFF,
+ 3) iput() add this inode to LRU,
+ 4) evict() will call destroy_inode() to destroy this inode but
+skip removing it from the orphan list,
+ 5) after this, the inode's memory address space will be used by
+other module, when the ext4 filesystem change the orphan list, it will
+trample other module's data and then may cause oops.
 
-Patch fixes the problem providing EXT4_EX_NOCACHE flag for each
-ext4_find_extents() call inside ext4_ext_shift_extents function.
+Although we cannot avoid hardware and disk errors, we can control the
+softwore error in the ext4 module, do not affect other modules and
+increase the difficulty of locating problems.
 
-Signed-off-by: Roman Pen <roman.penyaev@profitbricks.com>
-Cc: Namjae Jeon <namjae.jeon@samsung.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+This patch avoid inode->i_nlink reverse and remove the inode from the
+orphan list when destroy it if the list is not empty.
+
+changes since: RFC Patch v2
+ - move the protection from drop_nlink() to ext4_rename()
+
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ fs/ext4/namei.c | 7 +++++++
+ fs/ext4/super.c | 1 +
+ 2 files changed, 8 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 4d3014b5a3f9..2a97dff87b96 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5334,7 +5334,8 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	ext4_lblk_t stop, *iterator, ex_start, ex_end;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index eadba91..e0718cd 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3662,6 +3662,13 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	}
  
- 	/* Let path point to the last extent */
--	path = ext4_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL, 0);
-+	path = ext4_find_extent(inode, EXT_MAX_BLOCKS - 1, NULL,
-+				EXT4_EX_NOCACHE);
- 	if (IS_ERR(path))
- 		return PTR_ERR(path);
- 
-@@ -5350,7 +5351,8 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	 * sure the hole is big enough to accommodate the shift.
- 	*/
- 	if (SHIFT == SHIFT_LEFT) {
--		path = ext4_find_extent(inode, start - 1, &path, 0);
-+		path = ext4_find_extent(inode, start - 1, &path,
-+					EXT4_EX_NOCACHE);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
-@@ -5388,7 +5390,8 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
- 	 * becomes NULL to indicate the end of the loop.
- 	 */
- 	while (iterator && start <= stop) {
--		path = ext4_find_extent(inode, *iterator, &path, 0);
-+		path = ext4_find_extent(inode, *iterator, &path,
-+					EXT4_EX_NOCACHE);
- 		if (IS_ERR(path))
- 			return PTR_ERR(path);
- 		depth = path->p_depth;
+ 	if (new.inode) {
++		if (new.inode->i_nlink == 0) {
++			ext4_warning_inode(new.inode,
++					   "Removing file '%.*s' with no links",
++					   new.dentry->d_name.len,
++					   new.dentry->d_name.name);
++			set_nlink(new.inode, 1);
++		}
+ 		ext4_dec_count(handle, new.inode);
+ 		new.inode->i_ctime = current_time(new.inode);
+ 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 66845a0..ad5ad42 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -975,6 +975,7 @@ static void ext4_destroy_inode(struct inode *inode)
+ 				EXT4_I(inode), sizeof(struct ext4_inode_info),
+ 				true);
+ 		dump_stack();
++		ext4_orphan_del(NULL, inode);
+ 	}
+ 	call_rcu(&inode->i_rcu, ext4_i_callback);
+ }
 -- 
-2.10.2
+2.5.0
 
