@@ -1,143 +1,65 @@
-From: Roman Penyaev <roman.penyaev@profitbricks.com>
-Subject: Re: Refreshed rootfs.img for kvm-xfstests
-Date: Tue, 10 Jan 2017 16:07:49 +0100
-Message-ID: <CAJrWOzBPn98QPptcJWNUpaTBzCWvqN-N3f8Sk+J7zje8v0Qx7w@mail.gmail.com>
-References: <20170109231450.objek3yirxbtbgzn@thunk.org> <20170110033845.qkjg6qzfjxy5i54k@thunk.org>
- <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 1/2] ext4: fix DAX write locking
+Date: Tue, 10 Jan 2017 16:48:07 +0100
+Message-ID: <1484063288-18255-2-git-send-email-hch@lst.de>
+References: <1484063288-18255-1-git-send-email-hch@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nvdimm@lists.01.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:36141 "EHLO
-        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933522AbdAJPIQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2017 10:08:16 -0500
-Received: by mail-io0-f171.google.com with SMTP id j13so52036574iod.3
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2017 07:08:15 -0800 (PST)
-In-Reply-To: <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:56288 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933520AbdAJPsO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2017 10:48:14 -0500
+In-Reply-To: <1484063288-18255-1-git-send-email-hch@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 10, 2017 at 1:48 PM, Roman Penyaev
-<roman.penyaev@profitbricks.com> wrote:
-> On Tue, Jan 10, 2017 at 4:38 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> On Mon, Jan 09, 2017 at 06:14:50PM -0500, Theodore Ts'o wrote:
->>> There is an updated rootfs.img file available at:
->>>
->>>     https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
->>
->> ... and here are the latest test results using gce-xfstests on the
->> ext4.git's dev branch (which includes Roman's fixes).  I've annotated
->> the test failures report here and attached a compressed copy of the
->> runtests.log file:
->>
->> CMDLINE: full
->> FSTESTIMG: gce-xfstests/xfstests-201701091217
->> FSTESTVER: e2fsprogs    v1.43.3-30-g8df85fb (Sun, 4 Sep 2016 21:32:35 -0400)
->> FSTESTVER: fio          fio-2.16 (Mon, 19 Dec 2016 23:12:56 -0700)
->> FSTESTVER: quota                2b37958 (Tue, 9 Aug 2016 19:17:56 +0200)
->> FSTESTVER: xfsprogs     v4.9.0-1-g07d66eb (Sat, 7 Jan 2017 23:27:26 -0500)
->> FSTESTVER: xfstests-bld 39124a6 (Mon, 9 Jan 2017 11:09:14 -0500)
->> FSTESTVER: xfstests     linux-v3.8-1306-gbeffdf1 (Sun, 8 Jan 2017 20:30:22 -0500)
->> FSTESTVER: kernel       4.10.0-rc3-ext4-00014-g2b3864b32403 #195 SMP Mon Jan 9 01:32:06 EST 2017 x86_64
->> FSTESTCFG: "all"
->> FSTESTSET: "-g auto"
->> FSTESTEXC: ""
->> FSTESTOPT: "aex"
->> MNTOPTS: ""
->> CPUS: "2"
->> MEM: "7477.96"
->> MEM: 7680 MB (Max capacity)
->> BEGIN TEST 4k: Ext4 4k block Mon Jan  9 12:26:16 EST 2017
->> Passed all 245 tests
->> BEGIN TEST 1k: Ext4 1k block Mon Jan  9 13:16:48 EST 2017
->> Failures: generic/018 generic/270 generic/273
->>    generic/018 -- defrag test failure --- ignore
->>    generic/270 -- known lockdep problem in quota code
->>    generic/273 -- we aren't reserving enough blocks on a 2GB 1k file system,
->>        so ENOSPC block reservation test is failing.
->> BEGIN TEST ext3: Ext4 4k block emulating ext3 Mon Jan  9 14:13:51 EST 2017
->> Failures: generic/382
->>    generic/382 -- quota test which doesn't take indirect blocks into account.
->> BEGIN TEST encrypt: Ext4 encryption Mon Jan  9 14:57:29 EST 2017
->> Failures: ext4/022 generic/382
->>    ext4/022 -- ENOSPC test involving encryption and xattr
->>    generic/382 -- quota test which should be suppresed with encryption
->> BEGIN TEST nojournal: Ext4 4k block w/ no journal Mon Jan  9 15:22:05 EST 2017
->> Failures: ext4/301
->>    ext4/301 -- defrag failure with no journal?
->> BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Mon Jan  9 16:07:55 EST 2017
->> Failures: generic/347
->>    generic/347 --- file system got corrupted?!?
->> BEGIN TEST adv: Ext4 advanced features (inline_data, metadata_csum, 64bit) Mon Jan  9 16:53:22 EST 2017
->> Failures: generic/396 generic/399
->>    generic/396 --- fscrypt releated: file system got corrupted?!?
->>    generic/399 --- fscrypt releated: file system never filled up?!?
->> BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Mon Jan  9 17:39:38 EST 2017
->> Passed all 245 tests
->> BEGIN TEST data_journal: Ext4 4k block w/data=journal Mon Jan  9 18:25:55 EST 2017
->> Failures: generic/347
->>    generic/347 -- file system got corruptd?!?
->> BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Mon Jan  9 19:35:00 EST 2017
->> Failures: ext4/004 generic/204 generic/219 generic/235 generic/273 generic/399
->>    ext4/004 --- dump restore failure (with bigalloc --- not surprising)
->>    generic/204 --- ENOSPC during test
->>    generic/219 --- too many blocks used (quota accounting)
->>    generic/235 --- clusters vs blocks accounting in quota code
->>    generic/273 --- not reserving enough space (porter not complete)
->>    generic/399 --- fscrypt releated: file system corrupted?!?
->> BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Mon Jan  9 20:17:46 EST 2017
->> Failures: ext4/004 generic/204 generic/235 generic/273nnn
->>    ext4/004 --- dump restore failure (with bigalloc --- not surprising)
->>    generic/204 --- ENOSPC during test
->>    generic/235 --- clusters vs blocks accounting in quota code
->>    generic/273 --- not reserving enough space (porter not complete)?!?
->>
->> Some of these are test bugs that we should fix or suppress.  Others,
->> such as the new encryption tests causing corrupted file systems in the
->> more exotic file system configurations, are definitely bugs that we
->> need to fix.
->>
->
-> I retested the following configurations on 69973b830859 ("Linux 4.9"):
->
-> ./kvm-xfstests.sh -c nojournal    ext4/301
-> ./kvm-xfstests.sh -c ext3conv     generic/347
-> ./kvm-xfstests.sh -c adv          generic/396 generic/399
-> ./kvm-xfstests.sh -c data_journal generic/347
-> ./kvm-xfstests.sh -c bigalloc     generic/399
-> ./kvm-xfstests.sh -c bigalloc_1k  generic/273
->
-> all of the tests from list have failed.
+Unlike O_DIRECT DAX is not an optional opt-in feature selected by the
+application, so we'll have to provide the traditional synchronіzation
+of overlapping writes as we do for buffered writes.
 
-I executed the list above on these kernels:
+This was broken historically for DAX, but got fixed for ext2 and XFS
+as part of the iomap conversion.  Fix up ext4 as well.
 
-c8d2bc9bc39e ("Linux 4.8")
-523d939ef98f ("Linux 4.7")
-2dcd0af568b0 ("Linux 4.6")
-b562e44f507e ("Linux 4.5")
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/ext4/file.c | 10 +---------
+ 1 file changed, 1 insertion(+), 9 deletions(-)
 
-and the picture stays the same: tests continue to fail.
-(once I saw '-c data_journal generic/347' on 4.6 has passed, but
- I failed to repeat this success).
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d663d3d..a1e88aa 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -175,7 +175,6 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	ssize_t ret;
+-	bool overwrite = false;
+ 
+ 	inode_lock(inode);
+ 	ret = ext4_write_checks(iocb, from);
+@@ -188,16 +187,9 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (ret)
+ 		goto out;
+ 
+-	if (ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from))) {
+-		overwrite = true;
+-		downgrade_write(&inode->i_rwsem);
+-	}
+ 	ret = dax_iomap_rw(iocb, from, &ext4_iomap_ops);
+ out:
+-	if (!overwrite)
+-		inode_unlock(inode);
+-	else
+-		inode_unlock_shared(inode);
++	inode_unlock(inode);
+ 	if (ret > 0)
+ 		ret = generic_write_sync(iocb, ret);
+ 	return ret;
+-- 
+2.1.4
 
-Theodore, do you have successful reference run for these configurations?
-
-Because, I am pretty much confused: either I do something completely
-wrong (seems checking "FSTESTVER: kernel" line should be enough to
-be sure, that tests are executed on desired kernel version) or those
-tests were broken long time ago.
-
---
-Roman
-
->
-> This is not very much helpful, but at least that can be a starting
-> point for bisecting.
->
-> When there was a successful xfstests run at least for some of
-> the configurations?  Would be nice to have a "good" reference.
->
-> --
-> Roman
