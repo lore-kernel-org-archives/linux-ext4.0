@@ -1,48 +1,77 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Trim allocation requests to group size
-Date: Tue, 10 Jan 2017 10:32:01 +0100
-Message-ID: <20170110093201.1403-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix data corruption in data=journal mode
+Date: Tue, 10 Jan 2017 13:37:53 +0100
+Message-ID: <20170110123753.8405-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
 To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38899 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1765267AbdAJJcK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 10 Jan 2017 04:32:10 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-If filesystem groups are artifically small (using parameter -g to
-mkfs.ext4), ext4_mb_normalize_request() can result in a request that is
-larger than a block group. Trim the request size to not confuse
-allocation code.
+ext4_journalled_write_end() did not propely handle all the cases when
+generic_perform_write() did not copy all the data into the target page
+and could mark buffers with uninitialized contents as uptodate and dirty
+leading to possible data corruption (which would be quickly fixed by
+generic_perform_write() retrying the write but still). Fix the problem
+by carefully handling the case when the page that is written to is not
+uptodate.
 
-Reported-by: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+CC: stable@vger.kernel.org
+Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/ext4/inode.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7ae43c59bc79..2e9fc7a61048 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3123,6 +3123,13 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	if (ar->pright && start + size - 1 >= ar->lright)
- 		size -= start + size - ar->lright;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 88d57af1b516..4bb9136b0221 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1385,7 +1385,9 @@ static int ext4_write_end(struct file *file,
+  * set the buffer to be dirty, since in data=journalled mode we need
+  * to call ext4_handle_dirty_metadata() instead.
+  */
+-static void zero_new_buffers(struct page *page, unsigned from, unsigned to)
++static void ext4_journalled_zero_new_buffers(handle_t *handle,
++					    struct page *page,
++					    unsigned from, unsigned to)
+ {
+ 	unsigned int block_start = 0, block_end;
+ 	struct buffer_head *head, *bh;
+@@ -1402,7 +1404,7 @@ static void zero_new_buffers(struct page *page, unsigned from, unsigned to)
+ 					size = min(to, block_end) - start;
  
-+	/*
-+	 * Trim allocation request for filesystems with artificially small
-+	 * groups.
-+	 */
-+	if (size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb))
-+		size = EXT4_BLOCKS_PER_GROUP(ac->ac_sb);
-+
- 	end = start + size;
- 
- 	/* check we don't cross already preallocated blocks */
+ 					zero_user(page, start, size);
+-					set_buffer_uptodate(bh);
++					write_end_fn(handle, bh);
+ 				}
+ 				clear_buffer_new(bh);
+ 			}
+@@ -1434,15 +1436,16 @@ static int ext4_journalled_write_end(struct file *file,
+ 	if (ext4_has_inline_data(inode))
+ 		copied = ext4_write_inline_data_end(inode, pos, len,
+ 						    copied, page);
+-	else {
+-		if (copied < len) {
+-			if (!PageUptodate(page))
+-				copied = 0;
+-			zero_new_buffers(page, from+copied, to);
+-		}
+-
++	else if (unlikely(copied < len) && !PageUptodate(page)) {
++		copied = 0;
++		ext4_journalled_zero_new_buffers(handle, page, from, to);
++	} else {
++		if (unlikely(copied < len))
++			ext4_journalled_zero_new_buffers(handle, page,
++							 from + copied, to);
+ 		ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
+-					     to, &partial, write_end_fn);
++					     from + copied, &partial,
++					     write_end_fn);
+ 		if (!partial)
+ 			SetPageUptodate(page);
+ 	}
 -- 
 2.10.2
-
