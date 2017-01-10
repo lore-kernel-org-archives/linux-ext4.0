@@ -1,117 +1,92 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] e2fsprogs: enable project quota reporting in debugfs
-Date: Tue, 10 Jan 2017 16:54:01 -0500
-Message-ID: <20170110215401.GA1232@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH] dax: fix build warnings with FS_DAX and !FS_IOMAP
+Date: Tue, 10 Jan 2017 15:29:43 -0700
+Message-ID: <1484087383-29478-1-git-send-email-ross.zwisler@linux.intel.com>
+References: <1946137.McqY686LOu@wuerfel>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:34262 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751955AbdAJVyb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2017 16:54:31 -0500
-Received: by mail-qk0-f194.google.com with SMTP id e1so22552842qkh.1
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2017 13:54:26 -0800 (PST)
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <1946137.McqY686LOu@wuerfel>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Make the minor changes required so the list_quota and get_quota commands
-can report project quota information.  This also fixes a debugfs
-segfault that currently occurs when either list_quota or get_quota is
-invoked with an unknown quota_type argument.
-
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- debugfs/quota.c        | 12 ++++++------
- tests/f_quota/expect.0 | 28 ++++++++++++++--------------
- 2 files changed, 20 insertions(+), 20 deletions(-)
-
-diff --git a/debugfs/quota.c b/debugfs/quota.c
-index cf1078c..0b7c2ee 100644
---- a/debugfs/quota.c
-+++ b/debugfs/quota.c
-@@ -25,7 +25,7 @@ extern char *optarg;
- 
- #include "debugfs.h"
- 
--const char *quota_type[] = { "user", "group", NULL };
-+const char *quota_type[] = { "user", "group", "project", NULL };
- 
- static int load_quota_ctx(char *progname)
- {
-@@ -92,7 +92,7 @@ static int parse_quota_type(const char *cmdname, const char *str)
- static int list_quota_callback(struct dquot *dq,
- 			       void *cb_data EXT2FS_ATTR((unused)))
- {
--	printf("%8u   %8lld %8lld %8lld    %8lld %8lld %8lld\n",
-+	printf("%10u   %8lld %8lld %8lld    %8lld %8lld %8lld\n",
- 	       dq->dq_id, (long long)dq->dq_dqb.dqb_curspace,
- 	       (long long)dq->dq_dqb.dqb_bsoftlimit,
- 	       (long long)dq->dq_dqb.dqb_bhardlimit,
-@@ -120,8 +120,8 @@ void do_list_quota(int argc, char *argv[])
- 	if (type < 0)
- 		return;
- 
--	printf("%8s   %8s %8s %8s    %8s %8s %8s\n",
--	       (type == 0) ? "user id" : "group id",
-+	printf("%7s %2s   %8s %8s %8s    %8s %8s %8s\n",
-+	       quota_type[type], "id",
- 	       "blocks", "quota", "limit", "inodes", "quota", "limit");
- 	qh = current_qctx->quota_file[type];
- 	retval = qh->qh_ops->scan_dquots(qh, list_quota_callback, NULL);
-@@ -154,8 +154,8 @@ void do_get_quota(int argc, char *argv[])
- 	if (err)
- 		return;
- 
--	printf("%8s   %8s %8s %8s    %8s %8s %8s\n",
--	       (type == 0) ? "user id" : "group id",
-+	printf("%7s %2s   %8s %8s %8s    %8s %8s %8s\n",
-+	       quota_type[type], "id",
- 	       "blocks", "quota", "limit", "inodes", "quota", "limit");
- 
- 	qh = current_qctx->quota_file[type];
-diff --git a/tests/f_quota/expect.0 b/tests/f_quota/expect.0
-index c0ad63d..eb5294e 100644
---- a/tests/f_quota/expect.0
-+++ b/tests/f_quota/expect.0
-@@ -1,21 +1,21 @@
- debugfs: list_quota user
-- user id     blocks    quota    limit      inodes    quota    limit
--       0      13312        0        0           2        0        0
--      34       1024        0        0           1        0        0
--     100       2048       32       50           2       20       30
-+   user id     blocks    quota    limit      inodes    quota    limit
-+         0      13312        0        0           2        0        0
-+        34       1024        0        0           1        0        0
-+       100       2048       32       50           2       20       30
- debugfs: list_quota group
--group id     blocks    quota    limit      inodes    quota    limit
--       0      16384        0        0           5        0        0
-+  group id     blocks    quota    limit      inodes    quota    limit
-+         0      16384        0        0           5        0        0
- debugfs: get_quota user 0
-- user id     blocks    quota    limit      inodes    quota    limit
--       0      13312        0        0           2        0        0
-+   user id     blocks    quota    limit      inodes    quota    limit
-+         0      13312        0        0           2        0        0
- debugfs: get_quota user 100
-- user id     blocks    quota    limit      inodes    quota    limit
--     100       2048       32       50           2       20       30
-+   user id     blocks    quota    limit      inodes    quota    limit
-+       100       2048       32       50           2       20       30
- debugfs: get_quota user 34
-- user id     blocks    quota    limit      inodes    quota    limit
--      34       1024        0        0           1        0        0
-+   user id     blocks    quota    limit      inodes    quota    limit
-+        34       1024        0        0           1        0        0
- debugfs: get_quota group 0
--group id     blocks    quota    limit      inodes    quota    limit
--       0      16384        0        0           5        0        0
-+  group id     blocks    quota    limit      inodes    quota    limit
-+         0      16384        0        0           5        0        0
- debugfs: 
--- 
-2.1.4
-
+QXMgcmVwb3J0ZWQgYnkgQXJuZDoKCmh0dHBzOi8vbGttbC5vcmcvbGttbC8yMDE3LzEvMTAvNzU2
+CgpDb21waWxpbmcgd2l0aCB0aGUgZm9sbG93aW5nIGNvbmZpZ3VyYXRpb246CgogICMgQ09ORklH
+X0VYVDJfRlMgaXMgbm90IHNldAogICMgQ09ORklHX0VYVDRfRlMgaXMgbm90IHNldAogICMgQ09O
+RklHX1hGU19GUyBpcyBub3Qgc2V0CiAgIyBDT05GSUdfRlNfSU9NQVAgZGVwZW5kcyBvbiB0aGUg
+YWJvdmUgZmlsZXN5c3RlbXMsIGFzIGlzIG5vdCBzZXQKICBDT05GSUdfRlNfREFYPXkKCmdlbmVy
+YXRlcyBidWlsZCB3YXJuaW5ncyBhYm91dCB1bnVzZWQgZnVuY3Rpb25zIGluIGZzL2RheC5jOgoK
+ZnMvZGF4LmM6ODc4OjEyOiB3YXJuaW5nOiDigJhkYXhfaW5zZXJ0X21hcHBpbmfigJkgZGVmaW5l
+ZCBidXQgbm90IHVzZWQgWy1XdW51c2VkLWZ1bmN0aW9uXQogc3RhdGljIGludCBkYXhfaW5zZXJ0
+X21hcHBpbmcoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsCiAgICAgICAgICAgIF5+fn5+
+fn5+fn5+fn5+fn5+fgpmcy9kYXguYzo1NzI6MTI6IHdhcm5pbmc6IOKAmGNvcHlfdXNlcl9kYXji
+gJkgZGVmaW5lZCBidXQgbm90IHVzZWQgWy1XdW51c2VkLWZ1bmN0aW9uXQogc3RhdGljIGludCBj
+b3B5X3VzZXJfZGF4KHN0cnVjdCBibG9ja19kZXZpY2UgKmJkZXYsIHNlY3Rvcl90IHNlY3Rvciwg
+c2l6ZV90IHNpemUsCiAgICAgICAgICAgIF5+fn5+fn5+fn5+fn4KZnMvZGF4LmM6NTQyOjEyOiB3
+YXJuaW5nOiDigJhkYXhfbG9hZF9ob2xl4oCZIGRlZmluZWQgYnV0IG5vdCB1c2VkIFstV3VudXNl
+ZC1mdW5jdGlvbl0KIHN0YXRpYyBpbnQgZGF4X2xvYWRfaG9sZShzdHJ1Y3QgYWRkcmVzc19zcGFj
+ZSAqbWFwcGluZywgdm9pZCAqKmVudHJ5LAogICAgICAgICAgICBefn5+fn5+fn5+fn5+CmZzL2Rh
+eC5jOjMxMjoxNDogd2FybmluZzog4oCYZ3JhYl9tYXBwaW5nX2VudHJ54oCZIGRlZmluZWQgYnV0
+IG5vdCB1c2VkIFstV3VudXNlZC1mdW5jdGlvbl0KIHN0YXRpYyB2b2lkICpncmFiX21hcHBpbmdf
+ZW50cnkoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsIHBnb2ZmX3QgaW5kZXgsCiAgICAg
+ICAgICAgICAgXn5+fn5+fn5+fn5+fn5+fn5+CgpOb3cgdGhhdCB0aGUgc3RydWN0IGJ1ZmZlcl9o
+ZWFkIGJhc2VkIERBWCBmYXVsdCBwYXRocyBhbmQgSS9PIHBhdGggaGF2ZQpiZWVuIHJlbW92ZWQg
+d2UgcmVhbGx5IGRlcGVuZCBvbiBpb21hcCBzdXBwb3J0IGJlaW5nIHByZXNlbnQgZm9yIERBWC4g
+IE1ha2UKdGhpcyBleHBsaWNpdCBieSBzZWxlY3RpbmcgRlNfSU9NQVAgaWYgd2UgY29tcGlsZSBp
+biBEQVggc3VwcG9ydC4KClRoaXMgYWxsb3dzIHVzIHRvIHJlbW92ZSBjb25kaXRpb25hbCBzZWxl
+Y3Rpb25zIG9mIEZTX0lPTUFQIHdoZW4gRlNfREFYIHdhcwpwcmVzZW50IGZvciBleHQyIGFuZCBl
+eHQ0LCBhbmQgdG8gcmVtb3ZlIGFuICNpZmRlZiBpbiBmcy9kYXguYy4KClNpZ25lZC1vZmYtYnk6
+IFJvc3MgWndpc2xlciA8cm9zcy56d2lzbGVyQGxpbnV4LmludGVsLmNvbT4KUmVwb3J0ZWQtYnk6
+IEFybmQgQmVyZ21hbm4gPGFybmRAYXJuZGIuZGU+CkNjOiBKYW4gS2FyYSA8amFja0BzdXNlLmN6
+PgpDYzogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Ci0tLQogZnMvS2NvbmZpZyAgICAg
+IHwgMSArCiBmcy9kYXguYyAgICAgICAgfCAyIC0tCiBmcy9leHQyL0tjb25maWcgfCAxIC0KIGZz
+L2V4dDQvS2NvbmZpZyB8IDEgLQogNCBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgNCBk
+ZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9LY29uZmlnIGIvZnMvS2NvbmZpZwppbmRleCBj
+MmEzNzdjLi44M2VhYjUyIDEwMDY0NAotLS0gYS9mcy9LY29uZmlnCisrKyBiL2ZzL0tjb25maWcK
+QEAgLTM4LDYgKzM4LDcgQEAgY29uZmlnIEZTX0RBWAogCWJvb2wgIkRpcmVjdCBBY2Nlc3MgKERB
+WCkgc3VwcG9ydCIKIAlkZXBlbmRzIG9uIE1NVQogCWRlcGVuZHMgb24gIShBUk0gfHwgTUlQUyB8
+fCBTUEFSQykKKwlzZWxlY3QgRlNfSU9NQVAKIAloZWxwCiAJICBEaXJlY3QgQWNjZXNzIChEQVgp
+IGNhbiBiZSB1c2VkIG9uIG1lbW9yeS1iYWNrZWQgYmxvY2sgZGV2aWNlcy4KIAkgIElmIHRoZSBi
+bG9jayBkZXZpY2Ugc3VwcG9ydHMgREFYIGFuZCB0aGUgZmlsZXN5c3RlbSBzdXBwb3J0cyBEQVgs
+CmRpZmYgLS1naXQgYS9mcy9kYXguYyBiL2ZzL2RheC5jCmluZGV4IDVjNzRmNjAuLjA4M2I5NTAg
+MTAwNjQ0Ci0tLSBhL2ZzL2RheC5jCisrKyBiL2ZzL2RheC5jCkBAIC05NjksNyArOTY5LDYgQEAg
+aW50IF9fZGF4X3plcm9fcGFnZV9yYW5nZShzdHJ1Y3QgYmxvY2tfZGV2aWNlICpiZGV2LCBzZWN0
+b3JfdCBzZWN0b3IsCiB9CiBFWFBPUlRfU1lNQk9MX0dQTChfX2RheF96ZXJvX3BhZ2VfcmFuZ2Up
+OwogCi0jaWZkZWYgQ09ORklHX0ZTX0lPTUFQCiBzdGF0aWMgc2VjdG9yX3QgZGF4X2lvbWFwX3Nl
+Y3RvcihzdHJ1Y3QgaW9tYXAgKmlvbWFwLCBsb2ZmX3QgcG9zKQogewogCXJldHVybiBpb21hcC0+
+Ymxrbm8gKyAoKChwb3MgJiBQQUdFX01BU0spIC0gaW9tYXAtPm9mZnNldCkgPj4gOSk7CkBAIC0x
+NDA3LDQgKzE0MDYsMyBAQCBpbnQgZGF4X2lvbWFwX3BtZF9mYXVsdChzdHJ1Y3Qgdm1fYXJlYV9z
+dHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyZXNzLAogfQogRVhQT1JUX1NZTUJPTF9HUEwo
+ZGF4X2lvbWFwX3BtZF9mYXVsdCk7CiAjZW5kaWYgLyogQ09ORklHX0ZTX0RBWF9QTUQgKi8KLSNl
+bmRpZiAvKiBDT05GSUdfRlNfSU9NQVAgKi8KZGlmZiAtLWdpdCBhL2ZzL2V4dDIvS2NvbmZpZyBi
+L2ZzL2V4dDIvS2NvbmZpZwppbmRleCAzNmJlYTVhLi5jNjM0ODc0ZSAxMDA2NDQKLS0tIGEvZnMv
+ZXh0Mi9LY29uZmlnCisrKyBiL2ZzL2V4dDIvS2NvbmZpZwpAQCAtMSw2ICsxLDUgQEAKIGNvbmZp
+ZyBFWFQyX0ZTCiAJdHJpc3RhdGUgIlNlY29uZCBleHRlbmRlZCBmcyBzdXBwb3J0IgotCXNlbGVj
+dCBGU19JT01BUCBpZiBGU19EQVgKIAloZWxwCiAJICBFeHQyIGlzIGEgc3RhbmRhcmQgTGludXgg
+ZmlsZSBzeXN0ZW0gZm9yIGhhcmQgZGlza3MuCiAKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvS2NvbmZp
+ZyBiL2ZzL2V4dDQvS2NvbmZpZwppbmRleCA3YjkwNjkxLi5lMzgwMzlmIDEwMDY0NAotLS0gYS9m
+cy9leHQ0L0tjb25maWcKKysrIGIvZnMvZXh0NC9LY29uZmlnCkBAIC0zNyw3ICszNyw2IEBAIGNv
+bmZpZyBFWFQ0X0ZTCiAJc2VsZWN0IENSQzE2CiAJc2VsZWN0IENSWVBUTwogCXNlbGVjdCBDUllQ
+VE9fQ1JDMzJDCi0Jc2VsZWN0IEZTX0lPTUFQIGlmIEZTX0RBWAogCWhlbHAKIAkgIFRoaXMgaXMg
+dGhlIG5leHQgZ2VuZXJhdGlvbiBvZiB0aGUgZXh0MyBmaWxlc3lzdGVtLgogCi0tIAoyLjcuNAoK
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTGludXgtbnZk
+aW1tIG1haWxpbmcgbGlzdApMaW51eC1udmRpbW1AbGlzdHMuMDEub3JnCmh0dHBzOi8vbGlzdHMu
+MDEub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtbnZkaW1tCg==
