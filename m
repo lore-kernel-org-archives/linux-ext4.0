@@ -1,62 +1,79 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: Refreshed rootfs.img for kvm-xfstests
-Date: Tue, 10 Jan 2017 10:50:33 -0800
-Message-ID: <20170110185033.GA58743@gmail.com>
-References: <20170109231450.objek3yirxbtbgzn@thunk.org>
- <20170110033845.qkjg6qzfjxy5i54k@thunk.org>
- <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH v4 0/7] DAX tracepoints, mm argument simplification
+Date: Tue, 10 Jan 2017 14:52:15 -0700
+Message-ID: <1484085142-2297-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
-To: Roman Penyaev <roman.penyaev@profitbricks.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:33128 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S940227AbdAJSug (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2017 13:50:36 -0500
-Received: by mail-pf0-f195.google.com with SMTP id 127so30103529pfg.0
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Jan 2017 10:50:36 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 10, 2017 at 01:48:03PM +0100, Roman Penyaev wrote:
-> 
-> I retested the following configurations on 69973b830859 ("Linux 4.9"):
-> 
-> ./kvm-xfstests.sh -c nojournal    ext4/301
-> ./kvm-xfstests.sh -c ext3conv     generic/347
-> ./kvm-xfstests.sh -c adv          generic/396 generic/399
-> ./kvm-xfstests.sh -c data_journal generic/347
-> ./kvm-xfstests.sh -c bigalloc     generic/399
-> ./kvm-xfstests.sh -c bigalloc_1k  generic/273
-> 
-> all of the tests from list have failed.
-> 
-> This is not very much helpful, but at least that can be a starting
-> point for bisecting.
-> 
-> When there was a successful xfstests run at least for some of
-> the configurations?  Would be nice to have a "good" reference.
-> 
+Andrew,
 
-Hi Roman,
+This contains both my DAX tracepoint code and Dave Jiang's MM argument
+simplifications.  Dave's code was written with my tracepoint code as a
+baseline, so it seemed simplest to keep them together in a single series.
 
-Generally these have been broken for a while, or in the case of generic/396 and
-generic/399 are new tests which are exposing bugs.  A few of these I was already
-aware of but just haven't had time to get to:
+This series is based on the v4.10-rc3-mmots-2017-01-09-17-08 snapshot.  A
+working tree can be found here:
 
-- the failure of generic/347 in data journalling mode is intermittent
-- the failure of generic/396 in "adv" mode is related to the use of the inline
-  data feature, apparently caused by ext4_convert_inline_data() corrupting an
-  empty directory
-- failure of generic/399 in some configurations
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=mmots_dax_tracepoint
 
-If you're interested in looking into any of these failing tests and either
-fixing the kernel or fixing the test as appropriate, please feel free to!
+Changes from the previous versions of these patches:
+ - Combined Dave's code and mine into a single series.
+ - Resolved some minor merge conflics in Dave's patches so they could be
+   applied to the latest mmots snapshot.
+ - Added Reviewed-by and Acked-by tags to patches as appropriate.
+
+My goal for this series is to get it merged for v4.11.
 
 Thanks,
+- Ross
 
-Eric
+Dave Jiang (2):
+  mm, dax: make pmd_fault() and friends to be the same as fault()
+  mm, dax: move pmd_fault() to take only vmf parameter
+
+Ross Zwisler (5):
+  tracing: add __print_flags_u64()
+  dax: add tracepoint infrastructure, PMD tracing
+  dax: update MAINTAINERS entries for FS DAX
+  dax: add tracepoints to dax_pmd_load_hole()
+  dax: add tracepoints to dax_pmd_insert_mapping()
+
+ MAINTAINERS                   |   5 +-
+ drivers/dax/dax.c             |  26 ++++---
+ fs/dax.c                      | 114 ++++++++++++++++--------------
+ fs/ext4/file.c                |  13 ++--
+ fs/xfs/xfs_file.c             |  15 ++--
+ include/linux/dax.h           |   6 +-
+ include/linux/mm.h            |  28 +++++++-
+ include/linux/pfn_t.h         |   6 ++
+ include/linux/trace_events.h  |   4 ++
+ include/trace/events/fs_dax.h | 156 ++++++++++++++++++++++++++++++++++++++++++
+ include/trace/trace_events.h  |  11 +++
+ kernel/trace/trace_output.c   |  38 ++++++++++
+ mm/memory.c                   |  11 ++-
+ 13 files changed, 338 insertions(+), 95 deletions(-)
+ create mode 100644 include/trace/events/fs_dax.h
+
+-- 
+2.7.4
