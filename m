@@ -1,65 +1,42 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 1/2] ext4: fix DAX write locking
-Date: Tue, 10 Jan 2017 16:48:07 +0100
-Message-ID: <1484063288-18255-2-git-send-email-hch@lst.de>
+Subject: [PATCH 2/2] dax: assert that i_rwsem is held exclusive for writes
+Date: Tue, 10 Jan 2017 16:48:08 +0100
+Message-ID: <1484063288-18255-3-git-send-email-hch@lst.de>
 References: <1484063288-18255-1-git-send-email-hch@lst.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-nvdimm@lists.01.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:56288 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933520AbdAJPsO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Jan 2017 10:48:14 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1484063288-18255-1-git-send-email-hch@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Unlike O_DIRECT DAX is not an optional opt-in feature selected by the
-application, so we'll have to provide the traditional synchronіzation
-of overlapping writes as we do for buffered writes.
-
-This was broken historically for DAX, but got fixed for ext2 and XFS
-as part of the iomap conversion.  Fix up ext4 as well.
+Make sure all callers follow the same locking protocol, given that DAX
+transparantly replaced the normal buffered I/O path.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ext4/file.c | 10 +---------
- 1 file changed, 1 insertion(+), 9 deletions(-)
+ fs/dax.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index d663d3d..a1e88aa 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -175,7 +175,6 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	ssize_t ret;
--	bool overwrite = false;
+diff --git a/fs/dax.c b/fs/dax.c
+index 5c74f60..04734da 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1061,8 +1061,12 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	loff_t pos = iocb->ki_pos, ret = 0, done = 0;
+ 	unsigned flags = 0;
  
- 	inode_lock(inode);
- 	ret = ext4_write_checks(iocb, from);
-@@ -188,16 +187,9 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (ret)
- 		goto out;
+-	if (iov_iter_rw(iter) == WRITE)
++	if (iov_iter_rw(iter) == WRITE) {
++		lockdep_assert_held_exclusive(&inode->i_rwsem);
+ 		flags |= IOMAP_WRITE;
++	} else {
++		lockdep_assert_held(&inode->i_rwsem);
++	}
  
--	if (ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from))) {
--		overwrite = true;
--		downgrade_write(&inode->i_rwsem);
--	}
- 	ret = dax_iomap_rw(iocb, from, &ext4_iomap_ops);
- out:
--	if (!overwrite)
--		inode_unlock(inode);
--	else
--		inode_unlock_shared(inode);
-+	inode_unlock(inode);
- 	if (ret > 0)
- 		ret = generic_write_sync(iocb, ret);
- 	return ret;
+ 	while (iov_iter_count(iter)) {
+ 		ret = iomap_apply(inode, pos, iov_iter_count(iter), flags, ops,
 -- 
 2.1.4
 
