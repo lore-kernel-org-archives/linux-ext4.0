@@ -1,43 +1,224 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Refreshed rootfs.img for kvm-xfstests
-Date: Mon, 9 Jan 2017 18:14:50 -0500
-Message-ID: <20170109231450.objek3yirxbtbgzn@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: fstests-owner@vger.kernel.org
+From: "Jason A. Donenfeld" <Jason@zx2c4.com>
+Subject: [PATCH v2] ext4: move halfmd4 into hash.c directly
+Date: Tue, 10 Jan 2017 01:07:01 +0100
+Message-ID: <20170110000701.19472-1-Jason@zx2c4.com>
+Cc: "Jason A. Donenfeld" <Jason@zx2c4.com>
+To: tytso@mit.edu, adilger@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-There is an updated rootfs.img file available at:
+The "half md4" transform should not be used by any new code. And
+fortunately, it's only used now by ext4. Since ext4 supports several
+hashing methods, at some point it might be desirable to move to
+something like SipHash. As an intermediate step, remove half md4 from
+cryptohash.h and lib, and make it just a local function in ext4's
+hash.c. There's precedent for doing this; the other function ext can use
+for its hashes -- TEA -- is also implemented in the same place. Also, by
+being a local function, this might allow gcc to perform some additional
+optimizations.
 
-    https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Cc: Theodore Ts'o <tytso@mit.edu>
+---
+v1->v2:
+  - Two blank lines were added for style.
+  - Andreas provided his Reviewed-by line.
 
-It includes the latest updates from the xfstests-dev upstream, as well
-as updated file system utilities from debian-backports.  It also adds
-support for the new encryption teests from Eric Biggers (for this
-reason the xfsprogs in this image includes an out-of-tree patch to
-allow xfs_io to set the encryption policy).
+ fs/ext4/hash.c             | 71 +++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/cryptohash.h |  2 --
+ lib/Makefile               |  2 +-
+ lib/halfmd4.c              | 67 -------------------------------------------
+ 4 files changed, 71 insertions(+), 71 deletions(-)
+ delete mode 100644 lib/halfmd4.c
 
-We also now skip all of the reflink/dedupe tests when running tests
-for ext4, to speed up our testing.
-
-This release of kvm-xfstests now supports f2fs (as well as btrfs,
-ext2, ext4, overlay, tmpfs, and xfs).
-
-The gce-xfstests driver has been updated to support the latest gcloud
-SDK and Debian releases as well as the above changes.  For more
-information about this test framework, please see:
-
-    http://thunk.org/gce-xfstests
-
-						- Ted
-
-e2fsprogs	v1.43.3-30-g8df85fb (Sun, 4 Sep 2016 21:32:35 -0400)
-fio		fio-2.16 (Mon, 19 Dec 2016 23:12:56 -0700)
-quota		2b37958 (Tue, 9 Aug 2016 19:17:56 +0200)
-xfsprogs	v4.9.0-1-g07d66eb (Sat, 7 Jan 2017 23:27:26 -0500)
-xfstests-bld	39124a6 (Mon, 9 Jan 2017 11:09:14 -0500)
-xfstests	linux-v3.8-1306-gbeffdf1 (Sun, 8 Jan 2017 20:30:22 -0500)
-						
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index e026aa941fd5..38b8a96eb97c 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -10,7 +10,8 @@
+  */
+ 
+ #include <linux/fs.h>
+-#include <linux/cryptohash.h>
++#include <linux/compiler.h>
++#include <linux/bitops.h>
+ #include "ext4.h"
+ 
+ #define DELTA 0x9E3779B9
+@@ -32,6 +33,74 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 	buf[1] += b1;
+ }
+ 
++/* F, G and H are basic MD4 functions: selection, majority, parity */
++#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
++#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
++#define H(x, y, z) ((x) ^ (y) ^ (z))
++
++/*
++ * The generic round function.  The application is so specific that
++ * we don't bother protecting all the arguments with parens, as is generally
++ * good macro practice, in favor of extra legibility.
++ * Rotation is separate from addition to prevent recomputation
++ */
++#define ROUND(f, a, b, c, d, x, s)	\
++	(a += f(b, c, d) + x, a = rol32(a, s))
++#define K1 0
++#define K2 013240474631UL
++#define K3 015666365641UL
++
++/*
++ * Basic cut-down MD4 transform.  Returns only 32 bits of result.
++ */
++static __u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
++{
++	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
++
++	/* Round 1 */
++	ROUND(F, a, b, c, d, in[0] + K1,  3);
++	ROUND(F, d, a, b, c, in[1] + K1,  7);
++	ROUND(F, c, d, a, b, in[2] + K1, 11);
++	ROUND(F, b, c, d, a, in[3] + K1, 19);
++	ROUND(F, a, b, c, d, in[4] + K1,  3);
++	ROUND(F, d, a, b, c, in[5] + K1,  7);
++	ROUND(F, c, d, a, b, in[6] + K1, 11);
++	ROUND(F, b, c, d, a, in[7] + K1, 19);
++
++	/* Round 2 */
++	ROUND(G, a, b, c, d, in[1] + K2,  3);
++	ROUND(G, d, a, b, c, in[3] + K2,  5);
++	ROUND(G, c, d, a, b, in[5] + K2,  9);
++	ROUND(G, b, c, d, a, in[7] + K2, 13);
++	ROUND(G, a, b, c, d, in[0] + K2,  3);
++	ROUND(G, d, a, b, c, in[2] + K2,  5);
++	ROUND(G, c, d, a, b, in[4] + K2,  9);
++	ROUND(G, b, c, d, a, in[6] + K2, 13);
++
++	/* Round 3 */
++	ROUND(H, a, b, c, d, in[3] + K3,  3);
++	ROUND(H, d, a, b, c, in[7] + K3,  9);
++	ROUND(H, c, d, a, b, in[2] + K3, 11);
++	ROUND(H, b, c, d, a, in[6] + K3, 15);
++	ROUND(H, a, b, c, d, in[1] + K3,  3);
++	ROUND(H, d, a, b, c, in[5] + K3,  9);
++	ROUND(H, c, d, a, b, in[0] + K3, 11);
++	ROUND(H, b, c, d, a, in[4] + K3, 15);
++
++	buf[0] += a;
++	buf[1] += b;
++	buf[2] += c;
++	buf[3] += d;
++
++	return buf[1]; /* "most hashed" word */
++}
++#undef ROUND
++#undef K1
++#undef K2
++#undef K3
++#undef F
++#undef G
++#undef H
+ 
+ /* The old legacy hash */
+ static __u32 dx_hack_hash_unsigned(const char *name, int len)
+diff --git a/include/linux/cryptohash.h b/include/linux/cryptohash.h
+index f4754282c9c2..3252799832cf 100644
+--- a/include/linux/cryptohash.h
++++ b/include/linux/cryptohash.h
+@@ -15,6 +15,4 @@ void sha_transform(__u32 *digest, const char *data, __u32 *W);
+ 
+ void md5_transform(__u32 *hash, __u32 const *in);
+ 
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8]);
+-
+ #endif
+diff --git a/lib/Makefile b/lib/Makefile
+index bc4073a8cd08..19ea76149a37 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -31,7 +31,7 @@ lib-$(CONFIG_HAS_DMA) += dma-noop.o
+ lib-y	+= kobject.o klist.o
+ obj-y	+= lockref.o
+ 
+-obj-y += bcd.o div64.o sort.o parser.o halfmd4.o debug_locks.o random32.o \
++obj-y += bcd.o div64.o sort.o parser.o debug_locks.o random32.o \
+ 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
+ 	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iov_iter.o clz_ctz.o \
+ 	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
+diff --git a/lib/halfmd4.c b/lib/halfmd4.c
+deleted file mode 100644
+index 137e861d9690..000000000000
+--- a/lib/halfmd4.c
++++ /dev/null
+@@ -1,67 +0,0 @@
+-#include <linux/compiler.h>
+-#include <linux/export.h>
+-#include <linux/cryptohash.h>
+-#include <linux/bitops.h>
+-
+-/* F, G and H are basic MD4 functions: selection, majority, parity */
+-#define F(x, y, z) ((z) ^ ((x) & ((y) ^ (z))))
+-#define G(x, y, z) (((x) & (y)) + (((x) ^ (y)) & (z)))
+-#define H(x, y, z) ((x) ^ (y) ^ (z))
+-
+-/*
+- * The generic round function.  The application is so specific that
+- * we don't bother protecting all the arguments with parens, as is generally
+- * good macro practice, in favor of extra legibility.
+- * Rotation is separate from addition to prevent recomputation
+- */
+-#define ROUND(f, a, b, c, d, x, s)	\
+-	(a += f(b, c, d) + x, a = rol32(a, s))
+-#define K1 0
+-#define K2 013240474631UL
+-#define K3 015666365641UL
+-
+-/*
+- * Basic cut-down MD4 transform.  Returns only 32 bits of result.
+- */
+-__u32 half_md4_transform(__u32 buf[4], __u32 const in[8])
+-{
+-	__u32 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
+-
+-	/* Round 1 */
+-	ROUND(F, a, b, c, d, in[0] + K1,  3);
+-	ROUND(F, d, a, b, c, in[1] + K1,  7);
+-	ROUND(F, c, d, a, b, in[2] + K1, 11);
+-	ROUND(F, b, c, d, a, in[3] + K1, 19);
+-	ROUND(F, a, b, c, d, in[4] + K1,  3);
+-	ROUND(F, d, a, b, c, in[5] + K1,  7);
+-	ROUND(F, c, d, a, b, in[6] + K1, 11);
+-	ROUND(F, b, c, d, a, in[7] + K1, 19);
+-
+-	/* Round 2 */
+-	ROUND(G, a, b, c, d, in[1] + K2,  3);
+-	ROUND(G, d, a, b, c, in[3] + K2,  5);
+-	ROUND(G, c, d, a, b, in[5] + K2,  9);
+-	ROUND(G, b, c, d, a, in[7] + K2, 13);
+-	ROUND(G, a, b, c, d, in[0] + K2,  3);
+-	ROUND(G, d, a, b, c, in[2] + K2,  5);
+-	ROUND(G, c, d, a, b, in[4] + K2,  9);
+-	ROUND(G, b, c, d, a, in[6] + K2, 13);
+-
+-	/* Round 3 */
+-	ROUND(H, a, b, c, d, in[3] + K3,  3);
+-	ROUND(H, d, a, b, c, in[7] + K3,  9);
+-	ROUND(H, c, d, a, b, in[2] + K3, 11);
+-	ROUND(H, b, c, d, a, in[6] + K3, 15);
+-	ROUND(H, a, b, c, d, in[1] + K3,  3);
+-	ROUND(H, d, a, b, c, in[5] + K3,  9);
+-	ROUND(H, c, d, a, b, in[0] + K3, 11);
+-	ROUND(H, b, c, d, a, in[4] + K3, 15);
+-
+-	buf[0] += a;
+-	buf[1] += b;
+-	buf[2] += c;
+-	buf[3] += d;
+-
+-	return buf[1]; /* "most hashed" word */
+-}
+-EXPORT_SYMBOL(half_md4_transform);
+-- 
+2.11.0
