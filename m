@@ -1,118 +1,101 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Refreshed rootfs.img for kvm-xfstests
-Date: Tue, 10 Jan 2017 22:05:58 -0500
-Message-ID: <20170111030558.p65scetj7ouu25tw@thunk.org>
-References: <20170109231450.objek3yirxbtbgzn@thunk.org>
- <20170110033845.qkjg6qzfjxy5i54k@thunk.org>
- <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
- <CAJrWOzBPn98QPptcJWNUpaTBzCWvqN-N3f8Sk+J7zje8v0Qx7w@mail.gmail.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH] dax: fix build warnings with FS_DAX and !FS_IOMAP
+Date: Wed, 11 Jan 2017 09:15:23 +0100
+Message-ID: <20170111081523.GA16116@quack2.suse.cz>
+References: <1946137.McqY686LOu@wuerfel>
+ <1484087383-29478-1-git-send-email-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>
-To: Roman Penyaev <roman.penyaev@profitbricks.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33330 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936074AbdAKDGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 10 Jan 2017 22:06:04 -0500
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <CAJrWOzBPn98QPptcJWNUpaTBzCWvqN-N3f8Sk+J7zje8v0Qx7w@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1484087383-29478-1-git-send-email-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 10, 2017 at 04:07:49PM +0100, Roman Penyaev wrote:
-> > I retested the following configurations on 69973b830859 ("Linux 4.9"):
-> >
-> > ./kvm-xfstests.sh -c nojournal    ext4/301
-> > ./kvm-xfstests.sh -c ext3conv     generic/347
-> > ./kvm-xfstests.sh -c adv          generic/396 generic/399
-> > ./kvm-xfstests.sh -c data_journal generic/347
-> > ./kvm-xfstests.sh -c bigalloc     generic/399
-> > ./kvm-xfstests.sh -c bigalloc_1k  generic/273
-> >
-> > all of the tests from list have failed.
-> 
-> I executed the list above on these kernels:
-> 
-> c8d2bc9bc39e ("Linux 4.8")
-> 523d939ef98f ("Linux 4.7")
-> 2dcd0af568b0 ("Linux 4.6")
-> b562e44f507e ("Linux 4.5")
-> 
-> and the picture stays the same: tests continue to fail.
-> (once I saw '-c data_journal generic/347' on 4.6 has passed, but
->  I failed to repeat this success).
-
-Hi Roman,
-
-It's important to remember that xfstests keep adding new tests and
-changing existing ones.  So for example, here below is a test of
-4.7.0-rc1 with the ext4 changes that went into 4.8 during the merge
-window.  You'll see that these test failures above mostly aren't
-represented.  (One exception is ext4/301 in nojournal mode; that's
-been one that has been failing for a while.  As far as I know, main
-user of nojournal mode is Google, and we don't use e4defrag, so it's
-not been a high priority for meto track down.)
-
-The test report attached below was run on July 17th, using xfstests
-git repo from March 15th, and so a number of these tests simply
-weren't not in the xfstests yet:
-
-% git log --reverse --pretty=%cd\n tests/generic/347 | head -1
-Mon May 9 10:55:24 2016 +1000n
-% git log --reverse --pretty=%cd\n tests/generic/273 | head -1
-Tue Mar 26 11:43:49 2013 -0500n
-=% git log --reverse --pretty=%cd\n tests/generic/396 | head -1
-Sat Dec 24 16:47:12 2016 +0800n
-% git log --reverse --pretty=%cd\n tests/generic/399 | head -1
-Sat Dec 24 16:48:58 2016 +0800n
-
-So very often a git bisect isn't the best way to debug a test failure.
-In some cases a bug that was found in another file system (such as
-btrfs, or f2fs) when introduced as a generic test, ends up tickling a
-bug (often a different kind of bug with different symptoms) in ext4.
-
-Cheers,
-
-						- Ted
-
-Subject: xfstests results 201607170254 - 4.7.0-rc1-ext4-00021-g7bc9491
-
-CMDLINE: full
-FSTESTVER: e2fsprogs    v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
-FSTESTVER: fio          fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
-FSTESTVER: quota                81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
-FSTESTVER: xfsprogs     v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
-FSTESTVER: xfstests-bld 4247cb8 (Sat, 16 Jul 2016 21:58:00 -0400)
-FSTESTVER: xfstests     linux-v3.8-1105-gacd7210 (Fri, 15 Jul 2016 11:16:57 -0400)
-FSTESTVER: kernel       4.7.0-rc1-ext4-00021-g7bc9491 #320 SMP Sun Jul 17 02:51:56 EDT 2016 x86_64
-FSTESTCFG: "4k 1k ext3 encrypt nojournal ext3conv adv dioread_nolock data_journal bigalloc bigalloc_1k"
-FSTESTSET: "-g auto"
-FSTESTEXC: ""
-FSTESTOPT: "aex"
-MNTOPTS: ""
-CPUS: "2"
-MEM: "7496.82"
-MEM: 7680 MB (Max capacity)
-BEGIN TEST 4k: Ext4 4k block Sun Jul 17 02:55:55 EDT 2016
-Passed all 224 tests
-BEGIN TEST 1k: Ext4 1k block Sun Jul 17 03:44:54 EDT 2016
-Failures: generic/018 generic/273
-BEGIN TEST ext3: Ext4 4k block emulating ext3 Sun Jul 17 04:37:46 EDT 2016
-Passed all 180 tests
-BEGIN TEST encrypt: Ext4 encryption Sun Jul 17 05:25:58 EDT 2016
-Failures: ext4/020 generic/269
-BEGIN TEST nojournal: Ext4 4k block w/ no journal Sun Jul 17 05:52:50 EDT 2016
-Failures: ext4/301
-BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Sun Jul 17 06:36:35 EDT 2016
-Failures: generic/347
-BEGIN TEST adv: Ext4 advanced features (inline_data, metadata_csum, 64bit) Sun Jul 17 07:23:25 EDT 2016
-Passed all 223 tests
-BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Sun Jul 17 08:12:27 EDT 2016
-Passed all 224 tests
-BEGIN TEST data_journal: Ext4 4k block w/data=journal Sun Jul 17 09:01:46 EDT 2016
-Failures: generic/018 generic/347
-BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Sun Jul 17 10:09:25 EDT 2016
-Failures: ext4/004 generic/204 generic/219 generic/235 generic/273
-BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Sun Jul 17 11:02:40 EDT 2016
-Failures: ext4/004 generic/204 generic/235 generic/273
+T24gVHVlIDEwLTAxLTE3IDE1OjI5OjQzLCBSb3NzIFp3aXNsZXIgd3JvdGU6Cj4gQXMgcmVwb3J0
+ZWQgYnkgQXJuZDoKPiAKPiBodHRwczovL2xrbWwub3JnL2xrbWwvMjAxNy8xLzEwLzc1Ngo+IAo+
+IENvbXBpbGluZyB3aXRoIHRoZSBmb2xsb3dpbmcgY29uZmlndXJhdGlvbjoKPiAKPiAgICMgQ09O
+RklHX0VYVDJfRlMgaXMgbm90IHNldAo+ICAgIyBDT05GSUdfRVhUNF9GUyBpcyBub3Qgc2V0Cj4g
+ICAjIENPTkZJR19YRlNfRlMgaXMgbm90IHNldAo+ICAgIyBDT05GSUdfRlNfSU9NQVAgZGVwZW5k
+cyBvbiB0aGUgYWJvdmUgZmlsZXN5c3RlbXMsIGFzIGlzIG5vdCBzZXQKPiAgIENPTkZJR19GU19E
+QVg9eQo+IAo+IGdlbmVyYXRlcyBidWlsZCB3YXJuaW5ncyBhYm91dCB1bnVzZWQgZnVuY3Rpb25z
+IGluIGZzL2RheC5jOgo+IAo+IGZzL2RheC5jOjg3ODoxMjogd2FybmluZzog4oCYZGF4X2luc2Vy
+dF9tYXBwaW5n4oCZIGRlZmluZWQgYnV0IG5vdCB1c2VkIFstV3VudXNlZC1mdW5jdGlvbl0KPiAg
+c3RhdGljIGludCBkYXhfaW5zZXJ0X21hcHBpbmcoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBp
+bmcsCj4gICAgICAgICAgICAgXn5+fn5+fn5+fn5+fn5+fn5+Cj4gZnMvZGF4LmM6NTcyOjEyOiB3
+YXJuaW5nOiDigJhjb3B5X3VzZXJfZGF44oCZIGRlZmluZWQgYnV0IG5vdCB1c2VkIFstV3VudXNl
+ZC1mdW5jdGlvbl0KPiAgc3RhdGljIGludCBjb3B5X3VzZXJfZGF4KHN0cnVjdCBibG9ja19kZXZp
+Y2UgKmJkZXYsIHNlY3Rvcl90IHNlY3Rvciwgc2l6ZV90IHNpemUsCj4gICAgICAgICAgICAgXn5+
+fn5+fn5+fn5+fgo+IGZzL2RheC5jOjU0MjoxMjogd2FybmluZzog4oCYZGF4X2xvYWRfaG9sZeKA
+mSBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dCj4gIHN0YXRpYyBpbnQg
+ZGF4X2xvYWRfaG9sZShzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZywgdm9pZCAqKmVudHJ5
+LAo+ICAgICAgICAgICAgIF5+fn5+fn5+fn5+fn4KPiBmcy9kYXguYzozMTI6MTQ6IHdhcm5pbmc6
+IOKAmGdyYWJfbWFwcGluZ19lbnRyeeKAmSBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQt
+ZnVuY3Rpb25dCj4gIHN0YXRpYyB2b2lkICpncmFiX21hcHBpbmdfZW50cnkoc3RydWN0IGFkZHJl
+c3Nfc3BhY2UgKm1hcHBpbmcsIHBnb2ZmX3QgaW5kZXgsCj4gICAgICAgICAgICAgICBefn5+fn5+
+fn5+fn5+fn5+fn4KPiAKPiBOb3cgdGhhdCB0aGUgc3RydWN0IGJ1ZmZlcl9oZWFkIGJhc2VkIERB
+WCBmYXVsdCBwYXRocyBhbmQgSS9PIHBhdGggaGF2ZQo+IGJlZW4gcmVtb3ZlZCB3ZSByZWFsbHkg
+ZGVwZW5kIG9uIGlvbWFwIHN1cHBvcnQgYmVpbmcgcHJlc2VudCBmb3IgREFYLiAgTWFrZQo+IHRo
+aXMgZXhwbGljaXQgYnkgc2VsZWN0aW5nIEZTX0lPTUFQIGlmIHdlIGNvbXBpbGUgaW4gREFYIHN1
+cHBvcnQuCj4gCj4gVGhpcyBhbGxvd3MgdXMgdG8gcmVtb3ZlIGNvbmRpdGlvbmFsIHNlbGVjdGlv
+bnMgb2YgRlNfSU9NQVAgd2hlbiBGU19EQVggd2FzCj4gcHJlc2VudCBmb3IgZXh0MiBhbmQgZXh0
+NCwgYW5kIHRvIHJlbW92ZSBhbiAjaWZkZWYgaW4gZnMvZGF4LmMuCj4gCj4gU2lnbmVkLW9mZi1i
+eTogUm9zcyBad2lzbGVyIDxyb3NzLnp3aXNsZXJAbGludXguaW50ZWwuY29tPgo+IFJlcG9ydGVk
+LWJ5OiBBcm5kIEJlcmdtYW5uIDxhcm5kQGFybmRiLmRlPgo+IENjOiBKYW4gS2FyYSA8amFja0Bz
+dXNlLmN6Pgo+IENjOiBDaHJpc3RvcGggSGVsbHdpZyA8aGNoQGxzdC5kZT4KCkxvb2tzIGdvb2Qu
+IEkgYWdyZWUgdGhhdCBEQVggd2l0aG91dCBGU19JT01BUCBkb2VzIG5vdCBtYWtlIHNlbnNlLiBZ
+b3UgY2FuCmFkZDoKClJldmlld2VkLWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgoKCQkJCQkJ
+CQlIb256YQo+IC0tLQo+ICBmcy9LY29uZmlnICAgICAgfCAxICsKPiAgZnMvZGF4LmMgICAgICAg
+IHwgMiAtLQo+ICBmcy9leHQyL0tjb25maWcgfCAxIC0KPiAgZnMvZXh0NC9LY29uZmlnIHwgMSAt
+Cj4gIDQgZmlsZXMgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyksIDQgZGVsZXRpb25zKC0pCj4gCj4g
+ZGlmZiAtLWdpdCBhL2ZzL0tjb25maWcgYi9mcy9LY29uZmlnCj4gaW5kZXggYzJhMzc3Yy4uODNl
+YWI1MiAxMDA2NDQKPiAtLS0gYS9mcy9LY29uZmlnCj4gKysrIGIvZnMvS2NvbmZpZwo+IEBAIC0z
+OCw2ICszOCw3IEBAIGNvbmZpZyBGU19EQVgKPiAgCWJvb2wgIkRpcmVjdCBBY2Nlc3MgKERBWCkg
+c3VwcG9ydCIKPiAgCWRlcGVuZHMgb24gTU1VCj4gIAlkZXBlbmRzIG9uICEoQVJNIHx8IE1JUFMg
+fHwgU1BBUkMpCj4gKwlzZWxlY3QgRlNfSU9NQVAKPiAgCWhlbHAKPiAgCSAgRGlyZWN0IEFjY2Vz
+cyAoREFYKSBjYW4gYmUgdXNlZCBvbiBtZW1vcnktYmFja2VkIGJsb2NrIGRldmljZXMuCj4gIAkg
+IElmIHRoZSBibG9jayBkZXZpY2Ugc3VwcG9ydHMgREFYIGFuZCB0aGUgZmlsZXN5c3RlbSBzdXBw
+b3J0cyBEQVgsCj4gZGlmZiAtLWdpdCBhL2ZzL2RheC5jIGIvZnMvZGF4LmMKPiBpbmRleCA1Yzc0
+ZjYwLi4wODNiOTUwIDEwMDY0NAo+IC0tLSBhL2ZzL2RheC5jCj4gKysrIGIvZnMvZGF4LmMKPiBA
+QCAtOTY5LDcgKzk2OSw2IEBAIGludCBfX2RheF96ZXJvX3BhZ2VfcmFuZ2Uoc3RydWN0IGJsb2Nr
+X2RldmljZSAqYmRldiwgc2VjdG9yX3Qgc2VjdG9yLAo+ICB9Cj4gIEVYUE9SVF9TWU1CT0xfR1BM
+KF9fZGF4X3plcm9fcGFnZV9yYW5nZSk7Cj4gIAo+IC0jaWZkZWYgQ09ORklHX0ZTX0lPTUFQCj4g
+IHN0YXRpYyBzZWN0b3JfdCBkYXhfaW9tYXBfc2VjdG9yKHN0cnVjdCBpb21hcCAqaW9tYXAsIGxv
+ZmZfdCBwb3MpCj4gIHsKPiAgCXJldHVybiBpb21hcC0+Ymxrbm8gKyAoKChwb3MgJiBQQUdFX01B
+U0spIC0gaW9tYXAtPm9mZnNldCkgPj4gOSk7Cj4gQEAgLTE0MDcsNCArMTQwNiwzIEBAIGludCBk
+YXhfaW9tYXBfcG1kX2ZhdWx0KHN0cnVjdCB2bV9hcmVhX3N0cnVjdCAqdm1hLCB1bnNpZ25lZCBs
+b25nIGFkZHJlc3MsCj4gIH0KPiAgRVhQT1JUX1NZTUJPTF9HUEwoZGF4X2lvbWFwX3BtZF9mYXVs
+dCk7Cj4gICNlbmRpZiAvKiBDT05GSUdfRlNfREFYX1BNRCAqLwo+IC0jZW5kaWYgLyogQ09ORklH
+X0ZTX0lPTUFQICovCj4gZGlmZiAtLWdpdCBhL2ZzL2V4dDIvS2NvbmZpZyBiL2ZzL2V4dDIvS2Nv
+bmZpZwo+IGluZGV4IDM2YmVhNWEuLmM2MzQ4NzRlIDEwMDY0NAo+IC0tLSBhL2ZzL2V4dDIvS2Nv
+bmZpZwo+ICsrKyBiL2ZzL2V4dDIvS2NvbmZpZwo+IEBAIC0xLDYgKzEsNSBAQAo+ICBjb25maWcg
+RVhUMl9GUwo+ICAJdHJpc3RhdGUgIlNlY29uZCBleHRlbmRlZCBmcyBzdXBwb3J0Igo+IC0Jc2Vs
+ZWN0IEZTX0lPTUFQIGlmIEZTX0RBWAo+ICAJaGVscAo+ICAJICBFeHQyIGlzIGEgc3RhbmRhcmQg
+TGludXggZmlsZSBzeXN0ZW0gZm9yIGhhcmQgZGlza3MuCj4gIAo+IGRpZmYgLS1naXQgYS9mcy9l
+eHQ0L0tjb25maWcgYi9mcy9leHQ0L0tjb25maWcKPiBpbmRleCA3YjkwNjkxLi5lMzgwMzlmIDEw
+MDY0NAo+IC0tLSBhL2ZzL2V4dDQvS2NvbmZpZwo+ICsrKyBiL2ZzL2V4dDQvS2NvbmZpZwo+IEBA
+IC0zNyw3ICszNyw2IEBAIGNvbmZpZyBFWFQ0X0ZTCj4gIAlzZWxlY3QgQ1JDMTYKPiAgCXNlbGVj
+dCBDUllQVE8KPiAgCXNlbGVjdCBDUllQVE9fQ1JDMzJDCj4gLQlzZWxlY3QgRlNfSU9NQVAgaWYg
+RlNfREFYCj4gIAloZWxwCj4gIAkgIFRoaXMgaXMgdGhlIG5leHQgZ2VuZXJhdGlvbiBvZiB0aGUg
+ZXh0MyBmaWxlc3lzdGVtLgo+ICAKPiAtLSAKPiAyLjcuNAo+IAotLSAKSmFuIEthcmEgPGphY2tA
+c3VzZS5jb20+ClNVU0UgTGFicywgQ1IKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX18KTGludXgtbnZkaW1tIG1haWxpbmcgbGlzdApMaW51eC1udmRpbW1AbGlz
+dHMuMDEub3JnCmh0dHBzOi8vbGlzdHMuMDEub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtbnZk
+aW1tCg==
