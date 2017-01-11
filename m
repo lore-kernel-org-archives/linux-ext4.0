@@ -1,92 +1,118 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH] dax: fix build warnings with FS_DAX and !FS_IOMAP
-Date: Tue, 10 Jan 2017 15:29:43 -0700
-Message-ID: <1484087383-29478-1-git-send-email-ross.zwisler@linux.intel.com>
-References: <1946137.McqY686LOu@wuerfel>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Refreshed rootfs.img for kvm-xfstests
+Date: Tue, 10 Jan 2017 22:05:58 -0500
+Message-ID: <20170111030558.p65scetj7ouu25tw@thunk.org>
+References: <20170109231450.objek3yirxbtbgzn@thunk.org>
+ <20170110033845.qkjg6qzfjxy5i54k@thunk.org>
+ <CAJrWOzAebGpyLTJL2XsP8r4zjrbG030cLEXUVUK0t2sW8=g_Gg@mail.gmail.com>
+ <CAJrWOzBPn98QPptcJWNUpaTBzCWvqN-N3f8Sk+J7zje8v0Qx7w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <1946137.McqY686LOu@wuerfel>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>
+To: Roman Penyaev <roman.penyaev@profitbricks.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33330 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S936074AbdAKDGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 10 Jan 2017 22:06:04 -0500
+Content-Disposition: inline
+In-Reply-To: <CAJrWOzBPn98QPptcJWNUpaTBzCWvqN-N3f8Sk+J7zje8v0Qx7w@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-QXMgcmVwb3J0ZWQgYnkgQXJuZDoKCmh0dHBzOi8vbGttbC5vcmcvbGttbC8yMDE3LzEvMTAvNzU2
-CgpDb21waWxpbmcgd2l0aCB0aGUgZm9sbG93aW5nIGNvbmZpZ3VyYXRpb246CgogICMgQ09ORklH
-X0VYVDJfRlMgaXMgbm90IHNldAogICMgQ09ORklHX0VYVDRfRlMgaXMgbm90IHNldAogICMgQ09O
-RklHX1hGU19GUyBpcyBub3Qgc2V0CiAgIyBDT05GSUdfRlNfSU9NQVAgZGVwZW5kcyBvbiB0aGUg
-YWJvdmUgZmlsZXN5c3RlbXMsIGFzIGlzIG5vdCBzZXQKICBDT05GSUdfRlNfREFYPXkKCmdlbmVy
-YXRlcyBidWlsZCB3YXJuaW5ncyBhYm91dCB1bnVzZWQgZnVuY3Rpb25zIGluIGZzL2RheC5jOgoK
-ZnMvZGF4LmM6ODc4OjEyOiB3YXJuaW5nOiDigJhkYXhfaW5zZXJ0X21hcHBpbmfigJkgZGVmaW5l
-ZCBidXQgbm90IHVzZWQgWy1XdW51c2VkLWZ1bmN0aW9uXQogc3RhdGljIGludCBkYXhfaW5zZXJ0
-X21hcHBpbmcoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsCiAgICAgICAgICAgIF5+fn5+
-fn5+fn5+fn5+fn5+fgpmcy9kYXguYzo1NzI6MTI6IHdhcm5pbmc6IOKAmGNvcHlfdXNlcl9kYXji
-gJkgZGVmaW5lZCBidXQgbm90IHVzZWQgWy1XdW51c2VkLWZ1bmN0aW9uXQogc3RhdGljIGludCBj
-b3B5X3VzZXJfZGF4KHN0cnVjdCBibG9ja19kZXZpY2UgKmJkZXYsIHNlY3Rvcl90IHNlY3Rvciwg
-c2l6ZV90IHNpemUsCiAgICAgICAgICAgIF5+fn5+fn5+fn5+fn4KZnMvZGF4LmM6NTQyOjEyOiB3
-YXJuaW5nOiDigJhkYXhfbG9hZF9ob2xl4oCZIGRlZmluZWQgYnV0IG5vdCB1c2VkIFstV3VudXNl
-ZC1mdW5jdGlvbl0KIHN0YXRpYyBpbnQgZGF4X2xvYWRfaG9sZShzdHJ1Y3QgYWRkcmVzc19zcGFj
-ZSAqbWFwcGluZywgdm9pZCAqKmVudHJ5LAogICAgICAgICAgICBefn5+fn5+fn5+fn5+CmZzL2Rh
-eC5jOjMxMjoxNDogd2FybmluZzog4oCYZ3JhYl9tYXBwaW5nX2VudHJ54oCZIGRlZmluZWQgYnV0
-IG5vdCB1c2VkIFstV3VudXNlZC1mdW5jdGlvbl0KIHN0YXRpYyB2b2lkICpncmFiX21hcHBpbmdf
-ZW50cnkoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsIHBnb2ZmX3QgaW5kZXgsCiAgICAg
-ICAgICAgICAgXn5+fn5+fn5+fn5+fn5+fn5+CgpOb3cgdGhhdCB0aGUgc3RydWN0IGJ1ZmZlcl9o
-ZWFkIGJhc2VkIERBWCBmYXVsdCBwYXRocyBhbmQgSS9PIHBhdGggaGF2ZQpiZWVuIHJlbW92ZWQg
-d2UgcmVhbGx5IGRlcGVuZCBvbiBpb21hcCBzdXBwb3J0IGJlaW5nIHByZXNlbnQgZm9yIERBWC4g
-IE1ha2UKdGhpcyBleHBsaWNpdCBieSBzZWxlY3RpbmcgRlNfSU9NQVAgaWYgd2UgY29tcGlsZSBp
-biBEQVggc3VwcG9ydC4KClRoaXMgYWxsb3dzIHVzIHRvIHJlbW92ZSBjb25kaXRpb25hbCBzZWxl
-Y3Rpb25zIG9mIEZTX0lPTUFQIHdoZW4gRlNfREFYIHdhcwpwcmVzZW50IGZvciBleHQyIGFuZCBl
-eHQ0LCBhbmQgdG8gcmVtb3ZlIGFuICNpZmRlZiBpbiBmcy9kYXguYy4KClNpZ25lZC1vZmYtYnk6
-IFJvc3MgWndpc2xlciA8cm9zcy56d2lzbGVyQGxpbnV4LmludGVsLmNvbT4KUmVwb3J0ZWQtYnk6
-IEFybmQgQmVyZ21hbm4gPGFybmRAYXJuZGIuZGU+CkNjOiBKYW4gS2FyYSA8amFja0BzdXNlLmN6
-PgpDYzogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Ci0tLQogZnMvS2NvbmZpZyAgICAg
-IHwgMSArCiBmcy9kYXguYyAgICAgICAgfCAyIC0tCiBmcy9leHQyL0tjb25maWcgfCAxIC0KIGZz
-L2V4dDQvS2NvbmZpZyB8IDEgLQogNCBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgNCBk
-ZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9LY29uZmlnIGIvZnMvS2NvbmZpZwppbmRleCBj
-MmEzNzdjLi44M2VhYjUyIDEwMDY0NAotLS0gYS9mcy9LY29uZmlnCisrKyBiL2ZzL0tjb25maWcK
-QEAgLTM4LDYgKzM4LDcgQEAgY29uZmlnIEZTX0RBWAogCWJvb2wgIkRpcmVjdCBBY2Nlc3MgKERB
-WCkgc3VwcG9ydCIKIAlkZXBlbmRzIG9uIE1NVQogCWRlcGVuZHMgb24gIShBUk0gfHwgTUlQUyB8
-fCBTUEFSQykKKwlzZWxlY3QgRlNfSU9NQVAKIAloZWxwCiAJICBEaXJlY3QgQWNjZXNzIChEQVgp
-IGNhbiBiZSB1c2VkIG9uIG1lbW9yeS1iYWNrZWQgYmxvY2sgZGV2aWNlcy4KIAkgIElmIHRoZSBi
-bG9jayBkZXZpY2Ugc3VwcG9ydHMgREFYIGFuZCB0aGUgZmlsZXN5c3RlbSBzdXBwb3J0cyBEQVgs
-CmRpZmYgLS1naXQgYS9mcy9kYXguYyBiL2ZzL2RheC5jCmluZGV4IDVjNzRmNjAuLjA4M2I5NTAg
-MTAwNjQ0Ci0tLSBhL2ZzL2RheC5jCisrKyBiL2ZzL2RheC5jCkBAIC05NjksNyArOTY5LDYgQEAg
-aW50IF9fZGF4X3plcm9fcGFnZV9yYW5nZShzdHJ1Y3QgYmxvY2tfZGV2aWNlICpiZGV2LCBzZWN0
-b3JfdCBzZWN0b3IsCiB9CiBFWFBPUlRfU1lNQk9MX0dQTChfX2RheF96ZXJvX3BhZ2VfcmFuZ2Up
-OwogCi0jaWZkZWYgQ09ORklHX0ZTX0lPTUFQCiBzdGF0aWMgc2VjdG9yX3QgZGF4X2lvbWFwX3Nl
-Y3RvcihzdHJ1Y3QgaW9tYXAgKmlvbWFwLCBsb2ZmX3QgcG9zKQogewogCXJldHVybiBpb21hcC0+
-Ymxrbm8gKyAoKChwb3MgJiBQQUdFX01BU0spIC0gaW9tYXAtPm9mZnNldCkgPj4gOSk7CkBAIC0x
-NDA3LDQgKzE0MDYsMyBAQCBpbnQgZGF4X2lvbWFwX3BtZF9mYXVsdChzdHJ1Y3Qgdm1fYXJlYV9z
-dHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyZXNzLAogfQogRVhQT1JUX1NZTUJPTF9HUEwo
-ZGF4X2lvbWFwX3BtZF9mYXVsdCk7CiAjZW5kaWYgLyogQ09ORklHX0ZTX0RBWF9QTUQgKi8KLSNl
-bmRpZiAvKiBDT05GSUdfRlNfSU9NQVAgKi8KZGlmZiAtLWdpdCBhL2ZzL2V4dDIvS2NvbmZpZyBi
-L2ZzL2V4dDIvS2NvbmZpZwppbmRleCAzNmJlYTVhLi5jNjM0ODc0ZSAxMDA2NDQKLS0tIGEvZnMv
-ZXh0Mi9LY29uZmlnCisrKyBiL2ZzL2V4dDIvS2NvbmZpZwpAQCAtMSw2ICsxLDUgQEAKIGNvbmZp
-ZyBFWFQyX0ZTCiAJdHJpc3RhdGUgIlNlY29uZCBleHRlbmRlZCBmcyBzdXBwb3J0IgotCXNlbGVj
-dCBGU19JT01BUCBpZiBGU19EQVgKIAloZWxwCiAJICBFeHQyIGlzIGEgc3RhbmRhcmQgTGludXgg
-ZmlsZSBzeXN0ZW0gZm9yIGhhcmQgZGlza3MuCiAKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvS2NvbmZp
-ZyBiL2ZzL2V4dDQvS2NvbmZpZwppbmRleCA3YjkwNjkxLi5lMzgwMzlmIDEwMDY0NAotLS0gYS9m
-cy9leHQ0L0tjb25maWcKKysrIGIvZnMvZXh0NC9LY29uZmlnCkBAIC0zNyw3ICszNyw2IEBAIGNv
-bmZpZyBFWFQ0X0ZTCiAJc2VsZWN0IENSQzE2CiAJc2VsZWN0IENSWVBUTwogCXNlbGVjdCBDUllQ
-VE9fQ1JDMzJDCi0Jc2VsZWN0IEZTX0lPTUFQIGlmIEZTX0RBWAogCWhlbHAKIAkgIFRoaXMgaXMg
-dGhlIG5leHQgZ2VuZXJhdGlvbiBvZiB0aGUgZXh0MyBmaWxlc3lzdGVtLgogCi0tIAoyLjcuNAoK
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTGludXgtbnZk
-aW1tIG1haWxpbmcgbGlzdApMaW51eC1udmRpbW1AbGlzdHMuMDEub3JnCmh0dHBzOi8vbGlzdHMu
-MDEub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtbnZkaW1tCg==
+On Tue, Jan 10, 2017 at 04:07:49PM +0100, Roman Penyaev wrote:
+> > I retested the following configurations on 69973b830859 ("Linux 4.9"):
+> >
+> > ./kvm-xfstests.sh -c nojournal    ext4/301
+> > ./kvm-xfstests.sh -c ext3conv     generic/347
+> > ./kvm-xfstests.sh -c adv          generic/396 generic/399
+> > ./kvm-xfstests.sh -c data_journal generic/347
+> > ./kvm-xfstests.sh -c bigalloc     generic/399
+> > ./kvm-xfstests.sh -c bigalloc_1k  generic/273
+> >
+> > all of the tests from list have failed.
+> 
+> I executed the list above on these kernels:
+> 
+> c8d2bc9bc39e ("Linux 4.8")
+> 523d939ef98f ("Linux 4.7")
+> 2dcd0af568b0 ("Linux 4.6")
+> b562e44f507e ("Linux 4.5")
+> 
+> and the picture stays the same: tests continue to fail.
+> (once I saw '-c data_journal generic/347' on 4.6 has passed, but
+>  I failed to repeat this success).
+
+Hi Roman,
+
+It's important to remember that xfstests keep adding new tests and
+changing existing ones.  So for example, here below is a test of
+4.7.0-rc1 with the ext4 changes that went into 4.8 during the merge
+window.  You'll see that these test failures above mostly aren't
+represented.  (One exception is ext4/301 in nojournal mode; that's
+been one that has been failing for a while.  As far as I know, main
+user of nojournal mode is Google, and we don't use e4defrag, so it's
+not been a high priority for meto track down.)
+
+The test report attached below was run on July 17th, using xfstests
+git repo from March 15th, and so a number of these tests simply
+weren't not in the xfstests yet:
+
+% git log --reverse --pretty=%cd\n tests/generic/347 | head -1
+Mon May 9 10:55:24 2016 +1000n
+% git log --reverse --pretty=%cd\n tests/generic/273 | head -1
+Tue Mar 26 11:43:49 2013 -0500n
+=% git log --reverse --pretty=%cd\n tests/generic/396 | head -1
+Sat Dec 24 16:47:12 2016 +0800n
+% git log --reverse --pretty=%cd\n tests/generic/399 | head -1
+Sat Dec 24 16:48:58 2016 +0800n
+
+So very often a git bisect isn't the best way to debug a test failure.
+In some cases a bug that was found in another file system (such as
+btrfs, or f2fs) when introduced as a generic test, ends up tickling a
+bug (often a different kind of bug with different symptoms) in ext4.
+
+Cheers,
+
+						- Ted
+
+Subject: xfstests results 201607170254 - 4.7.0-rc1-ext4-00021-g7bc9491
+
+CMDLINE: full
+FSTESTVER: e2fsprogs    v1.43.1-22-g25c4a20 (Wed, 8 Jun 2016 18:11:27 -0400)
+FSTESTVER: fio          fio-2.6-8-ge6989e1 (Thu, 4 Feb 2016 12:09:48 -0700)
+FSTESTVER: quota                81aca5c (Tue, 12 Jul 2016 16:15:45 +0200)
+FSTESTVER: xfsprogs     v4.5.0 (Tue, 15 Mar 2016 15:25:56 +1100)
+FSTESTVER: xfstests-bld 4247cb8 (Sat, 16 Jul 2016 21:58:00 -0400)
+FSTESTVER: xfstests     linux-v3.8-1105-gacd7210 (Fri, 15 Jul 2016 11:16:57 -0400)
+FSTESTVER: kernel       4.7.0-rc1-ext4-00021-g7bc9491 #320 SMP Sun Jul 17 02:51:56 EDT 2016 x86_64
+FSTESTCFG: "4k 1k ext3 encrypt nojournal ext3conv adv dioread_nolock data_journal bigalloc bigalloc_1k"
+FSTESTSET: "-g auto"
+FSTESTEXC: ""
+FSTESTOPT: "aex"
+MNTOPTS: ""
+CPUS: "2"
+MEM: "7496.82"
+MEM: 7680 MB (Max capacity)
+BEGIN TEST 4k: Ext4 4k block Sun Jul 17 02:55:55 EDT 2016
+Passed all 224 tests
+BEGIN TEST 1k: Ext4 1k block Sun Jul 17 03:44:54 EDT 2016
+Failures: generic/018 generic/273
+BEGIN TEST ext3: Ext4 4k block emulating ext3 Sun Jul 17 04:37:46 EDT 2016
+Passed all 180 tests
+BEGIN TEST encrypt: Ext4 encryption Sun Jul 17 05:25:58 EDT 2016
+Failures: ext4/020 generic/269
+BEGIN TEST nojournal: Ext4 4k block w/ no journal Sun Jul 17 05:52:50 EDT 2016
+Failures: ext4/301
+BEGIN TEST ext3conv: Ext4 4k block w/nodelalloc and no flex_bg Sun Jul 17 06:36:35 EDT 2016
+Failures: generic/347
+BEGIN TEST adv: Ext4 advanced features (inline_data, metadata_csum, 64bit) Sun Jul 17 07:23:25 EDT 2016
+Passed all 223 tests
+BEGIN TEST dioread_nolock: Ext4 4k block w/dioread_nolock Sun Jul 17 08:12:27 EDT 2016
+Passed all 224 tests
+BEGIN TEST data_journal: Ext4 4k block w/data=journal Sun Jul 17 09:01:46 EDT 2016
+Failures: generic/018 generic/347
+BEGIN TEST bigalloc: Ext4 4k block w/bigalloc Sun Jul 17 10:09:25 EDT 2016
+Failures: ext4/004 generic/204 generic/219 generic/235 generic/273
+BEGIN TEST bigalloc_1k: Ext4 1k block w/bigalloc Sun Jul 17 11:02:40 EDT 2016
+Failures: ext4/004 generic/204 generic/235 generic/273
