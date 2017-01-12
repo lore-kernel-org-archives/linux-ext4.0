@@ -1,76 +1,81 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/4] ext4: add debug_want_extra_isize mount option
-Date: Wed, 11 Jan 2017 22:49:34 -0500
-Message-ID: <20170112034938.5934-2-tytso@mit.edu>
+Subject: [PATCH 3/4] ext4: avoid calling ext4_mark_inode_dirty() under unneeded semaphores
+Date: Wed, 11 Jan 2017 22:49:37 -0500
+Message-ID: <20170112034938.5934-5-tytso@mit.edu>
 References: <20170112034938.5934-1-tytso@mit.edu>
 Cc: linux@sciencehorizons.net, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37306 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37334 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752228AbdALDtt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Jan 2017 22:49:49 -0500
+        id S1752557AbdALDt5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 22:49:57 -0500
 In-Reply-To: <20170112034938.5934-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to test the inode extra isize expansion code, it is useful to
-be able to easily create file systems that have inodes with extra
-isize values smaller than the current desired value.
+There is no need to call ext4_mark_inode_dirty while holding xattr_sem
+or i_data_sem, so where it's easy to avoid it, move it out from the
+critical region.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/super.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/ext4/inline.c | 9 +++------
+ fs/ext4/inode.c  | 2 +-
+ 2 files changed, 4 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9d15a6293124..829e4a7b59e4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1284,7 +1284,7 @@ enum {
- 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
- 	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version, Opt_dax,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_mblk_io_submit,
--	Opt_lazytime, Opt_nolazytime,
-+	Opt_lazytime, Opt_nolazytime, Opt_debug_want_extra_isize,
- 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
-@@ -1352,6 +1352,7 @@ static const match_table_t tokens = {
- 	{Opt_delalloc, "delalloc"},
- 	{Opt_lazytime, "lazytime"},
- 	{Opt_nolazytime, "nolazytime"},
-+	{Opt_debug_want_extra_isize, "debug_want_extra_isize=%u"},
- 	{Opt_nodelalloc, "nodelalloc"},
- 	{Opt_removed, "mblk_io_submit"},
- 	{Opt_removed, "nomblk_io_submit"},
-@@ -1557,6 +1558,7 @@ static const struct mount_opts {
- #endif
- 	{Opt_nouid32, EXT4_MOUNT_NO_UID32, MOPT_SET},
- 	{Opt_debug, EXT4_MOUNT_DEBUG, MOPT_SET},
-+	{Opt_debug_want_extra_isize, 0, MOPT_GTE0},
- 	{Opt_quota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA, MOPT_SET | MOPT_Q},
- 	{Opt_usrquota, EXT4_MOUNT_QUOTA | EXT4_MOUNT_USRQUOTA,
- 							MOPT_SET | MOPT_Q},
-@@ -1670,6 +1672,8 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		if (arg == 0)
- 			arg = JBD2_DEFAULT_MAX_COMMIT_AGE;
- 		sbi->s_commit_interval = HZ * arg;
-+	} else if (token == Opt_debug_want_extra_isize) {
-+		sbi->s_want_extra_isize = arg;
- 	} else if (token == Opt_max_batch_time) {
- 		sbi->s_max_batch_time = arg;
- 	} else if (token == Opt_min_batch_time) {
-@@ -4081,7 +4085,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_flags |= MS_RDONLY;
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 99a5312ced52..31f98dd04e51 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1042,7 +1042,6 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+ 	ext4_update_dx_flag(dir);
+ 	dir->i_version++;
+-	ext4_mark_inode_dirty(handle, dir);
+ 	return 1;
+ }
  
- 	/* determine the minimum size of new large inodes, if present */
--	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
-+	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    sbi->s_want_extra_isize == 0) {
- 		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
- 						     EXT4_GOOD_OLD_INODE_SIZE;
- 		if (ext4_has_feature_extra_isize(sb)) {
+@@ -1311,8 +1310,8 @@ int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
+ 	ret = ext4_convert_inline_data_nolock(handle, dir, &iloc);
+ 
+ out:
+-	ext4_mark_inode_dirty(handle, dir);
+ 	ext4_write_unlock_xattr(dir, &no_expand);
++	ext4_mark_inode_dirty(handle, dir);
+ 	brelse(iloc.bh);
+ 	return ret;
+ }
+@@ -1708,13 +1707,11 @@ int ext4_delete_inline_entry(handle_t *handle,
+ 	if (err)
+ 		goto out;
+ 
+-	err = ext4_mark_inode_dirty(handle, dir);
+-	if (unlikely(err))
+-		goto out;
+-
+ 	ext4_show_inline_dir(dir, iloc.bh, inline_start, inline_size);
+ out:
+ 	ext4_write_unlock_xattr(dir, &no_expand);
++	if (likely(err == 0))
++		err = ext4_mark_inode_dirty(handle, dir);
+ 	brelse(iloc.bh);
+ 	if (err != -ENOENT)
+ 		ext4_std_error(dir->i_sb, err);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 88d57af1b516..86dde0667ccc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2464,8 +2464,8 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 			disksize = i_size;
+ 		if (disksize > EXT4_I(inode)->i_disksize)
+ 			EXT4_I(inode)->i_disksize = disksize;
+-		err2 = ext4_mark_inode_dirty(handle, inode);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
++		err2 = ext4_mark_inode_dirty(handle, inode);
+ 		if (err2)
+ 			ext4_error(inode->i_sb,
+ 				   "Failed to mark inode %lu dirty",
 -- 
 2.11.0.rc0.7.gbe5a750
 
