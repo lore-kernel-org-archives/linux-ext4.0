@@ -1,32 +1,81 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH -v2] overlay: stress test changes to top and bottom
- layers simultaneously
-Date: Wed, 11 Jan 2017 22:54:00 -0500
-Message-ID: <20170112035400.zwq5sypdhv66llwy@thunk.org>
-References: <20170112034938.5934-1-tytso@mit.edu>
- <20170112034938.5934-3-tytso@mit.edu>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH v3 1/1] xfstests: generic/403: reproduce ext4 bugs in a
+ shift extents logic
+Date: Thu, 12 Jan 2017 12:08:20 +0800
+Message-ID: <20170112040820.GV1859@eguan.usersys.redhat.com>
+References: <20170111095239.18825-1-roman.penyaev@profitbricks.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux@sciencehorizons.net
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        fstests@vger.kernel.org
+To: Roman Pen <roman.penyaev@profitbricks.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37376 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46612 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752423AbdALDyC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Jan 2017 22:54:02 -0500
+        id S1750730AbdALEQT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 23:16:19 -0500
 Content-Disposition: inline
-In-Reply-To: <20170112034938.5934-3-tytso@mit.edu>
+In-Reply-To: <20170111095239.18825-1-roman.penyaev@profitbricks.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 11, 2017 at 10:49:35PM -0500, Theodore Ts'o wrote:
-> Introduce a test which runs fsstress on the top and bottom overlayfs
-> directories simultaneously to find potential races that plagued wrapfs
-> derived file systems.
+On Wed, Jan 11, 2017 at 10:52:39AM +0100, Roman Pen wrote:
+> Regression test which targets two nasty ext4 bugs in a logic which
+> shifts extents:
 > 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> 1) 14d981f468a1 ("ext4: Include forgotten start block on fallocate insert range")
+> 
+> Test tries to insert many blocks at the same offset to reproduce
+> the following layout on ext4:
+> 
+>    block #0  block #1
+>    |ext0 ext1|ext2 ext3 ...|
+>         ^
+>      insert of a new block
+> 
+> Because of an incorrect range first block is never reached,
+> thus ext1 is untouched, resulting to a hole at a wrong offset:
+> 
+> What we got:
+> 
+>    block #0   block #1
+>    |ext0 ext1|   ext2 ext3 ...|
+>               ^
+>               hole at a wrong offset
+> 
+> What we expect:
+> 
+>    block #0    block #1
+>    |ext0   ext1|ext2 ext3 ...|
+>         ^
+>         hole at a correct offset
+> 
+> 2) 2b3864b32403 ("ext4: do not polute the extents cache while shifting extents")
+> 
+> Extents status tree is filled in with outdated offsets while doing
+> extent shift, that leads to wrong data blocks.   That's why md5sum
+> of a result file is being checked after each block insert.
 
-sigh, please ignore this patch.  I had some trash left over in the
-directory I use to send out pathces.
+Thanks a lot! I did a minor update and queued it up.
 
-				- Ted
+> 
+> Signed-off-by: Roman Pen <roman.penyaev@profitbricks.com>
+> Cc: "Theodore Ts'o <tytso@mit.edu>"
+> Cc: Eryu Guan <eguan@redhat.com>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: fstests@vger.kernel.org
+> ---
+
+> +# Modify as appropriate.
+> +_supported_fs generic
+> +_supported_os Linux
+> +_require_test
+> +_require_xfs_io_command "finsert"
+> +
+> +blksize=`get_block_size $TEST_DIR`
+
+I merged a patch earlier from Darrick to rename get_block_size to
+_get_block_size. So I did the rename here too.
+
+Thanks,
+Eryu
