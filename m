@@ -1,136 +1,151 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] overlay: stress test changes to top and bottom layers simultaneously
-Date: Wed, 11 Jan 2017 22:49:35 -0500
-Message-ID: <20170112034938.5934-3-tytso@mit.edu>
+Subject: [PATCH 4/4] ext4: propagate error values from ext4_inline_data_truncate()
+Date: Wed, 11 Jan 2017 22:49:38 -0500
+Message-ID: <20170112034938.5934-6-tytso@mit.edu>
 References: <20170112034938.5934-1-tytso@mit.edu>
 Cc: linux@sciencehorizons.net, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37310 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37332 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752227AbdALDtt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Jan 2017 22:49:49 -0500
+        id S1752597AbdALDt5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 22:49:57 -0500
 In-Reply-To: <20170112034938.5934-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Introduce a test which runs fsstress on the top and bottom overlayfs
-directories simultaneously to find potential races that plagued wrapfs
-derived file systems.
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- tests/overlay/019     | 81 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/overlay/019.out |  2 ++
- tests/overlay/group   |  1 +
- 3 files changed, 84 insertions(+)
- create mode 100644 tests/overlay/019
- create mode 100644 tests/overlay/019.out
+ fs/ext4/ext4.h   |  2 +-
+ fs/ext4/inline.c | 40 +++++++++++++++++++++++-----------------
+ fs/ext4/inode.c  |  4 +++-
+ 3 files changed, 27 insertions(+), 19 deletions(-)
 
-diff --git a/tests/overlay/019 b/tests/overlay/019
-new file mode 100644
-index 00000000..1daf830f
---- /dev/null
-+++ b/tests/overlay/019
-@@ -0,0 +1,81 @@
-+#! /bin/bash
-+# FS QA Test 019
-+#
-+# Run fsstress on lower dir and top dir at the same time
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# remove previous $seqres.full before test
-+rm -f $seqres.full
-+
-+# real QA test starts here
-+_supported_fs overlay
-+_supported_os Linux
-+_require_scratch
-+
-+# Remove all files from previous tests
-+_scratch_mkfs
-+
-+lowerdir=$SCRATCH_DEV/$OVERLAY_LOWER_DIR
-+mkdir -p $lowerdir
-+
-+_scratch_mount
-+
-+echo "Silence is golden"
-+
-+d_low=$lowerdir/fsstress
-+d_top=$SCRATCH_MNT/fsstress
-+mkdir -p $d_low $d_top
-+
-+echo $FSSTRESS_PROG -s 42 -d $d_low -p 4 -n 1000 -l100 -v > $seqres.full.1
-+$FSSTRESS_PROG -s 42 -d $d_low -p 4 -n 1000 -l100 -v >> $seqres.full.1 2>&1 &
-+
-+echo $FSSTRESS_PROG -s 42 -d $d_top -p 4 -n 1000 -l100 -v > $seqres.full.2
-+$FSSTRESS_PROG -s 42 -d $d_top -p 4 -n 1000 -l100 -v >> $seqres.full.2 2>&1 &
-+
-+ret=0
-+if ! wait %1
-+then
-+        echo "--------------------------------------"       >>$seqres.full.1
-+	echo "fsstress on lower directory returned $? - see $seqres.full.1"
-+        echo "--------------------------------------"       >>$seqres.full.1
-+	ret=1
-+fi
-+
-+if ! wait %2
-+then
-+        echo "--------------------------------------"       >>$seqres.full.2
-+	echo "fsstress on overlay directory returned $? - see $seqres.full.2"
-+        echo "--------------------------------------"       >>$seqres.full.2
-+	ret=1
-+fi
-+
-+cat $seqres.full.1 $seqres.full.2 > $seqres.full
-+rm $seqres.full.1 $seqres.full.2
-+
-+if [ "$ret" -eq 1 ]
-+then
-+	status=1
-+else
-+	status=0
-+fi
-+
-+exit $status
-diff --git a/tests/overlay/019.out b/tests/overlay/019.out
-new file mode 100644
-index 00000000..163484bc
---- /dev/null
-+++ b/tests/overlay/019.out
-@@ -0,0 +1,2 @@
-+QA output created by 019
-+Silence is golden
-diff --git a/tests/overlay/group b/tests/overlay/group
-index 74822cbf..f8de84be 100644
---- a/tests/overlay/group
-+++ b/tests/overlay/group
-@@ -21,3 +21,4 @@
- 016 auto quick copyup
- 017 auto quick copyup
- 018 auto quick copyup
-+019 quick stress
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6bcb9622fdf9..1cd077e02517 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3023,7 +3023,7 @@ extern int ext4_inline_data_fiemap(struct inode *inode,
+ extern int ext4_try_to_evict_inline_data(handle_t *handle,
+ 					 struct inode *inode,
+ 					 int needed);
+-extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
++extern int ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+ 
+ extern int ext4_convert_inline_data(struct inode *inode);
+ 
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 31f98dd04e51..accd665c5dc0 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1896,10 +1896,10 @@ int ext4_try_to_evict_inline_data(handle_t *handle,
+ 	return error;
+ }
+ 
+-void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
++int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ {
+ 	handle_t *handle;
+-	int inline_size, value_len, needed_blocks, no_expand;
++	int inline_size, value_len, needed_blocks, no_expand, err = 0;
+ 	size_t i_size;
+ 	void *value = NULL;
+ 	struct ext4_xattr_ibody_find is = {
+@@ -1914,19 +1914,19 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 	needed_blocks = ext4_writepage_trans_blocks(inode);
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, needed_blocks);
+ 	if (IS_ERR(handle))
+-		return;
++		return PTR_ERR(handle);
+ 
+ 	ext4_write_lock_xattr(inode, &no_expand);
+ 	if (!ext4_has_inline_data(inode)) {
+ 		*has_inline = 0;
+ 		ext4_journal_stop(handle);
+-		return;
++		return 0;
+ 	}
+ 
+-	if (ext4_orphan_add(handle, inode))
++	if ((err = ext4_orphan_add(handle, inode)) != 0)
+ 		goto out;
+ 
+-	if (ext4_get_inode_loc(inode, &is.iloc))
++	if ((err = ext4_get_inode_loc(inode, &is.iloc)) != 0)
+ 		goto out;
+ 
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+@@ -1937,24 +1937,29 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 	if (i_size < inline_size) {
+ 		/* Clear the content in the xattr space. */
+ 		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
+-			if (ext4_xattr_ibody_find(inode, &i, &is))
++			if ((err = ext4_xattr_ibody_find(inode, &i, &is)) != 0)
+ 				goto out_error;
+ 
+ 			BUG_ON(is.s.not_found);
+ 
+ 			value_len = le32_to_cpu(is.s.here->e_value_size);
+ 			value = kmalloc(value_len, GFP_NOFS);
+-			if (!value)
++			if (!value) {
++				err = -ENOMEM;
+ 				goto out_error;
++			}
+ 
+-			if (ext4_xattr_ibody_get(inode, i.name_index, i.name,
+-						value, value_len))
++			err = ext4_xattr_ibody_get(inode, i.name_index,
++						   i.name, value, value_len);
++			if (err)
+ 				goto out_error;
+ 
+ 			i.value = value;
+ 			i.value_len = i_size > EXT4_MIN_INLINE_DATA_SIZE ?
+ 					i_size - EXT4_MIN_INLINE_DATA_SIZE : 0;
+-			if (ext4_xattr_ibody_inline_set(handle, inode, &i, &is))
++			err = ext4_xattr_ibody_inline_set(handle, inode,
++							  &i, &is);
++			if (err)
+ 				goto out_error;
+ 		}
+ 
+@@ -1979,13 +1984,14 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+ 	if (inode->i_nlink)
+ 		ext4_orphan_del(handle, inode);
+ 
+-	inode->i_mtime = inode->i_ctime = current_time(inode);
+-	ext4_mark_inode_dirty(handle, inode);
+-	if (IS_SYNC(inode))
+-		ext4_handle_sync(handle);
+-
++	if (err == 0) {
++		inode->i_mtime = inode->i_ctime = current_time(inode);
++		err = ext4_mark_inode_dirty(handle, inode);
++		if (IS_SYNC(inode))
++			ext4_handle_sync(handle);
++	}
+ 	ext4_journal_stop(handle);
+-	return;
++	return err;
+ }
+ 
+ int ext4_convert_inline_data(struct inode *inode)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 86dde0667ccc..1e2c881f102d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4222,7 +4222,9 @@ int ext4_truncate(struct inode *inode)
+ 	if (ext4_has_inline_data(inode)) {
+ 		int has_inline = 1;
+ 
+-		ext4_inline_data_truncate(inode, &has_inline);
++		err = ext4_inline_data_truncate(inode, &has_inline);
++		if (err)
++			return err;
+ 		if (has_inline)
+ 			return 0;
+ 	}
 -- 
 2.11.0.rc0.7.gbe5a750
 
