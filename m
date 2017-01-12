@@ -1,151 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] ext4: propagate error values from ext4_inline_data_truncate()
-Date: Wed, 11 Jan 2017 22:49:38 -0500
-Message-ID: <20170112034938.5934-6-tytso@mit.edu>
-References: <20170112034938.5934-1-tytso@mit.edu>
+Subject: [PATCH 0/4] ext4 inline cleanup patches
+Date: Wed, 11 Jan 2017 22:49:33 -0500
+Message-ID: <20170112034938.5934-1-tytso@mit.edu>
 Cc: linux@sciencehorizons.net, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37332 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37308 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752597AbdALDt5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Jan 2017 22:49:57 -0500
-In-Reply-To: <20170112034938.5934-1-tytso@mit.edu>
+        id S1752245AbdALDtt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 22:49:49 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/ext4.h   |  2 +-
- fs/ext4/inline.c | 40 +++++++++++++++++++++++-----------------
- fs/ext4/inode.c  |  4 +++-
- 3 files changed, 27 insertions(+), 19 deletions(-)
+George Spelvin reported a deadlock problem when using a file system
+with inline data enabled when it tries to expand the inode's extra
+inode field space.  The second patch is the critical one; the last two
+are some cleanups.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6bcb9622fdf9..1cd077e02517 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3023,7 +3023,7 @@ extern int ext4_inline_data_fiemap(struct inode *inode,
- extern int ext4_try_to_evict_inline_data(handle_t *handle,
- 					 struct inode *inode,
- 					 int needed);
--extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
-+extern int ext4_inline_data_truncate(struct inode *inode, int *has_inline);
- 
- extern int ext4_convert_inline_data(struct inode *inode);
- 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 31f98dd04e51..accd665c5dc0 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1896,10 +1896,10 @@ int ext4_try_to_evict_inline_data(handle_t *handle,
- 	return error;
- }
- 
--void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
-+int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- {
- 	handle_t *handle;
--	int inline_size, value_len, needed_blocks, no_expand;
-+	int inline_size, value_len, needed_blocks, no_expand, err = 0;
- 	size_t i_size;
- 	void *value = NULL;
- 	struct ext4_xattr_ibody_find is = {
-@@ -1914,19 +1914,19 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 	needed_blocks = ext4_writepage_trans_blocks(inode);
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, needed_blocks);
- 	if (IS_ERR(handle))
--		return;
-+		return PTR_ERR(handle);
- 
- 	ext4_write_lock_xattr(inode, &no_expand);
- 	if (!ext4_has_inline_data(inode)) {
- 		*has_inline = 0;
- 		ext4_journal_stop(handle);
--		return;
-+		return 0;
- 	}
- 
--	if (ext4_orphan_add(handle, inode))
-+	if ((err = ext4_orphan_add(handle, inode)) != 0)
- 		goto out;
- 
--	if (ext4_get_inode_loc(inode, &is.iloc))
-+	if ((err = ext4_get_inode_loc(inode, &is.iloc)) != 0)
- 		goto out;
- 
- 	down_write(&EXT4_I(inode)->i_data_sem);
-@@ -1937,24 +1937,29 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 	if (i_size < inline_size) {
- 		/* Clear the content in the xattr space. */
- 		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
--			if (ext4_xattr_ibody_find(inode, &i, &is))
-+			if ((err = ext4_xattr_ibody_find(inode, &i, &is)) != 0)
- 				goto out_error;
- 
- 			BUG_ON(is.s.not_found);
- 
- 			value_len = le32_to_cpu(is.s.here->e_value_size);
- 			value = kmalloc(value_len, GFP_NOFS);
--			if (!value)
-+			if (!value) {
-+				err = -ENOMEM;
- 				goto out_error;
-+			}
- 
--			if (ext4_xattr_ibody_get(inode, i.name_index, i.name,
--						value, value_len))
-+			err = ext4_xattr_ibody_get(inode, i.name_index,
-+						   i.name, value, value_len);
-+			if (err)
- 				goto out_error;
- 
- 			i.value = value;
- 			i.value_len = i_size > EXT4_MIN_INLINE_DATA_SIZE ?
- 					i_size - EXT4_MIN_INLINE_DATA_SIZE : 0;
--			if (ext4_xattr_ibody_inline_set(handle, inode, &i, &is))
-+			err = ext4_xattr_ibody_inline_set(handle, inode,
-+							  &i, &is);
-+			if (err)
- 				goto out_error;
- 		}
- 
-@@ -1979,13 +1984,14 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
- 	if (inode->i_nlink)
- 		ext4_orphan_del(handle, inode);
- 
--	inode->i_mtime = inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
--	if (IS_SYNC(inode))
--		ext4_handle_sync(handle);
--
-+	if (err == 0) {
-+		inode->i_mtime = inode->i_ctime = current_time(inode);
-+		err = ext4_mark_inode_dirty(handle, inode);
-+		if (IS_SYNC(inode))
-+			ext4_handle_sync(handle);
-+	}
- 	ext4_journal_stop(handle);
--	return;
-+	return err;
- }
- 
- int ext4_convert_inline_data(struct inode *inode)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 86dde0667ccc..1e2c881f102d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4222,7 +4222,9 @@ int ext4_truncate(struct inode *inode)
- 	if (ext4_has_inline_data(inode)) {
- 		int has_inline = 1;
- 
--		ext4_inline_data_truncate(inode, &has_inline);
-+		err = ext4_inline_data_truncate(inode, &has_inline);
-+		if (err)
-+			return err;
- 		if (has_inline)
- 			return 0;
- 	}
+Theodore Ts'o (4):
+  ext4: add debug_want_extra_isize mount option
+  ext4: fix deadlock between inline_data and
+    ext4_expand_extra_isize_ea()
+  ext4: avoid calling ext4_mark_inode_dirty() under unneeded semaphores
+  ext4: propagate error values from ext4_inline_data_truncate()
+
+ fs/ext4/ext4.h   |   2 +-
+ fs/ext4/inline.c | 111 +++++++++++++++++++++++++++----------------------------
+ fs/ext4/inode.c  |   6 ++-
+ fs/ext4/super.c  |   9 ++++-
+ fs/ext4/xattr.c  |  30 ++++++---------
+ fs/ext4/xattr.h  |  32 ++++++++++++++++
+ 6 files changed, 110 insertions(+), 80 deletions(-)
+
 -- 
 2.11.0.rc0.7.gbe5a750
 
