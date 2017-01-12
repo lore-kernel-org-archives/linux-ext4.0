@@ -1,81 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/4] ext4: avoid calling ext4_mark_inode_dirty() under unneeded semaphores
-Date: Wed, 11 Jan 2017 22:49:37 -0500
-Message-ID: <20170112034938.5934-5-tytso@mit.edu>
+Subject: Re: [PATCH -v2] overlay: stress test changes to top and bottom
+ layers simultaneously
+Date: Wed, 11 Jan 2017 22:54:00 -0500
+Message-ID: <20170112035400.zwq5sypdhv66llwy@thunk.org>
 References: <20170112034938.5934-1-tytso@mit.edu>
-Cc: linux@sciencehorizons.net, Theodore Ts'o <tytso@mit.edu>
+ <20170112034938.5934-3-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux@sciencehorizons.net
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37334 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:37376 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752557AbdALDt5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Jan 2017 22:49:57 -0500
-In-Reply-To: <20170112034938.5934-1-tytso@mit.edu>
+        id S1752423AbdALDyC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 22:54:02 -0500
+Content-Disposition: inline
+In-Reply-To: <20170112034938.5934-3-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is no need to call ext4_mark_inode_dirty while holding xattr_sem
-or i_data_sem, so where it's easy to avoid it, move it out from the
-critical region.
+On Wed, Jan 11, 2017 at 10:49:35PM -0500, Theodore Ts'o wrote:
+> Introduce a test which runs fsstress on the top and bottom overlayfs
+> directories simultaneously to find potential races that plagued wrapfs
+> derived file systems.
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/inline.c | 9 +++------
- fs/ext4/inode.c  | 2 +-
- 2 files changed, 4 insertions(+), 7 deletions(-)
+sigh, please ignore this patch.  I had some trash left over in the
+directory I use to send out pathces.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 99a5312ced52..31f98dd04e51 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1042,7 +1042,6 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	dir->i_version++;
--	ext4_mark_inode_dirty(handle, dir);
- 	return 1;
- }
- 
-@@ -1311,8 +1310,8 @@ int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
- 	ret = ext4_convert_inline_data_nolock(handle, dir, &iloc);
- 
- out:
--	ext4_mark_inode_dirty(handle, dir);
- 	ext4_write_unlock_xattr(dir, &no_expand);
-+	ext4_mark_inode_dirty(handle, dir);
- 	brelse(iloc.bh);
- 	return ret;
- }
-@@ -1708,13 +1707,11 @@ int ext4_delete_inline_entry(handle_t *handle,
- 	if (err)
- 		goto out;
- 
--	err = ext4_mark_inode_dirty(handle, dir);
--	if (unlikely(err))
--		goto out;
--
- 	ext4_show_inline_dir(dir, iloc.bh, inline_start, inline_size);
- out:
- 	ext4_write_unlock_xattr(dir, &no_expand);
-+	if (likely(err == 0))
-+		err = ext4_mark_inode_dirty(handle, dir);
- 	brelse(iloc.bh);
- 	if (err != -ENOENT)
- 		ext4_std_error(dir->i_sb, err);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 88d57af1b516..86dde0667ccc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2464,8 +2464,8 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 			disksize = i_size;
- 		if (disksize > EXT4_I(inode)->i_disksize)
- 			EXT4_I(inode)->i_disksize = disksize;
--		err2 = ext4_mark_inode_dirty(handle, inode);
- 		up_write(&EXT4_I(inode)->i_data_sem);
-+		err2 = ext4_mark_inode_dirty(handle, inode);
- 		if (err2)
- 			ext4_error(inode->i_sb,
- 				   "Failed to mark inode %lu dirty",
--- 
-2.11.0.rc0.7.gbe5a750
-
+				- Ted
