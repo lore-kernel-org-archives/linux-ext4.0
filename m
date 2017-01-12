@@ -1,76 +1,136 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] ext4: increase the protection of drop nlink and ext4
- inode destroy
-Date: Wed, 11 Jan 2017 10:34:49 -0500
-Message-ID: <20170111153449.ourcta6jraxo4mzy@thunk.org>
-References: <1482755657-28791-1-git-send-email-yi.zhang@huawei.com>
- <141922.1483225153@turing-police.cc.vt.edu>
- <10c6fa5d-a7bb-a87c-11ad-8d30230a6075@huawei.com>
- <20170104215424.GB14021@birch.djwong.org>
- <20170104233550.oy7nzc3rxppmejbk@thunk.org>
- <4febf11b-31ea-82a1-bf08-b6bebe08bc75@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong <darrick.wong@oracle.com>; Jan Kara" <jack@suse.cz>,
-        Valdis.Kletnieks@vt.edu, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        adilger.kernel@dilger.ca
-To: "zhangyi (F)" <yi.zhang@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <4febf11b-31ea-82a1-bf08-b6bebe08bc75@huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH -v2] overlay: stress test changes to top and bottom layers simultaneously
+Date: Wed, 11 Jan 2017 22:49:35 -0500
+Message-ID: <20170112034938.5934-3-tytso@mit.edu>
+References: <20170112034938.5934-1-tytso@mit.edu>
+Cc: linux@sciencehorizons.net, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37310 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752227AbdALDtt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Jan 2017 22:49:49 -0500
+In-Reply-To: <20170112034938.5934-1-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 11, 2017 at 05:07:29PM +0800, zhangyi (F) wrote:
-> 
-> (1) The file we want to unlink have many hard links, but only one dcache entry in memory.
-> (2) open this file, but it's inode->i_nlink read from disk was 1 (too low).
-> (3) some one call rename and drop it's i_nlink to zero.
-> (4) it's inode is still in use and do not destroy (not closed), at the same time,
->     some others open it's hard link and create a dcache entry.
-> (5) call rename again and it's i_nlink will still underflow and cause memory corruption.
+Introduce a test which runs fsstress on the top and bottom overlayfs
+directories simultaneously to find potential races that plagued wrapfs
+derived file systems.
 
-Do you have reproducers that make it easy to reproduce situations like
-this?  (It shouldn't be hard to write, but if you have them already
-will save me some effort.  :-)
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ tests/overlay/019     | 81 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/overlay/019.out |  2 ++
+ tests/overlay/group   |  1 +
+ 3 files changed, 84 insertions(+)
+ create mode 100644 tests/overlay/019
+ create mode 100644 tests/overlay/019.out
 
-If we ever get passed an inode to ext4_file_open() where i_nlink is
-zero, we can declare the file system is corrupt by calling
-ext4_error() to report the problem.
+diff --git a/tests/overlay/019 b/tests/overlay/019
+new file mode 100644
+index 00000000..1daf830f
+--- /dev/null
++++ b/tests/overlay/019
+@@ -0,0 +1,81 @@
++#! /bin/bash
++# FS QA Test 019
++#
++# Run fsstress on lower dir and top dir at the same time
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# remove previous $seqres.full before test
++rm -f $seqres.full
++
++# real QA test starts here
++_supported_fs overlay
++_supported_os Linux
++_require_scratch
++
++# Remove all files from previous tests
++_scratch_mkfs
++
++lowerdir=$SCRATCH_DEV/$OVERLAY_LOWER_DIR
++mkdir -p $lowerdir
++
++_scratch_mount
++
++echo "Silence is golden"
++
++d_low=$lowerdir/fsstress
++d_top=$SCRATCH_MNT/fsstress
++mkdir -p $d_low $d_top
++
++echo $FSSTRESS_PROG -s 42 -d $d_low -p 4 -n 1000 -l100 -v > $seqres.full.1
++$FSSTRESS_PROG -s 42 -d $d_low -p 4 -n 1000 -l100 -v >> $seqres.full.1 2>&1 &
++
++echo $FSSTRESS_PROG -s 42 -d $d_top -p 4 -n 1000 -l100 -v > $seqres.full.2
++$FSSTRESS_PROG -s 42 -d $d_top -p 4 -n 1000 -l100 -v >> $seqres.full.2 2>&1 &
++
++ret=0
++if ! wait %1
++then
++        echo "--------------------------------------"       >>$seqres.full.1
++	echo "fsstress on lower directory returned $? - see $seqres.full.1"
++        echo "--------------------------------------"       >>$seqres.full.1
++	ret=1
++fi
++
++if ! wait %2
++then
++        echo "--------------------------------------"       >>$seqres.full.2
++	echo "fsstress on overlay directory returned $? - see $seqres.full.2"
++        echo "--------------------------------------"       >>$seqres.full.2
++	ret=1
++fi
++
++cat $seqres.full.1 $seqres.full.2 > $seqres.full
++rm $seqres.full.1 $seqres.full.2
++
++if [ "$ret" -eq 1 ]
++then
++	status=1
++else
++	status=0
++fi
++
++exit $status
+diff --git a/tests/overlay/019.out b/tests/overlay/019.out
+new file mode 100644
+index 00000000..163484bc
+--- /dev/null
++++ b/tests/overlay/019.out
+@@ -0,0 +1,2 @@
++QA output created by 019
++Silence is golden
+diff --git a/tests/overlay/group b/tests/overlay/group
+index 74822cbf..f8de84be 100644
+--- a/tests/overlay/group
++++ b/tests/overlay/group
+@@ -21,3 +21,4 @@
+ 016 auto quick copyup
+ 017 auto quick copyup
+ 018 auto quick copyup
++019 quick stress
+-- 
+2.11.0.rc0.7.gbe5a750
 
-Similarly, whenever we are passed a dentry pointing to an inode for
-link, unlink, rename, and other methods in the inode_operations
-structure, by definition the file system is corrupt, and again we
-should report this using ext4_error().
-
-So I don't think we should think of this as adding "underflow
-protection"; instead we should think of it as adding more aggressive
-detection of file system inconsistencies.  If there is dentry which is
-valid, and pointing at an inode where n_links is zero, something has
-gone seriously wrong.  So we should call ext4_error() to report the
-file system inconsistency, and then return EFSCORRUPTED (aka EUCLEAN).
-
-Since we would be doing this in a number of places, we should probably
-add an inline function:
-
-static inline int ext4_validate_dentry(struct dentry *dentry);
-
-which returns 0 if the dentry is valid, and calls ext4_error_inode()
-and returns -EFSCORRUPTED if the dentry points to an inode with a zero
-i_nlink.
-
-(Note: it's valid for i_nlinks to be zero if the system call started
-with a file descriptor, such as read(2) or write(2) operating on a
-file which is still deleted but has open file descriptors.  But if the
-user has passed a pathname to the system call, such as in the case of
-open(), rename(), unlink(), rmdir(), etc, then the dentry had better
-be pointing at an inode with a non-zero i_nlink call.  We need to be a
-bit careful if the method function could be called by both a pathname
-and file descriptor variant of the system call --- for example
-fsetxattr(2) and setxattr(2); we won't be able to use
-ext4_validate_dentry() for those inode_operations calls.)
-
-Cheers,
-
-					- Ted
