@@ -1,54 +1,40 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: replace BUG_ON with WARN_ON in mb_find_extent()
-Date: Fri, 13 Jan 2017 11:51:13 -0500
-Message-ID: <20170113165113.1200-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] libext2fs: don't ignore fsync errors
+Date: Fri, 13 Jan 2017 12:31:54 -0500
+Message-ID: <20170113173154.biiyax3lrnfjrivd@thunk.org>
+References: <46250d87-9e7b-3cb3-3d74-5c490023c0ed@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43724 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:43902 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750843AbdAMQv0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 13 Jan 2017 11:51:26 -0500
+        id S1750903AbdAMRcM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 13 Jan 2017 12:32:12 -0500
+Content-Disposition: inline
+In-Reply-To: <46250d87-9e7b-3cb3-3d74-5c490023c0ed@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The last BUG_ON in mb_find_extent() is apparently triggering in some
-rare cases.  Most of the time it indicates a bug in the buddy bitmap
-algorithms, but there are some weird cases where it can trigger when
-buddy bitmap is still in memory, but the block bitmap has to be read
-from disk, and there is disk or memory corruption such that the block
-bitmap and the buddy bitmap are out of sync.
+On Tue, Dec 20, 2016 at 09:23:29AM -0600, Eric Sandeen wrote:
+> Today, if mke2fs experiences IO errors (say, on a thin device
+> which filled up during mkfs), mke2fs is silent and returns
+> success even though the filesystem was not properly created.
+> 
+> Catch errors from the io_channel_flush() callchain to
+> fix this up.  Fix formatting of the printed error as
+> well:
+> 
+> ...
+> Creating journal (262144 blocks): done
+> Writing superblocks and filesystem accounting information:          
+> Warning, had trouble writing out superblocks.
+> # echo $?
+> 5
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Google-Bug-Id: #33702157
+Applied, thanks.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/mballoc.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7ae43c59bc79..ec2f64b0e696 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1556,7 +1556,17 @@ static int mb_find_extent(struct ext4_buddy *e4b, int block,
- 		ex->fe_len += 1 << order;
- 	}
- 
--	BUG_ON(ex->fe_start + ex->fe_len > (1 << (e4b->bd_blkbits + 3)));
-+	if (ex->fe_start + ex->fe_len > (1 << (e4b->bd_blkbits + 3))) {
-+		/* Should never happen! (but apparently sometimes does?!?) */
-+		WARN_ON(1);
-+		ext4_error(e4b->bd_sb, "corruption or bug in mb_find_extent "
-+			   "block=%d, order=%d needed=%d ex=%u/%d/%d@%u",
-+			   block, order, needed, ex->fe_group, ex->fe_start,
-+			   ex->fe_len, ex->fe_logical);
-+		ex->fe_len = 0;
-+		ex->fe_start = 0;
-+		ex->fe_group = 0;
-+	}
- 	return ex->fe_len;
- }
- 
--- 
-2.11.0.rc0.7.gbe5a750
-
+					- Ted
