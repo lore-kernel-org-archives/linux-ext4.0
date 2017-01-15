@@ -1,40 +1,61 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [LSF/MM ATTEND] XFS, VFS, pmem, and ext4 topics
-Date: Fri, 13 Jan 2017 23:06:00 -0800
-Message-ID: <20170114070600.GF5883@birch.djwong.org>
+From: Nick Alcock <nick.alcock@esperi.org.uk>
+Subject: Re: Trouble mounting metadata_csum ext4 filesystems with v4.7.x after c9274d891869880648c4ee9365df3ecc7ba2e285: not enough inode bytes checksummed?
+Date: Sun, 15 Jan 2017 17:34:03 +0000
+Message-ID: <87wpdww7lg.fsf@esperi.org.uk>
+References: <87zin42crs.fsf@esperi.org.uk>
+        <20160920055216.GD9309@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: lsf-pc@lists.linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1050.oracle.com ([141.146.126.70]:21206 "EHLO
-        aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751278AbdANH6o (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Jan 2017 02:58:44 -0500
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Linux FS Maling List <linux-fsdevel@vger.kernel.org>,
+        daeho.jeong@samsung.com, linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20160920055216.GD9309@birch.djwong.org> (Darrick J. Wong's
+        message of "Mon, 19 Sep 2016 22:52:16 -0700")
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On 20 Sep 2016, Darrick J. Wong said:
+> I /think/ the fix in this case is to hoist the last ext4_chksum call
+> out of the EXT4_FITS_IN_INODE blob:
+>
+> if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+> 	offset = offsetof(struct ext4_inode, i_checksum_hi);
+> 	csum = ext4_chksum(sbi, csum, (__u8 *)raw +
+> 			   EXT4_GOOD_OLD_INODE_SIZE,
+> 			   offset - EXT4_GOOD_OLD_INODE_SIZE);
+> 	if (EXT4_FITS_IN_INODE(raw, ei, i_checksum_hi)) {
+> 		csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
+> 				   csum_size);
+> 		offset += csum_size;
+> 	}
+> 	csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
+> 			   EXT4_INODE_SIZE(inode->i_sb) - offset);
+> }
+>
+> Can you give that a try?
 
-I'd like to attend LSF/MM again this year to participate in the
-discussions around XFS, VFS, pmem, and possibly ext4.  I'm interested in
-talking to the pmem developers about integrating DAX with CoW and
-stabilizing DAX support within existing filesystems.  I also want to
-talk about online scrubbing and filesystem repair in XFS[1] with an eye
-towards some of the less savory interactions it has with the VFS to
-quiesce userland interactions.
+Months too late, I can finally confirm that the patch below fixes it for
+me (tested in 4.9.4), and I'm running with metadata csums on everywhere
+again. :)
 
-If there's a session about the fsync and IO errors; or VFS file and
-directory encryption I'd probably attend that as well.  Since I'm the
-XFS maintainer now I'd also appreciate the chance to organize an XFS BOF
-with the other developers.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 27e4348..ed79c6e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -71,10 +71,10 @@ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
+ 			csum = ext4_chksum(sbi, csum, (__u8 *)&dummy_csum,
+ 					   csum_size);
+ 			offset += csum_size;
+-			csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
+-					   EXT4_INODE_SIZE(inode->i_sb) -
+-					   offset);
+ 		}
++		csum = ext4_chksum(sbi, csum, (__u8 *)raw + offset,
++				   EXT4_INODE_SIZE(inode->i_sb) -
++				   offset);
+ 	}
+ 
+ 	return csum;
 
-If there's time I'll also catch up with the ext4 developers to see what
-they're working on.
-
---D
-
-[1] I'd also chat with the ocfs2 developers about their implementation
-if any of them attend.
