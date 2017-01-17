@@ -1,68 +1,76 @@
-From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Subject: [PATCH v2] mke2fs: fix coping of empty file using fiemap
-Date: Tue, 17 Jan 2017 18:14:19 +0300
-Message-ID: <CAO3qy=EeD4y6cX3JaA4ZKptoL9JH0Kc9zYqPWj-UZ+ythC6LXw@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Tue, 17 Jan 2017 10:59:16 -0500
+Message-ID: <20170117155916.dcizr65bwa6behe7@thunk.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-9-mhocko@kernel.org>
+ <20170117025607.frrcdbduthhutrzj@thunk.org>
+ <20170117082425.GD19699@dhcp22.suse.cz>
+ <20170117151817.GR19699@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-00003501.pphosted.com ([67.231.144.15]:39739 "EHLO
-        mx0a-000cda01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1750932AbdAQPXz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 17 Jan 2017 10:23:55 -0500
-Received: from pps.filterd (m0075552.ppops.net [127.0.0.1])
-        by mx0a-00003501.pphosted.com (8.16.0.20/8.16.0.20) with SMTP id v0HF98Xm028997
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2017 10:14:20 -0500
-Received: from mail-qt0-f200.google.com (mail-qt0-f200.google.com [209.85.216.200])
-        by mx0a-00003501.pphosted.com with ESMTP id 281ne8037q-3
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2017 10:14:20 -0500
-Received: by mail-qt0-f200.google.com with SMTP id x49so136845689qtc.7
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2017 07:14:20 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, logfs@logfs.org,
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170117151817.GR19699@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Tue, Jan 17, 2017 at 04:18:17PM +0100, Michal Hocko wrote:
+> 
+> OK, so I've been staring into the code and AFAIU current->journal_info
+> can contain my stored information. I could either hijack part of the
+> word as the ref counting is only consuming low 12b. But that looks too
+> ugly to live. Or I can allocate some placeholder.
 
-Darrick J. Wong, thank you for inspection. Here is second version of the patch.
+Yeah, I was looking at something similar.  Can you guarantee that the
+context will only take one or two bits?  (Looks like it only needs one
+bit ATM, even though at the moment you're storing the whole GFP mask,
+correct?)
 
-Changes since v1:
-* errno is returned in case failed ioctl
-* loop is terminated any time fm_mapped_extents == 0
+> But before going to play with that I am really wondering whether we need
+> all this with no journal at all. AFAIU what Jack told me it is the
+> journal lock(s) which is the biggest problem from the reclaim recursion
+> point of view. What would cause a deadlock in no journal mode?
 
-During filesystem creation with -d option files copied from given
-directory. If supported, FS_IOC_FIEMAP ioctl is used to get file
-extents. For empty file fm_mapped_extents is 0 and no error code
-is returned, because this is not fail situation.
+We still have the original problem for why we need GFP_NOFS even in
+ext2.  If we are in a writeback path, and we need to allocate memory,
+we don't want to recurse back into the file system's writeback path.
+Certainly not for the same inode, and while we could make it work if
+the mm was writing back another inode, or another superblock, there
+are also stack depth considerations that would make this be a bad
+idea.  So we do need to be able to assert GFP_NOFS even in no journal
+mode, and for any file system including ext2, for that matter.
 
-Without this patch errno from previous operation is returned and
-successful FS_IOC_FIEMAP ioctl call for empty file is interpreted
-as error.
+Because of the fact that we're going to have to play games with
+current->journal_info, maybe this is something that I should take
+responsibility for, and to go through the the ext4 tree after the main
+patch series go through?  Maybe you could use xfs and ext2 as sample
+(simple) implementations?
 
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
----
- misc/create_inode.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+My only ask is that the memalloc nofs context be a well defined N
+bits, where N < 16, and I'll find some place to put them (probably
+journal_info).
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index 5122e56..d9e9b9b 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -510,10 +510,12 @@ static errcode_t try_fiemap_copy(ext2_filsys fs,
-int fd, ext2_file_t e2_file,
-         if (err < 0 && (errno == EOPNOTSUPP || errno == ENOTTY)) {
-             err = EXT2_ET_UNIMPLEMENTED;
-             goto out;
--        } else if (err < 0 || fiemap_buf->fm_mapped_extents == 0) {
-+        } else if (err < 0) {
-             err = errno;
-             goto out;
--        }
-+        } else if (fiemap_buf->fm_mapped_extents == 0)
-+            goto out;
-+
-         for (i = 0, ext = ext_buf; i < fiemap_buf->fm_mapped_extents;
-              i++, ext++) {
-             err = copy_file_range(fs, fd, e2_file, ext->fe_logical,
+Thanks,
+
+					- Ted
+
 --
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
