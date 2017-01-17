@@ -1,72 +1,64 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2] mke2fs: fix coping of empty file using fiemap
-Date: Tue, 17 Jan 2017 08:49:02 -0800
-Message-ID: <20170117164902.GD14029@birch.djwong.org>
-References: <CAO3qy=EeD4y6cX3JaA4ZKptoL9JH0Kc9zYqPWj-UZ+ythC6LXw@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Tue, 17 Jan 2017 18:29:25 +0100
+Message-ID: <20170117172925.GA2486@quack2.suse.cz>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-9-mhocko@kernel.org>
+ <20170117025607.frrcdbduthhutrzj@thunk.org>
+ <20170117082425.GD19699@dhcp22.suse.cz>
+ <20170117151817.GR19699@dhcp22.suse.cz>
+ <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:36735 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750991AbdAQQuB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jan 2017 11:50:01 -0500
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, logfs@logfs.org,
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAO3qy=EeD4y6cX3JaA4ZKptoL9JH0Kc9zYqPWj-UZ+ythC6LXw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170117161618.GT19699@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 17, 2017 at 06:14:19PM +0300, Artem Blagodarenko wrote:
-> Hello,
+On Tue 17-01-17 17:16:19, Michal Hocko wrote:
+> > > But before going to play with that I am really wondering whether we need
+> > > all this with no journal at all. AFAIU what Jack told me it is the
+> > > journal lock(s) which is the biggest problem from the reclaim recursion
+> > > point of view. What would cause a deadlock in no journal mode?
+> > 
+> > We still have the original problem for why we need GFP_NOFS even in
+> > ext2.  If we are in a writeback path, and we need to allocate memory,
+> > we don't want to recurse back into the file system's writeback path.
 > 
-> Darrick J. Wong, thank you for inspection. Here is second version of the patch.
-> 
-> Changes since v1:
-> * errno is returned in case failed ioctl
-> * loop is terminated any time fm_mapped_extents == 0
-> 
-> During filesystem creation with -d option files copied from given
-> directory. If supported, FS_IOC_FIEMAP ioctl is used to get file
-> extents. For empty file fm_mapped_extents is 0 and no error code
-> is returned, because this is not fail situation.
-> 
-> Without this patch errno from previous operation is returned and
-> successful FS_IOC_FIEMAP ioctl call for empty file is interpreted
-> as error.
-> 
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+> But we do not enter the writeback path from the direct reclaim. Or do
+> you mean something other than pageout()'s mapping->a_ops->writepage?
+> There is only try_to_release_page where we get back to the filesystems
+> but I do not see any NOFS protection in ext4_releasepage.
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
+callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
+shrinkers. That's it. So the recursion possibilities are rather more limited
+than they used to be several years ago and we likely do not need as much
+GFP_NOFS protection as we used to.
 
---D
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-> ---
->  misc/create_inode.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/misc/create_inode.c b/misc/create_inode.c
-> index 5122e56..d9e9b9b 100644
-> --- a/misc/create_inode.c
-> +++ b/misc/create_inode.c
-> @@ -510,10 +510,12 @@ static errcode_t try_fiemap_copy(ext2_filsys fs,
-> int fd, ext2_file_t e2_file,
->          if (err < 0 && (errno == EOPNOTSUPP || errno == ENOTTY)) {
->              err = EXT2_ET_UNIMPLEMENTED;
->              goto out;
-> -        } else if (err < 0 || fiemap_buf->fm_mapped_extents == 0) {
-> +        } else if (err < 0) {
->              err = errno;
->              goto out;
-> -        }
-> +        } else if (fiemap_buf->fm_mapped_extents == 0)
-> +            goto out;
-> +
->          for (i = 0, ext = ext_buf; i < fiemap_buf->fm_mapped_extents;
->               i++, ext++) {
->              err = copy_file_range(fs, fd, e2_file, ext->fe_logical,
-> --
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
