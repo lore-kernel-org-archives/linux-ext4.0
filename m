@@ -1,68 +1,60 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] mke2fs: fix coping of empty file using fiemap
-Date: Mon, 16 Jan 2017 17:37:08 -0800
-Message-ID: <20170117013708.GC14029@birch.djwong.org>
-References: <CAO3qy=HA2K9j0a86R1EyM-zCnQxEgUVP-trr_5cgaeJThmrWyQ@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Mon, 16 Jan 2017 21:56:07 -0500
+Message-ID: <20170117025607.frrcdbduthhutrzj@thunk.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-9-mhocko@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47827 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750774AbdAQBhj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2017 20:37:39 -0500
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	logfs@logfs.org, linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Michal Hocko <mhocko@suse.com>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAO3qy=HA2K9j0a86R1EyM-zCnQxEgUVP-trr_5cgaeJThmrWyQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170106141107.23953-9-mhocko@kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jan 16, 2017 at 07:59:17PM +0300, Artem Blagodarenko wrote:
-> During filesystem creation with -d option files copied from given
-> directory. If supported, FS_IOC_FIEMAP ioctl is used to get file
-> extents. For empty file fm_mapped_extents is 0 and no error code
-> is returned, because this is not fail situation.
+On Fri, Jan 06, 2017 at 03:11:07PM +0100, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
 > 
-> Without this patch errno from previous operation is returned and
-> successful FS_IOC_FIEMAP ioctl call for empty file is interpreted
-> as error.
+> This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
+> the transaction context uses memalloc_nofs_save and all allocations
+> within the this context inherit GFP_NOFS automatically, there is no
+> reason to mark specific allocations explicitly.
 > 
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-> ---
->  misc/create_inode.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+> This patch should not introduce any functional change. The main point
+> of this change is to reduce explicit GFP_NOFS usage inside ext4 code
+> to make the review of the remaining usage easier.
 > 
-> diff --git a/misc/create_inode.c b/misc/create_inode.c
-> index 5122e56..6083d94 100644
-> --- a/misc/create_inode.c
-> +++ b/misc/create_inode.c
-> @@ -510,7 +510,7 @@ static errcode_t try_fiemap_copy(ext2_filsys fs,
-> int fd, ext2_file_t e2_file,
->          if (err < 0 && (errno == EOPNOTSUPP || errno == ENOTTY)) {
->              err = EXT2_ET_UNIMPLEMENTED;
->              goto out;
-> -        } else if (err < 0 || fiemap_buf->fm_mapped_extents == 0) {
-> +        } else if (err < 0 && fiemap_buf->fm_mapped_extents == 0) {
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-I think we want the loop to terminate any time fm_mapped_extents == 0,
-not just in the case that err < 0 and fiemap_buf still reflects the
-earlier memset(0)...
+Changes in the jbd2 layer aren't going to guarantee that
+memalloc_nofs_save() will be executed if we are running ext4 without a
+journal (aka in no journal mode).  And this is a *very* common
+configuration; it's how ext4 is used inside Google in our production
+servers.
 
-} else if (err < 0) {
-	err = errno;
-	goto out;
-} else if (!fiemap_buf->fm_mapped_extents)
-	goto out;
+So that means the earlier patches will probably need to be changed so
+the nOFS scope is done in the ext4_journal_{start,stop} functions in
+fs/ext4/ext4_jbd2.c.
 
-...right?
+					- Ted
 
---D
-
->              err = errno;
->              goto out;
->          }
-> --
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
