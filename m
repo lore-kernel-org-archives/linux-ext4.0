@@ -1,62 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 7/8] Revert "ext4: avoid deadlocks in the writeback path
- by using sb_getblk_gfp"
-Date: Mon, 16 Jan 2017 22:01:18 -0500
-Message-ID: <20170117030118.727jqyamjhojzajb@thunk.org>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-8-mhocko@kernel.org>
+From: yu xing <mdxy2014@gmail.com>
+Subject: =?UTF-8?Q?EXT4=EF=BC=9A_About_the_method_of_compute_journal_blocks?=
+Date: Tue, 17 Jan 2017 11:50:13 +0800
+Message-ID: <CAHndWeV=wT74J2TBWsxcFF0Ks_u0UYQeD=040+m8CtP2L9d7XQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170106141107.23953-8-mhocko@kernel.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f193.google.com ([209.85.161.193]:36413 "EHLO
+        mail-yw0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750784AbdAQDuO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jan 2017 22:50:14 -0500
+Received: by mail-yw0-f193.google.com with SMTP id l75so10442740ywb.3
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jan 2017 19:50:14 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 06, 2017 at 03:11:06PM +0100, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
-> 
-> This reverts commit c45653c341f5c8a0ce19c8f0ad4678640849cb86 because
-> sb_getblk_gfp is not really needed as
-> sb_getblk
->   __getblk_gfp
->     __getblk_slow
->       grow_buffers
->         grow_dev_page
-> 	  gfp_mask = mapping_gfp_constraint(inode->i_mapping, ~__GFP_FS) | gfp
-> 
-> so __GFP_FS is cleared unconditionally and therefore the above commit
-> didn't have any real effect in fact.
-> 
-> This patch should not introduce any functional change. The main point
-> of this change is to reduce explicit GFP_NOFS usage inside ext4 code to
-> make the review of the remaining usage easier.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+Hello All=EF=BC=8C
 
-If I'm not mistaken, this patch is not dependent on any of the other
-patches in this series (and the other patches are not dependent on
-this one).  Hence, I could take this patch via the ext4 tree, correct?
+         Currently, I am seeing the the make_ext4fs code of
+android=EF=BC=8Cthe source code is located at system/extras/ext4_utils
 
-     	    	     	   	     - Ted
+I have some question, as following, can somebody help me to explain
+these questions? Thanks a lot!
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+1. The method of compute journal blocks, why  divide 64 :
+
+          static u32 compute_journal_blocks()
+{
+    u32 journal_blocks =3D DIV_ROUND_UP(info.len, info.block_size) / 64;
+   // is here, why divide 64 ???
+    if (journal_blocks < 1024)
+        journal_blocks =3D 1024;
+    if (journal_blocks > 32768)
+        journal_blocks =3D 32768;
+    return journal_blocks;
+}
+
+2. The method of compute jbg_desc_reserve_blocks , why multiply by 1024:
+static u32 compute_bg_desc_reserve_blocks()
+{
+    u32 blocks =3D DIV_ROUND_UP(info.len, info.block_size);
+    u32 block_groups =3D DIV_ROUND_UP(blocks, info.blocks_per_group);
+    u32 bg_desc_blocks =3D DIV_ROUND_UP(block_groups * sizeof(struct
+ext2_group_desc),
+            info.block_size);
+
+    u32 bg_desc_reserve_blocks =3D
+            DIV_ROUND_UP(block_groups * 1024 * sizeof(struct
+ext2_group_desc),      // is here , why multiply by 1024 ???
+                    info.block_size) - bg_desc_blocks;
+
+    if (bg_desc_reserve_blocks > info.block_size / sizeof(u32))
+        bg_desc_reserve_blocks =3D info.block_size / sizeof(u32);
+
+    return bg_desc_reserve_blocks;
+}
+
+3. About compute_inodes function , why divide 4 ??
+static u32 compute_inodes()
+{
+    return DIV_ROUND_UP(info.len, info.block_size) / 4;  // is here
+why divide 4 ??
+}
+
+
+yu.xing
