@@ -1,74 +1,28 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Tue, 17 Jan 2017 09:24:26 +0100
-Message-ID: <20170117082425.GD19699@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
+From: Frau SCHMIDT <m.levesque007@laposte.net>
+Subject: Darlehen angebot 3 %
+Date: Tue, 17 Jan 2017 08:02:20 +0000
+Message-ID: <9377e66f9b2d8980de396597b9a2deb2__5135.37500887669$1484664174$gmane$org@localhost>
+Reply-To: info@rschmidt.online
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170117025607.frrcdbduthhutrzj@thunk.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Content-Transfer-Encoding: 8bit
+To: lionelsimas@t-online.de
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from server.pvptown.net ([216.158.235.50]:48736 "EHLO park.ji.sung"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750893AbdAQOkB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 17 Jan 2017 09:40:01 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-01-17 21:56:07, Theodore Ts'o wrote:
-> On Fri, Jan 06, 2017 at 03:11:07PM +0100, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
-> > 
-> > This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
-> > the transaction context uses memalloc_nofs_save and all allocations
-> > within the this context inherit GFP_NOFS automatically, there is no
-> > reason to mark specific allocations explicitly.
-> > 
-> > This patch should not introduce any functional change. The main point
-> > of this change is to reduce explicit GFP_NOFS usage inside ext4 code
-> > to make the review of the remaining usage easier.
-> > 
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> Changes in the jbd2 layer aren't going to guarantee that
-> memalloc_nofs_save() will be executed if we are running ext4 without a
-> journal (aka in no journal mode).  And this is a *very* common
-> configuration; it's how ext4 is used inside Google in our production
-> servers.
 
-OK, I wasn't aware of that.
+Sehr geehrte Damen  und Herren,
 
-> So that means the earlier patches will probably need to be changed so
-> the nOFS scope is done in the ext4_journal_{start,stop} functions in
-> fs/ext4/ext4_jbd2.c.
+Haben Sie Interesse über einer finanziellen Darlehen zu 3%???
+kontaktieren Sie mich für mehr Details und Bedingungen. ich kann all 
+jenen helfen, wer ein Darlehen benötigen.
+Ich kann Ihnen biete ein darlehen in hohe von 10.000.000 Euro
+Meine mail: info@rschmidt.online
 
-I could definitely appreciated some help here. The call paths are rather
-complex and I am not familiar with the code enough. On of the biggest
-problem I have currently is that there doesn't seem to be an easy place
-to store the old allocation context. The original patch had it inside
-the journal handle. I was thinking about putting it into superblock but
-ext4_journal_stop doesn't seem to have access to the sb if there is no
-handle. Now, if ext4_journal_start is never called from a nested context
-then this is not a big deal but there are just too many caller to
-check...
--- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Mit freundlichen Grüßen
