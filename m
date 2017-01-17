@@ -1,9 +1,10 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Mon, 16 Jan 2017 21:56:07 -0500
-Message-ID: <20170117025607.frrcdbduthhutrzj@thunk.org>
+Subject: Re: [PATCH 7/8] Revert "ext4: avoid deadlocks in the writeback path
+ by using sb_getblk_gfp"
+Date: Mon, 16 Jan 2017 22:01:18 -0500
+Message-ID: <20170117030118.727jqyamjhojzajb@thunk.org>
 References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
+ <20170106141107.23953-8-mhocko@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
@@ -22,36 +23,37 @@ Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
 To: Michal Hocko <mhocko@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170106141107.23953-9-mhocko@kernel.org>
+In-Reply-To: <20170106141107.23953-8-mhocko@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 06, 2017 at 03:11:07PM +0100, Michal Hocko wrote:
+On Fri, Jan 06, 2017 at 03:11:06PM +0100, Michal Hocko wrote:
 > From: Michal Hocko <mhocko@suse.com>
 > 
-> This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
-> the transaction context uses memalloc_nofs_save and all allocations
-> within the this context inherit GFP_NOFS automatically, there is no
-> reason to mark specific allocations explicitly.
+> This reverts commit c45653c341f5c8a0ce19c8f0ad4678640849cb86 because
+> sb_getblk_gfp is not really needed as
+> sb_getblk
+>   __getblk_gfp
+>     __getblk_slow
+>       grow_buffers
+>         grow_dev_page
+> 	  gfp_mask = mapping_gfp_constraint(inode->i_mapping, ~__GFP_FS) | gfp
+> 
+> so __GFP_FS is cleared unconditionally and therefore the above commit
+> didn't have any real effect in fact.
 > 
 > This patch should not introduce any functional change. The main point
-> of this change is to reduce explicit GFP_NOFS usage inside ext4 code
-> to make the review of the remaining usage easier.
+> of this change is to reduce explicit GFP_NOFS usage inside ext4 code to
+> make the review of the remaining usage easier.
 > 
 > Signed-off-by: Michal Hocko <mhocko@suse.com>
 > Reviewed-by: Jan Kara <jack@suse.cz>
 
-Changes in the jbd2 layer aren't going to guarantee that
-memalloc_nofs_save() will be executed if we are running ext4 without a
-journal (aka in no journal mode).  And this is a *very* common
-configuration; it's how ext4 is used inside Google in our production
-servers.
+If I'm not mistaken, this patch is not dependent on any of the other
+patches in this series (and the other patches are not dependent on
+this one).  Hence, I could take this patch via the ext4 tree, correct?
 
-So that means the earlier patches will probably need to be changed so
-the nOFS scope is done in the ext4_journal_{start,stop} functions in
-fs/ext4/ext4_jbd2.c.
-
-					- Ted
+     	    	     	   	     - Ted
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
