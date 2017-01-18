@@ -1,103 +1,126 @@
-From: "George Spelvin" <linux@sciencehorizons.net>
-Subject: kernel BUG at fs/ext4/inline.c:1943!
-Date: 18 Jan 2017 03:21:28 -0500
-Message-ID: <20170118082128.2402.qmail@ns.sciencehorizons.net>
-References: <20170112144657.p33nf3u3ev27ixjq@thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: linux@sciencehorizons.net, tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.sciencehorizons.net ([71.41.210.147]:43385 "HELO
-        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1750830AbdARIsv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2017 03:48:51 -0500
-In-Reply-To: <20170112144657.p33nf3u3ev27ixjq@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: yi zhang <yi.zhang@huawei.com>
+Subject: [PATCH 1/2] vfs: add detection of inode validation
+Date: Wed, 18 Jan 2017 17:46:08 +0800
+Message-ID: <1484732769-31670-1-git-send-email-yi.zhang@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: <linux-kernel@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <viro@ZenIV.linux.org.uk>,
+        <yi.zhang@huawei.com>
+To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I was trying to rmdir an empty directory in lost+found that accumulated
-during my recent problems.
+When we open/rename/unlink a file and open/rmdir a directory, the inode
+nlink can't be zero, if it does, the file system is inconsistency,
+and it can cause some unexpected errors, so add aggressive detection.
 
-EXT4-fs (md3): mounted filesystem with writeback data mode. Opts: data=writeback,delalloc
+Signed-off-by: yi zhang <yi.zhang@huawei.com>
+---
+ fs/namei.c         | 44 ++++++++++++++++++++++++++++++++++----------
+ include/linux/fs.h |  2 ++
+ 2 files changed, 36 insertions(+), 10 deletions(-)
 
-$ cd /mountpoint/lost+found
-$ rmdir \#1625089/
-
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inline.c:1943!
-invalid opcode: 0000 [#1] SMP
-Modules linked in: nfsd lockd grace sunrpc ablk_helper via_velocity x86_pkg_temp_thermal crc32_pclmul crc32c_intel [last unloaded: twofish_common]
-CPU: 0 PID: 16879 Comm: rmdir Not tainted 4.10.0-rc3-00322-g1aa1df43-dirty #591
-Hardware name: Gigabyte Technology Co., Ltd. To be filled by O.E.M./X79-UP4, BIOS F7 03/19/2014
-task: ffff88040e4cab00 task.stack: ffffc9000dd5c000
-RIP: 0010:ext4_inline_data_truncate+0x3db/0x400
-RSP: 0018:ffffc9000dd5dcd8 EFLAGS: 00010286
-RAX: 0000000000000000 RBX: ffff88042d287ea0 RCX: 0000021810000000
-RDX: 00000000ffffffc3 RSI: ffffc9000dd5dcf8 RDI: ffff8801a41771f0
-RBP: ffffc9000dd5dd80 R08: ffff88006123e9c0 R09: ffff8803fe3d60a0
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801a41771f0
-R13: ffff8801a4177058 R14: ffff8801a41770f0 R15: 0000000000000000
-FS:  0000000000000000(0000) GS:ffff88042f200000(0063) knlGS:00000000f7787800
-CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
-CR2: 00000000f765fbe0 CR3: 0000000179a5e000 CR4: 00000000001406f0
-Call Trace:
- ext4_truncate+0x1ea/0x300
- ext4_evict_inode+0x2c7/0x3d0
- evict+0xc0/0x190
- iput+0x14c/0x1e0
- dentry_unlink_inode+0xbe/0x160
- d_delete+0x9c/0xb0
- vfs_rmdir+0x102/0x130
- do_rmdir+0x1a3/0x1e0
- SyS_rmdir+0x11/0x20
- do_fast_syscall_32+0x94/0x210
- entry_SYSENTER_compat+0x51/0x60
-RIP: 0023:0xf778aaf9
-RSP: 002b:00000000ffda9e0c EFLAGS: 00000292 ORIG_RAX: 0000000000000028
-RAX: ffffffffffffffda RBX: 00000000ffdab332 RCX: 0000000000000000
-RDX: 00000000565f4000 RSI: 00000000565efb38 RDI: 00000000ffdab332
-RBP: 00000000ffda9e68 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
-Code: ff ff 89 c1 48 89 d7 48 c7 44 0a f8 00 00 00 00 8d 48 ff 31 c0 c1 e9 03 f3 48 ab e9 31 fe ff ff 41 bf f4 ff ff ff e9 3c fe ff ff <0f> 0b 89 c0 c7 02 00 00 00 00 c7 44 02 fc 00 00 00 00 e9 0f fe 
-RIP: ext4_inline_data_truncate+0x3db/0x400 RSP: ffffc9000dd5dcd8
----[ end trace caa17f858299cde5 ]---
-
-
-That's the "BUG_ON(is.s.not_found);"
-
-debugfs says the directory entry is gone, but I can:
-
-debugfs:  stat <1625089>
-Inode: 1625089   Type: directory    Mode:  0775   Flags: 0x10000000
-Generation: 927350643    Version: 0x00000000:00000004
-User:  1000   Group:   161   Project:     0   Size: 132
-File ACL: 1664090185    Directory ACL: 0
-Links: 0   Blockcount: 8
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x587f2034:472c74ec -- Wed Jan 18 02:58:44 2017
- atime: 0x56b9e2f8:b68a7658 -- Tue Feb  9 08:00:40 2016
- mtime: 0x56c1bc4b:a7765de8 -- Mon Feb 15 06:53:47 2016
-crtime: 0x56ba9eb4:a51d90ac -- Tue Feb  9 21:21:40 2016
-Size of extra inode fields: 32
-Extended attributes:
-  system.data (72)
-Inode checksum: 0xe2f12fc5
-Size of inline data: 132
-debugfs:  dump <1625089> /tmp/inode
-$ xxd /tmp/inode
-00000000: 0b00 0000 0000 0000 3800 0000 0000 0000  ........8.......
-00000010: 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00000020: 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00000030: 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00000040: 4800 3101 xxxx xxxx xxxx xxxx xxxx xxxx  H.1.xxxxxxxxxxxx
-00000050: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
-00000060: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
-00000070: xx2e 7064 6600 0000 0000 0000 0000 0000  x.pdf...........
-00000080: 0000 0000                                ....
-debugfs:  ea_get -f /tmp/ea <1625089> system.data
-$ xxd /tmp/ea
-00000000: 0000 0000 4800 3101 xxxx xxxx xxxx xxxx  ....H.1.xxxxxxxx
-00000010: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
-00000020: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
-00000030: xxxx xxxx xx2e 7064 6600 0000 0000 0000  xxxxx.pdf.......
-00000040: 0000 0000 0000 0000                      ........
+diff --git a/fs/namei.c b/fs/namei.c
+index ad74877..a39bf7c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -257,6 +257,23 @@ void putname(struct filename *name)
+ 		__putname(name);
+ }
+ 
++int generic_validate(struct inode *inode)
++{
++	if (unlikely(inode->i_nlink == 0))
++		return -EUCLEAN;
++}
++EXPORT_SYMBOL(generic_validate);
++
++static inline int inode_validate(struct inode *inode)
++{
++	int retval = 0;
++
++	if (inode->i_op->validate)
++		retval = inode->i_op->validate(inode);
++
++	return retval;
++}
++
+ static int check_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+@@ -2716,20 +2733,21 @@ EXPORT_SYMBOL(__check_sticky);
+  *	Check whether we can remove a link victim from directory dir, check
+  *  whether the type of victim is right.
+  *  1. We can't do it if dir is read-only (done in permission())
+- *  2. We should have write and exec permissions on dir
+- *  3. We can't remove anything from append-only dir
+- *  4. We can't do anything with immutable dir (done in permission())
+- *  5. If the sticky bit on dir is set we should either
++ *  2. We should validate the victim's inode
++ *  3. We should have write and exec permissions on dir
++ *  4. We can't remove anything from append-only dir
++ *  5. We can't do anything with immutable dir (done in permission())
++ *  6. If the sticky bit on dir is set we should either
+  *	a. be owner of dir, or
+  *	b. be owner of victim, or
+  *	c. have CAP_FOWNER capability
+- *  6. If the victim is append-only or immutable we can't do antyhing with
++ *  7. If the victim is append-only or immutable we can't do antyhing with
+  *     links pointing to it.
+- *  7. If the victim has an unknown uid or gid we can't change the inode.
+- *  8. If we were asked to remove a directory and victim isn't one - ENOTDIR.
+- *  9. If we were asked to remove a non-directory and victim isn't one - EISDIR.
+- * 10. We can't remove a root or mountpoint.
+- * 11. We don't allow removal of NFS sillyrenamed files; it's handled by
++ *  8. If the victim has an unknown uid or gid we can't change the inode.
++ *  9. If we were asked to remove a directory and victim isn't one - ENOTDIR.
++ * 10. If we were asked to remove a non-directory and victim isn't one - EISDIR.
++ * 11. We can't remove a root or mountpoint.
++ * 12. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
+  */
+ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+@@ -2744,6 +2762,9 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+ 
++	error = inode_validate(inode);
++	if (error)
++		return error;
+ 	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+ 	if (error)
+ 		return error;
+@@ -2889,6 +2910,9 @@ static int may_open(const struct path *path, int acc_mode, int flag)
+ 		break;
+ 	}
+ 
++	error = inode_validate(inode);
++	if (error)
++		return error;
+ 	error = inode_permission(inode, MAY_OPEN | acc_mode);
+ 	if (error)
+ 		return error;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2ba0743..52910f7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1710,6 +1710,7 @@ struct inode_operations {
+ 			   umode_t create_mode, int *opened);
+ 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
+ 	int (*set_acl)(struct inode *, struct posix_acl *, int);
++	int (*validate)(struct inode *);
+ } ____cacheline_aligned;
+ 
+ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+@@ -2534,6 +2535,7 @@ extern int inode_permission(struct inode *, int);
+ extern int __inode_permission(struct inode *, int);
+ extern int generic_permission(struct inode *, int);
+ extern int __check_sticky(struct inode *dir, struct inode *inode);
++extern int generic_validate(struct inode *inode);
+ 
+ static inline bool execute_ok(struct inode *inode)
+ {
+-- 
+2.5.0
