@@ -1,121 +1,166 @@
-From: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Tue, 17 Jan 2017 14:04:03 -0700
-Message-ID: <7EC66AC2-1900-4328-A408-65079616A518@dilger.ca>
-References: <20170106141107.23953-1-mhocko@kernel.org> <20170106141107.23953-9-mhocko@kernel.org> <20170117025607.frrcdbduthhutrzj@thunk.org> <20170117082425.GD19699@dhcp22.suse.cz> <20170117151817.GR19699@dhcp22.suse.cz> <20170117155916.dcizr65bwa6behe7@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_3F1B0F1C-EDE1-486B-8DD2-6D2F9C267C7A"; protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-        linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-        Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, djwong-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
-        Chris Mason <clm-b10kYP2dOMg@public.gmane.org>, David Sterba <dsterba-AlSwsSmVLrQ@public.gmane.org>,
-        ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-        reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-        linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20170117155916.dcizr65bwa6behe7-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: yu xing <mdxy2014@gmail.com>
+Subject: =?UTF-8?Q?Re=3A_EXT4=EF=BC=9A_About_the_method_of_compute_journal_bloc?=
+        =?UTF-8?Q?ks?=
+Date: Wed, 18 Jan 2017 13:06:07 +0800
+Message-ID: <CAHndWeUE6R=pCF0fh7wZL0ukuhDM0Liga32s7Jsp2Y_e798ohw@mail.gmail.com>
+References: <CAHndWeV=wT74J2TBWsxcFF0Ks_u0UYQeD=040+m8CtP2L9d7XQ@mail.gmail.com>
+ <20170117171024.lbunxryq5mjlvrvv@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f196.google.com ([209.85.161.196]:34417 "EHLO
+        mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750800AbdARFGL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2017 00:06:11 -0500
+Received: by mail-yw0-f196.google.com with SMTP id v73so187450ywg.1
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Jan 2017 21:06:08 -0800 (PST)
+In-Reply-To: <20170117171024.lbunxryq5mjlvrvv@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Thanks the detail answer from Theodore, I add some comments again , as
+following inline answer.
 
---Apple-Mail=_3F1B0F1C-EDE1-486B-8DD2-6D2F9C267C7A
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+yu.xing
 
-On Jan 17, 2017, at 8:59 AM, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
-> 
-> On Tue, Jan 17, 2017 at 04:18:17PM +0100, Michal Hocko wrote:
->> 
->> OK, so I've been staring into the code and AFAIU current->journal_info
->> can contain my stored information. I could either hijack part of the
->> word as the ref counting is only consuming low 12b. But that looks too
->> ugly to live. Or I can allocate some placeholder.
-> 
-> Yeah, I was looking at something similar.  Can you guarantee that the
-> context will only take one or two bits?  (Looks like it only needs one
-> bit ATM, even though at the moment you're storing the whole GFP mask,
-> correct?)
-> 
->> But before going to play with that I am really wondering whether we need
->> all this with no journal at all. AFAIU what Jack told me it is the
->> journal lock(s) which is the biggest problem from the reclaim recursion
->> point of view. What would cause a deadlock in no journal mode?
-> 
-> We still have the original problem for why we need GFP_NOFS even in
-> ext2.  If we are in a writeback path, and we need to allocate memory,
-> we don't want to recurse back into the file system's writeback path.
-> Certainly not for the same inode, and while we could make it work if
-> the mm was writing back another inode, or another superblock, there
-> are also stack depth considerations that would make this be a bad
-> idea.  So we do need to be able to assert GFP_NOFS even in no journal
-> mode, and for any file system including ext2, for that matter.
-> 
-> Because of the fact that we're going to have to play games with
-> current->journal_info, maybe this is something that I should take
-> responsibility for, and to go through the the ext4 tree after the main
-> patch series go through?  Maybe you could use xfs and ext2 as sample
-> (simple) implementations?
-> 
-> My only ask is that the memalloc nofs context be a well defined N
-> bits, where N < 16, and I'll find some place to put them (probably
-> journal_info).
+2017-01-18 1:10 GMT+08:00 Theodore Ts'o <tytso@mit.edu>:
+> On Tue, Jan 17, 2017 at 11:50:13AM +0800, yu xing wrote:
+>>
+>>          Currently, I am seeing the the make_ext4fs code of
+>> android=EF=BC=8Cthe source code is located at system/extras/ext4_utils
+>
+> The make_ext4fs code in AOSP is something I've been trying to make go
+> away.  It exists because many years ago, the people who were working
+> on Android were desperately trying to avoid all GPLv2 code outside of
+> the kernel.  So make_ext4fs was a cleanroom rewrite from scratch of
+> mke2fs, and so they may have gotten a few things wrong.  As a result
+> file systems made with make_ext4fs are not completely identical to
+> those made by ext4 (especially when used on the device after a factory
+> reset) and this has caused some interesting and hard to debug problems
+> in the past.
+>
+> E2fsprogs is now in AOSP, and I am hoping to make all of the use cases
+> of make_ext4fs go away, since it will make everyone's lives much
+> easier.  This has actually been a bit tricker since make_ext4fs has
+> some additional functionality that never should have been part of
+> make_ext4fs, but that is slowly being disentangled (see the very
+> latest AOSP git trees).   So tiny steps....
+>
+     [yu.xing]:
+      Do you mean, In future , the mke2fs will instead of the make_ext4fs ?
+      if true, maybe some functions from make_ext4fs will add to mke2fs.
+      such as pack the system.img from out/target/product/xxxxx/system,
+      and add selinux file_contexts into system , as the following command =
+list
 
-I think Dave was suggesting that the NOFS context allow a pointer to
-an arbitrary struct, so that it is possible to dereference this in
-the filesystem itself to determine if the recursion is safe or not.
-That way, ext2 could store an inode pointer (if that is what it cares
-about) and verify that writeback is not recursing on the same inode,
-and XFS can store something different.  It would also need to store
-some additional info (e.g. fstype or superblock pointer) so that it
-can determine how to interpret the NOFS context pointer.
+    make_ext4fs [ -l <len> ] [ -j <journal size> ] [ -b <block_size> ]
+    [ -g <blocks per group> ] [ -i <inodes> ] [ -I <inode size> ]
+    [ -L <label> ] [ -f ] [ -a <android mountpoint> ] [ -u ]
+    [ -S file_contexts ] [ -C fs_config ] [ -T timestamp ]
+    [ -z | -s ] [ -w ] [ -c ] [ -J ] [ -v ] [ -B <block_list_file> ]
+    <filename> [[<directory>] <target_out_directory>]
 
-I think it makes sense to add a couple of void * pointers to the task
-struct along with journal_info and leave it up to the filesystem to
-determine how to use them.
+     the [<target_out_directory>] arguments is the packing directory
+     and the -S arguments is used to include the selinux file_contexts
 
-Cheers, Andreas
+     but in the mke2fs command, I can not find these functions( the
+newest version mk2fs whether or not support these functions,
+     if my wrong, please correct me), so maybe add these functions
+into mke2fs ?  the mke2fs command list as following:
+     Usage: mke2fs [-c|-l filename] [-b block-size] [-C cluster-size]
+        [-i bytes-per-inode] [-I inode-size] [-J journal-options]
+        [-G flex-group-size] [-N number-of-inodes]
+        [-m reserved-blocks-percentage] [-o creator-os]
+        [-g blocks-per-group] [-L volume-label] [-M last-mounted-directory]
+        [-O feature[,...]] [-r fs-revision] [-E extended-option[,...]]
+        [-t fs-type] [-T usage-type ] [-U UUID] [-jnqvDFKSV] device
+[blocks-count]
 
-
-
-
-
-
---Apple-Mail=_3F1B0F1C-EDE1-486B-8DD2-6D2F9C267C7A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBWH6GxHKl2rkXzB/gAQjNAg//X7dQe441ccMxqgZo937oDQfWTdQE7K0C
-0LY7hCYYgZWF8uK33zFzNl4WUSPYZKpyLKqAR8nSE05Pf7MH/2GZHZeuQSr9rgqP
-VSKYOGGdvrNVDnHSjyNfDYd7q+/GWGtrTG/h7UlQNMYa5xJ9UE+Hyrj0pMMIrF3I
-4SzFnFlJ8X9+Zlrnyir6CjZ5R0GQySwpMZRu2ocs0ngkaWuMedQNCjkIjnBM5FdQ
-4o18h7m8upGt8bGrN6YaQtxnyAb6UpnW0IS/YFf/Doyeof0LLojqOzvgdawF2L5w
-5vcKJMbRsiQuel0OM9yHJstlmxqkR+R4xK8CyLAwgplmSij9dZozbsYhCooD8m47
-BTraN+QVgV7jN8k37S2l24zy2Ra4H94ashJ2SuSc+hWd4LCDMMbRpF9C3c36QnPh
-jpX7eCjatMlbx7YwxDjW+HDWzUJa8bEjUXHfHSMzuHtSB4KiMI/i1VoBQeMbyy5a
-bAG+07c4zaOWEyeP1R26i+/Yz5XOAQk8DHHeeTUq/p4Syc+V7VY3wzKQvvvmr3Bz
-EdsPYvl2DnADHMQPuQCslPa35hwnW/qAO0QLOYgNnjlFpu+Ed9sWLaxU9ICfjvlE
-6LrqSixflqRfAmMQlTZuLlzj63EPC4qhvvBB9uLFRis7Yio4sIb6aMx1b/1mp5S+
-d/BgBQjHlFM=
-=1v+V
------END PGP SIGNATURE-----
-
---Apple-Mail=_3F1B0F1C-EDE1-486B-8DD2-6D2F9C267C7A--
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> For this reason, most of the people on this list aren't going to be
+> able to answer questions about make_ext4fs, since it's Android
+> specific code.  I can answer some of these questions, but only because
+> I've been asked to debug some of these hard to understand bugs in
+> make_ext4fs (and I really don't want to do that any more, hence the
+> work to extirpate make_ext4fs from the AOSP source tree :-).
+>
+>> I have some question, as following, can somebody help me to explain
+>> these questions? Thanks a lot!
+>>
+>> 1. The method of compute journal blocks, why  divide 64 :
+>>
+>>           static u32 compute_journal_blocks()
+>> {
+>>     u32 journal_blocks =3D DIV_ROUND_UP(info.len, info.block_size) / 64;
+>>    // is here, why divide 64 ???
+>>     if (journal_blocks < 1024)
+>>         journal_blocks =3D 1024;
+>>     if (journal_blocks > 32768)
+>>         journal_blocks =3D 32768;
+>>     return journal_blocks;
+>> }
+>
+> This is to compute how many blocks should be allocated for the
+> journal.  It's a hueristic, and I suspect the authors of make_ext4fs
+> were trying to make the it work more or less like what mke2fs does.
+> See ext2fs_default_journal_size() in lib/ext2fs/mkjournal.c in
+> e2fsprogs for the original code.  It's a bit better documented, but in
+> the end, it's just a hueristic.  The hueristic has changed over the
+> years, by the way, for better performance on larger, faster devices.
+> So what make_ext4fs does is different from e2fsprogs's current defaults.
+>
+>> 2. The method of compute jbg_desc_reserve_blocks , why multiply by 1024:
+>> static u32 compute_bg_desc_reserve_blocks()
+>> {
+>>     u32 blocks =3D DIV_ROUND_UP(info.len, info.block_size);
+>>     u32 block_groups =3D DIV_ROUND_UP(blocks, info.blocks_per_group);
+>>     u32 bg_desc_blocks =3D DIV_ROUND_UP(block_groups * sizeof(struct
+>> ext2_group_desc),
+>>             info.block_size);
+>>
+>>     u32 bg_desc_reserve_blocks =3D
+>>             DIV_ROUND_UP(block_groups * 1024 * sizeof(struct
+>> ext2_group_desc),      // is here , why multiply by 1024 ???
+>>                     info.block_size) - bg_desc_blocks;
+>>
+>>     if (bg_desc_reserve_blocks > info.block_size / sizeof(u32))
+>>         bg_desc_reserve_blocks =3D info.block_size / sizeof(u32);
+>>
+>>     return bg_desc_reserve_blocks;
+>> }
+>
+> These are reserved blocks used so the file system can be on-line
+> resized.  It's actually a waste of space since android file systems
+> are never resized, but again, cargo cult algorithms from clean room
+> reimplementations.  :-)
+   [yu.xing]:
+   For android file system, resize maybe need:
+   for the system.img, it is not required the resize , but for the
+userdata.img resizing was needed.
+   For example, we build a 512M userdata.img , but when we mount it
+to data partition,
+   we need to resize it for get the rest of space of the emmc device ,
+if not, the data partition size is 512M.
+>
+>> 3. About compute_inodes function , why divide 4 ??
+>> static u32 compute_inodes()
+>> {
+>>     return DIV_ROUND_UP(info.len, info.block_size) / 4;  // is here
+>> why divide 4 ??
+>> }
+>
+> Again, this is a hueristic to figure out roughly how many inodes
+> should be reserved given a particular file system size.  The default
+> assumes that the average size of files in the file system is 16k, and
+> allocates enough inodes so that the file system won't run out of
+> inodes given that average file size.
+>
+> This is adjustable using mke2fs's command line arguments.  See the man
+> page for mke2fs for more details.  make_ext4fs was just using a hard
+> coded default that can't be adjusted, apparently.
+>
+> Cheers,
+>
+>                                         - Ted
