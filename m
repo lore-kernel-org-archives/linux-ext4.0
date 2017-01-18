@@ -1,87 +1,103 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Wed, 18 Jan 2017 09:29:10 +0100
-Message-ID: <20170118082910.GD7015@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <7EC66AC2-1900-4328-A408-65079616A518@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <7EC66AC2-1900-4328-A408-65079616A518@dilger.ca>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: "George Spelvin" <linux@sciencehorizons.net>
+Subject: kernel BUG at fs/ext4/inline.c:1943!
+Date: 18 Jan 2017 03:21:28 -0500
+Message-ID: <20170118082128.2402.qmail@ns.sciencehorizons.net>
+References: <20170112144657.p33nf3u3ev27ixjq@thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: linux@sciencehorizons.net, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns.sciencehorizons.net ([71.41.210.147]:43385 "HELO
+        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1750830AbdARIsv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2017 03:48:51 -0500
+In-Reply-To: <20170112144657.p33nf3u3ev27ixjq@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 17-01-17 14:04:03, Andreas Dilger wrote:
-> On Jan 17, 2017, at 8:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > 
-> > On Tue, Jan 17, 2017 at 04:18:17PM +0100, Michal Hocko wrote:
-> >> 
-> >> OK, so I've been staring into the code and AFAIU current->journal_info
-> >> can contain my stored information. I could either hijack part of the
-> >> word as the ref counting is only consuming low 12b. But that looks too
-> >> ugly to live. Or I can allocate some placeholder.
-> > 
-> > Yeah, I was looking at something similar.  Can you guarantee that the
-> > context will only take one or two bits?  (Looks like it only needs one
-> > bit ATM, even though at the moment you're storing the whole GFP mask,
-> > correct?)
-> > 
-> >> But before going to play with that I am really wondering whether we need
-> >> all this with no journal at all. AFAIU what Jack told me it is the
-> >> journal lock(s) which is the biggest problem from the reclaim recursion
-> >> point of view. What would cause a deadlock in no journal mode?
-> > 
-> > We still have the original problem for why we need GFP_NOFS even in
-> > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > we don't want to recurse back into the file system's writeback path.
-> > Certainly not for the same inode, and while we could make it work if
-> > the mm was writing back another inode, or another superblock, there
-> > are also stack depth considerations that would make this be a bad
-> > idea.  So we do need to be able to assert GFP_NOFS even in no journal
-> > mode, and for any file system including ext2, for that matter.
-> > 
-> > Because of the fact that we're going to have to play games with
-> > current->journal_info, maybe this is something that I should take
-> > responsibility for, and to go through the the ext4 tree after the main
-> > patch series go through?  Maybe you could use xfs and ext2 as sample
-> > (simple) implementations?
-> > 
-> > My only ask is that the memalloc nofs context be a well defined N
-> > bits, where N < 16, and I'll find some place to put them (probably
-> > journal_info).
-> 
-> I think Dave was suggesting that the NOFS context allow a pointer to
-> an arbitrary struct, so that it is possible to dereference this in
-> the filesystem itself to determine if the recursion is safe or not.
+I was trying to rmdir an empty directory in lost+found that accumulated
+during my recent problems.
 
-Yes, but can we start with a simpler approach first? Even this approach
-takes quite some time to be used.
--- 
-Michal Hocko
-SUSE Labs
+EXT4-fs (md3): mounted filesystem with writeback data mode. Opts: data=writeback,delalloc
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+$ cd /mountpoint/lost+found
+$ rmdir \#1625089/
+
+------------[ cut here ]------------
+kernel BUG at fs/ext4/inline.c:1943!
+invalid opcode: 0000 [#1] SMP
+Modules linked in: nfsd lockd grace sunrpc ablk_helper via_velocity x86_pkg_temp_thermal crc32_pclmul crc32c_intel [last unloaded: twofish_common]
+CPU: 0 PID: 16879 Comm: rmdir Not tainted 4.10.0-rc3-00322-g1aa1df43-dirty #591
+Hardware name: Gigabyte Technology Co., Ltd. To be filled by O.E.M./X79-UP4, BIOS F7 03/19/2014
+task: ffff88040e4cab00 task.stack: ffffc9000dd5c000
+RIP: 0010:ext4_inline_data_truncate+0x3db/0x400
+RSP: 0018:ffffc9000dd5dcd8 EFLAGS: 00010286
+RAX: 0000000000000000 RBX: ffff88042d287ea0 RCX: 0000021810000000
+RDX: 00000000ffffffc3 RSI: ffffc9000dd5dcf8 RDI: ffff8801a41771f0
+RBP: ffffc9000dd5dd80 R08: ffff88006123e9c0 R09: ffff8803fe3d60a0
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801a41771f0
+R13: ffff8801a4177058 R14: ffff8801a41770f0 R15: 0000000000000000
+FS:  0000000000000000(0000) GS:ffff88042f200000(0063) knlGS:00000000f7787800
+CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+CR2: 00000000f765fbe0 CR3: 0000000179a5e000 CR4: 00000000001406f0
+Call Trace:
+ ext4_truncate+0x1ea/0x300
+ ext4_evict_inode+0x2c7/0x3d0
+ evict+0xc0/0x190
+ iput+0x14c/0x1e0
+ dentry_unlink_inode+0xbe/0x160
+ d_delete+0x9c/0xb0
+ vfs_rmdir+0x102/0x130
+ do_rmdir+0x1a3/0x1e0
+ SyS_rmdir+0x11/0x20
+ do_fast_syscall_32+0x94/0x210
+ entry_SYSENTER_compat+0x51/0x60
+RIP: 0023:0xf778aaf9
+RSP: 002b:00000000ffda9e0c EFLAGS: 00000292 ORIG_RAX: 0000000000000028
+RAX: ffffffffffffffda RBX: 00000000ffdab332 RCX: 0000000000000000
+RDX: 00000000565f4000 RSI: 00000000565efb38 RDI: 00000000ffdab332
+RBP: 00000000ffda9e68 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+Code: ff ff 89 c1 48 89 d7 48 c7 44 0a f8 00 00 00 00 8d 48 ff 31 c0 c1 e9 03 f3 48 ab e9 31 fe ff ff 41 bf f4 ff ff ff e9 3c fe ff ff <0f> 0b 89 c0 c7 02 00 00 00 00 c7 44 02 fc 00 00 00 00 e9 0f fe 
+RIP: ext4_inline_data_truncate+0x3db/0x400 RSP: ffffc9000dd5dcd8
+---[ end trace caa17f858299cde5 ]---
+
+
+That's the "BUG_ON(is.s.not_found);"
+
+debugfs says the directory entry is gone, but I can:
+
+debugfs:  stat <1625089>
+Inode: 1625089   Type: directory    Mode:  0775   Flags: 0x10000000
+Generation: 927350643    Version: 0x00000000:00000004
+User:  1000   Group:   161   Project:     0   Size: 132
+File ACL: 1664090185    Directory ACL: 0
+Links: 0   Blockcount: 8
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x587f2034:472c74ec -- Wed Jan 18 02:58:44 2017
+ atime: 0x56b9e2f8:b68a7658 -- Tue Feb  9 08:00:40 2016
+ mtime: 0x56c1bc4b:a7765de8 -- Mon Feb 15 06:53:47 2016
+crtime: 0x56ba9eb4:a51d90ac -- Tue Feb  9 21:21:40 2016
+Size of extra inode fields: 32
+Extended attributes:
+  system.data (72)
+Inode checksum: 0xe2f12fc5
+Size of inline data: 132
+debugfs:  dump <1625089> /tmp/inode
+$ xxd /tmp/inode
+00000000: 0b00 0000 0000 0000 3800 0000 0000 0000  ........8.......
+00000010: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000020: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000030: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00000040: 4800 3101 xxxx xxxx xxxx xxxx xxxx xxxx  H.1.xxxxxxxxxxxx
+00000050: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
+00000060: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
+00000070: xx2e 7064 6600 0000 0000 0000 0000 0000  x.pdf...........
+00000080: 0000 0000                                ....
+debugfs:  ea_get -f /tmp/ea <1625089> system.data
+$ xxd /tmp/ea
+00000000: 0000 0000 4800 3101 xxxx xxxx xxxx xxxx  ....H.1.xxxxxxxx
+00000010: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
+00000020: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx  xxxxxxxxxxxxxxxx
+00000030: xxxx xxxx xx2e 7064 6600 0000 0000 0000  xxxxx.pdf.......
+00000040: 0000 0000 0000 0000                      ........
