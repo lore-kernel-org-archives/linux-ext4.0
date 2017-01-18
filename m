@@ -1,126 +1,136 @@
 From: yi zhang <yi.zhang@huawei.com>
-Subject: [PATCH 1/2] vfs: add detection of inode validation
-Date: Wed, 18 Jan 2017 17:46:08 +0800
-Message-ID: <1484732769-31670-1-git-send-email-yi.zhang@huawei.com>
+Subject: [PATCH 2/2] ext4: add detection of i_nlink
+Date: Wed, 18 Jan 2017 17:46:09 +0800
+Message-ID: <1484732769-31670-2-git-send-email-yi.zhang@huawei.com>
+References: <1484732769-31670-1-git-send-email-yi.zhang@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: <linux-kernel@vger.kernel.org>, <tytso@mit.edu>,
         <adilger.kernel@dilger.ca>, <viro@ZenIV.linux.org.uk>,
         <yi.zhang@huawei.com>
 To: <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from szxga03-in.huawei.com ([119.145.14.66]:23971 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752581AbdARJre (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jan 2017 04:47:34 -0500
+In-Reply-To: <1484732769-31670-1-git-send-email-yi.zhang@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When we open/rename/unlink a file and open/rmdir a directory, the inode
-nlink can't be zero, if it does, the file system is inconsistency,
-and it can cause some unexpected errors, so add aggressive detection.
+Because of the disk and hardware issue, the inode->i_nlink of ext4
+becomes zero abnormally but the dentry is still positive, it will
+cause memory corruption after the following process:
+
+ 1) Due to the inode->i_nlink is 0, this inode will be added into
+the orhpan list,
+ 2) ext4_rename() cover this inode, and drop_nlink() will underflow
+the inode->i_nlink to 0xFFFFFFFF,
+ 3) iput() add this inode to LRU,
+ 4) evict() will call destroy_inode() to destroy this inode but
+skip removing it from the orphan list,
+ 5) after this, the inode's memory address space will be used by
+other module, when the ext4 filesystem change the orphan list, it will
+trample other module's data and then may cause oops.
+
+This patch detect inode->i_nlink in i_op->valitate, if it becomes zero
+abnormally, we call ext4_error and return -EFSCORRUPTED.
 
 Signed-off-by: yi zhang <yi.zhang@huawei.com>
 ---
- fs/namei.c         | 44 ++++++++++++++++++++++++++++++++++----------
- include/linux/fs.h |  2 ++
- 2 files changed, 36 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/file.c    |  1 +
+ fs/ext4/inode.c   | 10 ++++++++++
+ fs/ext4/namei.c   |  2 ++
+ fs/ext4/symlink.c |  3 +++
+ 5 files changed, 17 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index ad74877..a39bf7c 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -257,6 +257,23 @@ void putname(struct filename *name)
- 		__putname(name);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2163c1e..451f3b1f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2472,6 +2472,7 @@ extern int  ext4_write_inode(struct inode *, struct writeback_control *);
+ extern int  ext4_setattr(struct dentry *, struct iattr *);
+ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 				struct kstat *stat);
++extern int ext4_validate(struct inode *inode);
+ extern void ext4_evict_inode(struct inode *);
+ extern void ext4_clear_inode(struct inode *);
+ extern int  ext4_sync_inode(handle_t *, struct inode *);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d663d3d..8c6c702 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -762,5 +762,6 @@ const struct inode_operations ext4_file_inode_operations = {
+ 	.get_acl	= ext4_get_acl,
+ 	.set_acl	= ext4_set_acl,
+ 	.fiemap		= ext4_fiemap,
++	.validate	= ext4_validate,
+ };
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 88d57af..6f5c393 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5382,6 +5382,16 @@ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	return 0;
  }
  
-+int generic_validate(struct inode *inode)
++int ext4_validate(struct inode *inode)
 +{
-+	if (unlikely(inode->i_nlink == 0))
-+		return -EUCLEAN;
-+}
-+EXPORT_SYMBOL(generic_validate);
++	if (inode->i_nlink == 0) {
++		EXT4_ERROR_INODE(inode, "bad nlink value: %lu", inode->i_nlink);
++		return -EFSCORRUPTED;
++	}
 +
-+static inline int inode_validate(struct inode *inode)
-+{
-+	int retval = 0;
-+
-+	if (inode->i_op->validate)
-+		retval = inode->i_op->validate(inode);
-+
-+	return retval;
++	return 0;
 +}
 +
- static int check_acl(struct inode *inode, int mask)
+ static int ext4_index_trans_blocks(struct inode *inode, int lblocks,
+ 				   int pextents)
  {
- #ifdef CONFIG_FS_POSIX_ACL
-@@ -2716,20 +2733,21 @@ EXPORT_SYMBOL(__check_sticky);
-  *	Check whether we can remove a link victim from directory dir, check
-  *  whether the type of victim is right.
-  *  1. We can't do it if dir is read-only (done in permission())
-- *  2. We should have write and exec permissions on dir
-- *  3. We can't remove anything from append-only dir
-- *  4. We can't do anything with immutable dir (done in permission())
-- *  5. If the sticky bit on dir is set we should either
-+ *  2. We should validate the victim's inode
-+ *  3. We should have write and exec permissions on dir
-+ *  4. We can't remove anything from append-only dir
-+ *  5. We can't do anything with immutable dir (done in permission())
-+ *  6. If the sticky bit on dir is set we should either
-  *	a. be owner of dir, or
-  *	b. be owner of victim, or
-  *	c. have CAP_FOWNER capability
-- *  6. If the victim is append-only or immutable we can't do antyhing with
-+ *  7. If the victim is append-only or immutable we can't do antyhing with
-  *     links pointing to it.
-- *  7. If the victim has an unknown uid or gid we can't change the inode.
-- *  8. If we were asked to remove a directory and victim isn't one - ENOTDIR.
-- *  9. If we were asked to remove a non-directory and victim isn't one - EISDIR.
-- * 10. We can't remove a root or mountpoint.
-- * 11. We don't allow removal of NFS sillyrenamed files; it's handled by
-+ *  8. If the victim has an unknown uid or gid we can't change the inode.
-+ *  9. If we were asked to remove a directory and victim isn't one - ENOTDIR.
-+ * 10. If we were asked to remove a non-directory and victim isn't one - EISDIR.
-+ * 11. We can't remove a root or mountpoint.
-+ * 12. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
- static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-@@ -2744,6 +2762,9 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index eadba91..0396fe2 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3888,6 +3888,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 	.get_acl	= ext4_get_acl,
+ 	.set_acl	= ext4_set_acl,
+ 	.fiemap         = ext4_fiemap,
++	.validate	= ext4_validate,
+ };
  
-+	error = inode_validate(inode);
-+	if (error)
-+		return error;
- 	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
- 	if (error)
- 		return error;
-@@ -2889,6 +2910,9 @@ static int may_open(const struct path *path, int acc_mode, int flag)
- 		break;
- 	}
+ const struct inode_operations ext4_special_inode_operations = {
+@@ -3895,4 +3896,5 @@ const struct inode_operations ext4_special_inode_operations = {
+ 	.listxattr	= ext4_listxattr,
+ 	.get_acl	= ext4_get_acl,
+ 	.set_acl	= ext4_set_acl,
++	.validate	= ext4_validate,
+ };
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index 73b184d..92377d0 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -86,16 +86,19 @@ const struct inode_operations ext4_encrypted_symlink_inode_operations = {
+ 	.get_link	= ext4_encrypted_get_link,
+ 	.setattr	= ext4_setattr,
+ 	.listxattr	= ext4_listxattr,
++	.validate	= ext4_validate,
+ };
  
-+	error = inode_validate(inode);
-+	if (error)
-+		return error;
- 	error = inode_permission(inode, MAY_OPEN | acc_mode);
- 	if (error)
- 		return error;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2ba0743..52910f7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1710,6 +1710,7 @@ struct inode_operations {
- 			   umode_t create_mode, int *opened);
- 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
- 	int (*set_acl)(struct inode *, struct posix_acl *, int);
-+	int (*validate)(struct inode *);
- } ____cacheline_aligned;
+ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.get_link	= page_get_link,
+ 	.setattr	= ext4_setattr,
+ 	.listxattr	= ext4_listxattr,
++	.validate	= ext4_validate,
+ };
  
- ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
-@@ -2534,6 +2535,7 @@ extern int inode_permission(struct inode *, int);
- extern int __inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
- extern int __check_sticky(struct inode *dir, struct inode *inode);
-+extern int generic_validate(struct inode *inode);
- 
- static inline bool execute_ok(struct inode *inode)
- {
+ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.get_link	= simple_get_link,
+ 	.setattr	= ext4_setattr,
+ 	.listxattr	= ext4_listxattr,
++	.validate	= ext4_validate,
+ };
 -- 
 2.5.0
+
