@@ -1,23 +1,64 @@
-From: tester@aldems.lv
-Subject: =?utf-8?q?Gesch=C3=A4ftsvorschlag?=
-Date: Sun, 15 Jan 2017 04:52:28 +0530
-Message-ID: <1484436393102131613@mail>
-Reply-To: arnoldkristoferson101@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: =?utf-8?Q?EXT4?= =?utf-8?B?77ya?= About the method of compute
+ journal blocks
+Date: Wed, 18 Jan 2017 10:41:58 -0500
+Message-ID: <20170118154158.mme7qzuyqwkel6ok@thunk.org>
+References: <CAHndWeV=wT74J2TBWsxcFF0Ks_u0UYQeD=040+m8CtP2L9d7XQ@mail.gmail.com>
+ <20170117171024.lbunxryq5mjlvrvv@thunk.org>
+ <CAHndWeUE6R=pCF0fh7wZL0ukuhDM0Liga32s7Jsp2Y_e798ohw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <tester@aldems.lv>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: yu xing <mdxy2014@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.aldems.lv ([93.177.192.35]:50768 "EHLO aldems.lv"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752357AbdARKMm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 18 Jan 2017 05:12:42 -0500
-Content-Description: Mail message body
+Received: from imap.thunk.org ([74.207.234.97]:58352 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751841AbdARQUS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 18 Jan 2017 11:20:18 -0500
+Content-Disposition: inline
+In-Reply-To: <CAHndWeUE6R=pCF0fh7wZL0ukuhDM0Liga32s7Jsp2Y_e798ohw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lieber Freund.
+On Wed, Jan 18, 2017 at 01:06:07PM +0800, yu xing wrote:
+>       Do you mean, In future , the mke2fs will instead of the make_ext4fs ?
+>       if true, maybe some functions from make_ext4fs will add to mke2fs.
+>       such as pack the system.img from out/target/product/xxxxx/system,
+>       and add selinux file_contexts into system , as the following command list
+> 
+>     make_ext4fs [ -l <len> ] [ -j <journal size> ] [ -b <block_size> ]
+>     [ -g <blocks per group> ] [ -i <inodes> ] [ -I <inode size> ]
+>     [ -L <label> ] [ -f ] [ -a <android mountpoint> ] [ -u ]
+>     [ -S file_contexts ] [ -C fs_config ] [ -T timestamp ]
+>     [ -z | -s ] [ -w ] [ -c ] [ -J ] [ -v ] [ -B <block_list_file> ]
+>     <filename> [[<directory>] <target_out_directory>]
+> 
+>      the [<target_out_directory>] arguments is the packing directory
+>      and the -S arguments is used to include the selinux file_contexts
+> 
+>      but in the mke2fs command, I can not find these functions( the
+> newest version mk2fs whether or not support these functions,
+>      if my wrong, please correct me), so maybe add these functions
+> into mke2fs ?  the mke2fs command list as following:
 
-Erlauben Sie mir, auf diese Weise auf Sie zuzugehen. Ich bin Dr. Arnold Kristofferson, ein US-Auftragnehmer, der mit Nichtkämpfer US Marine in Ba'qubah, Irak arbeitet. Ich habe die Summe von 10,6 Millionen Dollar, die ich aus einem Rohöl-Deal gemacht habe, und ich möchte, dass Sie mir helfen, es zu erhalten. Da ich hier auf offizieller Kapazität arbeite, kann ich diesen Fonds nicht bei mir behalten und dies ist mein einziger Grund für die Kontaktaufnahme mit Ihnen. Wenn Sie interessiert sind und Sie diesen Fonds in Ihrer Kapazität erhalten können, melden Sie sich bitte bei mir, damit ich Ihnen weitere Details geben kann, wie Sie dieses Geld für mich erhalten können. Bitte erreichen Sie mich per E-Mail: arnoldkristoferson101@gmail.com
-Mit freundlichen Grüßen.
+Take a look at the AOSP master branch for e2fsprogs.  These changes
+are not yet part of an official Android release (as they showed up
+after the 'N' release) but you'll see that e2fsprogs has been updated
+to 1.43 release and in the contrib/android directory, there is a new
+e2fsdroid program.  That was some great work done by Adrien
+Schildknecht as part of his Google intern project, and he consulted
+with me on the design of how to refactor that functionality out of
+make_ext4fs.
 
+There are still some changes needed before we can completely get rid
+of make_ext4fs (it is called programmatically from the volume manager,
+and that last bit of work hasn't been converted yet).  And of course
+there has still be some polishing and bug fixing that has been
+happening to make sure things are smooth on Mac and Windows build
+hosts, etc.  So as usual with the AOSP master branch, understand that
+it is a work in progress, and it hasn't gotten the same level of
+testing as an official android "letter" release.
+
+Cheers,
+
+						- Ted
