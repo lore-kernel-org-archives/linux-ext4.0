@@ -1,111 +1,70 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Thu, 19 Jan 2017 10:44:05 +0100
-Message-ID: <20170119094405.GK30786@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
- <20170117172925.GA2486@quack2.suse.cz>
- <20170119083956.GE30786@dhcp22.suse.cz>
- <20170119092236.GC2565@quack2.suse.cz>
+From: <sterrenplan.kampen@deltasteur.nl>
+Subject: (unknown)
+Date: Thu, 19 Jan 2017 12:35:27 -0000
+Message-ID: <148482932705.25711.11862142005593514078@50-198-47-117-static.hfc.comcastbusiness.net>
+Reply-To: <sterrenplan.kampen@deltasteur.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170119092236.GC2565@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_937476267145_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 50-198-47-113-static.hfc.comcastbusiness.net ([50.198.47.113]:34500
+        "HELO 50-198-47-117-static.hfc.comcastbusiness.net"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1752402AbdASMfg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 19 Jan 2017 07:35:36 -0500
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 19-01-17 10:22:36, Jan Kara wrote:
-> On Thu 19-01-17 09:39:56, Michal Hocko wrote:
-> > On Tue 17-01-17 18:29:25, Jan Kara wrote:
-> > > On Tue 17-01-17 17:16:19, Michal Hocko wrote:
-> > > > > > But before going to play with that I am really wondering whether we need
-> > > > > > all this with no journal at all. AFAIU what Jack told me it is the
-> > > > > > journal lock(s) which is the biggest problem from the reclaim recursion
-> > > > > > point of view. What would cause a deadlock in no journal mode?
-> > > > > 
-> > > > > We still have the original problem for why we need GFP_NOFS even in
-> > > > > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > > > > we don't want to recurse back into the file system's writeback path.
-> > > > 
-> > > > But we do not enter the writeback path from the direct reclaim. Or do
-> > > > you mean something other than pageout()'s mapping->a_ops->writepage?
-> > > > There is only try_to_release_page where we get back to the filesystems
-> > > > but I do not see any NOFS protection in ext4_releasepage.
-> > > 
-> > > Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
-> > > callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
-> > > shrinkers. That's it. So the recursion possibilities are rather more limited
-> > > than they used to be several years ago and we likely do not need as much
-> > > GFP_NOFS protection as we used to.
-> > 
-> > Thanks for making my remark more clear Jack! I would just want to add
-> > that I was playing with the patch below (it is basically
-> > GFP_NOFS->GFP_KERNEL for all allocations which trigger warning from the
-> > debugging patch which means they are called from within transaction) and
-> > it didn't hit the lockdep when running xfstests both with or without the
-> > enabled journal.
-> > 
-> > So am I still missing something or the nojournal mode is safe and the
-> > current series is OK wrt. ext*?
-> 
-> I'm convinced the current series is OK, only real life will tell us whether
-> we missed something or not ;)
-
-I would like to extend the changelog of "jbd2: mark the transaction
-context with the scope GFP_NOFS context".
-
-"
-Please note that setups without journal do not suffer from potential
-recursion problems and so they do not need the scope protection because
-neither ->releasepage nor ->evict_inode (which are the only fs entry
-points from the direct reclaim) can reenter a locked context which is
-doing the allocation currently.
-"
- 
-> > The following patch in its current form is WIP and needs a proper review
-> > before I post it.
-> 
-> So jbd2 changes look confusing (although technically correct) to me - we
-> *always* should run in NOFS context in those place so having GFP_KERNEL
-> there looks like it is unnecessarily hiding what is going on. So in those
-> places I'd prefer to keep GFP_NOFS or somehow else make it very clear these
-> allocations are expected to be GFP_NOFS (and assert that). Otherwise the
-> changes look good to me.
-
-I would really like to get rid most of NOFS direct usage and only
-dictate it via the scope API otherwise I suspect we will just grow more
-users and end up in the same situation as we are now currently over time.
-In principle only the context which changes the reclaim reentrancy policy
-should care about NOFS and everybody else should just pretend nothing
-like that exists. There might be few exceptions of course, I am not yet
-sure whether jbd2 is that case. But I am not proposing this change yet
-(thanks for checking anyway)...
--- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+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
+AAA=
