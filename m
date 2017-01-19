@@ -1,70 +1,87 @@
-From: <sterrenplan.kampen@deltasteur.nl>
-Subject: (unknown)
-Date: Thu, 19 Jan 2017 12:35:27 -0000
-Message-ID: <148482932705.25711.11862142005593514078@50-198-47-117-static.hfc.comcastbusiness.net>
-Reply-To: <sterrenplan.kampen@deltasteur.nl>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Ext4 deadlock (+lockdep splat) during rsync
+Date: Thu, 19 Jan 2017 18:37:07 +0100
+Message-ID: <20170119173707.GA11602@quack2.suse.cz>
+References: <20170108224114.27157.qmail@ns.sciencehorizons.net>
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_937476267145_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: George Spelvin <linux@sciencehorizons.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 50-198-47-113-static.hfc.comcastbusiness.net ([50.198.47.113]:34500
-        "HELO 50-198-47-117-static.hfc.comcastbusiness.net"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1752402AbdASMfg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 19 Jan 2017 07:35:36 -0500
-Content-Disposition: attachment
-Subject: 
+Received: from mx2.suse.de ([195.135.220.15]:39085 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753944AbdASRhL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 19 Jan 2017 12:37:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20170108224114.27157.qmail@ns.sciencehorizons.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-AAA=
+On Sun 08-01-17 17:41:14, George Spelvin wrote:
+> After replacing a drive in a RAID array, I tried to bring some things
+> up to date with rsync and ran into an annoyingly repeatable deadlock.
+> 
+> So I found a chance to boot with a lockdep kernel and immediately turned up the following:
+> 
+> [  755.740865] =============================================
+> [  755.741072] [ INFO: possible recursive locking detected ]
+> [  755.741279] 4.9.1-00126-gfbb9fcc9-dirty #576 Not tainted
+> [  755.741489] ---------------------------------------------
+> [  755.741699] rsync/14818 is trying to acquire lock:
+> [  755.741907]  (&ei->xattr_sem){++++..}, at: [<ffffffff81234603>] ext4_expand_extra_isize_ea+0x63/0x850
+> [  755.742145] but task is already holding lock:
+> [  755.742742]  (&ei->xattr_sem){++++..}, at: [<ffffffff81236f95>] ext4_try_add_inline_entry+0x55/0x1a0
+> [  755.743102] other info that might help us debug this:
+> [  755.743802]  Possible unsafe locking scenario:
+> [  755.743802]        CPU0
+> [  755.743802]        ----
+> [  755.743802]   lock(&ei->xattr_sem);
+> [  755.743802]   lock(&ei->xattr_sem);
+> [  755.743802] *** DEADLOCK ***
+> [  755.743802]  May be due to missing lock nesting notation
+> [  755.743802] 4 locks held by rsync/14818:
+> [  755.743802]  #0:  (sb_writers#3){.+.+.+}, at: [<ffffffff811a0fef>] mnt_want_write+0x1f/0x50
+> [  755.743802]  #1:  (&type->i_mutex_dir_key){++++++}, at: [<ffffffff8118b058>] path_openat+0x2f8/0x9f0
+> [  755.743802]  #2:  (jbd2_handle){++++..}, at: [<ffffffff81239aa6>] start_this_handle+0x196/0x540
+> [  755.743802]  #3:  (&ei->xattr_sem){++++..}, at: [<ffffffff81236f95>] ext4_try_add_inline_entry+0x55/0x1a0
+> [  755.743802] stack backtrace:
+> [  755.743802] CPU: 0 PID: 14818 Comm: rsync Not tainted 4.9.1-00126-gfbb9fcc9-dirty #576
+> [  755.743802] Hardware name: Gigabyte Technology Co., Ltd. To be filled by O.E.M./X79-UP4, BIOS F7 03/19/2014
+> [  755.743802]  ffffc9000c273820 ffffffff812a6d05 ffffffff8253a080 ffffffff8253a080
+> [  755.743802]  ffffc9000c2738d8 ffffffff810c7eab ffffc9000c272000 ffffc90000000004
+> [  755.743802]  0000000000000000 ffffffff81e0b100 1a883a7e30ec461a ffffffff8253a080
+> [  755.743802] Call Trace:
+> [  755.743802]  [<ffffffff812a6d05>] dump_stack+0x68/0x93
+> [  755.743802]  [<ffffffff810c7eab>] __lock_acquire+0x7ab/0x1270
+> [  755.743802]  [<ffffffff810c8d10>] lock_acquire+0x60/0x80
+> [  755.743802]  [<ffffffff81234603>] ? ext4_expand_extra_isize_ea+0x63/0x850
+> [  755.743802]  [<ffffffff81793a44>] down_write+0x44/0x80
+> [  755.743802]  [<ffffffff81234603>] ? ext4_expand_extra_isize_ea+0x63/0x850
+> [  755.743802]  [<ffffffff81234603>] ext4_expand_extra_isize_ea+0x63/0x850
+> [  755.743802]  [<ffffffff81795ec2>] ? _raw_read_unlock+0x22/0x30
+> [  755.743802]  [<ffffffff8123a542>] ? jbd2_journal_extend+0x132/0x1b0
+> [  755.743802]  [<ffffffff812002c9>] ext4_mark_inode_dirty+0x129/0x180
+> [  755.743802]  [<ffffffff81235d64>] ext4_add_dirent_to_inline.isra.16+0xe4/0x100
+> [  755.743802]  [<ffffffff81236fd9>] ext4_try_add_inline_entry+0x99/0x1a0
+> [  755.743802]  [<ffffffff8120b102>] ext4_add_entry+0x1d2/0x370
+> [  755.743802]  [<ffffffff8120b2b9>] ext4_add_nondir+0x19/0x70
+> [  755.743802]  [<ffffffff8120b523>] ext4_create+0xc3/0x150
+> [  755.743802]  [<ffffffff8118aaf8>] lookup_open+0x3d8/0x640
+> [  755.743802]  [<ffffffff8118b072>] path_openat+0x312/0x9f0
+> [  755.743802]  [<ffffffff8118d309>] do_filp_open+0x79/0xd0
+> [  755.743802]  [<ffffffff81795bc2>] ? _raw_spin_unlock+0x22/0x30
+> [  755.743802]  [<ffffffff8119d9b3>] ? __alloc_fd+0xf3/0x200
+> [  755.743802]  [<ffffffff8117b4fe>] do_sys_open+0x11e/0x1f0
+> [  755.743802]  [<ffffffff811d2046>] compat_SyS_open+0x16/0x20
+> [  755.743802]  [<ffffffff810027e4>] do_fast_syscall_32+0x94/0x210
+> [  755.743802]  [<ffffffff81797da1>] entry_SYSENTER_compat+0x51/0x60
+
+OK, the problem is that we call ext4_mark_inode_dirty() while holding
+xattr_sem and that recurses into ext4_expand_extra_isize_ea() which tries
+to grab it again. This may happen in several place in inline.c, generally
+when handling inline directories. I'll try to craft a fix tomorrow...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
