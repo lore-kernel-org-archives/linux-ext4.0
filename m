@@ -1,186 +1,171 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/4] ext4: fix deadlock between inline_data and
- ext4_expand_extra_isize_ea()
-Date: Fri, 20 Jan 2017 14:53:17 +0100
-Message-ID: <20170120135317.GC10446@quack2.suse.cz>
+Subject: Re: [PATCH 4/4] ext4: propagate error values from
+ ext4_inline_data_truncate()
+Date: Fri, 20 Jan 2017 14:39:38 +0100
+Message-ID: <20170120133938.GB10446@quack2.suse.cz>
 References: <20170112034938.5934-1-tytso@mit.edu>
- <20170112034938.5934-4-tytso@mit.edu>
+ <20170112034938.5934-6-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux@sciencehorizons.net, stable@vger.kernel.org, #@thunk.org
+        linux@sciencehorizons.net
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48816 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:49075 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752342AbdATNxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Jan 2017 08:53:20 -0500
+        id S1752447AbdATNxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Jan 2017 08:53:52 -0500
 Content-Disposition: inline
-In-Reply-To: <20170112034938.5934-4-tytso@mit.edu>
+In-Reply-To: <20170112034938.5934-6-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 11-01-17 22:49:36, Ted Tso wrote:
-> The xattr_sem deadlock problems fixed in commit 2e81a4eeedca: "ext4:
-> avoid deadlock when expanding inode size" didn't include the use of
-> xattr_sem in fs/ext4/inline.c.  With the addition of project quota
-> which added a new extra inode field, this exposed deadlocks in the
-> inline_data code similar to the ones fixed by 2e81a4eeedca.
-> 
-> The deadlock can be reproduced via:
-> 
->    dmesg -n 7
->    mke2fs -t ext4 -O inline_data -Fq -I 256 /dev/vdc 32768
->    mount -t ext4 -o debug_want_extra_isize=24 /dev/vdc /vdc
->    mkdir /vdc/a
->    umount /vdc
->    mount -t ext4 /dev/vdc /vdc
->    echo foo > /vdc/a/foo
-> 
-> and looks like this:
-> 
-> [   11.158815]
-> [   11.160276] =============================================
-> [   11.161960] [ INFO: possible recursive locking detected ]
-> [   11.161960] 4.10.0-rc3-00015-g011b30a8a3cf #160 Tainted: G        W
-> [   11.161960] ---------------------------------------------
-> [   11.161960] bash/2519 is trying to acquire lock:
-> [   11.161960]  (&ei->xattr_sem){++++..}, at: [<c1225a4b>] ext4_expand_extra_isize_ea+0x3d/0x4cd
-> [   11.161960]
-> [   11.161960] but task is already holding lock:
-> [   11.161960]  (&ei->xattr_sem){++++..}, at: [<c1227941>] ext4_try_add_inline_entry+0x3a/0x152
-> [   11.161960]
-> [   11.161960] other info that might help us debug this:
-> [   11.161960]  Possible unsafe locking scenario:
-> [   11.161960]
-> [   11.161960]        CPU0
-> [   11.161960]        ----
-> [   11.161960]   lock(&ei->xattr_sem);
-> [   11.161960]   lock(&ei->xattr_sem);
-> [   11.161960]
-> [   11.161960]  *** DEADLOCK ***
-> [   11.161960]
-> [   11.161960]  May be due to missing lock nesting notation
-> [   11.161960]
-> [   11.161960] 4 locks held by bash/2519:
-> [   11.161960]  #0:  (sb_writers#3){.+.+.+}, at: [<c11a2414>] mnt_want_write+0x1e/0x3e
-> [   11.161960]  #1:  (&type->i_mutex_dir_key){++++++}, at: [<c119508b>] path_openat+0x338/0x67a
-> [   11.161960]  #2:  (jbd2_handle){++++..}, at: [<c123314a>] start_this_handle+0x582/0x622
-> [   11.161960]  #3:  (&ei->xattr_sem){++++..}, at: [<c1227941>] ext4_try_add_inline_entry+0x3a/0x152
-> [   11.161960]
-> [   11.161960] stack backtrace:
-> [   11.161960] CPU: 0 PID: 2519 Comm: bash Tainted: G        W       4.10.0-rc3-00015-g011b30a8a3cf #160
-> [   11.161960] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.1-1 04/01/2014
-> [   11.161960] Call Trace:
-> [   11.161960]  dump_stack+0x72/0xa3
-> [   11.161960]  __lock_acquire+0xb7c/0xcb9
-> [   11.161960]  ? kvm_clock_read+0x1f/0x29
-> [   11.161960]  ? __lock_is_held+0x36/0x66
-> [   11.161960]  ? __lock_is_held+0x36/0x66
-> [   11.161960]  lock_acquire+0x106/0x18a
-> [   11.161960]  ? ext4_expand_extra_isize_ea+0x3d/0x4cd
-> [   11.161960]  down_write+0x39/0x72
-> [   11.161960]  ? ext4_expand_extra_isize_ea+0x3d/0x4cd
-> [   11.161960]  ext4_expand_extra_isize_ea+0x3d/0x4cd
-> [   11.161960]  ? _raw_read_unlock+0x22/0x2c
-> [   11.161960]  ? jbd2_journal_extend+0x1e2/0x262
-> [   11.161960]  ? __ext4_journal_get_write_access+0x3d/0x60
-> [   11.161960]  ext4_mark_inode_dirty+0x17d/0x26d
-> [   11.161960]  ? ext4_add_dirent_to_inline.isra.12+0xa5/0xb2
-> [   11.161960]  ext4_add_dirent_to_inline.isra.12+0xa5/0xb2
-> [   11.161960]  ext4_try_add_inline_entry+0x69/0x152
-> [   11.161960]  ext4_add_entry+0xa3/0x848
-> [   11.161960]  ? __brelse+0x14/0x2f
-> [   11.161960]  ? _raw_spin_unlock_irqrestore+0x44/0x4f
-> [   11.161960]  ext4_add_nondir+0x17/0x5b
-> [   11.161960]  ext4_create+0xcf/0x133
-> [   11.161960]  ? ext4_mknod+0x12f/0x12f
-> [   11.161960]  lookup_open+0x39e/0x3fb
-> [   11.161960]  ? __wake_up+0x1a/0x40
-> [   11.161960]  ? lock_acquire+0x11e/0x18a
-> [   11.161960]  path_openat+0x35c/0x67a
-> [   11.161960]  ? sched_clock_cpu+0xd7/0xf2
-> [   11.161960]  do_filp_open+0x36/0x7c
-> [   11.161960]  ? _raw_spin_unlock+0x22/0x2c
-> [   11.161960]  ? __alloc_fd+0x169/0x173
-> [   11.161960]  do_sys_open+0x59/0xcc
-> [   11.161960]  SyS_open+0x1d/0x1f
-> [   11.161960]  do_int80_syscall_32+0x4f/0x61
-> [   11.161960]  entry_INT80_32+0x2f/0x2f
-> [   11.161960] EIP: 0xb76ad469
-> [   11.161960] EFLAGS: 00000286 CPU: 0
-> [   11.161960] EAX: ffffffda EBX: 08168ac8 ECX: 00008241 EDX: 000001b6
-> [   11.161960] ESI: b75e46bc EDI: b7755000 EBP: bfbdb108 ESP: bfbdafc0
-> [   11.161960]  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 007b
-> 
-> Cc: stable@vger.kernel.org # 3.10 (requires 2e81a4eeedca as a prereq)
-> Reported-by: George Spelvin <linux@sciencehorizons.net>
+On Wed 11-01-17 22:49:38, Ted Tso wrote:
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Looks mostly good, just two comments below.
+Looks good to me. You can add:
 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 5a94fa52b74f..c40bd55b6400 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1188,16 +1188,14 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->  	struct ext4_xattr_block_find bs = {
->  		.s = { .not_found = -ENODATA, },
->  	};
-> -	unsigned long no_expand;
-> +	int no_expand;
->  	int error;
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+> ---
+>  fs/ext4/ext4.h   |  2 +-
+>  fs/ext4/inline.c | 40 +++++++++++++++++++++++-----------------
+>  fs/ext4/inode.c  |  4 +++-
+>  3 files changed, 27 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 6bcb9622fdf9..1cd077e02517 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3023,7 +3023,7 @@ extern int ext4_inline_data_fiemap(struct inode *inode,
+>  extern int ext4_try_to_evict_inline_data(handle_t *handle,
+>  					 struct inode *inode,
+>  					 int needed);
+> -extern void ext4_inline_data_truncate(struct inode *inode, int *has_inline);
+> +extern int ext4_inline_data_truncate(struct inode *inode, int *has_inline);
 >  
->  	if (!name)
->  		return -EINVAL;
->  	if (strlen(name) > 255)
->  		return -ERANGE;
-> -	down_write(&EXT4_I(inode)->xattr_sem);
-> -	no_expand = ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND);
-> -	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
-> +	ext4_write_lock_xattr(inode, &no_expand);
+>  extern int ext4_convert_inline_data(struct inode *inode);
 >  
->  	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
->  	if (error)
-> @@ -1264,7 +1262,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->  		ext4_xattr_update_super_block(handle, inode->i_sb);
->  		inode->i_ctime = current_time(inode);
->  		if (!value)
-> -			ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
-> +			no_expand = 0;
-
-OK. I suppose you can use ext4_mark_inode_dirty() instead of
-ext4_mark_iloc_dirty() because the deadlock on xattr_sem is now taken care
-of by your changes, right?
-
->  		error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
->  		/*
->  		 * The bh is consumed by ext4_mark_iloc_dirty, even with
-> @@ -1278,9 +1276,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->  cleanup:
->  	brelse(is.iloc.bh);
->  	brelse(bs.bh);
-> -	if (no_expand == 0)
-> -		ext4_clear_inode_state(inode, EXT4_STATE_NO_EXPAND);
-> -	up_write(&EXT4_I(inode)->xattr_sem);
-> +	ext4_write_unlock_xattr(inode, &no_expand);
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 31f98dd04e51..accd665c5dc0 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1896,10 +1896,10 @@ int ext4_try_to_evict_inline_data(handle_t *handle,
 >  	return error;
 >  }
 >  
-> @@ -1497,12 +1493,11 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
->  	int error = 0, tried_min_extra_isize = 0;
->  	int s_min_extra_isize = le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
->  	int isize_diff;	/* How much do we need to grow i_extra_isize */
-> +	int no_expand;
-> +
-> +	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
+> -void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+> +int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>  {
+>  	handle_t *handle;
+> -	int inline_size, value_len, needed_blocks, no_expand;
+> +	int inline_size, value_len, needed_blocks, no_expand, err = 0;
+>  	size_t i_size;
+>  	void *value = NULL;
+>  	struct ext4_xattr_ibody_find is = {
+> @@ -1914,19 +1914,19 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>  	needed_blocks = ext4_writepage_trans_blocks(inode);
+>  	handle = ext4_journal_start(inode, EXT4_HT_INODE, needed_blocks);
+>  	if (IS_ERR(handle))
+> -		return;
+> +		return PTR_ERR(handle);
+>  
+>  	ext4_write_lock_xattr(inode, &no_expand);
+>  	if (!ext4_has_inline_data(inode)) {
+>  		*has_inline = 0;
+>  		ext4_journal_stop(handle);
+> -		return;
 > +		return 0;
-
-Why do you play tricks with trylock here? ext4_mark_inode_dirty() checks
-EXT4_STATE_NO_EXPAND and thus we should not ever get here if we already
-hold xattr_sem...
-
-								Honza
+>  	}
+>  
+> -	if (ext4_orphan_add(handle, inode))
+> +	if ((err = ext4_orphan_add(handle, inode)) != 0)
+>  		goto out;
+>  
+> -	if (ext4_get_inode_loc(inode, &is.iloc))
+> +	if ((err = ext4_get_inode_loc(inode, &is.iloc)) != 0)
+>  		goto out;
+>  
+>  	down_write(&EXT4_I(inode)->i_data_sem);
+> @@ -1937,24 +1937,29 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>  	if (i_size < inline_size) {
+>  		/* Clear the content in the xattr space. */
+>  		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
+> -			if (ext4_xattr_ibody_find(inode, &i, &is))
+> +			if ((err = ext4_xattr_ibody_find(inode, &i, &is)) != 0)
+>  				goto out_error;
+>  
+>  			BUG_ON(is.s.not_found);
+>  
+>  			value_len = le32_to_cpu(is.s.here->e_value_size);
+>  			value = kmalloc(value_len, GFP_NOFS);
+> -			if (!value)
+> +			if (!value) {
+> +				err = -ENOMEM;
+>  				goto out_error;
+> +			}
+>  
+> -			if (ext4_xattr_ibody_get(inode, i.name_index, i.name,
+> -						value, value_len))
+> +			err = ext4_xattr_ibody_get(inode, i.name_index,
+> +						   i.name, value, value_len);
+> +			if (err)
+>  				goto out_error;
+>  
+>  			i.value = value;
+>  			i.value_len = i_size > EXT4_MIN_INLINE_DATA_SIZE ?
+>  					i_size - EXT4_MIN_INLINE_DATA_SIZE : 0;
+> -			if (ext4_xattr_ibody_inline_set(handle, inode, &i, &is))
+> +			err = ext4_xattr_ibody_inline_set(handle, inode,
+> +							  &i, &is);
+> +			if (err)
+>  				goto out_error;
+>  		}
+>  
+> @@ -1979,13 +1984,14 @@ void ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>  	if (inode->i_nlink)
+>  		ext4_orphan_del(handle, inode);
+>  
+> -	inode->i_mtime = inode->i_ctime = current_time(inode);
+> -	ext4_mark_inode_dirty(handle, inode);
+> -	if (IS_SYNC(inode))
+> -		ext4_handle_sync(handle);
+> -
+> +	if (err == 0) {
+> +		inode->i_mtime = inode->i_ctime = current_time(inode);
+> +		err = ext4_mark_inode_dirty(handle, inode);
+> +		if (IS_SYNC(inode))
+> +			ext4_handle_sync(handle);
+> +	}
+>  	ext4_journal_stop(handle);
+> -	return;
+> +	return err;
+>  }
+>  
+>  int ext4_convert_inline_data(struct inode *inode)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 86dde0667ccc..1e2c881f102d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4222,7 +4222,9 @@ int ext4_truncate(struct inode *inode)
+>  	if (ext4_has_inline_data(inode)) {
+>  		int has_inline = 1;
+>  
+> -		ext4_inline_data_truncate(inode, &has_inline);
+> +		err = ext4_inline_data_truncate(inode, &has_inline);
+> +		if (err)
+> +			return err;
+>  		if (has_inline)
+>  			return 0;
+>  	}
+> -- 
+> 2.11.0.rc0.7.gbe5a750
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
