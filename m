@@ -1,45 +1,83 @@
-From: "George Spelvin" <linux@sciencehorizons.net>
-Subject: Re: Ext4 deadlock (+lockdep splat) during rsync
-Date: 20 Jan 2017 12:57:23 -0500
-Message-ID: <20170120175723.17324.qmail@ns.sciencehorizons.net>
-References: <20170120144026.bvg2mpe3uvb5yspi@thunk.org>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: linux@sciencehorizons.net, tytso@mit.edu
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Re: kernel BUG at fs/ext4/inline.c:1943!
+Date: Fri, 20 Jan 2017 20:14:29 +0100
+Message-ID: <58826195.60004@partition-saving.com>
+References: <20170112144657.p33nf3u3ev27ixjq@thunk.org> <20170118082128.2402.qmail@ns.sciencehorizons.net> <20170119225830.ihoia75rhy2em27x@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: George Spelvin <linux@sciencehorizons.net>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.sciencehorizons.net ([71.41.210.147]:64837 "HELO
-        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1751744AbdATR5a (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jan 2017 12:57:30 -0500
-In-Reply-To: <20170120144026.bvg2mpe3uvb5yspi@thunk.org>
+Received: from smtp4-g21.free.fr ([212.27.42.4]:22378 "EHLO smtp4-g21.free.fr"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752266AbdATTNa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Jan 2017 14:13:30 -0500
+In-Reply-To: <20170119225830.ihoia75rhy2em27x@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Those bugs look like they are very separate in that they have nothing
-> to do with locking, but rather in e2fsck and the kernel not properly
-> dealing with certain types of inconsistencies on disk.  On my list to
-> deal with.  As a workaround, you can just clri the offending corrupted
-> inode from lost+found and then run e2fsck.
+Theodore Ts'o wrote:
+> On Wed, Jan 18, 2017 at 03:21:28AM -0500, George Spelvin wrote:
+> 
+>>I was trying to rmdir an empty directory in lost+found that accumulated
+>>during my recent problems.
+>>
+>>EXT4-fs (md3): mounted filesystem with writeback data mode. Opts: data=writeback,delalloc
+>>
+>>$ cd /mountpoint/lost+found
+>>$ rmdir \#1625089/
+>>
+>>------------[ cut here ]------------
+>>kernel BUG at fs/ext4/inline.c:1943!
+> 
+> 
+>>debugfs:  stat <1625089>
+>>Inode: 1625089   Type: directory    Mode:  0775   Flags: 0x10000000
+>>Generation: 927350643    Version: 0x00000000:00000004
+>>User:  1000   Group:   161   Project:     0   Size: 132
+>>File ACL: 1664090185    Directory ACL: 0
+>>Links: 0   Blockcount: 8
+>>Fragment:  Address: 0    Number: 0    Size: 0
+>> ctime: 0x587f2034:472c74ec -- Wed Jan 18 02:58:44 2017
+>> atime: 0x56b9e2f8:b68a7658 -- Tue Feb  9 08:00:40 2016
+>> mtime: 0x56c1bc4b:a7765de8 -- Mon Feb 15 06:53:47 2016
+>>crtime: 0x56ba9eb4:a51d90ac -- Tue Feb  9 21:21:40 2016
+>>Size of extra inode fields: 32
+>>Extended attributes:
+>>  system.data (72)
+>>Inode checksum: 0xe2f12fc5
+>>Size of inline data: 132
+> 
+> 
+> OK, so the problem seems the inode in question has the INLINE_DATA
+> flag set, but i_blocks is non-zero.  And it looks like the data was
+> actually stored in an exernal data block, and the in-line xattr wasn't
+> present.
+> 
+> e2fsck should be checking and complaining if this is the case.  If
+> not, it's a bug in e2fsck.
+> 
+> And the kernel certainy shouldn't be BUG'ing when it comes across
+> what is clearly a case of file system corruption.
+> 
+> Cheers,
+> 
+> 					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+Hello,
 
-Yes, that's fairly obvious, but I've avoided that for a few reasons:
-1) I was holding on to the broken inodes in case you needed more information
-   that I didn't include in the initial report,
-2) I also thought they might be wanted to test an eventual fix, and
-3) I was probably going to get a bit fancier to preserve the file names.
+Perhaps I am wrong, but as the inode has a file ACL, the blockcount should be 
+different from 0?
+So it seems valid on this point. Or is there something that prevent inlined file 
+to have ACL?
 
-My latest report is a bit confusing because debugfs() reads the
-directories without complaint, so I'm not sure it's a valid on-disk
-situation that the kernel is improperly rejecting, or an invaid situation
-that libext2fs is improperly accepting.
+Regards,
 
-Since I don't currently understand the on-disk format of inline data,
-(I need to RTFS), I can't figure that out or see if there's a way
-to do a repair in situ.
-
-Oh!  Found it at
-https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout#Inline_Data
-
-So I'm guessing the problem is that the required empty system.data
-attribute is missing (due to the preceding extra_isize changing mess),
-and if I just created it, everything would magically come back to life.
-
-Something like ea_set <inode> system.data ""
+Damien
