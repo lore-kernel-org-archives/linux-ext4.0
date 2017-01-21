@@ -1,104 +1,80 @@
-From: Damien Guibouret <damien.guibouret@partition-saving.com>
-Subject: Re: kernel BUG at fs/ext4/inline.c:1943!
-Date: Fri, 20 Jan 2017 23:24:40 +0100
-Message-ID: <58828E28.2020204@partition-saving.com>
-References: <20170112144657.p33nf3u3ev27ixjq@thunk.org> <20170118082128.2402.qmail@ns.sciencehorizons.net> <20170119225830.ihoia75rhy2em27x@thunk.org> <58826195.60004@partition-saving.com> <B36E2BBE-D64C-4E91-BB74-5729CE29BB03@dilger.ca>
+From: <sterrenplan.kampen@deltasteur.nl>
+Subject: (unknown)
+Date: Sat, 21 Jan 2017 06:51:07 -0000
+Message-ID: <148498146717.20431.941540920721282889@izhevsk.ertelecom.ru>
+Reply-To: <sterrenplan.kampen@deltasteur.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        George Spelvin <linux@sciencehorizons.net>,
-        linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: application/zip; name="EMAIL_53574576_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:8928 "EHLO smtp4-g21.free.fr"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752859AbdATWXs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Jan 2017 17:23:48 -0500
-In-Reply-To: <B36E2BBE-D64C-4E91-BB74-5729CE29BB03@dilger.ca>
+Received: from net131.79.95-95.izhevsk.ertelecom.ru ([46.147.131.95]:44560
+        "HELO izhevsk.ertelecom.ru" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with SMTP id S1750717AbdAUGv2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 21 Jan 2017 01:51:28 -0500
+Subject: 
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jan 20, 2017, at 12:14 PM, Damien Guibouret <damien.guibouret@partition-saving.com> wrote:
-> 
->>Theodore Ts'o wrote:
->>
->>>On Wed, Jan 18, 2017 at 03:21:28AM -0500, George Spelvin wrote:
->>>
->>>>I was trying to rmdir an empty directory in lost+found that accumulated
->>>>during my recent problems.
->>>>
->>>>EXT4-fs (md3): mounted filesystem with writeback data mode. Opts: data=writeback,delalloc
->>>>
->>>>$ cd /mountpoint/lost+found
->>>>$ rmdir \#1625089/
->>>>
->>>>------------[ cut here ]------------
->>>>kernel BUG at fs/ext4/inline.c:1943!
->>>>debugfs:  stat <1625089>
->>>>Inode: 1625089   Type: directory    Mode:  0775   Flags: 0x10000000
->>>>Generation: 927350643    Version: 0x00000000:00000004
->>>>User:  1000   Group:   161   Project:     0   Size: 132
->>>>File ACL: 1664090185    Directory ACL: 0
->>>>Links: 0   Blockcount: 8
->>>>Fragment:  Address: 0    Number: 0    Size: 0
->>>>ctime: 0x587f2034:472c74ec -- Wed Jan 18 02:58:44 2017
->>>>atime: 0x56b9e2f8:b68a7658 -- Tue Feb  9 08:00:40 2016
->>>>mtime: 0x56c1bc4b:a7765de8 -- Mon Feb 15 06:53:47 2016
->>>>crtime: 0x56ba9eb4:a51d90ac -- Tue Feb  9 21:21:40 2016
->>>>Size of extra inode fields: 32
->>>>Extended attributes:
->>>>system.data (72)
->>>>Inode checksum: 0xe2f12fc5
->>>>Size of inline data: 132
->>>
->>>OK, so the problem seems the inode in question has the INLINE_DATA
->>>flag set, but i_blocks is non-zero.  And it looks like the data was
->>>actually stored in an exernal data block, and the in-line xattr wasn't
->>>present.
->>>e2fsck should be checking and complaining if this is the case.  If
->>>not, it's a bug in e2fsck.
->>>And the kernel certainy shouldn't be BUG'ing when it comes across
->>>what is clearly a case of file system corruption.
->>>Cheers,
->>>					- Ted
->>>--
->>>To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->>>the body of a message to majordomo@vger.kernel.org
->>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>Hello,
->>
->>Perhaps I am wrong, but as the inode has a file ACL, the blockcount should be
->>different from 0?  So it seems valid on this point. Or is there something that
->>prevent inlined file to have ACL?
-> 
-> 
-> The "File ACL" label is misleading.  ACLs are stored as xattrs, (along with other
-> xattrs like SELinux labels), and also inline data.  However, unless the ACL is
-> very large it would also be stored inside the inode itself.  If there isn't space
-> inside the inode to store both the inline data and other xattrs, the inline data
-> should be bumped to an external block first (i.e. stored as a regular file),
-> since there is no benefit to doing the reverse.
-> 
-> 
-> Cheers, Andreas
-> 
-
-I certainly do not have a complete knowledge on how it works, but the 
-ext4_xattr_set_handle function does not try to move inline data to a block 
-before allocating a new block for the extended attribute (or reusing a block if 
-there is one with similar content). And some of its call tree does not clear 
-inline data before.
-A case could be some directory creation that inherits big posix ACL from its 
-parent (ACL goes to a block, potentially the same than the one of its parent) 
-and the directory is created with inline data.
-
-In the ext4_getattr function there is also some comment that says it can happen 
-"If there is inline data in the inode, the inode will normally not have data 
-blocks allocated (it may have an external xattr block)."
-
-Regards,
-
-Damien
+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
+AAAAAFBLBQYAAAAAAQABAFMAAADUDAAAAAA=
