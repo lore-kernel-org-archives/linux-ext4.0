@@ -1,69 +1,57 @@
-From: "George Spelvin" <linux@sciencehorizons.net>
-Subject: Re: ext4_iget:4740: inode #%ld: block 48: comm find: invalid block
-Date: 21 Jan 2017 11:45:12 -0500
-Message-ID: <20170121164512.11458.qmail@ns.sciencehorizons.net>
-References: <20170121133049.bsrp55gi4x5x5wcv@thunk.org>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org
-To: linux@sciencehorizons.net, tytso@mit.edu
+From: =?utf-8?B?0JLQuNGC0LDQu9C40Lkg0KTQuNC70LjQv9C/0L7Qsg==?=
+        <vitalif@yourcmc.ru>
+Subject: Re: A tool that allows changing inode table sizes
+Date: Sun, 22 Jan 2017 12:05:27 +0300
+Message-ID: <op.yugl7dquvqcmy1@gnusmas>
+References: <ea490dfe40d0de3a5c0cb388e749f172@yourcmc.ru>
+ <555DD664-E495-409D-9DAB-6E0A52C98273@dilger.ca>
+ <20140117002530.GK9229@birch.djwong.org>
+ <a78e13a5bdcc81e28fa036373ea4ce49@yourcmc.ru>
+ <8E4792A3-0796-42B4-AF7C-338F6B190971@dilger.ca>
+ <9156EEF4-B49F-4ADD-9C62-1E70FC18395C@yourcmc.ru>
+ <E1C44EA0-0C53-46AF-8CC1-DE7A44986CAA@dilger.ca>
+ <E615B1F7-70D9-4342-97BE-6ADB83BF9589@yourcmc.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed; delsp=yes
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Andreas Dilger" <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.sciencehorizons.net ([71.41.210.147]:27757 "HELO
-        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1750770AbdAUQpO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jan 2017 11:45:14 -0500
-In-Reply-To: <20170121133049.bsrp55gi4x5x5wcv@thunk.org>
+Received: from yourcmc.ru ([195.209.40.11]:45025 "EHLO yourcmc.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751080AbdAVJNT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 22 Jan 2017 04:13:19 -0500
+In-Reply-To: <E615B1F7-70D9-4342-97BE-6ADB83BF9589@yourcmc.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted Ts'o wrote:
-On Fri, Jan 20, 2017 at 12:57:23PM -0500, George Spelvin wrote:
->> So I'm guessing the problem is that the required empty system.data
->> attribute is missing (due to the preceding extra_isize changing mess),
->> and if I just created it, everything would magically come back to life
->> 
->> Something like ea_set <inode> system.data ""
+Hi again,
 
-> Well, it would still a corrupted, innconsistent inode, in that there
-> would still be a block attached to the inode, and i_size would be
-> different from the size of the data xattr used by inline_data.  So you
-> might as well just clri the inode and rerun fsck, or clri the inode
-> and then unlink the directory entry in lost+found.
+I've got no answer since this email...
 
-Er, huh?  I was referring to the following error, which is one of a
-dozen inodes I have with this problem (sorry all the Subject: lines have
-gotten tangled):
+But I still would like to have my patch merged. What should I do now?
 
->> Subject: ext4_iget:4740: inode #%ld: block 48: comm find: invalid block
+> Ok, thank you :-)
+>
+> 28 сентября 2016 г. 20:37:37 GMT+03:00, Andreas Dilger  
+> <adilger@dilger.ca> пишет:
+>> On Sep 28, 2016, at 10:00 AM, Виталий Филиппов <vitalif@yourcmc.ru>
+>> wrote:
+>>> Thanks, did you see that email? Or was it lost somewhere in between?
 >>
->> debugfs:  stat <1171779>
->> Inode: 1171779   Type: directory    Mode:  0775   Flags: 0x10000000
->> Generation: 2016668288    Version: 0x00000000:00000007
->> User:  1000   Group:   161   Project:     0   Size: 60
->> File ACL: 0    Directory ACL: 0
->> Links: 2   Blockcount: 0
->> Fragment:  Address: 0    Number: 0    Size: 0
->>  ctime: 0x587eff35:6e19953c -- Wed Jan 18 00:37:57 2017
->>  atime: 0x56d5943f:bb6e1344 -- Tue Mar  1 08:08:15 2016
->>  mtime: 0x587eff35:6e19953c -- Wed Jan 18 00:37:57 2017
->> crtime: 0x56d388b6:533e9e7c -- Sun Feb 28 18:54:30 2016
->> Size of extra inode fields: 32
->> Inode checksum: 0x82a01dca
->> Size of inline data: 60
->> 
->> debugfs:  ls <1171779>
->>  1171779  (12) .    1171778  (12) ..    1171954  (12) 0    1171955  (12) 1   
->>  1171956  (12) 2    1171957  (20) 3   
-
-Zero blocks, data apparently safe and sound in the i_blocks field, just
-missing (due to getting trashed by buggy i_extra_size changing code)
-the system.data ea, and thus i_inline_off == 0 which upsets the kernel.
-
-> You might get it to a state where the kernel isn't explicitly
-> complaining any more, but you might end up unmasking other bugs where
-> the kernel is further failing to handle an inconsistent inode relating
-> to inline_data.
-
-I just want to get it to a state where I can mv the contents into a
-replacement directly and then rmdir this one, rather than having to
-make a note of the name & inode number of each of the contained files
-and then recreate it from the contents of lost+found (which is already
-a bit of a swamp I'm wading through).
+>> I did, but just didn't reply since resize2fs and bigalloc are Ted's
+>> area.
+>> He is often travelling, so it may take some time for him to reply.
+>>
+>> Cheers, Andreas
+>>
+>>> 28 сентября 2016 г. 17:46:52 GMT+03:00, Andreas Dilger
+>> <adilger@dilger.ca> пишет:
+>>> On Sep 28, 2016, at 6:14 AM, vitalif@yourcmc.ru wrote:
+>>> Hi!
+>>> I want to send a patch for e2fsprogs - I've implemented inode table
+>> resizing in resize2fs.
+>>> To what mailing list should I send it?
+>>> I've written something to linux-ext4, but got no answer...
+>>> linux-ext4 is the right list.
+>>> Cheers, Andreas
