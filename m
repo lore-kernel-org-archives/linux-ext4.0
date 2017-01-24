@@ -1,479 +1,974 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/3] mke2fs: enable large directroy support
-Date: Tue, 24 Jan 2017 10:08:16 -0800
-Message-ID: <20170124180816.GG14029@birch.djwong.org>
-References: <CAO3qy=F_CxQQ0bUtOm5CZbE0QQ78vyviMStOgg8nryUZZymung@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48745 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750806AbdAXSI0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jan 2017 13:08:26 -0500
-Content-Disposition: inline
-In-Reply-To: <CAO3qy=F_CxQQ0bUtOm5CZbE0QQ78vyviMStOgg8nryUZZymung@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] fscrypt: split supp and notsupp declarations into their own headers
+Date: Tue, 24 Jan 2017 10:58:06 -0800
+Message-ID: <20170124185806.125261-1-ebiggers3@gmail.com>
+Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 24, 2017 at 07:34:13PM +0300, Artem Blagodarenko wrote:
-> The INCOMPAT_LARGEDIR feature allows larger directories to
-> be created, both with directory sizes over 2GB and and a
-> maximum htree depth of 3 instead of the current limit of 2.
-> These features are needed in order to exceed the currently
-> limit of approximately 10M entries in a single directory.
-> 
-> debugfs, e2fsck, ext2fs, mke2fs and tune2fs support is
-> added.
-> 
-> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-> ---
->  debugfs/debugfs.c            |   16 +++++++---------
->  debugfs/set_fields.c         |    1 -
->  e2fsck/message.c             |    4 ----
->  e2fsck/pass1.c               |    5 ++---
->  e2fsck/pass2.c               |   11 ++---------
->  e2fsck/problem.c             |    5 -----
->  e2fsck/problem.h             |    3 ---
->  lib/ext2fs/ext2_fs.h         |    9 ++++-----
->  lib/ext2fs/ext2fs.h          |   15 ++++++++++++++-
->  lib/ext2fs/swapfs.c          |    2 +-
->  misc/mke2fs.c                |    3 ++-
->  misc/tune2fs.c               |    3 ++-
->  tests/d_special_files/expect |   10 +++++-----
->  tests/f_badcluster/expect    |   14 +++++++-------
->  tests/f_recnect_bad/expect.1 |    3 ---
->  15 files changed, 46 insertions(+), 58 deletions(-)
-> 
-> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-> index b40d9e2..795bdc3 100644
-> --- a/debugfs/debugfs.c
-> +++ b/debugfs/debugfs.c
-> @@ -841,16 +841,15 @@ void internal_dump_inode(FILE *out, const char *prefix,
->          fprintf(out, "%d\n", inode->i_size);
->      if (os == EXT2_OS_HURD)
->          fprintf(out,
-> -            "%sFile ACL: %d    Directory ACL: %d Translator: %d\n",
-> +            "%sFile ACL: %d Translator: %d\n",
->              prefix,
-> -            inode->i_file_acl, LINUX_S_ISDIR(inode->i_mode) ?
-> inode->i_dir_acl : 0,
-> +            inode->i_file_acl,
->              inode->osd1.hurd1.h_i_translator);
->      else
-> -        fprintf(out, "%sFile ACL: %llu    Directory ACL: %d\n",
-> +        fprintf(out, "%sFile ACL: %llu\n",
->              prefix,
->              inode->i_file_acl | ((long long)
-> -                (inode->osd2.linux2.l_i_file_acl_high) << 32),
-> -            LINUX_S_ISDIR(inode->i_mode) ? inode->i_dir_acl : 0);
-> +                (inode->osd2.linux2.l_i_file_acl_high) << 32));
->      if (os != EXT2_OS_HURD)
->          fprintf(out, "%sLinks: %d   Blockcount: %llu\n",
->              prefix, inode->i_links_count,
-> @@ -1347,10 +1346,9 @@ void do_modify_inode(int argc, char *argv[])
->      modify_u32(argv[0], "Reserved1", decimal_format, &inode.i_reserved1);
->  #endif
->      modify_u32(argv[0], "File acl", decimal_format, &inode.i_file_acl);
-> -    if (LINUX_S_ISDIR(inode.i_mode))
-> -        modify_u32(argv[0], "Directory acl", decimal_format, &inode.i_dir_acl);
-> -    else
-> -        modify_u32(argv[0], "High 32bits of size", decimal_format,
-> &inode.i_size_high);
-> +
-> +    modify_u32(argv[0], "High 32bits of size", decimal_format,
-> +           &inode.i_size_high);
+From: Eric Biggers <ebiggers@google.com>
 
-Ugh, this patch removes dir_acl /and/ adds support for 3-level htrees!
+Previously, each filesystem configured without encryption support would
+define all the public fscrypt functions to their notsupp_* stubs.  This
+list of #defines had to be updated in every filesystem whenever a change
+was made to the public fscrypt functions.  To make things more
+maintainable now that we have three filesystems using fscrypt, split the
+old header fscrypto.h into several new headers.  fscrypt_supp.h contains
+the real declarations and is included by filesystems when configured
+with encryption support, whereas fscrypt_notsupp.h contains the inline
+stubs and is included by filesystems when configured without encryption
+support.  fscrypt_common.h contains common declarations needed by both.
 
-Please break this up into separate patches for each of those two changes.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ MAINTAINERS                     |   2 +-
+ fs/crypto/fscrypt_private.h     |   2 +-
+ fs/ext4/ext4.h                  |  28 +---
+ fs/ext4/page-io.c               |   1 -
+ fs/f2fs/f2fs.h                  |  30 +---
+ fs/ubifs/ubifs.h                |  28 +---
+ include/linux/fscrypt_common.h  | 146 +++++++++++++++++
+ include/linux/fscrypt_notsupp.h | 168 +++++++++++++++++++
+ include/linux/fscrypt_supp.h    |  66 ++++++++
+ include/linux/fscrypto.h        | 347 ----------------------------------------
+ 10 files changed, 397 insertions(+), 421 deletions(-)
+ create mode 100644 include/linux/fscrypt_common.h
+ create mode 100644 include/linux/fscrypt_notsupp.h
+ create mode 100644 include/linux/fscrypt_supp.h
+ delete mode 100644 include/linux/fscrypto.h
 
-"e2fsprogs: supersede i_dir_acl with i_size_high for all cases"
-"e2fsprogs: add support for 3-level htree"
+diff --git a/MAINTAINERS b/MAINTAINERS
+index cfff2c9e3d94..4d20b03648fa 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -5268,7 +5268,7 @@ M:	Jaegeuk Kim <jaegeuk@kernel.org>
+ L:	linux-fsdevel@vger.kernel.org
+ S:	Supported
+ F:	fs/crypto/
+-F:	include/linux/fscrypto.h
++F:	include/linux/fscrypt*.h
+ 
+ F2FS FILE SYSTEM
+ M:	Jaegeuk Kim <jaegeuk@kernel.org>
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index 7bff7b4c7498..e8a229e1d45d 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -11,7 +11,7 @@
+ #ifndef _FSCRYPT_PRIVATE_H
+ #define _FSCRYPT_PRIVATE_H
+ 
+-#include <linux/fscrypto.h>
++#include <linux/fscrypt_supp.h>
+ 
+ #define FS_FNAME_CRYPTO_DIGEST_SIZE	32
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6bcb9622fdf9..a5c756b80b7d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -32,7 +32,11 @@
+ #include <linux/percpu_counter.h>
+ #include <linux/ratelimit.h>
+ #include <crypto/hash.h>
+-#include <linux/fscrypto.h>
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
++#include <linux/fscrypt_supp.h>
++#else
++#include <linux/fscrypt_notsupp.h>
++#endif
+ #include <linux/falloc.h>
+ #include <linux/percpu-rwsem.h>
+ #ifdef __KERNEL__
+@@ -2309,28 +2313,6 @@ static inline int ext4_fname_setup_filename(struct inode *dir,
+ }
+ static inline void ext4_fname_free_filename(struct ext4_filename *fname) { }
+ 
+-#define fscrypt_set_d_op(i)
+-#define fscrypt_get_ctx			fscrypt_notsupp_get_ctx
+-#define fscrypt_release_ctx		fscrypt_notsupp_release_ctx
+-#define fscrypt_encrypt_page		fscrypt_notsupp_encrypt_page
+-#define fscrypt_decrypt_page		fscrypt_notsupp_decrypt_page
+-#define fscrypt_decrypt_bio_pages	fscrypt_notsupp_decrypt_bio_pages
+-#define fscrypt_pullback_bio_page	fscrypt_notsupp_pullback_bio_page
+-#define fscrypt_restore_control_page	fscrypt_notsupp_restore_control_page
+-#define fscrypt_zeroout_range		fscrypt_notsupp_zeroout_range
+-#define fscrypt_ioctl_set_policy	fscrypt_notsupp_ioctl_set_policy
+-#define fscrypt_ioctl_get_policy	fscrypt_notsupp_ioctl_get_policy
+-#define fscrypt_has_permitted_context	fscrypt_notsupp_has_permitted_context
+-#define fscrypt_inherit_context		fscrypt_notsupp_inherit_context
+-#define fscrypt_get_encryption_info	fscrypt_notsupp_get_encryption_info
+-#define fscrypt_put_encryption_info	fscrypt_notsupp_put_encryption_info
+-#define fscrypt_setup_filename		fscrypt_notsupp_setup_filename
+-#define fscrypt_free_filename		fscrypt_notsupp_free_filename
+-#define fscrypt_fname_encrypted_size	fscrypt_notsupp_fname_encrypted_size
+-#define fscrypt_fname_alloc_buffer	fscrypt_notsupp_fname_alloc_buffer
+-#define fscrypt_fname_free_buffer	fscrypt_notsupp_fname_free_buffer
+-#define fscrypt_fname_disk_to_usr	fscrypt_notsupp_fname_disk_to_usr
+-#define fscrypt_fname_usr_to_disk	fscrypt_notsupp_fname_usr_to_disk
+ #endif
+ 
+ /* dir.c */
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index d83b0f3c5fe9..e55624c50898 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -24,7 +24,6 @@
+ #include <linux/slab.h>
+ #include <linux/mm.h>
+ #include <linux/backing-dev.h>
+-#include <linux/fscrypto.h>
+ 
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 93d38d854a41..069fc7277d8d 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -22,7 +22,11 @@
+ #include <linux/vmalloc.h>
+ #include <linux/bio.h>
+ #include <linux/blkdev.h>
+-#include <linux/fscrypto.h>
++#ifdef CONFIG_F2FS_FS_ENCRYPTION
++#include <linux/fscrypt_supp.h>
++#else
++#include <linux/fscrypt_notsupp.h>
++#endif
+ #include <crypto/hash.h>
+ 
+ #ifdef CONFIG_F2FS_CHECK_FS
+@@ -2501,28 +2505,4 @@ static inline bool f2fs_may_encrypt(struct inode *inode)
+ #endif
+ }
+ 
+-#ifndef CONFIG_F2FS_FS_ENCRYPTION
+-#define fscrypt_set_d_op(i)
+-#define fscrypt_get_ctx			fscrypt_notsupp_get_ctx
+-#define fscrypt_release_ctx		fscrypt_notsupp_release_ctx
+-#define fscrypt_encrypt_page		fscrypt_notsupp_encrypt_page
+-#define fscrypt_decrypt_page		fscrypt_notsupp_decrypt_page
+-#define fscrypt_decrypt_bio_pages	fscrypt_notsupp_decrypt_bio_pages
+-#define fscrypt_pullback_bio_page	fscrypt_notsupp_pullback_bio_page
+-#define fscrypt_restore_control_page	fscrypt_notsupp_restore_control_page
+-#define fscrypt_zeroout_range		fscrypt_notsupp_zeroout_range
+-#define fscrypt_ioctl_set_policy	fscrypt_notsupp_ioctl_set_policy
+-#define fscrypt_ioctl_get_policy	fscrypt_notsupp_ioctl_get_policy
+-#define fscrypt_has_permitted_context	fscrypt_notsupp_has_permitted_context
+-#define fscrypt_inherit_context		fscrypt_notsupp_inherit_context
+-#define fscrypt_get_encryption_info	fscrypt_notsupp_get_encryption_info
+-#define fscrypt_put_encryption_info	fscrypt_notsupp_put_encryption_info
+-#define fscrypt_setup_filename		fscrypt_notsupp_setup_filename
+-#define fscrypt_free_filename		fscrypt_notsupp_free_filename
+-#define fscrypt_fname_encrypted_size	fscrypt_notsupp_fname_encrypted_size
+-#define fscrypt_fname_alloc_buffer	fscrypt_notsupp_fname_alloc_buffer
+-#define fscrypt_fname_free_buffer	fscrypt_notsupp_fname_free_buffer
+-#define fscrypt_fname_disk_to_usr	fscrypt_notsupp_fname_disk_to_usr
+-#define fscrypt_fname_usr_to_disk	fscrypt_notsupp_fname_usr_to_disk
+-#endif
+ #endif
+diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
+index ca72382ce6cc..d9df379bacc6 100644
+--- a/fs/ubifs/ubifs.h
++++ b/fs/ubifs/ubifs.h
+@@ -38,7 +38,11 @@
+ #include <linux/backing-dev.h>
+ #include <linux/security.h>
+ #include <linux/xattr.h>
+-#include <linux/fscrypto.h>
++#ifdef CONFIG_UBIFS_FS_ENCRYPTION
++#include <linux/fscrypt_supp.h>
++#else
++#include <linux/fscrypt_notsupp.h>
++#endif
+ #include <linux/random.h>
+ #include "ubifs-media.h"
+ 
+@@ -1797,28 +1801,6 @@ int ubifs_decompress(const struct ubifs_info *c, const void *buf, int len,
+ #include "key.h"
+ 
+ #ifndef CONFIG_UBIFS_FS_ENCRYPTION
+-#define fscrypt_set_d_op(i)
+-#define fscrypt_get_ctx                 fscrypt_notsupp_get_ctx
+-#define fscrypt_release_ctx             fscrypt_notsupp_release_ctx
+-#define fscrypt_encrypt_page            fscrypt_notsupp_encrypt_page
+-#define fscrypt_decrypt_page            fscrypt_notsupp_decrypt_page
+-#define fscrypt_decrypt_bio_pages       fscrypt_notsupp_decrypt_bio_pages
+-#define fscrypt_pullback_bio_page       fscrypt_notsupp_pullback_bio_page
+-#define fscrypt_restore_control_page    fscrypt_notsupp_restore_control_page
+-#define fscrypt_zeroout_range           fscrypt_notsupp_zeroout_range
+-#define fscrypt_ioctl_set_policy	fscrypt_notsupp_ioctl_set_policy
+-#define fscrypt_ioctl_get_policy	fscrypt_notsupp_ioctl_get_policy
+-#define fscrypt_has_permitted_context   fscrypt_notsupp_has_permitted_context
+-#define fscrypt_inherit_context         fscrypt_notsupp_inherit_context
+-#define fscrypt_get_encryption_info     fscrypt_notsupp_get_encryption_info
+-#define fscrypt_put_encryption_info     fscrypt_notsupp_put_encryption_info
+-#define fscrypt_setup_filename          fscrypt_notsupp_setup_filename
+-#define fscrypt_free_filename           fscrypt_notsupp_free_filename
+-#define fscrypt_fname_encrypted_size    fscrypt_notsupp_fname_encrypted_size
+-#define fscrypt_fname_alloc_buffer      fscrypt_notsupp_fname_alloc_buffer
+-#define fscrypt_fname_free_buffer       fscrypt_notsupp_fname_free_buffer
+-#define fscrypt_fname_disk_to_usr       fscrypt_notsupp_fname_disk_to_usr
+-#define fscrypt_fname_usr_to_disk       fscrypt_notsupp_fname_usr_to_disk
+ static inline int ubifs_encrypt(const struct inode *inode,
+ 				struct ubifs_data_node *dn,
+ 				unsigned int in_len, unsigned int *out_len,
+diff --git a/include/linux/fscrypt_common.h b/include/linux/fscrypt_common.h
+new file mode 100644
+index 000000000000..547f81592ba1
+--- /dev/null
++++ b/include/linux/fscrypt_common.h
+@@ -0,0 +1,146 @@
++/*
++ * fscrypt_common.h: common declarations for per-file encryption
++ *
++ * Copyright (C) 2015, Google, Inc.
++ *
++ * Written by Michael Halcrow, 2015.
++ * Modified by Jaegeuk Kim, 2015.
++ */
++
++#ifndef _LINUX_FSCRYPT_COMMON_H
++#define _LINUX_FSCRYPT_COMMON_H
++
++#include <linux/key.h>
++#include <linux/fs.h>
++#include <linux/mm.h>
++#include <linux/bio.h>
++#include <linux/dcache.h>
++#include <crypto/skcipher.h>
++#include <uapi/linux/fs.h>
++
++#define FS_CRYPTO_BLOCK_SIZE		16
++
++struct fscrypt_info;
++
++struct fscrypt_ctx {
++	union {
++		struct {
++			struct page *bounce_page;	/* Ciphertext page */
++			struct page *control_page;	/* Original page  */
++		} w;
++		struct {
++			struct bio *bio;
++			struct work_struct work;
++		} r;
++		struct list_head free_list;	/* Free list */
++	};
++	u8 flags;				/* Flags */
++};
++
++/**
++ * For encrypted symlinks, the ciphertext length is stored at the beginning
++ * of the string in little-endian format.
++ */
++struct fscrypt_symlink_data {
++	__le16 len;
++	char encrypted_path[1];
++} __packed;
++
++/**
++ * This function is used to calculate the disk space required to
++ * store a filename of length l in encrypted symlink format.
++ */
++static inline u32 fscrypt_symlink_data_len(u32 l)
++{
++	if (l < FS_CRYPTO_BLOCK_SIZE)
++		l = FS_CRYPTO_BLOCK_SIZE;
++	return (l + sizeof(struct fscrypt_symlink_data) - 1);
++}
++
++struct fscrypt_str {
++	unsigned char *name;
++	u32 len;
++};
++
++struct fscrypt_name {
++	const struct qstr *usr_fname;
++	struct fscrypt_str disk_name;
++	u32 hash;
++	u32 minor_hash;
++	struct fscrypt_str crypto_buf;
++};
++
++#define FSTR_INIT(n, l)		{ .name = n, .len = l }
++#define FSTR_TO_QSTR(f)		QSTR_INIT((f)->name, (f)->len)
++#define fname_name(p)		((p)->disk_name.name)
++#define fname_len(p)		((p)->disk_name.len)
++
++/*
++ * fscrypt superblock flags
++ */
++#define FS_CFLG_OWN_PAGES (1U << 1)
++
++/*
++ * crypto opertions for filesystems
++ */
++struct fscrypt_operations {
++	unsigned int flags;
++	const char *key_prefix;
++	int (*get_context)(struct inode *, void *, size_t);
++	int (*prepare_context)(struct inode *);
++	int (*set_context)(struct inode *, const void *, size_t, void *);
++	int (*dummy_context)(struct inode *);
++	bool (*is_encrypted)(struct inode *);
++	bool (*empty_dir)(struct inode *);
++	unsigned (*max_namelen)(struct inode *);
++};
++
++static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
++{
++	if (inode->i_sb->s_cop->dummy_context &&
++				inode->i_sb->s_cop->dummy_context(inode))
++		return true;
++	return false;
++}
++
++static inline bool fscrypt_valid_contents_enc_mode(u32 mode)
++{
++	return (mode == FS_ENCRYPTION_MODE_AES_256_XTS);
++}
++
++static inline bool fscrypt_valid_filenames_enc_mode(u32 mode)
++{
++	return (mode == FS_ENCRYPTION_MODE_AES_256_CTS);
++}
++
++static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
++{
++	if (str->len == 1 && str->name[0] == '.')
++		return true;
++
++	if (str->len == 2 && str->name[0] == '.' && str->name[1] == '.')
++		return true;
++
++	return false;
++}
++
++static inline struct page *fscrypt_control_page(struct page *page)
++{
++#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
++	return ((struct fscrypt_ctx *)page_private(page))->w.control_page;
++#else
++	WARN_ON_ONCE(1);
++	return ERR_PTR(-EINVAL);
++#endif
++}
++
++static inline int fscrypt_has_encryption_key(const struct inode *inode)
++{
++#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
++	return (inode->i_crypt_info != NULL);
++#else
++	return 0;
++#endif
++}
++
++#endif	/* _LINUX_FSCRYPT_COMMON_H */
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+new file mode 100644
+index 000000000000..3511ca798804
+--- /dev/null
++++ b/include/linux/fscrypt_notsupp.h
+@@ -0,0 +1,168 @@
++/*
++ * fscrypt_notsupp.h
++ *
++ * This stubs out the fscrypt functions for filesystems configured without
++ * encryption support.
++ */
++
++#ifndef _LINUX_FSCRYPT_NOTSUPP_H
++#define _LINUX_FSCRYPT_NOTSUPP_H
++
++#include <linux/fscrypt_common.h>
++
++/* crypto.c */
++static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
++						  gfp_t gfp_flags)
++{
++	return ERR_PTR(-EOPNOTSUPP);
++}
++
++static inline void fscrypt_release_ctx(struct fscrypt_ctx *ctx)
++{
++	return;
++}
++
++static inline struct page *fscrypt_encrypt_page(const struct inode *inode,
++						struct page *page,
++						unsigned int len,
++						unsigned int offs,
++						u64 lblk_num, gfp_t gfp_flags)
++{
++	return ERR_PTR(-EOPNOTSUPP);
++}
++
++static inline int fscrypt_decrypt_page(const struct inode *inode,
++				       struct page *page,
++				       unsigned int len, unsigned int offs,
++				       u64 lblk_num)
++{
++	return -EOPNOTSUPP;
++}
++
++
++static inline void fscrypt_restore_control_page(struct page *page)
++{
++	return;
++}
++
++static inline void fscrypt_set_d_op(struct dentry *dentry)
++{
++	return;
++}
++
++static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
++{
++	return;
++}
++
++/* policy.c */
++static inline int fscrypt_ioctl_set_policy(struct file *filp,
++					   const void __user *arg)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline int fscrypt_ioctl_get_policy(struct file *filp, void __user *arg)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline int fscrypt_has_permitted_context(struct inode *parent,
++						struct inode *child)
++{
++	return 0;
++}
++
++static inline int fscrypt_inherit_context(struct inode *parent,
++					  struct inode *child,
++					  void *fs_data, bool preload)
++{
++	return -EOPNOTSUPP;
++}
++
++/* keyinfo.c */
++static inline int fscrypt_get_encryption_info(struct inode *inode)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline void fscrypt_put_encryption_info(struct inode *inode,
++					       struct fscrypt_info *ci)
++{
++	return;
++}
++
++ /* fname.c */
++static inline int fscrypt_setup_filename(struct inode *dir,
++					 const struct qstr *iname,
++					 int lookup, struct fscrypt_name *fname)
++{
++	if (dir->i_sb->s_cop->is_encrypted(dir))
++		return -EOPNOTSUPP;
++
++	memset(fname, 0, sizeof(struct fscrypt_name));
++	fname->usr_fname = iname;
++	fname->disk_name.name = (unsigned char *)iname->name;
++	fname->disk_name.len = iname->len;
++	return 0;
++}
++
++static inline void fscrypt_free_filename(struct fscrypt_name *fname)
++{
++	return;
++}
++
++static inline u32 fscrypt_fname_encrypted_size(const struct inode *inode,
++					       u32 ilen)
++{
++	/* never happens */
++	WARN_ON(1);
++	return 0;
++}
++
++static inline int fscrypt_fname_alloc_buffer(const struct inode *inode,
++					     u32 ilen,
++					     struct fscrypt_str *crypto_str)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline void fscrypt_fname_free_buffer(struct fscrypt_str *crypto_str)
++{
++	return;
++}
++
++static inline int fscrypt_fname_disk_to_usr(struct inode *inode,
++					    u32 hash, u32 minor_hash,
++					    const struct fscrypt_str *iname,
++					    struct fscrypt_str *oname)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline int fscrypt_fname_usr_to_disk(struct inode *inode,
++					    const struct qstr *iname,
++					    struct fscrypt_str *oname)
++{
++	return -EOPNOTSUPP;
++}
++
++/* bio.c */
++static inline void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *ctx,
++					     struct bio *bio)
++{
++	return;
++}
++
++static inline void fscrypt_pullback_bio_page(struct page **page, bool restore)
++{
++	return;
++}
++
++static inline int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
++					sector_t pblk, unsigned int len)
++{
++	return -EOPNOTSUPP;
++}
++
++#endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+new file mode 100644
+index 000000000000..a140f47e9b27
+--- /dev/null
++++ b/include/linux/fscrypt_supp.h
+@@ -0,0 +1,66 @@
++/*
++ * fscrypt_supp.h
++ *
++ * This is included by filesystems configured with encryption support.
++ */
++
++#ifndef _LINUX_FSCRYPT_SUPP_H
++#define _LINUX_FSCRYPT_SUPP_H
++
++#include <linux/fscrypt_common.h>
++
++/* crypto.c */
++extern struct kmem_cache *fscrypt_info_cachep;
++extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
++extern void fscrypt_release_ctx(struct fscrypt_ctx *);
++extern struct page *fscrypt_encrypt_page(const struct inode *, struct page *,
++						unsigned int, unsigned int,
++						u64, gfp_t);
++extern int fscrypt_decrypt_page(const struct inode *, struct page *, unsigned int,
++				unsigned int, u64);
++extern void fscrypt_restore_control_page(struct page *);
++
++extern const struct dentry_operations fscrypt_d_ops;
++
++static inline void fscrypt_set_d_op(struct dentry *dentry)
++{
++	d_set_d_op(dentry, &fscrypt_d_ops);
++}
++
++static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
++{
++	spin_lock(&dentry->d_lock);
++	dentry->d_flags |= DCACHE_ENCRYPTED_WITH_KEY;
++	spin_unlock(&dentry->d_lock);
++}
++
++/* policy.c */
++extern int fscrypt_ioctl_set_policy(struct file *, const void __user *);
++extern int fscrypt_ioctl_get_policy(struct file *, void __user *);
++extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
++extern int fscrypt_inherit_context(struct inode *, struct inode *,
++					void *, bool);
++/* keyinfo.c */
++extern int fscrypt_get_encryption_info(struct inode *);
++extern void fscrypt_put_encryption_info(struct inode *, struct fscrypt_info *);
++
++/* fname.c */
++extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
++				int lookup, struct fscrypt_name *);
++extern void fscrypt_free_filename(struct fscrypt_name *);
++extern u32 fscrypt_fname_encrypted_size(const struct inode *, u32);
++extern int fscrypt_fname_alloc_buffer(const struct inode *, u32,
++				struct fscrypt_str *);
++extern void fscrypt_fname_free_buffer(struct fscrypt_str *);
++extern int fscrypt_fname_disk_to_usr(struct inode *, u32, u32,
++			const struct fscrypt_str *, struct fscrypt_str *);
++extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
++			struct fscrypt_str *);
++
++/* bio.c */
++extern void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *, struct bio *);
++extern void fscrypt_pullback_bio_page(struct page **, bool);
++extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
++				 unsigned int);
++
++#endif	/* _LINUX_FSCRYPT_SUPP_H */
+diff --git a/include/linux/fscrypto.h b/include/linux/fscrypto.h
+deleted file mode 100644
+index 715f17b3c6d7..000000000000
+--- a/include/linux/fscrypto.h
++++ /dev/null
+@@ -1,347 +0,0 @@
+-/*
+- * General per-file encryption definition
+- *
+- * Copyright (C) 2015, Google, Inc.
+- *
+- * Written by Michael Halcrow, 2015.
+- * Modified by Jaegeuk Kim, 2015.
+- */
+-
+-#ifndef _LINUX_FSCRYPTO_H
+-#define _LINUX_FSCRYPTO_H
+-
+-#include <linux/key.h>
+-#include <linux/fs.h>
+-#include <linux/mm.h>
+-#include <linux/bio.h>
+-#include <linux/dcache.h>
+-#include <crypto/skcipher.h>
+-#include <uapi/linux/fs.h>
+-
+-#define FS_CRYPTO_BLOCK_SIZE		16
+-
+-struct fscrypt_info;
+-
+-struct fscrypt_ctx {
+-	union {
+-		struct {
+-			struct page *bounce_page;	/* Ciphertext page */
+-			struct page *control_page;	/* Original page  */
+-		} w;
+-		struct {
+-			struct bio *bio;
+-			struct work_struct work;
+-		} r;
+-		struct list_head free_list;	/* Free list */
+-	};
+-	u8 flags;				/* Flags */
+-};
+-
+-/**
+- * For encrypted symlinks, the ciphertext length is stored at the beginning
+- * of the string in little-endian format.
+- */
+-struct fscrypt_symlink_data {
+-	__le16 len;
+-	char encrypted_path[1];
+-} __packed;
+-
+-/**
+- * This function is used to calculate the disk space required to
+- * store a filename of length l in encrypted symlink format.
+- */
+-static inline u32 fscrypt_symlink_data_len(u32 l)
+-{
+-	if (l < FS_CRYPTO_BLOCK_SIZE)
+-		l = FS_CRYPTO_BLOCK_SIZE;
+-	return (l + sizeof(struct fscrypt_symlink_data) - 1);
+-}
+-
+-struct fscrypt_str {
+-	unsigned char *name;
+-	u32 len;
+-};
+-
+-struct fscrypt_name {
+-	const struct qstr *usr_fname;
+-	struct fscrypt_str disk_name;
+-	u32 hash;
+-	u32 minor_hash;
+-	struct fscrypt_str crypto_buf;
+-};
+-
+-#define FSTR_INIT(n, l)		{ .name = n, .len = l }
+-#define FSTR_TO_QSTR(f)		QSTR_INIT((f)->name, (f)->len)
+-#define fname_name(p)		((p)->disk_name.name)
+-#define fname_len(p)		((p)->disk_name.len)
+-
+-/*
+- * fscrypt superblock flags
+- */
+-#define FS_CFLG_OWN_PAGES (1U << 1)
+-
+-/*
+- * crypto opertions for filesystems
+- */
+-struct fscrypt_operations {
+-	unsigned int flags;
+-	const char *key_prefix;
+-	int (*get_context)(struct inode *, void *, size_t);
+-	int (*prepare_context)(struct inode *);
+-	int (*set_context)(struct inode *, const void *, size_t, void *);
+-	int (*dummy_context)(struct inode *);
+-	bool (*is_encrypted)(struct inode *);
+-	bool (*empty_dir)(struct inode *);
+-	unsigned (*max_namelen)(struct inode *);
+-};
+-
+-static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+-{
+-	if (inode->i_sb->s_cop->dummy_context &&
+-				inode->i_sb->s_cop->dummy_context(inode))
+-		return true;
+-	return false;
+-}
+-
+-static inline bool fscrypt_valid_contents_enc_mode(u32 mode)
+-{
+-	return (mode == FS_ENCRYPTION_MODE_AES_256_XTS);
+-}
+-
+-static inline bool fscrypt_valid_filenames_enc_mode(u32 mode)
+-{
+-	return (mode == FS_ENCRYPTION_MODE_AES_256_CTS);
+-}
+-
+-static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
+-{
+-	if (str->len == 1 && str->name[0] == '.')
+-		return true;
+-
+-	if (str->len == 2 && str->name[0] == '.' && str->name[1] == '.')
+-		return true;
+-
+-	return false;
+-}
+-
+-static inline struct page *fscrypt_control_page(struct page *page)
+-{
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-	return ((struct fscrypt_ctx *)page_private(page))->w.control_page;
+-#else
+-	WARN_ON_ONCE(1);
+-	return ERR_PTR(-EINVAL);
+-#endif
+-}
+-
+-static inline int fscrypt_has_encryption_key(const struct inode *inode)
+-{
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-	return (inode->i_crypt_info != NULL);
+-#else
+-	return 0;
+-#endif
+-}
+-
+-static inline void fscrypt_set_encrypted_dentry(struct dentry *dentry)
+-{
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-	spin_lock(&dentry->d_lock);
+-	dentry->d_flags |= DCACHE_ENCRYPTED_WITH_KEY;
+-	spin_unlock(&dentry->d_lock);
+-#endif
+-}
+-
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-extern const struct dentry_operations fscrypt_d_ops;
+-#endif
+-
+-static inline void fscrypt_set_d_op(struct dentry *dentry)
+-{
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-	d_set_d_op(dentry, &fscrypt_d_ops);
+-#endif
+-}
+-
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-/* crypto.c */
+-extern struct kmem_cache *fscrypt_info_cachep;
+-extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
+-extern void fscrypt_release_ctx(struct fscrypt_ctx *);
+-extern struct page *fscrypt_encrypt_page(const struct inode *, struct page *,
+-						unsigned int, unsigned int,
+-						u64, gfp_t);
+-extern int fscrypt_decrypt_page(const struct inode *, struct page *, unsigned int,
+-				unsigned int, u64);
+-extern void fscrypt_restore_control_page(struct page *);
+-
+-/* policy.c */
+-extern int fscrypt_ioctl_set_policy(struct file *, const void __user *);
+-extern int fscrypt_ioctl_get_policy(struct file *, void __user *);
+-extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
+-extern int fscrypt_inherit_context(struct inode *, struct inode *,
+-					void *, bool);
+-/* keyinfo.c */
+-extern int fscrypt_get_encryption_info(struct inode *);
+-extern void fscrypt_put_encryption_info(struct inode *, struct fscrypt_info *);
+-
+-/* fname.c */
+-extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
+-				int lookup, struct fscrypt_name *);
+-extern void fscrypt_free_filename(struct fscrypt_name *);
+-extern u32 fscrypt_fname_encrypted_size(const struct inode *, u32);
+-extern int fscrypt_fname_alloc_buffer(const struct inode *, u32,
+-				struct fscrypt_str *);
+-extern void fscrypt_fname_free_buffer(struct fscrypt_str *);
+-extern int fscrypt_fname_disk_to_usr(struct inode *, u32, u32,
+-			const struct fscrypt_str *, struct fscrypt_str *);
+-extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
+-			struct fscrypt_str *);
+-
+-/* bio.c */
+-extern void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *, struct bio *);
+-extern void fscrypt_pullback_bio_page(struct page **, bool);
+-extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
+-				 unsigned int);
+-#endif
+-
+-/* crypto.c */
+-static inline struct fscrypt_ctx *fscrypt_notsupp_get_ctx(const struct inode *i,
+-							gfp_t f)
+-{
+-	return ERR_PTR(-EOPNOTSUPP);
+-}
+-
+-static inline void fscrypt_notsupp_release_ctx(struct fscrypt_ctx *c)
+-{
+-	return;
+-}
+-
+-static inline struct page *fscrypt_notsupp_encrypt_page(const struct inode *i,
+-						struct page *p,
+-						unsigned int len,
+-						unsigned int offs,
+-						u64 lblk_num, gfp_t f)
+-{
+-	return ERR_PTR(-EOPNOTSUPP);
+-}
+-
+-static inline int fscrypt_notsupp_decrypt_page(const struct inode *i, struct page *p,
+-						unsigned int len, unsigned int offs,
+-						u64 lblk_num)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline void fscrypt_notsupp_decrypt_bio_pages(struct fscrypt_ctx *c,
+-						struct bio *b)
+-{
+-	return;
+-}
+-
+-static inline void fscrypt_notsupp_pullback_bio_page(struct page **p, bool b)
+-{
+-	return;
+-}
+-
+-static inline void fscrypt_notsupp_restore_control_page(struct page *p)
+-{
+-	return;
+-}
+-
+-static inline int fscrypt_notsupp_zeroout_range(const struct inode *i, pgoff_t p,
+-					sector_t s, unsigned int f)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-/* policy.c */
+-static inline int fscrypt_notsupp_ioctl_set_policy(struct file *f,
+-				const void __user *arg)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int fscrypt_notsupp_ioctl_get_policy(struct file *f,
+-				void __user *arg)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int fscrypt_notsupp_has_permitted_context(struct inode *p,
+-				struct inode *i)
+-{
+-	return 0;
+-}
+-
+-static inline int fscrypt_notsupp_inherit_context(struct inode *p,
+-				struct inode *i, void *v, bool b)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-/* keyinfo.c */
+-static inline int fscrypt_notsupp_get_encryption_info(struct inode *i)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline void fscrypt_notsupp_put_encryption_info(struct inode *i,
+-					struct fscrypt_info *f)
+-{
+-	return;
+-}
+-
+- /* fname.c */
+-static inline int fscrypt_notsupp_setup_filename(struct inode *dir,
+-			const struct qstr *iname,
+-			int lookup, struct fscrypt_name *fname)
+-{
+-	if (dir->i_sb->s_cop->is_encrypted(dir))
+-		return -EOPNOTSUPP;
+-
+-	memset(fname, 0, sizeof(struct fscrypt_name));
+-	fname->usr_fname = iname;
+-	fname->disk_name.name = (unsigned char *)iname->name;
+-	fname->disk_name.len = iname->len;
+-	return 0;
+-}
+-
+-static inline void fscrypt_notsupp_free_filename(struct fscrypt_name *fname)
+-{
+-	return;
+-}
+-
+-static inline u32 fscrypt_notsupp_fname_encrypted_size(struct inode *i, u32 s)
+-{
+-	/* never happens */
+-	WARN_ON(1);
+-	return 0;
+-}
+-
+-static inline int fscrypt_notsupp_fname_alloc_buffer(struct inode *inode,
+-				u32 ilen, struct fscrypt_str *crypto_str)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline void fscrypt_notsupp_fname_free_buffer(struct fscrypt_str *c)
+-{
+-	return;
+-}
+-
+-static inline int fscrypt_notsupp_fname_disk_to_usr(struct inode *inode,
+-			u32 hash, u32 minor_hash,
+-			const struct fscrypt_str *iname,
+-			struct fscrypt_str *oname)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static inline int fscrypt_notsupp_fname_usr_to_disk(struct inode *inode,
+-			const struct qstr *iname,
+-			struct fscrypt_str *oname)
+-{
+-	return -EOPNOTSUPP;
+-}
+-#endif	/* _LINUX_FSCRYPTO_H */
+-- 
+2.11.0.483.g087da7b7c-goog
 
-> 
->      if (os == EXT2_OS_HURD)
->          modify_u32(argv[0], "Translator Block",
-> diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-> index ff9b7b6..ca68862 100644
-> --- a/debugfs/set_fields.c
-> +++ b/debugfs/set_fields.c
-> @@ -212,7 +212,6 @@ static struct field_set_info inode_fields[] = {
->      /* Special case: i_file_acl_high is 2 bytes */
->      { "file_acl", &set_inode.i_file_acl,
->          &set_inode.osd2.linux2.l_i_file_acl_high, 6, parse_uint },
-> -    { "dir_acl", &set_inode.i_dir_acl, NULL, 4, parse_uint, FLAG_ALIAS },
->      { "faddr", &set_inode.i_faddr, NULL, 4, parse_uint },
->      { "frag", &set_inode.osd2.hurd2.h_i_frag, NULL, 1, parse_uint,
-> FLAG_ALIAS },
->      { "fsize", &set_inode.osd2.hurd2.h_i_fsize, NULL, 1, parse_uint },
-> diff --git a/e2fsck/message.c b/e2fsck/message.c
-> index 1c3fcd8..d21ba05 100644
-> --- a/e2fsck/message.c
-> +++ b/e2fsck/message.c
-> @@ -318,10 +318,6 @@ static _INLINE_ void expand_inode_expression(FILE
-> *f, ext2_filsys fs, char ch,
->      case 'f':
->          fprintf(f, "%llu", ext2fs_file_acl_block(fs, inode));
->          break;
-> -    case 'd':
-> -        fprintf(f, "%u", (LINUX_S_ISDIR(inode->i_mode) ?
-> -                  inode->i_dir_acl : 0));
-> -        break;
->      case 'u':
->          fprintf(f, "%d", inode_uid(*inode));
->          break;
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 8ef40f6..8444b37 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -1715,8 +1715,7 @@ void e2fsck_pass1(e2fsck_t ctx)
->              frag = fsize = 0;
->          }
-> 
-> -        if (inode->i_faddr || frag || fsize ||
-> -            (LINUX_S_ISDIR(inode->i_mode) && inode->i_dir_acl))
-> +        if (inode->i_faddr || frag || fsize)
->              mark_inode_bad(ctx, ino);
->          if ((fs->super->s_creator_os != EXT2_OS_HURD) &&
->              !ext2fs_has_feature_64bit(fs->super) &&
-> @@ -2469,7 +2468,7 @@ static int handle_htree(e2fsck_t ctx, struct
-> problem_context *pctx,
->          return 1;
-> 
->      pctx->num = root->indirect_levels;
-> -    if ((root->indirect_levels > 1) &&
-> +    if ((root->indirect_levels > ext2_dir_htree_level(fs)) &&
->          fix_problem(ctx, PR_1_HTREE_DEPTH, pctx))
->          return 1;
-> 
-> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-> index 11c19e8..7ded7bb 100644
-> --- a/e2fsck/pass2.c
-> +++ b/e2fsck/pass2.c
-> @@ -1058,7 +1058,8 @@ inline_read_fail:
->              dx_db->flags |= DX_FLAG_FIRST | DX_FLAG_LAST;
->              if ((root->reserved_zero ||
->                   root->info_length < 8 ||
-> -                 root->indirect_levels > 1) &&
-> +                 root->indirect_levels
-> +                > ext2_dir_htree_level(fs)) &&
->                  fix_problem(ctx, PR_2_HTREE_BAD_ROOT, &cd->pctx)) {
->                  clear_htree(ctx, ino);
->                  dx_dir->numblocks = 0;
-> @@ -1811,14 +1812,6 @@ int e2fsck_process_bad_inode(e2fsck_t ctx,
-> ext2_ino_t dir,
->          } else
->              not_fixed++;
->      }
-> -    if (inode.i_dir_acl &&
-> -        LINUX_S_ISDIR(inode.i_mode)) {
-> -        if (fix_problem(ctx, PR_2_DIR_ACL_ZERO, &pctx)) {
-> -            inode.i_dir_acl = 0;
-> -            inode_modified++;
-> -        } else
-> -            not_fixed++;
-> -    }
-> 
->      if (inode_modified)
->          e2fsck_write_inode(ctx, ino, &inode, "process_bad_inode");
-> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> index 34a671e..ce2f79d 100644
-> --- a/e2fsck/problem.c
-> +++ b/e2fsck/problem.c
-> @@ -1360,11 +1360,6 @@ static struct e2fsck_problem problem_table[] = {
->        N_("i_file_acl @F %If, @s zero.\n"),
->        PROMPT_CLEAR, 0 },
-> 
-> -    /* i_dir_acl should be zero */
-> -    { PR_2_DIR_ACL_ZERO,
-> -      N_("i_dir_acl @F %Id, @s zero.\n"),
-> -      PROMPT_CLEAR, 0 },
-> -
->      /* i_frag should be zero */
->      { PR_2_FRAG_ZERO,
->        N_("i_frag @F %N, @s zero.\n"),
-> diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-> index 86cb614..f07f9b6 100644
-> --- a/e2fsck/problem.h
-> +++ b/e2fsck/problem.h
-> @@ -808,9 +808,6 @@ struct problem_context {
->  /* i_file_acl should be zero */
->  #define PR_2_FILE_ACL_ZERO    0x02000E
-> 
-> -/* i_dir_acl should be zero */
-> -#define PR_2_DIR_ACL_ZERO    0x02000F
-> -
->  /* i_frag should be zero */
->  #define PR_2_FRAG_ZERO        0x020010
-> 
-> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-> index 27a7d3a..6d9a5d0 100644
-> --- a/lib/ext2fs/ext2_fs.h
-> +++ b/lib/ext2fs/ext2_fs.h
-> @@ -398,7 +398,7 @@ struct ext2_inode {
->      __u32    i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
->      __u32    i_generation;    /* File version (for NFS) */
->      __u32    i_file_acl;    /* File ACL */
-> -    __u32    i_size_high;    /* Formerly i_dir_acl, directory ACL */
-> +    __u32    i_size_high;
->      __u32    i_faddr;    /* Fragment address */
->      union {
->          struct {
-> @@ -446,7 +446,7 @@ struct ext2_inode_large {
->      __u32    i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
->      __u32    i_generation;    /* File version (for NFS) */
->      __u32    i_file_acl;    /* File ACL */
-> -    __u32    i_size_high;    /* Formerly i_dir_acl, directory ACL */
-> +    __u32    i_size_high;
->      __u32    i_faddr;    /* Fragment address */
->      union {
->          struct {
-> @@ -484,8 +484,6 @@ struct ext2_inode_large {
->  #define EXT4_EPOCH_BITS 2
->  #define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
-> 
-> -#define i_dir_acl    i_size_high
-> -
->  #define i_checksum_lo    osd2.linux2.l_i_checksum_lo
-> 
->  #define inode_includes(size, field)            \
-> @@ -923,7 +921,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,        4, ENCRYPT)
-> 
->  #define EXT2_FEATURE_COMPAT_SUPP    0
->  #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
-> -                       EXT4_FEATURE_INCOMPAT_MMP)
-> +                       EXT4_FEATURE_INCOMPAT_MMP|\
-> +                       EXT4_FEATURE_INCOMPAT_LARGEDIR)
->  #define EXT2_FEATURE_RO_COMPAT_SUPP    (EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
->                       EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
->                       EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index 786ded8..5e956d0 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -588,7 +588,8 @@ typedef struct ext2_icount *ext2_icount_t;
->                       EXT4_FEATURE_INCOMPAT_64BIT|\
->                       EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
->                       EXT4_FEATURE_INCOMPAT_ENCRYPT|\
-> -                     EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-> +                     EXT4_FEATURE_INCOMPAT_CSUM_SEED|\
-> +                     EXT4_FEATURE_INCOMPAT_LARGEDIR)
-> 
->  #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP
-> (EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
->                       EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
-> @@ -1924,6 +1925,18 @@ _INLINE_ blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
->      return (blk_t) ext2fs_inode_data_blocks2(fs, inode);
->  }
-> 
-> +/* htree levels for ext4 */
-> +#define EXT4_HTREE_LEVEL_COMPAT 1
-> +#define EXT4_HTREE_LEVEL    3
-
-Three levels...
-
-1k: 126^3 * 123 = ~246 million blocks
-4k: 510^3 * 507 = ~67.3 billion dirent blocks.
-64k: 8190^3 * 8187 = ~4.5 quadrillion dirent blocks
-
-I was about to wonder why not permit enough levels to fill out a full
-2^63 byte directory, but then considered that three is probably enough.
-
-(Also I wasn't sure if ext4 still loads the whole dir into kernel memory...)
-
-> +
-> +_INLINE_ unsigned int ext2_dir_htree_level(ext2_filsys fs)
-> +{
-> +        if (EXT2_HAS_INCOMPAT_FEATURE(fs->super,
-> +                          EXT4_FEATURE_INCOMPAT_LARGEDIR))
-
-if (ext2fs_has_feature_largedir(...))
-
-> +                    return EXT4_HTREE_LEVEL;
-> +            return EXT4_HTREE_LEVEL_COMPAT;
-> +}
-> +
->  /*
->   * This is an efficient, overflow safe way of calculating ceil((1.0 * a) / b)
->   */
-> diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-> index d63fc55..2d05ee7 100644
-> --- a/lib/ext2fs/swapfs.c
-> +++ b/lib/ext2fs/swapfs.c
-> @@ -247,7 +247,7 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct
-> ext2_inode_large *t,
->          has_extents = 1;
->      if (!hostorder && (t->i_flags & EXT4_INLINE_DATA_FL))
->          has_inline_data = 1;
-> -    t->i_dir_acl = ext2fs_swab32(f->i_dir_acl);
-> +    t->i_size_high = ext2fs_swab32(f->i_size_high);
->      /*
->       * Extent data and inline data are swapped on access, not here
->       */
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 9f18c83..b2bf461 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1081,7 +1081,8 @@ static __u32 ok_features[3] = {
->          EXT4_FEATURE_INCOMPAT_64BIT|
->          EXT4_FEATURE_INCOMPAT_INLINE_DATA|
->          EXT4_FEATURE_INCOMPAT_ENCRYPT |
-> -        EXT4_FEATURE_INCOMPAT_CSUM_SEED,
-> +        EXT4_FEATURE_INCOMPAT_CSUM_SEED |
-> +        EXT4_FEATURE_INCOMPAT_LARGEDIR,
->      /* R/O compat */
->      EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
->          EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 6239577..f78d105 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -156,7 +156,8 @@ static __u32 ok_features[3] = {
->          EXT4_FEATURE_INCOMPAT_MMP |
->          EXT4_FEATURE_INCOMPAT_64BIT |
->          EXT4_FEATURE_INCOMPAT_ENCRYPT |
-> -        EXT4_FEATURE_INCOMPAT_CSUM_SEED,
-> +        EXT4_FEATURE_INCOMPAT_CSUM_SEED |
-> +        EXT4_FEATURE_INCOMPAT_LARGEDIR,
->      /* R/O compat */
->      EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
->          EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-> diff --git a/tests/d_special_files/expect b/tests/d_special_files/expect
-> index f729b0f..c825932 100644
-> --- a/tests/d_special_files/expect
-> +++ b/tests/d_special_files/expect
-> @@ -5,7 +5,7 @@ debugfs -R ''stat foo'' -w test.img
->  Inode: 12   Type: symlink    Mode:  0777   Flags: 0x0
->  Generation: 0    Version: 0x00000000
->  User:     0   Group:     0   Size: 3
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 0
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> @@ -17,7 +17,7 @@ debugfs -R ''stat foo2'' -w test.img
->  Inode: 13   Type: symlink    Mode:  0777   Flags: 0x0
->  Generation: 0    Version: 0x00000000
->  User:     0   Group:     0   Size: 80
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 2
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> @@ -42,7 +42,7 @@ debugfs -R ''stat pipe'' -w test.img
->  Inode: 14   Type: FIFO    Mode:  0000   Flags: 0x0
->  Generation: 0    Version: 0x00000000
->  User:     0   Group:     0   Size: 0
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 0
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> @@ -55,7 +55,7 @@ debugfs -R ''stat sda'' -w test.img
->  Inode: 15   Type: block special    Mode:  0000   Flags: 0x0
->  Generation: 0    Version: 0x00000000
->  User:     0   Group:     0   Size: 0
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 0
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> @@ -67,7 +67,7 @@ debugfs -R ''stat null'' -w test.img
->  Inode: 16   Type: character special    Mode:  0000   Flags: 0x0
->  Generation: 0    Version: 0x00000000
->  User:     0   Group:     0   Size: 0
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 0
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x50f560e0 -- Tue Jan 15 14:00:00 2013
-> diff --git a/tests/f_badcluster/expect b/tests/f_badcluster/expect
-> index 65a1641..75a3820 100644
-> --- a/tests/f_badcluster/expect
-> +++ b/tests/f_badcluster/expect
-> @@ -116,7 +116,7 @@ debugfs: stat /a
->  Inode: 12   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152157    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -128,7 +128,7 @@ debugfs: stat /b
->  Inode: 13   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152158    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -140,7 +140,7 @@ debugfs: stat /c
->  Inode: 14   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152159    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -152,7 +152,7 @@ debugfs: stat /d
->  Inode: 15   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152160    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 0
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -163,7 +163,7 @@ debugfs: stat /e
->  Inode: 16   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152161    Version: 0x00000001
->  User:     0   Group:     0   Size: 6144
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -175,7 +175,7 @@ debugfs: stat /f
->  Inode: 17   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152162    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> @@ -187,7 +187,7 @@ debugfs: stat /g
->  Inode: 18   Type: regular    Mode:  0644   Flags: 0x80000
->  Generation: 1117152163    Version: 0x00000001
->  User:     0   Group:     0   Size: 3072
-> -File ACL: 0    Directory ACL: 0
-> +File ACL: 0
->  Links: 1   Blockcount: 32
->  Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x539ff5b2 -- Tue Jun 17 08:00:50 2014
-> diff --git a/tests/f_recnect_bad/expect.1 b/tests/f_recnect_bad/expect.1
-> index 8ba81e6..6433c8d 100644
-> --- a/tests/f_recnect_bad/expect.1
-> +++ b/tests/f_recnect_bad/expect.1
-> @@ -3,9 +3,6 @@ Pass 2: Checking directory structure
->  i_faddr for inode 15 (/test/quux) is 23, should be zero.
->  Clear? yes
-> 
-> -i_dir_acl for inode 15 (/test/quux) is 12, should be zero.
-> -Clear? yes
-> -
->  i_file_acl for inode 13 (/test/???) is 12, should be zero.
->  Clear? yes
-
-Will a test case be provided to demonstrate that e2fsck can handle
-rebuilding a >1 level htree dir?
-
---D
-> 
-> --
