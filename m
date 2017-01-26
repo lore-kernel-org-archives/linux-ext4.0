@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 10/37] filemap: handle huge pages in filemap_fdatawait_range()
-Date: Thu, 26 Jan 2017 14:57:52 +0300
-Message-ID: <20170126115819.58875-11-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 08/37] filemap: handle huge pages in do_generic_file_read()
+Date: Thu, 26 Jan 2017 14:57:50 +0300
+Message-ID: <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,32 +25,47 @@ In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We writeback whole huge page a time.
+Most of work happans on head page. Only when we need to do copy data to
+userspace we find relevant subpage.
+
+We are still limited by PAGE_SIZE per iteration. Lifting this limitation
+would require some more work.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/filemap.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ mm/filemap.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 4e398d5e4134..f5cd654b3662 100644
+index 301327685a71..6cba69176ea9 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -405,9 +405,14 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- 			if (page->index > end)
- 				continue;
- 
-+			page = compound_head(page);
- 			wait_on_page_writeback(page);
- 			if (TestClearPageError(page))
- 				ret = -EIO;
-+			if (PageTransHuge(page)) {
-+				index = page->index + HPAGE_PMD_NR;
-+				i += index - pvec.pages[i]->index - 1;
-+			}
+@@ -1886,6 +1886,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 			if (unlikely(page == NULL))
+ 				goto no_cached_page;
  		}
- 		pagevec_release(&pvec);
- 		cond_resched();
++		page = compound_head(page);
+ 		if (PageReadahead(page)) {
+ 			page_cache_async_readahead(mapping,
+ 					ra, filp, page,
+@@ -1967,7 +1968,8 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 		 * now we can copy it to user space...
+ 		 */
+ 
+-		ret = copy_page_to_iter(page, offset, nr, iter);
++		ret = copy_page_to_iter(page + index - page->index, offset,
++				nr, iter);
+ 		offset += ret;
+ 		index += offset >> PAGE_SHIFT;
+ 		offset &= ~PAGE_MASK;
+@@ -2385,6 +2387,7 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 * because there really aren't any performance issues here
+ 	 * and we need to check for errors.
+ 	 */
++	page = compound_head(page);
+ 	ClearPageError(page);
+ 	error = mapping->a_ops->readpage(file, page);
+ 	if (!error) {
 -- 
 2.11.0
 
