@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 08/37] filemap: handle huge pages in do_generic_file_read()
-Date: Thu, 26 Jan 2017 14:57:50 +0300
-Message-ID: <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 13/37] mm: make write_cache_pages() work on huge pages
+Date: Thu, 26 Jan 2017 14:57:55 +0300
+Message-ID: <20170126115819.58875-14-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,47 +25,95 @@ In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Most of work happans on head page. Only when we need to do copy data to
-userspace we find relevant subpage.
-
-We are still limited by PAGE_SIZE per iteration. Lifting this limitation
-would require some more work.
+We writeback whole huge page a time. Let's adjust iteration this way.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/filemap.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ include/linux/mm.h      |  1 +
+ include/linux/pagemap.h |  1 +
+ mm/page-writeback.c     | 17 ++++++++++++-----
+ 3 files changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 301327685a71..6cba69176ea9 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1886,6 +1886,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
- 			if (unlikely(page == NULL))
- 				goto no_cached_page;
- 		}
-+		page = compound_head(page);
- 		if (PageReadahead(page)) {
- 			page_cache_async_readahead(mapping,
- 					ra, filp, page,
-@@ -1967,7 +1968,8 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
- 		 * now we can copy it to user space...
- 		 */
- 
--		ret = copy_page_to_iter(page, offset, nr, iter);
-+		ret = copy_page_to_iter(page + index - page->index, offset,
-+				nr, iter);
- 		offset += ret;
- 		index += offset >> PAGE_SHIFT;
- 		offset &= ~PAGE_MASK;
-@@ -2385,6 +2387,7 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	 * because there really aren't any performance issues here
- 	 * and we need to check for errors.
- 	 */
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b84615b0f64c..9e87155af456 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1045,6 +1045,7 @@ extern pgoff_t __page_file_index(struct page *page);
+  */
+ static inline pgoff_t page_index(struct page *page)
+ {
 +	page = compound_head(page);
- 	ClearPageError(page);
- 	error = mapping->a_ops->readpage(file, page);
- 	if (!error) {
+ 	if (unlikely(PageSwapCache(page)))
+ 		return __page_file_index(page);
+ 	return page->index;
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 9a93b9c3d662..e3eb6dc03286 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -545,6 +545,7 @@ static inline int wait_on_page_locked_killable(struct page *page)
+  */
+ static inline void wait_on_page_writeback(struct page *page)
+ {
++	page = compound_head(page);
+ 	if (PageWriteback(page))
+ 		wait_on_page_bit(page, PG_writeback);
+ }
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 290e8b7d3181..47d5b12c460e 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2209,7 +2209,7 @@ int write_cache_pages(struct address_space *mapping,
+ 			 * mapping. However, page->index will not change
+ 			 * because we have a reference on the page.
+ 			 */
+-			if (page->index > end) {
++			if (page_to_pgoff(page) > end) {
+ 				/*
+ 				 * can't be range_cyclic (1st pass) because
+ 				 * end == -1 in that case.
+@@ -2218,7 +2218,12 @@ int write_cache_pages(struct address_space *mapping,
+ 				break;
+ 			}
+ 
+-			done_index = page->index;
++			done_index = page_to_pgoff(page);
++			if (PageTransCompound(page)) {
++				index = round_up(index + 1, HPAGE_PMD_NR);
++				i += HPAGE_PMD_NR -
++					done_index % HPAGE_PMD_NR - 1;
++			}
+ 
+ 			lock_page(page);
+ 
+@@ -2230,7 +2235,7 @@ int write_cache_pages(struct address_space *mapping,
+ 			 * even if there is now a new, dirty page at the same
+ 			 * pagecache address.
+ 			 */
+-			if (unlikely(page->mapping != mapping)) {
++			if (unlikely(page_mapping(page) != mapping)) {
+ continue_unlock:
+ 				unlock_page(page);
+ 				continue;
+@@ -2268,7 +2273,8 @@ int write_cache_pages(struct address_space *mapping,
+ 					 * not be suitable for data integrity
+ 					 * writeout).
+ 					 */
+-					done_index = page->index + 1;
++					done_index = compound_head(page)->index
++						+ hpage_nr_pages(page);
+ 					done = 1;
+ 					break;
+ 				}
+@@ -2280,7 +2286,8 @@ int write_cache_pages(struct address_space *mapping,
+ 			 * keep going until we have written all the pages
+ 			 * we tagged for writeback prior to entering this loop.
+ 			 */
+-			if (--wbc->nr_to_write <= 0 &&
++			wbc->nr_to_write -= hpage_nr_pages(page);
++			if (wbc->nr_to_write <= 0 &&
+ 			    wbc->sync_mode == WB_SYNC_NONE) {
+ 				done = 1;
+ 				break;
 -- 
 2.11.0
 
