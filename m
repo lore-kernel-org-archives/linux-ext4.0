@@ -1,61 +1,60 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 16/37] thp: make thp_get_unmapped_area() respect S_HUGE_MODE
-Date: Thu, 26 Jan 2017 14:57:58 +0300
-Message-ID: <20170126115819.58875-17-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 30/37] ext4: make ext4_da_page_release_reservation() aware about huge pages
+Date: Thu, 26 Jan 2017 14:58:12 +0300
+Message-ID: <20170126115819.58875-31-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We want mmap(NULL) to return PMD-aligned address if the inode can have
-huge pages in page cache.
+For huge pages 'stop' must be within HPAGE_PMD_SIZE.
+Let's use hpage_size() in the BUG_ON().
+
+We also need to change how we calculate lblk for cluster deallocation.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/huge_memory.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 55aee62e8444..2b1d8d13e2c3 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -528,10 +528,12 @@ unsigned long thp_get_unmapped_area(struct file *filp, unsigned long addr,
- 		unsigned long len, unsigned long pgoff, unsigned long flags)
- {
- 	loff_t off = (loff_t)pgoff << PAGE_SHIFT;
-+	struct inode *inode = filp->f_mapping->host;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bdd62dcaa0b2..afba41b65a15 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1571,7 +1571,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	int num_clusters;
+ 	ext4_fsblk_t lblk;
  
- 	if (addr)
- 		goto out;
--	if (!IS_DAX(filp->f_mapping->host) || !IS_ENABLED(CONFIG_FS_DAX_PMD))
-+	if ((inode->i_flags & S_HUGE_MODE) == S_HUGE_NEVER &&
-+			(!IS_DAX(inode) || !IS_ENABLED(CONFIG_FS_DAX_PMD)))
- 		goto out;
+-	BUG_ON(stop > PAGE_SIZE || stop < length);
++	BUG_ON(stop > hpage_size(page) || stop < length);
  
- 	addr = __thp_get_unmapped_area(filp, len, off, flags, PMD_SIZE);
+ 	head = page_buffers(page);
+ 	bh = head;
+@@ -1606,7 +1606,8 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	 * need to release the reserved space for that cluster. */
+ 	num_clusters = EXT4_NUM_B2C(sbi, to_release);
+ 	while (num_clusters > 0) {
+-		lblk = (page->index << (PAGE_SHIFT - inode->i_blkbits)) +
++		lblk = ((page->index + offset / PAGE_SIZE) <<
++				(PAGE_SHIFT - inode->i_blkbits)) +
+ 			((num_clusters - 1) << sbi->s_cluster_bits);
+ 		if (sbi->s_cluster_ratio == 1 ||
+ 		    !ext4_find_delalloc_cluster(inode, lblk))
 -- 
 2.11.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
