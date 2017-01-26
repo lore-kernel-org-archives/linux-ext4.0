@@ -1,10 +1,9 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 02/37] Revert "radix-tree: implement
- radix_tree_maybe_preload_order()"
-Date: Thu, 26 Jan 2017 07:38:06 -0800
-Message-ID: <20170126153805.GA20495@bombadil.infradead.org>
+Subject: Re: [PATCHv6 06/37] thp: handle write-protection faults for file THP
+Date: Thu, 26 Jan 2017 07:44:39 -0800
+Message-ID: <20170126154439.GB20495@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-3-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-7-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -23,14 +22,16 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-3-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-7-kirill.shutemov@linux.intel.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:44PM +0300, Kirill A. Shutemov wrote:
-> This reverts commit 356e1c23292a4f63cfdf1daf0e0ddada51f32de8.
+On Thu, Jan 26, 2017 at 02:57:48PM +0300, Kirill A. Shutemov wrote:
+> For filesystems that wants to be write-notified (has mkwrite), we will
+> encount write-protection faults for huge PMDs in shared mappings.
 > 
-> After conversion of huge tmpfs to multi-order entries, we don't need
-> this anymore.
+> The easiest way to handle them is to clear the PMD and let it refault as
+> wriable.
 
-Yay!  Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+... of course, the filesystem could implement ->pmd_fault, and then it
+wouldn't hit this case ...
