@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 17/37] fs: make block_read_full_page() be able to read huge page
-Date: Thu, 26 Jan 2017 14:57:59 +0300
-Message-ID: <20170126115819.58875-18-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 11/37] HACK: readahead: alloc huge pages, if allowed
+Date: Thu, 26 Jan 2017 14:57:53 +0300
+Message-ID: <20170126115819.58875-12-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,135 +25,68 @@ In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The approach is straight-forward: for compound pages we read out whole
-huge page.
+Most page cache allocation happens via readahead (sync or async), so if
+we want to have significant number of huge pages in page cache we need
+to find a ways to allocate them from readahead.
 
-For huge page we cannot have array of buffer head pointers on stack --
-it's 4096 pointers on x86-64 -- 'arr' is allocated with kmalloc() for
-huge pages.
+Unfortunately, huge pages doesn't fit into current readahead design:
+128 max readahead window, assumption on page size, PageReadahead() to
+track hit/miss.
+
+I haven't found a ways to get it right yet.
+
+This patch just allocates huge page if allowed, but doesn't really
+provide any readahead if huge page is allocated. We read out 2M a time
+and I would expect spikes in latancy without readahead.
+
+Therefore HACK.
+
+Having that said, I don't think it should prevent huge page support to
+be applied. Future will show if lacking readahead is a big deal with
+huge pages in page cache.
+
+Any suggestions are welcome.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c                 | 22 +++++++++++++++++-----
- include/linux/buffer_head.h |  9 +++++----
- include/linux/page-flags.h  |  2 +-
- 3 files changed, 23 insertions(+), 10 deletions(-)
+ mm/readahead.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 0e87401cf335..72462beca909 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -871,7 +871,7 @@ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+diff --git a/mm/readahead.c b/mm/readahead.c
+index c4ca70239233..289527a06254 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 		if (page_offset > end_index)
+ 			break;
  
- try_again:
- 	head = NULL;
--	offset = PAGE_SIZE;
-+	offset = hpage_size(page);
- 	while ((offset -= size) >= 0) {
- 		bh = alloc_buffer_head(GFP_NOFS);
- 		if (!bh)
-@@ -1466,7 +1466,7 @@ void set_bh_page(struct buffer_head *bh,
- 		struct page *page, unsigned long offset)
- {
- 	bh->b_page = page;
--	BUG_ON(offset >= PAGE_SIZE);
-+	BUG_ON(offset >= hpage_size(page));
- 	if (PageHighMem(page))
- 		/*
- 		 * This catches illegal uses and preserves the offset:
-@@ -2280,11 +2280,13 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- {
- 	struct inode *inode = page->mapping->host;
- 	sector_t iblock, lblock;
--	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
-+	struct buffer_head *arr_on_stack[MAX_BUF_PER_PAGE];
-+	struct buffer_head *bh, *head, **arr = arr_on_stack;
- 	unsigned int blocksize, bbits;
- 	int nr, i;
- 	int fully_mapped = 1;
- 
-+	VM_BUG_ON_PAGE(PageTail(page), page);
- 	head = create_page_buffers(page, inode, 0);
- 	blocksize = head->b_size;
- 	bbits = block_size_bits(blocksize);
-@@ -2295,6 +2297,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- 	nr = 0;
- 	i = 0;
- 
-+	if (PageTransHuge(page)) {
-+		arr = kmalloc(sizeof(struct buffer_head *) * HPAGE_PMD_NR *
-+				MAX_BUF_PER_PAGE, GFP_NOFS);
-+	}
++		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
++				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
++				page_cache_allow_huge(mapping, page_offset)) {
++			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
++					HPAGE_PMD_ORDER);
++			if (page) {
++				prep_transhuge_page(page);
++				page->index = round_down(page_offset,
++						HPAGE_PMD_NR);
++				list_add(&page->lru, &page_pool);
++				ret++;
++				goto start_io;
++			}
++		}
 +
- 	do {
- 		if (buffer_uptodate(bh))
- 			continue;
-@@ -2310,7 +2317,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- 					SetPageError(page);
- 			}
- 			if (!buffer_mapped(bh)) {
--				zero_user(page, i * blocksize, blocksize);
-+				zero_user(page + (i * blocksize / PAGE_SIZE),
-+						i * blocksize % PAGE_SIZE,
-+						blocksize);
- 				if (!err)
- 					set_buffer_uptodate(bh);
- 				continue;
-@@ -2336,7 +2345,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- 		if (!PageError(page))
- 			SetPageUptodate(page);
- 		unlock_page(page);
--		return 0;
-+		goto out;
+ 		rcu_read_lock();
+ 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
+ 		rcu_read_unlock();
+@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
+ 			SetPageReadahead(page);
+ 		ret++;
  	}
- 
- 	/* Stage two: lock the buffers */
-@@ -2358,6 +2367,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- 		else
- 			submit_bh(REQ_OP_READ, 0, bh);
- 	}
-+out:
-+	if (arr != arr_on_stack)
-+		kfree(arr);
- 	return 0;
- }
- EXPORT_SYMBOL(block_read_full_page);
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index fd4134ce9c54..f12f6293ed44 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -131,13 +131,14 @@ BUFFER_FNS(Meta, meta)
- BUFFER_FNS(Prio, prio)
- BUFFER_FNS(Defer_Completion, defer_completion)
- 
--#define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
-+#define bh_offset(bh)	((unsigned long)(bh)->b_data & ~hpage_mask(bh->b_page))
- 
- /* If we *know* page->private refers to buffer_heads */
--#define page_buffers(page)					\
-+#define page_buffers(__page)					\
- 	({							\
--		BUG_ON(!PagePrivate(page));			\
--		((struct buffer_head *)page_private(page));	\
-+		struct page *p = compound_head(__page);		\
-+		BUG_ON(!PagePrivate(p));			\
-+		((struct buffer_head *)page_private(p));	\
- 	})
- #define page_has_buffers(page)	PagePrivate(page)
- 
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index b85b73cfb1b3..23534bd47c08 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -746,7 +746,7 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
-  */
- static inline int page_has_private(struct page *page)
- {
--	return !!(page->flags & PAGE_FLAGS_PRIVATE);
-+	return !!(compound_head(page)->flags & PAGE_FLAGS_PRIVATE);
- }
- 
- #undef PF_ANY
+-
++start_io:
+ 	/*
+ 	 * Now start the IO.  We ignore I/O errors - if the page is not
+ 	 * uptodate then the caller will launch readpage again, and
 -- 
 2.11.0
 
