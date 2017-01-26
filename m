@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 11/37] HACK: readahead: alloc huge pages, if allowed
-Date: Thu, 26 Jan 2017 14:57:53 +0300
-Message-ID: <20170126115819.58875-12-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 19/37] fs: make block_page_mkwrite() aware about huge pages
+Date: Thu, 26 Jan 2017 14:58:01 +0300
+Message-ID: <20170126115819.58875-20-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,68 +25,50 @@ In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Most page cache allocation happens via readahead (sync or async), so if
-we want to have significant number of huge pages in page cache we need
-to find a ways to allocate them from readahead.
-
-Unfortunately, huge pages doesn't fit into current readahead design:
-128 max readahead window, assumption on page size, PageReadahead() to
-track hit/miss.
-
-I haven't found a ways to get it right yet.
-
-This patch just allocates huge page if allowed, but doesn't really
-provide any readahead if huge page is allocated. We read out 2M a time
-and I would expect spikes in latancy without readahead.
-
-Therefore HACK.
-
-Having that said, I don't think it should prevent huge page support to
-be applied. Future will show if lacking readahead is a big deal with
-huge pages in page cache.
-
-Any suggestions are welcome.
+Adjust check on whether part of the page beyond file size and apply
+compound_head() and page_mapping() where appropriate.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/readahead.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ fs/buffer.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index c4ca70239233..289527a06254 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -174,6 +174,21 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 		if (page_offset > end_index)
- 			break;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index d05524f14846..17167b299d0f 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2544,7 +2544,7 @@ EXPORT_SYMBOL(block_commit_write);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 			 get_block_t get_block)
+ {
+-	struct page *page = vmf->page;
++	struct page *page = compound_head(vmf->page);
+ 	struct inode *inode = file_inode(vma->vm_file);
+ 	unsigned long end;
+ 	loff_t size;
+@@ -2552,7 +2552,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  
-+		if (IS_ENABLED(CONFIG_TRANSPARENT_HUGE_PAGECACHE) &&
-+				(!page_idx || !(page_offset % HPAGE_PMD_NR)) &&
-+				page_cache_allow_huge(mapping, page_offset)) {
-+			page = __page_cache_alloc_order(gfp_mask | __GFP_COMP,
-+					HPAGE_PMD_ORDER);
-+			if (page) {
-+				prep_transhuge_page(page);
-+				page->index = round_down(page_offset,
-+						HPAGE_PMD_NR);
-+				list_add(&page->lru, &page_pool);
-+				ret++;
-+				goto start_io;
-+			}
-+		}
-+
- 		rcu_read_lock();
- 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
- 		rcu_read_unlock();
-@@ -189,7 +204,7 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 			SetPageReadahead(page);
- 		ret++;
+ 	lock_page(page);
+ 	size = i_size_read(inode);
+-	if ((page->mapping != inode->i_mapping) ||
++	if ((page_mapping(page) != inode->i_mapping) ||
+ 	    (page_offset(page) > size)) {
+ 		/* We overload EFAULT to mean page got truncated */
+ 		ret = -EFAULT;
+@@ -2560,10 +2560,10 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  	}
--
-+start_io:
- 	/*
- 	 * Now start the IO.  We ignore I/O errors - if the page is not
- 	 * uptodate then the caller will launch readpage again, and
+ 
+ 	/* page is wholly or partially inside EOF */
+-	if (((page->index + 1) << PAGE_SHIFT) > size)
+-		end = size & ~PAGE_MASK;
++	if (((page->index + hpage_nr_pages(page)) << PAGE_SHIFT) > size)
++		end = size & ~hpage_mask(page);
+ 	else
+-		end = PAGE_SIZE;
++		end = hpage_size(page);
+ 
+ 	ret = __block_write_begin(page, 0, end, get_block);
+ 	if (!ret)
 -- 
 2.11.0
 
