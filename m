@@ -1,98 +1,68 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 21/37] truncate: make invalidate_inode_pages2_range() aware about huge pages
-Date: Thu, 26 Jan 2017 14:58:03 +0300
-Message-ID: <20170126115819.58875-22-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 27/37] ext4: handle huge pages in __ext4_block_zero_page_range()
+Date: Thu, 26 Jan 2017 14:58:09 +0300
+Message-ID: <20170126115819.58875-28-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-block-owner@vger.kernel.org>
 In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-For huge pages we need to unmap whole range covered by the huge page.
+As the function handles zeroing range only within one block, the
+required changes are trivial, just remove assuption on page size.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- mm/truncate.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 81e1a13acb63..ddb615e6a193 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -703,27 +703,32 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 				continue;
- 			}
- 			wait_on_page_writeback(page);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a25be1cf4506..7e65a5b78cf1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3785,7 +3785,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		struct address_space *mapping, loff_t from, loff_t length)
+ {
+ 	ext4_fsblk_t index = from >> PAGE_SHIFT;
+-	unsigned offset = from & (PAGE_SIZE-1);
++	unsigned offset;
+ 	unsigned blocksize, pos;
+ 	ext4_lblk_t iblock;
+ 	struct inode *inode = mapping->host;
+@@ -3798,6 +3798,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	if (!page)
+ 		return -ENOMEM;
+ 
++	page = compound_head(page);
++	offset = from & ~hpage_mask(page);
 +
- 			if (page_mapped(page)) {
-+				loff_t begin, len;
-+
-+				begin = index << PAGE_SHIFT;
- 				if (!did_range_unmap) {
- 					/*
- 					 * Zap the rest of the file in one hit.
- 					 */
-+					len = (loff_t)(1 + end - index) <<
-+						PAGE_SHIFT;
-+					if (len < hpage_size(page))
-+						len = hpage_size(page);
- 					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   (loff_t)(1 + end - index)
--							 << PAGE_SHIFT,
--							 0);
-+							begin, len, 0);
- 					did_range_unmap = 1;
- 				} else {
- 					/*
- 					 * Just zap this page
- 					 */
--					unmap_mapping_range(mapping,
--					   (loff_t)index << PAGE_SHIFT,
--					   PAGE_SIZE, 0);
-+					len = hpage_size(page);
-+					unmap_mapping_range(mapping, begin,
-+							len, 0);
- 				}
- 			}
--			BUG_ON(page_mapped(page));
-+			VM_BUG_ON_PAGE(page_mapped(page), page);
- 			ret2 = do_launder_page(mapping, page);
- 			if (ret2 == 0) {
- 				if (!invalidate_complete_page2(mapping, page))
-@@ -734,9 +739,9 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 			unlock_page(page);
- 		}
- 		pagevec_remove_exceptionals(&pvec);
-+		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
- 		pagevec_release(&pvec);
- 		cond_resched();
--		index++;
+ 	blocksize = inode->i_sb->s_blocksize;
+ 
+ 	iblock = index << (PAGE_SHIFT - inode->i_sb->s_blocksize_bits);
+@@ -3853,7 +3856,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		if (err)
+ 			goto unlock;
  	}
- 	cleancache_invalidate_inode(mapping);
- 	return ret;
+-	zero_user(page, offset, length);
++	zero_user(page + offset / PAGE_SIZE, offset % PAGE_SIZE, length);
+ 	BUFFER_TRACE(bh, "zeroed end of block");
+ 
+ 	if (ext4_should_journal_data(inode)) {
 -- 
 2.11.0
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
