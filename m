@@ -1,99 +1,104 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 05/37] thp: try to free page's buffers before attempt split
-Date: Thu, 26 Jan 2017 14:57:47 +0300
-Message-ID: <20170126115819.58875-6-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 33/37] ext4: fix SEEK_DATA/SEEK_HOLE for huge pages
+Date: Thu, 26 Jan 2017 14:58:15 +0300
+Message-ID: <20170126115819.58875-34-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-We want page to be isolated from the rest of the system before splitting
-it. We rely on page count to be 2 for file pages to make sure nobody
-uses the page: one pin to caller, one to radix-tree.
+ext4_find_unwritten_pgoff() needs few tweaks to work with huge pages.
+Mostly trivial page_mapping()/page_to_pgoff() and adjustment to how we
+find relevant block.
 
-Filesystems with backing storage can have page count increased if it has
-buffers.
-
-Let's try to free them, before attempt split. And remove one guarding
-VM_BUG_ON_PAGE().
-
-Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Signe-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/buffer_head.h |  1 +
- mm/huge_memory.c            | 19 ++++++++++++++++++-
- 2 files changed, 19 insertions(+), 1 deletion(-)
+ fs/ext4/file.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index d67ab83823ad..fd4134ce9c54 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -400,6 +400,7 @@ extern int __set_page_dirty_buffers(struct page *page);
- #else /* CONFIG_BLOCK */
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d663d3d7c81c..0b11aadfb75f 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -519,7 +519,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			 * range, it will be a hole.
+ 			 */
+ 			if (lastoff < endoff && whence == SEEK_HOLE &&
+-			    page->index > end) {
++			    page_to_pgoff(page) > end) {
+ 				found = 1;
+ 				*offset = lastoff;
+ 				goto out;
+@@ -527,7 +527,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
  
- static inline void buffer_init(void) {}
-+static inline int page_has_buffers(struct page *page) { return 0; }
- static inline int try_to_free_buffers(struct page *page) { return 1; }
- static inline int inode_has_buffers(struct inode *inode) { return 0; }
- static inline void invalidate_inode_buffers(struct inode *inode) {}
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 89819fe4debc..55aee62e8444 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -30,6 +30,7 @@
- #include <linux/userfaultfd_k.h>
- #include <linux/page_idle.h>
- #include <linux/shmem_fs.h>
-+#include <linux/buffer_head.h>
+ 			lock_page(page);
  
- #include <asm/tlb.h>
- #include <asm/pgalloc.h>
-@@ -2117,7 +2118,6 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
+-			if (unlikely(page->mapping != inode->i_mapping)) {
++			if (unlikely(page_mapping(page) != inode->i_mapping)) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
+@@ -538,8 +538,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			}
  
- 	VM_BUG_ON_PAGE(is_huge_zero_page(page), page);
- 	VM_BUG_ON_PAGE(!PageLocked(page), page);
--	VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
- 	VM_BUG_ON_PAGE(!PageCompound(page), page);
+ 			if (page_has_buffers(page)) {
++				int diff;
+ 				lastoff = page_offset(page);
+ 				bh = head = page_buffers(page);
++				diff = (page - compound_head(page)) << inode->i_blkbits;
++				while (diff--)
++					bh = bh->b_this_page;
+ 				do {
+ 					if (buffer_uptodate(bh) ||
+ 					    buffer_unwritten(bh)) {
+@@ -560,8 +564,12 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 				} while (bh != head);
+ 			}
  
- 	if (PageAnon(head)) {
-@@ -2146,6 +2146,23 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
- 			goto out;
+-			lastoff = page_offset(page) + PAGE_SIZE;
++			lastoff = page_offset(page) + hpage_size(page);
+ 			unlock_page(page);
++			if (PageTransCompound(page)) {
++				i++;
++				break;
++			}
  		}
  
-+		/* Try to free buffers before attempt split */
-+		if (!PageSwapBacked(head) && PagePrivate(page)) {
-+			/*
-+			 * We cannot trigger writeback from here due possible
-+			 * recursion if triggered from vmscan, only wait.
-+			 *
-+			 * Caller can trigger writeback it on its own, if safe.
-+			 */
-+			wait_on_page_writeback(head);
-+
-+			if (page_has_buffers(head) && !try_to_release_page(head,
-+						GFP_KERNEL)) {
-+				ret = -EBUSY;
-+				goto out;
-+			}
-+		}
-+
- 		/* Addidional pin from radix tree */
- 		extra_pins = 1;
- 		anon_vma = NULL;
+ 		/*
+@@ -574,7 +582,9 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			break;
+ 		}
+ 
+-		index = pvec.pages[i - 1]->index + 1;
++		index = page_to_pgoff(pvec.pages[i - 1]) + 1;
++		if (PageTransCompound(pvec.pages[i - 1]))
++			index = round_up(index, HPAGE_PMD_NR);
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
+ 
 -- 
 2.11.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
