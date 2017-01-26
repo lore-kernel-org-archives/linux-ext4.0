@@ -1,314 +1,239 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 23/37] mm: account huge pages to dirty, writaback, reclaimable, etc.
-Date: Thu, 26 Jan 2017 14:58:05 +0300
-Message-ID: <20170126115819.58875-24-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 36/37] mm, fs, ext4: expand use of page_mapping() and page_to_pgoff()
+Date: Thu, 26 Jan 2017 14:58:18 +0300
+Message-ID: <20170126115819.58875-37-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Matthew Wilcox <willy@infradead.org>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-block@vger.kernel.org,
-	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Dave Hansen <dave.hansen@intel.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        Matthew Wilcox <willy@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-block@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We need to account huge pages according to its size to get background
-writaback work properly.
+With huge pages in page cache we see tail pages in more code paths.
+This patch replaces direct access to struct page fields with macros
+which can handle tail pages properly.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/fs-writeback.c           | 10 +++---
- include/linux/backing-dev.h | 10 ++++++
- include/linux/memcontrol.h  | 22 ++-----------
- mm/migrate.c                |  1 +
- mm/page-writeback.c         | 80 +++++++++++++++++++++++++++++----------------
- mm/rmap.c                   |  4 +--
- 6 files changed, 74 insertions(+), 53 deletions(-)
+ fs/buffer.c         |  2 +-
+ fs/ext4/inode.c     |  4 ++--
+ mm/filemap.c        | 24 +++++++++++++-----------
+ mm/memory.c         |  2 +-
+ mm/page-writeback.c |  2 +-
+ mm/truncate.c       |  5 +++--
+ 6 files changed, 21 insertions(+), 18 deletions(-)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index ef600591d96f..e1c9faddc9e1 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -366,8 +366,9 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
- 		struct page *page = radix_tree_deref_slot_protected(slot,
- 							&mapping->tree_lock);
- 		if (likely(page) && PageDirty(page)) {
--			__dec_wb_stat(old_wb, WB_RECLAIMABLE);
--			__inc_wb_stat(new_wb, WB_RECLAIMABLE);
-+			int nr = hpage_nr_pages(page);
-+			__add_wb_stat(old_wb, WB_RECLAIMABLE, -nr);
-+			__add_wb_stat(new_wb, WB_RECLAIMABLE, nr);
- 		}
+diff --git a/fs/buffer.c b/fs/buffer.c
+index f92090fed933..b2c220dd83b5 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -631,7 +631,7 @@ static void __set_page_dirty(struct page *page, struct address_space *mapping,
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&mapping->tree_lock, flags);
+-	if (page->mapping) {	/* Race with truncate? */
++	if (page_mapping(page)) {	/* Race with truncate? */
+ 		WARN_ON_ONCE(warn && !PageUptodate(page));
+ 		account_page_dirtied(page, mapping);
+ 		radix_tree_tag_set(&mapping->page_tree,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c30562b6e685..e24ccf4c3694 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1237,7 +1237,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
  	}
  
-@@ -376,9 +377,10 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
- 		struct page *page = radix_tree_deref_slot_protected(slot,
- 							&mapping->tree_lock);
- 		if (likely(page)) {
-+			int nr = hpage_nr_pages(page);
- 			WARN_ON_ONCE(!PageWriteback(page));
--			__dec_wb_stat(old_wb, WB_WRITEBACK);
--			__inc_wb_stat(new_wb, WB_WRITEBACK);
-+			__add_wb_stat(old_wb, WB_WRITEBACK, -nr);
-+			__add_wb_stat(new_wb, WB_WRITEBACK, nr);
- 		}
+ 	lock_page(page);
+-	if (page->mapping != mapping) {
++	if (page_mapping(page) != mapping) {
+ 		/* The page got truncated from under us */
+ 		unlock_page(page);
+ 		put_page(page);
+@@ -2975,7 +2975,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
  	}
  
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 43b93a947e61..e63487f78824 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -61,6 +61,16 @@ static inline void __add_wb_stat(struct bdi_writeback *wb,
- 	__percpu_counter_add(&wb->stat[item], amount, WB_STAT_BATCH);
- }
+ 	lock_page(page);
+-	if (page->mapping != mapping) {
++	if (page_mapping(page) != mapping) {
+ 		/* The page got truncated from under us */
+ 		unlock_page(page);
+ 		put_page(page);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 01a0f63fa597..7921a7f3cd2e 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -399,7 +399,7 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
+ 			struct page *page = pvec.pages[i];
  
-+static inline void add_wb_stat(struct bdi_writeback *wb,
-+				 enum wb_stat_item item, s64 amount)
-+{
-+	unsigned long flags;
-+
-+	local_irq_save(flags);
-+	__add_wb_stat(wb, item, amount);
-+	local_irq_restore(flags);
-+}
-+
- static inline void __inc_wb_stat(struct bdi_writeback *wb,
- 				 enum wb_stat_item item)
+ 			/* until radix tree lookup accepts end_index */
+-			if (page->index > end)
++			if (page_to_pgoff(page) > end)
+ 				continue;
+ 
+ 			page = compound_head(page);
+@@ -1364,7 +1364,7 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
+ 		}
+ 
+ 		/* Has the page been truncated? */
+-		if (unlikely(page->mapping != mapping)) {
++		if (unlikely(page_mapping(page) != mapping)) {
+ 			unlock_page(page);
+ 			put_page(page);
+ 			goto repeat;
+@@ -1641,7 +1641,8 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
+ 		 * otherwise we can get both false positives and false
+ 		 * negatives, which is just confusing to the caller.
+ 		 */
+-		if (page->mapping == NULL || page_to_pgoff(page) != index) {
++		if (page_mapping(page) == NULL ||
++				page_to_pgoff(page) != index) {
+ 			put_page(page);
+ 			break;
+ 		}
+@@ -1929,7 +1930,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 			if (!trylock_page(page))
+ 				goto page_not_up_to_date;
+ 			/* Did it get truncated before we got the lock? */
+-			if (!page->mapping)
++			if (!page_mapping(page))
+ 				goto page_not_up_to_date_locked;
+ 			if (!mapping->a_ops->is_partially_uptodate(page,
+ 							offset, iter->count))
+@@ -2009,7 +2010,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 
+ page_not_up_to_date_locked:
+ 		/* Did it get truncated before we got the lock? */
+-		if (!page->mapping) {
++		if (!page_mapping(page)) {
+ 			unlock_page(page);
+ 			put_page(page);
+ 			continue;
+@@ -2045,7 +2046,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ 			if (unlikely(error))
+ 				goto readpage_error;
+ 			if (!PageUptodate(page)) {
+-				if (page->mapping == NULL) {
++				if (page_mapping(page) == NULL) {
+ 					/*
+ 					 * invalidate_mapping_pages got it
+ 					 */
+@@ -2344,12 +2345,12 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	}
+ 
+ 	/* Did it get truncated? */
+-	if (unlikely(page->mapping != mapping)) {
++	if (unlikely(page_mapping(page) != mapping)) {
+ 		unlock_page(page);
+ 		put_page(page);
+ 		goto retry_find;
+ 	}
+-	VM_BUG_ON_PAGE(page->index != offset, page);
++	VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
+ 
+ 	/*
+ 	 * We have a locked page in the page cache, now we need to check
+@@ -2525,7 +2526,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+ 	lock_page(page);
+-	if (page->mapping != inode->i_mapping) {
++	if (page_mapping(page) != inode->i_mapping) {
+ 		unlock_page(page);
+ 		ret = VM_FAULT_NOPAGE;
+ 		goto out;
+@@ -2674,7 +2675,7 @@ static struct page *do_read_cache_page(struct address_space *mapping,
+ 	lock_page(page);
+ 
+ 	/* Case c or d, restart the operation */
+-	if (!page->mapping) {
++	if (!page_mapping(page)) {
+ 		unlock_page(page);
+ 		put_page(page);
+ 		goto repeat;
+@@ -3130,12 +3131,13 @@ EXPORT_SYMBOL(generic_file_write_iter);
+  */
+ int try_to_release_page(struct page *page, gfp_t gfp_mask)
  {
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 254698856b8f..7a341b01937f 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -29,6 +29,7 @@
- #include <linux/mmzone.h>
- #include <linux/writeback.h>
- #include <linux/page-flags.h>
-+#include <linux/mm.h>
+-	struct address_space * const mapping = page->mapping;
++	struct address_space * const mapping = page_mapping(page);
  
- struct mem_cgroup;
- struct page;
-@@ -517,18 +518,6 @@ static inline void mem_cgroup_update_page_stat(struct page *page,
- 		this_cpu_add(page->mem_cgroup->stat->count[idx], val);
- }
+ 	BUG_ON(!PageLocked(page));
+ 	if (PageWriteback(page))
+ 		return 0;
  
--static inline void mem_cgroup_inc_page_stat(struct page *page,
--					    enum mem_cgroup_stat_index idx)
--{
--	mem_cgroup_update_page_stat(page, idx, 1);
--}
--
--static inline void mem_cgroup_dec_page_stat(struct page *page,
--					    enum mem_cgroup_stat_index idx)
--{
--	mem_cgroup_update_page_stat(page, idx, -1);
--}
--
- unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
- 						gfp_t gfp_mask,
- 						unsigned long *total_scanned);
-@@ -739,13 +728,8 @@ static inline bool mem_cgroup_oom_synchronize(bool wait)
- 	return false;
- }
- 
--static inline void mem_cgroup_inc_page_stat(struct page *page,
--					    enum mem_cgroup_stat_index idx)
--{
--}
--
--static inline void mem_cgroup_dec_page_stat(struct page *page,
--					    enum mem_cgroup_stat_index idx)
-+static inline void mem_cgroup_update_page_stat(struct page *page,
-+				 enum mem_cgroup_stat_index idx, int val)
- {
- }
- 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 366466ed7fdc..20a9ce2fcc64 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -485,6 +485,7 @@ int migrate_page_move_mapping(struct address_space *mapping,
- 	 * are mapped to swap space.
- 	 */
- 	if (newzone != oldzone) {
-+		BUG_ON(PageTransHuge(page));
- 		__dec_node_state(oldzone->zone_pgdat, NR_FILE_PAGES);
- 		__inc_node_state(newzone->zone_pgdat, NR_FILE_PAGES);
- 		if (PageSwapBacked(page) && !PageSwapCache(page)) {
++	page = compound_head(page);
+ 	if (mapping && mapping->a_ops->releasepage)
+ 		return mapping->a_ops->releasepage(page, gfp_mask);
+ 	return try_to_free_buffers(page);
+diff --git a/mm/memory.c b/mm/memory.c
+index 903d9d3e01c0..86ab6ead5ecc 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2049,7 +2049,7 @@ static int do_page_mkwrite(struct vm_fault *vmf)
+ 		return ret;
+ 	if (unlikely(!(ret & VM_FAULT_LOCKED))) {
+ 		lock_page(page);
+-		if (!page->mapping) {
++		if (!page_mapping(page)) {
+ 			unlock_page(page);
+ 			return 0; /* retry */
+ 		}
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 47d5b12c460e..d7b905d66add 100644
+index d7b905d66add..3ebbac70681f 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
-@@ -2430,19 +2430,22 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
- 
- 	if (mapping_cap_account_dirty(mapping)) {
- 		struct bdi_writeback *wb;
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
- 
- 		inode_attach_wb(inode, page);
- 		wb = inode_to_wb(inode);
- 
--		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--		__inc_node_page_state(page, NR_FILE_DIRTY);
--		__inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		__inc_node_page_state(page, NR_DIRTIED);
--		__inc_wb_stat(wb, WB_RECLAIMABLE);
--		__inc_wb_stat(wb, WB_DIRTIED);
--		task_io_account_write(PAGE_SIZE);
--		current->nr_dirtied++;
--		this_cpu_inc(bdp_ratelimits);
-+		mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_DIRTY, nr);
-+		__mod_node_page_state(pgdat, NR_FILE_DIRTY, nr);
-+		__mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
-+		__mod_node_page_state(pgdat, NR_DIRTIED, nr);
-+		__add_wb_stat(wb, WB_RECLAIMABLE, nr);
-+		__add_wb_stat(wb, WB_DIRTIED, nr);
-+		task_io_account_write(nr * PAGE_SIZE);
-+		current->nr_dirtied += nr;
-+		this_cpu_add(bdp_ratelimits, nr);
- 	}
- }
- EXPORT_SYMBOL(account_page_dirtied);
-@@ -2456,11 +2459,15 @@ void account_page_cleaned(struct page *page, struct address_space *mapping,
- 			  struct bdi_writeback *wb)
+@@ -2869,7 +2869,7 @@ EXPORT_SYMBOL(mapping_tagged);
+  */
+ void wait_for_stable_page(struct page *page)
  {
- 	if (mapping_cap_account_dirty(mapping)) {
--		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--		dec_node_page_state(page, NR_FILE_DIRTY);
--		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		dec_wb_stat(wb, WB_RECLAIMABLE);
--		task_io_account_cancelled_write(PAGE_SIZE);
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
-+		mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_DIRTY, -nr);
-+		mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+		add_wb_stat(wb, WB_RECLAIMABLE, -nr);
-+		task_io_account_cancelled_write(PAGE_SIZE * nr);
- 	}
+-	if (bdi_cap_stable_pages_required(inode_to_bdi(page->mapping->host)))
++	if (bdi_cap_stable_pages_required(inode_to_bdi(page_mapping(page)->host)))
+ 		wait_on_page_writeback(page);
  }
+ EXPORT_SYMBOL_GPL(wait_for_stable_page);
+diff --git a/mm/truncate.c b/mm/truncate.c
+index d7f5db6ff0f2..6d4629888d95 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -620,6 +620,7 @@ invalidate_complete_page2(struct address_space *mapping, struct page *page)
+ {
+ 	unsigned long flags;
  
-@@ -2520,14 +2527,16 @@ void account_page_redirty(struct page *page)
- 	struct address_space *mapping = page->mapping;
++	page = compound_head(page);
+ 	if (page->mapping != mapping)
+ 		return 0;
  
- 	if (mapping && mapping_cap_account_dirty(mapping)) {
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
- 		struct inode *inode = mapping->host;
- 		struct bdi_writeback *wb;
- 		bool locked;
- 
- 		wb = unlocked_inode_to_wb_begin(inode, &locked);
--		current->nr_dirtied--;
--		dec_node_page_state(page, NR_DIRTIED);
--		dec_wb_stat(wb, WB_DIRTIED);
-+		current->nr_dirtied -= nr;
-+		mod_node_page_state(pgdat, NR_DIRTIED, -nr);
-+		add_wb_stat(wb, WB_DIRTIED, -nr);
- 		unlocked_inode_to_wb_end(inode, locked);
- 	}
+@@ -648,7 +649,7 @@ static int do_launder_page(struct address_space *mapping, struct page *page)
+ {
+ 	if (!PageDirty(page))
+ 		return 0;
+-	if (page->mapping != mapping || mapping->a_ops->launder_page == NULL)
++	if (page_mapping(page) != mapping || mapping->a_ops->launder_page == NULL)
+ 		return 0;
+ 	return mapping->a_ops->launder_page(page);
  }
-@@ -2713,10 +2722,15 @@ int clear_page_dirty_for_io(struct page *page)
- 		 */
- 		wb = unlocked_inode_to_wb_begin(inode, &locked);
- 		if (TestClearPageDirty(page)) {
--			mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
--			dec_node_page_state(page, NR_FILE_DIRTY);
--			dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--			dec_wb_stat(wb, WB_RECLAIMABLE);
-+			struct zone *zone = page_zone(page);
-+			pg_data_t *pgdat = page_pgdat(page);
-+			int nr = hpage_nr_pages(page);
-+
-+			mem_cgroup_update_page_stat(page,
-+					MEM_CGROUP_STAT_DIRTY, -nr);
-+			mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
-+			mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+			add_wb_stat(wb, WB_RECLAIMABLE, -nr);
- 			ret = 1;
- 		}
- 		unlocked_inode_to_wb_end(inode, locked);
-@@ -2760,10 +2774,15 @@ int test_clear_page_writeback(struct page *page)
- 		ret = TestClearPageWriteback(page);
- 	}
- 	if (ret) {
--		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
--		dec_node_page_state(page, NR_WRITEBACK);
--		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
--		inc_node_page_state(page, NR_WRITTEN);
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
-+		mem_cgroup_update_page_stat(page,
-+				MEM_CGROUP_STAT_WRITEBACK, -nr);
-+		mod_node_page_state(pgdat, NR_WRITEBACK, -nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
-+		mod_node_page_state(pgdat, NR_WRITTEN, nr);
- 	}
- 	unlock_page_memcg(page);
- 	return ret;
-@@ -2815,9 +2834,14 @@ int __test_set_page_writeback(struct page *page, bool keep_write)
- 		ret = TestSetPageWriteback(page);
- 	}
- 	if (!ret) {
--		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
--		inc_node_page_state(page, NR_WRITEBACK);
--		inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
-+		struct zone *zone = page_zone(page);
-+		pg_data_t *pgdat = page_pgdat(page);
-+		int nr = hpage_nr_pages(page);
-+
-+		mem_cgroup_update_page_stat(page,
-+				MEM_CGROUP_STAT_WRITEBACK, nr);
-+		mod_node_page_state(pgdat, NR_WRITEBACK, nr);
-+		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
- 	}
- 	unlock_page_memcg(page);
- 	return ret;
-diff --git a/mm/rmap.c b/mm/rmap.c
-index d9daa54dc316..38f1682f8dfc 100644
---- a/mm/rmap.c
-+++ b/mm/rmap.c
-@@ -1154,7 +1154,7 @@ void page_add_file_rmap(struct page *page, bool compound)
- 			goto out;
- 	}
- 	__mod_node_page_state(page_pgdat(page), NR_FILE_MAPPED, nr);
--	mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED);
-+	mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED, nr);
- out:
- 	unlock_page_memcg(page);
- }
-@@ -1196,7 +1196,7 @@ static void page_remove_file_rmap(struct page *page, bool compound)
- 	 * pte lock(a spinlock) is held, which implies preemption disabled.
- 	 */
- 	__mod_node_page_state(page_pgdat(page), NR_FILE_MAPPED, -nr);
--	mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED);
-+	mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED, -nr);
+@@ -698,7 +699,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
  
- 	if (unlikely(PageMlocked(page)))
- 		clear_page_mlock(page);
+ 			lock_page(page);
+ 			WARN_ON(page_to_pgoff(page) != index);
+-			if (page->mapping != mapping) {
++			if (page_mapping(page) != mapping) {
+ 				unlock_page(page);
+ 				continue;
+ 			}
 -- 
 2.11.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
