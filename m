@@ -1,7 +1,7 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 20/37] truncate: make truncate_inode_pages_range() aware about huge pages
-Date: Thu, 26 Jan 2017 14:58:02 +0300
-Message-ID: <20170126115819.58875-21-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 23/37] mm: account huge pages to dirty, writaback, reclaimable, etc.
+Date: Thu, 26 Jan 2017 14:58:05 +0300
+Message-ID: <20170126115819.58875-24-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Hugh Dickins <hughd@google.com>,
@@ -25,220 +25,285 @@ In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-As with shmem_undo_range(), truncate_inode_pages_range() removes huge
-pages, if it fully within range.
-
-Partial truncate of huge pages zero out this part of THP.
-
-Unlike with shmem, it doesn't prevent us having holes in the middle of
-huge page we still can skip writeback not touched buffers.
-
-With memory-mapped IO we would loose holes in some cases when we have
-THP in page cache, since we cannot track access on 4k level in this
-case.
+We need to account huge pages according to its size to get background
+writaback work properly.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- fs/buffer.c        |  2 +-
- include/linux/mm.h |  9 +++++-
- mm/truncate.c      | 86 ++++++++++++++++++++++++++++++++++++++++++++----------
- 3 files changed, 80 insertions(+), 17 deletions(-)
+ fs/fs-writeback.c           | 10 +++---
+ include/linux/backing-dev.h | 10 ++++++
+ include/linux/memcontrol.h  | 22 ++-----------
+ mm/migrate.c                |  1 +
+ mm/page-writeback.c         | 80 +++++++++++++++++++++++++++++----------------
+ mm/rmap.c                   |  4 +--
+ 6 files changed, 74 insertions(+), 53 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 17167b299d0f..f92090fed933 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1534,7 +1534,7 @@ void block_invalidatepage(struct page *page, unsigned int offset,
- 	/*
- 	 * Check for overflow
- 	 */
--	BUG_ON(stop > PAGE_SIZE || stop < length);
-+	BUG_ON(stop > hpage_size(page) || stop < length);
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index ef600591d96f..e1c9faddc9e1 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -366,8 +366,9 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
+ 		struct page *page = radix_tree_deref_slot_protected(slot,
+ 							&mapping->tree_lock);
+ 		if (likely(page) && PageDirty(page)) {
+-			__dec_wb_stat(old_wb, WB_RECLAIMABLE);
+-			__inc_wb_stat(new_wb, WB_RECLAIMABLE);
++			int nr = hpage_nr_pages(page);
++			__add_wb_stat(old_wb, WB_RECLAIMABLE, -nr);
++			__add_wb_stat(new_wb, WB_RECLAIMABLE, nr);
+ 		}
+ 	}
  
- 	head = page_buffers(page);
- 	bh = head;
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 9e87155af456..41a97260f865 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1328,8 +1328,15 @@ int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
+@@ -376,9 +377,10 @@ static void inode_switch_wbs_work_fn(struct work_struct *work)
+ 		struct page *page = radix_tree_deref_slot_protected(slot,
+ 							&mapping->tree_lock);
+ 		if (likely(page)) {
++			int nr = hpage_nr_pages(page);
+ 			WARN_ON_ONCE(!PageWriteback(page));
+-			__dec_wb_stat(old_wb, WB_WRITEBACK);
+-			__inc_wb_stat(new_wb, WB_WRITEBACK);
++			__add_wb_stat(old_wb, WB_WRITEBACK, -nr);
++			__add_wb_stat(new_wb, WB_WRITEBACK, nr);
+ 		}
+ 	}
  
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
--extern void do_invalidatepage(struct page *page, unsigned int offset,
-+extern void __do_invalidatepage(struct page *page, unsigned int offset,
- 			      unsigned int length);
-+static inline void do_invalidatepage(struct page *page, unsigned int offset,
-+		unsigned int length)
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 43b93a947e61..e63487f78824 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -61,6 +61,16 @@ static inline void __add_wb_stat(struct bdi_writeback *wb,
+ 	__percpu_counter_add(&wb->stat[item], amount, WB_STAT_BATCH);
+ }
+ 
++static inline void add_wb_stat(struct bdi_writeback *wb,
++				 enum wb_stat_item item, s64 amount)
 +{
-+	if (page_has_private(page))
-+		__do_invalidatepage(page, offset, length);
++	unsigned long flags;
++
++	local_irq_save(flags);
++	__add_wb_stat(wb, item, amount);
++	local_irq_restore(flags);
 +}
 +
- 
- int __set_page_dirty_nobuffers(struct page *page);
- int __set_page_dirty_no_writeback(struct page *page);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 3a1a1c1a654e..81e1a13acb63 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -112,12 +112,12 @@ static int invalidate_exceptional_entry2(struct address_space *mapping,
-  * point.  Because the caller is about to free (and possibly reuse) those
-  * blocks on-disk.
-  */
--void do_invalidatepage(struct page *page, unsigned int offset,
-+void __do_invalidatepage(struct page *page, unsigned int offset,
- 		       unsigned int length)
+ static inline void __inc_wb_stat(struct bdi_writeback *wb,
+ 				 enum wb_stat_item item)
  {
- 	void (*invalidatepage)(struct page *, unsigned int, unsigned int);
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index 254698856b8f..7a341b01937f 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -29,6 +29,7 @@
+ #include <linux/mmzone.h>
+ #include <linux/writeback.h>
+ #include <linux/page-flags.h>
++#include <linux/mm.h>
  
--	invalidatepage = page->mapping->a_ops->invalidatepage;
-+	invalidatepage = page_mapping(page)->a_ops->invalidatepage;
- #ifdef CONFIG_BLOCK
- 	if (!invalidatepage)
- 		invalidatepage = block_invalidatepage;
-@@ -142,8 +142,7 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
- 	if (page->mapping != mapping)
- 		return -EIO;
- 
--	if (page_has_private(page))
--		do_invalidatepage(page, 0, PAGE_SIZE);
-+	do_invalidatepage(page, 0, hpage_size(page));
- 
- 	/*
- 	 * Some filesystems seem to re-dirty the page even after
-@@ -316,13 +315,35 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 				unlock_page(page);
- 				continue;
- 			}
-+
-+			if (PageTransHuge(page)) {
-+				int j, first = 0, last = HPAGE_PMD_NR - 1;
-+
-+				if (start > page->index)
-+					first = start & (HPAGE_PMD_NR - 1);
-+				if (index == round_down(end, HPAGE_PMD_NR))
-+					last = (end - 1) & (HPAGE_PMD_NR - 1);
-+
-+				/* Range starts or ends in the middle of THP */
-+				if (first != 0 || last != HPAGE_PMD_NR - 1) {
-+					int off, len;
-+					for (j = first; j <= last; j++)
-+						clear_highpage(page + j);
-+					off = first * PAGE_SIZE;
-+					len = (last + 1) * PAGE_SIZE - off;
-+					do_invalidatepage(page, off, len);
-+					unlock_page(page);
-+					continue;
-+				}
-+			}
-+
- 			truncate_inode_page(mapping, page);
- 			unlock_page(page);
- 		}
- 		pagevec_remove_exceptionals(&pvec);
-+		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
- 		pagevec_release(&pvec);
- 		cond_resched();
--		index++;
- 	}
- 
- 	if (partial_start) {
-@@ -337,9 +358,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			wait_on_page_writeback(page);
- 			zero_user_segment(page, partial_start, top);
- 			cleancache_invalidate_page(mapping, page);
--			if (page_has_private(page))
--				do_invalidatepage(page, partial_start,
--						  top - partial_start);
-+			if (page_has_private(page)) {
-+				int off = page - compound_head(page);
-+				do_invalidatepage(compound_head(page),
-+						off * PAGE_SIZE + partial_start,
-+						top - partial_start);
-+			}
- 			unlock_page(page);
- 			put_page(page);
- 		}
-@@ -350,9 +374,12 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			wait_on_page_writeback(page);
- 			zero_user_segment(page, 0, partial_end);
- 			cleancache_invalidate_page(mapping, page);
--			if (page_has_private(page))
--				do_invalidatepage(page, 0,
--						  partial_end);
-+			if (page_has_private(page)) {
-+				int off = page - compound_head(page);
-+				do_invalidatepage(compound_head(page),
-+						off * PAGE_SIZE,
-+						partial_end);
-+			}
- 			unlock_page(page);
- 			put_page(page);
- 		}
-@@ -366,7 +393,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 
- 	index = start;
- 	for ( ; ; ) {
--		cond_resched();
-+restart:	cond_resched();
- 		if (!pagevec_lookup_entries(&pvec, mapping, index,
- 			min(end - index, (pgoff_t)PAGEVEC_SIZE), indices)) {
- 			/* If all gone from start onwards, we're done */
-@@ -389,8 +416,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			index = indices[i];
- 			if (index >= end) {
- 				/* Restart punch to make sure all gone */
--				index = start - 1;
--				break;
-+				index = start;
-+				goto restart;
- 			}
- 
- 			if (radix_tree_exceptional_entry(page)) {
-@@ -402,12 +429,41 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			lock_page(page);
- 			WARN_ON(page_to_index(page) != index);
- 			wait_on_page_writeback(page);
-+
-+			if (PageTransHuge(page)) {
-+				int j, first = 0, last = HPAGE_PMD_NR - 1;
-+
-+				if (start > page->index)
-+					first = start & (HPAGE_PMD_NR - 1);
-+				if (index == round_down(end, HPAGE_PMD_NR))
-+					last = (end - 1) & (HPAGE_PMD_NR - 1);
-+
-+				/*
-+				 * On Partial thp truncate due 'start' in
-+				 * middle of THP: don't need to look on these
-+				 * pages again on !pvec.nr restart.
-+				 */
-+				start = page->index + HPAGE_PMD_NR;
-+
-+				/* Range starts or ends in the middle of THP */
-+				if (first != 0 || last != HPAGE_PMD_NR - 1) {
-+					int off, len;
-+					for (j = first; j <= last; j++)
-+						clear_highpage(page + j);
-+					off = first * PAGE_SIZE;
-+					len = (last + 1) * PAGE_SIZE - off;
-+					do_invalidatepage(page, off, len);
-+					unlock_page(page);
-+					continue;
-+				}
-+			}
-+
- 			truncate_inode_page(mapping, page);
- 			unlock_page(page);
- 		}
- 		pagevec_remove_exceptionals(&pvec);
-+		index += pvec.nr ? hpage_nr_pages(pvec.pages[pvec.nr - 1]) : 1;
- 		pagevec_release(&pvec);
--		index++;
- 	}
- 	cleancache_invalidate_inode(mapping);
+ struct mem_cgroup;
+ struct page;
+@@ -517,18 +518,6 @@ static inline void mem_cgroup_update_page_stat(struct page *page,
+ 		this_cpu_add(page->mem_cgroup->stat->count[idx], val);
  }
+ 
+-static inline void mem_cgroup_inc_page_stat(struct page *page,
+-					    enum mem_cgroup_stat_index idx)
+-{
+-	mem_cgroup_update_page_stat(page, idx, 1);
+-}
+-
+-static inline void mem_cgroup_dec_page_stat(struct page *page,
+-					    enum mem_cgroup_stat_index idx)
+-{
+-	mem_cgroup_update_page_stat(page, idx, -1);
+-}
+-
+ unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
+ 						gfp_t gfp_mask,
+ 						unsigned long *total_scanned);
+@@ -739,13 +728,8 @@ static inline bool mem_cgroup_oom_synchronize(bool wait)
+ 	return false;
+ }
+ 
+-static inline void mem_cgroup_inc_page_stat(struct page *page,
+-					    enum mem_cgroup_stat_index idx)
+-{
+-}
+-
+-static inline void mem_cgroup_dec_page_stat(struct page *page,
+-					    enum mem_cgroup_stat_index idx)
++static inline void mem_cgroup_update_page_stat(struct page *page,
++				 enum mem_cgroup_stat_index idx, int val)
+ {
+ }
+ 
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 366466ed7fdc..20a9ce2fcc64 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -485,6 +485,7 @@ int migrate_page_move_mapping(struct address_space *mapping,
+ 	 * are mapped to swap space.
+ 	 */
+ 	if (newzone != oldzone) {
++		BUG_ON(PageTransHuge(page));
+ 		__dec_node_state(oldzone->zone_pgdat, NR_FILE_PAGES);
+ 		__inc_node_state(newzone->zone_pgdat, NR_FILE_PAGES);
+ 		if (PageSwapBacked(page) && !PageSwapCache(page)) {
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 47d5b12c460e..d7b905d66add 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2430,19 +2430,22 @@ void account_page_dirtied(struct page *page, struct address_space *mapping)
+ 
+ 	if (mapping_cap_account_dirty(mapping)) {
+ 		struct bdi_writeback *wb;
++		struct zone *zone = page_zone(page);
++		pg_data_t *pgdat = page_pgdat(page);
++		int nr = hpage_nr_pages(page);
+ 
+ 		inode_attach_wb(inode, page);
+ 		wb = inode_to_wb(inode);
+ 
+-		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_DIRTY);
+-		__inc_node_page_state(page, NR_FILE_DIRTY);
+-		__inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
+-		__inc_node_page_state(page, NR_DIRTIED);
+-		__inc_wb_stat(wb, WB_RECLAIMABLE);
+-		__inc_wb_stat(wb, WB_DIRTIED);
+-		task_io_account_write(PAGE_SIZE);
+-		current->nr_dirtied++;
+-		this_cpu_inc(bdp_ratelimits);
++		mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_DIRTY, nr);
++		__mod_node_page_state(pgdat, NR_FILE_DIRTY, nr);
++		__mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
++		__mod_node_page_state(pgdat, NR_DIRTIED, nr);
++		__add_wb_stat(wb, WB_RECLAIMABLE, nr);
++		__add_wb_stat(wb, WB_DIRTIED, nr);
++		task_io_account_write(nr * PAGE_SIZE);
++		current->nr_dirtied += nr;
++		this_cpu_add(bdp_ratelimits, nr);
+ 	}
+ }
+ EXPORT_SYMBOL(account_page_dirtied);
+@@ -2456,11 +2459,15 @@ void account_page_cleaned(struct page *page, struct address_space *mapping,
+ 			  struct bdi_writeback *wb)
+ {
+ 	if (mapping_cap_account_dirty(mapping)) {
+-		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
+-		dec_node_page_state(page, NR_FILE_DIRTY);
+-		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
+-		dec_wb_stat(wb, WB_RECLAIMABLE);
+-		task_io_account_cancelled_write(PAGE_SIZE);
++		struct zone *zone = page_zone(page);
++		pg_data_t *pgdat = page_pgdat(page);
++		int nr = hpage_nr_pages(page);
++
++		mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_DIRTY, -nr);
++		mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
++		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
++		add_wb_stat(wb, WB_RECLAIMABLE, -nr);
++		task_io_account_cancelled_write(PAGE_SIZE * nr);
+ 	}
+ }
+ 
+@@ -2520,14 +2527,16 @@ void account_page_redirty(struct page *page)
+ 	struct address_space *mapping = page->mapping;
+ 
+ 	if (mapping && mapping_cap_account_dirty(mapping)) {
++		pg_data_t *pgdat = page_pgdat(page);
++		int nr = hpage_nr_pages(page);
+ 		struct inode *inode = mapping->host;
+ 		struct bdi_writeback *wb;
+ 		bool locked;
+ 
+ 		wb = unlocked_inode_to_wb_begin(inode, &locked);
+-		current->nr_dirtied--;
+-		dec_node_page_state(page, NR_DIRTIED);
+-		dec_wb_stat(wb, WB_DIRTIED);
++		current->nr_dirtied -= nr;
++		mod_node_page_state(pgdat, NR_DIRTIED, -nr);
++		add_wb_stat(wb, WB_DIRTIED, -nr);
+ 		unlocked_inode_to_wb_end(inode, locked);
+ 	}
+ }
+@@ -2713,10 +2722,15 @@ int clear_page_dirty_for_io(struct page *page)
+ 		 */
+ 		wb = unlocked_inode_to_wb_begin(inode, &locked);
+ 		if (TestClearPageDirty(page)) {
+-			mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_DIRTY);
+-			dec_node_page_state(page, NR_FILE_DIRTY);
+-			dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
+-			dec_wb_stat(wb, WB_RECLAIMABLE);
++			struct zone *zone = page_zone(page);
++			pg_data_t *pgdat = page_pgdat(page);
++			int nr = hpage_nr_pages(page);
++
++			mem_cgroup_update_page_stat(page,
++					MEM_CGROUP_STAT_DIRTY, -nr);
++			mod_node_page_state(pgdat, NR_FILE_DIRTY, -nr);
++			mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
++			add_wb_stat(wb, WB_RECLAIMABLE, -nr);
+ 			ret = 1;
+ 		}
+ 		unlocked_inode_to_wb_end(inode, locked);
+@@ -2760,10 +2774,15 @@ int test_clear_page_writeback(struct page *page)
+ 		ret = TestClearPageWriteback(page);
+ 	}
+ 	if (ret) {
+-		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
+-		dec_node_page_state(page, NR_WRITEBACK);
+-		dec_zone_page_state(page, NR_ZONE_WRITE_PENDING);
+-		inc_node_page_state(page, NR_WRITTEN);
++		struct zone *zone = page_zone(page);
++		pg_data_t *pgdat = page_pgdat(page);
++		int nr = hpage_nr_pages(page);
++
++		mem_cgroup_update_page_stat(page,
++				MEM_CGROUP_STAT_WRITEBACK, -nr);
++		mod_node_page_state(pgdat, NR_WRITEBACK, -nr);
++		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, -nr);
++		mod_node_page_state(pgdat, NR_WRITTEN, nr);
+ 	}
+ 	unlock_page_memcg(page);
+ 	return ret;
+@@ -2815,9 +2834,14 @@ int __test_set_page_writeback(struct page *page, bool keep_write)
+ 		ret = TestSetPageWriteback(page);
+ 	}
+ 	if (!ret) {
+-		mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
+-		inc_node_page_state(page, NR_WRITEBACK);
+-		inc_zone_page_state(page, NR_ZONE_WRITE_PENDING);
++		struct zone *zone = page_zone(page);
++		pg_data_t *pgdat = page_pgdat(page);
++		int nr = hpage_nr_pages(page);
++
++		mem_cgroup_update_page_stat(page,
++				MEM_CGROUP_STAT_WRITEBACK, nr);
++		mod_node_page_state(pgdat, NR_WRITEBACK, nr);
++		mod_zone_page_state(zone, NR_ZONE_WRITE_PENDING, nr);
+ 	}
+ 	unlock_page_memcg(page);
+ 	return ret;
+diff --git a/mm/rmap.c b/mm/rmap.c
+index d9daa54dc316..38f1682f8dfc 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -1154,7 +1154,7 @@ void page_add_file_rmap(struct page *page, bool compound)
+ 			goto out;
+ 	}
+ 	__mod_node_page_state(page_pgdat(page), NR_FILE_MAPPED, nr);
+-	mem_cgroup_inc_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED);
++	mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED, nr);
+ out:
+ 	unlock_page_memcg(page);
+ }
+@@ -1196,7 +1196,7 @@ static void page_remove_file_rmap(struct page *page, bool compound)
+ 	 * pte lock(a spinlock) is held, which implies preemption disabled.
+ 	 */
+ 	__mod_node_page_state(page_pgdat(page), NR_FILE_MAPPED, -nr);
+-	mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED);
++	mem_cgroup_update_page_stat(page, MEM_CGROUP_STAT_FILE_MAPPED, -nr);
+ 
+ 	if (unlikely(PageMlocked(page)))
+ 		clear_page_mlock(page);
 -- 
 2.11.0
 
