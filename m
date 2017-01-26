@@ -1,69 +1,87 @@
 From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: [PATCHv6 03/37] page-flags: relax page flag policy for few flags
-Date: Thu, 26 Jan 2017 14:57:45 +0300
-Message-ID: <20170126115819.58875-4-kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 09/37] filemap: allocate huge page in pagecache_get_page(), if allowed
+Date: Thu, 26 Jan 2017 14:57:51 +0300
+Message-ID: <20170126115819.58875-10-kirill.shutemov@linux.intel.com>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Hugh Dickins <hughd@google.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Hansen <dave.hansen@intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        Matthew Wilcox <willy@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-block@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-block-owner@vger.kernel.org>
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
-Sender: linux-block-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-These flags are in use for filesystems with backing storage: PG_error,
-PG_writeback and PG_readahead.
+Write path allocate pages using pagecache_get_page(). We should be able
+to allocate huge pages there, if it's allowed. As usually, fallback to
+small pages, if failed.
 
 Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 ---
- include/linux/page-flags.h | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ mm/filemap.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index 6b5818d6de32..b85b73cfb1b3 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -263,7 +263,7 @@ static inline int TestClearPage##uname(struct page *page) { return 0; }
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 6cba69176ea9..4e398d5e4134 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1374,13 +1374,16 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
  
- __PAGEFLAG(Locked, locked, PF_NO_TAIL)
- PAGEFLAG(Waiters, waiters, PF_ONLY_HEAD) __CLEARPAGEFLAG(Waiters, waiters, PF_ONLY_HEAD)
--PAGEFLAG(Error, error, PF_NO_COMPOUND) TESTCLEARFLAG(Error, error, PF_NO_COMPOUND)
-+PAGEFLAG(Error, error, PF_NO_TAIL) TESTCLEARFLAG(Error, error, PF_NO_TAIL)
- PAGEFLAG(Referenced, referenced, PF_HEAD)
- 	TESTCLEARFLAG(Referenced, referenced, PF_HEAD)
- 	__SETPAGEFLAG(Referenced, referenced, PF_HEAD)
-@@ -303,15 +303,15 @@ PAGEFLAG(OwnerPriv1, owner_priv_1, PF_ANY)
-  * Only test-and-set exist for PG_writeback.  The unconditional operators are
-  * risky: they bypass page accounting.
-  */
--TESTPAGEFLAG(Writeback, writeback, PF_NO_COMPOUND)
--	TESTSCFLAG(Writeback, writeback, PF_NO_COMPOUND)
-+TESTPAGEFLAG(Writeback, writeback, PF_NO_TAIL)
-+	TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
- PAGEFLAG(MappedToDisk, mappedtodisk, PF_NO_TAIL)
+ no_page:
+ 	if (!page && (fgp_flags & FGP_CREAT)) {
++		pgoff_t hoffset;
+ 		int err;
+ 		if ((fgp_flags & FGP_WRITE) && mapping_cap_account_dirty(mapping))
+ 			gfp_mask |= __GFP_WRITE;
+ 		if (fgp_flags & FGP_NOFS)
+ 			gfp_mask &= ~__GFP_FS;
  
- /* PG_readahead is only used for reads; PG_reclaim is only for writes */
- PAGEFLAG(Reclaim, reclaim, PF_NO_TAIL)
- 	TESTCLEARFLAG(Reclaim, reclaim, PF_NO_TAIL)
--PAGEFLAG(Readahead, reclaim, PF_NO_COMPOUND)
--	TESTCLEARFLAG(Readahead, reclaim, PF_NO_COMPOUND)
-+PAGEFLAG(Readahead, reclaim, PF_NO_TAIL)
-+	TESTCLEARFLAG(Readahead, reclaim, PF_NO_TAIL)
+-		page = __page_cache_alloc(gfp_mask);
++		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
++no_huge:	if (!page)
++			page = __page_cache_alloc(gfp_mask);
+ 		if (!page)
+ 			return NULL;
  
- #ifdef CONFIG_HIGHMEM
- /*
+@@ -1391,9 +1394,19 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
+ 		if (fgp_flags & FGP_ACCESSED)
+ 			__SetPageReferenced(page);
+ 
+-		err = add_to_page_cache_lru(page, mapping, offset,
++		if (PageTransHuge(page))
++			hoffset = round_down(offset, HPAGE_PMD_NR);
++		else
++			hoffset = offset;
++
++		err = add_to_page_cache_lru(page, mapping, hoffset,
+ 				gfp_mask & GFP_RECLAIM_MASK);
+ 		if (unlikely(err)) {
++			if (PageTransHuge(page)) {
++				put_page(page);
++				page = NULL;
++				goto no_huge;
++			}
+ 			put_page(page);
+ 			page = NULL;
+ 			if (err == -EEXIST)
 -- 
 2.11.0
 
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
