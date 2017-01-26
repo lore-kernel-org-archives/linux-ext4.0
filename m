@@ -1,100 +1,44 @@
-From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v2 3/3] dax: Support for transparent PUD pages for device DAX
-Date: Thu, 26 Jan 2017 10:10:00 -0700
-Message-ID: <148545060002.17912.6765687780007547551.stgit@djiang5-desk3.ch.intel.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v2 2/3] mm, x86: Add support for PUD-sized transparent
+ hugepages
+Date: Thu, 26 Jan 2017 14:38:54 -0800
+Message-ID: <20170126143854.9694811975f4c0945aba58b9@linux-foundation.org>
 References: <148545012634.17912.13951763606410303827.stgit@djiang5-desk3.ch.intel.com>
+	<148545059381.17912.8602162635537598445.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- vbabka-AlSwsSmVLrQ@public.gmane.org
-To: akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <148545012634.17912.13951763606410303827.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: dave.hansen@linux.intel.com, mawilcox@microsoft.com,
+ linux-nvdimm@ml01.01.org, linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+ vbabka@suse.cz, jack@suse.com, dan.j.williams@intel.com,
+ linux-ext4@vger.kernel.org, ross.zwisler@linux.intel.com,
+ kirill.shutemov@linux.intel.com
+To: Dave Jiang <dave.jiang@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <148545059381.17912.8602162635537598445.stgit@djiang5-desk3.ch.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Adding transparent huge PUD pages support for device DAX by adding a
-pud_fault handler.
+On Thu, 26 Jan 2017 10:09:53 -0700 Dave Jiang <dave.jiang@intel.com> wrote:
 
-Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
----
- drivers/dax/dax.c |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+> The current transparent hugepage code only supports PMDs.  This patch
+> adds support for transparent use of PUDs with DAX.  It does not include
+> support for anonymous pages. x86 support code also added.
+> 
+> Most of this patch simply parallels the work that was done for huge PMDs.
+> The only major difference is how the new ->pud_entry method in mm_walk
+> works.  The ->pmd_entry method replaces the ->pte_entry method, whereas
+> the ->pud_entry method works along with either ->pmd_entry or ->pte_entry.
+> The pagewalk code takes care of locking the PUD before calling ->pud_walk,
+> so handlers do not need to worry whether the PUD is stable.
 
-diff --git a/drivers/dax/dax.c b/drivers/dax/dax.c
-index 922ec46..b90bb30 100644
---- a/drivers/dax/dax.c
-+++ b/drivers/dax/dax.c
-@@ -493,6 +493,51 @@ static int __dax_dev_pmd_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
- 			vmf->flags & FAULT_FLAG_WRITE);
- }
- 
-+#ifdef CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD
-+static int __dax_dev_pud_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
-+{
-+	unsigned long pud_addr = vmf->address & PUD_MASK;
-+	struct device *dev = &dax_dev->dev;
-+	struct dax_region *dax_region;
-+	phys_addr_t phys;
-+	pgoff_t pgoff;
-+	pfn_t pfn;
-+
-+	if (check_vma(dax_dev, vmf->vma, __func__))
-+		return VM_FAULT_SIGBUS;
-+
-+	dax_region = dax_dev->region;
-+	if (dax_region->align > PUD_SIZE) {
-+		dev_dbg(dev, "%s: alignment > fault size\n", __func__);
-+		return VM_FAULT_SIGBUS;
-+	}
-+
-+	/* dax pud mappings require pfn_t_devmap() */
-+	if ((dax_region->pfn_flags & (PFN_DEV|PFN_MAP)) != (PFN_DEV|PFN_MAP)) {
-+		dev_dbg(dev, "%s: alignment > fault size\n", __func__);
-+		return VM_FAULT_SIGBUS;
-+	}
-+
-+	pgoff = linear_page_index(vmf->vma, pud_addr);
-+	phys = pgoff_to_phys(dax_dev, pgoff, PUD_SIZE);
-+	if (phys == -1) {
-+		dev_dbg(dev, "%s: phys_to_pgoff(%#lx) failed\n", __func__,
-+				pgoff);
-+		return VM_FAULT_SIGBUS;
-+	}
-+
-+	pfn = phys_to_pfn_t(phys, dax_region->pfn_flags);
-+
-+	return vmf_insert_pfn_pud(vmf->vma, vmf->address, vmf->pud, pfn,
-+			vmf->flags & FAULT_FLAG_WRITE);
-+}
-+#else
-+static int __dax_dev_pud_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
-+{
-+	return VM_FAULT_FALLBACK;
-+}
-+#endif /* !CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD */
-+
- static int dax_dev_fault(struct vm_fault *vmf)
- {
- 	int rc;
-@@ -512,6 +557,9 @@ static int dax_dev_fault(struct vm_fault *vmf)
- 	case FAULT_FLAG_SIZE_PMD:
- 		rc = __dax_dev_pmd_fault(dax_dev, vmf);
- 		break;
-+	case FAULT_FLAG_SIZE_PUD:
-+		rc = __dax_dev_pud_fault(dax_dev, vmf);
-+		break;
- 	default:
- 		return VM_FAULT_FALLBACK;
- 	}
+The patch adds a lot of new BUG()s and BG_ON()s.  We'll get in trouble
+if any of those triggers.  Please recheck everything and decide if we
+really really need them.  It's far better to drop a WARN and to back
+out and recover in some fashion.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
