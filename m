@@ -1,92 +1,233 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Date: Thu, 26 Jan 2017 08:44:55 +0100
-Message-ID: <20170126074455.GC8456@dhcp22.suse.cz>
-References: <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
- <20170117172925.GA2486@quack2.suse.cz>
- <20170119083956.GE30786@dhcp22.suse.cz>
- <20170119092236.GC2565@quack2.suse.cz>
- <20170119094405.GK30786@dhcp22.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+From: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Subject: [PATCHv6 04/37] mm, rmap: account file thp pages
+Date: Thu, 26 Jan 2017 14:57:46 +0300
+Message-ID: <20170126115819.58875-5-kirill.shutemov@linux.intel.com>
+References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Matthew Wilcox <willy@infradead.org>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+	linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	"Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170119094405.GK30786@dhcp22.suse.cz>
+In-Reply-To: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 19-01-17 10:44:05, Michal Hocko wrote:
-> On Thu 19-01-17 10:22:36, Jan Kara wrote:
-> > On Thu 19-01-17 09:39:56, Michal Hocko wrote:
-> > > On Tue 17-01-17 18:29:25, Jan Kara wrote:
-> > > > On Tue 17-01-17 17:16:19, Michal Hocko wrote:
-> > > > > > > But before going to play with that I am really wondering whether we need
-> > > > > > > all this with no journal at all. AFAIU what Jack told me it is the
-> > > > > > > journal lock(s) which is the biggest problem from the reclaim recursion
-> > > > > > > point of view. What would cause a deadlock in no journal mode?
-> > > > > > 
-> > > > > > We still have the original problem for why we need GFP_NOFS even in
-> > > > > > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > > > > > we don't want to recurse back into the file system's writeback path.
-> > > > > 
-> > > > > But we do not enter the writeback path from the direct reclaim. Or do
-> > > > > you mean something other than pageout()'s mapping->a_ops->writepage?
-> > > > > There is only try_to_release_page where we get back to the filesystems
-> > > > > but I do not see any NOFS protection in ext4_releasepage.
-> > > > 
-> > > > Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
-> > > > callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
-> > > > shrinkers. That's it. So the recursion possibilities are rather more limited
-> > > > than they used to be several years ago and we likely do not need as much
-> > > > GFP_NOFS protection as we used to.
-> > > 
-> > > Thanks for making my remark more clear Jack! I would just want to add
-> > > that I was playing with the patch below (it is basically
-> > > GFP_NOFS->GFP_KERNEL for all allocations which trigger warning from the
-> > > debugging patch which means they are called from within transaction) and
-> > > it didn't hit the lockdep when running xfstests both with or without the
-> > > enabled journal.
-> > > 
-> > > So am I still missing something or the nojournal mode is safe and the
-> > > current series is OK wrt. ext*?
-> > 
-> > I'm convinced the current series is OK, only real life will tell us whether
-> > we missed something or not ;)
-> 
-> I would like to extend the changelog of "jbd2: mark the transaction
-> context with the scope GFP_NOFS context".
-> 
-> "
-> Please note that setups without journal do not suffer from potential
-> recursion problems and so they do not need the scope protection because
-> neither ->releasepage nor ->evict_inode (which are the only fs entry
-> points from the direct reclaim) can reenter a locked context which is
-> doing the allocation currently.
-> "
+Let's add FileHugePages and FilePmdMapped fields into meminfo and smaps.
+It indicates how many times we allocate and map file THP.
 
-Could you comment on this Ted, please?
+Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+---
+ drivers/base/node.c    |  6 ++++++
+ fs/proc/meminfo.c      |  4 ++++
+ fs/proc/task_mmu.c     |  5 ++++-
+ include/linux/mmzone.h |  2 ++
+ mm/filemap.c           |  3 ++-
+ mm/huge_memory.c       |  5 ++++-
+ mm/page_alloc.c        |  5 +++++
+ mm/rmap.c              | 12 ++++++++----
+ mm/vmstat.c            |  2 ++
+ 9 files changed, 37 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/base/node.c b/drivers/base/node.c
+index 5548f9686016..45be0ddb84ed 100644
+--- a/drivers/base/node.c
++++ b/drivers/base/node.c
+@@ -116,6 +116,8 @@ static ssize_t node_read_meminfo(struct device *dev,
+ 		       "Node %d AnonHugePages:  %8lu kB\n"
+ 		       "Node %d ShmemHugePages: %8lu kB\n"
+ 		       "Node %d ShmemPmdMapped: %8lu kB\n"
++		       "Node %d FileHugePages: %8lu kB\n"
++		       "Node %d FilePmdMapped: %8lu kB\n"
+ #endif
+ 			,
+ 		       nid, K(node_page_state(pgdat, NR_FILE_DIRTY)),
+@@ -139,6 +141,10 @@ static ssize_t node_read_meminfo(struct device *dev,
+ 		       nid, K(node_page_state(pgdat, NR_SHMEM_THPS) *
+ 				       HPAGE_PMD_NR),
+ 		       nid, K(node_page_state(pgdat, NR_SHMEM_PMDMAPPED) *
++				       HPAGE_PMD_NR),
++		       nid, K(node_page_state(pgdat, NR_FILE_THPS) *
++				       HPAGE_PMD_NR),
++		       nid, K(node_page_state(pgdat, NR_FILE_PMDMAPPED) *
+ 				       HPAGE_PMD_NR));
+ #else
+ 		       nid, K(sum_zone_node_page_state(nid, NR_SLAB_UNRECLAIMABLE)));
+diff --git a/fs/proc/meminfo.c b/fs/proc/meminfo.c
+index 8a428498d6b2..8396843be7a7 100644
+--- a/fs/proc/meminfo.c
++++ b/fs/proc/meminfo.c
+@@ -146,6 +146,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
+ 		    global_node_page_state(NR_SHMEM_THPS) * HPAGE_PMD_NR);
+ 	show_val_kb(m, "ShmemPmdMapped: ",
+ 		    global_node_page_state(NR_SHMEM_PMDMAPPED) * HPAGE_PMD_NR);
++	show_val_kb(m, "FileHugePages: ",
++		    global_node_page_state(NR_FILE_THPS) * HPAGE_PMD_NR);
++	show_val_kb(m, "FilePmdMapped: ",
++		    global_node_page_state(NR_FILE_PMDMAPPED) * HPAGE_PMD_NR);
+ #endif
+ 
+ #ifdef CONFIG_CMA
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 8f96a49178d0..bdaf557dd953 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -442,6 +442,7 @@ struct mem_size_stats {
+ 	unsigned long anonymous;
+ 	unsigned long anonymous_thp;
+ 	unsigned long shmem_thp;
++	unsigned long file_thp;
+ 	unsigned long swap;
+ 	unsigned long shared_hugetlb;
+ 	unsigned long private_hugetlb;
+@@ -577,7 +578,7 @@ static void smaps_pmd_entry(pmd_t *pmd, unsigned long addr,
+ 	else if (is_zone_device_page(page))
+ 		/* pass */;
+ 	else
+-		VM_BUG_ON_PAGE(1, page);
++		mss->file_thp += HPAGE_PMD_SIZE;
+ 	smaps_account(mss, page, true, pmd_young(*pmd), pmd_dirty(*pmd));
+ }
+ #else
+@@ -772,6 +773,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
+ 		   "Anonymous:      %8lu kB\n"
+ 		   "AnonHugePages:  %8lu kB\n"
+ 		   "ShmemPmdMapped: %8lu kB\n"
++		   "FilePmdMapped:  %8lu kB\n"
+ 		   "Shared_Hugetlb: %8lu kB\n"
+ 		   "Private_Hugetlb: %7lu kB\n"
+ 		   "Swap:           %8lu kB\n"
+@@ -790,6 +792,7 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
+ 		   mss.anonymous >> 10,
+ 		   mss.anonymous_thp >> 10,
+ 		   mss.shmem_thp >> 10,
++		   mss.file_thp >> 10,
+ 		   mss.shared_hugetlb >> 10,
+ 		   mss.private_hugetlb >> 10,
+ 		   mss.swap >> 10,
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index 36d9896fbc1e..a29f6a9aefe4 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -163,6 +163,8 @@ enum node_stat_item {
+ 	NR_SHMEM,		/* shmem pages (included tmpfs/GEM pages) */
+ 	NR_SHMEM_THPS,
+ 	NR_SHMEM_PMDMAPPED,
++	NR_FILE_THPS,
++	NR_FILE_PMDMAPPED,
+ 	NR_ANON_THPS,
+ 	NR_UNSTABLE_NFS,	/* NFS unstable pages */
+ 	NR_VMSCAN_WRITE,
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 837a71a2a412..5c8d912e891d 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -240,7 +240,8 @@ void __delete_from_page_cache(struct page *page, void *shadow)
+ 		if (PageTransHuge(page))
+ 			__dec_node_page_state(page, NR_SHMEM_THPS);
+ 	} else {
+-		VM_BUG_ON_PAGE(PageTransHuge(page) && !PageHuge(page), page);
++		if (PageTransHuge(page) && !PageHuge(page))
++			__dec_node_page_state(page, NR_FILE_THPS);
+ 	}
+ 
+ 	/*
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index f383cb801e34..89819fe4debc 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -1942,7 +1942,10 @@ static void __split_huge_page(struct page *page, struct list_head *list,
+ 		struct radix_tree_iter iter;
+ 		void **slot;
+ 
+-		__dec_node_page_state(head, NR_SHMEM_THPS);
++		if (PageSwapBacked(page))
++			__dec_node_page_state(page, NR_SHMEM_THPS);
++		else
++			__dec_node_page_state(page, NR_FILE_THPS);
+ 
+ 		radix_tree_split(&mapping->page_tree, head->index, 0);
+ 		radix_tree_for_each_slot(slot, &mapping->page_tree, &iter,
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index d604d2596b7b..609bf5180cee 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -4337,6 +4337,8 @@ void show_free_areas(unsigned int filter)
+ #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+ 			" shmem_thp: %lukB"
+ 			" shmem_pmdmapped: %lukB"
++			" file_thp: %lukB"
++			" file_pmdmapped: %lukB"
+ 			" anon_thp: %lukB"
+ #endif
+ 			" writeback_tmp:%lukB"
+@@ -4359,6 +4361,9 @@ void show_free_areas(unsigned int filter)
+ 			K(node_page_state(pgdat, NR_SHMEM_THPS) * HPAGE_PMD_NR),
+ 			K(node_page_state(pgdat, NR_SHMEM_PMDMAPPED)
+ 					* HPAGE_PMD_NR),
++			K(node_page_state(pgdat, NR_FILE_THPS) * HPAGE_PMD_NR),
++			K(node_page_state(pgdat, NR_FILE_PMDMAPPED)
++					* HPAGE_PMD_NR),
+ 			K(node_page_state(pgdat, NR_ANON_THPS) * HPAGE_PMD_NR),
+ #endif
+ 			K(node_page_state(pgdat, NR_SHMEM)),
+diff --git a/mm/rmap.c b/mm/rmap.c
+index 8774791e2809..d9daa54dc316 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -1138,8 +1138,10 @@ void page_add_file_rmap(struct page *page, bool compound)
+ 		}
+ 		if (!atomic_inc_and_test(compound_mapcount_ptr(page)))
+ 			goto out;
+-		VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
+-		__inc_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		if (PageSwapBacked(page))
++			__inc_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		else
++			__inc_node_page_state(page, NR_FILE_PMDMAPPED);
+ 	} else {
+ 		if (PageTransCompound(page) && page_mapping(page)) {
+ 			VM_WARN_ON_ONCE(!PageLocked(page));
+@@ -1179,8 +1181,10 @@ static void page_remove_file_rmap(struct page *page, bool compound)
+ 		}
+ 		if (!atomic_add_negative(-1, compound_mapcount_ptr(page)))
+ 			goto out;
+-		VM_BUG_ON_PAGE(!PageSwapBacked(page), page);
+-		__dec_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		if (PageSwapBacked(page))
++			__dec_node_page_state(page, NR_SHMEM_PMDMAPPED);
++		else
++			__dec_node_page_state(page, NR_FILE_PMDMAPPED);
+ 	} else {
+ 		if (!atomic_add_negative(-1, &page->_mapcount))
+ 			goto out;
+diff --git a/mm/vmstat.c b/mm/vmstat.c
+index 7c28df36f50f..43b30178a73a 100644
+--- a/mm/vmstat.c
++++ b/mm/vmstat.c
+@@ -967,6 +967,8 @@ const char * const vmstat_text[] = {
+ 	"nr_shmem",
+ 	"nr_shmem_hugepages",
+ 	"nr_shmem_pmdmapped",
++	"nr_file_hugepaged",
++	"nr_file_pmdmapped",
+ 	"nr_anon_transparent_hugepages",
+ 	"nr_unstable",
+ 	"nr_vmscan_write",
 -- 
-Michal Hocko
-SUSE Labs
+2.11.0
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
