@@ -1,53 +1,69 @@
-From: Dave Jiang <dave.jiang@intel.com>
-Subject: Re: [PATCH v2 2/3] mm, x86: Add support for PUD-sized transparent
- hugepages
-Date: Thu, 26 Jan 2017 15:46:27 -0700
-Message-ID: <94209678-bb55-2085-9cc8-f47bdf754ea4@intel.com>
-References: <148545012634.17912.13951763606410303827.stgit@djiang5-desk3.ch.intel.com>
- <148545059381.17912.8602162635537598445.stgit@djiang5-desk3.ch.intel.com>
- <20170126143854.9694811975f4c0945aba58b9@linux-foundation.org>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Fri, 27 Jan 2017 01:13:18 -0500
+Message-ID: <20170127061318.xd2qxashbl4dajez@thunk.org>
+References: <20170117025607.frrcdbduthhutrzj@thunk.org>
+ <20170117082425.GD19699@dhcp22.suse.cz>
+ <20170117151817.GR19699@dhcp22.suse.cz>
+ <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: dave.hansen@linux.intel.com, mawilcox@microsoft.com,
- linux-nvdimm@ml01.01.org, linux-xfs@vger.kernel.org, linux-mm@kvack.org,
- vbabka@suse.cz, jack@suse.com, dan.j.williams@intel.com,
- linux-ext4@vger.kernel.org, ross.zwisler@linux.intel.com,
- kirill.shutemov@linux.intel.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170126143854.9694811975f4c0945aba58b9@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+        Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, djwong-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org,
+        Chris Mason <clm-b10kYP2dOMg@public.gmane.org>, David Sterba <dsterba-AlSwsSmVLrQ@public.gmane.org>,
+        ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, logfs-PCqxUs/MD9bYtjvyW6yDsg@public.gmane.org,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mtd-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
+        reiserfs-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ntfs-dev-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+        linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, LKML <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170126074455.GC8456-2MMpYkNvuYDjFM9bn6wA6Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 01/26/2017 03:38 PM, Andrew Morton wrote:
-> On Thu, 26 Jan 2017 10:09:53 -0700 Dave Jiang <dave.jiang@intel.com> wrote:
+On Thu, Jan 26, 2017 at 08:44:55AM +0100, Michal Hocko wrote:
+> > > I'm convinced the current series is OK, only real life will tell us whether
+> > > we missed something or not ;)
+> > 
+> > I would like to extend the changelog of "jbd2: mark the transaction
+> > context with the scope GFP_NOFS context".
+> > 
+> > "
+> > Please note that setups without journal do not suffer from potential
+> > recursion problems and so they do not need the scope protection because
+> > neither ->releasepage nor ->evict_inode (which are the only fs entry
+> > points from the direct reclaim) can reenter a locked context which is
+> > doing the allocation currently.
+> > "
 > 
->> The current transparent hugepage code only supports PMDs.  This patch
->> adds support for transparent use of PUDs with DAX.  It does not include
->> support for anonymous pages. x86 support code also added.
->>
->> Most of this patch simply parallels the work that was done for huge PMDs.
->> The only major difference is how the new ->pud_entry method in mm_walk
->> works.  The ->pmd_entry method replaces the ->pte_entry method, whereas
->> the ->pud_entry method works along with either ->pmd_entry or ->pte_entry.
->> The pagewalk code takes care of locking the PUD before calling ->pud_walk,
->> so handlers do not need to worry whether the PUD is stable.
-> 
-> The patch adds a lot of new BUG()s and BG_ON()s.  We'll get in trouble
-> if any of those triggers.  Please recheck everything and decide if we
-> really really need them.  It's far better to drop a WARN and to back
-> out and recover in some fashion.
-> 
+> Could you comment on this Ted, please?
 
-So I believe all the BUG() and BUG_ON() are replicated the same way that
-the existing PMD support functions do with the same behavior. If we want
-them to be different then we probably need to examine if the PMD code
-(or maybe the PTE ones as well) need to be different also. I'm open to
-suggestions from the experts on the cc list though.
+I guess....   so there still is one way this could screw us, and it's this reason for GFP_NOFS:
 
+        - to prevent from stack overflows during the reclaim because
+	          the allocation is performed from a deep context already
+
+The writepages call stack can be pretty deep.  (Especially if we're
+using ext4 in no journal mode over, say, iSCSI.)
+
+How much stack space can get consumed by a reclaim?
+
+						- Ted
+    		 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
