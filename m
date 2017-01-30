@@ -1,30 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: enable project quota reporting in debugfs
-Date: Mon, 30 Jan 2017 15:34:54 -0500
-Message-ID: <20170130203454.xcuuu2hptgfdg2t3@thunk.org>
-References: <20170110215401.GA1232@localhost.localdomain>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH] ext4: Remove unused function ext4_dax_huge_fault()
+Date: Mon, 30 Jan 2017 14:52:52 -0700
+Message-ID: <1485813172-7284-1-git-send-email-ross.zwisler@linux.intel.com>
+References: <148545058784.17912.6353162518188733642.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41298 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751062AbdA3Ue5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Jan 2017 15:34:57 -0500
-Content-Disposition: inline
-In-Reply-To: <20170110215401.GA1232@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ vbabka-AlSwsSmVLrQ@public.gmane.org
+To: akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <148545058784.17912.6353162518188733642.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 10, 2017 at 04:54:01PM -0500, Eric Whitney wrote:
-> Make the minor changes required so the list_quota and get_quota commands
-> can report project quota information.  This also fixes a debugfs
-> segfault that currently occurs when either list_quota or get_quota is
-> invoked with an unknown quota_type argument.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-
-Applied, thanks.
-
-					- Ted
+ZXh0NF9kYXhfcG1kX2ZhdWx0KCkgd2FzIHJlbmFtZWQgdG8gZXh0NF9kYXhfaHVnZV9mYXVsdCgp
+IGluIHRoaXMgY29tbWl0OgoKY29tbWl0IDdlOTBmYzBmODc4NSAoIm1tLGZzLGRheDogY2hhbmdl
+IC0+cG1kX2ZhdWx0IHRvIC0+aHVnZV9mYXVsdCIpCgpIb3dldmVyLCB0aGUgdm1fb3BlcmF0aW9u
+c19zdHJ1Y3Qgb3BzIHRhYmxlIGZvciBleHQ0IHdhcyBtb2RpZmllZCBpbiB0aGF0CmNvbW1pdCBz
+byB0aGF0IC5odWdlX2ZhdWx0IGNhbGxlZCBleHQ0X2RheF9mYXVsdCgpLCBub3QKZXh0NF9kYXhf
+aHVnZV9mYXVsdCgpLiAgVGhpcyBpcyBhY3R1YWxseSBmaW5lLCB0aG91Z2gsIHNpbmNlIGFzIG9m
+IHRoYXQKY29tbWl0IGV4dDRfZGF4X2ZhdWx0KCkgYW5kIGV4dDRfZGF4X2h1Z2VfZmF1bHQoKSBh
+cmUgaWRlbnRpY2FsLCBib3RoCmV2ZW50dWFsbHkgY2FsbGluZyBkYXhfaW9tYXBfZmF1bHQoKS4K
+ClNvLCBpbnN0ZWFkIG9mIGNoYW5naW5nIHRoZSBvcHRzIHRhYmxlIHRvIGhhdmUgLmh1Z2VfZmF1
+bHQgY2FsbApleHQ0X2RheF9odWdlX2ZhdWx0KCksIGp1c3QgbGVhdmUgaXQgY2FsbGluZyBleHQ0
+X2RheF9mYXVsdCgpIGFuZCByZW1vdmUKdGhlIHVudXNlZCBmdW5jdGlvbi4KClRoaXMgZml4IGFs
+c28gcXVpZXRzIHRoZSBmb2xsb3dpbmcgY29tcGlsYXRpb24gd2FybmluZzoKCi9leHQ0L2ZpbGUu
+YzoyNzk6MTogd2FybmluZzog4oCYZXh0NF9kYXhfaHVnZV9mYXVsdOKAmSBkZWZpbmVkIGJ1dCBu
+b3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dCiBleHQ0X2RheF9odWdlX2ZhdWx0KHN0cnVjdCB2
+bV9mYXVsdCAqdm1mKQoKU2lnbmVkLW9mZi1ieTogUm9zcyBad2lzbGVyIDxyb3NzLnp3aXNsZXJA
+bGludXguaW50ZWwuY29tPgpGaXhlczogN2U5MGZjMGY4Nzg1ICgibW0sZnMsZGF4OiBjaGFuZ2Ug
+LT5wbWRfZmF1bHQgdG8gLT5odWdlX2ZhdWx0IikKQ2M6IERhdmUgSmlhbmcgPGRhdmUuamlhbmdA
+aW50ZWwuY29tPgotLS0KRmVlbCBmcmVlIHRvIHNxdWFzaCB3aXRoIDdlOTBmYzBmODc4NSBpZiB0
+aGF0J3MgYmVzdC4KClRoZSBjb21taXQgSUQgb2YgdGhlIG9yaWdpbmFsIHBhdGNoIGNvbWVzIGZy
+b20gbW1vdHMvbWFzdGVyIHdoaWNoIGlzCmN1cnJlbnRseSBhdCB2NC4xMC1yYzUtbW1vdHMtMjAx
+Ny0wMS0yNi0xNS00OS4KLS0tCiBmcy9leHQ0L2ZpbGUuYyB8IDIxIC0tLS0tLS0tLS0tLS0tLS0t
+LS0tLQogMSBmaWxlIGNoYW5nZWQsIDIxIGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL2V4
+dDQvZmlsZS5jIGIvZnMvZXh0NC9maWxlLmMKaW5kZXggZWQyMmQyMC4uNTFkNzE1NSAxMDA2NDQK
+LS0tIGEvZnMvZXh0NC9maWxlLmMKKysrIGIvZnMvZXh0NC9maWxlLmMKQEAgLTI3NSwyNyArMjc1
+LDYgQEAgc3RhdGljIGludCBleHQ0X2RheF9mYXVsdChzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIAly
+ZXR1cm4gcmVzdWx0OwogfQogCi1zdGF0aWMgaW50Ci1leHQ0X2RheF9odWdlX2ZhdWx0KHN0cnVj
+dCB2bV9mYXVsdCAqdm1mKQotewotCWludCByZXN1bHQ7Ci0Jc3RydWN0IGlub2RlICppbm9kZSA9
+IGZpbGVfaW5vZGUodm1mLT52bWEtPnZtX2ZpbGUpOwotCXN0cnVjdCBzdXBlcl9ibG9jayAqc2Ig
+PSBpbm9kZS0+aV9zYjsKLQlib29sIHdyaXRlID0gdm1mLT5mbGFncyAmIEZBVUxUX0ZMQUdfV1JJ
+VEU7Ci0KLQlpZiAod3JpdGUpIHsKLQkJc2Jfc3RhcnRfcGFnZWZhdWx0KHNiKTsKLQkJZmlsZV91
+cGRhdGVfdGltZSh2bWYtPnZtYS0+dm1fZmlsZSk7Ci0JfQotCWRvd25fcmVhZCgmRVhUNF9JKGlu
+b2RlKS0+aV9tbWFwX3NlbSk7Ci0JcmVzdWx0ID0gZGF4X2lvbWFwX2ZhdWx0KHZtZiwgJmV4dDRf
+aW9tYXBfb3BzKTsKLQl1cF9yZWFkKCZFWFQ0X0koaW5vZGUpLT5pX21tYXBfc2VtKTsKLQlpZiAo
+d3JpdGUpCi0JCXNiX2VuZF9wYWdlZmF1bHQoc2IpOwotCi0JcmV0dXJuIHJlc3VsdDsKLX0KLQog
+LyoKICAqIEhhbmRsZSB3cml0ZSBmYXVsdCBmb3IgVk1fTUlYRURNQVAgbWFwcGluZ3MuIFNpbWls
+YXJseSB0byBleHQ0X2RheF9mYXVsdCgpCiAgKiBoYW5kbGVyIHdlIGNoZWNrIGZvciByYWNlcyBh
+Z2Fpc3QgdHJ1bmNhdGUuIE5vdGUgdGhhdCBzaW5jZSB3ZSBjeWNsZSB0aHJvdWdoCi0tIAoyLjcu
+NAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KTGludXgt
+bnZkaW1tIG1haWxpbmcgbGlzdApMaW51eC1udmRpbW1AbGlzdHMuMDEub3JnCmh0dHBzOi8vbGlz
+dHMuMDEub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtbnZkaW1tCg==
