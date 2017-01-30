@@ -1,33 +1,30 @@
-From: Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH 13/14] ext4: use atomic_dec_not_zero()
-Date: Mon, 30 Jan 2017 19:48:39 +0100
-Message-ID: <20170130184839.19191-1-fabf@skynet.be>
-Cc: linux-kernel@vger.kernel.org, tytso@mit.edu,
-        linux-ext4@vger.kernel.org, Fabian Frederick <fabf@skynet.be>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: enable project quota reporting in debugfs
+Date: Mon, 30 Jan 2017 15:34:54 -0500
+Message-ID: <20170130203454.xcuuu2hptgfdg2t3@thunk.org>
+References: <20170110215401.GA1232@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41298 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751062AbdA3Ue5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 30 Jan 2017 15:34:57 -0500
+Content-Disposition: inline
+In-Reply-To: <20170110215401.GA1232@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-instead of atomic_add_unless(value, -1, 0)
+On Tue, Jan 10, 2017 at 04:54:01PM -0500, Eric Whitney wrote:
+> Make the minor changes required so the list_quota and get_quota commands
+> can report project quota information.  This also fixes a debugfs
+> segfault that currently occurs when either list_quota or get_quota is
+> invoked with an unknown quota_type argument.
+> 
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/ext4/ext4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 164a2e0..3184c25 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2916,7 +2916,7 @@ static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
- 		 * We're able to grab the lock right away, so drop the
- 		 * lock contention counter.
- 		 */
--		atomic_add_unless(&EXT4_SB(sb)->s_lock_busy, -1, 0);
-+		atomic_dec_not_zero(&EXT4_SB(sb)->s_lock_busy);
- 	else {
- 		/*
- 		 * The lock is busy, so bump the contention counter,
--- 
-2.9.3
+					- Ted
