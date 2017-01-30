@@ -1,34 +1,73 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 193661] xattr  ext4_xattr_block_find, bad block on cleanly
- formatted ext4 partition
-Date: Mon, 30 Jan 2017 16:55:42 +0000
-Message-ID: <bug-193661-13602-dqn88TUWKf@https.bugzilla.kernel.org/>
-References: <bug-193661-13602@https.bugzilla.kernel.org/>
+From: Fabian Frederick <fabf@skynet.be>
+Subject: [PATCH 00/14] use atomic_dec_not_zero()
+Date: Mon, 30 Jan 2017 19:39:20 +0100
+Message-ID: <20170130183920.12476-1-fabf@skynet.be>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:39290 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751434AbdA3Qzq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Jan 2017 11:55:46 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id 9066420268
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2017 16:55:43 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id 8C6DC20254
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Jan 2017 16:55:42 +0000 (UTC)
-In-Reply-To: <bug-193661-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-s390@vger.kernel.org, linux-pm@vger.kernel.org,
+	kgdb-bugreport@lists.sourceforge.net,
+	linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+	Akinobu Mita <akinobu.mita@gmail.com>, linux-xfs@vger.kernel.org,
+	Fabian Frederick <fabf@skynet.be>,
+	openipmi-developer@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, linux-media@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <openipmi-developer-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/openipmi-developer>,
+	<mailto:openipmi-developer-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=openipmi-developer>
+List-Post: <mailto:openipmi-developer@lists.sourceforge.net>
+List-Help: <mailto:openipmi-developer-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/openipmi-developer>,
+	<mailto:openipmi-developer-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: openipmi-developer-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=193661
+complementary definition to atomic_inc_not_zero() featured in
+lib/fault-inject.c. This small patchset moves it to
+include/linux/atomic.h using it instead of
+atomic_add_unless(value, -1, 0)
 
---- Comment #7 from Colin Ian King <colin.king@canonical.com> ---
-An upload to jessie-backports is doable, but I'm going to push another release
-at the end of this week.
+s390 patches were not compile-tested.
+
+Fabian Frederick (14):
+  locking/atomic: import atomic_dec_not_zero()
+  drm/exynos: use atomic_dec_not_zero()
+  drm/omap: use atomic_dec_not_zero()
+  m5mols: use atomic_dec_not_zero()
+  omap3isp: use atomic_dec_not_zero()
+  s390/qeth: use atomic_dec_not_zero()
+  PM / RUNTIME: use atomic_dec_not_zero()
+  ipmi: use atomic_dec_not_zero()
+  kdb: use atomic_dec_not_zero()
+  PM / Hibernate: use atomic_dec_not_zero()
+  PM: use atomic_dec_not_zero()
+  s390/topology: use atomic_dec_not_zero()
+  ext4: use atomic_dec_not_zero()
+  xfs: use atomic_dec_not_zero()
+
+ arch/s390/kernel/topology.c               | 2 +-
+ drivers/base/power/runtime.c              | 4 ++--
+ drivers/char/ipmi/ipmi_msghandler.c       | 2 +-
+ drivers/gpu/drm/exynos/exynos_drm_fimd.c  | 2 +-
+ drivers/gpu/drm/omapdrm/omap_dmm_tiler.c  | 2 +-
+ drivers/media/i2c/m5mols/m5mols_core.c    | 2 +-
+ drivers/media/platform/omap3isp/ispstat.c | 2 +-
+ drivers/s390/net/qeth_core_main.c         | 2 +-
+ fs/ext4/ext4.h                            | 2 +-
+ fs/xfs/xfs_buf.c                          | 2 +-
+ include/linux/atomic.h                    | 2 ++
+ kernel/debug/kdb/kdb_main.c               | 2 +-
+ kernel/power/hibernate.c                  | 4 ++--
+ kernel/power/user.c                       | 2 +-
+ lib/fault-inject.c                        | 2 --
+ 15 files changed, 17 insertions(+), 17 deletions(-)
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.3
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, SlashDot.org! http://sdm.link/slashdot
