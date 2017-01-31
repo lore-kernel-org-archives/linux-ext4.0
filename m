@@ -1,46 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: debugfs: ls -p can print invalid characters
-Date: Mon, 30 Jan 2017 22:34:22 -0500
-Message-ID: <20170131033422.nvrye3qnmqrc7kpj@thunk.org>
-References: <1482347505-11200-1-git-send-email-samuel.voss@rockwellcollins.com>
+Subject: Re: [PATCH] debugfs: increase inode reference count after link
+Date: Mon, 30 Jan 2017 22:48:52 -0500
+Message-ID: <20170131034852.snc2xdfo26kg3icg@thunk.org>
+References: <CAO3qy=EnXgiYPFDPkksSzGAaYms2KpNgAb55S_=GryJCRyhg5A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
-To: Samuel Voss <samuel.voss@rockwellcollins.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org
+To: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47240 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47474 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750819AbdAaDeY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Jan 2017 22:34:24 -0500
+        id S1750793AbdAaDs4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 30 Jan 2017 22:48:56 -0500
 Content-Disposition: inline
-In-Reply-To: <1482347505-11200-1-git-send-email-samuel.voss@rockwellcollins.com>
+In-Reply-To: <CAO3qy=EnXgiYPFDPkksSzGAaYms2KpNgAb55S_=GryJCRyhg5A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 21, 2016 at 01:11:45PM -0600, Samuel Voss wrote:
-> From: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
-> 
-> The recent modification to the "ls -p" function can print out characters
-> that the other ls functions do not print out. Adding a slight change to
-> use the same print function for all of the ls options.
-> 
-> Signed-off-by: Clayton Shotwell <clayton.shotwell@rockwellcollins.com>
-> Signed-off-by: Samuel Voss <samuel.voss@rockwellcollins.com>
+On Fri, Jan 20, 2017 at 07:53:42PM +0300, Artem Blagodarenko wrote:
+> Inode reference count is not increased after debugfs link command.
+> This leads to inconsistent file system state.
 
-This was deliberate.  The "-p" option for debugfs's ls command is
-intended for used when piping to a shell script, and the use of '/' is
-because it is _rare_ for that character to show up file names.
+That was deliberate.  Originally the "link" and "unlink" commands were
+designed as a low-level command that didn't change the link count.
+There are *many* commands in debugfs that can lead to inconsistent
+file system state.  In fact, the original raison d'être of debugfs was
+to create corrupted file systems to test e2fsck.  :-)
 
-If I were doing it all over again (ls -p has been around for a very
-long time), I'd use the just-added print_c_string() function in which
-encodes special characters using C strings (e.g., \001\000\n\t, etc.)
-and then use an unencoded "RS" ASCII character (\036) as the record
-separator between each field.  But since there are existing
-shell/perl/python scripts and other programs out there depending on
-the output of debugfs's ls -p, I don't want to change the output at
-this point.
+The "rm" command is user-friendly command that I added later which
+decrements the link count and deallocates the blocks if the link count
+goes to zero.
+
+I never got around to adding a user-friendly 'ln' command which
+creates the directory entry and also increments the link count.
+That's mainly because no one has really needed or wanted that
+functionality.  Or at least, no one has requested it up until now.
+
+If you really want it, probably the best thing to do would be unalias
+the "link" and "ln" commands, and make the "ln" command the
+user-friendly command that works like the /bin/ln command.
 
 Cheers,
 
-       	   				- Ted
+						- Ted
