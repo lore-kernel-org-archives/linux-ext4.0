@@ -1,88 +1,93 @@
-From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v2 1/3] mm,fs,dax: Change ->pmd_fault to ->huge_fault
-Date: Mon, 30 Jan 2017 17:15:40 -0700
-Message-ID: <79fcc6fe-77c5-7145-cf24-4a04df482803@intel.com>
-References: <148545012634.17912.13951763606410303827.stgit@djiang5-desk3.ch.intel.com>
- <148545058784.17912.6353162518188733642.stgit@djiang5-desk3.ch.intel.com>
- <20170130234321.GA26702@linux.intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [ANNOUNCE] xfs-linux: xfs-4.11-merge updated to 1dbba08
+Date: Mon, 30 Jan 2017 16:48:54 -0800
+Message-ID: <20170131004854.GE9134@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vbabka-AlSwsSmVLrQ@public.gmane.org
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170130234321.GA26702-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: linux-xfs <linux-xfs@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:47217 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753161AbdAaAvL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jan 2017 19:51:11 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 01/30/2017 04:43 PM, Ross Zwisler wrote:
-> On Thu, Jan 26, 2017 at 10:09:47AM -0700, Dave Jiang wrote:
->> In preparation for adding the ability to handle PUD pages, convert
->> ->pmd_fault to ->huge_fault.  The vm_fault structure is extended to
->> include a union of the different page table pointers that may be needed,
->> and three flag bits are reserved to indicate which type of pointer is in
->> the union.
->>
->> [DJ: Forward ported to 4.10-rc]
->>
->> Signed-off-by: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
->> Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-> 
-> Hey Dave,
-> 
-> Running xfstests generic/030 with XFS + DAX gives me the following kernel BUG,
-> which I bisected to this commit:
-> 
-> [  370.086205] ------------[ cut here ]------------
-> [  370.087182] kernel BUG at arch/x86/mm/fault.c:1038!
-> [  370.088336] invalid opcode: 0000 [#3] PREEMPT SMP
-> [  370.089073] Modules linked in: dax_pmem nd_pmem dax nd_btt nd_e820 libnvdimm
-> [  370.090212] CPU: 0 PID: 12415 Comm: xfs_io Tainted: G      D         4.10.0-rc5-mm1-00202-g7e90fc0 #10
-> [  370.091648] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.1-1.fc24 04/01/2014
-> [  370.092946] task: ffff8800ac4f8000 task.stack: ffffc9001148c000
-> [  370.093769] RIP: 0010:mm_fault_error+0x15e/0x190
-> [  370.094410] RSP: 0000:ffffc9001148fe60 EFLAGS: 00010246
-> [  370.095135] RAX: 0000000000000000 RBX: 0000000000000006 RCX: ffff8800ac4f8000
-> [  370.096107] RDX: 00007f111c8e6400 RSI: 0000000000000006 RDI: ffffc9001148ff58
-> [  370.097087] RBP: ffffc9001148fe88 R08: 0000000000000000 R09: ffff880510bd3300
-> [  370.098072] R10: ffff8800ac4f8000 R11: 0000000000000000 R12: 00007f111c8e6400
-> [  370.099057] R13: 00007f111c8e6400 R14: ffff880510bd3300 R15: 0000000000000055
-> [  370.100135] FS:  00007f111d95e700(0000) GS:ffff880514800000(0000) knlGS:0000000000000000
-> [  370.101238] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [  370.102021] CR2: 00007f111c8e6400 CR3: 00000000add00000 CR4: 00000000001406f0
-> [  370.103189] Call Trace:
-> [  370.103537]  __do_page_fault+0x54e/0x590
-> [  370.104090]  trace_do_page_fault+0x58/0x2c0
-> [  370.104675]  do_async_page_fault+0x2c/0x90
-> [  370.105342]  async_page_fault+0x28/0x30
-> [  370.106044] RIP: 0033:0x405e9a
-> [  370.106470] RSP: 002b:00007fffb7f30590 EFLAGS: 00010287
-> [  370.107185] RAX: 00000000004e6400 RBX: 0000000000000057 RCX: 00000000004e7000
-> [  370.108155] RDX: 00007f111c400000 RSI: 00000000004e7000 RDI: 0000000001c35080
-> [  370.109157] RBP: 00000000004e6400 R08: 0000000000000014 R09: 1999999999999999
-> [  370.110158] R10: 00007f111d2dc200 R11: 0000000000000000 R12: 0000000001c32fc0
-> [  370.111165] R13: 0000000000000000 R14: 0000000000000c00 R15: 0000000000000005
-> [  370.112171] Code: 07 00 00 00 e8 a4 ee ff ff e9 11 ff ff ff 4c 89 ea 48 89 de 45 31 c0 31 c9 e8 8f f7 ff ff 48 83 c4 08 5b 41 5c 41 5d 41 5e 5d c3 <0f> 0b 41 8b 94 24 80 04 00 00 49 8d b4 24 b0 06 00 00 4c 89 e9 
-> [  370.114823] RIP: mm_fault_error+0x15e/0x190 RSP: ffffc9001148fe60
-> [  370.115722] ---[ end trace 2ce10d930638254d ]---
-> 
-> 
-> Can you let me know if you can reproduce this?
+Hi folks,
 
-I reproduced. Will debug.
+The xfs-4.11-merge branch of the xfs-linux repository at:
 
-> 
-> Thanks,
-> - Ross
-> 
+	git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+
+has just been updated.
+
+Patches often get missed, so please check if your outstanding
+patches were in this update. If they have not been in this update,
+please resubmit them to linux-xfs@vger.kernel.org so they can be
+picked up in the next update.
+
+** NOTE **
+This branch is merely a rollup of the fixes I've collected so far for
+4.11.  The merge window is probably still a ways away, but I thought I'd
+get things started ahead of time.  If you've sent a patch and it hasn't
+been reviewed, you still have time.  If you've sent a patch, had it
+reviewed, and it still isn't in either 4.10 or this branch, please
+resend it to the list.
+
+** NOTE **
+Also cc'ing the ext4 list because of the dax changes within.
+
+The new head of the xfs-4.11-merge branch is commit:
+
+1dbba08 xfs: remove unused full argument from bmap
+
+New Commits:
+
+Brian Foster (3):
+      [a36b926] xfs: pull up iolock from xfs_free_eofblocks()
+      [c315509] xfs: sync eofblocks scans under iolock are livelock prone
+      [e4229d6] xfs: fix eofblocks race with file extending async dio writes
+
+Christoph Hellwig (1):
+      [8ff6daa] iomap: constify struct iomap_ops
+
+Eric Sandeen (5):
+      [f88ae46] xfs: glean crc status from mp not flags in xfs_btree_init_block_int
+      [af7d20f] xfs: make xfs_btree_magic more generic
+      [b6f41e4] xfs: remove boilerplate around xfs_btree_init_block
+      [64f61ab] xfs: remove unused struct declarations
+      [1dbba08] xfs: remove unused full argument from bmap
+
+
+Code Diffstat:
+
+ fs/dax.c                        |  6 ++---
+ fs/ext2/ext2.h                  |  2 +-
+ fs/ext2/inode.c                 |  4 +--
+ fs/ext4/ext4.h                  |  2 +-
+ fs/ext4/inode.c                 |  2 +-
+ fs/internal.h                   |  2 +-
+ fs/iomap.c                      | 18 ++++++-------
+ fs/xfs/libxfs/xfs_bmap.c        | 19 +++----------
+ fs/xfs/libxfs/xfs_bmap_btree.c  | 10 ++-----
+ fs/xfs/libxfs/xfs_btree.c       | 45 ++++++++++++++++++++++---------
+ fs/xfs/libxfs/xfs_btree.h       |  6 +++--
+ fs/xfs/libxfs/xfs_log_recover.h |  1 -
+ fs/xfs/xfs_bmap_util.c          | 48 ++++++++++++++-------------------
+ fs/xfs/xfs_bmap_util.h          |  5 ++--
+ fs/xfs/xfs_file.c               | 13 ++++++---
+ fs/xfs/xfs_fsops.c              | 39 +++++++--------------------
+ fs/xfs/xfs_icache.c             | 59 ++++++++++++-----------------------------
+ fs/xfs/xfs_icache.h             |  2 --
+ fs/xfs/xfs_inode.c              | 51 +++++++++++++++++++----------------
+ fs/xfs/xfs_ioctl.c              |  4 +--
+ fs/xfs/xfs_iomap.c              |  4 +--
+ fs/xfs/xfs_iomap.h              |  4 +--
+ fs/xfs/xfs_log.h                |  1 -
+ fs/xfs/xfs_trace.h              |  1 -
+ fs/xfs/xfs_trans.h              |  1 -
+ include/linux/dax.h             |  8 +++---
+ include/linux/iomap.h           | 14 +++++-----
+ 27 files changed, 162 insertions(+), 209 deletions(-)
