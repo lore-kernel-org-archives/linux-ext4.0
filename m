@@ -1,46 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] debugfs: increase inode reference count after link
-Date: Mon, 30 Jan 2017 22:48:52 -0500
-Message-ID: <20170131034852.snc2xdfo26kg3icg@thunk.org>
-References: <CAO3qy=EnXgiYPFDPkksSzGAaYms2KpNgAb55S_=GryJCRyhg5A@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org
-To: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47474 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750793AbdAaDs4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Jan 2017 22:48:56 -0500
-Content-Disposition: inline
-In-Reply-To: <CAO3qy=EnXgiYPFDPkksSzGAaYms2KpNgAb55S_=GryJCRyhg5A@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Sahitya Tummala <stummala@codeaurora.org>
+Subject: [PATCH] jbd2: Fix use after free in kjournald2()
+Date: Tue, 31 Jan 2017 20:08:57 +0530
+Message-ID: <1485873537-32514-1-git-send-email-stummala@codeaurora.org>
+Cc: Sahitya Tummala <stummala@codeaurora.org>
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jan 20, 2017 at 07:53:42PM +0300, Artem Blagodarenko wrote:
-> Inode reference count is not increased after debugfs link command.
-> This leads to inconsistent file system state.
+Below is the synchronization issue between unmount and kjournald2
+contexts, which results into use after free issue in kjournald2().
+Fix this issue by using journal->j_state_lock to synchronize the
+wait_event() done in journal_kill_thread() and the wake_up() done
+in kjournald2().
 
-That was deliberate.  Originally the "link" and "unlink" commands were
-designed as a low-level command that didn't change the link count.
-There are *many* commands in debugfs that can lead to inconsistent
-file system state.  In fact, the original raison d'être of debugfs was
-to create corrupted file systems to test e2fsck.  :-)
+TASK 1:
+umount cmd:
+   |--jbd2_journal_destroy() {
+       |--journal_kill_thread() {
+            write_lock(&journal->j_state_lock);
+	    journal->j_flags |= JBD2_UNMOUNT;
+	    ...
+	    write_unlock(&journal->j_state_lock);
+	    wake_up(&journal->j_wait_commit);	   TASK 2 wakes up here:
+	    					   kjournald2() {
+						     ...
+						     checks JBD2_UNMOUNT flag and calls goto end-loop;
+						     ...
+						     end_loop:
+						       write_unlock(&journal->j_state_lock);
+						       journal->j_task = NULL; --> If this thread gets
+						       pre-empted here, then TASK 1 wait_event will
+						       exit even before this thread is completely
+						       done.
+	    wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
+	    ...
+	    write_lock(&journal->j_state_lock);
+	    write_unlock(&journal->j_state_lock);
+	  }
+       |--kfree(journal);
+     }
+}
+						       wake_up(&journal->j_wait_done_commit); --> this step
+						       now results into use after free issue.
+						   }
 
-The "rm" command is user-friendly command that I added later which
-decrements the link count and deallocates the blocks if the link count
-goes to zero.
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+---
+ fs/jbd2/journal.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-I never got around to adding a user-friendly 'ln' command which
-creates the directory entry and also increments the link count.
-That's mainly because no one has really needed or wanted that
-functionality.  Or at least, no one has requested it up until now.
-
-If you really want it, probably the best thing to do would be unalias
-the "link" and "ln" commands, and make the "ln" command the
-user-friendly command that works like the /bin/ln command.
-
-Cheers,
-
-						- Ted
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index a097048..f5cd3c0 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -278,9 +278,11 @@ static int kjournald2(void *arg)
+ end_loop:
+ 	write_unlock(&journal->j_state_lock);
+ 	del_timer_sync(&journal->j_commit_timer);
++	write_lock(&journal->j_state_lock);
+ 	journal->j_task = NULL;
+ 	wake_up(&journal->j_wait_done_commit);
+ 	jbd_debug(1, "Journal thread exiting.\n");
++	write_unlock(&journal->j_state_lock);
+ 	return 0;
+ }
+ 
+-- 
+Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
