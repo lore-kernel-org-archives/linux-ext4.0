@@ -1,73 +1,32 @@
-From: Sahitya Tummala <stummala@codeaurora.org>
-Subject: [PATCH] jbd2: Fix use after free in kjournald2()
-Date: Wed,  1 Feb 2017 23:01:51 +0530
-Message-ID: <1485970311-22014-1-git-send-email-stummala@codeaurora.org>
-Cc: Sahitya Tummala <stummala@codeaurora.org>
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix data corruption in data=journal mode
+Date: Wed, 1 Feb 2017 14:06:49 -0500
+Message-ID: <20170201190649.yi7yiavisbi2zmpe@thunk.org>
+References: <20170110123753.8405-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>,
+        stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170110123753.8405-1-jack@suse.cz>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Below is the synchronization issue between unmount and kjournald2
-contexts, which results into use after free issue in kjournald2().
-Fix this issue by using journal->j_state_lock to synchronize the
-wait_event() done in journal_kill_thread() and the wake_up() done
-in kjournald2().
+On Tue, Jan 10, 2017 at 01:37:53PM +0100, Jan Kara wrote:
+> ext4_journalled_write_end() did not propely handle all the cases when
+> generic_perform_write() did not copy all the data into the target page
+> and could mark buffers with uninitialized contents as uptodate and dirty
+> leading to possible data corruption (which would be quickly fixed by
+> generic_perform_write() retrying the write but still). Fix the problem
+> by carefully handling the case when the page that is written to is not
+> uptodate.
+> 
+> CC: stable@vger.kernel.org
+> Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-TASK 1:
-umount cmd:
-   |--jbd2_journal_destroy() {
-       |--journal_kill_thread() {
-            write_lock(&journal->j_state_lock);
-	    journal->j_flags |= JBD2_UNMOUNT;
-	    ...
-	    write_unlock(&journal->j_state_lock);
-	    wake_up(&journal->j_wait_commit);	   TASK 2 wakes up here:
-	    					   kjournald2() {
-						     ...
-						     checks JBD2_UNMOUNT flag and calls goto end-loop;
-						     ...
-						     end_loop:
-						       write_unlock(&journal->j_state_lock);
-						       journal->j_task = NULL; --> If this thread gets
-						       pre-empted here, then TASK 1 wait_event will
-						       exit even before this thread is completely
-						       done.
-	    wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
-	    ...
-	    write_lock(&journal->j_state_lock);
-	    write_unlock(&journal->j_state_lock);
-	  }
-       |--kfree(journal);
-     }
-}
-						       wake_up(&journal->j_wait_done_commit); --> this step
-						       now results into use after free issue.
-						   }
+Thanks, applied.
 
-Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
----
- fs/jbd2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index a097048..85d1483 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -276,11 +276,11 @@ static int kjournald2(void *arg)
- 	goto loop;
- 
- end_loop:
--	write_unlock(&journal->j_state_lock);
- 	del_timer_sync(&journal->j_commit_timer);
- 	journal->j_task = NULL;
- 	wake_up(&journal->j_wait_done_commit);
- 	jbd_debug(1, "Journal thread exiting.\n");
-+	write_unlock(&journal->j_state_lock);
- 	return 0;
- }
- 
--- 
-Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
-Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
+					- Ted
