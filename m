@@ -1,26 +1,73 @@
-From: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: =?utf-8?Q?=D0=9A=D0=9B=D0=98=D0=95=D0=9D=D0=A2=D0=A1=D0?=
-        =?utf-8?Q?=9A=D0=98=D0=95_=D0=91=D0=90=D0=97=D0=AB_=D1=82?=
-        =?utf-8?Q?=D0=B5=D0=BB_+79139230330_Skype=3A_prodawez390_?=
-        =?utf-8?Q?Email=3A_prodawez393=40gmail=2Ecom_=D0=A3=D0=B7?=
-        =?utf-8?Q?=D0=BD=D0=B0=D0=B9=D1=82=D0=B5_=D0=BF=D0=BE=D0?=
-        =?utf-8?Q?=B4=D1=80=D0=BE=D0=B1=D0=BD=D0=B5=D0=B5!?=
-Date: Wed, 1 Feb 2017 23:57:08 +0300
-Message-ID: <DB21A1DA72A6883BE7E2AB1703BC531A@vger.kernel.org>
-Reply-To: "linux-ext4@vger.kernel.org" <prodawez393@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8";
-Content-Transfer-Encoding: 8BIT
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 200-232-115-34.customer.tdatabrasil.net.br ([200.232.115.34]:50426
-        "EHLO monitor.cometa.local" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1753236AbdBARDJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Feb 2017 12:03:09 -0500
-Received: from 200.182.102.5 (localhost [127.0.0.1])
-        by monitor.cometa.local (Postfix) with SMTP id 6E53378AB13
-        for <linux-ext4@vger.kernel.org>; Wed,  1 Feb 2017 14:56:01 -0200 (BRST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Sahitya Tummala <stummala@codeaurora.org>
+Subject: [PATCH] jbd2: Fix use after free in kjournald2()
+Date: Wed,  1 Feb 2017 23:01:51 +0530
+Message-ID: <1485970311-22014-1-git-send-email-stummala@codeaurora.org>
+Cc: Sahitya Tummala <stummala@codeaurora.org>
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-КЛИЕНТСКИЕ БАЗЫ тел +79139230330 Skype: prodawez390 Email: prodawez393@gmail.com Узнайте подробнее!
+Below is the synchronization issue between unmount and kjournald2
+contexts, which results into use after free issue in kjournald2().
+Fix this issue by using journal->j_state_lock to synchronize the
+wait_event() done in journal_kill_thread() and the wake_up() done
+in kjournald2().
+
+TASK 1:
+umount cmd:
+   |--jbd2_journal_destroy() {
+       |--journal_kill_thread() {
+            write_lock(&journal->j_state_lock);
+	    journal->j_flags |= JBD2_UNMOUNT;
+	    ...
+	    write_unlock(&journal->j_state_lock);
+	    wake_up(&journal->j_wait_commit);	   TASK 2 wakes up here:
+	    					   kjournald2() {
+						     ...
+						     checks JBD2_UNMOUNT flag and calls goto end-loop;
+						     ...
+						     end_loop:
+						       write_unlock(&journal->j_state_lock);
+						       journal->j_task = NULL; --> If this thread gets
+						       pre-empted here, then TASK 1 wait_event will
+						       exit even before this thread is completely
+						       done.
+	    wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
+	    ...
+	    write_lock(&journal->j_state_lock);
+	    write_unlock(&journal->j_state_lock);
+	  }
+       |--kfree(journal);
+     }
+}
+						       wake_up(&journal->j_wait_done_commit); --> this step
+						       now results into use after free issue.
+						   }
+
+Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+---
+ fs/jbd2/journal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index a097048..85d1483 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -276,11 +276,11 @@ static int kjournald2(void *arg)
+ 	goto loop;
+ 
+ end_loop:
+-	write_unlock(&journal->j_state_lock);
+ 	del_timer_sync(&journal->j_commit_timer);
+ 	journal->j_task = NULL;
+ 	wake_up(&journal->j_wait_done_commit);
+ 	jbd_debug(1, "Journal thread exiting.\n");
++	write_unlock(&journal->j_state_lock);
+ 	return 0;
+ }
+ 
+-- 
+Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
