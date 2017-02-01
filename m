@@ -1,95 +1,100 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 193431] New: 512 byte inodes + inline_data + journal_data ==
- segfaults/buserrors in userspace mmap
-Date: Sat, 28 Jan 2017 12:38:26 +0000
-Message-ID: <bug-193431-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Release of e2fsprogs 1.43.4
+Date: Tue, 31 Jan 2017 22:02:01 -0500
+Message-ID: <20170201030201.ftrd5uglfzuuhiro@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:41750 "EHLO mail.kernel.org"
+Received: from imap.thunk.org ([74.207.234.97]:42962 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751473AbdA1Mtb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 28 Jan 2017 07:49:31 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id BD63F203E3
-        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2017 12:38:29 +0000 (UTC)
-Received: from bugzilla1.web.kernel.org (bugzilla1.web.kernel.org [172.20.200.51])
-        by mail.kernel.org (Postfix) with ESMTP id 7CE5820380
-        for <linux-ext4@vger.kernel.org>; Sat, 28 Jan 2017 12:38:27 +0000 (UTC)
+        id S1750879AbdBADCH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 31 Jan 2017 22:02:07 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=193431
+I've released e2fsprogs 1.43.4 in all of the usual places; it's tagged
+in the git trees on git.kernel.org, github, and sourceforge, and
+available for download at:
 
-            Bug ID: 193431
-           Summary: 512 byte inodes + inline_data + journal_data ==
-                    segfaults/buserrors in userspace mmap
-           Product: File System
-           Version: 2.5
-    Kernel Version: Multiple ( tested on 3.16, 4.1 and 4.9 )
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: rabbit@rabbit.us
-        Regression: No
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.4
 
-Created attachment 253361
-  --> https://bugzilla.kernel.org/attachment.cgi?id=253361&action=edit
-Backtrace attempt
+and
 
-Steps to reproduce:
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.4.tar.gz
 
+The release notes for 1.43.4 can be found below.
 
-root@Ahasver:~# dd if=/dev/zero of=zeros.img bs=128M count=1
-1+0 records in
-1+0 records out
-134217728 bytes (134 MB) copied, 1.61473 s, 83.1 MB/s
+    	    	      	     	    - Ted
 
+E2fsprogs 1.43.4 (January 31, 2017)
+===================================
 
-root@Ahasver:~# losetup -f zeros.img
+Fix e2fsck to require that the system.data extended attribute is
+always present even for files smaller than 60 bytes, to be consistent
+with the kernel.
 
+Fix a bug which was causing mke2fs -d and fuse2fs to improperly handle
+Posix ACL's.
 
-root@Ahasver:~# mke2fs -t ext4 -I 512 -j -O inline_data /dev/loop0
-mke2fs 1.43.3 (04-Sep-2016)
-journal checksum features.
-Discarding device blocks: done                            
-Creating filesystem with 131072 1k blocks and 32768 inodes
-Filesystem UUID: 675cf4a8-fb74-4a4a-9f28-f01b462b1933
-Superblock backups stored on blocks: 
-    8193, 24577, 40961, 57345, 73729
+Fix a bug which could cause mke2fs -d to fail if there is an
+zero-length file in source directory tree.
 
-Allocating group tables: done                            
-Writing inode tables: done                            
-Creating journal (4096 blocks): done
-Writing superblocks and filesystem accounting information: done 
+Clarify the default for the "proceed?" question printed by mke2fs and
+tune2fs.  (Addresses Debian Bug: #852727)
 
+Debugfs will now display project quota information.
 
+Debugfs's do_set_xattr now uses C strings to parse extended attribute
+values, and will print the extended attributes using either C strings
+or hex bytes when using debugfs's do_get_xattr command.  It will now
+allow developers to see the contents of the system.data extended
+attribute.
 
-root@Ahasver:~# mount -o data=journal /dev/loop0 /mnt
+Fix a bug in mke2fs where I/O errors weren't getting properly reported
+to the user.
 
+Fix multiblock writes in the unaligned Direct I/O fallback code.
+(Which is rarely needed on Linux systems, but which is required on
+Freebsd systems.)
 
-root@Ahasver:~# rm -f /usr/lib/locale/locale-archive
+Make sure the default mke2fs.conf file includes the uninit_bg feature
+flag.  (Which was accidentally dropped in v1.43).
 
+Fix a bug in resize2fs when operating on very large file systems which
+have a block size different from the VM page size.
 
-root@Ahasver:~# ln -s /mnt/locale-archive /usr/lib/locale/locale-archive
+If the reported device size is absurdly large, mke2fs will now report
+an error instead looping forever or crashing.
 
+Fix various Coverity warnings and other memory leaks in fuse2fs and
+extended attribute manipulation functions.
 
-root@Ahasver:~# localedef -i en_US -c -f ISO-8859-1 en_US
-Segmentation fault
+Replace a test file but which had a "non-commercial use-only"
+copyright permission file with a newer version from the Cyrus imapd
+package which now has a 4-clause BSD license, which was making some
+lawyers nervous, even though the test file in question was only used
+in lib/et's regression testing and was never included in any compiled
+binary.  (Addresses Debian Bug: #840733)
 
+Stop installing mkfs.ext4dev and fsck.ext4dev
 
+Update Chinese, Czech, Polish, Serbian, and Spanish translations and
+add the Finnish and Malay translation.  (Addresses-Debian-Bug: #774379)
 
-I am also attaching a gdb backtrace of the error as seen using the Debian
-Stretch Installer RC1. The backtraced line 773 seems to be this one:
-https://sources.debian.net/src/glibc/2.24-9/locale/programs/locarchive.c/#L773
+Update various man pages (Addresses-Debian-Bug: #852726)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Programming notes
+-----------------
+
+Fix more FreeBSD-11 compatibility bugs, including some unmasked by
+FreeBSD 11-rc2.
+
+Fix the Mac build.
+
+Fix build failure on RHEL 5.x systems caused by an old version of
+libmagic.
+
+Fix a number of bugs reported by ASAN that can cause some (mostly
+harmless) memory dereferences beyond allocated memory.
