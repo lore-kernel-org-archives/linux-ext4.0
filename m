@@ -1,100 +1,97 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Release of e2fsprogs 1.43.4
-Date: Tue, 31 Jan 2017 22:02:01 -0500
-Message-ID: <20170201030201.ftrd5uglfzuuhiro@thunk.org>
+From: "Tummala, Sahitya" <stummala@codeaurora.org>
+Subject: Re: [PATCH] jbd2: Fix use after free in kjournald2()
+Date: Wed, 1 Feb 2017 09:52:41 +0530
+Message-ID: <5c4bcc82-386a-a8b1-a752-42ec89446df4@codeaurora.org>
+References: <1485873537-32514-1-git-send-email-stummala@codeaurora.org>
+ <20170131155155.GC15249@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42962 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750879AbdBADCH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 31 Jan 2017 22:02:07 -0500
-Content-Disposition: inline
+Received: from smtp.codeaurora.org ([198.145.29.96]:55470 "EHLO
+        smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750784AbdBAEWr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Jan 2017 23:22:47 -0500
+In-Reply-To: <20170131155155.GC15249@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've released e2fsprogs 1.43.4 in all of the usual places; it's tagged
-in the git trees on git.kernel.org, github, and sourceforge, and
-available for download at:
 
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.4
+On 1/31/2017 9:21 PM, Jan Kara wrote:
+> On Tue 31-01-17 20:08:57, Sahitya Tummala wrote:
+>> Below is the synchronization issue between unmount and kjournald2
+>> contexts, which results into use after free issue in kjournald2().
+>> Fix this issue by using journal->j_state_lock to synchronize the
+>> wait_event() done in journal_kill_thread() and the wake_up() done
+>> in kjournald2().
+>>
+>> TASK 1:
+>> umount cmd:
+>>     |--jbd2_journal_destroy() {
+>>         |--journal_kill_thread() {
+>>              write_lock(&journal->j_state_lock);
+>> 	    journal->j_flags |= JBD2_UNMOUNT;
+>> 	    ...
+>> 	    write_unlock(&journal->j_state_lock);
+>> 	    wake_up(&journal->j_wait_commit);	   TASK 2 wakes up here:
+>> 	    					   kjournald2() {
+>> 						     ...
+>> 						     checks JBD2_UNMOUNT flag and calls goto end-loop;
+>> 						     ...
+>> 						     end_loop:
+>> 						       write_unlock(&journal->j_state_lock);
+>> 						       journal->j_task = NULL; --> If this thread gets
+>> 						       pre-empted here, then TASK 1 wait_event will
+>> 						       exit even before this thread is completely
+>> 						       done.
+>> 	    wait_event(journal->j_wait_done_commit, journal->j_task == NULL);
+>> 	    ...
+>> 	    write_lock(&journal->j_state_lock);
+>> 	    write_unlock(&journal->j_state_lock);
+>> 	  }
+>>         |--kfree(journal);
+>>       }
+>> }
+>> 						       wake_up(&journal->j_wait_done_commit); --> this step
+>> 						       now results into use after free issue.
+>> 						   }
+>>
+>> Signed-off-by: Sahitya Tummala <stummala@codeaurora.org>
+> Yeah, what you write looks possible (although rather unlikely). Thanks for
+> catching this. One small nit below:
+Yes, it was observed only once and is very hard to reproduce.
+>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+>> index a097048..f5cd3c0 100644
+>> --- a/fs/jbd2/journal.c
+>> +++ b/fs/jbd2/journal.c
+>> @@ -278,9 +278,11 @@ static int kjournald2(void *arg)
+>>   end_loop:
+>>   	write_unlock(&journal->j_state_lock);
+>>   	del_timer_sync(&journal->j_commit_timer);
+>> +	write_lock(&journal->j_state_lock);
+> There's no good reason to do del_timer_sync() outside of j_state_lock. This
+> is not performance critical code and commit_timeout is trivial and cannot
+> block on anything. So just keep j_state_lock locked upto the place where
+> you unlock it now...
+>
+Sure, I will update the patch.
+> 								Honza
+>>   	journal->j_task = NULL;
+>>   	wake_up(&journal->j_wait_done_commit);
+>>   	jbd_debug(1, "Journal thread exiting.\n");
+>> +	write_unlock(&journal->j_state_lock);
+>>   	return 0;
+>>   }
+>>   
+>> -- 
+>> Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+>> Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
+>>
+>>
 
-and
-
-http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.4.tar.gz
-
-The release notes for 1.43.4 can be found below.
-
-    	    	      	     	    - Ted
-
-E2fsprogs 1.43.4 (January 31, 2017)
-===================================
-
-Fix e2fsck to require that the system.data extended attribute is
-always present even for files smaller than 60 bytes, to be consistent
-with the kernel.
-
-Fix a bug which was causing mke2fs -d and fuse2fs to improperly handle
-Posix ACL's.
-
-Fix a bug which could cause mke2fs -d to fail if there is an
-zero-length file in source directory tree.
-
-Clarify the default for the "proceed?" question printed by mke2fs and
-tune2fs.  (Addresses Debian Bug: #852727)
-
-Debugfs will now display project quota information.
-
-Debugfs's do_set_xattr now uses C strings to parse extended attribute
-values, and will print the extended attributes using either C strings
-or hex bytes when using debugfs's do_get_xattr command.  It will now
-allow developers to see the contents of the system.data extended
-attribute.
-
-Fix a bug in mke2fs where I/O errors weren't getting properly reported
-to the user.
-
-Fix multiblock writes in the unaligned Direct I/O fallback code.
-(Which is rarely needed on Linux systems, but which is required on
-Freebsd systems.)
-
-Make sure the default mke2fs.conf file includes the uninit_bg feature
-flag.  (Which was accidentally dropped in v1.43).
-
-Fix a bug in resize2fs when operating on very large file systems which
-have a block size different from the VM page size.
-
-If the reported device size is absurdly large, mke2fs will now report
-an error instead looping forever or crashing.
-
-Fix various Coverity warnings and other memory leaks in fuse2fs and
-extended attribute manipulation functions.
-
-Replace a test file but which had a "non-commercial use-only"
-copyright permission file with a newer version from the Cyrus imapd
-package which now has a 4-clause BSD license, which was making some
-lawyers nervous, even though the test file in question was only used
-in lib/et's regression testing and was never included in any compiled
-binary.  (Addresses Debian Bug: #840733)
-
-Stop installing mkfs.ext4dev and fsck.ext4dev
-
-Update Chinese, Czech, Polish, Serbian, and Spanish translations and
-add the Finnish and Malay translation.  (Addresses-Debian-Bug: #774379)
-
-Update various man pages (Addresses-Debian-Bug: #852726)
-
-Programming notes
------------------
-
-Fix more FreeBSD-11 compatibility bugs, including some unmasked by
-FreeBSD 11-rc2.
-
-Fix the Mac build.
-
-Fix build failure on RHEL 5.x systems caused by an old version of
-libmagic.
-
-Fix a number of bugs reported by ASAN that can cause some (mostly
-harmless) memory dereferences beyond allocated memory.
+-- 
+Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
