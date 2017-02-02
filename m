@@ -1,31 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Trim allocation requests to group size
-Date: Wed, 1 Feb 2017 14:07:02 -0500
-Message-ID: <20170201190702.qnkhbhdbs6r6wdja@thunk.org>
-References: <20170110093201.1403-1-jack@suse.cz>
+Subject: Re: [PATCH] jbd2: Fix use after free in kjournald2()
+Date: Wed, 1 Feb 2017 20:56:28 -0500
+Message-ID: <20170202015628.xl3vtta466ikeve6@thunk.org>
+References: <1485970311-22014-1-git-send-email-stummala@codeaurora.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:58548 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751547AbdBATHF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 Feb 2017 14:07:05 -0500
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Sahitya Tummala <stummala@codeaurora.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170110093201.1403-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1485970311-22014-1-git-send-email-stummala@codeaurora.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 10, 2017 at 10:32:01AM +0100, Jan Kara wrote:
-> If filesystem groups are artifically small (using parameter -g to
-> mkfs.ext4), ext4_mb_normalize_request() can result in a request that is
-> larger than a block group. Trim the request size to not confuse
-> allocation code.
-> 
-> Reported-by: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Wed, Feb 01, 2017 at 11:01:51PM +0530, Sahitya Tummala wrote:
+> Below is the synchronization issue between unmount and kjournald2
+> contexts, which results into use after free issue in kjournald2().
+> Fix this issue by using journal->j_state_lock to synchronize the
+> wait_event() done in journal_kill_thread() and the wake_up() done
+> in kjournald2().
 
 Thanks, applied.
 
