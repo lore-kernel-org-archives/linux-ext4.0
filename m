@@ -1,55 +1,64 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 1/3] mke2fs: enable large directroy support
-Date: Thu, 2 Feb 2017 10:11:28 -0700
-Message-ID: <74D6C84E-BC8B-4060-9345-3DC8DAEB9EED@dilger.ca>
-References: <CAO3qy=F_CxQQ0bUtOm5CZbE0QQ78vyviMStOgg8nryUZZymung@mail.gmail.com> <20170125203121.s2o4cskgmruvjnrt@thunk.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-        charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
-        linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36758 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751465AbdBBRLb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2017 12:11:31 -0500
-Received: by mail-it0-f65.google.com with SMTP id f200so6478193itf.3
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Feb 2017 09:11:30 -0800 (PST)
-In-Reply-To: <20170125203121.s2o4cskgmruvjnrt@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH] ext4: fix up huge_fault rename
+Date: Thu, 2 Feb 2017 13:02:20 -0700
+Message-ID: <20170202200220.GA14747@linux.intel.com>
+References: <20170202113625.702169-1-arnd@arndb.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dave Jiang <dave.jiang@intel.com>,
+        Miklos Szeredi <mszeredi@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170202113625.702169-1-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We have kernel-side patches for this feature. Artem, could you push a versio=
-n of the ext4 patches for the latest kernel to the list?
+On Thu, Feb 02, 2017 at 12:36:12PM +0100, Arnd Bergmann wrote:
+> It looks like a search+replace accidentally change one function pointer that
+> should have remained as before, as shown by this new warning:
+> 
+> fs/ext4/file.c:279:1: error: 'ext4_dax_huge_fault' defined but not used [-Werror=unused-function]
+> 
+> This reverts the one line of the changeset.
+> 
+> Fixes: 80a841811260 ("mm,fs,dax: change ->pmd_fault to ->huge_fault")
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> ---
+>  fs/ext4/file.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index ed22d20e843c..e1a581133aa1 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -329,7 +329,7 @@ static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
+>  static const struct vm_operations_struct ext4_dax_vm_ops = {
+>  	.fault		= ext4_dax_fault,
+>  	.huge_fault	= ext4_dax_fault,
+> -	.page_mkwrite	= ext4_dax_fault,
+> +	.page_mkwrite	= ext4_dax_huge_fault,
+>  	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
+>  };
+>  #else
+> -- 
+> 2.9.0
 
-Cheers, Andreas
+Hey Arnd,
 
-> On Jan 25, 2017, at 13:31, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
->> On Tue, Jan 24, 2017 at 07:34:13PM +0300, Artem Blagodarenko wrote:
->> The INCOMPAT_LARGEDIR feature allows larger directories to
->> be created, both with directory sizes over 2GB and and a
->> maximum htree depth of 3 instead of the current limit of 2.
->> These features are needed in order to exceed the currently
->> limit of approximately 10M entries in a single directory.
->>=20
->> debugfs, e2fsck, ext2fs, mke2fs and tune2fs support is
->> added.
->>=20
->> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
->> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
->=20
-> Where are the kernel-side changes for this feature?
->=20
-> And could you *please* use git send-email's --chain-reply-to option,
-> or set the sendemail.chainReplyTo in your git config.  (Or if you're
-> not using git send-email, send the e-mail using that format).
->=20
-> It makes it much easier to figure out which patch goes with which
-> other patch in a patch series, especially when you start sending
-> revised versions of the patches.
->=20
->                    - Ted
->=20
+I saw this as well, but fixed it by removing ext4_dax_huge_fault() since after
+Dave's changes ext4_dax_fault() and ext4_dax_huge_fault() are identical.
+
+http://www.spinics.net/lists/linux-mm/msg121117.html
+
+If you're alright with it let's go that way so we can remove a redundant
+function.
+
+- Ross
