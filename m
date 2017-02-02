@@ -1,34 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: move halfmd4 into hash.c directly
-Date: Thu, 2 Feb 2017 11:54:09 -0500
-Message-ID: <20170202165409.nwzvgdev2veh36hj@thunk.org>
-References: <20170110000701.19472-1-Jason@zx2c4.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: "Jason A. Donenfeld" <Jason@zx2c4.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170110000701.19472-1-Jason@zx2c4.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 1/3] mke2fs: enable large directroy support
+Date: Thu, 2 Feb 2017 10:11:28 -0700
+Message-ID: <74D6C84E-BC8B-4060-9345-3DC8DAEB9EED@dilger.ca>
+References: <CAO3qy=F_CxQQ0bUtOm5CZbE0QQ78vyviMStOgg8nryUZZymung@mail.gmail.com> <20170125203121.s2o4cskgmruvjnrt@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain;
+        charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36758 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751465AbdBBRLb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2017 12:11:31 -0500
+Received: by mail-it0-f65.google.com with SMTP id f200so6478193itf.3
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Feb 2017 09:11:30 -0800 (PST)
+In-Reply-To: <20170125203121.s2o4cskgmruvjnrt@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 10, 2017 at 01:07:01AM +0100, Jason A. Donenfeld wrote:
-> The "half md4" transform should not be used by any new code. And
-> fortunately, it's only used now by ext4. Since ext4 supports several
-> hashing methods, at some point it might be desirable to move to
-> something like SipHash. As an intermediate step, remove half md4 from
-> cryptohash.h and lib, and make it just a local function in ext4's
-> hash.c. There's precedent for doing this; the other function ext can use
-> for its hashes -- TEA -- is also implemented in the same place. Also, by
-> being a local function, this might allow gcc to perform some additional
-> optimizations.
-> 
-> Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> Cc: Theodore Ts'o <tytso@mit.edu>
+We have kernel-side patches for this feature. Artem, could you push a versio=
+n of the ext4 patches for the latest kernel to the list?
 
-Thanks, applied.
+Cheers, Andreas
 
-						- Ted
+> On Jan 25, 2017, at 13:31, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+>> On Tue, Jan 24, 2017 at 07:34:13PM +0300, Artem Blagodarenko wrote:
+>> The INCOMPAT_LARGEDIR feature allows larger directories to
+>> be created, both with directory sizes over 2GB and and a
+>> maximum htree depth of 3 instead of the current limit of 2.
+>> These features are needed in order to exceed the currently
+>> limit of approximately 10M entries in a single directory.
+>>=20
+>> debugfs, e2fsck, ext2fs, mke2fs and tune2fs support is
+>> added.
+>>=20
+>> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
+>> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+>=20
+> Where are the kernel-side changes for this feature?
+>=20
+> And could you *please* use git send-email's --chain-reply-to option,
+> or set the sendemail.chainReplyTo in your git config.  (Or if you're
+> not using git send-email, send the e-mail using that format).
+>=20
+> It makes it much easier to figure out which patch goes with which
+> other patch in a patch series, especially when you start sending
+> revised versions of the patches.
+>=20
+>                    - Ted
+>=20
