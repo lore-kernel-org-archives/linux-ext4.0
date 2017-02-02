@@ -1,35 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix use-after-iput when fscrypt contexts are
- inconsistent
-Date: Wed, 1 Feb 2017 21:17:36 -0500
-Message-ID: <20170202021736.fslzccfvp54dus6s@thunk.org>
-References: <20170124233700.115669-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] ext4: fix up huge_fault rename
+Date: Thu,  2 Feb 2017 12:36:12 +0100
+Message-ID: <20170202113625.702169-1-arnd@arndb.de>
+Cc: Matthew Wilcox <mawilcox@microsoft.com>,
+        Arnd Bergmann <arnd@arndb.de>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170124233700.115669-1-ebiggers3@gmail.com>
-Sender: stable-owner@vger.kernel.org
+        Jan Kara <jack@suse.cz>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dave Jiang <dave.jiang@intel.com>,
+        Miklos Szeredi <mszeredi@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jan 24, 2017 at 03:37:00PM -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> In the case where the child's encryption context was inconsistent with
-> its parent directory, we were using inode->i_sb and inode->i_ino after
-> the inode had already been iput().  Fix this by doing the iput() in the
-> correct places.
-> 
-> Note: only ext4 had this bug, not f2fs and ubifs.
-> 
-> Fixes: d9cdc9033181 ("ext4 crypto: enforce context consistency")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+It looks like a search+replace accidentally change one function pointer that
+should have remained as before, as shown by this new warning:
 
-Thanks, applied.
+fs/ext4/file.c:279:1: error: 'ext4_dax_huge_fault' defined but not used [-Werror=unused-function]
 
-						- Ted
+This reverts the one line of the changeset.
+
+Fixes: 80a841811260 ("mm,fs,dax: change ->pmd_fault to ->huge_fault")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index ed22d20e843c..e1a581133aa1 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -329,7 +329,7 @@ static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
+ static const struct vm_operations_struct ext4_dax_vm_ops = {
+ 	.fault		= ext4_dax_fault,
+ 	.huge_fault	= ext4_dax_fault,
+-	.page_mkwrite	= ext4_dax_fault,
++	.page_mkwrite	= ext4_dax_huge_fault,
+ 	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
+ };
+ #else
+-- 
+2.9.0
