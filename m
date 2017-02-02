@@ -1,45 +1,34 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] ext4: fix up huge_fault rename
-Date: Thu,  2 Feb 2017 12:36:12 +0100
-Message-ID: <20170202113625.702169-1-arnd@arndb.de>
-Cc: Matthew Wilcox <mawilcox@microsoft.com>,
-        Arnd Bergmann <arnd@arndb.de>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: move halfmd4 into hash.c directly
+Date: Thu, 2 Feb 2017 11:54:09 -0500
+Message-ID: <20170202165409.nwzvgdev2veh36hj@thunk.org>
+References: <20170110000701.19472-1-Jason@zx2c4.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: "Jason A. Donenfeld" <Jason@zx2c4.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170110000701.19472-1-Jason@zx2c4.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It looks like a search+replace accidentally change one function pointer that
-should have remained as before, as shown by this new warning:
+On Tue, Jan 10, 2017 at 01:07:01AM +0100, Jason A. Donenfeld wrote:
+> The "half md4" transform should not be used by any new code. And
+> fortunately, it's only used now by ext4. Since ext4 supports several
+> hashing methods, at some point it might be desirable to move to
+> something like SipHash. As an intermediate step, remove half md4 from
+> cryptohash.h and lib, and make it just a local function in ext4's
+> hash.c. There's precedent for doing this; the other function ext can use
+> for its hashes -- TEA -- is also implemented in the same place. Also, by
+> being a local function, this might allow gcc to perform some additional
+> optimizations.
+> 
+> Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Cc: Theodore Ts'o <tytso@mit.edu>
 
-fs/ext4/file.c:279:1: error: 'ext4_dax_huge_fault' defined but not used [-Werror=unused-function]
+Thanks, applied.
 
-This reverts the one line of the changeset.
-
-Fixes: 80a841811260 ("mm,fs,dax: change ->pmd_fault to ->huge_fault")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/ext4/file.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index ed22d20e843c..e1a581133aa1 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -329,7 +329,7 @@ static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
- static const struct vm_operations_struct ext4_dax_vm_ops = {
- 	.fault		= ext4_dax_fault,
- 	.huge_fault	= ext4_dax_fault,
--	.page_mkwrite	= ext4_dax_fault,
-+	.page_mkwrite	= ext4_dax_huge_fault,
- 	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
- };
- #else
--- 
-2.9.0
+						- Ted
