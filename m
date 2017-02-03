@@ -1,157 +1,149 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/2] ext4: support the FSGEOMETRY ioctl, similar to xfs
-Date: Thu, 02 Feb 2017 15:50:18 -0800
-Message-ID: <148607941809.553.9317109635430337778.stgit@birch.djwong.org>
-References: <148607940546.553.277589646408670724.stgit@birch.djwong.org>
+Subject: Re: [RFC/PATCH 3/3] ext4: add EXT4_IOC_GOINGDOWN ioctl
+Date: Thu, 2 Feb 2017 16:02:04 -0800
+Message-ID: <20170203000204.GK14029@birch.djwong.org>
+References: <20170202225924.19301-1-tytso@mit.edu>
+ <20170202225924.19301-4-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28976 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751931AbdBBXu1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2017 18:50:27 -0500
-In-Reply-To: <148607940546.553.277589646408670724.stgit@birch.djwong.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:36697 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751720AbdBCACL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Feb 2017 19:02:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20170202225924.19301-4-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+On Thu, Feb 02, 2017 at 05:59:24PM -0500, Theodore Ts'o wrote:
+> This ioctl is modeled after the xfs's XFS_IOC_GOINGDOWN ioctl.  (In
+> fact, it uses the same code points.)
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h  | 10 ++++++++++
+>  fs/ext4/ioctl.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/super.c |  2 +-
+>  3 files changed, 53 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94064b7ce16c..eae92f1a52e1 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -679,6 +679,16 @@ struct fsxattr {
+>  #define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
+>  #define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
+>  
+> +#define EXT4_IOC_GOiNGDOWN _IOR ('X', 125, __u32)
 
-Add an ioctl to report the geometry of a mounted filesystem.  The
-structure is designed to be close enough to XFS's that we'll be able to
-leverage the new GETFSMAP functionality in xfsprogs.
+Lowercase 'i'?
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/ext4.h  |   35 +++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 89 insertions(+)
+ISTR Dave asking if we could rename it IOC_SHUTDOWN way back when f2fs
+was trying to implement it.
 
+> +
+> +/*
+> + * Flags for going down operation
+> + */
+> +#define EXT4_GOING_FLAGS_DEFAULT		0x0	/* going down */
+> +#define EXT4_GOING_FLAGS_LOGFLUSH		0x1	/* flush log but not data */
+> +#define EXT4_GOING_FLAGS_NOLOGFLUSH		0x2	/* don't flush log nor data */
+> +
+> +
+>  #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+>  /*
+>   * ioctl commands in 32 bit emulation
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index d534399cf607..6d5443cf4a47 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -442,6 +442,45 @@ static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
+>  	return iflags;
+>  }
+>  
+> +int ext4_goingdown(struct super_block *sb, unsigned long arg)
+> +{
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	__u32 flags;
+> +
+> +	if (!capable(CAP_SYS_ADMIN))
+> +		return -EPERM;
+> +
+> +	if (get_user(flags, (__u32 __user *)arg))
+> +		return -EFAULT;
+> +
+> +	if (flags > EXT4_GOING_FLAGS_NOLOGFLUSH)
+> +		return -EINVAL;
+> +
+> +	if (ext4_forced_shutdown(sbi))
+> +		return 0;
+> +
+> +	switch (flags) {
+> +	case EXT4_GOING_FLAGS_DEFAULT:
+> +		freeze_bdev(sb->s_bdev);
+> +		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> +		thaw_bdev(sb->s_bdev, sb);
+> +		break;
+> +	case EXT4_GOING_FLAGS_LOGFLUSH:
+> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+> +		    (void) ext4_force_commit(sb);
+> +		/* fall through */
+> +	case EXT4_GOING_FLAGS_NOLOGFLUSH:
+> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+> +			(void) jbd2_journal_destroy(sbi->s_journal);
+> +		sbi->s_journal = NULL;
+> +		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> +		break;
+> +	default:
+> +		return -EINVAL;
+> +	}
+> +	return 0;
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3123e49..aee207a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -706,6 +706,40 @@ fsmap_sizeof(
- #define FMR_OWN_INODES		(-7ULL)	/* inodes */
- #define FMR_OWN_DEFECTIVE	(-10ULL) /* bad blocks */
- 
-+/* ext4fs geometry.  Most of the fields are the same as the XFS version. */
-+struct ext4_fsop_geom {
-+	__u32		blocksize;	/* filesystem (data) block size */
-+	__u32		inodecount;	/* inode count			*/
-+	__u32		agblocks;	/* fsblocks in an AG		*/
-+	__u32		agcount;	/* number of allocation groups	*/
-+	__u32		logblocks;	/* fsblocks in the log		*/
-+	__u32		resvblocks;	/* number of reserved blocks	*/
-+	__u32		inodesize;	/* inode size in bytes		*/
-+	__u32		agiblocks;	/* inode blocks per AG		*/
-+	__u64		datablocks;	/* fsblocks in data subvolume	*/
-+	__u64		resv64[3];
-+	unsigned char	uuid[16];	/* unique id of the filesystem	*/
-+	__u32		sunit;		/* stripe unit, fsblocks	*/
-+	__u32		swidth;		/* stripe width, fsblocks	*/
-+	__s32		version;	/* structure version		*/
-+	__u32		flags;		/* superblock version flags	*/
-+	__u32		resv32[4];
-+};
-+
-+#define EXT4_FSOP_GEOM_VERSION	0
-+
-+#define EXT4_FSOP_GEOM_FLAGS_ATTR	0x00001	/* attributes in use	 */
-+#define EXT4_FSOP_GEOM_FLAGS_NLINK	0x00002	/* 32-bit nlink values	 */
-+#define EXT4_FSOP_GEOM_FLAGS_QUOTA	0x00004	/* quotas enabled	 */
-+#define EXT4_FSOP_GEOM_FLAGS_PROJQ	0x00008	/* project quotas	 */
-+#define EXT4_FSOP_GEOM_FLAGS_METACRC	0x00010	/* metadata checksums	 */
-+#define EXT4_FSOP_GEOM_FLAGS_FTYPE	0x00020	/* inode directory types */
-+#define EXT4_FSOP_GEOM_FLAGS_64BIT	0x00040	/* 64-bit support	 */
-+#define EXT4_FSOP_GEOM_FLAGS_INLINEDATA	0x00080	/* inline data		 */
-+#define EXT4_FSOP_GEOM_FLAGS_ENCRYPT	0x00100	/* encrypted files	 */
-+#define EXT4_FSOP_GEOM_FLAGS_LARGEDIR	0x00200	/* large directories	 */
-+#define EXT4_FSOP_GEOM_FLAGS_BIGALLOC	0x00400	/* bigalloc		 */
-+
- /*
-  * ioctl commands
-  */
-@@ -731,6 +765,7 @@ fsmap_sizeof(
- #define EXT4_IOC_GET_ENCRYPTION_PWSALT	FS_IOC_GET_ENCRYPTION_PWSALT
- #define EXT4_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
- #define EXT4_IOC_GETFSMAP		_IOWR('X', 59, struct fsmap_head)
-+#define EXT4_IOC_FSGEOMETRY		_IOR ('f', 19, struct ext4_fsop_geom)
- 
- #ifndef FS_IOC_FSGETXATTR
- /* Until the uapi changes get merged for project quota... */
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index d367269..4087805 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -546,6 +546,58 @@ ext4_ioc_getfsmap(
- 	return 0;
- }
- 
-+static int
-+ext4_ioc_fsgeometry(
-+	struct super_block	*sb,
-+	void			__user *arg)
-+{
-+	struct ext4_sb_info	*sbi = EXT4_SB(sb);
-+	journal_t		*journal = sbi->s_journal;
-+	struct ext4_fsop_geom	geom;
-+
-+	memset(&geom, 0, sizeof(geom));
-+	geom.version = EXT4_FSOP_GEOM_VERSION;
-+	geom.blocksize = EXT4_BLOCK_SIZE(sb);
-+	geom.inodecount = le32_to_cpu(sbi->s_es->s_inodes_count);
-+	geom.agblocks = EXT4_BLOCKS_PER_GROUP(sb);
-+	geom.agcount = sbi->s_groups_count;
-+	geom.logblocks = journal ? journal->j_maxlen : 0;
-+	geom.resvblocks = ext4_r_blocks_count(sbi->s_es);
-+	geom.inodesize = EXT4_INODE_SIZE(sb);
-+	geom.agiblocks = sbi->s_itb_per_group;
-+	geom.datablocks = ext4_blocks_count(sbi->s_es);
-+	memcpy(geom.uuid, sbi->s_es->s_uuid, sizeof(sbi->s_es->s_uuid));
-+	geom.sunit = le16_to_cpu(sbi->s_es->s_raid_stride);
-+	geom.swidth = le16_to_cpu(sbi->s_es->s_raid_stripe_width);
-+	geom.flags = 0;
-+	if (ext4_has_feature_xattr(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_ATTR;
-+	if (ext4_has_feature_dir_nlink(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_NLINK;
-+	if (ext4_has_feature_quota(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_QUOTA;
-+	if (ext4_has_feature_project(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_PROJQ;
-+	if (ext4_has_metadata_csum(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_METACRC;
-+	if (ext4_has_feature_filetype(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_FTYPE;
-+	if (ext4_has_feature_64bit(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_64BIT;
-+	if (ext4_has_feature_inline_data(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_INLINEDATA;
-+	if (ext4_has_feature_encrypt(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_ENCRYPT;
-+	if (ext4_has_feature_largedir(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_LARGEDIR;
-+	if (ext4_has_feature_bigalloc(sb))
-+		geom.flags |= EXT4_FSOP_GEOM_FLAGS_BIGALLOC;
-+
-+	if (copy_to_user(arg, &geom, sizeof(geom)))
-+		return -EFAULT;
-+	return 0;
-+}
-+
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -556,6 +608,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
- 
- 	switch (cmd) {
-+	case EXT4_IOC_FSGEOMETRY:
-+		return ext4_ioc_fsgeometry(sb, (void __user *)arg);
- 	case EXT4_IOC_GETFSMAP:
- 		return ext4_ioc_getfsmap(sb, (void __user *)arg);
- 	case EXT4_IOC_GETFLAGS:
+/me wonders if mount -o errors=shutdown follows from this? :)
+
+(Something a little less drastic than errors=panic that stops everything
+in its tracks.)
+
+--D
+
+> +}
+> +
+>  long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+>  {
+>  	struct inode *inode = file_inode(filp);
+> @@ -893,6 +932,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+>  
+>  		return 0;
+>  	}
+> +	case EXT4_IOC_GOiNGDOWN:
+> +		return ext4_goingdown(sb, arg);
+>  	default:
+>  		return -ENOTTY;
+>  	}
+> @@ -959,6 +1000,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+>  	case EXT4_IOC_SET_ENCRYPTION_POLICY:
+>  	case EXT4_IOC_GET_ENCRYPTION_PWSALT:
+>  	case EXT4_IOC_GET_ENCRYPTION_POLICY:
+> +	case EXT4_IOC_GOiNGDOWN:
+>  		break;
+>  	default:
+>  		return -ENOIOCTLCMD;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 829e4a7b59e4..8db181c4dad6 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4797,7 +4797,7 @@ static int ext4_freeze(struct super_block *sb)
+>   */
+>  static int ext4_unfreeze(struct super_block *sb)
+>  {
+> -	if (sb->s_flags & MS_RDONLY)
+> +	if ((sb->s_flags & MS_RDONLY) || ext4_forced_shutdown(EXT4_SB(sb)))
+>  		return 0;
+>  
+>  	if (EXT4_SB(sb)->s_journal) {
+> -- 
+> 2.11.0.rc0.7.gbe5a750
+> 
