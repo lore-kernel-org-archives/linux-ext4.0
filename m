@@ -1,63 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC/PATCH 3/3] ext4: add EXT4_IOC_GOINGDOWN ioctl
-Date: Thu, 2 Feb 2017 21:22:24 -0500
-Message-ID: <20170203022224.idwexzwnqmbyskbj@thunk.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [RFC/PATCH 0/3] Implement XFS's GOINGDOWN ioctl for ext4
+Date: Fri, 3 Feb 2017 09:05:01 +0200
+Message-ID: <CAOQ4uxhQubTwdOtmXXsaW4hVjKt2yBhSFG92ie0QcO+HGD9ioQ@mail.gmail.com>
 References: <20170202225924.19301-1-tytso@mit.edu>
- <20170202225924.19301-4-tytso@mit.edu>
- <20170203000204.GK14029@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57028 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751653AbdBCCWb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 2 Feb 2017 21:22:31 -0500
-Content-Disposition: inline
-In-Reply-To: <20170203000204.GK14029@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        fstests <fstests@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20170202225924.19301-1-tytso@mit.edu>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 02, 2017 at 04:02:04PM -0800, Darrick J. Wong wrote:
-> >  
-> > +#define EXT4_IOC_GOiNGDOWN _IOR ('X', 125, __u32)
-> 
-> Lowercase 'i'?
+On Fri, Feb 3, 2017 at 12:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> This is a proof of concept implementation of XFS's GOINGDOWN ioctl for
+> ext4.
+>
+> I've tried to replicate XFS's semantics (as much as they can translate
+> to ext4).  This test series is currently *not* passing xfstests.
+> Specifically, the following tests are failing:
+>
+>         generic/042 generic/044 generic/045 generic/046
+>
+> As near as I can tell, these tests are sensitive to how the file
+> system implements and handles delayed allocation.  In particular,
+> generic/04[456] assumes that if you do a delayed allocation write of
+> 64k, and then truncate the file to 64k or 32k, the file will either be
+> zero length, or i_size is non-zero, it MUST NOT have no extents.
+>
+> It's not clear to me why this needs to be true.  The test description
+> says "test for NULL files problem".  But since POSIX states that how
+> truncate will handle truncates beyond i_size is unspecified, and what
+> happens after a crash w/o an fsync() is similarly unspecified, it's
+> not clear what is the best way to deal with this.
+>
+> One is to simply use a different ioctl code point, to avoid enabling
+> the xfstests tests.  Another to modify the tests to skip them for
+> ext4.  Or I can teach kvm-xfstests and gce-xfstests to ignore these
+> test failures by skipping the tests in my test framework.
+>
+> Comments, thoughts?
 
-Yeah, oops.  Already fixed.
+I have a naive question about generic implementation:
+We already have mnt_want_write() hooks in generic vfs code,
+so it should be easy enough to set the shutdown bit on sb and return -EIO there.
+Wouldn't it be better to add mnt_want_read() hooks in vfs helpers
+instead of duplicating
+the fs specific hooks? I hear f2fs is yet another potential customer??
 
-> ISTR Dave asking if we could rename it IOC_SHUTDOWN way back when f2fs
-> was trying to implement it.
+I realize this needs more thinking and more work, so
+no intention of blocking your immediate production needs, just wondering
+about future implementation that is more robust and fs agnostic.
 
-Yeah, I decided to evade the whole discussion about which names should
-land in include/uapi/fs.h.  (e.g., xxx_GOING_FLAGS_LOGFLUSH vs
-xxx_GOING_FLAGS_METAFLUsh, etc.)
-
-Once we have names that everyone is happy with, it'll be simple enough
-to do the rename the identifiers.
-
-> 
-> /me wonders if mount -o errors=shutdown follows from this? :)
-> 
-> (Something a little less drastic than errors=panic that stops everything
-> in its tracks.)
-
-Yeah, I was thinking about that.  We have errors=readonly already,
-which is actually not _that_ different from errors=shutdown.  (I
-noticed for example that xfs doesn't have a shutdown check in
-xfs_vm_readpage and and xfs_vm_readpages.)
-
-One of the things we probably should do is make clear what are the
-semantics with FS_IOC_SHUTDOWN.  For example, should readpages()
-return an error on a shutdown file system, or not?
-
-And as I've observed already, there are a number of tests in xfstsests
-that are enabled when the fs supports shutdown that are very specific
-to how delayed allocation and writes are handled.  How much this needs
-to be fundamental to the shutdown API?  A lot of this depends on which
-applications would actually be using shutdown, and whether they care
-about what happens with a write followed by truncate followed
-shutdown.
-
-						- Ted
+>
+>                                                 - Ted
+>
+> P.S.  So I'm not implementing this just for increased xfstests
+> coverage; I have an operational need for this functionality on
+> production systems.  The short version is if you are tearing down a
+> container, and you don't care about its scratch space, being able to
+> drop all of the writes from being sent to the storage device (which
+> might be over the network, say using iSCSI), is a Good Thing.
+>
+> Theodore Ts'o (3):
+>   ext4: rename s_resize_flags to s_ext4_flags
+>   ext4: add shutdown bit and check for it
+>   ext4: add EXT4_IOC_GOINGDOWN ioctl
+>
+>  fs/ext4/ext4.h      | 26 +++++++++++++++++++++++---
+>  fs/ext4/ext4_jbd2.c |  2 ++
+>  fs/ext4/file.c      | 12 ++++++++++++
+>  fs/ext4/fsync.c     |  3 +++
+>  fs/ext4/ialloc.c    |  3 +++
+>  fs/ext4/inode.c     | 25 +++++++++++++++++++++++++
+>  fs/ext4/ioctl.c     | 42 ++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/namei.c     | 12 ++++++++++++
+>  fs/ext4/resize.c    |  5 +++--
+>  fs/ext4/super.c     |  2 +-
+>  fs/ext4/xattr.c     |  3 +++
+>  11 files changed, 129 insertions(+), 6 deletions(-)
+>
+> --
+> 2.11.0.rc0.7.gbe5a750
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
