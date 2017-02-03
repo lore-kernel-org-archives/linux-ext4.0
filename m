@@ -1,34 +1,74 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC/PATCH 0/3] Implement XFS's GOINGDOWN ioctl for ext4
-Date: Fri, 3 Feb 2017 10:09:14 -0500
-Message-ID: <20170203150914.vkahg2lyfi2ryk26@thunk.org>
-References: <20170202225924.19301-1-tytso@mit.edu>
- <CAOQ4uxhQubTwdOtmXXsaW4hVjKt2yBhSFG92ie0QcO+HGD9ioQ@mail.gmail.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Fri, 3 Feb 2017 16:32:22 +0100
+Message-ID: <20170203153222.GH19325@dhcp22.suse.cz>
+References: <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
+ <20170127061318.xd2qxashbl4dajez@thunk.org>
+ <20170127093735.GB4143@dhcp22.suse.cz>
+ <20170127164042.2o3bnyopihcb224g@thunk.org>
+ <20170130081210.GD8443@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        fstests <fstests@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, logfs@logfs.org,
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+	reiserfs-devel@vger.kernel.org,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAOQ4uxhQubTwdOtmXXsaW4hVjKt2yBhSFG92ie0QcO+HGD9ioQ@mail.gmail.com>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20170130081210.GD8443@dhcp22.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Feb 03, 2017 at 09:05:01AM +0200, Amir Goldstein wrote:
+On Mon 30-01-17 09:12:10, Michal Hocko wrote:
+> On Fri 27-01-17 11:40:42, Theodore Ts'o wrote:
+> > On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
+> > > If this ever turn out to be a problem and with the vmapped stacks we
+> > > have good chances to get a proper stack traces on a potential overflow
+> > > we can add the scope API around the problematic code path with the
+> > > explanation why it is needed.
+> > 
+> > Yeah, or maybe we can automate it?  Can the reclaim code check how
+> > much stack space is left and do the right thing automatically?
 > 
-> I have a naive question about generic implementation:
-> We already have mnt_want_write() hooks in generic vfs code,
-> so it should be easy enough to set the shutdown bit on sb and return -EIO there.
-> Wouldn't it be better to add mnt_want_read() hooks in vfs helpers
-> instead of duplicating
-> the fs specific hooks? I hear f2fs is yet another potential customer??
+> I am not sure how to do that. Checking for some magic value sounds quite
+> fragile to me. It also sounds a bit strange to focus only on the reclaim
+> while other code paths might suffer from the same problem.
+> 
+> What is actually the deepest possible call chain from the slab reclaim
+> where I stopped? I have tried to follow that path but hit the callback
+> wall quite early.
+>  
+> > The reason why I'm nervous is that nojournal mode is not a common
+> > configuration, and "wait until production systems start failing" is
+> > not a strategy that I or many SRE-types find.... comforting.
+> 
+> I understand that but I would be much more happier if we did the
+> decision based on the actual data rather than a fear something would
+> break down.
 
-There are *portions* of shutdown functionality which could be done in
-the generic VFS code.  The checks to have various system calls return
-early, and to have writeback skipped for inodes belonging to that file
-system, could be done in the generic code, sure.  But the code to
-shutdown or abort the journal would always have to be fs specific, for
-example.
+ping on this. I would really like to move forward here and target 4.11
+merge window. Is your concern so serious to block this patch?
+-- 
+Michal Hocko
+SUSE Labs
 
-						- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
