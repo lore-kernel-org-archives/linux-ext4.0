@@ -1,132 +1,352 @@
-From: Dave Jiang <dave.jiang@intel.com>
-Subject: Re: [PATCH] mm, dax: clear PMD or PUD size flags when in fall through
- path
-Date: Fri, 3 Feb 2017 13:06:20 -0700
-Message-ID: <917b621f-ec72-01f2-eb3d-7020d4c2e0a0@intel.com>
-References: <148589842696.5820.16078080610311444794.stgit@djiang5-desk3.ch.intel.com>
- <CAPcyv4i2Sgf+9Zj9D_A-BXfwftJiXywqR8Vut-56oGBiG3J+Uw@mail.gmail.com>
+From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH] mm: replace FAULT_FLAG_SIZE with parameter to huge_fault
+Date: Fri, 03 Feb 2017 14:31:22 -0700
+Message-ID: <148615748258.43180.1690152053774975329.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        linux-xfs@vger.kernel.org, Linux MM <linux-mm@kvack.org>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Jan Kara <jack@suse.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:61895 "EHLO mga04.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751368AbdBCUGc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 3 Feb 2017 15:06:32 -0500
-In-Reply-To: <CAPcyv4i2Sgf+9Zj9D_A-BXfwftJiXywqR8Vut-56oGBiG3J+Uw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ vbabka-AlSwsSmVLrQ@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org
+To: akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
+Since the introduction of FAULT_FLAG_SIZE to the vm_fault flag, it has
+been somewhat painful with getting the flags set and removed at the
+correct locations. More than one kernel oops was introduced due to
+difficulties of getting the placement correctly. Removing the flag
+values and introducing an input parameter to huge_fault that indicates
+the size of the page entry. This makes the code easier to trace and
+should avoid the issues we see with the fault flags where removal of the
+flag was necessary in the fallback paths.
 
+Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+---
+ drivers/dax/dax.c   |   18 ++++++++++++------
+ fs/dax.c            |    9 +++++----
+ fs/ext2/file.c      |    2 +-
+ fs/ext4/file.c      |   12 +++++++++---
+ fs/xfs/xfs_file.c   |    9 +++++----
+ include/linux/dax.h |    3 ++-
+ include/linux/mm.h  |   14 ++++++++------
+ mm/memory.c         |   17 ++++-------------
+ 8 files changed, 46 insertions(+), 38 deletions(-)
 
-On 02/03/2017 12:07 PM, Dan Williams wrote:
-> On Tue, Jan 31, 2017 at 1:33 PM, Dave Jiang <dave.jiang@intel.com> wrote:
->> Ross reported that:
->> Running xfstests generic/030 with XFS + DAX gives me the following kernel BUG,
->> which I bisected to this commit: mm,fs,dax: Change ->pmd_fault to ->huge_fault
->>
->> [  370.086205] ------------[ cut here ]------------
->> [  370.087182] kernel BUG at arch/x86/mm/fault.c:1038!
->> [  370.088336] invalid opcode: 0000 [#3] PREEMPT SMP
->> [  370.089073] Modules linked in: dax_pmem nd_pmem dax nd_btt nd_e820 libnvdimm
->> [  370.090212] CPU: 0 PID: 12415 Comm: xfs_io Tainted: G      D         4.10.0-rc5-mm1-00202-g7e90fc0 #10
->> [  370.091648] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.1-1.fc24 04/01/2014
->> [  370.092946] task: ffff8800ac4f8000 task.stack: ffffc9001148c000
->> [  370.093769] RIP: 0010:mm_fault_error+0x15e/0x190
->> [  370.094410] RSP: 0000:ffffc9001148fe60 EFLAGS: 00010246
->> [  370.095135] RAX: 0000000000000000 RBX: 0000000000000006 RCX: ffff8800ac4f8000
->> [  370.096107] RDX: 00007f111c8e6400 RSI: 0000000000000006 RDI: ffffc9001148ff58
->> [  370.097087] RBP: ffffc9001148fe88 R08: 0000000000000000 R09: ffff880510bd3300
->> [  370.098072] R10: ffff8800ac4f8000 R11: 0000000000000000 R12: 00007f111c8e6400
->> [  370.099057] R13: 00007f111c8e6400 R14: ffff880510bd3300 R15: 0000000000000055
->> [  370.100135] FS:  00007f111d95e700(0000) GS:ffff880514800000(0000) knlGS:0000000000000000
->> [  370.101238] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [  370.102021] CR2: 00007f111c8e6400 CR3: 00000000add00000 CR4: 00000000001406f0
->> [  370.103189] Call Trace:
->> [  370.103537]  __do_page_fault+0x54e/0x590
->> [  370.104090]  trace_do_page_fault+0x58/0x2c0
->> [  370.104675]  do_async_page_fault+0x2c/0x90
->> [  370.105342]  async_page_fault+0x28/0x30
->> [  370.106044] RIP: 0033:0x405e9a
->> [  370.106470] RSP: 002b:00007fffb7f30590 EFLAGS: 00010287
->> [  370.107185] RAX: 00000000004e6400 RBX: 0000000000000057 RCX: 00000000004e7000
->> [  370.108155] RDX: 00007f111c400000 RSI: 00000000004e7000 RDI: 0000000001c35080
->> [  370.109157] RBP: 00000000004e6400 R08: 0000000000000014 R09: 1999999999999999
->> [  370.110158] R10: 00007f111d2dc200 R11: 0000000000000000 R12: 0000000001c32fc0
->> [  370.111165] R13: 0000000000000000 R14: 0000000000000c00 R15: 0000000000000005
->> [  370.112171] Code: 07 00 00 00 e8 a4 ee ff ff e9 11 ff ff ff 4c 89 ea 48 89 de 45 31 c0 31 c9 e8 8f f7 ff ff 48 83 c4 08 5b 41 5c 41 5d 41 5e 5d c3 <0f> 0b 41 8b 94 24 80 04 00 00 49 8d b4 24 b0 06 00 00 4c 89 e9
->> [  370.114823] RIP: mm_fault_error+0x15e/0x190 RSP: ffffc9001148fe60
->> [  370.115722] ---[ end trace 2ce10d930638254d ]---
->>
->> It appears that there are 2 issues. First, the size bits used for vm_fault
->> needs to be shifted over. Otherwise, FAULT_FLAG_SIZE_PMD is clobbering
->> FAULT_FLAG_INSTRUCTION. Second issue, after create_huge_pmd() is being
->> called and is falling back to the pte fault handler, the FAULT_FLAG_SIZE_PMD
->> flag remains and that causes the dax fault handler to go towards the pmd
->> fault handler instead of the pte fault handler. Fixes are made for the pud
->> and pmd fall through paths.
->>
->> Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->> Signed-off-by: Dave Jiang <dave.jiang@intel.com>
->> ---
->>  include/linux/mm.h |    8 ++++----
->>  mm/memory.c        |    4 ++++
->>  2 files changed, 8 insertions(+), 4 deletions(-)
->>
->> diff --git a/include/linux/mm.h b/include/linux/mm.h
->> index f50e730..6194aeb 100644
->> --- a/include/linux/mm.h
->> +++ b/include/linux/mm.h
->> @@ -285,10 +285,10 @@ extern pgprot_t protection_map[16];
->>  #define FAULT_FLAG_REMOTE      0x80    /* faulting for non current tsk/mm */
->>  #define FAULT_FLAG_INSTRUCTION  0x100  /* The fault was during an instruction fetch */
->>
->> -#define FAULT_FLAG_SIZE_MASK   0x700   /* Support up to 8-level page tables */
->> -#define FAULT_FLAG_SIZE_PTE    0x000   /* First level (eg 4k) */
->> -#define FAULT_FLAG_SIZE_PMD    0x100   /* Second level (eg 2MB) */
->> -#define FAULT_FLAG_SIZE_PUD    0x200   /* Third level (eg 1GB) */
->> +#define FAULT_FLAG_SIZE_MASK   0x7000  /* Support up to 8-level page tables */
->> +#define FAULT_FLAG_SIZE_PTE    0x0000  /* First level (eg 4k) */
->> +#define FAULT_FLAG_SIZE_PMD    0x1000  /* Second level (eg 2MB) */
->> +#define FAULT_FLAG_SIZE_PUD    0x2000  /* Third level (eg 1GB) */
->>
->>  #define FAULT_FLAG_TRACE \
->>         { FAULT_FLAG_WRITE,             "WRITE" }, \
->> diff --git a/mm/memory.c b/mm/memory.c
->> index d465806..bdf1661 100644
->> --- a/mm/memory.c
->> +++ b/mm/memory.c
->> @@ -3663,6 +3663,8 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
->>                 ret = create_huge_pud(&vmf);
->>                 if (!(ret & VM_FAULT_FALLBACK))
->>                         return ret;
->> +               /* fall through path, remove PUD flag */
->> +               vmf.flags &= ~FAULT_FLAG_SIZE_PUD;
->>         } else {
->>                 pud_t orig_pud = *vmf.pud;
->>
->> @@ -3693,6 +3695,8 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
->>                 ret = create_huge_pmd(&vmf);
->>                 if (!(ret & VM_FAULT_FALLBACK))
->>                         return ret;
->> +               /* fall through path, remove PMD flag */
->> +               vmf.flags &= ~FAULT_FLAG_SIZE_PMD;
-> 
-> Can we move the size to be an argument to the fault handler?
-> Remembering to clear a flag in a context structure after a function
-> call is error prone.
-> 
-
-I'm amendable to that if no one has objections. The flags have been pain
-points so far. I'll create a patch.
+diff --git a/drivers/dax/dax.c b/drivers/dax/dax.c
+index b90bb30..b75c772 100644
+--- a/drivers/dax/dax.c
++++ b/drivers/dax/dax.c
+@@ -538,7 +538,8 @@ static int __dax_dev_pud_fault(struct dax_dev *dax_dev, struct vm_fault *vmf)
+ }
+ #endif /* !CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE_PUD */
+ 
+-static int dax_dev_fault(struct vm_fault *vmf)
++static int dax_dev_huge_fault(struct vm_fault *vmf,
++		enum page_entry_size pe_size)
+ {
+ 	int rc;
+ 	struct file *filp = vmf->vma->vm_file;
+@@ -550,14 +551,14 @@ static int dax_dev_fault(struct vm_fault *vmf)
+ 			vmf->vma->vm_start, vmf->vma->vm_end);
+ 
+ 	rcu_read_lock();
+-	switch (vmf->flags & FAULT_FLAG_SIZE_MASK) {
+-	case FAULT_FLAG_SIZE_PTE:
++	switch (pe_size) {
++	case PE_SIZE_PTE:
+ 		rc = __dax_dev_pte_fault(dax_dev, vmf);
+ 		break;
+-	case FAULT_FLAG_SIZE_PMD:
++	case PE_SIZE_PMD:
+ 		rc = __dax_dev_pmd_fault(dax_dev, vmf);
+ 		break;
+-	case FAULT_FLAG_SIZE_PUD:
++	case PE_SIZE_PUD:
+ 		rc = __dax_dev_pud_fault(dax_dev, vmf);
+ 		break;
+ 	default:
+@@ -568,9 +569,14 @@ static int dax_dev_fault(struct vm_fault *vmf)
+ 	return rc;
+ }
+ 
++static int dax_dev_fault(struct vm_fault *vmf)
++{
++	return dax_dev_huge_fault(vmf, PE_SIZE_PTE);
++}
++
+ static const struct vm_operations_struct dax_dev_vm_ops = {
+ 	.fault = dax_dev_fault,
+-	.huge_fault = dax_dev_fault,
++	.huge_fault = dax_dev_huge_fault,
+ };
+ 
+ static int dax_mmap(struct file *filp, struct vm_area_struct *vma)
+diff --git a/fs/dax.c b/fs/dax.c
+index 25f791d..97b8ecb 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1446,12 +1446,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, struct iomap_ops *ops)
+  * has done all the necessary locking for page fault to proceed
+  * successfully.
+  */
+-int dax_iomap_fault(struct vm_fault *vmf, struct iomap_ops *ops)
++int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
++		struct iomap_ops *ops)
+ {
+-	switch (vmf->flags & FAULT_FLAG_SIZE_MASK) {
+-	case FAULT_FLAG_SIZE_PTE:
++	switch (pe_size) {
++	case PE_SIZE_PTE:
+ 		return dax_iomap_pte_fault(vmf, ops);
+-	case FAULT_FLAG_SIZE_PMD:
++	case PE_SIZE_PMD:
+ 		return dax_iomap_pmd_fault(vmf, ops);
+ 	default:
+ 		return VM_FAULT_FALLBACK;
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 6873883..b21891a 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -99,7 +99,7 @@ static int ext2_dax_fault(struct vm_fault *vmf)
+ 	}
+ 	down_read(&ei->dax_sem);
+ 
+-	ret = dax_iomap_fault(vmf, &ext2_iomap_ops);
++	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &ext2_iomap_ops);
+ 
+ 	up_read(&ei->dax_sem);
+ 	if (vmf->flags & FAULT_FLAG_WRITE)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 51d7155..e8ab46e 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -255,7 +255,8 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ }
+ 
+ #ifdef CONFIG_FS_DAX
+-static int ext4_dax_fault(struct vm_fault *vmf)
++static int ext4_dax_huge_fault(struct vm_fault *vmf,
++		enum page_entry_size pe_size)
+ {
+ 	int result;
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+@@ -267,7 +268,7 @@ static int ext4_dax_fault(struct vm_fault *vmf)
+ 		file_update_time(vmf->vma->vm_file);
+ 	}
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	result = dax_iomap_fault(vmf, &ext4_iomap_ops);
++	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	if (write)
+ 		sb_end_pagefault(sb);
+@@ -275,6 +276,11 @@ static int ext4_dax_fault(struct vm_fault *vmf)
+ 	return result;
+ }
+ 
++static int ext4_dax_fault(struct vm_fault *vmf)
++{
++	return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
++}
++
+ /*
+  * Handle write fault for VM_MIXEDMAP mappings. Similarly to ext4_dax_fault()
+  * handler we check for races agaist truncate. Note that since we cycle through
+@@ -307,7 +313,7 @@ static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
+ 
+ static const struct vm_operations_struct ext4_dax_vm_ops = {
+ 	.fault		= ext4_dax_fault,
+-	.huge_fault	= ext4_dax_fault,
++	.huge_fault	= ext4_dax_huge_fault,
+ 	.page_mkwrite	= ext4_dax_fault,
+ 	.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
+ };
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index c4fe261..c37f435 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1385,7 +1385,7 @@ xfs_filemap_page_mkwrite(
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 
+ 	if (IS_DAX(inode)) {
+-		ret = dax_iomap_fault(vmf, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
+ 	} else {
+ 		ret = iomap_page_mkwrite(vmf, &xfs_iomap_ops);
+ 		ret = block_page_mkwrite_return(ret);
+@@ -1412,7 +1412,7 @@ xfs_filemap_fault(
+ 
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 	if (IS_DAX(inode))
+-		ret = dax_iomap_fault(vmf, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
+ 	else
+ 		ret = filemap_fault(vmf);
+ 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+@@ -1429,7 +1429,8 @@ xfs_filemap_fault(
+  */
+ STATIC int
+ xfs_filemap_huge_fault(
+-	struct vm_fault		*vmf)
++	struct vm_fault		*vmf,
++	enum page_entry_size	pe_size)
+ {
+ 	struct inode		*inode = file_inode(vmf->vma->vm_file);
+ 	struct xfs_inode	*ip = XFS_I(inode);
+@@ -1446,7 +1447,7 @@ xfs_filemap_huge_fault(
+ 	}
+ 
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+-	ret = dax_iomap_fault(vmf, &xfs_iomap_ops);
++	ret = dax_iomap_fault(vmf, pe_size, &xfs_iomap_ops);
+ 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 
+ 	if (vmf->flags & FAULT_FLAG_WRITE)
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index a3bfa26..df63730 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -38,7 +38,8 @@ static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
+ 
+ ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		struct iomap_ops *ops);
+-int dax_iomap_fault(struct vm_fault *vmf, struct iomap_ops *ops);
++int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
++		struct iomap_ops *ops);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 7646ae5..7b11431 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -285,11 +285,6 @@ extern pgprot_t protection_map[16];
+ #define FAULT_FLAG_REMOTE	0x80	/* faulting for non current tsk/mm */
+ #define FAULT_FLAG_INSTRUCTION  0x100	/* The fault was during an instruction fetch */
+ 
+-#define FAULT_FLAG_SIZE_MASK	0x7000	/* Support up to 8-level page tables */
+-#define FAULT_FLAG_SIZE_PTE	0x0000	/* First level (eg 4k) */
+-#define FAULT_FLAG_SIZE_PMD	0x1000	/* Second level (eg 2MB) */
+-#define FAULT_FLAG_SIZE_PUD	0x2000	/* Third level (eg 1GB) */
+-
+ #define FAULT_FLAG_TRACE \
+ 	{ FAULT_FLAG_WRITE,		"WRITE" }, \
+ 	{ FAULT_FLAG_MKWRITE,		"MKWRITE" }, \
+@@ -349,6 +344,13 @@ struct vm_fault {
+ 					 */
+ };
+ 
++/* page entry size for vm->huge_fault() */
++enum page_entry_size {
++	PE_SIZE_PTE = 0,
++	PE_SIZE_PMD,
++	PE_SIZE_PUD,
++};
++
+ /*
+  * These are the virtual MM functions - opening of an area, closing and
+  * unmapping it (needed to keep files on disk up-to-date etc), pointer
+@@ -359,7 +361,7 @@ struct vm_operations_struct {
+ 	void (*close)(struct vm_area_struct * area);
+ 	int (*mremap)(struct vm_area_struct * area);
+ 	int (*fault)(struct vm_fault *vmf);
+-	int (*huge_fault)(struct vm_fault *vmf);
++	int (*huge_fault)(struct vm_fault *vmf, enum page_entry_size pe_size);
+ 	void (*map_pages)(struct vm_fault *vmf,
+ 			pgoff_t start_pgoff, pgoff_t end_pgoff);
+ 
+diff --git a/mm/memory.c b/mm/memory.c
+index 41e2a2d..6040b74 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -3489,7 +3489,7 @@ static int create_huge_pmd(struct vm_fault *vmf)
+ 	if (vma_is_anonymous(vmf->vma))
+ 		return do_huge_pmd_anonymous_page(vmf);
+ 	if (vmf->vma->vm_ops->huge_fault)
+-		return vmf->vma->vm_ops->huge_fault(vmf);
++		return vmf->vma->vm_ops->huge_fault(vmf, PE_SIZE_PMD);
+ 	return VM_FAULT_FALLBACK;
+ }
+ 
+@@ -3498,7 +3498,7 @@ static int wp_huge_pmd(struct vm_fault *vmf, pmd_t orig_pmd)
+ 	if (vma_is_anonymous(vmf->vma))
+ 		return do_huge_pmd_wp_page(vmf, orig_pmd);
+ 	if (vmf->vma->vm_ops->huge_fault)
+-		return vmf->vma->vm_ops->huge_fault(vmf);
++		return vmf->vma->vm_ops->huge_fault(vmf, PE_SIZE_PMD);
+ 
+ 	/* COW handled on pte level: split pmd */
+ 	VM_BUG_ON_VMA(vmf->vma->vm_flags & VM_SHARED, vmf->vma);
+@@ -3519,7 +3519,7 @@ static int create_huge_pud(struct vm_fault *vmf)
+ 	if (vma_is_anonymous(vmf->vma))
+ 		return VM_FAULT_FALLBACK;
+ 	if (vmf->vma->vm_ops->huge_fault)
+-		return vmf->vma->vm_ops->huge_fault(vmf);
++		return vmf->vma->vm_ops->huge_fault(vmf, PE_SIZE_PUD);
+ #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
+ 	return VM_FAULT_FALLBACK;
+ }
+@@ -3531,7 +3531,7 @@ static int wp_huge_pud(struct vm_fault *vmf, pud_t orig_pud)
+ 	if (vma_is_anonymous(vmf->vma))
+ 		return VM_FAULT_FALLBACK;
+ 	if (vmf->vma->vm_ops->huge_fault)
+-		return vmf->vma->vm_ops->huge_fault(vmf);
++		return vmf->vma->vm_ops->huge_fault(vmf, PE_SIZE_PUD);
+ #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
+ 	return VM_FAULT_FALLBACK;
+ }
+@@ -3659,7 +3659,6 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 	if (!vmf.pud)
+ 		return VM_FAULT_OOM;
+ 	if (pud_none(*vmf.pud) && transparent_hugepage_enabled(vma)) {
+-		vmf.flags |= FAULT_FLAG_SIZE_PUD;
+ 		ret = create_huge_pud(&vmf);
+ 		if (!(ret & VM_FAULT_FALLBACK))
+ 			return ret;
+@@ -3670,8 +3669,6 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 		if (pud_trans_huge(orig_pud) || pud_devmap(orig_pud)) {
+ 			unsigned int dirty = flags & FAULT_FLAG_WRITE;
+ 
+-			vmf.flags |= FAULT_FLAG_SIZE_PUD;
+-
+ 			/* NUMA case for anonymous PUDs would go here */
+ 
+ 			if (dirty && !pud_write(orig_pud)) {
+@@ -3689,18 +3686,14 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 	if (!vmf.pmd)
+ 		return VM_FAULT_OOM;
+ 	if (pmd_none(*vmf.pmd) && transparent_hugepage_enabled(vma)) {
+-		vmf.flags |= FAULT_FLAG_SIZE_PMD;
+ 		ret = create_huge_pmd(&vmf);
+ 		if (!(ret & VM_FAULT_FALLBACK))
+ 			return ret;
+-		/* fall through path, remove PMD flag */
+-		vmf.flags &= ~FAULT_FLAG_SIZE_PMD;
+ 	} else {
+ 		pmd_t orig_pmd = *vmf.pmd;
+ 
+ 		barrier();
+ 		if (pmd_trans_huge(orig_pmd) || pmd_devmap(orig_pmd)) {
+-			vmf.flags |= FAULT_FLAG_SIZE_PMD;
+ 			if (pmd_protnone(orig_pmd) && vma_is_accessible(vma))
+ 				return do_huge_pmd_numa_page(&vmf, orig_pmd);
+ 
+@@ -3709,8 +3702,6 @@ static int __handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 				ret = wp_huge_pmd(&vmf, orig_pmd);
+ 				if (!(ret & VM_FAULT_FALLBACK))
+ 					return ret;
+-				/* fall through path, remove PUD flag */
+-				vmf.flags &= ~FAULT_FLAG_SIZE_PUD;
+ 			} else {
+ 				huge_pmd_set_accessed(&vmf, orig_pmd);
+ 				return 0;
