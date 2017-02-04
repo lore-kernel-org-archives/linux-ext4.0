@@ -1,93 +1,88 @@
-From: Dave Jiang <dave.jiang@intel.com>
-Subject: Re: [PATCH] mm: replace FAULT_FLAG_SIZE with parameter to huge_fault
-Date: Fri, 3 Feb 2017 17:07:24 -0700
-Message-ID: <86962573-01b7-4ce7-182e-7a77f183cf0e@intel.com>
-References: <201702040648.oOjnlEcm%fengguang.wu@intel.com>
- <2020f442-8e77-cf14-a6b1-b4b00d0da80b@intel.com>
- <CAPcyv4hmswhXsnS9q1Ut76f3-a2h5Hx7XYkS1iNyak8wG9VuEw@mail.gmail.com>
- <CAPcyv4hVqxedr9sEigw0Xsr_SoMAnvPrmPNOrX7QYNuCz=DRQA@mail.gmail.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] tune2fs: fix quota enablement regression
+Date: Fri, 3 Feb 2017 22:23:34 -0500
+Message-ID: <20170204032334.GA6952@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: kbuild test robot <lkp@intel.com>, kbuild-all@01.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        linux-xfs@vger.kernel.org, Linux MM <linux-mm@kvack.org>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Jan Kara <jack@suse.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Vlastimil Babka <vbabka@suse.cz>
-To: Dan Williams <dan.j.williams@intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:13452 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752928AbdBDAH1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 3 Feb 2017 19:07:27 -0500
-In-Reply-To: <CAPcyv4hVqxedr9sEigw0Xsr_SoMAnvPrmPNOrX7QYNuCz=DRQA@mail.gmail.com>
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:33031 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753393AbdBDDXd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Feb 2017 22:23:33 -0500
+Received: by mail-qk0-f194.google.com with SMTP id 11so1301363qkl.0
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2017 19:23:33 -0800 (PST)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/03/2017 05:00 PM, Dan Williams wrote:
-> On Fri, Feb 3, 2017 at 3:26 PM, Dan Williams <dan.j.williams@intel.com> wrote:
->> On Fri, Feb 3, 2017 at 3:25 PM, Dave Jiang <dave.jiang@intel.com> wrote:
->>> On 02/03/2017 03:56 PM, kbuild test robot wrote:
->>>> Hi Dave,
->>>>
->>>> [auto build test ERROR on mmotm/master]
->>>> [cannot apply to linus/master linux/master v4.10-rc6 next-20170203]
->>>> [if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
->>>
->>> This one is a bit odd. I just pulled mmotm tree master branch and built
->>> with the attached .config and it passed for me (and I don't see this
->>> commit in the master branch). I also built linux-next with this patch on
->>> top and it also passes with attached .config. Looking at the err log
->>> below it seems the code has a mix of partial from before and after the
->>> patch. I'm rather confused about it....
->>
->> This is a false positive. It tried to build it against latest mainline
->> instead of linux-next.
-> 
-> On second look it seems I ended up with a duplicate
-> ext4_huge_dax_fault after "git am" when I apply this on top of
-> next-20170202.  The following fixes it up for me and tests fine:
+Commit 5c2a665afa (Avoid dereferencing beyond allocated memory in quota
+handling) induced a quota enablement regression in tune2fs.  Attempts
+to enable a particular quota type (tune2fs -O project <dev>, for
+example) set the appropriate feature flag in the superblock but the
+quota file for the type is not initialized.
 
-I think it's missing this patch from Ross
-http://marc.info/?l=linux-mm&m=148581319303697&w=2
+The regression prevents the current version of xfstests from running
+generic/383, 384, 385, and 386 (all project quota tests) with e2fsprogs
+1.43.4.  These tests exit with the message "Installed kernel does not
+support project quotas", but the actual problem is that the project
+quota file is not present.
 
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index f8f4f6d068e5..e8ab46efc4f9 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -276,27 +276,6 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
->         return result;
->  }
-> 
-> -static int
-> -ext4_dax_huge_fault(struct vm_fault *vmf)
-> -{
-> -       int result;
-> -       struct inode *inode = file_inode(vmf->vma->vm_file);
-> -       struct super_block *sb = inode->i_sb;
-> -       bool write = vmf->flags & FAULT_FLAG_WRITE;
-> -
-> -       if (write) {
-> -               sb_start_pagefault(sb);
-> -               file_update_time(vmf->vma->vm_file);
-> -       }
-> -       down_read(&EXT4_I(inode)->i_mmap_sem);
-> -       result = dax_iomap_fault(vmf, &ext4_iomap_ops);
-> -       up_read(&EXT4_I(inode)->i_mmap_sem);
-> -       if (write)
-> -               sb_end_pagefault(sb);
-> -
-> -       return result;
-> -}
-> -
->  static int ext4_dax_fault(struct vm_fault *vmf)
->  {
->         return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
-> 
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ misc/tune2fs.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 6239577..f1bad60 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1483,7 +1483,7 @@ static void handle_quota_options(ext2_filsys fs)
+ 	quota_ctx_t qctx;
+ 	ext2_ino_t qf_ino;
+ 	enum quota_type qtype;
+-	int enable = 0;
++	unsigned int qtype_bits = 0;
+ 
+ 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
+ 		if (quota_enable[qtype] != 0)
+@@ -1492,19 +1492,19 @@ static void handle_quota_options(ext2_filsys fs)
+ 		/* Nothing to do. */
+ 		return;
+ 
+-	retval = quota_init_context(&qctx, fs, 0);
++	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
++		if (quota_enable[qtype] == QOPT_ENABLE)
++			qtype_bits |= 1 << qtype;
++	}
++
++	retval = quota_init_context(&qctx, fs, qtype_bits);
+ 	if (retval) {
+ 		com_err(program_name, retval,
+ 			_("while initializing quota context in support library"));
+ 		exit(1);
+ 	}
+-	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++) {
+-		if (quota_enable[qtype] == QOPT_ENABLE) {
+-			enable = 1;
+-			break;
+-		}
+-	}
+-	if (enable)
++
++	if (qtype_bits)
+ 		quota_compute_usage(qctx);
+ 
+ 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++) {
+@@ -1540,7 +1540,7 @@ static void handle_quota_options(ext2_filsys fs)
+ 
+ 	quota_release_context(&qctx);
+ 
+-	if (enable) {
++	if (qtype_bits) {
+ 		ext2fs_set_feature_quota(fs->super);
+ 		ext2fs_mark_super_dirty(fs);
+ 	} else {
+-- 
+2.1.4
