@@ -1,88 +1,119 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] tune2fs: fix quota enablement regression
-Date: Fri, 3 Feb 2017 22:23:34 -0500
-Message-ID: <20170204032334.GA6952@localhost.localdomain>
+From: kbuild test robot <lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH] mm: replace FAULT_FLAG_SIZE with parameter to huge_fault
+Date: Sat, 4 Feb 2017 11:51:57 +0800
+Message-ID: <201702041153.JZlQT4wK%fengguang.wu@intel.com>
+References: <148615748258.43180.1690152053774975329.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:33031 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753393AbdBDDXd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Feb 2017 22:23:33 -0500
-Received: by mail-qk0-f194.google.com with SMTP id 11so1301363qkl.0
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Feb 2017 19:23:33 -0800 (PST)
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, vbabka-AlSwsSmVLrQ@public.gmane.org,
+ dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ kbuild-all-JC7UmRfGjtg@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org
+To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <148615748258.43180.1690152053774975329.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Commit 5c2a665afa (Avoid dereferencing beyond allocated memory in quota
-handling) induced a quota enablement regression in tune2fs.  Attempts
-to enable a particular quota type (tune2fs -O project <dev>, for
-example) set the appropriate feature flag in the superblock but the
-quota file for the type is not initialized.
+Hi Dave,
 
-The regression prevents the current version of xfstests from running
-generic/383, 384, 385, and 386 (all project quota tests) with e2fsprogs
-1.43.4.  These tests exit with the message "Installed kernel does not
-support project quotas", but the actual problem is that the project
-quota file is not present.
+[auto build test WARNING on mmotm/master]
+[cannot apply to linus/master linux/master v4.10-rc6 next-20170203]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+url:    https://github.com/0day-ci/linux/commits/Dave-Jiang/mm-replace-FAULT_FLAG_SIZE-with-parameter-to-huge_fault/20170204-053548
+base:   git://git.cmpxchg.org/linux-mmotm.git master
+config: x86_64-randconfig-in0-02040556 (attached as .config)
+compiler: gcc-4.6 (Debian 4.6.4-7) 4.6.4
+reproduce:
+        # save the attached .config to linux build tree
+        make ARCH=x86_64 
+
+All warnings (new ones prefixed by >>):
+
+   fs/ext4/file.c:280:1: error: conflicting types for 'ext4_dax_huge_fault'
+   fs/ext4/file.c:258:12: note: previous definition of 'ext4_dax_huge_fault' was here
+   fs/ext4/file.c: In function 'ext4_dax_huge_fault':
+   fs/ext4/file.c:292:2: error: incompatible type for argument 2 of 'dax_iomap_fault'
+   include/linux/dax.h:41:5: note: expected 'enum page_entry_size' but argument is of type 'struct iomap_ops *'
+   fs/ext4/file.c:292:2: error: too few arguments to function 'dax_iomap_fault'
+   include/linux/dax.h:41:5: note: declared here
+   fs/ext4/file.c: In function 'ext4_dax_fault':
+   fs/ext4/file.c:302:2: error: too many arguments to function 'ext4_dax_huge_fault'
+   fs/ext4/file.c:280:1: note: declared here
+   fs/ext4/file.c: At top level:
+>> fs/ext4/file.c:337:2: warning: initialization from incompatible pointer type [enabled by default]
+   fs/ext4/file.c:337:2: warning: (near initialization for 'ext4_dax_vm_ops.huge_fault') [enabled by default]
+   fs/ext4/file.c:258:12: warning: 'ext4_dax_huge_fault' defined but not used [-Wunused-function]
+
+vim +337 fs/ext4/file.c
+
+   286	
+   287		if (write) {
+   288			sb_start_pagefault(sb);
+   289			file_update_time(vmf->vma->vm_file);
+   290		}
+   291		down_read(&EXT4_I(inode)->i_mmap_sem);
+ > 292		result = dax_iomap_fault(vmf, &ext4_iomap_ops);
+   293		up_read(&EXT4_I(inode)->i_mmap_sem);
+   294		if (write)
+   295			sb_end_pagefault(sb);
+   296	
+   297		return result;
+   298	}
+   299	
+   300	static int ext4_dax_fault(struct vm_fault *vmf)
+   301	{
+   302		return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
+   303	}
+   304	
+   305	/*
+   306	 * Handle write fault for VM_MIXEDMAP mappings. Similarly to ext4_dax_fault()
+   307	 * handler we check for races agaist truncate. Note that since we cycle through
+   308	 * i_mmap_sem, we are sure that also any hole punching that began before we
+   309	 * were called is finished by now and so if it included part of the file we
+   310	 * are working on, our pte will get unmapped and the check for pte_same() in
+   311	 * wp_pfn_shared() fails. Thus fault gets retried and things work out as
+   312	 * desired.
+   313	 */
+   314	static int ext4_dax_pfn_mkwrite(struct vm_fault *vmf)
+   315	{
+   316		struct inode *inode = file_inode(vmf->vma->vm_file);
+   317		struct super_block *sb = inode->i_sb;
+   318		loff_t size;
+   319		int ret;
+   320	
+   321		sb_start_pagefault(sb);
+   322		file_update_time(vmf->vma->vm_file);
+   323		down_read(&EXT4_I(inode)->i_mmap_sem);
+   324		size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+   325		if (vmf->pgoff >= size)
+   326			ret = VM_FAULT_SIGBUS;
+   327		else
+   328			ret = dax_pfn_mkwrite(vmf);
+   329		up_read(&EXT4_I(inode)->i_mmap_sem);
+   330		sb_end_pagefault(sb);
+   331	
+   332		return ret;
+   333	}
+   334	
+   335	static const struct vm_operations_struct ext4_dax_vm_ops = {
+   336		.fault		= ext4_dax_fault,
+ > 337		.huge_fault	= ext4_dax_huge_fault,
+   338		.page_mkwrite	= ext4_dax_fault,
+   339		.pfn_mkwrite	= ext4_dax_pfn_mkwrite,
+   340	};
+
 ---
- misc/tune2fs.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 6239577..f1bad60 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1483,7 +1483,7 @@ static void handle_quota_options(ext2_filsys fs)
- 	quota_ctx_t qctx;
- 	ext2_ino_t qf_ino;
- 	enum quota_type qtype;
--	int enable = 0;
-+	unsigned int qtype_bits = 0;
- 
- 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
- 		if (quota_enable[qtype] != 0)
-@@ -1492,19 +1492,19 @@ static void handle_quota_options(ext2_filsys fs)
- 		/* Nothing to do. */
- 		return;
- 
--	retval = quota_init_context(&qctx, fs, 0);
-+	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
-+		if (quota_enable[qtype] == QOPT_ENABLE)
-+			qtype_bits |= 1 << qtype;
-+	}
-+
-+	retval = quota_init_context(&qctx, fs, qtype_bits);
- 	if (retval) {
- 		com_err(program_name, retval,
- 			_("while initializing quota context in support library"));
- 		exit(1);
- 	}
--	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++) {
--		if (quota_enable[qtype] == QOPT_ENABLE) {
--			enable = 1;
--			break;
--		}
--	}
--	if (enable)
-+
-+	if (qtype_bits)
- 		quota_compute_usage(qctx);
- 
- 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++) {
-@@ -1540,7 +1540,7 @@ static void handle_quota_options(ext2_filsys fs)
- 
- 	quota_release_context(&qctx);
- 
--	if (enable) {
-+	if (qtype_bits) {
- 		ext2fs_set_feature_quota(fs->super);
- 		ext2fs_mark_super_dirty(fs);
- 	} else {
--- 
-2.1.4
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
