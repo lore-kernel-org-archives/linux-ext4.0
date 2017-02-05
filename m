@@ -1,144 +1,57 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 7/7] ext4: add EXT4_IOC_GOINGDOWN ioctl
-Date: Sun,  5 Feb 2017 02:34:30 -0500
-Message-ID: <20170205073430.9109-7-tytso@mit.edu>
+Subject: [PATCH 3/7] ext4: preserve the needs_recovery flag when the journal is aborted
+Date: Sun,  5 Feb 2017 02:34:26 -0500
+Message-ID: <20170205073430.9109-3-tytso@mit.edu>
 References: <20170205073430.9109-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34002 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751735AbdBEHef (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 5 Feb 2017 02:34:35 -0500
+Return-path: <stable-owner@vger.kernel.org>
 In-Reply-To: <20170205073430.9109-1-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This ioctl is modeled after the xfs's XFS_IOC_GOINGDOWN ioctl.  (In
-fact, it uses the same code points.)
+If the journal is aborted, the needs_recovery feature flag should not
+be removed.  Otherwise, it's the journal might not get replayed and
+this could lead to more data getting lost.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/ext4.h  | 10 ++++++++++
- fs/ext4/ioctl.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c |  2 +-
- 3 files changed, 61 insertions(+), 1 deletion(-)
+ fs/ext4/super.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 35d93ab7f3fb..55b7a77a0444 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -679,6 +679,16 @@ struct fsxattr {
- #define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
- #define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
- 
-+#define EXT4_IOC_GOINGDOWN _IOR ('X', 125, __u32)
-+
-+/*
-+ * Flags for going down operation
-+ */
-+#define EXT4_GOING_FLAGS_DEFAULT		0x0	/* going down */
-+#define EXT4_GOING_FLAGS_LOGFLUSH		0x1	/* flush log but not data */
-+#define EXT4_GOING_FLAGS_NOLOGFLUSH		0x2	/* don't flush log nor data */
-+
-+
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-  * ioctl commands in 32 bit emulation
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index d534399cf607..b383ebf4020c 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -16,6 +16,7 @@
- #include <linux/quotaops.h>
- #include <linux/uuid.h>
- #include <linux/uaccess.h>
-+#include <linux/delay.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- 
-@@ -442,6 +443,52 @@ static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
- 	return iflags;
- }
- 
-+int ext4_goingdown(struct super_block *sb, unsigned long arg)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	__u32 flags;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	if (get_user(flags, (__u32 __user *)arg))
-+		return -EFAULT;
-+
-+	if (flags > EXT4_GOING_FLAGS_NOLOGFLUSH)
-+		return -EINVAL;
-+
-+	if (ext4_forced_shutdown(sbi))
-+		return 0;
-+
-+	ext4_msg(sb, KERN_ALERT, "shut down requested (%d)", flags);
-+
-+	switch (flags) {
-+	case EXT4_GOING_FLAGS_DEFAULT:
-+		freeze_bdev(sb->s_bdev);
-+		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
-+		thaw_bdev(sb->s_bdev, sb);
-+		break;
-+	case EXT4_GOING_FLAGS_LOGFLUSH:
-+		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
-+		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
-+			(void) ext4_force_commit(sb);
-+			jbd2_journal_abort(sbi->s_journal, 0);
-+		}
-+		break;
-+	case EXT4_GOING_FLAGS_NOLOGFLUSH:
-+		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
-+		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
-+			msleep(100);
-+			jbd2_journal_abort(sbi->s_journal, 0);
-+		}
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+	clear_opt(sb, DISCARD);
-+	return 0;
-+}
-+
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -893,6 +940,8 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 
- 		return 0;
- 	}
-+	case EXT4_IOC_GOINGDOWN:
-+		return ext4_goingdown(sb, arg);
- 	default:
- 		return -ENOTTY;
- 	}
-@@ -959,6 +1008,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC_SET_ENCRYPTION_POLICY:
- 	case EXT4_IOC_GET_ENCRYPTION_PWSALT:
- 	case EXT4_IOC_GET_ENCRYPTION_POLICY:
-+	case EXT4_IOC_GOINGDOWN:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 879e3a6afd9d..de8709269cfb 100644
+index 829e4a7b59e4..3fef82e79131 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4818,7 +4818,7 @@ static int ext4_freeze(struct super_block *sb)
-  */
- static int ext4_unfreeze(struct super_block *sb)
+@@ -825,6 +825,7 @@ static void ext4_put_super(struct super_block *sb)
  {
--	if (sb->s_flags & MS_RDONLY)
-+	if ((sb->s_flags & MS_RDONLY) || ext4_forced_shutdown(EXT4_SB(sb)))
- 		return 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
++	int aborted = 0;
+ 	int i, err;
  
- 	if (EXT4_SB(sb)->s_journal) {
+ 	ext4_unregister_li_request(sb);
+@@ -834,9 +835,10 @@ static void ext4_put_super(struct super_block *sb)
+ 	destroy_workqueue(sbi->rsv_conversion_wq);
+ 
+ 	if (sbi->s_journal) {
++		aborted = is_journal_aborted(sbi->s_journal);
+ 		err = jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+-		if (err < 0)
++		if ((err < 0) && !aborted)
+ 			ext4_abort(sb, "Couldn't clean up the journal");
+ 	}
+ 
+@@ -847,7 +849,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_mb_release(sb);
+ 	ext4_ext_release(sb);
+ 
+-	if (!(sb->s_flags & MS_RDONLY)) {
++	if (!(sb->s_flags & MS_RDONLY) && !aborted) {
+ 		ext4_clear_feature_journal_needs_recovery(sb);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+ 	}
 -- 
 2.11.0.rc0.7.gbe5a750
