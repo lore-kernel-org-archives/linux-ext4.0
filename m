@@ -1,40 +1,93 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] ext4: don't allow encrypted operations without keys
-Date: Sat, 4 Feb 2017 13:44:28 -0800
-Message-ID: <20170204214428.GC5621@zzz>
-References: <20161228034812.ikoat5x3e7ucnac7@thunk.org>
- <20161228052252.10314-1-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Filesystem Development List
-        <linux-fsdevel@vger.kernel.org>, jaegeuk@kernel.org,
-        richard@nod.at, ebiggers@google.com
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20161228052252.10314-1-tytso@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 1/7] ext4: fix inline data error paths
+Date: Sun,  5 Feb 2017 02:34:24 -0500
+Message-ID: <20170205073430.9109-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:34022 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752026AbdBEHef (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 5 Feb 2017 02:34:35 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 28, 2016 at 12:22:52AM -0500, Theodore Ts'o wrote:
-> While we allow deletes without the key, the following should not be
-> permitted:
-> 
-> # cd /vdc/encrypted-dir-without-key
-> # ls -l
-> total 4
-> -rw-r--r-- 1 root root   0 Dec 27 22:35 6,LKNRJsp209FbXoSvJWzB
-> -rw-r--r-- 1 root root 286 Dec 27 22:35 uRJ5vJh9gE7vcomYMqTAyD
-> # mv uRJ5vJh9gE7vcomYMqTAyD  6,LKNRJsp209FbXoSvJWzB
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+The write_end() function must always unlock the page and drop its ref
+count, even on an error.
 
-Hi Ted, this commit shows up twice in the ext4 tree, as 173b8439e1ba3 and
-a7ede371cb821, but the second actually adds the check two *more* times to
-ext4_cross_rename(), such that there are now a total of three checks in that
-function, all the same.  Do you want to revert the second, unnecessary, commit?
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/inline.c |  9 ++++++++-
+ fs/ext4/inode.c  | 20 +++++++++++++++-----
+ 2 files changed, 23 insertions(+), 6 deletions(-)
 
-Thanks,
-
-Eric
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 338cfd862adb..b777b8aa14ae 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -943,8 +943,15 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+ 				  struct page *page)
+ {
+ 	int i_size_changed = 0;
++	int ret;
+ 
+-	copied = ext4_write_inline_data_end(inode, pos, len, copied, page);
++	ret = ext4_write_inline_data_end(inode, pos, len, copied, page);
++	if (ret < 0) {
++		unlock_page(page);
++		put_page(page);
++		return ret;
++	}
++	copied = ret;
+ 
+ 	/*
+ 	 * No need to use i_size_read() here, the i_size
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 918d351d5b94..af97b9170358 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1330,8 +1330,11 @@ static int ext4_write_end(struct file *file,
+ 	if (ext4_has_inline_data(inode)) {
+ 		ret = ext4_write_inline_data_end(inode, pos, len,
+ 						 copied, page);
+-		if (ret < 0)
++		if (ret < 0) {
++			unlock_page(page);
++			put_page(page);
+ 			goto errout;
++		}
+ 		copied = ret;
+ 	} else
+ 		copied = block_write_end(file, mapping, pos,
+@@ -1433,10 +1436,16 @@ static int ext4_journalled_write_end(struct file *file,
+ 
+ 	BUG_ON(!ext4_handle_valid(handle));
+ 
+-	if (ext4_has_inline_data(inode))
+-		copied = ext4_write_inline_data_end(inode, pos, len,
+-						    copied, page);
+-	else if (unlikely(copied < len) && !PageUptodate(page)) {
++	if (ext4_has_inline_data(inode)) {
++		ret = ext4_write_inline_data_end(inode, pos, len,
++						 copied, page);
++		if (ret < 0) {
++			unlock_page(page);
++			put_page(page);
++			goto errout;
++		}
++		copied = ret;
++	} else if (unlikely(copied < len) && !PageUptodate(page)) {
+ 		copied = 0;
+ 		ext4_journalled_zero_new_buffers(handle, page, from, to);
+ 	} else {
+@@ -1471,6 +1480,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 		 */
+ 		ext4_orphan_add(handle, inode);
+ 
++errout:
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-- 
+2.11.0.rc0.7.gbe5a750
