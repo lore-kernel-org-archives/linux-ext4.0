@@ -1,91 +1,46 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
- memalloc_noio*
-Date: Mon, 6 Feb 2017 18:44:15 +0100
-Message-ID: <20170206174415.GA20731@dhcp22.suse.cz>
-References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-5-mhocko@kernel.org>
- <20170206153923.GL2267@bombadil.infradead.org>
+From: Dave Jiang <dave.jiang@intel.com>
+Subject: [PATCH] mm,x86: native_pud_clear missing on i386 build
+Date: Mon, 06 Feb 2017 10:55:52 -0700
+Message-ID: <148640375195.69754.3315433724330910314.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170206153923.GL2267@bombadil.infradead.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: mawilcox@microsoft.com, linux-nvdimm@lists.01.org,
+        dave.hansen@linux.intel.com, linux-xfs@vger.kernel.org,
+        linux-mm@kvack.org, kirill.shutemov@linux.intel.com, jack@suse.com,
+        dan.j.williams@intel.com, linux-ext4@vger.kernel.org,
+        ross.zwisler@linux.intel.com, vbabka@suse.cz
+To: akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga06.intel.com ([134.134.136.31]:26888 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751121AbdBFRzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 6 Feb 2017 12:55:53 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 06-02-17 07:39:23, Matthew Wilcox wrote:
-> On Mon, Feb 06, 2017 at 03:07:16PM +0100, Michal Hocko wrote:
-> > +++ b/fs/xfs/xfs_buf.c
-> > @@ -442,17 +442,17 @@ _xfs_buf_map_pages(
-> >  		bp->b_addr = NULL;
-> >  	} else {
-> >  		int retried = 0;
-> > -		unsigned noio_flag;
-> > +		unsigned nofs_flag;
-> >  
-> >  		/*
-> >  		 * vm_map_ram() will allocate auxillary structures (e.g.
-> >  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
-> >  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
-> > -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
-> > +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
-> >  		 * memory reclaim re-entering the filesystem here and
-> >  		 * potentially deadlocking.
-> >  		 */
-> 
-> This comment feels out of date ... how about:
+Missing dummy function native_pud_clear() for 32bit x86 build caught
+by 0-day build.
 
-which part is out of date?
+Fix: a10a1701 mm, x86: add support for PUD-sized transparent hugepages
 
-> 
-> 		/*
-> 		 * vm_map_ram will allocate auxiliary structures (eg page
-> 		 * tables) with GFP_KERNEL.  If that tries to reclaim memory
-> 		 * by calling back into this filesystem, we may deadlock.
-> 		 * Prevent that by setting the NOFS flag.
-> 		 */
+Signed-off-by: Dave Jiang <dave.jiang@intel.com>
+---
+ arch/x86/include/asm/pgtable-3level.h |    4 ++++
+ 1 file changed, 4 insertions(+)
 
-dunno, the previous wording seems clear enough to me. Maybe little bit
-more chatty than yours but I am not sure this is worth changing.
-
-> 
-> > -		noio_flag = memalloc_noio_save();
-> > +		nofs_flag = memalloc_nofs_save();
-> >  		do {
-> >  			bp->b_addr = vm_map_ram(bp->b_pages, bp->b_page_count,
-> >  						-1, PAGE_KERNEL);
-> 
-> Also, I think it shows that this is the wrong place in XFS to be calling
-> memalloc_nofs_save().  I'm not arguing against including this patch;
-> it's a step towards where we want to be.  I also don't know XFS well
-> enough to know where to set that flag ;-)  Presumably when we start a
-> transaction ... ?
-
-Yes that is what I would like to achieve longterm. And the reason why I
-didn't want to mimic this pattern in kvmalloc as some have suggested.
-It just takes much more time to get there from the past experience and
-we should really start somewhere.
--- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/arch/x86/include/asm/pgtable-3level.h b/arch/x86/include/asm/pgtable-3level.h
+index be759ff..50d35e3 100644
+--- a/arch/x86/include/asm/pgtable-3level.h
++++ b/arch/x86/include/asm/pgtable-3level.h
+@@ -121,6 +121,10 @@ static inline void native_pmd_clear(pmd_t *pmd)
+ 	*(tmp + 1) = 0;
+ }
+ 
++static inline void native_pud_clear(pud_t *pudp)
++{
++}
++
+ static inline void pud_clear(pud_t *pudp)
+ {
+ 	set_pud(pudp, __pud(0));
