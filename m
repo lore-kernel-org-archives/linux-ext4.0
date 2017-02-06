@@ -1,63 +1,39 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 1/6] lockdep: allow to disable reclaim lockup detection
-Date: Mon, 6 Feb 2017 15:34:50 +0100
-Message-ID: <20170206143449.GD10298@dhcp22.suse.cz>
-References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-2-mhocko@kernel.org>
- <20170206142641.GG2267@bombadil.infradead.org>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH] mm: replace FAULT_FLAG_SIZE with parameter to huge_fault
+Date: Mon, 6 Feb 2017 06:36:48 -0800
+Message-ID: <20170206143648.GA461@infradead.org>
+References: <148615748258.43180.1690152053774975329.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vbabka-AlSwsSmVLrQ@public.gmane.org
+To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170206142641.GG2267@bombadil.infradead.org>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <148615748258.43180.1690152053774975329.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 06-02-17 06:26:41, Matthew Wilcox wrote:
-> On Mon, Feb 06, 2017 at 03:07:13PM +0100, Michal Hocko wrote:
-> > While we are at it also make sure that the radix tree doesn't
-> > accidentaly override tags stored in the upper part of the gfp_mask.
-> 
-> > diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-> > index 9dc093d5ef39..7550be09f9d6 100644
-> > --- a/lib/radix-tree.c
-> > +++ b/lib/radix-tree.c
-> > @@ -2274,6 +2274,8 @@ static int radix_tree_cpu_dead(unsigned int cpu)
-> >  void __init radix_tree_init(void)
-> >  {
-> >  	int ret;
-> > +
-> > +	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
-> >  	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
-> >  			sizeof(struct radix_tree_node), 0,
-> >  			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
-> 
-> That's going to have a conceptual conflict with some patches I have
-> in flight.  I'll take this part through my radix tree patch collection.
+On Fri, Feb 03, 2017 at 02:31:22PM -0700, Dave Jiang wrote:
+> Since the introduction of FAULT_FLAG_SIZE to the vm_fault flag, it has
+> been somewhat painful with getting the flags set and removed at the
+> correct locations. More than one kernel oops was introduced due to
+> difficulties of getting the placement correctly. Removing the flag
+> values and introducing an input parameter to huge_fault that indicates
+> the size of the page entry. This makes the code easier to trace and
+> should avoid the issues we see with the fault flags where removal of the
+> flag was necessary in the fallback paths.
 
-This part is not needed for the patch, strictly speaking but I wanted to
-make the code more future proof.
-
--- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Why is this not in struct vm_fault?  Also can be use this opportunity
+to fold ->huge_fault into ->fault?
