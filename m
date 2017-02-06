@@ -1,103 +1,52 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: [PATCH 5/6] jbd2: mark the transaction context with the scope GFP_NOFS context
-Date: Mon,  6 Feb 2017 15:07:17 +0100
-Message-ID: <20170206140718.16222-6-mhocko@kernel.org>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCH 1/6] lockdep: allow to disable reclaim lockup detection
+Date: Mon, 6 Feb 2017 06:26:41 -0800
+Message-ID: <20170206142641.GG2267@bombadil.infradead.org>
 References: <20170206140718.16222-1-mhocko@kernel.org>
-Cc: <linux-mm@kvack.org>,
-	Dave Chinner <david@fromorbit.com>,
-	djwong@kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org,
-	logfs@logfs.org,
-	linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org,
+ <20170206140718.16222-2-mhocko@kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, logfs@logfs.org,
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
 	reiserfs-devel@vger.kernel.org,
 	linux-ntfs-dev@lists.sourceforge.net,
 	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org,
-	LKML <linux-kernel@vger.kernel.org>,
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
 	Michal Hocko <mhocko@suse.com>
-To: Andrew Morton <akpm@linux-foundation.org>,
-	<linux-fsdevel@vger.kernel.org>
+To: Michal Hocko <mhocko@kernel.org>
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170206140718.16222-1-mhocko@kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170206140718.16222-2-mhocko@kernel.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Michal Hocko <mhocko@suse.com>
+On Mon, Feb 06, 2017 at 03:07:13PM +0100, Michal Hocko wrote:
+> While we are at it also make sure that the radix tree doesn't
+> accidentaly override tags stored in the upper part of the gfp_mask.
 
-now that we have memalloc_nofs_{save,restore} api we can mark the whole
-transaction context as implicitly GFP_NOFS. All allocations will
-automatically inherit GFP_NOFS this way. This means that we do not have
-to mark any of those requests with GFP_NOFS and moreover all the
-ext4_kv[mz]alloc(GFP_NOFS) are also safe now because even the hardcoded
-GFP_KERNEL allocations deep inside the vmalloc will be NOFS now.
+> diff --git a/lib/radix-tree.c b/lib/radix-tree.c
+> index 9dc093d5ef39..7550be09f9d6 100644
+> --- a/lib/radix-tree.c
+> +++ b/lib/radix-tree.c
+> @@ -2274,6 +2274,8 @@ static int radix_tree_cpu_dead(unsigned int cpu)
+>  void __init radix_tree_init(void)
+>  {
+>  	int ret;
+> +
+> +	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
+>  	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
+>  			sizeof(struct radix_tree_node), 0,
+>  			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- fs/jbd2/transaction.c | 11 +++++++++++
- include/linux/jbd2.h  |  2 ++
- 2 files changed, 13 insertions(+)
-
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index e1652665bd93..35a5d3d76182 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -388,6 +388,11 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
- 
- 	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
- 	jbd2_journal_free_transaction(new_transaction);
-+	/*
-+	 * Make sure that no allocations done while the transaction is
-+	 * open is going to recurse back to the fs layer.
-+	 */
-+	handle->saved_alloc_context = memalloc_nofs_save();
- 	return 0;
- }
- 
-@@ -466,6 +471,7 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
- 	trace_jbd2_handle_start(journal->j_fs_dev->bd_dev,
- 				handle->h_transaction->t_tid, type,
- 				line_no, nblocks);
-+
- 	return handle;
- }
- EXPORT_SYMBOL(jbd2__journal_start);
-@@ -1760,6 +1766,11 @@ int jbd2_journal_stop(handle_t *handle)
- 	if (handle->h_rsv_handle)
- 		jbd2_journal_free_reserved(handle->h_rsv_handle);
- free_and_exit:
-+	/*
-+	 * scope of th GFP_NOFS context is over here and so we can
-+	 * restore the original alloc context.
-+	 */
-+	memalloc_nofs_restore(handle->saved_alloc_context);
- 	jbd2_free_handle(handle);
- 	return err;
- }
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index dfaa1f4dcb0c..606b6bce3a5b 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -491,6 +491,8 @@ struct jbd2_journal_handle
- 
- 	unsigned long		h_start_jiffies;
- 	unsigned int		h_requested_credits;
-+
-+	unsigned int		saved_alloc_context;
- };
- 
- 
--- 
-2.11.0
+That's going to have a conceptual conflict with some patches I have
+in flight.  I'll take this part through my radix tree patch collection.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
