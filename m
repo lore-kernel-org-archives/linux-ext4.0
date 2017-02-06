@@ -1,113 +1,162 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
- memalloc_noio*
-Date: Tue, 7 Feb 2017 09:51:50 +1100
-Message-ID: <20170206225150.GB12125@dastard>
-References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-5-mhocko@kernel.org>
- <20170206153923.GL2267@bombadil.infradead.org>
- <20170206174415.GA20731@dhcp22.suse.cz>
- <20170206183237.GE3580@birch.djwong.org>
- <20170206184743.GB20731@dhcp22.suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: question about ext4 block allocation
+Date: Mon, 6 Feb 2017 16:14:09 -0700
+Message-ID: <20170206231409.GA16676@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Matthew Wilcox <willy@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	djwong@kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	logfs@logfs.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Xiong Zhou <xzhou-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170206184743.GB20731@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 06, 2017 at 07:47:43PM +0100, Michal Hocko wrote:
-> On Mon 06-02-17 10:32:37, Darrick J. Wong wrote:
-> > On Mon, Feb 06, 2017 at 06:44:15PM +0100, Michal Hocko wrote:
-> > > On Mon 06-02-17 07:39:23, Matthew Wilcox wrote:
-> > > > On Mon, Feb 06, 2017 at 03:07:16PM +0100, Michal Hocko wrote:
-> > > > > +++ b/fs/xfs/xfs_buf.c
-> > > > > @@ -442,17 +442,17 @@ _xfs_buf_map_pages(
-> > > > >  		bp->b_addr = NULL;
-> > > > >  	} else {
-> > > > >  		int retried = 0;
-> > > > > -		unsigned noio_flag;
-> > > > > +		unsigned nofs_flag;
-> > > > >  
-> > > > >  		/*
-> > > > >  		 * vm_map_ram() will allocate auxillary structures (e.g.
-> > > > >  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
-> > > > >  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
-> > > > > -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
-> > > > > +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
-> > > > >  		 * memory reclaim re-entering the filesystem here and
-> > > > >  		 * potentially deadlocking.
-> > > > >  		 */
-> > > > 
-> > > > This comment feels out of date ... how about:
-> > > 
-> > > which part is out of date?
-> > > 
-> > > > 
-> > > > 		/*
-> > > > 		 * vm_map_ram will allocate auxiliary structures (eg page
-> > > > 		 * tables) with GFP_KERNEL.  If that tries to reclaim memory
-> > > > 		 * by calling back into this filesystem, we may deadlock.
-> > > > 		 * Prevent that by setting the NOFS flag.
-> > > > 		 */
-> > > 
-> > > dunno, the previous wording seems clear enough to me. Maybe little bit
-> > > more chatty than yours but I am not sure this is worth changing.
-> > 
-> > I prefer to keep the "...yet we are likely to be under GFP_NOFS..."
-> > wording of the old comment because it captures the uncertainty of
-> > whether or not we actually are already under NOFS.  If someone actually
-> > has audited this code well enough to know for sure then yes let's change
-> > the comment, but I haven't gone that far.
-> 
-> I believe we can drop the memalloc_nofs_save then as well because either
-> we are called from a potentially dangerous context and thus we are in
-> the nofs scope we we do not need the protection at all.
+I recently hit an issue in my DAX testing where I was unable to get ext4 to
+give me 2 MiB sized and aligned block allocations in a situation where I
+thought I should be able to.  I'm using a PMEM ramdisk of size 16 GiB, created
+using the memmap kernel command line parameter.
 
-No, absolutely not. "Belief" is not a sufficient justification for
-removing low level deadlock avoidance infrastructure. This code
-needs to remain in _xfs_buf_map_pages() until a full audit of the
-caller paths is done and we're 100% certain that there are no
-lurking deadlocks.
+  # fdisk -l /dev/pmem0
+  Disk /dev/pmem0: 16 GiB, 17179869184 bytes, 33554432 sectors
+  Units: sectors of 1 * 512 = 512 bytes
+  Sector size (logical/physical): 512 bytes / 4096 bytes
+  I/O size (minimum/optimal): 4096 bytes / 4096 bytes
 
-For example, I'm pretty sure we can call into _xfs_buf_map_pages()
-outside of a transaction context but with an inode ILOCK held
-exclusively. If we then recurse into memory reclaim and try to run a
-transaction during reclaim, we have an inverted ILOCK vs transaction
-locking order. i.e. we are not allowed to call xfs_trans_reserve()
-with an ILOCK held as that can deadlock the log:  log full, locked
-inode pins tail of log, inode cannot be flushed because ILOCK is
-held by caller waiting for log space to become available....
+The very simple test program I used to reproduce this can be found at the
+bottom of this mail.  Here is the quick function that I used to recreate my
+filesystem each run:
 
-i.e. there are certain situations where holding a ILOCK is a
-deadlock vector. See xfs_lock_inodes() for an example of the lengths
-we go to avoid ILOCK based log deadlocks like this...
+  # type go_ext4
+  go_ext4 is a function
+  go_ext4 () 
+  { 
+      umount /dev/pmem0 2> /dev/null;
+      mkfs.ext4 -b 4096 -E stride=512 -F /dev/pmem0;
+      mount -o dax /dev/pmem0 ~/dax;
+      cd ~/fsync
+  }
 
-Cheers,
+To be able to easily see whether DAX is able to use PMDs instead of PTEs, you
+can run with the mmots tree (git://git.cmpxchg.org/linux-mmots.git), tag
+v4.10-rc4-mmots-2017-01-17-16-32.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Okay, so here's the interesting part.  If I create a filesystem and run the
+test so it creates a file of size 32 MiB or 128 MiB, I get a PMD fault.
+Here's the corresponding tracepoint output:
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+test-1429  [008] .... 10573.026699: dax_pmd_fault: dev 259:0 ino 0xc shared
+WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000 vm_end
+0x40400000 pgoff 0x280 max_pgoff 0x7fff 
+
+test-1429  [008] .... 10573.026912: dax_pmd_insert_mapping: dev 259:0 ino 0xc
+shared write address 0x40280000 length 0x200000 pfn 0x108a00 DEV|MAP
+radix_entry 0x114000e
+
+test-1429  [008] .... 10573.026917: dax_pmd_fault_done: dev 259:0 ino 0xc
+shared WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000
+vm_end 0x40400000 pgoff 0x280 max_pgoff 0x7fff NOPAGE
+
+Great.  That's what I want.  But, if I create the filesystem and use the test
+to create a file that is 64 MiB in size, the PMD fault fails because the PFN I
+get from the filesystem isn't 2MiB aligned:
+
+test-1475  [006] .... 11809.982188: dax_pmd_fault: dev 259:0 ino 0xc shared
+WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000 vm_end
+0x40400000 pgoff 0x280 max_pgoff 0x3fff 
+
+test-1475  [006] .... 11809.982398: dax_pmd_insert_mapping_fallback: dev 259:0
+ino 0xc shared write address 0x40280000 length 0x200000 pfn 0x108601 DEV|MAP
+radix_entry 0x0
+
+test-1475  [006] .... 11809.982399: dax_pmd_fault_done: dev 259:0 ino 0xc
+shared WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000
+vm_end 0x40400000 pgoff 0x280 max_pgoff 0x3fff FALLBACK
+
+The PFN for the block allocation I get from ext4 is 0x108601, which isn't
+aligned, so we fail the PG_PMD_COLOUR alignment check in
+dax_iomap_pmd_fault(), and use PTEs instead.
+
+I initially saw this in a test from Xiong:
+
+https://www.mail-archive.com/linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org/msg02615.html
+
+and created the attached test to have a simpler reproducer.  With Xiong's
+test, a test on a 128 MiB sized file will have all PMDs, an on a 64 MiB file
+we'll use all PTEs.
+
+This question is important because eventually we'd like to say to customers
+"do X and you should get PMDs when you use DAX", but right now I'm not sure
+what X is.  :)
+
+Thanks,
+- Ross
+
+--- >8 ---
+#define _GNU_SOURCE
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <linux/falloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+
+#define GiB(a) ((a)*1024ULL*1024*1024)
+#define MiB(a) ((a)*1024ULL*1024)
+#define PAGE(a) ((a)*0x1000)
+
+void usage(char *prog)
+{
+	fprintf(stderr, "usage: %s <size in MiB>\n", prog);
+	exit(1);
+}
+
+void err_exit(char *op, unsigned long len)
+{
+	fprintf(stderr, "%s(%s) len %lu\n", op, strerror(errno), len);
+	exit(1);
+}
+
+int main(int argc, char *argv[])
+{
+	char *data_array = (char*) GiB(1); /* request a 2MiB aligned address with mmap() */
+	unsigned long len;
+	int fd;
+
+	if (argc < 2)
+		usage(basename(argv[0]));
+
+	len = strtoul(argv[1], NULL, 10);
+	if (errno == ERANGE)
+		err_exit("strtoul", 0);
+
+	fd = open("/root/dax/data", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+	if (fd < 0) {
+		perror("fd");
+		return 1;
+	}
+
+	ftruncate(fd, 0);
+	fallocate(fd, 0, 0, MiB(len));
+
+	data_array = mmap(data_array, PAGE(0x400), PROT_READ|PROT_WRITE,
+			MAP_SHARED, fd, PAGE(0));
+	data_array[PAGE(0x280)] = 142;
+
+	fsync(fd);
+	close(fd);
+	return 0;
+}
