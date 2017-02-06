@@ -1,88 +1,488 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
- memalloc_noio*
-Date: Mon, 6 Feb 2017 19:47:43 +0100
-Message-ID: <20170206184743.GB20731@dhcp22.suse.cz>
-References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-5-mhocko@kernel.org>
- <20170206153923.GL2267@bombadil.infradead.org>
- <20170206174415.GA20731@dhcp22.suse.cz>
- <20170206183237.GE3580@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170206183237.GE3580@birch.djwong.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 6/7] ext4: add shutdown bit and check for it
+Date: Mon, 6 Feb 2017 12:51:46 -0700
+Message-ID: <DDAA3DB8-BC57-47CA-97F5-6DB707CFDE6E@dilger.ca>
+References: <20170205073430.9109-1-tytso@mit.edu>
+ <20170205073430.9109-6-tytso@mit.edu>
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_83BA5149-C228-483F-B901-BAA294499C2F";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:32860 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750984AbdBFTvw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Feb 2017 14:51:52 -0500
+Received: by mail-io0-f193.google.com with SMTP id 101so10587144iom.0
+        for <linux-ext4@vger.kernel.org>; Mon, 06 Feb 2017 11:51:51 -0800 (PST)
+In-Reply-To: <20170205073430.9109-6-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 06-02-17 10:32:37, Darrick J. Wong wrote:
-> On Mon, Feb 06, 2017 at 06:44:15PM +0100, Michal Hocko wrote:
-> > On Mon 06-02-17 07:39:23, Matthew Wilcox wrote:
-> > > On Mon, Feb 06, 2017 at 03:07:16PM +0100, Michal Hocko wrote:
-> > > > +++ b/fs/xfs/xfs_buf.c
-> > > > @@ -442,17 +442,17 @@ _xfs_buf_map_pages(
-> > > >  		bp->b_addr = NULL;
-> > > >  	} else {
-> > > >  		int retried = 0;
-> > > > -		unsigned noio_flag;
-> > > > +		unsigned nofs_flag;
-> > > >  
-> > > >  		/*
-> > > >  		 * vm_map_ram() will allocate auxillary structures (e.g.
-> > > >  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
-> > > >  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
-> > > > -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
-> > > > +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
-> > > >  		 * memory reclaim re-entering the filesystem here and
-> > > >  		 * potentially deadlocking.
-> > > >  		 */
-> > > 
-> > > This comment feels out of date ... how about:
-> > 
-> > which part is out of date?
-> > 
-> > > 
-> > > 		/*
-> > > 		 * vm_map_ram will allocate auxiliary structures (eg page
-> > > 		 * tables) with GFP_KERNEL.  If that tries to reclaim memory
-> > > 		 * by calling back into this filesystem, we may deadlock.
-> > > 		 * Prevent that by setting the NOFS flag.
-> > > 		 */
-> > 
-> > dunno, the previous wording seems clear enough to me. Maybe little bit
-> > more chatty than yours but I am not sure this is worth changing.
-> 
-> I prefer to keep the "...yet we are likely to be under GFP_NOFS..."
-> wording of the old comment because it captures the uncertainty of
-> whether or not we actually are already under NOFS.  If someone actually
-> has audited this code well enough to know for sure then yes let's change
-> the comment, but I haven't gone that far.
 
-I believe we can drop the memalloc_nofs_save then as well because either
-we are called from a potentially dangerous context and thus we are in
-the nofs scope we we do not need the protection at all.
--- 
-Michal Hocko
-SUSE Labs
+--Apple-Mail=_83BA5149-C228-483F-B901-BAA294499C2F
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+On Feb 5, 2017, at 12:34 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> Add a shutdown bit that will cause ext4 processing to fail immediately
+> with EIO.
+
+Does it make sense to combine the checks for "shutdown", "abort", and
+"read-only" into a single check, instead of sprinkling separate checks
+throughout the code?  It seems like many of the places where
+ext4_forced_shutdown() is checked should also be checking for read-only
+and abort, even if they aren't today.
+
+Cheers, Andreas
+
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+> fs/ext4/ext4.h      |  6 ++++++
+> fs/ext4/ext4_jbd2.c | 11 +++++++++++
+> fs/ext4/file.c      | 12 ++++++++++++
+> fs/ext4/fsync.c     |  3 +++
+> fs/ext4/ialloc.c    |  3 +++
+> fs/ext4/inline.c    |  3 +++
+> fs/ext4/inode.c     | 30 ++++++++++++++++++++++++++++--
+> fs/ext4/namei.c     | 12 ++++++++++++
+> fs/ext4/page-io.c   |  2 +-
+> fs/ext4/super.c     | 18 ++++++++++++++++++
+> fs/ext4/xattr.c     |  3 +++
+> 11 files changed, 100 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 2e7e02f2f771..35d93ab7f3fb 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1836,6 +1836,12 @@ static inline bool =
+ext4_has_incompat_features(struct super_block *sb)
+>  * Superblock flags
+>  */
+> #define EXT4_FLAGS_RESIZING	0
+> +#define EXT4_FLAGS_SHUTDOWN	1
+> +
+> +static inline int ext4_forced_shutdown(struct ext4_sb_info *sbi)
+> +{
+> +	return test_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> +}
+>=20
+>=20
+> /*
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index e770c1ee4613..dd106b1d5d89 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -43,6 +43,10 @@ static int ext4_journal_check_start(struct =
+super_block *sb)
+> 	journal_t *journal;
+>=20
+> 	might_sleep();
+> +
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +		return -EIO;
+> +
+> 	if (sb->s_flags & MS_RDONLY)
+> 		return -EROFS;
+> 	WARN_ON(sb->s_writers.frozen =3D=3D SB_FREEZE_COMPLETE);
+> @@ -161,6 +165,13 @@ int __ext4_journal_get_write_access(const char =
+*where, unsigned int line,
+> 	might_sleep();
+>=20
+> 	if (ext4_handle_valid(handle)) {
+> +		struct super_block *sb;
+> +
+> +		sb =3D handle->h_transaction->t_journal->j_private;
+> +		if (unlikely(ext4_forced_shutdown(EXT4_SB(sb)))) {
+> +			jbd2_journal_abort_handle(handle);
+> +			return -EIO;
+> +		}
+> 		err =3D jbd2_journal_get_write_access(handle, bh);
+> 		if (err)
+> 			ext4_journal_abort_handle(where, line, __func__, =
+bh,
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index d663d3d7c81c..ff3f6107b0ba 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -57,6 +57,9 @@ static ssize_t ext4_dax_read_iter(struct kiocb =
+*iocb, struct iov_iter *to)
+>=20
+> static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter =
+*to)
+> {
+> +	if =
+(unlikely(ext4_forced_shutdown(EXT4_SB(file_inode(iocb->ki_filp)->i_sb))))=
+
+> +		return -EIO;
+> +
+> 	if (!iov_iter_count(to))
+> 		return 0; /* skip atime */
+>=20
+> @@ -213,6 +216,9 @@ ext4_file_write_iter(struct kiocb *iocb, struct =
+iov_iter *from)
+> 	int overwrite =3D 0;
+> 	ssize_t ret;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> #ifdef CONFIG_FS_DAX
+> 	if (IS_DAX(inode))
+> 		return ext4_dax_write_iter(iocb, from);
+> @@ -348,6 +354,9 @@ static int ext4_file_mmap(struct file *file, =
+struct vm_area_struct *vma)
+> {
+> 	struct inode *inode =3D file->f_mapping->host;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	if (ext4_encrypted_inode(inode)) {
+> 		int err =3D fscrypt_get_encryption_info(inode);
+> 		if (err)
+> @@ -375,6 +384,9 @@ static int ext4_file_open(struct inode * inode, =
+struct file * filp)
+> 	char buf[64], *cp;
+> 	int ret;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
+> 		     !(sb->s_flags & MS_RDONLY))) {
+> 		sbi->s_mount_flags |=3D EXT4_MF_MNTDIR_SAMPLED;
+> diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+> index 88effb1053c7..9d549608fd30 100644
+> --- a/fs/ext4/fsync.c
+> +++ b/fs/ext4/fsync.c
+> @@ -100,6 +100,9 @@ int ext4_sync_file(struct file *file, loff_t =
+start, loff_t end, int datasync)
+> 	tid_t commit_tid;
+> 	bool needs_barrier =3D false;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	J_ASSERT(ext4_journal_current_handle() =3D=3D NULL);
+>=20
+> 	trace_ext4_sync_file_enter(file, datasync);
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index f372fc431b8e..b14bae2598bc 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -764,6 +764,9 @@ struct inode *__ext4_new_inode(handle_t *handle, =
+struct inode *dir,
+> 	if (!dir || !dir->i_nlink)
+> 		return ERR_PTR(-EPERM);
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+> +		return ERR_PTR(-EIO);
+> +
+> 	if ((ext4_encrypted_inode(dir) ||
+> 	     DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb))) &&
+> 	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))) {
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index b777b8aa14ae..30a9f210d1e3 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -215,6 +215,9 @@ static void ext4_write_inline_data(struct inode =
+*inode, struct ext4_iloc *iloc,
+> 	struct ext4_inode *raw_inode;
+> 	int cp_len =3D 0;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return;
+> +
+> 	BUG_ON(!EXT4_I(inode)->i_inline_off);
+> 	BUG_ON(pos + len > EXT4_I(inode)->i_inline_size);
+>=20
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index af97b9170358..e2b7dccc6a11 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1189,6 +1189,9 @@ static int ext4_write_begin(struct file *file, =
+struct address_space *mapping,
+> 	pgoff_t index;
+> 	unsigned from, to;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	trace_ext4_write_begin(inode, pos, len, flags);
+> 	/*
+> 	 * Reserve one block more for addition to orphan list in case
+> @@ -2047,6 +2050,12 @@ static int ext4_writepage(struct page *page,
+> 	struct ext4_io_submit io_submit;
+> 	bool keep_towrite =3D false;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
+> +		do_invalidatepage(page, 0, PAGE_SIZE);
+> +		unlock_page(page);
+> +		return -EIO;
+> +	}
+> +
+> 	trace_ext4_writepage(page);
+> 	size =3D i_size_read(inode);
+> 	if (page->index =3D=3D size >> PAGE_SHIFT)
+> @@ -2422,7 +2431,8 @@ static int mpage_map_and_submit_extent(handle_t =
+*handle,
+> 		if (err < 0) {
+> 			struct super_block *sb =3D inode->i_sb;
+>=20
+> -			if (EXT4_SB(sb)->s_mount_flags & =
+EXT4_MF_FS_ABORTED)
+> +			if (ext4_forced_shutdown(EXT4_SB(sb)) ||
+> +			    EXT4_SB(sb)->s_mount_flags & =
+EXT4_MF_FS_ABORTED)
+> 				goto invalidate_dirty_pages;
+> 			/*
+> 			 * Let the uper layers retry transient errors.
+> @@ -2644,6 +2654,9 @@ static int ext4_writepages(struct address_space =
+*mapping,
+> 	struct blk_plug plug;
+> 	bool give_up_on_write =3D false;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	percpu_down_read(&sbi->s_journal_flag_rwsem);
+> 	trace_ext4_writepages(inode, wbc);
+>=20
+> @@ -2680,7 +2693,8 @@ static int ext4_writepages(struct address_space =
+*mapping,
+> 	 * *never* be called, so if that ever happens, we would want
+> 	 * the stack trace.
+> 	 */
+> -	if (unlikely(sbi->s_mount_flags & EXT4_MF_FS_ABORTED)) {
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(mapping->host->i_sb)) =
+||
+> +		     sbi->s_mount_flags & EXT4_MF_FS_ABORTED)) {
+> 		ret =3D -EROFS;
+> 		goto out_writepages;
+> 	}
+> @@ -2905,6 +2919,9 @@ static int ext4_da_write_begin(struct file =
+*file, struct address_space *mapping,
+> 	struct inode *inode =3D mapping->host;
+> 	handle_t *handle;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	index =3D pos >> PAGE_SHIFT;
+>=20
+> 	if (ext4_nonda_switch(inode->i_sb) ||
+> @@ -5212,6 +5229,9 @@ int ext4_setattr(struct dentry *dentry, struct =
+iattr *attr)
+> 	int orphan =3D 0;
+> 	const unsigned int ia_valid =3D attr->ia_valid;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	error =3D setattr_prepare(dentry, attr);
+> 	if (error)
+> 		return error;
+> @@ -5498,6 +5518,9 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+> {
+> 	int err =3D 0;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	if (IS_I_VERSION(inode))
+> 		inode_inc_iversion(inode);
+>=20
+> @@ -5521,6 +5544,9 @@ ext4_reserve_inode_write(handle_t *handle, =
+struct inode *inode,
+> {
+> 	int err;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	err =3D ext4_get_inode_loc(inode, iloc);
+> 	if (!err) {
+> 		BUFFER_TRACE(iloc->bh, "get_write_access");
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 931da9d5d915..6ad612c576fc 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -2939,6 +2939,9 @@ static int ext4_rmdir(struct inode *dir, struct =
+dentry *dentry)
+> 	struct ext4_dir_entry_2 *de;
+> 	handle_t *handle =3D NULL;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+> +		return -EIO;
+> +
+> 	/* Initialize quotas before so that eventual writes go in
+> 	 * separate transaction */
+> 	retval =3D dquot_initialize(dir);
+> @@ -3012,6 +3015,9 @@ static int ext4_unlink(struct inode *dir, struct =
+dentry *dentry)
+> 	struct ext4_dir_entry_2 *de;
+> 	handle_t *handle =3D NULL;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+> +		return -EIO;
+> +
+> 	trace_ext4_unlink_enter(dir, dentry);
+> 	/* Initialize quotas before so that eventual writes go
+> 	 * in separate transaction */
+> @@ -3082,6 +3088,9 @@ static int ext4_symlink(struct inode *dir,
+> 	struct fscrypt_str disk_link;
+> 	struct fscrypt_symlink_data *sd =3D NULL;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+> +		return -EIO;
+> +
+> 	disk_link.len =3D len + 1;
+> 	disk_link.name =3D (char *) symname;
+>=20
+> @@ -3874,6 +3883,9 @@ static int ext4_rename2(struct inode *old_dir, =
+struct dentry *old_dentry,
+> 			struct inode *new_dir, struct dentry =
+*new_dentry,
+> 			unsigned int flags)
+> {
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(old_dir->i_sb))))
+> +		return -EIO;
+> +
+> 	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | =
+RENAME_WHITEOUT))
+> 		return -EINVAL;
+>=20
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index d83b0f3c5fe9..f8808835a28b 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -158,7 +158,7 @@ static int ext4_end_io(ext4_io_end_t *io)
+>=20
+> 	io->handle =3D NULL;	/* Following call will use up the handle =
+*/
+> 	ret =3D ext4_convert_unwritten_extents(handle, inode, offset, =
+size);
+> -	if (ret < 0) {
+> +	if (ret < 0 && !ext4_forced_shutdown(EXT4_SB(inode->i_sb))) {
+> 		ext4_msg(inode->i_sb, KERN_EMERG,
+> 			 "failed to convert unwritten extents to written =
+"
+> 			 "extents -- potential data loss!  "
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 514e5fc59893..879e3a6afd9d 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -438,6 +438,9 @@ void __ext4_error(struct super_block *sb, const =
+char *function,
+> 	struct va_format vaf;
+> 	va_list args;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +		return;
+> +
+> 	if (ext4_error_ratelimit(sb)) {
+> 		va_start(args, fmt);
+> 		vaf.fmt =3D fmt;
+> @@ -459,6 +462,9 @@ void __ext4_error_inode(struct inode *inode, const =
+char *function,
+> 	struct va_format vaf;
+> 	struct ext4_super_block *es =3D EXT4_SB(inode->i_sb)->s_es;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return;
+> +
+> 	es->s_last_error_ino =3D cpu_to_le32(inode->i_ino);
+> 	es->s_last_error_block =3D cpu_to_le64(block);
+> 	if (ext4_error_ratelimit(inode->i_sb)) {
+> @@ -491,6 +497,9 @@ void __ext4_error_file(struct file *file, const =
+char *function,
+> 	struct inode *inode =3D file_inode(file);
+> 	char pathname[80], *path;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return;
+> +
+> 	es =3D EXT4_SB(inode->i_sb)->s_es;
+> 	es->s_last_error_ino =3D cpu_to_le32(inode->i_ino);
+> 	if (ext4_error_ratelimit(inode->i_sb)) {
+> @@ -567,6 +576,9 @@ void __ext4_std_error(struct super_block *sb, =
+const char *function,
+> 	char nbuf[16];
+> 	const char *errstr;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +		return;
+> +
+> 	/* Special case: if the error is EROFS, and we're not already
+> 	 * inside a transaction, then there's really no point in logging
+> 	 * an error. */
+> @@ -600,6 +612,9 @@ void __ext4_abort(struct super_block *sb, const =
+char *function,
+> 	struct va_format vaf;
+> 	va_list args;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +		return;
+> +
+> 	save_error_info(sb, function, line);
+> 	va_start(args, fmt);
+> 	vaf.fmt =3D fmt;
+> @@ -695,6 +710,9 @@ __acquires(bitlock)
+> 	va_list args;
+> 	struct ext4_super_block *es =3D EXT4_SB(sb)->s_es;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +		return;
+> +
+> 	es->s_last_error_ino =3D cpu_to_le32(ino);
+> 	es->s_last_error_block =3D cpu_to_le64(block);
+> 	__save_error_info(sb, function, line);
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index c40bd55b6400..67636acf7624 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -411,6 +411,9 @@ ext4_xattr_get(struct inode *inode, int =
+name_index, const char *name,
+> {
+> 	int error;
+>=20
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> 	if (strlen(name) > 255)
+> 		return -ERANGE;
+>=20
+> --
+> 2.11.0.rc0.7.gbe5a750
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_83BA5149-C228-483F-B901-BAA294499C2F
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFYmNPTpIg59Q01vtYRAggUAJ9hFAtrDt91gjezAlgDOdhnxRF9dACg3qD2
+xhL59ylbzW1dDY7Hvl8z2ow=
+=Ad4h
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_83BA5149-C228-483F-B901-BAA294499C2F--
