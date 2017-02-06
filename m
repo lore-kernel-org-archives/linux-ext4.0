@@ -1,9 +1,10 @@
-From: Matthew Wilcox <willy@infradead.org>
+From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: [PATCH 1/6] lockdep: allow to disable reclaim lockup detection
-Date: Mon, 6 Feb 2017 06:26:41 -0800
-Message-ID: <20170206142641.GG2267@bombadil.infradead.org>
+Date: Mon, 6 Feb 2017 15:34:50 +0100
+Message-ID: <20170206143449.GD10298@dhcp22.suse.cz>
 References: <20170206140718.16222-1-mhocko@kernel.org>
  <20170206140718.16222-2-mhocko@kernel.org>
+ <20170206142641.GG2267@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -18,35 +19,42 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 	reiserfs-devel@vger.kernel.org,
 	linux-ntfs-dev@lists.sourceforge.net,
 	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: Michal Hocko <mhocko@kernel.org>
+	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+To: Matthew Wilcox <willy@infradead.org>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170206140718.16222-2-mhocko@kernel.org>
+In-Reply-To: <20170206142641.GG2267@bombadil.infradead.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 06, 2017 at 03:07:13PM +0100, Michal Hocko wrote:
-> While we are at it also make sure that the radix tree doesn't
-> accidentaly override tags stored in the upper part of the gfp_mask.
+On Mon 06-02-17 06:26:41, Matthew Wilcox wrote:
+> On Mon, Feb 06, 2017 at 03:07:13PM +0100, Michal Hocko wrote:
+> > While we are at it also make sure that the radix tree doesn't
+> > accidentaly override tags stored in the upper part of the gfp_mask.
+> 
+> > diff --git a/lib/radix-tree.c b/lib/radix-tree.c
+> > index 9dc093d5ef39..7550be09f9d6 100644
+> > --- a/lib/radix-tree.c
+> > +++ b/lib/radix-tree.c
+> > @@ -2274,6 +2274,8 @@ static int radix_tree_cpu_dead(unsigned int cpu)
+> >  void __init radix_tree_init(void)
+> >  {
+> >  	int ret;
+> > +
+> > +	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
+> >  	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
+> >  			sizeof(struct radix_tree_node), 0,
+> >  			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
+> 
+> That's going to have a conceptual conflict with some patches I have
+> in flight.  I'll take this part through my radix tree patch collection.
 
-> diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-> index 9dc093d5ef39..7550be09f9d6 100644
-> --- a/lib/radix-tree.c
-> +++ b/lib/radix-tree.c
-> @@ -2274,6 +2274,8 @@ static int radix_tree_cpu_dead(unsigned int cpu)
->  void __init radix_tree_init(void)
->  {
->  	int ret;
-> +
-> +	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
->  	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
->  			sizeof(struct radix_tree_node), 0,
->  			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
+This part is not needed for the patch, strictly speaking but I wanted to
+make the code more future proof.
 
-That's going to have a conceptual conflict with some patches I have
-in flight.  I'll take this part through my radix tree patch collection.
+-- 
+Michal Hocko
+SUSE Labs
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
