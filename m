@@ -1,75 +1,77 @@
-From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
-Subject: Re: [PATCH 00/14] use atomic_dec_not_zero()
-Date: Wed, 8 Feb 2017 10:28:07 -0200
-Message-ID: <20170208102807.5cf7a14d@vento.lan>
-References: <20170130183920.12476-1-fabf@skynet.be>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194511] New: filesystem slow down
+Date: Wed, 08 Feb 2017 16:05:32 +0000
+Message-ID: <bug-194511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-pm@vger.kernel.org, openipmi-developer@lists.sourceforge.net,
-        dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        kgdb-bugreport@lists.sourceforge.net,
-        Akinobu Mita <akinobu.mita@gmail.com>
-To: Fabian Frederick <fabf@skynet.be>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170130183920.12476-1-fabf@skynet.be>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:58390 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751743AbdBHQPW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Feb 2017 11:15:22 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id 5ACC5202F2
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 16:05:35 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id 59D6D20268
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 16:05:33 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Em Mon, 30 Jan 2017 19:39:20 +0100
-Fabian Frederick <fabf@skynet.be> escreveu:
+https://bugzilla.kernel.org/show_bug.cgi?id=194511
 
-> complementary definition to atomic_inc_not_zero() featured in
-> lib/fault-inject.c. This small patchset moves it to
-> include/linux/atomic.h using it instead of
-> atomic_add_unless(value, -1, 0)
-> 
-> s390 patches were not compile-tested.
-> 
-> Fabian Frederick (14):
->   locking/atomic: import atomic_dec_not_zero()
->   drm/exynos: use atomic_dec_not_zero()
->   drm/omap: use atomic_dec_not_zero()
+            Bug ID: 194511
+           Summary: filesystem slow down
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.4.44 und 4.8.???
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+          Assignee: fs_ext3@kernel-bugs.osdl.org
+          Reporter: dieter.ferdinand@gmx.de
+        Regression: No
 
->   m5mols: use atomic_dec_not_zero()
->   omap3isp: use atomic_dec_not_zero()
+hello,
+last month i try to update to the last kernel 4.4.xx. but that was a big fault.
 
-For the media changes:
+after the update, it looks fine, but after some time (ca 30 minutes after a
+restart of the server, the system slow down and i need to much time to copy
+files to the drives.
 
-Acked-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+i test the speed:
+read usb >30000 MB/s
+read sata >100000MB/s
+write filesystem usb ca 1 MB/s
+write filesystem sata ca 1 MB/s
 
->   s390/qeth: use atomic_dec_not_zero()
->   PM / RUNTIME: use atomic_dec_not_zero()
->   ipmi: use atomic_dec_not_zero()
->   kdb: use atomic_dec_not_zero()
->   PM / Hibernate: use atomic_dec_not_zero()
->   PM: use atomic_dec_not_zero()
->   s390/topology: use atomic_dec_not_zero()
->   ext4: use atomic_dec_not_zero()
->   xfs: use atomic_dec_not_zero()
-> 
->  arch/s390/kernel/topology.c               | 2 +-
->  drivers/base/power/runtime.c              | 4 ++--
->  drivers/char/ipmi/ipmi_msghandler.c       | 2 +-
->  drivers/gpu/drm/exynos/exynos_drm_fimd.c  | 2 +-
->  drivers/gpu/drm/omapdrm/omap_dmm_tiler.c  | 2 +-
->  drivers/media/i2c/m5mols/m5mols_core.c    | 2 +-
->  drivers/media/platform/omap3isp/ispstat.c | 2 +-
->  drivers/s390/net/qeth_core_main.c         | 2 +-
->  fs/ext4/ext4.h                            | 2 +-
->  fs/xfs/xfs_buf.c                          | 2 +-
->  include/linux/atomic.h                    | 2 ++
->  kernel/debug/kdb/kdb_main.c               | 2 +-
->  kernel/power/hibernate.c                  | 4 ++--
->  kernel/power/user.c                       | 2 +-
->  lib/fault-inject.c                        | 2 --
->  15 files changed, 17 insertions(+), 17 deletions(-)
-> 
+this month i used a rescue-system with a kernel 4.8.??? to change a
+harddisk-config on a server and i get the same problem:
+to backup, format and restore a filesystem with less then 1 GB data i need over
+2 hours.
+the initialisation of a 160GB ext3-filesystem need over 30 minutes. this is
+impossible!
 
+at the same time, a raid is rebuild with over 100 MB/s. i stop the rebuild, but
+this have no effect to the write-speed of mke2fs to init the filesystem. at
+last, i reinstall the system in less then 30 minutes two times again because
+the system don't boot after my changes. i think a selinux-problem.
+this systenm use kernel 3.10.0 at the moment without problems.
 
+after two days, i install the kernel 3.18.47 from kernel.org to have the latest
+3.xx kernel and this kernel works fine and since installation without problems.
 
-Thanks,
-Mauro
+only, i must deaktivate initramfs, but i think, that is no problem of the
+kernel and i have no time to analyse this problem at the moment.
+
+goodby
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
