@@ -1,75 +1,75 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH] mm: replace FAULT_FLAG_SIZE with parameter to huge_fault
-Date: Wed, 8 Feb 2017 09:41:56 +0100
-Message-ID: <20170208084156.GD26317@quack2.suse.cz>
-References: <148615748258.43180.1690152053774975329.stgit@djiang5-desk3.ch.intel.com>
- <20170206143648.GA461@infradead.org>
- <CAPcyv4jHYR2-_SgD7a6ab5vWigYsDoSb7FZdTchP8Xg+BF-2yg@mail.gmail.com>
- <20170206172731.GA17515@infradead.org>
- <CAPcyv4hiwWebCT=qPccKqaQKAHydMYsg9+=pYh=SPkNzakLc1A@mail.gmail.com>
- <20170207084411.GA527@node.shutemov.name>
- <CAPcyv4h1LvbEqBi=F=BTtLrHHOvAH3MU2OBDs444-dzwNyupFQ@mail.gmail.com>
+From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Subject: Re: [PATCH 00/14] use atomic_dec_not_zero()
+Date: Wed, 8 Feb 2017 10:28:07 -0200
+Message-ID: <20170208102807.5cf7a14d@vento.lan>
+References: <20170130183920.12476-1-fabf@skynet.be>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Dave Hansen <dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
- Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
- "Kirill A. Shutemov" <kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
- Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, "Kirill A. Shutemov" <kirill-oKw7cIdHH8eLwutG50LtGA@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Vlastimil Babka <vbabka-AlSwsSmVLrQ@public.gmane.org>
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4h1LvbEqBi=F=BTtLrHHOvAH3MU2OBDs444-dzwNyupFQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-s390@vger.kernel.org,
+        linux-pm@vger.kernel.org, openipmi-developer@lists.sourceforge.net,
+        dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        kgdb-bugreport@lists.sourceforge.net,
+        Akinobu Mita <akinobu.mita@gmail.com>
+To: Fabian Frederick <fabf@skynet.be>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170130183920.12476-1-fabf@skynet.be>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 07-02-17 08:56:56, Dan Williams wrote:
-> On Tue, Feb 7, 2017 at 12:44 AM, Kirill A. Shutemov
-> <kirill-oKw7cIdHH8eLwutG50LtGA@public.gmane.org> wrote:
-> > On Mon, Feb 06, 2017 at 09:30:22AM -0800, Dan Williams wrote:
-> >> On Mon, Feb 6, 2017 at 9:27 AM, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org> wrote:
-> >> > On Mon, Feb 06, 2017 at 08:24:48AM -0800, Dan Williams wrote:
-> >> >> > Also can be use this opportunity
-> >> >> > to fold ->huge_fault into ->fault?
-> >
-> > BTW, for tmpfs we already use ->fault for both small and huge pages.
-> > If ->fault returned THP, core mm look if it's possible to map the page as
-> > huge in this particular VMA (due to size/alignment). If yes mm maps the
-> > page with PMD, if not fallback to PTE.
-> >
-> > I think it would be nice to do the same for DAX: filesystem provides core
-> > mm with largest page this part of file can be mapped with (base aligned
-> > address + lenght for DAX) and core mm sort out the rest.
+Em Mon, 30 Jan 2017 19:39:20 +0100
+Fabian Frederick <fabf@skynet.be> escreveu:
+
+> complementary definition to atomic_inc_not_zero() featured in
+> lib/fault-inject.c. This small patchset moves it to
+> include/linux/atomic.h using it instead of
+> atomic_add_unless(value, -1, 0)
 > 
-> For DAX we would need plumb pfn_t into the core mm so that we have the
-> PFN_DEV and PFN_MAP flags beyond the raw pfn.
+> s390 patches were not compile-tested.
+> 
+> Fabian Frederick (14):
+>   locking/atomic: import atomic_dec_not_zero()
+>   drm/exynos: use atomic_dec_not_zero()
+>   drm/omap: use atomic_dec_not_zero()
 
-So we can pass necessary information through struct vm_fault rather easily.
-However due to DAX locking we cannot really "return" pfn for generic code
-to install (we need to unlock radix tree locks after modifying page
-tables). So if we want generic code to handle PFNs what needs to be done is
-to teach finish_fault() to handle pfn_t which is passed to it and install
-it in page tables.
+>   m5mols: use atomic_dec_not_zero()
+>   omap3isp: use atomic_dec_not_zero()
 
-Long term we could transition all page fault handlers (at least the
-non-trivial ones) to using finish_fault() which would IMO make the code
-flow easier to follow and export less of MM internals into drivers. However
-there's so many fault handlers that I didn't have a good motivation to do
-that yet.
+For the media changes:
 
-								Honza
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+Acked-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+
+>   s390/qeth: use atomic_dec_not_zero()
+>   PM / RUNTIME: use atomic_dec_not_zero()
+>   ipmi: use atomic_dec_not_zero()
+>   kdb: use atomic_dec_not_zero()
+>   PM / Hibernate: use atomic_dec_not_zero()
+>   PM: use atomic_dec_not_zero()
+>   s390/topology: use atomic_dec_not_zero()
+>   ext4: use atomic_dec_not_zero()
+>   xfs: use atomic_dec_not_zero()
+> 
+>  arch/s390/kernel/topology.c               | 2 +-
+>  drivers/base/power/runtime.c              | 4 ++--
+>  drivers/char/ipmi/ipmi_msghandler.c       | 2 +-
+>  drivers/gpu/drm/exynos/exynos_drm_fimd.c  | 2 +-
+>  drivers/gpu/drm/omapdrm/omap_dmm_tiler.c  | 2 +-
+>  drivers/media/i2c/m5mols/m5mols_core.c    | 2 +-
+>  drivers/media/platform/omap3isp/ispstat.c | 2 +-
+>  drivers/s390/net/qeth_core_main.c         | 2 +-
+>  fs/ext4/ext4.h                            | 2 +-
+>  fs/xfs/xfs_buf.c                          | 2 +-
+>  include/linux/atomic.h                    | 2 ++
+>  kernel/debug/kdb/kdb_main.c               | 2 +-
+>  kernel/power/hibernate.c                  | 4 ++--
+>  kernel/power/user.c                       | 2 +-
+>  lib/fault-inject.c                        | 2 --
+>  15 files changed, 17 insertions(+), 17 deletions(-)
+> 
+
+
+
+Thanks,
+Mauro
