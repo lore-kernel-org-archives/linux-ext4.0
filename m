@@ -1,43 +1,48 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 2/2] dax: assert that i_rwsem is held exclusive for writes
-Date: Wed, 8 Feb 2017 14:43:34 -0500
-Message-ID: <20170208194334.3xhu2j4p33wo26ah@thunk.org>
-References: <1484063288-18255-1-git-send-email-hch@lst.de>
- <1484063288-18255-3-git-send-email-hch@lst.de>
- <20170111090250.GF16116@quack2.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194511] filesystem slow down
+Date: Wed, 08 Feb 2017 19:49:29 +0000
+Message-ID: <bug-194511-13602-4iNiAKu6JG@https.bugzilla.kernel.org/>
+References: <bug-194511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170111090250.GF16116-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.136]:42796 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750968AbdBHTu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Feb 2017 14:50:29 -0500
+Received: from mail.kernel.org (localhost [127.0.0.1])
+        by mail.kernel.org (Postfix) with ESMTP id 0FAEF2025A
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 19:49:31 +0000 (UTC)
+Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
+        by mail.kernel.org (Postfix) with ESMTP id DB1152024F
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 19:49:29 +0000 (UTC)
+In-Reply-To: <bug-194511-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 11, 2017 at 10:02:50AM +0100, Jan Kara wrote:
-> On Tue 10-01-17 16:48:08, Christoph Hellwig wrote:
-> > Make sure all callers follow the same locking protocol, given that DAX
-> > transparantly replaced the normal buffered I/O path.
-> > 
-> > Signed-off-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-> 
-> Looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> 
-> Probably also for Ted since it depends on the ext4 fix...
+https://bugzilla.kernel.org/show_bug.cgi?id=194511
 
-Thanks, applied to the ext4 tree.
+Theodore Tso <tytso@mit.edu> changed:
 
-					- Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #1 from Theodore Tso <tytso@mit.edu> ---
+I am currently running with a 4.9 kernel (and previously I was using a 4.8
+kernel, and before that I was using 4.4) on my development laptop and I
+certainly wasn't seeing the sort of performance numbers you are seeing.
+
+Nor has anyone else been complaining about this --- and given that there are a
+lot of people running Debian testing with a 4.8 kernel, I'm sure we would have
+heard the complaints if this was a widespread problem.
+
+So there must be something fairly unique about either your hardware or software
+configuration.   Or perhaps your kernel configuration.   We would need all of
+that information in order to be able to even start looking at your complaint.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
