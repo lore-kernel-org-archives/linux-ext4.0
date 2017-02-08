@@ -1,77 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 194511] New: filesystem slow down
-Date: Wed, 08 Feb 2017 16:05:32 +0000
-Message-ID: <bug-194511-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH 1/2] ext4: fix DAX write locking
+Date: Wed, 8 Feb 2017 09:14:10 -0800
+Message-ID: <20170208171410.GA27359@infradead.org>
+References: <1484063288-18255-1-git-send-email-hch@lst.de>
+ <1484063288-18255-2-git-send-email-hch@lst.de>
+ <20170111090136.GE16116@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:58390 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751743AbdBHQPW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 8 Feb 2017 11:15:22 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id 5ACC5202F2
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 16:05:35 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-        by mail.kernel.org (Postfix) with ESMTP id 59D6D20268
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 16:05:33 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170111090136.GE16116-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=194511
-
-            Bug ID: 194511
-           Summary: filesystem slow down
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.4.44 und 4.8.???
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-          Assignee: fs_ext3@kernel-bugs.osdl.org
-          Reporter: dieter.ferdinand@gmx.de
-        Regression: No
-
-hello,
-last month i try to update to the last kernel 4.4.xx. but that was a big fault.
-
-after the update, it looks fine, but after some time (ca 30 minutes after a
-restart of the server, the system slow down and i need to much time to copy
-files to the drives.
-
-i test the speed:
-read usb >30000 MB/s
-read sata >100000MB/s
-write filesystem usb ca 1 MB/s
-write filesystem sata ca 1 MB/s
-
-this month i used a rescue-system with a kernel 4.8.??? to change a
-harddisk-config on a server and i get the same problem:
-to backup, format and restore a filesystem with less then 1 GB data i need over
-2 hours.
-the initialisation of a 160GB ext3-filesystem need over 30 minutes. this is
-impossible!
-
-at the same time, a raid is rebuild with over 100 MB/s. i stop the rebuild, but
-this have no effect to the write-speed of mke2fs to init the filesystem. at
-last, i reinstall the system in less then 30 minutes two times again because
-the system don't boot after my changes. i think a selinux-problem.
-this systenm use kernel 3.10.0 at the moment without problems.
-
-after two days, i install the kernel 3.18.47 from kernel.org to have the latest
-3.xx kernel and this kernel works fine and since installation without problems.
-
-only, i must deaktivate initramfs, but i think, that is no problem of the
-kernel and i have no time to analyse this problem at the moment.
-
-goodby
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+T24gV2VkLCBKYW4gMTEsIDIwMTcgYXQgMTA6MDE6MzZBTSArMDEwMCwgSmFuIEthcmEgd3JvdGU6
+Cj4gT24gVHVlIDEwLTAxLTE3IDE2OjQ4OjA3LCBDaHJpc3RvcGggSGVsbHdpZyB3cm90ZToKPiA+
+IFVubGlrZSBPX0RJUkVDVCBEQVggaXMgbm90IGFuIG9wdGlvbmFsIG9wdC1pbiBmZWF0dXJlIHNl
+bGVjdGVkIGJ5IHRoZQo+ID4gYXBwbGljYXRpb24sIHNvIHdlJ2xsIGhhdmUgdG8gcHJvdmlkZSB0
+aGUgdHJhZGl0aW9uYWwgc3luY2hyb27RlnphdGlvbgo+ID4gb2Ygb3ZlcmxhcHBpbmcgd3JpdGVz
+IGFzIHdlIGRvIGZvciBidWZmZXJlZCB3cml0ZXMuCj4gPiAKPiA+IFRoaXMgd2FzIGJyb2tlbiBo
+aXN0b3JpY2FsbHkgZm9yIERBWCwgYnV0IGdvdCBmaXhlZCBmb3IgZXh0MiBhbmQgWEZTCj4gPiBh
+cyBwYXJ0IG9mIHRoZSBpb21hcCBjb252ZXJzaW9uLiAgRml4IHVwIGV4dDQgYXMgd2VsbC4KPiA+
+IAo+ID4gU2lnbmVkLW9mZi1ieTogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Cj4gCj4g
+TWFrZXMgc2Vuc2UuIFlvdSBjYW4gYWRkOgo+IAo+IFJldmlld2VkLWJ5OiBKYW4gS2FyYSA8amFj
+a0BzdXNlLmN6Pgo+IAo+IFRlZCwgY2FuIHlvdSBwbGVhc2UgcGljayBpdCB1cD8gVGhhbmtzIQoK
+RGlkIHRoaXMgZ2V0IHBpY2tlZCB1cD8KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX18KTGludXgtbnZkaW1tIG1haWxpbmcgbGlzdApMaW51eC1udmRpbW1AbGlz
+dHMuMDEub3JnCmh0dHBzOi8vbGlzdHMuMDEub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtbnZk
+aW1tCg==
