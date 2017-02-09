@@ -1,48 +1,217 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 194511] filesystem slow down
-Date: Wed, 08 Feb 2017 19:49:29 +0000
-Message-ID: <bug-194511-13602-4iNiAKu6JG@https.bugzilla.kernel.org/>
-References: <bug-194511-13602@https.bugzilla.kernel.org/>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCHv6 01/37] mm, shmem: swich huge tmpfs to multi-order
+ radix-tree entries
+Date: Wed, 8 Feb 2017 19:57:27 -0800
+Message-ID: <20170209035727.GQ2267@bombadil.infradead.org>
+References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-2-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:42796 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750968AbdBHTu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 8 Feb 2017 14:50:29 -0500
-Received: from mail.kernel.org (localhost [127.0.0.1])
-        by mail.kernel.org (Postfix) with ESMTP id 0FAEF2025A
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 19:49:31 +0000 (UTC)
-Received: from bugzilla2.web.kernel.org (bugzilla2.web.kernel.org [172.20.200.52])
-        by mail.kernel.org (Postfix) with ESMTP id DB1152024F
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Feb 2017 19:49:29 +0000 (UTC)
-In-Reply-To: <bug-194511-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170126115819.58875-2-kirill.shutemov@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=194511
+On Thu, Jan 26, 2017 at 02:57:43PM +0300, Kirill A. Shutemov wrote:
+> +++ b/include/linux/pagemap.h
+> @@ -332,6 +332,15 @@ static inline struct page *grab_cache_page_nowait(struct address_space *mapping,
+>  			mapping_gfp_mask(mapping));
+>  }
+>  
+> +static inline struct page *find_subpage(struct page *page, pgoff_t offset)
+> +{
+> +	VM_BUG_ON_PAGE(PageTail(page), page);
+> +	VM_BUG_ON_PAGE(page->index > offset, page);
+> +	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) < offset,
+> +			page);
+> +	return page - page->index + offset;
+> +}
 
-Theodore Tso <tytso@mit.edu> changed:
+What would you think to:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+static inline void check_page_index(struct page *page, pgoff_t offset)
+{
+	VM_BUG_ON_PAGE(PageTail(page), page);
+	VM_BUG_ON_PAGE(page->index > offset, page);
+	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) <= offset,
+			page);
+}
 
---- Comment #1 from Theodore Tso <tytso@mit.edu> ---
-I am currently running with a 4.9 kernel (and previously I was using a 4.8
-kernel, and before that I was using 4.4) on my development laptop and I
-certainly wasn't seeing the sort of performance numbers you are seeing.
+(I think I fixed an off-by-one error up there ...  if
+index + (1 << order) == offset, this is also a bug, right?
+because offset would then refer to the next page, not this page)
 
-Nor has anyone else been complaining about this --- and given that there are a
-lot of people running Debian testing with a 4.8 kernel, I'm sure we would have
-heard the complaints if this was a widespread problem.
+static inline struct page *find_subpage(struct page *page, pgoff_t offset)
+{
+	check_page_index(page, offset);
+	return page + (offset - page->index);
+}
 
-So there must be something fairly unique about either your hardware or software
-configuration.   Or perhaps your kernel configuration.   We would need all of
-that information in order to be able to even start looking at your complaint.
+... then you can use check_page_index down ...
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> @@ -1250,7 +1233,6 @@ struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset)
+>  			put_page(page);
+>  			goto repeat;
+>  		}
+> -		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
+
+... here?
+
+> @@ -1472,25 +1451,35 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t start,
+>  			goto repeat;
+>  		}
+>  
+> +		/* For multi-order entries, find relevant subpage */
+> +		if (PageTransHuge(page)) {
+> +			VM_BUG_ON(index - page->index < 0);
+> +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> +			page += index - page->index;
+> +		}
+
+Use find_subpage() here?
+
+>  		pages[ret] = page;
+>  		if (++ret == nr_pages)
+>  			break;
+> +		if (!PageTransCompound(page))
+> +			continue;
+> +		for (refs = 0; ret < nr_pages &&
+> +				(index + 1) % HPAGE_PMD_NR;
+> +				ret++, refs++, index++)
+> +			pages[ret] = ++page;
+> +		if (refs)
+> +			page_ref_add(compound_head(page), refs);
+> +		if (ret == nr_pages)
+> +			break;
+
+Can we avoid referencing huge pages specifically in the page cache?  I'd
+like us to get to the point where we can put arbitrary compound pages into
+the page cache.  For example, I think this can be written as:
+
+		if (!PageCompound(page))
+			continue;
+		for (refs = 0; ret < nr_pages; refs++, index++) {
+			if (index > page->index + (1 << compound_order(page)))
+				break;
+			pages[ret++] = ++page;
+		}
+		if (refs)
+			page_ref_add(compound_head(page), refs);
+		if (ret == nr_pages)
+			break;
+
+> @@ -1541,19 +1533,12 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t index,
+>  
+> +		/* For multi-order entries, find relevant subpage */
+> +		if (PageTransHuge(page)) {
+> +			VM_BUG_ON(index - page->index < 0);
+> +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> +			page += index - page->index;
+> +		}
+> +
+>  		pages[ret] = page;
+>  		if (++ret == nr_pages)
+>  			break;
+> +		if (!PageTransCompound(page))
+> +			continue;
+> +		for (refs = 0; ret < nr_pages &&
+> +				(index + 1) % HPAGE_PMD_NR;
+> +				ret++, refs++, index++)
+> +			pages[ret] = ++page;
+> +		if (refs)
+> +			page_ref_add(compound_head(page), refs);
+> +		if (ret == nr_pages)
+> +			break;
+>  	}
+>  	rcu_read_unlock();
+>  	return ret;
+
+Ugh, the same code again.  Hmm ... we only need to modify 'ret' as a result
+of this ... so could we split it out like this?
+
+static unsigned populate_pages(struct page **pages, unsigned i, unsigned max,
+                                struct page *page)
+{
+        unsigned refs = 0;
+        for (;;) {
+                pages[i++] = page;
+                if (i == max)
+                        break;
+                if (PageHead(page + 1))
+                        break;
+                page++;
+                refs++;
+        }
+        if (refs)
+                page_ref_add(compound_head(page), refs);
+        return i;
+}
+
+> +unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *indexp,
+>  			int tag, unsigned int nr_pages, struct page **pages)
+
+>  			break;
+> +		if (!PageTransCompound(page))
+> +			continue;
+> +		for (refs = 0; ret < nr_pages &&
+> +				(index + 1) % HPAGE_PMD_NR;
+> +				ret++, refs++, index++)
+> +			pages[ret] = ++page;
+> +		if (refs)
+> +			page_ref_add(compound_head(page), refs);
+> +		if (ret == nr_pages)
+> +			break;
+>  	}
+
+... and again!
+
+> @@ -2326,25 +2337,26 @@ void filemap_map_pages(struct vm_fault *vmf,
+> +		/* For multi-order entries, find relevant subpage */
+> +		if (PageTransHuge(page)) {
+> +			VM_BUG_ON(index - page->index < 0);
+> +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> +			page += index - page->index;
+> +		}
+> +
+>  		if (!PageUptodate(page) ||
+>  				PageReadahead(page) ||
+
+Readahead is PF_NO_COMPOUND ... so I don't see why this works?
+
+> @@ -2378,8 +2390,14 @@ void filemap_map_pages(struct vm_fault *vmf,
+>  		/* Huge page is mapped? No need to proceed. */
+>  		if (pmd_trans_huge(*vmf->pmd))
+>  			break;
+> -		if (iter.index == end_pgoff)
+> +		if (index == end_pgoff)
+>  			break;
+> +		if (page && PageTransCompound(page) &&
+> +				(index & (HPAGE_PMD_NR - 1)) !=
+> +				HPAGE_PMD_NR - 1) {
+> +			index++;
+> +			goto repeat;
+
+Do we really have to go all the way back to the beginning of the loop?  It'd
+be nice to be able to insert all of the relevant PTEs in a shorter loop here.
+We'd need to bump the reference count N more times, and I think we do need
+to check HWPoison for each subpage.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
