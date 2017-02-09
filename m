@@ -1,10 +1,9 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 05/37] thp: try to free page's buffers before attempt
- split
-Date: Thu, 9 Feb 2017 12:14:16 -0800
-Message-ID: <20170209201416.GS2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 04/37] mm, rmap: account file thp pages
+Date: Thu, 9 Feb 2017 12:17:23 -0800
+Message-ID: <20170209201723.GT2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-6-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-5-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,35 +21,15 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-6-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-5-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:47PM +0300, Kirill A. Shutemov wrote:
-> @@ -2146,6 +2146,23 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
->  			goto out;
->  		}
->  
-> +		/* Try to free buffers before attempt split */
-> +		if (!PageSwapBacked(head) && PagePrivate(page)) {
-> +			/*
-> +			 * We cannot trigger writeback from here due possible
-> +			 * recursion if triggered from vmscan, only wait.
-> +			 *
-> +			 * Caller can trigger writeback it on its own, if safe.
-> +			 */
-
-It took me a few reads to get this.  May I suggest:
-
-		/*
-		 * Cannot split a page with buffers.  If the caller has
-		 * already started writeback, we can wait for it to finish,
-		 * but we cannot start writeback if we were called from vmscan
-		 */
-> +		if (!PageSwapBacked(head) && PagePrivate(page)) {
-
-Also, it looks weird to test PageSwapBacked of *head* and PagePrivate
-of *page*.  I think it's correct, but it still looks weird.
+On Thu, Jan 26, 2017 at 02:57:46PM +0300, Kirill A. Shutemov wrote:
+> Let's add FileHugePages and FilePmdMapped fields into meminfo and smaps.
+> It indicates how many times we allocate and map file THP.
+> 
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
 Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
 
