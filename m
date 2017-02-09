@@ -1,176 +1,25 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: question about ext4 block allocation
-Date: Thu, 9 Feb 2017 16:30:09 +0100
-Message-ID: <20170209153009.GB3009@quack2.suse.cz>
-References: <20170206231409.GA16676@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="azLHFNyN32YCQGCU"
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170206231409.GA16676-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
-
-
---azLHFNyN32YCQGCU
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-Hi Ross,
-
-On Mon 06-02-17 16:14:09, Ross Zwisler wrote:
-> I recently hit an issue in my DAX testing where I was unable to get ext4 to
-> give me 2 MiB sized and aligned block allocations in a situation where I
-> thought I should be able to.  I'm using a PMEM ramdisk of size 16 GiB, created
-> using the memmap kernel command line parameter.
-> 
->   # fdisk -l /dev/pmem0
->   Disk /dev/pmem0: 16 GiB, 17179869184 bytes, 33554432 sectors
->   Units: sectors of 1 * 512 = 512 bytes
->   Sector size (logical/physical): 512 bytes / 4096 bytes
->   I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-> 
-> The very simple test program I used to reproduce this can be found at the
-> bottom of this mail.  Here is the quick function that I used to recreate my
-> filesystem each run:
-> 
->   # type go_ext4
->   go_ext4 is a function
->   go_ext4 () 
->   { 
->       umount /dev/pmem0 2> /dev/null;
->       mkfs.ext4 -b 4096 -E stride=512 -F /dev/pmem0;
->       mount -o dax /dev/pmem0 ~/dax;
->       cd ~/fsync
->   }
-
-...
-
-> Great.  That's what I want.  But, if I create the filesystem and use the test
-> to create a file that is 64 MiB in size, the PMD fault fails because the PFN I
-> get from the filesystem isn't 2MiB aligned:
-> 
-> test-1475  [006] .... 11809.982188: dax_pmd_fault: dev 259:0 ino 0xc shared
-> WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000 vm_end
-> 0x40400000 pgoff 0x280 max_pgoff 0x3fff 
-> 
-> test-1475  [006] .... 11809.982398: dax_pmd_insert_mapping_fallback: dev 259:0
-> ino 0xc shared write address 0x40280000 length 0x200000 pfn 0x108601 DEV|MAP
-> radix_entry 0x0
-> 
-> test-1475  [006] .... 11809.982399: dax_pmd_fault_done: dev 259:0 ino 0xc
-> shared WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000
-> vm_end 0x40400000 pgoff 0x280 max_pgoff 0x3fff FALLBACK
-> 
-> The PFN for the block allocation I get from ext4 is 0x108601, which isn't
-> aligned, so we fail the PG_PMD_COLOUR alignment check in
-> dax_iomap_pmd_fault(), and use PTEs instead.
-
-Yeah, it's a bug in ext4 allocator. Requests for 128MB are exactly a group
-size so we find completely empty group and satisfy the request. Even larger
-requests will get split into 128MB chunks. 32MB requests are small enough
-that they go via a special path for power-of-two sized requests. However
-64MB allocation request can be satisfied from somewhat filled group (there
-are sb backup blocks in group 1 in your case) and we screw up when deciding
-whether to treat such request as power-of-two or not and don't align it at
-all in the end.
-
-Another problem is that the stride size ends up unused due to another bug
-in ext4. The second attached patch fixes that issue.
-
-With these two patches applied I get file blocks aligned. That being said
-the stripe-aligned allocator does a poor job of creating large extents
-(larger than stripe-width) however that is more difficult to fix.
-
-								Honza
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
-
---azLHFNyN32YCQGCU
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Fix-stripe-unaligned-allocations.patch"
-
->From ae69b07596c0f054483b0434c30a330a811ee8ff Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Date: Thu, 9 Feb 2017 15:46:46 +0100
-Subject: [PATCH 1/2] ext4: Fix stripe-unaligned allocations
-
-When a filesystem is created using:
-
-mkfs.ext4 -b 4096 -E stride=512 <dev>
-
-and we try to allocate 64MB extent, we will end up directly in
-ext4_mb_complex_scan_group(). This is because the request is detected as
-power-of-two allocation (so we start in ext4_mb_regular_allocator()
-with ac_criteria == 0) however the check before
-ext4_mb_simple_scan_group() refuses the direct buddy scan because the
-allocation request is too large. Since cr == 0, the check whether we
-should use ext4_mb_scan_aligned() fails as well and we fall back to
-ext4_mb_complex_scan_group().
-
-Fix the problem by checking for upper limit on power-of-two requests
-directly when detecting them.
-
-Reported-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
----
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7ae43c59bc79..37db7ba0f69e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2136,8 +2136,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	 * We search using buddy data only if the order of the request
- 	 * is greater than equal to the sbi_s_mb_order2_reqs
- 	 * You can tune it via /sys/fs/ext4/<partition>/mb_order2_req
-+	 * We also support searching for power-of-two requests only for
-+	 * requests upto maximum buddy size we have constructed.
- 	 */
--	if (i >= sbi->s_mb_order2_reqs) {
-+	if (i >= sbi->s_mb_order2_reqs && i <= sb->s_blocksize_bits + 2) {
- 		/*
- 		 * This should tell if fe_len is exactly power of 2
- 		 */
-@@ -2207,7 +2209,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			}
- 
- 			ac->ac_groups_scanned++;
--			if (cr == 0 && ac->ac_2order < sb->s_blocksize_bits+2)
-+			if (cr == 0)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 && sbi->s_stripe &&
- 					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
--- 
-2.10.2
-
-
---azLHFNyN32YCQGCU
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0002-ext4-Do-not-use-stripe_with-if-it-is-not-set.patch"
-
->From f76848d56ccc532a4a02fa8e62e750221abdba89 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Date: Thu, 9 Feb 2017 16:13:30 +0100
+From: Jan Kara <jack@suse.cz>
 Subject: [PATCH 2/2] ext4: Do not use stripe_with if it is not set
+Date: Thu,  9 Feb 2017 16:30:50 +0100
+Message-ID: <20170209153050.15317-2-jack@suse.cz>
+References: <20170209153050.15317-1-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:33861 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751178AbdBIPbg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Feb 2017 10:31:36 -0500
+In-Reply-To: <20170209153050.15317-1-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Avoid using stripe_width for sbi->s_stripe value if it is not actually
 set. It prevents using the stride for sbi->s_stripe.
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
  fs/ext4/super.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
@@ -193,17 +42,3 @@ index 66845a08a87a..b82cd3b263b4 100644
  		ret = 0;
 -- 
 2.10.2
-
-
---azLHFNyN32YCQGCU
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-Linux-nvdimm mailing list
-Linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-https://lists.01.org/mailman/listinfo/linux-nvdimm
-
---azLHFNyN32YCQGCU--
