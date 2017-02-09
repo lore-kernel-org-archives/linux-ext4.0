@@ -1,42 +1,54 @@
-From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 09/37] filemap: allocate huge page in
- pagecache_get_page(), if allowed
-Date: Thu, 9 Feb 2017 13:59:04 -0800
-Message-ID: <20170209215904.GX2267@bombadil.infradead.org>
-References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-10-kirill.shutemov@linux.intel.com>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: question about ext4 block allocation
+Date: Thu, 9 Feb 2017 17:54:40 -0500
+Message-ID: <20170209225440.pz4pychpxsnfl22o@thunk.org>
+References: <20170206231409.GA16676@linux.intel.com>
+ <20170209153009.GB3009@quack2.suse.cz>
+ <20170209175228.GA15524@linux.intel.com>
+ <20170209192948.wy4yubzfss5hu7cl@thunk.org>
+ <20170209202154.GB15524@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-y27Ovi1pjclAfugRpC6u6w@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-10-kirill.shutemov@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20170209202154.GB15524-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:51PM +0300, Kirill A. Shutemov wrote:
-> Write path allocate pages using pagecache_get_page(). We should be able
-> to allocate huge pages there, if it's allowed. As usually, fallback to
-> small pages, if failed.
+On Thu, Feb 09, 2017 at 01:21:54PM -0700, Ross Zwisler wrote:
+> On Thu, Feb 09, 2017 at 02:29:48PM -0500, Theodore Ts'o wrote:
+> > On Thu, Feb 09, 2017 at 10:52:28AM -0700, Ross Zwisler wrote:
+> > > I've pared down his xfstest to be a pretty minimal reproducer, and you can
+> > > find it here:
+> > > 
+> > > https://git.kernel.org/cgit/linux/kernel/git/zwisler/xfstests-dev.git/log/?h=ext4_PMD_allocation
+> > 
+> > I'm getting "No repositories found".  And looking at the top level
+> > git.kernel.org, it doesn't look like there is an
+> > zwisler/xfstests-dev.git tree there at all.  Was it uploaded correctly?
+> > 
+> > 			      	       	     	 - Ted
 > 
-> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> The above link works for me, and I can see it in the top level view:
+> 
+> https://git.kernel.org/cgit/
+> 
+> I just created the repo today, though.  Maybe it's just taking a mirror a
+> second to catch up or something?
 
-Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+Yup, that must have been what it was.  I must have caught a DNS mirror
+that was slow in updating.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+				- Ted
