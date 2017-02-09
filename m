@@ -1,10 +1,9 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 10/37] filemap: handle huge pages in
- filemap_fdatawait_range()
-Date: Thu, 9 Feb 2017 15:03:58 -0800
-Message-ID: <20170209230358.GY2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 11/37] HACK: readahead: alloc huge pages, if allowed
+Date: Thu, 9 Feb 2017 15:34:36 -0800
+Message-ID: <20170209233436.GZ2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-11-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-12-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,38 +21,38 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-11-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-12-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:52PM +0300, Kirill A. Shutemov wrote:
-> @@ -405,9 +405,14 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
->  			if (page->index > end)
->  				continue;
->  
-> +			page = compound_head(page);
->  			wait_on_page_writeback(page);
->  			if (TestClearPageError(page))
->  				ret = -EIO;
-> +			if (PageTransHuge(page)) {
-> +				index = page->index + HPAGE_PMD_NR;
-> +				i += index - pvec.pages[i]->index - 1;
-> +			}
->  		}
+On Thu, Jan 26, 2017 at 02:57:53PM +0300, Kirill A. Shutemov wrote:
+> Most page cache allocation happens via readahead (sync or async), so if
+> we want to have significant number of huge pages in page cache we need
+> to find a ways to allocate them from readahead.
+> 
+> Unfortunately, huge pages doesn't fit into current readahead design:
+> 128 max readahead window, assumption on page size, PageReadahead() to
+> track hit/miss.
+> 
+> I haven't found a ways to get it right yet.
+> 
+> This patch just allocates huge page if allowed, but doesn't really
+> provide any readahead if huge page is allocated. We read out 2M a time
+> and I would expect spikes in latancy without readahead.
+> 
+> Therefore HACK.
+> 
+> Having that said, I don't think it should prevent huge page support to
+> be applied. Future will show if lacking readahead is a big deal with
+> huge pages in page cache.
+> 
+> Any suggestions are welcome.
 
-I'm really not sure about your decision to have some interfaces expose
-subpages and other expose huge pages.  I think I'd be happier to see
-all the existing interfaces made to continue exposing subpages, then
-start adding in new interfaces and converting users one at a time
-to use them.  For example here, we'd add find_get_huge_pages_tag(),
-then pagevec_lookup_huge_tag(), and switch this function from calling
-pagevec_lookup_tag() to calling pagevec_lookup_huge_tag() ... then this
-function is done; there's no messing around with calling compound_head
-or PageTransHuge.
-
-My dream is that eventually all callers will be able to cope with getting
-a compound page back from the page cache and we can delete the versions
-that return subpages, and rename the 'huge_' variations.
+Well ... what if we made readahead 2 hugepages in size for inodes which
+are using huge pages?  That's only 8x our current readahead window, and
+if you're asking for hugepages, you're accepting that IOs are going to
+be larger, and you probably have the kind of storage system which can
+handle doing larger IOs.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
