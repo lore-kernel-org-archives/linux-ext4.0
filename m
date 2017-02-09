@@ -1,10 +1,10 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 08/37] filemap: handle huge pages in
- do_generic_file_read()
-Date: Thu, 9 Feb 2017 13:55:05 -0800
-Message-ID: <20170209215505.GW2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 09/37] filemap: allocate huge page in
+ pagecache_get_page(), if allowed
+Date: Thu, 9 Feb 2017 13:59:04 -0800
+Message-ID: <20170209215904.GX2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-10-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,32 +22,18 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-10-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:50PM +0300, Kirill A. Shutemov wrote:
-> +++ b/mm/filemap.c
-> @@ -1886,6 +1886,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
->  			if (unlikely(page == NULL))
->  				goto no_cached_page;
->  		}
-> +		page = compound_head(page);
+On Thu, Jan 26, 2017 at 02:57:51PM +0300, Kirill A. Shutemov wrote:
+> Write path allocate pages using pagecache_get_page(). We should be able
+> to allocate huge pages there, if it's allowed. As usually, fallback to
+> small pages, if failed.
+> 
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
-We got this page from find_get_page(), which gets it from
-pagecache_get_page(), which gets it from find_get_entry() ... which
-(unless I'm lost in your patch series) returns the head page.  So this
-line is redundant, right?
-
-But then down in filemap_fault, we have:
-
-        VM_BUG_ON_PAGE(page->index != offset, page);
-
-... again, maybe I'm lost somewhere in your patch series, but I don't see
-anywhere you remove that line (or modify it).  So are you not testing
-with VM debugging enabled, or are you not doing a test which includes
-mapping a file with huge pages, reading from it (to get the page in cache),
-then faulting on an address that is not in the first 4kB of that 2MB?
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
