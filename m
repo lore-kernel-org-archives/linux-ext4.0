@@ -1,109 +1,53 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: question about ext4 block allocation
-Date: Thu, 9 Feb 2017 10:52:28 -0700
-Message-ID: <20170209175228.GA15524@linux.intel.com>
-References: <20170206231409.GA16676@linux.intel.com>
- <20170209153009.GB3009@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170209153009.GB3009-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Nathan Howard <adanhawthorn@gmail.com>
+Subject: [PATCH] fs: ext4: block_validity.c
+Date: Thu,  9 Feb 2017 13:57:21 -0500
+Message-ID: <1486666641-15658-1-git-send-email-adanhawthorn@gmail.com>
+Cc: Nathan Howard <adanhawthorn@gmail.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 09, 2017 at 04:30:09PM +0100, Jan Kara wrote:
-> Hi Ross,
-> 
-> On Mon 06-02-17 16:14:09, Ross Zwisler wrote:
-> > I recently hit an issue in my DAX testing where I was unable to get ext4 to
-> > give me 2 MiB sized and aligned block allocations in a situation where I
-> > thought I should be able to.  I'm using a PMEM ramdisk of size 16 GiB, created
-> > using the memmap kernel command line parameter.
-> > 
-> >   # fdisk -l /dev/pmem0
-> >   Disk /dev/pmem0: 16 GiB, 17179869184 bytes, 33554432 sectors
-> >   Units: sectors of 1 * 512 = 512 bytes
-> >   Sector size (logical/physical): 512 bytes / 4096 bytes
-> >   I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-> > 
-> > The very simple test program I used to reproduce this can be found at the
-> > bottom of this mail.  Here is the quick function that I used to recreate my
-> > filesystem each run:
-> > 
-> >   # type go_ext4
-> >   go_ext4 is a function
-> >   go_ext4 () 
-> >   { 
-> >       umount /dev/pmem0 2> /dev/null;
-> >       mkfs.ext4 -b 4096 -E stride=512 -F /dev/pmem0;
-> >       mount -o dax /dev/pmem0 ~/dax;
-> >       cd ~/fsync
-> >   }
-> 
-> ...
-> 
-> > Great.  That's what I want.  But, if I create the filesystem and use the test
-> > to create a file that is 64 MiB in size, the PMD fault fails because the PFN I
-> > get from the filesystem isn't 2MiB aligned:
-> > 
-> > test-1475  [006] .... 11809.982188: dax_pmd_fault: dev 259:0 ino 0xc shared
-> > WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000 vm_end
-> > 0x40400000 pgoff 0x280 max_pgoff 0x3fff 
-> > 
-> > test-1475  [006] .... 11809.982398: dax_pmd_insert_mapping_fallback: dev 259:0
-> > ino 0xc shared write address 0x40280000 length 0x200000 pfn 0x108601 DEV|MAP
-> > radix_entry 0x0
-> > 
-> > test-1475  [006] .... 11809.982399: dax_pmd_fault_done: dev 259:0 ino 0xc
-> > shared WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000
-> > vm_end 0x40400000 pgoff 0x280 max_pgoff 0x3fff FALLBACK
-> > 
-> > The PFN for the block allocation I get from ext4 is 0x108601, which isn't
-> > aligned, so we fail the PG_PMD_COLOUR alignment check in
-> > dax_iomap_pmd_fault(), and use PTEs instead.
-> 
-> Yeah, it's a bug in ext4 allocator. Requests for 128MB are exactly a group
-> size so we find completely empty group and satisfy the request. Even larger
-> requests will get split into 128MB chunks. 32MB requests are small enough
-> that they go via a special path for power-of-two sized requests. However
-> 64MB allocation request can be satisfied from somewhat filled group (there
-> are sb backup blocks in group 1 in your case) and we screw up when deciding
-> whether to treat such request as power-of-two or not and don't align it at
-> all in the end.
-> 
-> Another problem is that the stride size ends up unused due to another bug
-> in ext4. The second attached patch fixes that issue.
-> 
-> With these two patches applied I get file blocks aligned. That being said
-> the stripe-aligned allocator does a poor job of creating large extents
-> (larger than stripe-width) however that is more difficult to fix.
+Fixed coding style issues.
 
-Thanks for the fixes!  Your patches do fix my simple reproducer so that it
-gives me 2MiB aligned and size allocations for 64 MiB files, but when I run
-Xiong's xfstest I'm still getting misaligned allocations only for 64 MiB
-files.  32 MiB and 128 MiB sized files still work and give me a PMD.
+Signed-off-by: Nathan Howard <adanhawthorn@gmail.com>
+---
+ fs/ext4/block_validity.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-I've pared down his xfstest to be a pretty minimal reproducer, and you can
-find it here:
-
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/xfstests-dev.git/log/?h=ext4_PMD_allocation
-
-You can just revert the top patch in this tree (which basically just comments
-out 90% of the test and adds some debug) to get back to Xiong's full test.
-
-The kernel tree I tested with today using your fixes can be found here:
-
-https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=ext4_PMD_allocation
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index fdb1954..fead1f9 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -124,16 +124,16 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
+ 	struct ext4_system_zone *entry;
+ 	int first = 1;
+ 
+-	printk(KERN_INFO "System zones: ");
++	pr_info("System zones: ");
+ 	node = rb_first(&sbi->system_blks);
+ 	while (node) {
+ 		entry = rb_entry(node, struct ext4_system_zone, node);
+-		printk(KERN_CONT "%s%llu-%llu", first ? "" : ", ",
++		pr_cont("%s%llu-%llu", first ? "" : ", ",
+ 		       entry->start_blk, entry->start_blk + entry->count - 1);
+ 		first = 0;
+ 		node = rb_next(node);
+ 	}
+-	printk(KERN_CONT "\n");
++	pr_cont("\n");
+ }
+ 
+ int ext4_setup_system_zone(struct super_block *sb)
+@@ -153,7 +153,7 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 	if (EXT4_SB(sb)->system_blks.rb_node)
+ 		return 0;
+ 
+-	for (i=0; i < ngroups; i++) {
++	for (i = 0; i < ngroups; i++) {
+ 		if (ext4_bg_has_super(sb, i) &&
+ 		    ((i < 5) || ((i % flex_size) == 0)))
+ 			add_system_zone(sbi, ext4_group_first_block_no(sb, i),
+-- 
+2.7.4
