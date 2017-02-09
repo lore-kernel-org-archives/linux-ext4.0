@@ -1,9 +1,9 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 04/37] mm, rmap: account file thp pages
-Date: Thu, 9 Feb 2017 12:17:23 -0800
-Message-ID: <20170209201723.GT2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 06/37] thp: handle write-protection faults for file THP
+Date: Thu, 9 Feb 2017 12:19:09 -0800
+Message-ID: <20170209201909.GU2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-5-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-7-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -21,15 +21,19 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-5-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-7-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:46PM +0300, Kirill A. Shutemov wrote:
-> Let's add FileHugePages and FilePmdMapped fields into meminfo and smaps.
-> It indicates how many times we allocate and map file THP.
+On Thu, Jan 26, 2017 at 02:57:48PM +0300, Kirill A. Shutemov wrote:
+> For filesystems that wants to be write-notified (has mkwrite), we will
+> encount write-protection faults for huge PMDs in shared mappings.
+> 
+> The easiest way to handle them is to clear the PMD and let it refault as
+> wriable.
 > 
 > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
 Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
 
