@@ -1,65 +1,248 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Fix stripe-unaligned allocations
-Date: Thu,  9 Feb 2017 16:30:49 +0100
-Message-ID: <20170209153050.15317-1-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33857 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751074AbdBIPbg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 9 Feb 2017 10:31:36 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCHv6 01/37] mm, shmem: swich huge tmpfs to multi-order
+ radix-tree entries
+Date: Thu, 9 Feb 2017 19:58:20 +0300
+Message-ID: <20170209165820.GA12768@node.shutemov.name>
+References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-2-kirill.shutemov@linux.intel.com>
+ <20170209035727.GQ2267@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: Matthew Wilcox <willy@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170209035727.GQ2267@bombadil.infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-When a filesystem is created using:
+On Wed, Feb 08, 2017 at 07:57:27PM -0800, Matthew Wilcox wrote:
+> On Thu, Jan 26, 2017 at 02:57:43PM +0300, Kirill A. Shutemov wrote:
+> > +++ b/include/linux/pagemap.h
+> > @@ -332,6 +332,15 @@ static inline struct page *grab_cache_page_nowait(struct address_space *mapping,
+> >  			mapping_gfp_mask(mapping));
+> >  }
+> >  
+> > +static inline struct page *find_subpage(struct page *page, pgoff_t offset)
+> > +{
+> > +	VM_BUG_ON_PAGE(PageTail(page), page);
+> > +	VM_BUG_ON_PAGE(page->index > offset, page);
+> > +	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) < offset,
+> > +			page);
+> > +	return page - page->index + offset;
+> > +}
+> 
+> What would you think to:
+> 
+> static inline void check_page_index(struct page *page, pgoff_t offset)
+> {
+> 	VM_BUG_ON_PAGE(PageTail(page), page);
+> 	VM_BUG_ON_PAGE(page->index > offset, page);
+> 	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) <= offset,
+> 			page);
+> }
+> 
+> (I think I fixed an off-by-one error up there ...  if
+> index + (1 << order) == offset, this is also a bug, right?
+> because offset would then refer to the next page, not this page)
 
-mkfs.ext4 -b 4096 -E stride=512 <dev>
+Right, thanks.
 
-and we try to allocate 64MB extent, we will end up directly in
-ext4_mb_complex_scan_group(). This is because the request is detected as
-power-of-two allocation (so we start in ext4_mb_regular_allocator()
-with ac_criteria == 0) however the check before
-ext4_mb_simple_scan_group() refuses the direct buddy scan because the
-allocation request is too large. Since cr == 0, the check whether we
-should use ext4_mb_scan_aligned() fails as well and we fall back to
-ext4_mb_complex_scan_group().
+> 
+> static inline struct page *find_subpage(struct page *page, pgoff_t offset)
+> {
+> 	check_page_index(page, offset);
+> 	return page + (offset - page->index);
+> }
+> 
+> ... then you can use check_page_index down ...
 
-Fix the problem by checking for upper limit on power-of-two requests
-directly when detecting them.
+Okay, makes sense.
 
-Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> > @@ -1250,7 +1233,6 @@ struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset)
+> >  			put_page(page);
+> >  			goto repeat;
+> >  		}
+> > -		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
+> 
+> ... here?
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7ae43c59bc79..37db7ba0f69e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2136,8 +2136,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	 * We search using buddy data only if the order of the request
- 	 * is greater than equal to the sbi_s_mb_order2_reqs
- 	 * You can tune it via /sys/fs/ext4/<partition>/mb_order2_req
-+	 * We also support searching for power-of-two requests only for
-+	 * requests upto maximum buddy size we have constructed.
- 	 */
--	if (i >= sbi->s_mb_order2_reqs) {
-+	if (i >= sbi->s_mb_order2_reqs && i <= sb->s_blocksize_bits + 2) {
- 		/*
- 		 * This should tell if fe_len is exactly power of 2
- 		 */
-@@ -2207,7 +2209,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			}
- 
- 			ac->ac_groups_scanned++;
--			if (cr == 0 && ac->ac_2order < sb->s_blocksize_bits+2)
-+			if (cr == 0)
- 				ext4_mb_simple_scan_group(ac, &e4b);
- 			else if (cr == 1 && sbi->s_stripe &&
- 					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
+Ok.
+
+> > @@ -1472,25 +1451,35 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t start,
+> >  			goto repeat;
+> >  		}
+> >  
+> > +		/* For multi-order entries, find relevant subpage */
+> > +		if (PageTransHuge(page)) {
+> > +			VM_BUG_ON(index - page->index < 0);
+> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> > +			page += index - page->index;
+> > +		}
+> 
+> Use find_subpage() here?
+
+Ok.
+
+> >  		pages[ret] = page;
+> >  		if (++ret == nr_pages)
+> >  			break;
+> > +		if (!PageTransCompound(page))
+> > +			continue;
+> > +		for (refs = 0; ret < nr_pages &&
+> > +				(index + 1) % HPAGE_PMD_NR;
+> > +				ret++, refs++, index++)
+> > +			pages[ret] = ++page;
+> > +		if (refs)
+> > +			page_ref_add(compound_head(page), refs);
+> > +		if (ret == nr_pages)
+> > +			break;
+> 
+> Can we avoid referencing huge pages specifically in the page cache?  I'd
+> like us to get to the point where we can put arbitrary compound pages into
+> the page cache.  For example, I think this can be written as:
+> 
+> 		if (!PageCompound(page))
+> 			continue;
+> 		for (refs = 0; ret < nr_pages; refs++, index++) {
+> 			if (index > page->index + (1 << compound_order(page)))
+> 				break;
+> 			pages[ret++] = ++page;
+> 		}
+> 		if (refs)
+> 			page_ref_add(compound_head(page), refs);
+> 		if (ret == nr_pages)
+> 			break;
+
+That's slightly more costly, but I guess that's fine.
+
+> > @@ -1541,19 +1533,12 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t index,
+> >  
+> > +		/* For multi-order entries, find relevant subpage */
+> > +		if (PageTransHuge(page)) {
+> > +			VM_BUG_ON(index - page->index < 0);
+> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> > +			page += index - page->index;
+> > +		}
+> > +
+> >  		pages[ret] = page;
+> >  		if (++ret == nr_pages)
+> >  			break;
+> > +		if (!PageTransCompound(page))
+> > +			continue;
+> > +		for (refs = 0; ret < nr_pages &&
+> > +				(index + 1) % HPAGE_PMD_NR;
+> > +				ret++, refs++, index++)
+> > +			pages[ret] = ++page;
+> > +		if (refs)
+> > +			page_ref_add(compound_head(page), refs);
+> > +		if (ret == nr_pages)
+> > +			break;
+> >  	}
+> >  	rcu_read_unlock();
+> >  	return ret;
+> 
+> Ugh, the same code again.  Hmm ... we only need to modify 'ret' as a result
+> of this ... so could we split it out like this?
+> 
+> static unsigned populate_pages(struct page **pages, unsigned i, unsigned max,
+>                                 struct page *page)
+> {
+>         unsigned refs = 0;
+>         for (;;) {
+>                 pages[i++] = page;
+>                 if (i == max)
+>                         break;
+>                 if (PageHead(page + 1))
+>                         break;
+
+Hm? PageHead()? No. The next page can head or small.
+
+I *guess* we can get away with !PageTail(page + 1)...
+
+>                 page++;
+>                 refs++;
+>         }
+>         if (refs)
+>                 page_ref_add(compound_head(page), refs);
+>         return i;
+> }
+> 
+> > +unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *indexp,
+> >  			int tag, unsigned int nr_pages, struct page **pages)
+> 
+> >  			break;
+> > +		if (!PageTransCompound(page))
+> > +			continue;
+> > +		for (refs = 0; ret < nr_pages &&
+> > +				(index + 1) % HPAGE_PMD_NR;
+> > +				ret++, refs++, index++)
+> > +			pages[ret] = ++page;
+> > +		if (refs)
+> > +			page_ref_add(compound_head(page), refs);
+> > +		if (ret == nr_pages)
+> > +			break;
+> >  	}
+> 
+> ... and again!
+> 
+> > @@ -2326,25 +2337,26 @@ void filemap_map_pages(struct vm_fault *vmf,
+> > +		/* For multi-order entries, find relevant subpage */
+> > +		if (PageTransHuge(page)) {
+> > +			VM_BUG_ON(index - page->index < 0);
+> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
+> > +			page += index - page->index;
+> > +		}
+> > +
+> >  		if (!PageUptodate(page) ||
+> >  				PageReadahead(page) ||
+> 
+> Readahead is PF_NO_COMPOUND ... so I don't see why this works?
+
+We wouldn't see pages with readahead flag set/cleared until huge pages
+support in ext4 is enabled at very end of the patchset.
+
+> 
+> > @@ -2378,8 +2390,14 @@ void filemap_map_pages(struct vm_fault *vmf,
+> >  		/* Huge page is mapped? No need to proceed. */
+> >  		if (pmd_trans_huge(*vmf->pmd))
+> >  			break;
+> > -		if (iter.index == end_pgoff)
+> > +		if (index == end_pgoff)
+> >  			break;
+> > +		if (page && PageTransCompound(page) &&
+> > +				(index & (HPAGE_PMD_NR - 1)) !=
+> > +				HPAGE_PMD_NR - 1) {
+> > +			index++;
+> > +			goto repeat;
+> 
+> Do we really have to go all the way back to the beginning of the loop?  It'd
+> be nice to be able to insert all of the relevant PTEs in a shorter loop here.
+> We'd need to bump the reference count N more times, and I think we do need
+> to check HWPoison for each subpage.
+
+I'll look into it.
+
+Thanks for review.
+
 -- 
-2.10.2
+ Kirill A. Shutemov
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
