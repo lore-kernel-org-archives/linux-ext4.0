@@ -1,248 +1,109 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv6 01/37] mm, shmem: swich huge tmpfs to multi-order
- radix-tree entries
-Date: Thu, 9 Feb 2017 19:58:20 +0300
-Message-ID: <20170209165820.GA12768@node.shutemov.name>
-References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-2-kirill.shutemov@linux.intel.com>
- <20170209035727.GQ2267@bombadil.infradead.org>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: question about ext4 block allocation
+Date: Thu, 9 Feb 2017 10:52:28 -0700
+Message-ID: <20170209175228.GA15524@linux.intel.com>
+References: <20170206231409.GA16676@linux.intel.com>
+ <20170209153009.GB3009@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170209035727.GQ2267@bombadil.infradead.org>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <20170209153009.GB3009-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Feb 08, 2017 at 07:57:27PM -0800, Matthew Wilcox wrote:
-> On Thu, Jan 26, 2017 at 02:57:43PM +0300, Kirill A. Shutemov wrote:
-> > +++ b/include/linux/pagemap.h
-> > @@ -332,6 +332,15 @@ static inline struct page *grab_cache_page_nowait(struct address_space *mapping,
-> >  			mapping_gfp_mask(mapping));
-> >  }
-> >  
-> > +static inline struct page *find_subpage(struct page *page, pgoff_t offset)
-> > +{
-> > +	VM_BUG_ON_PAGE(PageTail(page), page);
-> > +	VM_BUG_ON_PAGE(page->index > offset, page);
-> > +	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) < offset,
-> > +			page);
-> > +	return page - page->index + offset;
-> > +}
+On Thu, Feb 09, 2017 at 04:30:09PM +0100, Jan Kara wrote:
+> Hi Ross,
 > 
-> What would you think to:
+> On Mon 06-02-17 16:14:09, Ross Zwisler wrote:
+> > I recently hit an issue in my DAX testing where I was unable to get ext4 to
+> > give me 2 MiB sized and aligned block allocations in a situation where I
+> > thought I should be able to.  I'm using a PMEM ramdisk of size 16 GiB, created
+> > using the memmap kernel command line parameter.
+> > 
+> >   # fdisk -l /dev/pmem0
+> >   Disk /dev/pmem0: 16 GiB, 17179869184 bytes, 33554432 sectors
+> >   Units: sectors of 1 * 512 = 512 bytes
+> >   Sector size (logical/physical): 512 bytes / 4096 bytes
+> >   I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+> > 
+> > The very simple test program I used to reproduce this can be found at the
+> > bottom of this mail.  Here is the quick function that I used to recreate my
+> > filesystem each run:
+> > 
+> >   # type go_ext4
+> >   go_ext4 is a function
+> >   go_ext4 () 
+> >   { 
+> >       umount /dev/pmem0 2> /dev/null;
+> >       mkfs.ext4 -b 4096 -E stride=512 -F /dev/pmem0;
+> >       mount -o dax /dev/pmem0 ~/dax;
+> >       cd ~/fsync
+> >   }
 > 
-> static inline void check_page_index(struct page *page, pgoff_t offset)
-> {
-> 	VM_BUG_ON_PAGE(PageTail(page), page);
-> 	VM_BUG_ON_PAGE(page->index > offset, page);
-> 	VM_BUG_ON_PAGE(page->index + (1 << compound_order(page)) <= offset,
-> 			page);
-> }
+> ...
 > 
-> (I think I fixed an off-by-one error up there ...  if
-> index + (1 << order) == offset, this is also a bug, right?
-> because offset would then refer to the next page, not this page)
-
-Right, thanks.
-
+> > Great.  That's what I want.  But, if I create the filesystem and use the test
+> > to create a file that is 64 MiB in size, the PMD fault fails because the PFN I
+> > get from the filesystem isn't 2MiB aligned:
+> > 
+> > test-1475  [006] .... 11809.982188: dax_pmd_fault: dev 259:0 ino 0xc shared
+> > WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000 vm_end
+> > 0x40400000 pgoff 0x280 max_pgoff 0x3fff 
+> > 
+> > test-1475  [006] .... 11809.982398: dax_pmd_insert_mapping_fallback: dev 259:0
+> > ino 0xc shared write address 0x40280000 length 0x200000 pfn 0x108601 DEV|MAP
+> > radix_entry 0x0
+> > 
+> > test-1475  [006] .... 11809.982399: dax_pmd_fault_done: dev 259:0 ino 0xc
+> > shared WRITE|ALLOW_RETRY|KILLABLE|USER address 0x40280000 vm_start 0x40000000
+> > vm_end 0x40400000 pgoff 0x280 max_pgoff 0x3fff FALLBACK
+> > 
+> > The PFN for the block allocation I get from ext4 is 0x108601, which isn't
+> > aligned, so we fail the PG_PMD_COLOUR alignment check in
+> > dax_iomap_pmd_fault(), and use PTEs instead.
 > 
-> static inline struct page *find_subpage(struct page *page, pgoff_t offset)
-> {
-> 	check_page_index(page, offset);
-> 	return page + (offset - page->index);
-> }
+> Yeah, it's a bug in ext4 allocator. Requests for 128MB are exactly a group
+> size so we find completely empty group and satisfy the request. Even larger
+> requests will get split into 128MB chunks. 32MB requests are small enough
+> that they go via a special path for power-of-two sized requests. However
+> 64MB allocation request can be satisfied from somewhat filled group (there
+> are sb backup blocks in group 1 in your case) and we screw up when deciding
+> whether to treat such request as power-of-two or not and don't align it at
+> all in the end.
 > 
-> ... then you can use check_page_index down ...
-
-Okay, makes sense.
-
+> Another problem is that the stride size ends up unused due to another bug
+> in ext4. The second attached patch fixes that issue.
 > 
-> > @@ -1250,7 +1233,6 @@ struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset)
-> >  			put_page(page);
-> >  			goto repeat;
-> >  		}
-> > -		VM_BUG_ON_PAGE(page_to_pgoff(page) != offset, page);
-> 
-> ... here?
+> With these two patches applied I get file blocks aligned. That being said
+> the stripe-aligned allocator does a poor job of creating large extents
+> (larger than stripe-width) however that is more difficult to fix.
 
-Ok.
+Thanks for the fixes!  Your patches do fix my simple reproducer so that it
+gives me 2MiB aligned and size allocations for 64 MiB files, but when I run
+Xiong's xfstest I'm still getting misaligned allocations only for 64 MiB
+files.  32 MiB and 128 MiB sized files still work and give me a PMD.
 
-> > @@ -1472,25 +1451,35 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t start,
-> >  			goto repeat;
-> >  		}
-> >  
-> > +		/* For multi-order entries, find relevant subpage */
-> > +		if (PageTransHuge(page)) {
-> > +			VM_BUG_ON(index - page->index < 0);
-> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
-> > +			page += index - page->index;
-> > +		}
-> 
-> Use find_subpage() here?
+I've pared down his xfstest to be a pretty minimal reproducer, and you can
+find it here:
 
-Ok.
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/xfstests-dev.git/log/?h=ext4_PMD_allocation
 
-> >  		pages[ret] = page;
-> >  		if (++ret == nr_pages)
-> >  			break;
-> > +		if (!PageTransCompound(page))
-> > +			continue;
-> > +		for (refs = 0; ret < nr_pages &&
-> > +				(index + 1) % HPAGE_PMD_NR;
-> > +				ret++, refs++, index++)
-> > +			pages[ret] = ++page;
-> > +		if (refs)
-> > +			page_ref_add(compound_head(page), refs);
-> > +		if (ret == nr_pages)
-> > +			break;
-> 
-> Can we avoid referencing huge pages specifically in the page cache?  I'd
-> like us to get to the point where we can put arbitrary compound pages into
-> the page cache.  For example, I think this can be written as:
-> 
-> 		if (!PageCompound(page))
-> 			continue;
-> 		for (refs = 0; ret < nr_pages; refs++, index++) {
-> 			if (index > page->index + (1 << compound_order(page)))
-> 				break;
-> 			pages[ret++] = ++page;
-> 		}
-> 		if (refs)
-> 			page_ref_add(compound_head(page), refs);
-> 		if (ret == nr_pages)
-> 			break;
+You can just revert the top patch in this tree (which basically just comments
+out 90% of the test and adds some debug) to get back to Xiong's full test.
 
-That's slightly more costly, but I guess that's fine.
+The kernel tree I tested with today using your fixes can be found here:
 
-> > @@ -1541,19 +1533,12 @@ unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t index,
-> >  
-> > +		/* For multi-order entries, find relevant subpage */
-> > +		if (PageTransHuge(page)) {
-> > +			VM_BUG_ON(index - page->index < 0);
-> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
-> > +			page += index - page->index;
-> > +		}
-> > +
-> >  		pages[ret] = page;
-> >  		if (++ret == nr_pages)
-> >  			break;
-> > +		if (!PageTransCompound(page))
-> > +			continue;
-> > +		for (refs = 0; ret < nr_pages &&
-> > +				(index + 1) % HPAGE_PMD_NR;
-> > +				ret++, refs++, index++)
-> > +			pages[ret] = ++page;
-> > +		if (refs)
-> > +			page_ref_add(compound_head(page), refs);
-> > +		if (ret == nr_pages)
-> > +			break;
-> >  	}
-> >  	rcu_read_unlock();
-> >  	return ret;
-> 
-> Ugh, the same code again.  Hmm ... we only need to modify 'ret' as a result
-> of this ... so could we split it out like this?
-> 
-> static unsigned populate_pages(struct page **pages, unsigned i, unsigned max,
->                                 struct page *page)
-> {
->         unsigned refs = 0;
->         for (;;) {
->                 pages[i++] = page;
->                 if (i == max)
->                         break;
->                 if (PageHead(page + 1))
->                         break;
-
-Hm? PageHead()? No. The next page can head or small.
-
-I *guess* we can get away with !PageTail(page + 1)...
-
->                 page++;
->                 refs++;
->         }
->         if (refs)
->                 page_ref_add(compound_head(page), refs);
->         return i;
-> }
-> 
-> > +unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *indexp,
-> >  			int tag, unsigned int nr_pages, struct page **pages)
-> 
-> >  			break;
-> > +		if (!PageTransCompound(page))
-> > +			continue;
-> > +		for (refs = 0; ret < nr_pages &&
-> > +				(index + 1) % HPAGE_PMD_NR;
-> > +				ret++, refs++, index++)
-> > +			pages[ret] = ++page;
-> > +		if (refs)
-> > +			page_ref_add(compound_head(page), refs);
-> > +		if (ret == nr_pages)
-> > +			break;
-> >  	}
-> 
-> ... and again!
-> 
-> > @@ -2326,25 +2337,26 @@ void filemap_map_pages(struct vm_fault *vmf,
-> > +		/* For multi-order entries, find relevant subpage */
-> > +		if (PageTransHuge(page)) {
-> > +			VM_BUG_ON(index - page->index < 0);
-> > +			VM_BUG_ON(index - page->index >= HPAGE_PMD_NR);
-> > +			page += index - page->index;
-> > +		}
-> > +
-> >  		if (!PageUptodate(page) ||
-> >  				PageReadahead(page) ||
-> 
-> Readahead is PF_NO_COMPOUND ... so I don't see why this works?
-
-We wouldn't see pages with readahead flag set/cleared until huge pages
-support in ext4 is enabled at very end of the patchset.
-
-> 
-> > @@ -2378,8 +2390,14 @@ void filemap_map_pages(struct vm_fault *vmf,
-> >  		/* Huge page is mapped? No need to proceed. */
-> >  		if (pmd_trans_huge(*vmf->pmd))
-> >  			break;
-> > -		if (iter.index == end_pgoff)
-> > +		if (index == end_pgoff)
-> >  			break;
-> > +		if (page && PageTransCompound(page) &&
-> > +				(index & (HPAGE_PMD_NR - 1)) !=
-> > +				HPAGE_PMD_NR - 1) {
-> > +			index++;
-> > +			goto repeat;
-> 
-> Do we really have to go all the way back to the beginning of the loop?  It'd
-> be nice to be able to insert all of the relevant PTEs in a shorter loop here.
-> We'd need to bump the reference count N more times, and I think we do need
-> to check HWPoison for each subpage.
-
-I'll look into it.
-
-Thanks for review.
-
--- 
- Kirill A. Shutemov
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+https://git.kernel.org/cgit/linux/kernel/git/zwisler/linux.git/log/?h=ext4_PMD_allocation
