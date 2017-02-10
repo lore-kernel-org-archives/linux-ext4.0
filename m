@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: [PATCH 2/2] ext4: Do not use stripe_with if it is not set
-Date: Fri, 10 Feb 2017 00:57:01 -0500
-Message-ID: <20170210055701.uw7qgjji4idyrhpl@thunk.org>
+Date: Fri, 10 Feb 2017 01:00:36 -0500
+Message-ID: <20170210060036.mbdmeoi4vfp7vbtz@thunk.org>
 References: <20170209153050.15317-1-jack@suse.cz>
  <20170209153050.15317-2-jack@suse.cz>
 Mime-Version: 1.0
@@ -10,10 +10,10 @@ Cc: linux-ext4@vger.kernel.org,
         Ross Zwisler <ross.zwisler@linux.intel.com>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54098 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:54114 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750770AbdBJF6V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 10 Feb 2017 00:58:21 -0500
+        id S1751023AbdBJGBD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 10 Feb 2017 01:01:03 -0500
 Content-Disposition: inline
 In-Reply-To: <20170209153050.15317-2-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
