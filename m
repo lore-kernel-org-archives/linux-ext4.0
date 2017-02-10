@@ -1,10 +1,10 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 17/37] fs: make block_read_full_page() be able to read
- huge page
-Date: Fri, 10 Feb 2017 09:58:52 -0800
-Message-ID: <20170210175852.GE2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 15/37] thp: do not threat slab pages as huge in
+ hpage_{nr_pages,size,mask}
+Date: Fri, 10 Feb 2017 14:13:57 -0800
+Message-ID: <20170210221357.GF2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-18-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-16-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,23 +22,62 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-18-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-16-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:59PM +0300, Kirill A. Shutemov wrote:
-> The approach is straight-forward: for compound pages we read out whole
-> huge page.
-
-Ouch.  bufferheads must die ;-)
-
-> For huge page we cannot have array of buffer head pointers on stack --
-> it's 4096 pointers on x86-64 -- 'arr' is allocated with kmalloc() for
-> huge pages.
+On Thu, Jan 26, 2017 at 02:57:57PM +0300, Kirill A. Shutemov wrote:
+> Slab pages can be compound, but we shouldn't threat them as THP for
+> pupose of hpage_* helpers, otherwise it would lead to confusing results.
 > 
-> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> For instance, ext4 uses slab pages for journal pages and we shouldn't
+> confuse them with THPs. The easiest way is to exclude them in hpage_*
+> helpers.
 
-Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+Well ... I think we should just deal with compound pages instead of just
+huge or regular.  So I'm deferring comment on this patch.
+
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+> ---
+>  include/linux/huge_mm.h | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/include/linux/huge_mm.h b/include/linux/huge_mm.h
+> index e5c9c26d2439..5e6c408f5b47 100644
+> --- a/include/linux/huge_mm.h
+> +++ b/include/linux/huge_mm.h
+> @@ -137,21 +137,21 @@ static inline spinlock_t *pmd_trans_huge_lock(pmd_t *pmd,
+>  }
+>  static inline int hpage_nr_pages(struct page *page)
+>  {
+> -	if (unlikely(PageTransHuge(page)))
+> +	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+>  		return HPAGE_PMD_NR;
+>  	return 1;
+>  }
+>  
+>  static inline int hpage_size(struct page *page)
+>  {
+> -	if (unlikely(PageTransHuge(page)))
+> +	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+>  		return HPAGE_PMD_SIZE;
+>  	return PAGE_SIZE;
+>  }
+>  
+>  static inline unsigned long hpage_mask(struct page *page)
+>  {
+> -	if (unlikely(PageTransHuge(page)))
+> +	if (unlikely(!PageSlab(page) && PageTransHuge(page)))
+>  		return HPAGE_PMD_MASK;
+>  	return PAGE_MASK;
+>  }
+> -- 
+> 2.11.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
