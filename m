@@ -1,9 +1,10 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 13/37] mm: make write_cache_pages() work on huge pages
-Date: Fri, 10 Feb 2017 09:46:10 -0800
-Message-ID: <20170210174610.GC2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 16/37] thp: make thp_get_unmapped_area() respect
+ S_HUGE_MODE
+Date: Fri, 10 Feb 2017 09:50:49 -0800
+Message-ID: <20170210175049.GD2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-14-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-17-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -21,45 +22,17 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-14-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-17-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:55PM +0300, Kirill A. Shutemov wrote:
-> We writeback whole huge page a time. Let's adjust iteration this way.
+On Thu, Jan 26, 2017 at 02:57:58PM +0300, Kirill A. Shutemov wrote:
+> We want mmap(NULL) to return PMD-aligned address if the inode can have
+> huge pages in page cache.
 > 
 > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
-I think a lot of the complexity in this patch is from pagevec_lookup_tag
-giving you subpages rather than head pages...
-
-> @@ -2268,7 +2273,8 @@ int write_cache_pages(struct address_space *mapping,
->  					 * not be suitable for data integrity
->  					 * writeout).
->  					 */
-> -					done_index = page->index + 1;
-> +					done_index = compound_head(page)->index
-> +						+ hpage_nr_pages(page);
->  					done = 1;
->  					break;
->  				}
-
-you'd still need this line, but it'd only be:
-
-					done_index = page->index +
-						(1 << compound_order(page));
-
-I think we want:
-
-#define	nr_pages(page)	(1 << compound_order(page))
-
-because we seem to be repeating that idiom quite a lot in these patches.
-
-					done_index = page->index +
-								nr_pages(page);
-
-Still doesn't quite fit on one line, but it's closer, and it's the
-ridiculous indentation in that function that's the real problem.
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
