@@ -1,15 +1,12 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 11/37] HACK: readahead: alloc huge pages, if allowed
-Date: Fri, 10 Feb 2017 06:51:58 -0800
-Message-ID: <20170210145158.GA2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 12/37] brd: make it handle huge pages
+Date: Fri, 10 Feb 2017 09:24:01 -0800
+Message-ID: <20170210172401.GB2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-12-kirill.shutemov@linux.intel.com>
- <20170209233436.GZ2267@bombadil.infradead.org>
- <7D35EB8E-29F8-41DA-BB46-8BCF7B6C5A72@dilger.ca>
+ <20170126115819.58875-13-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -21,43 +18,146 @@ Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
 	linux-block@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <7D35EB8E-29F8-41DA-BB46-8BCF7B6C5A72@dilger.ca>
+In-Reply-To: <20170126115819.58875-13-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Feb 09, 2017 at 05:23:31PM -0700, Andreas Dilger wrote:
-> On Feb 9, 2017, at 4:34 PM, Matthew Wilcox <willy@infradead.org> wrote:
-> > Well ... what if we made readahead 2 hugepages in size for inodes which
-> > are using huge pages?  That's only 8x our current readahead window, and
-> > if you're asking for hugepages, you're accepting that IOs are going to
-> > be larger, and you probably have the kind of storage system which can
-> > handle doing larger IOs.
-> 
-> It would be nice if the bdi had a parameter for the maximum readahead size.
-> Currently, readahead is capped at 2MB chunks by force_page_cache_readahead()
-> even if bdi->ra_pages and bdi->io_pages are much larger.
-> 
-> It should be up to the filesystem to decide how large the readahead chunks
-> are rather than imposing some policy in the MM code.  For high-speed (network)
-> storage access it is better to have at least 4MB read chunks, for RAID storage
-> it is desirable to have stripe-aligned readahead to avoid read inflation when
-> verifying the parity.  Any fixed size will eventually be inadequate as disks
-> and filesystems change, so it may as well be a per-bdi tunable that can be set
-> by the filesystem as needed, or possibly with a mount option if needed.
+On Thu, Jan 26, 2017 at 02:57:54PM +0300, Kirill A. Shutemov wrote:
+> Do not assume length of bio segment is never larger than PAGE_SIZE.
+> With huge pages it's HPAGE_PMD_SIZE (2M on x86-64).
 
-I think the filesystem should provide a hint, but ultimately it needs to
-be up to the MM to decide how far to readahead.  The filesystem doesn't
-(and shouldn't) have the global view into how much memory is available
-for readahead, nor should it be tracking how well this app is being
-served by readahead.
+I don't think we even need hugepages for BRD to be buggy.  I think there are
+already places which allocate compound pages (not in highmem, obviously ...)
+and put them in biovecs.  So this is pure and simple a bugfix.
 
-That 2MB chunk restriction is allegedly there "so that we don't pin too
-much memory at once".  Maybe that should be scaled with the amount of
-memory in the system (pinning 2MB of a 256MB system is a bit different
-from pinning 2MB of a 1TB memory system).
+That said, I find the current code in brd a bit inelegant, and I don't
+think this patch helps... indeed, I think it's buggy:
+
+> @@ -202,12 +202,15 @@ static int copy_to_brd_setup(struct brd_device *brd, sector_t sector, size_t n)
+>  	size_t copy;
+>  
+>  	copy = min_t(size_t, n, PAGE_SIZE - offset);
+> +	n -= copy;
+>  	if (!brd_insert_page(brd, sector))
+>  		return -ENOSPC;
+> -	if (copy < n) {
+> +	while (n) {
+>  		sector += copy >> SECTOR_SHIFT;
+>  		if (!brd_insert_page(brd, sector))
+>  			return -ENOSPC;
+> +		copy = min_t(size_t, n, PAGE_SIZE);
+> +		n -= copy;
+>  	}
+
+We're decrementing 'n' to 0, then testing it, so we never fill in the
+last page ... right?
+
+Anyway, here's my effort.  Untested.
+
+diff --git a/drivers/block/brd.c b/drivers/block/brd.c
+index 3adc32a3153b..0802a6abcd81 100644
+--- a/drivers/block/brd.c
++++ b/drivers/block/brd.c
+@@ -202,12 +202,14 @@ static int copy_to_brd_setup(struct brd_device *brd, sector_t sector, size_t n)
+ 	size_t copy;
+ 
+ 	copy = min_t(size_t, n, PAGE_SIZE - offset);
+-	if (!brd_insert_page(brd, sector))
+-		return -ENOSPC;
+-	if (copy < n) {
+-		sector += copy >> SECTOR_SHIFT;
++	for (;;) {
+ 		if (!brd_insert_page(brd, sector))
+ 			return -ENOSPC;
++		n -= copy;
++		if (!n)
++			break;
++		sector += copy >> SECTOR_SHIFT;
++		copy = min_t(size_t, n, PAGE_SIZE);
+ 	}
+ 	return 0;
+ }
+@@ -239,26 +241,23 @@ static void copy_to_brd(struct brd_device *brd, const void *src,
+ 	struct page *page;
+ 	void *dst;
+ 	unsigned int offset = (sector & (PAGE_SECTORS-1)) << SECTOR_SHIFT;
+-	size_t copy;
++	size_t copy = min_t(size_t, n, PAGE_SIZE - offset);
+ 
+-	copy = min_t(size_t, n, PAGE_SIZE - offset);
+-	page = brd_lookup_page(brd, sector);
+-	BUG_ON(!page);
+-
+-	dst = kmap_atomic(page);
+-	memcpy(dst + offset, src, copy);
+-	kunmap_atomic(dst);
+-
+-	if (copy < n) {
+-		src += copy;
+-		sector += copy >> SECTOR_SHIFT;
+-		copy = n - copy;
++	for (;;) {
+ 		page = brd_lookup_page(brd, sector);
+ 		BUG_ON(!page);
+ 
+ 		dst = kmap_atomic(page);
+-		memcpy(dst, src, copy);
++		memcpy(dst + offset, src, copy);
+ 		kunmap_atomic(dst);
++
++		n -= copy;
++		if (!n)
++			break;
++		src += copy;
++		sector += copy >> SECTOR_SHIFT;
++		offset = 0;
++		copy = min_t(size_t, n, PAGE_SIZE);
+ 	}
+ }
+ 
+@@ -271,28 +270,24 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
+ 	struct page *page;
+ 	void *src;
+ 	unsigned int offset = (sector & (PAGE_SECTORS-1)) << SECTOR_SHIFT;
+-	size_t copy;
++	size_t copy = min_t(size_t, n, PAGE_SIZE - offset);
+ 
+-	copy = min_t(size_t, n, PAGE_SIZE - offset);
+-	page = brd_lookup_page(brd, sector);
+-	if (page) {
+-		src = kmap_atomic(page);
+-		memcpy(dst, src + offset, copy);
+-		kunmap_atomic(src);
+-	} else
+-		memset(dst, 0, copy);
+-
+-	if (copy < n) {
+-		dst += copy;
+-		sector += copy >> SECTOR_SHIFT;
+-		copy = n - copy;
++	for (;;) {
+ 		page = brd_lookup_page(brd, sector);
+ 		if (page) {
+ 			src = kmap_atomic(page);
+-			memcpy(dst, src, copy);
++			memcpy(dst, src + offset, copy);
+ 			kunmap_atomic(src);
+ 		} else
+ 			memset(dst, 0, copy);
++
++		n -= copy;
++		if (!n)
++			break;
++		dst += copy;
++		sector += copy >> SECTOR_SHIFT;
++		offset = 0;
++		copy = min_t(size_t, n, PAGE_SIZE);
+ 	}
+ }
+ 
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
