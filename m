@@ -1,9 +1,9 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 12/37] brd: make it handle huge pages
-Date: Fri, 10 Feb 2017 09:24:01 -0800
-Message-ID: <20170210172401.GB2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 13/37] mm: make write_cache_pages() work on huge pages
+Date: Fri, 10 Feb 2017 09:46:10 -0800
+Message-ID: <20170210174610.GC2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-13-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-14-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -21,143 +21,45 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-13-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-14-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:54PM +0300, Kirill A. Shutemov wrote:
-> Do not assume length of bio segment is never larger than PAGE_SIZE.
-> With huge pages it's HPAGE_PMD_SIZE (2M on x86-64).
+On Thu, Jan 26, 2017 at 02:57:55PM +0300, Kirill A. Shutemov wrote:
+> We writeback whole huge page a time. Let's adjust iteration this way.
+> 
+> Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
-I don't think we even need hugepages for BRD to be buggy.  I think there are
-already places which allocate compound pages (not in highmem, obviously ...)
-and put them in biovecs.  So this is pure and simple a bugfix.
+I think a lot of the complexity in this patch is from pagevec_lookup_tag
+giving you subpages rather than head pages...
 
-That said, I find the current code in brd a bit inelegant, and I don't
-think this patch helps... indeed, I think it's buggy:
+> @@ -2268,7 +2273,8 @@ int write_cache_pages(struct address_space *mapping,
+>  					 * not be suitable for data integrity
+>  					 * writeout).
+>  					 */
+> -					done_index = page->index + 1;
+> +					done_index = compound_head(page)->index
+> +						+ hpage_nr_pages(page);
+>  					done = 1;
+>  					break;
+>  				}
 
-> @@ -202,12 +202,15 @@ static int copy_to_brd_setup(struct brd_device *brd, sector_t sector, size_t n)
->  	size_t copy;
->  
->  	copy = min_t(size_t, n, PAGE_SIZE - offset);
-> +	n -= copy;
->  	if (!brd_insert_page(brd, sector))
->  		return -ENOSPC;
-> -	if (copy < n) {
-> +	while (n) {
->  		sector += copy >> SECTOR_SHIFT;
->  		if (!brd_insert_page(brd, sector))
->  			return -ENOSPC;
-> +		copy = min_t(size_t, n, PAGE_SIZE);
-> +		n -= copy;
->  	}
+you'd still need this line, but it'd only be:
 
-We're decrementing 'n' to 0, then testing it, so we never fill in the
-last page ... right?
+					done_index = page->index +
+						(1 << compound_order(page));
 
-Anyway, here's my effort.  Untested.
+I think we want:
 
-diff --git a/drivers/block/brd.c b/drivers/block/brd.c
-index 3adc32a3153b..0802a6abcd81 100644
---- a/drivers/block/brd.c
-+++ b/drivers/block/brd.c
-@@ -202,12 +202,14 @@ static int copy_to_brd_setup(struct brd_device *brd, sector_t sector, size_t n)
- 	size_t copy;
- 
- 	copy = min_t(size_t, n, PAGE_SIZE - offset);
--	if (!brd_insert_page(brd, sector))
--		return -ENOSPC;
--	if (copy < n) {
--		sector += copy >> SECTOR_SHIFT;
-+	for (;;) {
- 		if (!brd_insert_page(brd, sector))
- 			return -ENOSPC;
-+		n -= copy;
-+		if (!n)
-+			break;
-+		sector += copy >> SECTOR_SHIFT;
-+		copy = min_t(size_t, n, PAGE_SIZE);
- 	}
- 	return 0;
- }
-@@ -239,26 +241,23 @@ static void copy_to_brd(struct brd_device *brd, const void *src,
- 	struct page *page;
- 	void *dst;
- 	unsigned int offset = (sector & (PAGE_SECTORS-1)) << SECTOR_SHIFT;
--	size_t copy;
-+	size_t copy = min_t(size_t, n, PAGE_SIZE - offset);
- 
--	copy = min_t(size_t, n, PAGE_SIZE - offset);
--	page = brd_lookup_page(brd, sector);
--	BUG_ON(!page);
--
--	dst = kmap_atomic(page);
--	memcpy(dst + offset, src, copy);
--	kunmap_atomic(dst);
--
--	if (copy < n) {
--		src += copy;
--		sector += copy >> SECTOR_SHIFT;
--		copy = n - copy;
-+	for (;;) {
- 		page = brd_lookup_page(brd, sector);
- 		BUG_ON(!page);
- 
- 		dst = kmap_atomic(page);
--		memcpy(dst, src, copy);
-+		memcpy(dst + offset, src, copy);
- 		kunmap_atomic(dst);
-+
-+		n -= copy;
-+		if (!n)
-+			break;
-+		src += copy;
-+		sector += copy >> SECTOR_SHIFT;
-+		offset = 0;
-+		copy = min_t(size_t, n, PAGE_SIZE);
- 	}
- }
- 
-@@ -271,28 +270,24 @@ static void copy_from_brd(void *dst, struct brd_device *brd,
- 	struct page *page;
- 	void *src;
- 	unsigned int offset = (sector & (PAGE_SECTORS-1)) << SECTOR_SHIFT;
--	size_t copy;
-+	size_t copy = min_t(size_t, n, PAGE_SIZE - offset);
- 
--	copy = min_t(size_t, n, PAGE_SIZE - offset);
--	page = brd_lookup_page(brd, sector);
--	if (page) {
--		src = kmap_atomic(page);
--		memcpy(dst, src + offset, copy);
--		kunmap_atomic(src);
--	} else
--		memset(dst, 0, copy);
--
--	if (copy < n) {
--		dst += copy;
--		sector += copy >> SECTOR_SHIFT;
--		copy = n - copy;
-+	for (;;) {
- 		page = brd_lookup_page(brd, sector);
- 		if (page) {
- 			src = kmap_atomic(page);
--			memcpy(dst, src, copy);
-+			memcpy(dst, src + offset, copy);
- 			kunmap_atomic(src);
- 		} else
- 			memset(dst, 0, copy);
-+
-+		n -= copy;
-+		if (!n)
-+			break;
-+		dst += copy;
-+		sector += copy >> SECTOR_SHIFT;
-+		offset = 0;
-+		copy = min_t(size_t, n, PAGE_SIZE);
- 	}
- }
- 
+#define	nr_pages(page)	(1 << compound_order(page))
+
+because we seem to be repeating that idiom quite a lot in these patches.
+
+					done_index = page->index +
+								nr_pages(page);
+
+Still doesn't quite fit on one line, but it's closer, and it's the
+ridiculous indentation in that function that's the real problem.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
