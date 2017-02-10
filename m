@@ -1,10 +1,10 @@
 From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCHv6 16/37] thp: make thp_get_unmapped_area() respect
- S_HUGE_MODE
-Date: Fri, 10 Feb 2017 09:50:49 -0800
-Message-ID: <20170210175049.GD2267@bombadil.infradead.org>
+Subject: Re: [PATCHv6 17/37] fs: make block_read_full_page() be able to read
+ huge page
+Date: Fri, 10 Feb 2017 09:58:52 -0800
+Message-ID: <20170210175852.GE2267@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-17-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-18-kirill.shutemov@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Theodore Ts'o <tytso@mit.edu>,
@@ -22,13 +22,19 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170126115819.58875-17-kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170126115819.58875-18-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 26, 2017 at 02:57:58PM +0300, Kirill A. Shutemov wrote:
-> We want mmap(NULL) to return PMD-aligned address if the inode can have
-> huge pages in page cache.
+On Thu, Jan 26, 2017 at 02:57:59PM +0300, Kirill A. Shutemov wrote:
+> The approach is straight-forward: for compound pages we read out whole
+> huge page.
+
+Ouch.  bufferheads must die ;-)
+
+> For huge page we cannot have array of buffer head pointers on stack --
+> it's 4096 pointers on x86-64 -- 'arr' is allocated with kmalloc() for
+> huge pages.
 > 
 > Signed-off-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
