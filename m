@@ -1,230 +1,153 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCHv6 07/37] filemap: allocate huge page in
- page_cache_read(), if allowed
-Date: Mon, 13 Feb 2017 18:17:51 +0300
-Message-ID: <20170213151751.GD20394@node.shutemov.name>
-References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
- <20170126115819.58875-8-kirill.shutemov@linux.intel.com>
- <20170209211835.GV2267@bombadil.infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: don't BUG when truncating encrypted inodes on the
+ orphan list
+Date: Mon, 13 Feb 2017 10:19:27 -0500
+Message-ID: <20170213151927.vi4pzuggm5t6kqe5@thunk.org>
+References: <20170211031942.11783-1-tytso@mit.edu>
+ <20170212220900.GA566@zzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Hugh Dickins <hughd@google.com>,
-	Andrea Arcangeli <aarcange@redhat.com>,
-	Dave Hansen <dave.hansen@intel.com>,
-	Vlastimil Babka <vbabka@suse.cz>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-	linux-block@vger.kernel.org
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:34348 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752906AbdBMPTa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Feb 2017 10:19:30 -0500
 Content-Disposition: inline
-In-Reply-To: <20170209211835.GV2267@bombadil.infradead.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170212220900.GA566@zzz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 09, 2017 at 01:18:35PM -0800, Matthew Wilcox wrote:
-> On Thu, Jan 26, 2017 at 02:57:49PM +0300, Kirill A. Shutemov wrote:
-> > Later we can add logic to accumulate information from shadow entires to
-> > return to caller (average eviction time?).
+On Sun, Feb 12, 2017 at 02:09:00PM -0800, Eric Biggers wrote:
+> On Fri, Feb 10, 2017 at 10:19:42PM -0500, Theodore Ts'o wrote:
+> > Fix a BUG when the kernel tries to mount a file system constructed as
+> > follows:
+> > 
+> > echo foo > foo.txt
+> > mke2fs -Fq -t ext4 -O encrypt foo.img 100
+> > debugfs -w foo.img << EOF
+> > write foo.txt a
+> > set_inode_field a i_flags 0x80800
+> > set_super_value s_last_orphan 12
+> > quit
+> > EOF
 > 
-> I would say minimum rather than average.  That will become the refault
-> time of the entire page, so minimum would probably have us making better
-> decisions?
+> I also had to pass '-b 4096' to mke2fs; otherwise mounting the filesystem failed
+> with "Unsupported blocksize for fs encryption".
 
-Yes, makes sense.
+Sorry, oops.  My original test case didn't have the -O encrypt, and it
+works equally well without the -O encrypt.
 
-> > +	/* Wipe shadow entires */
-> > +	radix_tree_for_each_slot(slot, &mapping->page_tree, &iter,
-> > +			page->index) {
-> > +		if (iter.index >= page->index + hpage_nr_pages(page))
-> > +			break;
+> e2fsck does clean up the orphan list, which lets the kernel mount the filesystem
+> without crashing.  e2fsck also completes the truncates and is apparently
+> supposed to zero out the unused portion of the last block, but it doesn't due to
+> a bug.  See release_inode_block() in e2fsck/super.c:
+> 
+>         /*
+>          * If part of the last block needs truncating, we do
+>          * it here.
+>          */
+>         if ((blockcnt == pb->truncate_block) && pb->truncate_offset) {
+>                 pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
+>                                                 pb->buf);
+>                 if (pb->errcode)
+>                         goto return_abort;
+>                 memset(pb->buf + pb->truncate_offset, 0,
+>                        fs->blocksize - pb->truncate_offset);
+>                 pb->errcode = io_channel_write_blk64(fs->io, blk, 1,
+>                                                  pb->buf);
+>                 if (pb->errcode)
+>                         goto return_abort;
+>         }
+> 
+> 'blockcnt' is a logical block number, but 'truncate_block' is the number of
+> blocks in the file, i.e. 1 plus the last logical block number.  So this gets
+> executed on the block following the one intended, which is useless because that
+> block then gets freed.
+
+Ah, nice catch, thanks!
+
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index bc282f9d0969..831d025e59ad 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -3944,6 +3944,10 @@ static int ext4_block_truncate_page(handle_t *handle,
+> >  	unsigned blocksize;
+> >  	struct inode *inode = mapping->host;
 > >  
-> >  		p = radix_tree_deref_slot_protected(slot, &mapping->tree_lock);
-> > -		if (!radix_tree_exceptional_entry(p))
-> > +		if (!p)
-> > +			continue;
-> 
-> Just FYI, this can't happen.  You're holding the tree lock so nobody
-> else gets to remove things from the tree.  radix_tree_for_each_slot()
-> only gives you the full slots; it skips the empty ones for you.  I'm
-> OK if you want to leave it in out of an abundance of caution.
-
-I'll drop it.
-
-> > +		__radix_tree_replace(&mapping->page_tree, iter.node, slot, NULL,
-> > +				workingset_update_node, mapping);
-> 
-> I may add an update_node argument to radix_tree_join at some point,
-> so you can use it here.  Or maybe we don't need to do that, and what
-> you have here works just fine.
-> 
-> >  		mapping->nrexceptional--;
-> 
-> ... because adjusting the exceptional count is going to be a pain.
-
-Yeah..
-
-> > +	error = __radix_tree_insert(&mapping->page_tree,
-> > +			page->index, compound_order(page), page);
-> > +	/* This shouldn't happen */
-> > +	if (WARN_ON_ONCE(error))
-> > +		return error;
-> 
-> A lesser man would have just ignored the return value from
-> __radix_tree_insert.  I salute you.
-> 
-> > @@ -2078,18 +2155,34 @@ static int page_cache_read(struct file *file, pgoff_t offset, gfp_t gfp_mask)
-> >  {
-> >  	struct address_space *mapping = file->f_mapping;
-> >  	struct page *page;
-> > +	pgoff_t hoffset;
-> >  	int ret;
-> >  
-> >  	do {
-> > -		page = __page_cache_alloc(gfp_mask|__GFP_COLD);
-> > +		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
-> > +no_huge:
-> > +		if (!page)
-> > +			page = __page_cache_alloc(gfp_mask|__GFP_COLD);
-> >  		if (!page)
-> >  			return -ENOMEM;
-> >  
-> > -		ret = add_to_page_cache_lru(page, mapping, offset, gfp_mask & GFP_KERNEL);
-> > -		if (ret == 0)
-> > +		if (PageTransHuge(page))
-> > +			hoffset = round_down(offset, HPAGE_PMD_NR);
-> > +		else
-> > +			hoffset = offset;
+> > +	/* If we are processing an encrypted inode during orphan list handling */
+> > +	if (!fscrypt_has_encryption_key(inode))
+> > +		return 0;
 > > +
-> > +		ret = add_to_page_cache_lru(page, mapping, hoffset,
-> > +				gfp_mask & GFP_KERNEL);
-> > +
-> > +		if (ret == -EEXIST && PageTransHuge(page)) {
-> > +			put_page(page);
-> > +			page = NULL;
-> > +			goto no_huge;
-> > +		} else if (ret == 0) {
-> >  			ret = mapping->a_ops->readpage(file, page);
-> > -		else if (ret == -EEXIST)
-> > +		} else if (ret == -EEXIST) {
-> >  			ret = 0; /* losing race to add is OK */
-> > +		}
-> >  
-> >  		put_page(page);
+> >  	blocksize = inode->i_sb->s_blocksize;
+> >  	length = blocksize - (offset & (blocksize - 1));
 > 
-> If the filesystem returns AOP_TRUNCATED_PAGE, you'll go round this loop
-> again trying the huge page again, even if the huge page didn't work
-> the first time.  I would tend to think that if the huge page failed the
-> first time, we shouldn't try it again, so I propose this:
-
-AOP_TRUNCATED_PAGE is positive, so I don't see how you avoid try_huge on
-second iteration. Hm?
-
+> Shouldn't it be:
 > 
->         struct address_space *mapping = file->f_mapping;
->         struct page *page;
->         pgoff_t index;
->         int ret;
->         bool try_huge = true;
+> 	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
+> 	    !fscrypt_has_encryption_key(inode))
+> 		return 0;
 > 
->         do {
->                 if (try_huge) {
->                         page = page_cache_alloc_huge(gfp_mask|__GFP_COLD);
->                         if (page)
->                                 index = round_down(offset, HPAGE_PMD_NR);
->                         else
->                                 try_huge = false;
->                 }
-> 
->                 if (!try_huge) {
->                         page = __page_cache_alloc(gfp_mask|__GFP_COLD);
->                         index = offset;
->                 }
-> 
->                 if (!page)
->                         return -ENOMEM;
-> 
->                 ret = add_to_page_cache_lru(page, mapping, index,
->                                                         gfp_mask & GFP_KERNEL);
->                 if (ret < 0) {
->                         if (try_huge) {
->                                 try_huge = false;
->                                 ret = AOP_TRUNCATED_PAGE;
->                         } else if (ret == -EEXIST)
->                                 ret = 0; /* losing race to add is OK */
->                 } else {
->                         ret = mapping->a_ops->readpage(file, page);
->                 }
-> 
->                 put_page(page);
->         } while (ret == AOP_TRUNCATED_PAGE);
-> 
-> But ... maybe it's OK to retry the huge page.  I mean, not many
-> filesystems return AOP_TRUNCATED_PAGE, and they only do so rarely.
+> ... since only encrypted regular files should be skipped?
 
-What about this:
+We certainly don't want to add the ext4_encrypted_inode() test, since
+this can fail even if -O encrypt is not enabled.  As for checking for
+regular files, we could potentially fall into this code path for
+non-regular files too (symlinks with length greater than 60 bytes come
+to mind), and if we don't have the encryption key, there's no *point*
+to try to zero beyond i_size --- and if we do, we're going to fail
+with a BUG.
 
-	struct address_space *mapping = file->f_mapping;
-	struct page *page;
-	pgoff_t hoffset;
-	int ret;
-	bool try_huge = true;
+> Otherwise, I think this will be okay for now and better than the current
+> situation, though the underlying problem of handling an interrupted truncate
+> still needs to be solved.  Journalling the last block together with the i_size
+> change sounds like it may be the right solution, though perhaps difficult to
+> implement.
 
-	do {
-		if (try_huge) {
-			page = page_cache_alloc_huge(mapping, offset, gfp_mask);
-			hoffset = round_down(offset, HPAGE_PMD_NR);
+It *is* going to be hard, because the currently only way to _stop_
+data journalling for a particular inode safely is to lock the journal
+against any updates, flush all previously journalled blocks to their
+final location on disk, empty the journal, and then unlock the journal
+--- and doing that after any truncate of a file which is not deleted
+is a performance non-starter.
 
-			/* Try to allocate huge page once */
-			try_huge = false;
-		}
+I've been looking into this problem for the lazy journalling[1]
+patches (in the unstable portion of the patch queue) with respect to
+clearing the JOURNAL_DATA flag (via chattr) and...
 
-		if (!page) {
-			page = __page_cache_alloc(gfp_mask|__GFP_COLD);
-			hoffset = offset;
-		}
+	/*
+	 * Clearing the JOURNAL_DATA flag is *hard* with lazy
+	 * journalling.  We can't use jbd2_journal_flush(); instead,
+	 * we must, for all blocks in the file which have been logged
+	 * to the journal, save them to their final location on disk
+	 * and insert revoke records for them, and then do a journal
+	 * commit --- and while this whole procedure is being carried
+	 * out, any attempts to write to the file must be locked out.
+	 * Punt for now.
+	 */
+	if ((oldflags & EXT4_JOURNAL_DATA_FL) && !jflag &&
+	    test_opt(inode->i_sb, JOURNAL_LAZY)) {
+		err = -EOPNOTSUPP;
+		goto flags_out;
+	}
 
-		if (!page)
-			return -ENOMEM;
+[1] https://www.usenix.org/conference/fast17/technical-sessions/presentation/aghayev
+    (Final camera ready copy not up yet; pre-prints available on request)
 
-		ret = add_to_page_cache_lru(page, mapping, hoffset,
-				gfp_mask & GFP_KERNEL);
+This is somewhat easier for the truncate case, since there is only one
+block that needs to be written out and revoked after the truncate
+takes place, but it is still a going to be somewhat painful, since it
+will require a forced flush for every truncate(2) system call to an
+encrypted file.
 
-		if (ret == -EEXIST && PageTransHuge(page)) {
-			/* Retry with small page */
-			put_page(page);
-			page = NULL;
-			continue;
-		} else if (ret == 0) {
-			ret = mapping->a_ops->readpage(file, page);
-		} else if (ret == -EEXIST) {
-			ret = 0; /* losing race to add is OK */
-		}
+Another way of doing it which might be simpler would be to allocate an
+inode flag which if set, indicates that there may be data after i_size
+which must be zero'ed, and the kernel can take care of that when it
+actually has the key and the file is opened for reading or writing.
+(We would need to make sure read-only mounts are handled properly,
+since we can't modify the on-disk block or the inode in that case; so
+there would be a second code path that would have to be tested
+separately.)
 
-		put_page(page);
-	} while (ret == AOP_TRUNCATED_PAGE);
-
-	return ret;
-
-
-> Anyway, I'm fine with the patch going in as-is.  I just wanted to type out
-> my review notes.
-> 
-> Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
-
-Thanks!
-
--- 
- Kirill A. Shutemov
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+    	   	  	     	    - Ted
