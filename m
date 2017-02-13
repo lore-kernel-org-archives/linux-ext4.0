@@ -1,17 +1,13 @@
 From: Matthew Wilcox <willy@infradead.org>
 Subject: Re: [PATCHv6 08/37] filemap: handle huge pages in
  do_generic_file_read()
-Date: Mon, 13 Feb 2017 08:09:59 -0800
-Message-ID: <20170213160959.GB6416@bombadil.infradead.org>
+Date: Mon, 13 Feb 2017 08:28:56 -0800
+Message-ID: <20170213162856.GC6416@bombadil.infradead.org>
 References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
  <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
- <20170209215505.GW2267@bombadil.infradead.org>
- <20170213153342.GE20394@node.shutemov.name>
- <20170213160117.GA6416@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-	Theodore Ts'o <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -23,20 +19,50 @@ Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
 	linux-block@vger.kernel.org
-To: "Kirill A. Shutemov" <kirill@shutemov.name>
+To: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170213160117.GA6416@bombadil.infradead.org>
+In-Reply-To: <20170126115819.58875-9-kirill.shutemov@linux.intel.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 13, 2017 at 08:01:17AM -0800, Matthew Wilcox wrote:
-> On Mon, Feb 13, 2017 at 06:33:42PM +0300, Kirill A. Shutemov wrote:
-> > No. pagecache_get_page() returns subpage. See description of the first
-> > patch.
+On Thu, Jan 26, 2017 at 02:57:50PM +0300, Kirill A. Shutemov wrote:
+> Most of work happans on head page. Only when we need to do copy data to
+> userspace we find relevant subpage.
+> 
+> We are still limited by PAGE_SIZE per iteration. Lifting this limitation
+> would require some more work.
 
-Oh, I re-read patch 1 and it made sense now.  I missed the bit where
-pagecache_get_page() called page_subpage().
+Now that I debugged that bit of my brain, here's a more sensible suggestion.
+
+> @@ -1886,6 +1886,7 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+>  			if (unlikely(page == NULL))
+>  				goto no_cached_page;
+>  		}
+> +		page = compound_head(page);
+>  		if (PageReadahead(page)) {
+>  			page_cache_async_readahead(mapping,
+>  					ra, filp, page,
+
+We're going backwards and forwards a lot between subpages and page heads.
+I'd like to see us do this:
+
+static inline struct page *pagecache_get_page(struct address_space *mapping,
+			pgoff_t offset, int fgp_flags, gfp_t cache_gfp_mask)
+{
+	struct page *page = pagecache_get_head(mapping, offset, fgp_flags,
+								cache_gfp_mask);
+	return page ? find_subpage(page, offset) : NULL;
+}
+
+static inline struct page *find_get_head(struct address_space *mapping,
+					pgoff_t offset)
+{
+	return pagecache_get_head(mapping, offset, 0, 0);
+}
+
+and then we can switch do_generic_file_read() to call find_get_head(),
+eliminating the conversion back and forth between subpages and head pages.
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
