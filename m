@@ -1,54 +1,83 @@
-From: Vegard Nossum <vegard.nossum@gmail.com>
-Subject: Re: [PATCH] ext4: don't BUG when truncating encrypted inodes on the
- orphan list
-Date: Mon, 13 Feb 2017 03:58:46 +0100
-Message-ID: <CAOMGZ=GrnLVSX5xEzn5m4ASsiBhpWv8U8SL0im-xNway9pNktw@mail.gmail.com>
-References: <20170211031942.11783-1-tytso@mit.edu> <CAOMGZ=FGDTY2p0r4G30=nGvCKVMG6n-JZfcREsys6Xa1Oiz9bg@mail.gmail.com>
- <20170213003137.u6xqaswur7gka325@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194567] ext4 no longer mounts
+Date: Mon, 13 Feb 2017 04:00:11 +0000
+Message-ID: <bug-194567-13602-DQj6raDA5A@https.bugzilla.kernel.org/>
+References: <bug-194567-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f54.google.com ([74.125.82.54]:33110 "EHLO
-        mail-wm0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751193AbdBMC6s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Feb 2017 21:58:48 -0500
-Received: by mail-wm0-f54.google.com with SMTP id t18so3553584wmt.0
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Feb 2017 18:58:48 -0800 (PST)
-In-Reply-To: <20170213003137.u6xqaswur7gka325@thunk.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42404 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751413AbdBMEAO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 12 Feb 2017 23:00:14 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5AA4C281D2
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 04:00:13 +0000 (UTC)
+Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1215A28178
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 04:00:12 +0000 (UTC)
+In-Reply-To: <bug-194567-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 13 February 2017 at 01:31, Theodore Ts'o <tytso@mit.edu> wrote:
-> As a wishlist item, it would be nice if your web reports included
-> hotlinks from the addresses / symbol_name+offset to the git tree
-> sources at the indicated line number.  For example:
->
-> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/fs/ext4/inode.c?id=07f00f06ba9a5533d6650d46d3e938f6cbeee97e#n3738
->
-> One of the crash dump analysis tool at $WORK does that, and it saves a
-> huge amount of developer time.
->
-> Anyway, at least for the ones where there is an explicit BUG_ON with a
-> line number, I should revisit your reports to see if I might not be
-> able clear out more of them.  (Is there a list of which ones are still
-> valid?)
->
-> But for ones where there is a stack trace without a BUG_INFO or
-> WARN_ON to give me a line number, any chance you could use addr2line
-> or otherwise make the kernel (with debugging information compiled in)
-> available?
+https://bugzilla.kernel.org/show_bug.cgi?id=194567
 
-Those reports all include the hotlinks actually. The one for this problem was:
+Eric Sandeen (sandeen@sandeen.net) changed:
 
-http://139.162.151.198/f/ext4/5bdefda69f39b2f2c56d9b67d5b7d9e2cc8dfd5f/
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@sandeen.net
 
-If you go to the stack trace then any line containing a kernel address
-that can be addr2lined appears in green and clicking it should expand
-a link to git.kernel.org. It does probably need javascript to work.
+--- Comment #1 from Eric Sandeen (sandeen@sandeen.net) ---
+Can you add the dumpe2fs -h output for the device?
 
-I'll get around to rerunning all the testcases soon on a recent kernel.
+I guess this would be thanks to:
 
+http://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?h=linux-4.4.y&id=e21a3cad35bc2f4c7fff317e2c7d38eed363a430
 
-Vegard
+ext4: validate s_first_meta_bg at mount time
+commit 3a4b77cd47bb837b8557595ec7425f281f2ca1fe upstream.
+
+Ralf Spenneberg reported that he hit a kernel crash when mounting a
+modified ext4 image. And it turns out that kernel crashed when
+calculating fs overhead (ext4_calculate_overhead()), this is because
+the image has very large s_first_meta_bg (debug code shows it's
+842150400), and ext4 overruns the memory in count_overhead() when
+setting bitmap buffer, which is PAGE_SIZE.
+
+ext4_calculate_overhead():
+  buf = get_zeroed_page(GFP_NOFS);  <=== PAGE_SIZE buffer
+  blks = count_overhead(sb, i, buf);
+
+count_overhead():
+  for (j = ext4_bg_num_gdb(sb, grp); j > 0; j--) { <=== j = 842150400
+          ext4_set_bit(EXT4_B2C(sbi, s++), buf);   <=== buffer overrun
+          count++;
+  }
+
+This can be reproduced easily for me by this script:
+
+  #!/bin/bash
+  rm -f fs.img
+  mkdir -p /mnt/ext4
+  fallocate -l 16M fs.img
+  mke2fs -t ext4 -O bigalloc,meta_bg,^resize_inode -F fs.img
+  debugfs -w -R "ssv first_meta_bg 842150400" fs.img
+  mount -o loop fs.img /mnt/ext4
+
+Fix it by validating s_first_meta_bg first at mount time, and
+refusing to mount if its value exceeds the largest possible meta_bg
+number.
+
+Reported-by: Ralf Spenneberg <ralf@os-t.de>
+Signed-off-by: Eryu Guan <guaneryu@gmail.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
