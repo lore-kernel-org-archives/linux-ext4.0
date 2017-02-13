@@ -1,73 +1,230 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 194567] ext4 no longer mounts
-Date: Mon, 13 Feb 2017 14:59:38 +0000
-Message-ID: <bug-194567-13602-yV4f5n3jd5@https.bugzilla.kernel.org/>
-References: <bug-194567-13602@https.bugzilla.kernel.org/>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCHv6 07/37] filemap: allocate huge page in
+ page_cache_read(), if allowed
+Date: Mon, 13 Feb 2017 18:17:51 +0300
+Message-ID: <20170213151751.GD20394@node.shutemov.name>
+References: <20170126115819.58875-1-kirill.shutemov@linux.intel.com>
+ <20170126115819.58875-8-kirill.shutemov@linux.intel.com>
+ <20170209211835.GV2267@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38426 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752099AbdBMO7l (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 13 Feb 2017 09:59:41 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 98A682833B
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 14:59:40 +0000 (UTC)
-Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A9E582833B
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 14:59:38 +0000 (UTC)
-In-Reply-To: <bug-194567-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Hugh Dickins <hughd@google.com>,
+	Andrea Arcangeli <aarcange@redhat.com>,
+	Dave Hansen <dave.hansen@intel.com>,
+	Vlastimil Babka <vbabka@suse.cz>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+	linux-block@vger.kernel.org
+To: Matthew Wilcox <willy@infradead.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170209211835.GV2267@bombadil.infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=194567
+On Thu, Feb 09, 2017 at 01:18:35PM -0800, Matthew Wilcox wrote:
+> On Thu, Jan 26, 2017 at 02:57:49PM +0300, Kirill A. Shutemov wrote:
+> > Later we can add logic to accumulate information from shadow entires to
+> > return to caller (average eviction time?).
+> 
+> I would say minimum rather than average.  That will become the refault
+> time of the entire page, so minimum would probably have us making better
+> decisions?
 
---- Comment #2 from bugzilla.kernel.org@plan9.de ---
-dumpe2fs 1.43.4 (31-Jan-2017)
-Filesystem volume name:   DB
-Last mounted on:          /db
-Filesystem UUID:          68f492ad-4c47-49ea-9ad9-3948f14b2ce3
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      ext_attr dir_index filetype meta_bg extent flex_bg
-sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash 
-Default mount options:    user_xattr acl
-Filesystem state:         not clean
-Errors behavior:          Remount read-only
-Filesystem OS type:       Linux
-Inode count:              90112
-Block count:              8388608
-Reserved block count:     0
-Free blocks:              1628674
-Free inodes:              90022
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         352
-Inode blocks per group:   11
-First meta block group:   2
-Flex block group size:    16
-Filesystem created:       Wed Dec  4 13:14:34 2013
-Last mount time:          Mon Feb 13 12:13:01 2017
-Last write time:          Mon Feb 13 12:13:01 2017
-Mount count:              3
-Maximum mount count:      -1
-Last checked:             Sun Feb 12 21:36:42 2017
-Check interval:           0 (<none>)
-Lifetime writes:          2525 GB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               128
-Default directory hash:   half_md4
-Directory Hash Seed:      01f2a95d-8a5d-488a-b5ce-d2f1a810edc3
+Yes, makes sense.
+
+> > +	/* Wipe shadow entires */
+> > +	radix_tree_for_each_slot(slot, &mapping->page_tree, &iter,
+> > +			page->index) {
+> > +		if (iter.index >= page->index + hpage_nr_pages(page))
+> > +			break;
+> >  
+> >  		p = radix_tree_deref_slot_protected(slot, &mapping->tree_lock);
+> > -		if (!radix_tree_exceptional_entry(p))
+> > +		if (!p)
+> > +			continue;
+> 
+> Just FYI, this can't happen.  You're holding the tree lock so nobody
+> else gets to remove things from the tree.  radix_tree_for_each_slot()
+> only gives you the full slots; it skips the empty ones for you.  I'm
+> OK if you want to leave it in out of an abundance of caution.
+
+I'll drop it.
+
+> > +		__radix_tree_replace(&mapping->page_tree, iter.node, slot, NULL,
+> > +				workingset_update_node, mapping);
+> 
+> I may add an update_node argument to radix_tree_join at some point,
+> so you can use it here.  Or maybe we don't need to do that, and what
+> you have here works just fine.
+> 
+> >  		mapping->nrexceptional--;
+> 
+> ... because adjusting the exceptional count is going to be a pain.
+
+Yeah..
+
+> > +	error = __radix_tree_insert(&mapping->page_tree,
+> > +			page->index, compound_order(page), page);
+> > +	/* This shouldn't happen */
+> > +	if (WARN_ON_ONCE(error))
+> > +		return error;
+> 
+> A lesser man would have just ignored the return value from
+> __radix_tree_insert.  I salute you.
+> 
+> > @@ -2078,18 +2155,34 @@ static int page_cache_read(struct file *file, pgoff_t offset, gfp_t gfp_mask)
+> >  {
+> >  	struct address_space *mapping = file->f_mapping;
+> >  	struct page *page;
+> > +	pgoff_t hoffset;
+> >  	int ret;
+> >  
+> >  	do {
+> > -		page = __page_cache_alloc(gfp_mask|__GFP_COLD);
+> > +		page = page_cache_alloc_huge(mapping, offset, gfp_mask);
+> > +no_huge:
+> > +		if (!page)
+> > +			page = __page_cache_alloc(gfp_mask|__GFP_COLD);
+> >  		if (!page)
+> >  			return -ENOMEM;
+> >  
+> > -		ret = add_to_page_cache_lru(page, mapping, offset, gfp_mask & GFP_KERNEL);
+> > -		if (ret == 0)
+> > +		if (PageTransHuge(page))
+> > +			hoffset = round_down(offset, HPAGE_PMD_NR);
+> > +		else
+> > +			hoffset = offset;
+> > +
+> > +		ret = add_to_page_cache_lru(page, mapping, hoffset,
+> > +				gfp_mask & GFP_KERNEL);
+> > +
+> > +		if (ret == -EEXIST && PageTransHuge(page)) {
+> > +			put_page(page);
+> > +			page = NULL;
+> > +			goto no_huge;
+> > +		} else if (ret == 0) {
+> >  			ret = mapping->a_ops->readpage(file, page);
+> > -		else if (ret == -EEXIST)
+> > +		} else if (ret == -EEXIST) {
+> >  			ret = 0; /* losing race to add is OK */
+> > +		}
+> >  
+> >  		put_page(page);
+> 
+> If the filesystem returns AOP_TRUNCATED_PAGE, you'll go round this loop
+> again trying the huge page again, even if the huge page didn't work
+> the first time.  I would tend to think that if the huge page failed the
+> first time, we shouldn't try it again, so I propose this:
+
+AOP_TRUNCATED_PAGE is positive, so I don't see how you avoid try_huge on
+second iteration. Hm?
+
+> 
+>         struct address_space *mapping = file->f_mapping;
+>         struct page *page;
+>         pgoff_t index;
+>         int ret;
+>         bool try_huge = true;
+> 
+>         do {
+>                 if (try_huge) {
+>                         page = page_cache_alloc_huge(gfp_mask|__GFP_COLD);
+>                         if (page)
+>                                 index = round_down(offset, HPAGE_PMD_NR);
+>                         else
+>                                 try_huge = false;
+>                 }
+> 
+>                 if (!try_huge) {
+>                         page = __page_cache_alloc(gfp_mask|__GFP_COLD);
+>                         index = offset;
+>                 }
+> 
+>                 if (!page)
+>                         return -ENOMEM;
+> 
+>                 ret = add_to_page_cache_lru(page, mapping, index,
+>                                                         gfp_mask & GFP_KERNEL);
+>                 if (ret < 0) {
+>                         if (try_huge) {
+>                                 try_huge = false;
+>                                 ret = AOP_TRUNCATED_PAGE;
+>                         } else if (ret == -EEXIST)
+>                                 ret = 0; /* losing race to add is OK */
+>                 } else {
+>                         ret = mapping->a_ops->readpage(file, page);
+>                 }
+> 
+>                 put_page(page);
+>         } while (ret == AOP_TRUNCATED_PAGE);
+> 
+> But ... maybe it's OK to retry the huge page.  I mean, not many
+> filesystems return AOP_TRUNCATED_PAGE, and they only do so rarely.
+
+What about this:
+
+	struct address_space *mapping = file->f_mapping;
+	struct page *page;
+	pgoff_t hoffset;
+	int ret;
+	bool try_huge = true;
+
+	do {
+		if (try_huge) {
+			page = page_cache_alloc_huge(mapping, offset, gfp_mask);
+			hoffset = round_down(offset, HPAGE_PMD_NR);
+
+			/* Try to allocate huge page once */
+			try_huge = false;
+		}
+
+		if (!page) {
+			page = __page_cache_alloc(gfp_mask|__GFP_COLD);
+			hoffset = offset;
+		}
+
+		if (!page)
+			return -ENOMEM;
+
+		ret = add_to_page_cache_lru(page, mapping, hoffset,
+				gfp_mask & GFP_KERNEL);
+
+		if (ret == -EEXIST && PageTransHuge(page)) {
+			/* Retry with small page */
+			put_page(page);
+			page = NULL;
+			continue;
+		} else if (ret == 0) {
+			ret = mapping->a_ops->readpage(file, page);
+		} else if (ret == -EEXIST) {
+			ret = 0; /* losing race to add is OK */
+		}
+
+		put_page(page);
+	} while (ret == AOP_TRUNCATED_PAGE);
+
+	return ret;
+
+
+> Anyway, I'm fine with the patch going in as-is.  I just wanted to type out
+> my review notes.
+> 
+> Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+
+Thanks!
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+ Kirill A. Shutemov
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
