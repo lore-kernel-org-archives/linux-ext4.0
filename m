@@ -1,81 +1,87 @@
-From: thanumalayan mad <madthanu@gmail.com>
-Subject: e2fsck exit codes
-Date: Mon, 13 Feb 2017 16:59:49 -0800
-Message-ID: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
-Reply-To: madthanu@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ot0-f173.google.com ([74.125.82.173]:35363 "EHLO
-        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751408AbdBNBAK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2017 20:00:10 -0500
-Received: by mail-ot0-f173.google.com with SMTP id 65so81812267otq.2
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 17:00:10 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: [PATCH 5/7] nonblocking aio: ext4
+Date: Mon, 13 Feb 2017 20:46:01 -0600
+Message-ID: <20170214024603.9563-6-rgoldwyn@suse.de>
+References: <20170214024603.9563-1-rgoldwyn@suse.de>
+Cc: jack@suse.cz, Goldwyn Rodrigues <rgoldwyn@suse.com>,
+        linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170214024603.9563-1-rgoldwyn@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi all,
+From: Goldwyn Rodrigues <rgoldwyn@suse.com>
 
-I'm trying to figure out a way to tell fsck to inform me and abort if
-it suspects disk corruption, but continue otherwise. I thought I knew
-how to do this, but I don't.
+Return EAGAIN if any of the following checks fail for direct I/O:
+ + i_rwsem is lockable
+ + Writing beyond end of file (will trigger allocation)
+ + Blocks are allocated at the write location
 
-I did the following experiment: I created a new file system using
-mkfs.ext4, mounted it, ran a simple workload on it, and hard-rebooted
-the machine during the middle of the workload. After rebooting the
-machine, I ran "fsck.ext4 -fy" on the partition. Fsck complains about
-wrong inode counts and block counts, and exits with code 1.
-
-Is this the expected behavior? I retried the experiment on a couple of
-machines, so I know its not an actual corrupted-drive issue. The
-following is an example output of fsck:
-
-root@lappy:/home/madthanu# fsck.ext4 -f /dev/sda8
-e2fsck 1.42.12 (29-Aug-2014)
-/dev/sda8: recovering journal
-Clearing orphaned inode 6063 (uid=0, gid=0, mode=0100664, size=2377)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong (2710767, counted=2681703).
-Fix<y>? no
-Free inodes count wrong (698998, counted=684135).
-Fix<y>? no
-/dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/sda8: 10/699008 files (80.0% non-contiguous), 83473/2794240 blocks
-
-root@lappy:/home/madthanu# echo $?
-1
-
-root@lappy:/home/madthanu# fsck.ext4 -fy /dev/sda8
-e2fsck 1.42.12 (29-Aug-2014)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong (2710767, counted=2681703).
-Fix? yes
-Free inodes count wrong (698998, counted=684135).
-Fix? yes
-/dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
-/dev/sda8: 14873/699008 files (0.1% non-contiguous), 112537/2794240 blocks
-
-root@lappy:/home/madthanu# echo $?
-1
-
-Is there a correct way to do that? "fsck.ext4 -p" does continue
-without complaining much, but as I understand it, it might continue
-even if there was disk corruption (so long as fsck has enough
-confidence that it restored the correct version of corrupted metadata,
-it'll continue).
-
-Thanks,
-Thanu
-
+Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
 ---
-(Thanumalayan Sankaranarayana Pillai)
+ fs/ext4/file.c | 28 ++++++++++++++++++++++------
+ 1 file changed, 22 insertions(+), 6 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2a822d3..c8d1e41 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -93,11 +93,16 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	int o_direct = iocb->ki_flags & IOCB_DIRECT;
++	int nonblocking = iocb->ki_flags & IOCB_NONBLOCKING;
+ 	int unaligned_aio = 0;
+ 	int overwrite = 0;
+ 	ssize_t ret;
+ 
+-	inode_lock(inode);
++	if (o_direct && nonblocking) {
++		if (!inode_trylock(inode))
++			return -EAGAIN;
++	} else
++		inode_lock(inode);
+ 	ret = generic_write_checks(iocb, from);
+ 	if (ret <= 0)
+ 		goto out;
+@@ -132,12 +137,18 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (o_direct) {
+ 		size_t length = iov_iter_count(from);
+ 		loff_t pos = iocb->ki_pos;
++		unsigned int blkbits = inode->i_blkbits;
++
++		if (nonblocking
++			&& (pos + length > EXT4_BLOCK_ALIGN(i_size_read(inode), blkbits))) {
++			ret = -EAGAIN;
++			goto out;
++		}
+ 
+ 		/* check whether we do a DIO overwrite or not */
+-		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
+-		    pos + length <= i_size_read(inode)) {
++		if ((ext4_should_dioread_nolock(inode) && !unaligned_aio &&
++			    pos + length <= i_size_read(inode)) || nonblocking) {
+ 			struct ext4_map_blocks map;
+-			unsigned int blkbits = inode->i_blkbits;
+ 			int err, len;
+ 
+ 			map.m_lblk = pos >> blkbits;
+@@ -157,8 +168,13 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 			 * non-flags are returned.  So we should check
+ 			 * these two conditions.
+ 			 */
+-			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
+-				overwrite = 1;
++			if (err == len) {
++			       if (map.m_flags & EXT4_MAP_MAPPED)
++				       overwrite = 1;
++			} else if (nonblocking) {
++				ret = -EAGAIN;
++				goto out;
++			}
+ 		}
+ 	}
+ 
+-- 
+2.10.2
