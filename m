@@ -1,108 +1,130 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: don't BUG when truncating encrypted inodes on the orphan list
-Date: Tue, 14 Feb 2017 00:03:55 -0500
-Message-ID: <20170214050355.8676-1-tytso@mit.edu>
-References: <20170213181955.GA44321@google.com>
-Cc: ebiggers3@gmail.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: e2fsck exit codes
+Date: Tue, 14 Feb 2017 12:01:01 -0500
+Message-ID: <20170214170101.irgf4uvvvbbepmip@thunk.org>
+References: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: thanumalayan mad <madthanu@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37552 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39558 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750708AbdBNFED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 14 Feb 2017 00:04:03 -0500
-In-Reply-To: <20170213181955.GA44321@google.com>
+        id S1752726AbdBNRBE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Feb 2017 12:01:04 -0500
+Content-Disposition: inline
+In-Reply-To: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix a BUG when the kernel tries to mount a file system constructed as
-follows:
+On Mon, Feb 13, 2017 at 04:59:49PM -0800, thanumalayan mad wrote:
+> root@lappy:/home/madthanu# fsck.ext4 -f /dev/sda8
+> e2fsck 1.42.12 (29-Aug-2014)
+> /dev/sda8: recovering journal
+> Clearing orphaned inode 6063 (uid=0, gid=0, mode=0100664, size=2377)
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> Free blocks count wrong (2710767, counted=2681703).
+> Fix<y>? no
+> Free inodes count wrong (698998, counted=684135).
+> Fix<y>? no
+> /dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
+> /dev/sda8: 10/699008 files (80.0% non-contiguous), 83473/2794240 blocks
 
-echo foo > foo.txt
-mke2fs -Fq -t ext4 -O encrypt foo.img 100
-debugfs -w foo.img << EOF
-write foo.txt a
-set_inode_field a i_flags 0x80800
-set_super_value s_last_orphan 12
-quit
-EOF
+This is expected; ext4 doesn't use the overall number of free blocks
+and free inodes summarized in the inodes --- and so to improve
+scalability, quite a whle back we stoped updating those fields except
+on a clean shutdown.  This means that if you crash your system or
+other wise leave the file system with an unclean mount, the total
+number of free blocks and free inodes will not be updated.
 
-root@kvm-xfstests:~# mount -o loop foo.img /mnt
-[  160.238770] ------------[ cut here ]------------
-[  160.240106] kernel BUG at /usr/projects/linux/ext4/fs/ext4/inode.c:3874!
-[  160.240106] invalid opcode: 0000 [#1] SMP
-[  160.240106] Modules linked in:
-[  160.240106] CPU: 0 PID: 2547 Comm: mount Tainted: G        W       4.10.0-rc3-00034-gcdd33b941b67 #227
-[  160.240106] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.1-1 04/01/2014
-[  160.240106] task: f4518000 task.stack: f47b6000
-[  160.240106] EIP: ext4_block_zero_page_range+0x1a7/0x2b4
-[  160.240106] EFLAGS: 00010246 CPU: 0
-[  160.240106] EAX: 00000001 EBX: f7be4b50 ECX: f47b7dc0 EDX: 00000007
-[  160.240106] ESI: f43b05a8 EDI: f43babec EBP: f47b7dd0 ESP: f47b7dac
-[  160.240106]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-[  160.240106] CR0: 80050033 CR2: bfd85b08 CR3: 34a00680 CR4: 000006f0
-[  160.240106] Call Trace:
-[  160.240106]  ext4_truncate+0x1e9/0x3e5
-[  160.240106]  ext4_fill_super+0x286f/0x2b1e
-[  160.240106]  ? set_blocksize+0x2e/0x7e
-[  160.240106]  mount_bdev+0x114/0x15f
-[  160.240106]  ext4_mount+0x15/0x17
-[  160.240106]  ? ext4_calculate_overhead+0x39d/0x39d
-[  160.240106]  mount_fs+0x58/0x115
-[  160.240106]  vfs_kern_mount+0x4b/0xae
-[  160.240106]  do_mount+0x671/0x8c3
-[  160.240106]  ? _copy_from_user+0x70/0x83
-[  160.240106]  ? strndup_user+0x31/0x46
-[  160.240106]  SyS_mount+0x57/0x7b
-[  160.240106]  do_int80_syscall_32+0x4f/0x61
-[  160.240106]  entry_INT80_32+0x2f/0x2f
-[  160.240106] EIP: 0xb76b919e
-[  160.240106] EFLAGS: 00000246 CPU: 0
-[  160.240106] EAX: ffffffda EBX: 08053838 ECX: 08052188 EDX: 080537e8
-[  160.240106] ESI: c0ed0000 EDI: 00000000 EBP: 080537e8 ESP: bfa13660
-[  160.240106]  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 007b
-[  160.240106] Code: 59 8b 00 a8 01 0f 84 09 01 00 00 8b 07 66 25 00 f0 66 3d 00 80 75 61 89 f8 e8 3e e2 ff ff 84 c0 74 56 83 bf 48 02 00 00 00 75 02 <0f> 0b 81 7d e8 00 10 00 00 74 02 0f 0b 8b 43 04 8b 53 08 31 c9
-[  160.240106] EIP: ext4_block_zero_page_range+0x1a7/0x2b4 SS:ESP: 0068:f47b7dac
-[  160.317241] ---[ end trace d6a773a375c810a5 ]---
+When the kernel mounts the file system, it will tally up the free
+block/inode counts from all of the block group descriptors, and use
+that value, and on the next clean shutdown, they will be updated
+appropriately.  E2fsck is doing the same thing here.  The difference
+is that we're asking the user's permission before we fix things, so it
+looks like something more serious than it is.
 
-The problem is that when the kernel tries to truncate an inode in
-ext4_truncate(), it tries to clear any on-disk data beyond i_size.
-Without the encryption key, it can't do that, and so it triggers a
-BUG.
+The way you can tell whether or not the file system has errors is to
+run e2fsck -fn:
 
-E2fsck does *not* provide this service, and in practice most file
-systems have their orphan list processed by e2fsck, so to avoid
-crashing, this patch skips this step if we don't have access to the
-encryption key (which is the case when processing the orphan list; in
-all other cases, we will have the encryption key, or the kernel
-wouldn't have allowed the file to be opened).
+% e2fsck -fn /tmp/foo.img
+e2fsck 1.43.4 (31-Jan-2017)
+Warning: skipping journal recovery because doing a read-only filesystem check.
+Pass 1: Checking inodes, blocks, and sizes
+Inode 15 extent tree (at level 1) could be shorter.  Fix? no
 
-An open question is whether the fact that e2fsck isn't clearing the
-bytes beyond i_size causing problems --- and if we've lived with it
-not doing it for so long, can we drop this from the kernel replay of
-the orphan list in all cases (not just when we don't have the key for
-encrypted inodes).
+Inode 115 extent tree (at level 1) could be shorter.  Fix? no
 
-Addresses-Google-Bug: #35209576
+Inode 365 extent tree (at level 1) could be shorter.  Fix? no
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/inode.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Inode 741 extent tree (at level 1) could be shorter.  Fix? no
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bc282f9d0969..43ce831cd7c7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3944,6 +3944,10 @@ static int ext4_block_truncate_page(handle_t *handle,
- 	unsigned blocksize;
- 	struct inode *inode = mapping->host;
- 
-+	/* If we are processing an encrypted inode during orphan list handling */
-+	if (ext4_encrypted_inode(inode) && !fscrypt_has_encryption_key(inode))=
-+		return 0;
-+
- 	blocksize = inode->i_sb->s_blocksize;
- 	length = blocksize - (offset & (blocksize - 1));
- 
--- 
-2.11.0.rc0.7.gbe5a750
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (6830, counted=163).
+Fix? no
+
+Free inodes count wrong (2037, counted=0).
+Fix? no
+
+/tmp/foo.img: 11/2048 files (900.0% non-contiguous), 1362/8192 blocks
+% echo $?
+0
+
+If the file system has an error that needs to be fixed, it will return
+an exit status of 4:
+
+% e2fsck -fn /tmp/foo.img
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Entry 'p0' in /fs (12) has deleted/unused inode 14.  Clear? no
+
+Entry 'p0' in /fs (12) has an incorrect filetype (was 2, should be 0).
+Fix? no
+
+Entry '..' in <14>/<17> (17) has deleted/unused inode 14.  Clear? no
+
+Entry '..' in <14>/<17> (17) has an incorrect filetype (was 2, should be 0).
+Fix? no
+
+Pass 3: Checking directory connectivity
+Unconnected directory inode 17 (<14>/<17>)
+Connect to /lost+found? no
+
+'..' in ... (17) is <14> (14), should be <The NULL inode> (0).
+Fix? no
+
+Pass 4: Checking reference counts
+Inode 12 ref count is 7, should be 6.  Fix? no
+
+Inode 17 ref count is 5, should be 4.  Fix? no
+
+Pass 5: Checking group summary information
+Block bitmap differences:  -1363
+Fix? no
+
+Inode bitmap differences:  -14
+Fix? no
+
+Directories count wrong for group #0 (79, counted=78).
+Fix? no
+
+
+/tmp/foo.img: ********** WARNING: Filesystem still has errors **********
+
+/tmp/foo.img: 2047/2048 files (4.8% non-contiguous), 8025/8192 blocks
+
+% echo $?
+4
+
+See the fsck.ext4 man page, the "EXIT CODE" section for an explanation
+for how the exit codes work.
+
+					- Ted
+					
