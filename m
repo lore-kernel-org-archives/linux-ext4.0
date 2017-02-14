@@ -1,130 +1,140 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: thanumalayan mad <madthanu@gmail.com>
 Subject: Re: e2fsck exit codes
-Date: Tue, 14 Feb 2017 12:01:01 -0500
-Message-ID: <20170214170101.irgf4uvvvbbepmip@thunk.org>
+Date: Tue, 14 Feb 2017 11:00:51 -0800
+Message-ID: <CAJ6LpRpe6KfwoWvCw6cDwWg6=BxtcbXnSjLN358OgZ2obGcxsQ@mail.gmail.com>
 References: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
+ <20170214170101.irgf4uvvvbbepmip@thunk.org>
+Reply-To: madthanu@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-ext4@vger.kernel.org
-To: thanumalayan mad <madthanu@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39558 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752726AbdBNRBE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 14 Feb 2017 12:01:04 -0500
-Content-Disposition: inline
-In-Reply-To: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
+Received: from mail-ot0-f173.google.com ([74.125.82.173]:33255 "EHLO
+        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753116AbdBNTBN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 14:01:13 -0500
+Received: by mail-ot0-f173.google.com with SMTP id 73so101371456otj.0
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 11:01:13 -0800 (PST)
+In-Reply-To: <20170214170101.irgf4uvvvbbepmip@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 13, 2017 at 04:59:49PM -0800, thanumalayan mad wrote:
-> root@lappy:/home/madthanu# fsck.ext4 -f /dev/sda8
-> e2fsck 1.42.12 (29-Aug-2014)
-> /dev/sda8: recovering journal
-> Clearing orphaned inode 6063 (uid=0, gid=0, mode=0100664, size=2377)
+Thank you for the quick reply! (I was curious about the free-blocks
+count too, so thanks for explaining that.) Reponses inlined:
+
+On Tue, Feb 14, 2017 at 9:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> The way you can tell whether or not the file system has errors is to
+> run e2fsck -fn:
+>
+> % e2fsck -fn /tmp/foo.img
+> e2fsck 1.43.4 (31-Jan-2017)
+> Warning: skipping journal recovery because doing a read-only filesystem check.
 > Pass 1: Checking inodes, blocks, and sizes
+> Inode 15 extent tree (at level 1) could be shorter.  Fix? no
+>
+> Inode 115 extent tree (at level 1) could be shorter.  Fix? no
+>
+> Inode 365 extent tree (at level 1) could be shorter.  Fix? no
+>
+> Inode 741 extent tree (at level 1) could be shorter.  Fix? no
+>
 > Pass 2: Checking directory structure
 > Pass 3: Checking directory connectivity
 > Pass 4: Checking reference counts
 > Pass 5: Checking group summary information
-> Free blocks count wrong (2710767, counted=2681703).
-> Fix<y>? no
-> Free inodes count wrong (698998, counted=684135).
-> Fix<y>? no
-> /dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
-> /dev/sda8: 10/699008 files (80.0% non-contiguous), 83473/2794240 blocks
+> Free blocks count wrong (6830, counted=163).
+> Fix? no
+>
+> Free inodes count wrong (2037, counted=0).
+> Fix? no
+>
+> /tmp/foo.img: 11/2048 files (900.0% non-contiguous), 1362/8192 blocks
+> % echo $?
+> 0
+>
+> If the file system has an error that needs to be fixed, it will return
+> an exit status of 4:
 
-This is expected; ext4 doesn't use the overall number of free blocks
-and free inodes summarized in the inodes --- and so to improve
-scalability, quite a whle back we stoped updating those fields except
-on a clean shutdown.  This means that if you crash your system or
-other wise leave the file system with an unclean mount, the total
-number of free blocks and free inodes will not be updated.
+I also tested "fsck.ext4 -fn", and it returns 4 even when there is no
+disk corruption. That said, doing a "fsck -E journal_only" followed by
+a "fsck -fn" does seem to work:
 
-When the kernel mounts the file system, it will tally up the free
-block/inode counts from all of the block group descriptors, and use
-that value, and on the next clean shutdown, they will be updated
-appropriately.  E2fsck is doing the same thing here.  The difference
-is that we're asking the user's permission before we fix things, so it
-looks like something more serious than it is.
+=====
 
-The way you can tell whether or not the file system has errors is to
-run e2fsck -fn:
-
-% e2fsck -fn /tmp/foo.img
-e2fsck 1.43.4 (31-Jan-2017)
+desky madthanu # fsck.ext4 -fn /dev/sdb
+e2fsck 1.42.13 (17-May-2015)
 Warning: skipping journal recovery because doing a read-only filesystem check.
 Pass 1: Checking inodes, blocks, and sizes
-Inode 15 extent tree (at level 1) could be shorter.  Fix? no
-
-Inode 115 extent tree (at level 1) could be shorter.  Fix? no
-
-Inode 365 extent tree (at level 1) could be shorter.  Fix? no
-
-Inode 741 extent tree (at level 1) could be shorter.  Fix? no
-
 Pass 2: Checking directory structure
+Entry '1' in / (2) references inode 524289 in group 64 where
+_INODE_UNINIT is set.
+Fix? no
+Entry '1' in / (2) has deleted/unused inode 524289.  Clear? no
+Entry '2' in / (2) references inode 131073 in group 16 where
+_INODE_UNINIT is set.
+Fix? no
+Entry '2' in / (2) has deleted/unused inode 131073.  Clear? no
 Pass 3: Checking directory connectivity
 Pass 4: Checking reference counts
+Inode 2 ref count is 5, should be 3.  Fix? no
 Pass 5: Checking group summary information
-Free blocks count wrong (6830, counted=163).
+Block bitmap differences:  -(8871--9768) -(2105376--2106287)
 Fix? no
-
-Free inodes count wrong (2037, counted=0).
+Free blocks count wrong for group #0 (23897, counted=22999).
 Fix? no
-
-/tmp/foo.img: 11/2048 files (900.0% non-contiguous), 1362/8192 blocks
-% echo $?
-0
-
-If the file system has an error that needs to be fixed, it will return
-an exit status of 4:
-
-% e2fsck -fn /tmp/foo.img
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Entry 'p0' in /fs (12) has deleted/unused inode 14.  Clear? no
-
-Entry 'p0' in /fs (12) has an incorrect filetype (was 2, should be 0).
+Free blocks count wrong for group #64 (24544, counted=23632).
 Fix? no
-
-Entry '..' in <14>/<17> (17) has deleted/unused inode 14.  Clear? no
-
-Entry '..' in <14>/<17> (17) has an incorrect filetype (was 2, should be 0).
+Free blocks count wrong (2541777, counted=2539967).
 Fix? no
-
-Pass 3: Checking directory connectivity
-Unconnected directory inode 17 (<14>/<17>)
-Connect to /lost+found? no
-
-'..' in ... (17) is <14> (14), should be <The NULL inode> (0).
+Inode bitmap differences:  -(12--8192)
 Fix? no
-
-Pass 4: Checking reference counts
-Inode 12 ref count is 7, should be 6.  Fix? no
-
-Inode 17 ref count is 5, should be 4.  Fix? no
-
-Pass 5: Checking group summary information
-Block bitmap differences:  -1363
+Free inodes count wrong for group #0 (8181, counted=0).
 Fix? no
-
-Inode bitmap differences:  -14
+Free inodes count wrong (655349, counted=647168).
 Fix? no
+/dev/sdb: ********** WARNING: Filesystem still has errors **********
+/dev/sdb: 11/655360 files (0.0% non-contiguous), 79663/2621440 blocks
 
-Directories count wrong for group #0 (79, counted=78).
-Fix? no
-
-
-/tmp/foo.img: ********** WARNING: Filesystem still has errors **********
-
-/tmp/foo.img: 2047/2048 files (4.8% non-contiguous), 8025/8192 blocks
-
-% echo $?
+desky madthanu # echo $?
 4
 
-See the fsck.ext4 man page, the "EXIT CODE" section for an explanation
-for how the exit codes work.
+desky madthanu # fsck.ext4 -E journal_only /dev/sdb
+e2fsck 1.42.13 (17-May-2015)
+/dev/sdb: recovering journal
 
-					- Ted
-					
+desky madthanu # echo $?
+0
+
+desky madthanu # fsck.ext4 -fn /dev/sdb
+e2fsck 1.42.13 (17-May-2015)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (2541777, counted=2412400).
+Fix? no
+Free inodes count wrong (655349, counted=595281).
+Fix? no
+/dev/sdb: 11/655360 files (136.4% non-contiguous), 79663/2621440 blocks
+
+desky madthanu # echo $?
+0
+
+=====
+
+Would this be the way to proceed? I am hoping "-E journal_only" also
+takes care of clearing orphan inodes and still exits with a 0. (Note:
+The output I pasted above is derived from a file system created with
+default options, and does not switch off uninit_bg or
+lazy_itable_init.)
+
+> See the fsck.ext4 man page, the "EXIT CODE" section for an explanation
+> for how the exit codes work.
+
+Sorry, I did read through that, but got confused about the combination
+of the exit codes and command line options.
+
+Thanks,
+Thanu
