@@ -1,28 +1,28 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v2 3/4] e2fsck: 3 level hash tree directory optimization
-Date: Tue, 14 Feb 2017 13:14:49 -0700
-Message-ID: <33754C3A-4131-4061-86D0-6D58B2550F06@dilger.ca>
+Subject: Re: [PATCH v2 4/4] tests: 3 level hash tree test
+Date: Tue, 14 Feb 2017 13:40:34 -0700
+Message-ID: <40D3354F-7FF3-44E1-A122-0C0D21042BFF@dilger.ca>
 References: <1486977617-17216-1-git-send-email-artem.blagodarenko@gmail.com>
- <1486977617-17216-4-git-send-email-artem.blagodarenko@gmail.com>
+ <1486977617-17216-5-git-send-email-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_5BB1FD38-ECE2-49B2-9423-6BD09AAED8C7";
+ boundary="Apple-Mail=_5E89F8EB-582D-4545-BBE1-359BA7D59705";
  protocol="application/pgp-signature"; micalg=pgp-sha1
 Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
 To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:34073 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754774AbdBNUPD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 15:15:03 -0500
-Received: by mail-oi0-f67.google.com with SMTP id w144so1406662oiw.1
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 12:14:57 -0800 (PST)
-In-Reply-To: <1486977617-17216-4-git-send-email-artem.blagodarenko@gmail.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36158 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751919AbdBNUkj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 15:40:39 -0500
+Received: by mail-it0-f65.google.com with SMTP id f200so7073491itf.3
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 12:40:39 -0800 (PST)
+In-Reply-To: <1486977617-17216-5-git-send-email-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_5BB1FD38-ECE2-49B2-9423-6BD09AAED8C7
+--Apple-Mail=_5E89F8EB-582D-4545-BBE1-359BA7D59705
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
@@ -32,372 +32,165 @@ On Feb 13, 2017, at 2:20 AM, Artem Blagodarenko =
 >=20
 > From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 >=20
-> e2fsck fix for partitions with 3 level hash directries.
-> Additional level is added to e2fsck -D codepath.
+> Test is added that recreate directory (-fD fsck option)
+> with 47.5k of 255-symbol name files. This amount of files
+> can not be stored only in 2 hevel htree, so 3 levels are used.
 >=20
 > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 > ---
-> debugfs/htree.c     |    3 +-
-> e2fsck/e2fsck.h     |    1 +
-> e2fsck/pass2.c      |   68 +++++++++++++++++++++-------
-> e2fsck/rehash.c     |  123 =
-++++++++++++++++++++++++++++++++++++++++----------
-> lib/ext2fs/ext2fs.h |    5 ++
-> 5 files changed, 156 insertions(+), 44 deletions(-)
+> tests/f_large_dir/debugfs_script |   15 +++++++++++++++
+> tests/f_large_dir/expect         |   12 ++++++++++++
+> tests/f_large_dir/name           |    1 +
+> tests/f_large_dir/script         |   28 ++++++++++++++++++++++++++++
+> 4 files changed, 56 insertions(+), 0 deletions(-)
 >=20
-> diff --git a/debugfs/htree.c b/debugfs/htree.c
-> index 54e55e2..8c18666 100644
-> --- a/debugfs/htree.c
-> +++ b/debugfs/htree.c
-> @@ -287,7 +287,8 @@ void do_htree_dump(int argc, char *argv[])
-> 	fprintf(pager, "\t Indirect levels: %d\n", =
-rootnode->indirect_levels);
-> 	fprintf(pager, "\t Flags: %d\n", rootnode->unused_flags);
->=20
-> -	ent =3D (struct ext2_dx_entry *) (buf + 24 + =
-rootnode->info_length);
-> +	ent =3D (struct ext2_dx_entry *)
-> +		((char *)rootnode + rootnode->info_length);
->=20
-> 	htree_dump_int_node(current_fs, ino, &inode, rootnode, ent,
-> 			    buf + current_fs->blocksize,
-> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-> index f356810..a4efbdf 100644
-> --- a/e2fsck/e2fsck.h
-> +++ b/e2fsck/e2fsck.h
-> @@ -122,6 +122,7 @@ struct dx_dirblock_info {
-> 	blk64_t		phys;
-> 	int		flags;
-> 	blk64_t		parent;
-> +	blk64_t		previous;
-> 	ext2_dirhash_t	min_hash;
-> 	ext2_dirhash_t	max_hash;
-> 	ext2_dirhash_t	node_min_hash;
-> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-> index 139d48f..2e2c721 100644
-> --- a/e2fsck/pass2.c
-> +++ b/e2fsck/pass2.c
-> @@ -85,6 +85,39 @@ struct check_dir_struct {
-> 	unsigned long long next_ra_off;
-> };
->=20
-> +static void update_parents(struct dx_dir_info *dx_dir, int type)
-> +{
-> +	struct dx_dirblock_info *dx_db, *dx_parent, *dx_previous;
-> +	int b;
+> diff --git a/tests/f_large_dir/debugfs_script =
+b/tests/f_large_dir/debugfs_script
+> new file mode 100755
+> index 0000000..b869db5
+> --- /dev/null
+> +++ b/tests/f_large_dir/debugfs_script
+
+Instead of making a separate script to supply the commands to debugfs,
+this could be part of the test script and then just piped into debugfs?
+That keeps all the logic in one place in the test script and makes it
+easier to see what the test is doing.
+
+> @@ -0,0 +1,15 @@
+> +#!/bin/bash
+> +echo "feature large_dir"
+> +echo "mkdir /foo"
+> +echo "cd /foo"
+> +touch foofile
+> +echo "write foofile foofile"
+> +for i in $(seq 47300); do
+
+(style) "for ((i =3D 0; i < 47300; i++)); do" avoids an external shell =
+command
+
+It might be useful to show how "47300" is derived, something like:
+
+	NAMELEN=3D255
+	DIRENT_SZ=3D8
+	BLOCKSZ=3D1024
+	DIRENT_PER_LEAF=3D$(((BLOCKSZ / (NAMELEN + DIRENT_SZ)))
+	HEADER=3D32
+	INDEX_SZ=3D8
+	INDEX_L1=3D$(((BLOCKSZ - HEADER) / INDEX_SZ))
+	INDEX_L2=3D$(((BLOCKSZ - DIRENT_SZ) / INDEX_SZ))
+	ENTRIES=3D$((INDEX_L1 * INDEX_L2 * DIRENT_PER_LEAF))
+
+which gives 47244 entries to overflow the L2 htree.
+
+> +	[[ $(( $i % 3 )) -eq 0 ]] && \
+
+(style) no need for '$' inside $((...))
+
+> +	echo "expand ./"
+
+(style) no need to continue this line
+
+> +	[[ $(( $i % 5000 )) -eq 0 ]] && \
+> +	>&2 echo "$i processed"
+
+(style) same two as above
+
+> +	new_uuid=3D`printf %0255X $i`
+
+(style) prefer $(...) as used above
+(style) not sure I'd call this a "uuid", maybe just "filename"? Or maybe
+        just get rid of echo and "new_uuid" entirely and use:
+
+         printf "ln foofile %0255X\n" $i
+
+> +	echo "ln foofile $new_uuid"
+> +done
 > +
-> +	for (b =3D 0, dx_db =3D dx_dir->dx_block;
-> +	     b < dx_dir->numblocks;
-> +	     b++, dx_db++) {
-> +		dx_parent =3D &dx_dir->dx_block[dx_db->parent];
-> +		if (dx_db->type !=3D type)
-> +			continue;
+> diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
+> new file mode 100644
+> index 0000000..9c94675
+> --- /dev/null
+> +++ b/tests/f_large_dir/expect
+> @@ -0,0 +1,12 @@
+> +Pass 1: Checking inodes, blocks, and sizes
+> +Pass 2: Checking directory structure
+> +Pass 3: Checking directory connectivity
+> +Pass 3A: Optimizing directories
+> +Pass 4: Checking reference counts
+> +Inode 13 ref count is 1, should be 47301.  Fix? yes
 > +
-> +		/*
-> +		 * XXX Make sure dx_parent->min_hash > dx_db->min_hash
-> +		*/
-> +		if (dx_db->flags & DX_FLAG_FIRST) {
-> +			dx_parent->min_hash =3D dx_db->min_hash;
-> +			if (dx_parent->previous) {
-> +				dx_previous =3D
-> +					=
-&dx_dir->dx_block[dx_parent->previous];
-> +				dx_previous->node_max_hash =3D
-> +					dx_parent->min_hash;
-> +			}
-> +		}
-> +		/*
-> +		 * XXX Make sure dx_parent->max_hash < dx_db->max_hash
-> +		 */
-> +		if (dx_db->flags & DX_FLAG_LAST) {
-> +			dx_parent->max_hash =3D dx_db->max_hash;
-> +		}
-> +	}
-> +}
+> +Pass 5: Checking group summary information
 > +
-> void e2fsck_pass2(e2fsck_t ctx)
-> {
-> 	struct ext2_super_block *sb =3D ctx->fs->super;
-> @@ -182,24 +215,11 @@ void e2fsck_pass2(e2fsck_t ctx)
-> 		 * Find all of the first and last leaf blocks, and
-> 		 * update their parent's min and max hash values
-> 		 */
-> -		for (b=3D0, dx_db =3D dx_dir->dx_block;
-> -		     b < dx_dir->numblocks;
-> -		     b++, dx_db++) {
-> -			if ((dx_db->type !=3D DX_DIRBLOCK_LEAF) ||
-> -			    !(dx_db->flags & (DX_FLAG_FIRST | =
-DX_FLAG_LAST)))
-> -				continue;
-> -			dx_parent =3D &dx_dir->dx_block[dx_db->parent];
-> -			/*
-> -			 * XXX Make sure dx_parent->min_hash > =
-dx_db->min_hash
-> -			 */
-> -			if (dx_db->flags & DX_FLAG_FIRST)
-> -				dx_parent->min_hash =3D dx_db->min_hash;
-> -			/*
-> -			 * XXX Make sure dx_parent->max_hash < =
-dx_db->max_hash
-> -			 */
-> -			if (dx_db->flags & DX_FLAG_LAST)
-> -				dx_parent->max_hash =3D dx_db->max_hash;
-> -		}
-> +		update_parents(dx_dir, DX_DIRBLOCK_LEAF);
+> +test.img: ***** FILE SYSTEM WAS MODIFIED *****
+> +test.img: 13/115368 files (0.0% non-contiguous), 32839/460800 blocks
+> +Exit status is 1
+> diff --git a/tests/f_large_dir/name b/tests/f_large_dir/name
+> new file mode 100644
+> index 0000000..4b96890
+> --- /dev/null
+> +++ b/tests/f_large_dir/name
+> @@ -0,0 +1 @@
+> +optimize 3 level htree directories
+> diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
+> new file mode 100644
+> index 0000000..25983c2
+> --- /dev/null
+> +++ b/tests/f_large_dir/script
+> @@ -0,0 +1,28 @@
+> +OUT=3D$test_name.log
+> +EXP=3D$test_dir/expect
+> +DFSCRIPT=3D$test_dir/debugfs_script
+> +E2FSCK=3D../e2fsck/e2fsck
 > +
-> +		/* for 3 level htree: update 2 level parent's min
-> +		 * and max hash values */
-> +		update_parents(dx_dir, DX_DIRBLOCK_NODE);
->=20
-> 		for (b=3D0, dx_db =3D dx_dir->dx_block;
-> 		     b < dx_dir->numblocks;
-> @@ -642,6 +662,10 @@ static void parse_int_node(ext2_filsys fs,
-> 			dx_db->flags |=3D DX_FLAG_REFERENCED;
-> 			dx_db->parent =3D db->blockcnt;
-> 		}
-> +
-> +		dx_db->previous =3D
-> +			i ? ext2fs_le32_to_cpu(ent[i-1].block & =
-0x0ffffff) : 0;
-> +
-> 		if (hash < min_hash)
-> 			min_hash =3D hash;
-> 		if (hash > max_hash)
-> @@ -949,6 +973,14 @@ static int check_dir_block(ext2_filsys fs,
-> 			return DIRENT_ABORT;
-> 	}
->=20
-> +	/* This will allow (at some point in the future) to punch out =
-empty
-> +	 * directory blocks and reduce the space used by a directory =
-that grows
-> +	 * very large and then the files are deleted. For now, all that =
+> +TMPFILE2=3D/tmp/image
+
+Why not use the existing $TMPFILE?  That is sure to be in the right =
+location,
+while hard-coding "/tmp/image" can fail for various reasons (e.g. /tmp =
 is
-> +	 * needed is to avoid e2fsck filling in these holes as part of
-> +	 * feature flag. */
-> +	if (db->blk =3D=3D 0 && ext2fs_has_feature_large_dir(fs))
-> +		return 0;
-> +
-> 	if (db->blk =3D=3D 0 && !inline_data_size) {
-> 		if (allocate_dir_block(ctx, db, buf, &cd->pctx))
-> 			return 0;
-> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-> index 22a58f3..29d5a54 100644
-> --- a/e2fsck/rehash.c
-> +++ b/e2fsck/rehash.c
-> @@ -603,6 +603,42 @@ static struct ext2_dx_entry =
-*set_int_node(ext2_filsys fs, char *buf)
-> 	return (struct ext2_dx_entry *) limits;
-> }
->=20
-> +static int alloc_blocks(ext2_filsys fs,
-> +			struct ext2_dx_countlimit **limit,
-> +			struct ext2_dx_entry **prev_ent,
-> +			struct ext2_dx_entry **next_ent,
-> +			int *prev_offset, int *next_offset,
-> +			struct out_dir *outdir, int i,
-> +			int *prev_count, int *next_count)
-> +{
-> +	errcode_t	retval;
-> +	char		*block_start;
-> +
-> +	if (*limit)
-> +		(*limit)->limit =3D (*limit)->count =3D
-> +			ext2fs_cpu_to_le16((*limit)->limit);
-> +	*prev_ent =3D (struct ext2_dx_entry *) (outdir->buf + =
-*prev_offset);
-> +	(*prev_ent)->block =3D ext2fs_cpu_to_le32(outdir->num);
-> +
-> +	if (i !=3D 1)
-> +		(*prev_ent)->hash =3D
-> +			ext2fs_cpu_to_le32(outdir->hashes[i]);
-> +
-> +	retval =3D get_next_block(fs, outdir, &block_start);
-> +	if (retval)
-> +		return retval;
-> +
-> +	*next_ent =3D set_int_node(fs, block_start);
-> +	*limit =3D (struct ext2_dx_countlimit *)(*next_ent);
-> +	if (next_offset)
-> +		*next_offset =3D ((char *) *next_ent - outdir->buf);
-> +
-> +	*next_count =3D (*limit)->limit;
-> +	(*prev_offset) +=3D sizeof(struct ext2_dx_entry);
-> +	(*prev_count)--;
-> +return 0;
+too small, another test is using /tmp/image when running tests in =
+parallel,
+or worse it is some important file).
 
-(style) blank line before return
-(style) indent return
+> +cp /dev/null $OUT
+> +$MKE2FS -b 1024 -O large_dir,uninit_bg,dir_nlink -F $TMPFILE2 460800 =
+> /dev/null
+> +$DFSCRIPT | $DEBUGFS -w -f /dev/stdin $TMPFILE2 > /dev/null
 
-> +}
-> +
-> /*
->  * This function takes the leaf nodes which have been written in
->  * outdir, and populates the root node and any necessary interior =
-nodes.
-> @@ -612,13 +648,13 @@ static errcode_t calculate_tree(ext2_filsys fs,
-> 				ext2_ino_t ino,
-> 				ext2_ino_t parent)
-> {
-> -	struct ext2_dx_root_info  	*root_info;
-> -	struct ext2_dx_entry 		*root, *dx_ent =3D 0;
-> -	struct ext2_dx_countlimit	*root_limit, *limit;
-> +	struct ext2_dx_root_info	*root_info;
-> +	struct ext2_dx_entry		*root, *int_ent, *dx_ent =3D 0;
-> +	struct ext2_dx_countlimit	*root_limit, *int_limit, *limit;
-> 	errcode_t			retval;
-> 	char				* block_start;
-> -	int				i, c1, c2, nblks;
-> -	int				limit_offset, root_offset;
-> +	int				i, c1, c2, c3, nblks;
-> +	int				limit_offset, int_offset, =
-root_offset;
->=20
-> 	root_info =3D set_root_node(fs, outdir->buf, ino, parent);
-> 	root_offset =3D limit_offset =3D ((char *) root_info - =
-outdir->buf) +
-> @@ -628,7 +664,7 @@ static errcode_t calculate_tree(ext2_filsys fs,
-> 	nblks =3D outdir->num;
->=20
-> 	/* Write out the pointer blocks */
-> -	if (nblks-1 <=3D c1) {
-> +	if (nblks - 1 <=3D c1) {
-> 		/* Just write out the root block, and we're done */
-> 		root =3D (struct ext2_dx_entry *) (outdir->buf + =
-root_offset);
-> 		for (i=3D1; i < nblks; i++) {
-> @@ -639,31 +675,23 @@ static errcode_t calculate_tree(ext2_filsys fs,
-> 			root++;
-> 			c1--;
-> 		}
-> -	} else {
-> +	} else if (nblks - 1 <=3D ext2fs_htree_intnode_maxrecs(fs, c1)) =
+Something like:
+
 {
-> 		c2 =3D 0;
-> -		limit =3D 0;
-> +		limit =3D NULL;
-> 		root_info->indirect_levels =3D 1;
-> 		for (i=3D1; i < nblks; i++) {
-> -			if (c1 =3D=3D 0)
-> +			if (c2 =3D=3D 0 && c1 =3D=3D 0)
-> 				return ENOSPC;
-> 			if (c2 =3D=3D 0) {
-> -				if (limit)
-> -					limit->limit =3D limit->count =3D
-> -		ext2fs_cpu_to_le16(limit->limit);
-> -				root =3D (struct ext2_dx_entry *)
-> -					(outdir->buf + root_offset);
-> -				root->block =3D =
-ext2fs_cpu_to_le32(outdir->num);
-> -				if (i !=3D 1)
-> -					root->hash =3D
-> -			ext2fs_cpu_to_le32(outdir->hashes[i]);
-> -				if ((retval =3D  get_next_block(fs, =
-outdir,
-> -							      =
-&block_start)))
-> +				retval =3D alloc_blocks(fs, &limit,
-> +							 &root,
-> +							 &dx_ent,
-> +							 &root_offset,
-> +							 NULL,
-> +							 outdir, i,
-> +							 &c1, &c2);
-> +				if (retval)
-> 					return retval;
-> -				dx_ent =3D set_int_node(fs, =
-block_start);
-> -				limit =3D (struct ext2_dx_countlimit *) =
-dx_ent;
-> -				c2 =3D limit->limit;
-> -				root_offset +=3D sizeof(struct =
-ext2_dx_entry);
-> -				c1--;
-> 			}
-> 			dx_ent->block =3D ext2fs_cpu_to_le32(i);
-> 			if (c2 !=3D limit->limit)
-> @@ -674,6 +702,51 @@ static errcode_t calculate_tree(ext2_filsys fs,
-> 		}
-> 		limit->count =3D ext2fs_cpu_to_le16(limit->limit - c2);
-> 		limit->limit =3D ext2fs_cpu_to_le16(limit->limit);
-> +	} else {
-> +		c2 =3D 0;
-> +		c3 =3D 0;
-> +		limit =3D NULL;
-> +		int_limit =3D 0;
-> +		root_info->indirect_levels =3D 2;
-> +		for (i =3D 1; i < nblks; i++) {
-> +			if (c3 =3D=3D 0 && c2 =3D=3D 0 && c1 =3D=3D 0)
-> +				return ENOSPC;
-> +			if (c3 =3D=3D 0 && c2 =3D=3D 0) {
-> +				retval =3D alloc_blocks(fs, &int_limit,
-> +							 &root,
+	echo "feature large_dir"
+	echo "mkdir /foo"
+	echo "cd /foo"
+	touch foofile
+	echo "write foofile foofile"
+	for ((i =3D 0; i < $ENTRIES; i++)); do
+		[[ $((i % 3)) =3D=3D 0 ]] && echo "expand ./"
+		[[ $((i % 5000)) =3D=3D 0 ]] && echo "$i processed" 1>&2
+		printf "ln foofile %0255X\n" $i
+	done
+} | $DEBUGFS -w -f /dev/stdin $TMPFILE2 > /dev/null
 
-(style) continued lines should be aligned after '(' on previous line
-(style) arguments should be packed onto lines as many as will fit
-
-> +							 &int_ent,
-> +							 &root_offset,
-> +							 &int_offset,
-> +							 outdir, i,
-> +							 &c1, &c2);
-> +				if (retval)
-> +					return retval;
-> +			}
-> +			if (c3 =3D=3D 0) {
-> +				retval =3D alloc_blocks(fs, &limit,
-
-...
-
-> +							 &int_ent,
-> +							 &dx_ent,
-> +							 &int_offset,
-> +							 NULL,
-> +							 outdir, i,
-> +							 &c2, &c3);
-> +				if (retval)
-> +					return retval;
+> +$E2FSCK -yfD $TMPFILE2 > $OUT.new 2>&1
+> +status=3D$?
+> +echo Exit status is $status >> $OUT.new
+> +sed -f $cmd_dir/filter.sed -e "s;$TMPFILE2;test.img;" $OUT.new >> =
+$OUT
+> +rm -f $OUT.new
 > +
-> +			}
-> +			dx_ent->block =3D ext2fs_cpu_to_le32(i);
-> +			if (c3 !=3D limit->limit)
-> +				dx_ent->hash =3D
-> +					=
-ext2fs_cpu_to_le32(outdir->hashes[i]);
-> +			dx_ent++;
-> +			c3--;
-> +		}
-> +		int_limit->count =3D ext2fs_cpu_to_le16(limit->limit - =
-c2);
-> +		int_limit->limit =3D ext2fs_cpu_to_le16(limit->limit);
+> +cmp -s $OUT $EXP
+> +RC=3D$?
+> +if [ $RC -eq 0 ]; then
+> +	echo "$test_name: $test_description: ok"
+> +	touch $test_name.ok
+> +else
+> +	echo "$test_name: $test_description: failed"
+> +	diff -u $EXP $OUT > $test_name.failed
+> +fi
 > +
-> +		limit->count =3D ext2fs_cpu_to_le16(limit->limit - c3);
-> +		limit->limit =3D ext2fs_cpu_to_le16(limit->limit);
 > +
-> 	}
-> 	root_limit =3D (struct ext2_dx_countlimit *) (outdir->buf + =
-limit_offset);
-> 	root_limit->count =3D ext2fs_cpu_to_le16(root_limit->limit - =
-c1);
-> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> index d714b44..79698ce 100644
-> --- a/lib/ext2fs/ext2fs.h
-> +++ b/lib/ext2fs/ext2fs.h
-> @@ -1943,6 +1943,11 @@ _INLINE_ unsigned int =
-ext2_dir_htree_level(ext2_filsys fs)
-> 	return EXT4_HTREE_LEVEL_COMPAT;
-> }
->=20
-> +_INLINE_ int ext2fs_htree_intnode_maxrecs(ext2_filsys fs, int blocks)
-> +{
-> +	return blocks * ((fs->blocksize - 8) / sizeof(struct =
-ext2_dx_entry));
-> +}
 > +
-> /*
->  * This is an efficient, overflow safe way of calculating ceil((1.0 * =
-a) / b)
->  */
 > --
 > 1.7.1
 >=20
@@ -410,7 +203,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_5BB1FD38-ECE2-49B2-9423-6BD09AAED8C7
+--Apple-Mail=_5E89F8EB-582D-4545-BBE1-359BA7D59705
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -421,9 +214,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFYo2U5pIg59Q01vtYRAkaYAJ9E4dMvRCa+flCgPj2fHFSShqiwKACgovkB
-bU16a/I7oJvGxr3qGgVcFT8=
-=JjGT
+iD8DBQFYo2tCpIg59Q01vtYRAk2AAJ0Rc9q1z1zqx43puYUKbY3ZqvDfTQCfUgI2
+DQG/kDf9cHu6W93jprVssO0=
+=JEEQ
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_5BB1FD38-ECE2-49B2-9423-6BD09AAED8C7--
+--Apple-Mail=_5E89F8EB-582D-4545-BBE1-359BA7D59705--
