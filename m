@@ -1,78 +1,81 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] ext4: don't BUG when truncating encrypted inodes on the
- orphan list
-Date: Mon, 13 Feb 2017 10:19:55 -0800
-Message-ID: <20170213181955.GA44321@google.com>
-References: <20170211031942.11783-1-tytso@mit.edu>
- <20170212220900.GA566@zzz>
- <20170213151927.vi4pzuggm5t6kqe5@thunk.org>
+From: thanumalayan mad <madthanu@gmail.com>
+Subject: e2fsck exit codes
+Date: Mon, 13 Feb 2017 16:59:49 -0800
+Message-ID: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
+Reply-To: madthanu@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:35173 "EHLO
-        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750975AbdBMSUA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2017 13:20:00 -0500
-Received: by mail-it0-f50.google.com with SMTP id 203so197489717ith.0
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 10:20:00 -0800 (PST)
-Content-Disposition: inline
-In-Reply-To: <20170213151927.vi4pzuggm5t6kqe5@thunk.org>
+Received: from mail-ot0-f173.google.com ([74.125.82.173]:35363 "EHLO
+        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751408AbdBNBAK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Feb 2017 20:00:10 -0500
+Received: by mail-ot0-f173.google.com with SMTP id 65so81812267otq.2
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Feb 2017 17:00:10 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 13, 2017 at 10:19:27AM -0500, Theodore Ts'o wrote:
-> 
-> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > > index bc282f9d0969..831d025e59ad 100644
-> > > --- a/fs/ext4/inode.c
-> > > +++ b/fs/ext4/inode.c
-> > > @@ -3944,6 +3944,10 @@ static int ext4_block_truncate_page(handle_t *handle,
-> > >  	unsigned blocksize;
-> > >  	struct inode *inode = mapping->host;
-> > >  
-> > > +	/* If we are processing an encrypted inode during orphan list handling */
-> > > +	if (!fscrypt_has_encryption_key(inode))
-> > > +		return 0;
-> > > +
-> > >  	blocksize = inode->i_sb->s_blocksize;
-> > >  	length = blocksize - (offset & (blocksize - 1));
-> > 
-> > Shouldn't it be:
-> > 
-> > 	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
-> > 	    !fscrypt_has_encryption_key(inode))
-> > 		return 0;
-> > 
-> > ... since only encrypted regular files should be skipped?
-> 
-> We certainly don't want to add the ext4_encrypted_inode() test, since
-> this can fail even if -O encrypt is not enabled.  As for checking for
-> regular files, we could potentially fall into this code path for
-> non-regular files too (symlinks with length greater than 60 bytes come
-> to mind), and if we don't have the encryption key, there's no *point*
-> to try to zero beyond i_size --- and if we do, we're going to fail
-> with a BUG.
-> 
+Hi all,
 
-Are you sure?  ext4_encrypted_inode() only checks the inode flag; it doesn't
-check the superblock flag too.  If we check for just
-!fscrypt_has_encryption_key(), the zeroing will get skipped for all
-*unencrypted* files too.
+I'm trying to figure out a way to tell fsck to inform me and abort if
+it suspects disk corruption, but continue otherwise. I thought I knew
+how to do this, but I don't.
 
-Also, my suggestion matches the logic in
-__ext4_block_zero_page_range() where the BUG() is actually being hit:
+I did the following experiment: I created a new file system using
+mkfs.ext4, mounted it, ran a simple workload on it, and hard-rebooted
+the machine during the middle of the workload. After rebooting the
+machine, I ran "fsck.ext4 -fy" on the partition. Fsck complains about
+wrong inode counts and block counts, and exits with code 1.
 
-                if (S_ISREG(inode->i_mode) &&
-                    ext4_encrypted_inode(inode)) {
-                        /* We expect the key to be set. */
-                        BUG_ON(!fscrypt_has_encryption_key(inode));
-                        BUG_ON(blocksize != PAGE_SIZE);
-                        WARN_ON_ONCE(fscrypt_decrypt_page(page->mapping->host,
-                                                page, PAGE_SIZE, 0, page->index));
-                }
+Is this the expected behavior? I retried the experiment on a couple of
+machines, so I know its not an actual corrupted-drive issue. The
+following is an example output of fsck:
 
+root@lappy:/home/madthanu# fsck.ext4 -f /dev/sda8
+e2fsck 1.42.12 (29-Aug-2014)
+/dev/sda8: recovering journal
+Clearing orphaned inode 6063 (uid=0, gid=0, mode=0100664, size=2377)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (2710767, counted=2681703).
+Fix<y>? no
+Free inodes count wrong (698998, counted=684135).
+Fix<y>? no
+/dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/sda8: 10/699008 files (80.0% non-contiguous), 83473/2794240 blocks
 
-- Eric
+root@lappy:/home/madthanu# echo $?
+1
+
+root@lappy:/home/madthanu# fsck.ext4 -fy /dev/sda8
+e2fsck 1.42.12 (29-Aug-2014)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (2710767, counted=2681703).
+Fix? yes
+Free inodes count wrong (698998, counted=684135).
+Fix? yes
+/dev/sda8: ***** FILE SYSTEM WAS MODIFIED *****
+/dev/sda8: 14873/699008 files (0.1% non-contiguous), 112537/2794240 blocks
+
+root@lappy:/home/madthanu# echo $?
+1
+
+Is there a correct way to do that? "fsck.ext4 -p" does continue
+without complaining much, but as I understand it, it might continue
+even if there was disk corruption (so long as fsck has enough
+confidence that it restored the correct version of corrupted metadata,
+it'll continue).
+
+Thanks,
+Thanu
+
+---
+(Thanumalayan Sankaranarayana Pillai)
