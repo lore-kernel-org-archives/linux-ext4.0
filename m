@@ -1,70 +1,220 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] debugfs: with ls -l, include space between size and date
-Date: Tue, 14 Feb 2017 13:06:50 -0700
-Message-ID: <1C84E23C-552E-4E62-8EE9-97B812046DA1@dilger.ca>
-References: <20170213000140.14250-1-ebiggers3@gmail.com>
+Subject: Re: [PATCH v2 2/4] e2fsprogs: add support for 3-level htree
+Date: Tue, 14 Feb 2017 13:10:46 -0700
+Message-ID: <7B07A5F7-74D7-4CC1-A365-E02F1DA09A23@dilger.ca>
+References: <1486977617-17216-1-git-send-email-artem.blagodarenko@gmail.com>
+ <1486977617-17216-3-git-send-email-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_2F5693DB-64E7-41A9-A3DF-4198C244D350";
+ boundary="Apple-Mail=_E04D75EF-91ED-4184-8C81-D04096BA20FE";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f68.google.com ([209.85.218.68]:33375 "EHLO
-        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753106AbdBNUGx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 15:06:53 -0500
-Received: by mail-oi0-f68.google.com with SMTP id j15so2147770oih.0
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 12:06:53 -0800 (PST)
-In-Reply-To: <20170213000140.14250-1-ebiggers3@gmail.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33079 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751798AbdBNUKu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 15:10:50 -0500
+Received: by mail-it0-f68.google.com with SMTP id e137so6911919itc.0
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 12:10:50 -0800 (PST)
+In-Reply-To: <1486977617-17216-3-git-send-email-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_2F5693DB-64E7-41A9-A3DF-4198C244D350
+--Apple-Mail=_E04D75EF-91ED-4184-8C81-D04096BA20FE
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Feb 12, 2017, at 5:01 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+On Feb 13, 2017, at 2:20 AM, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
 >=20
-> From: Eric Biggers <ebiggers@google.com>
+> From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 >=20
-> Before:
->     11   40700 (2)      0      0   1228812-Feb-2017 12:51 lost+found
+> The INCOMPAT_LARGEDIR feature allows larger directories to
+> be created, both with directory sizes over 2GB and and a
+> maximum htree depth of 3 instead of the current limit of 2.
+> These features are needed in order to exceed the currently
+> limit of approximately 10M entries in a single directory.
+
+Note that the ~10M entry limit is for 4KB blocksize.  With 1KB
+blocksize the entry limit is more like 100k.
+
+> debugfs, e2fsck, ext2fs, mke2fs and tune2fs support is
+> added.
 >=20
-> After:
->     11   40700 (2)      0      0   12288 12-Feb-2017 12:51 lost+found
->=20
-> Fixes: 68a1de3df340 ("debugfs: pretty print encrypted filenames in the =
-ls command")
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+
+Some very minor style fixes and improvement to the commit comment
+possible if the patch is resent.
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
-> debugfs/ls.c | 3 +--
-> 1 file changed, 1 insertion(+), 2 deletions(-)
+> e2fsck/pass1.c       |    5 +++--
+> e2fsck/pass2.c       |    5 +++--
+> lib/ext2fs/ext2_fs.h |    3 ++-
+> lib/ext2fs/ext2fs.h  |   21 ++++++++++++++++++++-
+> misc/mke2fs.c        |    3 ++-
+> misc/tune2fs.c       |    3 ++-
+> 6 files changed, 32 insertions(+), 8 deletions(-)
 >=20
-> diff --git a/debugfs/ls.c b/debugfs/ls.c
-> index 057e3f6f..c990a93d 100644
-> --- a/debugfs/ls.c
-> +++ b/debugfs/ls.c
-> @@ -156,8 +156,7 @@ static int list_dir_proc(ext2_ino_t dir =
-EXT2FS_ATTR((unused)),
-> 			fprintf(ls->f, "%5d", inode.i_size);
-> 		else
-> 			fprintf(ls->f, "%5llu", EXT2_I_SIZE(&inode));
-> -		fputs(datestr, ls->f);
-> -		fputc(' ', ls->f);
-> +		fprintf(ls->f, " %s ", datestr);
-> 		print_filename(ls->f, dirent, options);
-> 		fputc('\n', ls->f);
-> 	} else {
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index ce37176..fff7dcf 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -1716,7 +1716,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+> 		}
+>=20
+> 		if (inode->i_faddr || frag || fsize ||
+> -		    (LINUX_S_ISDIR(inode->i_mode) && =
+inode->i_size_high))
+> +		    (!ext2fs_has_feature_large_dir(fs) &&
+> +		    (LINUX_S_ISDIR(inode->i_mode) && =
+inode->i_size_high)))
+> 			mark_inode_bad(ctx, ino);
+> 		if ((fs->super->s_creator_os !=3D EXT2_OS_HURD) &&
+> 		    !ext2fs_has_feature_64bit(fs->super) &&
+> @@ -2469,7 +2470,7 @@ static int handle_htree(e2fsck_t ctx, struct =
+problem_context *pctx,
+> 		return 1;
+>=20
+> 	pctx->num =3D root->indirect_levels;
+> -	if ((root->indirect_levels > 1) &&
+> +	if ((root->indirect_levels > ext2_dir_htree_level(fs)) &&
+> 	    fix_problem(ctx, PR_1_HTREE_DEPTH, pctx))
+> 		return 1;
+>=20
+> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+> index b89ebc9..139d48f 100644
+> --- a/e2fsck/pass2.c
+> +++ b/e2fsck/pass2.c
+> @@ -1058,7 +1058,8 @@ inline_read_fail:
+> 			dx_db->flags |=3D DX_FLAG_FIRST | DX_FLAG_LAST;
+> 			if ((root->reserved_zero ||
+> 			     root->info_length < 8 ||
+> -			     root->indirect_levels > 1) &&
+> +			     root->indirect_levels
+> +				> ext2_dir_htree_level(fs)) &&
+
+(style) '>' operator at the end of the previous line
+
+> 			    fix_problem(ctx, PR_2_HTREE_BAD_ROOT, =
+&cd->pctx)) {
+> 				clear_htree(ctx, ino);
+> 				dx_dir->numblocks =3D 0;
+> @@ -1811,7 +1812,7 @@ int e2fsck_process_bad_inode(e2fsck_t ctx, =
+ext2_ino_t dir,
+> 		} else
+> 			not_fixed++;
+> 	}
+> -	if (inode.i_size_high &&
+> +	if (inode.i_size_high && !ext2fs_has_feature_large_dir(fs) &&
+> 	    LINUX_S_ISDIR(inode.i_mode)) {
+> 		if (fix_problem(ctx, PR_2_DIR_SIZE_HIGH_ZERO, &pctx)) {
+> 			inode.i_size_high =3D 0;
+> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+> index 195e366..6d9a5d0 100644
+> --- a/lib/ext2fs/ext2_fs.h
+> +++ b/lib/ext2fs/ext2_fs.h
+> @@ -921,7 +921,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		=
+4, ENCRYPT)
+>=20
+> #define EXT2_FEATURE_COMPAT_SUPP	0
+> #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| =
+\
+> -				       EXT4_FEATURE_INCOMPAT_MMP)
+> +				       EXT4_FEATURE_INCOMPAT_MMP|\
+
+(style) space before that '\', though I do see it is very inconsistent =
+here
+
+> +				       EXT4_FEATURE_INCOMPAT_LARGEDIR)
+> #define EXT2_FEATURE_RO_COMPAT_SUPP	=
+(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+> 					 =
+EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+> 					 =
+EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 786ded8..d714b44 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -588,7 +588,8 @@ typedef struct ext2_icount *ext2_icount_t;
+> 					 EXT4_FEATURE_INCOMPAT_64BIT|\
+> 					 =
+EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
+> 					 EXT4_FEATURE_INCOMPAT_ENCRYPT|\
+> -					 =
+EXT4_FEATURE_INCOMPAT_CSUM_SEED)
+> +					 =
+EXT4_FEATURE_INCOMPAT_CSUM_SEED|\
+> +					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
+>=20
+> #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	=
+(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+> 					 =
+EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+> @@ -1924,6 +1925,24 @@ _INLINE_ blk_t =
+ext2fs_inode_data_blocks(ext2_filsys fs,
+> 	return (blk_t) ext2fs_inode_data_blocks2(fs, inode);
+> }
+>=20
+> +/* htree levels for ext4 */
+> +#define EXT4_HTREE_LEVEL_COMPAT 1
+> +#define EXT4_HTREE_LEVEL	3
+> +
+> +_INLINE_ int ext2fs_has_feature_large_dir(ext2_filsys fs)
+> +{
+> +	return EXT2_HAS_INCOMPAT_FEATURE(fs->super,
+> +					 =
+EXT4_FEATURE_INCOMPAT_LARGEDIR);
+> +}
+> +
+> +_INLINE_ unsigned int ext2_dir_htree_level(ext2_filsys fs)
+> +{
+> +	if (ext2fs_has_feature_large_dir(fs))
+> +		return EXT4_HTREE_LEVEL;
+> +
+> +	return EXT4_HTREE_LEVEL_COMPAT;
+> +}
+> +
+> /*
+>  * This is an efficient, overflow safe way of calculating ceil((1.0 * =
+a) / b)
+>  */
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index 9f18c83..b2bf461 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -1081,7 +1081,8 @@ static __u32 ok_features[3] =3D {
+> 		EXT4_FEATURE_INCOMPAT_64BIT|
+> 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
+> 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+> -		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
+> +		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+> +		EXT4_FEATURE_INCOMPAT_LARGEDIR,
+> 	/* R/O compat */
+> 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
+> 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 6239577..f78d105 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -156,7 +156,8 @@ static __u32 ok_features[3] =3D {
+> 		EXT4_FEATURE_INCOMPAT_MMP |
+> 		EXT4_FEATURE_INCOMPAT_64BIT |
+> 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+> -		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
+> +		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+> +		EXT4_FEATURE_INCOMPAT_LARGEDIR,
+> 	/* R/O compat */
+> 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+> 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 > --
-> 2.11.1
+> 1.7.1
 >=20
 
 
@@ -75,7 +225,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_2F5693DB-64E7-41A9-A3DF-4198C244D350
+--Apple-Mail=_E04D75EF-91ED-4184-8C81-D04096BA20FE
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -86,9 +236,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFYo2NapIg59Q01vtYRAkOcAKC2wjlrkyqvc/+O2IrtPVodID8UXgCgxNfX
-/YuSEElSy34/SHJqSOIIgaE=
-=zgz5
+iD8DBQFYo2RGpIg59Q01vtYRAmaWAJ91pGhkVirwhJn0Uep7c8VMj+vZDQCg4Exf
+VFwXS3kcldMH7AqRpNQdAyw=
+=bEW2
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_2F5693DB-64E7-41A9-A3DF-4198C244D350--
+--Apple-Mail=_E04D75EF-91ED-4184-8C81-D04096BA20FE--
