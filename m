@@ -1,140 +1,155 @@
-From: thanumalayan mad <madthanu@gmail.com>
-Subject: Re: e2fsck exit codes
-Date: Tue, 14 Feb 2017 11:00:51 -0800
-Message-ID: <CAJ6LpRpe6KfwoWvCw6cDwWg6=BxtcbXnSjLN358OgZ2obGcxsQ@mail.gmail.com>
-References: <CAJ6LpRpE71KHDip2Eb380xQ8nQQUyPCrOCFekK5xuz4JFhn5Pg@mail.gmail.com>
- <20170214170101.irgf4uvvvbbepmip@thunk.org>
-Reply-To: madthanu@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ot0-f173.google.com ([74.125.82.173]:33255 "EHLO
-        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753116AbdBNTBN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Feb 2017 14:01:13 -0500
-Received: by mail-ot0-f173.google.com with SMTP id 73so101371456otj.0
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Feb 2017 11:01:13 -0800 (PST)
-In-Reply-To: <20170214170101.irgf4uvvvbbepmip@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 5/7] nonblocking aio: ext4
+Date: Tue, 14 Feb 2017 12:52:17 -0700
+Message-ID: <5C94A069-0A0C-4B99-9B32-C6750AD2388B@dilger.ca>
+References: <20170214024603.9563-1-rgoldwyn@suse.de>
+ <20170214024603.9563-6-rgoldwyn@suse.de>
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_BDC9A4CF-CE3B-49AC-8852-1081693B6D51";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.cz,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>,
+        linux-ext4@vger.kernel.org
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170214024603.9563-6-rgoldwyn@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Thank you for the quick reply! (I was curious about the free-blocks
-count too, so thanks for explaining that.) Reponses inlined:
 
-On Tue, Feb 14, 2017 at 9:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> The way you can tell whether or not the file system has errors is to
-> run e2fsck -fn:
->
-> % e2fsck -fn /tmp/foo.img
-> e2fsck 1.43.4 (31-Jan-2017)
-> Warning: skipping journal recovery because doing a read-only filesystem check.
-> Pass 1: Checking inodes, blocks, and sizes
-> Inode 15 extent tree (at level 1) could be shorter.  Fix? no
->
-> Inode 115 extent tree (at level 1) could be shorter.  Fix? no
->
-> Inode 365 extent tree (at level 1) could be shorter.  Fix? no
->
-> Inode 741 extent tree (at level 1) could be shorter.  Fix? no
->
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> Free blocks count wrong (6830, counted=163).
-> Fix? no
->
-> Free inodes count wrong (2037, counted=0).
-> Fix? no
->
-> /tmp/foo.img: 11/2048 files (900.0% non-contiguous), 1362/8192 blocks
-> % echo $?
-> 0
->
-> If the file system has an error that needs to be fixed, it will return
-> an exit status of 4:
+--Apple-Mail=_BDC9A4CF-CE3B-49AC-8852-1081693B6D51
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-I also tested "fsck.ext4 -fn", and it returns 4 even when there is no
-disk corruption. That said, doing a "fsck -E journal_only" followed by
-a "fsck -fn" does seem to work:
 
-=====
+> On Feb 13, 2017, at 7:46 PM, Goldwyn Rodrigues <rgoldwyn@suse.de> =
+wrote:
+>=20
+> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+>=20
+> Return EAGAIN if any of the following checks fail for direct I/O:
+> + i_rwsem is lockable
+> + Writing beyond end of file (will trigger allocation)
+> + Blocks are allocated at the write location
+>=20
+> Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+> ---
+> fs/ext4/file.c | 28 ++++++++++++++++++++++------
+> 1 file changed, 22 insertions(+), 6 deletions(-)
+>=20
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 2a822d3..c8d1e41 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -93,11 +93,16 @@ ext4_file_write_iter(struct kiocb *iocb, struct =
+iov_iter *from)
+> {
+> 	struct inode *inode =3D file_inode(iocb->ki_filp);
+> 	int o_direct =3D iocb->ki_flags & IOCB_DIRECT;
+> +	int nonblocking =3D iocb->ki_flags & IOCB_NONBLOCKING;
+> 	int unaligned_aio =3D 0;
+> 	int overwrite =3D 0;
+> 	ssize_t ret;
+>=20
+> -	inode_lock(inode);
+> +	if (o_direct && nonblocking) {
+> +		if (!inode_trylock(inode))
+> +			return -EAGAIN;
 
-desky madthanu # fsck.ext4 -fn /dev/sdb
-e2fsck 1.42.13 (17-May-2015)
-Warning: skipping journal recovery because doing a read-only filesystem check.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Entry '1' in / (2) references inode 524289 in group 64 where
-_INODE_UNINIT is set.
-Fix? no
-Entry '1' in / (2) has deleted/unused inode 524289.  Clear? no
-Entry '2' in / (2) references inode 131073 in group 16 where
-_INODE_UNINIT is set.
-Fix? no
-Entry '2' in / (2) has deleted/unused inode 131073.  Clear? no
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Inode 2 ref count is 5, should be 3.  Fix? no
-Pass 5: Checking group summary information
-Block bitmap differences:  -(8871--9768) -(2105376--2106287)
-Fix? no
-Free blocks count wrong for group #0 (23897, counted=22999).
-Fix? no
-Free blocks count wrong for group #64 (24544, counted=23632).
-Fix? no
-Free blocks count wrong (2541777, counted=2539967).
-Fix? no
-Inode bitmap differences:  -(12--8192)
-Fix? no
-Free inodes count wrong for group #0 (8181, counted=0).
-Fix? no
-Free inodes count wrong (655349, counted=647168).
-Fix? no
-/dev/sdb: ********** WARNING: Filesystem still has errors **********
-/dev/sdb: 11/655360 files (0.0% non-contiguous), 79663/2621440 blocks
+Why do these all return -EAGAIN instead of -EWOULDBLOCK?  -EAGAIN is =
+already
+used in a number of places, and -EWOULDBLOCK seems more correct in the
+"nonblocking" case?
 
-desky madthanu # echo $?
-4
+> +	} else
+> +		inode_lock(inode);
 
-desky madthanu # fsck.ext4 -E journal_only /dev/sdb
-e2fsck 1.42.13 (17-May-2015)
-/dev/sdb: recovering journal
+(style) "else" blocks should have braces when the "if" block has braces
 
-desky madthanu # echo $?
-0
+> 	ret =3D generic_write_checks(iocb, from);
+> 	if (ret <=3D 0)
+> 		goto out;
+> @@ -132,12 +137,18 @@ ext4_file_write_iter(struct kiocb *iocb, struct =
+iov_iter *from)
+> 	if (o_direct) {
+> 		size_t length =3D iov_iter_count(from);
+> 		loff_t pos =3D iocb->ki_pos;
+> +		unsigned int blkbits =3D inode->i_blkbits;
+> +
+> +		if (nonblocking
+> +			&& (pos + length > =
+EXT4_BLOCK_ALIGN(i_size_read(inode), blkbits))) {
 
-desky madthanu # fsck.ext4 -fn /dev/sdb
-e2fsck 1.42.13 (17-May-2015)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong (2541777, counted=2412400).
-Fix? no
-Free inodes count wrong (655349, counted=595281).
-Fix? no
-/dev/sdb: 11/655360 files (136.4% non-contiguous), 79663/2621440 blocks
+(style) "&&" should go at the end of the previous line
+(style) continued lines should align after '(' on previous line
+(style) no need for parenthesis around that comparison
 
-desky madthanu # echo $?
-0
+> +			ret =3D -EAGAIN;
+> +			goto out;
+> +		}
+>=20
+> 		/* check whether we do a DIO overwrite or not */
+> -		if (ext4_should_dioread_nolock(inode) && !unaligned_aio =
+&&
+> -		    pos + length <=3D i_size_read(inode)) {
+> +		if ((ext4_should_dioread_nolock(inode) && !unaligned_aio =
+&&
+> +			    pos + length <=3D i_size_read(inode)) || =
+nonblocking) {
 
-=====
+(style) continued line should align after second '(' of previous line
 
-Would this be the way to proceed? I am hoping "-E journal_only" also
-takes care of clearing orphan inodes and still exits with a 0. (Note:
-The output I pasted above is derived from a file system created with
-default options, and does not switch off uninit_bg or
-lazy_itable_init.)
+> 			struct ext4_map_blocks map;
+> -			unsigned int blkbits =3D inode->i_blkbits;
+> 			int err, len;
+>=20
+> 			map.m_lblk =3D pos >> blkbits;
+> @@ -157,8 +168,13 @@ ext4_file_write_iter(struct kiocb *iocb, struct =
+iov_iter *from)
+> 			 * non-flags are returned.  So we should check
+> 			 * these two conditions.
+> 			 */
+> -			if (err =3D=3D len && (map.m_flags & =
+EXT4_MAP_MAPPED))
+> -				overwrite =3D 1;
+> +			if (err =3D=3D len) {
+> +			       if (map.m_flags & EXT4_MAP_MAPPED)
+> +				       overwrite =3D 1;
+> +			} else if (nonblocking) {
+> +				ret =3D -EAGAIN;
+> +				goto out;
+> +			}
+> 		}
+> 	}
+>=20
+> --
+> 2.10.2
+>=20
 
-> See the fsck.ext4 man page, the "EXIT CODE" section for an explanation
-> for how the exit codes work.
 
-Sorry, I did read through that, but got confused about the combination
-of the exit codes and command line options.
+Cheers, Andreas
 
-Thanks,
-Thanu
+
+
+
+
+
+--Apple-Mail=_BDC9A4CF-CE3B-49AC-8852-1081693B6D51
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFYo1/ypIg59Q01vtYRAhorAKC4oNL/LY8JqmtkXjAEt8ElCxeXuwCgw+pL
+rihl7skbHFXBTdK040EwgFk=
+=Rjyc
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_BDC9A4CF-CE3B-49AC-8852-1081693B6D51--
