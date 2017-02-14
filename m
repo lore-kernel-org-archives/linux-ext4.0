@@ -1,87 +1,108 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 5/7] nonblocking aio: ext4
-Date: Mon, 13 Feb 2017 20:46:01 -0600
-Message-ID: <20170214024603.9563-6-rgoldwyn@suse.de>
-References: <20170214024603.9563-1-rgoldwyn@suse.de>
-Cc: jack@suse.cz, Goldwyn Rodrigues <rgoldwyn@suse.com>,
-        linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170214024603.9563-1-rgoldwyn@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: don't BUG when truncating encrypted inodes on the orphan list
+Date: Tue, 14 Feb 2017 00:03:55 -0500
+Message-ID: <20170214050355.8676-1-tytso@mit.edu>
+References: <20170213181955.GA44321@google.com>
+Cc: ebiggers3@gmail.com, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37552 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750708AbdBNFED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Feb 2017 00:04:03 -0500
+In-Reply-To: <20170213181955.GA44321@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Fix a BUG when the kernel tries to mount a file system constructed as
+follows:
 
-Return EAGAIN if any of the following checks fail for direct I/O:
- + i_rwsem is lockable
- + Writing beyond end of file (will trigger allocation)
- + Blocks are allocated at the write location
+echo foo > foo.txt
+mke2fs -Fq -t ext4 -O encrypt foo.img 100
+debugfs -w foo.img << EOF
+write foo.txt a
+set_inode_field a i_flags 0x80800
+set_super_value s_last_orphan 12
+quit
+EOF
 
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+root@kvm-xfstests:~# mount -o loop foo.img /mnt
+[  160.238770] ------------[ cut here ]------------
+[  160.240106] kernel BUG at /usr/projects/linux/ext4/fs/ext4/inode.c:3874!
+[  160.240106] invalid opcode: 0000 [#1] SMP
+[  160.240106] Modules linked in:
+[  160.240106] CPU: 0 PID: 2547 Comm: mount Tainted: G        W       4.10.0-rc3-00034-gcdd33b941b67 #227
+[  160.240106] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.1-1 04/01/2014
+[  160.240106] task: f4518000 task.stack: f47b6000
+[  160.240106] EIP: ext4_block_zero_page_range+0x1a7/0x2b4
+[  160.240106] EFLAGS: 00010246 CPU: 0
+[  160.240106] EAX: 00000001 EBX: f7be4b50 ECX: f47b7dc0 EDX: 00000007
+[  160.240106] ESI: f43b05a8 EDI: f43babec EBP: f47b7dd0 ESP: f47b7dac
+[  160.240106]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+[  160.240106] CR0: 80050033 CR2: bfd85b08 CR3: 34a00680 CR4: 000006f0
+[  160.240106] Call Trace:
+[  160.240106]  ext4_truncate+0x1e9/0x3e5
+[  160.240106]  ext4_fill_super+0x286f/0x2b1e
+[  160.240106]  ? set_blocksize+0x2e/0x7e
+[  160.240106]  mount_bdev+0x114/0x15f
+[  160.240106]  ext4_mount+0x15/0x17
+[  160.240106]  ? ext4_calculate_overhead+0x39d/0x39d
+[  160.240106]  mount_fs+0x58/0x115
+[  160.240106]  vfs_kern_mount+0x4b/0xae
+[  160.240106]  do_mount+0x671/0x8c3
+[  160.240106]  ? _copy_from_user+0x70/0x83
+[  160.240106]  ? strndup_user+0x31/0x46
+[  160.240106]  SyS_mount+0x57/0x7b
+[  160.240106]  do_int80_syscall_32+0x4f/0x61
+[  160.240106]  entry_INT80_32+0x2f/0x2f
+[  160.240106] EIP: 0xb76b919e
+[  160.240106] EFLAGS: 00000246 CPU: 0
+[  160.240106] EAX: ffffffda EBX: 08053838 ECX: 08052188 EDX: 080537e8
+[  160.240106] ESI: c0ed0000 EDI: 00000000 EBP: 080537e8 ESP: bfa13660
+[  160.240106]  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 007b
+[  160.240106] Code: 59 8b 00 a8 01 0f 84 09 01 00 00 8b 07 66 25 00 f0 66 3d 00 80 75 61 89 f8 e8 3e e2 ff ff 84 c0 74 56 83 bf 48 02 00 00 00 75 02 <0f> 0b 81 7d e8 00 10 00 00 74 02 0f 0b 8b 43 04 8b 53 08 31 c9
+[  160.240106] EIP: ext4_block_zero_page_range+0x1a7/0x2b4 SS:ESP: 0068:f47b7dac
+[  160.317241] ---[ end trace d6a773a375c810a5 ]---
+
+The problem is that when the kernel tries to truncate an inode in
+ext4_truncate(), it tries to clear any on-disk data beyond i_size.
+Without the encryption key, it can't do that, and so it triggers a
+BUG.
+
+E2fsck does *not* provide this service, and in practice most file
+systems have their orphan list processed by e2fsck, so to avoid
+crashing, this patch skips this step if we don't have access to the
+encryption key (which is the case when processing the orphan list; in
+all other cases, we will have the encryption key, or the kernel
+wouldn't have allowed the file to be opened).
+
+An open question is whether the fact that e2fsck isn't clearing the
+bytes beyond i_size causing problems --- and if we've lived with it
+not doing it for so long, can we drop this from the kernel replay of
+the orphan list in all cases (not just when we don't have the key for
+encrypted inodes).
+
+Addresses-Google-Bug: #35209576
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/file.c | 28 ++++++++++++++++++++++------
- 1 file changed, 22 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 2a822d3..c8d1e41 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -93,11 +93,16 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	int o_direct = iocb->ki_flags & IOCB_DIRECT;
-+	int nonblocking = iocb->ki_flags & IOCB_NONBLOCKING;
- 	int unaligned_aio = 0;
- 	int overwrite = 0;
- 	ssize_t ret;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bc282f9d0969..43ce831cd7c7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3944,6 +3944,10 @@ static int ext4_block_truncate_page(handle_t *handle,
+ 	unsigned blocksize;
+ 	struct inode *inode = mapping->host;
  
--	inode_lock(inode);
-+	if (o_direct && nonblocking) {
-+		if (!inode_trylock(inode))
-+			return -EAGAIN;
-+	} else
-+		inode_lock(inode);
- 	ret = generic_write_checks(iocb, from);
- 	if (ret <= 0)
- 		goto out;
-@@ -132,12 +137,18 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (o_direct) {
- 		size_t length = iov_iter_count(from);
- 		loff_t pos = iocb->ki_pos;
-+		unsigned int blkbits = inode->i_blkbits;
++	/* If we are processing an encrypted inode during orphan list handling */
++	if (ext4_encrypted_inode(inode) && !fscrypt_has_encryption_key(inode))=
++		return 0;
 +
-+		if (nonblocking
-+			&& (pos + length > EXT4_BLOCK_ALIGN(i_size_read(inode), blkbits))) {
-+			ret = -EAGAIN;
-+			goto out;
-+		}
- 
- 		/* check whether we do a DIO overwrite or not */
--		if (ext4_should_dioread_nolock(inode) && !unaligned_aio &&
--		    pos + length <= i_size_read(inode)) {
-+		if ((ext4_should_dioread_nolock(inode) && !unaligned_aio &&
-+			    pos + length <= i_size_read(inode)) || nonblocking) {
- 			struct ext4_map_blocks map;
--			unsigned int blkbits = inode->i_blkbits;
- 			int err, len;
- 
- 			map.m_lblk = pos >> blkbits;
-@@ -157,8 +168,13 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			 * non-flags are returned.  So we should check
- 			 * these two conditions.
- 			 */
--			if (err == len && (map.m_flags & EXT4_MAP_MAPPED))
--				overwrite = 1;
-+			if (err == len) {
-+			       if (map.m_flags & EXT4_MAP_MAPPED)
-+				       overwrite = 1;
-+			} else if (nonblocking) {
-+				ret = -EAGAIN;
-+				goto out;
-+			}
- 		}
- 	}
+ 	blocksize = inode->i_sb->s_blocksize;
+ 	length = blocksize - (offset & (blocksize - 1));
  
 -- 
-2.10.2
+2.11.0.rc0.7.gbe5a750
