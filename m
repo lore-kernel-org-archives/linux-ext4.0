@@ -1,38 +1,54 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix fencepost in s_first_meta_bg validation
-Date: Wed, 15 Feb 2017 01:26:41 -0500
-Message-ID: <20170215062641.17620-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-It is OK for s_first_meta_bg to be equal to the number of block group
-descriptor blocks.  (It rarely happens, but it shouldn't cause any
-problems.)
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194567] ext4 no longer mounts
+Date: Wed, 15 Feb 2017 06:29:12 +0000
+Message-ID: <bug-194567-13602-VloytOnjIW@https.bugzilla.kernel.org/>
+References: <bug-194567-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60314 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751294AbdBOG3P (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Feb 2017 01:29:15 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CA2F12844A
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Feb 2017 06:29:14 +0000 (UTC)
+Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7327F2842E
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Feb 2017 06:29:14 +0000 (UTC)
+In-Reply-To: <bug-194567-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=194567
 
-Fixes: 3a4b77cd47bb837b8557595ec7425f281f2ca1fe
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Theodore Tso (tytso@mit.edu) changed:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dde14a7ac6d7..a673558fe5f8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3860,7 +3860,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
- 	if (ext4_has_feature_meta_bg(sb)) {
--		if (le32_to_cpu(es->s_first_meta_bg) >= db_count) {
-+		if (le32_to_cpu(es->s_first_meta_bg) > db_count) {
- 			ext4_msg(sb, KERN_WARNING,
- 				 "first meta block group too large: %u "
- 				 "(group descriptor block count %u)",
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #3 from Theodore Tso (tytso@mit.edu) ---
+Created attachment 254761
+  --> https://bugzilla.kernel.org/attachment.cgi?id=254761&action=edit
+ext4: fix fencepost in s_first_meta_bg validation
+
+Oops, thanks for reporting the bug.  This fix should take care of your issue.
+
+I was able to reproduce such a file system using:
+
+
+export MKE2FS_FIRST_META_BG=2
+mke2fs -t ext4 -b 4096 -N 90112 -I 128 -L DB -m 0 -O
+dir_index,extent,filetype,flex_bg,^has_journal,large_file,^resize_inode,sparse_super,uninit_bg,meta_bg,^metadata_csum,^64bit
+/tmp/test.img 8388608
+
+I'm not sure how it got into that state, but I'm guess it involved online
+resizing?
+
 -- 
-2.11.0.rc0.7.gbe5a750
+You are receiving this mail because:
+You are watching the assignee of the bug.
