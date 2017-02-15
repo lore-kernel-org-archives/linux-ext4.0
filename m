@@ -1,111 +1,165 @@
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH v3 4/4] tests: 3 level hash tree test
-Date: Wed, 15 Feb 2017 18:45:47 +0300
-Message-ID: <1487173547-95990-1-git-send-email-artem.blagodarenko@gmail.com>
-References: <40D3354F-7FF3-44E1-A122-0C0D21042BFF@dilger.ca>
-Cc: adilger.kernel@dilger.ca
+Subject: [PATCH v3 2/4] e2fsprogs: add support for 3-level htree
+Date: Wed, 15 Feb 2017 20:43:15 +0300
+Message-ID: <1487180595-900-1-git-send-email-artem.blagodarenko@gmail.com>
+References: <20170215054247.GA6804@birch.djwong.org>
+Cc: adilger.kernel@dilger.ca, darrick.wong@oracle.com,
+        alexey.lyashkov@gmail.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33388 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751140AbdBOPpx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Feb 2017 10:45:53 -0500
-Received: by mail-it0-f68.google.com with SMTP id e137so10159500itc.0
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Feb 2017 07:45:53 -0800 (PST)
-In-Reply-To: <40D3354F-7FF3-44E1-A122-0C0D21042BFF@dilger.ca>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:32849 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752363AbdBORnV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Feb 2017 12:43:21 -0500
+Received: by mail-it0-f67.google.com with SMTP id e137so10667866itc.0
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Feb 2017 09:43:21 -0800 (PST)
+In-Reply-To: <20170215054247.GA6804@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 
-Test is added that recreate directory (-fD fsck option)
-with 47.5k of 255-symbol name files. This amount of files
-can not be stored only in 2 hevel htree, so 3 levels are used.
+The INCOMPAT_LARGEDIR feature allows larger directories to
+be created, both with directory sizes over 2GB and and a
+maximum htree depth of 3 instead of the current limit of 2.
+These features are needed in order to exceed the currently
+limit of approximately 10M entries in a single directory
+for 4KB blocksize (~100k for 1KB).
 
+debugfs, e2fsck, ext2fs, mke2fs and tune2fs support is
+added.
+
+Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 ---
- tests/f_large_dir/expect |   12 +++++++++++
- tests/f_large_dir/name   |    1 +
- tests/f_large_dir/script |   47 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 60 insertions(+), 0 deletions(-)
+ e2fsck/pass1.c       |    5 +++--
+ e2fsck/pass2.c       |    5 +++--
+ lib/ext2fs/ext2_fs.h |    3 ++-
+ lib/ext2fs/ext2fs.h  |   15 ++++++++++++++-
+ misc/mke2fs.c        |    3 ++-
+ misc/tune2fs.c       |    3 ++-
+ 6 files changed, 26 insertions(+), 8 deletions(-)
 
-diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
-new file mode 100644
-index 0000000..b099460
---- /dev/null
-+++ b/tests/f_large_dir/expect
-@@ -0,0 +1,12 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Inode 13 ref count is 1, should be 47245.  Fix? yes
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ce37176..11546d7 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1716,7 +1716,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		}
+ 
+ 		if (inode->i_faddr || frag || fsize ||
+-		    (LINUX_S_ISDIR(inode->i_mode) && inode->i_size_high))
++		    (!ext2fs_has_feature_largedir(fs->super) &&
++		    (LINUX_S_ISDIR(inode->i_mode) && inode->i_size_high)))
+ 			mark_inode_bad(ctx, ino);
+ 		if ((fs->super->s_creator_os != EXT2_OS_HURD) &&
+ 		    !ext2fs_has_feature_64bit(fs->super) &&
+@@ -2469,7 +2470,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
+ 		return 1;
+ 
+ 	pctx->num = root->indirect_levels;
+-	if ((root->indirect_levels > 1) &&
++	if ((root->indirect_levels > ext2_dir_htree_level(fs)) &&
+ 	    fix_problem(ctx, PR_1_HTREE_DEPTH, pctx))
+ 		return 1;
+ 
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index b89ebc9..2f41fc4 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -1058,7 +1058,8 @@ inline_read_fail:
+ 			dx_db->flags |= DX_FLAG_FIRST | DX_FLAG_LAST;
+ 			if ((root->reserved_zero ||
+ 			     root->info_length < 8 ||
+-			     root->indirect_levels > 1) &&
++			     root->indirect_levels >=
++			     ext2_dir_htree_level(fs)) &&
+ 			    fix_problem(ctx, PR_2_HTREE_BAD_ROOT, &cd->pctx)) {
+ 				clear_htree(ctx, ino);
+ 				dx_dir->numblocks = 0;
+@@ -1811,7 +1812,7 @@ int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
+ 		} else
+ 			not_fixed++;
+ 	}
+-	if (inode.i_size_high &&
++	if (inode.i_size_high && !ext2fs_has_feature_largedir(fs->super) &&
+ 	    LINUX_S_ISDIR(inode.i_mode)) {
+ 		if (fix_problem(ctx, PR_2_DIR_SIZE_HIGH_ZERO, &pctx)) {
+ 			inode.i_size_high = 0;
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 195e366..66b7058 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -921,7 +921,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		4, ENCRYPT)
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	0
+ #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+-				       EXT4_FEATURE_INCOMPAT_MMP)
++				       EXT4_FEATURE_INCOMPAT_MMP| \
++				       EXT4_FEATURE_INCOMPAT_LARGEDIR)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 786ded8..c68be50 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -588,7 +588,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_INCOMPAT_64BIT|\
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
+ 					 EXT4_FEATURE_INCOMPAT_ENCRYPT|\
+-					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
++					 EXT4_FEATURE_INCOMPAT_CSUM_SEED|\
++					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
+ 
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+@@ -1924,6 +1925,18 @@ _INLINE_ blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+ 	return (blk_t) ext2fs_inode_data_blocks2(fs, inode);
+ }
+ 
++/* htree levels for ext4 */
++#define EXT4_HTREE_LEVEL_COMPAT 2
++#define EXT4_HTREE_LEVEL	3
 +
-+Pass 5: Checking group summary information
-+
-+test.img: ***** FILE SYSTEM WAS MODIFIED *****
-+test.img: 13/115368 files (0.0% non-contiguous), 32817/460800 blocks
-+Exit status is 1
-diff --git a/tests/f_large_dir/name b/tests/f_large_dir/name
-new file mode 100644
-index 0000000..4b96890
---- /dev/null
-+++ b/tests/f_large_dir/name
-@@ -0,0 +1 @@
-+optimize 3 level htree directories
-diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
-new file mode 100644
-index 0000000..e68576d
---- /dev/null
-+++ b/tests/f_large_dir/script
-@@ -0,0 +1,47 @@
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+E2FSCK=../e2fsck/e2fsck
-+
-+NAMELEN=255
-+DIRENT_SZ=8
-+BLOCKSZ=1024
-+DIRENT_PER_LEAF=$((BLOCKSZ / (NAMELEN + DIRENT_SZ)))
-+HEADER=32
-+INDEX_SZ=8
-+INDEX_L1=$(((BLOCKSZ - HEADER) / INDEX_SZ))
-+INDEX_L2=$(((BLOCKSZ - DIRENT_SZ) / INDEX_SZ))
-+ENTRIES=$((INDEX_L1 * INDEX_L2 * DIRENT_PER_LEAF))
-+
-+cp /dev/null $OUT
-+$MKE2FS -b 1024 -O large_dir,uninit_bg,dir_nlink -F $TMPFILE 460800 > /dev/null
++static inline unsigned int ext2_dir_htree_level(ext2_filsys fs)
 +{
-+	echo "feature large_dir"
-+	echo "mkdir /foo"
-+	echo "cd /foo"
-+	touch foofile
-+	echo "write foofile foofile"
-+	for ((i = 0; i < $ENTRIES; i++)); do
-+		[[ $(( i % DIRENT_PER_LEAF )) -eq 0 ]] && echo "expand ./" 
-+		[[ $(( i % 5000 )) -eq 0 ]] && >&2 echo "$i processed"
-+		printf "ln foofile %0255X\n" $i
-+	done
-+} | $DEBUGFS -w -f /dev/stdin $TMPFILE > /dev/null
++	if (ext2fs_has_feature_largedir(fs->super))
++		return EXT4_HTREE_LEVEL;
 +
-+$E2FSCK -yfD $TMPFILE > $OUT.new 2>&1
-+status=$?
-+echo Exit status is $status >> $OUT.new
-+sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-+rm -f $OUT.new
++	return EXT4_HTREE_LEVEL_COMPAT;
++}
 +
-+cmp -s $OUT $EXP
-+RC=$?
-+if [ $RC -eq 0 ]; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff -u $EXP $OUT > $test_name.failed
-+fi
-+
-+
-+
+ /*
+  * This is an efficient, overflow safe way of calculating ceil((1.0 * a) / b)
+  */
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index 9f18c83..b2bf461 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1081,7 +1081,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_64BIT|
+ 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+-		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
++		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
++		EXT4_FEATURE_INCOMPAT_LARGEDIR,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 6239577..f78d105 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -156,7 +156,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_MMP |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+-		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
++		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
++		EXT4_FEATURE_INCOMPAT_LARGEDIR,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 -- 
 1.7.1
