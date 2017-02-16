@@ -1,51 +1,53 @@
-From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH] mm,x86: fix SMP x86 32bit build for native_pud_clear()
-Date: Thu, 16 Feb 2017 09:27:52 -0700
-Message-ID: <7280edbc-ba2b-2b72-680a-9408a8e764b9@intel.com>
-References: <148719066814.31111.3239231168815337012.stgit@djiang5-desk3.ch.intel.com>
- <68216ac2-e194-30fa-9dcb-2020e8953bf5@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: remove duplicate default values in mke2fs.conf
+Date: Thu, 16 Feb 2017 11:28:47 -0500
+Message-ID: <20170216162847.5qjwfr6lvy6rdzgv@thunk.org>
+References: <20170211151535.3242-1-xose.vazquez@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jack-IBi9RG/b67k@public.gmane.org, alexander.kapshuk-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- vbabka-AlSwsSmVLrQ@public.gmane.org, keescook-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org
-To: Dave Hansen <dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <68216ac2-e194-30fa-9dcb-2020e8953bf5-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: EXT4 ml <linux-ext4@vger.kernel.org>
+To: Xose Vazquez Perez <xose.vazquez@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:39244 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932385AbdBPQ2u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 16 Feb 2017 11:28:50 -0500
+Content-Disposition: inline
+In-Reply-To: <20170211151535.3242-1-xose.vazquez@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Feb 11, 2017 at 04:15:35PM +0100, Xose Vazquez Perez wrote:
+> @@ -12,11 +12,9 @@
+>  	}
+>  	ext4 = {
+>  		features = has_journal,extent,huge_file,flex_bg,uninit_bg,64bit,dir_nlink,extra_isize
+> -		inode_size = 256
+>  	}
+>  	ext4dev = {
+>  		features = has_journal,extent,huge_file,flex_bg,uninit_bg,inline_data,64bit,dir_nlink,extra_isize
+> -		inode_size = 256
+>  		options = test_fs=1
+>  	}
+>  	small = {
 
+These are duplicate values (although they don't do any harm).
 
-On 02/16/2017 08:42 AM, Dave Hansen wrote:
-> On 02/15/2017 12:31 PM, Dave Jiang wrote:
->> The fix introduced by e4decc90 to fix the UP case for 32bit x86, however
->> that broke the SMP case that was working previously. Add ifdef so the dummy
->> function only show up for 32bit UP case only.
-> 
-> Could you elaborate a bit on how it broke things?
+> @@ -47,6 +45,5 @@
+>  		blocksize = -1
+>  	}
+>  	hurd = {
+> -	     blocksize = 4096
+>  	     inode_size = 128
+>  	}
 
-So originally 0-day build found that commit a10a1701 (mm, x86: add
-support for PUD-sized transparent hugepages) is breaking 32bit x86 UP
-config because native_pud_clear() was missing to satisfy
-arch/x86/include/asm/pgtable.h. I added a dummy function to satisfy that
-with commit e4decc90 (mm,x86: native_pud_clear missing on i386 build).
-However in the process of doing that, I broke the 32bit x86 SMP config
-that was working before.
+This value *is* required.  The Hurd has a re-implementation of the
+ext2/3/4 file system, which is very limited.  One of its limitations
+is the block size must be equal to the page size (and it only works on
+x86.)   So the "blocksize = 4096" is required so that:
 
-> 
->> Fix: e4decc90 mm,x86: native_pud_clear missing on i386 build
-> 
-> Which tree is that in, btw?
-> 
-linux-next-20170214 I believe
+	mke2fs -o hurd /tmp/foo.img 1024
+
+will use a 4k block size even for small file systems.
+
+     	      	    	      - Ted
