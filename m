@@ -1,123 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: don't start checking inode flag values for deleted inodes
-Date: Fri, 17 Feb 2017 12:56:35 -0500
-Message-ID: <20170217175635.3961-1-tytso@mit.edu>
-Cc: Eric Whitney <enwlinux@gmail.com>, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] e2fsck: make problem comments match error messages
+Date: Fri, 17 Feb 2017 12:58:11 -0500
+Message-ID: <20170217175811.wp4qmdgei67diitr@thunk.org>
+References: <1486797876-4390-1-git-send-email-adilger@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38396 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:38394 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934144AbdBQSgd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 17 Feb 2017 13:36:33 -0500
+        id S934365AbdBQSgb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 17 Feb 2017 13:36:31 -0500
+Content-Disposition: inline
+In-Reply-To: <1486797876-4390-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 47b8941774df "e2fsck: make sure system.data xattr is present"
-exposed a bug in e2fsck's pass 1 handling which caused the xfstests's
-generic/079 to fail if the inline_data feature was enabled.  The
-problem was that e2fsck was checking if an inode with inline data had
-the system.xattr EA before checking to see if that inode was still in
-use --- and this invariant isn't necessarily true for deleted inodes.
-There were a number of other checks that were done too early that
-could also potentially cause false positive complaints, although those
-would normally only happen if a now-unused portion of the inode table
-had gotten corrupted, or if tune2fs had disabled a particular file
-system feature and there old, deleted inodes that had values
-inconsistent with the new file system configuration.
+On Sat, Feb 11, 2017 at 12:24:36AM -0700, Andreas Dilger wrote:
+> Since the @x compression obscures e2fsck problem error messages
+> from being found by normal searching, make the comment for each
+> error match the actual error message so that they can be found
+> more easily.
+> 
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-Reported-by: Eric Whitney <enwlinux@gmail.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- e2fsck/pass1.c | 82 +++++++++++++++++++++++++++++-----------------------------
- 1 file changed, 41 insertions(+), 41 deletions(-)
+Applied, thanks.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index f13809ef..1714897a 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1316,6 +1316,34 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		}
- 		failed_csum = pctx.errcode != 0;
- 
-+		/*
-+		 * Check for inodes who might have been part of the
-+		 * orphaned list linked list.  They should have gotten
-+		 * dealt with by now, unless the list had somehow been
-+		 * corrupted.
-+		 *
-+		 * FIXME: In the future, inodes which are still in use
-+		 * (and which are therefore) pending truncation should
-+		 * be handled specially.  Right now we just clear the
-+		 * dtime field, and the normal e2fsck handling of
-+		 * inodes where i_size and the inode blocks are
-+		 * inconsistent is to fix i_size, instead of releasing
-+		 * the extra blocks.  This won't catch the inodes that
-+		 * was at the end of the orphan list, but it's better
-+		 * than nothing.  The right answer is that there
-+		 * shouldn't be any bugs in the orphan list handling.  :-)
-+		 */
-+		if (inode->i_dtime && low_dtime_check &&
-+		    inode->i_dtime < ctx->fs->super->s_inodes_count) {
-+			if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
-+				inode->i_dtime = inode->i_links_count ?
-+					0 : ctx->now;
-+				e2fsck_write_inode(ctx, ino, inode,
-+						   "pass1");
-+				failed_csum = 0;
-+			}
-+		}
-+
- 		if (inode->i_links_count) {
- 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
- 					   ino, inode->i_links_count);
-@@ -1325,6 +1353,19 @@ void e2fsck_pass1(e2fsck_t ctx)
- 				ctx->flags |= E2F_FLAG_ABORT;
- 				goto endit;
- 			}
-+		} else if ((ino >= EXT2_FIRST_INODE(fs->super)) &&
-+			   !quota_inum_is_reserved(fs, ino)) {
-+			if (!inode->i_dtime && inode->i_mode) {
-+				if (fix_problem(ctx,
-+					    PR_1_ZERO_DTIME, &pctx)) {
-+					inode->i_dtime = ctx->now;
-+					e2fsck_write_inode(ctx, ino, inode,
-+							   "pass1");
-+					failed_csum = 0;
-+				}
-+			}
-+			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
-+			continue;
- 		}
- 
- 		/* Conflicting inlinedata/extents inode flags? */
-@@ -1641,48 +1682,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			continue;
- 		}
- 
--		/*
--		 * Check for inodes who might have been part of the
--		 * orphaned list linked list.  They should have gotten
--		 * dealt with by now, unless the list had somehow been
--		 * corrupted.
--		 *
--		 * FIXME: In the future, inodes which are still in use
--		 * (and which are therefore) pending truncation should
--		 * be handled specially.  Right now we just clear the
--		 * dtime field, and the normal e2fsck handling of
--		 * inodes where i_size and the inode blocks are
--		 * inconsistent is to fix i_size, instead of releasing
--		 * the extra blocks.  This won't catch the inodes that
--		 * was at the end of the orphan list, but it's better
--		 * than nothing.  The right answer is that there
--		 * shouldn't be any bugs in the orphan list handling.  :-)
--		 */
--		if (inode->i_dtime && low_dtime_check &&
--		    inode->i_dtime < ctx->fs->super->s_inodes_count) {
--			if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
--				inode->i_dtime = inode->i_links_count ?
--					0 : ctx->now;
--				e2fsck_write_inode(ctx, ino, inode,
--						   "pass1");
--				failed_csum = 0;
--			}
--		}
+						- Ted
