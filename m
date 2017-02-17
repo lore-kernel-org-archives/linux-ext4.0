@@ -1,169 +1,123 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v3 4/4] tests: 3 level hash tree test
-Date: Thu, 16 Feb 2017 21:05:52 -0700
-Message-ID: <CD5FC1CB-9462-4EA0-A7DF-6D91A9882DE6@dilger.ca>
-References: <40D3354F-7FF3-44E1-A122-0C0D21042BFF@dilger.ca>
- <1487173547-95990-1-git-send-email-artem.blagodarenko@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_1A7ED48A-C1DD-491D-A67D-47445B1F039A";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        adilger.kernel@dilger.ca
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] e2fsck: don't start checking inode flag values for deleted inodes
+Date: Fri, 17 Feb 2017 12:56:35 -0500
+Message-ID: <20170217175635.3961-1-tytso@mit.edu>
+Cc: Eric Whitney <enwlinux@gmail.com>, Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33523 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755380AbdBQEF4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Feb 2017 23:05:56 -0500
-Received: by mail-it0-f65.google.com with SMTP id e137so864572itc.0
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Feb 2017 20:05:56 -0800 (PST)
-In-Reply-To: <1487173547-95990-1-git-send-email-artem.blagodarenko@gmail.com>
+Received: from imap.thunk.org ([74.207.234.97]:38396 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934144AbdBQSgd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 17 Feb 2017 13:36:33 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Commit 47b8941774df "e2fsck: make sure system.data xattr is present"
+exposed a bug in e2fsck's pass 1 handling which caused the xfstests's
+generic/079 to fail if the inline_data feature was enabled.  The
+problem was that e2fsck was checking if an inode with inline data had
+the system.xattr EA before checking to see if that inode was still in
+use --- and this invariant isn't necessarily true for deleted inodes.
+There were a number of other checks that were done too early that
+could also potentially cause false positive complaints, although those
+would normally only happen if a now-unused portion of the inode table
+had gotten corrupted, or if tune2fs had disabled a particular file
+system feature and there old, deleted inodes that had values
+inconsistent with the new file system configuration.
 
---Apple-Mail=_1A7ED48A-C1DD-491D-A67D-47445B1F039A
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Reported-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ e2fsck/pass1.c | 82 +++++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 41 insertions(+), 41 deletions(-)
 
-On Feb 15, 2017, at 8:45 AM, Artem Blagodarenko =
-<artem.blagodarenko@gmail.com> wrote:
->=20
-> From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
->=20
-> Test is added that recreate directory (-fD fsck option)
-> with 47.5k of 255-symbol name files. This amount of files
-> can not be stored only in 2 hevel htree, so 3 levels are used.
->=20
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-> ---
-> tests/f_large_dir/expect |   12 +++++++++++
-> tests/f_large_dir/name   |    1 +
-> tests/f_large_dir/script |   47 =
-++++++++++++++++++++++++++++++++++++++++++++++
-> 3 files changed, 60 insertions(+), 0 deletions(-)
->=20
-> diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
-> new file mode 100644
-> index 0000000..b099460
-> --- /dev/null
-> +++ b/tests/f_large_dir/expect
-> @@ -0,0 +1,12 @@
-> +Pass 1: Checking inodes, blocks, and sizes
-> +Pass 2: Checking directory structure
-> +Pass 3: Checking directory connectivity
-> +Pass 3A: Optimizing directories
-> +Pass 4: Checking reference counts
-> +Inode 13 ref count is 1, should be 47245.  Fix? yes
-> +
-> +Pass 5: Checking group summary information
-> +
-> +test.img: ***** FILE SYSTEM WAS MODIFIED *****
-> +test.img: 13/115368 files (0.0% non-contiguous), 32817/460800 blocks
-> +Exit status is 1
-> diff --git a/tests/f_large_dir/name b/tests/f_large_dir/name
-> new file mode 100644
-> index 0000000..4b96890
-> --- /dev/null
-> +++ b/tests/f_large_dir/name
-> @@ -0,0 +1 @@
-> +optimize 3 level htree directories
-> diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
-> new file mode 100644
-> index 0000000..e68576d
-> --- /dev/null
-> +++ b/tests/f_large_dir/script
-> @@ -0,0 +1,47 @@
-> +OUT=3D$test_name.log
-> +EXP=3D$test_dir/expect
-> +E2FSCK=3D../e2fsck/e2fsck
-> +
-> +NAMELEN=3D255
-> +DIRENT_SZ=3D8
-> +BLOCKSZ=3D1024
-> +DIRENT_PER_LEAF=3D$((BLOCKSZ / (NAMELEN + DIRENT_SZ)))
-> +HEADER=3D32
-> +INDEX_SZ=3D8
-> +INDEX_L1=3D$(((BLOCKSZ - HEADER) / INDEX_SZ))
-> +INDEX_L2=3D$(((BLOCKSZ - DIRENT_SZ) / INDEX_SZ))
-> +ENTRIES=3D$((INDEX_L1 * INDEX_L2 * DIRENT_PER_LEAF))
-> +
-> +cp /dev/null $OUT
-> +$MKE2FS -b 1024 -O large_dir,uninit_bg,dir_nlink -F $TMPFILE 460800 > =
-/dev/null
-
-This could use "-b $BLOCKSZ" for consistency, and determine the =
-filesystem size
-from the number of leaf blocks, though I'm not sure what that would be =
-offhand.
-It could also use "-N 64" or similar to reduce the number of inode =
-blocks allocated.
-
-Just a suggestion, I don't think it is critical and the test is OK =
-as-is.
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-> +{
-> +	echo "feature large_dir"
-> +	echo "mkdir /foo"
-> +	echo "cd /foo"
-> +	touch foofile
-> +	echo "write foofile foofile"
-> +	for ((i =3D 0; i < $ENTRIES; i++)); do
-> +		[[ $(( i % DIRENT_PER_LEAF )) -eq 0 ]] && echo "expand =
-./"
-> +		[[ $(( i % 5000 )) -eq 0 ]] && >&2 echo "$i processed"
-> +		printf "ln foofile %0255X\n" $i
-> +	done
-> +} | $DEBUGFS -w -f /dev/stdin $TMPFILE > /dev/null
-> +
-> +$E2FSCK -yfD $TMPFILE > $OUT.new 2>&1
-> +status=3D$?
-> +echo Exit status is $status >> $OUT.new
-> +sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-> +rm -f $OUT.new
-> +
-> +cmp -s $OUT $EXP
-> +RC=3D$?
-> +if [ $RC -eq 0 ]; then
-> +	echo "$test_name: $test_description: ok"
-> +	touch $test_name.ok
-> +else
-> +	echo "$test_name: $test_description: failed"
-> +	diff -u $EXP $OUT > $test_name.failed
-> +fi
-> +
-> +
-> +
-> --
-> 1.7.1
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_1A7ED48A-C1DD-491D-A67D-47445B1F039A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYpnagpIg59Q01vtYRAoPiAKDw0l99hRMGCOXskDuGz/I/oRaZ6ACdFZaz
-ZgDRKgz8LvcSY/v6QMxxNNM=
-=cEYj
------END PGP SIGNATURE-----
-
---Apple-Mail=_1A7ED48A-C1DD-491D-A67D-47445B1F039A--
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index f13809ef..1714897a 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1316,6 +1316,34 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		}
+ 		failed_csum = pctx.errcode != 0;
+ 
++		/*
++		 * Check for inodes who might have been part of the
++		 * orphaned list linked list.  They should have gotten
++		 * dealt with by now, unless the list had somehow been
++		 * corrupted.
++		 *
++		 * FIXME: In the future, inodes which are still in use
++		 * (and which are therefore) pending truncation should
++		 * be handled specially.  Right now we just clear the
++		 * dtime field, and the normal e2fsck handling of
++		 * inodes where i_size and the inode blocks are
++		 * inconsistent is to fix i_size, instead of releasing
++		 * the extra blocks.  This won't catch the inodes that
++		 * was at the end of the orphan list, but it's better
++		 * than nothing.  The right answer is that there
++		 * shouldn't be any bugs in the orphan list handling.  :-)
++		 */
++		if (inode->i_dtime && low_dtime_check &&
++		    inode->i_dtime < ctx->fs->super->s_inodes_count) {
++			if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
++				inode->i_dtime = inode->i_links_count ?
++					0 : ctx->now;
++				e2fsck_write_inode(ctx, ino, inode,
++						   "pass1");
++				failed_csum = 0;
++			}
++		}
++
+ 		if (inode->i_links_count) {
+ 			pctx.errcode = ext2fs_icount_store(ctx->inode_link_info,
+ 					   ino, inode->i_links_count);
+@@ -1325,6 +1353,19 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 				ctx->flags |= E2F_FLAG_ABORT;
+ 				goto endit;
+ 			}
++		} else if ((ino >= EXT2_FIRST_INODE(fs->super)) &&
++			   !quota_inum_is_reserved(fs, ino)) {
++			if (!inode->i_dtime && inode->i_mode) {
++				if (fix_problem(ctx,
++					    PR_1_ZERO_DTIME, &pctx)) {
++					inode->i_dtime = ctx->now;
++					e2fsck_write_inode(ctx, ino, inode,
++							   "pass1");
++					failed_csum = 0;
++				}
++			}
++			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++			continue;
+ 		}
+ 
+ 		/* Conflicting inlinedata/extents inode flags? */
+@@ -1641,48 +1682,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			continue;
+ 		}
+ 
+-		/*
+-		 * Check for inodes who might have been part of the
+-		 * orphaned list linked list.  They should have gotten
+-		 * dealt with by now, unless the list had somehow been
+-		 * corrupted.
+-		 *
+-		 * FIXME: In the future, inodes which are still in use
+-		 * (and which are therefore) pending truncation should
+-		 * be handled specially.  Right now we just clear the
+-		 * dtime field, and the normal e2fsck handling of
+-		 * inodes where i_size and the inode blocks are
+-		 * inconsistent is to fix i_size, instead of releasing
+-		 * the extra blocks.  This won't catch the inodes that
+-		 * was at the end of the orphan list, but it's better
+-		 * than nothing.  The right answer is that there
+-		 * shouldn't be any bugs in the orphan list handling.  :-)
+-		 */
+-		if (inode->i_dtime && low_dtime_check &&
+-		    inode->i_dtime < ctx->fs->super->s_inodes_count) {
+-			if (fix_problem(ctx, PR_1_LOW_DTIME, &pctx)) {
+-				inode->i_dtime = inode->i_links_count ?
+-					0 : ctx->now;
+-				e2fsck_write_inode(ctx, ino, inode,
+-						   "pass1");
+-				failed_csum = 0;
+-			}
+-		}
