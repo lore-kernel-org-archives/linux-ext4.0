@@ -1,71 +1,143 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] ext4: inherit encryption xattr before other xattrs
-Date: Fri, 17 Feb 2017 15:33:21 -0800
-Message-ID: <20170217233321.108637-1-ebiggers3@gmail.com>
-Cc: linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:35019 "EHLO
-        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964847AbdBQXhA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Feb 2017 18:37:00 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 1/8] vfs: add common GETFSMAP ioctl definitions
+Date: Fri, 17 Feb 2017 17:17:24 -0800
+Message-ID: <148738064423.29384.376678390595902406.stgit@birch.djwong.org>
+References: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+To: darrick.wong@oracle.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-When using both encryption and SELinux (or another feature that requires
-an xattr per file) on a filesystem with 256-byte inodes, each file's
-xattrs usually spill into an external xattr block.  Currently, the
-xattrs are inherited in the order ACL, security, then encryption.
-Therefore, if spillage occurs, the encryption xattr will always end up
-in the external block.  This is not ideal because the encryption xattrs
-contain a nonce, so they will always be unique and will prevent the
-external xattr blocks from being deduplicated.
+Add the GETFSMAP headers to the VFS kernel headers
 
-To improve the situation, change the inheritance order to encryption,
-ACL, then security.  This gives the encryption xattr a better chance to
-be stored in-inode, allowing the other xattr(s) to be deduplicated.
-
-Note that it may be better for userspace to format the filesystem with
-512-byte inodes in this case.  However, it's not the default.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/ext4/ialloc.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+ include/uapi/linux/fsmap.h |  110 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 110 insertions(+)
+ create mode 100644 include/uapi/linux/fsmap.h
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index b14bae2598bc..0304e28c2014 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1096,6 +1096,17 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	if (err)
- 		goto fail_drop;
- 
-+	/*
-+	 * Since the encryption xattr will always be unique, create it first so
-+	 * that it's less likely to end up in an external xattr block and
-+	 * prevent its deduplication.
-+	 */
-+	if (encrypt) {
-+		err = fscrypt_inherit_context(dir, inode, handle, true);
-+		if (err)
-+			goto fail_free_drop;
-+	}
+
+diff --git a/include/uapi/linux/fsmap.h b/include/uapi/linux/fsmap.h
+new file mode 100644
+index 0000000..1e94856
+--- /dev/null
++++ b/include/uapi/linux/fsmap.h
+@@ -0,0 +1,110 @@
++/*
++ * FS_IOC_GETFSMAP ioctl infrastructure.
++ *
++ * Copyright (C) 2017 Oracle.  All Rights Reserved.
++ *
++ * Author: Darrick J. Wong <darrick.wong@oracle.com>
++ */
++#ifndef _LINUX_FSMAP_H
++#define _LINUX_FSMAP_H
 +
- 	err = ext4_init_acl(handle, inode, dir);
- 	if (err)
- 		goto fail_free_drop;
-@@ -1117,12 +1128,6 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		ei->i_datasync_tid = handle->h_transaction->t_tid;
- 	}
- 
--	if (encrypt) {
--		err = fscrypt_inherit_context(dir, inode, handle, true);
--		if (err)
--			goto fail_free_drop;
--	}
++#include <linux/types.h>
++
++/*
++ *	Structure for FS_IOC_GETFSMAP.
++ *
++ *	The memory layout for this call are the scalar values defined in
++ *	struct fsmap_head, followed by two struct fsmap that describe
++ *	the lower and upper bound of mappings to return, followed by an
++ *	array of struct fsmap mappings.
++ *
++ *	fmh_iflags control the output of the call, whereas fmh_oflags report
++ *	on the overall record output.  fmh_count should be set to the
++ *	length of the fmh_recs array, and fmh_entries will be set to the
++ *	number of entries filled out during each call.  If fmh_count is
++ *	zero, the number of reverse mappings will be returned in
++ *	fmh_entries, though no mappings will be returned.  fmh_reserved
++ *	must be set to zero.
++ *
++ *	The two elements in the fmh_keys array are used to constrain the
++ *	output.  The first element in the array should represent the
++ *	lowest disk mapping ("low key") that the user wants to learn
++ *	about.  If this value is all zeroes, the filesystem will return
++ *	the first entry it knows about.  For a subsequent call, the
++ *	contents of fsmap_head.fmh_recs[fsmap_head.fmh_count - 1] should be
++ *	copied into fmh_keys[0] to have the kernel start where it left off.
++ *
++ *	The second element in the fmh_keys array should represent the
++ *	highest disk mapping ("high key") that the user wants to learn
++ *	about.  If this value is all ones, the filesystem will not stop
++ *	until it runs out of mapping to return or runs out of space in
++ *	fmh_recs.
++ *
++ *	fmr_device can be either a 32-bit cookie representing a device, or
++ *	a 32-bit dev_t if the FMH_OF_DEV_T flag is set.  fmr_physical,
++ *	fmr_offset, and fmr_length are expressed in units of bytes.
++ *	fmr_owner is either an inode number, or a special value if
++ *	FMR_OF_SPECIAL_OWNER is set in fmr_flags.
++ */
++struct fsmap {
++	__u32		fmr_device;	/* device id */
++	__u32		fmr_flags;	/* mapping flags */
++	__u64		fmr_physical;	/* device offset of segment */
++	__u64		fmr_owner;	/* owner id */
++	__u64		fmr_offset;	/* file offset of segment */
++	__u64		fmr_length;	/* length of segment */
++	__u64		fmr_reserved[3];	/* must be zero */
++};
++
++struct fsmap_head {
++	__u32		fmh_iflags;	/* control flags */
++	__u32		fmh_oflags;	/* output flags */
++	__u32		fmh_count;	/* # of entries in array incl. input */
++	__u32		fmh_entries;	/* # of entries filled in (output). */
++	__u64		fmh_reserved[6];	/* must be zero */
++
++	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
++	struct fsmap	fmh_recs[];	/* returned records */
++};
++
++/* Size of an fsmap_head with room for nr records. */
++static inline size_t
++fsmap_sizeof(
++	unsigned int	nr)
++{
++	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
++}
++
++/* Start the next fsmap query at the end of the current query results. */
++static inline void
++fsmap_advance(
++	struct fsmap_head	*head)
++{
++	head->fmh_keys[0] = head->fmh_recs[head->fmh_entries - 1];
++}
++
++/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. */
++/* no flags defined yet */
++#define FMH_IF_VALID		0
++
++/*	fmh_oflags values - returned in the header segment only. */
++#define FMH_OF_DEV_T		0x1	/* fmr_device values will be dev_t */
++
++/*	fmr_flags values - returned for each non-header segment */
++#define FMR_OF_PREALLOC		0x1	/* segment = unwritten pre-allocation */
++#define FMR_OF_ATTR_FORK	0x2	/* segment = attribute fork */
++#define FMR_OF_EXTENT_MAP	0x4	/* segment = extent map */
++#define FMR_OF_SHARED		0x8	/* segment = shared with another file */
++#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
++#define FMR_OF_LAST		0x20	/* segment is the last in the FS */
++
++/* Each FS gets to define its own special owner codes. */
++#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
++				 ((__u64)code & 0xFFFFFFFFULL))
++#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
++#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner */
++#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
++
++#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct fsmap_head)
++
++#endif /* _LINUX_FSMAP_H */
