@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/8] xfs: create a function to query all records in a btree
-Date: Fri, 17 Feb 2017 17:17:42 -0800
-Message-ID: <148738066286.29384.6059407136436797506.stgit@birch.djwong.org>
+Subject: [PATCH 3/8] xfs: provide a query_range function for freespace btrees
+Date: Fri, 17 Feb 2017 17:17:36 -0800
+Message-ID: <148738065667.29384.10238083345504563010.stgit@birch.djwong.org>
 References: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,163 +9,90 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org
 To: darrick.wong@oracle.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41769 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752338AbdBRBRr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Feb 2017 20:17:47 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Create a helper function that will query all records in a btree.
-This will be used by the online repair functions to examine every
-record in a btree to rebuild a second btree.
+Implement a query_range function for the bnobt and cntbt.  This will
+be used for getfsmap fallback if there is no rmapbt and by the online
+scrub and repair code.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/xfs/libxfs/xfs_alloc.c |   15 +++++++++++++++
- fs/xfs/libxfs/xfs_alloc.h |    2 ++
- fs/xfs/libxfs/xfs_btree.c |   15 +++++++++++++++
- fs/xfs/libxfs/xfs_btree.h |    2 ++
- fs/xfs/libxfs/xfs_rmap.c  |   28 +++++++++++++++++++++-------
- fs/xfs/libxfs/xfs_rmap.h  |    2 ++
- 6 files changed, 57 insertions(+), 7 deletions(-)
+ fs/xfs/libxfs/xfs_alloc.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ fs/xfs/libxfs/xfs_alloc.h |   10 ++++++++++
+ 2 files changed, 52 insertions(+)
 
 
 diff --git a/fs/xfs/libxfs/xfs_alloc.c b/fs/xfs/libxfs/xfs_alloc.c
-index 526df17..ba15f30 100644
+index 9f06a21..526df17 100644
 --- a/fs/xfs/libxfs/xfs_alloc.c
 +++ b/fs/xfs/libxfs/xfs_alloc.c
-@@ -2917,3 +2917,18 @@ xfs_alloc_query_range(
- 	return xfs_btree_query_range(cur, &low_brec, &high_brec,
- 			xfs_alloc_query_range_helper, &query);
+@@ -2875,3 +2875,45 @@ xfs_free_extent(
+ 	xfs_trans_brelse(tp, agbp);
+ 	return error;
  }
 +
-+/* Find all free space records. */
++struct xfs_alloc_query_range_info {
++	xfs_alloc_query_range_fn	fn;
++	void				*priv;
++};
++
++/* Format btree record and pass to our callback. */
++STATIC int
++xfs_alloc_query_range_helper(
++	struct xfs_btree_cur		*cur,
++	union xfs_btree_rec		*rec,
++	void				*priv)
++{
++	struct xfs_alloc_query_range_info	*query = priv;
++	struct xfs_alloc_rec_incore		irec;
++
++	irec.ar_startblock = be32_to_cpu(rec->alloc.ar_startblock);
++	irec.ar_blockcount = be32_to_cpu(rec->alloc.ar_blockcount);
++	return query->fn(cur, &irec, query->priv);
++}
++
++/* Find all free space within a given range of blocks. */
 +int
-+xfs_alloc_query_all(
++xfs_alloc_query_range(
 +	struct xfs_btree_cur			*cur,
++	struct xfs_alloc_rec_incore		*low_rec,
++	struct xfs_alloc_rec_incore		*high_rec,
 +	xfs_alloc_query_range_fn		fn,
 +	void					*priv)
 +{
++	union xfs_btree_irec			low_brec;
++	union xfs_btree_irec			high_brec;
 +	struct xfs_alloc_query_range_info	query;
 +
 +	ASSERT(cur->bc_btnum == XFS_BTNUM_BNO);
++	low_brec.a = *low_rec;
++	high_brec.a = *high_rec;
 +	query.priv = priv;
 +	query.fn = fn;
-+	return xfs_btree_query_all(cur, xfs_alloc_query_range_helper, &query);
++	return xfs_btree_query_range(cur, &low_brec, &high_brec,
++			xfs_alloc_query_range_helper, &query);
 +}
 diff --git a/fs/xfs/libxfs/xfs_alloc.h b/fs/xfs/libxfs/xfs_alloc.h
-index f534998..a2101de 100644
+index 1d0f48a..f534998 100644
 --- a/fs/xfs/libxfs/xfs_alloc.h
 +++ b/fs/xfs/libxfs/xfs_alloc.h
-@@ -232,5 +232,7 @@ int xfs_alloc_query_range(struct xfs_btree_cur *cur,
- 		struct xfs_alloc_rec_incore *low_rec,
- 		struct xfs_alloc_rec_incore *high_rec,
- 		xfs_alloc_query_range_fn fn, void *priv);
-+int xfs_alloc_query_all(struct xfs_btree_cur *cur, xfs_alloc_query_range_fn fn,
-+		void *priv);
+@@ -223,4 +223,14 @@ int xfs_free_extent_fix_freelist(struct xfs_trans *tp, xfs_agnumber_t agno,
  
- #endif	/* __XFS_ALLOC_H__ */
-diff --git a/fs/xfs/libxfs/xfs_btree.c b/fs/xfs/libxfs/xfs_btree.c
-index 2849d3f..ca94b87 100644
---- a/fs/xfs/libxfs/xfs_btree.c
-+++ b/fs/xfs/libxfs/xfs_btree.c
-@@ -4823,6 +4823,21 @@ xfs_btree_query_range(
- 			fn, priv);
- }
+ xfs_extlen_t xfs_prealloc_blocks(struct xfs_mount *mp);
  
-+/* Query a btree for all records. */
-+int
-+xfs_btree_query_all(
++typedef int (*xfs_alloc_query_range_fn)(
 +	struct xfs_btree_cur		*cur,
-+	xfs_btree_query_range_fn	fn,
-+	void				*priv)
-+{
-+	union xfs_btree_irec		low_rec;
-+	union xfs_btree_irec		high_rec;
++	struct xfs_alloc_rec_incore	*rec,
++	void				*priv);
 +
-+	memset(&low_rec, 0, sizeof(low_rec));
-+	memset(&high_rec, 0xFF, sizeof(high_rec));
-+	return xfs_btree_query_range(cur, &low_rec, &high_rec, fn, priv);
-+}
++int xfs_alloc_query_range(struct xfs_btree_cur *cur,
++		struct xfs_alloc_rec_incore *low_rec,
++		struct xfs_alloc_rec_incore *high_rec,
++		xfs_alloc_query_range_fn fn, void *priv);
 +
- /*
-  * Calculate the number of blocks needed to store a given number of records
-  * in a short-format (per-AG metadata) btree.
-diff --git a/fs/xfs/libxfs/xfs_btree.h b/fs/xfs/libxfs/xfs_btree.h
-index 33a8f86..5114055 100644
---- a/fs/xfs/libxfs/xfs_btree.h
-+++ b/fs/xfs/libxfs/xfs_btree.h
-@@ -494,6 +494,8 @@ typedef int (*xfs_btree_query_range_fn)(struct xfs_btree_cur *cur,
- int xfs_btree_query_range(struct xfs_btree_cur *cur,
- 		union xfs_btree_irec *low_rec, union xfs_btree_irec *high_rec,
- 		xfs_btree_query_range_fn fn, void *priv);
-+int xfs_btree_query_all(struct xfs_btree_cur *cur, xfs_btree_query_range_fn fn,
-+		void *priv);
- 
- typedef int (*xfs_btree_visit_blocks_fn)(struct xfs_btree_cur *cur, int level,
- 		void *data);
-diff --git a/fs/xfs/libxfs/xfs_rmap.c b/fs/xfs/libxfs/xfs_rmap.c
-index 3a8cc71..3840556 100644
---- a/fs/xfs/libxfs/xfs_rmap.c
-+++ b/fs/xfs/libxfs/xfs_rmap.c
-@@ -2001,14 +2001,14 @@ xfs_rmap_query_range_helper(
- /* Find all rmaps between two keys. */
- int
- xfs_rmap_query_range(
--	struct xfs_btree_cur		*cur,
--	struct xfs_rmap_irec		*low_rec,
--	struct xfs_rmap_irec		*high_rec,
--	xfs_rmap_query_range_fn	fn,
--	void				*priv)
-+	struct xfs_btree_cur			*cur,
-+	struct xfs_rmap_irec			*low_rec,
-+	struct xfs_rmap_irec			*high_rec,
-+	xfs_rmap_query_range_fn			fn,
-+	void					*priv)
- {
--	union xfs_btree_irec		low_brec;
--	union xfs_btree_irec		high_brec;
-+	union xfs_btree_irec			low_brec;
-+	union xfs_btree_irec			high_brec;
- 	struct xfs_rmap_query_range_info	query;
- 
- 	low_brec.r = *low_rec;
-@@ -2019,6 +2019,20 @@ xfs_rmap_query_range(
- 			xfs_rmap_query_range_helper, &query);
- }
- 
-+/* Find all rmaps. */
-+int
-+xfs_rmap_query_all(
-+	struct xfs_btree_cur			*cur,
-+	xfs_rmap_query_range_fn			fn,
-+	void					*priv)
-+{
-+	struct xfs_rmap_query_range_info	query;
-+
-+	query.priv = priv;
-+	query.fn = fn;
-+	return xfs_btree_query_all(cur, xfs_rmap_query_range_helper, &query);
-+}
-+
- /* Clean up after calling xfs_rmap_finish_one. */
- void
- xfs_rmap_finish_one_cleanup(
-diff --git a/fs/xfs/libxfs/xfs_rmap.h b/fs/xfs/libxfs/xfs_rmap.h
-index 7899305..faf2c1a 100644
---- a/fs/xfs/libxfs/xfs_rmap.h
-+++ b/fs/xfs/libxfs/xfs_rmap.h
-@@ -162,6 +162,8 @@ typedef int (*xfs_rmap_query_range_fn)(
- int xfs_rmap_query_range(struct xfs_btree_cur *cur,
- 		struct xfs_rmap_irec *low_rec, struct xfs_rmap_irec *high_rec,
- 		xfs_rmap_query_range_fn fn, void *priv);
-+int xfs_rmap_query_all(struct xfs_btree_cur *cur, xfs_rmap_query_range_fn fn,
-+		void *priv);
- 
- enum xfs_rmap_intent_type {
- 	XFS_RMAP_MAP,
+ #endif	/* __XFS_ALLOC_H__ */
