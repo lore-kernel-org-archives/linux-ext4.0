@@ -1,102 +1,54 @@
-From: kbuild test robot <lkp@intel.com>
-Subject: Re: [PATCH v3 4/5] vfs: Add timestamp_truncate() api
-Date: Sun, 19 Feb 2017 14:26:05 +0800
-Message-ID: <201702191425.I1Iniitc%fengguang.wu@intel.com>
-References: <1487460608-15697-5-git-send-email-deepa.kernel@gmail.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [PATCH v3 1/5] vfs: Add file timestamp range support
+Date: Sun, 19 Feb 2017 11:23:59 -0800
+Message-ID: <CABeXuvoe0N=iY6ySKP8T-_Q8kFgZUV_iE8m5m5RkwzWbhdnqrQ@mail.gmail.com>
+References: <1487460608-15697-1-git-send-email-deepa.kernel@gmail.com>
+ <1487460608-15697-2-git-send-email-deepa.kernel@gmail.com> <20170219015638.GG29622@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: tytso@mit.edu, arnd@arndb.de, y2038@lists.linaro.org,
- linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca, kbuild-all@01.org,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- viro@zeniv.linux.org.uk
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <1487460608-15697-5-git-send-email-deepa.kernel@gmail.com>
-Content-Disposition: inline
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Arnd Bergmann <arnd@arndb.de>,
+        y2038 Mailman List <y2038@lists.linaro.org>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170219015638.GG29622@ZenIV.linux.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SGkgRGVlcGEsCgpbYXV0byBidWlsZCB0ZXN0IFdBUk5JTkcgb24gbGludXMvbWFzdGVyXQpbYWxz
-byBidWlsZCB0ZXN0IFdBUk5JTkcgb24gdjQuMTAtcmM4IG5leHQtMjAxNzAyMTddCltpZiB5b3Vy
-IHBhdGNoIGlzIGFwcGxpZWQgdG8gdGhlIHdyb25nIGdpdCB0cmVlLCBwbGVhc2UgZHJvcCB1cyBh
-IG5vdGUgdG8gaGVscCBpbXByb3ZlIHRoZSBzeXN0ZW1dCgp1cmw6ICAgIGh0dHBzOi8vZ2l0aHVi
-LmNvbS8wZGF5LWNpL2xpbnV4L2NvbW1pdHMvRGVlcGEtRGluYW1hbmkvdmZzLUFkZC10aW1lc3Rh
-bXAtcmFuZ2UtY2hlY2stc3VwcG9ydC8yMDE3MDIxOS0wNzM3MzQKcmVwcm9kdWNlOiBtYWtlIGh0
-bWxkb2NzCgpBbGwgd2FybmluZ3MgKG5ldyBvbmVzIHByZWZpeGVkIGJ5ID4+KToKCiAgIGZzL2lu
-b2RlLmM6MTY3OTogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAn
-cmN1JwogICBmcy9pbm9kZS5jOjIxMjU6IHdhcm5pbmc6IE5vIGRlc2NyaXB0aW9uIGZvdW5kIGZv
-ciBwYXJhbWV0ZXIgJ2lub2RlJwo+PiBmcy9pbm9kZS5jOjIxMjU6IHdhcm5pbmc6IEV4Y2VzcyBm
-dW5jdGlvbiBwYXJhbWV0ZXIgJ2dyYW4nIGRlc2NyaXB0aW9uIGluICd0aW1lc3RhbXBfdHJ1bmNh
-dGUnCiAgIGluY2x1ZGUvbGludXgvamJkMi5oOjQ0Mjogd2FybmluZzogTm8gZGVzY3JpcHRpb24g
-Zm91bmQgZm9yIHBhcmFtZXRlciAnaV90cmFuc2FjdGlvbicKICAgaW5jbHVkZS9saW51eC9qYmQy
-Lmg6NDQyOiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFyYW1ldGVyICdpX25l
-eHRfdHJhbnNhY3Rpb24nCiAgIGluY2x1ZGUvbGludXgvamJkMi5oOjQ0Mjogd2FybmluZzogTm8g
-ZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnaV9saXN0JwogICBpbmNsdWRlL2xpbnV4
-L2piZDIuaDo0NDI6IHdhcm5pbmc6IE5vIGRlc2NyaXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0ZXIg
-J2lfdmZzX2lub2RlJwogICBpbmNsdWRlL2xpbnV4L2piZDIuaDo0NDI6IHdhcm5pbmc6IE5vIGRl
-c2NyaXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0ZXIgJ2lfZmxhZ3MnCiAgIGluY2x1ZGUvbGludXgv
-amJkMi5oOjQ5NDogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAn
-aF9yc3ZfaGFuZGxlJwogICBpbmNsdWRlL2xpbnV4L2piZDIuaDo0OTQ6IHdhcm5pbmc6IE5vIGRl
-c2NyaXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0ZXIgJ2hfcmVzZXJ2ZWQnCiAgIGluY2x1ZGUvbGlu
-dXgvamJkMi5oOjQ5NDogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRl
-ciAnaF90eXBlJwogICBpbmNsdWRlL2xpbnV4L2piZDIuaDo0OTQ6IHdhcm5pbmc6IE5vIGRlc2Ny
-aXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0ZXIgJ2hfbGluZV9ubycKICAgaW5jbHVkZS9saW51eC9q
-YmQyLmg6NDk0OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFyYW1ldGVyICdo
-X3N0YXJ0X2ppZmZpZXMnCiAgIGluY2x1ZGUvbGludXgvamJkMi5oOjQ5NDogd2FybmluZzogTm8g
-ZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnaF9yZXF1ZXN0ZWRfY3JlZGl0cycKICAg
-aW5jbHVkZS9saW51eC9qYmQyLmg6MTA0Nzogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQg
-Zm9yIHBhcmFtZXRlciAnal9jaGtwdF9iaHNbSkJEMl9OUl9CQVRDSF0nCiAgIGluY2x1ZGUvbGlu
-dXgvamJkMi5oOjEwNDc6IHdhcm5pbmc6IE5vIGRlc2NyaXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0
-ZXIgJ2pfZGV2bmFtZVtCREVWTkFNRV9TSVpFKzI0XScKICAgaW5jbHVkZS9saW51eC9qYmQyLmg6
-MTA0Nzogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnal9hdmVy
-YWdlX2NvbW1pdF90aW1lJwogICBpbmNsdWRlL2xpbnV4L2piZDIuaDoxMDQ3OiB3YXJuaW5nOiBO
-byBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFyYW1ldGVyICdqX21pbl9iYXRjaF90aW1lJwogICBp
-bmNsdWRlL2xpbnV4L2piZDIuaDoxMDQ3OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBm
-b3IgcGFyYW1ldGVyICdqX21heF9iYXRjaF90aW1lJwogICBpbmNsdWRlL2xpbnV4L2piZDIuaDox
-MDQ3OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFyYW1ldGVyICdqX2NvbW1p
-dF9jYWxsYmFjaycKICAgaW5jbHVkZS9saW51eC9qYmQyLmg6MTA0Nzogd2FybmluZzogTm8gZGVz
-Y3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnal9mYWlsZWRfY29tbWl0JwogICBpbmNsdWRl
-L2xpbnV4L2piZDIuaDoxMDQ3OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFy
-YW1ldGVyICdqX2Noa3N1bV9kcml2ZXInCiAgIGluY2x1ZGUvbGludXgvamJkMi5oOjEwNDc6IHdh
-cm5pbmc6IE5vIGRlc2NyaXB0aW9uIGZvdW5kIGZvciBwYXJhbWV0ZXIgJ2pfY3N1bV9zZWVkJwog
-ICBmcy9qYmQyL3RyYW5zYWN0aW9uLmM6NDI4OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3Vu
-ZCBmb3IgcGFyYW1ldGVyICdyc3ZfYmxvY2tzJwogICBmcy9qYmQyL3RyYW5zYWN0aW9uLmM6NDI4
-OiB3YXJuaW5nOiBObyBkZXNjcmlwdGlvbiBmb3VuZCBmb3IgcGFyYW1ldGVyICdnZnBfbWFzaycK
-ICAgZnMvamJkMi90cmFuc2FjdGlvbi5jOjQyODogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91
-bmQgZm9yIHBhcmFtZXRlciAndHlwZScKICAgZnMvamJkMi90cmFuc2FjdGlvbi5jOjQyODogd2Fy
-bmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnbGluZV9ubycKICAgZnMv
-amJkMi90cmFuc2FjdGlvbi5jOjUwNDogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9y
-IHBhcmFtZXRlciAndHlwZScKICAgZnMvamJkMi90cmFuc2FjdGlvbi5jOjUwNDogd2FybmluZzog
-Tm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFtZXRlciAnbGluZV9ubycKICAgZnMvamJkMi90
-cmFuc2FjdGlvbi5jOjYzNDogd2FybmluZzogTm8gZGVzY3JpcHRpb24gZm91bmQgZm9yIHBhcmFt
-ZXRlciAnZ2ZwX21hc2snCgp2aW0gKzIxMjUgZnMvaW5vZGUuYwoKICAyMTA5CQogIDIxMTAJdm9p
-ZCBpbm9kZV9ub2hpZ2htZW0oc3RydWN0IGlub2RlICppbm9kZSkKICAyMTExCXsKICAyMTEyCQlt
-YXBwaW5nX3NldF9nZnBfbWFzayhpbm9kZS0+aV9tYXBwaW5nLCBHRlBfVVNFUik7CiAgMjExMwl9
-CiAgMjExNAlFWFBPUlRfU1lNQk9MKGlub2RlX25vaGlnaG1lbSk7CiAgMjExNQkKICAyMTE2CS8q
-KgogIDIxMTcJICogZnNfdGltZXNwZWNfdHJ1bmMgLSBUcnVuY2F0ZSB0aW1lc3BlYyB0byBhIGdy
-YW51bGFyaXR5CiAgMjExOAkgKiBAdDogVGltZXNwZWMKICAyMTE5CSAqIEBncmFuOiBHcmFudWxh
-cml0eSBpbiBucy4KICAyMTIwCSAqCiAgMjEyMQkgKiBUcnVuY2F0ZSBhIHRpbWVzcGVjIHRvIGEg
-Z3JhbnVsYXJpdHkuIEFsd2F5cyByb3VuZHMgZG93bi4gZ3JhbiBtdXN0CiAgMjEyMgkgKiBub3Qg
-YmUgMCBub3IgZ3JlYXRlciB0aGFuIGEgc2Vjb25kIChOU0VDX1BFUl9TRUMsIG9yIDEwXjkgbnMp
-LgogIDIxMjMJICovCiAgMjEyNAlzdHJ1Y3QgdGltZXNwZWMgdGltZXN0YW1wX3RydW5jYXRlKHN0
-cnVjdCB0aW1lc3BlYyB0LCBzdHJ1Y3QgaW5vZGUgKmlub2RlKQo+IDIxMjUJewogIDIxMjYJCXN0
-cnVjdCBzdXBlcl9ibG9jayAqc2IgPSBpbm9kZS0+aV9zYjsKICAyMTI3CQl1bnNpZ25lZCBpbnQg
-Z3JhbiA9IHNiLT5zX3RpbWVfZ3JhbjsKICAyMTI4CQogIDIxMjkJCXQudHZfc2VjID0gY2xhbXBf
-dCh0aW1lNjRfdCwgdC50dl9zZWMsIHNiLT5zX3RpbWVfbWluLCBzYi0+c190aW1lX21heCk7CiAg
-MjEzMAkKICAyMTMxCQkvKiBBdm9pZCBkaXZpc2lvbiBpbiB0aGUgY29tbW9uIGNhc2VzIDEgbnMg
-YW5kIDEgcy4gKi8KICAyMTMyCQlpZiAoZ3JhbiA9PSAxKSB7CiAgMjEzMwkJCS8qIG5vdGhpbmcg
-Ki8KCi0tLQowLURBWSBrZXJuZWwgdGVzdCBpbmZyYXN0cnVjdHVyZSAgICAgICAgICAgICAgICBP
-cGVuIFNvdXJjZSBUZWNobm9sb2d5IENlbnRlcgpodHRwczovL2xpc3RzLjAxLm9yZy9waXBlcm1h
-aWwva2J1aWxkLWFsbCAgICAgICAgICAgICAgICAgICBJbnRlbCBDb3Jwb3JhdGlvbgpfX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpZMjAzOCBtYWlsaW5nIGxp
-c3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xpc3RzLmxpbmFyby5vcmcvbWFpbG1h
-bi9saXN0aW5mby95MjAzOAo=
+>> @@ -257,6 +257,8 @@ struct dentry *mount_pseudo_xattr(struct file_system_type *fs_type, char *name,
+>> +     s->s_time_min = TIME64_MIN;
+>> +     s->s_time_max = TIME64_MAX;
+>> @@ -518,6 +520,8 @@ int simple_fill_super(struct super_block *s, unsigned long magic,
+>> +     s->s_time_min = TIME64_MIN;
+>> +     s->s_time_max = TIME64_MAX;
+>> @@ -247,6 +247,8 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
+>> +     s->s_time_min = TIME64_MIN;
+>> +     s->s_time_max = TIME64_MAX;
+>
+> If we always initialize them that way, why does libfs.c code bother
+> reassign the same values?
+
+Initially, I considered the idea of having invalid range
+initialization for all super blocks:
+https://patchwork.kernel.org/patch/8488641/
+
+At that point, it made sense to override the initializations in libfs.c.
+
+The problem with this is we will have to change all filesystems at the
+same time.
+So I decided to change the strategy to include valid limits so that we
+don't break any filesystems
+and can first merge the basic infrastructure.
+But, I was hoping we could go back to invalid range eventually which
+is why I left the libfs.c initializations in.
+
+But, you are right. This is redundant for now and maybe makes sense to
+leave it out.
+I will post an update.
+
+Thanks,
+Deepa
