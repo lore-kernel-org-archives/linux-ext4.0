@@ -1,68 +1,42 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH v3 5/5] utimes: Clamp the timestamps before update
-Date: Sat, 18 Feb 2017 15:30:08 -0800
-Message-ID: <1487460608-15697-6-git-send-email-deepa.kernel@gmail.com>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH v3 1/5] vfs: Add file timestamp range support
+Date: Sun, 19 Feb 2017 01:56:43 +0000
+Message-ID: <20170219015638.GG29622@ZenIV.linux.org.uk>
 References: <1487460608-15697-1-git-send-email-deepa.kernel@gmail.com>
+ <1487460608-15697-2-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-fsdevel@vger.kernel.org, y2038@lists.linaro.org,
- linux-kernel@vger.kernel.org, arnd@arndb.de
-To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <1487460608-15697-1-git-send-email-deepa.kernel@gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, arnd@arndb.de, y2038@lists.linaro.org
+To: Deepa Dinamani <deepa.kernel@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1487460608-15697-2-git-send-email-deepa.kernel@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-UE9TSVguMSBzZWN0aW9uIGZvciBmdXRpbWVucywgdXRpbWVuc2F0IGFuZCB1dGltZXMgc2F5czoK
-VGhlIGZpbGUncyByZWxldmFudCB0aW1lc3RhbXAgc2hhbGwgYmUgc2V0IHRvIHRoZQpncmVhdGVz
-dCB2YWx1ZSBzdXBwb3J0ZWQgYnkgdGhlIGZpbGUgc3lzdGVtIHRoYXQgaXMKbm90IGdyZWF0ZXIg
-dGhhbiB0aGUgc3BlY2lmaWVkIHRpbWUuCgpDbGFtcCB0aGUgdGltZXN0YW1wcyBhY2NvcmRpbmds
-eSBiZWZvcmUgYXNzaWdubWVudC4KCk5vdGUgdGhhdCB0aGUgY2xhbXBfdCBtYWNybyBpcyB1c2Vk
-IGZvciBjbGFtcGluZyBoZXJlIGFzIHZmcwppcyBub3QgeWV0IHVzaW5nIHN0cnVjdCB0aW1lc3Bl
-YzY0IGludGVybmFsbHkuIFRoaXMgaXMKcmVxdWlyZWQgZm9yIGNvbXBpbGF0aW9uIHB1cnBvc2Vz
-LgpBbHNvIG5vdGUgdGhhdCBjbGFtcCB3b24ndCBkbyB0aGUgcmlnaHQgdGhpbmcgZm9yIHRpbWVz
-dGFtcHMKYmV5b25kIDIwMzggb24gMzItYml0IG1hY2hpbmVzIHVudGlsIHRoZSB2ZnMgdXNlcyB0
-aW1lc3BlYzY0LgpBZnRlciB0aGUgdmZzIGlzIHRyYW5zaXRpb25lZCB0byB1c2UgdGltZXNwZWM2
-NCBmb3IgdGltZXN0YW1wcywKY2xhbXBfdCgpIGNhbiBiZSByZXBsYWNlZCBieSBjbGFtcCgpLgoK
-U2lnbmVkLW9mZi1ieTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+Ci0t
-LQogZnMvdXRpbWVzLmMgfCAxNyArKysrKysrKysrKysrLS0tLQogMSBmaWxlIGNoYW5nZWQsIDEz
-IGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvdXRpbWVzLmMg
-Yi9mcy91dGltZXMuYwppbmRleCAzMmIxNWIzLi4wNTJmZTVkIDEwMDY0NAotLS0gYS9mcy91dGlt
-ZXMuYworKysgYi9mcy91dGltZXMuYwpAQCAtNTMsNiArNTMsNyBAQCBzdGF0aWMgaW50IHV0aW1l
-c19jb21tb24oY29uc3Qgc3RydWN0IHBhdGggKnBhdGgsIHN0cnVjdCB0aW1lc3BlYyAqdGltZXMp
-CiAJaW50IGVycm9yOwogCXN0cnVjdCBpYXR0ciBuZXdhdHRyczsKIAlzdHJ1Y3QgaW5vZGUgKmlu
-b2RlID0gcGF0aC0+ZGVudHJ5LT5kX2lub2RlOworCXN0cnVjdCBzdXBlcl9ibG9jayAqc2IgPSBp
-bm9kZS0+aV9zYjsKIAlzdHJ1Y3QgaW5vZGUgKmRlbGVnYXRlZF9pbm9kZSA9IE5VTEw7CiAKIAll
-cnJvciA9IG1udF93YW50X3dyaXRlKHBhdGgtPm1udCk7CkBAIC02OCwxNiArNjksMjQgQEAgc3Rh
-dGljIGludCB1dGltZXNfY29tbW9uKGNvbnN0IHN0cnVjdCBwYXRoICpwYXRoLCBzdHJ1Y3QgdGlt
-ZXNwZWMgKnRpbWVzKQogCQlpZiAodGltZXNbMF0udHZfbnNlYyA9PSBVVElNRV9PTUlUKQogCQkJ
-bmV3YXR0cnMuaWFfdmFsaWQgJj0gfkFUVFJfQVRJTUU7CiAJCWVsc2UgaWYgKHRpbWVzWzBdLnR2
-X25zZWMgIT0gVVRJTUVfTk9XKSB7Ci0JCQluZXdhdHRycy5pYV9hdGltZS50dl9zZWMgPSB0aW1l
-c1swXS50dl9zZWM7Ci0JCQluZXdhdHRycy5pYV9hdGltZS50dl9uc2VjID0gdGltZXNbMF0udHZf
-bnNlYzsKKwkJCW5ld2F0dHJzLmlhX2F0aW1lLnR2X3NlYyA9CisJCQkJY2xhbXBfdCh0aW1lNjRf
-dCwgdGltZXNbMF0udHZfc2VjLCBzYi0+c190aW1lX21pbiwgc2ItPnNfdGltZV9tYXgpOworCQkJ
-aWYgKHRpbWVzWzBdLnR2X3NlYyA+PSBzYi0+c190aW1lX21heCkKKwkJCQluZXdhdHRycy5pYV9h
-dGltZS50dl9uc2VjID0gMDsKKwkJCWVsc2UKKwkJCQluZXdhdHRycy5pYV9hdGltZS50dl9uc2Vj
-ID0gdGltZXNbMF0udHZfbnNlYzsKIAkJCW5ld2F0dHJzLmlhX3ZhbGlkIHw9IEFUVFJfQVRJTUVf
-U0VUOwogCQl9CiAKIAkJaWYgKHRpbWVzWzFdLnR2X25zZWMgPT0gVVRJTUVfT01JVCkKIAkJCW5l
-d2F0dHJzLmlhX3ZhbGlkICY9IH5BVFRSX01USU1FOwogCQllbHNlIGlmICh0aW1lc1sxXS50dl9u
-c2VjICE9IFVUSU1FX05PVykgewotCQkJbmV3YXR0cnMuaWFfbXRpbWUudHZfc2VjID0gdGltZXNb
-MV0udHZfc2VjOwotCQkJbmV3YXR0cnMuaWFfbXRpbWUudHZfbnNlYyA9IHRpbWVzWzFdLnR2X25z
-ZWM7CisJCQluZXdhdHRycy5pYV9tdGltZS50dl9zZWMgPQorCQkJCWNsYW1wX3QodGltZTY0X3Qs
-IHRpbWVzWzFdLnR2X3NlYywgc2ItPnNfdGltZV9taW4sIHNiLT5zX3RpbWVfbWF4KTsKKwkJCWlm
-ICh0aW1lc1sxXS50dl9zZWMgPj0gc2ItPnNfdGltZV9tYXgpCisJCQkJbmV3YXR0cnMuaWFfbXRp
-bWUudHZfbnNlYyA9IDA7CisJCQllbHNlCisJCQkJbmV3YXR0cnMuaWFfbXRpbWUudHZfbnNlYyA9
-IHRpbWVzWzFdLnR2X25zZWM7CiAJCQluZXdhdHRycy5pYV92YWxpZCB8PSBBVFRSX01USU1FX1NF
-VDsKIAkJfQogCQkvKgotLSAKMi43LjQKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3Jn
-Cmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
+On Sat, Feb 18, 2017 at 03:30:04PM -0800, Deepa Dinamani wrote:
+> Add fields to the superblock to track the min and max
+> timestamps supported by filesystems.
+> 
+> Initially, when a superblock is allocated, initialize
+> it to the max and min values the fields can hold.
+> Individual filesystems override these to match their
+> actual limits.
+> 
+> Pseudo filesystems are assumed to always support the
+> min and max allowable values for the fields.
+
+> @@ -257,6 +257,8 @@ struct dentry *mount_pseudo_xattr(struct file_system_type *fs_type, char *name,
+> +	s->s_time_min = TIME64_MIN;
+> +	s->s_time_max = TIME64_MAX;
+> @@ -518,6 +520,8 @@ int simple_fill_super(struct super_block *s, unsigned long magic,
+> +	s->s_time_min = TIME64_MIN;
+> +	s->s_time_max = TIME64_MAX;
+> @@ -247,6 +247,8 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
+> +	s->s_time_min = TIME64_MIN;
+> +	s->s_time_max = TIME64_MAX;
+
+If we always initialize them that way, why does libfs.c code bother
+reassign the same values?
