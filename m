@@ -1,309 +1,178 @@
-From: Seongbae Son <seongbae.son@gmail.com>
-Subject: [PATCH] ext4: delayed inode insertion into transaction at write()
-Date: Tue, 21 Feb 2017 12:34:07 +0900
-Message-ID: <20170221033407.GA1895@son-VirtualBox>
+From: <koopk@madisonnjps.org>
+Subject: (unknown)
+Date: Tue, 21 Feb 2017 06:46:20 -0000
+Message-ID: <148765958070.747.553014386533214972@hinet.net>
+Reply-To: <koopk@madisonnjps.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: jack@suse.cz
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="7729073.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 1-175-237-47.dynamic.hinet.net ([1.175.237.47]:48417 "HELO
+        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1750837AbdBUGqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Feb 2017 01:46:35 -0500
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 15-02-17 14:18:39, Seongbae Son wrote:
->> If a write request writes a data which is larger than 4 KB, the inode of
->> the file is updated by the write system call, and also by kworker thread.
->> This duplicated inode update causes malfunction of the EXT4 journaling
->> behavior in ordered mode.
->>
->> For example, if 6KB write(fileA) on 18KB file is performed,
->>
->> 1. The inode is updated to 20KB in the write() system call and inserted
->> into the transaction.
->> 2. After that, kworker thread allocates a new block, updates the inode to
->> 24 KB, and inserts the inode into the transaction.
->>
->> But, if fsync(fileB) is executed before kworker thread runs and system
->> crash occurs, fileA is broken. The size of fileA is 20KB, but the data
->> between 18KB and 20KB is filled with invalid one.
-
->Thanks for report and the patch. Do you have a testcase that reproduces the
->problem? Can you share it? With which kernel version do you see the
->corruption?  Include this information in the changelog next time please.
-
->I'm somewhat surprised that the file size is 20KB - ext4 uses i_disksize
->field for tracking real inode size on disk and that gets updated only when
->data is written out from flusher work (you refer to it as kworker). In
->particular ext4_da_write_end() (or generic_write_end() for that matter)
->does not update i_disksize unless the blocks underlying the data are
->already allocated (which is the case of the first 2KB written but not the
->case for the remaining 4KB). So if you can really observe increased
->i_disksize, it needs more debugging where that gets set...
->
->                                                                Honza
-
-Thank you for replying the patch.
-Yes, I can reproduce the problem. Using virtual box, I tested Linux 4.10.0-rc7
-and Linux 4.10.0-rc8, and the problem occurred in both of them. I used a test
-program and below is its pseudo-code.
-
-procedure testfsync(write_volume)
-   for file = file0; file <= file9; file++ do
-      f[idx] = open(file, O_RDWR, O_CREATE);
-      lseek(f[idx], 0, SEEK_END);
-      write((f[idx], buf, write_volume);
-      if file == file9
-         fsync(f[idx]);
-      close(f[idx]);
-   end for
-end procedure
-
-The problem happened to file0,…,file8 if the blocks underlying the data are 
-already allocated and system crash occurs after fsync(file9). For example, 
-6KB write(file0,…,file9) on 18KB sized file or 2KB write(file0,…file9) on 26KB 
-sized file is performed. The problem does not occur when a block should be 
-allocated for the beginning of user data (For example, 6KB write(file0,…file9) 
-on 24KB or 2KB write(file0,…file9) on 20KB). Below is the scenario to figure 
-the problem out.
-
-1.	Perform the above test program
-2.	System crash (before flusher work runs)
-
-I debugged which part changes i_disksize field in ext4_da_write_end() and it 
-was ext4_update_i_disksize(). This function is performed when the blocks 
-underlying the data are already allocated. The problem does not occur once 
-the function is removed. But file size of file9 is not changed without the 
-function when write volume is below 4KB and the blocks underlying the data are 
-already allocated for the above scenario. So I keep i_disksize changed in 
-ext4_da_write_end() and allow the inode not to be inserted to the transaction.
-During flusher work, the inode is inserted to the transaction.
-
-	Seongbae
-
-
->>
->> Signed-off-by: Seongbae Son <afireguy@hanyang.ac.kr>
->> ---
->>  fs/ext4/ext4.h  |  1 +
->>  fs/ext4/inode.c | 88 +++++++++++++++++++++++++++++++++++++++++++++------------
->>  2 files changed, 71 insertions(+), 18 deletions(-)
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 2163c1e..08611d9 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -392,6 +392,7 @@ struct flex_groups {
->>  #define EXT4_EXTENTS_FL                      0x00080000 /* Inode uses extents */
->>  #define EXT4_EA_INODE_FL             0x00200000 /* Inode used for large EA */
->>  #define EXT4_EOFBLOCKS_FL            0x00400000 /* Blocks allocated beyond EOF */
->> +#define      EXT4_MARK_DIRTY_FL              0x00800000 /* Inode should be marked as dirty */
->>  #define EXT4_INLINE_DATA_FL          0x10000000 /* Inode has inline data. */
->>  #define EXT4_PROJINHERIT_FL          0x20000000 /* Create with parents projid */
->>  #define EXT4_RESERVED_FL             0x80000000 /* reserved for ext4 lib */
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 88d57af..4119e47 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -1295,6 +1295,33 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
->>       return ret;
->>  }
->>
->> +/*
->> + * This function does not call mark_inode_dirty() ulike generic_write_end().
->> + * It prevents change of file size for inode from being handled by two
->> + * transactions.
->> + */
->> +int ext4_block_write_end(struct file *file, struct address_space *mapping,
->> +                loff_t pos, unsigned len, unsigned copied,
->> +                struct page *page, void *fsdata)
->> +{
->> +        struct inode *inode = mapping->host;
->> +        loff_t old_size = inode->i_size;
->> +
->> +        copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
->> +
->> +        if (pos+copied > inode->i_size) {
->> +                i_size_write(inode, pos+copied);
->> +        }
->> +
->> +        unlock_page(page);
->> +        put_page(page);
->> +
->> +        if (old_size < pos)
->> +                pagecache_isize_extended(inode, old_size, pos);
->> +
->> +        return copied;
->> +}
->> +
->>  /* For write_end() in data=journal mode */
->>  static int write_end_fn(handle_t *handle, struct buffer_head *bh)
->>  {
->> @@ -2179,6 +2206,7 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
->>  /*
->>   * mpage_process_page_bufs - submit page buffers for IO or add them to extent
->>   *
->> + * @handle - handle for journal operations
->>   * @mpd - extent of blocks for mapping
->>   * @head - the first buffer in the page
->>   * @bh - buffer we should start processing from
->> @@ -2192,12 +2220,14 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
->>   * extent to map because we cannot extend it anymore. It can also return value
->>   * < 0 in case of error during IO submission.
->>   */
->> -static int mpage_process_page_bufs(struct mpage_da_data *mpd,
->> +static int mpage_process_page_bufs(handle_t *handle,
->> +                                struct mpage_da_data *mpd,
->>                                  struct buffer_head *head,
->>                                  struct buffer_head *bh,
->>                                  ext4_lblk_t lblk)
->>  {
->>       struct inode *inode = mpd->inode;
->> +     struct ext4_inode_info *ei = EXT4_I(inode);
->>       int err;
->>       ext4_lblk_t blocks = (i_size_read(inode) + (1 << inode->i_blkbits) - 1)
->>                                                       >> inode->i_blkbits;
->> @@ -2218,6 +2248,19 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
->>               err = mpage_submit_page(mpd, head->b_page);
->>               if (err < 0)
->>                       return err;
->> +
->> +             /* If running mark_inode_dirty() was delayed by
->> +                 * write(), do it here. It is executed when
->> +                 * i_size was changed by write() and new block
->> +                 * is not allocated.
->> +                 */
->> +                if (ei->i_flags & EXT4_MARK_DIRTY_FL) {
->> +                        ext4_mark_inode_dirty(handle, inode);
->> +
->> +                     down_write(&EXT4_I(inode)->i_data_sem);
->> +                     ei->i_flags &= ~(EXT4_MARK_DIRTY_FL);
->> +                     up_write(&EXT4_I(inode)->i_data_sem);
->> +                }
->>       }
->>       return lblk < blocks;
->>  }
->> @@ -2226,6 +2269,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
->>   * mpage_map_buffers - update buffers corresponding to changed extent and
->>   *                  submit fully mapped pages for IO
->>   *
->> + * @handle - handle for journal operations
->>   * @mpd - description of extent to map, on return next extent to map
->>   *
->>   * Scan buffers corresponding to changed extent (we expect corresponding pages
->> @@ -2236,7 +2280,8 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
->>   * mapped, we update @map to the next extent in the last page that needs
->>   * mapping. Otherwise we submit the page for IO.
->>   */
->> -static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
->> +static int mpage_map_and_submit_buffers(handle_t *handle,
->> +                                     struct mpage_da_data *mpd)
->>  {
->>       struct pagevec pvec;
->>       int nr_pages, i;
->> @@ -2284,7 +2329,8 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
->>                                        * io_end->size as the following call
->>                                        * can submit the page for IO.
->>                                        */
->> -                                     err = mpage_process_page_bufs(mpd, head,
->> +                                     err = mpage_process_page_bufs(handle,
->> +                                                                   mpd, head,
->>                                                                     bh, lblk);
->>                                       pagevec_release(&pvec);
->>                                       if (err > 0)
->> @@ -2443,7 +2489,7 @@ static int mpage_map_and_submit_extent(handle_t *handle,
->>                * Update buffer state, submit mapped pages, and get us new
->>                * extent to map
->>                */
->> -             err = mpage_map_and_submit_buffers(mpd);
->> +             err = mpage_map_and_submit_buffers(handle, mpd);
->>               if (err < 0)
->>                       goto update_disksize;
->>       } while (map->m_len);
->> @@ -2495,6 +2541,7 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
->>   * mpage_prepare_extent_to_map - find & lock contiguous range of dirty pages
->>   *                            and underlying extent to map
->>   *
->> + * @handle - handle for journal operations
->>   * @mpd - where to look for pages
->>   *
->>   * Walk dirty pages in the mapping. If they are fully mapped, submit them for
->> @@ -2509,7 +2556,8 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
->>   * unnecessary complication, it is actually inevitable in blocksize < pagesize
->>   * case as we need to track IO to all buffers underlying a page in one io_end.
->>   */
->> -static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
->> +static int mpage_prepare_extent_to_map(handle_t *handle,
->> +                                    struct mpage_da_data *mpd)
->>  {
->>       struct address_space *mapping = mpd->inode->i_mapping;
->>       struct pagevec pvec;
->> @@ -2591,7 +2639,8 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
->>                       lblk = ((ext4_lblk_t)page->index) <<
->>                               (PAGE_SHIFT - blkbits);
->>                       head = page_buffers(page);
->> -                     err = mpage_process_page_bufs(mpd, head, head, lblk);
->> +                     err = mpage_process_page_bufs(handle, mpd, head,
->> +                             head, lblk);
->>                       if (err <= 0)
->>                               goto out;
->>                       err = 0;
->> @@ -2752,7 +2801,7 @@ static int ext4_writepages(struct address_space *mapping,
->>               }
->>
->>               trace_ext4_da_write_pages(inode, mpd.first_page, mpd.wbc);
->> -             ret = mpage_prepare_extent_to_map(&mpd);
->> +             ret = mpage_prepare_extent_to_map(handle, &mpd);
->>               if (!ret) {
->>                       if (mpd.map.m_len)
->>                               ret = mpage_map_and_submit_extent(handle, &mpd,
->> @@ -3023,21 +3072,24 @@ static int ext4_da_write_end(struct file *file,
->>       start = pos & (PAGE_SIZE - 1);
->>       end = start + copied - 1;
->>
->> -     /*
->> -      * generic_write_end() will run mark_inode_dirty() if i_size
->> -      * changes.  So let's piggyback the i_disksize mark_inode_dirty
->> -      * into that.
->> -      */
->> +        /*
->> +         * Kworker thread will run mark_inode_dirty() if i_size changes.
->> +         * So we just change i_size and delay insert it into transaction.
->> +         */
->>       new_i_size = pos + copied;
->>       if (copied && new_i_size > EXT4_I(inode)->i_disksize) {
->>               if (ext4_has_inline_data(inode) ||
->>                   ext4_da_should_update_i_disksize(page, end)) {
->> +                     struct ext4_inode_info *ei = EXT4_I(inode);
->>                       ext4_update_i_disksize(inode, new_i_size);
->> -                     /* We need to mark inode dirty even if
->> -                      * new_i_size is less that inode->i_size
->> -                      * bu greater than i_disksize.(hint delalloc)
->> -                      */
->> -                     ext4_mark_inode_dirty(handle, inode);
->> +
->> +                     /*
->> +                         * We need to mark the inode to be inserted
->> +                         * into transaction by kworker thread later.
->> +                         */
->> +                        down_write(&EXT4_I(inode)->i_data_sem);
->> +                        ei->i_flags |= EXT4_MARK_DIRTY_FL;
->> +                        up_write(&EXT4_I(inode)->i_data_sem);
->>               }
->>       }
->>
->> @@ -3047,7 +3099,7 @@ static int ext4_da_write_end(struct file *file,
->>               ret2 = ext4_da_write_inline_data_end(inode, pos, len, copied,
->>                                                    page);
->>       else
->> -             ret2 = generic_write_end(file, mapping, pos, len, copied,
->> +             ret2 = ext4_block_write_end(file, mapping, pos, len, copied,
->>                                                       page, fsdata);
->>
->>       copied = ret2;
->> --
->> 2.7.4
->>
+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
+UgAAANAiAAAAAA==
