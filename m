@@ -1,178 +1,118 @@
-From: <koopk@madisonnjps.org>
-Subject: (unknown)
-Date: Tue, 21 Feb 2017 06:46:20 -0000
-Message-ID: <148765958070.747.553014386533214972@hinet.net>
-Reply-To: <koopk@madisonnjps.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: delayed inode insertion into transaction at write()
+Date: Tue, 21 Feb 2017 11:09:36 +0100
+Message-ID: <20170221100936.GA2581@quack2.suse.cz>
+References: <20170221033407.GA1895@son-VirtualBox>
 Mime-Version: 1.0
-Content-Type: application/zip; name="7729073.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 1-175-237-47.dynamic.hinet.net ([1.175.237.47]:48417 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750837AbdBUGqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Feb 2017 01:46:35 -0500
-Content-Disposition: attachment
-Subject: 
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Seongbae Son <seongbae.son@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170221033407.GA1895@son-VirtualBox>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
-UgAAANAiAAAAAA==
+On Tue 21-02-17 12:34:07, Seongbae Son wrote:
+> On Wed 15-02-17 14:18:39, Seongbae Son wrote:
+> >> If a write request writes a data which is larger than 4 KB, the inode of
+> >> the file is updated by the write system call, and also by kworker thread.
+> >> This duplicated inode update causes malfunction of the EXT4 journaling
+> >> behavior in ordered mode.
+> >>
+> >> For example, if 6KB write(fileA) on 18KB file is performed,
+> >>
+> >> 1. The inode is updated to 20KB in the write() system call and inserted
+> >> into the transaction.
+> >> 2. After that, kworker thread allocates a new block, updates the inode to
+> >> 24 KB, and inserts the inode into the transaction.
+> >>
+> >> But, if fsync(fileB) is executed before kworker thread runs and system
+> >> crash occurs, fileA is broken. The size of fileA is 20KB, but the data
+> >> between 18KB and 20KB is filled with invalid one.
+> 
+> >Thanks for report and the patch. Do you have a testcase that reproduces the
+> >problem? Can you share it? With which kernel version do you see the
+> >corruption?  Include this information in the changelog next time please.
+> 
+> >I'm somewhat surprised that the file size is 20KB - ext4 uses i_disksize
+> >field for tracking real inode size on disk and that gets updated only when
+> >data is written out from flusher work (you refer to it as kworker). In
+> >particular ext4_da_write_end() (or generic_write_end() for that matter)
+> >does not update i_disksize unless the blocks underlying the data are
+> >already allocated (which is the case of the first 2KB written but not the
+> >case for the remaining 4KB). So if you can really observe increased
+> >i_disksize, it needs more debugging where that gets set...
+> >
+> >                                                                Honza
+> 
+> Thank you for replying the patch.
+> Yes, I can reproduce the problem. Using virtual box, I tested Linux 4.10.0-rc7
+> and Linux 4.10.0-rc8, and the problem occurred in both of them. I used a test
+> program and below is its pseudo-code.
+> 
+> procedure testfsync(write_volume)
+>    for file = file0; file <= file9; file++ do
+>       f[idx] = open(file, O_RDWR, O_CREATE);
+>       lseek(f[idx], 0, SEEK_END);
+>       write((f[idx], buf, write_volume);
+>       if file == file9
+>          fsync(f[idx]);
+>       close(f[idx]);
+>    end for
+> end procedure
+> 
+> The problem happened to file0,…,file8 if the blocks underlying the data are 
+> already allocated and system crash occurs after fsync(file9). For example, 
+> 6KB write(file0,…,file9) on 18KB sized file or 2KB write(file0,…file9) on 26KB 
+> sized file is performed. The problem does not occur when a block should be 
+> allocated for the beginning of user data (For example, 6KB write(file0,…file9) 
+> on 24KB or 2KB write(file0,…file9) on 20KB). Below is the scenario to figure 
+> the problem out.
+> 
+> 1.	Perform the above test program
+> 2.	System crash (before flusher work runs)
+> 
+> I debugged which part changes i_disksize field in ext4_da_write_end() and it 
+> was ext4_update_i_disksize(). This function is performed when the blocks 
+> underlying the data are already allocated. The problem does not occur once 
+> the function is removed. But file size of file9 is not changed without the 
+> function when write volume is below 4KB and the blocks underlying the data are 
+> already allocated for the above scenario. So I keep i_disksize changed in 
+> ext4_da_write_end() and allow the inode not to be inserted to the transaction.
+> During flusher work, the inode is inserted to the transaction.
+
+OK, thanks for details. So in the situation you describe we have the last
+file block that is partial (not fully filled with data). We write some data
+into the partial block, thus extending the file, and you are right that in
+that case we update the i_disksize directly in ext4_da_write_end() (by
+calling ext4_update_i_disksize()). If we crash after the transaction
+commits but before the data is actually written out from page cache, you
+can see zeros at the end of the file - you speak about invalid data but did
+you ever see anything else than zeros? If you can see only zeros, then this
+is within the guarantees data=ordered mode provides - we guarantee you will
+never see data of other files after a crash. data=ordered mode does not
+give guarantees that correct data will be in the file after a crash. In
+particular if a block is already allocated (and your test is a special case
+of that), we do not bind writeout of the data from page cache with
+transactions in any way (so you can observe e.g. inode time stamps updated
+while data is not in the file after a crash). Does that make things clear?
+
+Maybe to explain a bit why we actually do things this way: We update
+i_disksize in ext4_da_write_end() in this case so that the time stamps and
+i_disksize of the inode get updated in the same transaction. This saves us
+from having to journal the inode again after the writeback of this page is
+complete (i.e., it is a performance optimization). Furthermore if we
+postponed i_disksize updates after IO submission even for non-allocating
+writes (as you essentially do in your patch), we would have to deal with
+difficult issues of having to update i_disksize when page writeback happens
+from jbd2 process committing a transaction or from kswapd cleaning dirty
+pages on memory pressure.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
