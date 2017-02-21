@@ -1,290 +1,47 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2 2/8] xfs: plumb in needed functions for range querying of
- the freespace btrees
-Date: Tue, 21 Feb 2017 09:34:10 -0800
-Message-ID: <20170221173410.GF5846@birch.djwong.org>
-References: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
- <148738065038.29384.2269477924958641169.stgit@birch.djwong.org>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [PATCH v3 4/5] vfs: Add timestamp_truncate() api
+Date: Tue, 21 Feb 2017 10:18:04 -0800
+Message-ID: <CABeXuvr0nZFzMLZPmxTz9EPRTW0-iLtsRr7jRPynceD2ZR_rRg@mail.gmail.com>
+References: <1487460608-15697-5-git-send-email-deepa.kernel@gmail.com>
+ <201702191425.I1Iniitc%fengguang.wu@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Brian Foster <bfoster@redhat.com>
-To: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44017 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752855AbdBUReR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2017 12:34:17 -0500
-Content-Disposition: inline
-In-Reply-To: <148738065038.29384.2269477924958641169.stgit@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
+ y2038 Mailman List <y2038@lists.linaro.org>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, kbuild-all@01.org,
+ Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+ linux-ext4@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>
+To: kbuild test robot <lkp@intel.com>
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <201702191425.I1Iniitc%fengguang.wu@intel.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Plumb in the pieces (init_high_key, diff_two_keys) necessary to call
-query_range on the free space btrees.  Remove the debugging asserts
-so that we can make queries starting from block 0.
-
-While we're at it, merge the redundant "if (btnum ==" hunks.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
-v2: Add forgotten cntbt high key function.
----
- fs/xfs/libxfs/xfs_alloc_btree.c |  172 +++++++++++++++++++++++++++++----------
- 1 file changed, 129 insertions(+), 43 deletions(-)
-
-diff --git a/fs/xfs/libxfs/xfs_alloc_btree.c b/fs/xfs/libxfs/xfs_alloc_btree.c
-index efb467b..e1fcfe7 100644
---- a/fs/xfs/libxfs/xfs_alloc_btree.c
-+++ b/fs/xfs/libxfs/xfs_alloc_btree.c
-@@ -205,19 +205,37 @@ xfs_allocbt_init_key_from_rec(
- 	union xfs_btree_key	*key,
- 	union xfs_btree_rec	*rec)
- {
--	ASSERT(rec->alloc.ar_startblock != 0);
--
- 	key->alloc.ar_startblock = rec->alloc.ar_startblock;
- 	key->alloc.ar_blockcount = rec->alloc.ar_blockcount;
- }
- 
- STATIC void
-+xfs_bnobt_init_high_key_from_rec(
-+	union xfs_btree_key	*key,
-+	union xfs_btree_rec	*rec)
-+{
-+	__u32			x;
-+
-+	x = be32_to_cpu(rec->alloc.ar_startblock);
-+	x += be32_to_cpu(rec->alloc.ar_blockcount) - 1;
-+	key->alloc.ar_startblock = cpu_to_be32(x);
-+	key->alloc.ar_blockcount = 0;
-+}
-+
-+STATIC void
-+xfs_cntbt_init_high_key_from_rec(
-+	union xfs_btree_key	*key,
-+	union xfs_btree_rec	*rec)
-+{
-+	key->alloc.ar_blockcount = rec->alloc.ar_blockcount;
-+	key->alloc.ar_startblock = 0;
-+}
-+
-+STATIC void
- xfs_allocbt_init_rec_from_cur(
- 	struct xfs_btree_cur	*cur,
- 	union xfs_btree_rec	*rec)
- {
--	ASSERT(cur->bc_rec.a.ar_startblock != 0);
--
- 	rec->alloc.ar_startblock = cpu_to_be32(cur->bc_rec.a.ar_startblock);
- 	rec->alloc.ar_blockcount = cpu_to_be32(cur->bc_rec.a.ar_blockcount);
- }
-@@ -236,18 +254,24 @@ xfs_allocbt_init_ptr_from_cur(
- }
- 
- STATIC __int64_t
--xfs_allocbt_key_diff(
-+xfs_bnobt_key_diff(
- 	struct xfs_btree_cur	*cur,
- 	union xfs_btree_key	*key)
- {
- 	xfs_alloc_rec_incore_t	*rec = &cur->bc_rec.a;
- 	xfs_alloc_key_t		*kp = &key->alloc;
--	__int64_t		diff;
- 
--	if (cur->bc_btnum == XFS_BTNUM_BNO) {
--		return (__int64_t)be32_to_cpu(kp->ar_startblock) -
--				rec->ar_startblock;
--	}
-+	return (__int64_t)be32_to_cpu(kp->ar_startblock) - rec->ar_startblock;
-+}
-+
-+STATIC __int64_t
-+xfs_cntbt_key_diff(
-+	struct xfs_btree_cur	*cur,
-+	union xfs_btree_key	*key)
-+{
-+	xfs_alloc_rec_incore_t	*rec = &cur->bc_rec.a;
-+	xfs_alloc_key_t		*kp = &key->alloc;
-+	__int64_t		diff;
- 
- 	diff = (__int64_t)be32_to_cpu(kp->ar_blockcount) - rec->ar_blockcount;
- 	if (diff)
-@@ -256,6 +280,33 @@ xfs_allocbt_key_diff(
- 	return (__int64_t)be32_to_cpu(kp->ar_startblock) - rec->ar_startblock;
- }
- 
-+STATIC __int64_t
-+xfs_bnobt_diff_two_keys(
-+	struct xfs_btree_cur	*cur,
-+	union xfs_btree_key	*k1,
-+	union xfs_btree_key	*k2)
-+{
-+	return (__int64_t)be32_to_cpu(k1->alloc.ar_startblock) -
-+			  be32_to_cpu(k2->alloc.ar_startblock);
-+}
-+
-+STATIC __int64_t
-+xfs_cntbt_diff_two_keys(
-+	struct xfs_btree_cur	*cur,
-+	union xfs_btree_key	*k1,
-+	union xfs_btree_key	*k2)
-+{
-+	__int64_t		diff;
-+
-+	diff =  be32_to_cpu(k1->alloc.ar_blockcount) -
-+		be32_to_cpu(k2->alloc.ar_blockcount);
-+	if (diff)
-+		return diff;
-+
-+	return  be32_to_cpu(k1->alloc.ar_startblock) -
-+		be32_to_cpu(k2->alloc.ar_startblock);
-+}
-+
- static bool
- xfs_allocbt_verify(
- 	struct xfs_buf		*bp)
-@@ -346,44 +397,54 @@ const struct xfs_buf_ops xfs_allocbt_buf_ops = {
- 
- #if defined(DEBUG) || defined(XFS_WARN)
- STATIC int
--xfs_allocbt_keys_inorder(
-+xfs_bnobt_keys_inorder(
- 	struct xfs_btree_cur	*cur,
- 	union xfs_btree_key	*k1,
- 	union xfs_btree_key	*k2)
- {
--	if (cur->bc_btnum == XFS_BTNUM_BNO) {
--		return be32_to_cpu(k1->alloc.ar_startblock) <
--		       be32_to_cpu(k2->alloc.ar_startblock);
--	} else {
--		return be32_to_cpu(k1->alloc.ar_blockcount) <
--			be32_to_cpu(k2->alloc.ar_blockcount) ||
--			(k1->alloc.ar_blockcount == k2->alloc.ar_blockcount &&
--			 be32_to_cpu(k1->alloc.ar_startblock) <
--			 be32_to_cpu(k2->alloc.ar_startblock));
--	}
-+	return be32_to_cpu(k1->alloc.ar_startblock) <
-+	       be32_to_cpu(k2->alloc.ar_startblock);
- }
- 
- STATIC int
--xfs_allocbt_recs_inorder(
-+xfs_bnobt_recs_inorder(
- 	struct xfs_btree_cur	*cur,
- 	union xfs_btree_rec	*r1,
- 	union xfs_btree_rec	*r2)
- {
--	if (cur->bc_btnum == XFS_BTNUM_BNO) {
--		return be32_to_cpu(r1->alloc.ar_startblock) +
--			be32_to_cpu(r1->alloc.ar_blockcount) <=
--			be32_to_cpu(r2->alloc.ar_startblock);
--	} else {
--		return be32_to_cpu(r1->alloc.ar_blockcount) <
--			be32_to_cpu(r2->alloc.ar_blockcount) ||
--			(r1->alloc.ar_blockcount == r2->alloc.ar_blockcount &&
--			 be32_to_cpu(r1->alloc.ar_startblock) <
--			 be32_to_cpu(r2->alloc.ar_startblock));
--	}
-+	return be32_to_cpu(r1->alloc.ar_startblock) +
-+		be32_to_cpu(r1->alloc.ar_blockcount) <=
-+		be32_to_cpu(r2->alloc.ar_startblock);
-+}
-+
-+STATIC int
-+xfs_cntbt_keys_inorder(
-+	struct xfs_btree_cur	*cur,
-+	union xfs_btree_key	*k1,
-+	union xfs_btree_key	*k2)
-+{
-+	return be32_to_cpu(k1->alloc.ar_blockcount) <
-+		be32_to_cpu(k2->alloc.ar_blockcount) ||
-+		(k1->alloc.ar_blockcount == k2->alloc.ar_blockcount &&
-+		 be32_to_cpu(k1->alloc.ar_startblock) <
-+		 be32_to_cpu(k2->alloc.ar_startblock));
- }
--#endif	/* DEBUG */
- 
--static const struct xfs_btree_ops xfs_allocbt_ops = {
-+STATIC int
-+xfs_cntbt_recs_inorder(
-+	struct xfs_btree_cur	*cur,
-+	union xfs_btree_rec	*r1,
-+	union xfs_btree_rec	*r2)
-+{
-+	return be32_to_cpu(r1->alloc.ar_blockcount) <
-+		be32_to_cpu(r2->alloc.ar_blockcount) ||
-+		(r1->alloc.ar_blockcount == r2->alloc.ar_blockcount &&
-+		 be32_to_cpu(r1->alloc.ar_startblock) <
-+		 be32_to_cpu(r2->alloc.ar_startblock));
-+}
-+#endif /* DEBUG */
-+
-+static const struct xfs_btree_ops xfs_bnobt_ops = {
- 	.rec_len		= sizeof(xfs_alloc_rec_t),
- 	.key_len		= sizeof(xfs_alloc_key_t),
- 
-@@ -395,13 +456,39 @@ static const struct xfs_btree_ops xfs_allocbt_ops = {
- 	.get_minrecs		= xfs_allocbt_get_minrecs,
- 	.get_maxrecs		= xfs_allocbt_get_maxrecs,
- 	.init_key_from_rec	= xfs_allocbt_init_key_from_rec,
-+	.init_high_key_from_rec	= xfs_bnobt_init_high_key_from_rec,
- 	.init_rec_from_cur	= xfs_allocbt_init_rec_from_cur,
- 	.init_ptr_from_cur	= xfs_allocbt_init_ptr_from_cur,
--	.key_diff		= xfs_allocbt_key_diff,
-+	.key_diff		= xfs_bnobt_key_diff,
- 	.buf_ops		= &xfs_allocbt_buf_ops,
-+	.diff_two_keys		= xfs_bnobt_diff_two_keys,
- #if defined(DEBUG) || defined(XFS_WARN)
--	.keys_inorder		= xfs_allocbt_keys_inorder,
--	.recs_inorder		= xfs_allocbt_recs_inorder,
-+	.keys_inorder		= xfs_bnobt_keys_inorder,
-+	.recs_inorder		= xfs_bnobt_recs_inorder,
-+#endif
-+};
-+
-+static const struct xfs_btree_ops xfs_cntbt_ops = {
-+	.rec_len		= sizeof(xfs_alloc_rec_t),
-+	.key_len		= sizeof(xfs_alloc_key_t),
-+
-+	.dup_cursor		= xfs_allocbt_dup_cursor,
-+	.set_root		= xfs_allocbt_set_root,
-+	.alloc_block		= xfs_allocbt_alloc_block,
-+	.free_block		= xfs_allocbt_free_block,
-+	.update_lastrec		= xfs_allocbt_update_lastrec,
-+	.get_minrecs		= xfs_allocbt_get_minrecs,
-+	.get_maxrecs		= xfs_allocbt_get_maxrecs,
-+	.init_key_from_rec	= xfs_allocbt_init_key_from_rec,
-+	.init_high_key_from_rec	= xfs_cntbt_init_high_key_from_rec,
-+	.init_rec_from_cur	= xfs_allocbt_init_rec_from_cur,
-+	.init_ptr_from_cur	= xfs_allocbt_init_ptr_from_cur,
-+	.key_diff		= xfs_cntbt_key_diff,
-+	.buf_ops		= &xfs_allocbt_buf_ops,
-+	.diff_two_keys		= xfs_cntbt_diff_two_keys,
-+#if defined(DEBUG) || defined(XFS_WARN)
-+	.keys_inorder		= xfs_cntbt_keys_inorder,
-+	.recs_inorder		= xfs_cntbt_recs_inorder,
- #endif
- };
- 
-@@ -427,16 +514,15 @@ xfs_allocbt_init_cursor(
- 	cur->bc_mp = mp;
- 	cur->bc_btnum = btnum;
- 	cur->bc_blocklog = mp->m_sb.sb_blocklog;
--	cur->bc_ops = &xfs_allocbt_ops;
--	if (btnum == XFS_BTNUM_BNO)
--		cur->bc_statoff = XFS_STATS_CALC_INDEX(xs_abtb_2);
--	else
--		cur->bc_statoff = XFS_STATS_CALC_INDEX(xs_abtc_2);
- 
- 	if (btnum == XFS_BTNUM_CNT) {
-+		cur->bc_statoff = XFS_STATS_CALC_INDEX(xs_abtc_2);
-+		cur->bc_ops = &xfs_cntbt_ops;
- 		cur->bc_nlevels = be32_to_cpu(agf->agf_levels[XFS_BTNUM_CNT]);
- 		cur->bc_flags = XFS_BTREE_LASTREC_UPDATE;
- 	} else {
-+		cur->bc_statoff = XFS_STATS_CALC_INDEX(xs_abtb_2);
-+		cur->bc_ops = &xfs_bnobt_ops;
- 		cur->bc_nlevels = be32_to_cpu(agf->agf_levels[XFS_BTNUM_BNO]);
- 	}
- 
+Pj4+IGZzL2lub2RlLmM6MjEyNTogd2FybmluZzogRXhjZXNzIGZ1bmN0aW9uIHBhcmFtZXRlciAn
+Z3JhbicgZGVzY3JpcHRpb24gaW4gJ3RpbWVzdGFtcF90cnVuY2F0ZScKPiAgIDIxMTYgIC8qKgo+
+ICAgMjExNyAgICogZnNfdGltZXNwZWNfdHJ1bmMgLSBUcnVuY2F0ZSB0aW1lc3BlYyB0byBhIGdy
+YW51bGFyaXR5Cj4gICAyMTE4ICAgKiBAdDogVGltZXNwZWMKPiAgIDIxMTkgICAqIEBncmFuOiBH
+cmFudWxhcml0eSBpbiBucy4KPiAgIDIxMjAgICAqCj4gICAyMTIxICAgKiBUcnVuY2F0ZSBhIHRp
+bWVzcGVjIHRvIGEgZ3JhbnVsYXJpdHkuIEFsd2F5cyByb3VuZHMgZG93bi4gZ3JhbiBtdXN0Cj4g
+ICAyMTIyICAgKiBub3QgYmUgMCBub3IgZ3JlYXRlciB0aGFuIGEgc2Vjb25kIChOU0VDX1BFUl9T
+RUMsIG9yIDEwXjkgbnMpLgo+ICAgMjEyMyAgICovCj4gICAyMTI0ICBzdHJ1Y3QgdGltZXNwZWMg
+dGltZXN0YW1wX3RydW5jYXRlKHN0cnVjdCB0aW1lc3BlYyB0LCBzdHJ1Y3QgaW5vZGUgKmlub2Rl
+KQo+PiAyMTI1ICB7Cj4gICAyMTI2ICAgICAgICAgIHN0cnVjdCBzdXBlcl9ibG9jayAqc2IgPSBp
+bm9kZS0+aV9zYjsKPiAgIDIxMjcgICAgICAgICAgdW5zaWduZWQgaW50IGdyYW4gPSBzYi0+c190
+aW1lX2dyYW47CgpUaGlzIGJlY2F1c2UgdGhlIGNvbW1lbnQgZG9lcyBub3QgbWF0Y2ggdGhlIGFj
+dHVhbCBmdW5jdGlvbiBzaWduYXR1cmU6ClRoZSBncmFuIHBhcmFtIG1lbnRpb25lZCBpbiB0aGUg
+Y29tbWVudCBpcyBub3QgYWN0dWFsbHkgcGFydCBvZgpmdW5jdGlvbiBzaWduYXR1cmUuCgpJIHdp
+bGwgZml4IHRoZSBjb21tZW50IGluIHRoZSBuZXh0IHZlcnNpb24uCgotRGVlcGEKX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIwMzggbWFpbGluZyBsaXN0
+ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21haWxtYW4v
+bGlzdGluZm8veTIwMzgK
