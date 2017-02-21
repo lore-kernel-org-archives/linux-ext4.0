@@ -1,72 +1,393 @@
-From: Tejun Heo <tj@kernel.org>
-Subject: Re: Saw your commit: Use mutex_lock_io() for
- journal->j_checkpoint_mutex
-Date: Tue, 21 Feb 2017 15:45:08 -0500
-Message-ID: <20170221204508.GB8260@htj.duckdns.org>
-References: <20170221202324.7plxcp22risagxqu@thunk.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Tue, 21 Feb 2017 14:14:55 -0800
+Message-ID: <20170221221455.GA5837@birch.djwong.org>
+References: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f170.google.com ([209.85.161.170]:36102 "EHLO
-        mail-yw0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751161AbdBUUpK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Feb 2017 15:45:10 -0500
-Received: by mail-yw0-f170.google.com with SMTP id v200so70128344ywc.3
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Feb 2017 12:45:10 -0800 (PST)
+Cc: linux-api@vger.kernel.org, linux-man@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+To: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170221202324.7plxcp22risagxqu@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello, Ted.
+Document the new GETFSMAP ioctl that returns the physical layout of a
+(disk-based) filesystem.  This time around the fs-specific parts have
+been moved to a separate section; I'll move move them into separate
+xfsprogs/e2fsprogs manpages when we get closer to landing the ioctl.
 
-> If this happens, it almost certainly means that the journal is too
-> small.  This was something that grad student I was mentoring found
-> when we were benchmarking our SMR-friendly jbd2 changes.  There's a
-> footnote to this effect in the Fast 2017 paper[1] 
-> 
-> [1] https://www.usenix.org/conference/fast17/technical-sessions/presentation/aghayev
->     (if you want early access to the paper let me know; it's currently
->     available to registered FAST 2017 attendees and will be opened up
->     at the start of the FAST 2017 conference next week)
->
-> The short version is that on average, with a 5 second commit window
-> and a 30 second dirty writeback timeout, if you assume the worst case
-> of 100% of the metadata blocks being already in the buffer cache (so
-> they don't need to be read from disk), in 5 seconds the journal thread
-> could potential spew 150*5 == 750MB in a journal transaction.  But
-> that data won't be written back until 30 seconds later.  So if you are
-> continuously deleting files for 30 seconds, the journal should have
-> room for at least around 4500 megs worth of sequential writing.  Now,
-> that's an extreme worst case.  In reality there will be some disk
-> reads, not to mention the metadata writebacks, which will be random.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ man2/ioctl_getfsmap.2 |  359 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 359 insertions(+)
+ create mode 100644 man2/ioctl_getfsmap.2
 
-I see.  Yeah, that's close to what we were seeing.  We had a
-malfunctioning workload which was deleting extremely high number of
-files locking up the filesystem and thus other things on the host.
-This was a clear misbehavior on the workload but debugging it took
-longer than necessary because the waits didn't get accounted as
-iowait, so the patch.
-
-> The bottom line is that 128MiB, which was the previous maximum journal
-> size, is simply way too small.  So in the latest e2fsprogs 1.43.x
-> release, the default has been changed so that for a sufficiently large
-> disk, the default journal size is 1 gig.
-> 
-> If you are using faster media (say, SSD or PCie-attached flash), and
-> you expect to have workloads that are extreme with respect to huge
-> amounts of metadata changes, an even bigger journal might be called
-> for.  (And these are the workloads where the lazy journalling that we
-> studied in the FAST paper is helpful, even on convential HDD's.)
-> 
-> Anyway, you might want to pass onto the system administrators (or the
-> SRE's, as applicable :-) that if they were hitting this case often,
-> they should seriously consider increasing the size of their ext4
-> journal.
-
-Thanks a lot for the explanation!
-
--- 
-tejun
+diff --git a/man2/ioctl_getfsmap.2 b/man2/ioctl_getfsmap.2
+new file mode 100644
+index 0000000..7121d61
+--- /dev/null
++++ b/man2/ioctl_getfsmap.2
+@@ -0,0 +1,359 @@
++.\" Copyright (c) 2017, Oracle.  All rights reserved.
++.\"
++.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
++.\" This is free documentation; you can redistribute it and/or
++.\" modify it under the terms of the GNU General Public License as
++.\" published by the Free Software Foundation; either version 2 of
++.\" the License, or (at your option) any later version.
++.\"
++.\" The GNU General Public License's references to "object code"
++.\" and "executables" are to be interpreted as the output of any
++.\" document formatting or typesetting system, including
++.\" intermediate and printed output.
++.\"
++.\" This manual is distributed in the hope that it will be useful,
++.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
++.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++.\" GNU General Public License for more details.
++.\"
++.\" You should have received a copy of the GNU General Public
++.\" License along with this manual; if not, see
++.\" <http://www.gnu.org/licenses/>.
++.\" %%%LICENSE_END
++.TH IOCTL-GETFSMAP 2 2017-02-10 "Linux" "Linux Programmer's Manual"
++.SH NAME
++ioctl_getfsmap \- retrieve the physical layout of the filesystem
++.SH SYNOPSIS
++.br
++.B #include <sys/ioctl.h>
++.br
++.B #include <linux/fs.h>
++.br
++.B #include <linux/fsmap.h>
++.sp
++.BI "int ioctl(int " fd ", GETFSMAP, struct fsmap_head * " arg );
++.SH DESCRIPTION
++This
++.BR ioctl (2)
++retrieves physical extent mappings for a filesystem.
++This information can be used to discover which files are mapped to a physical
++block, examine free space, or find known bad blocks, among other things.
++
++The sole argument to this ioctl should be a pointer to a single
++.BR "struct fsmap_head" ":"
++.in +4n
++.nf
++
++struct fsmap {
++	__u32		fmr_device;	/* device id */
++	__u32		fmr_flags;	/* mapping flags */
++	__u64		fmr_physical;	/* device offset of segment */
++	__u64		fmr_owner;	/* owner id */
++	__u64		fmr_offset;	/* file offset of segment */
++	__u64		fmr_length;	/* length of segment */
++	__u64		fmr_reserved[3];	/* must be zero */
++};
++
++struct fsmap_head {
++	__u32		fmh_iflags;	/* control flags */
++	__u32		fmh_oflags;	/* output flags */
++	__u32		fmh_count;	/* # of entries in array incl. input */
++	__u32		fmh_entries;	/* # of entries filled in (output). */
++	__u64		fmh_reserved[6];	/* must be zero */
++
++	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
++	struct fsmap	fmh_recs[];	/* returned records */
++};
++
++.fi
++.in
++The two
++.I fmh_keys
++array elements specify the lowest and highest reverse-mapping
++keys, respectively, for which userspace would like physical mapping
++information.
++A reverse mapping key consists of the tuple (device, block, owner, offset).
++The owner and offset fields are part of the key because some filesystems
++support sharing physical blocks between multiple files and
++therefore may return multiple mappings for a given physical block.
++.PP
++Filesystem mappings are copied into the
++.I fmh_recs
++array, which immediately follows the header data.
++.SS Fields of struct fsmap_head
++.PP
++The
++.I fmh_iflags
++field is a bitmask passed to the kernel to alter the output.
++There are no flags defined, so this value must be zero.
++
++.PP
++The
++.I fmh_oflags
++field is a bitmask of flags that concern all output mappings.
++If
++.B FMH_OF_DEV_T
++is set, then the
++.I fmr_device
++field represents a
++.B dev_t
++structure containing the major and minor numbers of the block device.
++
++.PP
++The
++.I fmh_count
++field contains the number of elements in the array being passed to the
++kernel.
++If this value is 0,
++.I fmh_entries
++will be set to the number of records that would have been returned had
++the array been large enough;
++no mapping information will be returned.
++
++.PP
++The
++.I fmh_entries
++field contains the number of elements in the
++.I fmh_recs
++array that contain useful information.
++
++.PP
++The
++.I fmh_reserved
++fields must be set to zero.
++
++.SS Keys
++.PP
++The two key records in
++.B fsmap_head.fmh_keys
++specify the lowest and highest extent records in the keyspace that the caller
++wants returned.
++A filesystem that can share blocks between files likely requires the tuple
++.RI "(" "device" ", " "physical" ", " "owner" ", " "offset" ", " "flags" ")"
++to uniquely index any filesystem mapping record.
++Classic non-sharing filesystems might be able to identify any record with only
++.RI "(" "device" ", " "physical" ", " "flags" ")."
++For example, if the low key is set to (0, 36864, 0, 0, 0), the filesystem will
++only return records for extents starting at or above 36KiB on disk.
++If the high key is set to (0, 1048576, 0, 0, 0), only records below 1MiB will
++be returned.
++By convention, the field
++.B fsmap_head.fmh_keys[0]
++must contain the low key and
++.B fsmap_head.fmh_keys[1]
++must contain the high key for the request.
++.PP
++For convenience, if
++.B fmr_length
++is set in the low key, it will be added to
++.IR fmr_block " or " fmr_offset
++as appropriate.
++The caller can take advantage of this subtlety to set up subsequent calls
++by copying
++.B fsmap_head.fmh_recs[fsmap_head.fmh_entries - 1]
++into the low key.
++The function
++.B fsmap_advance
++provides this functionality.
++
++.SS Fields of struct fsmap
++.PP
++The
++.I fmr_device
++field contains a 32-bit cookie to uniquely identify the underlying storage
++device.
++If the
++.B FMH_OF_DEV_T
++flag is set in the header's
++.I fmh_oflags
++field, this field contains a
++.B dev_t
++from which major and minor numbers can be extracted.
++If the flag is not set, this field contains a value that must be unique
++for each unique storage device.
++
++.PP
++The
++.I fmr_physical
++field contains the disk address of the extent in bytes.
++
++.PP
++The
++.I fmr_owner
++field contains the owner of the extent.
++This is an inode number unless
++.B FMR_OF_SPECIAL_OWNER
++is set in the
++.I fmr_flags
++field, in which case the value is determined by the filesystem.
++See the section below about special owner values for more details.
++
++.PP
++The
++.I fmr_offset
++field contains the logical address in the mapping record in bytes.
++This field has no meaning if the
++.BR FMR_OF_SPECIAL_OWNER " or " FMR_OF_EXTENT_MAP
++flags are set in
++.IR fmr_flags "."
++
++.PP
++The
++.I fmr_length
++field contains the length of the extent in bytes.
++
++.PP
++The
++.I fmr_flags
++field is a bitmask of extent state flags.
++The bits are:
++.RS 0.4i
++.TP
++.B FMR_OF_PREALLOC
++The extent is allocated but not yet written.
++.TP
++.B FMR_OF_ATTR_FORK
++This extent contains extended attribute data.
++.TP
++.B FMR_OF_EXTENT_MAP
++This extent contains extent map information for the owner.
++.TP
++.B FMR_OF_SHARED
++Parts of this extent may be shared.
++.TP
++.B FMR_OF_SPECIAL_OWNER
++The
++.I fmr_owner
++field contains a special value instead of an inode number.
++.TP
++.B FMR_OF_LAST
++This is the last record in the filesystem.
++.RE
++
++.PP
++The
++.I fmr_reserved
++field will be set to zero.
++
++.SS Special Owner Values
++The following special owner values are generic to all filesystems:
++.RS 0.4i
++.TP
++.B FMR_OWN_FREE
++Free space.
++.TP
++.B FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B FMR_OWN_METADATA
++This extent is filesystem metadata.
++.RE
++
++XFS can return the following special owner values:
++.RS 0.4i
++.TP
++.B XFS_FMR_OWN_FREE
++Free space.
++.TP
++.B XFS_FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B XFS_FMR_OWN_FS
++Static filesystem metadata which exists at a fixed address.
++These are the AG superblock, the AGF, the AGFL, and the AGI headers.
++.TP
++.B XFS_FMR_OWN_LOG
++The filesystem journal.
++.TP
++.B XFS_FMR_OWN_AG
++Allocation group metadata, such as the free space btrees and the
++reverse mapping btrees.
++.TP
++.B XFS_FMR_OWN_INOBT
++The inode and free inode btrees.
++.TP
++.B XFS_FMR_OWN_INODES
++Inode records.
++.TP
++.B XFS_FMR_OWN_REFC
++Reference count information.
++.TP
++.B XFS_FMR_OWN_COW
++This extent is being used to stage a copy-on-write.
++.TP
++.B XFS_FMR_OWN_DEFECTIVE:
++This extent has been marked defective either by the filesystem or the
++underlying device.
++.RE
++
++ext4 can return the following special owner values:
++.RS 0.4i
++.TP
++.B EXT4_FMR_OWN_FREE
++Free space.
++.TP
++.B EXT4_FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B EXT4_FMR_OWN_FS
++Static filesystem metadata which exists at a fixed address.
++This is the superblock and the group descriptors.
++.TP
++.B EXT4_FMR_OWN_LOG
++The filesystem journal.
++.TP
++.B EXT4_FMR_OWN_INODES
++Inode records.
++.TP
++.B EXT4_FMR_OWN_BLKBM
++Block bitmap.
++.TP
++.B EXT4_FMR_OWN_INOBM
++Inode bitmap.
++.RE
++
++.SH RETURN VALUE
++On error, \-1 is returned, and
++.I errno
++is set to indicate the error.
++.PP
++.SH ERRORS
++Error codes can be one of, but are not limited to, the following:
++.TP
++.B EINVAL
++The array is not long enough, or a non-zero value was passed in one of the
++fields that must be zero.
++.TP
++.B EFAULT
++The pointer passed in was not mapped to a valid memory address.
++.TP
++.B EBADF
++.IR fd
++is not open for reading.
++.TP
++.B EPERM
++This query is not allowed.
++.TP
++.B EOPNOTSUPP
++The filesystem does not support this command.
++.TP
++.B EUCLEAN
++The filesystem metadata is corrupt and needs repair.
++.TP
++.B EBADMSG
++The filesystem has detected a checksum error in the metadata.
++.TP
++.B ENOMEM
++Insufficient memory to process the request.
++
++.SH EXAMPLE
++.TP
++Please see io/fsmap.c in the xfsprogs distribution for a sample program.
++
++.SH CONFORMING TO
++This API is Linux-specific.
++Not all filesystems support it.
++.fi
++.in
++.SH SEE ALSO
++.BR ioctl (2)
