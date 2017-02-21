@@ -1,393 +1,261 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Tue, 21 Feb 2017 14:14:55 -0800
-Message-ID: <20170221221455.GA5837@birch.djwong.org>
-References: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-api@vger.kernel.org, linux-man@vger.kernel.org,
-        linux-btrfs@vger.kernel.org
-To: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <148738063792.29384.10681837280402457846.stgit@birch.djwong.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] fscrypt: remove broken support for detecting keyring key revocation
+Date: Tue, 21 Feb 2017 15:07:11 -0800
+Message-ID: <20170221230711.85222-1-ebiggers3@gmail.com>
+Cc: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Anand Jain <anand.jain@oracle.com>,
+        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Document the new GETFSMAP ioctl that returns the physical layout of a
-(disk-based) filesystem.  This time around the fs-specific parts have
-been moved to a separate section; I'll move move them into separate
-xfsprogs/e2fsprogs manpages when we get closer to landing the ioctl.
+From: Eric Biggers <ebiggers@google.com>
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Filesystem encryption ostensibly supported revoking a keyring key that
+had been used to "unlock" encrypted files, causing those files to become
+"locked" again.  This was, however, buggy for several reasons, the most
+severe of which was that when key revocation happened to be detected for
+an inode, its fscrypt_info was immediately freed, even while other
+threads could be using it for encryption or decryption concurrently.
+This could be exploited to crash the kernel or worse.
+
+This patch fixes the use-after-free by removing the code which detects
+the keyring key having been revoked, invalidated, or expired.  Instead,
+an encrypted inode that is "unlocked" now simply remains unlocked until
+it is evicted from memory.  Note that this is no worse than the case for
+block device-level encryption, e.g. dm-crypt, and it still remains
+possible for a privileged user to evict unused pages, inodes, and
+dentries by running 'sync; echo 3 > /proc/sys/vm/drop_caches', or by
+simply unmounting the filesystem.  In fact, one of those actions was
+already needed anyway for key revocation to work even somewhat sanely.
+This change is not expected to break any applications.
+
+In the future I'd like to implement a real API for fscrypt key
+revocation that interacts sanely with ongoing filesystem operations ---
+waiting for existing operations to complete and blocking new operations,
+and invalidating and sanitizing key material and plaintext from the VFS
+caches.  But this is a hard problem, and for now this bug must be fixed.
+
+This bug affected almost all versions of ext4, f2fs, and ubifs
+encryption, and it was potentially reachable in any kernel configured
+with encryption support (CONFIG_EXT4_ENCRYPTION=y,
+CONFIG_EXT4_FS_ENCRYPTION=y, CONFIG_F2FS_FS_ENCRYPTION=y, or
+CONFIG_UBIFS_FS_ENCRYPTION=y).  Note that older kernels did not use the
+shared fs/crypto/ code, but due to the potential security implications
+of this bug, it may still be worthwhile to backport this fix to them.
+
+Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
+Cc: stable@vger.kernel.org # v4.2+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- man2/ioctl_getfsmap.2 |  359 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 359 insertions(+)
- create mode 100644 man2/ioctl_getfsmap.2
+ fs/crypto/crypto.c          | 10 +--------
+ fs/crypto/fname.c           |  2 +-
+ fs/crypto/fscrypt_private.h |  4 ----
+ fs/crypto/keyinfo.c         | 52 ++++++++-------------------------------------
+ 4 files changed, 11 insertions(+), 57 deletions(-)
 
-diff --git a/man2/ioctl_getfsmap.2 b/man2/ioctl_getfsmap.2
-new file mode 100644
-index 0000000..7121d61
---- /dev/null
-+++ b/man2/ioctl_getfsmap.2
-@@ -0,0 +1,359 @@
-+.\" Copyright (c) 2017, Oracle.  All rights reserved.
-+.\"
-+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
-+.\" This is free documentation; you can redistribute it and/or
-+.\" modify it under the terms of the GNU General Public License as
-+.\" published by the Free Software Foundation; either version 2 of
-+.\" the License, or (at your option) any later version.
-+.\"
-+.\" The GNU General Public License's references to "object code"
-+.\" and "executables" are to be interpreted as the output of any
-+.\" document formatting or typesetting system, including
-+.\" intermediate and printed output.
-+.\"
-+.\" This manual is distributed in the hope that it will be useful,
-+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
-+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+.\" GNU General Public License for more details.
-+.\"
-+.\" You should have received a copy of the GNU General Public
-+.\" License along with this manual; if not, see
-+.\" <http://www.gnu.org/licenses/>.
-+.\" %%%LICENSE_END
-+.TH IOCTL-GETFSMAP 2 2017-02-10 "Linux" "Linux Programmer's Manual"
-+.SH NAME
-+ioctl_getfsmap \- retrieve the physical layout of the filesystem
-+.SH SYNOPSIS
-+.br
-+.B #include <sys/ioctl.h>
-+.br
-+.B #include <linux/fs.h>
-+.br
-+.B #include <linux/fsmap.h>
-+.sp
-+.BI "int ioctl(int " fd ", GETFSMAP, struct fsmap_head * " arg );
-+.SH DESCRIPTION
-+This
-+.BR ioctl (2)
-+retrieves physical extent mappings for a filesystem.
-+This information can be used to discover which files are mapped to a physical
-+block, examine free space, or find known bad blocks, among other things.
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index 02a7a9286449..6d6eca394d4d 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -327,7 +327,6 @@ EXPORT_SYMBOL(fscrypt_decrypt_page);
+ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+ {
+ 	struct dentry *dir;
+-	struct fscrypt_info *ci;
+ 	int dir_has_key, cached_with_key;
+ 
+ 	if (flags & LOOKUP_RCU)
+@@ -339,18 +338,11 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+ 		return 0;
+ 	}
+ 
+-	ci = d_inode(dir)->i_crypt_info;
+-	if (ci && ci->ci_keyring_key &&
+-	    (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+-					  (1 << KEY_FLAG_REVOKED) |
+-					  (1 << KEY_FLAG_DEAD))))
+-		ci = NULL;
+-
+ 	/* this should eventually be an flag in d_flags */
+ 	spin_lock(&dentry->d_lock);
+ 	cached_with_key = dentry->d_flags & DCACHE_ENCRYPTED_WITH_KEY;
+ 	spin_unlock(&dentry->d_lock);
+-	dir_has_key = (ci != NULL);
++	dir_has_key = (d_inode(dir)->i_crypt_info != NULL);
+ 	dput(dir);
+ 
+ 	/*
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 13052b85c393..37b49894c762 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -350,7 +350,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
+ 		fname->disk_name.len = iname->len;
+ 		return 0;
+ 	}
+-	ret = fscrypt_get_crypt_info(dir);
++	ret = fscrypt_get_encryption_info(dir);
+ 	if (ret && ret != -EOPNOTSUPP)
+ 		return ret;
+ 
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index fdbb8af32eaf..e39696e64494 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -67,7 +67,6 @@ struct fscrypt_info {
+ 	u8 ci_filename_mode;
+ 	u8 ci_flags;
+ 	struct crypto_skcipher *ci_ctfm;
+-	struct key *ci_keyring_key;
+ 	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
+ };
+ 
+@@ -101,7 +100,4 @@ extern int fscrypt_do_page_crypto(const struct inode *inode,
+ extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
+ 					      gfp_t gfp_flags);
+ 
+-/* keyinfo.c */
+-extern int fscrypt_get_crypt_info(struct inode *);
+-
+ #endif /* _FSCRYPT_PRIVATE_H */
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 02eb6b9e4438..cb3e82abf034 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -95,6 +95,7 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+ 	kfree(description);
+ 	if (IS_ERR(keyring_key))
+ 		return PTR_ERR(keyring_key);
++	down_read(&keyring_key->sem);
+ 
+ 	if (keyring_key->type != &key_type_logon) {
+ 		printk_once(KERN_WARNING
+@@ -102,11 +103,9 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+ 		res = -ENOKEY;
+ 		goto out;
+ 	}
+-	down_read(&keyring_key->sem);
+ 	ukp = user_key_payload(keyring_key);
+ 	if (ukp->datalen != sizeof(struct fscrypt_key)) {
+ 		res = -EINVAL;
+-		up_read(&keyring_key->sem);
+ 		goto out;
+ 	}
+ 	master_key = (struct fscrypt_key *)ukp->data;
+@@ -117,17 +116,11 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+ 				"%s: key size incorrect: %d\n",
+ 				__func__, master_key->size);
+ 		res = -ENOKEY;
+-		up_read(&keyring_key->sem);
+ 		goto out;
+ 	}
+ 	res = derive_key_aes(ctx->nonce, master_key->raw, raw_key);
+-	up_read(&keyring_key->sem);
+-	if (res)
+-		goto out;
+-
+-	crypt_info->ci_keyring_key = keyring_key;
+-	return 0;
+ out:
++	up_read(&keyring_key->sem);
+ 	key_put(keyring_key);
+ 	return res;
+ }
+@@ -169,12 +162,11 @@ static void put_crypt_info(struct fscrypt_info *ci)
+ 	if (!ci)
+ 		return;
+ 
+-	key_put(ci->ci_keyring_key);
+ 	crypto_free_skcipher(ci->ci_ctfm);
+ 	kmem_cache_free(fscrypt_info_cachep, ci);
+ }
+ 
+-int fscrypt_get_crypt_info(struct inode *inode)
++int fscrypt_get_encryption_info(struct inode *inode)
+ {
+ 	struct fscrypt_info *crypt_info;
+ 	struct fscrypt_context ctx;
+@@ -184,21 +176,15 @@ int fscrypt_get_crypt_info(struct inode *inode)
+ 	u8 *raw_key = NULL;
+ 	int res;
+ 
++	if (inode->i_crypt_info)
++		return 0;
 +
-+The sole argument to this ioctl should be a pointer to a single
-+.BR "struct fsmap_head" ":"
-+.in +4n
-+.nf
-+
-+struct fsmap {
-+	__u32		fmr_device;	/* device id */
-+	__u32		fmr_flags;	/* mapping flags */
-+	__u64		fmr_physical;	/* device offset of segment */
-+	__u64		fmr_owner;	/* owner id */
-+	__u64		fmr_offset;	/* file offset of segment */
-+	__u64		fmr_length;	/* length of segment */
-+	__u64		fmr_reserved[3];	/* must be zero */
-+};
-+
-+struct fsmap_head {
-+	__u32		fmh_iflags;	/* control flags */
-+	__u32		fmh_oflags;	/* output flags */
-+	__u32		fmh_count;	/* # of entries in array incl. input */
-+	__u32		fmh_entries;	/* # of entries filled in (output). */
-+	__u64		fmh_reserved[6];	/* must be zero */
-+
-+	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
-+	struct fsmap	fmh_recs[];	/* returned records */
-+};
-+
-+.fi
-+.in
-+The two
-+.I fmh_keys
-+array elements specify the lowest and highest reverse-mapping
-+keys, respectively, for which userspace would like physical mapping
-+information.
-+A reverse mapping key consists of the tuple (device, block, owner, offset).
-+The owner and offset fields are part of the key because some filesystems
-+support sharing physical blocks between multiple files and
-+therefore may return multiple mappings for a given physical block.
-+.PP
-+Filesystem mappings are copied into the
-+.I fmh_recs
-+array, which immediately follows the header data.
-+.SS Fields of struct fsmap_head
-+.PP
-+The
-+.I fmh_iflags
-+field is a bitmask passed to the kernel to alter the output.
-+There are no flags defined, so this value must be zero.
-+
-+.PP
-+The
-+.I fmh_oflags
-+field is a bitmask of flags that concern all output mappings.
-+If
-+.B FMH_OF_DEV_T
-+is set, then the
-+.I fmr_device
-+field represents a
-+.B dev_t
-+structure containing the major and minor numbers of the block device.
-+
-+.PP
-+The
-+.I fmh_count
-+field contains the number of elements in the array being passed to the
-+kernel.
-+If this value is 0,
-+.I fmh_entries
-+will be set to the number of records that would have been returned had
-+the array been large enough;
-+no mapping information will be returned.
-+
-+.PP
-+The
-+.I fmh_entries
-+field contains the number of elements in the
-+.I fmh_recs
-+array that contain useful information.
-+
-+.PP
-+The
-+.I fmh_reserved
-+fields must be set to zero.
-+
-+.SS Keys
-+.PP
-+The two key records in
-+.B fsmap_head.fmh_keys
-+specify the lowest and highest extent records in the keyspace that the caller
-+wants returned.
-+A filesystem that can share blocks between files likely requires the tuple
-+.RI "(" "device" ", " "physical" ", " "owner" ", " "offset" ", " "flags" ")"
-+to uniquely index any filesystem mapping record.
-+Classic non-sharing filesystems might be able to identify any record with only
-+.RI "(" "device" ", " "physical" ", " "flags" ")."
-+For example, if the low key is set to (0, 36864, 0, 0, 0), the filesystem will
-+only return records for extents starting at or above 36KiB on disk.
-+If the high key is set to (0, 1048576, 0, 0, 0), only records below 1MiB will
-+be returned.
-+By convention, the field
-+.B fsmap_head.fmh_keys[0]
-+must contain the low key and
-+.B fsmap_head.fmh_keys[1]
-+must contain the high key for the request.
-+.PP
-+For convenience, if
-+.B fmr_length
-+is set in the low key, it will be added to
-+.IR fmr_block " or " fmr_offset
-+as appropriate.
-+The caller can take advantage of this subtlety to set up subsequent calls
-+by copying
-+.B fsmap_head.fmh_recs[fsmap_head.fmh_entries - 1]
-+into the low key.
-+The function
-+.B fsmap_advance
-+provides this functionality.
-+
-+.SS Fields of struct fsmap
-+.PP
-+The
-+.I fmr_device
-+field contains a 32-bit cookie to uniquely identify the underlying storage
-+device.
-+If the
-+.B FMH_OF_DEV_T
-+flag is set in the header's
-+.I fmh_oflags
-+field, this field contains a
-+.B dev_t
-+from which major and minor numbers can be extracted.
-+If the flag is not set, this field contains a value that must be unique
-+for each unique storage device.
-+
-+.PP
-+The
-+.I fmr_physical
-+field contains the disk address of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_owner
-+field contains the owner of the extent.
-+This is an inode number unless
-+.B FMR_OF_SPECIAL_OWNER
-+is set in the
-+.I fmr_flags
-+field, in which case the value is determined by the filesystem.
-+See the section below about special owner values for more details.
-+
-+.PP
-+The
-+.I fmr_offset
-+field contains the logical address in the mapping record in bytes.
-+This field has no meaning if the
-+.BR FMR_OF_SPECIAL_OWNER " or " FMR_OF_EXTENT_MAP
-+flags are set in
-+.IR fmr_flags "."
-+
-+.PP
-+The
-+.I fmr_length
-+field contains the length of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_flags
-+field is a bitmask of extent state flags.
-+The bits are:
-+.RS 0.4i
-+.TP
-+.B FMR_OF_PREALLOC
-+The extent is allocated but not yet written.
-+.TP
-+.B FMR_OF_ATTR_FORK
-+This extent contains extended attribute data.
-+.TP
-+.B FMR_OF_EXTENT_MAP
-+This extent contains extent map information for the owner.
-+.TP
-+.B FMR_OF_SHARED
-+Parts of this extent may be shared.
-+.TP
-+.B FMR_OF_SPECIAL_OWNER
-+The
-+.I fmr_owner
-+field contains a special value instead of an inode number.
-+.TP
-+.B FMR_OF_LAST
-+This is the last record in the filesystem.
-+.RE
-+
-+.PP
-+The
-+.I fmr_reserved
-+field will be set to zero.
-+
-+.SS Special Owner Values
-+The following special owner values are generic to all filesystems:
-+.RS 0.4i
-+.TP
-+.B FMR_OWN_FREE
-+Free space.
-+.TP
-+.B FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known.
-+.TP
-+.B FMR_OWN_METADATA
-+This extent is filesystem metadata.
-+.RE
-+
-+XFS can return the following special owner values:
-+.RS 0.4i
-+.TP
-+.B XFS_FMR_OWN_FREE
-+Free space.
-+.TP
-+.B XFS_FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known.
-+.TP
-+.B XFS_FMR_OWN_FS
-+Static filesystem metadata which exists at a fixed address.
-+These are the AG superblock, the AGF, the AGFL, and the AGI headers.
-+.TP
-+.B XFS_FMR_OWN_LOG
-+The filesystem journal.
-+.TP
-+.B XFS_FMR_OWN_AG
-+Allocation group metadata, such as the free space btrees and the
-+reverse mapping btrees.
-+.TP
-+.B XFS_FMR_OWN_INOBT
-+The inode and free inode btrees.
-+.TP
-+.B XFS_FMR_OWN_INODES
-+Inode records.
-+.TP
-+.B XFS_FMR_OWN_REFC
-+Reference count information.
-+.TP
-+.B XFS_FMR_OWN_COW
-+This extent is being used to stage a copy-on-write.
-+.TP
-+.B XFS_FMR_OWN_DEFECTIVE:
-+This extent has been marked defective either by the filesystem or the
-+underlying device.
-+.RE
-+
-+ext4 can return the following special owner values:
-+.RS 0.4i
-+.TP
-+.B EXT4_FMR_OWN_FREE
-+Free space.
-+.TP
-+.B EXT4_FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known.
-+.TP
-+.B EXT4_FMR_OWN_FS
-+Static filesystem metadata which exists at a fixed address.
-+This is the superblock and the group descriptors.
-+.TP
-+.B EXT4_FMR_OWN_LOG
-+The filesystem journal.
-+.TP
-+.B EXT4_FMR_OWN_INODES
-+Inode records.
-+.TP
-+.B EXT4_FMR_OWN_BLKBM
-+Block bitmap.
-+.TP
-+.B EXT4_FMR_OWN_INOBM
-+Inode bitmap.
-+.RE
-+
-+.SH RETURN VALUE
-+On error, \-1 is returned, and
-+.I errno
-+is set to indicate the error.
-+.PP
-+.SH ERRORS
-+Error codes can be one of, but are not limited to, the following:
-+.TP
-+.B EINVAL
-+The array is not long enough, or a non-zero value was passed in one of the
-+fields that must be zero.
-+.TP
-+.B EFAULT
-+The pointer passed in was not mapped to a valid memory address.
-+.TP
-+.B EBADF
-+.IR fd
-+is not open for reading.
-+.TP
-+.B EPERM
-+This query is not allowed.
-+.TP
-+.B EOPNOTSUPP
-+The filesystem does not support this command.
-+.TP
-+.B EUCLEAN
-+The filesystem metadata is corrupt and needs repair.
-+.TP
-+.B EBADMSG
-+The filesystem has detected a checksum error in the metadata.
-+.TP
-+.B ENOMEM
-+Insufficient memory to process the request.
-+
-+.SH EXAMPLE
-+.TP
-+Please see io/fsmap.c in the xfsprogs distribution for a sample program.
-+
-+.SH CONFORMING TO
-+This API is Linux-specific.
-+Not all filesystems support it.
-+.fi
-+.in
-+.SH SEE ALSO
-+.BR ioctl (2)
+ 	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
+ 	if (res)
+ 		return res;
+ 
+ 	if (!inode->i_sb->s_cop->get_context)
+ 		return -EOPNOTSUPP;
+-retry:
+-	crypt_info = ACCESS_ONCE(inode->i_crypt_info);
+-	if (crypt_info) {
+-		if (!crypt_info->ci_keyring_key ||
+-				key_validate(crypt_info->ci_keyring_key) == 0)
+-			return 0;
+-		fscrypt_put_encryption_info(inode, crypt_info);
+-		goto retry;
+-	}
+ 
+ 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+ 	if (res < 0) {
+@@ -229,7 +215,6 @@ int fscrypt_get_crypt_info(struct inode *inode)
+ 	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
+ 	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
+ 	crypt_info->ci_ctfm = NULL;
+-	crypt_info->ci_keyring_key = NULL;
+ 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
+ 				sizeof(crypt_info->ci_master_key));
+ 
+@@ -273,14 +258,8 @@ int fscrypt_get_crypt_info(struct inode *inode)
+ 	if (res)
+ 		goto out;
+ 
+-	kzfree(raw_key);
+-	raw_key = NULL;
+-	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) != NULL) {
+-		put_crypt_info(crypt_info);
+-		goto retry;
+-	}
+-	return 0;
+-
++	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) == NULL)
++		crypt_info = NULL;
+ out:
+ 	if (res == -ENOKEY)
+ 		res = 0;
+@@ -288,6 +267,7 @@ int fscrypt_get_crypt_info(struct inode *inode)
+ 	kzfree(raw_key);
+ 	return res;
+ }
++EXPORT_SYMBOL(fscrypt_get_encryption_info);
+ 
+ void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
+ {
+@@ -305,17 +285,3 @@ void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
+ 	put_crypt_info(ci);
+ }
+ EXPORT_SYMBOL(fscrypt_put_encryption_info);
+-
+-int fscrypt_get_encryption_info(struct inode *inode)
+-{
+-	struct fscrypt_info *ci = inode->i_crypt_info;
+-
+-	if (!ci ||
+-		(ci->ci_keyring_key &&
+-		 (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+-					       (1 << KEY_FLAG_REVOKED) |
+-					       (1 << KEY_FLAG_DEAD)))))
+-		return fscrypt_get_crypt_info(inode);
+-	return 0;
+-}
+-EXPORT_SYMBOL(fscrypt_get_encryption_info);
+-- 
+2.11.0.483.g087da7b7c-goog
