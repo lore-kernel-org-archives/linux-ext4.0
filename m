@@ -1,103 +1,199 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] fscrypt: eliminate ->prepare_context() operation
-Date: Wed, 22 Feb 2017 13:25:14 -0800
-Message-ID: <20170222212514.61919-1-ebiggers3@gmail.com>
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:33242 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933492AbdBVV0c (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Feb 2017 16:26:32 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH] vfs: hoist {XFS,EXT4}_IOC_{GOING,SHUT}DOWN to the VFS
+Date: Wed, 22 Feb 2017 23:52:30 -0800
+Message-ID: <20170223075230.GB5837@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+ext4 and XFS expose the same shutdown ioctl with the same parameters,
+so let's hoist the whole mess into the vfs headers.
 
-The only use of the ->prepare_context() fscrypt operation was to allow
-ext4 to evict inline data from the inode before ->set_context().
-However, there is no reason why this cannot be done as simply the first
-step in ->set_context(), and in fact it makes more sense to do it that
-way because then the policy modes and flags get validated before any
-real work is done.  Therefore, merge ext4_prepare_context() into
-ext4_set_context(), and remove ->prepare_context().
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/crypto/policy.c             |  7 -------
- fs/ext4/super.c                | 10 ++++------
- include/linux/fscrypt_common.h |  1 -
- 3 files changed, 4 insertions(+), 14 deletions(-)
+ fs/ext4/ext4.h          |   10 ----------
+ fs/ext4/ioctl.c         |   12 ++++++------
+ fs/xfs/libxfs/xfs_fs.h  |    9 +--------
+ fs/xfs/xfs_fsops.c      |    6 +++---
+ fs/xfs/xfs_ioctl.c      |    2 +-
+ fs/xfs/xfs_ioctl32.c    |    2 +-
+ include/uapi/linux/fs.h |    8 ++++++++
+ 7 files changed, 20 insertions(+), 29 deletions(-)
 
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index 14b76da71269..4908906d54d5 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -33,17 +33,10 @@ static int create_encryption_context_from_policy(struct inode *inode,
- 				const struct fscrypt_policy *policy)
- {
- 	struct fscrypt_context ctx;
--	int res;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cee23b6..b1b4f5b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -683,16 +683,6 @@ struct fsxattr {
+ #define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
+ #define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
  
- 	if (!inode->i_sb->s_cop->set_context)
- 		return -EOPNOTSUPP;
- 
--	if (inode->i_sb->s_cop->prepare_context) {
--		res = inode->i_sb->s_cop->prepare_context(inode);
--		if (res)
--			return res;
--	}
+-#define EXT4_IOC_SHUTDOWN _IOR ('X', 125, __u32)
 -
- 	ctx.format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
- 	memcpy(ctx.master_key_descriptor, policy->master_key_descriptor,
- 					FS_KEY_DESCRIPTOR_SIZE);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2e03a0a88d92..a9448db1cf7e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1120,17 +1120,16 @@ static int ext4_get_context(struct inode *inode, void *ctx, size_t len)
- 				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, ctx, len);
- }
- 
--static int ext4_prepare_context(struct inode *inode)
--{
--	return ext4_convert_inline_data(inode);
--}
+-/*
+- * Flags for going down operation
+- */
+-#define EXT4_GOING_FLAGS_DEFAULT		0x0	/* going down */
+-#define EXT4_GOING_FLAGS_LOGFLUSH		0x1	/* flush log but not data */
+-#define EXT4_GOING_FLAGS_NOLOGFLUSH		0x2	/* don't flush log nor data */
 -
- static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 							void *fs_data)
- {
- 	handle_t *handle = fs_data;
- 	int res, res2, retries = 0;
+-
+ #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+  * ioctl commands in 32 bit emulation
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a4273dd..2a6f8a6 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -454,7 +454,7 @@ int ext4_shutdown(struct super_block *sb, unsigned long arg)
+ 	if (get_user(flags, (__u32 __user *)arg))
+ 		return -EFAULT;
  
-+	res = ext4_convert_inline_data(inode);
-+	if (res)
-+		return res;
+-	if (flags > EXT4_GOING_FLAGS_NOLOGFLUSH)
++	if (flags > FS_SHUTDOWN_FLAGS_NOLOGFLUSH)
+ 		return -EINVAL;
+ 
+ 	if (ext4_forced_shutdown(sbi))
+@@ -463,19 +463,19 @@ int ext4_shutdown(struct super_block *sb, unsigned long arg)
+ 	ext4_msg(sb, KERN_ALERT, "shut down requested (%d)", flags);
+ 
+ 	switch (flags) {
+-	case EXT4_GOING_FLAGS_DEFAULT:
++	case FS_SHUTDOWN_FLAGS_DEFAULT:
+ 		freeze_bdev(sb->s_bdev);
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		thaw_bdev(sb->s_bdev, sb);
+ 		break;
+-	case EXT4_GOING_FLAGS_LOGFLUSH:
++	case FS_SHUTDOWN_FLAGS_LOGFLUSH:
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+ 			(void) ext4_force_commit(sb);
+ 			jbd2_journal_abort(sbi->s_journal, 0);
+ 		}
+ 		break;
+-	case EXT4_GOING_FLAGS_NOLOGFLUSH:
++	case FS_SHUTDOWN_FLAGS_NOLOGFLUSH:
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+ 			msleep(100);
+@@ -940,7 +940,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 
+ 		return 0;
+ 	}
+-	case EXT4_IOC_SHUTDOWN:
++	case FS_IOC_SHUTDOWN:
+ 		return ext4_shutdown(sb, arg);
+ 	default:
+ 		return -ENOTTY;
+@@ -1008,7 +1008,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case EXT4_IOC_SET_ENCRYPTION_POLICY:
+ 	case EXT4_IOC_GET_ENCRYPTION_PWSALT:
+ 	case EXT4_IOC_GET_ENCRYPTION_POLICY:
+-	case EXT4_IOC_SHUTDOWN:
++	case FS_IOC_SHUTDOWN:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
+diff --git a/fs/xfs/libxfs/xfs_fs.h b/fs/xfs/libxfs/xfs_fs.h
+index b72dc82..d7773b3 100644
+--- a/fs/xfs/libxfs/xfs_fs.h
++++ b/fs/xfs/libxfs/xfs_fs.h
+@@ -454,13 +454,6 @@ typedef struct xfs_swapext
+ } xfs_swapext_t;
+ 
+ /*
+- * Flags for going down operation
+- */
+-#define XFS_FSOP_GOING_FLAGS_DEFAULT		0x0	/* going down */
+-#define XFS_FSOP_GOING_FLAGS_LOGFLUSH		0x1	/* flush log but not data */
+-#define XFS_FSOP_GOING_FLAGS_NOLOGFLUSH		0x2	/* don't flush log nor data */
+-
+-/*
+  * ioctl limits
+  */
+ #ifdef XATTR_LIST_MAX
+@@ -533,7 +526,7 @@ typedef struct xfs_swapext
+ #define XFS_IOC_ATTRLIST_BY_HANDLE   _IOW ('X', 122, struct xfs_fsop_attrlist_handlereq)
+ #define XFS_IOC_ATTRMULTI_BY_HANDLE  _IOW ('X', 123, struct xfs_fsop_attrmulti_handlereq)
+ #define XFS_IOC_FSGEOMETRY	     _IOR ('X', 124, struct xfs_fsop_geom)
+-#define XFS_IOC_GOINGDOWN	     _IOR ('X', 125, __uint32_t)
++/*	XFS_IOC_GOINGDOWN ---------- hoisted 125	 */
+ /*	XFS_IOC_GETFSUUID ---------- deprecated 140	 */
+ 
+ 
+diff --git a/fs/xfs/xfs_fsops.c b/fs/xfs/xfs_fsops.c
+index 6ccaae9..3a0507e 100644
+--- a/fs/xfs/xfs_fsops.c
++++ b/fs/xfs/xfs_fsops.c
+@@ -907,7 +907,7 @@ xfs_fs_goingdown(
+ 	__uint32_t	inflags)
+ {
+ 	switch (inflags) {
+-	case XFS_FSOP_GOING_FLAGS_DEFAULT: {
++	case FS_SHUTDOWN_FLAGS_DEFAULT: {
+ 		struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
+ 
+ 		if (sb && !IS_ERR(sb)) {
+@@ -917,10 +917,10 @@ xfs_fs_goingdown(
+ 
+ 		break;
+ 	}
+-	case XFS_FSOP_GOING_FLAGS_LOGFLUSH:
++	case FS_SHUTDOWN_FLAGS_LOGFLUSH:
+ 		xfs_force_shutdown(mp, SHUTDOWN_FORCE_UMOUNT);
+ 		break;
+-	case XFS_FSOP_GOING_FLAGS_NOLOGFLUSH:
++	case FS_SHUTDOWN_FLAGS_NOLOGFLUSH:
+ 		xfs_force_shutdown(mp,
+ 				SHUTDOWN_FORCE_UMOUNT | SHUTDOWN_LOG_IO_ERROR);
+ 		break;
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index cf1363db..859bdfe 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -1931,7 +1931,7 @@ xfs_file_ioctl(
+ 		return error;
+ 	}
+ 
+-	case XFS_IOC_GOINGDOWN: {
++	case FS_IOC_SHUTDOWN: {
+ 		__uint32_t in;
+ 
+ 		if (!capable(CAP_SYS_ADMIN))
+diff --git a/fs/xfs/xfs_ioctl32.c b/fs/xfs/xfs_ioctl32.c
+index 7c49938..f2c1af6 100644
+--- a/fs/xfs/xfs_ioctl32.c
++++ b/fs/xfs/xfs_ioctl32.c
+@@ -551,7 +551,7 @@ xfs_file_compat_ioctl(
+ 	case XFS_IOC_SET_RESBLKS:
+ 	case XFS_IOC_GET_RESBLKS:
+ 	case XFS_IOC_FSGROWFSLOG:
+-	case XFS_IOC_GOINGDOWN:
++	case FS_IOC_SHUTDOWN:
+ 	case XFS_IOC_ERROR_INJECTION:
+ 	case XFS_IOC_ERROR_CLEARALL:
+ 		return xfs_file_ioctl(filp, cmd, p);
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 36da93f..1925c21 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -347,4 +347,12 @@ struct fscrypt_policy {
+ #define RWF_DSYNC			0x00000002 /* per-IO O_DSYNC */
+ #define RWF_SYNC			0x00000004 /* per-IO O_SYNC */
+ 
++/*
++ * Flags for fs shutdown operation
++ */
++#define FS_SHUTDOWN_FLAGS_DEFAULT	0x0	/* going down */
++#define FS_SHUTDOWN_FLAGS_LOGFLUSH	0x1	/* flush log but not data */
++#define FS_SHUTDOWN_FLAGS_NOLOGFLUSH	0x2	/* don't flush log or data */
++#define FS_IOC_SHUTDOWN			_IOR ('X', 125, __u32)
 +
- 	/*
- 	 * If a journal handle was specified, then the encryption context is
- 	 * being set on a new inode via inheritance and is part of a larger
-@@ -1196,7 +1195,6 @@ static unsigned ext4_max_namelen(struct inode *inode)
- static const struct fscrypt_operations ext4_cryptops = {
- 	.key_prefix		= "ext4:",
- 	.get_context		= ext4_get_context,
--	.prepare_context	= ext4_prepare_context,
- 	.set_context		= ext4_set_context,
- 	.dummy_context		= ext4_dummy_context,
- 	.is_encrypted		= ext4_encrypted_inode,
-diff --git a/include/linux/fscrypt_common.h b/include/linux/fscrypt_common.h
-index 547f81592ba1..10c1abfbac6c 100644
---- a/include/linux/fscrypt_common.h
-+++ b/include/linux/fscrypt_common.h
-@@ -87,7 +87,6 @@ struct fscrypt_operations {
- 	unsigned int flags;
- 	const char *key_prefix;
- 	int (*get_context)(struct inode *, void *, size_t);
--	int (*prepare_context)(struct inode *);
- 	int (*set_context)(struct inode *, const void *, size_t, void *);
- 	int (*dummy_context)(struct inode *);
- 	bool (*is_encrypted)(struct inode *);
--- 
-2.11.0.483.g087da7b7c-goog
+ #endif /* _UAPI_LINUX_FS_H */
