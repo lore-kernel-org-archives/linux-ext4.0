@@ -1,69 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 194695] New: size overflow detected in function
- ext4_mb_new_group_pa
-Date: Fri, 24 Feb 2017 13:11:16 +0000
-Message-ID: <bug-194695-13602@https.bugzilla.kernel.org/>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: [PATCH v4 0/5] vfs: Add timestamp range check support
+Date: Fri, 24 Feb 2017 17:40:58 -0800
+Message-ID: <1487986863-6005-1-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34294 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751265AbdBXNLS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 24 Feb 2017 08:11:18 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C41EE286E0
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Feb 2017 13:11:16 +0000 (UTC)
-Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 65A5C286E0
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Feb 2017 13:11:16 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-fsdevel@vger.kernel.org, y2038@lists.linaro.org,
+ linux-kernel@vger.kernel.org, arnd@arndb.de
+To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
+ linux-ext4@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=194695
-
-            Bug ID: 194695
-           Summary: size overflow detected in function
-                    ext4_mb_new_group_pa
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.9.10-1+grsec201702162016+1
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: matthijs@cacholong.nl
-        Regression: No
-
-I am trying to run a kernel with grsecurity with the size overflow
-protection and am getting the following warnings / errors:
-
-dmesg: http://pastebin.com/wr3UGLS9
-config: http://pastebin.com/sr8M9bP0
-mballoc.* (make fs/ext4/mballoc.o EXTRA_CFLAGS="-fdump-tree-all
--fdump-ipa-all") http://filebin.ca/3DMIChVw9lQM/mballoc.tgz
-
-According to the grsecurity developers it seems to be a bug in ext4, see for
-some background here:
-https://forums.grsecurity.net/viewtopic.php?f=1&t=4678&p=16971
-
-The response from ephox (PAX team / grsecurity developer):
---
-Thanks for the report. I think this is an upstream bug. Based on the
-runtime values provided by you, ext4_mb_new_group_pa() tries to store a
-value into pa->pa_lstart which larger than UINT_MAX which comes from
-ext4_group_first_block_no().
-Could you please report it to the ext4 developers?
---
-
-I'll try to answer all the questions but I'm not an expert in this area.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+VGhlIHNlcmllcyBpcyBhaW1lZCBhdCBhZGRpbmcgdGltZXN0YW1wIGNoZWNraW5nIGFuZCBwb2xp
+Y3kKcmVsYXRlZCB0byBpdCB0byB2ZnMuCgpUaGUgc2VyaWVzIHdhcyBkZXZlbG9wZWQgd2l0aCBk
+aXNjdXNzaW9ucyBhbmQgZ3VpZGFuY2UgZnJvbQpBcm5kIEJlcmdtYW5uLgoKVGhlIG9yaWdpbmFs
+IHRocmVhZCBpcyBhdCBodHRwczovL2xrbWwub3JnL2xrbWwvMjAxNi8xMS8yLzI5NAoKQXNzb2Np
+YXRlZCB0ZXN0OiB4ZnN0ZXN0cyBnZW5lcmljLzQwMgpOb3RlIHRoYXQgdGhlIGFib3ZlIHRlc3Qg
+d2lsbCBiZSBydW4gYW5kIHdpbGwgZmFpbCBhbGwgZmlsZXN5c3RlbXMgdGhhdApkbyBub3QgaGF2
+ZSBjb3JyZWN0IGxpbWl0cyBzcGVjaWZpZWQgaW4gdGhlIHhmc3Rlc3RzIG9yIHRoZSBrZXJuZWwg
+b3IKdGhhdCBkb24ndCBzdXBwb3J0IHRpbWVzIGJleW9uZCB0aGUgdGVzdCBkYXRlcy4gSSB3aWxs
+IGJlIHN1Ym1pdHRpbmcgYQpmb2xsb3cgdXAgeGZzdGVzdCBhbmQga2VybmVsIHBhdGNoZXMgdG8g
+dXBkYXRlIGFsbCBmaWxlc3lzdGVtcy4KQ3VycmVudGx5IGV4dDQgaXMgdGhlIG9ubHkgZmlsZXN5
+c3RlbSB0aGF0IHJlZmxlY3RzIGNvcnJlY3QgbGltaXRzLgoKVGhlIGJyYW5jaCBpcyBhdmFpbGFi
+bGUgYXQKaHR0cHM6Ly9naXRodWIuY29tL2RlZXBhLWh1Yi92ZnMuZ2l0IHJlZnMvaGVhZHMvdmZz
+X3RpbWVzdGFtcF9wb2xpY3kKCkNoYW5nZXMgc2luY2UgdjM6CiogUmVtb3ZlIHJlZHVuZGFudCBp
+bml0aWFsaXphdGlvbnMgaW4gbGliZnMuYwoqIENoYW5nZSBlYXJseV9wYXJhbSB0byBfX3NldHVw
+IHNpbWlsYXIgdG8gb3RoZXIgcm9vdCBtb3VudCBvcHRpb25zLgoqIEZpeCBkb2N1bWVudGF0aW9u
+IHdhcm5pbmcKQ2hhbmdlcyBzaW5jZSB2MjoKKiBJbnRyb2R1Y2UgZWFybHkgYm9vdCBwYXJhbSBv
+dmVycmlkZSBmb3IgY2hlY2tzLgoqIERyb3AgYWZzIHBhdGNoIGZvciB0aW1lc3RhbXAgbGltaXRz
+LgpDaGFuZ2VzIHNpbmNlIHYxOgoqIHJldHVybiBFUk9GUyBvbiBtb3VudCBlcnJvcnMKKiBmaXgg
+bXRpbWUgY29weS9wYXN0ZSBlcnJvciBpbiB1dGltZXMKCkRlZXBhIERpbmFtYW5pICg1KToKICB2
+ZnM6IEFkZCBmaWxlIHRpbWVzdGFtcCByYW5nZSBzdXBwb3J0CiAgdmZzOiBBZGQgY2hlY2tzIGZv
+ciBmaWxlc3lzdGVtIHRpbWVzdGFtcCBsaW1pdHMKICBleHQ0OiBJbml0aWFsaXplIHRpbWVzdGFt
+cHMgbGltaXRzCiAgdmZzOiBBZGQgdGltZXN0YW1wX3RydW5jYXRlKCkgYXBpCiAgdXRpbWVzOiBD
+bGFtcCB0aGUgdGltZXN0YW1wcyBiZWZvcmUgdXBkYXRlCgogZnMvZXh0NC9leHQ0LmggICAgICAg
+ICAgfCAgNCArKysrCiBmcy9leHQ0L3N1cGVyLmMgICAgICAgICB8ICA3ICsrKysrKy0KIGZzL2lu
+b2RlLmMgICAgICAgICAgICAgIHwgNDcgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKy0KIGZzL2ludGVybmFsLmggICAgICAgICAgIHwgIDIgKysKIGZzL25hbWVz
+cGFjZS5jICAgICAgICAgIHwgMTIgKysrKysrKysrKysrCiBmcy9zdXBlci5jICAgICAgICAgICAg
+ICB8ICA5ICsrKysrKysrKwogZnMvdXRpbWVzLmMgICAgICAgICAgICAgfCAxNyArKysrKysrKysr
+KysrLS0tLQogaW5jbHVkZS9saW51eC9mcy5oICAgICAgfCAgNCArKysrCiBpbmNsdWRlL2xpbnV4
+L3RpbWU2NC5oICB8ICA2ICsrKysrKwogaW5jbHVkZS91YXBpL2xpbnV4L2ZzLmggfCAgNiArKysr
+Ky0KIGtlcm5lbC9zeXNjdGwuYyAgICAgICAgIHwgIDcgKysrKysrKwogMTEgZmlsZXMgY2hhbmdl
+ZCwgMTE0IGluc2VydGlvbnMoKyksIDcgZGVsZXRpb25zKC0pCgotLSAKMi43LjQKCl9fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClkyMDM4IG1haWxpbmcgbGlz
+dApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9tYWlsbWFu
+L2xpc3RpbmZvL3kyMDM4Cg==
