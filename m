@@ -1,102 +1,167 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: inherit encryption xattr before other xattrs
-Date: Mon, 27 Feb 2017 15:20:59 -0700
-Message-ID: <2917076A-3C7B-4DA4-8A79-CFCEC38007BF@dilger.ca>
-References: <20170217233321.108637-1-ebiggers3@gmail.com>
- <2F4F7FA9-37C2-4FF1-9365-EF38D57FE7CA@dilger.ca>
- <20170227213637.GA123733@gmail.com>
+Subject: Re: ext2/4 large inode xattr mismash?
+Date: Mon, 27 Feb 2017 15:42:11 -0700
+Message-ID: <B757EF06-0644-4596-B02E-E9E39142DD77@dilger.ca>
+References: <20170227181056.GA5266@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_18799E8A-2892-4C13-8D12-C246E2B9DCC7";
+ boundary="Apple-Mail=_5CB27859-3403-455E-B708-E899403A6FBD";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>, ngkaho1234@gmail.com
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34842 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751894AbdB0W3i (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2017 17:29:38 -0500
-Received: by mail-it0-f67.google.com with SMTP id 203so13135029ith.2
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2017 14:27:58 -0800 (PST)
-In-Reply-To: <20170227213637.GA123733@gmail.com>
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36113 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751372AbdB0Wnv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2017 17:43:51 -0500
+Received: by mail-io0-f195.google.com with SMTP id w10so7358362iod.3
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2017 14:42:04 -0800 (PST)
+In-Reply-To: <20170227181056.GA5266@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_18799E8A-2892-4C13-8D12-C246E2B9DCC7
+--Apple-Mail=_5CB27859-3403-455E-B708-E899403A6FBD
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Feb 27, 2017, at 2:36 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
->=20
-> On Mon, Feb 27, 2017 at 01:28:28PM -0700, Andreas Dilger wrote:
->> On Feb 17, 2017, at 4:33 PM, Eric Biggers <ebiggers3@gmail.com> =
+On Feb 27, 2017, at 11:10 AM, Darrick J. Wong <darrick.wong@oracle.com> =
 wrote:
->>>=20
->>> From: Eric Biggers <ebiggers@google.com>
->>>=20
->>> When using both encryption and SELinux (or another feature that =
-requires
->>> an xattr per file) on a filesystem with 256-byte inodes, each file's
->>> xattrs usually spill into an external xattr block.  Currently, the
->>> xattrs are inherited in the order ACL, security, then encryption.
->>> Therefore, if spillage occurs, the encryption xattr will always end =
-up
->>> in the external block.  This is not ideal because the encryption =
-xattrs
->>> contain a nonce, so they will always be unique and will prevent the
->>> external xattr blocks from being deduplicated.
->>>=20
->>> To improve the situation, change the inheritance order to =
-encryption,
->>> ACL, then security.  This gives the encryption xattr a better chance =
-to
->>> be stored in-inode, allowing the other xattr(s) to be deduplicated.
->>>=20
->>> Note that it may be better for userspace to format the filesystem =
-with
->>> 512-byte inodes in this case.  However, it's not the default.
->>>=20
->>> Signed-off-by: Eric Biggers <ebiggers@google.com>
->>=20
->> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
->>=20
->> Note that we've been using 512-byte xattrs for Lustre metadata =
-servers
->> for ages.  We may want to consider enabling this by default when the
->> filesystem features are set (e.g. crypto, inline data, etc).
->>=20
->> Having a general mechanism to bias xattrs to in-inode or external =
-xattr
->> storage would be nice also, but I don't know any way to do this =
-beyond
->> just having a list of xattr names and then prioritizing the ones that
->> go into the in-inode space.
->>=20
 >=20
-> I think it's a good idea to have mke2fs default to 512-byte inodes if
-> '-O inline_data' is specified.  But with '-O encrypt' it may be more =
-debatable
-> because there is no guarantee as to how many files userspace will =
-actually
-> choose to encrypt.  It could be almost the whole filesystem, or just a =
-few
-> files, or even nothing at all.
+> Hi Ted,
 >=20
-> Regardless, I think adjusting the xattr inheritance order (as this =
-patch does)
-> has advantages but no real disadvantages, so it might as well be done =
-too.
+> Today ngkaho1234 pointed out on IRC that if you do the following:
+>=20
+> $ mkfs.ext2 /dev/sda -F
+> $ mount /dev/sda /mnt -t ext4
+> $ touch /mnt/x
+> $ setfattr -n user.name1 -v moo /mnt/x
+> $ umount /mnt
+> $ mount /dev/sda /mnt -t ext2
+> $ setfattr -n user.name1 -v urk /mnt/x
+> $ umount /mnt
+>=20
+> Then you get this broken looking result:
+> $ mount /dev/sda /mnt -e ext4
+> $ getfattr /mnt/x
+> getfattr: Removing leading '/' from absolute path names
+> # file: mnt/x
+> user.name1
+> user.name1
+>=20
+> Looking through debugfs, it seems that ext4 wrote user.name1=3Dmoo as =
+an
+> ibody xattr, then ext2 wrote user.name1=3Durk into an external xattr =
+block
+> and set i_file_acl.  ext4 sees the attr it wrote, ext2 sees the attr =
+it
+> wrote, and neither can see the attr the other wrote.
+>=20
+> $ debugfs -R 'features' /dev/sda
+> Filesystem features: ext_attr resize_inode dir_index filetype =
+sparse_super large_file
+>=20
+> $ debugfs -R 'stat /x' /dev/sda
+> Inode: 12   Type: regular    Mode:  0644   Flags: 0x0
+> Generation: 2341792653    Version: 0x00000000:00000001
+> User:     0   Group:     0   Project:     0   Size: 0
+> File ACL: 617    Directory ACL: 0
+> Links: 1   Blockcount: 8
+> Fragment:  Address: 0    Number: 0    Size: 0
+> ctime: 0x58b45e2b:926e39a8 -- Mon Feb 27 09:13:15 2017
+> atime: 0x58b45e21:c4f666c0 -- Mon Feb 27 09:13:05 2017
+> mtime: 0x58b45e21:c4f666c0 -- Mon Feb 27 09:13:05 2017
+> crtime: 0x58b45e21:c4f666c0 -- Mon Feb 27 09:13:05 2017
+> Size of extra inode fields: 32
+> Extended attributes:
+>  user.name1 (3) =3D "moo"
+>  user.name1 (3) =3D "urk"
+> BLOCKS:
+>=20
+> This is wrong -- we don't have RO_COMPAT_EXTRA_ISIZE set, so ext4 =
+should
+> /not/ be setting i_extra_isize=3D32.  Unfortunately, it does set
+> i_extra_isize, which enables ext4_xattr_ibody_set to write xattrs into
+> the inode body.  That's a problem, because ext2 doesn't know about
+> inline attrs or i_extra_isize.
 
-Sorry if I wasn't clear.  I have no objections to this patch at all, and =
-would
-be happy to see it land.  My comments were just for related improvements =
-that
-could be done in different patches.
+I suspect that this isn't a big problem in real life, since most systems
+these days are using ext4 to mount ext2 filesystems, instead of using =
+the
+separate ext2 module, and it could understand the extra data anyway.
+
+The thing to check/fix in the ext4 code is to not set i_extra_isize if =
+the
+EXTRA_ISIZE feature isn't set.  Also, e2fsck should set the feature flag
+if it finds valid extra inode data beyond 128 bytes, since this is =
+already
+true out in the wild, so we don't want to clobber existing (meta)data in
+large inodes.
+
+Unfortunately, our policy is to not enable features in-kernel =
+automatically,
+to avoid the problem of potentially making the filesystem unmountable,
+otherwise we could do the same in ext4.  That said, e2fsck will prompt =
+the
+user to fix this if needed.
+
+> It occurred to me to check the s_inode_size, which is 256 on this
+> supposedly ext2 filesystem.  I'd have thought _fill_super would check
+> this value, but apparently its only criteria are that s_inode_size is =
+at
+> least 128, a power of 2, and no larger than a block.  But AFAIK ext2 =
+has
+> no ability to use any inode space beyond the first 128 bytes, so what
+> good are large inodes?
+
+I don't think the 256-byte inode size should be considered a problem on
+ext2 by itself.  The old code understands the larger inode size, it just
+didn't do anything with that larger size until ext3 had fast xattrs and
+the added timestamp fields.  The other thought is to just get rid of the
+ext2 code completely, and the problem would be gone...  I don't think
+there are (m)any cases where ext2 is faster than ext4, if nojournal
+is used to level the playing field.
+
+> Oh, and e2fsck apparently doesn't notice if there are inodes with
+> i_extra_isize set even if ro_compat_extra_isize is not set.
+>=20
+> I could see a bunch of fixes to resolve this problem:
+>=20
+> 1) Teach ext4 not to set i_extra_isize unless the feature bit is set.
+> 2) ext2_iget grows the ability to return -EFSCORRUPTED for inodes that
+>   have big inodes and i_extra_isize set, to encourage people to run
+>   e2fsck.
+
+No, it shouldn't be accessing that space if the feature flag isn't set,
+and should return an error at mount if it is (if not read-only).  That
+is the reason the EXTRA_ISIZE was created as a read-only feature, so
+that ext2 can't add xattrs or change the extended timestamps that =
+conflict
+with values in the large inode.
+
+> 3) e2fsck will move attrs and zap i_extra_isize if i_extra_isize is =
+set
+>   on a filesystem that doesn't support it.
+
+Wouldn't it be better to set the feature flag rather than deleting the
+xattrs (which may not fit into the xattr block and/or may consume the
+free space of the filesystem, and at a minimum will hurt performance)?
+
+> 4) mke2fs probably should stop allocating 256 byte inodes with the =
+ext2
+>   and ext3 profiles, though it's not clear to me why the ext2 driver
+>   even allows this -- maybe there's some context here I don't know?
+
+Well, this in itself isn't harmful, and allows those filesystems to be
+updated to ext4 easily in the future.  I think the root of the problem
+is that ext4 is enabling a feature without checking the feature flag.
+
+> So ... /me isn't sure how to deal with this.  List? :)
+>=20
+> --D
+
 
 Cheers, Andreas
 
@@ -105,7 +170,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_18799E8A-2892-4C13-8D12-C246E2B9DCC7
+--Apple-Mail=_5CB27859-3403-455E-B708-E899403A6FBD
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -116,9 +181,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFYtKZNpIg59Q01vtYRAgkDAKCQX4dzl1LjBtpmXm6l6aA4Z6m1zACgr/C/
-kdEAp0dNy8zZYPK+FpVV6rI=
-=ebx5
+iD8DBQFYtKtDpIg59Q01vtYRAmIEAKC1Rgs7IJAWjMKL7ilsA5iPiGYZGgCghFDU
+GPtSjnXch+Kw8YndOt6rtBQ=
+=+jtc
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_18799E8A-2892-4C13-8D12-C246E2B9DCC7--
+--Apple-Mail=_5CB27859-3403-455E-B708-E899403A6FBD--
