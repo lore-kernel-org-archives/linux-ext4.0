@@ -1,143 +1,45 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: inherit encryption xattr before other xattrs
-Date: Mon, 27 Feb 2017 13:28:28 -0700
-Message-ID: <2F4F7FA9-37C2-4FF1-9365-EF38D57FE7CA@dilger.ca>
-References: <20170217233321.108637-1-ebiggers3@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_45EAF68B-FB1A-41C0-91E4-F4ED373A3A5F";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194695] size overflow detected in function ext4_mb_new_group_pa
+Date: Mon, 27 Feb 2017 20:55:18 +0000
+Message-ID: <bug-194695-13602-Ue2yLGB1fr@https.bugzilla.kernel.org/>
+References: <bug-194695-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36328 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752012AbdB0U2Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Feb 2017 15:28:24 -0500
-Received: by mail-io0-f195.google.com with SMTP id w10so7027193iod.3
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2017 12:28:23 -0800 (PST)
-In-Reply-To: <20170217233321.108637-1-ebiggers3@gmail.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52808 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751039AbdB0VMm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 27 Feb 2017 16:12:42 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8A655282E8
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2017 20:55:26 +0000 (UTC)
+Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 580D9282E8
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Feb 2017 20:55:26 +0000 (UTC)
+In-Reply-To: <bug-194695-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=194695
 
---Apple-Mail=_45EAF68B-FB1A-41C0-91E4-F4ED373A3A5F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Andreas Dilger (adilger.kernelbugzilla@dilger.ca) changed:
 
-On Feb 17, 2017, at 4:33 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
->=20
-> From: Eric Biggers <ebiggers@google.com>
->=20
-> When using both encryption and SELinux (or another feature that =
-requires
-> an xattr per file) on a filesystem with 256-byte inodes, each file's
-> xattrs usually spill into an external xattr block.  Currently, the
-> xattrs are inherited in the order ACL, security, then encryption.
-> Therefore, if spillage occurs, the encryption xattr will always end up
-> in the external block.  This is not ideal because the encryption =
-xattrs
-> contain a nonce, so they will always be unique and will prevent the
-> external xattr blocks from being deduplicated.
->=20
-> To improve the situation, change the inheritance order to encryption,
-> ACL, then security.  This gives the encryption xattr a better chance =
-to
-> be stored in-inode, allowing the other xattr(s) to be deduplicated.
->=20
-> Note that it may be better for userspace to format the filesystem with
-> 512-byte inodes in this case.  However, it's not the default.
->=20
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |adilger.kernelbugzilla@dilg
+                   |                            |er.ca
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+--- Comment #1 from Andreas Dilger (adilger.kernelbugzilla@dilger.ca) ---
+Definitely looks like a real bug in:
 
-Note that we've been using 512-byte xattrs for Lustre metadata servers
-for ages.  We may want to consider enabling this by default when the
-filesystem features are set (e.g. crypto, inline data, etc).
+        pa->pa_pstart = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
+        pa->pa_lstart = pa->pa_pstart;
 
-Having a general mechanism to bias xattrs to in-inode or external xattr
-storage would be nice also, but I don't know any way to do this beyond
-just having a list of xattr names and then prioritizing the ones that
-go into the in-inode space.
+pa_pstart is 64-bit, pa_lstart is 32-bit.
 
-Cheers, Andreas
-
-> ---
-> fs/ext4/ialloc.c | 17 +++++++++++------
-> 1 file changed, 11 insertions(+), 6 deletions(-)
->=20
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index b14bae2598bc..0304e28c2014 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -1096,6 +1096,17 @@ struct inode *__ext4_new_inode(handle_t =
-*handle, struct inode *dir,
-> 	if (err)
-> 		goto fail_drop;
->=20
-> +	/*
-> +	 * Since the encryption xattr will always be unique, create it =
-first so
-> +	 * that it's less likely to end up in an external xattr block =
-and
-> +	 * prevent its deduplication.
-> +	 */
-> +	if (encrypt) {
-> +		err =3D fscrypt_inherit_context(dir, inode, handle, =
-true);
-> +		if (err)
-> +			goto fail_free_drop;
-> +	}
-> +
-> 	err =3D ext4_init_acl(handle, inode, dir);
-> 	if (err)
-> 		goto fail_free_drop;
-> @@ -1117,12 +1128,6 @@ struct inode *__ext4_new_inode(handle_t =
-*handle, struct inode *dir,
-> 		ei->i_datasync_tid =3D handle->h_transaction->t_tid;
-> 	}
->=20
-> -	if (encrypt) {
-> -		err =3D fscrypt_inherit_context(dir, inode, handle, =
-true);
-> -		if (err)
-> -			goto fail_free_drop;
-> -	}
-> -
-> 	err =3D ext4_mark_inode_dirty(handle, inode);
-> 	if (err) {
-> 		ext4_std_error(sb, err);
-> --
-> 2.11.0.483.g087da7b7c-goog
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_45EAF68B-FB1A-41C0-91E4-F4ED373A3A5F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYtIvtpIg59Q01vtYRAiLMAKDay2qlGXZEuIwHO9DQOT385aA+oQCgopgR
-w/uMPtqP8bu3+Dfnxjj3FCk=
-=OBUY
------END PGP SIGNATURE-----
-
---Apple-Mail=_45EAF68B-FB1A-41C0-91E4-F4ED373A3A5F--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
