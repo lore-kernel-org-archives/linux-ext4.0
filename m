@@ -1,31 +1,36 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: lock the the xattr block before calculating its
- checksum
-Date: Tue, 28 Feb 2017 08:12:08 -0800
-Message-ID: <20170228161208.GC5266@birch.djwong.org>
-References: <20170228135650.28045-1-tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs: readahead for meta_bg
+Date: Tue, 28 Feb 2017 08:16:02 -0800
+Message-ID: <20170228161602.GD5266@birch.djwong.org>
+References: <1487585025-16654-1-git-send-email-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        alexey.lyashkov@gmail.com
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:35023 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751593AbdB1QMQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Feb 2017 11:12:16 -0500
+Received: from aserp1040.oracle.com ([141.146.126.69]:44144 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751768AbdB1QQt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Feb 2017 11:16:49 -0500
 Content-Disposition: inline
-In-Reply-To: <20170228135650.28045-1-tytso@mit.edu>
+In-Reply-To: <1487585025-16654-1-git-send-email-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 28, 2017 at 08:56:50AM -0500, Theodore Ts'o wrote:
-> We must lock the xattr block in order to avoid spurious checksum
-> failures.
+On Mon, Feb 20, 2017 at 01:03:45PM +0300, Artem Blagodarenko wrote:
+> From: Alexey Lyashkov <alexey.lyashkov@seagate.com>
 > 
-> https://bugzilla.kernel.org/show_bug.cgi?id=193661
+> There are ~37k of random IOs with meta_bg option on 300T target.
+
+Yikes, 300TB ext4! :)
+
+(Is that really 2.2 million blockgroups?)
+
+> Debugfs requires 20 minutes to be started. Enabling readahead for
+> group blocks metadata save time dramatically. Only 12s to start.
 > 
-> Reported-by: Colin Ian King <colin.king@canonical.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
 
 Looks good,
 Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
@@ -33,66 +38,26 @@ Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 --D
 
 > ---
->  fs/ext4/xattr.c | 31 ++++++++++++++-----------------
->  1 file changed, 14 insertions(+), 17 deletions(-)
+>  lib/ext2fs/openfs.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 67636acf7624..3247057ef5ff 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -131,30 +131,27 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
->  }
->  
->  static int ext4_xattr_block_csum_verify(struct inode *inode,
-> -					sector_t block_nr,
-> -					struct ext4_xattr_header *hdr)
-> +					struct buffer_head *bh)
->  {
-> -	if (ext4_has_metadata_csum(inode->i_sb) &&
-> -	    (hdr->h_checksum != ext4_xattr_block_csum(inode, block_nr, hdr)))
-> -		return 0;
-> -	return 1;
-> -}
-> -
-> -static void ext4_xattr_block_csum_set(struct inode *inode,
-> -				      sector_t block_nr,
-> -				      struct ext4_xattr_header *hdr)
-> -{
-> -	if (!ext4_has_metadata_csum(inode->i_sb))
-> -		return;
-> +	struct ext4_xattr_header *hdr = BHDR(bh);
-> +	int ret = 1;
->  
-> -	hdr->h_checksum = ext4_xattr_block_csum(inode, block_nr, hdr);
-> +	if (ext4_has_metadata_csum(inode->i_sb)) {
-> +		lock_buffer(bh);
-> +		ret = hdr->h_checksum == ext4_xattr_block_csum(inode,
-> +							bh->b_blocknr, hdr);
-> +		unlock_buffer(bh);
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index ba501e6..f158b0a 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -399,6 +399,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+>  #endif
+>  		dest += fs->blocksize*first_meta_bg;
+>  	}
+> +
+> +	for (i = first_meta_bg ; i < fs->desc_blocks; i++) {
+> +		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+> +		io_channel_cache_readahead(fs->io, blk, 1);
 > +	}
-> +	return ret;
->  }
->  
->  static inline int ext4_handle_dirty_xattr_block(handle_t *handle,
->  						struct inode *inode,
->  						struct buffer_head *bh)
->  {
-> -	ext4_xattr_block_csum_set(inode, bh->b_blocknr, BHDR(bh));
-> +	if (ext4_has_metadata_csum(inode->i_sb))
-> +		BHDR(bh)->h_checksum = ext4_xattr_block_csum(inode,
-> +						bh->b_blocknr, BHDR(bh));
->  	return ext4_handle_dirty_metadata(handle, inode, bh);
->  }
->  
-> @@ -233,7 +230,7 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
->  	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
->  	    BHDR(bh)->h_blocks != cpu_to_le32(1))
->  		return -EFSCORRUPTED;
-> -	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
-> +	if (!ext4_xattr_block_csum_verify(inode, bh))
->  		return -EFSBADCRC;
->  	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
->  				       bh->b_data);
+> +
+>  	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
+>  		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+>  		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
 > -- 
-> 2.11.0.rc0.7.gbe5a750
+> 1.7.1
 > 
