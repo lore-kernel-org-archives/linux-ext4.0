@@ -1,76 +1,137 @@
 From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 1/8] nowait aio: Introduce IOCB_FLAG_NOWAIT
-Date: Tue, 28 Feb 2017 17:36:03 -0600
-Message-ID: <20170228233610.25456-2-rgoldwyn@suse.de>
+Subject: [PATCH 6/8] nowait aio: ext4
+Date: Tue, 28 Feb 2017 17:36:08 -0600
+Message-ID: <20170228233610.25456-7-rgoldwyn@suse.de>
 References: <20170228233610.25456-1-rgoldwyn@suse.de>
 Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
         linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         Goldwyn Rodrigues <rgoldwyn@suse.com>
 To: jack@suse.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <20170228233610.25456-1-rgoldwyn@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Goldwyn Rodrigues <rgoldwyn@suse.com>
 
-This flag informs kernel to bail out if an AIO request will block
-for reasons such as file allocations, or a writeback triggered,
-or would block while allocating requests while performing
-direct I/O.
-
-IOCB_FLAG_NOWAIT is translated to IOCB_NOWAIT for
-iocb->ki_flags.
+Return EAGAIN if any of the following checks fail for direct I/O:
+ + i_rwsem is lockable
+ + Writing beyond end of file (will trigger allocation)
+ + Blocks are not allocated at the write location
 
 Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
 ---
- fs/aio.c                     | 3 +++
- include/linux/fs.h           | 1 +
- include/uapi/linux/aio_abi.h | 3 +++
- 3 files changed, 7 insertions(+)
+ fs/ext4/file.c | 53 +++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 35 insertions(+), 18 deletions(-)
 
-diff --git a/fs/aio.c b/fs/aio.c
-index 873b4ca..5ae19ba 100644
---- a/fs/aio.c
-+++ b/fs/aio.c
-@@ -1586,6 +1586,9 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
- 		req->common.ki_flags |= IOCB_EVENTFD;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d663d3d..391e03b 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -124,27 +124,22 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
+ 	return 0;
+ }
+ 
+-/* Is IO overwriting allocated and initialized blocks? */
+-static bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len)
++/* Are IO blocks allocated */
++static bool ext4_blocks_mapped(struct inode *inode, loff_t pos, loff_t len,
++				struct ext4_map_blocks *map)
+ {
+-	struct ext4_map_blocks map;
+ 	unsigned int blkbits = inode->i_blkbits;
+ 	int err, blklen;
+ 
+ 	if (pos + len > i_size_read(inode))
+ 		return false;
+ 
+-	map.m_lblk = pos >> blkbits;
+-	map.m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
+-	blklen = map.m_len;
++	map->m_lblk = pos >> blkbits;
++	map->m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
++	blklen = map->m_len;
+ 
+-	err = ext4_map_blocks(NULL, inode, &map, 0);
+-	/*
+-	 * 'err==len' means that all of the blocks have been preallocated,
+-	 * regardless of whether they have been initialized or not. To exclude
+-	 * unwritten extents, we need to check m_flags.
+-	 */
+-	return err == blklen && (map.m_flags & EXT4_MAP_MAPPED);
++	err = ext4_map_blocks(NULL, inode, map, 0);
++	return err == blklen;
+ }
+ 
+ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+@@ -176,6 +171,7 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	ssize_t ret;
+ 	bool overwrite = false;
++	struct ext4_map_blocks map;
+ 
+ 	inode_lock(inode);
+ 	ret = ext4_write_checks(iocb, from);
+@@ -188,7 +184,9 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (ret)
+ 		goto out;
+ 
+-	if (ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from))) {
++	if (ext4_blocks_mapped(inode, iocb->ki_pos,
++				iov_iter_count(from), &map) &&
++	    (map.m_flags & EXT4_MAP_MAPPED)) {
+ 		overwrite = true;
+ 		downgrade_write(&inode->i_rwsem);
  	}
+@@ -209,6 +207,7 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	int o_direct = iocb->ki_flags & IOCB_DIRECT;
++	int nowait = iocb->ki_flags & IOCB_NOWAIT;
+ 	int unaligned_aio = 0;
+ 	int overwrite = 0;
+ 	ssize_t ret;
+@@ -218,7 +217,13 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		return ext4_dax_write_iter(iocb, from);
+ #endif
  
-+	if (iocb->aio_flags & IOCB_FLAG_NOWAIT)
-+		req->common.ki_flags |= IOCB_NOWAIT;
+-	inode_lock(inode);
++	if (o_direct && nowait) {
++		if (!inode_trylock(inode))
++			return -EAGAIN;
++	} else {
++		inode_lock(inode);
++	}
 +
- 	ret = put_user(KIOCB_KEY, &user_iocb->aio_key);
- 	if (unlikely(ret)) {
- 		pr_debug("EFAULT: aio_key\n");
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2ba0743..ab2f556 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -270,6 +270,7 @@ struct writeback_control;
- #define IOCB_DSYNC		(1 << 4)
- #define IOCB_SYNC		(1 << 5)
- #define IOCB_WRITE		(1 << 6)
-+#define IOCB_NOWAIT		(1 << 7)
+ 	ret = ext4_write_checks(iocb, from);
+ 	if (ret <= 0)
+ 		goto out;
+@@ -237,9 +242,21 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
  
- struct kiocb {
- 	struct file		*ki_filp;
-diff --git a/include/uapi/linux/aio_abi.h b/include/uapi/linux/aio_abi.h
-index bb2554f..82d1d94 100644
---- a/include/uapi/linux/aio_abi.h
-+++ b/include/uapi/linux/aio_abi.h
-@@ -51,8 +51,11 @@ enum {
-  *
-  * IOCB_FLAG_RESFD - Set if the "aio_resfd" member of the "struct iocb"
-  *                   is valid.
-+ * IOCB_FLAG_NOWAIT - Set if the user wants the iocb to fail if it would block
-+ *			for operations such as disk allocation.
-  */
- #define IOCB_FLAG_RESFD		(1 << 0)
-+#define IOCB_FLAG_NOWAIT	(1 << 1)
+ 	iocb->private = &overwrite;
+ 	/* Check whether we do a DIO overwrite or not */
+-	if (o_direct && ext4_should_dioread_nolock(inode) && !unaligned_aio &&
+-	    ext4_overwrite_io(inode, iocb->ki_pos, iov_iter_count(from)))
+-		overwrite = 1;
++	if (o_direct && !unaligned_aio) {
++		struct ext4_map_blocks map;
++		if (ext4_blocks_mapped(inode, iocb->ki_pos,
++				      iov_iter_count(from), &map)) {
++	 		/* To exclude unwritten extents, we need to check
++			 * m_flags.
++			 */
++			if (ext4_should_dioread_nolock(inode) &&
++			    (map.m_flags & EXT4_MAP_MAPPED))
++				overwrite = 1;
++		} else if (iocb->ki_flags & IOCB_NOWAIT) {
++			ret = -EAGAIN;
++			goto out;
++		}
++	}
  
- /* read() from /dev/aio returns these structures. */
- struct io_event {
+ 	ret = __generic_file_write_iter(iocb, from);
+ 	inode_unlock(inode);
 -- 
 2.10.2
+
