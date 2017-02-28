@@ -1,13 +1,13 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 8/9] xfs: report realtime space information via the rtbitmap
-Date: Tue, 28 Feb 2017 10:46:41 -0800
-Message-ID: <148830760185.22089.7585485406339387044.stgit@birch.djwong.org>
+Subject: [PATCH 3/9] xfs: provide a query_range function for freespace btrees
+Date: Tue, 28 Feb 2017 10:46:09 -0800
+Message-ID: <148830756923.22089.13512741575459313680.stgit@birch.djwong.org>
 References: <148830755018.22089.4423076490708341523.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
+        Brian Foster <bfoster@redhat.com>, linux-ext4@vger.kernel.org
 To: darrick.wong@oracle.com
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <148830755018.22089.4423076490708341523.stgit@birch.djwong.org>
@@ -16,178 +16,84 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Use the realtime bitmap to return free space information via getfsmap.
-Eventually this will be superseded by the realtime rmapbt code.
+Implement a query_range function for the bnobt and cntbt.  This will
+be used for getfsmap fallback if there is no rmapbt and by the online
+scrub and repair code.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
 ---
- fs/xfs/xfs_fsmap.c |  120 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 119 insertions(+), 1 deletion(-)
+ fs/xfs/libxfs/xfs_alloc.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ fs/xfs/libxfs/xfs_alloc.h |   10 ++++++++++
+ 2 files changed, 52 insertions(+)
 
 
-diff --git a/fs/xfs/xfs_fsmap.c b/fs/xfs/xfs_fsmap.c
-index 56bbd24..bb351ed 100644
---- a/fs/xfs/xfs_fsmap.c
-+++ b/fs/xfs/xfs_fsmap.c
-@@ -41,6 +41,7 @@
- #include "xfs_refcount.h"
- #include "xfs_refcount_btree.h"
- #include "xfs_alloc_btree.h"
-+#include "xfs_rtalloc.h"
- 
- /* Convert an xfs_fsmap to an fsmap. */
- void
-@@ -415,6 +416,29 @@ xfs_getfsmap_rtdev_helper(
- 	return xfs_getfsmap_helper(cur->bc_tp, info, rec, rec_daddr);
+diff --git a/fs/xfs/libxfs/xfs_alloc.c b/fs/xfs/libxfs/xfs_alloc.c
+index 9f06a21..526df17 100644
+--- a/fs/xfs/libxfs/xfs_alloc.c
++++ b/fs/xfs/libxfs/xfs_alloc.c
+@@ -2875,3 +2875,45 @@ xfs_free_extent(
+ 	xfs_trans_brelse(tp, agbp);
+ 	return error;
  }
- 
-+/* Transform a rtbitmap "record" into a fsmap */
++
++struct xfs_alloc_query_range_info {
++	xfs_alloc_query_range_fn	fn;
++	void				*priv;
++};
++
++/* Format btree record and pass to our callback. */
 +STATIC int
-+xfs_getfsmap_rtdev_rtbitmap_helper(
-+	struct xfs_trans		*tp,
-+	struct xfs_rtalloc_rec		*rec,
++xfs_alloc_query_range_helper(
++	struct xfs_btree_cur		*cur,
++	union xfs_btree_rec		*rec,
 +	void				*priv)
 +{
-+	struct xfs_mount		*mp = tp->t_mountp;
-+	struct xfs_getfsmap_info	*info = priv;
-+	struct xfs_rmap_irec		irec;
-+	xfs_daddr_t			rec_daddr;
++	struct xfs_alloc_query_range_info	*query = priv;
++	struct xfs_alloc_rec_incore		irec;
 +
-+	rec_daddr = XFS_FSB_TO_BB(mp, rec->ar_startblock);
-+
-+	irec.rm_startblock = rec->ar_startblock;
-+	irec.rm_blockcount = rec->ar_blockcount;
-+	irec.rm_owner = XFS_RMAP_OWN_NULL;	/* "free" */
-+	irec.rm_offset = 0;
-+	irec.rm_flags = 0;
-+
-+	return xfs_getfsmap_helper(tp, info, &irec, rec_daddr);
++	irec.ar_startblock = be32_to_cpu(rec->alloc.ar_startblock);
++	irec.ar_blockcount = be32_to_cpu(rec->alloc.ar_blockcount);
++	return query->fn(cur, &irec, query->priv);
 +}
 +
- /* Transform a bnobt irec into a fsmap */
- STATIC int
- xfs_getfsmap_datadev_bnobt_helper(
-@@ -504,6 +528,93 @@ xfs_getfsmap_logdev(
- 	return xfs_getfsmap_rtdev_helper(&cur, &rmap, info);
- }
- 
-+/* Execute a getfsmap query against the realtime device. */
-+STATIC int
-+__xfs_getfsmap_rtdev(
-+	struct xfs_trans		*tp,
-+	struct xfs_fsmap		*keys,
-+	int				(*query_fn)(struct xfs_trans *,
-+						    struct xfs_getfsmap_info *),
-+	struct xfs_getfsmap_info	*info)
++/* Find all free space within a given range of blocks. */
++int
++xfs_alloc_query_range(
++	struct xfs_btree_cur			*cur,
++	struct xfs_alloc_rec_incore		*low_rec,
++	struct xfs_alloc_rec_incore		*high_rec,
++	xfs_alloc_query_range_fn		fn,
++	void					*priv)
 +{
-+	struct xfs_mount		*mp = tp->t_mountp;
-+	xfs_fsblock_t			start_fsb;
-+	xfs_fsblock_t			end_fsb;
-+	xfs_daddr_t			eofs;
-+	int				error = 0;
++	union xfs_btree_irec			low_brec;
++	union xfs_btree_irec			high_brec;
++	struct xfs_alloc_query_range_info	query;
 +
-+	eofs = XFS_FSB_TO_BB(mp, mp->m_sb.sb_rblocks);
-+	if (keys[0].fmr_physical >= eofs)
-+		return 0;
-+	if (keys[1].fmr_physical >= eofs)
-+		keys[1].fmr_physical = eofs - 1;
-+	start_fsb = XFS_BB_TO_FSBT(mp, keys[0].fmr_physical);
-+	end_fsb = XFS_BB_TO_FSB(mp, keys[1].fmr_physical);
-+
-+	/* Set up search keys */
-+	info->low.rm_startblock = start_fsb;
-+	error = xfs_fsmap_owner_to_rmap(&info->low, &keys[0]);
-+	if (error)
-+		return error;
-+	info->low.rm_offset = XFS_BB_TO_FSBT(mp, keys[0].fmr_offset);
-+	info->low.rm_blockcount = 0;
-+	xfs_getfsmap_set_irec_flags(&info->low, &keys[0]);
-+
-+	info->high.rm_startblock = end_fsb;
-+	error = xfs_fsmap_owner_to_rmap(&info->high, &keys[1]);
-+	if (error)
-+		return error;
-+	info->high.rm_offset = XFS_BB_TO_FSBT(mp, keys[1].fmr_offset);
-+	info->high.rm_blockcount = 0;
-+	xfs_getfsmap_set_irec_flags(&info->high, &keys[1]);
-+
-+	trace_xfs_fsmap_low_key(mp, info->dev, info->agno, &info->low);
-+	trace_xfs_fsmap_high_key(mp, info->dev, info->agno, &info->high);
-+
-+	return query_fn(tp, info);
++	ASSERT(cur->bc_btnum == XFS_BTNUM_BNO);
++	low_brec.a = *low_rec;
++	high_brec.a = *high_rec;
++	query.priv = priv;
++	query.fn = fn;
++	return xfs_btree_query_range(cur, &low_brec, &high_brec,
++			xfs_alloc_query_range_helper, &query);
 +}
-+
-+/* Actually query the realtime bitmap. */
-+STATIC int
-+xfs_getfsmap_rtdev_rtbitmap_query(
-+	struct xfs_trans		*tp,
-+	struct xfs_getfsmap_info	*info)
-+{
-+	struct xfs_rtalloc_rec		alow;
-+	struct xfs_rtalloc_rec		ahigh;
-+	int				error;
-+
-+	xfs_ilock(tp->t_mountp->m_rbmip, XFS_ILOCK_SHARED);
-+
-+	alow.ar_startblock = info->low.rm_startblock;
-+	ahigh.ar_startblock = info->high.rm_startblock;
-+	error = xfs_rtalloc_query_range(tp, &alow, &ahigh,
-+			xfs_getfsmap_rtdev_rtbitmap_helper, info);
-+	if (error)
-+		goto err;
-+
-+	/* Report any gaps at the end of the rtbitmap */
-+	info->last = true;
-+	error = xfs_getfsmap_rtdev_rtbitmap_helper(tp, &ahigh, info);
-+	if (error)
-+		goto err;
-+err:
-+	xfs_iunlock(tp->t_mountp->m_rbmip, XFS_ILOCK_SHARED);
-+	return error;
-+}
-+
-+/* Execute a getfsmap query against the realtime device rtbitmap. */
-+STATIC int
-+xfs_getfsmap_rtdev_rtbitmap(
-+	struct xfs_trans		*tp,
-+	struct xfs_fsmap		*keys,
-+	struct xfs_getfsmap_info	*info)
-+{
-+	info->missing_owner = XFS_FMR_OWN_UNKNOWN;
-+	return __xfs_getfsmap_rtdev(tp, keys, xfs_getfsmap_rtdev_rtbitmap_query,
-+			info);
-+}
-+
- /* Execute a getfsmap query against the regular data device. */
- STATIC int
- __xfs_getfsmap_datadev(
-@@ -719,6 +830,9 @@ xfs_getfsmap_is_valid_device(
- 	if (mp->m_logdev_targp &&
- 	    fm->fmr_device == new_encode_dev(mp->m_logdev_targp->bt_dev))
- 		return true;
-+	if (mp->m_rtdev_targp &&
-+	    fm->fmr_device == new_encode_dev(mp->m_rtdev_targp->bt_dev))
-+		return true;
- 	return false;
- }
+diff --git a/fs/xfs/libxfs/xfs_alloc.h b/fs/xfs/libxfs/xfs_alloc.h
+index 1d0f48a..f534998 100644
+--- a/fs/xfs/libxfs/xfs_alloc.h
++++ b/fs/xfs/libxfs/xfs_alloc.h
+@@ -223,4 +223,14 @@ int xfs_free_extent_fix_freelist(struct xfs_trans *tp, xfs_agnumber_t agno,
  
-@@ -751,7 +865,7 @@ xfs_getfsmap_check_keys(
- 	return false;
- }
+ xfs_extlen_t xfs_prealloc_blocks(struct xfs_mount *mp);
  
--#define XFS_GETFSMAP_DEVS	2
-+#define XFS_GETFSMAP_DEVS	3
- /*
-  * Get filesystem's extents as described in head, and format for
-  * output.  Calls formatter to fill the user's buffer until all
-@@ -807,6 +921,10 @@ xfs_getfsmap(
- 		handlers[1].dev = new_encode_dev(mp->m_logdev_targp->bt_dev);
- 		handlers[1].fn = xfs_getfsmap_logdev;
- 	}
-+	if (mp->m_rtdev_targp) {
-+		handlers[2].dev = new_encode_dev(mp->m_rtdev_targp->bt_dev);
-+		handlers[2].fn = xfs_getfsmap_rtdev_rtbitmap;
-+	}
- 
- 	xfs_sort(handlers, XFS_GETFSMAP_DEVS, sizeof(struct xfs_getfsmap_dev),
- 			xfs_getfsmap_dev_compare);
++typedef int (*xfs_alloc_query_range_fn)(
++	struct xfs_btree_cur		*cur,
++	struct xfs_alloc_rec_incore	*rec,
++	void				*priv);
++
++int xfs_alloc_query_range(struct xfs_btree_cur *cur,
++		struct xfs_alloc_rec_incore *low_rec,
++		struct xfs_alloc_rec_incore *high_rec,
++		xfs_alloc_query_range_fn fn, void *priv);
++
+ #endif	/* __XFS_ALLOC_H__ */
