@@ -1,48 +1,111 @@
 From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 0/8 v2] Non-blocking AIO
-Date: Tue, 28 Feb 2017 17:36:02 -0600
-Message-ID: <20170228233610.25456-1-rgoldwyn@suse.de>
+Subject: [PATCH 5/8] nowait aio: return on congested block device
+Date: Tue, 28 Feb 2017 17:36:07 -0600
+Message-ID: <20170228233610.25456-6-rgoldwyn@suse.de>
+References: <20170228233610.25456-1-rgoldwyn@suse.de>
 Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
         linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
 To: jack@suse.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51627 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751478AbdB1XlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 28 Feb 2017 18:41:19 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20170228233610.25456-1-rgoldwyn@suse.de>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This series adds nonblocking feature to asynchronous I/O writes.
-io_submit() can be delayed because of a number of reason:
- - Block allocation for files
- - Data writebacks for direct I/O
- - Sleeping because of waiting to acquire i_rwsem
- - Congested block device
+From: Goldwyn Rodrigues <rgoldwyn@suse.com>
 
-The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
-any of these conditions are met. This way userspace can push most
-of the write()s to the kernel to the best of its ability to complete
-and if it returns -EAGAIN, can defer it to another thread.
+A new flag BIO_NOWAIT is introduced to identify bio's
+orignating from iocb with IOCB_NOWAIT. This flag indicates
+to return immediately if a request cannot be made instead
+of retrying.
 
-In order to enable this, IOCB_FLAG_NOWAIT is introduced in
-uapi/linux/aio_abi.h which translates to IOCB_NOWAIT for struct iocb,
-BIO_NOWAIT for bio and IOMAP_NOWAIT for iomap.
+Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+---
+ block/blk-core.c          | 13 +++++++++++--
+ fs/direct-io.c            | 11 +++++++++--
+ include/linux/blk_types.h |  1 +
+ 3 files changed, 21 insertions(+), 4 deletions(-)
 
-This feature is provided for direct I/O of asynchronous I/O only. I have
-tested it against xfs, ext4, and btrfs.
-
-Changes since v1:
- + Forwardported from 4.9.10
- + changed name from _NONBLOCKING to *_NOWAIT
- + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
- + BIO_NOWAIT limited to get_request()
- + XFS fixes 
-	- included reflink 
-	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
-	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
-	  block allocation for the file.
- + ext4 coding style
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 61ba08c..e5cfc50 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -1258,6 +1258,11 @@ static struct request *get_request(struct request_queue *q, unsigned int op,
+ 	if (!IS_ERR(rq))
+ 		return rq;
+ 
++	if (bio_flagged(bio, BIO_NOWAIT)) {
++		blk_put_rl(rl);
++		return ERR_PTR(-EAGAIN);
++	}
++
+ 	if (!gfpflags_allow_blocking(gfp_mask) || unlikely(blk_queue_dying(q))) {
+ 		blk_put_rl(rl);
+ 		return rq;
+@@ -2018,7 +2023,7 @@ blk_qc_t generic_make_request(struct bio *bio)
+ 	do {
+ 		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
+ 
+-		if (likely(blk_queue_enter(q, false) == 0)) {
++		if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT)) == 0)) {
+ 			ret = q->make_request_fn(q, bio);
+ 
+ 			blk_queue_exit(q);
+@@ -2027,7 +2032,11 @@ blk_qc_t generic_make_request(struct bio *bio)
+ 		} else {
+ 			struct bio *bio_next = bio_list_pop(current->bio_list);
+ 
+-			bio_io_error(bio);
++			if (unlikely(bio_flagged(bio, BIO_NOWAIT))) {
++				bio->bi_error = -EAGAIN;
++				bio_endio(bio);
++			} else
++				bio_io_error(bio);
+ 			bio = bio_next;
+ 		}
+ 	} while (bio);
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index c87bae4..2973df0 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -386,6 +386,9 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
+ 	else
+ 		bio->bi_end_io = dio_bio_end_io;
+ 
++	if (dio->iocb->ki_flags & IOCB_NOWAIT)
++		bio_set_flag(bio, BIO_NOWAIT);
++
+ 	sdio->bio = bio;
+ 	sdio->logical_offset_in_bio = sdio->cur_page_fs_offset;
+ }
+@@ -480,8 +483,12 @@ static int dio_bio_complete(struct dio *dio, struct bio *bio)
+ 	unsigned i;
+ 	int err;
+ 
+-	if (bio->bi_error)
+-		dio->io_error = -EIO;
++	if (bio->bi_error) {
++		if (bio_flagged(bio, BIO_NOWAIT))
++			dio->io_error = bio->bi_error;
++		else
++			dio->io_error = -EIO;
++	}
+ 
+ 	if (dio->is_async && dio->op == REQ_OP_READ && dio->should_dirty) {
+ 		err = bio->bi_error;
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 519ea2c..1d77e9b 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -102,6 +102,7 @@ struct bio {
+ #define BIO_REFFED	8	/* bio has elevated ->bi_cnt */
+ #define BIO_THROTTLED	9	/* This bio has already been subjected to
+ 				 * throttling rules. Don't do it again. */
++#define BIO_NOWAIT	10	/* don't block over blk device congestion */
+ 
+ /*
+  * Flags starting here get preserved by bio_reset() - this includes
 -- 
-Goldwyn
+2.10.2
+
