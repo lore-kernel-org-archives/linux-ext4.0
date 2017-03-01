@@ -1,45 +1,70 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 2/8] nowait aio: Return if cannot get hold of i_rwsem
-Date: Tue, 28 Feb 2017 17:36:04 -0600
-Message-ID: <20170228233610.25456-3-rgoldwyn@suse.de>
-References: <20170228233610.25456-1-rgoldwyn@suse.de>
-Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: jack@suse.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170228233610.25456-1-rgoldwyn@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194739] New: fallocate --collapse-range causes temporal data
+ corruption on fragmented file
+Date: Wed, 01 Mar 2017 00:00:51 +0000
+Message-ID: <bug-194739-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40370 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751673AbdCAAIb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 28 Feb 2017 19:08:31 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6C78B27F60
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2017 00:00:54 +0000 (UTC)
+Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0CA9927F60
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Mar 2017 00:00:54 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=194739
 
-A failure to lock i_rwsem would mean there is I/O being performed
-by another thread. So, let's bail.
+            Bug ID: 194739
+           Summary: fallocate --collapse-range causes temporal data
+                    corruption on fragmented file
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.10.1
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: iive@yahoo.com
+        Regression: No
 
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
----
- mm/filemap.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+I use `fallocate -c` to cut the start of the file without having to copy the
+whole file again.
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 3f9afde..78dd50e 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2973,7 +2973,12 @@ ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 
--	inode_lock(inode);
-+	if (!inode_trylock(inode)) {
-+		/* Don't sleep on inode rwsem */
-+		if (iocb->ki_flags & IOCB_NOWAIT)
-+			return -EAGAIN;
-+		inode_lock(inode);
-+	}
- 	ret = generic_write_checks(iocb, from);
- 	if (ret > 0)
- 		ret = __generic_file_write_iter(iocb, from);
+However recently, after collapsing the file it seems to repeat a portion of the
+data, that should have been moved. That is, the new start of the file is found
+somewhere around its old location.
+
+Restarting the computer (or just hibernate) seems to fix the file.
+
+Doing:
+`echo 3 > /proc/sys/vm/drop_caches`
+
+also seems to fix the issue. Using just `echo 1` fixes some of the data, but
+the file still might be broken.
+
+
+I've noticed this problem on 4.9 kernel. I'm not sure if it is regression,
+because the problem might be triggered by high fragmentation. This partition
+got quite full and the files are quite big, thus they are always very
+fragmented.
+
+Just want to make it clear.
+Data on disk is not damaged.
+
 -- 
-2.10.2
+You are receiving this mail because:
+You are watching the assignee of the bug.
