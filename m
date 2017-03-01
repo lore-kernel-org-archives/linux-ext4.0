@@ -1,181 +1,112 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] libext2fs: readahead for meta_bg
-Date: Tue, 28 Feb 2017 19:50:48 -0700
-Message-ID: <4F4ECDB0-7939-4F3D-8995-0BA6A96C658E@dilger.ca>
-References: <1487585025-16654-1-git-send-email-artem.blagodarenko@gmail.com>
- <42AA3FB8-88C4-4616-A20F-D09F0833D288@dilger.ca>
- <62970C8A-AEB5-4AE8-8C83-C9BA41D313AB@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_0CC789C4-00E4-4E76-93D4-C7CA9EEE5834";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34451 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750709AbdCAFzq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2017 00:55:46 -0500
-Received: by mail-it0-f67.google.com with SMTP id r141so3925916ita.1
-        for <linux-ext4@vger.kernel.org>; Tue, 28 Feb 2017 21:54:06 -0800 (PST)
-In-Reply-To: <62970C8A-AEB5-4AE8-8C83-C9BA41D313AB@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Nick Alcock <nick.alcock@oracle.com>
+Subject: v4.7--v4.10+: ext4: repeatable inline-data oops (and fs corruption) caused by msync() of shared writable mmap (with recipe)
+Date: Wed, 01 Mar 2017 11:45:52 +0000
+Message-ID: <874lzdcj9r.fsf@esperi.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+[Resend, after the first attempt, from my home address, failed with
+ endless greylisting followed by "4.5.0 Interactive router timed out"
+ from all but the lowest-priority MX for vger, and "Name server:
+ bl-ckh-le.kernel.org.: host not found" for the apparently-nonexistent
+ lowest-priority MX. Maybe it'll work better from here.]
 
---Apple-Mail=_0CC789C4-00E4-4E76-93D4-C7CA9EEE5834
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+I first spotted this -- or it spotted me -- back in the v4.7.x days. It
+is still present in v4.10.
 
-On Feb 28, 2017, at 7:19 PM, Alexey Lyashkov <alexey.lyashkov@gmail.com> =
-wrote:
->=20
-> Andreas,
->=20
-> we have do it first. But patch was much and much complex due checksums =
-handling in code.
-> and ext2_flush() will be need to read an all GD in memory to as use a =
-flat array to write a GD to the disk.
+Here's a replication recipe, given a reasonable rootfs with a compiler
+on it, and assuming a blank virtio disk on /dev/vdb:
 
-Yes, I saw ext2_flush() was accessing the array directly, and would have =
-a
-problem as you describe.  One option would be to skip writing =
-uninitialized
-GDT blocks, but that also becomes more complex to get correct.
+bash-4.4# mke2fs -t ext4 -O inline_data /dev/vdb
+# using stock /etc/mke2fs.conf from e2fsprogs master
 
-> If you want we have submit it also, but it have no benefits (like a =
-few seconds), against it simple version.
+bash-4.4# mount /dev/vdb /mnt/boom
+bash-4.4# cat > boom.c
+/* derived from dovecot's configure script */
 
-I guess a large part of your speedup is because of submitting the GDT =
-reads
-in parallel to a disk array.  If the GDT blocks are all mapped to a =
-single
-disk in the array (entirely possible with META_BG, depending on array =
-geometry)
-then the prefetch will have minimal benefits.
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+int main() {
+  /* return 0 if we're signed */
+  int f = open("conftest.mmap", O_RDWR|O_CREAT|O_TRUNC, 0600);
+  void *mem;
+  if (f == -1) {
+    perror("open()");
+    return 1;
+  }
+  unlink("conftest.mmap");
 
-Another option would be to change debugfs/tune2fs/dumpe2fs to use the
-EXT2_FLAG_SUPER_ONLY flag to only read the superblock on open if the
-requested operations do not need access to the group descriptors at all?
-For a large filesystem as you describe, 37K GDT blocks is still over =
-144MB
-of data that needs to be read from disk, vs 4KB for the superblock.
+  write(f, "1", 2);
+  mem = mmap(NULL, 2, PROT_READ|PROT_WRITE, MAP_SHARED, f, 0);
+  if (mem == MAP_FAILED) {
+    perror("mmap()");
+    return 1;
+  }
+  strcpy(mem, "2");
+  msync(mem, 2, MS_SYNC);
+  lseek(f, 0, SEEK_SET);
+  write(f, "3", 2);
 
-Cheers, Andreas
+  return strcmp(mem, "3") == 0 ? 0 : 1;
+}
 
->> 1 =D0=BC=D0=B0=D1=80=D1=82=D0=B0 2017 =D0=B3., =D0=B2 3:10, Andreas =
-Dilger <adilger@dilger.ca> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0=
-):
->>=20
->> On Feb 20, 2017, at 3:03 AM, Artem Blagodarenko =
-<artem.blagodarenko@gmail.com> wrote:
->>>=20
->>> From: Alexey Lyashkov <alexey.lyashkov@seagate.com>
->>>=20
->>> There are ~37k of random IOs with meta_bg option on 300T target.
->>> Debugfs requires 20 minutes to be started. Enabling readahead for
->>> group blocks metadata save time dramatically. Only 12s to start.
->>>=20
->>> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@seagate.com>
->>=20
->> This patch looks good by itself.
->>=20
->> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
->> ----
->>=20
->> On a related note, I've been wondering if it would make sense to have
->> a second patch that *only* does the readahead of the group descriptor =
-blocks
->> in ext2fs_open2(), and move io_channel_read_blk64() to =
-ext2fs_group_desc()
->> when the group descriptor blocks are actually accessed the first =
-time?  This
->> would allow tools like tune2fs, debugfs, dumpe2fs, etc. that may not =
-access
->> group descriptors to load _much_ faster than if it loads all of the =
-bitmaps
->> synchronously at filesystem open time.  Even if they _do_ access the =
-GDT it
->> will at least allow the prefetch more time to run in the background, =
-and the
->> GDT swabbing happen incrementally upon access rather than all at the =
-start.
->>=20
->> A quick look through lib/ext2fs looks like ext2fs_group_desc() is =
-used for
->> the majority of group descriptor accesses, but there are a few places =
-that
->> access fs->group_desc directly.  The ext2fs_group_desc() code could =
-check
->> whether the group descriptor is all-zero (ext2fs_open2() should be =
-changed
->> to use ext2fs_get_array_zero(..., &fs->group_desc)) and if so read =
-the whole
->> descriptor block into the array and optionally swab it.
->>=20
->> Cheers, Andreas
->>=20
->>> ---
->>> lib/ext2fs/openfs.c |    6 ++++++
->>> 1 files changed, 6 insertions(+), 0 deletions(-)
->>>=20
->>> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
->>> index ba501e6..f158b0a 100644
->>> --- a/lib/ext2fs/openfs.c
->>> +++ b/lib/ext2fs/openfs.c
->>> @@ -399,6 +399,12 @@ errcode_t ext2fs_open2(const char *name, const =
-char *io_options,
->>> #endif
->>> 		dest +=3D fs->blocksize*first_meta_bg;
->>> 	}
->>> +
->>> +	for (i =3D first_meta_bg ; i < fs->desc_blocks; i++) {
->>> +		blk =3D ext2fs_descriptor_block_loc2(fs, group_block, =
-i);
->>> +		io_channel_cache_readahead(fs->io, blk, 1);
->>> +	}
->>> +
->>> 	for (i=3Dfirst_meta_bg ; i < fs->desc_blocks; i++) {
->>> 		blk =3D ext2fs_descriptor_block_loc2(fs, group_block, =
-i);
->>> 		retval =3D io_channel_read_blk64(fs->io, blk, 1, dest);
->>> --
->>> 1.7.1
->>>=20
->>=20
->>=20
->> Cheers, Andreas
->>=20
->>=20
->>=20
->>=20
->>=20
->=20
+bash-4.4# gcc -O2 -o boom boom.c
+bash-4.4# ./boom
+[  205.652124] ------------[ cut here ]------------
+[  205.653692] kernel BUG at fs/ext4/inode.c:2696!
+[  205.655174] invalid opcode: 0000 [#1] SMP
+[  205.656527] Modules linked in:
+[  205.657675] CPU: 1 PID: 151 Comm: boom Not tainted 4.10.0-00006-g7f691c7bbef7-dirty #22
+[  205.660319] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.10.1-0-g8891697-prebuilt.qemu-project.org 04/01/2014
+[  205.661496] task: ffff88013a325040 task.stack: ffffc90000328000
+[  205.661496] RIP: 0010:ext4_writepages+0xb30/0xcf0
+[  205.661496] RSP: 0018:ffffc9000032bcb8 EFLAGS: 00010287
+[  205.661496] RAX: 0000028410000000 RBX: ffff880139c820c0 RCX: 0000000000000800
+[  205.661496] RDX: 0000000000a82000 RSI: 0000000000000001 RDI: ffff88013a3d4000
+[  205.661496] RBP: ffffc9000032bde0 R08: 0000000000000800 R09: ffff880139c820c0
+[  205.661496] R10: ffff880139c820c0 R11: 0000000000000000 R12: ffff880139cae898
+[  205.661496] R13: ffff880139caea00 R14: ffff88013a3d7800 R15: ffffc9000032be00
+[  205.661496] FS:  00007fc55a32e700(0000) GS:ffff88013fd00000(0000) knlGS:0000000000000000
+[  205.661496] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  205.661496] CR2: 00007fc55a37d000 CR3: 0000000139546000 CR4: 00000000000006e0
+[  205.661496] Call Trace:
+[  205.661496]  ? __block_write_begin_int+0x2f2/0x5c0
+[  205.661496]  ? ext4_inode_attach_jinode.part.16+0xa0/0xa0
+[  205.661496]  ? __set_page_dirty_buffers+0x25/0xc0
+[  205.661496]  ? ext4_set_page_dirty+0x49/0xa0
+[  205.661496]  ? set_page_dirty+0x5b/0xb0
+[  205.661496]  ? block_page_mkwrite+0xc2/0x100
+[  205.661496]  ? ext4_page_mkwrite+0xe0/0x4c0
+[  205.661496]  do_writepages+0x1e/0x30
+[  205.661496]  __filemap_fdatawrite_range+0x71/0x90
+[  205.661496]  filemap_write_and_wait_range+0x2a/0x70
+[  205.661496]  ext4_sync_file+0xf4/0x390
+[  205.661496]  vfs_fsync_range+0x49/0xa0
+[  205.661496]  ? find_vma+0x1b/0x70
+[  205.661496]  SyS_msync+0x182/0x200
+[  205.661496]  entry_SYSCALL_64_fastpath+0x13/0x94
+[  205.661496] RIP: 0033:0x7fc559ea2710
+[  205.661496] RSP: 002b:00007ffec1f76c08 EFLAGS: 00000246 ORIG_RAX: 000000000000001a
+[  205.661496] RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fc559ea2710
+[  205.661496] RDX: 0000000000000004 RSI: 0000000000000002 RDI: 00007fc55a37d000
+[  205.661496] RBP: 00007fc55a37d000 R08: 0000000000000003 R09: 0000000000000000
+[  205.661496] R10: 0000000000000305 R11: 0000000000000246 R12: 00000000004006a0
+[  205.661496] R13: 00007ffec1f76d00 R14: 0000000000000000 R15: 0000000000000000
+[  205.661496] Code: 8b 44 24 18 48 c7 c1 38 ea 9e 81 ba a8 09 00 00 48 c7 c6 40 eb 83 81 48 8b 78 28 4c 8b 40 40 e8 37 97 01 00 44 8b 54 24 08 eb ac <0f> 0b 4c 8b 74 24 28 31 db 4c 8b 6c 24 20 4c 8b 7c 24 40 41 f6
+[  205.661496] RIP: ext4_writepages+0xb30/0xcf0 RSP: ffffc9000032bcb8
+[  205.730074] ---[ end trace f8ac10159c3827e3 ]---
 
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_0CC789C4-00E4-4E76-93D4-C7CA9EEE5834
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYtjcIpIg59Q01vtYRAli9AJ4t44n0N2MpHrh5byR0kWwc8IP+cACg44SR
-IAK+ncPFeDr0zuEJ07CHl98=
-=ex2A
------END PGP SIGNATURE-----
-
---Apple-Mail=_0CC789C4-00E4-4E76-93D4-C7CA9EEE5834--
+./boom is (obviously) now stuck in D state, so the filesystem is not
+umountable (except lazily). Further writing to the filesystem in this
+state can corrupt it so badly that fsck can't make head or tail of it,
+though debugfs can still find hints that it was probably an ext4
+filesystem once upon a time.
