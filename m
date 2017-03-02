@@ -1,7 +1,8 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/3] e2info: create a tool to display ext4 fs geometry online
-Date: Wed, 01 Mar 2017 20:52:19 -0800
-Message-ID: <148843033922.21733.4922683685279348093.stgit@birch.djwong.org>
+Subject: [PATCH 3/3] e2spacey: create a program to use getfsmap to profile
+ free space
+Date: Wed, 01 Mar 2017 20:52:27 -0800
+Message-ID: <148843034776.21733.3790987196585797215.stgit@birch.djwong.org>
 References: <148843032650.21733.13980225191301375698.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,290 +10,479 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:16990 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:17022 "EHLO
         aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753694AbdCBEw2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2017 23:52:28 -0500
+        with ESMTP id S1753792AbdCBEwe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2017 23:52:34 -0500
 In-Reply-To: <148843032650.21733.13980225191301375698.stgit@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Create e2info, which reports the fs geometry of an online ext4 filesystem.
+e2spacey is a new tool that uses the GETFSMAP ioctl and the FSGEOMETRY
+ioctl to find all the free extents in a mounted filesystem and display
+either per-flexbg free block counts or a histogram of free extents.
+At this point it's mostly useful as a debugging tool.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- configure            |    4 +
- configure.ac         |    3 +
- lib/ext2fs/ext2_fs.h |   34 ++++++++
- misc/Makefile.in     |   30 ++++++-
- misc/e2info.8.in     |   64 ++++++++++++++++
- misc/e2info.c        |  205 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 336 insertions(+), 4 deletions(-)
- create mode 100644 misc/e2info.8.in
- create mode 100644 misc/e2info.c
+ Makefile.in          |    3 
+ configure            |    6 +
+ configure.ac         |    5 -
+ lib/ext2fs/ext2_fs.h |    8 +
+ spacey/Makefile.in   |  152 +++++++++++++++++
+ spacey/e2spacey.8.in |   65 +++++++
+ spacey/fsmap.h       |   89 ++++++++++
+ spacey/main.c        |  456 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 781 insertions(+), 3 deletions(-)
+ create mode 100644 spacey/Makefile.in
+ create mode 100644 spacey/e2spacey.8.in
+ create mode 100644 spacey/fsmap.h
+ create mode 100644 spacey/main.c
 
 
+diff --git a/Makefile.in b/Makefile.in
+index 7da9ad7..b48d0f9 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -13,10 +13,11 @@ INSTALL = @INSTALL@
+ @DEBUGFS_CMT@DEBUGFS_DIR= debugfs
+ @UUID_CMT@UUID_LIB_SUBDIR= lib/uuid
+ @BLKID_CMT@BLKID_LIB_SUBDIR= lib/blkid
++@SPACEY_CMT@SPACEY_DIR= spacey
+ SUPPORT_LIB_SUBDIR= lib/support
+ 
+ LIB_SUBDIRS=lib/et lib/ss lib/e2p $(UUID_LIB_SUBDIR) $(BLKID_LIB_SUBDIR) $(SUPPORT_LIB_SUBDIR) lib/ext2fs intl
+-PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po
++PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po $(SPACEY_DIR)
+ SUBDIRS=util $(LIB_SUBDIRS) $(PROG_SUBDIRS) tests
+ 
+ SUBS= util/subst.conf lib/config.h $(top_builddir)/lib/dirpaths.h \
 diff --git a/configure b/configure
-index 5f7b429..b553da1 100755
+index b553da1..940b11c 100755
 --- a/configure
 +++ b/configure
 @@ -642,6 +642,7 @@ root_prefix
  UNIX_CMT
  CYGWIN_CMT
  LINUX_CMT
-+E2INFO_CMT
++SPACEY_CMT
+ E2INFO_CMT
  UNI_DIFF_OPTS
  SEM_INIT_LIB
- FUSE_CMT
-@@ -13663,13 +13664,16 @@ fi
- { $as_echo "$as_me:${as_lineno-$LINENO}: result: $UNI_DIFF_OPTS" >&5
+@@ -13665,15 +13666,18 @@ fi
  $as_echo "$UNI_DIFF_OPTS" >&6; }
  
-+E2INFO_CMT="#"
+ E2INFO_CMT="#"
++SPACEY_CMT="#"
  case "$host_os" in
  linux*)
  
  $as_echo "#define HAVE_EXT2_IOCTLS 1" >>confdefs.h
  
-+	E2INFO_CMT=
+ 	E2INFO_CMT=
++	SPACEY_CMT=
  	;;
  esac
+ 
 +
  LINUX_CMT="#"
  CYGWIN_CMT="#"
  UNIX_CMT=
+@@ -13875,7 +13879,7 @@ for i in MCONFIG Makefile e2fsprogs.spec \
+ 	misc/Makefile ext2ed/Makefile e2fsck/Makefile \
+ 	debugfs/Makefile tests/Makefile tests/progs/Makefile \
+ 	resize/Makefile doc/Makefile intl/Makefile \
+-	intl/libgnuintl.h po/Makefile.in ; do
++	intl/libgnuintl.h po/Makefile.in spacey/Makefile ; do
+ 	if test -d `dirname ${srcdir}/$i` ; then
+ 		outlist="$outlist $i"
+ 	fi
 diff --git a/configure.ac b/configure.ac
-index 9da7b86..bf613fd 100644
+index bf613fd..5b95f6b 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -1260,11 +1260,14 @@ AC_SUBST(UNI_DIFF_OPTS)
- dnl
+@@ -1261,13 +1261,16 @@ dnl
  dnl We use the EXT2 ioctls only under Linux
  dnl
-+E2INFO_CMT="#"
+ E2INFO_CMT="#"
++SPACEY_CMT="#"
  case "$host_os" in
  linux*)
  	AC_DEFINE(HAVE_EXT2_IOCTLS, 1, [Define to 1 if Ext2 ioctls present])
-+	E2INFO_CMT=
+ 	E2INFO_CMT=
++	SPACEY_CMT=
  	;;
  esac
-+AC_SUBST(E2INFO_CMT)
+ AC_SUBST(E2INFO_CMT)
++AC_SUBST(SPACEY_CMT)
  dnl
  dnl OS-specific uncomment control
  dnl
+@@ -1469,7 +1472,7 @@ for i in MCONFIG Makefile e2fsprogs.spec \
+ 	misc/Makefile ext2ed/Makefile e2fsck/Makefile \
+ 	debugfs/Makefile tests/Makefile tests/progs/Makefile \
+ 	resize/Makefile doc/Makefile intl/Makefile \
+-	intl/libgnuintl.h po/Makefile.in ; do
++	intl/libgnuintl.h po/Makefile.in spacey/Makefile ; do
+ 	if test -d `dirname ${srcdir}/$i` ; then
+ 		outlist="$outlist $i"
+ 	fi
 diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 27a7d3a..bad7648 100644
+index bad7648..4beebb6 100644
 --- a/lib/ext2fs/ext2_fs.h
 +++ b/lib/ext2fs/ext2_fs.h
-@@ -372,6 +372,40 @@ struct ext4_new_group_input {
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
- #define EXT4_IOC_RESIZE_FS		_IOW('f', 16, __u64)
+@@ -406,6 +406,14 @@ struct ext4_fsop_geom {
  
-+/* ext4 fs geometry. */
-+struct ext4_fsop_geom {
-+	__u32		efg_blocksize;	/* filesystem (data) block size */
-+	__u32		efg_bgblocks;	/* fsblocks in an AG		*/
-+	__u32		efg_bgcount;	/* number of allocation groups	*/
-+	__u32		efg_logblocks;	/* fsblocks in the log		*/
-+	__u32		efg_resvblocks;	/* number of reserved blocks	*/
-+	__u32		efg_inodesize;	/* inode size in bytes		*/
-+	__u32		efg_bg_iblocks;	/* inode blocks per AG		*/
-+	__u32		efg_flags;	/* superblock version flags	*/
-+	__u64		efg_inodecount;	/* inode count			*/
-+	__u64		efg_blockcount;	/* fsblocks in filesystem	*/
-+	unsigned char	efg_uuid[16];	/* unique id of the filesystem	*/
-+	__u32		efg_sunit;	/* stripe unit, fsblocks	*/
-+	__u32		efg_swidth;	/* stripe width, fsblocks	*/
-+	__u32		efg_clustersize;/* fs cluster size		*/
-+	__u32		efg_flexbgsize;	/* number of bg's in a flexbg	*/
-+	__u64		efg_resv[6];
-+};
-+
-+#define EXT4_FSOP_GEOM_FLAGS_ATTR	0x00001	/* extended attr in use	 */
-+#define EXT4_FSOP_GEOM_FLAGS_NLINK	0x00002	/* 32-bit nlink values	 */
-+#define EXT4_FSOP_GEOM_FLAGS_QUOTA	0x00004	/* quotas enabled	 */
-+#define EXT4_FSOP_GEOM_FLAGS_PROJQ	0x00008	/* project quotas	 */
-+#define EXT4_FSOP_GEOM_FLAGS_META_CSUM	0x00010	/* metadata checksums	 */
-+#define EXT4_FSOP_GEOM_FLAGS_FTYPE	0x00020	/* inode directory types */
-+#define EXT4_FSOP_GEOM_FLAGS_64BIT	0x00040	/* 64-bit support	 */
-+#define EXT4_FSOP_GEOM_FLAGS_INLINEDATA	0x00080	/* inline data		 */
-+#define EXT4_FSOP_GEOM_FLAGS_ENCRYPT	0x00100	/* encrypted files	 */
-+#define EXT4_FSOP_GEOM_FLAGS_LARGEDIR	0x00200	/* large directories	 */
-+#define EXT4_FSOP_GEOM_FLAGS_EXTENTS	0x00400	/* extents		 */
-+
-+#define EXT4_IOC_FSGEOMETRY		_IOR ('f', 19, struct ext4_fsop_geom)
+ #define EXT4_IOC_FSGEOMETRY		_IOR ('f', 19, struct ext4_fsop_geom)
+ 
++/* Custom FS_IOC_GETFSMAP owner codes */
++#define EXT4_FMR_OWN_FREE	FMR_OWN_FREE      /* free space */
++#define EXT4_FMR_OWN_UNKNOWN	FMR_OWN_UNKNOWN   /* unknown owner */
++#define EXT4_FMR_OWN_GDT	FMR_OWNER('f', 1) /* group descriptors */
++#define EXT4_FMR_OWN_RESV_GDT	FMR_OWNER('f', 2) /* reserved gdt blocks */
++#define EXT4_FMR_OWN_BLKBM	FMR_OWNER('f', 3) /* inode bitmap */
++#define EXT4_FMR_OWN_INOBM	FMR_OWNER('f', 4) /* block bitmap */
 +
  /*
   * Structure of an inode on the disk
   */
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 467c15d..311aa57 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -32,14 +32,19 @@ INSTALL = @INSTALL@
- 
- @FUSE_CMT@FUSE_PROG= fuse2fs
- 
-+@E2INFO_CMT@E2INFO_PROG= e2info
-+@E2INFO_CMT@E2INFO_MAN= e2info.8
+diff --git a/spacey/Makefile.in b/spacey/Makefile.in
+new file mode 100644
+index 0000000..3c842f3
+--- /dev/null
++++ b/spacey/Makefile.in
+@@ -0,0 +1,152 @@
++#
++# Makefile for e2spacey
++#
 +
- SPROGS=		mke2fs badblocks tune2fs dumpe2fs $(BLKID_PROG) logsave \
- 			$(E2IMAGE_PROG) @FSCK_PROG@ e2undo
- USPROGS=	mklost+found filefrag e2freefrag $(UUIDD_PROG) \
--			$(E4DEFRAG_PROG) $(E4CRYPT_PROG) $(FUSE_PROG)
-+			$(E4DEFRAG_PROG) $(E4CRYPT_PROG) $(FUSE_PROG) \
-+			$(E2INFO_PROG)
- SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
- 			e2label.8 $(FINDFS_MAN) $(BLKID_MAN) $(E2IMAGE_MAN) \
- 			logsave.8 filefrag.8 e2freefrag.8 e2undo.8 \
--			$(UUIDD_MAN) $(E4DEFRAG_MAN) $(E4CRYPT_MAN) @FSCK_MAN@
-+			$(UUIDD_MAN) $(E4DEFRAG_MAN) $(E4CRYPT_MAN) @FSCK_MAN@ \
-+			$(E2INFO_MAN)
- FMANPAGES=	mke2fs.conf.5 ext4.5
- 
- UPROGS=		chattr lsattr @UUID_CMT@ uuidgen
-@@ -68,6 +73,7 @@ E4CRYPT_OBJS=   e4crypt.o
- E2FREEFRAG_OBJS= e2freefrag.o
- E2FUZZ_OBJS=	e2fuzz.o
- FUSE2FS_OBJS=	fuse2fs.o journal.o recovery.o revoke.o
-+E2INFO_OBJS=	e2info.o
- 
- PROFILED_TUNE2FS_OBJS=	profiled/tune2fs.o profiled/util.o
- PROFILED_MKLPF_OBJS=	profiled/mklost+found.o
-@@ -90,8 +96,9 @@ PROFILED_E2FREEFRAG_OBJS= profiled/e2freefrag.o
- PROFILED_E2UNDO_OBJS=	profiled/e2undo.o
- PROFILED_E4DEFRAG_OBJS=	profiled/e4defrag.o
- PROFILED_E4CRYPT_OBJS=	profiled/e4crypt.o
--PROFILED_FUSE2FS_OJBS=	profiled/fuse2fs.o profiled/journal.o \
-+PROFILED_FUSE2FS_OBJS=	profiled/fuse2fs.o profiled/journal.o \
- 			profiled/recovery.o profiled/revoke.o
-+PROFILED_E2INFO_OBJS=	profiled/e2info.o
- 
- SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c $(srcdir)/mk_hugefiles.c \
- 		$(srcdir)/chattr.c $(srcdir)/lsattr.c $(srcdir)/dumpe2fs.c \
-@@ -102,7 +109,7 @@ SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c $(srcdir)/
- 		$(srcdir)/e2freefrag.c $(srcdir)/create_inode.c \
- 		$(srcdir)/fuse2fs.c \
- 		$(srcdir)/../debugfs/journal.c $(srcdir)/../e2fsck/revoke.c \
--		$(srcdir)/../e2fsck/recovery.c
-+		$(srcdir)/../e2fsck/recovery.c $(srcdir)/e2info.c
- 
- LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBSUPPORT)
- DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBSUPPORT)
-@@ -391,6 +398,11 @@ fuse2fs: $(FUSE2FS_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
- 		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL) \
- 		$(CLOCK_GETTIME_LIB) $(SYSLIBS)
- 
-+e2info: $(E2INFO_OBJS) $(DEPLIBS)
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++VPATH = @srcdir@
++top_builddir = ..
++my_dir = scrub
++INSTALL = @INSTALL@
++
++@MCONFIG@
++
++PROGS=		e2spacey
++MANPAGES=	e2spacey.8
++
++LIBS= $(LIBSUPPORT) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
++	$(LIBINTL) $(LIBE2P) $(LIBMAGIC) $(SYSLIBS)
++DEPLIBS= $(DEPLIBSUPPORT) $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
++	 $(DEPLIBUUID) $(DEPLIBE2P)
++
++STATIC_LIBS= $(STATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
++	     $(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(STATIC_LIBE2P) \
++	     $(LIBMAGIC) $(SYSLIBS)
++STATIC_DEPLIBS= $(DEPSTATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) \
++		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBBLKID) \
++		$(DEPSTATIC_LIBUUID) $(DEPSTATIC_LIBE2P)
++
++PROFILED_LIBS= $(PROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
++	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
++	       $(PROFILED_LIBE2P) $(LIBINTL) $(LIBMAGIC) $(SYSLIBS)
++PROFILED_DEPLIBS= $(DEPPROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
++		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
++		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
++
++COMPILE_ET=	_ET_DIR_OVERRIDE=$(srcdir)/../lib/et/et ../lib/et/compile_et
++
++.c.o:
++	$(E) "	CC $<"
++	$(Q) $(CC) -c $(ALL_CFLAGS) $< -o $@
++	$(Q) $(CHECK_CMD) $(ALL_CFLAGS) $<
++	$(Q) $(CPPCHECK_CMD) $(CPPFLAGS) $<
++@PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
++
++#
++# Flags for doing mtrace --- uncomment to produce mtracing e2spacey
++# 	Note:  The optimization flags must include -g
++#
++#MTRACE=	-DMTRACE
++#MTRACE_OBJ= mtrace.o
++#MTRACE_SRC= $(srcdir)/mtrace.c
++#OPT= -g
++
++#
++# Flags for doing mcheck --- uncomment to produce mchecking e2spacey
++# 	Note:  The optimization flags must include -g
++#
++#MCHECK= -DMCHECK
++
++OBJS= main.o
++
++PROFILED_OBJS= profiled/main.o
++
++SRCS= $(srcdir)/main.o
++
++all:: profiled $(PROGS) $(MANPAGES)
++
++@PROFILE_CMT@all:: e2spacey.profiled
++
++e2spacey: $(OBJS)  $(DEPLIBS)
 +	$(E) "	LD $@"
-+	$(Q) $(CC) $(ALL_LDFLAGS) -o e2info $(E2INFO_OBJS) $(LIBINTL) \
-+		$(SYSLIBS)
++	$(Q) $(LD) $(ALL_LDFLAGS) $(RDYNAMIC) -o e2spacey $(OBJS) $(LIBS)
 +
- journal.o: $(srcdir)/../debugfs/journal.c
- 	$(E) "	CC $@"
- 	$(Q) $(CC) -c $(JOURNAL_CFLAGS) -I$(srcdir) \
-@@ -411,6 +423,10 @@ tst_ismounted: $(srcdir)/ismounted.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
- 	$(CC) -o tst_ismounted $(srcdir)/ismounted.c -DDEBUG $(ALL_CFLAGS) \
- 		$(LIBCOM_ERR) $(SYSLIBS)
- 
-+e2info.8: $(DEP_SUBSTITUTE) $(srcdir)/e2info.8.in
++e2spacey.static: $(OBJS) $(STATIC_DEPLIBS)
++	$(E) "	LD $@"
++	$(Q) $(LD) $(LDFLAGS_STATIC) -o e2spacey.static $(OBJS) $(STATIC_LIBS) -lpthread
++
++e2spacey.profiled: $(OBJS)  $(PROFILED_DEPLIBS)
++	$(E) "	LD $@"
++	$(Q) $(LD) $(ALL_LDFLAGS) -g -pg -o e2spacey.profiled $(PROFILED_OBJS) \
++		$(PROFILED_LIBS) -lpthread
++
++test_profile: $(srcdir)/profile.c profile_helpers.o argv_parse.o \
++		prof_err.o profile.h $(DEPSTATIC_LIBCOM_ERR)
++	$(E) "	LD $@"
++	$(Q) $(CC) -o test_profile -DDEBUG_PROGRAM $(srcdir)/profile.c prof_err.o \
++		profile_helpers.o argv_parse.o $(STATIC_LIBCOM_ERR) \
++		$(ALL_CFLAGS)
++
++profiled:
++@PROFILE_CMT@	$(E) "	MKDIR $@"
++@PROFILE_CMT@	$(Q) mkdir profiled
++
++e2spacey.8: $(DEP_SUBSTITUTE) $(srcdir)/e2spacey.8.in
 +	$(E) "	SUBST $@"
-+	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2info.8.in e2info.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2spacey.8.in e2spacey.8
 +
- tune2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/tune2fs.8.in
- 	$(E) "	SUBST $@"
- 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/tune2fs.8.in tune2fs.8
-@@ -844,3 +860,9 @@ recovery.o: $(srcdir)/../e2fsck/recovery.c $(srcdir)/../e2fsck/jfs_user.h \
-  $(top_srcdir)/lib/support/quotaio_tree.h \
-  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
-  $(top_srcdir)/lib/ext2fs/kernel-list.h
-+e2info.o: $(srcdir)/e2info.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
-+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
-+ $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h
-diff --git a/misc/e2info.8.in b/misc/e2info.8.in
++installdirs:
++	$(E) "	MKINSTALLDIRS $(root_sbindir) $(man8dir)"
++	$(Q) $(MKINSTALLDIRS) $(DESTDIR)$(root_sbindir) \
++		$(DESTDIR)$(man8dir) $(DESTDIR)$(man5dir)
++
++install: $(PROGS) $(MANPAGES) $(FMANPAGES) installdirs
++	$(Q) for i in $(PROGS); do \
++		$(ES) "	INSTALL $(root_sbindir)/$$i"; \
++		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++	$(Q) for i in $(MANPAGES); do \
++		for j in $(COMPRESS_EXT); do \
++			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
++		done; \
++		$(ES) "	INSTALL_DATA $(man8dir)/$$i"; \
++		$(INSTALL_DATA) $$i $(DESTDIR)$(man8dir)/$$i; \
++	done
++
++install-strip: install
++	$(Q) for i in $(PROGS); do \
++		$(ES) "	STRIP $(root_sbindir)/$$i"; \
++		$(STRIP) $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++
++uninstall:
++	for i in $(PROGS); do \
++		$(RM) -f $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++	for i in $(MANPAGES); do \
++		$(RM) -f $(DESTDIR)$(man8dir)/$$i; \
++	done
++
++clean::
++	$(RM) -f $(PROGS)
++	$(RM) -rf profiled
++
++mostlyclean: clean
++distclean: clean
++	$(RM) -f .depend Makefile $(srcdir)/TAGS $(srcdir)/Makefile.in.old
++
++# +++ Dependency line eater +++
++# 
++# Makefile dependencies follow.  This must be the last section in
++# the Makefile.in file
++#
++main.o: $(srcdir)/main.c $(top_builddir)/lib/config.h \
++ $(top_builddir)/lib/dirpaths.h $(srcdir)/fsmap.h \
++ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
++ $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
++ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
++ $(top_builddir)/lib/ext2fs/ext2_err.h \
++ $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
++ $(top_srcdir)/lib/support/profile.h $(top_builddir)/lib/support/prof_err.h \
++ $(top_srcdir)/lib/support/quotaio.h $(top_srcdir)/lib/support/dqblk_v2.h \
++ $(top_srcdir)/lib/support/quotaio_tree.h
+diff --git a/spacey/e2spacey.8.in b/spacey/e2spacey.8.in
 new file mode 100644
-index 0000000..c7f580f
+index 0000000..f4956fc
 --- /dev/null
-+++ b/misc/e2info.8.in
-@@ -0,0 +1,64 @@
-+.\" -*- nroff -*-
-+.\" Copyright 2017 Oracle Inc.  All Rights Reserved.
-+.\" This file may be copied under the terms of the GNU Public License.
-+.\" 
-+.\" Verbatim blocks taken from openssl req manpage content
-+.de Vb \" Begin verbatim text
-+.ft CW
-+.nf
-+.ne \\$1
-+..
-+.de Ve \" End verbatim text
-+.ft R
-+.fi
-+..
-+
-+.TH E2INFO 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++++ b/spacey/e2spacey.8.in
+@@ -0,0 +1,65 @@
++.TH E2SPACEY 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
 +.SH NAME
-+e2info \- Display information about a mounted ext4 filesystem
++e2spacey \- show free space information about an ext4 filesystem
 +.SH SYNOPSIS
-+.B e2info
-+.I mount-point
++.B e2spacey
++[
++.B \-srg
++]
++[
++.B \-b
++|
++.B \-e
++.I bsize
++|
++.B \-h
++.I h1
++[
++.B \-m
++.I bmult
++]
++]
++[
++.B \-a
++.I group
++]
++.I mountpoint
 +.br
-+.B e2info \-V
++.B e2spacey \-V
 +.SH DESCRIPTION
-+Prints the filesystem geometry of an ext4 filesystem.  If the mounted
-+filesystem is an ext2 or ext3 filesystem mounted with the ext4 driver,
-+the geometry will be displayed.
-+.SH "EXAMPLES"
++.B e2spacey
++reports and controls free space usage in an ext4 filesystem.
++When the
++.B flex_bg
++feature is enabled, the free space information is grouped by flex block groups
++instead of regular block groups.
++This enables reporting of free space extents that span multiple block groups.
 +
-+Understanding e2info output.
-+.PP
-+Suppose one has the following "e2info /dev/sda" output:
-+.PP
-+.RS 2
-+.Vb
-+\&meta-data=/dev/loop0             isize=256    bgcount=14808 bgsize=32768 blks
-+\&         =                       attr=1       quota=0 pquota=0
-+\&         =                       crc=0        64bit=0 inlinedata=0 extents=1
-+\&         =                       flexbg=16
-+\&data     =                       bsize=4096   blocks=485198848 bg_iblocks=512
-+\&         =                       sunit=32     swidth=128 blks clustersize=0
-+\&         =                       encrypt=0
-+\&naming   =                       bsize=4096   largedir=0 ftype=1 nlink=1
-+\&log      =                       bsize=4096   blocks=32768
-+.Ve
-+.RE
-+.PP
-+
-+Here, the data section of the output indicates "bsize=4096",
-+meaning the data block size for this filesystem is 4096 bytes.
-+This section also shows "sunit=32 swidth=128 blks", which means
-+the stripe unit is 32*4096 bytes = 128 kibibytes and the stripe
-+width is 128*4096 bytes = 512 kibibytes.
-+A single stripe of this filesystem therefore consists
-+of four stripe units (128 blocks / 32 blocks per unit).
-+Note also that "flexbg=16", which means that this filesystem has
-+512MB flex block groups.
-+That is the upper limit of how much physical disk space can be mapped
-+into a file.
-+.SH SEE ALSO
-+.BR mkfs.ext4 (8),
-+.BR md (4),
-+.BR lvm (8),
-+.BR mount (8).
-diff --git a/misc/e2info.c b/misc/e2info.c
++.SH OPTIONS
++.TP 1.0i
++.BI \-a " group"
++Only query the specified block group's free space information.
++Multiple options may be provided.
++.TP
++.B \-b
++Establish histogram bins sized in successive powers of two.
++.TP
++.B \-e
++Fix the histogram bin size to a specific value.
++.TP
++.B \-g
++Instead of printing a histogram, simply report the number of free extents
++and number of free blocks per block group.
++.TP
++.BI \-h " hist"
++Fix the histogram bin size to a specific initial value.
++Use this in comination with the
++.B \-m
++option to specify a custom histgram bin size growth function.
++.TP
++.BI \-m " mult"
++The size of each histogram bin should be computed by multiplying the
++previous bin's size by this quantity.
++.TP
++.B \-s
++Print a summary of the free space before exiting.
+diff --git a/spacey/fsmap.h b/spacey/fsmap.h
 new file mode 100644
-index 0000000..675f005
+index 0000000..3c5084c
 --- /dev/null
-+++ b/misc/e2info.c
-@@ -0,0 +1,205 @@
++++ b/spacey/fsmap.h
+@@ -0,0 +1,89 @@
 +/*
 + * Copyright (c) 2017 Oracle.
 + * All Rights Reserved.
++ *
++ * Author: Darrick J. Wong <darrick.wong@oracle.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it would be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write the Free Software Foundation,
++ * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++#ifndef FSMAP_H_
++#define FSMAP_H_
++
++/* FS_IOC_GETFSMAP ioctl definitions */
++#ifndef FS_IOC_GETFSMAP
++struct fsmap {
++	__u32		fmr_device;	/* device id */
++	__u32		fmr_flags;	/* mapping flags */
++	__u64		fmr_physical;	/* device offset of segment */
++	__u64		fmr_owner;	/* owner id */
++	__u64		fmr_offset;	/* file offset of segment */
++	__u64		fmr_length;	/* length of segment */
++	__u64		fmr_reserved[3];	/* must be zero */
++};
++
++struct fsmap_head {
++	__u32		fmh_iflags;	/* control flags */
++	__u32		fmh_oflags;	/* output flags */
++	__u32		fmh_count;	/* # of entries in array incl. input */
++	__u32		fmh_entries;	/* # of entries filled in (output). */
++	__u64		fmh_reserved[6];	/* must be zero */
++
++	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
++	struct fsmap	fmh_recs[];	/* returned records */
++};
++
++/* Size of an fsmap_head with room for nr records. */
++static inline size_t
++fsmap_sizeof(
++	unsigned int	nr)
++{
++	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
++}
++
++/* Start the next fsmap query at the end of the current query results. */
++static inline void
++fsmap_advance(
++	struct fsmap_head	*head)
++{
++	head->fmh_keys[0] = head->fmh_recs[head->fmh_entries - 1];
++}
++
++/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. */
++/* no flags defined yet */
++#define FMH_IF_VALID		0
++
++/*	fmh_oflags values - returned in the header segment only. */
++#define FMH_OF_DEV_T		0x1	/* fmr_device values will be dev_t */
++
++/*	fmr_flags values - returned for each non-header segment */
++#define FMR_OF_PREALLOC		0x1	/* segment = unwritten pre-allocation */
++#define FMR_OF_ATTR_FORK	0x2	/* segment = attribute fork */
++#define FMR_OF_EXTENT_MAP	0x4	/* segment = extent map */
++#define FMR_OF_SHARED		0x8	/* segment = shared with another file */
++#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
++#define FMR_OF_LAST		0x20	/* segment is the last in the FS */
++
++/* Each FS gets to define its own special owner codes. */
++#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
++				 ((__u64)code & 0xFFFFFFFFULL))
++#define FMR_OWNER_TYPE(owner)	((__u32)((__u64)owner >> 32))
++#define FMR_OWNER_CODE(owner)	((__u32)(((__u64)owner & 0xFFFFFFFFULL)))
++#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
++#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner */
++#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
++
++#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct fsmap_head)
++#endif /* FS_IOC_GETFSMAP */ 
++
++#endif
+diff --git a/spacey/main.c b/spacey/main.c
+new file mode 100644
+index 0000000..009a965
+--- /dev/null
++++ b/spacey/main.c
+@@ -0,0 +1,456 @@
++/*
++ * Copyright (c) 2017 Oracle.
++ * All Rights Reserved.
++ *
++ * Author: Darrick J. Wong <darrick.wong@oracle.com>
 + *
 + * This program is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU General Public License as
@@ -320,16 +510,56 @@ index 0000000..675f005
 +#include <errno.h>
 +#include <mntent.h>
 +#include <limits.h>
-+
++#include "ext2fs/ext2_types.h"
++#include "ext2fs/ext2fs.h"
++#include "fsmap.h"
 +#include "ext2fs/ext2_fs.h"
 +
 +#include "../version.h"
 +#include "support/nls-enable.h"
 +
-+static const char *progname = "e2info";
++static const char *progname = "e2spaceman";
 +
-+static void
-+usage(void)
++struct histent
++{
++	blk64_t		low;
++	blk64_t		high;
++	size_t		count;
++	blk64_t		blocks;
++};
++
++static struct ext4_fsop_geom fsgeo;
++static struct ext4_fsop_geom flexgeo;
++
++static struct histent *hist;
++static size_t histcount;
++
++static dgrp_t *bglist;
++static size_t bgcount;
++
++static blk64_t totblocks;
++static long long totexts;
++
++static int equalsize;
++static int multsize;
++
++static int seen1;
++static int dumpflag;
++static int gflag;
++static const char *filename;
++static dev_t datadev;
++
++static inline dgrp_t f2b(dgrp_t fgroup)
++{
++	return fsgeo.efg_flexbgsize ? fgroup * fsgeo.efg_flexbgsize : fgroup;
++}
++
++static inline dgrp_t b2f(dgrp_t group)
++{
++	return fsgeo.efg_flexbgsize ? group / fsgeo.efg_flexbgsize : group;
++}
++
++static void usage(void)
 +{
 +	fprintf(stderr, _(
 +"Usage: %s [options] mountpoint\n\n\
@@ -339,18 +569,14 @@ index 0000000..675f005
 +}
 +
 +#define PROC_MOUNTS	"/proc/mounts"
-+int
-+find_datadev(
-+	const char	*arg,
-+	char		*datadev,
-+	char		*mntpoint)
++int find_datadev(const char *arg, dev_t *datadev, char *mntpoint)
 +{
-+	struct mntent	*mnt;
-+	FILE		*mtp;
-+	char		*mtab_file;
-+	char		rmnt_fsname[PATH_MAX], rmnt_dir[PATH_MAX];
-+	struct stat	sbuf;
-+	dev_t		fd_dev;
++	struct mntent *mnt;
++	FILE *mtp;
++	char *mtab_file;
++	char rmnt_fsname[PATH_MAX], rmnt_dir[PATH_MAX];
++	struct stat sbuf;
++	dev_t fd_dev;
 +
 +	if (stat(arg, &sbuf) < 0)
 +		return errno;
@@ -380,7 +606,7 @@ index 0000000..675f005
 +		if (stat(rmnt_fsname, &sbuf) < 0)
 +			continue;
 +		if (sbuf.st_rdev == fd_dev) {
-+			strncpy(datadev, rmnt_fsname, PATH_MAX);
++			*datadev = fd_dev;
 +			strncpy(mntpoint, rmnt_dir, PATH_MAX);
 +			break;
 +		}
@@ -389,26 +615,216 @@ index 0000000..675f005
 +	return 0;
 +}
 +
-+int
-+main(int argc, char **argv)
++static void addhistent(blk64_t h)
 +{
-+	struct ext4_fsop_geom	geo;
-+	char			*progname;
-+	int			fd;
-+	int			c;
-+	int			attr_enabled;
-+	int			nlink_enabled;
-+	int			quota_enabled;
-+	int			projquota_enabled;
-+	int			metacrc_enabled;
-+	int			ftype_enabled;
-+	int			is_64bit;
-+	int			inlinedata_enabled;
-+	int			encrypt_enabled;
-+	int			largedir_enabled;
-+	int			extents_enabled;
-+	char			datadev[PATH_MAX];
-+	char			mntpoint[PATH_MAX];
++	hist = realloc(hist, (histcount + 1) * sizeof(*hist));
++	if (!hist) {
++		perror("addhistent");
++		exit(2);
++	}
++	if (h == 0)
++		h = 1;
++	hist[histcount].low = h;
++	hist[histcount].count = hist[histcount].blocks = 0;
++	histcount++;
++	if (h == 1)
++		seen1 = 1;
++}
++
++static void addtohist(dgrp_t group, blk64_t fsb, blk64_t len)
++{
++	size_t i;
++
++	if (dumpflag)
++		printf("%8u %8llu %8llu\n", group, fsb, len);
++	totexts++;
++	totblocks += len;
++	for (i = 0; i < histcount; i++) {
++		if (hist[i].high >= len) {
++			hist[i].count++;
++			hist[i].blocks += len;
++			break;
++		}
++	}
++}
++
++static int hcmp(const void *a, const void *b)
++{
++	return ((struct histent *)a)->low - ((struct histent *)b)->low;
++}
++
++static void histinit(blk64_t maxlen)
++{
++	blk64_t i;
++
++	if (equalsize) {
++		for (i = 1; i < maxlen; i += equalsize)
++			addhistent(i);
++	} else if (multsize) {
++		for (i = 1; i < maxlen; i *= multsize)
++			addhistent(i);
++	} else {
++		if (!seen1)
++			addhistent(1);
++		qsort(hist, histcount, sizeof(*hist), hcmp);
++	}
++	for (i = 0; i < histcount; i++) {
++		if (i < histcount - 1)
++			hist[i].high = hist[i + 1].low - 1;
++		else
++			hist[i].high = maxlen;
++	}
++}
++
++static void printhist(void)
++{
++	size_t i;
++
++	printf("%7s %7s %7s %7s %6s\n",
++		_("from"), _("to"), _("extents"), _("blocks"), _("pct"));
++	for (i = 0; i < histcount; i++) {
++		if (hist[i].count)
++			printf("%7llu %7llu %7Zu %7llu %6.2f\n", hist[i].low,
++				hist[i].high, hist[i].count, hist[i].blocks,
++				hist[i].blocks * 100.0 / totblocks);
++	}
++}
++
++static int inbglist(dgrp_t fgroup)
++{
++	size_t i;
++
++	if (bgcount == 0)
++		return 1;
++	for (i = 0; i < bgcount; i++)
++		if (b2f(bglist[i]) == fgroup)
++			return 1;
++	return 0;
++}
++
++#define NR_EXTENTS 1024
++
++static void scan_bg(int fd, dgrp_t fgroup)
++{
++	struct fsmap_head *fsmap;
++	struct fsmap *extent;
++	struct fsmap *l, *h;
++	struct fsmap *p;
++	off64_t blocksize = flexgeo.efg_blocksize;
++	off64_t bytes_per_bg;
++	off64_t len;
++	blk64_t fsb;
++	blk64_t freeblks = 0;
++	blk64_t freeexts = 0;
++	int ret;
++	int i;
++
++	bytes_per_bg = (off64_t)flexgeo.efg_bgblocks * blocksize;
++
++	fsmap = malloc(fsmap_sizeof(NR_EXTENTS));
++	if (!fsmap) {
++		fprintf(stderr, _("%s: fsmap malloc failed.\n"), progname);
++		exit(1);
++	}
++
++	memset(fsmap, 0, sizeof(*fsmap));
++	fsmap->fmh_count = NR_EXTENTS;
++	l = fsmap->fmh_keys;
++	h = fsmap->fmh_keys + 1;
++	l->fmr_physical = fgroup * bytes_per_bg;
++	h->fmr_physical = ((fgroup + 1) * bytes_per_bg) - 1;
++	l->fmr_device = h->fmr_device = datadev;
++	h->fmr_owner = ULLONG_MAX;
++	h->fmr_flags = UINT_MAX;
++	h->fmr_offset = ULLONG_MAX;
++
++	while (1) {
++		ret = ioctl(fd, FS_IOC_GETFSMAP, fsmap);
++		if (ret < 0) {
++			fprintf(stderr,
++_("%s: FS_IOC_GETFSMAP [\"%s\"]: %s\n"),
++				progname, filename, strerror(errno));
++			free(fsmap);
++			exit(1);
++		}
++
++		/* No more extents to map, exit */
++		if (!fsmap->fmh_entries)
++			break;
++
++		for (i = 0, extent = fsmap->fmh_recs;
++		     i < fsmap->fmh_entries;
++		     i++, extent++) {
++			if (!(extent->fmr_flags & FMR_OF_SPECIAL_OWNER) ||
++			    extent->fmr_owner != FMR_OWN_FREE)
++				continue;
++
++			fsb = extent->fmr_physical / blocksize;
++			len = extent->fmr_length / blocksize;
++			freeblks += len;
++			freeexts++;
++
++			addtohist(f2b(fgroup), fsb, len);
++		}
++
++		p = &fsmap->fmh_recs[fsmap->fmh_entries - 1];
++		if (p->fmr_flags & FMR_OF_LAST)
++			break;
++		fsmap_advance(fsmap);
++	}
++
++	if (gflag)
++		printf(_("%10u %10llu %10llu\n"), f2b(fgroup), freeexts,
++		       freeblks);
++}
++
++static void bglistadd(char *a)
++{
++	bglist = realloc(bglist, (bgcount + 1) * sizeof(*bglist));
++	bglist[bgcount] = (dgrp_t)atoi(a);
++	bgcount++;
++}
++
++
++static void setup_fsgeo(int fd)
++{
++	/* Get the current filesystem size & geometry */
++	if (ioctl(fd, EXT4_IOC_FSGEOMETRY, &fsgeo) < 0) {
++		fprintf(stderr, _(
++			"%s: cannot determine geometry of ext4 filesystem"
++			" mounted at %s.\n"),
++			progname, filename);
++		exit(1);
++	}
++
++	/*
++	 * Refactor the geometry so that a "group" is the size of the smallest
++	 * number of BGs required to contain the longest free extent possible.
++	 *
++	 * (IOWs, we handle everything in terms of flexbgs.)
++	 */
++	flexgeo = fsgeo;
++	if (fsgeo.efg_flexbgsize) {
++		flexgeo.efg_bgblocks *= fsgeo.efg_flexbgsize;
++		flexgeo.efg_bgcount = (fsgeo.efg_bgcount +
++				       fsgeo.efg_flexbgsize - 1) /
++				      fsgeo.efg_flexbgsize;
++		flexgeo.efg_bg_iblocks *= fsgeo.efg_flexbgsize;
++		flexgeo.efg_flexbgsize = 0;
++	}
++}
++
++int main(int argc, char **argv)
++{
++	char *progname;
++	int fd;
++	int c;
++	char mntpoint[PATH_MAX];
++	blk64_t max_extent;
++	int speced, summaryflag;
++	dgrp_t fgroup;
++
++	speced = dumpflag = summaryflag = gflag = 0;
 +
 +	progname = basename(argv[0]);
 +#ifdef ENABLE_NLS
@@ -417,8 +833,45 @@ index 0000000..675f005
 +	textdomain(PACKAGE);
 +#endif
 +
-+	while ((c = getopt(argc, argv, "V")) != EOF) {
++	while ((c = getopt(argc, argv, "a:bde:gh:m:sV")) != EOF) {
 +		switch (c) {
++		case 'a':
++			bglistadd(optarg);
++			break;
++		case 'b':
++			if (speced)
++				return 0;
++			multsize = 2;
++			speced = 1;
++			break;
++		case 'd':
++			dumpflag = 1;
++			break;
++		case 'e':
++			if (speced)
++				return 0;
++			equalsize = atoi(optarg);
++			speced = 1;
++			break;
++		case 'g':
++			histcount = 0;
++			gflag++;
++			break;
++		case 'h':
++			if (speced && !histcount)
++				return 0;
++			addhistent(atoi(optarg));
++			speced = 1;
++			break;
++		case 'm':
++			if (speced)
++				return 0;
++			multsize = atoi(optarg);
++			speced = 1;
++			break;
++		case 's':
++			summaryflag = 1;
++			break;
 +		case 'V':
 +			printf(_("%s version %s\n"), progname, VERSION);
 +			exit(0);
@@ -430,16 +883,16 @@ index 0000000..675f005
 +	if (argc - optind != 1)
 +		usage();
 +
++	filename = argv[optind];
 +	fd = open(argv[optind], O_RDONLY);
 +	if (fd < 0) {
 +		perror(argv[optind]);
 +		return 1;
 +	}
 +
-+	if (find_datadev(argv[optind], datadev, mntpoint)) {
++	if (find_datadev(argv[optind], &datadev, mntpoint)) {
 +		perror("find_datadev");
-+		strncpy(datadev, argv[optind], PATH_MAX);
-+		strncpy(mntpoint, argv[optind], PATH_MAX);
++		exit(1);
 +	}
 +
 +	close(fd);
@@ -449,49 +902,35 @@ index 0000000..675f005
 +		return 1;
 +	}
 +
-+	/* get the current filesystem size & geometry */
-+	if (ioctl(fd, EXT4_IOC_FSGEOMETRY, &geo) < 0) {
-+		fprintf(stderr, _(
-+			"%s: cannot determine geometry of filesystem"
-+			" mounted at %s: %s\n"),
-+			progname, argv[optind], strerror(errno));
-+		exit(1);
++	setup_fsgeo(fd);
++
++	/* Set up histogram */
++	max_extent = flexgeo.efg_bgblocks;
++
++	if (!speced)
++		multsize = 2;
++	histinit(max_extent);
++
++	/* Collect data and print */
++	if (gflag)
++		printf(_("        AG    extents     blocks\n"));
++	for (fgroup = 0; fgroup < flexgeo.efg_bgcount; fgroup++)  {
++		if (inbglist(fgroup))
++			scan_bg(fd, fgroup);
 +	}
++	if (histcount && !gflag)
++		printhist();
++	if (summaryflag) {
++		printf(_("total free extents %lld\n"), totexts);
++		printf(_("total free blocks %lld\n"), totblocks);
++		printf(_("average free extent size %g\n"),
++			(double)totblocks / (double)totexts);
++	}
++	if (bglist)
++		free(bglist);
++	if (hist)
++		free(hist);
++	close(fd);
 +
-+	attr_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_ATTR ? 1 : 0;
-+	nlink_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_NLINK ? 1 : 0;
-+	quota_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_QUOTA ? 1 : 0;
-+	projquota_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_PROJQ ? 1 : 0;
-+	metacrc_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_META_CSUM ? 1 : 0;
-+	ftype_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_FTYPE ? 1 : 0;
-+	is_64bit = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_64BIT ? 1 : 0;
-+	inlinedata_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_INLINEDATA ? 1 : 0;
-+	encrypt_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_ENCRYPT ? 1 : 0;
-+	largedir_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_LARGEDIR ? 1 : 0;
-+	extents_enabled = geo.efg_flags & EXT4_FSOP_GEOM_FLAGS_EXTENTS ? 1 : 0;
-+
-+	printf(_(
-+	    "meta-data=%-22s isize=%-6u bgcount=%u bgsize=%u blks\n"
-+	    "         =%-22s attr=%-7u quota=%u pquota=%u\n"
-+	    "         =%-22s crc=%-8u 64bit=%u inlinedata=%u extents=%u\n"
-+	    "         =%-22s flexbg=%u\n"
-+	    "data     =%-22s bsize=%-6u blocks=%llu bg_iblocks=%u\n"
-+	    "         =%-22s sunit=%-6u swidth=%u blks clustersize=%u\n"
-+	    "         =%-22s encrypt=%u\n"
-+	    "naming   =%-22s bsize=%-6u largedir=%d ftype=%d nlink=%u\n"
-+	    "log      =%-22s bsize=%-6u blocks=%u\n"),
-+		datadev, geo.efg_inodesize, geo.efg_bgcount, geo.efg_bgblocks,
-+		"", attr_enabled, quota_enabled, projquota_enabled,
-+		"", metacrc_enabled, is_64bit, inlinedata_enabled,
-+			extents_enabled,
-+		"", geo.efg_flexbgsize,
-+		"", geo.efg_blocksize, (unsigned long long)geo.efg_blockcount,
-+			geo.efg_bg_iblocks,
-+		"", geo.efg_sunit, geo.efg_swidth, geo.efg_clustersize,
-+		"", encrypt_enabled,
-+		"", geo.efg_blocksize, largedir_enabled, ftype_enabled,
-+			nlink_enabled,
-+		"", geo.efg_blocksize, geo.efg_logblocks);
-+
-+	exit(0);
++	return 0;
 +}
