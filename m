@@ -1,47 +1,152 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/8] nowait aio: Introduce IOCB_FLAG_NOWAIT
-Date: Wed, 1 Mar 2017 14:44:21 -0800
-Message-ID: <20170301224421.GA12768@infradead.org>
-References: <20170228233610.25456-1-rgoldwyn@suse.de>
- <20170228233610.25456-2-rgoldwyn@suse.de>
- <20170301153647.GA30631@infradead.org>
- <20170301155634.GA9630@infradead.org>
- <cc3fc6ee-c48d-1b51-59b7-1e322d10a561@suse.de>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [PATCH v2 7/9] xfs: have getfsmap fall back to the freesp btrees
+ when rmap is not present
+Date: Wed, 1 Mar 2017 18:29:53 -0800
+Message-ID: <20170302022953.GM5297@birch.djwong.org>
+References: <148830755018.22089.4423076490708341523.stgit@birch.djwong.org>
+ <148830759554.22089.6408995371724685885.stgit@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, jack@suse.com,
-        linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Brian Foster <bfoster@redhat.com>
+To: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:18739 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753601AbdCBCc3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Mar 2017 21:32:29 -0500
 Content-Disposition: inline
-In-Reply-To: <cc3fc6ee-c48d-1b51-59b7-1e322d10a561@suse.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <148830759554.22089.6408995371724685885.stgit@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Mar 01, 2017 at 10:57:17AM -0600, Goldwyn Rodrigues wrote:
-> RWF_* ? Isn't that kernel space flags? Or did you intend to say
-> IOCB_FLAG_*?
+If the reverse-mapping btree isn't available, fall back to the
+free space btrees to provide partial reverse mapping information.
+The online scrub tool can make use of even partial information to
+speed up the data block scan.
 
-No, they are the flags for preadv2/pwritev2.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+v2: various refactorings, fix array pointer passing
+---
+ fs/xfs/xfs_fsmap.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 69 insertions(+), 3 deletions(-)
 
-> If yes, we maintain two flag fields? aio_reserved1 (perhaps
-> renamed to aio_flags2) and aio_flags?
-
-Yes - I'd call it aio_rw_flags or similar.
-
-> aio_reserved1 is also used to return key for the purpose of io_cancel,
-> but we should be able to fetch the flags before putting the key value
-> there. Still I am not comfortable using the same field for it because it
-> will be overwritten when io_submit returns.
-
-It's not - the key is a separate field.  It's just that the two are
-defined using a very strange macro switching around their positions
-based on the endiannes.
-
-> Which brings me to the next question: What is the purpose of aio_key?
-> Why is aio_key set to KIOCB_KEY (which is zero) every time? You are not
-> differentiating the request by setting all the iocb's key to zero.
-
-I don't know the history of this rather odd field.
+diff --git a/fs/xfs/xfs_fsmap.c b/fs/xfs/xfs_fsmap.c
+index 2fd05a0..b855984 100644
+--- a/fs/xfs/xfs_fsmap.c
++++ b/fs/xfs/xfs_fsmap.c
+@@ -40,6 +40,7 @@
+ #include "xfs_fsmap.h"
+ #include "xfs_refcount.h"
+ #include "xfs_refcount_btree.h"
++#include "xfs_alloc_btree.h"
+ 
+ /* Convert an xfs_fsmap to an fsmap. */
+ void
+@@ -158,6 +159,9 @@ xfs_fsmap_owner_from_rmap(
+ 	case XFS_RMAP_OWN_COW:
+ 		dest->fmr_owner = XFS_FMR_OWN_COW;
+ 		break;
++	case XFS_RMAP_OWN_NULL:	/* "free" */
++		dest->fmr_owner = XFS_FMR_OWN_FREE;
++		break;
+ 	default:
+ 		return -EFSCORRUPTED;
+ 	}
+@@ -378,6 +382,30 @@ xfs_getfsmap_rtdev_helper(
+ 	return xfs_getfsmap_helper(cur->bc_tp, info, rec, rec_daddr);
+ }
+ 
++/* Transform a bnobt irec into a fsmap */
++STATIC int
++xfs_getfsmap_datadev_bnobt_helper(
++	struct xfs_btree_cur		*cur,
++	struct xfs_alloc_rec_incore	*rec,
++	void				*priv)
++{
++	struct xfs_mount		*mp = cur->bc_mp;
++	struct xfs_getfsmap_info	*info = priv;
++	struct xfs_rmap_irec		irec;
++	xfs_daddr_t			rec_daddr;
++
++	rec_daddr = XFS_AGB_TO_DADDR(mp, cur->bc_private.a.agno,
++			rec->ar_startblock);
++
++	irec.rm_startblock = rec->ar_startblock;
++	irec.rm_blockcount = rec->ar_blockcount;
++	irec.rm_owner = XFS_RMAP_OWN_NULL;	/* "free" */
++	irec.rm_offset = 0;
++	irec.rm_flags = 0;
++
++	return xfs_getfsmap_helper(cur->bc_tp, info, &irec, rec_daddr);
++}
++
+ /* Set rmap flags based on the getfsmap flags */
+ static void
+ xfs_getfsmap_set_irec_flags(
+@@ -588,6 +616,43 @@ xfs_getfsmap_datadev_rmapbt(
+ 			xfs_getfsmap_datadev_rmapbt_query, NULL);
+ }
+ 
++/* Actually query the bno btree. */
++STATIC int
++xfs_getfsmap_datadev_bnobt_query(
++	struct xfs_trans		*tp,
++	struct xfs_getfsmap_info	*info,
++	struct xfs_btree_cur		**curpp,
++	void				*priv)
++{
++	struct xfs_alloc_rec_incore	*key = priv;
++
++	/* Report any gap at the end of the last AG. */
++	if (info->last)
++		return xfs_getfsmap_datadev_bnobt_helper(*curpp, &key[1], info);
++
++	/* Allocate cursor for this AG and query_range it. */
++	*curpp = xfs_allocbt_init_cursor(tp->t_mountp, tp, info->agf_bp,
++			info->agno, XFS_BTNUM_BNO);
++	key->ar_startblock = info->low.rm_startblock;
++	key[1].ar_startblock = info->high.rm_startblock;
++	return xfs_alloc_query_range(*curpp, key, &key[1],
++			xfs_getfsmap_datadev_bnobt_helper, info);
++}
++
++/* Execute a getfsmap query against the regular data device's bnobt. */
++STATIC int
++xfs_getfsmap_datadev_bnobt(
++	struct xfs_trans		*tp,
++	struct xfs_fsmap		*keys,
++	struct xfs_getfsmap_info	*info)
++{
++	struct xfs_alloc_rec_incore	akeys[2];
++
++	info->missing_owner = XFS_FMR_OWN_UNKNOWN;
++	return __xfs_getfsmap_datadev(tp, keys, info,
++			xfs_getfsmap_datadev_bnobt_query, &akeys[0]);
++}
++
+ /* Do we recognize the device? */
+ STATIC bool
+ xfs_getfsmap_is_valid_device(
+@@ -668,8 +733,6 @@ xfs_getfsmap(
+ 	int				i;
+ 	int				error = 0;
+ 
+-	if (!xfs_sb_version_hasrmapbt(&mp->m_sb))
+-		return -EOPNOTSUPP;
+ 	if (head->fmh_iflags & ~FMH_IF_VALID)
+ 		return -EINVAL;
+ 	if (!xfs_getfsmap_is_valid_device(mp, &head->fmh_keys[0]) ||
+@@ -681,7 +744,10 @@ xfs_getfsmap(
+ 	/* Set up our device handlers. */
+ 	memset(handlers, 0, sizeof(handlers));
+ 	handlers[0].dev = new_encode_dev(mp->m_ddev_targp->bt_dev);
+-	handlers[0].fn = xfs_getfsmap_datadev_rmapbt;
++	if (xfs_sb_version_hasrmapbt(&mp->m_sb))
++		handlers[0].fn = xfs_getfsmap_datadev_rmapbt;
++	else
++		handlers[0].fn = xfs_getfsmap_datadev_bnobt;
+ 	if (mp->m_logdev_targp != mp->m_ddev_targp) {
+ 		handlers[1].dev = new_encode_dev(mp->m_logdev_targp->bt_dev);
+ 		handlers[1].fn = xfs_getfsmap_logdev;
