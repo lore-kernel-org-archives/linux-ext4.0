@@ -1,489 +1,212 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/2] e2freefrag: use GETFSMAP on mounted filesystems
-Date: Fri, 3 Mar 2017 12:42:18 -0700
-Message-ID: <84C889F0-486A-4EF6-8A82-8AD5B35B3640@dilger.ca>
-References: <148849323931.17335.16297720312431312922.stgit@birch.djwong.org>
- <148849325292.17335.16218362559019060964.stgit@birch.djwong.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_6B9E3CFA-B943-4E58-83E4-EB0CDD236F75";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v2] libext2fs: preload block group on request
+Date: Fri,  3 Mar 2017 16:01:50 +0300
+Message-ID: <1488546110-31366-1-git-send-email-artem.blagodarenko@gmail.com>
+References: <34190257-2334-4DA5-90BD-AA0F7167E4C2@dilger.ca>
+Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33731 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751722AbdCCTme (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2017 14:42:34 -0500
-Received: by mail-io0-f196.google.com with SMTP id f84so12443029ioj.0
-        for <linux-ext4@vger.kernel.org>; Fri, 03 Mar 2017 11:42:23 -0800 (PST)
-In-Reply-To: <148849325292.17335.16218362559019060964.stgit@birch.djwong.org>
+Received: from mail-lf0-f67.google.com ([209.85.215.67]:34994 "EHLO
+        mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752312AbdCCT7V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Mar 2017 14:59:21 -0500
+Received: by mail-lf0-f67.google.com with SMTP id v2so2540957lfi.2
+        for <linux-ext4@vger.kernel.org>; Fri, 03 Mar 2017 11:59:20 -0800 (PST)
+In-Reply-To: <34190257-2334-4DA5-90BD-AA0F7167E4C2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 
---Apple-Mail=_6B9E3CFA-B943-4E58-83E4-EB0CDD236F75
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+---
+ lib/ext2fs/blknum.c  |   46 ++++++++++++++++++++++++++++++++++++++++++++--
+ lib/ext2fs/closefs.c |    7 +++++--
+ lib/ext2fs/ext2_fs.h |    1 +
+ lib/ext2fs/ext2fs.h  |    3 +++
+ lib/ext2fs/openfs.c  |   29 +++++++----------------------
+ 5 files changed, 60 insertions(+), 26 deletions(-)
 
-On Mar 2, 2017, at 3:20 PM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> From: Darrick J. Wong <darrick.wong@oracle.com>
->=20
-> Use GETFSMAP to query mounted filesystems for free space information.
-> This prevents us from reporting stale free space stats if there happen
-> to be uncheckpointed block bitmap updates sitting in the journal.
-
-Thanks for the updated patch.  The patch itself could be landed as-is,
-though there are a few minor improvements possible (inline) if it needs
-to be refreshed for some reason.
-
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-> ---
-> configure         |    2 -
-> configure.ac      |    1
-> lib/config.h.in   |    3 +
-> misc/e2freefrag.c |  137 =
-+++++++++++++++++++++++++++++++++++++++++++++++++----
-> misc/fsmap.h      |   89 ++++++++++++++++++++++++++++++++++
-> 5 files changed, 221 insertions(+), 11 deletions(-)
-> create mode 100644 misc/fsmap.h
->=20
->=20
-> diff --git a/configure b/configure
-> index 5f7b429..2d75150 100755
-> --- a/configure
-> +++ b/configure
-> @@ -12368,7 +12368,7 @@ fi
-> done
->=20
-> fi
-> -for ac_header in  	dirent.h 	errno.h 	execinfo.h 	=
-getopt.h 	malloc.h 	mntent.h 	paths.h 	=
-semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h =
-	stdlib.h 	termios.h 	termio.h 	unistd.h 	=
-utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	=
-linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	=
-sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	=
-sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	=
-sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	=
-sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	=
-sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	=
-sys/un.h 	sys/wait.h
-> +for ac_header in  	dirent.h 	errno.h 	execinfo.h 	=
-getopt.h 	malloc.h 	mntent.h 	paths.h 	=
-semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h =
-	stdlib.h 	termios.h 	termio.h 	unistd.h 	=
-utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	=
-linux/fsmap.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	=
-netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	=
-sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	=
-sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	=
-sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	=
-sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	=
-sys/types.h 	sys/un.h 	sys/wait.h
-
-This should really be split into "one line per file", though not the =
-fault
-of your patch.
-
-> diff --git a/lib/config.h.in b/lib/config.h.in
-> index bc006de..37d0c46 100644
-> --- a/lib/config.h.in
-> +++ b/lib/config.h.in
-> @@ -244,6 +244,9 @@
-> /* Define to 1 if you have the <linux/fd.h> header file. */
-> #undef HAVE_LINUX_FD_H
->=20
-> +/* Define to 1 if you have the <linux/fsmap.h> header file. */
-> +#undef HAVE_LINUX_FSMAP_H
-> +
-> /* Define to 1 if you have the <linux/loop.h> header file. */
-> #undef HAVE_LINUX_LOOP_H
->=20
-> diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-> index 90acb7e..64ed5cd 100644
-> --- a/misc/e2freefrag.c
-> +++ b/misc/e2freefrag.c
-> @@ -25,11 +25,25 @@
-> extern char *optarg;
-> extern int optind;
-> #endif
-> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-> +# include <sys/ioctl.h>
-> +# include <sys/types.h>
-> +# include <sys/stat.h>
-> +# include <fcntl.h>
-> +# include <limits.h>
-> +#endif
->=20
-> #include "ext2fs/ext2_fs.h"
-> #include "ext2fs/ext2fs.h"
-> #include "e2freefrag.h"
->=20
-> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-> +# ifdef HAVE_LINUX_FSMAP_H
-> +#  include <linux/fsmap.h>
-> +# endif
-> +# include "fsmap.h"
-> +#endif
-
-It would be possible to put the "fsmap.h" header under include/linux in
-the e2fsprogs tree and just use <linux/fsmap.h> always?
-
-> +
-> static void usage(const char *prog)
-> {
-> 	fprintf(stderr, "usage: %s [-c chunksize in kb] [-h] "
-> @@ -143,8 +157,81 @@ static void scan_block_bitmap(ext2_filsys fs, =
-struct chunk_info *info)
-> 		update_chunk_stats(info, last_chunk_size);
-> }
->=20
-> -static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info =
-*info,
-> -				FILE *f)
-> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-> +# define FSMAP_EXTENTS	1024
-> +static int scan_online(ext2_filsys fs, struct chunk_info *info)
-> +{
-> +	struct fsmap_head *fsmap;
-> +	struct fsmap *extent;
-> +	struct fsmap *p;
-> +	int fd =3D (intptr_t)fs->priv_data;
-> +	int ret;
-> +	int i;
-> +
-> +	if (fd < 0)
-> +		return 0;
-> +
-> +	fsmap =3D malloc(fsmap_sizeof(FSMAP_EXTENTS));
-> +	if (!fsmap) {
-> +		com_err(fs->device_name, errno, "while allocating =
-memory");
-> +		return 0;
-> +	}
-> +
-> +	memset(fsmap, 0, sizeof(*fsmap));
-
-Could use calloc() above?
-
-> +	fsmap->fmh_count =3D FSMAP_EXTENTS;
-> +	fsmap->fmh_keys[1].fmr_device =3D UINT_MAX;
-> +	fsmap->fmh_keys[1].fmr_physical =3D ULLONG_MAX;
-> +	fsmap->fmh_keys[1].fmr_owner =3D ULLONG_MAX;
-> +	fsmap->fmh_keys[1].fmr_offset =3D ULLONG_MAX;
-> +	fsmap->fmh_keys[1].fmr_flags =3D UINT_MAX;
-> +
-> +	while (1) {
-> +		ret =3D ioctl(fd, FS_IOC_GETFSMAP, fsmap);
-
-> +		if (ret < 0) {
-> +			com_err(fs->device_name, errno, "while calling =
-fsmap");
-> +			free(fsmap);
-> +			return 0;
-> +		}
-> +
-> +		/* No more extents to map, exit */
-> +		if (!fsmap->fmh_entries)
-> +			break;
-> +
-> +		for (i =3D 0, extent =3D fsmap->fmh_recs;
-> +		     i < fsmap->fmh_entries;
-> +		     i++, extent++) {
-> +			if (!(extent->fmr_flags & FMR_OF_SPECIAL_OWNER) =
-||
-> +			    extent->fmr_owner !=3D FMR_OWN_FREE)
-> +				continue;
-
-> +			update_chunk_stats(info,
-> +					   extent->fmr_length / =
-fs->blocksize);
-> +		}
-> +
-> +		p =3D &fsmap->fmh_recs[fsmap->fmh_entries - 1];
-> +		if (p->fmr_flags & FMR_OF_LAST)
-> +			break;
-> +		fsmap_advance(fsmap);
-> +	}
-> +
-> +	return 1;
-> +}
-> +#else
-> +# define scan_online(fs, info)	(0)
-> +#endif /* HAVE_EXT2_IOCTLS */
-> +
-> +static errcode_t scan_offline(ext2_filsys fs, struct chunk_info =
-*info)
-> +{
-> +	errcode_t retval;
-> +
-> +	retval =3D ext2fs_read_block_bitmap(fs);
-> +	if (retval)
-> +		return retval;
-> +	scan_block_bitmap(fs, info);
-> +	return 0;
-> +}
-> +
-> +static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info =
-*info,
-> +				 FILE *f)
-> {
-> 	unsigned long total_chunks;
-> 	const char *unitp =3D "KMGTPEZY";
-> @@ -152,8 +239,6 @@ static errcode_t get_chunk_info(ext2_filsys fs, =
-struct chunk_info *info,
-> 	unsigned long start =3D 0, end;
-> 	int i, retval =3D 0;
->=20
-> -	scan_block_bitmap(fs, info);
-> -
-> 	fprintf(f, "Total blocks: %llu\nFree blocks: %u (%0.1f%%)\n",
-> 		ext2fs_blocks_count(fs->super), =
-fs->super->s_free_blocks_count,
-> 		(double)fs->super->s_free_blocks_count * 100 /
-> @@ -215,8 +300,17 @@ static errcode_t get_chunk_info(ext2_filsys fs, =
-struct chunk_info *info,
->=20
-> static void close_device(char *device_name, ext2_filsys fs)
-> {
-> -	int retval =3D ext2fs_close_free(&fs);
-> +#ifndef DEBUGFS
-> +	int mount_fd;
-> +#endif
-> +	int retval;
->=20
-> +#ifndef DEBUGFS
-> +	mount_fd =3D (intptr_t)fs->priv_data;
-> +	if (mount_fd >=3D 0)
-> +		close(mount_fd);
-> +#endif
-> +	retval =3D ext2fs_close_free(&fs);
-> 	if (retval)
-> 		com_err(device_name, retval, "while closing the =
-filesystem.\n");
-> }
-> @@ -228,18 +322,19 @@ static void collect_info(ext2_filsys fs, struct =
-chunk_info *chunk_info, FILE *f)
-> 	fprintf(f, "Device: %s\n", fs->device_name);
-> 	fprintf(f, "Blocksize: %u bytes\n", fs->blocksize);
->=20
-> -	retval =3D ext2fs_read_block_bitmap(fs);
-> +	init_chunk_info(fs, chunk_info);
-> +
-> +	if (!scan_online(fs, chunk_info))
-> +		retval =3D scan_offline(fs, chunk_info);
-> 	if (retval) {
-> 		com_err(fs->device_name, retval, "while reading block =
-bitmap");
-> 		close_device(fs->device_name, fs);
-> 		exit(1);
-> 	}
->=20
-> -	init_chunk_info(fs, chunk_info);
-> -
-> -	retval =3D get_chunk_info(fs, chunk_info, f);
-> +	retval =3D dump_chunk_info(fs, chunk_info, f);
-> 	if (retval) {
-> -		com_err(fs->device_name, retval, "while collecting chunk =
-info");
-> +		com_err(fs->device_name, retval, "while dumping chunk =
-info");
->                 close_device(fs->device_name, fs);
-> 		exit(1);
-> 	}
-> @@ -250,6 +345,11 @@ static void open_device(char *device_name, =
-ext2_filsys *fs)
-> {
-> 	int retval;
-> 	int flag =3D EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
-> +#ifdef HAVE_EXT2_IOCTLS
-> +	int mount_flags;
-> +	int mount_fd;
-> +	char mntpoint[PATH_MAX + 1];
-> +#endif
->=20
-> 	retval =3D ext2fs_open(device_name, flag, 0, 0, unix_io_manager, =
-fs);
-> 	if (retval) {
-> @@ -257,6 +357,23 @@ static void open_device(char *device_name, =
-ext2_filsys *fs)
-
-Should this now allow being passed a directory, rather than only the =
-block
-device?  That would be akin to "df /pathname" printing statfs info for =
-the
-filesystem and is easier for users.
-
-I think all that would be needed is to remove the exit(1) call here, and
-try to open "device_name" if it is a directory instead of a block =
-device.
-
-Cheers, Andreas
-
-> 		exit(1);
-> 	}
-> 	(*fs)->default_bitmap_type =3D EXT2FS_BMAP64_RBTREE;
-> +	(*fs)->priv_data =3D (void *)-1;
-> +
-> +#ifdef HAVE_EXT2_IOCTLS
-> +	retval =3D ext2fs_check_mount_point(device_name, &mount_flags,
-> +					  mntpoint, PATH_MAX);
-> +	if (retval) {
-> +		com_err(device_name, retval, "while checking mount =
-status");
-> +		return;
-> +	}
-> +	if (mount_flags & EXT2_MF_MOUNTED) {
-> +		mount_fd =3D open(mntpoint, O_RDONLY);
-> +		if (mount_fd < 0)
-> +			com_err(mntpoint, errno, "while opening mount =
-point");
-> +		else
-> +			(*fs)->priv_data =3D (void *)(intptr_t)mount_fd;
-> +	}
-> +#endif
-> }
-> #endif
->=20
-> diff --git a/misc/fsmap.h b/misc/fsmap.h
-> new file mode 100644
-> index 0000000..e9590aa
-> --- /dev/null
-> +++ b/misc/fsmap.h
-> @@ -0,0 +1,89 @@
-> +/*
-> + * Copyright (c) 2017 Oracle.
-> + * All Rights Reserved.
-> + *
-> + * Author: Darrick J. Wong <darrick.wong@oracle.com>
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public License as
-> + * published by the Free Software Foundation.
-> + *
-> + * This program is distributed in the hope that it would be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with this program; if not, write the Free Software =
-Foundation,
-> + * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> + */
-> +#ifndef FSMAP_H_
-> +#define FSMAP_H_
-> +
-> +/* FS_IOC_GETFSMAP ioctl definitions */
-> +#ifndef FS_IOC_GETFSMAP
-> +struct fsmap {
-> +	__u32		fmr_device;	/* device id */
-> +	__u32		fmr_flags;	/* mapping flags */
-> +	__u64		fmr_physical;	/* device offset of segment */
-> +	__u64		fmr_owner;	/* owner id */
-> +	__u64		fmr_offset;	/* file offset of segment */
-> +	__u64		fmr_length;	/* length of segment */
-> +	__u64		fmr_reserved[3];	/* must be zero */
-> +};
-> +
-> +struct fsmap_head {
-> +	__u32		fmh_iflags;	/* control flags */
-> +	__u32		fmh_oflags;	/* output flags */
-> +	__u32		fmh_count;	/* # of entries in array incl. =
-input */
-> +	__u32		fmh_entries;	/* # of entries filled in =
-(output). */
-> +	__u64		fmh_reserved[6];	/* must be zero */
-> +
-> +	struct fsmap	fmh_keys[2];	/* low and high keys for the =
-mapping search */
-> +	struct fsmap	fmh_recs[];	/* returned records */
-> +};
-> +
-> +/* Size of an fsmap_head with room for nr records. */
-> +static inline size_t
-> +fsmap_sizeof(
-> +	unsigned int	nr)
-> +{
-> +	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
-> +}
-> +
-> +/* Start the next fsmap query at the end of the current query =
-results. */
-> +static inline void
-> +fsmap_advance(
-> +	struct fsmap_head	*head)
-> +{
-> +	head->fmh_keys[0] =3D head->fmh_recs[head->fmh_entries - 1];
-> +}
-> +
-> +/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. =
-*/
-> +/* no flags defined yet */
-> +#define FMH_IF_VALID		0
-> +
-> +/*	fmh_oflags values - returned in the header segment only. */
-> +#define FMH_OF_DEV_T		0x1	/* fmr_device values will be =
-dev_t */
-> +
-> +/*	fmr_flags values - returned for each non-header segment */
-> +#define FMR_OF_PREALLOC		0x1	/* segment =3D unwritten =
-pre-allocation */
-> +#define FMR_OF_ATTR_FORK	0x2	/* segment =3D attribute fork */
-> +#define FMR_OF_EXTENT_MAP	0x4	/* segment =3D extent map */
-> +#define FMR_OF_SHARED		0x8	/* segment =3D shared =
-with another file */
-> +#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
-> +#define FMR_OF_LAST		0x20	/* segment is the last in the FS =
-*/
-> +
-> +/* Each FS gets to define its own special owner codes. */
-> +#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
-> +				 ((__u64)code & 0xFFFFFFFFULL))
-> +#define FMR_OWNER_TYPE(owner)	((__u32)((__u64)owner >> 32))
-> +#define FMR_OWNER_CODE(owner)	((__u32)(((__u64)owner & =
-0xFFFFFFFFULL)))
-> +#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
-> +#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner =
-*/
-> +#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
-> +
-> +#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct =
-fsmap_head)
-> +#endif /* FS_IOC_GETFSMAP */
-> +
-> +#endif
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_6B9E3CFA-B943-4E58-83E4-EB0CDD236F75
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYuccapIg59Q01vtYRAkXDAKDmuDDSAE7GUCRW51gznY867YwAngCeK5RG
-QrlvT6DqlM7eqgl8rZdfElE=
-=spEj
------END PGP SIGNATURE-----
-
---Apple-Mail=_6B9E3CFA-B943-4E58-83E4-EB0CDD236F75--
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index ac80849..a5d5082 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -186,8 +186,50 @@ struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
+ 					  dgrp_t group)
+ {
+ 	int desc_size = EXT2_DESC_SIZE(fs->super) & ~7;
+-
+-	return (struct ext2_group_desc *)((char *)gdp + group * desc_size);
++	struct ext2_group_desc *ret_gdp;
++	struct ext2_group_desc *tmp_gdp;
++	char *dest;
++	dgrp_t block;
++	blk64_t blk;
++	int retval;
++	unsigned int i;
++	unsigned int groups_per_block = EXT2_DESC_PER_BLOCK(fs->super);
++
++	ret_gdp = (struct ext2_group_desc *)((char *)gdp + group * desc_size);
++
++	if (fs->first_meta_desc && group >= fs->first_meta_desc 
++	    && ret_gdp->bg_block_bitmap == 0) {
++		block = group / groups_per_block;
++		blk = ext2fs_descriptor_block_loc2(fs, fs->group_block, block);
++		dest = (char *) gdp + fs->blocksize * block;
++		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
++		if (retval)
++			return NULL;
++
++		tmp_gdp = (struct ext2_group_desc *)dest;
++
++		for (i=0; i < groups_per_block; i++) {
++			/*
++			 * TDB: If recovery is from backup superblock, Clear
++			 * _UNININT flags & reset bg_itable_unused to zero
++			 */
++#ifdef WORDS_BIGENDIAN
++			ext2fs_swap_group_desc2(fs, tmp_gdp);
++#endif
++			if (fs->orig_super == 0 &&
++			    EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
++			    EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++				ext2fs_bg_flags_clear(fs, block * groups_per_block + i, EXT2_BG_BLOCK_UNINIT);
++				ext2fs_bg_flags_clear(fs,  block * groups_per_block + i, EXT2_BG_INODE_UNINIT);
++				ext2fs_bg_itable_unused_set(fs,  block * groups_per_block + i, 0);
++				// The checksum will be reset later, but fix it here
++				// anyway to avoid printing a lot of spurious errors. 
++				ext2fs_group_desc_csum_set(fs,  block * groups_per_block + i);
++			}
++			tmp_gdp = (struct ext2_group_desc *)((char *)tmp_gdp + EXT2_DESC_SIZE(fs->super));
++		}
++	}
++	return ret_gdp;
+ }
+ 
+ /* Do the same but as an ext4 group desc for internal use here */
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index b255759..994b841 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -285,10 +285,8 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 	__u32		feature_incompat;
+ 	struct ext2_super_block *super_shadow = 0;
+ 	struct ext2_group_desc *group_shadow = 0;
+-#ifdef WORDS_BIGENDIAN
+ 	struct ext2_group_desc *gdp;
+ 	dgrp_t		j;
+-#endif
+ 	char	*group_ptr;
+ 	blk64_t	old_desc_blocks;
+ 	struct ext2fs_numeric_progress_struct progress;
+@@ -337,6 +335,11 @@ errcode_t ext2fs_flush2(ext2_filsys fs, int flags)
+ 	}
+ #else
+ 	super_shadow = fs->super;
++	/* make sure all in memory */
++	for (j = 0; j < fs->group_desc_count; j++) {
++		gdp = ext2fs_group_desc(fs, group_shadow, j);
++	}
++
+ 	group_shadow = ext2fs_group_desc(fs, fs->group_desc, 0);
+ #endif
+ 
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 27a7d3a..4858684 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -202,6 +202,7 @@ struct ext4_group_desc
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+ #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
++#define EXT2_BG_READ		0x0008 /* Block group was read from disk */
+ 
+ /*
+  * Data structures used by the directory indexing feature
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 8ff49ca..d23bd99 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -221,6 +221,9 @@ struct struct_ext2_filsys {
+ 	int				fragsize;
+ 	dgrp_t				group_desc_count;
+ 	unsigned long			desc_blocks;
++	blk64_t				group_block;
++	/* first meta descriptor block */
++	dgrp_t				first_meta_desc;
+ 	struct opaque_ext2_group_desc *	group_desc;
+ 	unsigned int			inode_blocks_per_group;
+ 	ext2fs_inode_bitmap		inode_map;
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index ba39e01..12a3935 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -121,11 +121,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	blk64_t		group_block, blk;
+ 	char		*dest, *cp;
+ 	int		group_zero_adjust = 0;
+-#ifdef WORDS_BIGENDIAN
+ 	unsigned int	groups_per_block;
+ 	struct ext2_group_desc *gdp;
+ 	int		j;
+-#endif
+ 
+ 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
+ 
+@@ -377,7 +375,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	}
+ 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
+ 					  EXT2_DESC_PER_BLOCK(fs->super));
+-	retval = ext2fs_get_array(fs->desc_blocks, fs->blocksize,
++	retval = ext2fs_get_arrayzero(fs->desc_blocks, fs->blocksize,
+ 				&fs->group_desc);
+ 	if (retval)
+ 		goto cleanup;
+@@ -412,40 +410,27 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 					     first_meta_bg, dest);
+ 		if (retval)
+ 			goto cleanup;
+-#ifdef WORDS_BIGENDIAN
+-		gdp = (struct ext2_group_desc *) dest;
+ 		for (j=0; j < groups_per_block*first_meta_bg; j++) {
+ 			gdp = ext2fs_group_desc(fs, fs->group_desc, j);
+-			ext2fs_swap_group_desc2(fs, gdp);
+-		}
+-#endif
+-		dest += fs->blocksize*first_meta_bg;
+-	}
+-	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
+-		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+-		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
+-		if (retval)
+-			goto cleanup;
+ #ifdef WORDS_BIGENDIAN
+-		for (j=0; j < groups_per_block; j++) {
+-			gdp = ext2fs_group_desc(fs, fs->group_desc,
+-						i * groups_per_block + j);
+ 			ext2fs_swap_group_desc2(fs, gdp);
+-		}
+ #endif
+-		dest += fs->blocksize;
++		}
++		dest += fs->blocksize*first_meta_bg;
+ 	}
+ 
++	fs->first_meta_desc = groups_per_block * first_meta_bg;
++	fs->group_block = group_block;
+ 	fs->stride = fs->super->s_raid_stride;
+ 
+ 	/*
+ 	 * If recovery is from backup superblock, Clear _UNININT flags &
+ 	 * reset bg_itable_unused to zero
+ 	 */
+-	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
++	if (first_meta_bg && superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
+ 		dgrp_t group;
+ 
+-		for (group = 0; group < fs->group_desc_count; group++) {
++		for (group = 0; group < groups_per_block*first_meta_bg; group++) {
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
+ 			ext2fs_bg_itable_unused_set(fs, group, 0);
+-- 
+1.7.1
