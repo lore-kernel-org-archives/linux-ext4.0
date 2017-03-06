@@ -1,38 +1,45 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: New kvm-xfstests images uploaded
-Date: Mon, 6 Mar 2017 00:58:27 -0500
-Message-ID: <20170306055827.omfoahfisn44l6bc@thunk.org>
+From: Avi Kivity <avi@scylladb.com>
+Subject: Re: [PATCH 0/8 v2] Non-blocking AIO
+Date: Mon, 6 Mar 2017 10:40:36 +0200
+Message-ID: <f1df9ffe-6803-41b3-3ec0-cd96ae32b995@scylladb.com>
+References: <20170228233610.25456-1-rgoldwyn@suse.de>
+ <347d19cb-dbb8-1d4f-dfb5-d1dd820dd65d@scylladb.com>
+ <20170306082546.GA14932@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
-To: linux-fstests@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60534 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752639AbdCFIGe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 6 Mar 2017 03:06:34 -0500
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>, jack@suse.com,
+        hch@infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170306082546.GA14932@quack2.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I've uploaded a new kvm-xfstests image at:
+On 03/06/2017 10:25 AM, Jan Kara wrote:
+> On Sun 05-03-17 16:56:21, Avi Kivity wrote:
+>>> The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+>>> any of these conditions are met. This way userspace can push most
+>>> of the write()s to the kernel to the best of its ability to complete
+>>> and if it returns -EAGAIN, can defer it to another thread.
+>>>
+>> Is it not possible to push the iocb to a workqueue?  This will allow
+>> existing userspace to work with the new functionality, unchanged. Any
+>> userspace implementation would have to do the same thing, so it's not like
+>> we're saving anything by pushing it there.
+> That is not easy because until IO is fully submitted, you need some parts
+> of the context of the process which submits the IO (e.g. memory mappings,
+> but possibly also other credentials). So you would need to somehow transfer
+> this information to the workqueue.
+>
 
-https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
 
-This has the latest xfstests, xfsprogs, and e2fsprogs update, as well
-as changes to help debug problems in the journal_lazy patches:
+It's at least possible to pass the mm_struct to the workqueue, and I 
+imagine other process attributes.  But I appreciate the difficulty.
 
-e2fsprogs	v1.43.4-27-g686994eb (Fri, 3 Mar 2017 10:02:14 -0500)
-fio		fio-2.17-1-g54441e7 (Wed, 18 Jan 2017 08:18:28 -0700)
-quota		e0b6335 (Thu, 9 Feb 2017 11:55:45 +0100)
-stress-ng	4ad62e1 (Mon, 27 Feb 2017 14:28:36 -0500)
-xfsprogs	v4.10.0-rc1 (Wed, 15 Feb 2017 21:48:31 -0600)
-xfstests-bld	032c8c3 (Fri, 3 Mar 2017 21:03:05 -0500)
-xfstests	linux-v3.8-1414-g999e3f6 (Sun, 5 Mar 2017 19:11:35 -0500)
-
-Also updated is the armhf_rootfs.tar.gz, and there is also a new
-gce-xfstests test appliance image available as well.
-
-Cheers,
-
-					- Ted
+It would be quite annoying to have to keep a large number of worker 
+threads active, just in case aio is not working.  Modern NVMes have 
+fairly deep queues, and at the worst case, you'll need one thread for 
+each I/O to keep everything busy.
