@@ -1,80 +1,47 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: [PATCH 7/7] jbd2: make the whole kjournald2 kthread NOFS safe
-Date: Mon,  6 Mar 2017 14:14:08 +0100
-Message-ID: <20170306131408.9828-8-mhocko@kernel.org>
-References: <20170306131408.9828-1-mhocko@kernel.org>
-Cc: <linux-mm@kvack.org>,
-	Dave Chinner <david@fromorbit.com>,
-	djwong@kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>,
-	Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org,
-	cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org,
-	logfs@logfs.org,
-	linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	Michal Hocko <mhocko@suse.com>
-To: Andrew Morton <akpm@linux-foundation.org>,
-	<linux-fsdevel@vger.kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170306131408.9828-1-mhocko@kernel.org>
-Sender: owner-linux-mm@kvack.org
+From: Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH 0/8 v2] Non-blocking AIO
+Date: Mon, 6 Mar 2017 08:19:14 -0700
+Message-ID: <d0789835-5bae-6f99-af4d-c0e60eadbab7@kernel.dk>
+References: <20170228233610.25456-1-rgoldwyn@suse.de>
+ <347d19cb-dbb8-1d4f-dfb5-d1dd820dd65d@scylladb.com>
+ <20170306082546.GA14932@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>, jack@suse.com,
+        hch@infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Avi Kivity <avi@scylladb.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20170306082546.GA14932@quack2.suse.cz>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Michal Hocko <mhocko@suse.com>
+On 03/06/2017 01:25 AM, Jan Kara wrote:
+> On Sun 05-03-17 16:56:21, Avi Kivity wrote:
+>>> The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+>>> any of these conditions are met. This way userspace can push most
+>>> of the write()s to the kernel to the best of its ability to complete
+>>> and if it returns -EAGAIN, can defer it to another thread.
+>>>
+>>
+>> Is it not possible to push the iocb to a workqueue?  This will allow
+>> existing userspace to work with the new functionality, unchanged. Any
+>> userspace implementation would have to do the same thing, so it's not like
+>> we're saving anything by pushing it there.
+> 
+> That is not easy because until IO is fully submitted, you need some parts
+> of the context of the process which submits the IO (e.g. memory mappings,
+> but possibly also other credentials). So you would need to somehow transfer
+> this information to the workqueue.
 
-kjournald2 is central to the transaction commit processing. As such any
-potential allocation from this kernel thread has to be GFP_NOFS. Make
-sure to mark the whole kernel thread GFP_NOFS by the memalloc_nofs_save.
+Outside of technical challenges, the API also needs to return EAGAIN or
+start blocking at some point. We can't expose a direct connection to
+queue work like that, and let any user potentially create millions of
+pending work items (and IOs). That's why the current API is safe, even
+though it does suck that it block seemingly randomly for users.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- fs/jbd2/journal.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index a1a359bfcc9c..78433ce1db40 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -43,6 +43,7 @@
- #include <linux/backing-dev.h>
- #include <linux/bitops.h>
- #include <linux/ratelimit.h>
-+#include <linux/sched/mm.h>
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/jbd2.h>
-@@ -206,6 +207,13 @@ static int kjournald2(void *arg)
- 	wake_up(&journal->j_wait_done_commit);
- 
- 	/*
-+	 * Make sure that no allocations from this kernel thread will ever recurse
-+	 * to the fs layer because we are responsible for the transaction commit
-+	 * and any fs involvement might get stuck waiting for the trasn. commit.
-+	 */
-+	memalloc_nofs_save();
-+
-+	/*
- 	 * And now, wait forever for commit wakeup events.
- 	 */
- 	write_lock(&journal->j_state_lock);
 -- 
-2.11.0
+Jens Axboe
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
