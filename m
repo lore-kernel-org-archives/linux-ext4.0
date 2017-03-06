@@ -1,59 +1,38 @@
-From: Avi Kivity <avi@scylladb.com>
-Subject: Re: [PATCH 0/8 v2] Non-blocking AIO
-Date: Sun, 5 Mar 2017 16:56:21 +0200
-Message-ID: <347d19cb-dbb8-1d4f-dfb5-d1dd820dd65d@scylladb.com>
-References: <20170228233610.25456-1-rgoldwyn@suse.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: New kvm-xfstests images uploaded
+Date: Mon, 6 Mar 2017 00:58:27 -0500
+Message-ID: <20170306055827.omfoahfisn44l6bc@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>, jack@suse.com
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170228233610.25456-1-rgoldwyn@suse.de>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
+To: linux-fstests@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:60534 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752639AbdCFIGe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 6 Mar 2017 03:06:34 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+I've uploaded a new kvm-xfstests image at:
 
+https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
 
-On 03/01/2017 01:36 AM, Goldwyn Rodrigues wrote:
-> This series adds nonblocking feature to asynchronous I/O writes.
-> io_submit() can be delayed because of a number of reason:
->   - Block allocation for files
->   - Data writebacks for direct I/O
->   - Sleeping because of waiting to acquire i_rwsem
->   - Congested block device
+This has the latest xfstests, xfsprogs, and e2fsprogs update, as well
+as changes to help debug problems in the journal_lazy patches:
 
-We've been hit by a few of these so this change is very welcome.
+e2fsprogs	v1.43.4-27-g686994eb (Fri, 3 Mar 2017 10:02:14 -0500)
+fio		fio-2.17-1-g54441e7 (Wed, 18 Jan 2017 08:18:28 -0700)
+quota		e0b6335 (Thu, 9 Feb 2017 11:55:45 +0100)
+stress-ng	4ad62e1 (Mon, 27 Feb 2017 14:28:36 -0500)
+xfsprogs	v4.10.0-rc1 (Wed, 15 Feb 2017 21:48:31 -0600)
+xfstests-bld	032c8c3 (Fri, 3 Mar 2017 21:03:05 -0500)
+xfstests	linux-v3.8-1414-g999e3f6 (Sun, 5 Mar 2017 19:11:35 -0500)
 
->
-> The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
-> any of these conditions are met. This way userspace can push most
-> of the write()s to the kernel to the best of its ability to complete
-> and if it returns -EAGAIN, can defer it to another thread.
->
+Also updated is the armhf_rootfs.tar.gz, and there is also a new
+gce-xfstests test appliance image available as well.
 
-Is it not possible to push the iocb to a workqueue?  This will allow 
-existing userspace to work with the new functionality, unchanged. Any 
-userspace implementation would have to do the same thing, so it's not 
-like we're saving anything by pushing it there.
+Cheers,
 
-> In order to enable this, IOCB_FLAG_NOWAIT is introduced in
-> uapi/linux/aio_abi.h which translates to IOCB_NOWAIT for struct iocb,
-> BIO_NOWAIT for bio and IOMAP_NOWAIT for iomap.
->
-> This feature is provided for direct I/O of asynchronous I/O only. I have
-> tested it against xfs, ext4, and btrfs.
->
-> Changes since v1:
->   + Forwardported from 4.9.10
->   + changed name from _NONBLOCKING to *_NOWAIT
->   + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
->   + BIO_NOWAIT limited to get_request()
->   + XFS fixes
-> 	- included reflink
-> 	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
-> 	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
-> 	  block allocation for the file.
->   + ext4 coding style
+					- Ted
