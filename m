@@ -1,56 +1,77 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Wed, 8 Mar 2017 09:17:04 -0700
-Message-ID: <a661cdc7-4859-4a39-3037-8036cc8c4712@kernel.dk>
-References: <20170228233610.25456-1-rgoldwyn@suse.de>
- <20170228233610.25456-6-rgoldwyn@suse.de>
- <0d1ba678-69c0-16ce-6c3e-475cd8da203c@grimberg.me>
- <44cc02b1-f7ac-cbc6-6f09-726ae8225358@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Wed, 8 Mar 2017 12:29:32 -0500
+Message-ID: <20170308172932.GB1020@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20170303230018.GI13877@fieldses.org>
+ <1488588837.11672.5.camel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>,
-        Sagi Grimberg <sagi@grimberg.me>, jack@suse.com
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <44cc02b1-f7ac-cbc6-6f09-726ae8225358@suse.de>
-Sender: linux-btrfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1488588837.11672.5.camel@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 03/08/2017 08:00 AM, Goldwyn Rodrigues wrote:
+On Fri, Mar 03, 2017 at 07:53:57PM -0500, Jeff Layton wrote:
+> On Fri, 2017-03-03 at 18:00 -0500, J. Bruce Fields wrote:
+> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
+> > > tl;dr: I think we can greatly reduce the cost of the inode->i_version
+> > > counter, by exploiting the fact that we don't need to increment it
+> > > if no one is looking at it. We can also clean up the code to prepare
+> > > to eventually expose this value via statx().
+> > > 
+> > > The inode->i_version field is supposed to be a value that changes
+> > > whenever there is any data or metadata change to the inode. Some
+> > > filesystems use it internally to detect directory changes during
+> > > readdir. knfsd will use it if the filesystem has MS_I_VERSION
+> > > set. IMA will also use it (though it's not clear to me that that
+> > > works 100% -- no check for MS_I_VERSION there).
+> > 
+> > I'm a little confused about the internal uses for directories.  Is it
+> > necessarily kept on disk?
 > 
+> No, they aren't necessarily stored on disk, and in fact they aren't on
+> most (maybe all?) of those filesystems. It's just a convenient place to
+> store a dir change value that is subsequently checked in readdir
+> operations.
 > 
-> On 03/08/2017 01:03 AM, Sagi Grimberg wrote:
->>
->>> -        if (likely(blk_queue_enter(q, false) == 0)) {
->>> +        if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT))
->>> == 0)) {
->>>              ret = q->make_request_fn(q, bio);
->>
->> I think that for ->make_request to not block we'd need to set
->> BLK_MQ_REQ_NOWAIT in blk_mq_alloc_data to avoid blocking on a tag
->> allocation.
->>
->> Something like the untested addition below:
+> That's part of the "fun" of untangling this mess. ;)
 > 
-> I did that in the first series, but there are too many reasons to block
-> in blk-mq [1]. I dropped blk-mq work in v2.
+> > In cases it's not, then there's not the same
+> > performance issue, right? 
+> 
+> Right, I don't think it's really a big deal for most of those and I'm
+> not terribly concerned about the i_version counter on directory change
+> operations. An extra atomic op on a directory change seems unlikely to
+> hurt anything.
+> 
+> The main purpose of this is to improve the situation with small writes.
+> This should also help pave the way for fs' like NFS and Ceph that
+> implement a version counter but may not necessarily bump it on every
+> change.
+> 
+> I think once we have things more consistent, we'll be able to consider
+> exposing the i_version counter to userland via statx.
+> 
+> > Is there any risk these patches make
+> > performance slightly worse in that case?
+> > 
+> 
+> Maybe, but I think that risk is pretty low. Note that I haven't measured
+> that specifically here, so I could be completely wrong.
+> 
+> If it is a problem, we could consider unioning this thing with a non-
+> atomic field for the directory change cases, but that would add some
+> complexity and I'm not sure it's worth it. I'd want to measure it first.
 
-That's complete nonsense, there are no more places in blk-mq that will
-block that in the legacy path. Most of the examples from your URL:
+Makes sense to me.  I agree that it's unlikely to be a problem, just
+wanted to make sure I understood....
 
-> [1] https://patchwork.kernel.org/patch/9571051/
+Anyway, I'm a great fan of the basic idea, I hope we can get this done.
 
-are not blk-mq, but writeback throttling, and drivers that explicitly
-hook into ->make_request_fn.
-
-As others have mentioned, it's a total non-starter to focus on the
-deprecated IO path and just ignore the new one. Back to the drawing
-board.
-
--- 
-Jens Axboe
-
+--b.
