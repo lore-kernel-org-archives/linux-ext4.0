@@ -1,47 +1,46 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 111961] ext4 umount - invalid opcode with PLEXTOR
- PX-128M6G-2242
-Date: Wed, 08 Mar 2017 10:48:34 +0000
-Message-ID: <bug-111961-13602-6x7512TKoI@https.bugzilla.kernel.org/>
-References: <bug-111961-13602@https.bugzilla.kernel.org/>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
+Date: Wed, 8 Mar 2017 09:00:09 -0600
+Message-ID: <44cc02b1-f7ac-cbc6-6f09-726ae8225358@suse.de>
+References: <20170228233610.25456-1-rgoldwyn@suse.de>
+ <20170228233610.25456-6-rgoldwyn@suse.de>
+ <0d1ba678-69c0-16ce-6c3e-475cd8da203c@grimberg.me>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Sagi Grimberg <sagi@grimberg.me>, jack@suse.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:33646 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752530AbdCHLNK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Mar 2017 06:13:10 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1866A28507
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Mar 2017 10:48:36 +0000 (UTC)
-Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0D3CA2850D
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Mar 2017 10:48:35 +0000 (UTC)
-In-Reply-To: <bug-111961-13602@https.bugzilla.kernel.org/>
+Received: from mx2.suse.de ([195.135.220.15]:43992 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751394AbdCHPEP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Mar 2017 10:04:15 -0500
+In-Reply-To: <0d1ba678-69c0-16ce-6c3e-475cd8da203c@grimberg.me>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=111961
 
-Sebastian (info@dynpages.de) changed:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|---                         |OBSOLETE
+On 03/08/2017 01:03 AM, Sagi Grimberg wrote:
+> 
+>> -        if (likely(blk_queue_enter(q, false) == 0)) {
+>> +        if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT))
+>> == 0)) {
+>>              ret = q->make_request_fn(q, bio);
+> 
+> I think that for ->make_request to not block we'd need to set
+> BLK_MQ_REQ_NOWAIT in blk_mq_alloc_data to avoid blocking on a tag
+> allocation.
+> 
+> Something like the untested addition below:
 
---- Comment #11 from Sebastian (info@dynpages.de) ---
-Hi,
+I did that in the first series, but there are too many reasons to block
+in blk-mq [1]. I dropped blk-mq work in v2.
 
-I can't as I replaced the SSD in the meantime, therefore I mark this issue as
-obsolete. Thank you anyways for looking into this.
-
-best regards
-
-Sebastian
+[1] https://patchwork.kernel.org/patch/9571051/
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Goldwyn
