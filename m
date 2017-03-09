@@ -1,100 +1,58 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: dirty_ratio
-Date: Thu, 9 Mar 2017 15:17:01 +0100
-Message-ID: <20170309141701.GK15874@quack2.suse.cz>
-References: <CAAMvbhEbraxyJtST5-ujZvdi5T_nRByU2gXHa0dBtzwb3ovvWA@mail.gmail.com>
+Subject: Re: [PATCH] ext4: don't BUG when truncating encrypted inodes on the
+ orphan list
+Date: Thu, 9 Mar 2017 14:47:20 +0100
+Message-ID: <20170309134720.GJ15874@quack2.suse.cz>
+References: <20170211031942.11783-1-tytso@mit.edu>
+ <FD2DE284-B640-4369-9A7C-E2224011541F@dilger.ca>
+ <20170212022738.vhr532yybcictgcz@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: James Courtier-Dutton <james.dutton@gmail.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47592 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:48465 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754610AbdCIOR3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 9 Mar 2017 09:17:29 -0500
+        id S1754427AbdCIOYB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Mar 2017 09:24:01 -0500
 Content-Disposition: inline
-In-Reply-To: <CAAMvbhEbraxyJtST5-ujZvdi5T_nRByU2gXHa0dBtzwb3ovvWA@mail.gmail.com>
+In-Reply-To: <20170212022738.vhr532yybcictgcz@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello!
-
-On Sat 25-02-17 11:56:58, James Courtier-Dutton wrote:
-> I have a server that has basically two tasks.
-> 1) Receiving lots of data from the network and storing it on disk.
-> 2) An App that makes relatively small use of the disk and responds to
-> requests from the network.
+On Sat 11-02-17 21:27:38, Ted Tso wrote:
+> On Sat, Feb 11, 2017 at 12:26:52AM -0700, Andreas Dilger wrote:
+> > The reason truncated orphans are on the orphan list is because the
+> > transaction that sets i_size may be restarted if the inode is larger
+> > than can be truncated in a single transaction.  If the system crashes
+> > before the truncate finishes then the truncate should be completed
+> > so that old data is not returned if the file is truncated larger again.
 > 
-> The problem I have is that sometimes (1) is filling up all the "Dirty"
-> pages, triggering a blocking flushing of the dirty buffer to the disk.
-> This essentially freezes (1) and (2) until the flushing is complete.
-> On occasions, this can take more than 60 seconds.
-> 60 seconds is far too long from (2) point of view, because it needs to
-> respond to user requests quickly, i.e less than 1 second.
+> Another way of fixing this is at the time when the file is truncated
+> to a larger size.  Of course the other case we need handle is what
+> happens if there is data after i_size and the file is mmaped.
 > 
-> Is there any mechanism that could result in (1) being informed about
-> the problem, (1) could then back off writing data to disk, and then at
-> the same time, asked the sending system over the network to also back
-> off.
-
-I'll need some more data to help you. So:
-
-1) What kernel version do you use?
-2) What kind of storage is the "disk"?
-3) What IO scheduler do you use (you can find that in
-   /sys/block/<device>/queue/scheduler)?
-4) What filesystem do you use?
-5) What does "App" do when answering the query? Only reads or also writes?
-   How much roughly?
- 
-> On TCP/IP networks, this is reported back as "congestion" on the
-> network, the this results in throttling of the sending application on
-> a per TCP session basis.
+> One advantage of doing when the file is truncated larger again is at
+> that point we will have the encryption key.  In the case of an
+> encrypted file, both the kernel and e2fsck *can't* zero fill past
+> i_size if the key is not available.  And during the orphan replay the
+> encryption key won't be available.
 > 
-> In the above case, we are essentially seeing "congestion" to a
-> particular storage disk, but the application does not get any feedback
-> about this.
-> 
-> I guess the perfect solution would be Quality-of-Service for disk
-> writes, much like we have for network traffic.
->
-> So, is there a feature available that can help me here, or will I have
-> to look at modifying the Linux kernel in order to add support for
-> "congestion notification from disk writes" ?
+> The other way to solve the problem would be zero the portion of the
+> last remaining datablock *first* and journal the data block along with
+> the initial transaction which sets the i_size in the inode.  But that
+> gets tricky, since all data writes for that last block must not go to
+> the disk, and then once the journal has been committed we can't write
+> the block to via the normal page_io routines (since otherwise it might
+> get overwritten), until we write it back and then revoke the block in
+> the journal, and the revoke is committed.  Messy....
 
-You can actually use cgroups these days to isolate the heavy writer and
-thus give decent priority to the "App".
-
-> 
-> In my view that "dirty_ratio" causing the whole system to appear to
-> freeze due to disk blocking is too blunt an instrument.
-> 
-> Also, even detecting if the 60 second freezes are a result of the
-> "dirty_ratio" being hit is difficult to do.  It would be useful if
-> there existed a counter that would count the amount of times the
-> system resorted to "blocking" writes, as opposed to the
-> non-problematic background writes.
-
-Well, your process fetching data from network is probably permanently in
-the "blocking" writes situation so global blocking counter would not help
-you much. You would need it per task. But iowait time of a process should
-tell you that information already.
-
-> In my view, whenever the "blocking" writes was initiated, the
-> application should be informed about it.
-> Another alternative could be that the dirty pages are associated with
-> the application process and file descriptor and a dirty_ratio set per
-> file descriptor. Then, when a dirty_ratio is hit on the file
-> descriptor, only the application that holds that fd is frozen.
-> Maybe have multi-level limits. I.e. Warn App at limit A, freeze app at limit B.
-
-Dirty_limit is just a mechanism preventing the system from running
-out-of-memory due to too many dirty pages. It is not a quality-of-service
-mechanism. Cgroups are meant for that (or better for resource limiting
-of individual tasks). And wrt notifying application about blocking writes -
-IMO application has no bussiness in knowing that. It is too fragile. But
-kernel should behave better than just letting the application wait for 1
-minute...
+Going through some old email... I don't think this would be really
+reasonably doable. What would fixup the missing zeroing on orphan cleanup
+though is to zero the tail of the last page on readpage, extending
+truncate and write beyond EOF. That may be acceptable cost for encrypted
+inodes. 
 
 								Honza
 -- 
