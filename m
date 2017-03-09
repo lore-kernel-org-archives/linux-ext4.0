@@ -1,80 +1,102 @@
-From: David Sterba <dsterba@suse.cz>
-Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
-Date: Thu, 9 Mar 2017 12:42:53 +0100
-Message-ID: <20170309114253.GA14605@twin.jikos.cz>
-References: <20170306131408.9828-1-mhocko@kernel.org>
- <20170306131408.9828-5-mhocko@kernel.org>
- <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
- <20170307150956.GM28642@dhcp22.suse.cz>
-Reply-To: dsterba@suse.cz
+From: Jan Kara <jack@suse.cz>
+Subject: Re: dirty_ratio
+Date: Thu, 9 Mar 2017 15:17:01 +0100
+Message-ID: <20170309141701.GK15874@quack2.suse.cz>
+References: <CAAMvbhEbraxyJtST5-ujZvdi5T_nRByU2gXHa0dBtzwb3ovvWA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-	Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-	ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, logfs@logfs.org,
-	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-	reiserfs-devel@vger.kernel.org,
-	linux-ntfs-dev@lists.sourceforge.net,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Vlastimil Babka <vbabka@suse.cz>
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org
+To: James Courtier-Dutton <james.dutton@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:47592 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754610AbdCIOR3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Mar 2017 09:17:29 -0500
 Content-Disposition: inline
-In-Reply-To: <20170307150956.GM28642@dhcp22.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAAMvbhEbraxyJtST5-ujZvdi5T_nRByU2gXHa0dBtzwb3ovvWA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 07, 2017 at 04:09:56PM +0100, Michal Hocko wrote:
-> On Mon 06-03-17 13:22:14, Andrew Morton wrote:
-> > On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
-> [...]
-> > > --- a/include/linux/gfp.h
-> > > +++ b/include/linux/gfp.h
-> > > @@ -210,8 +210,16 @@ struct vm_area_struct;
-> > >   *
-> > >   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
-> > >   *   that do not require the starting of any physical IO.
-> > > + *   Please try to avoid using this flag directly and instead use
-> > > + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
-> > > + *   perform any IO with a short explanation why. All allocation requests
-> > > + *   will inherit GFP_NOIO implicitly.
-> > >   *
-> > >   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
-> > > + *   Please try to avoid using this flag directly and instead use
-> > > + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
-> > > + *   recurse into the FS layer with a short explanation why. All allocation
-> > > + *   requests will inherit GFP_NOFS implicitly.
-> > 
-> > I wonder if these are worth a checkpatch rule.
-> 
-> I am not really sure, to be honest. This may easilly end up people
-> replacing
-> 
-> do_alloc(GFP_NOFS)
-> 
-> with
-> 
-> memalloc_nofs_save()
-> do_alloc(GFP_KERNEL)
-> memalloc_nofs_restore()
-> 
-> which doesn't make any sense of course. From my experience, people tend
-> to do stupid things just to silent checkpatch warnings very often.
-> Moreover I believe we need to do the transition to the new api first
-> before we can push back on the explicit GFP_NOFS usage. Maybe then we
-> can think about the a checkpatch warning.
+Hello!
 
-I agree will all your objections against adding that to checkpatch, at
-this point it's less harmful to use GFP_NOFS.
+On Sat 25-02-17 11:56:58, James Courtier-Dutton wrote:
+> I have a server that has basically two tasks.
+> 1) Receiving lots of data from the network and storing it on disk.
+> 2) An App that makes relatively small use of the disk and responds to
+> requests from the network.
+> 
+> The problem I have is that sometimes (1) is filling up all the "Dirty"
+> pages, triggering a blocking flushing of the dirty buffer to the disk.
+> This essentially freezes (1) and (2) until the flushing is complete.
+> On occasions, this can take more than 60 seconds.
+> 60 seconds is far too long from (2) point of view, because it needs to
+> respond to user requests quickly, i.e less than 1 second.
+> 
+> Is there any mechanism that could result in (1) being informed about
+> the problem, (1) could then back off writing data to disk, and then at
+> the same time, asked the sending system over the network to also back
+> off.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+I'll need some more data to help you. So:
+
+1) What kernel version do you use?
+2) What kind of storage is the "disk"?
+3) What IO scheduler do you use (you can find that in
+   /sys/block/<device>/queue/scheduler)?
+4) What filesystem do you use?
+5) What does "App" do when answering the query? Only reads or also writes?
+   How much roughly?
+ 
+> On TCP/IP networks, this is reported back as "congestion" on the
+> network, the this results in throttling of the sending application on
+> a per TCP session basis.
+> 
+> In the above case, we are essentially seeing "congestion" to a
+> particular storage disk, but the application does not get any feedback
+> about this.
+> 
+> I guess the perfect solution would be Quality-of-Service for disk
+> writes, much like we have for network traffic.
+>
+> So, is there a feature available that can help me here, or will I have
+> to look at modifying the Linux kernel in order to add support for
+> "congestion notification from disk writes" ?
+
+You can actually use cgroups these days to isolate the heavy writer and
+thus give decent priority to the "App".
+
+> 
+> In my view that "dirty_ratio" causing the whole system to appear to
+> freeze due to disk blocking is too blunt an instrument.
+> 
+> Also, even detecting if the 60 second freezes are a result of the
+> "dirty_ratio" being hit is difficult to do.  It would be useful if
+> there existed a counter that would count the amount of times the
+> system resorted to "blocking" writes, as opposed to the
+> non-problematic background writes.
+
+Well, your process fetching data from network is probably permanently in
+the "blocking" writes situation so global blocking counter would not help
+you much. You would need it per task. But iowait time of a process should
+tell you that information already.
+
+> In my view, whenever the "blocking" writes was initiated, the
+> application should be informed about it.
+> Another alternative could be that the dirty pages are associated with
+> the application process and file descriptor and a dirty_ratio set per
+> file descriptor. Then, when a dirty_ratio is hit on the file
+> descriptor, only the application that holds that fd is frozen.
+> Maybe have multi-level limits. I.e. Warn App at limit A, freeze app at limit B.
+
+Dirty_limit is just a mechanism preventing the system from running
+out-of-memory due to too many dirty pages. It is not a quality-of-service
+mechanism. Cgroups are meant for that (or better for resource limiting
+of individual tasks). And wrt notifying application about blocking writes -
+IMO application has no bussiness in knowing that. It is too fragile. But
+kernel should behave better than just letting the application wait for 1
+minute...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
