@@ -1,63 +1,50 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Wed, 8 Mar 2017 20:18:54 -0600
-Message-ID: <310c6725-3263-2790-a445-d58e464fd3e4@suse.de>
-References: <20170228233610.25456-1-rgoldwyn@suse.de>
- <20170228233610.25456-6-rgoldwyn@suse.de>
- <0d1ba678-69c0-16ce-6c3e-475cd8da203c@grimberg.me>
- <44cc02b1-f7ac-cbc6-6f09-726ae8225358@suse.de>
- <a661cdc7-4859-4a39-3037-8036cc8c4712@kernel.dk>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Race condition in ext4 (was Re: 4.11-rc1 acpi stomping ext4
+ slabs)
+Date: Wed, 8 Mar 2017 20:58:48 -0500
+Message-ID: <20170309015848.42fipjxkxjvu7gkl@thunk.org>
+References: <86f1c7af-0d74-f1fd-e1fb-cc2302824e27@gmail.com>
+ <CAJZ5v0h47dTwpOPJfzyM41YaS8u3es83wh7xtJ3fxn1cKbuELA@mail.gmail.com>
+ <507b9b64-798b-d542-8169-17738c405aad@gmail.com>
+ <1018b7d9-2566-c0f2-bef7-8274617facd6@gmail.com>
+ <f94d78dc-1424-2f92-0381-ea706fe8802c@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: hch@infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Jens Axboe <axboe@kernel.dk>, Sagi Grimberg <sagi@grimberg.me>,
-        jack@suse.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <a661cdc7-4859-4a39-3037-8036cc8c4712@kernel.dk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+To: Nikolay Borisov <n.borisov.lkml@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50638 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751637AbdCICgd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Mar 2017 21:36:33 -0500
+Content-Disposition: inline
+In-Reply-To: <f94d78dc-1424-2f92-0381-ea706fe8802c@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Mar 07, 2017 at 10:40:53PM +0200, Nikolay Borisov wrote:
+> So this is wrong, the reason why the issues seemed fix is because I
+> switched my compiler to version 5.4.0. So this manifests only if I'm
+> using gcc 4.7.4. With the pr_info added here is the output of a boot. So
+> there are multiple invocations of ext4_ext_map_blocks and the freeing,
+> including with the address being used in subsequent kasan reports :
+> ffff88006ae8fdb0
 
+Can you help bisect this, then?  I'm using Debian Testing, and the
+default gcc is gcc 6.3.0.  I'm currently forcing the use of gcc 5.4.1
+because I was running into problems with gcc 6.x a while back.  (TBH,
+I was thinking about trying to see if gcc 6.3 was stable for kernel
+compiles when I had some spare time.)  But I don't have access to
+*any* gcc 4.x on my development system, and I don't think I've tried
+using gcc 4.x in a long, Long, LONG time.
 
-On 03/08/2017 10:17 AM, Jens Axboe wrote:
-> On 03/08/2017 08:00 AM, Goldwyn Rodrigues wrote:
->>
->>
->> On 03/08/2017 01:03 AM, Sagi Grimberg wrote:
->>>
->>>> -        if (likely(blk_queue_enter(q, false) == 0)) {
->>>> +        if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT))
->>>> == 0)) {
->>>>              ret = q->make_request_fn(q, bio);
->>>
->>> I think that for ->make_request to not block we'd need to set
->>> BLK_MQ_REQ_NOWAIT in blk_mq_alloc_data to avoid blocking on a tag
->>> allocation.
->>>
->>> Something like the untested addition below:
->>
->> I did that in the first series, but there are too many reasons to block
->> in blk-mq [1]. I dropped blk-mq work in v2.
-> 
-> That's complete nonsense, there are no more places in blk-mq that will
-> block that in the legacy path. Most of the examples from your URL:
-> 
->> [1] https://patchwork.kernel.org/patch/9571051/
-> 
-> are not blk-mq, but writeback throttling, and drivers that explicitly
-> hook into ->make_request_fn.
-> 
-> As others have mentioned, it's a total non-starter to focus on the
-> deprecated IO path and just ignore the new one. Back to the drawing
-> board.
-> 
+I'm currently kicking off a test run using 5.4.1 with KASAN enabled to
+see if I can trigger it myself.  Can you send me a copy of your
+.config so I can see what else might be interesting with your config?
+(e.g., SLAB vs SLUB, etc.)
 
-Thanks, I understood what I was doing wrong. I will include blk-mq in
-the patch.
+Thanks,
 
--- 
-Goldwyn
+	     	     	       - Ted
