@@ -1,122 +1,231 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: don't BUG when truncating encrypted inodes on the
- orphan list
-Date: Thu, 9 Mar 2017 12:21:11 -0700
-Message-ID: <CC34622D-33DE-42BD-BE87-81244C1D65F6@dilger.ca>
-References: <20170211031942.11783-1-tytso@mit.edu>
- <FD2DE284-B640-4369-9A7C-E2224011541F@dilger.ca>
- <20170212022738.vhr532yybcictgcz@thunk.org>
- <20170309134720.GJ15874@quack2.suse.cz>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_FA4D5C72-4A19-447C-9781-CA3988173C5E";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+From: Xiong Zhou <xzhou@redhat.com>
+Subject: Re: [PATCH] generic: require journal in shutdown tests
+Date: Fri, 10 Mar 2017 17:48:48 +0800
+Message-ID: <20170310094848.guqyntkclvx7lqzd@XZHOUW.usersys.redhat.com>
+References: <20170307061609.27099-1-eguan@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33800 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753251AbdCITVa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Mar 2017 14:21:30 -0500
-Received: by mail-it0-f66.google.com with SMTP id r141so11057278ita.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Mar 2017 11:21:18 -0800 (PST)
-In-Reply-To: <20170309134720.GJ15874@quack2.suse.cz>
+Received: from mx1.redhat.com ([209.132.183.28]:35262 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935203AbdCJJsu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 10 Mar 2017 04:48:50 -0500
+Content-Disposition: inline
+In-Reply-To: <20170307061609.27099-1-eguan@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Mar 07, 2017 at 02:16:09PM +0800, Eryu Guan wrote:
+> Tests in shutdown group are supposed to test journal recovery after
+> filesystem shutdown, and the tests assume the filesystem in test has
+> journal support. But with the ext4 shutdown function added in
+> 4.11-rc kernel, ext2 gains shutdown support too when driving with
+> ext4 driver, so generic/051 fails because fs corruption after test.
+> 
+> Adding _require_metadata_journaling to all generic tests in shutdown
+> group to ensure there's journal present.
 
---Apple-Mail=_FA4D5C72-4A19-447C-9781-CA3988173C5E
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Good!
 
-On Mar 9, 2017, at 6:47 AM, Jan Kara <jack@suse.cz> wrote:
->=20
-> On Sat 11-02-17 21:27:38, Ted Tso wrote:
->> On Sat, Feb 11, 2017 at 12:26:52AM -0700, Andreas Dilger wrote:
->>> The reason truncated orphans are on the orphan list is because the
->>> transaction that sets i_size may be restarted if the inode is larger
->>> than can be truncated in a single transaction.  If the system =
-crashes
->>> before the truncate finishes then the truncate should be completed
->>> so that old data is not returned if the file is truncated larger =
-again.
->>=20
->> Another way of fixing this is at the time when the file is truncated
->> to a larger size.  Of course the other case we need handle is what
->> happens if there is data after i_size and the file is mmaped.
->>=20
->> One advantage of doing when the file is truncated larger again is at
->> that point we will have the encryption key.  In the case of an
->> encrypted file, both the kernel and e2fsck *can't* zero fill past
->> i_size if the key is not available.  And during the orphan replay the
->> encryption key won't be available.
->>=20
->> The other way to solve the problem would be zero the portion of the
->> last remaining datablock *first* and journal the data block along =
-with
->> the initial transaction which sets the i_size in the inode.  But that
->> gets tricky, since all data writes for that last block must not go to
->> the disk, and then once the journal has been committed we can't write
->> the block to via the normal page_io routines (since otherwise it =
-might
->> get overwritten), until we write it back and then revoke the block in
->> the journal, and the revoke is committed.  Messy....
->=20
-> Going through some old email... I don't think this would be really
-> reasonably doable. What would fixup the missing zeroing on orphan =
-cleanup
-> though is to zero the tail of the last page on readpage, extending
-> truncate and write beyond EOF. That may be acceptable cost for =
-encrypted
-> inodes.
+Thanks,
+Xiong
 
-Another option would be to revive the unlink/truncate thread, and dump
-the blocks to be truncated over to another (temporary) inode that is put
-on the orphan list and will be unlinked.  That means the visible =
-truncate
-operation can always complete in a single transaction (including the
-partial block write), and everything on the orphan list is essentially =
-an
-unlink rather than a truncate.
-
-The code wasn't too complex, but we dropped it when extents arrived =
-since
-it didn't give a huge performance advantage.  That said, there could be =
-a
-benefit in terms of code simplification, since there wouldn't be the =
-need
-to restart transactions in the middle if the truncate gets too large.
-
-The most recent version I could find is for ext3 in 2.4.29 at:
-
-=
-https://git.hpdd.intel.com/?p=3Dfs/lustre-release.git;a=3Dblob_plain;f=3Dl=
-ustre/kernel_patches/patches/ext3-delete_thread-2.4.29.patch;hb=3D11330397=
-3ec9f8484eb2355a1a6ef3c4c7fd6a56
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_FA4D5C72-4A19-447C-9781-CA3988173C5E
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYwasppIg59Q01vtYRAssvAJwIOgX3ef6tAgqKHD7csm59hripnwCeIkyf
-AHcRr4VY7y4UDQujljAiSLA=
-=N4mo
------END PGP SIGNATURE-----
-
---Apple-Mail=_FA4D5C72-4A19-447C-9781-CA3988173C5E--
+> 
+> generic/050 is skipped because it has _require_scratch_nocheck,
+> which indicates no fsck is done after test.
+> 
+> Signed-off-by: Eryu Guan <eguan@redhat.com>
+> ---
+>  tests/generic/042 | 1 +
+>  tests/generic/043 | 1 +
+>  tests/generic/044 | 1 +
+>  tests/generic/045 | 1 +
+>  tests/generic/046 | 1 +
+>  tests/generic/047 | 1 +
+>  tests/generic/048 | 1 +
+>  tests/generic/049 | 1 +
+>  tests/generic/051 | 1 +
+>  tests/generic/052 | 1 +
+>  tests/generic/054 | 3 +++
+>  tests/generic/055 | 3 +++
+>  tests/generic/388 | 1 +
+>  tests/generic/392 | 1 +
+>  14 files changed, 18 insertions(+)
+> 
+> diff --git a/tests/generic/042 b/tests/generic/042
+> index 6eecbdc..68ff03c 100755
+> --- a/tests/generic/042
+> +++ b/tests/generic/042
+> @@ -92,6 +92,7 @@ _require_xfs_io_command "fpunch"
+>  _require_xfs_io_command "fzero"
+>  
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  _crashtest "falloc -k"
+> diff --git a/tests/generic/043 b/tests/generic/043
+> index b76a5aa..3d98ab0 100755
+> --- a/tests/generic/043
+> +++ b/tests/generic/043
+> @@ -43,6 +43,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  # create files
+> diff --git a/tests/generic/044 b/tests/generic/044
+> index 0331baa..eb64b86 100755
+> --- a/tests/generic/044
+> +++ b/tests/generic/044
+> @@ -43,6 +43,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  # create files
+> diff --git a/tests/generic/045 b/tests/generic/045
+> index 874c955..5ef747f 100755
+> --- a/tests/generic/045
+> +++ b/tests/generic/045
+> @@ -43,6 +43,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  # create files
+> diff --git a/tests/generic/046 b/tests/generic/046
+> index 5a894b8..882cb09 100755
+> --- a/tests/generic/046
+> +++ b/tests/generic/046
+> @@ -43,6 +43,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  # create files
+> diff --git a/tests/generic/047 b/tests/generic/047
+> index 631dc1e..d7e4610 100755
+> --- a/tests/generic/047
+> +++ b/tests/generic/047
+> @@ -44,6 +44,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  _check_files()
+> diff --git a/tests/generic/048 b/tests/generic/048
+> index 51d7efd..3f0bcc1 100755
+> --- a/tests/generic/048
+> +++ b/tests/generic/048
+> @@ -44,6 +44,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  # Do we have enough space on disk?  10G
+> diff --git a/tests/generic/049 b/tests/generic/049
+> index 1299242..1f2a4b2 100755
+> --- a/tests/generic/049
+> +++ b/tests/generic/049
+> @@ -44,6 +44,7 @@ _require_scratch
+>  _require_scratch_shutdown
+>  _require_fiemap
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  _check_files()
+> diff --git a/tests/generic/051 b/tests/generic/051
+> index 7b807b9..29ac61b 100755
+> --- a/tests/generic/051
+> +++ b/tests/generic/051
+> @@ -55,6 +55,7 @@ _require_command "$KILLALL_PROG" killall
+>  rm -f $seqres.full
+>  
+>  _scratch_mkfs > $seqres.full 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  SLEEP_TIME=$((30 * $TIME_FACTOR))
+> diff --git a/tests/generic/052 b/tests/generic/052
+> index f7cdd09..65d430d 100755
+> --- a/tests/generic/052
+> +++ b/tests/generic/052
+> @@ -53,6 +53,7 @@ _require_logstate
+>  echo "mkfs"
+>  _scratch_mkfs >>$seqres.full 2>&1 \
+>      || _fail "mkfs scratch failed"
+> +_require_metadata_journaling $SCRATCH_DEV
+>  
+>  echo "mount"
+>  _scratch_mount >>$seqres.full 2>&1 \
+> diff --git a/tests/generic/054 b/tests/generic/054
+> index 8375e57..4d4be59 100755
+> --- a/tests/generic/054
+> +++ b/tests/generic/054
+> @@ -50,6 +50,9 @@ _require_logstate
+>  echo "*** init FS"
+>  _scratch_unmount >/dev/null 2>&1
+>  
+> +_scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+> +
+>  _get_log_configs > $tmp.seq.params
+>  
+>  # Do the work for various log params which
+> diff --git a/tests/generic/055 b/tests/generic/055
+> index 207c007..aed3b28 100755
+> --- a/tests/generic/055
+> +++ b/tests/generic/055
+> @@ -79,6 +79,9 @@ QUOTA_OPTION=`_get_quota_option`
+>  echo "*** init FS"
+>  _scratch_unmount >/dev/null 2>&1
+>  
+> +_scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+> +
+>  _get_log_configs > $tmp.seq.params
+>  
+>  cat $tmp.seq.params \
+> diff --git a/tests/generic/388 b/tests/generic/388
+> index 3729aa5..2760208 100755
+> --- a/tests/generic/388
+> +++ b/tests/generic/388
+> @@ -62,6 +62,7 @@ rm -f $seqres.full
+>  echo "Silence is golden."
+>  
+>  _scratch_mkfs >> $seqres.full 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount || _fail "mount failed"
+>  
+>  for i in $(seq 1 50); do
+> diff --git a/tests/generic/392 b/tests/generic/392
+> index b8af8a0..6922f7d 100755
+> --- a/tests/generic/392
+> +++ b/tests/generic/392
+> @@ -53,6 +53,7 @@ _require_scratch_shutdown
+>  _require_xfs_io_command "fpunch"
+>  
+>  _scratch_mkfs >/dev/null 2>&1
+> +_require_metadata_journaling $SCRATCH_DEV
+>  _scratch_mount
+>  
+>  testfile=$SCRATCH_MNT/testfile
+> -- 
+> 2.9.3
+> 
