@@ -1,47 +1,67 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] ext4: evict inline data when writing to memory map
-Date: Tue, 14 Mar 2017 16:32:39 -0700
-Message-ID: <20170314233239.GA127087@gmail.com>
-References: <20170313004708.29838-1-ebiggers3@gmail.com>
- <20170313233313.GA23580@infradead.org>
+Subject: Re: [PATCH] fscrypt: remove broken support for detecting keyring key
+ revocation
+Date: Tue, 14 Mar 2017 16:48:42 -0700
+Message-ID: <20170314234842.GB127087@gmail.com>
+References: <20170221230711.85222-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Nick Alcock <nick.alcock@oracle.com>,
+Cc: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Anand Jain <anand.jain@oracle.com>,
         Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:34796 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750824AbdCNXcn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2017 19:32:43 -0400
+To: linux-fsdevel@vger.kernel.org
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170313233313.GA23580@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170221230711.85222-1-ebiggers3@gmail.com>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 13, 2017 at 04:33:13PM -0700, Christoph Hellwig wrote:
-> >     mkfs.ext4 -O inline_data /dev/vdb
-> >     mount /dev/vdb /mnt
-> >     xfs_io -f /mnt/file \
-> > 	-c 'pwrite 0 1' \
-> > 	-c 'mmap -w 0 1m' \
-> > 	-c 'mwrite 0 1' \
-> > 	-c 'fsync'
+On Tue, Feb 21, 2017 at 03:07:11PM -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Please add this test case to xfstests.
+> Filesystem encryption ostensibly supported revoking a keyring key that
+> had been used to "unlock" encrypted files, causing those files to become
+> "locked" again.  This was, however, buggy for several reasons, the most
+> severe of which was that when key revocation happened to be detected for
+> an inode, its fscrypt_info was immediately freed, even while other
+> threads could be using it for encryption or decryption concurrently.
+> This could be exploited to crash the kernel or worse.
+> 
+> This patch fixes the use-after-free by removing the code which detects
+> the keyring key having been revoked, invalidated, or expired.  Instead,
+> an encrypted inode that is "unlocked" now simply remains unlocked until
+> it is evicted from memory.  Note that this is no worse than the case for
+> block device-level encryption, e.g. dm-crypt, and it still remains
+> possible for a privileged user to evict unused pages, inodes, and
+> dentries by running 'sync; echo 3 > /proc/sys/vm/drop_caches', or by
+> simply unmounting the filesystem.  In fact, one of those actions was
+> already needed anyway for key revocation to work even somewhat sanely.
+> This change is not expected to break any applications.
+> 
+> In the future I'd like to implement a real API for fscrypt key
+> revocation that interacts sanely with ongoing filesystem operations ---
+> waiting for existing operations to complete and blocking new operations,
+> and invalidating and sanitizing key material and plaintext from the VFS
+> caches.  But this is a hard problem, and for now this bug must be fixed.
+> 
+> This bug affected almost all versions of ext4, f2fs, and ubifs
+> encryption, and it was potentially reachable in any kernel configured
+> with encryption support (CONFIG_EXT4_ENCRYPTION=y,
+> CONFIG_EXT4_FS_ENCRYPTION=y, CONFIG_F2FS_FS_ENCRYPTION=y, or
+> CONFIG_UBIFS_FS_ENCRYPTION=y).  Note that older kernels did not use the
+> shared fs/crypto/ code, but due to the potential security implications
+> of this bug, it may still be worthwhile to backport this fix to them.
+> 
+> Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
+> Cc: stable@vger.kernel.org # v4.2+
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-I'm working on this, and I discovered there's still a bug.  After the data is
-written with mwrite, if the filesystem is then mount-cycled, the contents of the
-file are the old contents rather than the new contents.
 
-I believe this is caused by a bug in ext4_convert_inline_data().  Specifically,
-the new block containing the evicted data is journalled using a buffer_head
-associated with the block device.  This is wrong because it can overwrite data
-that is later written through non-journalled writeback.
-
-I'll look into this more when I have time, but in any case it appears this fix
-isn't complete.
+Ted, can this be sent to Linus soon?  This needs to be fixed as it's a security
+vulnerability on some systems.
 
 Eric
