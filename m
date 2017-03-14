@@ -1,74 +1,281 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: v4.7--v4.10+: ext4: repeatable inline-data oops (and fs
- corruption) caused by msync() of shared writable mmap (with recipe)
-Date: Mon, 13 Mar 2017 16:37:01 -0700
-Message-ID: <20170313233701.GA5271@birch.djwong.org>
-References: <874lzdcj9r.fsf@esperi.org.uk>
- <20170313005232.GA593@zzz>
- <87tw6wg4bc.fsf@esperi.org.uk>
+From: Michael Halcrow <mhalcrow@google.com>
+Subject: Re: [PATCH] fscrypt: remove broken support for detecting keyring key
+ revocation
+Date: Mon, 13 Mar 2017 20:45:51 -0700
+Message-ID: <20170314034551.GA7522@google.com>
+References: <20170221230711.85222-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-To: Nick Alcock <nick.alcock@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48658 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752095AbdCMXhF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Mar 2017 19:37:05 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Anand Jain <anand.jain@oracle.com>,
+        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <87tw6wg4bc.fsf@esperi.org.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170221230711.85222-1-ebiggers3@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Mar 13, 2017 at 11:11:35PM +0000, Nick Alcock wrote:
-> On 13 Mar 2017, Eric Biggers spake thusly:
+On Tue, Feb 21, 2017 at 03:07:11PM -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> > On Wed, Mar 01, 2017 at 11:45:52AM +0000, Nick Alcock wrote:
-> >> [Resend, after the first attempt, from my home address, failed with
-> >>  endless greylisting followed by "4.5.0 Interactive router timed out"
-> >>  from all but the lowest-priority MX for vger, and "Name server:
-> >>  bl-ckh-le.kernel.org.: host not found" for the apparently-nonexistent
-> >>  lowest-priority MX. Maybe it'll work better from here.]
-> >> 
-> >> I first spotted this -- or it spotted me -- back in the v4.7.x days. It
-> >> is still present in v4.10.
-> >> 
-> >> Here's a replication recipe, given a reasonable rootfs with a compiler
-> >> on it, and assuming a blank virtio disk on /dev/vdb:
-> >
-> > Hi Nick, thanks for reporting this.  I've sent a patch which should fix this,
-> > and Cc'ed you.  This actually seems to been a bug for a very long time, maybe
-> 
-> I'll test it. Your timing is supernatural: I was just about to mkfs all
-> the filesystems on my new server (a once-in-a-decade operation for me)
-> and was bemoaning the fact that I couldn't turn on inline_data at the
-> same time. Now I can! (I have good backups so can take suicidally crazy
-> risks).
+> Filesystem encryption ostensibly supported revoking a keyring key
+> that had been used to "unlock" encrypted files, causing those files
+> to become "locked" again. This was, however, buggy for several
+> reasons, the most severe of which was that when key revocation
+> happened to be detected for an inode, its fscrypt_info was
+> immediately freed, even while other threads could be using it for
+> encryption or decryption concurrently.  This could be exploited to
+> crash the kernel or worse.
 
-Glad to hear you have backups!
+Removing the attempt at that functionality seems like the right
+approach.
 
-I wouldn't turn on inline_data for files, period.  It's not as well tested
-as it ought to be (clearly). :/
+> This patch fixes the use-after-free by removing the code which
+> detects the keyring key having been revoked, invalidated, or
+> expired.  Instead, an encrypted inode that is "unlocked" now simply
+> remains unlocked until it is evicted from memory.  Note that this is
+> no worse than the case for block device-level encryption,
+> e.g. dm-crypt, and it still remains possible for a privileged user
+> to evict unused pages, inodes, and dentries by running 'sync; echo 3
+> > /proc/sys/vm/drop_caches', or by simply unmounting the filesystem.
+> In fact, one of those actions was already needed anyway for key
+> revocation to work even somewhat sanely.  This change is not
+> expected to break any applications.
 
---D
+I don't see any problem with this reasoning.
 
-> > even ever since the inline_data feature was introduced.  (I was able to
-> > reproduce it in a 3.18 kernel, at least.)  I'm not sure why it didn't get
-> > noticed earlier --- maybe hardly anyone ever writes to small files with mmap...
+> In the future I'd like to implement a real API for fscrypt key
+> revocation that interacts sanely with ongoing filesystem operations ---
+> waiting for existing operations to complete and blocking new operations,
+> and invalidating and sanitizing key material and plaintext from the VFS
+> caches.  But this is a hard problem, and for now this bug must be fixed.
 > 
-> Yeah, I built my /usr/src with it and ran for weeks without hitting it:
-> it wasn't until I rebuilt most of a distro and hit dovecot that anything
-> went wrong.
+> This bug affected almost all versions of ext4, f2fs, and ubifs
+> encryption, and it was potentially reachable in any kernel configured
+> with encryption support (CONFIG_EXT4_ENCRYPTION=y,
+> CONFIG_EXT4_FS_ENCRYPTION=y, CONFIG_F2FS_FS_ENCRYPTION=y, or
+> CONFIG_UBIFS_FS_ENCRYPTION=y).  Note that older kernels did not use the
+> shared fs/crypto/ code, but due to the potential security implications
+> of this bug, it may still be worthwhile to backport this fix to them.
+
+Agreed.
+
+> Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
+> Cc: stable@vger.kernel.org # v4.2+
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+
+Acked-by: Michael Halcrow <mhalcrow@google.com>
+
+> ---
+>  fs/crypto/crypto.c          | 10 +--------
+>  fs/crypto/fname.c           |  2 +-
+>  fs/crypto/fscrypt_private.h |  4 ----
+>  fs/crypto/keyinfo.c         | 52 ++++++++-------------------------------------
+>  4 files changed, 11 insertions(+), 57 deletions(-)
 > 
-> I note that what I saw then was massive filesystem corruption, so
-> massive that not even tune2fs recognized it as being an ext4 fs
-> afterwards. Perhaps the thing wrote badness into the journal (possibly
-> including inline data scribbled over the next inode?) and replayed it
-> over the fs on the next boot, following which a cascade of increasing
-> badness ended up eating the entire fs... ah well, I guess it's hard to
-> know now, months after the fact (though if it's of interest, I still
-> have an e2image of the corrupted fs lying around!)
-> 
+> diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+> index 02a7a9286449..6d6eca394d4d 100644
+> --- a/fs/crypto/crypto.c
+> +++ b/fs/crypto/crypto.c
+> @@ -327,7 +327,6 @@ EXPORT_SYMBOL(fscrypt_decrypt_page);
+>  static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+>  {
+>  	struct dentry *dir;
+> -	struct fscrypt_info *ci;
+>  	int dir_has_key, cached_with_key;
+>  
+>  	if (flags & LOOKUP_RCU)
+> @@ -339,18 +338,11 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+>  		return 0;
+>  	}
+>  
+> -	ci = d_inode(dir)->i_crypt_info;
+> -	if (ci && ci->ci_keyring_key &&
+> -	    (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+> -					  (1 << KEY_FLAG_REVOKED) |
+> -					  (1 << KEY_FLAG_DEAD))))
+> -		ci = NULL;
+> -
+>  	/* this should eventually be an flag in d_flags */
+>  	spin_lock(&dentry->d_lock);
+>  	cached_with_key = dentry->d_flags & DCACHE_ENCRYPTED_WITH_KEY;
+>  	spin_unlock(&dentry->d_lock);
+> -	dir_has_key = (ci != NULL);
+> +	dir_has_key = (d_inode(dir)->i_crypt_info != NULL);
+>  	dput(dir);
+>  
+>  	/*
+> diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+> index 13052b85c393..37b49894c762 100644
+> --- a/fs/crypto/fname.c
+> +++ b/fs/crypto/fname.c
+> @@ -350,7 +350,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
+>  		fname->disk_name.len = iname->len;
+>  		return 0;
+>  	}
+> -	ret = fscrypt_get_crypt_info(dir);
+> +	ret = fscrypt_get_encryption_info(dir);
+>  	if (ret && ret != -EOPNOTSUPP)
+>  		return ret;
+>  
+> diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+> index fdbb8af32eaf..e39696e64494 100644
+> --- a/fs/crypto/fscrypt_private.h
+> +++ b/fs/crypto/fscrypt_private.h
+> @@ -67,7 +67,6 @@ struct fscrypt_info {
+>  	u8 ci_filename_mode;
+>  	u8 ci_flags;
+>  	struct crypto_skcipher *ci_ctfm;
+> -	struct key *ci_keyring_key;
+>  	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
+>  };
+>  
+> @@ -101,7 +100,4 @@ extern int fscrypt_do_page_crypto(const struct inode *inode,
+>  extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
+>  					      gfp_t gfp_flags);
+>  
+> -/* keyinfo.c */
+> -extern int fscrypt_get_crypt_info(struct inode *);
+> -
+>  #endif /* _FSCRYPT_PRIVATE_H */
+> diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+> index 02eb6b9e4438..cb3e82abf034 100644
+> --- a/fs/crypto/keyinfo.c
+> +++ b/fs/crypto/keyinfo.c
+> @@ -95,6 +95,7 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+>  	kfree(description);
+>  	if (IS_ERR(keyring_key))
+>  		return PTR_ERR(keyring_key);
+> +	down_read(&keyring_key->sem);
+>  
+>  	if (keyring_key->type != &key_type_logon) {
+>  		printk_once(KERN_WARNING
+> @@ -102,11 +103,9 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+>  		res = -ENOKEY;
+>  		goto out;
+>  	}
+> -	down_read(&keyring_key->sem);
+>  	ukp = user_key_payload(keyring_key);
+>  	if (ukp->datalen != sizeof(struct fscrypt_key)) {
+>  		res = -EINVAL;
+> -		up_read(&keyring_key->sem);
+>  		goto out;
+>  	}
+>  	master_key = (struct fscrypt_key *)ukp->data;
+> @@ -117,17 +116,11 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+>  				"%s: key size incorrect: %d\n",
+>  				__func__, master_key->size);
+>  		res = -ENOKEY;
+> -		up_read(&keyring_key->sem);
+>  		goto out;
+>  	}
+>  	res = derive_key_aes(ctx->nonce, master_key->raw, raw_key);
+> -	up_read(&keyring_key->sem);
+> -	if (res)
+> -		goto out;
+> -
+> -	crypt_info->ci_keyring_key = keyring_key;
+> -	return 0;
+>  out:
+> +	up_read(&keyring_key->sem);
+>  	key_put(keyring_key);
+>  	return res;
+>  }
+> @@ -169,12 +162,11 @@ static void put_crypt_info(struct fscrypt_info *ci)
+>  	if (!ci)
+>  		return;
+>  
+> -	key_put(ci->ci_keyring_key);
+>  	crypto_free_skcipher(ci->ci_ctfm);
+>  	kmem_cache_free(fscrypt_info_cachep, ci);
+>  }
+>  
+> -int fscrypt_get_crypt_info(struct inode *inode)
+> +int fscrypt_get_encryption_info(struct inode *inode)
+>  {
+>  	struct fscrypt_info *crypt_info;
+>  	struct fscrypt_context ctx;
+> @@ -184,21 +176,15 @@ int fscrypt_get_crypt_info(struct inode *inode)
+>  	u8 *raw_key = NULL;
+>  	int res;
+>  
+> +	if (inode->i_crypt_info)
+> +		return 0;
+> +
+>  	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
+>  	if (res)
+>  		return res;
+>  
+>  	if (!inode->i_sb->s_cop->get_context)
+>  		return -EOPNOTSUPP;
+> -retry:
+> -	crypt_info = ACCESS_ONCE(inode->i_crypt_info);
+> -	if (crypt_info) {
+> -		if (!crypt_info->ci_keyring_key ||
+> -				key_validate(crypt_info->ci_keyring_key) == 0)
+> -			return 0;
+> -		fscrypt_put_encryption_info(inode, crypt_info);
+> -		goto retry;
+> -	}
+>  
+>  	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+>  	if (res < 0) {
+> @@ -229,7 +215,6 @@ int fscrypt_get_crypt_info(struct inode *inode)
+>  	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
+>  	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
+>  	crypt_info->ci_ctfm = NULL;
+> -	crypt_info->ci_keyring_key = NULL;
+>  	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
+>  				sizeof(crypt_info->ci_master_key));
+>  
+> @@ -273,14 +258,8 @@ int fscrypt_get_crypt_info(struct inode *inode)
+>  	if (res)
+>  		goto out;
+>  
+> -	kzfree(raw_key);
+> -	raw_key = NULL;
+> -	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) != NULL) {
+> -		put_crypt_info(crypt_info);
+> -		goto retry;
+> -	}
+> -	return 0;
+> -
+> +	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) == NULL)
+> +		crypt_info = NULL;
+>  out:
+>  	if (res == -ENOKEY)
+>  		res = 0;
+> @@ -288,6 +267,7 @@ int fscrypt_get_crypt_info(struct inode *inode)
+>  	kzfree(raw_key);
+>  	return res;
+>  }
+> +EXPORT_SYMBOL(fscrypt_get_encryption_info);
+>  
+>  void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
+>  {
+> @@ -305,17 +285,3 @@ void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
+>  	put_crypt_info(ci);
+>  }
+>  EXPORT_SYMBOL(fscrypt_put_encryption_info);
+> -
+> -int fscrypt_get_encryption_info(struct inode *inode)
+> -{
+> -	struct fscrypt_info *ci = inode->i_crypt_info;
+> -
+> -	if (!ci ||
+> -		(ci->ci_keyring_key &&
+> -		 (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
+> -					       (1 << KEY_FLAG_REVOKED) |
+> -					       (1 << KEY_FLAG_DEAD)))))
+> -		return fscrypt_get_crypt_info(inode);
+> -	return 0;
+> -}
+> -EXPORT_SYMBOL(fscrypt_get_encryption_info);
 > -- 
-> NULL && (void)
+> 2.11.0.483.g087da7b7c-goog
+> 
