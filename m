@@ -1,281 +1,93 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: Re: [PATCH] fscrypt: remove broken support for detecting keyring key
- revocation
-Date: Mon, 13 Mar 2017 20:45:51 -0700
-Message-ID: <20170314034551.GA7522@google.com>
-References: <20170221230711.85222-1-ebiggers3@gmail.com>
+From: Daniel Schultz <d.schultz@phytec.de>
+Subject: Corrupt ext4 fs after creation
+Date: Tue, 14 Mar 2017 11:34:32 +0100
+Message-ID: <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
+References: <153de314-38ff-ad68-65d9-a292213b47f6@phytec.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Anand Jain <anand.jain@oracle.com>,
-        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170221230711.85222-1-ebiggers3@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8BIT
+Cc: Teresa Remmet <t.remmet@phytec.de>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.rapiddevelopmentkit.de ([217.6.246.34]:32853 "EHLO
+        root.phytec.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750785AbdCNKee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Mar 2017 06:34:34 -0400
+Received: from idefix.phytec.de (idefix.phytec.de [172.16.0.10])
+        by root.phytec.de (Postfix) with ESMTP id A187EA00269
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2017 11:35:01 +0100 (CET)
+In-Reply-To: <153de314-38ff-ad68-65d9-a292213b47f6@phytec.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 21, 2017 at 03:07:11PM -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Filesystem encryption ostensibly supported revoking a keyring key
-> that had been used to "unlock" encrypted files, causing those files
-> to become "locked" again. This was, however, buggy for several
-> reasons, the most severe of which was that when key revocation
-> happened to be detected for an inode, its fscrypt_info was
-> immediately freed, even while other threads could be using it for
-> encryption or decryption concurrently.  This could be exploited to
-> crash the kernel or worse.
+Hi,
 
-Removing the attempt at that functionality seems like the right
-approach.
+we use the Yocto Project to create custom BSPs for a AM335x SoC. After 
+they upgraded the e2fsprogs from 1.42.9 to 1.43 we run into problems 
+with our ext4 root file system. During the first boot systemd checks the 
+rootfs with fsck.ext4 and needs a restart beacause of an error.
 
-> This patch fixes the use-after-free by removing the code which
-> detects the keyring key having been revoked, invalidated, or
-> expired.  Instead, an encrypted inode that is "unlocked" now simply
-> remains unlocked until it is evicted from memory.  Note that this is
-> no worse than the case for block device-level encryption,
-> e.g. dm-crypt, and it still remains possible for a privileged user
-> to evict unused pages, inodes, and dentries by running 'sync; echo 3
-> > /proc/sys/vm/drop_caches', or by simply unmounting the filesystem.
-> In fact, one of those actions was already needed anyway for key
-> revocation to work even somewhat sanely.  This change is not
-> expected to break any applications.
+The fs is created with mkfs.ext4 and direct I/O and is available on 
+ftp://ftp.phytec.de/pub/Test/phytec-headless-image-phyboard-wega-am335x-2.ext4
 
-I don't see any problem with this reasoning.
+$ du -ks 
+/home/schultz/yocto/PD17.1.0/build/tmp/work/phyboard_wega_am335x_2-phytec-linux-gnueabi/phytec-headless-image/1.0-r0/rootfs
+  109708
+$ truncate /var/tmp/wic/build/rootfs_root.2.ext4 -s 159674777
+$ mkfs.ext4 -F -i 8192 /var/tmp/wic/build/rootfs_root.2.ext4 -L root -d 
+/home/schultz/yocto/PD17.1.0/build/tmp/work/phyboard_wega_am335x_2-phytec-linux-gnueabi/phytec-headless-image/1.0-r0/rootfs
+  mke2fs 1.43 (17-May-2016)
+  Discarding device blocks: done
+  Creating filesystem with 155932 1k blocks and 19520 inodes
+  Filesystem UUID: 6728344f-aa6d-4bbb-a06d-e649e36024d3
+  Superblock backups stored on blocks:
+  	8193, 24577, 40961, 57345, 73729
 
-> In the future I'd like to implement a real API for fscrypt key
-> revocation that interacts sanely with ongoing filesystem operations ---
-> waiting for existing operations to complete and blocking new operations,
-> and invalidating and sanitizing key material and plaintext from the VFS
-> caches.  But this is a hard problem, and for now this bug must be fixed.
-> 
-> This bug affected almost all versions of ext4, f2fs, and ubifs
-> encryption, and it was potentially reachable in any kernel configured
-> with encryption support (CONFIG_EXT4_ENCRYPTION=y,
-> CONFIG_EXT4_FS_ENCRYPTION=y, CONFIG_F2FS_FS_ENCRYPTION=y, or
-> CONFIG_UBIFS_FS_ENCRYPTION=y).  Note that older kernels did not use the
-> shared fs/crypto/ code, but due to the potential security implications
-> of this bug, it may still be worthwhile to backport this fix to them.
+  Allocating group tables: done
+  Writing inode tables: done
+  Creating journal (4096 blocks): done
+  Copying files into the device: done
+  Writing superblocks and filesystem accounting information: done
+$ du -Lbks /var/tmp/wic/build/rootfs_root.2.ext4
+  155933
 
-Agreed.
 
-> Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
-> Cc: stable@vger.kernel.org # v4.2+
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+I figured out that when I run fsck.ext4 it will perform a directory 
+optimizing which leads to a non-zero error code of 1 (File system errors 
+corrected). Also, I figured out that this optimizing only occurres on 
+the first boot and not after creating a lot of new files and dirs. After 
+checking the fs it contains more blocks than before.
 
-Acked-by: Michael Halcrow <mhalcrow@google.com>
+root@phyboard-wega-am335x-2:~# fsck.ext4 -V
+e2fsck 1.43 (17-May-2016)
+         Using EXT2FS Library version 1.43, 17-May-2016
+root@phyboard-wega-am335x-2:~# fsck.ext4 
+/dev/disk/by-id/mmc-NCard_0x2519026e-part2
+e2fsck 1.43 (17-May-2016)
+Superblock last write time (Mon Mar 13 10:53:39 2017,
+         now = Wed Jan 25 11:07:23 2017) is in the future.
+Fix<y>? yes
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 3A: Optimizing directories
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
 
-> ---
->  fs/crypto/crypto.c          | 10 +--------
->  fs/crypto/fname.c           |  2 +-
->  fs/crypto/fscrypt_private.h |  4 ----
->  fs/crypto/keyinfo.c         | 52 ++++++++-------------------------------------
->  4 files changed, 11 insertions(+), 57 deletions(-)
-> 
-> diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-> index 02a7a9286449..6d6eca394d4d 100644
-> --- a/fs/crypto/crypto.c
-> +++ b/fs/crypto/crypto.c
-> @@ -327,7 +327,6 @@ EXPORT_SYMBOL(fscrypt_decrypt_page);
->  static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
->  {
->  	struct dentry *dir;
-> -	struct fscrypt_info *ci;
->  	int dir_has_key, cached_with_key;
->  
->  	if (flags & LOOKUP_RCU)
-> @@ -339,18 +338,11 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
->  		return 0;
->  	}
->  
-> -	ci = d_inode(dir)->i_crypt_info;
-> -	if (ci && ci->ci_keyring_key &&
-> -	    (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
-> -					  (1 << KEY_FLAG_REVOKED) |
-> -					  (1 << KEY_FLAG_DEAD))))
-> -		ci = NULL;
-> -
->  	/* this should eventually be an flag in d_flags */
->  	spin_lock(&dentry->d_lock);
->  	cached_with_key = dentry->d_flags & DCACHE_ENCRYPTED_WITH_KEY;
->  	spin_unlock(&dentry->d_lock);
-> -	dir_has_key = (ci != NULL);
-> +	dir_has_key = (d_inode(dir)->i_crypt_info != NULL);
->  	dput(dir);
->  
->  	/*
-> diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-> index 13052b85c393..37b49894c762 100644
-> --- a/fs/crypto/fname.c
-> +++ b/fs/crypto/fname.c
-> @@ -350,7 +350,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
->  		fname->disk_name.len = iname->len;
->  		return 0;
->  	}
-> -	ret = fscrypt_get_crypt_info(dir);
-> +	ret = fscrypt_get_encryption_info(dir);
->  	if (ret && ret != -EOPNOTSUPP)
->  		return ret;
->  
-> diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-> index fdbb8af32eaf..e39696e64494 100644
-> --- a/fs/crypto/fscrypt_private.h
-> +++ b/fs/crypto/fscrypt_private.h
-> @@ -67,7 +67,6 @@ struct fscrypt_info {
->  	u8 ci_filename_mode;
->  	u8 ci_flags;
->  	struct crypto_skcipher *ci_ctfm;
-> -	struct key *ci_keyring_key;
->  	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
->  };
->  
-> @@ -101,7 +100,4 @@ extern int fscrypt_do_page_crypto(const struct inode *inode,
->  extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
->  					      gfp_t gfp_flags);
->  
-> -/* keyinfo.c */
-> -extern int fscrypt_get_crypt_info(struct inode *);
-> -
->  #endif /* _FSCRYPT_PRIVATE_H */
-> diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-> index 02eb6b9e4438..cb3e82abf034 100644
-> --- a/fs/crypto/keyinfo.c
-> +++ b/fs/crypto/keyinfo.c
-> @@ -95,6 +95,7 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
->  	kfree(description);
->  	if (IS_ERR(keyring_key))
->  		return PTR_ERR(keyring_key);
-> +	down_read(&keyring_key->sem);
->  
->  	if (keyring_key->type != &key_type_logon) {
->  		printk_once(KERN_WARNING
-> @@ -102,11 +103,9 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
->  		res = -ENOKEY;
->  		goto out;
->  	}
-> -	down_read(&keyring_key->sem);
->  	ukp = user_key_payload(keyring_key);
->  	if (ukp->datalen != sizeof(struct fscrypt_key)) {
->  		res = -EINVAL;
-> -		up_read(&keyring_key->sem);
->  		goto out;
->  	}
->  	master_key = (struct fscrypt_key *)ukp->data;
-> @@ -117,17 +116,11 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
->  				"%s: key size incorrect: %d\n",
->  				__func__, master_key->size);
->  		res = -ENOKEY;
-> -		up_read(&keyring_key->sem);
->  		goto out;
->  	}
->  	res = derive_key_aes(ctx->nonce, master_key->raw, raw_key);
-> -	up_read(&keyring_key->sem);
-> -	if (res)
-> -		goto out;
-> -
-> -	crypt_info->ci_keyring_key = keyring_key;
-> -	return 0;
->  out:
-> +	up_read(&keyring_key->sem);
->  	key_put(keyring_key);
->  	return res;
->  }
-> @@ -169,12 +162,11 @@ static void put_crypt_info(struct fscrypt_info *ci)
->  	if (!ci)
->  		return;
->  
-> -	key_put(ci->ci_keyring_key);
->  	crypto_free_skcipher(ci->ci_ctfm);
->  	kmem_cache_free(fscrypt_info_cachep, ci);
->  }
->  
-> -int fscrypt_get_crypt_info(struct inode *inode)
-> +int fscrypt_get_encryption_info(struct inode *inode)
->  {
->  	struct fscrypt_info *crypt_info;
->  	struct fscrypt_context ctx;
-> @@ -184,21 +176,15 @@ int fscrypt_get_crypt_info(struct inode *inode)
->  	u8 *raw_key = NULL;
->  	int res;
->  
-> +	if (inode->i_crypt_info)
-> +		return 0;
-> +
->  	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
->  	if (res)
->  		return res;
->  
->  	if (!inode->i_sb->s_cop->get_context)
->  		return -EOPNOTSUPP;
-> -retry:
-> -	crypt_info = ACCESS_ONCE(inode->i_crypt_info);
-> -	if (crypt_info) {
-> -		if (!crypt_info->ci_keyring_key ||
-> -				key_validate(crypt_info->ci_keyring_key) == 0)
-> -			return 0;
-> -		fscrypt_put_encryption_info(inode, crypt_info);
-> -		goto retry;
-> -	}
->  
->  	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
->  	if (res < 0) {
-> @@ -229,7 +215,6 @@ int fscrypt_get_crypt_info(struct inode *inode)
->  	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
->  	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
->  	crypt_info->ci_ctfm = NULL;
-> -	crypt_info->ci_keyring_key = NULL;
->  	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
->  				sizeof(crypt_info->ci_master_key));
->  
-> @@ -273,14 +258,8 @@ int fscrypt_get_crypt_info(struct inode *inode)
->  	if (res)
->  		goto out;
->  
-> -	kzfree(raw_key);
-> -	raw_key = NULL;
-> -	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) != NULL) {
-> -		put_crypt_info(crypt_info);
-> -		goto retry;
-> -	}
-> -	return 0;
-> -
-> +	if (cmpxchg(&inode->i_crypt_info, NULL, crypt_info) == NULL)
-> +		crypt_info = NULL;
->  out:
->  	if (res == -ENOKEY)
->  		res = 0;
-> @@ -288,6 +267,7 @@ int fscrypt_get_crypt_info(struct inode *inode)
->  	kzfree(raw_key);
->  	return res;
->  }
-> +EXPORT_SYMBOL(fscrypt_get_encryption_info);
->  
->  void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
->  {
-> @@ -305,17 +285,3 @@ void fscrypt_put_encryption_info(struct inode *inode, struct fscrypt_info *ci)
->  	put_crypt_info(ci);
->  }
->  EXPORT_SYMBOL(fscrypt_put_encryption_info);
-> -
-> -int fscrypt_get_encryption_info(struct inode *inode)
-> -{
-> -	struct fscrypt_info *ci = inode->i_crypt_info;
-> -
-> -	if (!ci ||
-> -		(ci->ci_keyring_key &&
-> -		 (ci->ci_keyring_key->flags & ((1 << KEY_FLAG_INVALIDATED) |
-> -					       (1 << KEY_FLAG_REVOKED) |
-> -					       (1 << KEY_FLAG_DEAD)))))
-> -		return fscrypt_get_crypt_info(inode);
-> -	return 0;
-> -}
-> -EXPORT_SYMBOL(fscrypt_get_encryption_info);
-> -- 
-> 2.11.0.483.g087da7b7c-goog
-> 
+root: ***** FILE SYSTEM WAS MODIFIED *****
+root: 5221/19520 files (0.9% non-contiguous), 105503/155932 blocks
+root@phyboard-wega-am335x-2:~# fsck.ext4 
+/dev/disk/by-id/mmc-NCard_0x2519026e-part2
+e2fsck 1.43 (17-May-2016)
+root: clean, 5221/19520 files, 105503/155932 blocks
+
+
+Can anyone give me more informations about what's wrong with our fs and 
+if I can forbid (without problems) the directory optimization?
+
+Thanks
+
+-- 
+Mit freundlichen Grüßen,
+With best regards,
+   Daniel Schultz
