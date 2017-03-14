@@ -1,37 +1,117 @@
-From: Nick Alcock <nick.alcock@oracle.com>
-Subject: Re: v4.7--v4.10+: ext4: repeatable inline-data oops (and fs corruption) caused by msync() of shared writable mmap (with recipe)
-Date: Tue, 14 Mar 2017 15:18:26 +0000
-Message-ID: <87a88nga4d.fsf@esperi.org.uk>
-References: <874lzdcj9r.fsf@esperi.org.uk> <20170313005232.GA593@zzz>
-        <87tw6wg4bc.fsf@esperi.org.uk>
-        <20170313233701.GA5271@birch.djwong.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Corrupt ext4 fs after creation
+Date: Tue, 14 Mar 2017 10:54:33 -0700
+Message-ID: <20170314175433.GB5271@birch.djwong.org>
+References: <153de314-38ff-ad68-65d9-a292213b47f6@phytec.de>
+ <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, Teresa Remmet <t.remmet@phytec.de>
+To: Daniel Schultz <d.schultz@phytec.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:20967 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751426AbdCNPSd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2017 11:18:33 -0400
-In-Reply-To: <20170313233701.GA5271@birch.djwong.org> (Darrick J. Wong's
-        message of "Mon, 13 Mar 2017 16:37:01 -0700")
+Received: from aserp1040.oracle.com ([141.146.126.69]:45714 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750996AbdCNRyn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Mar 2017 13:54:43 -0400
+Content-Disposition: inline
+In-Reply-To: <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 13 Mar 2017, Darrick J. Wong told this:
+On Tue, Mar 14, 2017 at 11:34:32AM +0100, Daniel Schultz wrote:
+> Hi,
+> 
+> we use the Yocto Project to create custom BSPs for a AM335x SoC. After they
+> upgraded the e2fsprogs from 1.42.9 to 1.43 we run into problems with our
+> ext4 root file system. During the first boot systemd checks the rootfs with
+> fsck.ext4 and needs a restart beacause of an error.
+> 
+> The fs is created with mkfs.ext4 and direct I/O and is available on ftp://ftp.phytec.de/pub/Test/phytec-headless-image-phyboard-wega-am335x-2.ext4
+> 
+> $ du -ks /home/schultz/yocto/PD17.1.0/build/tmp/work/phyboard_wega_am335x_2-phytec-linux-gnueabi/phytec-headless-image/1.0-r0/rootfs
+>  109708
+> $ truncate /var/tmp/wic/build/rootfs_root.2.ext4 -s 159674777
+> $ mkfs.ext4 -F -i 8192 /var/tmp/wic/build/rootfs_root.2.ext4 -L root -d /home/schultz/yocto/PD17.1.0/build/tmp/work/phyboard_wega_am335x_2-phytec-linux-gnueabi/phytec-headless-image/1.0-r0/rootfs
+>  mke2fs 1.43 (17-May-2016)
+>  Discarding device blocks: done
+>  Creating filesystem with 155932 1k blocks and 19520 inodes
+>  Filesystem UUID: 6728344f-aa6d-4bbb-a06d-e649e36024d3
+>  Superblock backups stored on blocks:
+>  	8193, 24577, 40961, 57345, 73729
+> 
+>  Allocating group tables: done
+>  Writing inode tables: done
+>  Creating journal (4096 blocks): done
+>  Copying files into the device: done
+>  Writing superblocks and filesystem accounting information: done
+> $ du -Lbks /var/tmp/wic/build/rootfs_root.2.ext4
+>  155933
+> 
+> 
+> I figured out that when I run fsck.ext4 it will perform a directory
+> optimizing which leads to a non-zero error code of 1 (File system errors
+> corrected). Also, I figured out that this optimizing only occurres on the
+> first boot and not after creating a lot of new files and dirs. After
+> checking the fs it contains more blocks than before.
+> 
+> root@phyboard-wega-am335x-2:~# fsck.ext4 -V
+> e2fsck 1.43 (17-May-2016)
+>         Using EXT2FS Library version 1.43, 17-May-2016
+> root@phyboard-wega-am335x-2:~# fsck.ext4
+> /dev/disk/by-id/mmc-NCard_0x2519026e-part2
+> e2fsck 1.43 (17-May-2016)
+> Superblock last write time (Mon Mar 13 10:53:39 2017,
+>         now = Wed Jan 25 11:07:23 2017) is in the future.
+> Fix<y>? yes
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 3A: Optimizing directories
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> 
+> root: ***** FILE SYSTEM WAS MODIFIED *****
+> root: 5221/19520 files (0.9% non-contiguous), 105503/155932 blocks
+> root@phyboard-wega-am335x-2:~# fsck.ext4
+> /dev/disk/by-id/mmc-NCard_0x2519026e-part2
+> e2fsck 1.43 (17-May-2016)
+> root: clean, 5221/19520 files, 105503/155932 blocks
+> 
+> 
+> Can anyone give me more informations about what's wrong with our fs and if I
+> can forbid (without problems) the directory optimization?
 
-> I wouldn't turn on inline_data for files, period.  It's not as well tested
-> as it ought to be (clearly). :/
+Somewhere in that newly created image is a directory large enough to
+warrant an htree index to speed up directory access.  Pass 3A is e2fsck
+creating the directory index, hence the "FS was modified" message.
 
-Bah, if I don't, how will it get tested? :) this machine is newly
-commissioned and doesn't have much load or important content yet: it's
-just the time to try experimental and potentially dangerous things :)
+The htree (hash tree) indexes directory entries by hash to speed up
+random directory accesses.  e2fsck can regenerate the indices, but the
+rest of e2fsprogs cannot create or maintain them.  You can turn them
+off, at some cost to performance.
 
-(I didn't know you could turn it on in any sense other than a 'big
-hammer' for everything. I have a great many symlinks, and it's really
-that I'm interested in reducing seeks for...)
+So there are a number of options here -- (1) reduce directory sizes,
+which might not be feasible.
 
--- 
-NULL && (void)
+(2) You could increase the block size since block size == page size has
+less runtime overhead... unless you really do need to have a 155MB
+image with as little slack as possible.
+
+(3) You could turn off directory indexing (mkfs -O ^dir_index) which
+removes the fsck surprise but also makes directory access much slower.
+
+(4) Run e2fsck immediately after mkfs so that the directory
+optimizations are baked into the root image.
+
+I'd probably do #4 and/or #2, personally.
+
+--D
+
+> 
+> Thanks
+> 
+> -- 
+> Mit freundlichen Grüßen,
+> With best regards,
+>   Daniel Schultz
