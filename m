@@ -1,126 +1,145 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 2/2] ext4: remove ext4_xattr_check_entry()
-Date: Tue, 14 Mar 2017 21:50:56 -0700
-Message-ID: <20170315045057.18837-2-ebiggers3@gmail.com>
-References: <20170315045057.18837-1-ebiggers3@gmail.com>
+Subject: [PATCH] ext4: constify static data that is never modified
+Date: Tue, 14 Mar 2017 22:03:00 -0700
+Message-ID: <20170315050300.26516-1-ebiggers3@gmail.com>
 Cc: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Eric Biggers <ebiggers@google.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:33737 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750829AbdCOEwe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 00:52:34 -0400
-Received: by mail-pg0-f66.google.com with SMTP id y17so899053pgh.0
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2017 21:52:33 -0700 (PDT)
-In-Reply-To: <20170315045057.18837-1-ebiggers3@gmail.com>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:34201 "EHLO
+        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750819AbdCOFHI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 01:07:08 -0400
+Received: by mail-pf0-f193.google.com with SMTP id o126so908433pfb.1
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2017 22:07:07 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-ext4_xattr_check_entry() was redundant with validation of the full xattr
-entries list in ext4_xattr_check_entries(), which all callers also did.
-ext4_xattr_check_entry() also didn't actually do correct validation;
-specifically, it never checked that the value doesn't overlap the xattr
-names, nor did it account for padding when checking whether the xattr
-value overflows the available space.  So remove it to eliminate any
-potential confusion.
+Constify static data in ext4 that is never (intentionally) modified so
+that it is placed in .rodata and benefits from memory protection.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/xattr.c | 30 ++++++------------------------
- 1 file changed, 6 insertions(+), 24 deletions(-)
+ fs/ext4/ext4.h    | 4 ++--
+ fs/ext4/mballoc.c | 2 +-
+ fs/ext4/super.c   | 5 +++--
+ fs/ext4/sysfs.c   | 8 ++++----
+ fs/ext4/xattr.c   | 2 +-
+ 5 files changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 71bf40933bbb..b4364612a66f 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -249,20 +249,9 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
- #define xattr_check_inode(inode, header, end) \
- 	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f493af666591..55f41bb14a5f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2366,7 +2366,7 @@ static inline void ext4_update_dx_flag(struct inode *inode)
+ 	if (!ext4_has_feature_dir_index(inode->i_sb))
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+ }
+-static unsigned char ext4_filetype_table[] = {
++static const unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
  
--static inline int
--ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size)
--{
--	size_t value_size = le32_to_cpu(entry->e_value_size);
--
--	if (entry->e_value_block != 0 || value_size > size ||
--	    le16_to_cpu(entry->e_value_offs) + value_size > size)
--		return -EFSCORRUPTED;
--	return 0;
--}
--
- static int
- ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
--		      const char *name, size_t size, int sorted)
-+		      const char *name, int sorted)
- {
- 	struct ext4_xattr_entry *entry;
- 	size_t name_len;
-@@ -282,8 +271,6 @@ ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
- 			break;
- 	}
- 	*pentry = entry;
--	if (!cmp && ext4_xattr_check_entry(entry, size))
--		return -EFSCORRUPTED;
- 	return cmp ? -ENODATA : 0;
+@@ -3050,7 +3050,7 @@ extern int ext4_handle_dirty_dirent_node(handle_t *handle,
+ 					 struct inode *inode,
+ 					 struct buffer_head *bh);
+ #define S_SHIFT 12
+-static unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
++static const unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
+ 	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
+ 	[S_IFDIR >> S_SHIFT]	= EXT4_FT_DIR,
+ 	[S_IFCHR >> S_SHIFT]	= EXT4_FT_CHRDEV,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 354dc1a894c2..dbe51301c2bb 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -357,7 +357,7 @@ static struct kmem_cache *ext4_free_data_cachep;
+ #define NR_GRPINFO_CACHES 8
+ static struct kmem_cache *ext4_groupinfo_caches[NR_GRPINFO_CACHES];
+ 
+-static const char *ext4_groupinfo_slab_names[NR_GRPINFO_CACHES] = {
++static const char * const ext4_groupinfo_slab_names[NR_GRPINFO_CACHES] = {
+ 	"ext4_groupinfo_1k", "ext4_groupinfo_2k", "ext4_groupinfo_4k",
+ 	"ext4_groupinfo_8k", "ext4_groupinfo_16k", "ext4_groupinfo_32k",
+ 	"ext4_groupinfo_64k", "ext4_groupinfo_128k"
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2e03a0a88d92..b3af13f808f1 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1210,7 +1210,7 @@ static const struct fscrypt_operations ext4_cryptops = {
+ #endif
+ 
+ #ifdef CONFIG_QUOTA
+-static char *quotatypes[] = INITQFNAMES;
++static const char * const quotatypes[] = INITQFNAMES;
+ #define QTYPE2NAME(t) (quotatypes[t])
+ 
+ static int ext4_write_dquot(struct dquot *dquot);
+@@ -1424,7 +1424,8 @@ static ext4_fsblk_t get_sb_block(void **data)
  }
  
-@@ -311,7 +298,6 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
- 	if (ext4_xattr_check_block(inode, bh)) {
--bad_block:
- 		EXT4_ERROR_INODE(inode, "bad block %llu",
- 				 EXT4_I(inode)->i_file_acl);
- 		error = -EFSCORRUPTED;
-@@ -319,9 +305,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 	}
- 	ext4_xattr_cache_insert(ext4_mb_cache, bh);
- 	entry = BFIRST(bh);
--	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
--	if (error == -EFSCORRUPTED)
--		goto bad_block;
-+	error = ext4_xattr_find_entry(&entry, name_index, name, 1);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -358,13 +342,12 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 		return error;
- 	raw_inode = ext4_raw_inode(&iloc);
- 	header = IHDR(inode, raw_inode);
--	entry = IFIRST(header);
- 	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
- 	error = xattr_check_inode(inode, header, end);
- 	if (error)
- 		goto cleanup;
--	error = ext4_xattr_find_entry(&entry, name_index, name,
--				      end - (void *)entry, 0);
-+	entry = IFIRST(header);
-+	error = ext4_xattr_find_entry(&entry, name_index, name, 0);
- 	if (error)
- 		goto cleanup;
- 	size = le32_to_cpu(entry->e_value_size);
-@@ -799,7 +782,7 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 		bs->s.end = bs->bh->b_data + bs->bh->b_size;
- 		bs->s.here = bs->s.first;
- 		error = ext4_xattr_find_entry(&bs->s.here, i->name_index,
--					      i->name, bs->bh->b_size, 1);
-+					      i->name, 1);
- 		if (error && error != -ENODATA)
- 			goto cleanup;
- 		bs->s.not_found = error;
-@@ -1068,8 +1051,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 			return error;
- 		/* Find the named attribute. */
- 		error = ext4_xattr_find_entry(&is->s.here, i->name_index,
--					      i->name, is->s.end -
--					      (void *)is->s.base, 0);
-+					      i->name, 0);
- 		if (error && error != -ENODATA)
- 			return error;
- 		is->s.not_found = error;
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+-static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
++static const char deprecated_msg[] =
++	"Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+ 
+ #ifdef CONFIG_QUOTA
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 42145be5c6b4..d74dc5f81a04 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -34,7 +34,7 @@ typedef enum {
+ 	ptr_ext4_super_block_offset,
+ } attr_ptr_t;
+ 
+-static const char *proc_dirname = "fs/ext4";
++static const char proc_dirname[] = "fs/ext4";
+ static struct proc_dir_entry *ext4_proc_root;
+ 
+ struct ext4_attr {
+@@ -375,7 +375,7 @@ static const struct file_operations ext4_seq_##name##_fops = { \
+ PROC_FILE_SHOW_DEFN(es_shrinker_info);
+ PROC_FILE_SHOW_DEFN(options);
+ 
+-static struct ext4_proc_files {
++static const struct ext4_proc_files {
+ 	const char *name;
+ 	const struct file_operations *fops;
+ } proc_files[] = {
+@@ -388,7 +388,7 @@ static struct ext4_proc_files {
+ int ext4_register_sysfs(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_proc_files *p;
++	const struct ext4_proc_files *p;
+ 	int err;
+ 
+ 	sbi->s_kobj.kset = &ext4_kset;
+@@ -412,7 +412,7 @@ int ext4_register_sysfs(struct super_block *sb)
+ void ext4_unregister_sysfs(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_proc_files *p;
++	const struct ext4_proc_files *p;
+ 
+ 	if (sbi->s_proc) {
+ 		for (p = proc_files; p->name; p++)
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 67636acf7624..9ab8f334233b 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -81,7 +81,7 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *,
+ static int ext4_xattr_list(struct dentry *dentry, char *buffer,
+ 			   size_t buffer_size);
+ 
+-static const struct xattr_handler *ext4_xattr_handler_map[] = {
++static const struct xattr_handler * const ext4_xattr_handler_map[] = {
+ 	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	[EXT4_XATTR_INDEX_POSIX_ACL_ACCESS]  = &posix_acl_access_xattr_handler,
 -- 
 2.12.0
