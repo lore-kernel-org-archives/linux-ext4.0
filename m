@@ -1,30 +1,64 @@
-From: Frau SCHMIDT <darlehen.angebot@laposte.net>
-Subject: Darlehen angebot 3 %
-Date: Wed, 15 Mar 2017 01:17:37 +0000
-Message-ID: <4528806f598778dac2f794dadb2d0ff9__29012.0938713246$1489611234$gmane$org@localhost>
-Reply-To: info@rschmidt.online
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: minor dumpe2fs issue
+Date: Wed, 15 Mar 2017 14:48:04 -0700
+Message-ID: <20170315214804.GN5281@birch.djwong.org>
+References: <CAMXxnT4ihap2-wW97akNHDpjfUqE1rHOAeFtBsb33bKyGEWCuQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 8bit
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: TR Reardon <reardonia@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from host117-144-38-89.static.arubacloud.com ([89.38.144.117]:51258
-        "EHLO mail.dealer.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751277AbdCOUxs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 16:53:48 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:51049 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753626AbdCOVsR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 17:48:17 -0400
+Content-Disposition: inline
+In-Reply-To: <CAMXxnT4ihap2-wW97akNHDpjfUqE1rHOAeFtBsb33bKyGEWCuQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+[cc mailing list]
 
-Sehr geehrte Damen  und Herren,
+On Wed, Mar 15, 2017 at 05:29:52PM -0400, TR Reardon wrote:
+> hey, I found a small issue with bigalloc & dumpe2fs, wonder if you'd
+> fold a fix into your stream of updates?
+> 
+> basically, the printing of "Free blocks:" is wrong for bigalloc filesystems.
+> 
+> modest change below
+> 
+> +Reardon
 
-Haben Sie Interesse über einer finanziellen Darlehen zu 3%???
-kontaktieren Sie mich für mehr Details und Bedingungen. ich kann all 
-jenen helfen, wer ein Darlehen benötigen.
-Ich kann Ihnen biete ein darlehen in hohe von 10.000.000 €
-Meine mail: info@rschmidt.online
+This could use a more fully fleshed out description, such as "Ensure
+that we print the start and end block number of free clusters even if
+there's only a single free cluster."
 
-Mit freundlichen Grüßen
+Furthermore, does this change the output of the 'make check' tests?
 
-Frau SCHMIDT
+> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+> index 395ea9ee..3b829cd5 100644
+> --- a/misc/dumpe2fs.c
+> +++ b/misc/dumpe2fs.c
+> @@ -97,9 +97,9 @@ static void print_free(unsigned long group, char * bitmap,
+>                         print_number((i + offset) * ratio);
+>                         for (j = i; j < num && !in_use (bitmap, j); j++)
+>                                 ;
+> -                       if (--j != i) {
+> +                       if (--j != i || ratio > 1 ) {
+>                                 fputc('-', stdout);
+> -                               print_number((j + offset) * ratio);
+> +                               print_number((j + offset + 1) * ratio - 1);
+
+The code looks ok, but we cannot accept patches that lack a
+Signed-off-by header.
+
+Please see section 11 in submitting patches:
+https://www.kernel.org/doc/Documentation/process/submitting-patches.rst
+
+Also please cc the mailing list.
+
+--D
+
+>                                 i = j;
+>                         }
+>                         p = 1;
