@@ -1,64 +1,55 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: minor dumpe2fs issue
-Date: Wed, 15 Mar 2017 14:48:04 -0700
-Message-ID: <20170315214804.GN5281@birch.djwong.org>
-References: <CAMXxnT4ihap2-wW97akNHDpjfUqE1rHOAeFtBsb33bKyGEWCuQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: TR Reardon <reardonia@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51049 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753626AbdCOVsR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 17:48:17 -0400
-Content-Disposition: inline
-In-Reply-To: <CAMXxnT4ihap2-wW97akNHDpjfUqE1rHOAeFtBsb33bKyGEWCuQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Subject: [PATCH 0/8 v3] No wait AIO
+Date: Wed, 15 Mar 2017 16:50:59 -0500
+Message-ID: <20170315215107.5628-1-rgoldwyn@suse.de>
+Cc: jack-IBi9RG/b67k@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org,
+        axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-[cc mailing list]
+Formerly known as non-blocking AIO.
 
-On Wed, Mar 15, 2017 at 05:29:52PM -0400, TR Reardon wrote:
-> hey, I found a small issue with bigalloc & dumpe2fs, wonder if you'd
-> fold a fix into your stream of updates?
-> 
-> basically, the printing of "Free blocks:" is wrong for bigalloc filesystems.
-> 
-> modest change below
-> 
-> +Reardon
+This series adds nonblocking feature to asynchronous I/O writes.
+io_submit() can be delayed because of a number of reason:
+ - Block allocation for files
+ - Data writebacks for direct I/O
+ - Sleeping because of waiting to acquire i_rwsem
+ - Congested block device
 
-This could use a more fully fleshed out description, such as "Ensure
-that we print the start and end block number of free clusters even if
-there's only a single free cluster."
+The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+any of these conditions are met. This way userspace can push most
+of the write()s to the kernel to the best of its ability to complete
+and if it returns -EAGAIN, can defer it to another thread.
 
-Furthermore, does this change the output of the 'make check' tests?
+In order to enable this, IOCB_RW_FLAG_NOWAIT is introduced in
+uapi/linux/aio_abi.h. If set for aio_rw_flags, it translates to
+IOCB_NOWAIT for struct iocb, BIO_NOWAIT for bio and IOMAP_NOWAIT for
+iomap. aio_rw_flags is a new flag replacing aio_reserved1. We could
+not use aio_flags because it is not currently checked for invalidity
+in the kernel.
 
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index 395ea9ee..3b829cd5 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -97,9 +97,9 @@ static void print_free(unsigned long group, char * bitmap,
->                         print_number((i + offset) * ratio);
->                         for (j = i; j < num && !in_use (bitmap, j); j++)
->                                 ;
-> -                       if (--j != i) {
-> +                       if (--j != i || ratio > 1 ) {
->                                 fputc('-', stdout);
-> -                               print_number((j + offset) * ratio);
-> +                               print_number((j + offset + 1) * ratio - 1);
+This feature is provided for direct I/O of asynchronous I/O only. I have
+tested it against xfs, ext4, and btrfs.
 
-The code looks ok, but we cannot accept patches that lack a
-Signed-off-by header.
+Changes since v1:
+ + changed name from _NONBLOCKING to *_NOWAIT
+ + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
+ + BIO_NOWAIT limited to get_request()
+ + XFS fixes 
+	- included reflink 
+	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
+	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
+	  block allocation for the file.
+ + ext4 coding style
 
-Please see section 11 in submitting patches:
-https://www.kernel.org/doc/Documentation/process/submitting-patches.rst
+Changes since v2:
+ + Using aio_reserved1 as aio_rw_flags instead of aio_flags
+ + blk-mq support
+ + xfs uptodate with kernel and reflink changes
 
-Also please cc the mailing list.
-
---D
-
->                                 i = j;
->                         }
->                         p = 1;
+-- 
+Goldwyn
