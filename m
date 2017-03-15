@@ -1,50 +1,109 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Corrupt ext4 fs after creation
-Date: Wed, 15 Mar 2017 01:11:30 -0400
-Message-ID: <20170315051130.fy7j3o24z5pmbyll@thunk.org>
-References: <153de314-38ff-ad68-65d9-a292213b47f6@phytec.de>
- <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: don't leak memory if setting up journal fails
+Date: Wed, 15 Mar 2017 12:39:50 +0100
+Message-ID: <20170315113950.GE12989@quack2.suse.cz>
+References: <20170315041955.30687-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Teresa Remmet <t.remmet@phytec.de>
-To: Daniel Schultz <d.schultz@phytec.de>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Jan Kara <jack@suse.com>, Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60886 "EHLO imap.thunk.org"
+Received: from mx2.suse.de ([195.135.220.15]:40208 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750965AbdCOFLe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Mar 2017 01:11:34 -0400
+        id S1753440AbdCOLjy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Mar 2017 07:39:54 -0400
 Content-Disposition: inline
-In-Reply-To: <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
+In-Reply-To: <20170315041955.30687-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 14, 2017 at 11:34:32AM +0100, Daniel Schultz wrote:
+On Tue 14-03-17 21:19:55, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> I figured out that when I run fsck.ext4 it will perform a directory
-> optimizing which leads to a non-zero error code of 1 (File system errors
-> corrected). Also, I figured out that this optimizing only occurres on the
-> first boot and not after creating a lot of new files and dirs. After
-> checking the fs it contains more blocks than before.
+> In journal_init_common(), if we failed to allocate the j_wbuf array, or
+> if we failed to create the buffer_head for the journal superblock, we
+> leaked the memory allocated for the revocation tables.  Fix this.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-So the error code was one because the file system was modified.  It's
-true that the formal definition of error code of one is "file system
-errors corrected", and so this will be changed in the next release of
-e2fsprogs:
+Looks good. You can add:
 
-commit bf9f3b6d5b10d19218b4ed904c12b22e36ec57dd
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Feb 16 22:02:35 2017 -0500
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-    e2fsck: exit with exit status 0 if no errors were fixed
+								Honza
 
-    Previously, e2fsck would exit with a status code of 1 even though the
-    only changes that it made to the file system were various
-    optimziations and not fixing file system corruption.  Since the man
-    page states that an exit status of 1 means "file system errors
-    corrupted", fix e2fsck to return an exit status of 0.
-
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-Cheers,
-
-					- Ted
+> ---
+>  fs/jbd2/journal.c | 22 +++++++++++-----------
+>  fs/jbd2/revoke.c  |  1 +
+>  2 files changed, 12 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index a1a359bfcc9c..5adc2fb62b0f 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1125,10 +1125,8 @@ static journal_t *journal_init_common(struct block_device *bdev,
+>  
+>  	/* Set up a default-sized revoke table for the new mount. */
+>  	err = jbd2_journal_init_revoke(journal, JOURNAL_REVOKE_DEFAULT_HASH);
+> -	if (err) {
+> -		kfree(journal);
+> -		return NULL;
+> -	}
+> +	if (err)
+> +		goto err_cleanup;
+>  
+>  	spin_lock_init(&journal->j_history_lock);
+>  
+> @@ -1145,23 +1143,25 @@ static journal_t *journal_init_common(struct block_device *bdev,
+>  	journal->j_wbufsize = n;
+>  	journal->j_wbuf = kmalloc_array(n, sizeof(struct buffer_head *),
+>  					GFP_KERNEL);
+> -	if (!journal->j_wbuf) {
+> -		kfree(journal);
+> -		return NULL;
+> -	}
+> +	if (!journal->j_wbuf)
+> +		goto err_cleanup;
+>  
+>  	bh = getblk_unmovable(journal->j_dev, start, journal->j_blocksize);
+>  	if (!bh) {
+>  		pr_err("%s: Cannot get buffer for journal superblock\n",
+>  			__func__);
+> -		kfree(journal->j_wbuf);
+> -		kfree(journal);
+> -		return NULL;
+> +		goto err_cleanup;
+>  	}
+>  	journal->j_sb_buffer = bh;
+>  	journal->j_superblock = (journal_superblock_t *)bh->b_data;
+>  
+>  	return journal;
+> +
+> +err_cleanup:
+> +	kfree(journal->j_wbuf);
+> +	jbd2_journal_destroy_revoke(journal);
+> +	kfree(journal);
+> +	return NULL;
+>  }
+>  
+>  /* jbd2_journal_init_dev and jbd2_journal_init_inode:
+> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+> index cfc38b552118..f9aefcda5854 100644
+> --- a/fs/jbd2/revoke.c
+> +++ b/fs/jbd2/revoke.c
+> @@ -280,6 +280,7 @@ int jbd2_journal_init_revoke(journal_t *journal, int hash_size)
+>  
+>  fail1:
+>  	jbd2_journal_destroy_revoke_table(journal->j_revoke_table[0]);
+> +	journal->j_revoke_table[0] = NULL;
+>  fail0:
+>  	return -ENOMEM;
+>  }
+> -- 
+> 2.12.0
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
