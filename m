@@ -1,145 +1,50 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] ext4: constify static data that is never modified
-Date: Tue, 14 Mar 2017 22:03:00 -0700
-Message-ID: <20170315050300.26516-1-ebiggers3@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Biggers <ebiggers@google.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Corrupt ext4 fs after creation
+Date: Wed, 15 Mar 2017 01:11:30 -0400
+Message-ID: <20170315051130.fy7j3o24z5pmbyll@thunk.org>
+References: <153de314-38ff-ad68-65d9-a292213b47f6@phytec.de>
+ <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Teresa Remmet <t.remmet@phytec.de>
+To: Daniel Schultz <d.schultz@phytec.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:34201 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750819AbdCOFHI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Mar 2017 01:07:08 -0400
-Received: by mail-pf0-f193.google.com with SMTP id o126so908433pfb.1
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Mar 2017 22:07:07 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:60886 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750965AbdCOFLe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Mar 2017 01:11:34 -0400
+Content-Disposition: inline
+In-Reply-To: <532e8151-ecc8-6411-9471-b7a74b4e0ab9@phytec.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Biggers <ebiggers@google.com>
+On Tue, Mar 14, 2017 at 11:34:32AM +0100, Daniel Schultz wrote:
+> 
+> I figured out that when I run fsck.ext4 it will perform a directory
+> optimizing which leads to a non-zero error code of 1 (File system errors
+> corrected). Also, I figured out that this optimizing only occurres on the
+> first boot and not after creating a lot of new files and dirs. After
+> checking the fs it contains more blocks than before.
 
-Constify static data in ext4 that is never (intentionally) modified so
-that it is placed in .rodata and benefits from memory protection.
+So the error code was one because the file system was modified.  It's
+true that the formal definition of error code of one is "file system
+errors corrected", and so this will be changed in the next release of
+e2fsprogs:
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/ext4.h    | 4 ++--
- fs/ext4/mballoc.c | 2 +-
- fs/ext4/super.c   | 5 +++--
- fs/ext4/sysfs.c   | 8 ++++----
- fs/ext4/xattr.c   | 2 +-
- 5 files changed, 11 insertions(+), 10 deletions(-)
+commit bf9f3b6d5b10d19218b4ed904c12b22e36ec57dd
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Feb 16 22:02:35 2017 -0500
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f493af666591..55f41bb14a5f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2366,7 +2366,7 @@ static inline void ext4_update_dx_flag(struct inode *inode)
- 	if (!ext4_has_feature_dir_index(inode->i_sb))
- 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
- }
--static unsigned char ext4_filetype_table[] = {
-+static const unsigned char ext4_filetype_table[] = {
- 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
- };
- 
-@@ -3050,7 +3050,7 @@ extern int ext4_handle_dirty_dirent_node(handle_t *handle,
- 					 struct inode *inode,
- 					 struct buffer_head *bh);
- #define S_SHIFT 12
--static unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
-+static const unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
- 	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
- 	[S_IFDIR >> S_SHIFT]	= EXT4_FT_DIR,
- 	[S_IFCHR >> S_SHIFT]	= EXT4_FT_CHRDEV,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 354dc1a894c2..dbe51301c2bb 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -357,7 +357,7 @@ static struct kmem_cache *ext4_free_data_cachep;
- #define NR_GRPINFO_CACHES 8
- static struct kmem_cache *ext4_groupinfo_caches[NR_GRPINFO_CACHES];
- 
--static const char *ext4_groupinfo_slab_names[NR_GRPINFO_CACHES] = {
-+static const char * const ext4_groupinfo_slab_names[NR_GRPINFO_CACHES] = {
- 	"ext4_groupinfo_1k", "ext4_groupinfo_2k", "ext4_groupinfo_4k",
- 	"ext4_groupinfo_8k", "ext4_groupinfo_16k", "ext4_groupinfo_32k",
- 	"ext4_groupinfo_64k", "ext4_groupinfo_128k"
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2e03a0a88d92..b3af13f808f1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1210,7 +1210,7 @@ static const struct fscrypt_operations ext4_cryptops = {
- #endif
- 
- #ifdef CONFIG_QUOTA
--static char *quotatypes[] = INITQFNAMES;
-+static const char * const quotatypes[] = INITQFNAMES;
- #define QTYPE2NAME(t) (quotatypes[t])
- 
- static int ext4_write_dquot(struct dquot *dquot);
-@@ -1424,7 +1424,8 @@ static ext4_fsblk_t get_sb_block(void **data)
- }
- 
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
--static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
-+static const char deprecated_msg[] =
-+	"Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
- 
- #ifdef CONFIG_QUOTA
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 42145be5c6b4..d74dc5f81a04 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -34,7 +34,7 @@ typedef enum {
- 	ptr_ext4_super_block_offset,
- } attr_ptr_t;
- 
--static const char *proc_dirname = "fs/ext4";
-+static const char proc_dirname[] = "fs/ext4";
- static struct proc_dir_entry *ext4_proc_root;
- 
- struct ext4_attr {
-@@ -375,7 +375,7 @@ static const struct file_operations ext4_seq_##name##_fops = { \
- PROC_FILE_SHOW_DEFN(es_shrinker_info);
- PROC_FILE_SHOW_DEFN(options);
- 
--static struct ext4_proc_files {
-+static const struct ext4_proc_files {
- 	const char *name;
- 	const struct file_operations *fops;
- } proc_files[] = {
-@@ -388,7 +388,7 @@ static struct ext4_proc_files {
- int ext4_register_sysfs(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct ext4_proc_files *p;
-+	const struct ext4_proc_files *p;
- 	int err;
- 
- 	sbi->s_kobj.kset = &ext4_kset;
-@@ -412,7 +412,7 @@ int ext4_register_sysfs(struct super_block *sb)
- void ext4_unregister_sysfs(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct ext4_proc_files *p;
-+	const struct ext4_proc_files *p;
- 
- 	if (sbi->s_proc) {
- 		for (p = proc_files; p->name; p++)
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 67636acf7624..9ab8f334233b 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -81,7 +81,7 @@ static void ext4_xattr_rehash(struct ext4_xattr_header *,
- static int ext4_xattr_list(struct dentry *dentry, char *buffer,
- 			   size_t buffer_size);
- 
--static const struct xattr_handler *ext4_xattr_handler_map[] = {
-+static const struct xattr_handler * const ext4_xattr_handler_map[] = {
- 	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	[EXT4_XATTR_INDEX_POSIX_ACL_ACCESS]  = &posix_acl_access_xattr_handler,
--- 
-2.12.0
+    e2fsck: exit with exit status 0 if no errors were fixed
+
+    Previously, e2fsck would exit with a status code of 1 even though the
+    only changes that it made to the file system were various
+    optimziations and not fixing file system corruption.  Since the man
+    page states that an exit status of 1 means "file system errors
+    corrupted", fix e2fsck to return an exit status of 0.
+
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+Cheers,
+
+					- Ted
