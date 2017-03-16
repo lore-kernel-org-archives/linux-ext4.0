@@ -1,177 +1,54 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: Re: [PATCH] e2fsck: recreate extent mapped lost+found
-Date: Thu, 16 Mar 2017 12:50:18 -0400
-Message-ID: <20170316165018.GB20690@localhost.localdomain>
-References: <20170316153948.GA20690@localhost.localdomain>
- <20170316160115.GC5271@birch.djwong.org>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
+Date: Fri, 17 Mar 2017 08:31:34 +1100
+Message-ID: <20170316213134.GV17542@dastard>
+References: <20170315215107.5628-1-rgoldwyn@suse.de>
+ <20170315215107.5628-6-rgoldwyn@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
-        tytso@mit.edu
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:33511 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754573AbdCPQt3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2017 12:49:29 -0400
-Received: by mail-qt0-f196.google.com with SMTP id r45so6447355qte.0
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2017 09:49:28 -0700 (PDT)
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
+        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+To: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170316160115.GC5271@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170315215107.5628-6-rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-* Darrick J. Wong <darrick.wong@oracle.com>:
-> On Thu, Mar 16, 2017 at 11:39:48AM -0400, Eric Whitney wrote:
-> > When e2fsck recreates a missing lost+found directory, it uses indirect
-> > block mapping.  It does this even if the file system being repaired is
-> > extent mapped and where the original lost+found was extent mapped when
-> > created by mkfs.
-> > 
-> > This inconsistency exists because the kernel code handling indirect
-> > block mapping was considered more trustworthy in ext4's early days;
-> > today, the extent handling code is robust.
-> > 
-> > This inconsistency also causes potential behavioral problems on
-> > bigalloc file systems.  The ext4 kernel code does not support indirect
-> > block mapped directories when bigalloc is enabled.  For example, it is
-> > not possible to extend lost+found on a mounted bigalloc file system
-> > with the current implementation, so the behavior of that directory
-> > differs from all others, potentially surprising users.
-> > 
-> > To make the handling of lost+found more consistent, and to avoid
-> > behavioral problems on bigalloc file systems, recreate lost+found
-> > with extent mapping if the file system under repair is extent mapped.
-> > 
-> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> > ---
-> >  e2fsck/pass3.c   | 29 +++++++++++++++++++++++++++--
-> >  e2fsck/problem.c | 10 ++++++++++
-> >  e2fsck/problem.h |  6 ++++++
-> >  3 files changed, 43 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
-> > index 44203ca..259c978 100644
-> > --- a/e2fsck/pass3.c
-> > +++ b/e2fsck/pass3.c
-> > @@ -378,7 +378,7 @@ static int check_directory(e2fsck_t ctx, ext2_ino_t dir,
-> >  ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
-> >  {
-> >  	ext2_filsys fs = ctx->fs;
-> > -	ext2_ino_t			ino;
-> > +	ext2_ino_t		ino;
-> >  	blk64_t			blk;
-> >  	errcode_t		retval;
-> >  	struct ext2_inode_large	inode;
-> > @@ -386,6 +386,7 @@ ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
-> >  	static const char	name[] = "lost+found";
-> >  	struct 	problem_context	pctx;
-> >  	int			will_rehash, flags;
-> > +	ext2_extent_handle_t	handle;
-> >  
-> >  	if (ctx->lost_and_found)
-> >  		return ctx->lost_and_found;
-> > @@ -520,7 +521,10 @@ skip_new_block:
-> >  	inode.i_atime = inode.i_ctime = inode.i_mtime = ctx->now;
-> >  	inode.i_links_count = 2;
-> >  	ext2fs_iblk_set(fs, EXT2_INODE(&inode), 1);
-> > -	inode.i_block[0] = blk;
-> > +	if (ext2fs_has_feature_extents(fs->super))
-> > +		inode.i_flags |= EXT4_EXTENTS_FL;
-> > +	else
-> > +		inode.i_block[0] = blk;
-> >  
-> >  	/*
-> >  	 * Next, write out the inode.
-> > @@ -553,6 +557,27 @@ skip_new_block:
-> >  	}
-> >  
-> >  	/*
-> > +	 * If the new lost+found is extent mapped, map its first new
-> > +	 * directory block
-> > +	 */
-> > +	if (ext2fs_has_feature_extents(fs->super)) {
-> > +		retval = ext2fs_extent_open2(fs, ino, EXT2_INODE(&inode),
-> > +					     &handle);
-> > +		if (retval) {
-> > +			pctx.errcode = retval;
-> > +			fix_problem(ctx, PR_3_ERR_LPF_OPEN_EXTENT, &pctx);
-> > +			return 0;
-> > +		}
-> > +		retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
-> > +		ext2fs_extent_free(handle);
-> > +		if (retval) {
-> > +			pctx.errcode = retval;
-> > +			fix_problem(ctx, PR_3_ERR_LPF_SET_BMAP, &pctx);
-> > +			return 0;
-> > +		}
-> > +	}
+On Wed, Mar 15, 2017 at 04:51:04PM -0500, Goldwyn Rodrigues wrote:
+> From: Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
 > 
-> You could refactor most of this function since ext2fs_bmap2() can do the
-> work for you -- allocating a block, setting the extents flag, and
-> initializing the extent tree header.
-> 
-> Maybe there's a specific reason to allocate the block and then the
-> inode instead of simply using bmap?  I can't find any obvious reason,
-> but Ted might remember something.
-> 
-> --D
-> 
-> > +
-> > +	/*
-> >  	 * Finally, create the directory link
-> >  	 */
-> >  	pctx.errcode = ext2fs_link(fs, EXT2_ROOT_INO, name, ino, EXT2_FT_DIR);
-> > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> > index c3e4f6a..736b822 100644
-> > --- a/e2fsck/problem.c
-> > +++ b/e2fsck/problem.c
-> > @@ -1791,6 +1791,16 @@ static struct e2fsck_problem problem_table[] = {
-> >  	  N_("/@l is encrypted\n"),
-> >  	  PROMPT_CLEAR, 0 },
-> >  
-> > +	/* Error while creating an extent for /lost+found */
-> > +	{ PR_3_ERR_LPF_OPEN_EXTENT,
-> > +	  N_("ext2fs_@x_open2: %m while creating an @x for /@l\n"),
-> > +	  PROMPT_NONE, 0 },
-> > +
-> > +	/* Error while mapping a directory block for /lost+found */
-> > +	{ PR_3_ERR_LPF_SET_BMAP,
-> > +	  N_("ext2fs_@x_set_bmap: %m while mapping a @d @b for /@l\n"),
-> > +	  PROMPT_NONE, 0 },
-> > +
-> >  	/* Pass 3A Directory Optimization	*/
-> >  
-> >  	/* Pass 3A: Optimizing directories */
-> > diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-> > index d291e26..dfdb6d0 100644
-> > --- a/e2fsck/problem.h
-> > +++ b/e2fsck/problem.h
-> > @@ -1078,6 +1078,12 @@ struct problem_context {
-> >  /* Lost+found is encrypted */
-> >  #define PR_3_LPF_ENCRYPTED		0x03001B
-> >  
-> > +/* Error while creating an extent for /lost+found */
-> > +#define PR_3_ERR_LPF_OPEN_EXTENT	0x03001C
-> > +
-> > +/* Error while mapping a directory block for /lost+found */
-> > +#define PR_3_ERR_LPF_SET_BMAP		0x03001D
-> > +
-> >  /*
-> >   * Pass 3a --- rehashing diretories
-> >   */
-> > -- 
-> > 2.1.4
-> > 
+> A new flag BIO_NOWAIT is introduced to identify bio's
+> orignating from iocb with IOCB_NOWAIT. This flag indicates
+> to return immediately if a request cannot be made instead
+> of retrying.
 
-Darrick:
+So this makes a congested block device run the bio IO completion
+callback with an -EAGAIN error present? Are all the filesystem
+direct IO submission and completion routines OK with that? i.e. does
+such a congestion case cause filesystems to temporarily expose stale
+data to unprivileged users when the IO is requeued in this way?
 
-As discussed in today's concall, I'd chosen to follow the pattern used in
-mke2fs when lost+found is first created for conservatism's sake.  As Ted noted,
-the code in mke2fs predates ext2fs_bmap2, and it hasn't been modified to use it.
+e.g. filesystem does allocation without blocking, submits bio,
+device is congested, runs IO completion with error, so nothing
+written to allocated blocks, write gets queued, so other read
+comes in while the write is queued, reads data from uninitialised
+blocks that were allocated during the write....
 
-For now, I'll withdraw this patch, and will take a look at a cleaner
-implementation as you suggest.
+Seems kinda problematic to me to have a undocumented design
+constraint (i.e a landmine) where we submit the AIO only to have it
+error out and then expect the filesystem to do something special and
+different /without blocking/ on EAGAIN.
 
-Thanks for the comment!
-Eric
+Why isn't the congestion check at a higher layer like we do for page
+cache readahead? i.e. using the bdi*congested() API at the time we
+are doing all the other filesystem blocking checks.
+
+-Dave.
+-- 
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
