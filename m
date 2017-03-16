@@ -1,36 +1,177 @@
-From: Nick Alcock <nix@esperi.org.uk>
-Subject: Re: repeatable inline-data oops (and fs corruption) caused by msync() of shared writable mmap (with recipe)
-Date: Thu, 16 Mar 2017 16:13:01 +0000
-Message-ID: <8760j95hf6.fsf@esperi.org.uk>
-References: <87y3wqc5we.fsf@esperi.org.uk>
-        <20170316153100.GA8224@quack2.suse.cz>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] e2fsck: recreate extent mapped lost+found
+Date: Thu, 16 Mar 2017 12:50:18 -0400
+Message-ID: <20170316165018.GB20690@localhost.localdomain>
+References: <20170316153948.GA20690@localhost.localdomain>
+ <20170316160115.GC5271@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-ext4@vger.kernel.org,
-        Linux FS Mailing List <linux-fsdevel@vger.kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170316153100.GA8224@quack2.suse.cz> (Jan Kara's message of
-        "Thu, 16 Mar 2017 16:31:00 +0100")
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+        tytso@mit.edu
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:33511 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754573AbdCPQt3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2017 12:49:29 -0400
+Received: by mail-qt0-f196.google.com with SMTP id r45so6447355qte.0
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2017 09:49:28 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20170316160115.GC5271@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 16 Mar 2017, Jan Kara stated:
+* Darrick J. Wong <darrick.wong@oracle.com>:
+> On Thu, Mar 16, 2017 at 11:39:48AM -0400, Eric Whitney wrote:
+> > When e2fsck recreates a missing lost+found directory, it uses indirect
+> > block mapping.  It does this even if the file system being repaired is
+> > extent mapped and where the original lost+found was extent mapped when
+> > created by mkfs.
+> > 
+> > This inconsistency exists because the kernel code handling indirect
+> > block mapping was considered more trustworthy in ext4's early days;
+> > today, the extent handling code is robust.
+> > 
+> > This inconsistency also causes potential behavioral problems on
+> > bigalloc file systems.  The ext4 kernel code does not support indirect
+> > block mapped directories when bigalloc is enabled.  For example, it is
+> > not possible to extend lost+found on a mounted bigalloc file system
+> > with the current implementation, so the behavior of that directory
+> > differs from all others, potentially surprising users.
+> > 
+> > To make the handling of lost+found more consistent, and to avoid
+> > behavioral problems on bigalloc file systems, recreate lost+found
+> > with extent mapping if the file system under repair is extent mapped.
+> > 
+> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> > ---
+> >  e2fsck/pass3.c   | 29 +++++++++++++++++++++++++++--
+> >  e2fsck/problem.c | 10 ++++++++++
+> >  e2fsck/problem.h |  6 ++++++
+> >  3 files changed, 43 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+> > index 44203ca..259c978 100644
+> > --- a/e2fsck/pass3.c
+> > +++ b/e2fsck/pass3.c
+> > @@ -378,7 +378,7 @@ static int check_directory(e2fsck_t ctx, ext2_ino_t dir,
+> >  ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
+> >  {
+> >  	ext2_filsys fs = ctx->fs;
+> > -	ext2_ino_t			ino;
+> > +	ext2_ino_t		ino;
+> >  	blk64_t			blk;
+> >  	errcode_t		retval;
+> >  	struct ext2_inode_large	inode;
+> > @@ -386,6 +386,7 @@ ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
+> >  	static const char	name[] = "lost+found";
+> >  	struct 	problem_context	pctx;
+> >  	int			will_rehash, flags;
+> > +	ext2_extent_handle_t	handle;
+> >  
+> >  	if (ctx->lost_and_found)
+> >  		return ctx->lost_and_found;
+> > @@ -520,7 +521,10 @@ skip_new_block:
+> >  	inode.i_atime = inode.i_ctime = inode.i_mtime = ctx->now;
+> >  	inode.i_links_count = 2;
+> >  	ext2fs_iblk_set(fs, EXT2_INODE(&inode), 1);
+> > -	inode.i_block[0] = blk;
+> > +	if (ext2fs_has_feature_extents(fs->super))
+> > +		inode.i_flags |= EXT4_EXTENTS_FL;
+> > +	else
+> > +		inode.i_block[0] = blk;
+> >  
+> >  	/*
+> >  	 * Next, write out the inode.
+> > @@ -553,6 +557,27 @@ skip_new_block:
+> >  	}
+> >  
+> >  	/*
+> > +	 * If the new lost+found is extent mapped, map its first new
+> > +	 * directory block
+> > +	 */
+> > +	if (ext2fs_has_feature_extents(fs->super)) {
+> > +		retval = ext2fs_extent_open2(fs, ino, EXT2_INODE(&inode),
+> > +					     &handle);
+> > +		if (retval) {
+> > +			pctx.errcode = retval;
+> > +			fix_problem(ctx, PR_3_ERR_LPF_OPEN_EXTENT, &pctx);
+> > +			return 0;
+> > +		}
+> > +		retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
+> > +		ext2fs_extent_free(handle);
+> > +		if (retval) {
+> > +			pctx.errcode = retval;
+> > +			fix_problem(ctx, PR_3_ERR_LPF_SET_BMAP, &pctx);
+> > +			return 0;
+> > +		}
+> > +	}
+> 
+> You could refactor most of this function since ext2fs_bmap2() can do the
+> work for you -- allocating a block, setting the extents flag, and
+> initializing the extent tree header.
+> 
+> Maybe there's a specific reason to allocate the block and then the
+> inode instead of simply using bmap?  I can't find any obvious reason,
+> but Ted might remember something.
+> 
+> --D
+> 
+> > +
+> > +	/*
+> >  	 * Finally, create the directory link
+> >  	 */
+> >  	pctx.errcode = ext2fs_link(fs, EXT2_ROOT_INO, name, ino, EXT2_FT_DIR);
+> > diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> > index c3e4f6a..736b822 100644
+> > --- a/e2fsck/problem.c
+> > +++ b/e2fsck/problem.c
+> > @@ -1791,6 +1791,16 @@ static struct e2fsck_problem problem_table[] = {
+> >  	  N_("/@l is encrypted\n"),
+> >  	  PROMPT_CLEAR, 0 },
+> >  
+> > +	/* Error while creating an extent for /lost+found */
+> > +	{ PR_3_ERR_LPF_OPEN_EXTENT,
+> > +	  N_("ext2fs_@x_open2: %m while creating an @x for /@l\n"),
+> > +	  PROMPT_NONE, 0 },
+> > +
+> > +	/* Error while mapping a directory block for /lost+found */
+> > +	{ PR_3_ERR_LPF_SET_BMAP,
+> > +	  N_("ext2fs_@x_set_bmap: %m while mapping a @d @b for /@l\n"),
+> > +	  PROMPT_NONE, 0 },
+> > +
+> >  	/* Pass 3A Directory Optimization	*/
+> >  
+> >  	/* Pass 3A: Optimizing directories */
+> > diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+> > index d291e26..dfdb6d0 100644
+> > --- a/e2fsck/problem.h
+> > +++ b/e2fsck/problem.h
+> > @@ -1078,6 +1078,12 @@ struct problem_context {
+> >  /* Lost+found is encrypted */
+> >  #define PR_3_LPF_ENCRYPTED		0x03001B
+> >  
+> > +/* Error while creating an extent for /lost+found */
+> > +#define PR_3_ERR_LPF_OPEN_EXTENT	0x03001C
+> > +
+> > +/* Error while mapping a directory block for /lost+found */
+> > +#define PR_3_ERR_LPF_SET_BMAP		0x03001D
+> > +
+> >  /*
+> >   * Pass 3a --- rehashing diretories
+> >   */
+> > -- 
+> > 2.1.4
+> > 
 
-> On Tue 28-02-17 22:22:25, Nix wrote:
->> I first spotted this -- or it spotted me -- back in the v4.7.x days. It
->> is still present in v4.10.
->> 
->> Here's a replication recipe, given a reasonable rootfs with a compiler
->> on it, and assuming a blank virtio disk on /dev/vdb:
->
-> Yup, the problem is that we mmap file with inline data without unpacking
-> that and ext4_writepages() is unable to update inline data. Easy fix would
-> be to unpack inline data in ext4_page_mkwrite(), somewhat more complicated
-> fix would be to unpack inline data when extending file to too large size
-> via truncate and handle writing into inode in ext4_writepages(). I'll have
-> a look into fixing this. Thanks for report!
+Darrick:
 
-You probably want to talk to Eric Biggers, who posted a partial fix a
-few days ago: <http://marc.info/?l=linux-ext4&m=148936608506059&w=2>
+As discussed in today's concall, I'd chosen to follow the pattern used in
+mke2fs when lost+found is first created for conservatism's sake.  As Ted noted,
+the code in mke2fs predates ext2fs_bmap2, and it hasn't been modified to use it.
+
+For now, I'll withdraw this patch, and will take a look at a cleaner
+implementation as you suggest.
+
+Thanks for the comment!
+Eric
