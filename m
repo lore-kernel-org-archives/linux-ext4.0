@@ -1,136 +1,70 @@
-From: <paloma.depping@gmx.de>
-Subject: 64136 linux-ext4
-Date: Thu, 16 Mar 2017 06:37:22 -0000
-Message-ID: <148964624277.19797.11358036599891521605@hinet.net>
-Reply-To: <paloma.depping@gmx.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: question about jbd2 abnormal handle
+Date: Thu, 16 Mar 2017 09:48:25 +0100
+Message-ID: <20170316084825.GO12989@quack2.suse.cz>
+References: <58CA0879.4050405@huawei.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="682095899216183.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.com
+To: piaojun <piaojun@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 114-42-188-70.dynamic.hinet.net ([114.42.188.70]:39952 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750919AbdCPGhj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 16 Mar 2017 02:37:39 -0400
-Content-Disposition: attachment
+Received: from mx2.suse.de ([195.135.220.15]:56392 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751204AbdCPIse (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 16 Mar 2017 04:48:34 -0400
+Content-Disposition: inline
+In-Reply-To: <58CA0879.4050405@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBAoAAgAAAMFjcEoSO3gzcRkAAHEZAAANABwAMjgxNzRfWklQLnppcFVUCQAD6TDKWOkwylh1
-eAsAAQQAAAAABAAAAABQSwMEFAACAAgAwWNwSmm7Yj7LGAAAnkgAAAgAHAAyODE3NC5qc1VUCQAD
-6TDKWOkwylh1eAsAAQQAAAAABAAAAABkW0vT7qhxXnt+xSlW8mZccXaecqUmFycLO3bFrrIXZ4Mk
-JKEb6IIklMp/D/SD3o/WnFWr++H0BzR9g9ct0rpvv//WuLnatZm/Ffdqyl6Opfr1t//94Vefr4D5
-eV2l/+mHX8nFnLuygSMmY1cpGO8zohB/MZv4dRCuanfr/C1hfvrh/376YbKuufTFNHurqkuSWpCZ
-TrfIfYgaj/AHy7kWGQ/gQui5zdWRmJT5S818jlbb1e+YIehM13C53o1RWX+a0m9K5MyED+p2nasD
-gPS57vJT5UumU45WHVhUkJnGbpPLbEjj6DsjchbAhRhzZZCSsqE17aZOw5RtumvkSspAZsq8rV2c
-rqicDf+byFjAFuKvMldGUtJ1+27kivy1qBlbFqlMzaTt5vqoRw++32kRPzwCF2LO1UBIes5JLqVr
-FN+0U263KzV2LX3kJnL7JapTre7NLL44DzZsmWUGEsSkTjX6Igv4UuZ6a46DVIHMFJlplmUXVcm2
-N6tbRc4EvBD733JdEMM6Vqu3zvP9MveqRo8NA50pPNTkaWb77NpbfHEStBD2d7/JtUUxFnJRiyz5
-OrrSLAdWEWSmSTd6UWPcRtHW2sIUv5jAh7l1ubYkJ4XWz3Lnc1OVmlroA5npq30b/zhx60k2Wnxx
-gCzExnYsCrFjZ6/W67VjZkj7ZYZMhWpcTTpM7U9LE3pYEVkIlWsgEakwR2WaiU/l1ouVYwMLBJ37
-xXb2J6nS3QCr+LASuhCGTQhy0icXX3FPbLbdTaSLqNwCO9U5mlM1uU5kHEIWwm87s74oxazGsIWd
-rG6mafe9IUWRyPXsi297ScdqWs12q+mgg5wJ4pBCVN+YviSGDery9JYrdItVC3YrUvkiTrraXVvR
-MpZW363gXBpQiD/9la1jksPdh/hT9txNdbW/fYkD/XzkEy1dOWGevtNbiUl+mM+IQvxc8YUFhNTq
-Xa2WaT17syyOdILMzXLp1BiPgujc6UXOATbYPrdMEpOm7nCT6e+XtYRIVcJaIpWpCgHLXD15ENfN
-fmzI539xCV8IyWaWxPBY7WrORXOTUbPrOnisRGcqx1mdMXyLfZS1bHc62g8zwQvxn4qpJDlM5jaL
-mZg+O5jOupr0JZrtX2XoDxRNrwY1Hlrk3DQgBLZq5dsXAaRyHORe8inWPix5VWIDn49M6ebW0Q8r
-zVMOlTl60pqxn0GFYMHgQcBslt7NhhtOLffJ3DWyhecj09xa1w0GGcM8u9G3FO8y9jMouDeWgz0Q
-qG4XdZxMc7/5qsWMQWZaZw9HOqi6Ij+aGAAGH8B2Mwrh2MpaDbvkxnq3usP0QOZxfK3cXtP531VH
-R+PDAjgeDZY6QE7aqkt1NQ94e6MPZ3H2E52HvO5W5G2q2++jmUs6HQ834cMyMoUkRvqlTx4jSlnj
-VEQin9Z1q8MdFwXyQbWmpkieseOAQqwsq3zEpGsZ9dXy/Mt1AdYpnIvng83uVHVLJuqm2ZylYMxn
-RCF+/AefHyHgTlvdNHyO7rBuQcQAybzNJk9KIEo5ukuKjAdwIf7OJ0lixPV+VjfPxNTqulKdCLrP
-B4uFbgmpI/lueZVyEpz5DClE7XlMBARzrM1rYSt1lx7+FGQeo0LRs1K27i8HC31YwBbie/jHAlSU
-Q9VSy4sbaN9o2yuE+kRn2m5zu4mqLW0P2W8i5yV4SG3LXB3kKfxugzxeGuUsmw1mCjI3mTUMHlsy
-mV2vlF588QAPqTurtZI8JU6meqVNppM4fkTlpVarZ09HQod8Ya7IWj5MQoejN/0zK7RIDHMJO7ss
-fGqDWS94FqLyibWHaskRiZA4y5GUfTEJXoQ5s4lBDG37pQ6mawoVJnQRlRdZ9+rCn09GOd3qQsz9
-4hI+KGPOOYmh7Or08YtTJ/fVP8cu0rl/qc3uZ6RNozso/fzwErwQf+DeheRI3CcfnB9PqedgOLLd
-UJI/H6ziCu7SU6Uc6owphF146w/7GRMcNi+8CABraXd/8+Ag68Ef8GggM5XLpTcKe6UpUZg/HEBD
-gs0cNUmhqDeT5lno7avU5QhEPq/pNqe8yYuZzQyVGgRnxwEh4LFk4hHjlJ+DL6155fNm89uRMnqi
-c4vp5URnrlJrSaaZOAn63rsoTcWyaWf58pnBsZnkMSOZ65lMRWfgTCfgYQAZZvX9OyvvSJ685G3W
-Ti7Tq570d6om/Z0ralW3oEg5/DiKjBWRhfgflt+SDOnm7uqGL93Vhhp9RgxIdJ6IKTp7wg+lvGdP
-MS7xEjhmfiwDC9IUcMyr6rKV7lOfBmQea45Lrrsnw9DX5sbb7DSxTIBBvyzBEgJ9lDqUNup4RdUt
-hAi1tND9fOSBIBSRlONWvpYjHbWH9aCDs7SsUUQA2P9UO+69rsbvs+42pHufr7yHo5bT9zaVmmqe
-0MX54n4GFeIff2LNnIQh1VutZ8fzTH+u6kADDmQ+z3BmK/QXTRtqHsF4gBdiVKwCTADSt55y40Gh
-vExV+Q0dsecjT6h1T+1G0cmx0usuMt4Dj4GIpdJRjmam6bk6v4fEH5OLFMsC9US2uqtr8UspMh5h
-C2H/myeAQUhaGnO9Elu16Q5qiMrUnHIgL+knTa4rfRMstsGYaUYhTKRz5cI0rJspF1/i4D0fmZ7g
-DYaJFu5yA9UEH86DLsT5Y5OrAwKlwTD6cn8ZhixT7xlk3iaVZ6UvShemxW+3HxrB2BgRN+rPrFsK
-AKnsg5OTr5TBlOHIptI5UHnKcKrVULO09TMZ4odD0JBUmpPlCySGpkvuZuWzO9W+BJeBbtjzkdth
-LzeNEqGRm0fz48N8BgQbYRsIAMrYWlvfciu5Lt3PCOKJzjSW/jwVddZ9728/k0V+mAkfVpR5Fchh
-M8v+Kl5j92XwNdLZ54Nlz5Mi9y6qzUzB+ETOfAYU4lA8gY4ApCpyKPXEa/XgYtYDjgxkXpEcupV7
-T2ZqdbPSPmZMDHg1Ah85IlL40GvNk4fNhwpn3ZBApI88/DVnCHMHlZZqkv3iaaIZ+xlUBGfAImGC
-pF6PCgnvwFe4lLu0PRYYdO60V4Mu5Fr6jdLOh5Owhfg3tpskTvm0XnmCq/YBq0pUPr1jMNWJaNS7
-haLRh0fgQvzrj2xaJIWVumXk+2cGMyGzJSrfvZCXo/tdNWpeRMYiaLz3YXpICr/cyEs3PY/vvh/1
-MkNXojNtjTposYXrrS7R0Hl4CR1qZZ6JkZwU7q073Ta8+t9XuomJRKbq6lWPWNBYffW0Ux9exIaZ
-8TMAaXIuunOvou5wU6pGiMqjzunqmxZxtf6sHa7PHiahY+PhYIGHxLBBdbzuK3wdch8sYaTy4G1V
-M6gFOYO6JSww59KIQvz2+/eaBfAHglSzv/W4vRZyMKezWEoi84ajrkZaSznvuto0lT8PE+gwQ9Zt
-jEKkC6px58scV3/AYxKVe6/dmqlXVB6Xsr3JQjIm4YtQ9DHnleTwmMNpmv2l717kfZvUECM6375K
-h/O04grI1J221OT4Yqch4cQZtoUA4MgtZuM59VHr1lU1YtHzkc90VsONNa19v9A+fngPPnjNlV/y
-EgJe8/LjKy/abrmsqRfwfOROpTyp0SL8og+4y8R5wIX4l+b3zKtEAKmbD3fL+ZXN32ZKDowotpG+
-dRRq3RlyrMpZkXMJ/rqhhBCZy2S2dzjo3X0/0SDSeZ/DLTgQy2h68cVIyLCK39gFXhSndKXXg311
-GE/deFy6gsxNpbmdpT62uKxqK0+p7BcXA0I5xEq8JMeuza61r+a736yqNnU9G5e+8mNfmWZLUzz8
-kKqTh/kZEULP73hjDBic+ckMA3Vds4TJn7sq95QwpY98vp2Du+58yLuQToP1gMNZ/JFlS1GOtfVN
-qeqOF7PWoSqJRF75LZ3eR7fSuTfWhg9JyWcuiGMKYV6F3wNAhF11+WrrVMH44GuIyk20lFVDa7rJ
-WVYiYxG0EIN0zECjFLvY+KvlR0GfbkC1QFSuZ/Qtbupvjeu2xCBgMBbLU7EoxQp2ZjzMKwy56jCp
-Hx0pdhV7+YqOnFk2jyrrwyNwIf7rb/w6NkrR2Nfl5F6hdQiJr2txFBKdq7vd2boFjdrGygvXbB9u
-GlGIiV+0AQCTrGa1HS+bNOUYgnyqFyKZF16VvmdJFcO8+oUaLF88wAvxM6+/IMeVTFDTGV4r68Ud
-M04AyLz1sZhJogILG0HqvlhAv1tiSQ5zXNR6vHpHm6nqVFQGKj/jvS91d+Myoe71IUdKJDI+DQl5
-Cyv4HnnqDqvL8DbctplWd1jQRLMbDD8eiAoh6R8vwXgJH9sB/P6CALihqULR6y0vbE2ju+AKcR6e
-j7ywXXzl6RJq2mW9oLR9eA++EH9nPQgAEB+OxQz80dEY6sFTzgjyz0eewnh7+w572ergqI+bDDbj
-P6NCxfAHlsskSKrIzlDKvZ5WTelIRiIPuLU+fXNQZuiXC7HpixnR76VNUpjPLOv5/c5pU10PawWZ
-T/GUIfukksj6JZQngjGBD+bDypMkx3ncPA+7w+a22yC/TnSmb9dt7Sh6Cr1oW1P76ouZBsQKIleY
-ANjHdTVLw4/jNPsBaSjIvPY6zORWWs9DWrRxv3iAF+KPv2XlF+RPylS2jld7ZrHBr8NQicwPR1+a
-HTnaMSLWf1gA/+KxDomR1odCQL4S+2VXvZ/SJcPzkfvUWVNWHrzNGBudIuM98HejjOQwzdvMg+P2
-4urRjB3ml+h8B01FrYK7d4OeKOImVsIW4s/s5itKSVe7m8at5au55CaTekuBYvc1msxyct2oavTF
-wSJk0PLv/KZGJ4NsZMfbLcGDj8iTiGI3NO6q0msBb+VqRc4kdCEqLfkNTRSnV2qykS0PRb68ZXom
-ADJ317LU1OoRah7VFByWyLnAF+KffmQ3eZCTwkvVh3u9iais3zWMHyR7/2RG19J1kBkHX4+CMYEv
-BE+PkhyLOeqO+y1jb/W8EyCS9WzbVGWu3p5qERkP4PeTBJIicXFj84pCpq/MoFIbEHQ+t8YsDk9e
-LzWFoy1yZsIX4m+eP+8iAGk8TK94WK/NPLl0sBOdX3SZ9lCUlJlz1FdJoeDDTPhftHIBwLVQbd7v
-IORlUo8MZF6gqC2Erg49492PFjexHy4GhBKa5ZtJjq7calrzenY1tybdxRKVd3VWXZmZFtQ3jWlp
-Pb+YBC9Eyxs7EKcqRYXy3b48ZVsGVqqiQedbWFlDNYuwowxFyoE9fLhpQEjO2EmHHB5lMl2pkX9l
-90UhUJt0aZNo3u9f9QXXMspK9Z0UjJ2GhCR7f7X9IyD1J9bJ0BHK70gnXZu9Srek+GDVrbl2nI7G
-NwPeKDy8Bx+fKfAnWICgl7Wp8X69m1al7E5MFSR7FXvLW20bmWwzmzk9i/1wMaIQP6qLv4wFIt1x
-vB6PupDyTOixgmQNCnPjluOUx+obvLhMTKALYTt+IqMY3k3byb1KpFKnh6qRyLN6P6iJskF/lXJP
-af3DjOBCsGYWZHDbdg2e+/XgslxduuQgKl/GylDnQJynu1eDS4eHSeD4hpQ1C0iK+Frr8f30qdKn
-9c/bJ/rIvYxc013wVCtk84n1gAvxDx5gozwpC/Xu68HjrM5B3fBpzwe/ZhtUQ2bZuhIvV794z4BC
-/OY8XzdtEYI3UIex27td1x1qdKHCI73PB7sOs4veqFvdzaZFOv/FfEbEF4n8YowQsMzgcV6WqatQ
-VqRKN33kS6tKylXFPStrKjwTepgP/n3sSZ4KwVBj8MrsmPwhlxH+7fnI3+fJodUHrsKDJ7OqpQwj
-Yz+D3v3JB4KDv8uBK+7d0ZoNJyPRec7rmgs52mWCSz5pcR9mgv/i5SXJ4clrq63qeVrf72bqXHqh
-9HzkpySkg5Ro+H1WNc5IYj3osJn/wU5JlKf3wbLyG+9w1bu71vTekkh2YaV6OvzloupKnWj5JibQ
-hfjTH/ltVZAmZe71y4Kp9umqA2QeLcpQC1i1Uf9gOPxGqnIuhoQ4zAz1g0Bys5jddNxzx1d+Z3qx
-R2Q+v5DyUpfEXYukjP7hABoqwJo3gKIYPmDvddu9fhKyq3ZIl9+ByqfXhsSJigdVmZP6WQ+LoKGe
-5pUYSeFFN7WFdJ5nhzIkq+jWEZWXKZPE6xsR4pzBs6QPj8CF6BV7EgIxKQsO/eZhSIbAbzWuwROd
-a9sUSugtPh9FhE+8BC5Et7ODHsUoMO8Q8zr36hWEP9GmpidI1idYRlfSOspbt5dvRsHYGBEKvx95
-j4DkWM3RTK+bPh/8/5pudALFnv1ejW5pgotsay8Yj9CFcErxx78khyezu+S63HaoFrYYKXbDP+iF
-ItJ0KOtmq0TOJXjwJZ7f7kdpeltpXimhK03//NQlvyTVt6/8Qr3Iqw7De7LGL26Eh3T+L6x0hhSX
-DZUs1cKnVbUqnEPURkTmEWj0x4En+Jeix9ofDrDvNgvEyFRGXbuVu+TG3TCPSORHbDQ33sGf/rZ+
-plubhxmxr2tuEsFrtCE93Y/Xr7u0dWubft9FNPsJg9UT2cV4xKtyu4qcmwaEgu/797/yXzJERPrR
-y+7G1tQ8jehvt+j2hPMHzTOkg27/Rd/pU4mcldCFKHv1SpECAOYYcjNesO8OJhIJpocKNtFo26Ys
-jBgRFg7XT/z/V+nd3+oO2b/eOg0ejyEiweJ1jV9lyP123aJakTEjthD/38y188htA+E6+RXCFsYa
-uWJvExtuLkAal4kBFymEK7h661anfUi7kgD/98zM91FLKX/A3ZAa8TEcDofz4De3PKZTZmR0TdaN
-w1KnrMpmTKEqAwyvdy3SMe5vfX2tkC3AOuBuN1/7hdVNv/KmlbfXSzssed0dqg7OLoMWFqKbhS9v
-qulQXY6boMpQhXSXpXVIPlIq5eOhX4WoVedxOjJAzeCwq0LasK5y996bMdFXEXmt0dlnnFz3w9is
-vFzdkCXnikeXwaFoEg0RkaeJCJxNUENcPVEWckk/4+I4DsvjpExdd3GHEn3NpVA+yeGfOswtM2/v
-XDOji8j4uvD3AgUyw91rt3RtqWrWMRLBwDAPLx+PSH/q+muL6+JcB+yV4MBXuJZLd1hlJQynsWRs
-LeEw5KjMbJk35dTeEcTrq4i83fyzdDnZd2zf93u7MoIV725iohzAcBNfkeuan3p4sFkBxO0maRb3
-Nv0Kb1Pq0qlNVlGEbQ7xrkDQSZ0L0ZCB0HZ9UYymRD1qFV0Ok8Va8St48bKyao9DNtUVAywAhzeL
-rn2rLMBx0xRj8l6VlknyqOYvwh9/L+QHMSBBbq3ojM0qOu2cVx1j0xRcHJh1n18RgtAP9BTMlUCX
-a0XaLE9M/Q4jhlzisum2ili5tkz4Nii8KY6FKJZI53XF5M52lZlrDV1drYtron2FtU00jmJM82yn
-xqTsHv8lPd4yucqK1te9xrvXLaKMt88fo98iTeIBxKA9FNTbAIjGLVYjthsFeltQMFUHII2nKFhA
-KvFhAmfBhBD/tWQsgT9i+NO1T6qhz5+VW20qsb/74ge4mADTEcOuoS9IQWYJbz67g7bOmSIQkgUc
-/mxYM1H5h+ZyALQgIE8kCz5CwQJLOE0YqlBAWDp/gKedtESmAWYqevR2nmns3a1AnE8ekt0SZzhf
-JH6Qcsig0/lGLy8v0e/76MOHKGgVZzIbhYdFkWP4IjlcpsmwhLxpa/LP6A+wqCxKdbrLjVOZKs5u
-7vgUBQyFtFP87wPBSMW0IlH8NYYDF1UEZLDGG1neTDTYo7bPrFk2oLHbXBxzSAFGPhipg0st6U2/
-vCecaMUCshu5cIjMONT9FxW4P+su4GDd+ZKV4033vPfj8idL5/CshucCSCF/o/J8bhE0ZFYLjyUn
-8JWGR2fNTbQuEYy65byBGbh0Jnnmqzg9NQp58ved3wQ5tqifwSnJ6uqTsgyYxTPNU/Tv9+QixHpU
-eG7av8ZIgUWT5jsgY0HxIw0ufmUYHKH8ym6rITs6CD/Ptdt5fn5sad03R42Y+wwz5kQy8YkCz71q
-5yOsEeKkgkWyELb7JOA5t4GEQVAP8WgL5VxwBHFlNCSUVG27cd6sR7/j4f1iwcIWHjQu3KlxXSIK
-36f/TdnvKY9bl+qVyfYrxMeuUMSgwZgPAZDQll4K0UrDFcdv+cMCPwVUfYqsW1uL2NQk0kjf0bBG
-5hnU7u1kNxgOL2bSNQlh4TykqLocyZaiWJLLYfMhBoInrYO9VWh6oxcNbB/atieuPoBBOQ+vMAqa
-2cCNafZIygEEYM8TwPzgU2OD9j4DJHL0vCIoE4IpIWCGXxCjuteaM1SulsjLAo/WX8ayPbV6XYdW
-SLaC44LCoGm5QPPLBySdEXwefK/v4JB6g/+ZwTicxs6ewhB1M5jK7BIi7ZiYTyJoviBPpWi/29kp
-wv6QVMvFRXS5kSBsfE63ItXtaQ1OxrLmOEp9d4DVCC1l95ZLq60qwdivfy3Gi+2u5a9e4eW/ln0I
-mKYODM+oFrTH8HSKPup4XFm7gswL+4tf1dg8k2ybMZvYUFxP7pofv/74D1BLAQIeAxQAAgAIAMFj
-cEppu2I+yxgAAJ5IAAAIABgAAAAAAAEAAACkgQAAAAAyODE3NC5qc1VUBQAD6TDKWHV4CwABBAAA
-AAAEAAAAAFBLBQYAAAAAAQABAE4AAAANGQAAAABQSwECHgMKAAIAAADBY3BKEjt4M3EZAABxGQAA
-DQAYAAAAAAAAAAAApIEAAAAAMjgxNzRfWklQLnppcFVUBQAD6TDKWHV4CwABBAAAAAAEAAAAAFBL
-BQYAAAAAAQABAFMAAAC4GQAAAAA=
+Hello,
+
+On Thu 16-03-17 11:37:29, piaojun wrote:
+> I found a problem that 'ls /mnt/ocfs2/' failed, error log as below:
+> 
+> # ls: /mnt/ocfs2: Input/output error
+> 
+> kernel log as below:
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398778] (ls,19875,0):ocfs2_read_blocks:388 ERROR: E9854523FF8343F9AF043F1A5505B1E1: iblock(17), bh->state(0x44828)
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398787] (ls,19875,0):ocfs2_assign_bh:776 ERROR: status = -5
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398795] (ls,19875,0):ocfs2_dlm_inode_lock_full_nested:1937 ERROR: status = -5
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398799] (ls,19875,0):ocfs2_xattr_get:1334 ERROR: status = -5
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.402691] (ls,19875,0):ocfs2_read_blocks:388 ERROR: E9854523FF8343F9AF043F1A5505B1E1: iblock(17), bh->state(0x44828)
+> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.402704] (ls,19875,0):ocfs2_dir_foreach_blk_id:1789 ERROR: E9854523FF8343F9AF043F1A5505B1E1: Unable to read inode block for dir 17
+> 
+> Test Environment:
+> OS: suse11 sp3
+> kernel: 3.0.93-0.8.2
+> filesystem: ocfs2
+
+So this is very old kernel (from upstream point of view) so people
+generally don't care. Furthermore it is heavily patched kernel of an
+enterprise distribution which is another reason why upstream people don't
+care. So handle such issues through standard channels for reporting
+problems with SLES please - SUSE Customer Care -> bugzilla.suse.com ...
+
+> test step:
+> 1. mount device to /mnt/ocfs2/
+> 2. cut down the storage link of device
+> 3. mkdir /mnt/ocfs2/123
+> 4. recover the storage link of device
+> 5. ls /mnt/ocfs2/123, then failed
+> 
+> The 'bh' is submitted to jbd2 after 'mkdir', and then the write-back
+> thread of device submit the 'bh' to disk and failed due to bad storage
+> link. At last 'bh' state is marked as BH_Write_EIO. the jbd2 won't
+> release 'bh' in this case. so when ocfs2_read_blocks() is called, found
+> 'bh' still in jbd2 but marked as BH_Write_EIO and return fail.
+> 
+> I wonder if jbd2 should handle this problem or ocfs2 filesystem should
+> do it?
+
+Once the IO error propagates to the filesystem, you have bad luck and
+generally it is not expected you will be able to recover from that
+situation. You can deal with link flaps by properly configuring multipath
+or whatever but let's deal with that in bugzilla...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
