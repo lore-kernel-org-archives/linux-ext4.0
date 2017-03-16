@@ -1,70 +1,374 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: question about jbd2 abnormal handle
-Date: Thu, 16 Mar 2017 09:48:25 +0100
-Message-ID: <20170316084825.GO12989@quack2.suse.cz>
-References: <58CA0879.4050405@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.com
-To: piaojun <piaojun@huawei.com>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH] Add largedir feature
+Date: Thu, 16 Mar 2017 05:51:17 -0400
+Message-ID: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
+Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56392 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751204AbdCPIse (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 16 Mar 2017 04:48:34 -0400
-Content-Disposition: inline
-In-Reply-To: <58CA0879.4050405@huawei.com>
+Received: from mail-lf0-f65.google.com ([209.85.215.65]:33971 "EHLO
+        mail-lf0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751130AbdCPJvr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2017 05:51:47 -0400
+Received: by mail-lf0-f65.google.com with SMTP id y193so2984570lfd.1
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2017 02:51:46 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-On Thu 16-03-17 11:37:29, piaojun wrote:
-> I found a problem that 'ls /mnt/ocfs2/' failed, error log as below:
-> 
-> # ls: /mnt/ocfs2: Input/output error
-> 
-> kernel log as below:
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398778] (ls,19875,0):ocfs2_read_blocks:388 ERROR: E9854523FF8343F9AF043F1A5505B1E1: iblock(17), bh->state(0x44828)
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398787] (ls,19875,0):ocfs2_assign_bh:776 ERROR: status = -5
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398795] (ls,19875,0):ocfs2_dlm_inode_lock_full_nested:1937 ERROR: status = -5
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.398799] (ls,19875,0):ocfs2_xattr_get:1334 ERROR: status = -5
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.402691] (ls,19875,0):ocfs2_read_blocks:388 ERROR: E9854523FF8343F9AF043F1A5505B1E1: iblock(17), bh->state(0x44828)
-> Mar 16 10:27:45 linux-yxqzUv kernel: [169213.402704] (ls,19875,0):ocfs2_dir_foreach_blk_id:1789 ERROR: E9854523FF8343F9AF043F1A5505B1E1: Unable to read inode block for dir 17
-> 
-> Test Environment:
-> OS: suse11 sp3
-> kernel: 3.0.93-0.8.2
-> filesystem: ocfs2
+This INCOMPAT_LARGEDIR feature allows larger directories to be created
+in ldiskfs, both with directory sizes over 2GB and and a maximum htree
+depth of 3 instead of the current limit of 2. These features are needed
+in order to exceed the current limit of approximately 10M entries in a
+single directory.
 
-So this is very old kernel (from upstream point of view) so people
-generally don't care. Furthermore it is heavily patched kernel of an
-enterprise distribution which is another reason why upstream people don't
-care. So handle such issues through standard channels for reporting
-problems with SLES please - SUSE Customer Care -> bugzilla.suse.com ...
+Signed-off-by: Yang Sheng <yang.sheng@intel.com>
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+---
+ fs/ext4/ext4.h  |  23 ++++++++---
+ fs/ext4/inode.c |   4 +-
+ fs/ext4/namei.c | 118 +++++++++++++++++++++++++++++++++++++++-----------------
+ 3 files changed, 102 insertions(+), 43 deletions(-)
 
-> test step:
-> 1. mount device to /mnt/ocfs2/
-> 2. cut down the storage link of device
-> 3. mkdir /mnt/ocfs2/123
-> 4. recover the storage link of device
-> 5. ls /mnt/ocfs2/123, then failed
-> 
-> The 'bh' is submitted to jbd2 after 'mkdir', and then the write-back
-> thread of device submit the 'bh' to disk and failed due to bad storage
-> link. At last 'bh' state is marked as BH_Write_EIO. the jbd2 won't
-> release 'bh' in this case. so when ocfs2_read_blocks() is called, found
-> 'bh' still in jbd2 but marked as BH_Write_EIO and return fail.
-> 
-> I wonder if jbd2 should handle this problem or ocfs2 filesystem should
-> do it?
-
-Once the IO error propagates to the filesystem, you have bad luck and
-generally it is not expected you will be able to recover from that
-situation. You can deal with link flaps by properly configuring multipath
-or whatever but let's deal with that in bugzilla...
-
-								Honza
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 01d52b9..0bbbd9b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1799,7 +1799,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+ 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
+-					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
++					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
++					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+@@ -2125,6 +2126,16 @@ struct dir_private_info {
+  */
+ #define ERR_BAD_DX_DIR	(-(MAX_ERRNO - 1))
+ 
++/* htree levels for ext4 */
++#define	EXT4_HTREE_LEVEL_COMPAT	2
++#define	EXT4_HTREE_LEVEL	3
++
++static inline int ext4_dir_htree_level(struct super_block *sb)
++{
++	return ext4_has_feature_largedir(sb) ?
++		EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
++}
++
+ /*
+  * Timeout and state flag for lazy initialization inode thread.
+  */
+@@ -2758,13 +2769,15 @@ static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
+ 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
+ }
+ 
+-static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
++static inline loff_t ext4_isize(struct super_block *sb,
++				struct ext4_inode *raw_inode)
+ {
+-	if (S_ISREG(le16_to_cpu(raw_inode->i_mode)))
++	if (ext4_has_feature_largedir(sb) ||
++	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
+ 		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
+ 			le32_to_cpu(raw_inode->i_size_lo);
+-	else
+-		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
++
++	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+ }
+ 
+ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f622d4a..5787f3d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4682,7 +4682,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	if (ext4_has_feature_64bit(sb))
+ 		ei->i_file_acl |=
+ 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+-	inode->i_size = ext4_isize(raw_inode);
++	inode->i_size = ext4_isize(sb, raw_inode);
+ 	if ((size = i_size_read(inode)) < 0) {
+ 		EXT4_ERROR_INODE(inode, "bad i_size value: %lld", size);
+ 		ret = -EFSCORRUPTED;
+@@ -5008,7 +5008,7 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		raw_inode->i_file_acl_high =
+ 			cpu_to_le16(ei->i_file_acl >> 32);
+ 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
+-	if (ei->i_disksize != ext4_isize(raw_inode)) {
++	if (ei->i_disksize != ext4_isize(inode->i_sb, raw_inode)) {
+ 		ext4_isize_set(raw_inode, ei->i_disksize);
+ 		need_datasync = 1;
+ 	}
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6ad612c..3298fe3 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -513,7 +513,7 @@ static inline int ext4_handle_dirty_dx_node(handle_t *handle,
+ 
+ static inline ext4_lblk_t dx_get_block(struct dx_entry *entry)
+ {
+-	return le32_to_cpu(entry->block) & 0x00ffffff;
++	return le32_to_cpu(entry->block) & 0x0fffffff;
+ }
+ 
+ static inline void dx_set_block(struct dx_entry *entry, ext4_lblk_t value)
+@@ -739,6 +739,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
+ 	struct dx_frame *ret_err = ERR_PTR(ERR_BAD_DX_DIR);
+ 	u32 hash;
+ 
++	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
+ 	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
+ 	if (IS_ERR(frame->bh))
+ 		return (struct dx_frame *) frame->bh;
+@@ -768,9 +769,15 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
+ 	}
+ 
+ 	indirect = root->info.indirect_levels;
+-	if (indirect > 1) {
+-		ext4_warning_inode(dir, "Unimplemented hash depth: %#06x",
+-				   root->info.indirect_levels);
++	if (indirect >= ext4_dir_htree_level(dir->i_sb)) {
++		ext4_warning(dir->i_sb,
++			     "Directory (ino: %lu) htree depth %#06x exceed"
++			     "supported value", dir->i_ino,
++			     ext4_dir_htree_level(dir->i_sb));
++		if (ext4_dir_htree_level(dir->i_sb) < EXT4_HTREE_LEVEL) {
++			ext4_warning(dir->i_sb, "Enable large directory "
++						"feature to access it");
++		}
+ 		goto fail;
+ 	}
+ 
+@@ -859,12 +866,19 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
+ 
+ static void dx_release(struct dx_frame *frames)
+ {
++	struct dx_root_info *info;
++	int i;
++
+ 	if (frames[0].bh == NULL)
+ 		return;
+ 
+-	if (((struct dx_root *)frames[0].bh->b_data)->info.indirect_levels)
+-		brelse(frames[1].bh);
+-	brelse(frames[0].bh);
++	info = &((struct dx_root *)frames[0].bh->b_data)->info;
++	for (i = 0; i <= info->indirect_levels; i++) {
++		if (frames[i].bh == NULL)
++			break;
++		brelse(frames[i].bh);
++		frames[i].bh = NULL;
++	}
+ }
+ 
+ /*
+@@ -1050,7 +1064,7 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ {
+ 	struct dx_hash_info hinfo;
+ 	struct ext4_dir_entry_2 *de;
+-	struct dx_frame frames[2], *frame;
++	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+ 	struct inode *dir;
+ 	ext4_lblk_t block;
+ 	int count = 0;
+@@ -1517,7 +1531,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 			struct ext4_dir_entry_2 **res_dir)
+ {
+ 	struct super_block * sb = dir->i_sb;
+-	struct dx_frame frames[2], *frame;
++	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+ 	const struct qstr *d_name = fname->usr_fname;
+ 	struct buffer_head *bh;
+ 	ext4_lblk_t block;
+@@ -1947,7 +1961,7 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
+ 	 */
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+ 	ext4_update_dx_flag(dir);
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+ 	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
+@@ -1966,7 +1980,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ {
+ 	struct buffer_head *bh2;
+ 	struct dx_root	*root;
+-	struct dx_frame	frames[2], *frame;
++	struct dx_frame	frames[EXT4_HTREE_LEVEL], *frame;
+ 	struct dx_entry *entries;
+ 	struct ext4_dir_entry_2	*de, *de2;
+ 	struct ext4_dir_entry_tail *t;
+@@ -2185,13 +2199,16 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			     struct inode *dir, struct inode *inode)
+ {
+-	struct dx_frame frames[2], *frame;
++	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+ 	struct dx_entry *entries, *at;
+ 	struct buffer_head *bh;
+ 	struct super_block *sb = dir->i_sb;
+ 	struct ext4_dir_entry_2 *de;
++	int restart;
+ 	int err;
+ 
++again:
++	restart = 0;
+ 	frame = dx_probe(fname, dir, NULL, frames);
+ 	if (IS_ERR(frame))
+ 		return PTR_ERR(frame);
+@@ -2213,24 +2230,44 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 	if (err != -ENOSPC)
+ 		goto cleanup;
+ 
++	err = 0;
+ 	/* Block full, should compress but for now just split */
+ 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
+ 		       dx_get_count(entries), dx_get_limit(entries)));
+ 	/* Need to split index? */
+ 	if (dx_get_count(entries) == dx_get_limit(entries)) {
+ 		ext4_lblk_t newblock;
+-		unsigned icount = dx_get_count(entries);
+-		int levels = frame - frames;
++		int levels = frame - frames + 1;
++		unsigned int icount;
++		int add_level = 1;
+ 		struct dx_entry *entries2;
+ 		struct dx_node *node2;
+ 		struct buffer_head *bh2;
+ 
+-		if (levels && (dx_get_count(frames->entries) ==
+-			       dx_get_limit(frames->entries))) {
+-			ext4_warning_inode(dir, "Directory index full!");
++		while (frame > frames) {
++			if (dx_get_count((frame - 1)->entries) <
++			    dx_get_limit((frame - 1)->entries)) {
++				add_level = 0;
++				break;
++			}
++			frame--; /* split higher index block */
++			at = frame->at;
++			entries = frame->entries;
++			restart = 1;
++		}
++		if (add_level && levels == ext4_dir_htree_level(sb)) {
++			ext4_warning(sb, "Directory (ino: %lu) index full, "
++					 "reach max htree level :%d",
++					 dir->i_ino, levels);
++			if (ext4_dir_htree_level(sb) < EXT4_HTREE_LEVEL) {
++				ext4_warning(sb, "Large directory feature is "
++						 "not enabled on this "
++						 "filesystem");
++			}
+ 			err = -ENOSPC;
+ 			goto cleanup;
+ 		}
++		icount = dx_get_count(entries);
+ 		bh2 = ext4_append(handle, dir, &newblock);
+ 		if (IS_ERR(bh2)) {
+ 			err = PTR_ERR(bh2);
+@@ -2245,7 +2282,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 		err = ext4_journal_get_write_access(handle, frame->bh);
+ 		if (err)
+ 			goto journal_error;
+-		if (levels) {
++		if (!add_level) {
+ 			unsigned icount1 = icount/2, icount2 = icount - icount1;
+ 			unsigned hash2 = dx_get_hash(entries + icount1);
+ 			dxtrace(printk(KERN_DEBUG "Split index %i/%i\n",
+@@ -2253,7 +2290,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 
+ 			BUFFER_TRACE(frame->bh, "get_write_access"); /* index root */
+ 			err = ext4_journal_get_write_access(handle,
+-							     frames[0].bh);
++							     (frame - 1)->bh);
+ 			if (err)
+ 				goto journal_error;
+ 
+@@ -2269,17 +2306,23 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 				frame->entries = entries = entries2;
+ 				swap(frame->bh, bh2);
+ 			}
+-			dx_insert_block(frames + 0, hash2, newblock);
+-			dxtrace(dx_show_index("node", frames[1].entries));
++			dx_insert_block((frame - 1), hash2, newblock);
++			dxtrace(dx_show_index("node", frame->entries));
+ 			dxtrace(dx_show_index("node",
+ 			       ((struct dx_node *) bh2->b_data)->entries));
+ 			err = ext4_handle_dirty_dx_node(handle, dir, bh2);
+ 			if (err)
+ 				goto journal_error;
+ 			brelse (bh2);
++			ext4_handle_dirty_metadata(handle, dir,
++						   (frame - 1)->bh);
++			if (restart) {
++				ext4_handle_dirty_metadata(handle, dir,
++							   frame->bh);
++				goto cleanup;
++			}
+ 		} else {
+-			dxtrace(printk(KERN_DEBUG
+-				       "Creating second level index...\n"));
++			struct dx_root *dxroot;
+ 			memcpy((char *) entries2, (char *) entries,
+ 			       icount * sizeof(struct dx_entry));
+ 			dx_set_limit(entries2, dx_node_limit(dir));
+@@ -2287,19 +2330,17 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			/* Set up root */
+ 			dx_set_count(entries, 1);
+ 			dx_set_block(entries + 0, newblock);
+-			((struct dx_root *) frames[0].bh->b_data)->info.indirect_levels = 1;
+-
+-			/* Add new access path frame */
+-			frame = frames + 1;
+-			frame->at = at = at - entries + entries2;
+-			frame->entries = entries = entries2;
+-			frame->bh = bh2;
+-			err = ext4_journal_get_write_access(handle,
+-							     frame->bh);
+-			if (err)
+-				goto journal_error;
++			dxroot = (struct dx_root *)frames[0].bh->b_data;
++			dxroot->info.indirect_levels += 1;
++			dxtrace(printk(KERN_DEBUG
++				       "Creating %d level index...\n",
++				       info->indirect_levels));
++			ext4_handle_dirty_metadata(handle, dir, frame->bh);
++			ext4_handle_dirty_metadata(handle, dir, bh2);
++			brelse(bh2);
++			restart = 1;
++			goto cleanup;
+ 		}
+-		err = ext4_handle_dirty_dx_node(handle, dir, frames[0].bh);
+ 		if (err) {
+ 			ext4_std_error(inode->i_sb, err);
+ 			goto cleanup;
+@@ -2318,6 +2359,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ cleanup:
+ 	brelse(bh);
+ 	dx_release(frames);
++	/* @restart is true means htree-path has been changed, we need to
++	 * repeat dx_probe() to find out valid htree-path
++	 */
++	if (restart && err == 0)
++		goto again;
+ 	return err;
+ }
+ 
+@@ -2354,7 +2400,7 @@ int ext4_generic_delete_entry(handle_t *handle,
+ 					blocksize);
+ 			else
+ 				de->inode = 0;
+-			dir->i_version++;
++			inode_inc_iversion(dir);
+ 			return 0;
+ 		}
+ 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+1.8.3.1
