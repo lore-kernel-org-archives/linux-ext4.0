@@ -1,128 +1,147 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: repeatable inline-data oops (and fs corruption) caused by
- msync() of shared writable mmap (with recipe)
-Date: Thu, 16 Mar 2017 16:31:00 +0100
-Message-ID: <20170316153100.GA8224@quack2.suse.cz>
-References: <87y3wqc5we.fsf@esperi.org.uk>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] e2fsck: recreate extent mapped lost+found
+Date: Thu, 16 Mar 2017 11:39:48 -0400
+Message-ID: <20170316153948.GA20690@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Linux FS Mailing List <linux-fsdevel@vger.kernel.org>
-To: Nix <nix@esperi.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:36181 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752305AbdCPPjA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Mar 2017 11:39:00 -0400
+Received: by mail-qk0-f194.google.com with SMTP id n141so6446107qke.3
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Mar 2017 08:38:59 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <87y3wqc5we.fsf@esperi.org.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 28-02-17 22:22:25, Nix wrote:
-> I first spotted this -- or it spotted me -- back in the v4.7.x days. It
-> is still present in v4.10.
-> 
-> Here's a replication recipe, given a reasonable rootfs with a compiler
-> on it, and assuming a blank virtio disk on /dev/vdb:
+When e2fsck recreates a missing lost+found directory, it uses indirect
+block mapping.  It does this even if the file system being repaired is
+extent mapped and where the original lost+found was extent mapped when
+created by mkfs.
 
-Yup, the problem is that we mmap file with inline data without unpacking
-that and ext4_writepages() is unable to update inline data. Easy fix would
-be to unpack inline data in ext4_page_mkwrite(), somewhat more complicated
-fix would be to unpack inline data when extending file to too large size
-via truncate and handle writing into inode in ext4_writepages(). I'll have
-a look into fixing this. Thanks for report!
+This inconsistency exists because the kernel code handling indirect
+block mapping was considered more trustworthy in ext4's early days;
+today, the extent handling code is robust.
 
-								Honza
+This inconsistency also causes potential behavioral problems on
+bigalloc file systems.  The ext4 kernel code does not support indirect
+block mapped directories when bigalloc is enabled.  For example, it is
+not possible to extend lost+found on a mounted bigalloc file system
+with the current implementation, so the behavior of that directory
+differs from all others, potentially surprising users.
 
-> 
-> bash-4.4# mke2fs -t ext4 -O inline_data /dev/vdb
-> # using stock /etc/mke2fs.conf from e2fsprogs master
-> 
-> bash-4.4# mount /dev/vdb /mnt/boom
-> bash-4.4# cat > boom.c
-> # derived from dovecot's configure script
-> 
-> #include <string.h>
-> #include <stdio.h>
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <unistd.h>
-> #include <fcntl.h>
-> #include <sys/mman.h>
-> int main() {
->   /* return 0 if we're signed */
->   int f = open("conftest.mmap", O_RDWR|O_CREAT|O_TRUNC, 0600);
->   void *mem;
->   if (f == -1) {
->     perror("open()");
->     return 1;
->   }
->   unlink("conftest.mmap");
-> 
->   write(f, "1", 2);
->   mem = mmap(NULL, 2, PROT_READ|PROT_WRITE, MAP_SHARED, f, 0);
->   if (mem == MAP_FAILED) {
->     perror("mmap()");
->     return 1;
->   }
->   strcpy(mem, "2");
->   msync(mem, 2, MS_SYNC);
->   lseek(f, 0, SEEK_SET);
->   write(f, "3", 2);
-> 
->   return strcmp(mem, "3") == 0 ? 0 : 1;
-> }
-> bash-4.4# gcc -O2 -o boom boom.c
-> bash-4.4# ./boom
-> [  205.652124] ------------[ cut here ]------------
-> [  205.653692] kernel BUG at fs/ext4/inode.c:2696!
-> [  205.655174] invalid opcode: 0000 [#1] SMP
-> [  205.656527] Modules linked in:
-> [  205.657675] CPU: 1 PID: 151 Comm: boom Not tainted 4.10.0-00006-g7f691c7bbef7-dirty #22
-> [  205.660319] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.10.1-0-g8891697-prebuilt.qemu-project.org 04/01/2014
-> [  205.661496] task: ffff88013a325040 task.stack: ffffc90000328000
-> [  205.661496] RIP: 0010:ext4_writepages+0xb30/0xcf0
-> [  205.661496] RSP: 0018:ffffc9000032bcb8 EFLAGS: 00010287
-> [  205.661496] RAX: 0000028410000000 RBX: ffff880139c820c0 RCX: 0000000000000800
-> [  205.661496] RDX: 0000000000a82000 RSI: 0000000000000001 RDI: ffff88013a3d4000
-> [  205.661496] RBP: ffffc9000032bde0 R08: 0000000000000800 R09: ffff880139c820c0
-> [  205.661496] R10: ffff880139c820c0 R11: 0000000000000000 R12: ffff880139cae898
-> [  205.661496] R13: ffff880139caea00 R14: ffff88013a3d7800 R15: ffffc9000032be00
-> [  205.661496] FS:  00007fc55a32e700(0000) GS:ffff88013fd00000(0000) knlGS:0000000000000000
-> [  205.661496] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [  205.661496] CR2: 00007fc55a37d000 CR3: 0000000139546000 CR4: 00000000000006e0
-> [  205.661496] Call Trace:
-> [  205.661496]  ? __block_write_begin_int+0x2f2/0x5c0
-> [  205.661496]  ? ext4_inode_attach_jinode.part.16+0xa0/0xa0
-> [  205.661496]  ? __set_page_dirty_buffers+0x25/0xc0
-> [  205.661496]  ? ext4_set_page_dirty+0x49/0xa0
-> [  205.661496]  ? set_page_dirty+0x5b/0xb0
-> [  205.661496]  ? block_page_mkwrite+0xc2/0x100
-> [  205.661496]  ? ext4_page_mkwrite+0xe0/0x4c0
-> [  205.661496]  do_writepages+0x1e/0x30
-> [  205.661496]  __filemap_fdatawrite_range+0x71/0x90
-> [  205.661496]  filemap_write_and_wait_range+0x2a/0x70
-> [  205.661496]  ext4_sync_file+0xf4/0x390
-> [  205.661496]  vfs_fsync_range+0x49/0xa0
-> [  205.661496]  ? find_vma+0x1b/0x70
-> [  205.661496]  SyS_msync+0x182/0x200
-> [  205.661496]  entry_SYSCALL_64_fastpath+0x13/0x94
-> [  205.661496] RIP: 0033:0x7fc559ea2710
-> [  205.661496] RSP: 002b:00007ffec1f76c08 EFLAGS: 00000246 ORIG_RAX: 000000000000001a
-> [  205.661496] RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 00007fc559ea2710
-> [  205.661496] RDX: 0000000000000004 RSI: 0000000000000002 RDI: 00007fc55a37d000
-> [  205.661496] RBP: 00007fc55a37d000 R08: 0000000000000003 R09: 0000000000000000
-> [  205.661496] R10: 0000000000000305 R11: 0000000000000246 R12: 00000000004006a0
-> [  205.661496] R13: 00007ffec1f76d00 R14: 0000000000000000 R15: 0000000000000000
-> [  205.661496] Code: 8b 44 24 18 48 c7 c1 38 ea 9e 81 ba a8 09 00 00 48 c7 c6 40 eb 83 81 48 8b 78 28 4c 8b 40 40 e8 37 97 01 00 44 8b 54 24 08 eb ac <0f> 0b 4c 8b 74 24 28 31 db 4c 8b 6c 24 20 4c 8b 7c 24 40 41 f6
-> [  205.661496] RIP: ext4_writepages+0xb30/0xcf0 RSP: ffffc9000032bcb8
-> [  205.730074] ---[ end trace f8ac10159c3827e3 ]---
-> 
-> ./boom is (obviously) now stuck in D state, so the filesystem is not
-> umountable (except lazily). Further writing to the filesystem in this
-> state can corrupt it so badly that fsck can't make head or tail of it,
-> though debugfs can still find hints that it was probably an ext4
-> filesystem once upon a time.
-> 
-> -- 
-> NULL && (void)
+To make the handling of lost+found more consistent, and to avoid
+behavioral problems on bigalloc file systems, recreate lost+found
+with extent mapping if the file system under repair is extent mapped.
+
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ e2fsck/pass3.c   | 29 +++++++++++++++++++++++++++--
+ e2fsck/problem.c | 10 ++++++++++
+ e2fsck/problem.h |  6 ++++++
+ 3 files changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index 44203ca..259c978 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -378,7 +378,7 @@ static int check_directory(e2fsck_t ctx, ext2_ino_t dir,
+ ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
+ {
+ 	ext2_filsys fs = ctx->fs;
+-	ext2_ino_t			ino;
++	ext2_ino_t		ino;
+ 	blk64_t			blk;
+ 	errcode_t		retval;
+ 	struct ext2_inode_large	inode;
+@@ -386,6 +386,7 @@ ext2_ino_t e2fsck_get_lost_and_found(e2fsck_t ctx, int fix)
+ 	static const char	name[] = "lost+found";
+ 	struct 	problem_context	pctx;
+ 	int			will_rehash, flags;
++	ext2_extent_handle_t	handle;
+ 
+ 	if (ctx->lost_and_found)
+ 		return ctx->lost_and_found;
+@@ -520,7 +521,10 @@ skip_new_block:
+ 	inode.i_atime = inode.i_ctime = inode.i_mtime = ctx->now;
+ 	inode.i_links_count = 2;
+ 	ext2fs_iblk_set(fs, EXT2_INODE(&inode), 1);
+-	inode.i_block[0] = blk;
++	if (ext2fs_has_feature_extents(fs->super))
++		inode.i_flags |= EXT4_EXTENTS_FL;
++	else
++		inode.i_block[0] = blk;
+ 
+ 	/*
+ 	 * Next, write out the inode.
+@@ -553,6 +557,27 @@ skip_new_block:
+ 	}
+ 
+ 	/*
++	 * If the new lost+found is extent mapped, map its first new
++	 * directory block
++	 */
++	if (ext2fs_has_feature_extents(fs->super)) {
++		retval = ext2fs_extent_open2(fs, ino, EXT2_INODE(&inode),
++					     &handle);
++		if (retval) {
++			pctx.errcode = retval;
++			fix_problem(ctx, PR_3_ERR_LPF_OPEN_EXTENT, &pctx);
++			return 0;
++		}
++		retval = ext2fs_extent_set_bmap(handle, 0, blk, 0);
++		ext2fs_extent_free(handle);
++		if (retval) {
++			pctx.errcode = retval;
++			fix_problem(ctx, PR_3_ERR_LPF_SET_BMAP, &pctx);
++			return 0;
++		}
++	}
++
++	/*
+ 	 * Finally, create the directory link
+ 	 */
+ 	pctx.errcode = ext2fs_link(fs, EXT2_ROOT_INO, name, ino, EXT2_FT_DIR);
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index c3e4f6a..736b822 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1791,6 +1791,16 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("/@l is encrypted\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
++	/* Error while creating an extent for /lost+found */
++	{ PR_3_ERR_LPF_OPEN_EXTENT,
++	  N_("ext2fs_@x_open2: %m while creating an @x for /@l\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Error while mapping a directory block for /lost+found */
++	{ PR_3_ERR_LPF_SET_BMAP,
++	  N_("ext2fs_@x_set_bmap: %m while mapping a @d @b for /@l\n"),
++	  PROMPT_NONE, 0 },
++
+ 	/* Pass 3A Directory Optimization	*/
+ 
+ 	/* Pass 3A: Optimizing directories */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index d291e26..dfdb6d0 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1078,6 +1078,12 @@ struct problem_context {
+ /* Lost+found is encrypted */
+ #define PR_3_LPF_ENCRYPTED		0x03001B
+ 
++/* Error while creating an extent for /lost+found */
++#define PR_3_ERR_LPF_OPEN_EXTENT	0x03001C
++
++/* Error while mapping a directory block for /lost+found */
++#define PR_3_ERR_LPF_SET_BMAP		0x03001D
++
+ /*
+  * Pass 3a --- rehashing diretories
+  */
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.1.4
