@@ -1,82 +1,177 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Fri, 17 Mar 2017 07:23:26 -0500
-Message-ID: <71895eba-771b-c816-88b7-b06e19a8e936@suse.de>
-References: <20170315215107.5628-1-rgoldwyn@suse.de>
- <20170315215107.5628-6-rgoldwyn@suse.de>
- <eee4683d-9f44-434f-b97f-b0b24c7b3dab@kernel.dk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 8bit
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        linux-api@vger.kernel.org, willy@infradead.org
-To: Jens Axboe <axboe@kernel.dk>,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>,
-        linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <eee4683d-9f44-434f-b97f-b0b24c7b3dab@kernel.dk>
-Sender: linux-btrfs-owner@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Add statx support
+Date: Fri, 17 Mar 2017 14:19:22 -0600
+Message-ID: <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
+References: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
+ <20170317054755.GA595@zzz>
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_E47DE187-2587-41E1-A853-E0CC4BB1AEEE";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: David Howells <dhowells@redhat.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Eric Biggers <ebiggers3@gmail.com>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170317054755.GA595@zzz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+--Apple-Mail=_E47DE187-2587-41E1-A853-E0CC4BB1AEEE
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-On 03/16/2017 09:33 AM, Jens Axboe wrote:
-> On 03/15/2017 03:51 PM, Goldwyn Rodrigues wrote:
->> diff --git a/block/blk-core.c b/block/blk-core.c
->> index 0eeb99e..2e5cba2 100644
->> --- a/block/blk-core.c
->> +++ b/block/blk-core.c
->> @@ -2014,7 +2019,7 @@ blk_qc_t generic_make_request(struct bio *bio)
->>  	do {
->>  		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
->>  
->> -		if (likely(blk_queue_enter(q, false) == 0)) {
->> +		if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT)) == 0)) {
->>  			struct bio_list hold;
->>  			struct bio_list lower, same;
->>  
->> @@ -2040,7 +2045,10 @@ blk_qc_t generic_make_request(struct bio *bio)
->>  			bio_list_merge(&bio_list_on_stack, &same);
->>  			bio_list_merge(&bio_list_on_stack, &hold);
->>  		} else {
->> -			bio_io_error(bio);
->> +			if (unlikely(bio_flagged(bio, BIO_NOWAIT)))
->> +				bio_wouldblock_error(bio);
->> +			else
->> +				bio_io_error(bio);
-> 
-> This doesn't look right. What if the queue is dying, and BIO_NOWAIT just
-> happened to be set?
+On Mar 16, 2017, at 11:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> On Thu, Mar 16, 2017 at 11:35:33AM +0000, David Howells wrote:
+>> +
+>> +	ext4_get_inode_flags(ei);
+>> +	flags =3D ei->i_flags & EXT4_FL_USER_VISIBLE;
+>> +	if (flags & EXT4_APPEND_FL)
+>> +		stat->attributes |=3D STATX_ATTR_APPEND;
+>> +	if (flags & EXT4_COMPR_FL)
+>> +		stat->attributes |=3D STATX_ATTR_COMPRESSED;
+>> +	if (flags & EXT4_ENCRYPT_FL)
+>> +		stat->attributes |=3D STATX_ATTR_ENCRYPTED;
+>> +	if (flags & EXT4_IMMUTABLE_FL)
+>> +		stat->attributes |=3D STATX_ATTR_IMMUTABLE;
+>> +	if (flags & EXT4_NODUMP_FL)
+>> +		stat->attributes |=3D STATX_ATTR_NODUMP;
+>>=20
+>> -	inode =3D d_inode(path->dentry);
+>> 	generic_fillattr(inode, stat);
+>> +	return 0;
+>> +}
+>=20
+> I think it's the wrong approach to be calling ext4_get_inode_flags() =
+here to
+> sync the generic inode flags (inode->i_flags) to the ext4-specific =
+inode flags
+> (ei->i_flags).  I know the GETFLAGS and FSGETXATTR ioctls do it too, =
+but I
+> think it's a mistake --- at least, when done so without holding the =
+inode lock.
+> The issue is that flag syncs can occur in both directions concurrently =
+and
+> cause an update to be lost.  For example, with thread 1 doing a stat() =
+and
+> thread 2 doing the SETFLAGS ioctl to set the APPEND flag:
+>=20
+> Thread 1, ext4_get_inode_flags()	Thread 2, ext4_ioctl_setflags()
+> -----------------------------------	---------------------------
+> Read inode->i_flags; S_APPEND clear
+> 					Set EXT4_APPEND_FL in =
+ei->i_flags
+> Clear EXT4_APPEND_FL in ei->i_flags
+> 					Read ei->i_flags; EXT4_APPEND_FL =
+clear
+> 					Clear S_APPEND in inode->i_flags
+>=20
+> So the flag set by SETFLAGS gets lost.  This bug probably hasn't =
+really been
+> noticable with GETFLAGS and FSGETXATTR since they're rarely used, but =
+stat() on
+> the other hand is very common, and I'm worried that with this change =
+people
+> would start seeing this race more often.
+>=20
+> Ultimately this needs to be addressed in ext4 more fully, but how =
+about for
+> ->getattr() just skipping the call to ext4_get_inode_flags() and =
+instead
+> populating the generic attributes like STATX_ATTR_APPEND and
+> STATX_ATTR_IMMUTABLE from the generic inode flags, rather than from =
+the
+> ext4-specific flags?  Actually, it could even be done in =
+generic_fillattr(), so
+> that all filesystems benefit.
 
-Yes, need a check for that.
-> 
-> And you're missing wbt_wait() as well as a blocking point. Ditto in
-> blk-mq.
+Wouldn't it make more sense to just extract the ext4 flags directly from
+ei->i_flags?  I think ext4_get_inode_flags() is only really useful when
+the VFS inode flags are changed and they need to be propagated to the =
+ext4
+inode.
 
-Agree.
+I guess the other more significant question is when/where are the VFS =
+inode
+flags changed that they need to be propagated into the ext4 disk inode?
+The main avenue for changing these attribute flags that I know about is =
+via
+EXT4_IOC_SETFLAGS (FS_IOC_SETFLAGS), and there is one place that I could
+find in fs/nsfs.c that sets S_IMMUTABLE but I don't think that =
+propagates
+down to an ext4 disk inode.
 
-> 
->> diff --git a/block/blk-mq.c b/block/blk-mq.c
->> index 159187a..942ce8c 100644
->> --- a/block/blk-mq.c
->> +++ b/block/blk-mq.c
->> @@ -1518,6 +1518,8 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
->>  	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
->>  	if (unlikely(!rq)) {
->>  		__wbt_done(q->rq_wb, wb_acct);
->> +		if (bio && bio_flagged(bio, BIO_NOWAIT))
->> +			bio_wouldblock_error(bio);
->>  		return BLK_QC_T_NONE;
->>  	}
->>  
-> 
-> This seems a little fragile now, since not both paths free the bio.
-> 
+It seems like the use of ext4_get_inode_flags() is largely superfluous.
+The original commit ff9ddf7e847 indicates this was for quota inodes =
+only.
+I think it can be removed from EXT4_IOC_FSGETXATTR, and =
+EXT4_IOC_GETFLAGS
+and made conditional in ext4_do_update_inode():
 
-bio_put() is handled in dio_bio_complete(). However, I am not sure why
-there is no bio_endio() call for !rq. IIRC, it was not meant to be.
+#ifdef CONFIG_QUOTA
+        for (i =3D 0; i < EXT4_MAXQUOTAS; i++) {
+                if (unlikely(sb_dqopt(sb)->files[i] =3D=3D inode))
+                        ext4_get_inode_flags(EXT4_I(inode));
+        }
+#endif
 
--- 
-Goldwyn
+Jan, what do you think?
+
+Cheers, Andreas
+
+>=20
+>> diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+>> index 73b184d161fc..4c6b23a0603e 100644
+>> --- a/fs/ext4/symlink.c
+>> +++ b/fs/ext4/symlink.c
+>> @@ -91,11 +91,13 @@ const struct inode_operations =
+ext4_encrypted_symlink_inode_operations =3D {
+>> const struct inode_operations ext4_symlink_inode_operations =3D {
+>> 	.get_link	=3D page_get_link,
+>> 	.setattr	=3D ext4_setattr,
+>> +	.getattr	=3D ext4_getattr,
+>> 	.listxattr	=3D ext4_listxattr,
+>> };
+>>=20
+>> const struct inode_operations ext4_fast_symlink_inode_operations =3D =
+{
+>> 	.get_link	=3D simple_get_link,
+>> 	.setattr	=3D ext4_setattr,
+>> +	.getattr	=3D ext4_getattr,
+>> 	.listxattr	=3D ext4_listxattr,
+>> };
+>>=20
+>=20
+> getattr needs to be added to ext4_encrypted_symlink_inode_operations =
+too.
+>=20
+> - Eric
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_E47DE187-2587-41E1-A853-E0CC4BB1AEEE
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFYzETMpIg59Q01vtYRAiz2AJsFzK0pPFpymM2v2RNf1b41w6YAlQCg5ue2
+dGloPv9uUmPpgZJlKkCZols=
+=WRH3
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E47DE187-2587-41E1-A853-E0CC4BB1AEEE--
