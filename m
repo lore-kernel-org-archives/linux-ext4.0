@@ -1,63 +1,94 @@
-From: Ming Lei <tom.leiming@gmail.com>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Fri, 17 Mar 2017 10:03:18 +0800
-Message-ID: <CACVXFVMTxxRM==3ton-=LmDHYKpBu2Sh59hs_gyvFCUtnQwjVQ@mail.gmail.com>
-References: <20170315215107.5628-1-rgoldwyn@suse.de> <20170315215107.5628-6-rgoldwyn@suse.de>
- <eee4683d-9f44-434f-b97f-b0b24c7b3dab@kernel.dk>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: Add statx support
+Date: Thu, 16 Mar 2017 22:47:55 -0700
+Message-ID: <20170317054755.GA595@zzz>
+References: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        Jan Kara <jack@suse.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-block <linux-block@vger.kernel.org>,
-        Btrfs BTRFS <linux-btrfs@vger.kernel.org>,
-        "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
-        "open list:XFS FILESYSTEM" <linux-xfs@vger.kernel.org>,
-        Sagi Grimberg <sagi@grimberg.me>, avi@scylladb.com,
-        linux-api@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Jens Axboe <axboe@kernel.dk>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <eee4683d-9f44-434f-b97f-b0b24c7b3dab@kernel.dk>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:35487 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750892AbdCQFsK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Mar 2017 01:48:10 -0400
+Content-Disposition: inline
+In-Reply-To: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 16, 2017 at 10:33 PM, Jens Axboe <axboe@kernel.dk> wrote:
-> On 03/15/2017 03:51 PM, Goldwyn Rodrigues wrote:
->> diff --git a/block/blk-core.c b/block/blk-core.c
->> index 0eeb99e..2e5cba2 100644
->> --- a/block/blk-core.c
->> +++ b/block/blk-core.c
->> @@ -2014,7 +2019,7 @@ blk_qc_t generic_make_request(struct bio *bio)
->>       do {
->>               struct request_queue *q = bdev_get_queue(bio->bi_bdev);
->>
->> -             if (likely(blk_queue_enter(q, false) == 0)) {
->> +             if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT)) == 0)) {
->>                       struct bio_list hold;
->>                       struct bio_list lower, same;
->>
->> @@ -2040,7 +2045,10 @@ blk_qc_t generic_make_request(struct bio *bio)
->>                       bio_list_merge(&bio_list_on_stack, &same);
->>                       bio_list_merge(&bio_list_on_stack, &hold);
->>               } else {
->> -                     bio_io_error(bio);
->> +                     if (unlikely(bio_flagged(bio, BIO_NOWAIT)))
->> +                             bio_wouldblock_error(bio);
->> +                     else
->> +                             bio_io_error(bio);
->
-> This doesn't look right. What if the queue is dying, and BIO_NOWAIT just
-> happened to be set?
->
-> And you're missing wbt_wait() as well as a blocking point. Ditto in
-> blk-mq.
+Hi David,
 
-There are also tons of block points in dm/md/bcache, which need to be
-considered or be documented at least, :-)
+On Thu, Mar 16, 2017 at 11:35:33AM +0000, David Howells wrote:
+> +
+> +	ext4_get_inode_flags(ei);
+> +	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+> +	if (flags & EXT4_APPEND_FL)
+> +		stat->attributes |= STATX_ATTR_APPEND;
+> +	if (flags & EXT4_COMPR_FL)
+> +		stat->attributes |= STATX_ATTR_COMPRESSED;
+> +	if (flags & EXT4_ENCRYPT_FL)
+> +		stat->attributes |= STATX_ATTR_ENCRYPTED;
+> +	if (flags & EXT4_IMMUTABLE_FL)
+> +		stat->attributes |= STATX_ATTR_IMMUTABLE;
+> +	if (flags & EXT4_NODUMP_FL)
+> +		stat->attributes |= STATX_ATTR_NODUMP;
+>  
+> -	inode = d_inode(path->dentry);
+>  	generic_fillattr(inode, stat);
+> +	return 0;
+> +}
 
+I think it's the wrong approach to be calling ext4_get_inode_flags() here to
+sync the generic inode flags (inode->i_flags) to the ext4-specific inode flags
+(ei->i_flags).  I know the GETFLAGS and FSGETXATTR ioctls do it too, but I think
+it's a mistake --- at least, when done so without holding the inode lock.  The
+issue is that flag syncs can occur in both directions concurrently and cause an
+update to be lost.  For example, with thread 1 doing a stat() and thread 2 doing
+the SETFLAGS ioctl to set the APPEND flag:
 
+	Thread 1, in ext4_get_inode_flags()	Thread 2, in ext4_ioctl_setflags()
+	-----------------------------------    -----------------------------------
 
-Thanks,
-Ming Lei
+	Read inode->i_flags; S_APPEND is clear	
+						Set EXT4_APPEND_FL in ei->i_flags
+	Clear EXT4_APPEND_FL in ei->i_flags
+						Read ei->i_flags; EXT4_APPEND_FL is clear
+						Clear S_APPEND in inode->i_flags
+
+So the flag set by SETFLAGS gets lost.  This bug probably hasn't really been
+noticable with GETFLAGS and FSGETXATTR since they're rarely used, but stat() on
+the other hand is very common, and I'm worried that with this change people
+would start seeing this race more often.
+
+Ultimately this needs to be addressed in ext4 more fully, but how about for
+->getattr() just skipping the call to ext4_get_inode_flags() and instead
+populating the generic attributes like STATX_ATTR_APPEND and
+STATX_ATTR_IMMUTABLE from the generic inode flags, rather than from the
+ext4-specific flags?  Actually, it could even be done in generic_fillattr(), so
+that all filesystems benefit.
+
+> diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+> index 73b184d161fc..4c6b23a0603e 100644
+> --- a/fs/ext4/symlink.c
+> +++ b/fs/ext4/symlink.c
+> @@ -91,11 +91,13 @@ const struct inode_operations ext4_encrypted_symlink_inode_operations = {
+>  const struct inode_operations ext4_symlink_inode_operations = {
+>  	.get_link	= page_get_link,
+>  	.setattr	= ext4_setattr,
+> +	.getattr	= ext4_getattr,
+>  	.listxattr	= ext4_listxattr,
+>  };
+>  
+>  const struct inode_operations ext4_fast_symlink_inode_operations = {
+>  	.get_link	= simple_get_link,
+>  	.setattr	= ext4_setattr,
+> +	.getattr	= ext4_getattr,
+>  	.listxattr	= ext4_listxattr,
+>  };
+> 
+
+getattr needs to be added to ext4_encrypted_symlink_inode_operations too.
+
+- Eric
