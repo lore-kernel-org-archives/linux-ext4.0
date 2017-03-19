@@ -1,123 +1,159 @@
-From: Dmitry Monakhov <dmonlist@gmail.com>
-Subject: Re: dirty_ratio
-Date: Mon, 20 Mar 2017 02:53:33 +0300
-Message-ID: <878to0258i.fsf@dmlp.sw.ru>
-References: <CAAMvbhEbraxyJtST5-ujZvdi5T_nRByU2gXHa0dBtzwb3ovvWA@mail.gmail.com> <20170309141701.GK15874@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>,
-        James Courtier-Dutton <james.dutton@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] Add largedir feature
+Date: Sun, 19 Mar 2017 19:54:40 -0400
+Message-ID: <2F91584E-6351-4523-9821-54AD6A7CD889@dilger.ca>
+References: <20170319133425.gxeg3mba3brvztjf@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_E5C4DA09-759A-442F-8EDF-0D7F366CE7C5";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Zhen Liang <liang.zhen@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f47.google.com ([209.85.215.47]:32775 "EHLO
-        mail-lf0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751943AbdCSXxh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Mar 2017 19:53:37 -0400
-Received: by mail-lf0-f47.google.com with SMTP id a6so49544473lfa.0
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Mar 2017 16:53:36 -0700 (PDT)
-In-Reply-To: <20170309141701.GK15874@quack2.suse.cz>
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:33737 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752151AbdCSXzS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Mar 2017 19:55:18 -0400
+Received: by mail-qt0-f195.google.com with SMTP id r45so15573584qte.0
+        for <linux-ext4@vger.kernel.org>; Sun, 19 Mar 2017 16:54:48 -0700 (PDT)
+In-Reply-To: <20170319133425.gxeg3mba3brvztjf@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
 
-> Hello!
->
-> On Sat 25-02-17 11:56:58, James Courtier-Dutton wrote:
->> I have a server that has basically two tasks.
->> 1) Receiving lots of data from the network and storing it on disk.
->> 2) An App that makes relatively small use of the disk and responds to
->> requests from the network.
->> 
->> The problem I have is that sometimes (1) is filling up all the "Dirty"
->> pages, triggering a blocking flushing of the dirty buffer to the disk.
->> This essentially freezes (1) and (2) until the flushing is complete.
->> On occasions, this can take more than 60 seconds.
->> 60 seconds is far too long from (2) point of view, because it needs to
->> respond to user requests quickly, i.e less than 1 second.
->> 
->> Is there any mechanism that could result in (1) being informed about
->> the problem, (1) could then back off writing data to disk, and then at
->> the same time, asked the sending system over the network to also back
->> off.
->
-> I'll need some more data to help you. So:
->
-> 1) What kernel version do you use?
-> 2) What kind of storage is the "disk"?
-> 3) What IO scheduler do you use (you can find that in
->    /sys/block/<device>/queue/scheduler)?
-> 4) What filesystem do you use?
-> 5) What does "App" do when answering the query? Only reads or also writes?
->    How much roughly?
-I have seen similar glitches (2-8sec) on chunk server which does
-similar job as ceph-OSD.
-Source of glitches was:
-1) wait for journal-space inside aio_submit->mtime_update, was fixed
-by lazy_mtime option, but not widely used on stable distros.
-2) write_back due to balance dirty_page, Easily fixed by using O_DIRECT
-3) sendmsg->sk_page_frag_refill->alloc_pages((gfp & ~__GFP_DIRECT_RECLAIM) |
-                                          __GFP_COMP | __GFP_NOWARN |
-                                          __GFP_NORETRY,
-                                          SKB_FRAG_PAGE_ORDER);
+--Apple-Mail=_E5C4DA09-759A-442F-8EDF-0D7F366CE7C5
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-Where SKB_FRAG_PAGE_ORDER = 3 (32k), so such glitches are visiable(2-3sec) and
-annoying for high performance storage tasks. I have no clear idea how to
-avoid that.
+On Mar 19, 2017, at 9:34 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> 
+> On Sat, Mar 18, 2017 at 11:38:38PM -0600, Andreas Dilger wrote:
+>> 
+>> Actually, on a Lustre MDT there _are_ only zero-length files, since all
+>> of the data is stored in another filesystem.  Fortunately, the parent
+>> directory stores the last group successfully used for allocation
+>> (i_alloc_group) so that new inode allocation doesn't have to scan the
+>> whole filesystem each time from the parent's group.
+> 
+> So I'm going to ask a stupid question.  If Lustre is using only
+> zero-length files, and so you're storing all of the data in the
+> directory entries --- why didn't you use some kind of userspace store,
+> such as Mysql or MongoDB?  Is it because the Lustre metadata server is
+> all in kernel space, and using ext4 file system was the most
+> expeditious way of moving forward?
+
+Right - the Lustre servers are implemented in the kernel, to avoid
+user-kernel data transfers from the network, and to avoid creating a new
+disk filesystem while still allowing proper transactions.
+
+> I'd be gratified... surprised, but gratified... if the answer was that
+> ext4 used in this fashion was faster than MongoDB, but to be honest
+> that would be very surprising indeed.  Most of the cluster file
+> systems... e.g., GFS, hadoopfs, et.al, tend to use a purpose-built
+> key-value store (for example GFS uses bigtable) to store the cluster
+> metadata.
+> 
+>> The 4-billion inode limit is somewhat independent of large directories.
+>> That said, the DIRDATA feature that is used for Lustre is also designed
+>> to allow storing the high 32 bits of the inode number in the directory.
+>> This would allow compatible upgrade of a directory to storing both
+>> 32-bit and 64-bit inode numbers without the need for wholescale conversion
+>> of directories, or having space for 64-bit inode numbers even if most
+>> of the inodes are only 32-bit values.
+> 
+> Ah, I didn't realize that DIRDATA was still used by Lustre.  Is the
+> reason why you haven't retried merging (I think the last time was
+> ~2009) because it's only used by one or two machines (the MDS's) in a
+> Lustre cluster?
+
+Mostly because there hasn't been any interest for it whenever I proposed
+merging it in the past. If there is some renewed interest in merging it
+I could look into it...
+
+> I brought up the 32-bit inode limit because Alexey was using this as
+> an argument not to move ahead with merging the largedir feature.  Now
+> that I understand his concerns are also based around Lustre, and the
+> fact that we are inserting into the hash tree effectively randomly,
+> that *is* a soluble problem for Lustre, if it has control over the
+> directory names which are being stored in the MDS file.  For example,
+> if you are storing in this gargantuan MDS directory file names which
+> are composed of the 128-bit Lustre FileID, we could define a new hash
+> type which, if the filename fits the format of the Lustre FID, parses
+> the filename and uses the low the 32-bit object ID concatenated with
+> the low-32 bits of the sequence id (which is used to name the target).
+
+No, the directory tree for the Lustre MDS is just a regular directory
+tree (under "ROOT/" so we can have other files outside the visible
+namespace) with regular filenames as with local ext4.  The one difference
+is that there are also 128-bit FIDs stored in the dirents to allow readdir
+to work efficiently, but the majority of the other Lustre attributes
+are stored in xattrs on the inode.
+
+Cheers, Andreas
+
+> On Sun, Mar 19, 2017 at 12:13:00AM -0600, Andreas Dilger wrote:
+>> 
+>> We have seen large directories at the htree limit unable to add new
+>> entries because the htree/leaf blocks become fragmented from repeated
+>> create/delete cycles.  I agree that handling directory shrinking
+>> would probably solve that problem, since the htree and leaf blocks
+>> would be compacted during deletion and then the htree would be able
+>> to split the leaf blocks in the right location for the new entries.
+> 
+> Right, and the one thing that makes directory shrinking hard is what
+> to do with the now-unused block.  I've been thinking about this, and
+> it *is* possible to do this without having to change the on disk
+> format.
+> 
+> What we could do is make a copy of the last block in the directory and
+> write it on top of the now-empty (and now-unlinked) directory block.
+> We then find where to find the parent pointer for that block by
+> looking at the first hash value stored in the block if it is an index
+> block, or hash the first directory entry if it is a leaf block, and
+> then walk the directory htree to find the block which needs to be
+> patched to point at the new copy of that directory block, and then
+> truncate the directory to remove that last 4k block.
+> 
+> It's actually not that bad; it would require taking a full mutex on
+> the whole directory tree, but it could be done in workqueue since it's
+> a cleanup operation so we don't have to slowdown the unlink or rmdir
+> operation.
+> 
+> If someone would like to code this up, patches would be gratefully
+> accepted.  :-)
+> 
+> Cheers,
+> 
+> 					- Ted
 
 
->  
->> On TCP/IP networks, this is reported back as "congestion" on the
->> network, the this results in throttling of the sending application on
->> a per TCP session basis.
->> 
->> In the above case, we are essentially seeing "congestion" to a
->> particular storage disk, but the application does not get any feedback
->> about this.
->> 
->> I guess the perfect solution would be Quality-of-Service for disk
->> writes, much like we have for network traffic.
->>
->> So, is there a feature available that can help me here, or will I have
->> to look at modifying the Linux kernel in order to add support for
->> "congestion notification from disk writes" ?
->
-> You can actually use cgroups these days to isolate the heavy writer and
-> thus give decent priority to the "App".
->
->> 
->> In my view that "dirty_ratio" causing the whole system to appear to
->> freeze due to disk blocking is too blunt an instrument.
->> 
->> Also, even detecting if the 60 second freezes are a result of the
->> "dirty_ratio" being hit is difficult to do.  It would be useful if
->> there existed a counter that would count the amount of times the
->> system resorted to "blocking" writes, as opposed to the
->> non-problematic background writes.
->
-> Well, your process fetching data from network is probably permanently in
-> the "blocking" writes situation so global blocking counter would not help
-> you much. You would need it per task. But iowait time of a process should
-> tell you that information already.
->
->> In my view, whenever the "blocking" writes was initiated, the
->> application should be informed about it.
->> Another alternative could be that the dirty pages are associated with
->> the application process and file descriptor and a dirty_ratio set per
->> file descriptor. Then, when a dirty_ratio is hit on the file
->> descriptor, only the application that holds that fd is frozen.
->> Maybe have multi-level limits. I.e. Warn App at limit A, freeze app at limit B.
->
-> Dirty_limit is just a mechanism preventing the system from running
-> out-of-memory due to too many dirty pages. It is not a quality-of-service
-> mechanism. Cgroups are meant for that (or better for resource limiting
-> of individual tasks). And wrt notifying application about blocking writes -
-> IMO application has no bussiness in knowing that. It is too fragile. But
-> kernel should behave better than just letting the application wait for 1
-> minute...
+Cheers, Andreas
 
->
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+
+
+
+
+
+--Apple-Mail=_E5C4DA09-759A-442F-8EDF-0D7F366CE7C5
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFYzxpCpIg59Q01vtYRAmwsAJ9GDIfwFYu2+rESzEvChzvxsqETsQCdGW40
+mnwNB9X3+FRGLikGS2gf7aA=
+=7BZ2
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E5C4DA09-759A-442F-8EDF-0D7F366CE7C5--
