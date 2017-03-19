@@ -1,19 +1,18 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: [PATCH] Add largedir feature
-Date: Sun, 19 Mar 2017 07:19:01 +0300
-Message-ID: <F80699F8-1D07-4DA4-AAFB-FF1892F1B5A2@gmail.com>
+Date: Sat, 18 Mar 2017 23:38:38 -0600
+Message-ID: <175204AC-DBDD-4894-8944-BBD98388F547@dilger.ca>
 References: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
  <CE3A3FB1-8DE6-476A-8386-94D590B17A23@dilger.ca>
  <E3BFD2D7-CCEF-4A10-A4E6-ED634C56436F@gmail.com>
  <07B442BA-D335-4079-8691-0AB1FAD7368F@dilger.ca>
  <18FAA61C-DE3C-42C7-A8A4-BB2CDD3C5D24@gmail.com>
  <20170318162953.ubn3lvglxqq6ux2e@thunk.org>
- <EA1BCCB1-AEC7-4193-823B-6230B6860C0C@gmail.com>
- <20170319003928.shnxljfcpvmovcw4@thunk.org>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Andreas Dilger <adilger@dilger.ca>,
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_4A080790-C333-4A45-83BF-62B1AA9C29B6";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
         Artem Blagodarenko <artem.blagodarenko@gmail.com>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
         Yang Sheng <yang.sheng@intel.com>,
@@ -21,108 +20,104 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
         Artem Blagodarenko <artem.blagodarenko@seagate.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:32786 "EHLO
-        mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750725AbdCSETG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Mar 2017 00:19:06 -0400
-Received: by mail-wm0-f68.google.com with SMTP id n11so9118712wma.0
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Mar 2017 21:19:04 -0700 (PDT)
-In-Reply-To: <20170319003928.shnxljfcpvmovcw4@thunk.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35106 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751186AbdCSFjF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Mar 2017 01:39:05 -0400
+Received: by mail-it0-f65.google.com with SMTP id y18so11364446itc.2
+        for <linux-ext4@vger.kernel.org>; Sat, 18 Mar 2017 22:38:45 -0700 (PDT)
+In-Reply-To: <20170318162953.ubn3lvglxqq6ux2e@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-sorry for english..
-> 19 =D0=BC=D0=B0=D1=80=D1=82=D0=B0 2017 =D0=B3., =D0=B2 3:39, Theodore =
-Ts'o <tytso@mit.edu> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
+
+--Apple-Mail=_4A080790-C333-4A45-83BF-62B1AA9C29B6
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=utf-8
+
+On Mar 18, 2017, at 10:29 AM, Theodore Ts'o <tytso@mit.edu> wrote:
 >=20
-> On Sat, Mar 18, 2017 at 08:17:55PM +0300, Alexey Lyashkov wrote:
->>>=20
->>> That's not true.  We normally only read in one block a time.  If =
-there
->>> is a hash collision, then we may need to insert into the rbtree in a
->>> subsequent block's worth of dentries to make sure we have all of the
->>> directory entries corresponding to a particular hash value.  I think
->>> you misunderstood the code.
+> On Sat, Mar 18, 2017 at 11:16:26AM +0300, Alexey Lyashkov wrote:
+>> Andreas,
 >>=20
->> As i see it not about hash collisions, but about merging a several
->> blocks into same hash range on up level hash entry.  so if we have a
->> large hash range originally assigned to the single block, all that
->> range will read at memory at single step.  With =C2=ABaged=C2=BB =
-directory
->> when hash blocks used already - it=E2=80=99s easy to hit.
+>> it not about a feature flag. It=E2=80=99s about a situation in whole.
+>> Yes, we may increase a directory size, but it open a number a large =
+problems.
 >=20
-> If you look at ext4_htree_fill_tree(), we are only iterating over the
-> leaf blocks.  We are using a 31-bit hash, where the low-order bit is
-> one if there has been a collision.  In that case, we need to read the
-> next block to make sure all of the directory entries which have the
-> same 31-bit hash are in the rbtree.
-looks we say about same but with different words.
-based on dx code, up level hash block have a records - {hash1, block1} =
-{hash2, block1}=E2=80=A6
-so any records with hash range {hash1, hash2} will live on block1.
-right ?=20
-so question how much {hash1, hash2} distance may be, looks you name it =
-as "hash collision".
-
-
-> You seem very passionate about this.  Is this a problem you've
-> personally seen?  If so, can you give me more details about your use
-> case, and how you've been running into this issue?  Instead of just
-> arguing about it from a largely theoretical perspective?
+>> 1) readdir. It tries to read all entries in memory before send to
+>> the user. currently it may eats 20*10^6 * 256 so several gigs, so
+>> increasing it size may produce a problems for a system.
 >=20
-It problem was seen with Lustre MDT code  after large number =
-create/unlinks.
-but it seen only few times.
-Other hits isn=E2=80=99t conformed.
-
-
-
->> Yes, i expect to have some seek penalty. But may testing say it too =
-huge now.
->> directory creation rate started with 80k create/s have dropped to the =
-20k-30k create/s with hash tree extend to the level 3.
->> Same testing with hard links same create rate dropped slightly.
+> That's not true.  We normally only read in one block a time.  If there
+> is a hash collision, then we may need to insert into the rbtree in a
+> subsequent block's worth of dentries to make sure we have all of the
+> directory entries corresponding to a particular hash value.  I think
+> you misunderstood the code.
 >=20
-> So this sounds like it's all about the seek penalty of the _data_
-> blocks. =20
-no.
+>> 2) inode allocation. Current code tries to allocate an inode as near =
+as possible to the directory inode, but one GD may hold 32k entries =
+only, so increase a directory size will use up 1k GD for now and more =
+than it, after it. It increase a seek time with file allocation. It was =
+i mean when say - =C2=ABdramatically decrease a file creation rate=C2=BB.
+>=20
+> But there are also only 32k blocks in a group descriptor, and we try
+> to keep the blocks allocated close to the inode.  So if you are using
+> a huge directory, and you are using a storage device with a
+> significant seek penalty, then yes, no matter what as the directory
+> grows, the time to iterate over all of the files does grow.  But there
+> is more to life than microbenchmarks which creates huge numbers of =
+zero
+> length files!  If we assume that the files are going to need to
+> contain _data_, and the data blocks should be close to the inodes,
+> then there are going to be some performance impacts no matter what.
 
-> If you use hard links the creation rate only dropped a
-> little, am I understanding you corretly?
-yes and no. hard link create rate dropped a little, but open()+close =
-tests dropped a large.
-No writes, no data blocks, just inode allocation.
+Actually, on a Lustre MDT there _are_ only zero-length files, since all
+of the data is stored in another filesystem.  Fortunately, the parent
+directory stores the last group successfully used for allocation
+(i_alloc_group) so that new inode allocation doesn't have to scan the
+whole filesystem each time from the parent's group.
+
+>> 3) current limit with 4G inodes - currently 32-128 directories may =
+eats a full inode number space. =46rom it perspective large dir don=E2=80=99=
+t need to be used.
+>=20
+> I can imagine a new feature flag which defines the use a 64-bit inode
+> number, but that's more for people who are creating a file system that
+> takes advantage of 64-bit block numbers, and they are intending on
+> using all of that space to store small (< 4k or < 8k) files.
+
+The 4-billion inode limit is somewhat independent of large directories.
+That said, the DIRDATA feature that is used for Lustre is also designed
+to allow storing the high 32 bits of the inode number in the directory.
+This would allow compatible upgrade of a directory to storing both
+32-bit and 64-bit inode numbers without the need for wholescale =
+conversion
+of directories, or having space for 64-bit inode numbers even if most
+of the inodes are only 32-bit values.
+
+
+Cheers, Andreas
 
 
 
->  (Sorry, your English is a
-> little fracturered so I'm having trouble parsing the meaning out of
-> your sentences.)
-it=E2=80=99s my bad :(
->=20
-> So what do you think the creation rate _should_ be?  And where do you
-> think the time is going to, if it's not the fact that we have to place
-> the data blocks further and further from the directory?  And more
-> importantly, what's your proposal for how to "fix" this?
->=20
->>> As for the other optimizations --- things like allowing parallel
->>> directory modifications, or being able to shrink empty directory
->>> blocks or shorten the tree are all improvements we can make without
->>> impacting the on-disk format.  So they aren't an argument for =
-halting
->>> the submission of the new on-disk format, no?
->>>=20
->> It=E2=80=99s argument about using this feature. Yes, we can land it, =
-but it decrease an expected speed in some cases.
->=20
-> But there are cases where today, the workload would simply fail with
-> ENOSPC when the directory couldn't grow any farther.  So in those
-> cases _maybe_ there is something we could do differently that might
-> make things faster, but you have yet to convince me that the
-> fundamental fault is one that can only be cured by an on-disk format
-> change.  (And if you believe this is to be true, please enlighten us
-> on how we can make the on-disk format better!)
->=20
-> Cheers,
->=20
-> 					- Ted
+
+
+
+--Apple-Mail=_4A080790-C333-4A45-83BF-62B1AA9C29B6
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFYzhlgpIg59Q01vtYRAr2OAJ4riHhlYOQNLAYZb1ztFHblvctpyACgxNLP
+3JNaDV4mhOVF55U2AX9cXHs=
+=28xt
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_4A080790-C333-4A45-83BF-62B1AA9C29B6--
