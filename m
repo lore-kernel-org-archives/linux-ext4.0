@@ -1,163 +1,114 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] Add largedir feature
-Date: Sun, 19 Mar 2017 00:13:00 -0600
-Message-ID: <4FA5F6BA-7264-42E3-B4E7-2EAD6FDD0AB1@dilger.ca>
-References: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
- <CE3A3FB1-8DE6-476A-8386-94D590B17A23@dilger.ca>
- <E3BFD2D7-CCEF-4A10-A4E6-ED634C56436F@gmail.com>
- <07B442BA-D335-4079-8691-0AB1FAD7368F@dilger.ca>
- <18FAA61C-DE3C-42C7-A8A4-BB2CDD3C5D24@gmail.com>
- <20170318162953.ubn3lvglxqq6ux2e@thunk.org>
- <EA1BCCB1-AEC7-4193-823B-6230B6860C0C@gmail.com>
- <20170319003928.shnxljfcpvmovcw4@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_DB022BAB-6586-4C10-9FF5-196D23218CB2";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Add statx support
+Date: Sun, 19 Mar 2017 12:12:37 +0100
+Message-ID: <20170319111237.GB1844@quack2.suse.cz>
+References: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
+ <20170317054755.GA595@zzz>
+ <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Biggers <ebiggers3@gmail.com>, Jan Kara <jack@suse.cz>,
+        David Howells <dhowells@redhat.com>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        Yang Sheng <yang.sheng@intel.com>,
-        Zhen Liang <liang.zhen@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
-To: Theodore Ts'o <tytso@mit.edu>
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35458 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751369AbdCSGOT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Mar 2017 02:14:19 -0400
-Received: by mail-it0-f65.google.com with SMTP id y18so11414815itc.2
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Mar 2017 23:13:05 -0700 (PDT)
-In-Reply-To: <20170319003928.shnxljfcpvmovcw4@thunk.org>
+Received: from mx2.suse.de ([195.135.220.15]:58891 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750995AbdCSLYa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 19 Mar 2017 07:24:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri 17-03-17 14:19:22, Andreas Dilger wrote:
+> On Mar 16, 2017, at 11:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > On Thu, Mar 16, 2017 at 11:35:33AM +0000, David Howells wrote:
+> >> +
+> >> +	ext4_get_inode_flags(ei);
+> >> +	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+> >> +	if (flags & EXT4_APPEND_FL)
+> >> +		stat->attributes |= STATX_ATTR_APPEND;
+> >> +	if (flags & EXT4_COMPR_FL)
+> >> +		stat->attributes |= STATX_ATTR_COMPRESSED;
+> >> +	if (flags & EXT4_ENCRYPT_FL)
+> >> +		stat->attributes |= STATX_ATTR_ENCRYPTED;
+> >> +	if (flags & EXT4_IMMUTABLE_FL)
+> >> +		stat->attributes |= STATX_ATTR_IMMUTABLE;
+> >> +	if (flags & EXT4_NODUMP_FL)
+> >> +		stat->attributes |= STATX_ATTR_NODUMP;
+> >> 
+> >> -	inode = d_inode(path->dentry);
+> >> 	generic_fillattr(inode, stat);
+> >> +	return 0;
+> >> +}
+> > 
+> > I think it's the wrong approach to be calling ext4_get_inode_flags() here to
+> > sync the generic inode flags (inode->i_flags) to the ext4-specific inode flags
+> > (ei->i_flags).  I know the GETFLAGS and FSGETXATTR ioctls do it too, but I
+> > think it's a mistake --- at least, when done so without holding the inode lock.
+> > The issue is that flag syncs can occur in both directions concurrently and
+> > cause an update to be lost.  For example, with thread 1 doing a stat() and
+> > thread 2 doing the SETFLAGS ioctl to set the APPEND flag:
+> > 
+> > Thread 1, ext4_get_inode_flags()	Thread 2, ext4_ioctl_setflags()
+> > -----------------------------------	---------------------------
+> > Read inode->i_flags; S_APPEND clear
+> > 					Set EXT4_APPEND_FL in ei->i_flags
+> > Clear EXT4_APPEND_FL in ei->i_flags
+> > 					Read ei->i_flags; EXT4_APPEND_FL clear
+> > 					Clear S_APPEND in inode->i_flags
+> > 
+> > So the flag set by SETFLAGS gets lost.  This bug probably hasn't really been
+> > noticable with GETFLAGS and FSGETXATTR since they're rarely used, but stat() on
+> > the other hand is very common, and I'm worried that with this change people
+> > would start seeing this race more often.
+> > 
+> > Ultimately this needs to be addressed in ext4 more fully, but how about for
+> > ->getattr() just skipping the call to ext4_get_inode_flags() and instead
+> > populating the generic attributes like STATX_ATTR_APPEND and
+> > STATX_ATTR_IMMUTABLE from the generic inode flags, rather than from the
+> > ext4-specific flags?  Actually, it could even be done in generic_fillattr(), so
+> > that all filesystems benefit.
+> 
+> Wouldn't it make more sense to just extract the ext4 flags directly from
+> ei->i_flags?  I think ext4_get_inode_flags() is only really useful when
+> the VFS inode flags are changed and they need to be propagated to the ext4
+> inode.
+> 
+> I guess the other more significant question is when/where are the VFS inode
+> flags changed that they need to be propagated into the ext4 disk inode?
+> The main avenue for changing these attribute flags that I know about is via
+> EXT4_IOC_SETFLAGS (FS_IOC_SETFLAGS), and there is one place that I could
+> find in fs/nsfs.c that sets S_IMMUTABLE but I don't think that propagates
+> down to an ext4 disk inode.
 
---Apple-Mail=_DB022BAB-6586-4C10-9FF5-196D23218CB2
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+Yes, you seem to be right. And actually I have checked and XFS does not
+bother to copy inode->i_flags to its on-disk flags so it seems generally we
+are not expected to reflect inode->i_flags in on-disk state.
 
-On Mar 18, 2017, at 6:39 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> On Sat, Mar 18, 2017 at 08:17:55PM +0300, Alexey Lyashkov wrote:
->>>> 1) readdir. It tries to read all entries in memory before send to
->>>> the user. currently it may eats 20*10^6 * 256 so several gigs, so
->>>> increasing it size may produce a problems for a system.
->>>=20
->>> That's not true.  We normally only read in one block a time.  If =
-there
->>> is a hash collision, then we may need to insert into the rbtree in a
->>> subsequent block's worth of dentries to make sure we have all of the
->>> directory entries corresponding to a particular hash value.  I think
->>> you misunderstood the code.
->>=20
->> As i see it not about hash collisions, but about merging a several
->> blocks into same hash range on up level hash entry.  so if we have a
->> large hash range originally assigned to the single block, all that
->> range will read at memory at single step.  With =C2=ABaged=C2=BB =
-directory
->> when hash blocks used already - it=E2=80=99s easy to hit.
->=20
-> If you look at ext4_htree_fill_tree(), we are only iterating over the
-> leaf blocks.  We are using a 31-bit hash, where the low-order bit is
-> one if there has been a collision.  In that case, we need to read the
-> next block to make sure all of the directory entries which have the
-> same 31-bit hash are in the rbtree.
+> It seems like the use of ext4_get_inode_flags() is largely superfluous.
+> The original commit ff9ddf7e847 indicates this was for quota inodes only.
+> I think it can be removed from EXT4_IOC_FSGETXATTR, and EXT4_IOC_GETFLAGS
+> and made conditional in ext4_do_update_inode():
+> 
+> #ifdef CONFIG_QUOTA
+>         for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+>                 if (unlikely(sb_dqopt(sb)->files[i] == inode))
+>                         ext4_get_inode_flags(EXT4_I(inode));
+>         }
+> #endif
+> 
+> Jan, what do you think?
 
-I guess the main concern here is that insertion into an htree directory
-is essentially random based on the hash, so for very large directories
-the whole directory (htree and leaf blocks) needs to fit into RAM or the
-performance will suffer since every leaf block will need to be read from
-disk for every create/lookup/delete.
+So I think even better would be to have ext4_quota_on() and
+ext4_quota_off() just update the flags as needed and avoid doing it
+anywhere else... I'll have a look into it.
 
-That said, the maximum size of a 2-level htree directory is about 1GB,
-and servers have 128 or 256GB of RAM these days, so I don't think this
-will be a huge problem.  We also have a tunable that can limit the
-maximum directory size if this becomes a problem.
+								Honza
 
-> And I'll note that this is a problem that can be solved without
-> changing the on-disk format, but simply adding code so we can merge
-> adjacent directory entry blocks.  The main reason why it hasn't been
-> done is (a) no one has sent me patches, and (b) I haven't seen
-> workloads where this has been anything other than a theoretical /
-> academic concern.
->=20
-> You seem very passionate about this.  Is this a problem you've
-> personally seen?  If so, can you give me more details about your use
-> case, and how you've been running into this issue?  Instead of just
-> arguing about it from a largely theoretical perspective?
-
-We have seen large directories at the htree limit unable to add new
-entries because the htree/leaf blocks become fragmented from repeated
-create/delete cycles.  I agree that handling directory shrinking
-would probably solve that problem, since the htree and leaf blocks
-would be compacted during deletion and then the htree would be able
-to split the leaf blocks in the right location for the new entries.
-
-Cheers, Andreas
-
->> Yes, i expect to have some seek penalty. But may testing say it too =
-huge
->> now.  directory creation rate started with 80k create/s have dropped
->> to the 20k-30k create/s with hash tree extend to the level 3.  Same
->> testing with hard links same create rate dropped slightly.
->=20
-> So this sounds like it's all about the seek penalty of the _data_
-> blocks.  If you use hard links the creation rate only dropped a
-> little, am I understanding you correctly?  (Sorry, your English is a
-> little fracturered so I'm having trouble parsing the meaning out of
-> your sentences.)
->=20
-> So what do you think the creation rate _should_ be?  And where do you
-> think the time is going to, if it's not the fact that we have to place
-> the data blocks further and further from the directory?  And more
-> importantly, what's your proposal for how to "fix" this?
->=20
->>> As for the other optimizations --- things like allowing parallel
->>> directory modifications, or being able to shrink empty directory
->>> blocks or shorten the tree are all improvements we can make without
->>> impacting the on-disk format.  So they aren't an argument for =
-halting
->>> the submission of the new on-disk format, no?
->>>=20
->> It=E2=80=99s argument about using this feature. Yes, we can land it, =
-but it decrease an expected speed in some cases.
->=20
-> But there are cases where today, the workload would simply fail with
-> ENOSPC when the directory couldn't grow any farther.  So in those
-> cases _maybe_ there is something we could do differently that might
-> make things faster, but you have yet to convince me that the
-> fundamental fault is one that can only be cured by an on-disk format
-> change.  (And if you believe this is to be true, please enlighten us
-> on how we can make the on-disk format better!)
->=20
-> Cheers,
->=20
-> 					- Ted
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_DB022BAB-6586-4C10-9FF5-196D23218CB2
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFYziFtpIg59Q01vtYRAmKnAJ9wBQWm+b8IV6/ziSaaiqiRu9D4IQCeOMwl
-cctKTys5NWhYY2b/oalIbp8=
-=nK63
------END PGP SIGNATURE-----
-
---Apple-Mail=_DB022BAB-6586-4C10-9FF5-196D23218CB2--
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
