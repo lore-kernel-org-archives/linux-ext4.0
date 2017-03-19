@@ -1,114 +1,123 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Add statx support
-Date: Sun, 19 Mar 2017 12:12:37 +0100
-Message-ID: <20170319111237.GB1844@quack2.suse.cz>
-References: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
- <20170317054755.GA595@zzz>
- <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] Add largedir feature
+Date: Sun, 19 Mar 2017 09:34:25 -0400
+Message-ID: <20170319133425.gxeg3mba3brvztjf@thunk.org>
+References: <4FA5F6BA-7264-42E3-B4E7-2EAD6FDD0AB1@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>, Jan Kara <jack@suse.cz>,
-        David Howells <dhowells@redhat.com>,
+Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
+        Yang Sheng <yang.sheng@intel.com>,
+        Zhen Liang <liang.zhen@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58891 "EHLO mx2.suse.de"
+Received: from imap.thunk.org ([74.207.234.97]:54788 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750995AbdCSLYa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 19 Mar 2017 07:24:30 -0400
+        id S1751262AbdCSNel (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 19 Mar 2017 09:34:41 -0400
 Content-Disposition: inline
-In-Reply-To: <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
+In-Reply-To: <4FA5F6BA-7264-42E3-B4E7-2EAD6FDD0AB1@dilger.ca>
+ <175204AC-DBDD-4894-8944-BBD98388F547@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 17-03-17 14:19:22, Andreas Dilger wrote:
-> On Mar 16, 2017, at 11:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> > On Thu, Mar 16, 2017 at 11:35:33AM +0000, David Howells wrote:
-> >> +
-> >> +	ext4_get_inode_flags(ei);
-> >> +	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
-> >> +	if (flags & EXT4_APPEND_FL)
-> >> +		stat->attributes |= STATX_ATTR_APPEND;
-> >> +	if (flags & EXT4_COMPR_FL)
-> >> +		stat->attributes |= STATX_ATTR_COMPRESSED;
-> >> +	if (flags & EXT4_ENCRYPT_FL)
-> >> +		stat->attributes |= STATX_ATTR_ENCRYPTED;
-> >> +	if (flags & EXT4_IMMUTABLE_FL)
-> >> +		stat->attributes |= STATX_ATTR_IMMUTABLE;
-> >> +	if (flags & EXT4_NODUMP_FL)
-> >> +		stat->attributes |= STATX_ATTR_NODUMP;
-> >> 
-> >> -	inode = d_inode(path->dentry);
-> >> 	generic_fillattr(inode, stat);
-> >> +	return 0;
-> >> +}
-> > 
-> > I think it's the wrong approach to be calling ext4_get_inode_flags() here to
-> > sync the generic inode flags (inode->i_flags) to the ext4-specific inode flags
-> > (ei->i_flags).  I know the GETFLAGS and FSGETXATTR ioctls do it too, but I
-> > think it's a mistake --- at least, when done so without holding the inode lock.
-> > The issue is that flag syncs can occur in both directions concurrently and
-> > cause an update to be lost.  For example, with thread 1 doing a stat() and
-> > thread 2 doing the SETFLAGS ioctl to set the APPEND flag:
-> > 
-> > Thread 1, ext4_get_inode_flags()	Thread 2, ext4_ioctl_setflags()
-> > -----------------------------------	---------------------------
-> > Read inode->i_flags; S_APPEND clear
-> > 					Set EXT4_APPEND_FL in ei->i_flags
-> > Clear EXT4_APPEND_FL in ei->i_flags
-> > 					Read ei->i_flags; EXT4_APPEND_FL clear
-> > 					Clear S_APPEND in inode->i_flags
-> > 
-> > So the flag set by SETFLAGS gets lost.  This bug probably hasn't really been
-> > noticable with GETFLAGS and FSGETXATTR since they're rarely used, but stat() on
-> > the other hand is very common, and I'm worried that with this change people
-> > would start seeing this race more often.
-> > 
-> > Ultimately this needs to be addressed in ext4 more fully, but how about for
-> > ->getattr() just skipping the call to ext4_get_inode_flags() and instead
-> > populating the generic attributes like STATX_ATTR_APPEND and
-> > STATX_ATTR_IMMUTABLE from the generic inode flags, rather than from the
-> > ext4-specific flags?  Actually, it could even be done in generic_fillattr(), so
-> > that all filesystems benefit.
+On Sat, Mar 18, 2017 at 11:38:38PM -0600, Andreas Dilger wrote:
 > 
-> Wouldn't it make more sense to just extract the ext4 flags directly from
-> ei->i_flags?  I think ext4_get_inode_flags() is only really useful when
-> the VFS inode flags are changed and they need to be propagated to the ext4
-> inode.
+> Actually, on a Lustre MDT there _are_ only zero-length files, since all
+> of the data is stored in another filesystem.  Fortunately, the parent
+> directory stores the last group successfully used for allocation
+> (i_alloc_group) so that new inode allocation doesn't have to scan the
+> whole filesystem each time from the parent's group.
+
+So I'm going to ask a stupid question.  If Lustre is using only
+zero-length files, and so you're storing all of the data in the
+directory entries --- why didn't you use some kind of userspace store,
+such as Mysql or MongoDB?  Is it because the Lustre metadata server is
+all in kernel space, and using ext4 file system was the most
+expeditious way of moving forward?
+
+I'd be gratified... surprised, but gratified... if the answer was that
+ext4 used in this fashion was faster than MongoDB, but to be honest
+that would be very surprising indeed.  Most of the cluster file
+systems... e.g., GFS, hadoopfs, et.al, tend to use a purpose-built
+key-value store (for example GFS uses bigtable) to store the cluster
+metadata.
+
+> The 4-billion inode limit is somewhat independent of large directories.
+> That said, the DIRDATA feature that is used for Lustre is also designed
+> to allow storing the high 32 bits of the inode number in the directory.
+> This would allow compatible upgrade of a directory to storing both
+> 32-bit and 64-bit inode numbers without the need for wholescale conversion
+> of directories, or having space for 64-bit inode numbers even if most
+> of the inodes are only 32-bit values.
+
+Ah, I didn't realize that DIRDATA was still used by Lustre.  Is the
+reason why you haven't retried merging (I think the last time was
+~2009) because it's only used by one or two machines (the MDS's) in a
+Lustre cluster?
+
+I brought up the 32-bit inode limit because Alexey was using this as
+an argument not to move ahead with merging the largedir feature.  Now
+that I understand his concerns are also based around Lustre, and the
+fact that we are inserting into the hash tree effectively randomly,
+that *is* a soluble problem for Lustre, if it has control over the
+directory names which are being stored in the MDS file.  For example,
+if you are storing in this gargantuan MDS directory file names which
+are composed of the 128-bit Lustre FileID, we could define a new hash
+type which, if the filename fits the format of the Lustre FID, parses
+the filename and uses the low the 32-bit object ID concatenated with
+the low-32 bits of the sequence id (which is used to name the target).
+
+If you did this, then we would limit the number of htree blocks that
+you would need to keep in memory at any one time.  I think the only
+real problem here is that with only a 32-bit object id namespace, you
+must eventually need to reuse object ID's, at which point you could no
+longer be allocating them sequentially.  But if you were willing to
+use some parts of the 64-bit sequence number space, perhaps this could
+be finessed.
+
+I'd probably add this as a new, Lustre-specific hash alongside some
+other proposed new htree hash types that have been propsoed over the
+years, but this would allow MDS inserts (assuming that each target is
+inserting new objects using a sequentially increasing object ID) to be
+done in a way where they aren't splatter themselves all over the
+htree.
+
+What do you think?
+
+On Sun, Mar 19, 2017 at 12:13:00AM -0600, Andreas Dilger wrote:
 > 
-> I guess the other more significant question is when/where are the VFS inode
-> flags changed that they need to be propagated into the ext4 disk inode?
-> The main avenue for changing these attribute flags that I know about is via
-> EXT4_IOC_SETFLAGS (FS_IOC_SETFLAGS), and there is one place that I could
-> find in fs/nsfs.c that sets S_IMMUTABLE but I don't think that propagates
-> down to an ext4 disk inode.
+> We have seen large directories at the htree limit unable to add new
+> entries because the htree/leaf blocks become fragmented from repeated
+> create/delete cycles.  I agree that handling directory shrinking
+> would probably solve that problem, since the htree and leaf blocks
+> would be compacted during deletion and then the htree would be able
+> to split the leaf blocks in the right location for the new entries.
 
-Yes, you seem to be right. And actually I have checked and XFS does not
-bother to copy inode->i_flags to its on-disk flags so it seems generally we
-are not expected to reflect inode->i_flags in on-disk state.
+Right, and the one thing that makes directory shrinking hard is what
+to do with the now-unused block.  I've been thinking about this, and
+it *is* possible to do this without having to change the on disk
+format.
 
-> It seems like the use of ext4_get_inode_flags() is largely superfluous.
-> The original commit ff9ddf7e847 indicates this was for quota inodes only.
-> I think it can be removed from EXT4_IOC_FSGETXATTR, and EXT4_IOC_GETFLAGS
-> and made conditional in ext4_do_update_inode():
-> 
-> #ifdef CONFIG_QUOTA
->         for (i = 0; i < EXT4_MAXQUOTAS; i++) {
->                 if (unlikely(sb_dqopt(sb)->files[i] == inode))
->                         ext4_get_inode_flags(EXT4_I(inode));
->         }
-> #endif
-> 
-> Jan, what do you think?
+What we could do is make a copy of the last block in the directory and
+write it on top of the now-empty (and now-unlinked) directory block.
+We then find where to find the parent pointer for that block by
+looking at the first hash value stored in the block if it is an index
+block, or hash the first directory entry if it is a leaf block, and
+then walk the directory htree to find the block which needs to be
+patched to point at the new copy of that directory block, and then
+truncate the directory to remove that last 4k block.
 
-So I think even better would be to have ext4_quota_on() and
-ext4_quota_off() just update the flags as needed and avoid doing it
-anywhere else... I'll have a look into it.
+It's actually not that bad; it would require taking a full mutex on
+the whole directory tree, but it could be done in workqueue since it's
+a cleanup operation so we don't have to slowdown the unlink or rmdir
+operation.
 
-								Honza
+If someone would like to code this up, patches would be gratefully
+accepted.  :-)
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Cheers,
+
+					- Ted
