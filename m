@@ -1,71 +1,65 @@
-From: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
-        <artem.blagodarenko@gmail.com>
-Subject: 64-bit inode number
-Date: Mon, 20 Mar 2017 13:22:20 +0300
-Message-ID: <0E4E58F6-53E5-4FD0-A00F-910225E04201@gmail.com>
+From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+Subject: Re: [PATCH] Add largedir feature
+Date: Mon, 20 Mar 2017 14:34:31 +0300
+Message-ID: <AC9DD60D-37A5-458B-AFA2-5EDDAAFD5E9E@gmail.com>
+References: <20170319133425.gxeg3mba3brvztjf@thunk.org>
+ <2F91584E-6351-4523-9821-54AD6A7CD889@dilger.ca>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Ts'o Theodore <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Zhen Liang <liang.zhen@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f65.google.com ([209.85.215.65]:36736 "EHLO
-        mail-lf0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754189AbdCTK3D (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2017 06:29:03 -0400
-Received: by mail-lf0-f65.google.com with SMTP id g70so9756867lfh.3
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Mar 2017 03:29:02 -0700 (PDT)
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:33328 "EHLO
+        mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753445AbdCTLfH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2017 07:35:07 -0400
+Received: by mail-wm0-f68.google.com with SMTP id n11so13893734wma.0
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Mar 2017 04:34:34 -0700 (PDT)
+In-Reply-To: <2F91584E-6351-4523-9821-54AD6A7CD889@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
 
-This topic was mentioned in "Add largedir feature=E2=80=9D, but need to =
-be discussed in separate thread.
-Increasing maximum inode count is useful with and without larg_dir. =
-There is at least one user who needs 64 bit inode number - Lustre FS.=20
+>=20
+>> I brought up the 32-bit inode limit because Alexey was using this as
+>> an argument not to move ahead with merging the largedir feature.  Now
+>> that I understand his concerns are also based around Lustre, and the
+>> fact that we are inserting into the hash tree effectively randomly,
+>> that *is* a soluble problem for Lustre, if it has control over the
+>> directory names which are being stored in the MDS file.  For example,
+>> if you are storing in this gargantuan MDS directory file names which
+>> are composed of the 128-bit Lustre FileID, we could define a new hash
+>> type which, if the filename fits the format of the Lustre FID, parses
+>> the filename and uses the low the 32-bit object ID concatenated with
+>> the low-32 bits of the sequence id (which is used to name the =
+target).
+>=20
+> No, the directory tree for the Lustre MDS is just a regular directory
+> tree (under "ROOT/" so we can have other files outside the visible
+> namespace) with regular filenames as with local ext4.  The one =
+difference
+> is that there are also 128-bit FIDs stored in the dirents to allow =
+readdir
+> to work efficiently, but the majority of the other Lustre attributes
+> are stored in xattrs on the inode.
 
-As mentioned, MDS has 0-size files to store some information about =
-Lustre FS files. Current MDS disk sizes allow to store large amount of =
-such files, but EXT4 limits this number to ~4 billions.=20
-Lustre FS has features like DNE to distribute MDS over many targets =
-(disks), but disks are used  not effectively. It would be great to have =
-ability to store more then  ~4 billions inodes on one
-EXT4 file system.
-
- I know there is dirdata feature that allows to store higher 32 bit of =
-inode number in ext4 dirent. As I know, direct was not merged yet =
-because of user absence. Quote of Andreas from "Add largedir feature=E2=80=
-=9D=20
-
-> Mostly because there hasn't been any interest for it whenever I =
-proposed
-> merging it in the past. If there is some renewed interest in merging =
-it
-> I could look into it =E2=80=A6
-
-It looks like Lustre FS requires this feature now.
-
-There is another approach how to solve this problem. It is obvious, but =
-require change on disk format. Theodore=E2=80=99s quote from "Add =
-largedir feature=E2=80=9D=20
-
-> I can imagine a new feature flag which defines the use a 64-bit inode
-> number, but that's more for people who are creating a file system that
-> takes advantage of 64-bit block numbers, and they are intending on
-> using all of that space to store small (< 4k or < 8k) files.
+To make picture clean. OST side is regular FS with 32 directories where =
+a stripe objects is live.
+With current 4G inodes limit each directory will filled with up 100k =
+regular files.
+Files allocated in batch, up to 20k files per batch. Allocated object =
+used on MDT side to make mapping between metadata objects and data for =
+such file.
+I worry about it part, not about MDT. these directories have a large =
+number creations/unlinks and performance degradation started after 3M-5M =
+creations/unlinks.
+With Large dir feature i think this performance problems may deeper.
 
 
-This is exact Lustre FS MDS example. Many small inodes. If it possible =
-to add new feature flag, probably this is the best solution: simple, =
-obvious, fast.
-
-Please, help with this questions:
-1. Do we need 64 bit number now? (My opinion - we need it)
-2. What solution from two above to choose? Another solution?
-
-Thanks.
-
-Artem Blagodarenko
+Alexey=20=
