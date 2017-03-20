@@ -1,104 +1,95 @@
-From: bfields@fieldses.org (J. Bruce Fields)
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Date: Mon, 20 Mar 2017 17:43:27 -0400
-Message-ID: <20170320214327.GA5098@fieldses.org>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
- <20161222084549.GA8833@infradead.org>
- <1482417724.3924.39.camel@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1482417724.3924.39.camel@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Joe Richey <joerichey94@gmail.com>
+Subject: [PATCH] misc: fixed error handling in e4crypt
+Date: Mon, 20 Mar 2017 20:34:36 +0000
+Message-ID: <1490042076-25845-1-git-send-email-joerichey94@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Joe Richey <joerichey@google.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:35351 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753279AbdCTWPp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2017 18:15:45 -0400
+Received: by mail-pg0-f65.google.com with SMTP id g2so22108137pge.2
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Mar 2017 15:15:44 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 22, 2016 at 09:42:04AM -0500, Jeff Layton wrote:
-> On Thu, 2016-12-22 at 00:45 -0800, Christoph Hellwig wrote:
-> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
-> > > 
-> > > Only btrfs, ext4, and xfs implement it for data changes. Because of
-> > > this, these filesystems must log the inode to disk whenever the
-> > > i_version counter changes. That has a non-zero performance impact,
-> > > especially on write-heavy workloads, because we end up dirtying the
-> > > inode metadata on every write, not just when the times change. [1]
-> > 
-> > Do you have numbers to justify these changes?
-> 
-> I have numbers. As to whether they justify the changes, I'm not sure.
-> This helps a lot on a (admittedly nonsensical) 1-byte write workload. On
-> XFS, with this fio jobfile:
+From: Joe Richey <joerichey@google.com>
 
-To me, the interesting question is whether this allows us to turn on
-i_version updates by default on xfs and ext4.
+Due to some interesting behaviour in keyctl (as described in the
+comments), we use KEYCTL_GET_KEYRING_ID to translate the special value
+of KEY_SPEC_SESSION_KEYRING to a real keyring id. However, how we
+currently do this is flawed in two ways.
 
-When Josef looked at doing that previously he withdrew the patch due to
-performance regressions.  I think the most useful thread started here:
+First, if KEYCTL_GET_KEYRING_ID fails, we don't detect it as it returns
+-1 and zero is used for an error value in get_keyring_id. Second, if the
+user specifies "-k @s" the translation never runs and the undesireable
+behavior occurs.
 
-	http://lkml.kernel.org/r/1337092396-3272-1-git-send-email-josef@redhat.com
+These are both fixed by doing the translation outside of get_keyring_id.
 
-Skimming quickly....  I think the regression was also in the small-write
-case.  So apparently that was thought to reveal a real problem?
+Signed-off-by: Joe Richey <joerichey@google.com>
+---
+ misc/e4crypt.c | 34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
 
-So if you've mostly eliminated that regression, then that's good
-motivation for your patches.  (Though I think in addition to comparing
-the patched and unpatched i_version case, we need to compare to the
-unpatched not-i_version case.  I'm not clear whether you did that.)
-
---b.
-
-> 
-> --------------------8<------------------
-> [global]
-> direct=0
-> size=2g
-> filesize=512m
-> bsrange=1-1
-> timeout=60
-> numjobs=1
-> directory=/mnt/scratch
-> 
-> [f1]
-> filename=randwrite
-> rw=randwrite
-> --------------------8<------------------
-> 
-> Unpatched kernel:
->   WRITE: io=7707KB, aggrb=128KB/s, minb=128KB/s, maxb=128KB/s, mint=60000msec, maxt=60000msec
-> 
-> Patched kernel:
->   WRITE: io=12701KB, aggrb=211KB/s, minb=211KB/s, maxb=211KB/s, mint=60000msec, maxt=60000msec
-> 
-> So quite a difference there and it's pretty consistent across runs. If I
-> change the jobfile to have "direct=1" and "bsrange=4k-4k", then any
-> variation between the two doesn't seem to be significant (numbers vary
-> as much between runs on the same kernels and are roughly the same).
-> 
-> Playing with buffered I/O sizes between 1 byte and 4k shows that as the
-> I/O sizes get larger, this makes less difference (which is what I'd
-> expect).
-> 
-> Previous testing with ext4 shows roughly the same results. btrfs shows
-> some benefit here but significantly less than with ext4 or xfs. Not sure
-> why that is yet -- maybe CoW effects?
-> 
-> That said, I don't have a great test rig for this. I'm using VMs with a
-> dedicated LVM volume that's on a random SSD I had laying around. It
-> could use testing on a wider set of configurations and workloads.
-> 
-> I was also hoping that others may have workloads that they think might
-> be (postively or negatively) affected by these changes. If you can think
-> of any in particular, then I'm interested to hear about them.
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/misc/e4crypt.c b/misc/e4crypt.c
+index 04faca3..fd2fc8f 100644
+--- a/misc/e4crypt.c
++++ b/misc/e4crypt.c
+@@ -507,24 +507,12 @@ static int get_keyring_id(const char *keyring)
+ 
+ 	/*
+ 	 * If no keyring is specified, by default use either the user
+-	 * session key ring or the session keyring.  Fetching the
++	 * session keyring or the session keyring.  Fetching the
+ 	 * session keyring will return the user session keyring if no
+ 	 * session keyring has been set.
+-	 *
+-	 * We need to do this instead of simply adding the key to
+-	 * KEY_SPEC_SESSION_KEYRING since trying to add a key to a
+-	 * session keyring that does not yet exist will cause the
+-	 * kernel to create a session keyring --- which wil then get
+-	 * garbage collected as soon as e4crypt exits.
+-	 *
+-	 * The fact that the keyctl system call and the add_key system
+-	 * call treats KEY_SPEC_SESSION_KEYRING differently when a
+-	 * session keyring does not exist is very unfortunate and
+-	 * confusing, but so it goes...
+ 	 */
+ 	if (keyring == NULL)
+-		return keyctl(KEYCTL_GET_KEYRING_ID,
+-			      KEY_SPEC_SESSION_KEYRING, 0);
++		return KEY_SPEC_SESSION_KEYRING;
+ 	for (x = 0; x < (sizeof(keyrings) / sizeof(keyrings[0])); ++x) {
+ 		if (strcmp(keyring, keyrings[x].name) == 0) {
+ 			return keyrings[x].code;
+@@ -585,6 +573,24 @@ static void insert_key_into_keyring(const char *keyring, struct salt *salt)
+ 	key.mode = EXT4_ENCRYPTION_MODE_AES_256_XTS;
+ 	memcpy(key.raw, salt->key, EXT4_MAX_KEY_SIZE);
+ 	key.size = EXT4_MAX_KEY_SIZE;
++
++	/*
++	 * We need to do this instead of simply adding the key to
++	 * KEY_SPEC_SESSION_KEYRING since trying to add a key to a
++	 * session keyring that does not yet exist will cause the
++	 * kernel to create a session keyring --- which wil then get
++	 * garbage collected as soon as e4crypt exits.
++	 *
++	 * The fact that the keyctl system call and the add_key system
++	 * call treats KEY_SPEC_SESSION_KEYRING differently when a
++	 * session keyring does not exist is very unfortunate and
++	 * confusing, but so it goes...
++	 */
++	if (keyring_id == KEY_SPEC_SESSION_KEYRING) {
++		keyring_id = keyctl(KEYCTL_GET_KEYRING_ID, keyring_id, 0);
++		if (keyring_id < 0)
++			printf("Could not get session keyring.\n");
++	}
+ 	rc = add_key(EXT2FS_KEY_TYPE_LOGON, key_ref_full, (void *)&key,
+ 		     sizeof(key), keyring_id);
+ 	if (rc == -1) {
+-- 
+2.7.4
