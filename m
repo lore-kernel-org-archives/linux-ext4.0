@@ -1,101 +1,104 @@
-From: drgreenthumb <thisisadrgreenthumb@gmail.com>
-Subject: Re: [PATCH] e2fsprogs: Apple Darwin, fix case of device with not 512
- bytes block size
-Date: Mon, 20 Mar 2017 23:31:36 +0300
-Message-ID: <7c41c86c-a1da-483a-dcd1-f53dc6fe20a8@gmail.com>
-References: <20170319192926.GA3509@localhost.localdomain>
- <20170319204503.kedk2x35xvceqocj@thunk.org>
+From: bfields@fieldses.org (J. Bruce Fields)
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Mon, 20 Mar 2017 17:43:27 -0400
+Message-ID: <20170320214327.GA5098@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f66.google.com ([209.85.215.66]:32890 "EHLO
-        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932158AbdCTU01 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Mar 2017 16:26:27 -0400
-Received: by mail-lf0-f66.google.com with SMTP id r36so11422978lfi.0
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Mar 2017 13:26:25 -0700 (PDT)
-In-Reply-To: <20170319204503.kedk2x35xvceqocj@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1482417724.3924.39.camel@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 03/19/2017 11:45 PM, Theodore Ts'o wrote:
-> Thanks for the patch.  Can you tell me how far back support for
-> DKIOCGETBLOCKSIZE goes?  i.e., is it worth adding a fallback if
-> DKIOCGETBLOCKSIZE is not available?  I suppose in the worst case we
-> can fall back to using a binary search to find size of the device.
+On Thu, Dec 22, 2016 at 09:42:04AM -0500, Jeff Layton wrote:
+> On Thu, 2016-12-22 at 00:45 -0800, Christoph Hellwig wrote:
+> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
+> > > 
+> > > Only btrfs, ext4, and xfs implement it for data changes. Because of
+> > > this, these filesystems must log the inode to disk whenever the
+> > > i_version counter changes. That has a non-zero performance impact,
+> > > especially on write-heavy workloads, because we end up dirtying the
+> > > inode metadata on every write, not just when the times change. [1]
+> > 
+> > Do you have numbers to justify these changes?
+> 
+> I have numbers. As to whether they justify the changes, I'm not sure.
+> This helps a lot on a (admittedly nonsensical) 1-byte write workload. On
+> XFS, with this fio jobfile:
 
-I checked that DKIOCGETBLOCKSIZE and DKIOCGETBLOCKCOUNT are both
-available in file xnu/bsd/sys/disk.h from version 10.1 to 10.12.
+To me, the interesting question is whether this allows us to turn on
+i_version updates by default on xfs and ext4.
 
-> Also, could I perhaps ask you to take a look at
-> lib/ext2fs/getsectsize.c while you are at it?  Does Mac OS X have
-> support for DIOCGSECTORSIZE, and how does this related to
-> DKIOCGETBLOCKSIZE?  Do you know what Mac OS X's alignment restrictions
-> are for Direct I/O?
+When Josef looked at doing that previously he withdrew the patch due to
+performance regressions.  I think the most useful thread started here:
 
-There is no definition of DIOCGSECTORSIZE for Mac OS X.
-Seems like, it exist only for FreeBSD.
-Not sure about alignment restriction for Direct I/O,
-but for for Intel based Mac's the 4k page size will have place.
+	http://lkml.kernel.org/r/1337092396-3272-1-git-send-email-josef@redhat.com
 
-> Many thanks for helping me improve Apple Darwin support for e2fsprogs!  :-)
->
->      	    		   	   - Ted
->
-> On Sun, Mar 19, 2017 at 10:29:26PM +0300, Fedor Uporov wrote:
->> Signed-off-by: Fedor Uporov <thisisadrgreenthumb@gmail.com>
->> ---
->>  lib/blkid/getsize.c  | 11 +++++++----
->>  lib/ext2fs/getsize.c |  9 ++++++---
->>  2 files changed, 13 insertions(+), 7 deletions(-)
->>
->> diff --git a/lib/blkid/getsize.c b/lib/blkid/getsize.c
->> index 8e8eb4c..3d26338 100644
->> --- a/lib/blkid/getsize.c
->> +++ b/lib/blkid/getsize.c
->> @@ -78,12 +78,15 @@ blkid_loff_t blkid_get_dev_size(int fd)
->>  	unsigned long long size64;
->>  	blkid_loff_t high, low;
->>
->> -#ifdef DKIOCGETBLOCKCOUNT	/* For Apple Darwin */
->> -	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0) {
->> +#if defined DKIOCGETBLOCKCOUNT && defined DKIOCGETBLOCKSIZE	/* For Apple Darwin */
->> +	unsigned int size;
->> +
->> +	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0 &&
->> +	    ioctl(fd, DKIOCGETBLOCKSIZE, &size) >= 0) {
->>  		if (sizeof(blkid_loff_t) < sizeof(unsigned long long) &&
->> -		    (size64 << 9) > 0xFFFFFFFF)
->> +		    (size64 * size) > 0xFFFFFFFF)
->>  			return 0; /* EFBIG */
->> -		return (blkid_loff_t)size64 << 9;
->> +		return (blkid_loff_t)size64 * size;
->>  	}
->>  #endif
->>
->> diff --git a/lib/ext2fs/getsize.c b/lib/ext2fs/getsize.c
->> index 89c33d4..68480c6 100644
->> --- a/lib/ext2fs/getsize.c
->> +++ b/lib/ext2fs/getsize.c
->> @@ -151,9 +151,12 @@ errcode_t ext2fs_get_device_size2(const char *file, int blocksize,
->>  	if (fd < 0)
->>  		return errno;
->>
->> -#ifdef DKIOCGETBLOCKCOUNT	/* For Apple Darwin */
->> -	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0) {
->> -		*retblocks = size64 / (blocksize / 512);
->> +#if defined DKIOCGETBLOCKCOUNT && defined DKIOCGETBLOCKSIZE	/* For Apple Darwin */
->> +	unsigned int size;
->> +
->> +	if (ioctl(fd, DKIOCGETBLOCKCOUNT, &size64) >= 0 &&
->> +	    ioctl(fd, DKIOCGETBLOCKSIZE, &size) >= 0) {
->> +		*retblocks = size64 * size / blocksize;
->>  		goto out;
->>  	}
->>  #endif
->> --
->> 2.1.4
->>
+Skimming quickly....  I think the regression was also in the small-write
+case.  So apparently that was thought to reveal a real problem?
+
+So if you've mostly eliminated that regression, then that's good
+motivation for your patches.  (Though I think in addition to comparing
+the patched and unpatched i_version case, we need to compare to the
+unpatched not-i_version case.  I'm not clear whether you did that.)
+
+--b.
+
+> 
+> --------------------8<------------------
+> [global]
+> direct=0
+> size=2g
+> filesize=512m
+> bsrange=1-1
+> timeout=60
+> numjobs=1
+> directory=/mnt/scratch
+> 
+> [f1]
+> filename=randwrite
+> rw=randwrite
+> --------------------8<------------------
+> 
+> Unpatched kernel:
+>   WRITE: io=7707KB, aggrb=128KB/s, minb=128KB/s, maxb=128KB/s, mint=60000msec, maxt=60000msec
+> 
+> Patched kernel:
+>   WRITE: io=12701KB, aggrb=211KB/s, minb=211KB/s, maxb=211KB/s, mint=60000msec, maxt=60000msec
+> 
+> So quite a difference there and it's pretty consistent across runs. If I
+> change the jobfile to have "direct=1" and "bsrange=4k-4k", then any
+> variation between the two doesn't seem to be significant (numbers vary
+> as much between runs on the same kernels and are roughly the same).
+> 
+> Playing with buffered I/O sizes between 1 byte and 4k shows that as the
+> I/O sizes get larger, this makes less difference (which is what I'd
+> expect).
+> 
+> Previous testing with ext4 shows roughly the same results. btrfs shows
+> some benefit here but significantly less than with ext4 or xfs. Not sure
+> why that is yet -- maybe CoW effects?
+> 
+> That said, I don't have a great test rig for this. I'm using VMs with a
+> dedicated LVM volume that's on a random SSD I had laying around. It
+> could use testing on a wider set of configurations and workloads.
+> 
+> I was also hoping that others may have workloads that they think might
+> be (postively or negatively) affected by these changes. If you can think
+> of any in particular, then I'm interested to hear about them.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
