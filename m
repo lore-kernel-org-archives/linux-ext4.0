@@ -1,8 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: merge ext4_xattr_list() into ext4_listxattr()
-Date: Tue, 21 Mar 2017 16:24:40 +0100
-Message-ID: <20170321152440.GA17712@quack2.suse.cz>
-References: <20170315043325.6764-1-ebiggers3@gmail.com>
+Subject: Re: [PATCH 1/2] ext4: rename ext4_xattr_check_names() to
+ ext4_xattr_check_entries()
+Date: Tue, 21 Mar 2017 16:25:40 +0100
+Message-ID: <20170321152540.GB17712@quack2.suse.cz>
+References: <20170315045057.18837-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
@@ -10,21 +11,21 @@ Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Eric Biggers <ebiggers@google.com>
 To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52258 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52487 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756805AbdCUPYp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Mar 2017 11:24:45 -0400
+        id S1757180AbdCUPZo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Mar 2017 11:25:44 -0400
 Content-Disposition: inline
-In-Reply-To: <20170315043325.6764-1-ebiggers3@gmail.com>
+In-Reply-To: <20170315045057.18837-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 14-03-17 21:33:25, Eric Biggers wrote:
+On Tue 14-03-17 21:50:55, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> There's no difference between ext4_xattr_list() and ext4_listxattr(), so
-> merge them together and just have ext4_listxattr().  Some years ago they
-> took different arguments, but that's no longer the case.
+> ext4_xattr_check_names() actually validates both the xattr names and
+> values, not just the names.  So rename it to ext4_xattr_check_entries()
+> to avoid confusion.
 > 
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
@@ -33,63 +34,46 @@ Looks good. You can add:
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
 > ---
->  fs/ext4/xattr.c | 21 +++++----------------
->  1 file changed, 5 insertions(+), 16 deletions(-)
+>  fs/ext4/xattr.c | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
 > 
 > diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 67636acf7624..1d59895a91ee 100644
+> index 1d59895a91ee..71bf40933bbb 100644
 > --- a/fs/ext4/xattr.c
 > +++ b/fs/ext4/xattr.c
-> @@ -78,8 +78,6 @@ static struct buffer_head *ext4_xattr_cache_find(struct inode *,
->  						 struct mb_cache_entry **);
->  static void ext4_xattr_rehash(struct ext4_xattr_header *,
->  			      struct ext4_xattr_entry *);
-> -static int ext4_xattr_list(struct dentry *dentry, char *buffer,
-> -			   size_t buffer_size);
->  
->  static const struct xattr_handler *ext4_xattr_handler_map[] = {
->  	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
-> @@ -168,17 +166,6 @@ ext4_xattr_handler(int name_index)
->  	return handler;
+> @@ -167,8 +167,8 @@ ext4_xattr_handler(int name_index)
 >  }
 >  
-> -/*
-> - * Inode operation listxattr()
-> - *
-> - * d_inode(dentry)->i_mutex: don't care
-> - */
-> -ssize_t
-> -ext4_listxattr(struct dentry *dentry, char *buffer, size_t size)
-> -{
-> -	return ext4_xattr_list(dentry, buffer, size);
-> -}
-> -
 >  static int
->  ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
->  		       void *value_start)
-> @@ -524,7 +511,9 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
->  }
->  
->  /*
-> - * ext4_xattr_list()
-> + * Inode operation listxattr()
-> + *
-> + * d_inode(dentry)->i_rwsem: don't care
->   *
->   * Copy a list of attribute names into the buffer
->   * provided, or compute the buffer size required.
-> @@ -533,8 +522,8 @@ ext4_xattr_ibody_list(struct dentry *dentry, char *buffer, size_t buffer_size)
->   * Returns a negative error number on failure, or the number of bytes
->   * used / required on success.
->   */
-> -static int
-> -ext4_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
-> +ssize_t
-> +ext4_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
+> -ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
+> -		       void *value_start)
+> +ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
+> +			 void *value_start)
 >  {
->  	int ret, ret2;
+>  	struct ext4_xattr_entry *e = entry;
 >  
+> @@ -222,8 +222,8 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
+>  		return -EFSCORRUPTED;
+>  	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
+>  		return -EFSBADCRC;
+> -	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
+> -				       bh->b_data);
+> +	error = ext4_xattr_check_entries(BFIRST(bh), bh->b_data + bh->b_size,
+> +					 bh->b_data);
+>  	if (!error)
+>  		set_buffer_verified(bh);
+>  	return error;
+> @@ -238,7 +238,7 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
+>  	if (end - (void *)header < sizeof(*header) + sizeof(u32) ||
+>  	    (header->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC)))
+>  		goto errout;
+> -	error = ext4_xattr_check_names(IFIRST(header), end, IFIRST(header));
+> +	error = ext4_xattr_check_entries(IFIRST(header), end, IFIRST(header));
+>  errout:
+>  	if (error)
+>  		__ext4_error_inode(inode, function, line, 0,
 > -- 
 > 2.12.0
 > 
