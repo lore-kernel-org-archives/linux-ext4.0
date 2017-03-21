@@ -1,143 +1,139 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: remove ext4_xattr_check_entry()
-Date: Tue, 21 Mar 2017 16:31:58 +0100
-Message-ID: <20170321153158.GC17712@quack2.suse.cz>
-References: <20170315045057.18837-1-ebiggers3@gmail.com>
- <20170315045057.18837-2-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] Add largedir feature
+Date: Tue, 21 Mar 2017 11:38:53 -0400
+Message-ID: <0E38FE2B-4451-47B1-BBEA-CCD4D105B49C@dilger.ca>
+References: <20170319133425.gxeg3mba3brvztjf@thunk.org>
+ <2F91584E-6351-4523-9821-54AD6A7CD889@dilger.ca>
+ <AC9DD60D-37A5-458B-AFA2-5EDDAAFD5E9E@gmail.com>
+ <20170320142030.s2acios7q2qytzak@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Zhen Liang <liang.zhen@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54181 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757163AbdCUPcl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Mar 2017 11:32:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20170315045057.18837-2-ebiggers3@gmail.com>
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:35503 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756711AbdCUPjI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2017 11:39:08 -0400
+Received: by mail-qk0-f193.google.com with SMTP id o135so22583619qke.2
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2017 08:39:07 -0700 (PDT)
+In-Reply-To: <20170320142030.s2acios7q2qytzak@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 14-03-17 21:50:56, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> ext4_xattr_check_entry() was redundant with validation of the full xattr
-> entries list in ext4_xattr_check_entries(), which all callers also did.
-> ext4_xattr_check_entry() also didn't actually do correct validation;
-> specifically, it never checked that the value doesn't overlap the xattr
-> names, nor did it account for padding when checking whether the xattr
-> value overflows the available space.  So remove it to eliminate any
-> potential confusion.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-So there's a slight difference that ext4_xattr_check_names() gets called
-only when loading block on disk so it does not discover corruption in
-memory which this check had a potential to check. But I guess there's no
-big point in these checks so:
+--Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Reviewed-by: Jan Kara <jack@suse.cz>
 
-								Honza
+> On Mar 20, 2017, at 10:20 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> On Mon, Mar 20, 2017 at 02:34:31PM +0300, Alexey Lyashkov wrote:
+>>=20
+>> To make picture clean. OST side is regular FS with 32 directories =
+where a stripe objects is live.  With current 4G inodes limit each =
+directory will
+>> filled with up 100k regular files.  Files allocated in batch, up to =
+20k files per batch. Allocated object used on MDT side to make mapping =
+between metadata objects and data for such file.
+>>=20
+>> I worry about it part, not about MDT. these directories have a large =
+number creations/unlinks and performance degradation started after 3M-5M =
+creations/unlinks.
+>> With Large dir feature i think this performance problems may deeper.
+>=20
+> This makes no sense.  On the Object Store side, if the maximum
+> directory size is 100k regular files, you're never going to run into
+> two-levle htree limit, so the presense (or absense) of largedir is
+> largely irrelevant.  So how can it make the performance problem worse?
 
-> ---
->  fs/ext4/xattr.c | 30 ++++++------------------------
->  1 file changed, 6 insertions(+), 24 deletions(-)
-> 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 71bf40933bbb..b4364612a66f 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -249,20 +249,9 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
->  #define xattr_check_inode(inode, header, end) \
->  	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
->  
-> -static inline int
-> -ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size)
-> -{
-> -	size_t value_size = le32_to_cpu(entry->e_value_size);
-> -
-> -	if (entry->e_value_block != 0 || value_size > size ||
-> -	    le16_to_cpu(entry->e_value_offs) + value_size > size)
-> -		return -EFSCORRUPTED;
-> -	return 0;
-> -}
-> -
->  static int
->  ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
-> -		      const char *name, size_t size, int sorted)
-> +		      const char *name, int sorted)
->  {
->  	struct ext4_xattr_entry *entry;
->  	size_t name_len;
-> @@ -282,8 +271,6 @@ ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
->  			break;
->  	}
->  	*pentry = entry;
-> -	if (!cmp && ext4_xattr_check_entry(entry, size))
-> -		return -EFSCORRUPTED;
->  	return cmp ? -ENODATA : 0;
->  }
->  
-> @@ -311,7 +298,6 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
->  	ea_bdebug(bh, "b_count=%d, refcount=%d",
->  		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
->  	if (ext4_xattr_check_block(inode, bh)) {
-> -bad_block:
->  		EXT4_ERROR_INODE(inode, "bad block %llu",
->  				 EXT4_I(inode)->i_file_acl);
->  		error = -EFSCORRUPTED;
-> @@ -319,9 +305,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
->  	}
->  	ext4_xattr_cache_insert(ext4_mb_cache, bh);
->  	entry = BFIRST(bh);
-> -	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
-> -	if (error == -EFSCORRUPTED)
-> -		goto bad_block;
-> +	error = ext4_xattr_find_entry(&entry, name_index, name, 1);
->  	if (error)
->  		goto cleanup;
->  	size = le32_to_cpu(entry->e_value_size);
-> @@ -358,13 +342,12 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
->  		return error;
->  	raw_inode = ext4_raw_inode(&iloc);
->  	header = IHDR(inode, raw_inode);
-> -	entry = IFIRST(header);
->  	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
->  	error = xattr_check_inode(inode, header, end);
->  	if (error)
->  		goto cleanup;
-> -	error = ext4_xattr_find_entry(&entry, name_index, name,
-> -				      end - (void *)entry, 0);
-> +	entry = IFIRST(header);
-> +	error = ext4_xattr_find_entry(&entry, name_index, name, 0);
->  	if (error)
->  		goto cleanup;
->  	size = le32_to_cpu(entry->e_value_size);
-> @@ -799,7 +782,7 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
->  		bs->s.end = bs->bh->b_data + bs->bh->b_size;
->  		bs->s.here = bs->s.first;
->  		error = ext4_xattr_find_entry(&bs->s.here, i->name_index,
-> -					      i->name, bs->bh->b_size, 1);
-> +					      i->name, 1);
->  		if (error && error != -ENODATA)
->  			goto cleanup;
->  		bs->s.not_found = error;
-> @@ -1068,8 +1051,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
->  			return error;
->  		/* Find the named attribute. */
->  		error = ext4_xattr_find_entry(&is->s.here, i->name_index,
-> -					      i->name, is->s.end -
-> -					      (void *)is->s.base, 0);
-> +					      i->name, 0);
->  		if (error && error != -ENODATA)
->  			return error;
->  		is->s.not_found = error;
-> -- 
-> 2.12.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I believe Alexey meant to write "100M" regular files (theoretically up =
+to
+32 dirs x 128M files to reach the ext4 4B inode limit).
+
+I was thinking of the largedir code from the MDS side, where we have no
+option but to have a single large directory that reflects what the user
+created.  For Alexey's issue, the OST directories are instead just =
+storing
+a large sequentially-incremented integer as the filename in the =
+directory.
+
+This wasn't typically an issue in the past because the average Lustre
+file size is large (e.g. 1-32MB) and in < 32TB OST filesystem this would
+only be 1-32M files spread across 32 directories.  With the 400TB ext4
+filesystems that Seagate is using this becomes an actual problem.
+
+As Ted suggested earlier, there is a possibility to use a different hash
+function (TEA hash?) that is better suited to be used on OSTs compared
+to MDTs since the OST object filenames are mostly sequential integers.
+
+The other option is to (also?) fix this at the Lustre OST level, to use
+more directories in the object "O/d*" hierarchy, since that is not =
+exposed
+to userspace, and there is no specific reason that we need to stick with
+32 subdirectories here.  32 subdirs was a fine option for OSTs in the
+past, but there is actually the capability to use a different number of
+subdirs on the OST (see struct lr_server_data.lsd_subdir_count), but =
+we've
+just never used it and it needs some fixing (e.g. if the last_rcvd file =
+is
+lost and needs to  be recreated it should check the actual number of d*
+subdirs instead of just assuming it is OBJ_SUBDIR_COUNT).
+
+Also, instead of just increasing this to 128 subdirs (or whatever), we
+should consider to change to creating new object subdirs every 128M =
+objects
+allocated (or similar), so that on huge OSTs there are automatically =
+enough
+subdirs allocated, and old subdirectory trees do not need to be kept in =
+RAM
+if they are not currently being used.  That would be more memory =
+efficient
+than having many subdirs that are all in use at the same time.  This =
+would
+need to have ext4 directory shrinking so that the old directories shrink
+when they become empty, and could be removed completely once empty.
+
+We have something similar to this "new object subdirectory" =
+functionality
+already with the OST FID sequence allocation that we use for DNE today,
+since each sequence gets a different subdirectory tree on the OST.  What
+would need to be changed is that the MDS needs to use OST FID SEQs even
+when DNE isn't used (that should work for all in-use Lustre versions).
+Secondly, the objects allocated per sequence (LUSTRE_DATA_SEQ_MAX_WIDTH)
+needs to be reduced from the current 4B-1 to 128M or similar.
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFY0UkPpIg59Q01vtYRAg1FAKCoQ6IC0K6jYoBSTpJV0AhI9r9b8wCgkTKl
+O1//M8YsWYKJEBllZxajySw=
+=YWZl
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A--
