@@ -1,49 +1,115 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: ext4 scaling limits ?
-Date: Tue, 21 Mar 2017 17:48:11 -0400
-Message-ID: <32A4A230-566F-4476-A516-2C6C4BA5C1C6@dilger.ca>
-References: <CAE0An6fc6tX6ACQYdTYdP+CwN=RDKuv_oaW0xeNrBLY_1AvOtw@mail.gmail.com>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-        charset=us-ascii
+From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+Date: Tue, 21 Mar 2017 17:54:00 -0400
+Message-ID: <1490133240.2593.4.camel@redhat.com>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+         <20161222084549.GA8833@infradead.org> <1482417724.3924.39.camel@redhat.com>
+         <20170320214327.GA5098@fieldses.org> <20170321134500.GA1318@infradead.org>
+         <20170321163011.GA16666@fieldses.org> <1490117004.2542.1.camel@redhat.com>
+         <20170321183006.GD17872@fieldses.org> <1490122013.2593.1.camel@redhat.com>
+         <20170321191330.GF17872@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f169.google.com ([209.85.220.169]:34649 "EHLO
-        mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756845AbdCUVsN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2017 17:48:13 -0400
-Received: by mail-qk0-f169.google.com with SMTP id p64so145765559qke.1
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2017 14:48:12 -0700 (PDT)
-In-Reply-To: <CAE0An6fc6tX6ACQYdTYdP+CwN=RDKuv_oaW0xeNrBLY_1AvOtw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20170321191330.GF17872-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-While it is true that e2fsck does not free memory during operation, in
-practice this is not a problem. Even for large filesystems (say 32-48TB)
-it will only use around 8-12GB of RAM so that is very reasonable for a
-server today. 
+On Tue, 2017-03-21 at 15:13 -0400, J. Bruce Fields wrote:
+> On Tue, Mar 21, 2017 at 02:46:53PM -0400, Jeff Layton wrote:
+> > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > > - It's durable; the above comparison still works if there were reboots
+> > > > >   between the two i_version checks.
+> > > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > > 	  atomically with the changes that caused them?  What if a
+> > > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > > 	  it to disk, and then that value is reused after reboot?
+> > > > > 
+> > > > 
+> > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > > the inode dirty and I think that will end up with the new i_version at
+> > > > least being journalled before __mark_inode_dirty returns.
+> > > 
+> > > So you think the filesystem can provide the atomicity?  In more detail:
+> > > 
+> > 
+> > Sorry, I hit send too quickly. That should have read:
+> > 
+> > "Yeah, there could be atomicity issues there."
+> > 
+> > I think providing that level of atomicity may be difficult, though
+> > maybe there's some way to make the querying of i_version block until
+> > the inode update has been journalled?
+> 
+> No idea.  Anyway, I'd like to figure out some reasonable requirement
+> that we can document.
+> 
+> > 
+> > > 	- if I write to a file, a simultaneous reader should see either
+> > > 	  (old data, old i_version) or (new data, new i_version), not a
+> > > 	  combination of the two.
+> > > 	- ditto for metadata modifications.
+> > > 	- the same should be true if there's a crash.
+> > > 
+> > > (If that's not possible, then I think we could live with a brief window
+> > > of (new data, old i_version) as long as it doesn't persist beyond sync?)
+> > > 
+> > > > That said, I suppose it is possible for us to bump the counter, hand
+> > > > that new counter value out to a NFS client and then the box crashes
+> > > > before it makes it to the journal.
+> > > > 
+> > > > Not sure how big a problem that really is.
+> > > 
+> > > The other case I was wondering about may have been unclear.  Represent
+> > > the state of a file by a (data, i_version) pair.  Say:
+> > > 
+> > > 	- file is modified from (F, V) to (F', V+1).
+> > > 	- client reads and caches (F', V+1).
+> > > 	- server crashes before writeback, so disk still has (F, V).
+> > > 	- after restart, someone else modifies file to (F'', V+1).
+> > > 	- original client revalidates its cache, sees V+1, concludes
+> > > 	  file data is still F'.
+> > > 
+> > > This may not cause a real problem for clients depending only on
+> > > traditional NFS close-to-open semantics.
+> > > 
+> > > 
+> > 
+> > No, I think that is a legitimate problem.
+> > 
+> > That said, after F'', the mtime would almost certainly be different
+> > from the time after F', and that would likely be enough to prevent
+> > confusion in NFS clients.
+> 
+> Oh, good point.  So, may be worth saying that anyone wanting to make
+> sense of these across reboot should compare times as well (maybe that
+> should be in nfs rfc's too).  I think that should be ctime not mtime,
+> though?
+> 
 
-The rough estimate that I use for e2fsck is 1 byte of RAM per block. 
+Yes, it might be worth a mention there. IIRC, it does mention that you
+shouldn't just look at a single attribute for cache validation
+purposes, but the wording is a bit vague. I can't find the section at
+the moment though.
 
-Cheers, Andreas
-
-> On Mar 21, 2017, at 16:07, Manish Katiyar <mkatiyar@gmail.com> wrote:
-> 
-> Hi,
-> 
-> I was looking at e2fsck code to see if there are any limits on running
-> e2fsck on large ext4 filesystems. From the code it looks like all the
-> required metadata while e2fsck is running is only kept in memory and
-> is only flushed to disk when the appropriate changes are corrected.
-> (Except the undo file case).
-> There doesn't seem to be a case/code where we have to periodically
-> flush some tracking metadata while it is running, just because we have
-> too much of incore tracking data and may ran out of memory (looks like
-> code will simply return failure if ext2fs_get_mem() returns failure)
-> 
-> Appreciate if someone can confirm that my understanding is correct ?
-> 
-> Thanks -
-> Manish
+The more I think about it though, simply ensuring that we don't publish
+ a new change attr until the inode update has hit the journal may be
+the best we can do. I'd have to think about how to implement that
+though.
+-- 
+Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
