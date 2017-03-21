@@ -1,143 +1,69 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: 64-bit inode number
-Date: Tue, 21 Mar 2017 12:13:36 -0400
-Message-ID: <A32DD67A-F005-42BF-B243-A56208421EBA@dilger.ca>
-References: <0E4E58F6-53E5-4FD0-A00F-910225E04201@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Ts'o Theodore <tytso@mit.edu>
-To: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
-        <artem.blagodarenko@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:34343 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933214AbdCUQNn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2017 12:13:43 -0400
-Received: by mail-qk0-f195.google.com with SMTP id v127so22706683qkb.1
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2017 09:13:42 -0700 (PDT)
-In-Reply-To: <0E4E58F6-53E5-4FD0-A00F-910225E04201@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Tue, 21 Mar 2017 12:30:11 -0400
+Message-ID: <20170321163011.GA16666@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
+ <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170321134500.GA1318@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Mar 21, 2017 at 06:45:00AM -0700, Christoph Hellwig wrote:
+> On Mon, Mar 20, 2017 at 05:43:27PM -0400, J. Bruce Fields wrote:
+> > To me, the interesting question is whether this allows us to turn on
+> > i_version updates by default on xfs and ext4.
+> 
+> XFS v5 file systems have it on by default.
 
---Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+Great, thanks.
 
-On Mar 20, 2017, at 6:22 AM, =D0=91=D0=BB=D0=B0=D0=B3=D0=BE=D0=B4=D0=B0=D1=
-=80=D0=B5=D0=BD=D0=BA=D0=BE =D0=90=D1=80=D1=82=D1=91=D0=BC =
-<artem.blagodarenko@gmail.com> wrote:
->=20
-> Hello,
->=20
-> This topic was mentioned in "Add largedir feature=E2=80=9D, but need =
-to be discussed in
-> a separate thread.
-> Increasing maximum inode count is useful with and without larg_dir. =
-There is at
-> least one user who needs 64 bit inode number - Lustre FS.
->=20
-> As mentioned, MDS has 0-size files to store some information about =
-Lustre FS
-> files. Current MDS disk sizes allow to store large amount of such =
-files, but
-> EXT4 limits this number to ~4 billions.
->=20
-> Lustre FS has features like DNE to distribute MDS over many targets =
-(disks),
-> but disks are used  not effectively. It would be great to have ability =
-to
-> store more then  ~4 billions inodes on one EXT4 file system.
+> Although we'll still need to agree on the exact semantics of i_version
+> before it's going to be useful.
 
-I guess the major potential problem with more than 4B inodes in a single
-filesystem (and also the large 300TB+ filesystems you are using) is that
-running e2fsck could take a very long time.  Conversely, using DNE to =
-spread
-the metadata across multiple filesystems/servers allows e2fsck to run in
-parallel and limits any failures to a smaller subset of the filesystem.
+Once it's figured out maybe we should write it up for a manpage that
+could be used if statx starts exposing it to userspace.
 
-That doesn't mean I'm totally against this feature, since > 8TB disks =
-are
-becoming common.
+A first attempt:
 
-> I know there is dirdata feature that allows to store higher 32 bit of =
-inode
-> number in ext4 dirent. As I know, direct was not merged yet because of =
-user
-> absence. Quote of Andreas from "Add largedir feature=E2=80=9D
->=20
->> Mostly because there hasn't been any interest for it whenever I =
-proposed
->> merging it in the past. If there is some renewed interest in merging =
-it
->> I could look into it =E2=80=A6
->=20
-> It looks like Lustre FS requires this feature now.
->=20
-> There is another approach how to solve this problem. It is obvious, =
-but
-> require change on disk format. Theodore=E2=80=99s quote from "Add =
-largedir feature=E2=80=9D
->=20
->> I can imagine a new feature flag which defines the use a 64-bit inode
->> number, but that's more for people who are creating a file system =
-that
->> takes advantage of 64-bit block numbers, and they are intending on
->> using all of that space to store small (< 4k or < 8k) files.
->=20
-> This is exact Lustre FS MDS example. Many small inodes. If it possible =
-to add new feature flag, probably this is the best solution: simple, =
-obvious, fast.
->=20
-> Please, help with this questions:
-> 1. Do we need 64 bit number now? (My opinion - we need it)
-> 2. What solution from two above to choose? Another solution?
+- It's a u64.
 
-It wasn't clear from Ted's comments whether he was proposing the feature
-flag to store 64-bit inode numbers directly into a new ext4_dir_entry64,
-or to use the dir_data to hold the high 32 bits?  My preference would be =
-to
-store the high bits of the inode number into dir_data.  The reasons are:
-- this won't use more space for 64-bit inodes than ext4_dir_entry64
-- for 32-bit inode numbers will have smaller dirents
-- significantly more 32-bit dirents can fit into a leaf block (i.e. =
-10-25%)
-- it is backwards compatible with existing directories and can =
-transparently
-  store 64-bit inode numbers into 32-bit directories without a full =
-update
-- it avoids duplicate code paths for ext4_dir_entry vs ext4_dir_entry64
-- it would be possible to only store high 16 bits (2^48 inodes) since =
-this
-  may be enough for ext4, since ext4_extent can only address 2^48 blocks
-  (2^60 bytes) and there isn't much value to more inodes than blocks?
+- It works for regular files and directories.  (What about symlinks or
+  other special types?)
 
-Cheers, Andreas
+- It changes between two checks if and only if there were intervening
+  data or metadata changes.  The change will always be an increase, but
+  the amount of the increase is meaningless.
+	- NFS doesn't actually require that it increases, but I think it
+	  should.  I assume 64 bits means we don't need a discussion of
+	  wraparound.
+	- AFS wants an actual counter: if you get i_version X, then
+	  write twice, then get i_version X+2, you're allowed to assume
+	  your writes were the only modifications.  Let's ignore this
+	  for now.  In the future if someone explains how to count
+	  operations, then we can extend the interface to tell the
+	  caller it can get those extra semantics.
 
+- It's durable; the above comparison still works if there were reboots
+  between the two i_version checks.
+	- I don't know how realistic this is--we may need to figure out
+	  if there's a weaker guarantee that's still useful.  Do
+	  filesystems actually make ctime/mtime/i_version changes
+	  atomically with the changes that caused them?  What if a
+	  change attribute is exposed to an NFS client but doesn't make
+	  it to disk, and then that value is reused after reboot?
 
+Am I missing any issues?
 
-
-
-
---Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFY0VExpIg59Q01vtYRAvKCAKCpK9sW4MRYCQmPcjc7OWzC7wSqRACfaKhN
-uKcVJ+xI78HaTiP2pQb+cQ4=
-=3AmA
------END PGP SIGNATURE-----
-
---Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA--
+--b.
