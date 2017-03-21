@@ -1,117 +1,121 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] Add largedir feature
-Date: Tue, 21 Mar 2017 11:38:53 -0400
-Message-ID: <0E38FE2B-4451-47B1-BBEA-CCD4D105B49C@dilger.ca>
-References: <20170319133425.gxeg3mba3brvztjf@thunk.org>
- <2F91584E-6351-4523-9821-54AD6A7CD889@dilger.ca>
- <AC9DD60D-37A5-458B-AFA2-5EDDAAFD5E9E@gmail.com>
- <20170320142030.s2acios7q2qytzak@thunk.org>
+Subject: Re: 64-bit inode number
+Date: Tue, 21 Mar 2017 12:13:36 -0400
+Message-ID: <A32DD67A-F005-42BF-B243-A56208421EBA@dilger.ca>
+References: <0E4E58F6-53E5-4FD0-A00F-910225E04201@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A";
+ boundary="Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Yang Sheng <yang.sheng@intel.com>,
-        Zhen Liang <liang.zhen@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Ts'o Theodore <tytso@mit.edu>
+To: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
+        <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:35503 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756711AbdCUPjI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2017 11:39:08 -0400
-Received: by mail-qk0-f193.google.com with SMTP id o135so22583619qke.2
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2017 08:39:07 -0700 (PDT)
-In-Reply-To: <20170320142030.s2acios7q2qytzak@thunk.org>
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:34343 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933214AbdCUQNn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Mar 2017 12:13:43 -0400
+Received: by mail-qk0-f195.google.com with SMTP id v127so22706683qkb.1
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Mar 2017 09:13:42 -0700 (PDT)
+In-Reply-To: <0E4E58F6-53E5-4FD0-A00F-910225E04201@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A
+--Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
-	charset=us-ascii
+	charset=utf-8
 
-
-> On Mar 20, 2017, at 10:20 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+On Mar 20, 2017, at 6:22 AM, =D0=91=D0=BB=D0=B0=D0=B3=D0=BE=D0=B4=D0=B0=D1=
+=80=D0=B5=D0=BD=D0=BA=D0=BE =D0=90=D1=80=D1=82=D1=91=D0=BC =
+<artem.blagodarenko@gmail.com> wrote:
 >=20
-> On Mon, Mar 20, 2017 at 02:34:31PM +0300, Alexey Lyashkov wrote:
->>=20
->> To make picture clean. OST side is regular FS with 32 directories =
-where a stripe objects is live.  With current 4G inodes limit each =
-directory will
->> filled with up 100k regular files.  Files allocated in batch, up to =
-20k files per batch. Allocated object used on MDT side to make mapping =
-between metadata objects and data for such file.
->>=20
->> I worry about it part, not about MDT. these directories have a large =
-number creations/unlinks and performance degradation started after 3M-5M =
-creations/unlinks.
->> With Large dir feature i think this performance problems may deeper.
+> Hello,
 >=20
-> This makes no sense.  On the Object Store side, if the maximum
-> directory size is 100k regular files, you're never going to run into
-> two-levle htree limit, so the presense (or absense) of largedir is
-> largely irrelevant.  So how can it make the performance problem worse?
-
-I believe Alexey meant to write "100M" regular files (theoretically up =
+> This topic was mentioned in "Add largedir feature=E2=80=9D, but need =
+to be discussed in
+> a separate thread.
+> Increasing maximum inode count is useful with and without larg_dir. =
+There is at
+> least one user who needs 64 bit inode number - Lustre FS.
+>=20
+> As mentioned, MDS has 0-size files to store some information about =
+Lustre FS
+> files. Current MDS disk sizes allow to store large amount of such =
+files, but
+> EXT4 limits this number to ~4 billions.
+>=20
+> Lustre FS has features like DNE to distribute MDS over many targets =
+(disks),
+> but disks are used  not effectively. It would be great to have ability =
 to
-32 dirs x 128M files to reach the ext4 4B inode limit).
+> store more then  ~4 billions inodes on one EXT4 file system.
 
-I was thinking of the largedir code from the MDS side, where we have no
-option but to have a single large directory that reflects what the user
-created.  For Alexey's issue, the OST directories are instead just =
-storing
-a large sequentially-incremented integer as the filename in the =
-directory.
+I guess the major potential problem with more than 4B inodes in a single
+filesystem (and also the large 300TB+ filesystems you are using) is that
+running e2fsck could take a very long time.  Conversely, using DNE to =
+spread
+the metadata across multiple filesystems/servers allows e2fsck to run in
+parallel and limits any failures to a smaller subset of the filesystem.
 
-This wasn't typically an issue in the past because the average Lustre
-file size is large (e.g. 1-32MB) and in < 32TB OST filesystem this would
-only be 1-32M files spread across 32 directories.  With the 400TB ext4
-filesystems that Seagate is using this becomes an actual problem.
+That doesn't mean I'm totally against this feature, since > 8TB disks =
+are
+becoming common.
 
-As Ted suggested earlier, there is a possibility to use a different hash
-function (TEA hash?) that is better suited to be used on OSTs compared
-to MDTs since the OST object filenames are mostly sequential integers.
+> I know there is dirdata feature that allows to store higher 32 bit of =
+inode
+> number in ext4 dirent. As I know, direct was not merged yet because of =
+user
+> absence. Quote of Andreas from "Add largedir feature=E2=80=9D
+>=20
+>> Mostly because there hasn't been any interest for it whenever I =
+proposed
+>> merging it in the past. If there is some renewed interest in merging =
+it
+>> I could look into it =E2=80=A6
+>=20
+> It looks like Lustre FS requires this feature now.
+>=20
+> There is another approach how to solve this problem. It is obvious, =
+but
+> require change on disk format. Theodore=E2=80=99s quote from "Add =
+largedir feature=E2=80=9D
+>=20
+>> I can imagine a new feature flag which defines the use a 64-bit inode
+>> number, but that's more for people who are creating a file system =
+that
+>> takes advantage of 64-bit block numbers, and they are intending on
+>> using all of that space to store small (< 4k or < 8k) files.
+>=20
+> This is exact Lustre FS MDS example. Many small inodes. If it possible =
+to add new feature flag, probably this is the best solution: simple, =
+obvious, fast.
+>=20
+> Please, help with this questions:
+> 1. Do we need 64 bit number now? (My opinion - we need it)
+> 2. What solution from two above to choose? Another solution?
 
-The other option is to (also?) fix this at the Lustre OST level, to use
-more directories in the object "O/d*" hierarchy, since that is not =
-exposed
-to userspace, and there is no specific reason that we need to stick with
-32 subdirectories here.  32 subdirs was a fine option for OSTs in the
-past, but there is actually the capability to use a different number of
-subdirs on the OST (see struct lr_server_data.lsd_subdir_count), but =
-we've
-just never used it and it needs some fixing (e.g. if the last_rcvd file =
-is
-lost and needs to  be recreated it should check the actual number of d*
-subdirs instead of just assuming it is OBJ_SUBDIR_COUNT).
-
-Also, instead of just increasing this to 128 subdirs (or whatever), we
-should consider to change to creating new object subdirs every 128M =
-objects
-allocated (or similar), so that on huge OSTs there are automatically =
-enough
-subdirs allocated, and old subdirectory trees do not need to be kept in =
-RAM
-if they are not currently being used.  That would be more memory =
-efficient
-than having many subdirs that are all in use at the same time.  This =
-would
-need to have ext4 directory shrinking so that the old directories shrink
-when they become empty, and could be removed completely once empty.
-
-We have something similar to this "new object subdirectory" =
-functionality
-already with the OST FID sequence allocation that we use for DNE today,
-since each sequence gets a different subdirectory tree on the OST.  What
-would need to be changed is that the MDS needs to use OST FID SEQs even
-when DNE isn't used (that should work for all in-use Lustre versions).
-Secondly, the objects allocated per sequence (LUSTRE_DATA_SEQ_MAX_WIDTH)
-needs to be reduced from the current 4B-1 to 128M or similar.
-
+It wasn't clear from Ted's comments whether he was proposing the feature
+flag to store 64-bit inode numbers directly into a new ext4_dir_entry64,
+or to use the dir_data to hold the high 32 bits?  My preference would be =
+to
+store the high bits of the inode number into dir_data.  The reasons are:
+- this won't use more space for 64-bit inodes than ext4_dir_entry64
+- for 32-bit inode numbers will have smaller dirents
+- significantly more 32-bit dirents can fit into a leaf block (i.e. =
+10-25%)
+- it is backwards compatible with existing directories and can =
+transparently
+  store 64-bit inode numbers into 32-bit directories without a full =
+update
+- it avoids duplicate code paths for ext4_dir_entry vs ext4_dir_entry64
+- it would be possible to only store high 16 bits (2^48 inodes) since =
+this
+  may be enough for ext4, since ext4_extent can only address 2^48 blocks
+  (2^60 bytes) and there isn't much value to more inodes than blocks?
 
 Cheers, Andreas
 
@@ -120,7 +124,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A
+--Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -131,9 +135,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFY0UkPpIg59Q01vtYRAg1FAKCoQ6IC0K6jYoBSTpJV0AhI9r9b8wCgkTKl
-O1//M8YsWYKJEBllZxajySw=
-=YWZl
+iD8DBQFY0VExpIg59Q01vtYRAvKCAKCpK9sW4MRYCQmPcjc7OWzC7wSqRACfaKhN
+uKcVJ+xI78HaTiP2pQb+cQ4=
+=3AmA
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_C150C7D8-15F5-4CFE-BC20-C867D10E0F1A--
+--Apple-Mail=_3C529051-9160-40B0-BBB2-3736B39937DA--
