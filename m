@@ -1,9 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext4: rename ext4_xattr_check_names() to
- ext4_xattr_check_entries()
-Date: Tue, 21 Mar 2017 16:25:40 +0100
-Message-ID: <20170321152540.GB17712@quack2.suse.cz>
+Subject: Re: [PATCH 2/2] ext4: remove ext4_xattr_check_entry()
+Date: Tue, 21 Mar 2017 16:31:58 +0100
+Message-ID: <20170321153158.GC17712@quack2.suse.cz>
 References: <20170315045057.18837-1-ebiggers3@gmail.com>
+ <20170315045057.18837-2-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
@@ -11,69 +11,130 @@ Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Eric Biggers <ebiggers@google.com>
 To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52487 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:54181 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757180AbdCUPZo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Mar 2017 11:25:44 -0400
+        id S1757163AbdCUPcl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Mar 2017 11:32:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20170315045057.18837-1-ebiggers3@gmail.com>
+In-Reply-To: <20170315045057.18837-2-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 14-03-17 21:50:55, Eric Biggers wrote:
+On Tue 14-03-17 21:50:56, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> ext4_xattr_check_names() actually validates both the xattr names and
-> values, not just the names.  So rename it to ext4_xattr_check_entries()
-> to avoid confusion.
+> ext4_xattr_check_entry() was redundant with validation of the full xattr
+> entries list in ext4_xattr_check_entries(), which all callers also did.
+> ext4_xattr_check_entry() also didn't actually do correct validation;
+> specifically, it never checked that the value doesn't overlap the xattr
+> names, nor did it account for padding when checking whether the xattr
+> value overflows the available space.  So remove it to eliminate any
+> potential confusion.
 > 
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Looks good. You can add:
+So there's a slight difference that ext4_xattr_check_names() gets called
+only when loading block on disk so it does not discover corruption in
+memory which this check had a potential to check. But I guess there's no
+big point in these checks so:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext4/xattr.c | 10 +++++-----
->  1 file changed, 5 insertions(+), 5 deletions(-)
+>  fs/ext4/xattr.c | 30 ++++++------------------------
+>  1 file changed, 6 insertions(+), 24 deletions(-)
 > 
 > diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 1d59895a91ee..71bf40933bbb 100644
+> index 71bf40933bbb..b4364612a66f 100644
 > --- a/fs/ext4/xattr.c
 > +++ b/fs/ext4/xattr.c
-> @@ -167,8 +167,8 @@ ext4_xattr_handler(int name_index)
+> @@ -249,20 +249,9 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
+>  #define xattr_check_inode(inode, header, end) \
+>  	__xattr_check_inode((inode), (header), (end), __func__, __LINE__)
+>  
+> -static inline int
+> -ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size)
+> -{
+> -	size_t value_size = le32_to_cpu(entry->e_value_size);
+> -
+> -	if (entry->e_value_block != 0 || value_size > size ||
+> -	    le16_to_cpu(entry->e_value_offs) + value_size > size)
+> -		return -EFSCORRUPTED;
+> -	return 0;
+> -}
+> -
+>  static int
+>  ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
+> -		      const char *name, size_t size, int sorted)
+> +		      const char *name, int sorted)
+>  {
+>  	struct ext4_xattr_entry *entry;
+>  	size_t name_len;
+> @@ -282,8 +271,6 @@ ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
+>  			break;
+>  	}
+>  	*pentry = entry;
+> -	if (!cmp && ext4_xattr_check_entry(entry, size))
+> -		return -EFSCORRUPTED;
+>  	return cmp ? -ENODATA : 0;
 >  }
 >  
->  static int
-> -ext4_xattr_check_names(struct ext4_xattr_entry *entry, void *end,
-> -		       void *value_start)
-> +ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
-> +			 void *value_start)
->  {
->  	struct ext4_xattr_entry *e = entry;
->  
-> @@ -222,8 +222,8 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
->  		return -EFSCORRUPTED;
->  	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
->  		return -EFSBADCRC;
-> -	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
-> -				       bh->b_data);
-> +	error = ext4_xattr_check_entries(BFIRST(bh), bh->b_data + bh->b_size,
-> +					 bh->b_data);
->  	if (!error)
->  		set_buffer_verified(bh);
->  	return error;
-> @@ -238,7 +238,7 @@ __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
->  	if (end - (void *)header < sizeof(*header) + sizeof(u32) ||
->  	    (header->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC)))
->  		goto errout;
-> -	error = ext4_xattr_check_names(IFIRST(header), end, IFIRST(header));
-> +	error = ext4_xattr_check_entries(IFIRST(header), end, IFIRST(header));
->  errout:
+> @@ -311,7 +298,6 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+>  	ea_bdebug(bh, "b_count=%d, refcount=%d",
+>  		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
+>  	if (ext4_xattr_check_block(inode, bh)) {
+> -bad_block:
+>  		EXT4_ERROR_INODE(inode, "bad block %llu",
+>  				 EXT4_I(inode)->i_file_acl);
+>  		error = -EFSCORRUPTED;
+> @@ -319,9 +305,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+>  	}
+>  	ext4_xattr_cache_insert(ext4_mb_cache, bh);
+>  	entry = BFIRST(bh);
+> -	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
+> -	if (error == -EFSCORRUPTED)
+> -		goto bad_block;
+> +	error = ext4_xattr_find_entry(&entry, name_index, name, 1);
 >  	if (error)
->  		__ext4_error_inode(inode, function, line, 0,
+>  		goto cleanup;
+>  	size = le32_to_cpu(entry->e_value_size);
+> @@ -358,13 +342,12 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+>  		return error;
+>  	raw_inode = ext4_raw_inode(&iloc);
+>  	header = IHDR(inode, raw_inode);
+> -	entry = IFIRST(header);
+>  	end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
+>  	error = xattr_check_inode(inode, header, end);
+>  	if (error)
+>  		goto cleanup;
+> -	error = ext4_xattr_find_entry(&entry, name_index, name,
+> -				      end - (void *)entry, 0);
+> +	entry = IFIRST(header);
+> +	error = ext4_xattr_find_entry(&entry, name_index, name, 0);
+>  	if (error)
+>  		goto cleanup;
+>  	size = le32_to_cpu(entry->e_value_size);
+> @@ -799,7 +782,7 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
+>  		bs->s.end = bs->bh->b_data + bs->bh->b_size;
+>  		bs->s.here = bs->s.first;
+>  		error = ext4_xattr_find_entry(&bs->s.here, i->name_index,
+> -					      i->name, bs->bh->b_size, 1);
+> +					      i->name, 1);
+>  		if (error && error != -ENODATA)
+>  			goto cleanup;
+>  		bs->s.not_found = error;
+> @@ -1068,8 +1051,7 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
+>  			return error;
+>  		/* Find the named attribute. */
+>  		error = ext4_xattr_find_entry(&is->s.here, i->name_index,
+> -					      i->name, is->s.end -
+> -					      (void *)is->s.base, 0);
+> +					      i->name, 0);
+>  		if (error && error != -ENODATA)
+>  			return error;
+>  		is->s.not_found = error;
 > -- 
 > 2.12.0
 > 
