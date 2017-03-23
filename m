@@ -1,74 +1,25 @@
-From: <bfoster@uca.edu>
-Subject: 50072 linux-ext4
-Date: Thu, 23 Mar 2017 19:29:46 -0000
-Message-ID: <149029738695.14703.7061117641884316938@permonline.ru>
-Reply-To: <bfoster@uca.edu>
+From: Raymond Jennings <shentino@gmail.com>
+Subject: Question about dirty data for unlinked files
+Date: Thu, 23 Mar 2017 13:07:23 -0700
+Message-ID: <CAGDaZ_qFMGuNMGzvOyStmtC9ZcCH3knHrhaOiP8HvmaphcWvVw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="58182.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 90.150.126.177.permonline.ru ([90.150.126.177]:33115 "HELO
-        permonline.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with SMTP id S1755614AbdCWT3x (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2017 15:29:53 -0400
-Content-Disposition: attachment
+Received: from mail-qt0-f173.google.com ([209.85.216.173]:36019 "EHLO
+        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751106AbdCWUIK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2017 16:08:10 -0400
+Received: by mail-qt0-f173.google.com with SMTP id r45so185267277qte.3
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Mar 2017 13:08:09 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBAoAAgAAAAMIeErrfbp+rgsAAK4LAAANABwAemlwLTIzMjQ0LnppcFVUCQADNhvUWDYb1Fh1
-eAsAAQQAAAAABAAAAABQSwMEFAACAAgAAwh4Sm0K6usICwAAxRUAAAgAHAAyMzI0NC5qc1VUCQAD
-NhvUWDYb1Fh1eAsAAQQAAAAABAAAAAC1mFtvW8cVhZ9tIP9B4JNUEc7c5wxcFSgKFOhDn/KYpMBc
-LckSZVE3yob/e799SIu04wYN0CZxLPGcmdmXtdZew/GwqvcXN6ujy8de1xfr2/dXx/3+/KnXi7t2
-efLD608/vH617vcP69XRh7y+6/9Y3R+8sNTh5O0Prz//8Hp82ej+6Xr98FTuHtfHm936x7w+Kkdn
-R5u3X37ZXJ23+nz+/u5s4UYrWkUTlMshWqddtqZ2p5tx/Dr1SdXYY4ohZht0LdqWUaMPPjg3VaNN
-tNE7FSxvj6Js6ckYa0PwZeoqxBqnUGI13bnuouONaFRUKvWhW/CxeR+aMrHkYOzwNltthirdmuaS
-T2HYHF2oU1K+Tapp7aMqU3Q+pJjccIqdVXEhjmGSUSEpPVWbvHNKaXLITpdgfKkxGaJyvjVd7GSG
-L8Fb4iOi1lWMPOT1mn2Qp1Sjx0y+1bhRtbY62sUpBVz4NCklkXsfYzNJu5EkL7L0lsTImi2inp9O
-Pndn8tDWmxQ8FWva2xSq68ERnuL0VLoq1MT5xEEqmKiDphfdtT6FNCQeTnB1zrpGDozFDqodpFOm
-2kjWiZ1HbHFyOiTyH72a2L2ca4pKLasaXNQqW2uiSzmaqTubTTNRkSZPbSxe01DtQtbUxJvCv9Hl
-Ouhyi8GZUKzWNWdbR7V0wETKWVWJzjY9Rc/vpvDyoHumhmlbMRenrskgAAfWdO+J7duaTGFQsWxA
-0e8jsAejybpZb5sKk1ZTpJZOnlZfSrAZFE2mxKFiy5pa2uLDXLHQs01DqpmD1i5Vr9i1OW9yDCDf
-kFcXBIYO5Gjj3Ee2scGpuRekR7UnsB19D3leO0WjPRUrHYCBbgrXKqDzQXsdiMvzn/FUrBhHpGYK
-ZETA7O9M1/TBDKmGIHBbMejhIQqF8yo0trfSkebsRGwhDPbXsTrZ33F6yJV+OfIaZmLBJFlHedqt
-dwDT0EIIClo9S1W3ndhk50nn4qin4mjLIWVSdIqMttz5upuE89vIazegJEe/Rf681oJmsEQvCqws
-YJbOgLEcHAs5FXz6PFETQ6cCpdZzxUwQbNdtL8w0QImB35pm6xJbkKOtbewMAwElCHF6x8oiJHWy
-/+D0ye94HWzIsHBI1lGeAgVDJlmzf6d0BYwFwE4l5/1RGwfkbcrDjjhZ2l+TjqIPiupaqp6zgdVW
-mSxq85vID5AA7/y8FqKbJAiUVzuUsx3VrLCSIsWsLMwqfqImhU5l00WfSKEFwUDc9kJQ1K2toYJ0
-hxQb0Qo/gXx0cFZmeEI9yRJlrhFVcxPtoEpSbdFAdMzvKlZrYWdy8FIH6FBSUBmM0pNtzVtUzAX+
-iBL+MYSjY0ROL0SBJckKvRU8zkQ+oRgjRk+5rJ8VssMstB0FRvTsBIomF/xki1O5Bl1kphC5V83D
-d9BKxfpWe2Flt9UaAy9rUxmQEoRXmsGSO8gHvSCdEHkq08jN5zpve1ZjJFRIecfOstZFtDlkq7zO
-8AX5k5h3GHNTq7Dex+StoxH0i9FJvxwoRZan7qtrDgqhCejLlGaNFYyJyim2pD8gQYMxKq0l8wKz
-kkNc4AUnqhYLvRdYNnACeES9E7Wy2g6YRYzgv5paTNjP2RxRd+mHDV4ntzsX2WAuMDVlsILtqhLY
-1mhvkpnCsA/gROZrUIU5a7XrIyTWOnRDO8XT4gfR99DCN3MBJbGqy5RzgwmevS+KzUCAIHCHsYa2
-ByKvwix4iD4H1WW9itZXESP6KktQL6/HoLBEa5njLqPeURCDEsIOxqjWbQzVmPKZKRyIXPBpZnZ8
-i8CoxKMET1amElsgLzXr56Ce1neUnxntK7VJwOwLEmAM5wabZKJRz0pNUINZbdqM/EkzkuHUjBMG
-C55nnjjTFgNAwgUL6ZjCdJlsBmBE+7yzcBbnYIGCS7pH1FYVpn/es9JVkWr+kdOjnXxPMxIsPiRk
-wDjrGDUpwlk/uybA35hKBowhVyhcY5Q03qGTccrFIhPyu3gA1tJN7F5ju2YbrGTiU6cmBAVdBf9g
-wIkSdyHYDqgECtl0FLdG1mG3c/oPO6PtxZhanZ1ZihYxf4OwN6IkIpRBdOZ7a3XyEm+WqGaV+92p
-sZuVunU64kH3rM/yzrzDrDbU08ApEP3HdfJQIUWf6SbDtigqpnjKxFF19i0afemzzxQ0ZDpV2Lni
-xxieFDLAaLQ9CEPoFHjfeTlQTk2JjXUGCFqpMbGIC2XsNpBvYQ1nWuasPBWnlxgDKI5Tlr3AqoyV
-Ih5++9SB7cGJHe9MvpOa1WASBr8ov9p672030fYv7+DomEpVHJc0CUxr37IJCcMzfZM1HIVZOimD
-nQWfUxQnmede+O/OSjgLeoWzZebsgUMQ54i1nUQr2JBug09q/j3ljxXtTSSecqOPYu/7hG+bdw7S
-R3a2Ie38El4Gt6Ze+L5dy0xB60Vi0U+oqY3RVmQDfKLwmewEgbuKjTrIWngSRMCoCbnj+d2+X3M9
-0Ukau3VrE7NSKiaNh8l4ADQiTqpT2lQKGBMb1agJM4u7DM5g522YajQehaQXTe4js7vuIBA62c7o
-+aLtihIGK0sL2tRm3k16ZhbIR5XRMWyNL2iR8F14C7WATJW721Zn9jvLuYwQIzPFySnoSRA9Q/kN
-pn1WITvfsFBWrE0WoqJjUTEbeZWubSvG6MUpeLgRB9fDxDsGq0SHGX40Gw5bso5wJ6L8Be/dgCUX
-EALhFqbF52KTuDT0MHHlyn3rvQEOgJwkJmKb/UOaAKmVe5B4qqpUliQ5udDrkjPsSIHKYEoEgeJv
-8atb95uZugP0Wua2G3QKJFJZNBGVy+IuEF2UPModSnzgcGbrEsEAtyd8i2i7lprgdvRv1orTUx4T
-gzJzfUHHcKeAP8oths6+6Bg4wYXCYpE7uSXxPEhXYL3xRM61ydedimJ0mXcSeYCjA+9N1pHKyR2K
-rLNclfgzYFbymTt+BSNSXrky0Vwu0Tv8K8G/QIZQ5RsAL5KSyhCl2j31IIGZCu/M1iEw/lOYayCe
-Z+tMmO+DXoiOte94VG7nvnZuGNxJo/gxMdmEOHhaZA7owiUsyb2fFvuvdv7iA3fuNLgXP5bxqEnc
-9aFi8MnsM7kiHvjbxdv9dyn7b0C++fpkc1k/rB9uVvX6uN1eX7SH24ePzwffo2weez//eLH58P7o
-7Gj/xpurvnp3f35wwj/z/fmbcXVzsz6ef1znVbu5Pj45+tPBHidfH/4/+xKoXl/U9dVt3ZwfH8Te
-Hh/vLi/Xz7WdLU57v318vL26us35dvHmOt/X8+Mff/npk/7847uTgzz2i34+rM3Lpye/vv0/JdEu
-V1dPq3d3H+6Pr2+fnh6fP1w/3B6kU59Wm83Vu+ebZwn36fziqh/frx/6ibzw6n79LH/NP7/av3p2
-vOpPR3/fnXG82Nye93q1eRzni+VCdr15frhY3Ty0zfmZvPnX9To/Hzu9RLWWYJm/l0YtrV9Oy6SW
-3ix1Cstol9q55ZSWIS3jyfLuafXcPz5vHh7P9ge8FJkqG6nysp/n+8t3H9+V1dkvi18Wy/XV6mqz
-yeeXqzP1doAcCejww+X7zeXHx7Z6vnvmjf2TP+8P/ILE/cPT04Nlp6cnny7G8f6Dv5ztM96tPfn0
-1TGf92EeLU4PoXW6OPvpfn2xevdmrG+u/3ae13+7af34pb37qH7eh/OrtPpf+0N/3h/268nbz9+c
-8F/+sjjeB3nydnFyiJgZza9elXXP7+cfP8v/6tyMvj55QYl8/HkP0q/gxecHcDz4jlWz/b8BUEsB
-Ah4DFAACAAgAAwh4Sm0K6usICwAAxRUAAAgAGAAAAAAAAQAAAKSBAAAAADIzMjQ0LmpzVVQFAAM2
-G9RYdXgLAAEEAAAAAAQAAAAAUEsFBgAAAAABAAEATgAAAEoLAAAAAFBLAQIeAwoAAgAAAAMIeErr
-fbp+rgsAAK4LAAANABgAAAAAAAAAAACkgQAAAAB6aXAtMjMyNDQuemlwVVQFAAM2G9RYdXgLAAEE
-AAAAAAQAAAAAUEsFBgAAAAABAAEAUwAAAPULAAAAAA==
+If you delete a file (and don't have it open), and there's a bunch of
+dirty data for that file still in page cache, does all that dirty data
+disappear or does it still get written back?
+
+I'm curious for performance reasons because I have an experimental
+process I'm developing, and it has a habit of leaving large amounts of
+dirty data in a huge output file.  I'd like to be able to unlink the
+file and skip the writeback process once the file's been unlinked.
