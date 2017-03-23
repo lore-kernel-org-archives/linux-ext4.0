@@ -1,83 +1,98 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
- optimization
-Date: Wed, 22 Mar 2017 15:53:42 -0400
-Message-ID: <1490212422.3921.1.camel@redhat.com>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-         <20161222084549.GA8833@infradead.org> <1482417724.3924.39.camel@redhat.com>
-         <20170320214327.GA5098@fieldses.org> <20170321134500.GA1318@infradead.org>
-         <20170321163011.GA16666@fieldses.org> <1490117004.2542.1.camel@redhat.com>
-         <20170321214518.GB17542@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 scaling limits ?
+Date: Wed, 22 Mar 2017 23:35:10 -0400
+Message-ID: <20170323033510.tx62b4y5ap3jkrnt@thunk.org>
+References: <CAE0An6fc6tX6ACQYdTYdP+CwN=RDKuv_oaW0xeNrBLY_1AvOtw@mail.gmail.com>
+ <32A4A230-566F-4476-A516-2C6C4BA5C1C6@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170321214518.GB17542@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40594 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751503AbdCWDfN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Mar 2017 23:35:13 -0400
+Content-Disposition: inline
+In-Reply-To: <32A4A230-566F-4476-A516-2C6C4BA5C1C6@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2017-03-22 at 08:45 +1100, Dave Chinner wrote:
-> On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
-> > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
-> > > - It's durable; the above comparison still works if there were reboots
-> > >   between the two i_version checks.
-> > > 	- I don't know how realistic this is--we may need to figure out
-> > > 	  if there's a weaker guarantee that's still useful.  Do
-> > > 	  filesystems actually make ctime/mtime/i_version changes
-> > > 	  atomically with the changes that caused them?  What if a
-> > > 	  change attribute is exposed to an NFS client but doesn't make
-> > > 	  it to disk, and then that value is reused after reboot?
-> > > 
-> > 
-> > Yeah, there could be atomicity there. If we bump i_version, we'll mark
-> > the inode dirty and I think that will end up with the new i_version at
-> > least being journalled before __mark_inode_dirty returns.
-> 
-> The change may be journalled, but it isn't guaranteed stable until
-> fsync is run on the inode.
-> 
-> NFS server operations commit the metadata changed by a modification
-> through ->commit_metadata or sync_inode_metadata() before the
-> response is sent back to the client, hence guaranteeing that
-> i_version changes through the NFS server are stable and durable.
-> 
-> This is not the case for normal operations done through the POSIX
-> API - the journalling is asynchronous and the only durability
-> guarantees are provided by fsync()....
-> 
+On Tue, Mar 21, 2017 at 05:48:11PM -0400, Andreas Dilger wrote:
+> While it is true that e2fsck does not free memory during operation, in
+> practice this is not a problem. Even for large filesystems (say 32-48TB)
+> it will only use around 8-12GB of RAM so that is very reasonable for a
+> server today.
 
-Ahh ok, I missed that...thanks.
+E2fsck does free memory during operation; see the comments in front of
+pass 2 and pass 3 for example:
 
-I think we'll have a hard time making this fully atomic. We may end up
-having to settle for something less (and doing our best to warn users
-of that possibility).
+ * Pass 2 also collects the following information:
+ * 	- The inode numbers of the subdirectories for each directory.
+ *
+ * Pass 2 relies on the following information from previous passes:
+ * 	- The directory information collected in pass 1.
+ * 	- The inode_used_map bitmap
+ * 	- The inode_bad_map bitmap
+ * 	- The inode_dir_map bitmap
+ *
+ * Pass 2 frees the following data structures
+ * 	- The inode_bad_map bitmap
+ * 	- The inode_reg_map bitmap
 
-One idea might be to tie the behavior to AT_FORCE/DONT_SYNC. In the
-don't sync case, allow the kernel to hand out the i_version without
-syncing it to disk. In the FORCE_SYNC case, do an fsync internally
-before returning.
+ * Pass 3 frees the following data structures:
+ *     	- The dirinfo directory information cache.
 
-> > That said, I suppose it is possible for us to bump the counter, hand
-> > that new counter value out to a NFS client and then the box crashes
-> > before it makes it to the journal.
-> 
-> Yup, this has aways been a problem when you mix posix applications
-> running on the NFS server modifying the same files as the NFS
-> clients are accessing and requiring synchronisation.
-> 
-> > Not sure how big a problem that really is.
-> 
-> This coherency problem has always existed on the server side...
-> 
+It's not a *lot* of memory, especially given that bitmaps are stored
+in a much more compact, extent-mapped format, but it does free some
+memory.
 
-Yes. I don't think this patchset makes anything worse in this regard.
-We will need well-defined semantics here before i_version can be
-exposed to userland via statx however.
--- 
-Jeff Layton <jlayton@redhat.com>
+It is fair to say that e2fsck is optimized to run as quickly as
+possible, and to cache information so that we are not rereading file
+system metadata from disk.  This was done using some of the
+suggestions from the 1989 Usenix ATC paper:
+
+Bina. E. J., and P. A. Emrath (1989): "A faster fsck for BSD UNIX,"
+Proceedings of the Winter 1989 USENIX Technical Conference, 173-185.
+
+
+On Tue, 21 Mar 2017 22:59:18 +0100 Reindl Harald <h.reindl@thelounge.net> said:
+>Am 21.03.2017 um 22:48 schrieb Andreas Dilger:
+>> While it is true that e2fsck does not free memory during operation, in
+>> practice this is not a problem. Even for large filesystems (say 32-48TB)
+>> it will only use around 8-12GB of RAM so that is very reasonable for a
+>> server today.
+>
+>no it's not reasonable even today that your whole physical machine exposes
+>it's total RAM to the one of many single virtual machines running just a samba
+>server for a 50 TB "datagrave" with a handful of users
+>
+>in reality it should not be a problem to attach even a 100 TB storage to a VM
+>with 1-2 GB
+
+Reindl, sorry, but today, if you have an out-of-balance server with a
+huge amoutn of storage, and a tiny amount of disk, it *will* be a
+problem.
+
+If you are desperate, you *may* be able to use the scratch files
+feature documented in e2fsck.conf.  This was mainly implemented for
+users of desktop NAS boxes which tried to connect a huge disk to a
+tiny arm server, and the manufacturers of said NAS boxes didn't bother
+to check to see if they had provisioned enough memory so they could
+repair a broken file system.  (I know they didn't because the
+developers didn't reach out to me; their users did.)  The scratch
+files is way to use on-disk databases to replace the in-memory data
+structure, but it is S-L-O-W.  But hey, you get what you pay for, and
+if you are too cheapskate to provision a system with enough memory,
+you (or your paying customers) will suffer the consequences.
+
+If you don't like this answer, feel free to write your own e2fsck
+which is 5-6 times slower because it is constantly rereading metadata
+from disk.
+
+Or submit patches, but if it slows down the fsck times on a reasonably
+configured servers, I reserve the right to reject such patches as
+inflicting pain existing users of ext4 who correctly sized their
+servers.
+
+						- Ted
