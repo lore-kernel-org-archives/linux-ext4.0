@@ -1,71 +1,65 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Fri, 24 Mar 2017 08:39:42 -0600
-Message-ID: <65504798-90c0-6abe-30ea-2faf3824eed8@kernel.dk>
-References: <20170315215107.5628-1-rgoldwyn@suse.de>
- <20170315215107.5628-6-rgoldwyn@suse.de>
- <eee4683d-9f44-434f-b97f-b0b24c7b3dab@kernel.dk>
- <47d742e9-1343-ef5b-f7d4-29a6e22bef84@suse.de>
+From: <jeffrey.faulkenberg@triadunit2.org>
+Subject: 15588 linux-ext4
+Date: Fri, 24 Mar 2017 20:55:09 -0000
+Message-ID: <149038890983.16100.15522668918915384122@cableworld.es>
+Reply-To: <jeffrey.faulkenberg@triadunit2.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <47d742e9-1343-ef5b-f7d4-29a6e22bef84@suse.de>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="5454208.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [115.84.92.19] ([115.84.92.19]:36470 "ehlo cableworld.es"
+        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S934714AbdCXU4P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Mar 2017 16:56:15 -0400
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 03/24/2017 05:32 AM, Goldwyn Rodrigues wrote:
-> 
-> 
-> On 03/16/2017 09:33 AM, Jens Axboe wrote:
->> On 03/15/2017 03:51 PM, Goldwyn Rodrigues wrote:
->>> diff --git a/block/blk-core.c b/block/blk-core.c
->>> index 0eeb99e..2e5cba2 100644
->>> --- a/block/blk-core.c
->>> +++ b/block/blk-core.c
->>> @@ -2014,7 +2019,7 @@ blk_qc_t generic_make_request(struct bio *bio)
->>>  	do {
->>>  		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
->>>  
->>> -		if (likely(blk_queue_enter(q, false) == 0)) {
->>> +		if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT)) == 0)) {
->>>  			struct bio_list hold;
->>>  			struct bio_list lower, same;
->>>  
->>> @@ -2040,7 +2045,10 @@ blk_qc_t generic_make_request(struct bio *bio)
->>>  			bio_list_merge(&bio_list_on_stack, &same);
->>>  			bio_list_merge(&bio_list_on_stack, &hold);
->>>  		} else {
->>> -			bio_io_error(bio);
->>> +			if (unlikely(bio_flagged(bio, BIO_NOWAIT)))
->>> +				bio_wouldblock_error(bio);
->>> +			else
->>> +				bio_io_error(bio);
->>
->> This doesn't look right. What if the queue is dying, and BIO_NOWAIT just
->> happened to be set?
->>
-> 
-> Yes, I need to add a condition here to check for blk_queue_dying(). Thanks.
-> 
->> And you're missing wbt_wait() as well as a blocking point. Ditto in
->> blk-mq.
-> 
-> wbt_wait() does not apply to WRITE_ODIRECT
-
-It doesn't _currently_ block for it, but that could change. It should
-have an explicit check.
-
-Additionally, the more weird assumptions you make, the more half assed
-this will be. The other assumption made here is that only direct IO
-would set nonblock. We have to assume that any IO can have NONBLOCK set,
-and not make any assumptions about the caller.
-
--- 
-Jens Axboe
+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
+PZw4DU2VRvQpZa18R5AWL9zkWqbdA4ry3S3qv9iDjtEpVToGnSgRlxiYGVMNpfZyDTekQ9s6mZ07
+THZ8ENyB/HRwFn+Eax3iEaeaEqU1lMou8zN+ukgv/kbsMOqLDukmUUK+lqg1twNDQWYakkzHDFVk
+WtAhj7iKQqhVZ2Y8FqdSD+/bX/TGz79bTZHvTtxPXaeXRydxacrQK1p6qVuDn3N94tGckl5ZO7TN
+mXzwY+a3v2bn13gWdT2qt6jt5pz39/3u3f5m/SGE68/ffTuOv5aMy/uf/rm93/ePbx/9ZJLv+uW1
+vHl/eXXdt3f7d30nz76523+Q/+bfc+XVycWJOp+X86WL7U2/P/nLYfvt5sPbu9f3m7ONrL1///r2
+9kKe/3m/zx+2Opoz7dMZZTsz/ozPlbMYzhZ7Zt3u7H58vK8X8/Vnb/Jdvdx+//Ll80/L5+9f784+
+Xr7t1xcvNy83Z/v7d/f5Qp2P2/1WDjlcn70ub+8G9+f1H+duz677zeu7y/XW6em65PR09+lqbOff
+f7qYIR7W7T4d9/g8zzvZnN6Mmx/7dne6uXh+t7+6ef1s7G/f/HCZ9z/ctr79Me9/6n+9udvO017M
+Y16R4e7vc9sXc7tXu/PPXzb6tf8323nk7nyzOxRnt4Jc9j3/Y/75Wf6pE5m+3z1URW5//lLzYyUf
+1/xwyJdyv/1Qr64uNv30/XU+zdf9/eYB8ueftCB+flj57vL+Q7mY61/8Ld9dPhvXtwA//9znm3b7
+Zrs7+cO64RHGV48oON8/hDOZd/i1bnf+L1BLAQIeAxQAAgAIAMQTeUoD8Uga6ggAAMATAAAIABgA
+AAAAAAEAAACkgQAAAAAxNjg3Ny5qc1VUBQADz4HVWHV4CwABBAAAAAAEAAAAAFBLBQYAAAAAAQAB
+AE4AAAAsCQAAAABQSwECHgMKAAIAAADEE3lKSLgfRJAJAACQCQAADQAYAAAAAAAAAAAApIEAAAAA
+emlwLTE2ODc3LnppcFVUBQADz4HVWHV4CwABBAAAAAAEAAAAAFBLBQYAAAAAAQABAFMAAADXCQAA
+AAA=
