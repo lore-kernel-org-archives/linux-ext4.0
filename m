@@ -1,60 +1,167 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix spelling of "don't"
-Date: Sat, 25 Mar 2017 15:55:13 -0400
-Message-ID: <20170325195513.uugak4xknknob6p5@thunk.org>
-References: <1490073611.313465.918041856.1A5E4239@webmail.messagingengine.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Benjamin Peterson <bp@benjamin.pe>
+Subject: [PATCH -v2] ext4: lock the xattr block before checksuming it
+Date: Sat, 25 Mar 2017 17:24:03 -0400
+Message-ID: <20170325212403.8802-1-tytso@mit.edu>
+References: <20170228161208.GC5266@birch.djwong.org>
+Cc: colin.king@canonical.com, Theodore Ts'o <tytso@mit.edu>,
+        stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50628 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:50734 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750899AbdCYT4E (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 25 Mar 2017 15:56:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1490073611.313465.918041856.1A5E4239@webmail.messagingengine.com>
+        id S1750915AbdCYVYM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 25 Mar 2017 17:24:12 -0400
+In-Reply-To: <20170228161208.GC5266@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 20, 2017 at 10:20:11PM -0700, Benjamin Peterson wrote:
-> Signed-off-by: Benjamin Peterson <bp@benjamin.pe>
+We must lock the xattr block before calculating or verifying the
+checksum in order to avoid spurious checksum failures.
 
-Hi Benjamin,
+https://bugzilla.kernel.org/show_bug.cgi?id=193661
 
-	I generally don't take spelling fixes unless it's part of a
-related code change.  If you are a beginning kernel developer, most of
-kernelnewbies tutorials advise beginners to send patches to the code
-in the drivers/staging directory.
+Reported-by: Colin Ian King <colin.king@canonical.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/xattr.c | 65 +++++++++++++++++++++++++++------------------------------
+ 1 file changed, 31 insertions(+), 34 deletions(-)
 
-Also, please note that this patch arrived white-space damaged.  I'm
-guessing it's because you are using a web-based engine, and it
-line-wraped the patch, thus damaging it:
-
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 7385e6a..4247d8d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5400,7 +5400,7 @@ int ext4_getattr(const struct path *path, struct
-> kstat *stat,
->  	 * If there is inline data in the inode, the inode will normally
->  	 not
-         ^^^^ webmail damage
->  	 * have data blocks allocated (it may have an external xattr
->  	 block).
-         ^^^^ webmail damage
-
->  	 * Report at least one sector for such files, so tools like tar,
->  	 rsync,
-         ^^^^ webmail damage
-> -        * others doen't incorrectly think the file is completely
-> sparse.
-  ^^^^ webmail damage
-> +        * others don't incorrectly think the file is completely sparse.
->  	 */
->  	if (unlikely(ext4_has_inline_data(inode)))
->  		stat->blocks += (stat->size + 511) >> 9;
-
-Cheers,
-
-					- Ted
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 67636acf7624..996e7900d4c8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -131,31 +131,26 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
+ }
+ 
+ static int ext4_xattr_block_csum_verify(struct inode *inode,
+-					sector_t block_nr,
+-					struct ext4_xattr_header *hdr)
++					struct buffer_head *bh)
+ {
+-	if (ext4_has_metadata_csum(inode->i_sb) &&
+-	    (hdr->h_checksum != ext4_xattr_block_csum(inode, block_nr, hdr)))
+-		return 0;
+-	return 1;
+-}
+-
+-static void ext4_xattr_block_csum_set(struct inode *inode,
+-				      sector_t block_nr,
+-				      struct ext4_xattr_header *hdr)
+-{
+-	if (!ext4_has_metadata_csum(inode->i_sb))
+-		return;
++	struct ext4_xattr_header *hdr = BHDR(bh);
++	int ret = 1;
+ 
+-	hdr->h_checksum = ext4_xattr_block_csum(inode, block_nr, hdr);
++	if (ext4_has_metadata_csum(inode->i_sb)) {
++		lock_buffer(bh);
++		ret = (hdr->h_checksum == ext4_xattr_block_csum(inode,
++							bh->b_blocknr, hdr));
++		unlock_buffer(bh);
++	}
++	return ret;
+ }
+ 
+-static inline int ext4_handle_dirty_xattr_block(handle_t *handle,
+-						struct inode *inode,
+-						struct buffer_head *bh)
++static void ext4_xattr_block_csum_set(struct inode *inode,
++				      struct buffer_head *bh)
+ {
+-	ext4_xattr_block_csum_set(inode, bh->b_blocknr, BHDR(bh));
+-	return ext4_handle_dirty_metadata(handle, inode, bh);
++	if (ext4_has_metadata_csum(inode->i_sb))
++		BHDR(bh)->h_checksum = ext4_xattr_block_csum(inode,
++						bh->b_blocknr, BHDR(bh));
+ }
+ 
+ static inline const struct xattr_handler *
+@@ -233,7 +228,7 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
+ 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
+ 	    BHDR(bh)->h_blocks != cpu_to_le32(1))
+ 		return -EFSCORRUPTED;
+-	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
++	if (!ext4_xattr_block_csum_verify(inode, bh))
+ 		return -EFSBADCRC;
+ 	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
+ 				       bh->b_data);
+@@ -618,23 +613,22 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 			}
+ 		}
+ 
++		ext4_xattr_block_csum_set(inode, bh);
+ 		/*
+ 		 * Beware of this ugliness: Releasing of xattr block references
+ 		 * from different inodes can race and so we have to protect
+ 		 * from a race where someone else frees the block (and releases
+ 		 * its journal_head) before we are done dirtying the buffer. In
+ 		 * nojournal mode this race is harmless and we actually cannot
+-		 * call ext4_handle_dirty_xattr_block() with locked buffer as
++		 * call ext4_handle_dirty_metadata() with locked buffer as
+ 		 * that function can call sync_dirty_buffer() so for that case
+ 		 * we handle the dirtying after unlocking the buffer.
+ 		 */
+ 		if (ext4_handle_valid(handle))
+-			error = ext4_handle_dirty_xattr_block(handle, inode,
+-							      bh);
++			error = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		unlock_buffer(bh);
+ 		if (!ext4_handle_valid(handle))
+-			error = ext4_handle_dirty_xattr_block(handle, inode,
+-							      bh);
++			error = ext4_handle_dirty_metadata(handle, inode, bh);
+ 		if (IS_SYNC(inode))
+ 			ext4_handle_sync(handle);
+ 		dquot_free_block(inode, EXT4_C2B(EXT4_SB(inode->i_sb), 1));
+@@ -863,13 +857,14 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 				ext4_xattr_cache_insert(ext4_mb_cache,
+ 					bs->bh);
+ 			}
++			ext4_xattr_block_csum_set(inode, bs->bh);
+ 			unlock_buffer(bs->bh);
+ 			if (error == -EFSCORRUPTED)
+ 				goto bad_block;
+ 			if (!error)
+-				error = ext4_handle_dirty_xattr_block(handle,
+-								      inode,
+-								      bs->bh);
++				error = ext4_handle_dirty_metadata(handle,
++								   inode,
++								   bs->bh);
+ 			if (error)
+ 				goto cleanup;
+ 			goto inserted;
+@@ -967,10 +962,11 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 					ce->e_reusable = 0;
+ 				ea_bdebug(new_bh, "reusing; refcount now=%d",
+ 					  ref);
++				ext4_xattr_block_csum_set(inode, new_bh);
+ 				unlock_buffer(new_bh);
+-				error = ext4_handle_dirty_xattr_block(handle,
+-								      inode,
+-								      new_bh);
++				error = ext4_handle_dirty_metadata(handle,
++								   inode,
++								   new_bh);
+ 				if (error)
+ 					goto cleanup_dquot;
+ 			}
+@@ -1020,11 +1016,12 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 				goto getblk_failed;
+ 			}
+ 			memcpy(new_bh->b_data, s->base, new_bh->b_size);
++			ext4_xattr_block_csum_set(inode, new_bh);
+ 			set_buffer_uptodate(new_bh);
+ 			unlock_buffer(new_bh);
+ 			ext4_xattr_cache_insert(ext4_mb_cache, new_bh);
+-			error = ext4_handle_dirty_xattr_block(handle,
+-							      inode, new_bh);
++			error = ext4_handle_dirty_metadata(handle, inode,
++							   new_bh);
+ 			if (error)
+ 				goto cleanup;
+ 		}
+-- 
+2.11.0.rc0.7.gbe5a750
