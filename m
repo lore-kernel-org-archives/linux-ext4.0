@@ -1,28 +1,32 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: David Miller <davem@davemloft.net>
 Subject: Re: [PATCH] Documentation: Fix dead URLs to ftp.kernel.org
-Date: Sun, 26 Mar 2017 16:48:14 -0400
-Message-ID: <20170326204814.3n5kurnw6ea7zyyh@thunk.org>
+Date: Sun, 26 Mar 2017 16:42:29 -0700 (PDT)
+Message-ID: <20170326.164229.1025042567767205567.davem@davemloft.net>
 References: <20170326142550.29269-1-sj38.park@gmail.com>
+        <20170326131115.1399a01c@lwn.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: corbet@lwn.net, adilger.kernel@dilger.ca,
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: sj38.park@gmail.com, tytso@mit.edu, adilger.kernel@dilger.ca,
         jeffrey.t.kirsher@intel.com, mchehab@kernel.org,
         linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-wired-lan@lists.osuosl.org
-To: SeongJae Park <sj38.park@gmail.com>
+To: corbet@lwn.net
 Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170326142550.29269-1-sj38.park@gmail.com>
+In-Reply-To: <20170326131115.1399a01c@lwn.net>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Mar 26, 2017 at 11:25:50PM +0900, SeongJae Park wrote:
-> As ftp.kernel.org is closed [0], this commit fixes dead URLs in
-> documents to use www.kernel.org instead.
-> 
-> [0] https://www.kernel.org/shutting-down-ftp-services.html
-> 
-> Signed-off-by: SeongJae Park <sj38.park@gmail.com>
+From: Jonathan Corbet <corbet@lwn.net>
+Date: Sun, 26 Mar 2017 13:11:15 -0600
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+> On Sun, 26 Mar 2017 23:25:50 +0900
+> SeongJae Park <sj38.park@gmail.com> wrote:
+> 
+> CC += davem
+> 
+> If nobody objects, I'll just take this through the docs tree.
 
+No objection from me:
+
+Acked-by: David S. Miller <davem@davemloft.net>
