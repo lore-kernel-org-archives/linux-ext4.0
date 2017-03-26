@@ -1,22 +1,176 @@
-From: "Garber Home" <gfh@ima.mg.gov.br>
-Subject: Funding
-Date: Sat, 25 Mar 2017 22:22:11 +0100
-Message-ID: <20170325212216.BF6051FA326__461.189219686453$1490479203$gmane$org@mail.ima.mg.gov.br>
-Reply-To: bgfnhome@gmail.com
+From: Colin Ian King <colin.king@canonical.com>
+Subject: Re: [PATCH -v2] ext4: lock the xattr block before checksuming it
+Date: Sun, 26 Mar 2017 00:20:56 +0000
+Message-ID: <c3ea6d8a-3c4e-6ccb-be94-a86397d13fcb@canonical.com>
+References: <20170228161208.GC5266@birch.djwong.org>
+ <20170325212403.8802-1-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <gfh@ima.mg.gov.br>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from venus.ima.mg.gov.br ([200.198.43.35]:38716 "EHLO
-        mail.ima.mg.gov.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751042AbdCYV7s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Mar 2017 17:59:48 -0400
-Content-Description: Mail message body
+Received: from youngberry.canonical.com ([91.189.89.112]:49887 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751205AbdCZAVE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Mar 2017 20:21:04 -0400
+In-Reply-To: <20170325212403.8802-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Do you require funding? For Business or Personal loan without stress and Quick approval, email us for more Info.
+On 25/03/17 21:24, Theodore Ts'o wrote:
+> We must lock the xattr block before calculating or verifying the
+> checksum in order to avoid spurious checksum failures.
+> 
+> https://bugzilla.kernel.org/show_bug.cgi?id=193661
+> 
+> Reported-by: Colin Ian King <colin.king@canonical.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/ext4/xattr.c | 65 +++++++++++++++++++++++++++------------------------------
+>  1 file changed, 31 insertions(+), 34 deletions(-)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 67636acf7624..996e7900d4c8 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -131,31 +131,26 @@ static __le32 ext4_xattr_block_csum(struct inode *inode,
+>  }
+>  
+>  static int ext4_xattr_block_csum_verify(struct inode *inode,
+> -					sector_t block_nr,
+> -					struct ext4_xattr_header *hdr)
+> +					struct buffer_head *bh)
+>  {
+> -	if (ext4_has_metadata_csum(inode->i_sb) &&
+> -	    (hdr->h_checksum != ext4_xattr_block_csum(inode, block_nr, hdr)))
+> -		return 0;
+> -	return 1;
+> -}
+> -
+> -static void ext4_xattr_block_csum_set(struct inode *inode,
+> -				      sector_t block_nr,
+> -				      struct ext4_xattr_header *hdr)
+> -{
+> -	if (!ext4_has_metadata_csum(inode->i_sb))
+> -		return;
+> +	struct ext4_xattr_header *hdr = BHDR(bh);
+> +	int ret = 1;
+>  
+> -	hdr->h_checksum = ext4_xattr_block_csum(inode, block_nr, hdr);
+> +	if (ext4_has_metadata_csum(inode->i_sb)) {
+> +		lock_buffer(bh);
+> +		ret = (hdr->h_checksum == ext4_xattr_block_csum(inode,
+> +							bh->b_blocknr, hdr));
+> +		unlock_buffer(bh);
+> +	}
+> +	return ret;
+>  }
+>  
+> -static inline int ext4_handle_dirty_xattr_block(handle_t *handle,
+> -						struct inode *inode,
+> -						struct buffer_head *bh)
+> +static void ext4_xattr_block_csum_set(struct inode *inode,
+> +				      struct buffer_head *bh)
+>  {
+> -	ext4_xattr_block_csum_set(inode, bh->b_blocknr, BHDR(bh));
+> -	return ext4_handle_dirty_metadata(handle, inode, bh);
+> +	if (ext4_has_metadata_csum(inode->i_sb))
+> +		BHDR(bh)->h_checksum = ext4_xattr_block_csum(inode,
+> +						bh->b_blocknr, BHDR(bh));
+>  }
+>  
+>  static inline const struct xattr_handler *
+> @@ -233,7 +228,7 @@ ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
+>  	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
+>  	    BHDR(bh)->h_blocks != cpu_to_le32(1))
+>  		return -EFSCORRUPTED;
+> -	if (!ext4_xattr_block_csum_verify(inode, bh->b_blocknr, BHDR(bh)))
+> +	if (!ext4_xattr_block_csum_verify(inode, bh))
+>  		return -EFSBADCRC;
+>  	error = ext4_xattr_check_names(BFIRST(bh), bh->b_data + bh->b_size,
+>  				       bh->b_data);
+> @@ -618,23 +613,22 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+>  			}
+>  		}
+>  
+> +		ext4_xattr_block_csum_set(inode, bh);
+>  		/*
+>  		 * Beware of this ugliness: Releasing of xattr block references
+>  		 * from different inodes can race and so we have to protect
+>  		 * from a race where someone else frees the block (and releases
+>  		 * its journal_head) before we are done dirtying the buffer. In
+>  		 * nojournal mode this race is harmless and we actually cannot
+> -		 * call ext4_handle_dirty_xattr_block() with locked buffer as
+> +		 * call ext4_handle_dirty_metadata() with locked buffer as
+>  		 * that function can call sync_dirty_buffer() so for that case
+>  		 * we handle the dirtying after unlocking the buffer.
+>  		 */
+>  		if (ext4_handle_valid(handle))
+> -			error = ext4_handle_dirty_xattr_block(handle, inode,
+> -							      bh);
+> +			error = ext4_handle_dirty_metadata(handle, inode, bh);
+>  		unlock_buffer(bh);
+>  		if (!ext4_handle_valid(handle))
+> -			error = ext4_handle_dirty_xattr_block(handle, inode,
+> -							      bh);
+> +			error = ext4_handle_dirty_metadata(handle, inode, bh);
+>  		if (IS_SYNC(inode))
+>  			ext4_handle_sync(handle);
+>  		dquot_free_block(inode, EXT4_C2B(EXT4_SB(inode->i_sb), 1));
+> @@ -863,13 +857,14 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  				ext4_xattr_cache_insert(ext4_mb_cache,
+>  					bs->bh);
+>  			}
+> +			ext4_xattr_block_csum_set(inode, bs->bh);
+>  			unlock_buffer(bs->bh);
+>  			if (error == -EFSCORRUPTED)
+>  				goto bad_block;
+>  			if (!error)
+> -				error = ext4_handle_dirty_xattr_block(handle,
+> -								      inode,
+> -								      bs->bh);
+> +				error = ext4_handle_dirty_metadata(handle,
+> +								   inode,
+> +								   bs->bh);
+>  			if (error)
+>  				goto cleanup;
+>  			goto inserted;
+> @@ -967,10 +962,11 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  					ce->e_reusable = 0;
+>  				ea_bdebug(new_bh, "reusing; refcount now=%d",
+>  					  ref);
+> +				ext4_xattr_block_csum_set(inode, new_bh);
+>  				unlock_buffer(new_bh);
+> -				error = ext4_handle_dirty_xattr_block(handle,
+> -								      inode,
+> -								      new_bh);
+> +				error = ext4_handle_dirty_metadata(handle,
+> +								   inode,
+> +								   new_bh);
+>  				if (error)
+>  					goto cleanup_dquot;
+>  			}
+> @@ -1020,11 +1016,12 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  				goto getblk_failed;
+>  			}
+>  			memcpy(new_bh->b_data, s->base, new_bh->b_size);
+> +			ext4_xattr_block_csum_set(inode, new_bh);
+>  			set_buffer_uptodate(new_bh);
+>  			unlock_buffer(new_bh);
+>  			ext4_xattr_cache_insert(ext4_mb_cache, new_bh);
+> -			error = ext4_handle_dirty_xattr_block(handle,
+> -							      inode, new_bh);
+> +			error = ext4_handle_dirty_metadata(handle, inode,
+> +							   new_bh);
+>  			if (error)
+>  				goto cleanup;
+>  		}
+> 
 
-Thanks
-Gaber Financial
+I've given this a good soak test on 32 bit and 64 bit x86 builds and it
+fixes the issue. Thanks Ted.
+
+Tested-by: Colin Ian King <colin.king@canonical.com>
