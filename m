@@ -1,86 +1,67 @@
-From: Alexander Potapenko <glider@google.com>
-Subject: Re: [PATCH] fs: Initialize tmp.b_page in generic_block_bmap()
-Date: Tue, 28 Mar 2017 18:28:20 +0200
-Message-ID: <CAG_fn=UEtkQmN3gjn_-1dAf=fRLX0PG7f8GDEHq_7y4B0o3aNw@mail.gmail.com>
-References: <1482409815-89034-1-git-send-email-glider@google.com> <20170118163220.vbdkcjmkkyjmfqxb@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Wed, 29 Mar 2017 13:15:07 +0200
+Message-ID: <20170329111507.GA18467@quack2.suse.cz>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
+ <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
+ <20170321163011.GA16666@fieldses.org>
+ <1490117004.2542.1.camel@redhat.com>
+ <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Potapenko <glider@google.com>,
-        Dmitriy Vyukov <dvyukov@google.com>,
-        Kostya Serebryany <kcc@google.com>, viro@zeniv.linux.org.uk,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170118163220.vbdkcjmkkyjmfqxb@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1490122013.2593.1.camel@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 18, 2017 at 5:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Thu, Dec 22, 2016 at 01:30:15PM +0100, Alexander Potapenko wrote:
->> KMSAN (KernelMemorySanitizer, a new error detection tool) reports use of
->> uninitialized memory in ext4_update_bh_state():
->>
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->> BUG: KMSAN: use of unitialized memory
->> CPU: 3 PID: 1 Comm: swapper/0 Tainted: G    B           4.8.0-rc6+ #597
->> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs
->> 01/01/2011
->>  0000000000000282 ffff88003cc96f68 ffffffff81f30856 0000003000000008
->>  ffff88003cc96f78 0000000000000096 ffffffff8169742a ffff88003cc96ff8
->>  ffffffff812fc1fc 0000000000000008 ffff88003a1980e8 0000000100000000
->> Call Trace:
->>  [<     inline     >] __dump_stack lib/dump_stack.c:15
->>  [<ffffffff81f30856>] dump_stack+0xa6/0xc0 lib/dump_stack.c:51
->>  [<ffffffff812fc1fc>] kmsan_report+0x1ec/0x300 mm/kmsan/kmsan.c:?
->>  [<ffffffff812fc33b>] __msan_warning+0x2b/0x40 ??:?
->>  [<     inline     >] ext4_update_bh_state fs/ext4/inode.c:727
->>  [<ffffffff8169742a>] _ext4_get_block+0x6ca/0x8a0 fs/ext4/inode.c:759
->>  [<ffffffff81696d4c>] ext4_get_block+0x8c/0xa0 fs/ext4/inode.c:769
->>  [<ffffffff814a2d36>] generic_block_bmap+0x246/0x2b0 fs/buffer.c:2991
->>  [<ffffffff816ca30e>] ext4_bmap+0x5ee/0x660 fs/ext4/inode.c:3177
->> ...
->> origin description: ----tmp@generic_block_bmap
->> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
->>
->> (the line numbers are relative to 4.8-rc6, but the bug persists
->> upstream)
->>
->> The local |tmp| is created in generic_block_bmap() and then passed into
->> ext4_bmap() =3D> ext4_get_block() =3D> _ext4_get_block() =3D>
->> ext4_update_bh_state(). Along the way tmp.b_page is never initialized
->> before ext4_update_bh_state() checks its value.
->>
->> Signed-off-by: Alexander Potapenko <glider@google.com>
->
-> This is a one-line fix to fs/buffer.c; but I've investigated, and
-> since it only affects ext4, and no one else has responded, I'll take
-> the change through the ext4 git tree.
->
-> Thanks!!
->
->                                                 - Ted
+On Tue 21-03-17 14:46:53, Jeff Layton wrote:
+> On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > - It's durable; the above comparison still works if there were reboots
+> > > >   between the two i_version checks.
+> > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > 	  atomically with the changes that caused them?  What if a
+> > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > 	  it to disk, and then that value is reused after reboot?
+> > > > 
+> > > 
+> > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > the inode dirty and I think that will end up with the new i_version at
+> > > least being journalled before __mark_inode_dirty returns.
+> > 
+> > So you think the filesystem can provide the atomicity?  In more detail:
+> > 
+> 
+> Sorry, I hit send too quickly. That should have read:
+> 
+> "Yeah, there could be atomicity issues there."
+> 
+> I think providing that level of atomicity may be difficult, though
+> maybe there's some way to make the querying of i_version block until
+> the inode update has been journalled?
 
-Hi Ted,
+Just to complement what Dave said from ext4 side - similarly as with XFS
+ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
+Until that you can see arbitrary combination of data & i_version after the
+crash. We do take care to keep data and metadata in sync only when there
+are security implications to that (like exposing uninitialized disk blocks)
+and if not, we are as lazy as we can to improve performance...
 
-any updates on this patch?
-Looks like it hasn't been landed yet.
-
-Alex
-
---=20
-Alexander Potapenko
-Software Engineer
-
-Google Germany GmbH
-Erika-Mann-Stra=C3=9Fe, 33
-80636 M=C3=BCnchen
-
-Gesch=C3=A4ftsf=C3=BChrer: Matthew Scott Sucherman, Paul Terence Manicle
-Registergericht und -nummer: Hamburg, HRB 86891
-Sitz der Gesellschaft: Hamburg
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
