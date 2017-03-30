@@ -1,7 +1,7 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Date: Thu, 30 Mar 2017 10:41:37 +1100
-Message-ID: <20170329234137.GN17542@dastard>
+Date: Thu, 30 Mar 2017 08:47:24 +0200
+Message-ID: <20170330064724.GA21542@quack2.suse.cz>
 References: <20161222084549.GA8833@infradead.org>
  <1482417724.3924.39.camel@redhat.com>
  <20170320214327.GA5098@fieldses.org>
@@ -20,13 +20,13 @@ Cc: Jan Kara <jack@suse.cz>, "J. Bruce Fields" <bfields@fieldses.org>,
         linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
 To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <1490810071.2678.6.camel@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 29, 2017 at 01:54:31PM -0400, Jeff Layton wrote:
+On Wed 29-03-17 13:54:31, Jeff Layton wrote:
 > On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
 > > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
 > > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
@@ -70,29 +70,21 @@ On Wed, Mar 29, 2017 at 01:54:31PM -0400, Jeff Layton wrote:
 > filesystems do an fsync prior to reporting the i_version getattr
 > codepath. It's not pretty, but I don't see a real alternative.
 
-I think that's even more problematic. ->getattr currently runs
-completely unlocked for performance reasons - it's racy w.r.t. to
-ongoing modifications to begin with, so /nothing/ that is returned
-to userspace via stat/statx can be guaranteed to be "coherent".
-Linus will be very unhappy if you make his git workload (which is
-/very/ stat heavy) run slower by adding any sort of locking in this
-hot path.
+Hum, so are we fine if i_version just changes (increases) for all inodes
+after a server crash? If I understand its use right, it would mean
+invalidation of all client's caches but that is not such a big deal given
+how frequent server crashes should be, right?
 
-Even if we did put an fsync() into ->getattr() (and dealt with all
-the locking issues that entails), by the time the statx syscall
-returns to userspace the i_version value may not match the
-data/metadata in the inode(*).  IOWs, by the time i_version gets
-to userspace, it is out of date and any use of it for data
-versioning from userspace is going to be prone to race conditions.
+Because if above is acceptable we could make reported i_version to be a sum
+of "superblock crash counter" and "inode i_version". We increment
+"superblock crash counter" whenever we detect unclean filesystem shutdown.
+That way after a crash we are guaranteed each inode will report new
+i_version (the sum would probably have to look like "superblock crash
+counter" * 65536 + "inode i_version" so that we avoid reusing possible
+i_version numbers we gave away but did not write to disk but still...).
+Thoughts?
 
-Cheers,
-
-Dave.
-
-(*) fiemap has exactly the same "stale the moment internal fs
-locks are released" race conditions, which is why it cannot safely
-be used for mapping holes when copying file data....
-
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
