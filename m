@@ -1,75 +1,63 @@
-From: <bfoster@uca.edu>
-Subject: 64752 linux-ext4
-Date: Fri, 31 Mar 2017 22:56:15 -0000
-Message-ID: <149100097583.6120.16207923238809553182@vnpt.vn>
-Reply-To: <bfoster@uca.edu>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] e2fsck: fix type mismatches in quota warning message
+Date: Fri, 31 Mar 2017 19:21:59 -0400
+Message-ID: <20170331232159.GA12986@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: application/zip; name="5.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.vnpt.vn ([14.177.229.5]:42073 "HELO vnpt.vn"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751263AbdCaW4U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 31 Mar 2017 18:56:20 -0400
-Content-Disposition: attachment
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:33672 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753986AbdCaXUv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Mar 2017 19:20:51 -0400
+Received: by mail-qk0-f196.google.com with SMTP id p22so12346599qka.0
+        for <linux-ext4@vger.kernel.org>; Fri, 31 Mar 2017 16:20:51 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-TwAAAB0MAAAAAA==
+The conversion operations in the format control strings found in the
+fprintf call used to print the quota warning message do not match the
+types of their corresponding arguments.  Although this probably hasn't
+generally been a problem, it obfuscates a bigalloc quota accounting bug
+where the reported actual quota goes negative.
+
+Clean up the mismatches and some unnecessary casts.  While we're at it,
+fix a spelling nit in a related comment.
+
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ lib/support/mkquota.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index 8629266..1bb43a7 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -518,16 +518,16 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+ 	print_dquot("mem", dq);
+ 	print_dquot("dsk", dquot);
+ 
+-	/* Check if there is inconsistancy. */
++	/* Check if there is inconsistency */
+ 	if (dq->dq_dqb.dqb_curspace != dquot->dq_dqb.dqb_curspace ||
+ 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
+ 		scan_data->usage_is_inconsistent = 1;
+-		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %d:"
+-			"actual (%llu, %llu) != expected (%llu, %llu)\n",
+-			dq->dq_id, (long long)dq->dq_dqb.dqb_curspace,
+-			(long long)dq->dq_dqb.dqb_curinodes,
+-			(long long)dquot->dq_dqb.dqb_curspace,
+-			(long long)dquot->dq_dqb.dqb_curinodes);
++		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
++			"actual (%lld, %lld) != expected (%lld, %lld)\n",
++			dq->dq_id, dq->dq_dqb.dqb_curspace,
++			dq->dq_dqb.dqb_curinodes,
++			dquot->dq_dqb.dqb_curspace,
++			dquot->dq_dqb.dqb_curinodes);
+ 	}
+ 
+ 	if (scan_data->update_limits) {
+-- 
+2.1.4
