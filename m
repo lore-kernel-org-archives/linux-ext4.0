@@ -1,70 +1,74 @@
-From: Reindl Harald <h.reindl@thelounge.net>
-Subject: Re: 4.10.7: systemd-fsck: data: Inode 14681437 Erweiterung tree (at
- level 1) could be shorter. IGNORIERT
-Date: Fri, 31 Mar 2017 18:48:24 +0200
-Message-ID: <0cc538f9-7277-1f77-0f56-ea0fd930251c@thelounge.net>
-References: <4c156024-0570-0c05-3a72-ffe3f34a878a@thelounge.net>
- <20170331161914.GB4853@birch.djwong.org>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 1/8] Documentation/filesystems: fix documentation for
+ ->getattr()
+Date: Fri, 31 Mar 2017 18:31:00 +0100
+Message-ID: <149098146063.28054.15676147735267371214.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.thelounge.net ([91.118.73.15]:24921 "EHLO
-        mail.thelounge.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933476AbdCaQs2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Mar 2017 12:48:28 -0400
-In-Reply-To: <20170331161914.GB4853@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: dhowells@redhat.com, linux-fsdevel@redhat.com,
+        Eric Biggers <ebiggers@google.com>,
+        linux-kernel@vger.kernel.org, hch@infradead.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+To: viro@zeniv.linux.org.uk
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+From: Eric Biggers <ebiggers@google.com>
 
+Following the recent merge of statx, correct the documented prototype
+for the ->getattr() inode operation, and add an entry to the porting
+file.
 
-Am 31.03.2017 um 18:19 schrieb Darrick J. Wong:
-> On Fri, Mar 31, 2017 at 01:30:18PM +0200, Reindl Harald wrote:
->> what are the messages below for which i get when reboot with /forcefsck at
->> least on kernel 4.10.7?
->> ___________________________________________________
->>
->> and no, i can't unmount the device because after repeated "umount /dev/md2"
->> which are unmounting some bind-mounts i get the following message while
->> nothing (lsof, fuser with all sort of options) shows any open filehandle and
->> all processes are stopped - so no way just enter "fsck" with params and that
->> issue exists for years
->
-> Some services ask systemd to run in their own private fs namespaces
-> (ProtectSystem=true) and so even though you umount the fs in the regular
-> namespace that doesn't unmount the fs in the private namespace, which
-> means that e2fsck & friends report that the fs is still mounted.  You
-> can find out if this is the case by grepping for the mountpoint in
-> /proc/*/mounts after unmounting the fs from the shell.
->
-> (And yes, this, uh, quirk has visited me many times.)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-but my *data* partition when all services are stopped which would have 
-namespaces there for ReadOnly/ReadWrite/Deny?
+ Documentation/filesystems/Locking |    3 +--
+ Documentation/filesystems/porting |    6 ++++++
+ Documentation/filesystems/vfs.txt |    3 +--
+ 3 files changed, 8 insertions(+), 4 deletions(-)
 
-some "umount --force" would be really cool since after "systemctl 
-isolate rescue.target" that all should be gone
-
->> target is busy (In some cases useful info about processes that use the
->> device is found by lsof(8) or fuser(1).
->> ___________________________________________________
->>
->> Mar 31 12:55:40 rh systemd-fsck: system: clean, 214548/1921360 files,
->> 1888521/7679232 blocks
->> Mar 31 12:55:43 rh systemd-fsck: Please pass 'fsck.mode=force' on the kernel
->> command line rather than creating /forcefsck on the root file system.
->> Mar 31 12:55:43 rh systemd-fsck: Please pass 'fsck.mode=force' on the kernel
->> command line rather than creating /forcefsck on the root file system.
->> Mar 31 12:55:43 rh systemd-fsck: boot: 375/128016 Dateien (1.3% nicht
->> zusammenhängend), 50000/511988 Blöcke
->> Mar 31 12:55:47 rh systemd-fsck: data: Inode 14681437 Erweiterung tree (at
->> level 1) could be shorter.  IGNORIERT.
->
-> My ability to interpret "deutschglish" isn't all that good, but I'm
-> pretty sure this is e2fsck complaining about unnecessarily large and
-> sparse extent trees, though it's clearly not optimizing them
-
-oh, no nothing really bad
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index fdcfdd79682a..fe25787ff6d4 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -58,8 +58,7 @@ prototypes:
+ 	int (*permission) (struct inode *, int, unsigned int);
+ 	int (*get_acl)(struct inode *, int);
+ 	int (*setattr) (struct dentry *, struct iattr *);
+-	int (*getattr) (const struct path *, struct dentry *, struct kstat *,
+-			u32, unsigned int);
++	int (*getattr) (const struct path *, struct kstat *, u32, unsigned int);
+ 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+ 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
+ 	void (*update_time)(struct inode *, struct timespec *, int);
+diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
+index 95280079c0b3..5fb17f49f7a2 100644
+--- a/Documentation/filesystems/porting
++++ b/Documentation/filesystems/porting
+@@ -600,3 +600,9 @@ in your dentry operations instead.
+ [recommended]
+ 	->readlink is optional for symlinks.  Don't set, unless filesystem needs
+ 	to fake something for readlink(2).
++--
++[mandatory]
++	->getattr() is now passed a struct path rather than a vfsmount and
++	dentry separately, and it now has request_mask and query_flags arguments
++	to specify the fields and sync type requested by statx.  Filesystems not
++	supporting any statx-specific features may ignore the new arguments.
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 569211703721..94dd27ef4a76 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -382,8 +382,7 @@ struct inode_operations {
+ 	int (*permission) (struct inode *, int);
+ 	int (*get_acl)(struct inode *, int);
+ 	int (*setattr) (struct dentry *, struct iattr *);
+-	int (*getattr) (const struct path *, struct dentry *, struct kstat *,
+-			u32, unsigned int);
++	int (*getattr) (const struct path *, struct kstat *, u32, unsigned int);
+ 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+ 	void (*update_time)(struct inode *, struct timespec *, int);
+ 	int (*atomic_open)(struct inode *, struct dentry *, struct file *,
