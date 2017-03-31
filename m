@@ -1,15 +1,15 @@
 From: David Howells <dhowells@redhat.com>
 Subject: [PATCH 1/8] Documentation/filesystems: fix documentation for
  ->getattr()
-Date: Fri, 31 Mar 2017 18:31:00 +0100
-Message-ID: <149098146063.28054.15676147735267371214.stgit@warthog.procyon.org.uk>
+Date: Fri, 31 Mar 2017 18:31:25 +0100
+Message-ID: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: dhowells@redhat.com, linux-fsdevel@redhat.com,
-        Eric Biggers <ebiggers@google.com>,
+Cc: dhowells@redhat.com, Eric Biggers <ebiggers@google.com>,
         linux-kernel@vger.kernel.org, hch@infradead.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
 To: viro@zeniv.linux.org.uk
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
