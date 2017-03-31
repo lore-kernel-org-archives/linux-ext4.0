@@ -1,8 +1,8 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/8] Documentation/filesystems: fix documentation for
- ->getattr()
-Date: Fri, 31 Mar 2017 18:31:25 +0100
-Message-ID: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 2/8] statx: reject unknown flags when using NULL path
+Date: Fri, 31 Mar 2017 18:31:32 +0100
+Message-ID: <149098149245.28108.11509992452676050796.stgit@warthog.procyon.org.uk>
+References: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -12,63 +12,51 @@ Cc: dhowells@redhat.com, Eric Biggers <ebiggers@google.com>,
         linux-xfs@vger.kernel.org
 To: viro@zeniv.linux.org.uk
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Following the recent merge of statx, correct the documented prototype
-for the ->getattr() inode operation, and add an entry to the porting
-file.
+The statx() system call currently accepts unknown flags when called with
+a NULL path to operate on a file descriptor.  Left unchanged, this could
+make it hard to introduce new query flags in the future, since
+applications may not be able to tell whether a given flag is supported.
+
+Fix this by failing the system call with EINVAL if any flags other than
+KSTAT_QUERY_FLAGS are specified in combination with a NULL path.
+
+Arguably, we could still permit known lookup-related flags such as
+AT_SYMLINK_NOFOLLOW.  However, that would be inconsistent with how
+sys_utimensat() behaves when passed a NULL path, which seems to be the
+closest precedent.  And given that the NULL path case is (I believe)
+mainly intended to be used to implement a wrapper function like fstatx()
+that doesn't have a path argument, I think rejecting lookup-related
+flags too is probably the best choice.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- Documentation/filesystems/Locking |    3 +--
- Documentation/filesystems/porting |    6 ++++++
- Documentation/filesystems/vfs.txt |    3 +--
- 3 files changed, 8 insertions(+), 4 deletions(-)
+ fs/stat.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index fdcfdd79682a..fe25787ff6d4 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -58,8 +58,7 @@ prototypes:
- 	int (*permission) (struct inode *, int, unsigned int);
- 	int (*get_acl)(struct inode *, int);
- 	int (*setattr) (struct dentry *, struct iattr *);
--	int (*getattr) (const struct path *, struct dentry *, struct kstat *,
--			u32, unsigned int);
-+	int (*getattr) (const struct path *, struct kstat *, u32, unsigned int);
- 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
- 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
- 	void (*update_time)(struct inode *, struct timespec *, int);
-diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
-index 95280079c0b3..5fb17f49f7a2 100644
---- a/Documentation/filesystems/porting
-+++ b/Documentation/filesystems/porting
-@@ -600,3 +600,9 @@ in your dentry operations instead.
- [recommended]
- 	->readlink is optional for symlinks.  Don't set, unless filesystem needs
- 	to fake something for readlink(2).
-+--
-+[mandatory]
-+	->getattr() is now passed a struct path rather than a vfsmount and
-+	dentry separately, and it now has request_mask and query_flags arguments
-+	to specify the fields and sync type requested by statx.  Filesystems not
-+	supporting any statx-specific features may ignore the new arguments.
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 569211703721..94dd27ef4a76 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -382,8 +382,7 @@ struct inode_operations {
- 	int (*permission) (struct inode *, int);
- 	int (*get_acl)(struct inode *, int);
- 	int (*setattr) (struct dentry *, struct iattr *);
--	int (*getattr) (const struct path *, struct dentry *, struct kstat *,
--			u32, unsigned int);
-+	int (*getattr) (const struct path *, struct kstat *, u32, unsigned int);
- 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
- 	void (*update_time)(struct inode *, struct timespec *, int);
- 	int (*atomic_open)(struct inode *, struct dentry *, struct file *,
+diff --git a/fs/stat.c b/fs/stat.c
+index fa0be59340cc..df484a60846d 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -130,9 +130,13 @@ EXPORT_SYMBOL(vfs_getattr);
+ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
+ 		 u32 request_mask, unsigned int query_flags)
+ {
+-	struct fd f = fdget_raw(fd);
++	struct fd f;
+ 	int error = -EBADF;
+ 
++	if (query_flags & ~KSTAT_QUERY_FLAGS)
++		return -EINVAL;
++
++	f = fdget_raw(fd);
+ 	if (f.file) {
+ 		error = vfs_getattr(&f.file->f_path, stat,
+ 				    request_mask, query_flags);
