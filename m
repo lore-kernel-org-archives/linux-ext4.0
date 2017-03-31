@@ -1,172 +1,149 @@
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 5/8] ext4: Add statx support
-Date: Fri, 31 Mar 2017 18:31:56 +0100
-Message-ID: <149098151634.28108.16470351314686633302.stgit@warthog.procyon.org.uk>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 8/8] statx: Include a mask for stx_attributes in struct
+ statx
+Date: Fri, 31 Mar 2017 10:41:18 -0700
+Message-ID: <20170331174118.GH4864@birch.djwong.org>
 References: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
+ <149098153785.28108.1114055429564367803.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: dhowells@redhat.com, linux-kernel@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
         hch@infradead.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-To: viro@zeniv.linux.org.uk
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <149098153785.28108.1114055429564367803.stgit@warthog.procyon.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Return enhanced file attributes from the Ext4 filesystem.  This includes
-the following:
+On Fri, Mar 31, 2017 at 06:32:17PM +0100, David Howells wrote:
+> Include a mask in struct stat to indicate which bits of stx_attributes the
+> filesystem actually supports.
+> 
+> This would also be useful if we add another system call that allows you to
+> do a 'bulk attribute set' and pass in a statx struct with the masks
+> appropriately set to say what you want to set.
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> ---
+> 
+>  fs/ext4/inode.c            |    6 ++++++
+>  fs/stat.c                  |    1 +
+>  include/linux/stat.h       |    1 +
+>  include/uapi/linux/stat.h  |    4 ++--
+>  samples/statx/test-statx.c |   12 ++++++++----
+>  5 files changed, 18 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5d02b922afa3..349f97ae3c87 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5413,6 +5413,12 @@ int ext4_getattr(const struct path *path, struct kstat *stat,
+>  	if (flags & EXT4_NODUMP_FL)
+>  		stat->attributes |= STATX_ATTR_NODUMP;
+>  
+> +	stat->attributes_mask |= (STATX_ATTR_APPEND |
+> +				  STATX_ATTR_COMPRESSED |
 
- (1) The inode creation time (i_crtime) as stx_btime, setting STATX_BTIME.
+ext4 doesn't actually support compressed files.
 
- (2) Certain FS_xxx_FL flags are mapped to stx_attribute flags.
+(I know, the feature/inode flags exist, but there's no code and afaik
+probably never will be...)
 
-This requires that all ext4 inodes have a getattr call, not just some of
-them, so to this end, split the ext4_getattr() function and only call part
-of it where appropriate.
+--D
 
-Example output:
-
-	[root@andromeda ~]# touch foo
-	[root@andromeda ~]# chattr +ai foo
-	[root@andromeda ~]# /tmp/test-statx foo
-	statx(foo) = 0
-	results=fff
-	  Size: 0               Blocks: 0          IO Block: 4096    regular file
-	Device: 08:12           Inode: 2101950     Links: 1
-	Access: (0644/-rw-r--r--)  Uid:     0   Gid:     0
-	Access: 2016-02-11 17:08:29.031795451+0000
-	Modify: 2016-02-11 17:08:29.031795451+0000
-	Change: 2016-02-11 17:11:11.987790114+0000
-	 Birth: 2016-02-11 17:08:29.031795451+0000
-	Attributes: 0000000000000030 (-------- -------- -------- -------- -------- -------- -------- --ai----)
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/ext4/ext4.h    |    1 +
- fs/ext4/file.c    |    2 +-
- fs/ext4/inode.c   |   35 ++++++++++++++++++++++++++++++++---
- fs/ext4/namei.c   |    2 ++
- fs/ext4/symlink.c |    3 +++
- 5 files changed, 39 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f493af666591..fb69ee2388db 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2466,6 +2466,7 @@ extern int  ext4_setattr(struct dentry *, struct iattr *);
- extern int  ext4_getattr(const struct path *, struct kstat *, u32, unsigned int);
- extern void ext4_evict_inode(struct inode *);
- extern void ext4_clear_inode(struct inode *);
-+extern int  ext4_file_getattr(const struct path *, struct kstat *, u32, unsigned int);
- extern int  ext4_sync_inode(handle_t *, struct inode *);
- extern void ext4_dirty_inode(struct inode *, int);
- extern int ext4_change_inode_journal_flag(struct inode *, int);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 8210c1f43556..cefa9835f275 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -744,7 +744,7 @@ const struct file_operations ext4_file_operations = {
- 
- const struct inode_operations ext4_file_inode_operations = {
- 	.setattr	= ext4_setattr,
--	.getattr	= ext4_getattr,
-+	.getattr	= ext4_file_getattr,
- 	.listxattr	= ext4_listxattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4247d8d25687..5d02b922afa3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5390,11 +5390,40 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- int ext4_getattr(const struct path *path, struct kstat *stat,
- 		 u32 request_mask, unsigned int query_flags)
- {
--	struct inode *inode;
--	unsigned long long delalloc_blocks;
-+	struct inode *inode = d_inode(path->dentry);
-+	struct ext4_inode *raw_inode;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	unsigned int flags;
-+
-+	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_crtime)) {
-+		stat->result_mask |= STATX_BTIME;
-+		stat->btime.tv_sec = ei->i_crtime.tv_sec;
-+		stat->btime.tv_nsec = ei->i_crtime.tv_nsec;
-+	}
-+
-+	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
-+	if (flags & EXT4_APPEND_FL)
-+		stat->attributes |= STATX_ATTR_APPEND;
-+	if (flags & EXT4_COMPR_FL)
-+		stat->attributes |= STATX_ATTR_COMPRESSED;
-+	if (flags & EXT4_ENCRYPT_FL)
-+		stat->attributes |= STATX_ATTR_ENCRYPTED;
-+	if (flags & EXT4_IMMUTABLE_FL)
-+		stat->attributes |= STATX_ATTR_IMMUTABLE;
-+	if (flags & EXT4_NODUMP_FL)
-+		stat->attributes |= STATX_ATTR_NODUMP;
- 
--	inode = d_inode(path->dentry);
- 	generic_fillattr(inode, stat);
-+	return 0;
-+}
-+
-+int ext4_file_getattr(const struct path *path, struct kstat *stat,
-+		      u32 request_mask, unsigned int query_flags)
-+{
-+	struct inode *inode = d_inode(path->dentry);
-+	u64 delalloc_blocks;
-+
-+	ext4_getattr(path, stat, request_mask, query_flags);
- 
- 	/*
- 	 * If there is inline data in the inode, the inode will normally not
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6ad612c576fc..07e5e1405771 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3912,6 +3912,7 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.tmpfile	= ext4_tmpfile,
- 	.rename		= ext4_rename2,
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-@@ -3920,6 +3921,7 @@ const struct inode_operations ext4_dir_inode_operations = {
- 
- const struct inode_operations ext4_special_inode_operations = {
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
- 	.get_acl	= ext4_get_acl,
- 	.set_acl	= ext4_set_acl,
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index 73b184d161fc..5c8fc53cb0e5 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -85,17 +85,20 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
- const struct inode_operations ext4_encrypted_symlink_inode_operations = {
- 	.get_link	= ext4_encrypted_get_link,
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
- };
- 
- const struct inode_operations ext4_symlink_inode_operations = {
- 	.get_link	= page_get_link,
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
- };
- 
- const struct inode_operations ext4_fast_symlink_inode_operations = {
- 	.get_link	= simple_get_link,
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
- };
+> +				  STATX_ATTR_ENCRYPTED |
+> +				  STATX_ATTR_IMMUTABLE |
+> +				  STATX_ATTR_NODUMP);
+> +	
+>  	generic_fillattr(inode, stat);
+>  	return 0;
+>  }
+> diff --git a/fs/stat.c b/fs/stat.c
+> index 0c7e6cdc435c..c6c963b2546b 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -527,6 +527,7 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+>  	tmp.stx_ino = stat->ino;
+>  	tmp.stx_size = stat->size;
+>  	tmp.stx_blocks = stat->blocks;
+> +	tmp.stx_attributes_mask = stat->attributes_mask;
+>  	tmp.stx_atime.tv_sec = stat->atime.tv_sec;
+>  	tmp.stx_atime.tv_nsec = stat->atime.tv_nsec;
+>  	tmp.stx_btime.tv_sec = stat->btime.tv_sec;
+> diff --git a/include/linux/stat.h b/include/linux/stat.h
+> index c76e524fb34b..64b6b3aece21 100644
+> --- a/include/linux/stat.h
+> +++ b/include/linux/stat.h
+> @@ -26,6 +26,7 @@ struct kstat {
+>  	unsigned int	nlink;
+>  	uint32_t	blksize;	/* Preferred I/O size */
+>  	u64		attributes;
+> +	u64		attributes_mask;
+>  #define KSTAT_ATTR_FS_IOC_FLAGS				\
+>  	(STATX_ATTR_COMPRESSED |			\
+>  	 STATX_ATTR_IMMUTABLE |				\
+> diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+> index 0869b9eaa8ce..d538897b8e08 100644
+> --- a/include/uapi/linux/stat.h
+> +++ b/include/uapi/linux/stat.h
+> @@ -114,7 +114,7 @@ struct statx {
+>  	__u64	stx_ino;	/* Inode number */
+>  	__u64	stx_size;	/* File size */
+>  	__u64	stx_blocks;	/* Number of 512-byte blocks allocated */
+> -	__u64	__spare1[1];
+> +	__u64	stx_attributes_mask; /* Mask to show what's supported in stx_attributes */
+>  	/* 0x40 */
+>  	struct statx_timestamp	stx_atime;	/* Last access time */
+>  	struct statx_timestamp	stx_btime;	/* File creation time */
+> @@ -155,7 +155,7 @@ struct statx {
+>  #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
+>  
+>  /*
+> - * Attributes to be found in stx_attributes
+> + * Attributes to be found in stx_attributes and masked in stx_attributes_mask.
+>   *
+>   * These give information about the features or the state of a file that might
+>   * be of use to ordinary userspace programs such as GUIs or ls rather than
+> diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
+> index 8571d766331d..d4d77b09412c 100644
+> --- a/samples/statx/test-statx.c
+> +++ b/samples/statx/test-statx.c
+> @@ -141,8 +141,8 @@ static void dump_statx(struct statx *stx)
+>  	if (stx->stx_mask & STATX_BTIME)
+>  		print_time(" Birth: ", &stx->stx_btime);
+>  
+> -	if (stx->stx_attributes) {
+> -		unsigned char bits;
+> +	if (stx->stx_attributes_mask) {
+> +		unsigned char bits, mbits;
+>  		int loop, byte;
+>  
+>  		static char attr_representation[64 + 1] =
+> @@ -160,14 +160,18 @@ static void dump_statx(struct statx *stx)
+>  		printf("Attributes: %016llx (", stx->stx_attributes);
+>  		for (byte = 64 - 8; byte >= 0; byte -= 8) {
+>  			bits = stx->stx_attributes >> byte;
+> +			mbits = stx->stx_attributes_mask >> byte;
+>  			for (loop = 7; loop >= 0; loop--) {
+>  				int bit = byte + loop;
+>  
+> -				if (bits & 0x80)
+> +				if (!(mbits & 0x80))
+> +					putchar('.');	/* Not supported */
+> +				else if (bits & 0x80)
+>  					putchar(attr_representation[63 - bit]);
+>  				else
+> -					putchar('-');
+> +					putchar('-');	/* Not set */
+>  				bits <<= 1;
+> +				mbits <<= 1;
+>  			}
+>  			if (byte)
+>  				putchar(' ');
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
