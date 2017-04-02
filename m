@@ -1,66 +1,93 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Date: Sun, 2 Apr 2017 09:05:26 +1000
-Message-ID: <20170401230526.GW23007@dastard>
-References: <20170321134500.GA1318@infradead.org>
- <20170321163011.GA16666@fieldses.org>
- <1490117004.2542.1.camel@redhat.com>
- <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] e2fsck: fix quota accounting to use cluster units
+Date: Sun, 2 Apr 2017 12:57:05 -0400
+Message-ID: <20170402165705.GA8705@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:32983 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751033AbdDBQzx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Apr 2017 12:55:53 -0400
+Received: by mail-qt0-f193.google.com with SMTP id r45so16225688qte.0
+        for <linux-ext4@vger.kernel.org>; Sun, 02 Apr 2017 09:55:53 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20170330161231.GA9824@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 12:12:31PM -0400, J. Bruce Fields wrote:
-> On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
-> > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> > > Because if above is acceptable we could make reported i_version to be a sum
-> > > of "superblock crash counter" and "inode i_version". We increment
-> > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> > > That way after a crash we are guaranteed each inode will report new
-> > > i_version (the sum would probably have to look like "superblock crash
-> > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> > > i_version numbers we gave away but did not write to disk but still...).
-> > > Thoughts?
-> 
-> How hard is this for filesystems to support?  Do they need an on-disk
-> format change to keep track of the crash counter?
+The quota accounting code in e2fsck's pass 1 and pass 3 uses block units
+rather than cluster units when recording the allocated space consumed by
+files and directories.  In pass 1, this causes a large undercount of
+actual quota results and test failures for xfstests generic/383, /384,
+/385, and /386 on bigalloc file systems.  In pass 3, this results in
+quota accounting errors when the lost+found directory is either extended
+or recreated on a bigalloc file system.
 
-Yes. We'll need version counter in the superblock, and we'll need to
-know what the increment semantics are. 
+Use clusters rather than blocks when accounting for allocated space,
+and correct a related header comment in the quota code.
 
-The big question is how do we know there was a crash? The only thing
-a journalling filesystem knows at mount time is whether it is clean
-or requires recovery. Filesystems can require recovery for many
-reasons that don't involve a crash (e.g. root fs is never unmounted
-cleanly, so always requires recovery). Further, some filesystems may
-not even know there was a crash at mount time because their
-architecture always leaves a consistent filesystem on disk (e.g. COW
-filesystems)....
+Note that pass 1b also contains call sites for quota_data_sub() that
+also need to be addressed.  However, it appears that more than just
+unit conversion may be needed, so that will be left to a future patch.
 
-> I wonder if repeated crashes can lead to any odd corner cases.
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ e2fsck/pass1.c        | 3 ++-
+ e2fsck/pass3.c        | 5 +++--
+ lib/support/quotaio.h | 2 +-
+ 3 files changed, 6 insertions(+), 4 deletions(-)
 
-WIthout defined, locked down behavour of the superblock counter, the
-almost certainly corner cases will exist...
-
-Cheers,
-
-Dave.
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 1714897..188cc56 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3174,7 +3174,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	if (ino != quota_type2inum(PRJQUOTA, fs->super) &&
+ 	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INODE(ctx->fs->super))) {
+ 		quota_data_add(ctx->qctx, (struct ext2_inode_large *) inode,
+-			       ino, pb.num_blocks * fs->blocksize);
++			       ino,
++			       pb.num_blocks * EXT2_CLUSTER_SIZE(fs->super));
+ 		quota_data_inodes(ctx->qctx, (struct ext2_inode_large *) inode,
+ 				  ino, +1);
+ 	}
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index 44203ca..4d9430b 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -578,7 +578,7 @@ link_error:
+ 	ext2fs_icount_store(ctx->inode_count, ino, 2);
+ 	ext2fs_icount_store(ctx->inode_link_info, ino, 2);
+ 	ctx->lost_and_found = ino;
+-	quota_data_add(ctx->qctx, &inode, ino, fs->blocksize);
++	quota_data_add(ctx->qctx, &inode, ino, EXT2_CLUSTER_SIZE(fs->super));
+ 	quota_data_inodes(ctx->qctx, &inode, ino, +1);
+ #if 0
+ 	printf("/lost+found created; inode #%lu\n", ino);
+@@ -899,7 +899,8 @@ errcode_t e2fsck_expand_directory(e2fsck_t ctx, ext2_ino_t dir,
+ 	if (retval)
+ 		return retval;
+ 	ext2fs_iblk_add_blocks(fs, EXT2_INODE(&inode), es.newblocks);
+-	quota_data_add(ctx->qctx, &inode, dir, es.newblocks * fs->blocksize);
++	quota_data_add(ctx->qctx, &inode, dir,
++		       es.newblocks * EXT2_CLUSTER_SIZE(fs->super));
+ 
+ 	e2fsck_write_inode_full(ctx, dir, EXT2_INODE(&inode),
+ 				sizeof(inode), "expand_directory");
+diff --git a/lib/support/quotaio.h b/lib/support/quotaio.h
+index 486c2a5..f89536e 100644
+--- a/lib/support/quotaio.h
++++ b/lib/support/quotaio.h
+@@ -12,7 +12,7 @@
+  *
+  *	quota_init_context(&qctx, fs, QUOTA_ALL_BIT);
+  *	{
+- *		quota_compute_usage(qctx, QUOTA_ALL_BIT);
++ *		quota_compute_usage(qctx);
+  *		AND/OR
+  *		quota_data_add/quota_data_sub/quota_data_inodes();
+  *	}
 -- 
-Dave Chinner
-david@fromorbit.com
+2.1.4
