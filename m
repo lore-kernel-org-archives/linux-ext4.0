@@ -1,50 +1,112 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 2/8] nowait aio: Return if cannot get hold of i_rwsem
-Date: Mon,  3 Apr 2017 13:53:01 -0500
-Message-ID: <20170403185307.6243-3-rgoldwyn@suse.de>
-References: <20170403185307.6243-1-rgoldwyn@suse.de>
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
+ infrastructure and convert ext4 to use it
+Date: Mon, 3 Apr 2017 12:16:02 -0700
+Message-ID: <20170403191602.GF30811@bombadil.infradead.org>
+References: <20170331192603.16442-1-jlayton@redhat.com>
+ <87fuhqkti0.fsf@notabene.neil.brown.name>
+ <1491215318.2724.3.camel@redhat.com>
+ <20170403143257.GA30811@bombadil.infradead.org>
+ <1491241657.2673.10.camel@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45919 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752288AbdDCSxn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Apr 2017 14:53:43 -0400
-In-Reply-To: <20170403185307.6243-1-rgoldwyn@suse.de>
+Received: from bombadil.infradead.org ([65.50.211.133]:46058 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750945AbdDCTQE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Apr 2017 15:16:04 -0400
+Content-Disposition: inline
+In-Reply-To: <1491241657.2673.10.camel@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+On Mon, Apr 03, 2017 at 01:47:37PM -0400, Jeff Layton wrote:
+> > I wonder whether it's even worth supporting both EIO and ENOSPC for a
+> > writeback problem.  If I understand correctly, at the time of write(),
+> > filesystems check to see if they have enough blocks to satisfy the
+> > request, so ENOSPC only comes up in the writeback context for thinly
+> > provisioned devices.
+> 
+> No, ENOSPC on writeback can certainly happen with network filesystems.
+> NFS and CIFS have no way to reserve space. You wouldn't want to have to
+> do an extra RPC on every buffered write. :)
 
-A failure to lock i_rwsem would mean there is I/O being performed
-by another thread. So, let's bail.
+Aaah, yes, network filesystems.  I would indeed not want to do an extra
+RPC on every write to a hole (it's a hole vs non-hole question, rather
+than a buffered/unbuffered question ... unless you're WAFLing and not
+reclaiming quickly enough, I suppose).
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- mm/filemap.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+So, OK, that makes sense, we should keep allowing filesystems to report
+ENOSPC as a writeback error.  But I think much of the argument below
+still holds, and we should continue to have a prior EIO to be reported
+over a new ENOSPC (even if the program has already consumed the EIO).
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 1694623..e08f3b9 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2982,7 +2982,12 @@ ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 
--	inode_lock(inode);
-+	if (!inode_trylock(inode)) {
-+		/* Don't sleep on inode rwsem */
-+		if (iocb->ki_flags & IOCB_NOWAIT)
-+			return -EAGAIN;
-+		inode_lock(inode);
-+	}
- 	ret = generic_write_checks(iocb, from);
- 	if (ret > 0)
- 		ret = __generic_file_write_iter(iocb, from);
--- 
-2.10.2
+If you find that unconvincing, we could do something like this ...
+
+void filemap_set_wb_error(struct address_space *mapping, int err)
+{
+	struct inode *inode = mapping->host;
+
+	if (!err)
+		return;
+	/*
+	 * This should be called with the error code that we want to return
+	 * on fsync. Thus, it should always be <= 0.
+	 */
+	WARN_ON(err > 0);
+
+	spin_lock(&inode->i_lock);
+	if (err == -EIO)
+		mapping->wb_err |= 1;
+	else if (err == -ENOSPC)
+		mapping->wb_err |= 2;
+	mapping->wb_err += 4;
+	spin_unlock(&inode->i_lock);
+}
+
+int filemap_report_wb_error(struct file *file)
+{
+	struct inode *inode = file_inode(file);
+	struct address_space *mapping = file->f_mapping;
+	int err;
+
+	spin_lock(&inode->i_lock);
+	if (file->f_wb_err == mapping->wb_err) {
+		err = 0;
+	} else if (mapping->wb_err & 1) {
+		filp->f_wb_err = mapping->wb_err & ~2;
+		err = -EIO;
+	} else {
+		filp->f_wb_err = mapping->wb_err;
+		err = -ENOSPC;
+	}
+	spin_unlock(&inode->i_lock);
+	return err;
+}
+
+If I got that right, calling fsync() on an inode which has experienced
+both errors would first get an EIO.  Calling fsync() on it again would
+get an ENOSPC.  Calling fsync() on it a third time would get 0.  When
+either error occurs again, the thread will go back through the cycle
+(EIO -> ENOSPC -> 0).
+
+> > Programs have basically no use for the distinction.  In either case,
+> > the situation is the same.  The written data is safely in RAM and cannot
+> > be written to the storage.  If one were to make superhuman efforts,
+> > one could mmap the file and write() it to a different device, but that
+> > is incredibly rare.  For most programs, the response is to just die and
+> > let the human deal with the corrupted file.
+> > 
+> > From a sysadmin point of view, of course the situation is different,
+> > and the remedy is different, but they should be getting that information
+> > through a different mechanism than monitoring the errno from every
+> > system call.
+> > 
+> > If we do want to continue to support both EIO and ENOSPC from writeback,
+> > then let's have EIO override ENOSPC as an error.  ie if an ENOSPC comes
+> > in after an EIO is set, it only bumps the counter and applications will
+> > see EIO, not ENOSPC on fresh calls to fsync().
