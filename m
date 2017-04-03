@@ -1,93 +1,124 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] e2fsck: fix quota accounting to use cluster units
-Date: Sun, 2 Apr 2017 12:57:05 -0400
-Message-ID: <20170402165705.GA8705@localhost.localdomain>
+From: NeilBrown <neilb@suse.com>
+Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking infrastructure and convert ext4 to use it
+Date: Mon, 03 Apr 2017 14:25:11 +1000
+Message-ID: <87fuhqkti0.fsf@notabene.neil.brown.name>
+References: <20170331192603.16442-1-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz,
+        willy@infradead.org
+To: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f193.google.com ([209.85.216.193]:32983 "EHLO
-        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751033AbdDBQzx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Apr 2017 12:55:53 -0400
-Received: by mail-qt0-f193.google.com with SMTP id r45so16225688qte.0
-        for <linux-ext4@vger.kernel.org>; Sun, 02 Apr 2017 09:55:53 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx2.suse.de ([195.135.220.15]:40336 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751136AbdDCEZv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Apr 2017 00:25:51 -0400
+In-Reply-To: <20170331192603.16442-1-jlayton@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The quota accounting code in e2fsck's pass 1 and pass 3 uses block units
-rather than cluster units when recording the allocated space consumed by
-files and directories.  In pass 1, this causes a large undercount of
-actual quota results and test failures for xfstests generic/383, /384,
-/385, and /386 on bigalloc file systems.  In pass 3, this results in
-quota accounting errors when the lost+found directory is either extended
-or recreated on a bigalloc file system.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Use clusters rather than blocks when accounting for allocated space,
-and correct a related header comment in the quota code.
+On Fri, Mar 31 2017, Jeff Layton wrote:
 
-Note that pass 1b also contains call sites for quota_data_sub() that
-also need to be addressed.  However, it appears that more than just
-unit conversion may be needed, so that will be left to a future patch.
+> During LSF/MM this year, we had a discussion about the current sorry
+> state of writeback error reporting, and what could be done to improve
+> the situation. This patchset represents a first pass at the proposal
+> I made there.
+>
+> It first adds a new set of writeback error tracking infrastructure to
+> ensure that errors are properly stored and reported at fsync time. It
+> also makes a small but significant change to ensure that writeback
+> errors are reported on all file descriptors, not just on the first one
+> where fsync is called.
+>
+> Note that this is a _very_ rough draft at this point. I did some by-hand
+> testing with dm-error to ensure that it does the right thing there.
+> Mostly I'm interested in early feedback at this point -- does this basic
+> approach make sense?
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- e2fsck/pass1.c        | 3 ++-
- e2fsck/pass3.c        | 5 +++--
- lib/support/quotaio.h | 2 +-
- 3 files changed, 6 insertions(+), 4 deletions(-)
+I think that having ->wb_err_seq and returning errors to all file
+descriptors is a good idea.
+I don't like ->wb_err, particularly that you allow it to be set
+to zero:
+ +	/*
+ +	 * This should be called with the error code that we want to return
+ +	 * on fsync. Thus, it should always be <=3D 0.
+ +	 */
+ +	WARN_ON(err > 0);
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 1714897..188cc56 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -3174,7 +3174,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 	if (ino != quota_type2inum(PRJQUOTA, fs->super) &&
- 	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INODE(ctx->fs->super))) {
- 		quota_data_add(ctx->qctx, (struct ext2_inode_large *) inode,
--			       ino, pb.num_blocks * fs->blocksize);
-+			       ino,
-+			       pb.num_blocks * EXT2_CLUSTER_SIZE(fs->super));
- 		quota_data_inodes(ctx->qctx, (struct ext2_inode_large *) inode,
- 				  ino, +1);
- 	}
-diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
-index 44203ca..4d9430b 100644
---- a/e2fsck/pass3.c
-+++ b/e2fsck/pass3.c
-@@ -578,7 +578,7 @@ link_error:
- 	ext2fs_icount_store(ctx->inode_count, ino, 2);
- 	ext2fs_icount_store(ctx->inode_link_info, ino, 2);
- 	ctx->lost_and_found = ino;
--	quota_data_add(ctx->qctx, &inode, ino, fs->blocksize);
-+	quota_data_add(ctx->qctx, &inode, ino, EXT2_CLUSTER_SIZE(fs->super));
- 	quota_data_inodes(ctx->qctx, &inode, ino, +1);
- #if 0
- 	printf("/lost+found created; inode #%lu\n", ino);
-@@ -899,7 +899,8 @@ errcode_t e2fsck_expand_directory(e2fsck_t ctx, ext2_ino_t dir,
- 	if (retval)
- 		return retval;
- 	ext2fs_iblk_add_blocks(fs, EXT2_INODE(&inode), es.newblocks);
--	quota_data_add(ctx->qctx, &inode, dir, es.newblocks * fs->blocksize);
-+	quota_data_add(ctx->qctx, &inode, dir,
-+		       es.newblocks * EXT2_CLUSTER_SIZE(fs->super));
- 
- 	e2fsck_write_inode_full(ctx, dir, EXT2_INODE(&inode),
- 				sizeof(inode), "expand_directory");
-diff --git a/lib/support/quotaio.h b/lib/support/quotaio.h
-index 486c2a5..f89536e 100644
---- a/lib/support/quotaio.h
-+++ b/lib/support/quotaio.h
-@@ -12,7 +12,7 @@
-  *
-  *	quota_init_context(&qctx, fs, QUOTA_ALL_BIT);
-  *	{
-- *		quota_compute_usage(qctx, QUOTA_ALL_BIT);
-+ *		quota_compute_usage(qctx);
-  *		AND/OR
-  *		quota_data_add/quota_data_sub/quota_data_inodes();
-  *	}
--- 
-2.1.4
+Why is that ??
+
+Also I think that EIO should always over-ride ENOSPC as the possible
+responses are different.  That probably means you need a separate seq
+number for each, which isn't ideal.
+
+I don't like that you need to add a 'flush' handler to every filesystem,
+most of which just call
+ +	return filemap_report_wb_error(file);
+
+Could we just have
+	if (filp->f_op->flush)
+		retval =3D filp->f_op->flush(filp, id);
++	else
++		retval =3D filemap_report_wb_error(filp);
+in flip_close() ??
+
+... or maybe it is wrong to return this error on close().
+After all, the file actually does get closed, so no error occurred.
+If an application cares about EIO, it should always call fsync() before
+close().
+
+Thanks,
+NeilBrown
+
+
+>
+> Jeff Layton (4):
+>   fs: new infrastructure for writeback error handling and reporting
+>   dax: set errors in mapping when writeback fails
+>   buffer: set wb errors using both new and old infrastructure for now
+>   ext4: wire it up to the new writeback error reporting infrastructure
+>
+>  Documentation/filesystems/vfs.txt | 14 +++++++--
+>  fs/buffer.c                       |  6 +++-
+>  fs/dax.c                          |  4 ++-
+>  fs/ext4/dir.c                     |  1 +
+>  fs/ext4/ext4.h                    |  1 +
+>  fs/ext4/file.c                    |  1 +
+>  fs/ext4/fsync.c                   | 15 +++++++---
+>  fs/ext4/inode.c                   |  2 +-
+>  fs/ext4/page-io.c                 |  4 +--
+>  fs/open.c                         |  3 ++
+>  include/linux/fs.h                |  5 ++++
+>  mm/filemap.c                      | 61 +++++++++++++++++++++++++++++++++=
+++++++
+>  12 files changed, 106 insertions(+), 11 deletions(-)
+>
+> --=20
+> 2.9.3
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljhzqcACgkQOeye3VZi
+gbn/eA//YICjBeWNjIu+IC93SwSMPKcPehN4LIk0vY2I8SCt48E0rNBhpupZnaoG
+y2qmwKjoQdJZqIz1YdL1M13WWW21hywSt/vTx74e86G8q52dlH6kUZS7tuhpEx+B
+MXa3XM92wm/VyvpjuhTH8u7Qvzp7CbMGOF1RbG8NJ+6AQWPebygQSsh+nAz8kPnN
+toxknZuQDt9sEl7iya8HXjPoKfmHHwtDGE8P4FYXSMUeBy/xnOis026s4RNQsRQ4
+GZ4jn9s9dosS+Ol/laLNZ144EEm4xApYFg71tOFu3zjqC2nBVozA77mZAhqyG4Gq
+TdR8BBY/17RdvgbguFkt7FpMaOGZ+M5GNymz/xxEz9MM+AsiuR72qBh/4b8IJxb4
+W8gVGwhSa5cs2M/ZpDWwfaqIhe6B77SbBbPed0pQBLPXxY+T1HNxXK6Cl2/B31hc
+aDjX3nDxMmAMaORBQkSBAh83eUZquII0T7P6xD/NAvpfRDnYUmgbdZ2t0BT5JmYL
+UsipOLDF9gHBNrDwWnCYLqjwAbaWHoVBvsGlLFZ8OdIEHFV/quezzr+QZjfEcPor
+adwAo14sF4N1GKeinQXuUzr4RopZK1HSUv/KllaNhRHcgrxLHj5mGDaIfPyknA4H
+HiAxIAw92csM9ia4Y3SQmoBhMI1WNnU0LTSQQJOBHk2t76fIhSE=
+=tMCC
+-----END PGP SIGNATURE-----
+--=-=-=--
