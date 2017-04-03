@@ -1,41 +1,98 @@
-From: Joseph Richey <joerichey94@gmail.com>
-Subject: Re: [PATCH] misc: fixed error handling in e4crypt
-Date: Mon, 3 Apr 2017 09:52:38 -0700
-Message-ID: <CAAXkRof5YiRg-NP6_=XTS8TvsTkHb7p4+SXeDbp_jVNhUy_QTg@mail.gmail.com>
-References: <1490042076-25845-1-git-send-email-joerichey94@gmail.com> <20170401162419.sl4keqsb53zll6wf@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-ext4@vger.kernel.org, Michael Halcrow <mhalcrow@google.com>,
+From: Joe Richey <joerichey94@gmail.com>
+Subject: [PATCH] misc: fixed error handling in e4crypt
+Date: Mon,  3 Apr 2017 16:52:50 +0000
+Message-ID: <1491238370-30906-1-git-send-email-joerichey94@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Michael Halcrow <mhalcrow@google.com>,
         Joe Richey <joerichey@google.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f178.google.com ([209.85.220.178]:33610 "EHLO
-        mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751803AbdDCQwk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Apr 2017 12:52:40 -0400
-Received: by mail-qk0-f178.google.com with SMTP id h67so20895301qke.0
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Apr 2017 09:52:39 -0700 (PDT)
-In-Reply-To: <20170401162419.sl4keqsb53zll6wf@thunk.org>
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:36006 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751803AbdDCQxY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Apr 2017 12:53:24 -0400
+Received: by mail-pg0-f68.google.com with SMTP id 81so31166784pgh.3
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Apr 2017 09:53:24 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for catching this! KEYCTL_GET_KEYRING_ID returns -1 on error, so
-e4crypt should definitely exit here. Sending the revised path.
+From: Joe Richey <joerichey@google.com>
 
-Joe
+Due to some interesting behaviour in keyctl (as described in the
+comments), we use KEYCTL_GET_KEYRING_ID to translate the special value
+of KEY_SPEC_SESSION_KEYRING to a real keyring id. However, how we
+currently do this is flawed in two ways.
 
-On Sat, Apr 1, 2017 at 9:24 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Mar 20, 2017 at 08:34:36PM +0000, Joe Richey wrote:
->> +     if (keyring_id == KEY_SPEC_SESSION_KEYRING) {
->> +             keyring_id = keyctl(KEYCTL_GET_KEYRING_ID, keyring_id, 0);
->> +             if (keyring_id < 0)
->> +                     printf("Could not get session keyring.\n");
->> +     }
->>       rc = add_key(EXT2FS_KEY_TYPE_LOGON, key_ref_full, (void *)&key,
->>                    sizeof(key), keyring_id);
->
-> Are you sure this is right?  If keyring_id is negative, we'll print
-> the warning/error message --- and then pass the negative keyring_id to
-> add_key.  Is that going to do the right thing?
->
->                                         - Ted
+First, if KEYCTL_GET_KEYRING_ID fails, we don't detect it as it returns
+-1 and zero is used for an error value in get_keyring_id. Second, if the
+user specifies "-k @s" the translation never runs and the undesireable
+behavior occurs.
+
+These are both fixed by doing the translation outside of get_keyring_id.
+
+Signed-off-by: Joe Richey <joerichey@google.com>
+---
+ misc/e4crypt.c | 37 +++++++++++++++++++++++--------------
+ 1 file changed, 23 insertions(+), 14 deletions(-)
+
+diff --git a/misc/e4crypt.c b/misc/e4crypt.c
+index 04faca3..600d0b7 100644
+--- a/misc/e4crypt.c
++++ b/misc/e4crypt.c
+@@ -507,24 +507,12 @@ static int get_keyring_id(const char *keyring)
+ 
+ 	/*
+ 	 * If no keyring is specified, by default use either the user
+-	 * session key ring or the session keyring.  Fetching the
++	 * session keyring or the session keyring.  Fetching the
+ 	 * session keyring will return the user session keyring if no
+ 	 * session keyring has been set.
+-	 *
+-	 * We need to do this instead of simply adding the key to
+-	 * KEY_SPEC_SESSION_KEYRING since trying to add a key to a
+-	 * session keyring that does not yet exist will cause the
+-	 * kernel to create a session keyring --- which wil then get
+-	 * garbage collected as soon as e4crypt exits.
+-	 *
+-	 * The fact that the keyctl system call and the add_key system
+-	 * call treats KEY_SPEC_SESSION_KEYRING differently when a
+-	 * session keyring does not exist is very unfortunate and
+-	 * confusing, but so it goes...
+ 	 */
+ 	if (keyring == NULL)
+-		return keyctl(KEYCTL_GET_KEYRING_ID,
+-			      KEY_SPEC_SESSION_KEYRING, 0);
++		return KEY_SPEC_SESSION_KEYRING;
+ 	for (x = 0; x < (sizeof(keyrings) / sizeof(keyrings[0])); ++x) {
+ 		if (strcmp(keyring, keyrings[x].name) == 0) {
+ 			return keyrings[x].code;
+@@ -585,6 +573,27 @@ static void insert_key_into_keyring(const char *keyring, struct salt *salt)
+ 	key.mode = EXT4_ENCRYPTION_MODE_AES_256_XTS;
+ 	memcpy(key.raw, salt->key, EXT4_MAX_KEY_SIZE);
+ 	key.size = EXT4_MAX_KEY_SIZE;
++
++	/*
++	 * We need to do this instead of simply adding the key to
++	 * KEY_SPEC_SESSION_KEYRING since trying to add a key to a
++	 * session keyring that does not yet exist will cause the
++	 * kernel to create a session keyring --- which wil then get
++	 * garbage collected as soon as e4crypt exits.
++	 *
++	 * The fact that the keyctl system call and the add_key system
++	 * call treats KEY_SPEC_SESSION_KEYRING differently when a
++	 * session keyring does not exist is very unfortunate and
++	 * confusing, but so it goes...
++	 */
++	if (keyring_id == KEY_SPEC_SESSION_KEYRING) {
++		keyring_id = keyctl(KEYCTL_GET_KEYRING_ID, keyring_id, 0);
++		if (keyring_id < 0) {
++			printf("Error getting session keyring ID: %s\n",
++			       strerror(errno));
++			exit(1);
++		}
++	}
+ 	rc = add_key(EXT2FS_KEY_TYPE_LOGON, key_ref_full, (void *)&key,
+ 		     sizeof(key), keyring_id);
+ 	if (rc == -1) {
+-- 
+2.7.4
