@@ -1,100 +1,72 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH 1/4] fs: new infrastructure for writeback error
- handling and reporting
-Date: Mon, 03 Apr 2017 06:28:59 -0400
-Message-ID: <1491215339.2724.4.camel@redhat.com>
-References: <20170331192603.16442-1-jlayton@redhat.com>
-         <20170331192603.16442-2-jlayton@redhat.com>
-         <3b4d45be-ef00-04a5-5858-126c5aeaa76f@suse.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Mon, 3 Apr 2017 16:00:55 +0200
+Message-ID: <20170403140055.GF15168@quack2.suse.cz>
+References: <20170321163011.GA16666@fieldses.org>
+ <1490117004.2542.1.camel@redhat.com>
+ <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <20170401230526.GW23007@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz,
-        willy@infradead.org, neilb@suse.com
-To: Nikolay Borisov <nborisov@suse.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <3b4d45be-ef00-04a5-5858-126c5aeaa76f@suse.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:38093 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751998AbdDCOA6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Apr 2017 10:00:58 -0400
+Content-Disposition: inline
+In-Reply-To: <20170401230526.GW23007@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2017-04-03 at 10:12 +0300, Nikolay Borisov wrote:
+On Sun 02-04-17 09:05:26, Dave Chinner wrote:
+> On Thu, Mar 30, 2017 at 12:12:31PM -0400, J. Bruce Fields wrote:
+> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> > > > Because if above is acceptable we could make reported i_version to be a sum
+> > > > of "superblock crash counter" and "inode i_version". We increment
+> > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> > > > That way after a crash we are guaranteed each inode will report new
+> > > > i_version (the sum would probably have to look like "superblock crash
+> > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> > > > i_version numbers we gave away but did not write to disk but still...).
+> > > > Thoughts?
+> > 
+> > How hard is this for filesystems to support?  Do they need an on-disk
+> > format change to keep track of the crash counter?
 > 
-> On 31.03.2017 22:26, Jeff Layton wrote:
-> > Most filesystems currently use mapping_set_error and
-> > filemap_check_errors for setting and reporting/clearing writeback errors
-> > at the mapping level. filemap_check_errors is indirectly called from
-> > most of the filemap_fdatawait_* functions and from
-> > filemap_write_and_wait*. These functions are called from all sorts of
-> > contexts to wait on writeback to finish -- e.g. mostly in fsync, but
-> > also in truncate calls, getattr, etc.
-> > 
-> > It's those non-fsync callers that are problematic. We should be
-> > reporting writeback errors during fsync, but many places in the code
-> > clear out errors before they can be properly reported, or report errors
-> > at nonsensical times. If I get -EIO on a stat() call, how do I know that
-> > was because writeback failed?
-> > 
-> > This patch adds a small bit of new infrastructure for setting and
-> > reporting errors during pagecache writeback. While the above was my
-> > original impetus for adding this, I think it's also the case that
-> > current fsync semantics are just problematic for userland. Most
-> > applications that call fsync do so to ensure that the data they wrote
-> > has hit the backing store.
-> > 
-> > In the case where there are multiple writers to the file at the same
-> > time, this is really hard to determine. The first one to call fsync will
-> > see any stored error, and the rest get back 0. The processes with open
-> > fd may not be associated with one another in any way. They could even be
-> > in different containers, so ensuring coordination between all fsync
-> > callers is not really an option.
-> > 
-> > One way to remedy this would be to track what file descriptor was used
-> > to dirty the file, but that's rather cumbersome and would likely be
-> > slow. However, there is a simpler way to improve the semantics here
-> > without incurring too much overhead.
-> > 
-> > This set adds a wb_error field and a sequence counter to the
-> > address_space, and a corresponding sequence counter in the struct file.
-> > When errors are reported during writeback, we set the error field in the
-> > mapping and increment the sequence counter.
-> > 
-> > When fsync or flush is called, we check the sequence in the file vs. the
-> > one in the mapping. If the file's counter is behind the one in the
-> > mapping, then we update the sequence counter in the file to the value of
-> > the one in the mapping and report the error. If the file is "caught up"
-> > then we just report 0.
-> > 
-> > This changes the semantics of fsync such that applications can now use
-> > it to determine whether there were any writeback errors since fsync(fd)
-> > was last called (or since the file was opened in the case of fsync
-> > having never been called).
-> > 
-> > Note that those writeback errors may have occurred when writing data
-> > that was dirtied via an entirely different fd, but that's the case now
-> > with the current mapping_set_error/filemap_check_error infrastructure.
-> > This will at least prevent you from getting a false report of success.
-> > 
-> > The basic idea here is for filesystems to use filemap_set_wb_error to
-> > set the error in the mapping when there are writeback errors, and then
-> > have the fsync and flush operations call filemap_report_wb_error just
-> > before returning to ensure that those errors get reported properly.
-> > 
-> > Eventually, it may make sense to move the reporting into the generic
-> > vfs_fsync_range helper, but doing it this way for now makes it simpler
-> > to convert filesystems to the new API individually.
+> Yes. We'll need version counter in the superblock, and we'll need to
+> know what the increment semantics are. 
 > 
-> There is already a mapping_set_error API which sets flags in
-> mapping->flags (AS_EIO/AS_ENOSPC). Aren't you essentially duplicating
-> some of the semantics of that API ?
+> The big question is how do we know there was a crash? The only thing
+> a journalling filesystem knows at mount time is whether it is clean
+> or requires recovery. Filesystems can require recovery for many
+> reasons that don't involve a crash (e.g. root fs is never unmounted
+> cleanly, so always requires recovery). Further, some filesystems may
+> not even know there was a crash at mount time because their
+> architecture always leaves a consistent filesystem on disk (e.g. COW
+> filesystems)....
 
-Yes, more or less for now. The arguments of mapping_set_error and
-filemap_set_wb_error are the same, but they do different things with the
-error.
-
-The plan is eventually to eliminate mapping_set_error and convert
-everything over to use the new infrastructure I'm adding. That's
-difficult to do all at once however, so for now some duplication is
-necessary.
+What filesystems can or cannot easily do obviously differs. Ext4 has a
+recovery flag set in superblock on RW mount/remount and cleared on
+umount/RO remount. This flag being set on mount would imply incrementing
+the crash counter. It should be pretty easy for each filesystem to
+implement such flag and the counter but I agree it requires an on-disk
+format change.
+ 
+								Honza
 -- 
-Jeff Layton <jlayton@redhat.com>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
