@@ -1,124 +1,88 @@
-From: NeilBrown <neilb@suse.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking infrastructure and convert ext4 to use it
-Date: Mon, 03 Apr 2017 14:25:11 +1000
-Message-ID: <87fuhqkti0.fsf@notabene.neil.brown.name>
+From: Nikolay Borisov <nborisov@suse.com>
+Subject: Re: [RFC PATCH 1/4] fs: new infrastructure for writeback error
+ handling and reporting
+Date: Mon, 3 Apr 2017 10:12:48 +0300
+Message-ID: <3b4d45be-ef00-04a5-5858-126c5aeaa76f@suse.com>
 References: <20170331192603.16442-1-jlayton@redhat.com>
+ <20170331192603.16442-2-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
         akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz,
-        willy@infradead.org
+        willy@infradead.org, neilb@suse.com
 To: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40336 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751136AbdDCEZv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Apr 2017 00:25:51 -0400
-In-Reply-To: <20170331192603.16442-1-jlayton@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, Mar 31 2017, Jeff Layton wrote:
-
-> During LSF/MM this year, we had a discussion about the current sorry
-> state of writeback error reporting, and what could be done to improve
-> the situation. This patchset represents a first pass at the proposal
-> I made there.
->
-> It first adds a new set of writeback error tracking infrastructure to
-> ensure that errors are properly stored and reported at fsync time. It
-> also makes a small but significant change to ensure that writeback
-> errors are reported on all file descriptors, not just on the first one
-> where fsync is called.
->
-> Note that this is a _very_ rough draft at this point. I did some by-hand
-> testing with dm-error to ensure that it does the right thing there.
-> Mostly I'm interested in early feedback at this point -- does this basic
-> approach make sense?
-
-I think that having ->wb_err_seq and returning errors to all file
-descriptors is a good idea.
-I don't like ->wb_err, particularly that you allow it to be set
-to zero:
- +	/*
- +	 * This should be called with the error code that we want to return
- +	 * on fsync. Thus, it should always be <=3D 0.
- +	 */
- +	WARN_ON(err > 0);
-
-Why is that ??
-
-Also I think that EIO should always over-ride ENOSPC as the possible
-responses are different.  That probably means you need a separate seq
-number for each, which isn't ideal.
-
-I don't like that you need to add a 'flush' handler to every filesystem,
-most of which just call
- +	return filemap_report_wb_error(file);
-
-Could we just have
-	if (filp->f_op->flush)
-		retval =3D filp->f_op->flush(filp, id);
-+	else
-+		retval =3D filemap_report_wb_error(filp);
-in flip_close() ??
-
-... or maybe it is wrong to return this error on close().
-After all, the file actually does get closed, so no error occurred.
-If an application cares about EIO, it should always call fsync() before
-close().
-
-Thanks,
-NeilBrown
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170331192603.16442-2-jlayton@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
->
-> Jeff Layton (4):
->   fs: new infrastructure for writeback error handling and reporting
->   dax: set errors in mapping when writeback fails
->   buffer: set wb errors using both new and old infrastructure for now
->   ext4: wire it up to the new writeback error reporting infrastructure
->
->  Documentation/filesystems/vfs.txt | 14 +++++++--
->  fs/buffer.c                       |  6 +++-
->  fs/dax.c                          |  4 ++-
->  fs/ext4/dir.c                     |  1 +
->  fs/ext4/ext4.h                    |  1 +
->  fs/ext4/file.c                    |  1 +
->  fs/ext4/fsync.c                   | 15 +++++++---
->  fs/ext4/inode.c                   |  2 +-
->  fs/ext4/page-io.c                 |  4 +--
->  fs/open.c                         |  3 ++
->  include/linux/fs.h                |  5 ++++
->  mm/filemap.c                      | 61 +++++++++++++++++++++++++++++++++=
-++++++
->  12 files changed, 106 insertions(+), 11 deletions(-)
->
-> --=20
-> 2.9.3
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+On 31.03.2017 22:26, Jeff Layton wrote:
+> Most filesystems currently use mapping_set_error and
+> filemap_check_errors for setting and reporting/clearing writeback errors
+> at the mapping level. filemap_check_errors is indirectly called from
+> most of the filemap_fdatawait_* functions and from
+> filemap_write_and_wait*. These functions are called from all sorts of
+> contexts to wait on writeback to finish -- e.g. mostly in fsync, but
+> also in truncate calls, getattr, etc.
+> 
+> It's those non-fsync callers that are problematic. We should be
+> reporting writeback errors during fsync, but many places in the code
+> clear out errors before they can be properly reported, or report errors
+> at nonsensical times. If I get -EIO on a stat() call, how do I know that
+> was because writeback failed?
+> 
+> This patch adds a small bit of new infrastructure for setting and
+> reporting errors during pagecache writeback. While the above was my
+> original impetus for adding this, I think it's also the case that
+> current fsync semantics are just problematic for userland. Most
+> applications that call fsync do so to ensure that the data they wrote
+> has hit the backing store.
+> 
+> In the case where there are multiple writers to the file at the same
+> time, this is really hard to determine. The first one to call fsync will
+> see any stored error, and the rest get back 0. The processes with open
+> fd may not be associated with one another in any way. They could even be
+> in different containers, so ensuring coordination between all fsync
+> callers is not really an option.
+> 
+> One way to remedy this would be to track what file descriptor was used
+> to dirty the file, but that's rather cumbersome and would likely be
+> slow. However, there is a simpler way to improve the semantics here
+> without incurring too much overhead.
+> 
+> This set adds a wb_error field and a sequence counter to the
+> address_space, and a corresponding sequence counter in the struct file.
+> When errors are reported during writeback, we set the error field in the
+> mapping and increment the sequence counter.
+> 
+> When fsync or flush is called, we check the sequence in the file vs. the
+> one in the mapping. If the file's counter is behind the one in the
+> mapping, then we update the sequence counter in the file to the value of
+> the one in the mapping and report the error. If the file is "caught up"
+> then we just report 0.
+> 
+> This changes the semantics of fsync such that applications can now use
+> it to determine whether there were any writeback errors since fsync(fd)
+> was last called (or since the file was opened in the case of fsync
+> having never been called).
+> 
+> Note that those writeback errors may have occurred when writing data
+> that was dirtied via an entirely different fd, but that's the case now
+> with the current mapping_set_error/filemap_check_error infrastructure.
+> This will at least prevent you from getting a false report of success.
+> 
+> The basic idea here is for filesystems to use filemap_set_wb_error to
+> set the error in the mapping when there are writeback errors, and then
+> have the fsync and flush operations call filemap_report_wb_error just
+> before returning to ensure that those errors get reported properly.
+> 
+> Eventually, it may make sense to move the reporting into the generic
+> vfs_fsync_range helper, but doing it this way for now makes it simpler
+> to convert filesystems to the new API individually.
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljhzqcACgkQOeye3VZi
-gbn/eA//YICjBeWNjIu+IC93SwSMPKcPehN4LIk0vY2I8SCt48E0rNBhpupZnaoG
-y2qmwKjoQdJZqIz1YdL1M13WWW21hywSt/vTx74e86G8q52dlH6kUZS7tuhpEx+B
-MXa3XM92wm/VyvpjuhTH8u7Qvzp7CbMGOF1RbG8NJ+6AQWPebygQSsh+nAz8kPnN
-toxknZuQDt9sEl7iya8HXjPoKfmHHwtDGE8P4FYXSMUeBy/xnOis026s4RNQsRQ4
-GZ4jn9s9dosS+Ol/laLNZ144EEm4xApYFg71tOFu3zjqC2nBVozA77mZAhqyG4Gq
-TdR8BBY/17RdvgbguFkt7FpMaOGZ+M5GNymz/xxEz9MM+AsiuR72qBh/4b8IJxb4
-W8gVGwhSa5cs2M/ZpDWwfaqIhe6B77SbBbPed0pQBLPXxY+T1HNxXK6Cl2/B31hc
-aDjX3nDxMmAMaORBQkSBAh83eUZquII0T7P6xD/NAvpfRDnYUmgbdZ2t0BT5JmYL
-UsipOLDF9gHBNrDwWnCYLqjwAbaWHoVBvsGlLFZ8OdIEHFV/quezzr+QZjfEcPor
-adwAo14sF4N1GKeinQXuUzr4RopZK1HSUv/KllaNhRHcgrxLHj5mGDaIfPyknA4H
-HiAxIAw92csM9ia4Y3SQmoBhMI1WNnU0LTSQQJOBHk2t76fIhSE=
-=tMCC
------END PGP SIGNATURE-----
---=-=-=--
+There is already a mapping_set_error API which sets flags in
+mapping->flags (AS_EIO/AS_ENOSPC). Aren't you essentially duplicating
+some of the semantics of that API ?
