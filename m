@@ -1,72 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Date: Mon, 3 Apr 2017 16:00:55 +0200
-Message-ID: <20170403140055.GF15168@quack2.suse.cz>
-References: <20170321163011.GA16666@fieldses.org>
- <1490117004.2542.1.camel@redhat.com>
- <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <20170401230526.GW23007@dastard>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
+ infrastructure and convert ext4 to use it
+Date: Mon, 3 Apr 2017 07:32:57 -0700
+Message-ID: <20170403143257.GA30811@bombadil.infradead.org>
+References: <20170331192603.16442-1-jlayton@redhat.com>
+ <87fuhqkti0.fsf@notabene.neil.brown.name>
+ <1491215318.2724.3.camel@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38093 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751998AbdDCOA6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Apr 2017 10:00:58 -0400
+Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170401230526.GW23007@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1491215318.2724.3.camel@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 02-04-17 09:05:26, Dave Chinner wrote:
-> On Thu, Mar 30, 2017 at 12:12:31PM -0400, J. Bruce Fields wrote:
-> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
-> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> > > > Because if above is acceptable we could make reported i_version to be a sum
-> > > > of "superblock crash counter" and "inode i_version". We increment
-> > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> > > > That way after a crash we are guaranteed each inode will report new
-> > > > i_version (the sum would probably have to look like "superblock crash
-> > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> > > > i_version numbers we gave away but did not write to disk but still...).
-> > > > Thoughts?
+On Mon, Apr 03, 2017 at 06:28:38AM -0400, Jeff Layton wrote:
+> On Mon, 2017-04-03 at 14:25 +1000, NeilBrown wrote:
+> > Also I think that EIO should always over-ride ENOSPC as the possible
+> > responses are different.  That probably means you need a separate seq
+> > number for each, which isn't ideal.
 > > 
-> > How hard is this for filesystems to support?  Do they need an on-disk
-> > format change to keep track of the crash counter?
 > 
-> Yes. We'll need version counter in the superblock, and we'll need to
-> know what the increment semantics are. 
+> I'm not quite convinced that it's really useful to do anything but
+> report the latest error.
 > 
-> The big question is how do we know there was a crash? The only thing
-> a journalling filesystem knows at mount time is whether it is clean
-> or requires recovery. Filesystems can require recovery for many
-> reasons that don't involve a crash (e.g. root fs is never unmounted
-> cleanly, so always requires recovery). Further, some filesystems may
-> not even know there was a crash at mount time because their
-> architecture always leaves a consistent filesystem on disk (e.g. COW
-> filesystems)....
+> But...if we did need to prefer one over another, could we get away with
+> always reporting -EIO once that error occurs? If so, then we'd still
+> just need a single sequence counter.
 
-What filesystems can or cannot easily do obviously differs. Ext4 has a
-recovery flag set in superblock on RW mount/remount and cleared on
-umount/RO remount. This flag being set on mount would imply incrementing
-the crash counter. It should be pretty easy for each filesystem to
-implement such flag and the counter but I agree it requires an on-disk
-format change.
- 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I wonder whether it's even worth supporting both EIO and ENOSPC for a
+writeback problem.  If I understand correctly, at the time of write(),
+filesystems check to see if they have enough blocks to satisfy the
+request, so ENOSPC only comes up in the writeback context for thinly
+provisioned devices.
+
+Programs have basically no use for the distinction.  In either case,
+the situation is the same.  The written data is safely in RAM and cannot
+be written to the storage.  If one were to make superhuman efforts,
+one could mmap the file and write() it to a different device, but that
+is incredibly rare.  For most programs, the response is to just die and
+let the human deal with the corrupted file.
+
+>From a sysadmin point of view, of course the situation is different,
+and the remedy is different, but they should be getting that information
+through a different mechanism than monitoring the errno from every
+system call.
+
+If we do want to continue to support both EIO and ENOSPC from writeback,
+then let's have EIO override ENOSPC as an error.  ie if an ENOSPC comes
+in after an EIO is set, it only bumps the counter and applications will
+see EIO, not ENOSPC on fresh calls to fsync().
