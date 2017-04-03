@@ -1,61 +1,69 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
- infrastructure and convert ext4 to use it
-Date: Mon, 03 Apr 2017 14:49:37 -0400
-Message-ID: <1491245377.2673.18.camel@redhat.com>
-References: <20170331192603.16442-1-jlayton@redhat.com>
-         <87fuhqkti0.fsf@notabene.neil.brown.name>
-         <1491215318.2724.3.camel@redhat.com>
-         <20170403143257.GA30811@bombadil.infradead.org>
-         <1491241657.2673.10.camel@redhat.com> <20170403180908.GG37923@jra3>
-         <1491243524.2673.15.camel@redhat.com> <20170403183648.GH37923@jra3>
-         <20170403184034.GI37923@jra3>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Matthew Wilcox <willy@infradead.org>, NeilBrown <neilb@suse.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-        tytso@mit.edu, jack@suse.cz
-To: Jeremy Allison <jra@samba.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f175.google.com ([209.85.220.175]:33691 "EHLO
-        mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751738AbdDCStl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Apr 2017 14:49:41 -0400
-Received: by mail-qk0-f175.google.com with SMTP id h67so23949800qke.0
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Apr 2017 11:49:41 -0700 (PDT)
-In-Reply-To: <20170403184034.GI37923@jra3>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Subject: [PATCH 0/8 v4] No wait AIO
+Date: Mon,  3 Apr 2017 13:52:59 -0500
+Message-ID: <20170403185307.6243-1-rgoldwyn@suse.de>
+Cc: jack-IBi9RG/b67k@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org,
+        axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        tom.leiming-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
+To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2017-04-03 at 11:40 -0700, Jeremy Allison wrote:
-> On Mon, Apr 03, 2017 at 11:36:48AM -0700, Jeremy Allison wrote:
-> > On Mon, Apr 03, 2017 at 02:18:44PM -0400, Jeff Layton wrote:
-> > > On Mon, 2017-04-03 at 11:09 -0700, Jeremy Allison wrote:
-> > > > 
-> > > > CIFS has a way to reserve space. Look into "allocation size" on create.
-> > > 
-> > > That won't help here as it's done on open().
-> > > 
-> > > The problem here is that we might create a file (and not preallocate
-> > > anything), then write a bunch of stuff to the cache under an oplock.
-> > > Then when we go to write back, we get the CIFS equivalent of -ENOSPC.
-> > > 
-> > > What local filesystems do (AIUI) is preallocate so that you can catch
-> > > an ENOSPC condition earlier, when you're dirtying new pages in the
-> > > cache. That's pretty much impossible to do on a network filesystem
-> > > though.
-> > 
-> > There's also SMB_SET_FILE_ALLOCATION_INFO which can be
-> > done over SMB1/2/3 on an open file handle.
-> 
-> There's *always* a way to do something in SMB1/2/3. :-).
+Formerly known as non-blocking AIO.
 
-Yes, indeed...Still, I think we'll need to deal with this during
-writeback as well. Earlier versions of NFS certainly don't have
-anything along those lines, though you could probably do some sort of
-speculative preallocation with v4.2.
+This series adds nonblocking feature to asynchronous I/O writes.
+io_submit() can be delayed because of a number of reason:
+ - Block allocation for files
+ - Data writebacks for direct I/O
+ - Sleeping because of waiting to acquire i_rwsem
+ - Congested block device
+
+The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+any of these conditions are met. This way userspace can push most
+of the write()s to the kernel to the best of its ability to complete
+and if it returns -EAGAIN, can defer it to another thread.
+
+In order to enable this, IOCB_RW_FLAG_NOWAIT is introduced in
+uapi/linux/aio_abi.h. If set for aio_rw_flags, it translates to
+IOCB_NOWAIT for struct iocb, BIO_NOWAIT for bio and IOMAP_NOWAIT for
+iomap. aio_rw_flags is a new flag replacing aio_reserved1. We could
+not use aio_flags because it is not currently checked for invalidity
+in the kernel.
+
+This feature is provided for direct I/O of asynchronous I/O only. I have
+tested it against xfs, ext4, and btrfs while I intend to add more filesystems.
+Same with QUEUE_FLAG_NOWAIT, which is currently set for sd and virtio devices.
+This is primarily to block md/dm devices which may wait in places such as
+recovery/sync/suspend. In the future, I intend to add support to
+these devices as well. Applications will have to check supportability
+by sending a async direct write and any other error besides -EAGAIN
+would mean it is not supported.
+
+Changes since v1:
+ + changed name from _NONBLOCKING to *_NOWAIT
+ + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
+ + BIO_NOWAIT limited to get_request()
+ + XFS fixes 
+	- included reflink 
+	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
+	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
+	  block allocation for the file.
+ + ext4 coding style
+
+Changes since v2:
+ + Using aio_reserved1 as aio_rw_flags instead of aio_flags
+ + blk-mq support
+ + xfs uptodate with kernel and reflink changes
+
+ Changes since v3:
+  + Added FS_NOWAIT, which is set if the filesystem supports NOWAIT feature.
+  + Checks in generic_make_request() to make sure BIO_NOWAIT comes in
+    for async direct writes only.
+  + Added QUEUE_FLAG_NOWAIT, which is set if the device supports BIO_NOWAIT.
+    This is added (rather not set) to block devices such as dm/md currently.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Goldwyn
