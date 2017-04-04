@@ -1,139 +1,90 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
- infrastructure and convert ext4 to use it
-Date: Tue, 04 Apr 2017 08:17:48 -0400
-Message-ID: <1491308268.20445.4.camel@redhat.com>
-References: <20170331192603.16442-1-jlayton@redhat.com>
-         <87fuhqkti0.fsf@notabene.neil.brown.name>
-         <1491215318.2724.3.camel@redhat.com>
-         <20170403143257.GA30811@bombadil.infradead.org>
-         <1491241657.2673.10.camel@redhat.com>
-         <20170403191602.GF30811@bombadil.infradead.org>
-         <1491250577.2673.20.camel@redhat.com>
-         <87h924kh6t.fsf@notabene.neil.brown.name>
-         <20170404115358.GH30811@bombadil.infradead.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Tue, 4 Apr 2017 22:34:14 +1000
+Message-ID: <20170404123414.GA23007@dastard>
+References: <1490117004.2542.1.camel@redhat.com>
+ <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <20170401230526.GW23007@dastard>
+ <20170403140055.GF15168@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-        tytso@mit.edu, jack@suse.cz
-To: Matthew Wilcox <willy@infradead.org>, NeilBrown <neilb@suse.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170404115358.GH30811@bombadil.infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170403140055.GF15168@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2017-04-04 at 04:53 -0700, Matthew Wilcox wrote:
-> On Tue, Apr 04, 2017 at 01:03:22PM +1000, NeilBrown wrote:
-> > On Mon, Apr 03 2017, Jeff Layton wrote:
-> > 
-> > > On Mon, 2017-04-03 at 12:16 -0700, Matthew Wilcox wrote:
-> > > > So, OK, that makes sense, we should keep allowing filesystems to report
-> > > > ENOSPC as a writeback error.  But I think much of the argument below
-> > > > still holds, and we should continue to have a prior EIO to be reported
-> > > > over a new ENOSPC (even if the program has already consumed the EIO).
+On Mon, Apr 03, 2017 at 04:00:55PM +0200, Jan Kara wrote:
+> On Sun 02-04-17 09:05:26, Dave Chinner wrote:
+> > On Thu, Mar 30, 2017 at 12:12:31PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+> > > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> > > > > Because if above is acceptable we could make reported i_version to be a sum
+> > > > > of "superblock crash counter" and "inode i_version". We increment
+> > > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> > > > > That way after a crash we are guaranteed each inode will report new
+> > > > > i_version (the sum would probably have to look like "superblock crash
+> > > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> > > > > i_version numbers we gave away but did not write to disk but still...).
+> > > > > Thoughts?
 > > > 
-> > > I'm fine with that (though I'd like Neil's thoughts before we decide
-> > > anything) there.
+> > > How hard is this for filesystems to support?  Do they need an on-disk
+> > > format change to keep track of the crash counter?
 > > 
-> > I'd like there be a well defined time when old errors were forgotten.
-> > It does make sense for EIO to persist even if ENOSPC or EDQUOT is
-> > received, but not forever.
-> > Clearing the remembered errors when put_write_access() causes
-> > i_writecount to reach zero is one option (as suggested), but I'm not
-> > sure I'm happy with it.
+> > Yes. We'll need version counter in the superblock, and we'll need to
+> > know what the increment semantics are. 
 > > 
-> > Local filesystems, or network filesystems which receive strong write
-> > delegations, should only ever return EIO to fsync.  We should
-> > concentrate on them first, I think.  As there is only one possible
-> > error, the seq counter is sufficient to "clear" it once it has been
-> > reported to fsync() (or write()?).
-> > 
-> > Other network filesystems could return a whole host of errors: ENOSPC
-> > EDQUOT ESTALE EPERM EFBIG ...
-> > Do we want to limit exactly which errors are allowed in generic code, or
-> > do we just support EIO generically and expect the filesystem to sort out
-> > the details for anything else?
+> > The big question is how do we know there was a crash? The only thing
+> > a journalling filesystem knows at mount time is whether it is clean
+> > or requires recovery. Filesystems can require recovery for many
+> > reasons that don't involve a crash (e.g. root fs is never unmounted
+> > cleanly, so always requires recovery). Further, some filesystems may
+> > not even know there was a crash at mount time because their
+> > architecture always leaves a consistent filesystem on disk (e.g. COW
+> > filesystems)....
 > 
-> I'd like us to focus on our POSIX compliance here and not return
-> arbitrary errors.  The relevant pages are here:
-> 
-> http://pubs.opengroup.org/onlinepubs/9699919799/functions/fsync.html
-> http://pubs.opengroup.org/onlinepubs/9699919799/functions/write.html
-> http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html
-> 
-> For close(), we have to map every error to EIO.
-> For fsync(), we can return any error that write() could have.  That limits
-> us to:
-> 
-> EFBIG ENOSPC EIO ENOBUFS ENXIO
-> 
-> I think EFBIG really isn't a writeback error; are there any network
-> filesystems that don't know the file size limit at the time they accept
-> the original write?  ENOBUFS seems like a transient error (*this* call to
-> fsync() failed, but the next one may succeed ... it's the equivalent of
-> ENOMEM).  ENXIO seems to me like it's a submission error, not a writeback
-> error.  So that leaves us with ENOSPC and EIO, as we have support today.
-> 
+> What filesystems can or cannot easily do obviously differs. Ext4 has a
+> recovery flag set in superblock on RW mount/remount and cleared on
+> umount/RO remount.
 
-Agreed that we should focus on POSIX compliance. I'll also note that
-POSIX states:
+Even this doesn't help. A recent bug that was reported to the XFS
+list - turns out that systemd can't remount-ro the root
+filesystem sucessfully on shutdown because there are open write fds
+on the root filesystem when it attempts the remount. So it just
+reboots without a remount-ro. This uncovered a bug in grub in
+that it (still!) thinks sync(1) is sufficient to get all the
+metadata that points to a kernel image onto disk in places it can
+read. XFS, like ext4, leaves it in the journal and so the system then fails to
+boot because systemd didn't remount-ro the root fs and hence the
+journal was never flushed before reboot and so grub can't find the
+kernel and so everything fails....
 
-"If more than one error occurs in processing a function call, any one
-of the possible errors may be returned, as the order of
-detection is undefined."
+> This flag being set on mount would imply incrementing the crash
+> counter. It should be pretty easy for each filesystem to implement
+> such flag and the counter but I agree it requires an on-disk
+> format change.
 
-    http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_03
+Yup, anything we want that is persistent and consistent across
+filesystems will need on-disk format changes. Hence we need a solid
+specification first, not to mention tests to validate correct
+behaviour across all filesystems in xfstests...
 
-So, I'd like to push back on this idea that we need to prefer reporting
--EIO over other errors. POSIX certainly doesn't mandate that. 
+Cheers,
 
-If we agree that that is the case, then I think the simplest thing to
-do here would be to clear the other error flag(s) when we get a new
-error, such that we only preserve the latest one. With that, we also
-wouldn't need to clear anything out when i_writecount goes to zero
-either. It would "just work" without that.
-
-> > One possible approach a filesystem could take is just to allow a single
-> > async writeback error.  After that error, all subsequent write()
-> > system calls become synchronous. As write() or fsync() is called on each
-> > file descriptor (which could possibly have sent the write which caused
-> > the error), an error is returned and that fact is counted.  Once we have
-> > returned as many errors as there are open file descriptors
-> > (i_writecount?), and have seen a successful write, the filesystem
-> > forgets all recorded errors and switches back to async writes (for that
-> > inode).   NFS does this switch-to-sync-on-error.  See nfs_need_check_write().
-> > 
-> > The "which could possibly have sent the write which caused the error" is
-> > an explicit reference to NFS.  NFS doesn't use the AS_EIO/AS_ENOSPC
-> > flags to return async errors.  It allocates an nfs_open_context for each
-> > user who opens a given inode, and stores an error in there.  Each dirty
-> > pages is associated with one of these, so errors a sure to go to the
-> > correct user, though not necessarily the correct fd at present.
-> 
-> ... and you need the nfs_open_context in order to use the correct
-> credentials when writing a page to the server, correct?
-> 
-
-Yes, and it is expensive. I don't think we want to do that at the
-generic VFS layer if we can at all help it.
-
-> > When we specify the new behaviour we should be careful to be as vague as
-> > possible while still saying what we need.  This allows filesystems some
-> > flexibility.
-> > 
-> >   If an error happens during writeback, the next write() or fsync() (or
-> >   ....) on the file descriptor to which data was written will return -1
-> >   with errno set to EIO or some other relevant error.  Other file
-> >   descriptors open on the same file may receive EIO or some other error
-> >   on a subsequent appropriate system call.
-> >   It should not be assumed that close() will return an error.  fsync()
-> >   must be called before close() if writeback errors are important to the
-> >   application.
-> 
-
-...and I also agree that we leave as much grey area as possible here to
-allow for a wide range of implementations.
+Dave.
 -- 
-Jeff Layton <jlayton@redhat.com>
+Dave Chinner
+david@fromorbit.com
