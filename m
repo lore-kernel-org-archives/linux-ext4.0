@@ -1,54 +1,37 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Matthew Wilcox <willy@infradead.org>
 Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
  infrastructure and convert ext4 to use it
-Date: Tue, 04 Apr 2017 07:41:10 -0400
-Message-ID: <1491306070.20445.2.camel@redhat.com>
+Date: Tue, 4 Apr 2017 04:53:58 -0700
+Message-ID: <20170404115358.GH30811@bombadil.infradead.org>
 References: <20170331192603.16442-1-jlayton@redhat.com>
-         <87fuhqkti0.fsf@notabene.neil.brown.name>
-         <1491215318.2724.3.camel@redhat.com>
-         <20170403143257.GA30811@bombadil.infradead.org>
-         <1491241657.2673.10.camel@redhat.com>
-         <20170403191602.GF30811@bombadil.infradead.org>
-         <1491250577.2673.20.camel@redhat.com>
-         <87h924kh6t.fsf@notabene.neil.brown.name>
+ <87fuhqkti0.fsf@notabene.neil.brown.name>
+ <1491215318.2724.3.camel@redhat.com>
+ <20170403143257.GA30811@bombadil.infradead.org>
+ <1491241657.2673.10.camel@redhat.com>
+ <20170403191602.GF30811@bombadil.infradead.org>
+ <1491250577.2673.20.camel@redhat.com>
+ <87h924kh6t.fsf@notabene.neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-        tytso@mit.edu, jack@suse.cz
-To: NeilBrown <neilb@suse.com>, Matthew Wilcox <willy@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
+To: NeilBrown <neilb@suse.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <87h924kh6t.fsf@notabene.neil.brown.name>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2017-04-04 at 13:03 +1000, NeilBrown wrote:
+On Tue, Apr 04, 2017 at 01:03:22PM +1000, NeilBrown wrote:
 > On Mon, Apr 03 2017, Jeff Layton wrote:
 > 
 > > On Mon, 2017-04-03 at 12:16 -0700, Matthew Wilcox wrote:
-> > > On Mon, Apr 03, 2017 at 01:47:37PM -0400, Jeff Layton wrote:
-> > > > > I wonder whether it's even worth supporting both EIO and ENOSPC for a
-> > > > > writeback problem.  If I understand correctly, at the time of write(),
-> > > > > filesystems check to see if they have enough blocks to satisfy the
-> > > > > request, so ENOSPC only comes up in the writeback context for thinly
-> > > > > provisioned devices.
-> > > > 
-> > > > No, ENOSPC on writeback can certainly happen with network filesystems.
-> > > > NFS and CIFS have no way to reserve space. You wouldn't want to have to
-> > > > do an extra RPC on every buffered write. :)
-> > > 
-> > > Aaah, yes, network filesystems.  I would indeed not want to do an extra
-> > > RPC on every write to a hole (it's a hole vs non-hole question, rather
-> > > than a buffered/unbuffered question ... unless you're WAFLing and not
-> > > reclaiming quickly enough, I suppose).
-> > > 
-> > > So, OK, that makes sense, we should keep allowing filesystems to report
-> > > ENOSPC as a writeback error.  But I think much of the argument below
-> > > still holds, and we should continue to have a prior EIO to be reported
-> > > over a new ENOSPC (even if the program has already consumed the EIO).
-> > > 
-> > 
+> >> So, OK, that makes sense, we should keep allowing filesystems to report
+> >> ENOSPC as a writeback error.  But I think much of the argument below
+> >> still holds, and we should continue to have a prior EIO to be reported
+> >> over a new ENOSPC (even if the program has already consumed the EIO).
+> >
 > > I'm fine with that (though I'd like Neil's thoughts before we decide
 > > anything) there.
 > 
@@ -70,7 +53,27 @@ On Tue, 2017-04-04 at 13:03 +1000, NeilBrown wrote:
 > Do we want to limit exactly which errors are allowed in generic code, or
 > do we just support EIO generically and expect the filesystem to sort out
 > the details for anything else?
-> 
+
+I'd like us to focus on our POSIX compliance here and not return
+arbitrary errors.  The relevant pages are here:
+
+http://pubs.opengroup.org/onlinepubs/9699919799/functions/fsync.html
+http://pubs.opengroup.org/onlinepubs/9699919799/functions/write.html
+http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html
+
+For close(), we have to map every error to EIO.
+For fsync(), we can return any error that write() could have.  That limits
+us to:
+
+EFBIG ENOSPC EIO ENOBUFS ENXIO
+
+I think EFBIG really isn't a writeback error; are there any network
+filesystems that don't know the file size limit at the time they accept
+the original write?  ENOBUFS seems like a transient error (*this* call to
+fsync() failed, but the next one may succeed ... it's the equivalent of
+ENOMEM).  ENXIO seems to me like it's a submission error, not a writeback
+error.  So that leaves us with ENOSPC and EIO, as we have support today.
+
 > One possible approach a filesystem could take is just to allow a single
 > async writeback error.  After that error, all subsequent write()
 > system calls become synchronous. As write() or fsync() is called on each
@@ -87,7 +90,10 @@ On Tue, 2017-04-04 at 13:03 +1000, NeilBrown wrote:
 > user who opens a given inode, and stores an error in there.  Each dirty
 > pages is associated with one of these, so errors a sure to go to the
 > correct user, though not necessarily the correct fd at present.
-> 
+
+... and you need the nfs_open_context in order to use the correct
+credentials when writing a page to the server, correct?
+
 > When we specify the new behaviour we should be careful to be as vague as
 > possible while still saying what we need.  This allows filesystems some
 > flexibility.
@@ -100,42 +106,5 @@ On Tue, 2017-04-04 at 13:03 +1000, NeilBrown wrote:
 >   It should not be assumed that close() will return an error.  fsync()
 >   must be called before close() if writeback errors are important to the
 >   application.
-> 
-> 
 
-A lot in here... :)
-
-While I like the NFS method of switching to sync I/O on error (and
-indeed, I'm copying that in the Ceph ENOSPC patches I have), I'm not
-sure it would really help anything here. The main reason NFS does that
-is to prevent you from dirtying tons of pages that can't be cleaned. 
-
-While that is a laudable goal, it's not really the problem I'm
-interested in solving here. My goal is simply to ensure that you see a
-writeback error on fsync if one occurred since the last fsync.
-
-I think it just comes down to the fact that I'm not convinced that it
-really matters much _what_ error gets reported, as long as you get one.
-As you've mentioned in earlier discussions, most programs just treat it
-as a fatal error anyway. As long as that error is representative of
-some error that occurred during writeback, do we really care what it
-was?
-
-Suppose we have a bunch of dirty pages on an inode, get an EIO error
-and then ENOSPC on a different write (maybe issued in parallel). We
-send the ENOSPC error back to the application on an fsync (since it
-came in last). Application then cleans out some junk from the fs and
-then reissues the writes. They fail again and then he gets EIO from the
-fsync and aborts.
-
-Ok, so we might not have had to clean out the files and reissue the
-writes there since we were going to give up anyway. Is it worth going
-to extra lengths to avoid that there, given that we're in an error
-condition anyway?
-
-I'm just trying to understand why it matters at all what error you get
-back when there multiple problems. They all seem equally valid to me in
-that situation.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Thanks for explaining what NFS does today.
