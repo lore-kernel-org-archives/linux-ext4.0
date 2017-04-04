@@ -1,73 +1,64 @@
-From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
- infrastructure and convert ext4 to use it
-Date: Tue, 4 Apr 2017 10:09:09 -0700
-Message-ID: <20170404170909.GK30811@bombadil.infradead.org>
-References: <1491215318.2724.3.camel@redhat.com>
- <20170403143257.GA30811@bombadil.infradead.org>
- <1491241657.2673.10.camel@redhat.com>
- <20170403191602.GF30811@bombadil.infradead.org>
- <1491250577.2673.20.camel@redhat.com>
- <87h924kh6t.fsf@notabene.neil.brown.name>
- <20170404115358.GH30811@bombadil.infradead.org>
- <1491308268.20445.4.camel@redhat.com>
- <20170404161247.GJ30811@bombadil.infradead.org>
- <1491323146.309.1.camel@redhat.com>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Tue, 4 Apr 2017 13:53:38 -0400
+Message-ID: <20170404175338.GB14303@fieldses.org>
+References: <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <20170401230526.GW23007@dastard>
+ <20170403140055.GF15168@quack2.suse.cz>
+ <20170404123414.GA23007@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:57240 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751994AbdDDRJN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Apr 2017 13:09:13 -0400
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1491323146.309.1.camel@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170404123414.GA23007@dastard>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 04, 2017 at 12:25:46PM -0400, Jeff Layton wrote:
-> That said, I think giving more specific errors where we can is useful.
-> When your program is erroring out and writing 'I/O error' to the logs,
-> then how much time will your admins burn before they figure out that it
-> really failed because the filesystem was full?
+On Tue, Apr 04, 2017 at 10:34:14PM +1000, Dave Chinner wrote:
+> On Mon, Apr 03, 2017 at 04:00:55PM +0200, Jan Kara wrote:
+> > What filesystems can or cannot easily do obviously differs. Ext4 has a
+> > recovery flag set in superblock on RW mount/remount and cleared on
+> > umount/RO remount.
+> 
+> Even this doesn't help. A recent bug that was reported to the XFS
+> list - turns out that systemd can't remount-ro the root
+> filesystem sucessfully on shutdown because there are open write fds
+> on the root filesystem when it attempts the remount. So it just
+> reboots without a remount-ro.
 
-df is one of the first things I check ... a few years ago, I also learned
-to check df -i ... ;-)
+I'd certainly rather not invalidate caches on *every* boot.
 
-Anyway, given the decision to simply report the last error lets us do this
-implementation:
+On the other hand, if the only cases involve the root filesystem, then
+from the point of view of NFS, we probably don't care much.
 
-void filemap_set_wb_error(struct address_space *mapping, int err)
-{
-	struct inode *inode = mapping->host;
-	unsigned int wb_err;
+> > This flag being set on mount would imply incrementing the crash
+> > counter. It should be pretty easy for each filesystem to implement
+> > such flag and the counter but I agree it requires an on-disk
+> > format change.
+> 
+> Yup, anything we want that is persistent and consistent across
+> filesystems will need on-disk format changes. Hence we need a solid
+> specification first, not to mention tests to validate correct
+> behaviour across all filesystems in xfstests...
 
-	if (!err)
-		return;
-	/*
-	 * This should be called with the error code that we want to return
-	 * on fsync. Thus, it should always be <= 0.
-	 */
-	WARN_ON(err > 0 || err < -MAX_ERRNO);
+For xfstests we'll need a way to get i_version (patch it into statx, I
+guess?).  Ideally we'd have a way to test behavior across crashes too,
+any advice there?
 
-	spin_lock(&inode->i_lock);
-	wb_err = ((mapping->wb_err & ~MAX_ERRNO) + (1 << 12)) | -err;
-	WRITE_ONCE(mapping->wb_err, wb_err);
-	spin_unlock(&inode->i_lock);
-}
-
-int filemap_report_wb_error(struct file *file)
-{
-	struct inode *inode = file_inode(file);
-	unsigned int wb_err = READ_ONCE(mapping->wb_err);
-
-	if (file->f_wb_err == wb_err)
-		return 0;
-	return -(wb_err & 4095);
-}
-
-That only gives us 20 bits of counter, but I think that's enough.
+--b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
