@@ -1,94 +1,84 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Subject: Re: [PATCH] e2fsck: fix quota accounting to use cluster units
-Date: Tue, 4 Apr 2017 21:03:53 +0300
-Message-ID: <965F24ED-3B91-4D89-B25D-F547208FE909@gmail.com>
-References: <20170402165705.GA8705@localhost.localdomain>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36246 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932379AbdDDSD5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Apr 2017 14:03:57 -0400
-Received: by mail-it0-f67.google.com with SMTP id a140so5698997ita.3
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Apr 2017 11:03:57 -0700 (PDT)
-In-Reply-To: <20170402165705.GA8705@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
+ infrastructure and convert ext4 to use it
+Date: Tue, 04 Apr 2017 14:08:54 -0400
+Message-ID: <1491329334.309.6.camel@redhat.com>
+References: <1491215318.2724.3.camel@redhat.com>
+         <20170403143257.GA30811@bombadil.infradead.org>
+         <1491241657.2673.10.camel@redhat.com>
+         <20170403191602.GF30811@bombadil.infradead.org>
+         <1491250577.2673.20.camel@redhat.com>
+         <87h924kh6t.fsf@notabene.neil.brown.name>
+         <20170404115358.GH30811@bombadil.infradead.org>
+         <1491308268.20445.4.camel@redhat.com>
+         <20170404161247.GJ30811@bombadil.infradead.org>
+         <1491323146.309.1.camel@redhat.com>
+         <20170404170909.GK30811@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
+To: Matthew Wilcox <willy@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170404170909.GK30811@bombadil.infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Eric,
+On Tue, 2017-04-04 at 10:09 -0700, Matthew Wilcox wrote:
+> On Tue, Apr 04, 2017 at 12:25:46PM -0400, Jeff Layton wrote:
+> > That said, I think giving more specific errors where we can is useful.
+> > When your program is erroring out and writing 'I/O error' to the logs,
+> > then how much time will your admins burn before they figure out that it
+> > really failed because the filesystem was full?
+> 
+> df is one of the first things I check ... a few years ago, I also learned
+> to check df -i ... ;-)
+> 
+> Anyway, given the decision to simply report the last error lets us do this
+> implementation:
+> 
+> void filemap_set_wb_error(struct address_space *mapping, int err)
+> {
+> 	struct inode *inode = mapping->host;
+> 	unsigned int wb_err;
+> 
+> 	if (!err)
+> 		return;
+> 	/*
+> 	 * This should be called with the error code that we want to return
+> 	 * on fsync. Thus, it should always be <= 0.
+> 	 */
+> 	WARN_ON(err > 0 || err < -MAX_ERRNO);
+> 
+> 	spin_lock(&inode->i_lock);
+> 	wb_err = ((mapping->wb_err & ~MAX_ERRNO) + (1 << 12)) | -err;
+> 	WRITE_ONCE(mapping->wb_err, wb_err);
 
-> 2 =D0=B0=D0=BF=D1=80. 2017 =D0=B3., =D0=B2 19:57, Eric Whitney =
-<enwlinux@gmail.com> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
->=20
-> The quota accounting code in e2fsck's pass 1 and pass 3 uses block =
-units
-> rather than cluster units when recording the allocated space consumed =
-by
-> files and directories.  In pass 1, this causes a large undercount of
-> actual quota results and test failures for xfstests generic/383, /384,
-> /385, and /386 on bigalloc file systems.  In pass 3, this results in
-> quota accounting errors when the lost+found directory is either =
-extended
-> or recreated on a bigalloc file system.
->=20
-> Use clusters rather than blocks when accounting for allocated space,
-> and correct a related header comment in the quota code.
->=20
-> Note that pass 1b also contains call sites for quota_data_sub() that
-> also need to be addressed.  However, it appears that more than just
-> unit conversion may be needed, so that will be left to a future patch.
->=20
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
-> e2fsck/pass1.c        | 3 ++-
-> e2fsck/pass3.c        | 5 +++--
-> lib/support/quotaio.h | 2 +-
-> 3 files changed, 6 insertions(+), 4 deletions(-)
->=20
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 1714897..188cc56 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -3174,7 +3174,8 @@ static void check_blocks(e2fsck_t ctx, struct =
-problem_context *pctx,
-> 	if (ino !=3D quota_type2inum(PRJQUOTA, fs->super) &&
-> 	    (ino =3D=3D EXT2_ROOT_INO || ino >=3D =
-EXT2_FIRST_INODE(ctx->fs->super))) {
-> 		quota_data_add(ctx->qctx, (struct ext2_inode_large *) =
-inode,
-> -			       ino, pb.num_blocks * fs->blocksize);
-> +			       ino,
-> +			       pb.num_blocks * =
-EXT2_CLUSTER_SIZE(fs->super));
-> 		quota_data_inodes(ctx->qctx, (struct ext2_inode_large *) =
-inode,
-> 				  ino, +1);
-> 	}
-I think it part may rewrite easy.
+Do we need the WRITE_ONCE, given that you're under a spinlock there?
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 98125bf..cd83156 100644 (file)
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2700,6 +2700,8 @@ static void check_blocks(e2fsck_t ctx, struct =
-problem_context *pctx,
-               }
-       }
+> 	spin_unlock(&inode->i_lock);
+> }
+> 
+> int filemap_report_wb_error(struct file *file)
+> {
+> 	struct inode *inode = file_inode(file);
+> 	unsigned int wb_err = READ_ONCE(mapping->wb_err);
+> 
+> 	if (file->f_wb_err == wb_err)
+> 		return 0;
+> 	return -(wb_err & 4095);
+> }
+> 
+> That only gives us 20 bits of counter, but I think that's enough.
 
-+       pb.num_blocks *=3D EXT2FS_CLUSTER_RATIO(fs);
-+
-       if (ino =3D=3D EXT2_ROOT_INO || ino >=3D =
-EXT2_FIRST_INODE(ctx->fs->super)) {
-               quota_data_add(ctx->qctx, inode, ino,
-                              pb.num_blocks * fs->blocksize);
-@@ -2710,7 +2712,7 @@ static void check_blocks(e2fsck_t ctx, struct =
-problem_context *pctx,
-             EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
-           !(inode->i_flags & EXT4_HUGE_FILE_FL))
-               pb.num_blocks *=3D (fs->blocksize / 512);
--       pb.num_blocks *=3D EXT2FS_CLUSTER_RATIO(fs);
-+
+That'd be fine with me, but I'm all for allowing filesystems to return
+arbitrary writeback errors on fsync.
+
+Others may have different opinions there. We could add a wrapper
+function that sanitizes the error codes if some filesystems wanted that
+though.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
