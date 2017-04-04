@@ -1,42 +1,110 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 6/8] nowait aio: ext4
-Date: Tue, 4 Apr 2017 13:41:09 -0500
-Message-ID: <d6dac6ec-c71c-0082-972f-61e7299ed418@suse.de>
-References: <20170403185307.6243-1-rgoldwyn@suse.de>
- <20170403185307.6243-7-rgoldwyn@suse.de>
- <20170404075853.GB28522@quack2.suse.cz>
- <20170404084122.GA10252@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20170404084122.GA10252@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] ext4: trim return value and 'dir' argument from ext4_insert_dentry()
+Date: Tue,  4 Apr 2017 14:30:11 -0700
+Message-ID: <20170404213011.108267-1-ebiggers3@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Eric Biggers <ebiggers@google.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:35921 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752798AbdDDVaz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Apr 2017 17:30:55 -0400
+Received: by mail-pg0-f66.google.com with SMTP id 81so39758277pgh.3
+        for <linux-ext4@vger.kernel.org>; Tue, 04 Apr 2017 14:30:55 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+From: Eric Biggers <ebiggers@google.com>
 
+In the initial implementation of ext4 encryption, the filename was
+encrypted in ext4_insert_dentry(), which could fail and also required
+access to the 'dir' inode.  Since then ext4 filename encryption has been
+changed to encrypt the filename earlier, so we can revert the additions
+to ext4_insert_dentry().
 
-On 04/04/2017 03:41 AM, Christoph Hellwig wrote:
-> On Tue, Apr 04, 2017 at 09:58:53AM +0200, Jan Kara wrote:
->> FS_NOWAIT looks a bit too generic given these are filesystem feature flags.
->> Can we call it FS_NOWAIT_IO?
-> 
-> It's way to generic as it's a feature of the particular file_operations
-> instance.  But once we switch to using RWF_* we can just the existing
-> per-op feature checks for thos and the per-fs flag should just go away.
-> 
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/ext4.h   |  9 ++++-----
+ fs/ext4/inline.c |  2 +-
+ fs/ext4/namei.c  | 17 ++++++-----------
+ 3 files changed, 11 insertions(+), 17 deletions(-)
 
-I am working on incorporating RWF_* flags. However, I am not sure how
-RWF_* flags would get rid of FS_NOWAIT/FS_NOWAIT_IO. Since most of
-"blocking" information is with the filesystem, it is a per-filesystem
-flag to block out (EOPNOTSUPP) the filesystems which do not support it.
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f493af666591..d55a244b26a7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2356,11 +2356,10 @@ extern int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 			     void *buf, int buf_size,
+ 			     struct ext4_filename *fname,
+ 			     struct ext4_dir_entry_2 **dest_de);
+-int ext4_insert_dentry(struct inode *dir,
+-		       struct inode *inode,
+-		       struct ext4_dir_entry_2 *de,
+-		       int buf_size,
+-		       struct ext4_filename *fname);
++void ext4_insert_dentry(struct inode *inode,
++			struct ext4_dir_entry_2 *de,
++			int buf_size,
++			struct ext4_filename *fname);
+ static inline void ext4_update_dx_flag(struct inode *inode)
+ {
+ 	if (!ext4_has_feature_dir_index(inode->i_sb))
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 375fb1c05d49..d5dea4c293ef 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1034,7 +1034,7 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
+ 	err = ext4_journal_get_write_access(handle, iloc->bh);
+ 	if (err)
+ 		return err;
+-	ext4_insert_dentry(dir, inode, de, inline_size, fname);
++	ext4_insert_dentry(inode, de, inline_size, fname);
+ 
+ 	ext4_show_inline_dir(dir, iloc->bh, inline_start, inline_size);
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6ad612c576fc..70441cdee5cc 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1869,11 +1869,10 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 	return res;
+ }
+ 
+-int ext4_insert_dentry(struct inode *dir,
+-		       struct inode *inode,
+-		       struct ext4_dir_entry_2 *de,
+-		       int buf_size,
+-		       struct ext4_filename *fname)
++void ext4_insert_dentry(struct inode *inode,
++			struct ext4_dir_entry_2 *de,
++			int buf_size,
++			struct ext4_filename *fname)
+ {
+ 
+ 	int nlen, rlen;
+@@ -1892,7 +1891,6 @@ int ext4_insert_dentry(struct inode *dir,
+ 	ext4_set_de_type(inode->i_sb, de, inode->i_mode);
+ 	de->name_len = fname_len(fname);
+ 	memcpy(de->name, fname_name(fname), fname_len(fname));
+-	return 0;
+ }
+ 
+ /*
+@@ -1928,11 +1926,8 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
+ 		return err;
+ 	}
+ 
+-	/* By now the buffer is marked for journaling. Due to crypto operations,
+-	 * the following function call may fail */
+-	err = ext4_insert_dentry(dir, inode, de, blocksize, fname);
+-	if (err < 0)
+-		return err;
++	/* By now the buffer is marked for journaling */
++	ext4_insert_dentry(inode, de, blocksize, fname);
+ 
+ 	/*
+ 	 * XXX shouldn't update any times until successful
 -- 
-Goldwyn
+2.12.2.715.g7642488e1d-goog
