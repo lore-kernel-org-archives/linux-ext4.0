@@ -1,101 +1,103 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext2: Call dquot_writeback_dquots() with s_umount held
-Date: Wed,  5 Apr 2017 14:33:46 +0200
-Message-ID: <20170405123346.757-1-jack@suse.cz>
-Cc: Jan Beulich <jbeulich@suse.com>, Jan Kara <jack@suse.cz>
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58390 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933001AbdDEMdv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Apr 2017 08:33:51 -0400
-Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 68C4FAC8A
-        for <linux-ext4@vger.kernel.org>; Wed,  5 Apr 2017 12:33:50 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Wed, 5 Apr 2017 13:26:25 -0400
+Message-ID: <20170405172625.GB28681@fieldses.org>
+References: <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <1490898932.2667.1.camel@redhat.com>
+ <20170404183138.GC14303@fieldses.org>
+ <878tnfiq7v.fsf@notabene.neil.brown.name>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: NeilBrown <neil@brown.name>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <878tnfiq7v.fsf@notabene.neil.brown.name>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext2_sync_fs() could be called without s_umount semaphore held when
-called through ext2_write_super() from __ext2_write_inode(). This
-function then calls dquot_writeback_dquots() which relies on s_umount to
-be held for protection against other quota operations.
+On Wed, Apr 05, 2017 at 11:43:32AM +1000, NeilBrown wrote:
+> On Tue, Apr 04 2017, J. Bruce Fields wrote:
+> 
+> > On Thu, Mar 30, 2017 at 02:35:32PM -0400, Jeff Layton wrote:
+> >> On Thu, 2017-03-30 at 12:12 -0400, J. Bruce Fields wrote:
+> >> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+> >> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> >> > > > Because if above is acceptable we could make reported i_version to be a sum
+> >> > > > of "superblock crash counter" and "inode i_version". We increment
+> >> > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> >> > > > That way after a crash we are guaranteed each inode will report new
+> >> > > > i_version (the sum would probably have to look like "superblock crash
+> >> > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> >> > > > i_version numbers we gave away but did not write to disk but still...).
+> >> > > > Thoughts?
+> >> > 
+> >> > How hard is this for filesystems to support?  Do they need an on-disk
+> >> > format change to keep track of the crash counter?  Maybe not, maybe the
+> >> > high bits of the i_version counters are all they need.
+> >> > 
+> >> 
+> >> Yeah, I imagine we'd need a on-disk change for this unless there's
+> >> something already present that we could use in place of a crash counter.
+> >
+> > We could consider using the current time instead.  So, put the current
+> > time (or time of last boot, or this inode's ctime, or something) in the
+> > high bits of the change attribute, and keep the low bits as a counter.
+> 
+> This is a very different proposal.
+> I don't think Jan was suggesting that the i_version be split into two
+> bit fields, one the change-counter and one the crash-counter.
+> Rather, the crash-counter was multiplied by a large-number and added to
+> the change-counter with the expectation that while not ever
+> change-counter landed on disk, at least 1 in every large-number would.
+> So after each crash we effectively add large-number to the
+> change-counter, and can be sure that number hasn't been used already.
 
-In fact __ext2_write_inode() does not need all the functionality
-ext2_write_super() provides. It is enough to just write the superblock.
-So use ext2_sync_super() instead.
+I was sort of ignoring the distinction between concatenate(A,B) and
+A*m+B, but, sure, multiplying's probably better.
 
-Fixes: 9d1ccbe70e0b14545caad12dc73adb3605447df0
-Reported-by: Jan Beulich <jbeulich@suse.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/ext2.h  | 3 ++-
- fs/ext2/inode.c | 2 +-
- fs/ext2/super.c | 9 ++++-----
- 3 files changed, 7 insertions(+), 7 deletions(-)
+> To store the crash-counter in each inode (which does appeal) you would
+> need to be able to remove it before adding the new crash counter, and
+> that requires bit-fields.  Maybe there are enough bits.
 
-I have queued this patch into my tree and will send it to Linus in the coming
-merge window unless someone objects.
+i_version and the NFSv4 change attribute are 64 bits which gives us a
+fair amount of flexibility.
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 5e64de9c5093..dca3604b9970 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -796,7 +796,8 @@ void ext2_error(struct super_block *, const char *, const char *, ...);
- extern __printf(3, 4)
- void ext2_msg(struct super_block *, const char *, const char *, ...);
- extern void ext2_update_dynamic_rev (struct super_block *sb);
--extern void ext2_write_super (struct super_block *);
-+extern void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
-+			    int wait);
- 
- /*
-  * Inodes and files operations
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 128cce540645..4d3e2528ac17 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1615,7 +1615,7 @@ static int __ext2_write_inode(struct inode *inode, int do_sync)
- 				EXT2_SET_RO_COMPAT_FEATURE(sb,
- 					EXT2_FEATURE_RO_COMPAT_LARGE_FILE);
- 				spin_unlock(&EXT2_SB(sb)->s_lock);
--				ext2_write_super(sb);
-+				ext2_sync_super(sb, EXT2_SB(sb)->s_es, 1);
- 			}
- 		}
- 	}
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 9e25a71fe1a2..b3090416a936 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -36,8 +36,7 @@
- #include "xattr.h"
- #include "acl.h"
- 
--static void ext2_sync_super(struct super_block *sb,
--			    struct ext2_super_block *es, int wait);
-+static void ext2_write_super(struct super_block *sb);
- static int ext2_remount (struct super_block * sb, int * flags, char * data);
- static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf);
- static int ext2_sync_fs(struct super_block *sb, int wait);
-@@ -1194,8 +1193,8 @@ static void ext2_clear_super_error(struct super_block *sb)
- 	}
- }
- 
--static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
--			    int wait)
-+void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
-+		     int wait)
- {
- 	ext2_clear_super_error(sb);
- 	spin_lock(&EXT2_SB(sb)->s_lock);
-@@ -1270,7 +1269,7 @@ static int ext2_unfreeze(struct super_block *sb)
- 	return 0;
- }
- 
--void ext2_write_super(struct super_block *sb)
-+static void ext2_write_super(struct super_block *sb)
- {
- 	if (!(sb->s_flags & MS_RDONLY))
- 		ext2_sync_fs(sb, 1);
--- 
-2.10.2
+> If you want to ensure read-only files can remain cached over a crash,
+> then you would have to mark a file in some way on stable storage
+> *before* allowing any change.
+> e.g. you could use the lsb.  Odd i_versions might have been changed
+> recently and crash-count*large-number needs to be added.
+> Even i_versions have not been changed recently and nothing need be
+> added.
+> 
+> If you want to change a file with an even i_version, you subtract
+>   crash-count*large-number
+> to the i_version, then set lsb.  This is written to stable storage before
+> the change.
+> 
+> If a file has not been changed for a while, you can add
+>   crash-count*large-number
+> and clear lsb.
+> 
+> The lsb of the i_version would be for internal use only.  It would not
+> be visible outside the filesystem.
+> 
+> It feels a bit clunky, but I think it would work and is the best
+> combination of Jan's idea and your requirement.
+> The biggest cost would be switching to 'odd' before an changes, and the
+> unknown is when does it make sense to switch to 'even'.
+
+I'm not sure how to model the costs.  Something like that might work.
+
+--b.
