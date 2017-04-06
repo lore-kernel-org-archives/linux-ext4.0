@@ -1,86 +1,226 @@
-From: NeilBrown <neilb@suse.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking infrastructure and convert ext4 to use it
-Date: Thu, 06 Apr 2017 10:24:22 +1000
-Message-ID: <87mvbugz7t.fsf@notabene.neil.brown.name>
-References: <20170331192603.16442-1-jlayton@redhat.com> <87fuhqkti0.fsf@notabene.neil.brown.name> <1491215318.2724.3.camel@redhat.com> <20170403143257.GA30811@bombadil.infradead.org> <1491241657.2673.10.camel@redhat.com> <20170403191602.GF30811@bombadil.infradead.org> <1491250577.2673.20.camel@redhat.com> <87h924kh6t.fsf@notabene.neil.brown.name> <20170404115358.GH30811@bombadil.infradead.org> <1491308268.20445.4.camel@redhat.com> <20170404161247.GJ30811@bombadil.infradead.org> <1491323146.309.1.camel@redhat.com> <87h923ix6g.fsf@notabene.neil.brown.name> <1491390849.2991.2.camel@redhat.com>
+From: NeilBrown <neil-+NVA1uvv1dVBDLzU/O5InQ@public.gmane.org>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Thu, 06 Apr 2017 11:12:02 +1000
+Message-ID: <87k26ygx0d.fsf@notabene.neil.brown.name>
+References: <20170321183006.GD17872@fieldses.org> <1490122013.2593.1.camel@redhat.com> <20170329111507.GA18467@quack2.suse.cz> <1490810071.2678.6.camel@redhat.com> <20170330064724.GA21542@quack2.suse.cz> <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org> <1490898932.2667.1.camel@redhat.com> <20170404183138.GC14303@fieldses.org> <878tnfiq7v.fsf@notabene.neil.brown.name> <20170405080551.GC8899@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-        tytso@mit.edu, jack@suse.cz
-To: Jeff Layton <jlayton@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1491390849.2991.2.camel@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+        Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20170405080551.GC8899-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
 --=-=-=
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Apr 05 2017, Jeff Layton wrote:
+On Wed, Apr 05 2017, Jan Kara wrote:
 
+> On Wed 05-04-17 11:43:32, NeilBrown wrote:
+>> On Tue, Apr 04 2017, J. Bruce Fields wrote:
 >>=20
->> O_DIRECT write() can get an EIO from a previous write-back write to the
->> same file.  Maybe non-O_DIRECT writes should too?
+>> > On Thu, Mar 30, 2017 at 02:35:32PM -0400, Jeff Layton wrote:
+>> >> On Thu, 2017-03-30 at 12:12 -0400, J. Bruce Fields wrote:
+>> >> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+>> >> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+>> >> > > > Because if above is acceptable we could make reported i_version=
+ to be a sum
+>> >> > > > of "superblock crash counter" and "inode i_version". We increme=
+nt
+>> >> > > > "superblock crash counter" whenever we detect unclean filesyste=
+m shutdown.
+>> >> > > > That way after a crash we are guaranteed each inode will report=
+ new
+>> >> > > > i_version (the sum would probably have to look like "superblock=
+ crash
+>> >> > > > counter" * 65536 + "inode i_version" so that we avoid reusing p=
+ossible
+>> >> > > > i_version numbers we gave away but did not write to disk but st=
+ill...).
+>> >> > > > Thoughts?
+>> >> >=20
+>> >> > How hard is this for filesystems to support?  Do they need an on-di=
+sk
+>> >> > format change to keep track of the crash counter?  Maybe not, maybe=
+ the
+>> >> > high bits of the i_version counters are all they need.
+>> >> >=20
+>> >>=20
+>> >> Yeah, I imagine we'd need a on-disk change for this unless there's
+>> >> something already present that we could use in place of a crash count=
+er.
+>> >
+>> > We could consider using the current time instead.  So, put the current
+>> > time (or time of last boot, or this inode's ctime, or something) in the
+>> > high bits of the change attribute, and keep the low bits as a counter.
 >>=20
+>> This is a very different proposal.
+>> I don't think Jan was suggesting that the i_version be split into two
+>> bit fields, one the change-counter and one the crash-counter.
+>> Rather, the crash-counter was multiplied by a large-number and added to
+>> the change-counter with the expectation that while not ever
+>> change-counter landed on disk, at least 1 in every large-number would.
+>> So after each crash we effectively add large-number to the
+>> change-counter, and can be sure that number hasn't been used already.
 >
-> Some already do this for buffered writes.
+> Yes, that was my thinking.
 >
-> This is really a philosophical question, IMO...is it correct to return
-> an error on a write call, due to writeback failing previously or during
-> the write call, quite possibly to a range that the write call does not
-> touch? I can see an argument either way for this.
+>> To store the crash-counter in each inode (which does appeal) you would
+>> need to be able to remove it before adding the new crash counter, and
+>> that requires bit-fields.  Maybe there are enough bits.
+>
+> Furthermore you'd have a potential problem that you need to change
+> i_version on disk just because you are reading after a crash and such
+> changes tend to be problematic (think of read-only mounts and stuff like
+> that).
+>=20=20
+>> If you want to ensure read-only files can remain cached over a crash,
+>> then you would have to mark a file in some way on stable storage
+>> *before* allowing any change.
+>> e.g. you could use the lsb.  Odd i_versions might have been changed
+>> recently and crash-count*large-number needs to be added.
+>> Even i_versions have not been changed recently and nothing need be
+>> added.
+>>=20
+>> If you want to change a file with an even i_version, you subtract
+>>   crash-count*large-number
+>> to the i_version, then set lsb.  This is written to stable storage before
+>> the change.
+>>=20
+>> If a file has not been changed for a while, you can add
+>>   crash-count*large-number
+>> and clear lsb.
+>>=20
+>> The lsb of the i_version would be for internal use only.  It would not
+>> be visible outside the filesystem.
+>>=20
+>> It feels a bit clunky, but I think it would work and is the best
+>> combination of Jan's idea and your requirement.
+>> The biggest cost would be switching to 'odd' before an changes, and the
+>> unknown is when does it make sense to switch to 'even'.
+>
+> Well, there is also a problem that you would need to somehow remember with
+> which 'crash count' the i_version has been previously reported as that is
+> not stored on disk with my scheme. So I don't think we can easily use your
+> scheme.
 
-I like the "we already do" argument.
+I don't think there is a problem here.... maybe I didn't explain
+properly or something.
+
+I'm assuming there is a crash-count that is stored once per filesystem.
+This might be a disk-format change, or maybe the "Last checked" time
+could be used with ext4 (that is a bit horrible though).
+
+Every on-disk i_version has a flag to choose between:
+  - use this number as it is, but update it on-disk before any change
+  - add multiple of current crash-count to this number before use.
+      If you crash during an update, the i_version is thus automatically
+      increased.
+
+To change from the first option to the second option you subtract the
+multiple of the current crash-count (which might make the stored
+i_version negative), and flip the bit.
+To change from the second option to the first, you add the multiple
+of the current crash-count, and flip the bit.
+In each case, the externally visible i_version does not change.
+Nothing needs to be stored except the per-inode i_version and the per-fs
+crash_count.=20
 
 >
-> Also, if we do think that returning an error on the write is the right
-> thing to do, should that error advance the sequence counter in the
-> struct file, such that an fsync afterward gets back 0? My feeling here
-> is that fsync should still report an error after a failed write, but
-> maybe that's wrong?
+> So the options we have are:
+>
+> 1) Keep i_version as is, make clients also check for i_ctime.
+>    Pro: No on-disk format changes.
+>    Cons: After a crash, i_version can go backwards (but when file changes
+>    i_version, i_ctime pair should be still different) or not, data can be
+>    old or not.
 
-My first thought was that one the error has been returned to any
-syscall on a given fd, it has been returned.  Once is enough.
-My second thought was that maybe your feeling is right.  Having a well
-defined error-return point in fsync feels like a nice design.
-My third thought was that this would mean either
- - write continues to fail until fsync is called (probably bad), or
- - we need two counters per "struct file", one for fsync, one for write.
-   I don't like that much.
+I like to think of this approach as using the i_version as an extension
+to the i_ctime.
+i_ctime doesn't necessarily change on every file modification, either
+because it is not a modification that is meant to change i_ctime, or
+because i_ctime doesn't have the resolution to show a very small change
+in time, or because the clock that is used to update i_ctime doesn't
+have much resolution.
+So when a change happens, if the stored c_time changes, set i_version to
+zero, otherwise increment i_version.
+Then the externally visible i-version is a combination of the stored
+c_time and the stored i_version.
+If you only used 1-second ctime resolution for versioning purposes, you
+could provide a 64bit i_version as 34 bits of ctime and 30 bits of
+changes-in-one-second.
+It is important that the resolution of ctime used is less that the
+fastest possible restart after a crash.
 
-So I'm going back to my first thought.
+I don't think that i_version going backwards should be a problem, as
+long as an old version means exactly the same old data.  Presumably
+journalling would ensure that the data and ctime/version are updated
+atomically.
+
+>
+> 2) Fsync when reporting i_version.
+>    Pro: No on-disk format changes, strong consistency of i_version and
+>         data.
+>    Cons: Difficult to implement for filesystems due to locking constrains.
+>          High performance overhead or i_version reporting.
+
+This reminds me of the old ext3 fsync-when-renaming a file.  People
+might depend on it for all the wrong reasons, and other people might
+studiously avoid it due to the performance implications.
+
+>
+> 3) Some variant of crash counter.
+>    Pro: i_version cannot go backwards.
+>    Cons: Requires on-disk format changes. After a crash data can be old
+>          (however i_version increased).
+
+If it is essential for i_version to always go forward, then I think this
+is the best approach.
+If an i_version reset can be tolerated, then I think a
+time-plus-version-count approach is likely to be best.
 
 Thanks,
 NeilBrown
 
-
 >
-> This is certainly one area where switching to synchronous writes on
-> error would make things a little simpler.
+> 								Honza
 > --=20
-> Jeff Layton <jlayton@redhat.com>
+> Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljlirYACgkQOeye3VZi
-gbmJsw/9HWWv82YW5eahdy237bA3O1h24Gx8Ph1d9x8fe8DoAKWlJjniqCEiU+2i
-YZ+5b03qYtXS3YpJuSVNrsd5OXyxweqH59eXiTewvMCrXoTaHjw67DcXAKEJ4jAt
-P04ixcvIMMUqZBSEy9rtUj5aLlSPnFtz6A8FECyG9jm8AKWGNWxV7zoeryp6ueLu
-+FXyAzYE4EOui5DptNtM6fU4PqaHNQB4tpcTmfFgAt87Z+cY5IGvs4CBIo5pRgJx
-tEP5dv31lyOF9rMrJrW9Sz/TMkqnS7xMh4/rRRK9b/VWAX4RzVnp0yoa/cC3Npr+
-HiPZV1tngLJDaF/nk7myBfy5BRgoWEb1xSd8+JuZ8FD/Ftdw5OT4R8q9/D8683/d
-OGRJzMiWIqELB88L14E7B9fgNV7nmT3yfgc9la03lbDG4yhJYBKH5DXnHUvfOOQq
-zFBHyV7qIx3MxxdaxTw2ZcLh6CKHcGvctdldjIHnCNrNyUOAN4DJwtcOKuOekCPN
-DLjcQtydioVUhP0NpNbEcZb1RDs3Ok2lheL9+wk5OnLWkFb8ECZYuQE0ahIQRpZx
-YqErL6MmVussfZGuoZqJTQLti2xS/1QgI7EsbWmS36410KRJ4NqjfF3Jb8A4Z5dt
-2EZmPCSqn+Hobqqj03YXE9p/FisUPsZ6zKFTlmWb50enuda8z0E=
-=3H15
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljlleIACgkQOeye3VZi
+gblP2Q/9He4MLbp89QrFj6UTVGlKpsKko8p1lU3WX9ERqkyS2tjHAuiy953nFc32
+fEiiTUDhjD5wjyMhj1sBxcqyvvgPq6QK+ObnTUanGZKdkpBHgSm4D209MEfjMbQN
+GFKSBpagrZ3/orLjq8YSUdV5RaJDuu6cFhexNidhI6Jvxnpm12VKmz67Tb2+1iof
+yKVCvPzWBJ5b7WvnILiIRWVAjNfRYq8nFdGLYefMJLD25j2opHZRlyGVFkf5GsEb
+ZJgyOw5zLRtgGHxdI1/HtdxOLA74ef1HABak0lfyIqVnbwS9eEztZrJ+cm7D/tx7
+Kb1g8LcVtj8DFJAYHOkSegDL1Q1oqo/SgSiE1xI29auJYBxHeymOYdjTg8Mf/eS8
+P006SbdaAP2ELuJdvm55KmyJO9X4HegpMHgHe+HFaeY7YvFLjePwoZltmwwNZbBt
+l9ZVrvosYYd0MPfG5ITmUtemSCpiDR09nyBx/WVstD93vZ60WKySJ4/MMukUdsEY
+OoOjLF+O9AVHIKU2xMMojyic9NkGOUqRcYZpYO8YfSIuYa+id9UvF6rwc8dy9jjz
+Z/dzc+TEM/rO8oeInrKPi0o5u0DDTjoTX306ZPDU91YHBo/3BAJkwZk0xQGgyYh+
+wzgtOud+JSfM4s/xqV51YoevWKzcdubT6IQAKqBGMRQhDxtQyRI=
+=SiP6
 -----END PGP SIGNATURE-----
 --=-=-=--
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
