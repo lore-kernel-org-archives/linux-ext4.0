@@ -1,81 +1,68 @@
-From: NeilBrown <neilb@suse.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking infrastructure and convert ext4 to use it
-Date: Fri, 07 Apr 2017 08:15:24 +1000
-Message-ID: <87y3vdyygz.fsf@notabene.neil.brown.name>
-References: <1491215318.2724.3.camel@redhat.com> <20170403143257.GA30811@bombadil.infradead.org> <1491241657.2673.10.camel@redhat.com> <20170403191602.GF30811@bombadil.infradead.org> <1491250577.2673.20.camel@redhat.com> <87h924kh6t.fsf@notabene.neil.brown.name> <20170404115358.GH30811@bombadil.infradead.org> <1491308268.20445.4.camel@redhat.com> <20170404161247.GJ30811@bombadil.infradead.org> <1491323146.309.1.camel@redhat.com> <20170404170909.GK30811@bombadil.infradead.org> <1491421792.18658.20.camel@redhat.com> <87efx6tnbr.fsf@notabene.neil.brown.name> <1491506092.9621.2.camel@redhat.com>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 7/8] nowait aio: xfs
+Date: Thu, 6 Apr 2017 15:54:15 -0700
+Message-ID: <20170406225415.GC4864@birch.djwong.org>
+References: <20170403185307.6243-1-rgoldwyn@suse.de>
+ <20170403185307.6243-8-rgoldwyn@suse.de>
+ <20170404065211.GD21942@infradead.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-        tytso@mit.edu, jack@suse.cz
-To: Jeff Layton <jlayton@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1491506092.9621.2.camel@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org,
+        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
+        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        tom.leiming-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170404065211.GD21942-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Mon, Apr 03, 2017 at 11:52:11PM -0700, Christoph Hellwig wrote:
+> > +	if (unaligned_io) {
+> > +		/* If we are going to wait for other DIO to finish, bail */
+> > +		if ((iocb->ki_flags & IOCB_NOWAIT) &&
+> > +		     atomic_read(&inode->i_dio_count))
+> > +			return -EAGAIN;
+> >  		inode_dio_wait(inode);
+> 
+> This checks i_dio_count twice in the nowait case, I think it should be:
+> 
+> 	if (iocb->ki_flags & IOCB_NOWAIT) {
+> 		if (atomic_read(&inode->i_dio_count))
+> 			return -EAGAIN;
+> 	} else {
+> 		inode_dio_wait(inode);
+> 	}
+> 
+> >  	if ((flags & (IOMAP_WRITE | IOMAP_ZERO)) && xfs_is_reflink_inode(ip)) {
+> >  		if (flags & IOMAP_DIRECT) {
+> > +			/* A reflinked inode will result in CoW alloc */
+> > +			if (flags & IOMAP_NOWAIT) {
+> > +				error = -EAGAIN;
+> > +				goto out_unlock;
+> > +			}
+> 
+> This is a bit pessimistic - just because the inode has any shared
+> extents we could still write into unshared ones.  For now I think this
+> pessimistic check is fine, but the comment should be corrected.
 
-On Thu, Apr 06 2017, Jeff Layton wrote:
+Consider what happens in both _reflink_{allocate,reserve}_cow.  If there
+is already an existing reservation in the CoW fork then we'll have to
+CoW and therefore can't satisfy the NOWAIT flag.  If there isn't already
+anything in the CoW fork, then we have to see if there are shared blocks
+by calling _reflink_trim_around_shared.  That performs a refcountbt
+lookup, which involves locking the AGF, so we also can't satisfy NOWAIT.
 
->
-> I tried to avoid updating things unnecesssarily. I could use some
-> guidance on how to specify the constants in terms of MAX_ERRNO as well.
+IOWs, I think this hunk has to move outside the IOMAP_DIRECT check to
+cover both write-to-reflinked-file cases.
 
-ilog2() defined in include/linux/log2.h
+--D
 
-And you have MAX_ERROR in one comment, instead of MAX_ERRNO :-)
-
->=20=20
-> -  flush: called by the close(2) system call to flush a file
-> +  flush: called by the close(2) system call to flush a file. Writeback
-> +	errors not previously reported via fsync should be reported
-> +	here as you would for fsync.
-
-"could", not "should".  I think it is agreed that this is a good
-idea, is it?
-
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 7251f7bb45e8..f33857113ff4 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -394,6 +394,7 @@ struct address_space {
->  	gfp_t			gfp_mask;	/* implicit gfp mask for allocations */
->  	struct list_head	private_list;	/* ditto */
->  	void			*private_data;	/* ditto */
-> +	u32			wb_err;
-
-I would rather this was a wb_err_t or similar, and that the functions
-which implement it take a pointer to a wb_err_t.
-Then the 'error' in 'struct nfs_open_context' could become a 'wb_err_t',
-and nfs could use these functions to do error tracking the way it wants
-to.
-
-Thanks - looking good.
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljmvfwACgkQOeye3VZi
-gbkv0xAAnvb2w8+iq5UAqlHTl9nmQRZ6tClJlFCgG+cTVch2TPKzxd6RxwMECZor
-IKeDfFNDUTcZtjPPc25SdwrB/8YgozY+++RMUReCgVy3L/Fs9ydYSpc0hKuRufcJ
-9MCNJHNNFmTLlyvUhgGpaCrOeZ3GC9li2lSHa17blBe6+p8vAsI2c6BI9C6cWN61
-jmVRKYv0GocrCHPHmepYB+gogqlcrW2xXtYuy78AgIIxDzoeWrUc547hITWuxVWL
-oLLqQ41p/qXmZSqEgCkEcKTahIO7bok450XDRtW/+bgNaR8NzVou+7LPZBnSmRFR
-km0FBl4VC4m/0MM0jk5zLOgs51MtQZBMp8Eo6b9iiyrrte0xewkBBZP+0q6usLTq
-Kyzb4d0369mw7v2pjMylT5fOplrC+c13cvWScTgCBWAvR6/S4Iew8toxB12ElCC3
-ii+izk69vKUREXP7AlDzZ9iVbjVZptXF2gJ5qIuZJ7sOa3ZI9HQ0WLKSa8PaZEnr
-robn38F6oh0Ied7tG+JB0h7SPVQWBAXVCVn4LcRXP+O4vy9b9JWbmQLIzEM+9KkC
-+TaQHBlk+/gQp4vl/cvElkCpR9QtSyA6OBOMEQlKCLx2TxWAL8Gx8YU5al6+QYPk
-zbe39Gil600EStym6rTW3Jr36GaVZ/1b2KY5JZSyWhO36jAdRHc=
-=nQwP
------END PGP SIGNATURE-----
---=-=-=--
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
