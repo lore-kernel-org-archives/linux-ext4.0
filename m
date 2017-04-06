@@ -1,109 +1,133 @@
-From: NeilBrown <neilb@suse.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking infrastructure and convert ext4 to use it
-Date: Thu, 06 Apr 2017 15:12:42 +1000
-Message-ID: <87inmi15md.fsf@notabene.neil.brown.name>
-References: <20170403191602.GF30811@bombadil.infradead.org> <1491250577.2673.20.camel@redhat.com> <87h924kh6t.fsf@notabene.neil.brown.name> <20170404115358.GH30811@bombadil.infradead.org> <1491308268.20445.4.camel@redhat.com> <20170404161247.GJ30811@bombadil.infradead.org> <1491323146.309.1.camel@redhat.com> <20170404170909.GK30811@bombadil.infradead.org> <1491421792.18658.20.camel@redhat.com> <87efx6tnbr.fsf@notabene.neil.brown.name> <20170406025530.GB31725@bombadil.infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Date: Thu, 6 Apr 2017 09:22:07 +0200
+Message-ID: <20170406072207.GA25500@quack2.suse.cz>
+References: <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <1490898932.2667.1.camel@redhat.com>
+ <20170404183138.GC14303@fieldses.org>
+ <878tnfiq7v.fsf@notabene.neil.brown.name>
+ <20170405080551.GC8899@quack2.suse.cz>
+ <87k26ygx0d.fsf@notabene.neil.brown.name>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
-Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170406025530.GB31725@bombadil.infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: NeilBrown <neil@brown.name>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:54688 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756406AbdDFHWJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 6 Apr 2017 03:22:09 -0400
+Content-Disposition: inline
+In-Reply-To: <87k26ygx0d.fsf@notabene.neil.brown.name>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu 06-04-17 11:12:02, NeilBrown wrote:
+> On Wed, Apr 05 2017, Jan Kara wrote:
+> >> If you want to ensure read-only files can remain cached over a crash,
+> >> then you would have to mark a file in some way on stable storage
+> >> *before* allowing any change.
+> >> e.g. you could use the lsb.  Odd i_versions might have been changed
+> >> recently and crash-count*large-number needs to be added.
+> >> Even i_versions have not been changed recently and nothing need be
+> >> added.
+> >> 
+> >> If you want to change a file with an even i_version, you subtract
+> >>   crash-count*large-number
+> >> to the i_version, then set lsb.  This is written to stable storage before
+> >> the change.
+> >> 
+> >> If a file has not been changed for a while, you can add
+> >>   crash-count*large-number
+> >> and clear lsb.
+> >> 
+> >> The lsb of the i_version would be for internal use only.  It would not
+> >> be visible outside the filesystem.
+> >> 
+> >> It feels a bit clunky, but I think it would work and is the best
+> >> combination of Jan's idea and your requirement.
+> >> The biggest cost would be switching to 'odd' before an changes, and the
+> >> unknown is when does it make sense to switch to 'even'.
+> >
+> > Well, there is also a problem that you would need to somehow remember with
+> > which 'crash count' the i_version has been previously reported as that is
+> > not stored on disk with my scheme. So I don't think we can easily use your
+> > scheme.
+> 
+> I don't think there is a problem here.... maybe I didn't explain
+> properly or something.
+> 
+> I'm assuming there is a crash-count that is stored once per filesystem.
+> This might be a disk-format change, or maybe the "Last checked" time
+> could be used with ext4 (that is a bit horrible though).
+> 
+> Every on-disk i_version has a flag to choose between:
+>   - use this number as it is, but update it on-disk before any change
+>   - add multiple of current crash-count to this number before use.
+>       If you crash during an update, the i_version is thus automatically
+>       increased.
+> 
+> To change from the first option to the second option you subtract the
+> multiple of the current crash-count (which might make the stored
+> i_version negative), and flip the bit.
+> To change from the second option to the first, you add the multiple
+> of the current crash-count, and flip the bit.
+> In each case, the externally visible i_version does not change.
+> Nothing needs to be stored except the per-inode i_version and the per-fs
+> crash_count. 
 
-On Wed, Apr 05 2017, Matthew Wilcox wrote:
+Right, I didn't realize you would subtract crash counter when flipping the
+bit and then add it back when flipping again. That would work.
 
-> On Thu, Apr 06, 2017 at 10:02:48AM +1000, NeilBrown wrote:
->> If you are concerned about space in 'struct address_space', just prune
->> some wastage.
->
-> I'm trying to (via wlists).  still buggy though.
+> > So the options we have are:
+> >
+> > 1) Keep i_version as is, make clients also check for i_ctime.
+> >    Pro: No on-disk format changes.
+> >    Cons: After a crash, i_version can go backwards (but when file changes
+> >    i_version, i_ctime pair should be still different) or not, data can be
+> >    old or not.
+> 
+> I like to think of this approach as using the i_version as an extension
+> to the i_ctime.
+> i_ctime doesn't necessarily change on every file modification, either
+> because it is not a modification that is meant to change i_ctime, or
+> because i_ctime doesn't have the resolution to show a very small change
+> in time, or because the clock that is used to update i_ctime doesn't
+> have much resolution.
+> So when a change happens, if the stored c_time changes, set i_version to
+> zero, otherwise increment i_version.
+> Then the externally visible i-version is a combination of the stored
+> c_time and the stored i_version.
+> If you only used 1-second ctime resolution for versioning purposes, you
+> could provide a 64bit i_version as 34 bits of ctime and 30 bits of
+> changes-in-one-second.
+> It is important that the resolution of ctime used is less that the
+> fastest possible restart after a crash.
+> 
+> I don't think that i_version going backwards should be a problem, as
+> long as an old version means exactly the same old data.  Presumably
+> journalling would ensure that the data and ctime/version are updated
+> atomically.
 
-Cool.
-(I wonder what a wlist is.... weighted list?)
+So as Dave and I wrote earlier in this thread, journalling does not ensure
+data vs ctime/version consistency (well, except for ext4 in data=journal
+mode but people rarely run that due to performance implications). So you
+can get old data and new version as well as new data and old version after
+a crash. The only thing filesystems guarantee is that you will not see
+uninitialized blocks and that fsync makes both data & ctime/version
+persistent. But as Bruce wrote for NFS open-to-close semantics this may be
+actually good enough.
 
->
->> The "host" field brings no value.  It is only ever assigned in
->> inode_init_always():
->>=20
->> 	struct address_space *const mapping =3D &inode->i_data;
->> ......
->> 	mapping->host =3D inode;
->>=20
->> So you could change all references to use
->>    container_of(mapping, struct inode, i_data)
->
-> Alas, no:
->
-> drivers/dax/dax.c:      inode->i_mapping->host =3D dax_dev->inode;
-
-	inode->i_mapping =3D dax_dev->inode->i_mapping;
-	inode->i_mapping->host =3D dax_dev->inode;
-so that second line is equivalent to
-        dax_dev->inode->i_mapping->host =3D dax_dev->inode;
-so inode->mapping->host leads back to inode.  So this doesn't break the
-invariant.
-=20=20=20=20=20=20=20
-
-> fs/gfs2/glock.c:                mapping->host =3D s->s_bdev->bd_inode;
-> fs/gfs2/ops_fstype.c:   mapping->host =3D sb->s_bdev->bd_inode;
-
-Hmm.. that's weird.  I cannot quite follow what is happening there.
-It creates an address-space for metadata which doesn't have a real
-inode, and borrows bits of the bdev inode ... possibly just to be able
-to find the blocksize deep in buffer.c or similar.
-I suspect that using an 'inode' instead of a 'mapping' would make the
-code clearer.
-
-> fs/nilfs2/page.c:       mapping->host =3D inode;
-
-A nilfs inode is allocated with 2 address spaces,
-one for the data and one for btree indexing metadata.
-And then there are a couple of extra address spaces for the
-global metadata-file (mtd).
-
-I wonder what the ->host pointer is actually used for.
-buffer.c uses it:
- - to mark the inode 'dirty' when the page is marked dirty
- - to find the blocksize of the inode, for creating buffer_heads
- - find the size of the mapping (i_size)
-
-I could probably argue that the 'dirty' flag (at least for the data) and
-the size really belong in the address_space, not in the inode.
-The blocksize, I'm less sure of.
-
-I suspect gfs2 and nilfs2 could be changed to allocate a separate inode
-(instead of address_space), or to not make use of the ->host pointer.
-It would be more work than I at first thought though.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljlzkoACgkQOeye3VZi
-gbnvHQ/9E6wc2R3Y5cycKcyM+n+xXTBqe5preIO9UCCEkX1VqAGHEVnFbeukhiNP
-w8fyKUf8elszu9yGByl2fHjuPRwhcd9jaX53DTbR2eCQpZw+5/wzi4+KShi+SiIy
-kFpqbSr3wSE7B9euLKob8nMyuTPXojupXZXMYZb5vXJxDQ3MbKgx/gaPbLjQCA2j
-jQcZfvZbpKvH8QY5JwUSPXI5Qne/HtcH5oVpPPFzwqYcUQMR+Stol1rD/e23mfA5
-U4nF6vIhnrtXGRdFUSPhuQeAKPG4GtFyXMTJlehvR5pSjHrOqgLj1XX5aehq4xKT
-An/psQVltGbyhLYnShIwIOUIN6RYMye+HpEZ2XIuJcW/zyVtghLcjjvHc+hhIbra
-q9G3SRx3cb2CToX7wKTn9ErUpJwKISL72UMZbrxEgJ/94V8l2uwVKz4ivtGknkAJ
-+2iobmrgFlN+36ER8TyE89QeeuL/IYOkKRh68ywi9LDdFJa27F0oWWMi2/QMtDVA
-R5L2lUNOka1J/Nd7RQLLrOzA6zvJAW9Fnhsv7s7KNSl4YekwE2amQ5mYBQuI7ItB
-vLEXw/h88STPHTLcnPqECHVx8w1cJ3HCNiY60g7LlpiVL0zxQbD5WftPbgBFcl2S
-2pB78Oe8rOUTv3sDdKLMlR6Hz7SYktDfeSKS73J/RSBoBxRgaZI=
-=YQR/
------END PGP SIGNATURE-----
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
