@@ -1,184 +1,81 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
- infrastructure and convert ext4 to use it
-Date: Fri, 07 Apr 2017 09:12:20 -0400
-Message-ID: <1491570740.2745.12.camel@redhat.com>
-References: <1491250577.2673.20.camel@redhat.com>
-         <87h924kh6t.fsf@notabene.neil.brown.name>
-         <20170404115358.GH30811@bombadil.infradead.org>
-         <1491308268.20445.4.camel@redhat.com>
-         <20170404161247.GJ30811@bombadil.infradead.org>
-         <1491323146.309.1.camel@redhat.com>
-         <20170404170909.GK30811@bombadil.infradead.org>
-         <1491421792.18658.20.camel@redhat.com>
-         <87efx6tnbr.fsf@notabene.neil.brown.name>
-         <1491506092.9621.2.camel@redhat.com>
-         <20170406200543.GE31725@bombadil.infradead.org>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 7/8] nowait aio: xfs
+Date: Fri, 7 Apr 2017 08:08:51 -0700
+Message-ID: <20170407150851.GC4853@birch.djwong.org>
+References: <20170403185307.6243-1-rgoldwyn@suse.de>
+ <20170403185307.6243-8-rgoldwyn@suse.de>
+ <20170404065211.GD21942@infradead.org>
+ <20170406225415.GC4864@birch.djwong.org>
+ <6cc69b0c-7af4-879e-1012-aae8ba5358bd@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        akpm@linux-foundation.org, tytso@mit.edu, jack@suse.cz
-To: Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170406200543.GE31725@bombadil.infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
+        linux-api@vger.kernel.org, willy@infradead.org,
+        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <6cc69b0c-7af4-879e-1012-aae8ba5358bd@suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2017-04-06 at 13:05 -0700, Matthew Wilcox wrote:
-> On Thu, Apr 06, 2017 at 03:14:52PM -0400, Jeff Layton wrote:
-> > @@ -868,6 +869,7 @@ struct file {
-> >  	struct list_head	f_tfile_llink;
-> >  #endif /* #ifdef CONFIG_EPOLL */
-> >  	struct address_space	*f_mapping;
-> > +	u32			f_wb_err;
-> >  } __attribute__((aligned(4)));	/* lest something weird decides that 2 is OK */
-> >  
+On Fri, Apr 07, 2017 at 06:34:28AM -0500, Goldwyn Rodrigues wrote:
 > 
-> I think we can squeeze that in next to f_flags?
 > 
+> On 04/06/2017 05:54 PM, Darrick J. Wong wrote:
+> > On Mon, Apr 03, 2017 at 11:52:11PM -0700, Christoph Hellwig wrote:
+> >>> +	if (unaligned_io) {
+> >>> +		/* If we are going to wait for other DIO to finish, bail */
+> >>> +		if ((iocb->ki_flags & IOCB_NOWAIT) &&
+> >>> +		     atomic_read(&inode->i_dio_count))
+> >>> +			return -EAGAIN;
+> >>>  		inode_dio_wait(inode);
+> >>
+> >> This checks i_dio_count twice in the nowait case, I think it should be:
+> >>
+> >> 	if (iocb->ki_flags & IOCB_NOWAIT) {
+> >> 		if (atomic_read(&inode->i_dio_count))
+> >> 			return -EAGAIN;
+> >> 	} else {
+> >> 		inode_dio_wait(inode);
+> >> 	}
+> >>
+> >>>  	if ((flags & (IOMAP_WRITE | IOMAP_ZERO)) && xfs_is_reflink_inode(ip)) {
+> >>>  		if (flags & IOMAP_DIRECT) {
+> >>> +			/* A reflinked inode will result in CoW alloc */
+> >>> +			if (flags & IOMAP_NOWAIT) {
+> >>> +				error = -EAGAIN;
+> >>> +				goto out_unlock;
+> >>> +			}
+> >>
+> >> This is a bit pessimistic - just because the inode has any shared
+> >> extents we could still write into unshared ones.  For now I think this
+> >> pessimistic check is fine, but the comment should be corrected.
+> > 
+> > Consider what happens in both _reflink_{allocate,reserve}_cow.  If there
+> > is already an existing reservation in the CoW fork then we'll have to
+> > CoW and therefore can't satisfy the NOWAIT flag.  If there isn't already
+> > anything in the CoW fork, then we have to see if there are shared blocks
+> > by calling _reflink_trim_around_shared.  That performs a refcountbt
+> > lookup, which involves locking the AGF, so we also can't satisfy NOWAIT.
+> > 
+> > IOWs, I think this hunk has to move outside the IOMAP_DIRECT check to
+> > cover both write-to-reflinked-file cases.
+> > 
+> 
+> IOMAP_NOWAIT is set only with IOMAP_DIRECT since the nowait feature is
+> for direct-IO only. This is checked early on, when we are checking for
 
-Sure, will do. I meant to look at pahole output and see if there are
-existing holes.
+Ah, ok.  Disregard what I said about moving it then.
 
-> > +/**
-> > + * filemap_set_wb_error - set the wb error in the mapping for later reporting
-> > + * @mapping: mapping in which the error should be set
-> > + * @err: error to set. must be negative value but not less than -MAX_ERRNO
-> 
-> Do we want to have users call filemap_set_wb_error(mapping, EIO)
-> or filemap_set_wb_error(mapping, -EIO)?  Either way, we can assert
-> that it's in the correct range (oh look, we have at least one user of
-> mapping_set_error calling it with a positive errno ...)
-> 
+--D
 
-Yeah, I sent a patch for that a while back but I don't think anyone
-picked it up. Luckily that caller is harmless since EIO just ends up in
-the default case and gets turned into -EIO.
-
-> I've been playing with positive or negative errnos for the xarray, and
-> positive looks better to me, although there's a definite advantage to
-> being able to just call filemap_set_wb_error(mapping, result).
+> user-passed flags, and if not, -EINVAL is returned.
 > 
-
-That's my main rationale. We generally use negative error codes in the
-kernel, so let's do what's easiest for most callsites. I say negative
-error codes here.
-
-
-> #define XAS_ERROR(errno)        ((struct xa_node *)((errno << 1) | 1))
 > 
-> static inline int xas_error(const struct xa_state *xas)
-> {
->         unsigned long v = (unsigned long)xas->xa_node;
->         return (v & 1) ? -(v >> 1) : 0;
-> }
-> 
-> static inline void xas_set_err(struct xa_state *xas, unsigned long err)
-> {
->         XA_BUG_ON(err > MAX_ERRNO);
->         xas->xa_node = XAS_ERROR(err);
-> }
-> 
-> > +	/*
-> > +	 * Ensure the error code actually fits where we want it to go. If it
-> > +	 * doesn't then just throw a warning and don't record anything.
-> > +	 */
-> > +	if (unlikely(err > 0 || err < -MAX_ERRNO)) {
-> > +		WARN(1, "err=%d\n", err);
-> > +		return;
-> > +	}
-> 
-> Cute trick to make this more succinct:
-> 
-> 	if (WARN(err > 0 || err < -MAX_ERRNO), "err = %d\n", err)
-> 		return;
-> or even ...
-> 
-> 	if (WARN((unsigned int)-err > MAX_ERRNO), "err = %d\n", err)
-> 		return;
-> 
-
-Nice. I always forget that WARN has a return. Will fix.
-
-> > +		/* Clear out error bits and set new error */
-> > +		new = (old & ~MAX_ERRNO) | -err;
-> > +
-> > +		/* Only increment if someone has looked at it */
-> > +		if (old & WB_ERR_SEEN) {
-> > +			new += WB_ERR_CTR_INC;
-> > +			new &= ~WB_ERR_SEEN;
-> > +		}
-> 
-> Although we always want to clear out the SEEN bit if we're updating ... so
-> 
-> 		new = (old & ~(MAX_ERRNO | WB_ERR_SEEN) | -err;
-> 
-> 		/* Only increment if someone has looked at it */
-> 		if (old & WB_ERR_SEEN)
-> 			new += WB_ERR_CTR_INC;
-> 
-
-Sure, that is more succinct.
-
-> ... and then there's no need to update if it's the same errno and nobody's
-> seen it:
-> 
-> 		if (old == new)
-> 			break;
-> 
-
-No, we can't do this. The thing could have just been updated by a task
-that is setting the "seen" bit. We don't want to lose the error here. We
-always have to do the cmpxchg on the set_wb_error side, I think.
-
-> [...]
-> 
-> > +		/*
-> > +		 * We always store values with the "seen" bit set, so if this
-> > +		 * matches what we already have, then we can call it done.
-> > +		 * There is nothing to update so just return 0.
-> > +		 */
-> > +		if (old == file->f_wb_err)
-> > +			break;
-> > +
-> > +		/* set flag and try to swap it into place */
-> > +		new = old | WB_ERR_SEEN;
-> 
-> Again, I think we should avoid the cmpxchg with:
-> 
-> 		if (old == new)
-> 			break;
-> 
-
-Yeah, we may be able to do this one. I had myself convinced otherwise
-yesterday, but I think you may be right.
-
-> > +		cur = cmpxchg(&mapping->wb_err, old, new);
-> > +
-> > +		/*
-> > +		 * We can quit now if we successfully swapped in the new value
-> > +		 * or someone else beat us to it with the same value that we
-> > +		 * were planning to store.
-> > +		 */
-> > +		if (likely(cur == old || cur == new)) {
-> > +			file->f_wb_err = new;
-> > +			err = -(new & MAX_ERRNO);
-> > +			break;
-> > +		}
-> > +
-> > +		/* Raced with an update, try again */
-> > +		old = cur;
-> 
-> Well ... should we?  We're returning an error which is new to this fd anyway.
-> Do we want to return the most recent error by a nanosecond, or should we
-> return the previous one and then see this one next time we call fsync()?
-> 
-> I'd lean towards not looping here; not even looking at 'cur'.
-> 
-
-Yeah, that might be fine here. Let me think about it a bit more.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> -- 
+> Goldwyn
