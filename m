@@ -1,54 +1,74 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH] fstests: generic: Check if cycle mount and sleep can
- affect fiemap result
-Date: Fri, 7 Apr 2017 13:02:58 +0800
-Message-ID: <20170407050258.GO22845@eguan.usersys.redhat.com>
-References: <20170403070923.18518-1-quwenruo@cn.fujitsu.com>
- <20170405023526.GS22845@eguan.usersys.redhat.com>
- <20170406162616.zsnbgx6vy2fgugmq@thunk.org>
- <36663e81-9520-0c52-5e72-1d54ddbfb0b7@sandeen.net>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: [PATCH 7/8] nowait aio: xfs
+Date: Fri, 7 Apr 2017 06:34:28 -0500
+Message-ID: <6cc69b0c-7af4-879e-1012-aae8ba5358bd@suse.de>
+References: <20170403185307.6243-1-rgoldwyn@suse.de>
+ <20170403185307.6243-8-rgoldwyn@suse.de>
+ <20170404065211.GD21942@infradead.org>
+ <20170406225415.GC4864@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Qu Wenruo <quwenruo@cn.fujitsu.com>, linux-btrfs@vger.kernel.org,
-        fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@sandeen.net>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <36663e81-9520-0c52-5e72-1d54ddbfb0b7@sandeen.net>
-Sender: fstests-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
+        linux-api@vger.kernel.org, willy@infradead.org,
+        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170406225415.GC4864@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 06, 2017 at 11:28:01AM -0500, Eric Sandeen wrote:
-> On 4/6/17 11:26 AM, Theodore Ts'o wrote:
-> > On Wed, Apr 05, 2017 at 10:35:26AM +0800, Eryu Guan wrote:
-> >>
-> >> Test fails with ext3/2 when driving with ext4 driver, fiemap changed
-> >> after umount/mount cycle, then changed back to original result after
-> >> sleeping some time. An ext4 bug? (cc'ed linux-ext4 list.)
-> > 
-> > I haven't had time to look at this, but I'm not sure this test is a
-> > reasonable one on the face of it.
-> > 
-> > A file system may choose to optimize a file's extent tree for whatever
-> > reason it wants, whenever it wants, including on an unmount --- and
-> > that would not be an invalid thing to do.  So to have an xfstests that
-> > causes a test failure if a file system were to, say, do some cleanup
-> > at mount or unmount time, or when the file is next opened, to merge
-> > adjacent extents together (and hence change what is returned by
-> > FIEMAP) might be strange, or even weird --- but is this any of user
-> > space's business?  Or anything we want to enforce as wrong wrong wrong
-> > by xfstests?
 
-So I was asking for a review from ext4 side instead of queuing it for
-next xfstests update :)
 
+On 04/06/2017 05:54 PM, Darrick J. Wong wrote:
+> On Mon, Apr 03, 2017 at 11:52:11PM -0700, Christoph Hellwig wrote:
+>>> +	if (unaligned_io) {
+>>> +		/* If we are going to wait for other DIO to finish, bail */
+>>> +		if ((iocb->ki_flags & IOCB_NOWAIT) &&
+>>> +		     atomic_read(&inode->i_dio_count))
+>>> +			return -EAGAIN;
+>>>  		inode_dio_wait(inode);
+>>
+>> This checks i_dio_count twice in the nowait case, I think it should be:
+>>
+>> 	if (iocb->ki_flags & IOCB_NOWAIT) {
+>> 		if (atomic_read(&inode->i_dio_count))
+>> 			return -EAGAIN;
+>> 	} else {
+>> 		inode_dio_wait(inode);
+>> 	}
+>>
+>>>  	if ((flags & (IOMAP_WRITE | IOMAP_ZERO)) && xfs_is_reflink_inode(ip)) {
+>>>  		if (flags & IOMAP_DIRECT) {
+>>> +			/* A reflinked inode will result in CoW alloc */
+>>> +			if (flags & IOMAP_NOWAIT) {
+>>> +				error = -EAGAIN;
+>>> +				goto out_unlock;
+>>> +			}
+>>
+>> This is a bit pessimistic - just because the inode has any shared
+>> extents we could still write into unshared ones.  For now I think this
+>> pessimistic check is fine, but the comment should be corrected.
 > 
-> I had the same question.  If the exact behavior isn't defined anywhere,
-> I don't know what we can be testing, TBH.
+> Consider what happens in both _reflink_{allocate,reserve}_cow.  If there
+> is already an existing reservation in the CoW fork then we'll have to
+> CoW and therefore can't satisfy the NOWAIT flag.  If there isn't already
+> anything in the CoW fork, then we have to see if there are shared blocks
+> by calling _reflink_trim_around_shared.  That performs a refcountbt
+> lookup, which involves locking the AGF, so we also can't satisfy NOWAIT.
+> 
+> IOWs, I think this hunk has to move outside the IOMAP_DIRECT check to
+> cover both write-to-reflinked-file cases.
+> 
 
-Agreed, I was about to ask for the expected behavior today if there was
-no new review comments on this patch.
+IOMAP_NOWAIT is set only with IOMAP_DIRECT since the nowait feature is
+for direct-IO only. This is checked early on, when we are checking for
+user-passed flags, and if not, -EINVAL is returned.
 
-Thanks for the comments and review!
 
-Eryu
+-- 
+Goldwyn
