@@ -1,18 +1,24 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH v5 3/5] ext4: Initialize timestamps limits
-Date: Sat,  8 Apr 2017 12:37:45 -0700
-Message-ID: <1491680267-11171-4-git-send-email-deepa.kernel@gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp
+	limits
+Date: Sat, 8 Apr 2017 13:04:33 -0700
+Message-ID: <CA+55aFymxtrw8tr6Q9vLrP7nJ5zOjShstpyQOxxr-m1Wkv9gNg@mail.gmail.com>
 References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
+ <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: base64
-Cc: arnd@arndb.de, y2038@lists.linaro.org, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, tglx@linutronix.de,
- torvalds@linux-foundation.org
-To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
+ y2038@lists.linaro.org,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+ Al Viro <viro@zeniv.linux.org.uk>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ Thomas Gleixner <tglx@linutronix.de>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>
 Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
+In-Reply-To: <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
 List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
  <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
 List-Archive: <http://lists.linaro.org/pipermail/y2038/>
@@ -24,32 +30,17 @@ Errors-To: y2038-bounces@lists.linaro.org
 Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-ZXh0NCBoYXMgZGlmZmVyZW50IG92ZXJmbG93IGxpbWl0cyBmb3IgbWF4IGZpbGVzeXN0ZW0KdGlt
-ZXN0YW1wcyBiYXNlZCBvbiB0aGUgZXh0cmEgYnl0ZXMgYXZhaWxhYmxlLgoKU2lnbmVkLW9mZi1i
-eTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+CkNjOiAiVGhlb2RvcmUg
-VHMnbyIgPHR5dHNvQG1pdC5lZHU+CkNjOiBBbmRyZWFzIERpbGdlciA8YWRpbGdlci5rZXJuZWxA
-ZGlsZ2VyLmNhPgpDYzogbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcKLS0tCiBmcy9leHQ0L2V4
-dDQuaCAgfCA0ICsrKysKIGZzL2V4dDQvc3VwZXIuYyB8IDcgKysrKysrLQogMiBmaWxlcyBjaGFu
-Z2VkLCAxMCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0
-NC9leHQ0LmggYi9mcy9leHQ0L2V4dDQuaAppbmRleCBmYjY5ZWUyLi4zMjkyZDRlIDEwMDY0NAot
-LS0gYS9mcy9leHQ0L2V4dDQuaAorKysgYi9mcy9leHQ0L2V4dDQuaApAQCAtMTY0MCw2ICsxNjQw
-LDEwIEBAIHN0YXRpYyBpbmxpbmUgdm9pZCBleHQ0X2NsZWFyX3N0YXRlX2ZsYWdzKHN0cnVjdCBl
-eHQ0X2lub2RlX2luZm8gKmVpKQogCiAjZGVmaW5lIEVYVDRfR09PRF9PTERfSU5PREVfU0laRSAx
-MjgKIAorI2RlZmluZSBFWFQ0X0VYVFJBX1RJTUVTVEFNUF9NQVgJKCgoczY0KTEgPDwgMzQpIC0g
-MSAgKyBTMzJfTUlOKQorI2RlZmluZSBFWFQ0X05PTl9FWFRSQV9USU1FU1RBTVBfTUFYCVkyMDM4
-X0VYUElSWV9USU1FU1RBTVAKKyNkZWZpbmUgRVhUNF9USU1FU1RBTVBfTUlOCQlTMzJfTUlOCisK
-IC8qCiAgKiBGZWF0dXJlIHNldCBkZWZpbml0aW9ucwogICovCmRpZmYgLS1naXQgYS9mcy9leHQ0
-L3N1cGVyLmMgYi9mcy9leHQ0L3N1cGVyLmMKaW5kZXggNzNjYWUwYy4uMGMxYTg2NCAxMDA2NDQK
-LS0tIGEvZnMvZXh0NC9zdXBlci5jCisrKyBiL2ZzL2V4dDQvc3VwZXIuYwpAQCAtMzY4Nyw4ICsz
-Njg3LDEzIEBAIHN0YXRpYyBpbnQgZXh0NF9maWxsX3N1cGVyKHN0cnVjdCBzdXBlcl9ibG9jayAq
-c2IsIHZvaWQgKmRhdGEsIGludCBzaWxlbnQpCiAJCQkgICAgICAgc2JpLT5zX2lub2RlX3NpemUp
-OwogCQkJZ290byBmYWlsZWRfbW91bnQ7CiAJCX0KLQkJaWYgKHNiaS0+c19pbm9kZV9zaXplID4g
-RVhUNF9HT09EX09MRF9JTk9ERV9TSVpFKQorCQlpZiAoc2JpLT5zX2lub2RlX3NpemUgPiBFWFQ0
-X0dPT0RfT0xEX0lOT0RFX1NJWkUpIHsKIAkJCXNiLT5zX3RpbWVfZ3JhbiA9IDEgPDwgKEVYVDRf
-RVBPQ0hfQklUUyAtIDIpOworCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X0VYVFJBX1RJTUVTVEFN
-UF9NQVg7CisJCX0gZWxzZQorCQkJc2ItPnNfdGltZV9tYXggPSBFWFQ0X05PTl9FWFRSQV9USU1F
-U1RBTVBfTUFYOworCisJCXNiLT5zX3RpbWVfbWluID0gRVhUNF9USU1FU1RBTVBfTUlOOwogCX0K
-IAogCXNiaS0+c19kZXNjX3NpemUgPSBsZTE2X3RvX2NwdShlcy0+c19kZXNjX3NpemUpOwotLSAK
-Mi43LjQKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClky
-MDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGlu
-YXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
+T24gU2F0LCBBcHIgOCwgMjAxNyBhdCAxMjozNyBQTSwgRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtl
+cm5lbEBnbWFpbC5jb20+IHdyb3RlOgo+IEFsbG93IHJlYWQgb25seSBtb3VudHMgZm9yIGZpbGVz
+eXN0ZW1zIHRoYXQgZG8gbm90Cj4gaGF2ZSBtYXhpbXVtIHRpbWVzdGFtcHMgYmV5b25kIHRoZSB5
+MjAzOCBleHBpcnkKPiB0aW1lc3RhbXAuCgpUaGlzIG9wdGlvbiBzZWVtcyBhcmJpdHJhcnkgYW5k
+IHBvaW50bGVzcy4KCk5vYm9keSBzYW5lIHNob3VsZCBldmVyIGVuYWJsZSBpdCBleGNlcHQgZm9y
+IHRlc3RpbmcsIGJ1dCBmb3IgdGVzdGluZwppdCB3b3VsZCBiZSBtdWNoIGJldHRlciB0byBzaW1w
+bHkgc3BlY2lmeSB3aGF0IHRoZSBsaW1pdCBzaG91bGQgYmU6CjIwMzggaXMgbm90IG1hZ2ljYWwg
+Zm9yIGFsbCBmaWxlc3lzdGVtcywgYmVjYXVzZSB0aGUgYmFzZSBtYXkgYmUKZGlmZmVyZW50LgoK
+QW5kIGhvbmVzdGx5LCBmb3IgdGVzdGluZywgaXQgd291bGQgYmUgbXVjaCBiZXR0ZXIgdG8ganVz
+dCBtYWtlIGl0IGEKbW91bnQgb3B0aW9uIHJhdGhlciB0aGFuIHNvbWUgY3Jhenkgc3lzdGVtLXdp
+ZGUgb25lLgoKICAgICAgICAgICAgICAgICAgIExpbnVzCl9fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5s
+aW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4
+Cg==
