@@ -1,208 +1,71 @@
 From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp limits
-Date: Sat,  8 Apr 2017 12:37:44 -0700
-Message-ID: <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
+Subject: [PATCH v5 4/5] vfs: Add timestamp_truncate() api
+Date: Sat,  8 Apr 2017 12:37:46 -0700
+Message-ID: <1491680267-11171-5-git-send-email-deepa.kernel@gmail.com>
 References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
-Cc: torvalds@linux-foundation.org, tglx@linutronix.de,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        arnd@arndb.de, y2038@lists.linaro.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: arnd@arndb.de, y2038@lists.linaro.org, linux-kernel@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, tglx@linutronix.de,
+ torvalds@linux-foundation.org
 To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+ linux-ext4@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
 In-Reply-To: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Allow read only mounts for filesystems that do not
-have maximum timestamps beyond the y2038 expiry
-timestamp.
-
-Also, allow a sysctl override to all such filesystems
-to be mounted with write permissions.
-A boot param supports initial override of these
-checks from the early boot without recompilation.
-
-Suggested-by: Arnd Bergmann <arnd@arndb.de>
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
----
- Documentation/admin-guide/kernel-parameters.txt |  8 ++++++++
- fs/inode.c                                      | 15 +++++++++++++++
- fs/internal.h                                   |  2 ++
- fs/namespace.c                                  | 12 ++++++++++++
- fs/super.c                                      |  7 +++++++
- include/linux/fs.h                              |  1 +
- include/linux/time64.h                          |  4 ++++
- include/uapi/linux/fs.h                         |  6 +++++-
- kernel/sysctl.c                                 |  7 +++++++
- 9 files changed, 61 insertions(+), 1 deletion(-)
-
-diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index c2f220d..57f4a50 100644
---- a/Documentation/admin-guide/kernel-parameters.txt
-+++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -1193,6 +1193,14 @@
- 			can be changed at run time by the max_graph_depth file
- 			in the tracefs tracing directory. default: 0 (no limit)
- 
-+	fstimestampcheck
-+			Enable checking of max filesystem time supported
-+			at mount time. The value is checked against y2038
-+			date: Mon Jan 18 19:14:07 PST 2038. The option
-+			disables rw mount of filesystems that are not able
-+			to represent times beyond y2038 time mentioned above.
-+			This check is off by default.
-+
- 	gamecon.map[2|3]=
- 			[HW,JOY] Multisystem joystick and NES/SNES/PSX pad
- 			support via parallel port (up to 5 devices per port)
-diff --git a/fs/inode.c b/fs/inode.c
-index a9caf53..a0c1522 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -75,6 +75,21 @@ static DEFINE_PER_CPU(unsigned long, nr_unused);
- 
- static struct kmem_cache *inode_cachep __read_mostly;
- 
-+struct vfs_max_timestamp_check timestamp_check = {
-+	.timestamp_supported = Y2038_EXPIRY_TIMESTAMP,
-+	.check_on = 0,
-+};
-+
-+static int __init setup_timestamp_check(char *str)
-+{
-+	if (*str)
-+		return 0;
-+	timestamp_check.check_on = 1;
-+	return 1;
-+}
-+
-+__setup("fstimestampcheck", setup_timestamp_check);
-+
- static long get_nr_inodes(void)
- {
- 	int i;
-diff --git a/fs/internal.h b/fs/internal.h
-index cef253a..76fbcde 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -67,6 +67,8 @@ extern int finish_automount(struct vfsmount *, struct path *);
- 
- extern int sb_prepare_remount_readonly(struct super_block *);
- 
-+extern bool sb_file_times_updatable(struct super_block *sb);
-+
- extern void __init mnt_init(void);
- 
- extern int __mnt_want_write(struct vfsmount *);
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 6b81c20..fd6e479 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -538,6 +538,18 @@ static void __mnt_unmake_readonly(struct mount *mnt)
- 	unlock_mount_hash();
- }
- 
-+bool sb_file_times_updatable(struct super_block *sb)
-+{
-+
-+	if (!timestamp_check.check_on)
-+		return true;
-+
-+	if (sb->s_time_max > timestamp_check.timestamp_supported)
-+		return true;
-+
-+	return false;
-+}
-+
- int sb_prepare_remount_readonly(struct super_block *sb)
- {
- 	struct mount *mnt;
-diff --git a/fs/super.c b/fs/super.c
-index f9c2241..4e7577b 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -1245,6 +1245,13 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
- 	WARN((sb->s_maxbytes < 0), "%s set sb->s_maxbytes to "
- 		"negative value (%lld)\n", type->name, sb->s_maxbytes);
- 
-+	if (!(sb->s_flags & MS_RDONLY) && !sb_file_times_updatable(sb)) {
-+		WARN(1, "File times cannot be updated on the filesystem.\n");
-+		WARN(1, "Retry mounting the filesystem readonly.\n");
-+		error = -EROFS;
-+		goto out_sb;
-+	}
-+
- 	up_write(&sb->s_umount);
- 	free_secdata(secdata);
- 	return root;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 63f83440..a39dc8e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -68,6 +68,7 @@ extern struct inodes_stat_t inodes_stat;
- extern int leases_enable, lease_break_time;
- extern int sysctl_protected_symlinks;
- extern int sysctl_protected_hardlinks;
-+extern struct vfs_max_timestamp_check timestamp_check;
- 
- struct buffer_head;
- typedef int (get_block_t)(struct inode *inode, sector_t iblock,
-diff --git a/include/linux/time64.h b/include/linux/time64.h
-index 25433b18..906e0b3 100644
---- a/include/linux/time64.h
-+++ b/include/linux/time64.h
-@@ -43,6 +43,10 @@ struct itimerspec64 {
- #define KTIME_MAX			((s64)~((u64)1 << 63))
- #define KTIME_SEC_MAX			(KTIME_MAX / NSEC_PER_SEC)
- 
-+/* Timestamps on boundary */
-+#define Y2038_EXPIRY_TIMESTAMP		S32_MAX /* 2147483647 */
-+#define Y2106_EXPIRY_TIMESTAMP		U32_MAX /* 4294967295 */
-+
- #if __BITS_PER_LONG == 64
- 
- static inline struct timespec timespec64_to_timespec(const struct timespec64 ts64)
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 048a85e..125e4ae 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -91,6 +91,11 @@ struct files_stat_struct {
- 	unsigned long max_files;		/* tunable */
- };
- 
-+struct vfs_max_timestamp_check {
-+	time64_t timestamp_supported;
-+	int check_on;
-+};
-+
- struct inodes_stat_t {
- 	long nr_inodes;
- 	long nr_unused;
-@@ -100,7 +105,6 @@ struct inodes_stat_t {
- 
- #define NR_FILE  8192	/* this can well be larger on a larger system */
- 
--
- /*
-  * These are the fs-independent mount-flags: up to 32 flags are supported
-  */
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 60474df..d88487c 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -1668,6 +1668,13 @@ static struct ctl_table fs_table[] = {
- 		.proc_handler	= proc_doulongvec_minmax,
- 	},
- 	{
-+		.procname	= "fs-timestamp-check-on",
-+		.data		= &timestamp_check.check_on,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+	{
- 		.procname	= "nr_open",
- 		.data		= &sysctl_nr_open,
- 		.maxlen		= sizeof(unsigned int),
--- 
-2.7.4
+dGltZXNwZWNfdHJ1bmMoKSBmdW5jdGlvbiBpcyB1c2VkIHRvIHRydW5jYXRlIGEKZmlsZXN5c3Rl
+bSB0aW1lc3RhbXAgdG8gdGhlIHJpZ2h0IGdyYW51bGFyaXR5LgpCdXQsIHRoZSBmdW5jdGlvbiBk
+b2VzIG5vdCBjbGFtcCB0dl9zZWMgcGFydCBvZiB0aGUKdGltZXN0YW1wcyBhY2NvcmRpbmcgdG8g
+dGhlIGZpbGVzeXN0ZW0gdGltZXN0YW1wIGxpbWl0cy4KCkFsc28sIHRpbWVzcGVjX3RydW5jKCkg
+aXMgZXhjbHVzaXZlbHkgdXNlZCBmb3IgZmlsZXN5c3RlbQp0aW1lc3RhbXBzLiBNb3ZlIHRoZSBh
+cGkgdG8gYmUgcGFydCBvZiB2ZnMuCgpUaGUgcmVwbGFjZW1lbnQgYXBpOiB0aW1lc3RhbXBfdHJ1
+bmNhdGUoKSBhbHNvIGFsdGVycyB0aGUKc2lnbmF0dXJlIG9mIHRoZSBmdW5jdGlvbiB0byBhY2Nv
+bW1vZGF0ZSBmaWxlc3lzdGVtCnRpbWVzdGFtcCBjbGFtcGluZyBhY2NvcmRpbmcgdG8gZmxlc3lz
+dGVtIGxpbWl0cy4KCk5vdGUgdGhhdCB0aGUgY2xhbXBfdCBtYWNybyBpcyB1c2VkIGZvciBjbGFt
+cGluZyBoZXJlIGFzIHZmcwppcyBub3QgeWV0IHVzaW5nIHN0cnVjdCB0aW1lc3BlYzY0IGludGVy
+bmFsbHkuIFRoaXMgaXMKcmVxdWlyZWQgZm9yIGNvbXBpbGF0aW9uIHB1cnBvc2VzLgpBbHNvIG5v
+dGUgdGhhdCBjbGFtcCB3b24ndCBkbyB0aGUgcmlnaHQgdGhpbmcgZm9yIHRpbWVzdGFtcHMKYmV5
+b25kIDIwMzggb24gMzItYml0IG1hY2hpbmVzIHVudGlsIHRoZSB2ZnMgdXNlcyB0aW1lc3BlYzY0
+LgpBZnRlciB0aGUgdmZzIGlzIHRyYW5zaXRpb25lZCB0byB1c2UgdGltZXNwZWM2NCBmb3IgdGlt
+ZXN0YW1wcywKY2xhbXBfdCgpIGNhbiBiZSByZXBsYWNlZCBieSBjbGFtcCgpLgoKU2lnbmVkLW9m
+Zi1ieTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+Ci0tLQogZnMvaW5v
+ZGUuYyB8IDMyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystCiAxIGZpbGUgY2hhbmdl
+ZCwgMzEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQoKZGlmZiAtLWdpdCBhL2ZzL2lub2Rl
+LmMgYi9mcy9pbm9kZS5jCmluZGV4IGEwYzE1MjIuLjhhZDU1NjEgMTAwNjQ0Ci0tLSBhL2ZzL2lu
+b2RlLmMKKysrIGIvZnMvaW5vZGUuYwpAQCAtMjEwMyw2ICsyMTAzLDM2IEBAIHZvaWQgaW5vZGVf
+bm9oaWdobWVtKHN0cnVjdCBpbm9kZSAqaW5vZGUpCiBFWFBPUlRfU1lNQk9MKGlub2RlX25vaGln
+aG1lbSk7CiAKIC8qKgorICogdGltZXN0YW1wX3RydW5jYXRlIC0gVHJ1bmNhdGUgdGltZXNwZWMg
+dG8gYSBncmFudWxhcml0eQorICogQHQ6IFRpbWVzcGVjCisgKiBAaW5vZGU6IGlub2RlIGJlaW5n
+IHVwZGF0ZWQKKyAqCisgKiBUcnVuY2F0ZSBhIHRpbWVzcGVjIHRvIHRoZSBncmFudWxhcml0eSBz
+dXBwb3J0ZWQgYnkgdGhlIGZzCisgKiBjb250YWluaW5nIHRoZSBpbm9kZS4gQWx3YXlzIHJvdW5k
+cyBkb3duLiBncmFuIG11c3QKKyAqIG5vdCBiZSAwIG5vciBncmVhdGVyIHRoYW4gYSBzZWNvbmQg
+KE5TRUNfUEVSX1NFQywgb3IgMTBeOSBucykuCisgKi8KK3N0cnVjdCB0aW1lc3BlYyB0aW1lc3Rh
+bXBfdHJ1bmNhdGUoc3RydWN0IHRpbWVzcGVjIHQsIHN0cnVjdCBpbm9kZSAqaW5vZGUpCit7CisJ
+c3RydWN0IHN1cGVyX2Jsb2NrICpzYiA9IGlub2RlLT5pX3NiOworCXVuc2lnbmVkIGludCBncmFu
+ID0gc2ItPnNfdGltZV9ncmFuOworCisJdC50dl9zZWMgPSBjbGFtcF90KHRpbWU2NF90LCB0LnR2
+X3NlYywgc2ItPnNfdGltZV9taW4sIHNiLT5zX3RpbWVfbWF4KTsKKworCS8qIEF2b2lkIGRpdmlz
+aW9uIGluIHRoZSBjb21tb24gY2FzZXMgMSBucyBhbmQgMSBzLiAqLworCWlmIChncmFuID09IDEp
+IHsKKwkJLyogbm90aGluZyAqLworCX0gZWxzZSBpZiAoZ3JhbiA9PSBOU0VDX1BFUl9TRUMpIHsK
+KwkJdC50dl9uc2VjID0gMDsKKwl9IGVsc2UgaWYgKGdyYW4gPiAxICYmIGdyYW4gPCBOU0VDX1BF
+Ul9TRUMpIHsKKwkJdC50dl9uc2VjIC09IHQudHZfbnNlYyAlIGdyYW47CisJfSBlbHNlIHsKKwkJ
+V0FSTigxLCAiaWxsZWdhbCBmaWxlIHRpbWUgZ3JhbnVsYXJpdHk6ICV1IiwgZ3Jhbik7CisJfQor
+CXJldHVybiB0OworfQorRVhQT1JUX1NZTUJPTCh0aW1lc3RhbXBfdHJ1bmNhdGUpOworCisvKioK
+ICAqIGN1cnJlbnRfdGltZSAtIFJldHVybiBGUyB0aW1lCiAgKiBAaW5vZGU6IGlub2RlLgogICoK
+QEAgLTIxMjEsNiArMjE1MSw2IEBAIHN0cnVjdCB0aW1lc3BlYyBjdXJyZW50X3RpbWUoc3RydWN0
+IGlub2RlICppbm9kZSkKIAkJcmV0dXJuIG5vdzsKIAl9CiAKLQlyZXR1cm4gdGltZXNwZWNfdHJ1
+bmMobm93LCBpbm9kZS0+aV9zYi0+c190aW1lX2dyYW4pOworCXJldHVybiB0aW1lc3RhbXBfdHJ1
+bmNhdGUobm93LCBpbm9kZSk7CiB9CiBFWFBPUlRfU1lNQk9MKGN1cnJlbnRfdGltZSk7Ci0tIAoy
+LjcuNAoKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIw
+MzggbWFpbGluZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5h
+cm8ub3JnL21haWxtYW4vbGlzdGluZm8veTIwMzgK
