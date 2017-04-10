@@ -1,46 +1,77 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 6/8] nowait aio: ext4
-Date: Mon, 10 Apr 2017 14:37:50 +0200
-Message-ID: <20170410123750.GE3224@quack2.suse.cz>
-References: <20170403185307.6243-1-rgoldwyn@suse.de>
- <20170403185307.6243-7-rgoldwyn@suse.de>
- <20170404075853.GB28522@quack2.suse.cz>
- <20170404084122.GA10252@infradead.org>
- <d6dac6ec-c71c-0082-972f-61e7299ed418@suse.de>
- <20170410074539.GA18250@infradead.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC PATCH 0/4] fs: introduce new writeback error tracking
+ infrastructure and convert ext4 to use it
+Date: Mon, 10 Apr 2017 09:19:56 -0400
+Message-ID: <1491830396.2732.3.camel@redhat.com>
+References: <1491250577.2673.20.camel@redhat.com>
+         <87h924kh6t.fsf@notabene.neil.brown.name>
+         <20170404115358.GH30811@bombadil.infradead.org>
+         <1491308268.20445.4.camel@redhat.com>
+         <20170404161247.GJ30811@bombadil.infradead.org>
+         <1491323146.309.1.camel@redhat.com>
+         <20170404170909.GK30811@bombadil.infradead.org>
+         <1491421792.18658.20.camel@redhat.com>
+         <87efx6tnbr.fsf@notabene.neil.brown.name>
+         <1491506092.9621.2.camel@redhat.com>
+         <20170406200543.GE31725@bombadil.infradead.org>
+         <1491570740.2745.12.camel@redhat.com>
+         <8760idyxy8.fsf@notabene.neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org,
-        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
-        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-        tom.leiming-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170410074539.GA18250-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+        tytso@mit.edu, jack@suse.cz
+To: NeilBrown <neilb@suse.com>, Matthew Wilcox <willy@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <8760idyxy8.fsf@notabene.neil.brown.name>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 10-04-17 00:45:39, Christoph Hellwig wrote:
-> On Tue, Apr 04, 2017 at 01:41:09PM -0500, Goldwyn Rodrigues wrote:
-> > I am working on incorporating RWF_* flags. However, I am not sure how
-> > RWF_* flags would get rid of FS_NOWAIT/FS_NOWAIT_IO. Since most of
-> > "blocking" information is with the filesystem, it is a per-filesystem
-> > flag to block out (EOPNOTSUPP) the filesystems which do not support it.
+On Mon, 2017-04-10 at 09:15 +1000, NeilBrown wrote:
+> On Fri, Apr 07 2017, Jeff Layton wrote:
 > 
-> You need to check the flag in the actual read/write methods as the
-> support for features on Linux is not a per-file_system_type thing.
+> > 
+> > > ... and then there's no need to update if it's the same errno and nobody's
+> > > seen it:
+> > > 
+> > > 		if (old == new)
+> > > 			break;
+> > > 
+> > 
+> > No, we can't do this. The thing could have just been updated by a task
+> > that is setting the "seen" bit. We don't want to lose the error here. We
+> > always have to do the cmpxchg on the set_wb_error side, I think.
+> 
+> I don't follow your logic.
+> If (old == new) then there was a moment since this function started when
+> performing the cmpxchg() would not have changed the contents of memory.
+> So let's pretend it did actually happen at that moment, and not change
+> memory.
+> 
+> If we race with a task setting the "seen" bit, then it will have seen
+> the error *after* the new error, that this thread is reporting, actually
+> happened.  So the result is still correct.
+> 
 
-I don't understand here. Do you want that all filesystems support NOWAIT
-direct IO? IMO that's not realistic and also not necessary. In reality
-different filesystems support different sets or operations and we have a
-precedens for that in various fallocate operations, rename exchange, or
-O_TMPFILE support...
+Ok, that does make sense. I'll plan to do that.
 
-								Honza
+There's also a bug in the last patch that I sent. We need to mark the
+SEEN bit when we sample the value at open time, so we need a
+filemap_sample_wb_error function to grab the current wb_err_t and mark
+it SEEN if necessary.
+
+That also gives us a way to handle something like filemap_write_and_wait
+(which doesn't take a struct file). We can sample the wb_err_t prior to
+starting writeback, and then return an error if anything failed after
+that point.
+
+I think that's probably close enough to how the current code works that
+we can use it to make drop-in replacements for filemap_write_and_wait*
+which should keep us from having to change so much existing code here.
+
+filemap_check_errors would need to take a previously-sampled wb_err_t
+argument, but only the lowest-level callers of that and
+filemap_fdatawait* would need to deal with them directly.
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+Jeff Layton <jlayton@redhat.com>
