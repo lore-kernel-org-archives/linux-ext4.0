@@ -1,44 +1,71 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: ext4-lazy (SMR-optimizations) landing to kernel?
-Date: Mon, 10 Apr 2017 20:23:34 -0700
-Message-ID: <20170411032334.GA5066@birch.djwong.org>
-References: <6B0F0C59-6930-41B3-8EE4-EA5BEECEB9F9@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Ts'o Theodore" <tytso@mit.edu>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd2: Fix lockdep splat with generic/270 test
+Date: Tue, 11 Apr 2017 15:46:44 +0200
+Message-ID: <20170411134644.9354-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:38111 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751587AbdDKDXp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Apr 2017 23:23:45 -0400
-Content-Disposition: inline
-In-Reply-To: <6B0F0C59-6930-41B3-8EE4-EA5BEECEB9F9@dilger.ca>
+Received: from mx2.suse.de ([195.135.220.15]:47383 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752291AbdDKNqz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Apr 2017 09:46:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 10, 2017 at 09:06:23PM -0600, Andreas Dilger wrote:
-> Hi Ted,
-> now that FAST'17 is behind us, is there any plan to land the ext4-lazy code
-> (SMR optimizations) to the upstream kernel?  This looks like it improves
-> some workloads even without SMR disks, and doesn't have any noticeable
-> overhead for other workloads.
-> 
-> I'd guess the one thing that we might want to do is still allow the journal
-> to optionally checkpoint the metadata to the filesystem in the background,
-> when the filesystem is otherwise idle, so that in case of journal loss for
-> some reason the whole filesystem is not lost?
+I've hit a lockdep splat with generic/270 test complaining that:
 
-Don't forget to fix jbd2_bh_submit_read to behave when JBD2_FLAG_ESCAPE
-is set on a journal data block.
+3216.fsstress.b/3533 is trying to acquire lock:
+ (jbd2_handle){++++..}, at: [<ffffffff813152e0>] jbd2_log_wait_commit+0x0/0x150
 
---D
+but task is already holding lock:
+ (jbd2_handle){++++..}, at: [<ffffffff8130bd3b>] start_this_handle+0x35b/0x850
 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+The underlying problem is that jbd2_journal_force_commit_nested()
+(called from ext4_should_retry_alloc()) may get called while a
+transaction handle is started. In such case it takes care to not wait
+for commit of the running transaction (which would deadlock) but only
+for a commit of a transaction that is already committing (which is safe
+as that doesn't wait for any filesystem locks).
+
+In fact there are also other callers of jbd2_log_wait_commit() that take
+care to pass tid of a transaction that is already committing and for
+those cases, the lockdep instrumentation is too restrictive and leading
+to false positive reports. Fix the problem by calling
+jbd2_might_wait_for_commit() from jbd2_log_wait_commit() only if the
+transaction isn't already committing.
+
+Fixes: 1eaa566d368b214d99cbb973647c1b0b8102a9ae
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/journal.c | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 5adc2fb62b0f..9410ec462ba6 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -691,8 +691,21 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ {
+ 	int err = 0;
+ 
+-	jbd2_might_wait_for_commit(journal);
+ 	read_lock(&journal->j_state_lock);
++#ifdef CONFIG_PROVE_LOCKING
++	/*
++	 * Some callers make sure transaction is already committing and in that
++	 * case we cannot block on open handles anymore. So don't warn in that
++	 * case.
++	 */
++	if (tid_gt(tid, journal->j_commit_sequence) &&
++	    (!journal->j_committing_transaction ||
++	     journal->j_committing_transaction->t_tid != tid)) {
++		read_unlock(&journal->j_state_lock);
++		jbd2_might_wait_for_commit(journal);
++		read_lock(&journal->j_state_lock);
++	}
++#endif
+ #ifdef CONFIG_JBD2_DEBUG
+ 	if (!tid_geq(journal->j_commit_request, tid)) {
+ 		printk(KERN_ERR
+-- 
+2.12.0
