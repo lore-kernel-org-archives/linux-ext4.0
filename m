@@ -1,47 +1,61 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 6/8] nowait aio: ext4
-Date: Mon, 10 Apr 2017 17:13:59 +0200
-Message-ID: <20170410151359.GH3224@quack2.suse.cz>
-References: <20170403185307.6243-1-rgoldwyn@suse.de>
- <20170403185307.6243-7-rgoldwyn@suse.de>
- <20170404075853.GB28522@quack2.suse.cz>
- <20170404084122.GA10252@infradead.org>
- <d6dac6ec-c71c-0082-972f-61e7299ed418@suse.de>
- <20170410074539.GA18250@infradead.org>
- <20170410123750.GE3224@quack2.suse.cz>
- <20170410143943.GA2930@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Goldwyn Rodrigues <rgoldwyn@suse.de>,
-        linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170410143943.GA2930@infradead.org>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: ext4-lazy (SMR-optimizations) landing to kernel?
+Date: Mon, 10 Apr 2017 21:06:23 -0600
+Message-ID: <6B0F0C59-6930-41B3-8EE4-EA5BEECEB9F9@dilger.ca>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_D923EC4E-59AD-4E35-9A28-3C444786267C";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Ts'o Theodore <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f174.google.com ([209.85.223.174]:34514 "EHLO
+        mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751564AbdDKDG2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Apr 2017 23:06:28 -0400
+Received: by mail-io0-f174.google.com with SMTP id a103so55753585ioj.1
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Apr 2017 20:06:28 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 10-04-17 07:39:43, Christoph Hellwig wrote:
-> On Mon, Apr 10, 2017 at 02:37:50PM +0200, Jan Kara wrote:
-> > I don't understand here. Do you want that all filesystems support NOWAIT
-> > direct IO?
-> 
-> No.  Per-file_system_type is way to coarse grained.  All feature flag
-> needs to be per-file_operation at least for cases like ext4 with our
-> without extents (or journal) XFS v4 vs v5, different NFS versions, etc.
 
-Ah, I see your point now. Thanks for patience. I think we could make this
-work by making generic_file_write/read_iter() refuse NOWAIT IO with
-EOPNOTSUPP and then only modify those few filesystems that implement their
-own iter helpers and will not initially support NOWAIT IO. Sounds easy
-enough.
+--Apple-Mail=_D923EC4E-59AD-4E35-9A28-3C444786267C
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Hi Ted,
+now that FAST'17 is behind us, is there any plan to land the ext4-lazy code
+(SMR optimizations) to the upstream kernel?  This looks like it improves
+some workloads even without SMR disks, and doesn't have any noticeable
+overhead for other workloads.
+
+I'd guess the one thing that we might want to do is still allow the journal
+to optionally checkpoint the metadata to the filesystem in the background,
+when the filesystem is otherwise idle, so that in case of journal loss for
+some reason the whole filesystem is not lost?
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_D923EC4E-59AD-4E35-9A28-3C444786267C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFY7EgxpIg59Q01vtYRAgTPAJ98/LTrZDaRC8ZKyGlEKs17cY15qwCdEAcC
+g6QeLPG3tmystkYeHeMk+88=
+=6vwv
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_D923EC4E-59AD-4E35-9A28-3C444786267C--
