@@ -1,48 +1,88 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] ext4: Don't allocate io_end for writeback from ext4_writepage()
-Date: Tue, 11 Apr 2017 15:54:17 +0200
-Message-ID: <20170411135418.9638-3-jack@suse.cz>
+Subject: [PATCH 1/3] ext4: Allow IO submission without io_end
+Date: Tue, 11 Apr 2017 15:54:16 +0200
+Message-ID: <20170411135418.9638-2-jack@suse.cz>
 References: <20170411135418.9638-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47945 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47944 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752485AbdDKNy1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Apr 2017 09:54:27 -0400
+        id S1752534AbdDKNyc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Apr 2017 09:54:32 -0400
 In-Reply-To: <20170411135418.9638-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_writepage() writes out only mapped buffers with allocated
-underlying blocks. Thus there's no need for io_end structure
-and we can avoid allocating it.
+Allow submission of bio through ext4_bio_write_page() without io_end.
+For the case where we are not converting unwritten extents we don't need
+io_end for anything anyway.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 8 --------
- 1 file changed, 8 deletions(-)
+ fs/ext4/page-io.c | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4247d8d25687..baa87e7d1426 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2107,16 +2107,8 @@ static int ext4_writepage(struct page *page,
- 		return __ext4_journalled_writepage(page, len);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 208241b06662..a8a6caf4752a 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -298,23 +298,20 @@ static void ext4_end_bio(struct bio *bio)
+ 	ext4_io_end_t *io_end = bio->bi_private;
+ 	sector_t bi_sector = bio->bi_iter.bi_sector;
  
- 	ext4_io_submit_init(&io_submit, wbc);
--	io_submit.io_end = ext4_init_io_end(inode, GFP_NOFS);
--	if (!io_submit.io_end) {
--		redirty_page_for_writepage(wbc, page);
--		unlock_page(page);
--		return -ENOMEM;
--	}
- 	ret = ext4_bio_write_page(&io_submit, page, len, wbc, keep_towrite);
- 	ext4_io_submit(&io_submit);
--	/* Drop io_end reference we got from init */
--	ext4_put_io_end_defer(io_submit.io_end);
- 	return ret;
+-	BUG_ON(!io_end);
+ 	bio->bi_end_io = NULL;
+ 
+ 	if (bio->bi_error) {
+ 		struct inode *inode = io_end->inode;
+ 
+ 		ext4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
+-			     "(offset %llu size %ld starting block %llu)",
++			     "(starting block %llu)",
+ 			     bio->bi_error, inode->i_ino,
+-			     (unsigned long long) io_end->offset,
+-			     (long) io_end->size,
+ 			     (unsigned long long)
+ 			     bi_sector >> (inode->i_blkbits - 9));
+ 		mapping_set_error(inode->i_mapping, bio->bi_error);
+ 	}
+ 
+-	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
++	if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN) {
+ 		/*
+ 		 * Link bio into list hanging from io_end. We have to do it
+ 		 * atomically as bio completions can be racing against each
+@@ -322,15 +319,17 @@ static void ext4_end_bio(struct bio *bio)
+ 		 */
+ 		bio->bi_private = xchg(&io_end->bio, bio);
+ 		ext4_put_io_end_defer(io_end);
+-	} else {
++		return;
++	}
++	if (io_end) {
+ 		/*
+ 		 * Drop io_end reference early. Inode can get freed once
+ 		 * we finish the bio.
+ 		 */
+ 		ext4_put_io_end_defer(io_end);
+-		ext4_finish_bio(bio);
+-		bio_put(bio);
+ 	}
++	ext4_finish_bio(bio);
++	bio_put(bio);
  }
  
+ void ext4_io_submit(struct ext4_io_submit *io)
+@@ -366,7 +365,8 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
+ 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_bdev = bh->b_bdev;
+ 	bio->bi_end_io = ext4_end_bio;
+-	bio->bi_private = ext4_get_io_end(io->io_end);
++	if (io->io_end)
++		bio->bi_private = ext4_get_io_end(io->io_end);
+ 	io->io_bio = bio;
+ 	io->io_next_block = bh->b_blocknr;
+ 	return 0;
 -- 
 2.12.0
