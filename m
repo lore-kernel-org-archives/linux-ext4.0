@@ -1,114 +1,75 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/3] ext4: Avoid unnecessary transaction stalls during writeback
-Date: Tue, 11 Apr 2017 15:54:18 +0200
-Message-ID: <20170411135418.9638-4-jack@suse.cz>
-References: <20170411135418.9638-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47953 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751790AbdDKNym (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Apr 2017 09:54:42 -0400
-In-Reply-To: <20170411135418.9638-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: [PATCH 0/9 v5] No wait AIO
+Date: Tue, 11 Apr 2017 09:26:10 -0500
+Message-ID: <20170411142619.27205-1-rgoldwyn@suse.de>
+Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
+        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
+        tom.leiming@gmail.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently ext4_writepages() submits all pages with transaction started.
-When no page needs block allocation or extent conversion we can submit
-all dirty pages in the inode while holding a single transaction handle
-and when device is congested this can take significant amount of time.
-Thus ext4_writepages() can block transaction commits for extended
-periods of time.
+Formerly known as non-blocking AIO.
 
-Take for example a simple benchmark simulating PostgreSQL database
-(pgioperf in mmtest). The benchmark runs 16 processes doing random reads
-from a huge file, one process doing random writes to the huge file, and
-one process doing sequential writes to a small writes and frequently
-running fsync. With unpatched kernel transaction commits take on average
-~18s with standard deviation of ~41s, top 5 commit times are:
+This series adds nonblocking feature to asynchronous I/O writes.
+io_submit() can be delayed because of a number of reason:
+ - Block allocation for files
+ - Data writebacks for direct I/O
+ - Sleeping because of waiting to acquire i_rwsem
+ - Congested block device
 
-274.466639s, 126.467347s, 86.992429s, 34.351563s, 31.517653s.
+The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+any of these conditions are met. This way userspace can push most
+of the write()s to the kernel to the best of its ability to complete
+and if it returns -EAGAIN, can defer it to another thread.
 
-After this patch transaction commits take on average 0.1s with standard
-deviation of 0.15s, top 5 commit times are:
+In order to enable this, IOCB_RW_FLAG_NOWAIT is introduced in
+uapi/linux/aio_abi.h. If set for aio_rw_flags, it translates to
+IOCB_NOWAIT for struct iocb, BIO_NOWAIT for bio and IOMAP_NOWAIT for
+iomap. aio_rw_flags is a new flag replacing aio_reserved1. We could
+not use aio_flags because it is not currently checked for invalidity
+in the kernel.
 
-0.563792s, 0.519980s, 0.509841s, 0.471700s, 0.469899s
+This feature is provided for direct I/O of asynchronous I/O only. I have
+tested it against xfs, ext4, and btrfs while I intend to add more filesystems.
+Same with QUEUE_FLAG_NOWAIT, which is currently set for sd and virtio devices.
+This is primarily to block md/dm devices which may wait in places such as
+recovery/sync/suspend. In the future, I intend to add support to
+these devices as well. Applications will have to check supportability
+by sending a async direct write and any other error besides -EAGAIN
+would mean it is not supported.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+Changes since v1:
+ + changed name from _NONBLOCKING to *_NOWAIT
+ + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
+ + BIO_NOWAIT limited to get_request()
+ + XFS fixes 
+	- included reflink 
+	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
+	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
+	  block allocation for the file.
+ + ext4 coding style
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index baa87e7d1426..ff55d430938b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2171,6 +2171,9 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
- 
- 	/* First block in the extent? */
- 	if (map->m_len == 0) {
-+		/* We cannot map unless handle is started... */
-+		if (!mpd->io_submit.io_end)
-+			return false;
- 		map->m_lblk = lblk;
- 		map->m_len = 1;
- 		map->m_flags = bh->b_state & BH_FLAGS;
-@@ -2223,6 +2226,9 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
- 			/* Found extent to map? */
- 			if (mpd->map.m_len)
- 				return 0;
-+			/* Buffer needs mapping and handle is not started? */
-+			if (!mpd->io_submit.io_end)
-+				return 0;
- 			/* Everything mapped so far and we hit EOF */
- 			break;
- 		}
-@@ -2739,6 +2745,21 @@ static int ext4_writepages(struct address_space *mapping,
- 		tag_pages_for_writeback(mapping, mpd.first_page, mpd.last_page);
- 	done = false;
- 	blk_start_plug(&plug);
-+
-+	/*
-+	 * First writeback pages that don't need mapping - we can avoid
-+	 * starting a transaction unnecessarily and also avoid being blocked
-+	 * in the block layer on device congestion while having transaction
-+	 * started.
-+	 */
-+	ret = mpage_prepare_extent_to_map(&mpd);
-+	/* Submit prepared bio */
-+	ext4_io_submit(&mpd.io_submit);
-+	/* Unlock pages we didn't use */
-+	mpage_release_unused_pages(&mpd, false);
-+	if (ret < 0)
-+		goto unplug;
-+
- 	while (!done && mpd.first_page <= mpd.last_page) {
- 		/* For each extent of pages we use new io_end */
- 		mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
-@@ -2767,6 +2788,7 @@ static int ext4_writepages(struct address_space *mapping,
- 				wbc->nr_to_write, inode->i_ino, ret);
- 			/* Release allocated io_end */
- 			ext4_put_io_end(mpd.io_submit.io_end);
-+			mpd.io_submit.io_end = NULL;
- 			break;
- 		}
- 
-@@ -2816,6 +2838,7 @@ static int ext4_writepages(struct address_space *mapping,
- 			ext4_journal_stop(handle);
- 		} else
- 			ext4_put_io_end(mpd.io_submit.io_end);
-+		mpd.io_submit.io_end = NULL;
- 
- 		if (ret == -ENOSPC && sbi->s_journal) {
- 			/*
-@@ -2831,6 +2854,7 @@ static int ext4_writepages(struct address_space *mapping,
- 		if (ret)
- 			break;
- 	}
-+unplug:
- 	blk_finish_plug(&plug);
- 	if (!ret && !cycled && wbc->nr_to_write > 0) {
- 		cycled = 1;
+Changes since v2:
+ + Using aio_reserved1 as aio_rw_flags instead of aio_flags
+ + blk-mq support
+ + xfs uptodate with kernel and reflink changes
+
+ Changes since v3:
+  + Added FS_NOWAIT, which is set if the filesystem supports NOWAIT feature.
+  + Checks in generic_make_request() to make sure BIO_NOWAIT comes in
+    for async direct writes only.
+  + Added QUEUE_FLAG_NOWAIT, which is set if the device supports BIO_NOWAIT.
+    This is added (rather not set) to block devices such as dm/md currently.
+ Changes since v4:
+  + Ported AIO code to use RWF_* flags. Check for RWF_* flags in
+    generic_file_write_iter().
+  + Changed IOCB_RW_FLAGS_NOWAIT to RWF_NOWAIT.
+
 -- 
-2.12.0
+Goldwyn
+
+
