@@ -1,88 +1,114 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/3] ext4: Allow IO submission without io_end
-Date: Tue, 11 Apr 2017 15:54:16 +0200
-Message-ID: <20170411135418.9638-2-jack@suse.cz>
+Subject: [PATCH 3/3] ext4: Avoid unnecessary transaction stalls during writeback
+Date: Tue, 11 Apr 2017 15:54:18 +0200
+Message-ID: <20170411135418.9638-4-jack@suse.cz>
 References: <20170411135418.9638-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47944 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47953 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752534AbdDKNyc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Apr 2017 09:54:32 -0400
+        id S1751790AbdDKNym (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Apr 2017 09:54:42 -0400
 In-Reply-To: <20170411135418.9638-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow submission of bio through ext4_bio_write_page() without io_end.
-For the case where we are not converting unwritten extents we don't need
-io_end for anything anyway.
+Currently ext4_writepages() submits all pages with transaction started.
+When no page needs block allocation or extent conversion we can submit
+all dirty pages in the inode while holding a single transaction handle
+and when device is congested this can take significant amount of time.
+Thus ext4_writepages() can block transaction commits for extended
+periods of time.
+
+Take for example a simple benchmark simulating PostgreSQL database
+(pgioperf in mmtest). The benchmark runs 16 processes doing random reads
+from a huge file, one process doing random writes to the huge file, and
+one process doing sequential writes to a small writes and frequently
+running fsync. With unpatched kernel transaction commits take on average
+~18s with standard deviation of ~41s, top 5 commit times are:
+
+274.466639s, 126.467347s, 86.992429s, 34.351563s, 31.517653s.
+
+After this patch transaction commits take on average 0.1s with standard
+deviation of 0.15s, top 5 commit times are:
+
+0.563792s, 0.519980s, 0.509841s, 0.471700s, 0.469899s
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/page-io.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 208241b06662..a8a6caf4752a 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -298,23 +298,20 @@ static void ext4_end_bio(struct bio *bio)
- 	ext4_io_end_t *io_end = bio->bi_private;
- 	sector_t bi_sector = bio->bi_iter.bi_sector;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index baa87e7d1426..ff55d430938b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2171,6 +2171,9 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
  
--	BUG_ON(!io_end);
- 	bio->bi_end_io = NULL;
+ 	/* First block in the extent? */
+ 	if (map->m_len == 0) {
++		/* We cannot map unless handle is started... */
++		if (!mpd->io_submit.io_end)
++			return false;
+ 		map->m_lblk = lblk;
+ 		map->m_len = 1;
+ 		map->m_flags = bh->b_state & BH_FLAGS;
+@@ -2223,6 +2226,9 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+ 			/* Found extent to map? */
+ 			if (mpd->map.m_len)
+ 				return 0;
++			/* Buffer needs mapping and handle is not started? */
++			if (!mpd->io_submit.io_end)
++				return 0;
+ 			/* Everything mapped so far and we hit EOF */
+ 			break;
+ 		}
+@@ -2739,6 +2745,21 @@ static int ext4_writepages(struct address_space *mapping,
+ 		tag_pages_for_writeback(mapping, mpd.first_page, mpd.last_page);
+ 	done = false;
+ 	blk_start_plug(&plug);
++
++	/*
++	 * First writeback pages that don't need mapping - we can avoid
++	 * starting a transaction unnecessarily and also avoid being blocked
++	 * in the block layer on device congestion while having transaction
++	 * started.
++	 */
++	ret = mpage_prepare_extent_to_map(&mpd);
++	/* Submit prepared bio */
++	ext4_io_submit(&mpd.io_submit);
++	/* Unlock pages we didn't use */
++	mpage_release_unused_pages(&mpd, false);
++	if (ret < 0)
++		goto unplug;
++
+ 	while (!done && mpd.first_page <= mpd.last_page) {
+ 		/* For each extent of pages we use new io_end */
+ 		mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
+@@ -2767,6 +2788,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 				wbc->nr_to_write, inode->i_ino, ret);
+ 			/* Release allocated io_end */
+ 			ext4_put_io_end(mpd.io_submit.io_end);
++			mpd.io_submit.io_end = NULL;
+ 			break;
+ 		}
  
- 	if (bio->bi_error) {
- 		struct inode *inode = io_end->inode;
+@@ -2816,6 +2838,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 			ext4_journal_stop(handle);
+ 		} else
+ 			ext4_put_io_end(mpd.io_submit.io_end);
++		mpd.io_submit.io_end = NULL;
  
- 		ext4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
--			     "(offset %llu size %ld starting block %llu)",
-+			     "(starting block %llu)",
- 			     bio->bi_error, inode->i_ino,
--			     (unsigned long long) io_end->offset,
--			     (long) io_end->size,
- 			     (unsigned long long)
- 			     bi_sector >> (inode->i_blkbits - 9));
- 		mapping_set_error(inode->i_mapping, bio->bi_error);
+ 		if (ret == -ENOSPC && sbi->s_journal) {
+ 			/*
+@@ -2831,6 +2854,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 		if (ret)
+ 			break;
  	}
- 
--	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
-+	if (io_end && io_end->flag & EXT4_IO_END_UNWRITTEN) {
- 		/*
- 		 * Link bio into list hanging from io_end. We have to do it
- 		 * atomically as bio completions can be racing against each
-@@ -322,15 +319,17 @@ static void ext4_end_bio(struct bio *bio)
- 		 */
- 		bio->bi_private = xchg(&io_end->bio, bio);
- 		ext4_put_io_end_defer(io_end);
--	} else {
-+		return;
-+	}
-+	if (io_end) {
- 		/*
- 		 * Drop io_end reference early. Inode can get freed once
- 		 * we finish the bio.
- 		 */
- 		ext4_put_io_end_defer(io_end);
--		ext4_finish_bio(bio);
--		bio_put(bio);
- 	}
-+	ext4_finish_bio(bio);
-+	bio_put(bio);
- }
- 
- void ext4_io_submit(struct ext4_io_submit *io)
-@@ -366,7 +365,8 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
- 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
- 	bio->bi_bdev = bh->b_bdev;
- 	bio->bi_end_io = ext4_end_bio;
--	bio->bi_private = ext4_get_io_end(io->io_end);
-+	if (io->io_end)
-+		bio->bi_private = ext4_get_io_end(io->io_end);
- 	io->io_bio = bio;
- 	io->io_next_block = bh->b_blocknr;
- 	return 0;
++unplug:
+ 	blk_finish_plug(&plug);
+ 	if (!ret && !cycled && wbc->nr_to_write > 0) {
+ 		cycled = 1;
 -- 
 2.12.0
