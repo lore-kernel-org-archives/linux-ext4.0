@@ -1,240 +1,134 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 5/9] nowait aio: return on congested block device
-Date: Tue, 11 Apr 2017 09:26:15 -0500
-Message-ID: <20170411142619.27205-6-rgoldwyn@suse.de>
-References: <20170411142619.27205-1-rgoldwyn@suse.de>
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170411142619.27205-1-rgoldwyn@suse.de>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH 3/3] ext4: Avoid unnecessary transaction stalls during writeback
+Date: Tue, 11 Apr 2017 18:00:50 +0300
+Message-ID: <CAOQ4uxidGcjCp4WD0sBEcMSNhCP0RKYcRK7z93V07uaVZCC3Gw@mail.gmail.com>
+References: <20170411135418.9638-1-jack@suse.cz> <20170411135418.9638-4-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Ted Tso <tytso@mit.edu>, Ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:35149 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753347AbdDKPA4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Apr 2017 11:00:56 -0400
+Received: by mail-oi0-f67.google.com with SMTP id g204so18055907oib.2
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Apr 2017 08:00:51 -0700 (PDT)
+In-Reply-To: <20170411135418.9638-4-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+On Tue, Apr 11, 2017 at 4:54 PM, Jan Kara <jack@suse.cz> wrote:
+> Currently ext4_writepages() submits all pages with transaction started.
+> When no page needs block allocation or extent conversion we can submit
+> all dirty pages in the inode while holding a single transaction handle
+> and when device is congested this can take significant amount of time.
+> Thus ext4_writepages() can block transaction commits for extended
+> periods of time.
+>
+> Take for example a simple benchmark simulating PostgreSQL database
+> (pgioperf in mmtest). The benchmark runs 16 processes doing random reads
+> from a huge file, one process doing random writes to the huge file, and
+> one process doing sequential writes to a small writes and frequently
 
-A new flag BIO_NOWAIT is introduced to identify bio's
-orignating from iocb with IOCB_NOWAIT. This flag indicates
-to return immediately if a request cannot be made instead
-of retrying.
+typo s/small writes/small file/
 
-To facilitate this, QUEUE_FLAG_NOWAIT is set to devices
-which support this. While currently this is set to
-virtio and sd only. Support to more devices will be added soon.
+> running fsync. With unpatched kernel transaction commits take on average
+> ~18s with standard deviation of ~41s, top 5 commit times are:
+>
+> 274.466639s, 126.467347s, 86.992429s, 34.351563s, 31.517653s.
+>
+> After this patch transaction commits take on average 0.1s with standard
+> deviation of 0.15s, top 5 commit times are:
+>
+> 0.563792s, 0.519980s, 0.509841s, 0.471700s, 0.469899s
 
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
----
- block/blk-core.c           | 24 ++++++++++++++++++++++--
- block/blk-mq-sched.c       |  3 +++
- block/blk-mq.c             |  4 ++++
- drivers/block/virtio_blk.c |  3 +++
- drivers/scsi/sd.c          |  3 +++
- fs/direct-io.c             | 11 +++++++++--
- include/linux/bio.h        |  6 ++++++
- include/linux/blk_types.h  |  1 +
- include/linux/blkdev.h     |  2 ++
- 9 files changed, 53 insertions(+), 4 deletions(-)
+That's a very nice improvement! I wonder what the "commit time" metrics
+means to end users though.
+Perhaps you should additionally phrase the problem statement and the
+improvement in metrics that end users understand?
+i.e. the runtime of fsync on the small file? is that what it means?
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index d772c221cc17..95a9b18f38a3 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1232,6 +1232,11 @@ static struct request *get_request(struct request_queue *q, unsigned int op,
- 	if (!IS_ERR(rq))
- 		return rq;
- 
-+	if (bio && bio_flagged(bio, BIO_NOWAIT)) {
-+		blk_put_rl(rl);
-+		return ERR_PTR(-EAGAIN);
-+	}
-+
- 	if (!gfpflags_allow_blocking(gfp_mask) || unlikely(blk_queue_dying(q))) {
- 		blk_put_rl(rl);
- 		return rq;
-@@ -1870,6 +1875,18 @@ generic_make_request_checks(struct bio *bio)
- 		goto end_io;
- 	}
- 
-+	if (bio_flagged(bio, BIO_NOWAIT)) {
-+		if (!blk_queue_nowait(q)) {
-+			err = -EOPNOTSUPP;
-+			goto end_io;
-+		}
-+		if (!(bio->bi_opf & (REQ_SYNC | REQ_IDLE))) {
-+			err = -EINVAL;
-+			goto end_io;
-+		}
-+	}
-+
-+
- 	part = bio->bi_bdev->bd_part;
- 	if (should_fail_request(part, bio->bi_iter.bi_size) ||
- 	    should_fail_request(&part_to_disk(part)->part0,
-@@ -2021,7 +2038,7 @@ blk_qc_t generic_make_request(struct bio *bio)
- 	do {
- 		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
- 
--		if (likely(blk_queue_enter(q, false) == 0)) {
-+		if (likely(blk_queue_enter(q, bio_flagged(bio, BIO_NOWAIT)) == 0)) {
- 			struct bio_list lower, same;
- 
- 			/* Create a fresh bio_list for all subordinate requests */
-@@ -2046,7 +2063,10 @@ blk_qc_t generic_make_request(struct bio *bio)
- 			bio_list_merge(&bio_list_on_stack[0], &same);
- 			bio_list_merge(&bio_list_on_stack[0], &bio_list_on_stack[1]);
- 		} else {
--			bio_io_error(bio);
-+			if (unlikely(!blk_queue_dying(q) && bio_flagged(bio, BIO_NOWAIT)))
-+				bio_wouldblock_error(bio);
-+			else
-+				bio_io_error(bio);
- 		}
- 		bio = bio_list_pop(&bio_list_on_stack[0]);
- 	} while (bio);
-diff --git a/block/blk-mq-sched.c b/block/blk-mq-sched.c
-index c974a1bbf4cb..c0d3bbf293ec 100644
---- a/block/blk-mq-sched.c
-+++ b/block/blk-mq-sched.c
-@@ -119,6 +119,9 @@ struct request *blk_mq_sched_get_request(struct request_queue *q,
- 	if (likely(!data->hctx))
- 		data->hctx = blk_mq_map_queue(q, data->ctx->cpu);
- 
-+	if (likely(bio) && bio_flagged(bio, BIO_NOWAIT))
-+		data->flags |= BLK_MQ_REQ_NOWAIT;
-+
- 	if (e) {
- 		data->flags |= BLK_MQ_REQ_INTERNAL;
- 
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 572966f49596..f20e802b0e15 100644
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -1538,6 +1538,8 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
- 	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
- 	if (unlikely(!rq)) {
- 		__wbt_done(q->rq_wb, wb_acct);
-+		if (bio && bio_flagged(bio, BIO_NOWAIT))
-+			bio_wouldblock_error(bio);
- 		return BLK_QC_T_NONE;
- 	}
- 
-@@ -1662,6 +1664,8 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
- 	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
- 	if (unlikely(!rq)) {
- 		__wbt_done(q->rq_wb, wb_acct);
-+		if (bio && bio_flagged(bio, BIO_NOWAIT))
-+			bio_wouldblock_error(bio);
- 		return BLK_QC_T_NONE;
- 	}
- 
-diff --git a/drivers/block/virtio_blk.c b/drivers/block/virtio_blk.c
-index 1d4c9f8bc1e1..7481124c5025 100644
---- a/drivers/block/virtio_blk.c
-+++ b/drivers/block/virtio_blk.c
-@@ -731,6 +731,9 @@ static int virtblk_probe(struct virtio_device *vdev)
- 	/* No real sector limit. */
- 	blk_queue_max_hw_sectors(q, -1U);
- 
-+	/* Request queue supports BIO_NOWAIT */
-+	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
-+
- 	/* Host can optionally specify maximum segment size and number of
- 	 * segments. */
- 	err = virtio_cread_feature(vdev, VIRTIO_BLK_F_SIZE_MAX,
-diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
-index fcfeddc79331..9df85ee165be 100644
---- a/drivers/scsi/sd.c
-+++ b/drivers/scsi/sd.c
-@@ -3177,6 +3177,9 @@ static int sd_probe(struct device *dev)
- 					     SD_MOD_TIMEOUT);
- 	}
- 
-+	/* Support BIO_NOWAIT */
-+	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, sdp->request_queue);
-+
- 	device_initialize(&sdkp->dev);
- 	sdkp->dev.parent = dev;
- 	sdkp->dev.class = &sd_disk_class;
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index a04ebea77de8..f6835d3d5fe2 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -386,6 +386,9 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
- 	else
- 		bio->bi_end_io = dio_bio_end_io;
- 
-+	if (dio->iocb->ki_flags & IOCB_NOWAIT)
-+		bio_set_flag(bio, BIO_NOWAIT);
-+
- 	sdio->bio = bio;
- 	sdio->logical_offset_in_bio = sdio->cur_page_fs_offset;
- }
-@@ -480,8 +483,12 @@ static int dio_bio_complete(struct dio *dio, struct bio *bio)
- 	unsigned i;
- 	int err;
- 
--	if (bio->bi_error)
--		dio->io_error = -EIO;
-+	if (bio->bi_error) {
-+		if (bio_flagged(bio, BIO_NOWAIT))
-+			dio->io_error = -EAGAIN;
-+		else
-+			dio->io_error = -EIO;
-+	}
- 
- 	if (dio->is_async && dio->op == REQ_OP_READ && dio->should_dirty) {
- 		err = bio->bi_error;
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 8e521194f6fc..1a9270744b1e 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -425,6 +425,12 @@ static inline void bio_io_error(struct bio *bio)
- 	bio_endio(bio);
- }
- 
-+static inline void bio_wouldblock_error(struct bio *bio)
-+{
-+	bio->bi_error = -EAGAIN;
-+	bio_endio(bio);
-+}
-+
- struct request_queue;
- extern int bio_phys_segments(struct request_queue *, struct bio *);
- 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index d703acb55d0f..514c08e8af78 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -102,6 +102,7 @@ struct bio {
- #define BIO_REFFED	8	/* bio has elevated ->bi_cnt */
- #define BIO_THROTTLED	9	/* This bio has already been subjected to
- 				 * throttling rules. Don't do it again. */
-+#define BIO_NOWAIT	10	/* don't block over blk device congestion */
- 
- /*
-  * Flags starting here get preserved by bio_reset() - this includes
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 7548f332121a..2663918f12ce 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -610,6 +610,7 @@ struct request_queue {
- #define QUEUE_FLAG_FLUSH_NQ    25	/* flush not queueuable */
- #define QUEUE_FLAG_DAX         26	/* device supports DAX */
- #define QUEUE_FLAG_STATS       27	/* track rq completion times */
-+#define QUEUE_FLAG_NOWAIT      28	/* queue supports BIO_NOWAIT */
- 
- #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
- 				 (1 << QUEUE_FLAG_STACKABLE)	|	\
-@@ -700,6 +701,7 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
- #define blk_queue_secure_erase(q) \
- 	(test_bit(QUEUE_FLAG_SECERASE, &(q)->queue_flags))
- #define blk_queue_dax(q)	test_bit(QUEUE_FLAG_DAX, &(q)->queue_flags)
-+#define blk_queue_nowait(q)	test_bit(QUEUE_FLAG_NOWAIT, &(q)->queue_flags)
- 
- #define blk_noretry_request(rq) \
- 	((rq)->cmd_flags & (REQ_FAILFAST_DEV|REQ_FAILFAST_TRANSPORT| \
--- 
-2.12.0
+Out of curiousity, I wonder how XFS performs in this benchmark
+did you happen to check?
+I am guessing it would be closer to the 'after' results?
+
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 24 ++++++++++++++++++++++++
+>  1 file changed, 24 insertions(+)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index baa87e7d1426..ff55d430938b 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2171,6 +2171,9 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
+>
+>         /* First block in the extent? */
+>         if (map->m_len == 0) {
+> +               /* We cannot map unless handle is started... */
+> +               if (!mpd->io_submit.io_end)
+> +                       return false;
+>                 map->m_lblk = lblk;
+>                 map->m_len = 1;
+>                 map->m_flags = bh->b_state & BH_FLAGS;
+> @@ -2223,6 +2226,9 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+>                         /* Found extent to map? */
+>                         if (mpd->map.m_len)
+>                                 return 0;
+> +                       /* Buffer needs mapping and handle is not started? */
+> +                       if (!mpd->io_submit.io_end)
+> +                               return 0;
+>                         /* Everything mapped so far and we hit EOF */
+>                         break;
+>                 }
+> @@ -2739,6 +2745,21 @@ static int ext4_writepages(struct address_space *mapping,
+>                 tag_pages_for_writeback(mapping, mpd.first_page, mpd.last_page);
+>         done = false;
+>         blk_start_plug(&plug);
+> +
+> +       /*
+> +        * First writeback pages that don't need mapping - we can avoid
+> +        * starting a transaction unnecessarily and also avoid being blocked
+> +        * in the block layer on device congestion while having transaction
+> +        * started.
+> +        */
+> +       ret = mpage_prepare_extent_to_map(&mpd);
+> +       /* Submit prepared bio */
+> +       ext4_io_submit(&mpd.io_submit);
+> +       /* Unlock pages we didn't use */
+> +       mpage_release_unused_pages(&mpd, false);
+> +       if (ret < 0)
+> +               goto unplug;
+> +
+>         while (!done && mpd.first_page <= mpd.last_page) {
+>                 /* For each extent of pages we use new io_end */
+>                 mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
+> @@ -2767,6 +2788,7 @@ static int ext4_writepages(struct address_space *mapping,
+>                                 wbc->nr_to_write, inode->i_ino, ret);
+>                         /* Release allocated io_end */
+>                         ext4_put_io_end(mpd.io_submit.io_end);
+> +                       mpd.io_submit.io_end = NULL;
+>                         break;
+>                 }
+>
+> @@ -2816,6 +2838,7 @@ static int ext4_writepages(struct address_space *mapping,
+>                         ext4_journal_stop(handle);
+>                 } else
+>                         ext4_put_io_end(mpd.io_submit.io_end);
+> +               mpd.io_submit.io_end = NULL;
+>
+>                 if (ret == -ENOSPC && sbi->s_journal) {
+>                         /*
+> @@ -2831,6 +2854,7 @@ static int ext4_writepages(struct address_space *mapping,
+>                 if (ret)
+>                         break;
+>         }
+> +unplug:
+>         blk_finish_plug(&plug);
+>         if (!ret && !cycled && wbc->nr_to_write > 0) {
+>                 cycled = 1;
+> --
+> 2.12.0
+>
