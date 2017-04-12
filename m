@@ -1,101 +1,113 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/11] reiserfs: Remove i_attrs_to_sd_attrs()
-Date: Wed, 12 Apr 2017 09:26:10 +0200
-Message-ID: <20170412072611.29017-11-jack@suse.cz>
-References: <20170412072611.29017-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, <reiserfs-devel@vger.kernel.org>,
-        jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: Add statx support
+Date: Wed, 12 Apr 2017 09:34:12 +0200
+Message-ID: <20170412073412.GA32477@quack2.suse.cz>
+References: <148966413352.3279.15659219505999889147.stgit@warthog.procyon.org.uk>
+ <20170317054755.GA595@zzz>
+ <1A035757-CBE2-40F1-9CD3-9554F56F63CB@dilger.ca>
+ <20170319111237.GB1844@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Biggers <ebiggers3@gmail.com>, Jan Kara <jack@suse.cz>,
+        David Howells <dhowells@redhat.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20170319111237.GB1844@quack2.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Now that all places setting inode->i_flags that should be reflected in
-on-disk flags are gone, we can remove i_attrs_to_sd_attrs() call.
+On Sun 19-03-17 12:12:37, Jan Kara wrote:
+> On Fri 17-03-17 14:19:22, Andreas Dilger wrote:
+> > On Mar 16, 2017, at 11:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > > On Thu, Mar 16, 2017 at 11:35:33AM +0000, David Howells wrote:
+> > >> +
+> > >> +	ext4_get_inode_flags(ei);
+> > >> +	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+> > >> +	if (flags & EXT4_APPEND_FL)
+> > >> +		stat->attributes |= STATX_ATTR_APPEND;
+> > >> +	if (flags & EXT4_COMPR_FL)
+> > >> +		stat->attributes |= STATX_ATTR_COMPRESSED;
+> > >> +	if (flags & EXT4_ENCRYPT_FL)
+> > >> +		stat->attributes |= STATX_ATTR_ENCRYPTED;
+> > >> +	if (flags & EXT4_IMMUTABLE_FL)
+> > >> +		stat->attributes |= STATX_ATTR_IMMUTABLE;
+> > >> +	if (flags & EXT4_NODUMP_FL)
+> > >> +		stat->attributes |= STATX_ATTR_NODUMP;
+> > >> 
+> > >> -	inode = d_inode(path->dentry);
+> > >> 	generic_fillattr(inode, stat);
+> > >> +	return 0;
+> > >> +}
+> > > 
+> > > I think it's the wrong approach to be calling ext4_get_inode_flags() here to
+> > > sync the generic inode flags (inode->i_flags) to the ext4-specific inode flags
+> > > (ei->i_flags).  I know the GETFLAGS and FSGETXATTR ioctls do it too, but I
+> > > think it's a mistake --- at least, when done so without holding the inode lock.
+> > > The issue is that flag syncs can occur in both directions concurrently and
+> > > cause an update to be lost.  For example, with thread 1 doing a stat() and
+> > > thread 2 doing the SETFLAGS ioctl to set the APPEND flag:
+> > > 
+> > > Thread 1, ext4_get_inode_flags()	Thread 2, ext4_ioctl_setflags()
+> > > -----------------------------------	---------------------------
+> > > Read inode->i_flags; S_APPEND clear
+> > > 					Set EXT4_APPEND_FL in ei->i_flags
+> > > Clear EXT4_APPEND_FL in ei->i_flags
+> > > 					Read ei->i_flags; EXT4_APPEND_FL clear
+> > > 					Clear S_APPEND in inode->i_flags
+> > > 
+> > > So the flag set by SETFLAGS gets lost.  This bug probably hasn't really been
+> > > noticable with GETFLAGS and FSGETXATTR since they're rarely used, but stat() on
+> > > the other hand is very common, and I'm worried that with this change people
+> > > would start seeing this race more often.
+> > > 
+> > > Ultimately this needs to be addressed in ext4 more fully, but how about for
+> > > ->getattr() just skipping the call to ext4_get_inode_flags() and instead
+> > > populating the generic attributes like STATX_ATTR_APPEND and
+> > > STATX_ATTR_IMMUTABLE from the generic inode flags, rather than from the
+> > > ext4-specific flags?  Actually, it could even be done in generic_fillattr(), so
+> > > that all filesystems benefit.
+> > 
+> > Wouldn't it make more sense to just extract the ext4 flags directly from
+> > ei->i_flags?  I think ext4_get_inode_flags() is only really useful when
+> > the VFS inode flags are changed and they need to be propagated to the ext4
+> > inode.
+> > 
+> > I guess the other more significant question is when/where are the VFS inode
+> > flags changed that they need to be propagated into the ext4 disk inode?
+> > The main avenue for changing these attribute flags that I know about is via
+> > EXT4_IOC_SETFLAGS (FS_IOC_SETFLAGS), and there is one place that I could
+> > find in fs/nsfs.c that sets S_IMMUTABLE but I don't think that propagates
+> > down to an ext4 disk inode.
+> 
+> Yes, you seem to be right. And actually I have checked and XFS does not
+> bother to copy inode->i_flags to its on-disk flags so it seems generally we
+> are not expected to reflect inode->i_flags in on-disk state.
+> 
+> > It seems like the use of ext4_get_inode_flags() is largely superfluous.
+> > The original commit ff9ddf7e847 indicates this was for quota inodes only.
+> > I think it can be removed from EXT4_IOC_FSGETXATTR, and EXT4_IOC_GETFLAGS
+> > and made conditional in ext4_do_update_inode():
+> > 
+> > #ifdef CONFIG_QUOTA
+> >         for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> >                 if (unlikely(sb_dqopt(sb)->files[i] == inode))
+> >                         ext4_get_inode_flags(EXT4_I(inode));
+> >         }
+> > #endif
+> > 
+> > Jan, what do you think?
+> 
+> So I think even better would be to have ext4_quota_on() and
+> ext4_quota_off() just update the flags as needed and avoid doing it
+> anywhere else... I'll have a look into it.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/reiserfs/inode.c    | 27 +--------------------------
- fs/reiserfs/ioctl.c    |  1 -
- fs/reiserfs/reiserfs.h |  1 -
- 3 files changed, 1 insertion(+), 28 deletions(-)
+FYI I have just sent out patches to do this...
 
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index aeca1a0b7b5a..873fc04e9403 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -1375,7 +1375,6 @@ static void init_inode(struct inode *inode, struct treepath *path)
- static void inode2sd(void *sd, struct inode *inode, loff_t size)
- {
- 	struct stat_data *sd_v2 = (struct stat_data *)sd;
--	__u16 flags;
- 
- 	set_sd_v2_mode(sd_v2, inode->i_mode);
- 	set_sd_v2_nlink(sd_v2, inode->i_nlink);
-@@ -1390,9 +1389,7 @@ static void inode2sd(void *sd, struct inode *inode, loff_t size)
- 		set_sd_v2_rdev(sd_v2, new_encode_dev(inode->i_rdev));
- 	else
- 		set_sd_v2_generation(sd_v2, inode->i_generation);
--	flags = REISERFS_I(inode)->i_attrs;
--	i_attrs_to_sd_attrs(inode, &flags);
--	set_sd_v2_attrs(sd_v2, flags);
-+	set_sd_v2_attrs(sd_v2, REISERFS_I(inode)->i_attrs);
- }
- 
- /* used to copy inode's fields to old stat data */
-@@ -3091,28 +3088,6 @@ void sd_attrs_to_i_attrs(__u16 sd_attrs, struct inode *inode)
- 	}
- }
- 
--void i_attrs_to_sd_attrs(struct inode *inode, __u16 * sd_attrs)
--{
--	if (reiserfs_attrs(inode->i_sb)) {
--		if (inode->i_flags & S_IMMUTABLE)
--			*sd_attrs |= REISERFS_IMMUTABLE_FL;
--		else
--			*sd_attrs &= ~REISERFS_IMMUTABLE_FL;
--		if (inode->i_flags & S_SYNC)
--			*sd_attrs |= REISERFS_SYNC_FL;
--		else
--			*sd_attrs &= ~REISERFS_SYNC_FL;
--		if (inode->i_flags & S_NOATIME)
--			*sd_attrs |= REISERFS_NOATIME_FL;
--		else
--			*sd_attrs &= ~REISERFS_NOATIME_FL;
--		if (REISERFS_I(inode)->i_flags & i_nopack_mask)
--			*sd_attrs |= REISERFS_NOTAIL_FL;
--		else
--			*sd_attrs &= ~REISERFS_NOTAIL_FL;
--	}
--}
--
- /*
-  * decide if this buffer needs to stay around for data logging or ordered
-  * write purposes
-diff --git a/fs/reiserfs/ioctl.c b/fs/reiserfs/ioctl.c
-index 1f4692a505a0..acbbaf7a0bb2 100644
---- a/fs/reiserfs/ioctl.c
-+++ b/fs/reiserfs/ioctl.c
-@@ -47,7 +47,6 @@ long reiserfs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		}
- 
- 		flags = REISERFS_I(inode)->i_attrs;
--		i_attrs_to_sd_attrs(inode, (__u16 *) & flags);
- 		err = put_user(flags, (int __user *)arg);
- 		break;
- 	case REISERFS_IOC_SETFLAGS:{
-diff --git a/fs/reiserfs/reiserfs.h b/fs/reiserfs/reiserfs.h
-index 2adcde137c3f..784b32568497 100644
---- a/fs/reiserfs/reiserfs.h
-+++ b/fs/reiserfs/reiserfs.h
-@@ -3099,7 +3099,6 @@ static inline void reiserfs_update_sd(struct reiserfs_transaction_handle *th,
- }
- 
- void sd_attrs_to_i_attrs(__u16 sd_attrs, struct inode *inode);
--void i_attrs_to_sd_attrs(struct inode *inode, __u16 * sd_attrs);
- int reiserfs_setattr(struct dentry *dentry, struct iattr *attr);
- 
- int __reiserfs_write_begin(struct page *page, unsigned from, unsigned len);
+								Honza
 -- 
-2.12.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
