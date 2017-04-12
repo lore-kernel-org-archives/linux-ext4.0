@@ -1,44 +1,42 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/11] quota: Remove dquot_quotactl_ops
-Date: Wed, 12 Apr 2017 09:26:11 +0200
-Message-ID: <20170412072611.29017-12-jack@suse.cz>
+Subject: [PATCH 09/11] reiserfs: Remove useless setting of i_flags
+Date: Wed, 12 Apr 2017 09:26:09 +0200
+Message-ID: <20170412072611.29017-10-jack@suse.cz>
 References: <20170412072611.29017-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <reiserfs-devel@vger.kernel.org>,
         jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53814 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753272AbdDLH0Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Apr 2017 03:26:25 -0400
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Nobody uses them anymore.
+reiserfs_new_inode() clears IMMUTABLE and APPEND flags from a symlink
+i_flags however a few lines below in sd_attrs_to_i_attrs() we will
+happily overwrite i_flags with whatever we inherited from the directory.
+Since this behavior is there for ages just remove the useless setting of
+i_flags.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/quota/dquot.c         | 12 ------------
- include/linux/quotaops.h |  1 -
- 2 files changed, 13 deletions(-)
+ fs/reiserfs/inode.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 7e94cb0ecdde..ebf80c7739e1 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -2771,18 +2771,6 @@ int dquot_set_dqinfo(struct super_block *sb, int type, struct qc_info *ii)
- }
- EXPORT_SYMBOL(dquot_set_dqinfo);
+diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
+index a6ab9d64ea1b..aeca1a0b7b5a 100644
+--- a/fs/reiserfs/inode.c
++++ b/fs/reiserfs/inode.c
+@@ -2002,10 +2002,6 @@ int reiserfs_new_inode(struct reiserfs_transaction_handle *th,
  
--const struct quotactl_ops dquot_quotactl_ops = {
--	.quota_on	= dquot_quota_on,
--	.quota_off	= dquot_quota_off,
--	.quota_sync	= dquot_quota_sync,
--	.get_state	= dquot_get_state,
--	.set_info	= dquot_set_dqinfo,
--	.get_dqblk	= dquot_get_dqblk,
--	.get_nextdqblk	= dquot_get_next_dqblk,
--	.set_dqblk	= dquot_set_dqblk
--};
--EXPORT_SYMBOL(dquot_quotactl_ops);
+ 	/* uid and gid must already be set by the caller for quota init */
+ 
+-	/* symlink cannot be immutable or append only, right? */
+-	if (S_ISLNK(inode->i_mode))
+-		inode->i_flags &= ~(S_IMMUTABLE | S_APPEND);
+-
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
+ 	inode->i_size = i_size;
+ 	inode->i_blocks = 0;
+-- 
+2.12.0
+
