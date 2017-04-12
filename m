@@ -1,46 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 195407] New: ext2 file system
-Date: Wed, 12 Apr 2017 10:13:04 +0000
-Message-ID: <bug-195407-13602@https.bugzilla.kernel.org/>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 8/8] statx: Include a mask for stx_attributes in struct
+ statx
+Date: Wed, 12 Apr 2017 08:12:29 -0700
+Message-ID: <20170412151229.GA6126@infradead.org>
+References: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
+ <149098153785.28108.1114055429564367803.stgit@warthog.procyon.org.uk>
+ <20170404071252.GA30966@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37420 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751876AbdDLKNF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Apr 2017 06:13:05 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A6C48285E3
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Apr 2017 10:13:04 +0000 (UTC)
-Received: from pdx-korg-bugzilla-1.web.codeaurora.org (unknown [172.30.200.120])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6A144285E3
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Apr 2017 10:13:04 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
+        hch@infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170404071252.GA30966@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=195407
+On Tue, Apr 04, 2017 at 12:12:52AM -0700, Christoph Hellwig wrote:
+> On Fri, Mar 31, 2017 at 06:32:17PM +0100, David Howells wrote:
+> > Include a mask in struct stat to indicate which bits of stx_attributes the
+> > filesystem actually supports.
+> 
+> What's the use case for this?
 
-            Bug ID: 195407
-           Summary: ext2 file system
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.3
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext2
-          Assignee: fs_ext2@kernel-bugs.osdl.org
-          Reporter: Shaikakram055@gmail.com
-        Regression: No
-
-hi hello welcome to aditya college of engineering,madanapalli
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+ping!
