@@ -1,48 +1,211 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/9] nowait aio: return on congested block device
-Date: Wed, 12 Apr 2017 13:31:43 -0500
-Message-ID: <7fba3538-8c91-20e5-63f1-6e063caaaffb@suse.de>
-References: <20170411142619.27205-1-rgoldwyn@suse.de>
- <20170411142619.27205-6-rgoldwyn@suse.de>
- <20170412083625.GB22363@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170412083625.GB22363@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 01/11] ext4: Set flags on quota files directly
+Date: Wed, 12 Apr 2017 15:00:04 -0600
+Message-ID: <BDA95568-149C-4049-AFE0-0D7AB483CFB6@dilger.ca>
+References: <20170412072611.29017-1-jack@suse.cz>
+ <20170412072611.29017-2-jack@suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_F1398359-BC69-4C5F-955F-41B1DAF9CC15";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        reiserfs-devel@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net
+To: Jan Kara <jack@suse.cz>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <20170412072611.29017-2-jack@suse.cz>
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
+--Apple-Mail=_F1398359-BC69-4C5F-955F-41B1DAF9CC15
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-On 04/12/2017 03:36 AM, Christoph Hellwig wrote:
-> As mentioned last time around, this should be a REQ_NOWAIT flag so
-> that it can be easily passed dow? n to the request layer.
-> 
->> +static inline void bio_wouldblock_error(struct bio *bio)
->> +{
->> +	bio->bi_error = -EAGAIN;
->> +	bio_endio(bio);
->> +}
-> 
-> Please skip this helper..
+On Apr 12, 2017, at 1:26 AM, Jan Kara <jack@suse.cz> wrote:
+>=20
+> Currently immutable and noatime flags on quota files are set by quota
+> code which requires us to copy inode->i_flags to our on disk version =
+of
+> quota flags in GETFLAGS ioctl and ext4_do_update_inode(). Move to
+> setting / clearing these on-disk flags directly to save that copying.
+>=20
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+> fs/ext4/super.c | 62 =
++++++++++++++++++++++++++++++++++++++++++++++++++++------
+> 1 file changed, 56 insertions(+), 6 deletions(-)
+>=20
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index a9448db1cf7e..480cbbebdc57 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -839,6 +839,28 @@ static void dump_orphan_list(struct super_block =
+*sb, struct ext4_sb_info *sbi)
+> 	}
+> }
+>=20
+> +#ifdef CONFIG_QUOTA
+> +static int ext4_quota_off(struct super_block *sb, int type);
+> +
+> +static inline void ext4_quota_off_umount(struct super_block *sb)
+> +{
+> +	int type;
+> +
+> +	if (ext4_has_feature_quota(sb)) {
+> +		dquot_disable(sb, -1,
+> +			      DQUOT_USAGE_ENABLED | =
+DQUOT_LIMITS_ENABLED);
+> +	} else {
+> +		/* Use our quota_off function to clear inode flags etc. =
+*/
+> +		for (type =3D 0; type < EXT4_MAXQUOTAS; type++)
+> +			ext4_quota_off(sb, type);
+> +	}
+> +}
+> +#else
+> +static inline void ext4_quota_off_umount(struct super_block *sb)
+> +{
+> +}
+> +#endif
+> +
+> static void ext4_put_super(struct super_block *sb)
+> {
+> 	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+> @@ -847,7 +869,7 @@ static void ext4_put_super(struct super_block *sb)
+> 	int i, err;
+>=20
+> 	ext4_unregister_li_request(sb);
+> -	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | =
+DQUOT_LIMITS_ENABLED);
+> +	ext4_quota_off_umount(sb);
+>=20
+> 	flush_workqueue(sbi->rsv_conversion_wq);
+> 	destroy_workqueue(sbi->rsv_conversion_wq);
+> @@ -1218,7 +1240,6 @@ static int ext4_mark_dquot_dirty(struct dquot =
+*dquot);
+> static int ext4_write_info(struct super_block *sb, int type);
+> static int ext4_quota_on(struct super_block *sb, int type, int =
+format_id,
+> 			 const struct path *path);
+> -static int ext4_quota_off(struct super_block *sb, int type);
+> static int ext4_quota_on_mount(struct super_block *sb, int type);
+> static ssize_t ext4_quota_read(struct super_block *sb, int type, char =
+*data,
+> 			       size_t len, loff_t off);
+> @@ -5344,11 +5365,28 @@ static int ext4_quota_on(struct super_block =
+*sb, int type, int format_id,
+> 		if (err)
+> 			return err;
+> 	}
+> +
+> 	lockdep_set_quota_inode(path->dentry->d_inode, =
+I_DATA_SEM_QUOTA);
+> 	err =3D dquot_quota_on(sb, type, format_id, path);
+> -	if (err)
+> +	if (err) {
+> 		lockdep_set_quota_inode(path->dentry->d_inode,
+> 					     I_DATA_SEM_NORMAL);
+> +	} else {
+> +		struct inode *inode =3D d_inode(path->dentry);
+> +		handle_t *handle;
+> +
+> +		inode_lock(inode);
+> +		handle =3D ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
+> +		if (IS_ERR(handle))
+> +			goto unlock_inode;
+> +		EXT4_I(inode)->i_flags |=3D EXT4_NOATIME_FL | =
+EXT4_IMMUTABLE_FL;
+> +		inode_set_flags(inode, S_NOATIME | S_IMMUTABLE,
+> +				S_NOATIME | S_IMMUTABLE);
+> +		ext4_mark_inode_dirty(handle, inode);
+> +		ext4_journal_stop(handle);
 
-Why? It is being called three times?
-I am incorporating all the rest of the comments, besides this one. Thanks.
+Should this be conditional on these flags not already being set?  =
+Otherwise
+it dirties the filesystem on every mount even if it isn't needed.
 
-> 
->> +#define QUEUE_FLAG_NOWAIT      28	/* queue supports BIO_NOWAIT */
-> 
-> Please make the flag name a little more descriptive, this sounds like
-> it will never wait.
-> 
+> +	unlock_inode:
+> +		inode_unlock(inode);
+> +	}
+> 	return err;
+> }
+>=20
+> @@ -5422,24 +5460,36 @@ static int ext4_quota_off(struct super_block =
+*sb, int type)
+> {
+> 	struct inode *inode =3D sb_dqopt(sb)->files[type];
+> 	handle_t *handle;
+> +	int err;
+>=20
+> 	/* Force all delayed allocation blocks to be allocated.
+> 	 * Caller already holds s_umount sem */
+> 	if (test_opt(sb, DELALLOC))
+> 		sync_filesystem(sb);
+>=20
+> -	if (!inode)
+> +	if (!inode || !igrab(inode))
+> 		goto out;
+>=20
+> +	err =3D dquot_quota_off(sb, type);
+> +	if (err)
+> +		goto out_put;
+> +
+> +	inode_lock(inode);
+> 	/* Update modification times of quota files when userspace can
+> 	 * start looking at them */
+> 	handle =3D ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
+> 	if (IS_ERR(handle))
+> -		goto out;
+> +		goto out_unlock;
+> +	EXT4_I(inode)->i_flags &=3D ~(EXT4_NOATIME_FL | =
+EXT4_IMMUTABLE_FL);
+> +	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
 
--- 
-Goldwyn
+It isn't obvious that we need to clear these flags at every unmount?  I
+don't think there is a good reason to be modifying the quota files from
+userspace, and e2fsck won't care about these flags anyway when fixing
+the quota files.
+
+> 	inode->i_mtime =3D inode->i_ctime =3D current_time(inode);
+> 	ext4_mark_inode_dirty(handle, inode);
+> 	ext4_journal_stop(handle);
+> -
+> +out_unlock:
+> +	inode_unlock(inode);
+> +out_put:
+> +	iput(inode);
+> +	return err;
+> out:
+> 	return dquot_quota_off(sb, type);
+> }
+> --
+> 2.12.0
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_F1398359-BC69-4C5F-955F-41B1DAF9CC15
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFY7pVWpIg59Q01vtYRAlLfAKCIGABoXe8kWd9mzaNi3w4xrG4pSgCeIDzc
+XP0URyEYV1pdTY6e8Y/oiok=
+=QdMJ
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_F1398359-BC69-4C5F-955F-41B1DAF9CC15--
