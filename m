@@ -1,98 +1,123 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] reiserfs: Set flags on quota files directly
-Date: Wed, 12 Apr 2017 09:26:02 +0200
-Message-ID: <20170412072611.29017-3-jack@suse.cz>
+Subject: [PATCH 03/11] ext2: Set flags on quota files directly
+Date: Wed, 12 Apr 2017 09:26:03 +0200
+Message-ID: <20170412072611.29017-4-jack@suse.cz>
 References: <20170412072611.29017-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <reiserfs-devel@vger.kernel.org>,
         jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54241 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753209AbdDLHen (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Apr 2017 03:34:43 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 Currently immutable and noatime flags on quota files are set by quota
 code which requires us to copy inode->i_flags to our on disk version of
-quota flags in GETFLAGS ioctl and when writing stat item. Move to
-setting / clearing these on-disk flags directly to save that copying.
+quota flags in GETFLAGS ioctl and __ext2_write_inode().  Move to setting
+/ clearing these on-disk flags directly to save that copying.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/reiserfs/super.c | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 54 insertions(+), 3 deletions(-)
+ fs/ext2/super.c | 78 +++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 76 insertions(+), 2 deletions(-)
 
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index feabcde0290d..1fbb687fb83e 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -547,12 +547,28 @@ static void reiserfs_kill_sb(struct super_block *s)
- 	kill_block_super(s);
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 9e25a71fe1a2..ca9ad24441cb 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -123,13 +123,29 @@ void ext2_update_dynamic_rev(struct super_block *sb)
+ 	 */
  }
  
 +#ifdef CONFIG_QUOTA
-+static int reiserfs_quota_off(struct super_block *sb, int type);
++static int ext2_quota_off(struct super_block *sb, int type);
 +
-+static void reiserfs_quota_off_umount(struct super_block *s)
++static void ext2_quota_off_umount(struct super_block *sb)
 +{
 +	int type;
 +
-+	for (type = 0; type < REISERFS_MAXQUOTAS; type++)
-+		reiserfs_quota_off(s, type);
++	for (type = 0; type < MAXQUOTAS; type++)
++		ext2_quota_off(sb, type);
 +}
 +#else
-+static inline void reiserfs_quota_off_umount(struct super_block *s)
++static inline void ext2_quota_off_umount(struct super_block *sb)
 +{
 +}
 +#endif
 +
- static void reiserfs_put_super(struct super_block *s)
+ static void ext2_put_super (struct super_block * sb)
  {
- 	struct reiserfs_transaction_handle th;
- 	th.t_trans_id = 0;
+ 	int db_count;
+ 	int i;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
  
--	dquot_disable(s, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
-+	reiserfs_quota_off_umount(s);
+-	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
++	ext2_quota_off_umount(sb);
  
- 	reiserfs_write_lock(s);
+ 	if (sbi->s_mb_cache) {
+ 		ext2_xattr_destroy_cache(sbi->s_mb_cache);
+@@ -314,10 +330,23 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
+ #ifdef CONFIG_QUOTA
+ static ssize_t ext2_quota_read(struct super_block *sb, int type, char *data, size_t len, loff_t off);
+ static ssize_t ext2_quota_write(struct super_block *sb, int type, const char *data, size_t len, loff_t off);
++static int ext2_quota_on(struct super_block *sb, int type, int format_id,
++			 const struct path *path);
+ static struct dquot **ext2_get_dquots(struct inode *inode)
+ {
+ 	return EXT2_I(inode)->i_dquot;
+ }
++
++static const struct quotactl_ops ext2_quotactl_ops = {
++	.quota_on	= ext2_quota_on,
++	.quota_off	= ext2_quota_off,
++	.quota_sync	= dquot_quota_sync,
++	.get_state	= dquot_get_state,
++	.set_info	= dquot_set_dqinfo,
++	.get_dqblk	= dquot_get_dqblk,
++	.set_dqblk	= dquot_set_dqblk,
++	.get_nextdqblk	= dquot_get_next_dqblk,
++};
+ #endif
  
-@@ -817,7 +833,7 @@ static const struct dquot_operations reiserfs_quota_operations = {
+ static const struct super_operations ext2_sops = {
+@@ -1117,7 +1146,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
  
- static const struct quotactl_ops reiserfs_qctl_operations = {
- 	.quota_on = reiserfs_quota_on,
--	.quota_off = dquot_quota_off,
-+	.quota_off = reiserfs_quota_off,
- 	.quota_sync = dquot_quota_sync,
- 	.get_state = dquot_get_state,
- 	.set_info = dquot_set_dqinfo,
-@@ -2405,12 +2421,47 @@ static int reiserfs_quota_on(struct super_block *sb, int type, int format_id,
- 			goto out;
- 	}
- 	reiserfs_write_unlock(sb);
--	return dquot_quota_on(sb, type, format_id, path);
-+	err = dquot_quota_on(sb, type, format_id, path);
-+	if (!err) {
-+		inode_lock(inode);
-+		REISERFS_I(inode)->i_attrs |= REISERFS_IMMUTABLE_FL |
-+					      REISERFS_NOATIME_FL;
-+		inode_set_flags(inode, S_IMMUTABLE | S_NOATIME,
-+				S_IMMUTABLE | S_NOATIME);
-+		inode_unlock(inode);
-+		mark_inode_dirty(inode);
-+	}
-+	return err;
- out:
- 	reiserfs_write_unlock(sb);
- 	return err;
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &dquot_operations;
+-	sb->s_qcop = &dquot_quotactl_ops;
++	sb->s_qcop = &ext2_quotactl_ops;
+ 	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+ #endif
+ 
+@@ -1548,6 +1577,51 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
+ 	return len - towrite;
  }
  
-+static int reiserfs_quota_off(struct super_block *sb, int type)
++static int ext2_quota_on(struct super_block *sb, int type, int format_id,
++			 const struct path *path)
 +{
 +	int err;
++	struct inode *inode;
++
++	err = dquot_quota_on(sb, type, format_id, path);
++	if (err)
++		return err;
++
++	inode = d_inode(path->dentry);
++	inode_lock(inode);
++	EXT2_I(inode)->i_flags |= EXT2_NOATIME_FL | EXT2_IMMUTABLE_FL;
++	inode_set_flags(inode, S_NOATIME | S_IMMUTABLE,
++			S_NOATIME | S_IMMUTABLE);
++	inode_unlock(inode);
++	mark_inode_dirty(inode);
++
++	return 0;
++}
++
++static int ext2_quota_off(struct super_block *sb, int type)
++{
 +	struct inode *inode = sb_dqopt(sb)->files[type];
++	int err;
 +
 +	if (!inode || !igrab(inode))
 +		goto out;
@@ -102,9 +127,8 @@ index feabcde0290d..1fbb687fb83e 100644
 +		goto out_put;
 +
 +	inode_lock(inode);
-+	REISERFS_I(inode)->i_attrs &= ~(REISERFS_IMMUTABLE_FL |
-+					REISERFS_NOATIME_FL);
-+	inode_set_flags(inode, 0, S_IMMUTABLE | S_NOATIME);
++	EXT2_I(inode)->i_flags &= ~(EXT2_NOATIME_FL | EXT2_IMMUTABLE_FL);
++	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
 +	inode_unlock(inode);
 +	mark_inode_dirty(inode);
 +out_put:
@@ -114,8 +138,8 @@ index feabcde0290d..1fbb687fb83e 100644
 +	return dquot_quota_off(sb, type);
 +}
 +
- /*
-  * Read data from quotafile - avoid pagecache and such because we cannot afford
-  * acquiring the locks... As quota files are never truncated and quota code
+ #endif
+ 
+ static struct file_system_type ext2_fs_type = {
 -- 
 2.12.0
