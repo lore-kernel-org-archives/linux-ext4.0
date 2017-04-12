@@ -1,28 +1,48 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 8/8] statx: Include a mask for stx_attributes in struct
- statx
-Date: Wed, 12 Apr 2017 08:12:29 -0700
-Message-ID: <20170412151229.GA6126@infradead.org>
-References: <149098148523.28108.1441135633380173665.stgit@warthog.procyon.org.uk>
- <149098153785.28108.1114055429564367803.stgit@warthog.procyon.org.uk>
- <20170404071252.GA30966@infradead.org>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: [PATCH 5/9] nowait aio: return on congested block device
+Date: Wed, 12 Apr 2017 13:31:43 -0500
+Message-ID: <7fba3538-8c91-20e5-63f1-6e063caaaffb@suse.de>
+References: <20170411142619.27205-1-rgoldwyn@suse.de>
+ <20170411142619.27205-6-rgoldwyn@suse.de>
+ <20170412083625.GB22363@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org,
-        hch@infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170404071252.GA30966@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
+        linux-api@vger.kernel.org, willy@infradead.org,
+        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170412083625.GB22363@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 04, 2017 at 12:12:52AM -0700, Christoph Hellwig wrote:
-> On Fri, Mar 31, 2017 at 06:32:17PM +0100, David Howells wrote:
-> > Include a mask in struct stat to indicate which bits of stx_attributes the
-> > filesystem actually supports.
-> 
-> What's the use case for this?
 
-ping!
+
+On 04/12/2017 03:36 AM, Christoph Hellwig wrote:
+> As mentioned last time around, this should be a REQ_NOWAIT flag so
+> that it can be easily passed dow? n to the request layer.
+> 
+>> +static inline void bio_wouldblock_error(struct bio *bio)
+>> +{
+>> +	bio->bi_error = -EAGAIN;
+>> +	bio_endio(bio);
+>> +}
+> 
+> Please skip this helper..
+
+Why? It is being called three times?
+I am incorporating all the rest of the comments, besides this one. Thanks.
+
+> 
+>> +#define QUEUE_FLAG_NOWAIT      28	/* queue supports BIO_NOWAIT */
+> 
+> Please make the flag name a little more descriptive, this sounds like
+> it will never wait.
+> 
+
+-- 
+Goldwyn
