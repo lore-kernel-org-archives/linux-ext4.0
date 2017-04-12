@@ -1,56 +1,144 @@
-From: <bfoster@uca.edu>
-Subject: 47846 linux-ext4
-Date: Tue, 11 Apr 2017 20:08:48 -0000
-Message-ID: <149194132836.14251.12727048999881112939@business.telecomitalia.it>
-Mime-Version: 1.0
-Content-Type: application/zip; name="62006392.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from host58-154-static.118-2-b.business.telecomitalia.it ([2.118.154.58]:60065
-        "HELO business.telecomitalia.it" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with SMTP id S1751900AbdDKUI5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Apr 2017 16:08:57 -0400
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/11] jfs: Set flags on quota files directly
+Date: Wed, 12 Apr 2017 09:26:04 +0200
+Message-ID: <20170412072611.29017-5-jack@suse.cz>
+References: <20170412072611.29017-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, <reiserfs-devel@vger.kernel.org>,
+        jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>
+To: <linux-fsdevel@vger.kernel.org>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
+Currently immutable and noatime flags on quota files are set by quota
+code which requires us to copy inode->i_flags to our on disk version
+of quota flags in GETFLAGS ioctl and copy_to_dinode(). Move to
+setting / clearing these on-disk flags directly to save that copying.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jfs/super.c | 79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 77 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+index c64c2574a0aa..e8aad7d87b8c 100644
+--- a/fs/jfs/super.c
++++ b/fs/jfs/super.c
+@@ -45,6 +45,7 @@
+ #include "jfs_acl.h"
+ #include "jfs_debug.h"
+ #include "jfs_xattr.h"
++#include "jfs_dinode.h"
+ 
+ MODULE_DESCRIPTION("The Journaled Filesystem (JFS)");
+ MODULE_AUTHOR("Steve Best/Dave Kleikamp/Barry Arndt, IBM");
+@@ -181,6 +182,35 @@ static int jfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_QUOTA
++static int jfs_quota_off(struct super_block *sb, int type);
++static int jfs_quota_on(struct super_block *sb, int type, int format_id,
++			const struct path *path);
++
++static void jfs_quota_off_umount(struct super_block *sb)
++{
++	int type;
++
++	for (type = 0; type < MAXQUOTAS; type++)
++		jfs_quota_off(sb, type);
++}
++
++static const struct quotactl_ops jfs_quotactl_ops = {
++	.quota_on	= jfs_quota_on,
++	.quota_off	= jfs_quota_off,
++	.quota_sync	= dquot_quota_sync,
++	.get_state	= dquot_get_state,
++	.set_info	= dquot_set_dqinfo,
++	.get_dqblk	= dquot_get_dqblk,
++	.set_dqblk	= dquot_set_dqblk,
++	.get_nextdqblk	= dquot_get_next_dqblk,
++};
++#else
++static inline void jfs_quota_off_umount(struct super_block *sb)
++{
++}
++#endif
++
+ static void jfs_put_super(struct super_block *sb)
+ {
+ 	struct jfs_sb_info *sbi = JFS_SBI(sb);
+@@ -188,7 +218,7 @@ static void jfs_put_super(struct super_block *sb)
+ 
+ 	jfs_info("In jfs_put_super");
+ 
+-	dquot_disable(sb, -1, DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
++	jfs_quota_off_umount(sb);
+ 
+ 	rc = jfs_umount(sb);
+ 	if (rc)
+@@ -536,7 +566,7 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_xattr = jfs_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &dquot_operations;
+-	sb->s_qcop = &dquot_quotactl_ops;
++	sb->s_qcop = &jfs_quotactl_ops;
+ 	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP;
+ #endif
+ 
+@@ -840,6 +870,51 @@ static struct dquot **jfs_get_dquots(struct inode *inode)
+ {
+ 	return JFS_IP(inode)->i_dquot;
+ }
++
++static int jfs_quota_on(struct super_block *sb, int type, int format_id,
++			const struct path *path)
++{
++	int err;
++	struct inode *inode;
++
++	err = dquot_quota_on(sb, type, format_id, path);
++	if (err)
++		return err;
++
++	inode = d_inode(path->dentry);
++	inode_lock(inode);
++	JFS_IP(inode)->mode2 |= JFS_NOATIME_FL | JFS_IMMUTABLE_FL;
++	inode_set_flags(inode, S_NOATIME | S_IMMUTABLE,
++			S_NOATIME | S_IMMUTABLE);
++	inode_unlock(inode);
++	mark_inode_dirty(inode);
++
++	return 0;
++}
++
++static int jfs_quota_off(struct super_block *sb, int type)
++{
++	struct inode *inode = sb_dqopt(sb)->files[type];
++	int err;
++
++	if (!inode || !igrab(inode))
++		goto out;
++
++	err = dquot_quota_off(sb, type);
++	if (err)
++		goto out_put;
++
++	inode_lock(inode);
++	JFS_IP(inode)->mode2 &= ~(JFS_NOATIME_FL | JFS_IMMUTABLE_FL);
++	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
++	inode_unlock(inode);
++	mark_inode_dirty(inode);
++out_put:
++	iput(inode);
++	return err;
++out:
++	return dquot_quota_off(sb, type);
++}
+ #endif
+ 
+ static const struct super_operations jfs_super_operations = {
+-- 
+2.12.0
+
