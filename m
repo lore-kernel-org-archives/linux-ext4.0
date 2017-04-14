@@ -1,254 +1,168 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 5/8] nowait aio: return on congested block device
-Date: Fri, 14 Apr 2017 07:02:54 -0500
-Message-ID: <20170414120257.8932-6-rgoldwyn@suse.de>
-References: <20170414120257.8932-1-rgoldwyn@suse.de>
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: xattr-in-inode support
+Date: Fri, 14 Apr 2017 09:27:20 -0400
+Message-ID: <20170414132720.je5ca2c5fibjn6qq@thunk.org>
+References: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        James Simmons <jsimmons@infradead.org>, tahsin@google.com,
+        nauman@google.com, tytso@google.com
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57935 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752590AbdDNMDR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Apr 2017 08:03:17 -0400
-In-Reply-To: <20170414120257.8932-1-rgoldwyn@suse.de>
+Received: from imap.thunk.org ([74.207.234.97]:37372 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751192AbdDNN1Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Apr 2017 09:27:24 -0400
+Content-Disposition: inline
+In-Reply-To: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+To summarize the discussion that we had on this week's ext4
+teleconference call, while discussing ways in which we might extend
+ext4's extended attributes to provide better support for Samba.
 
-A new bio operation flag REQ_NOWAIT is introduced to identify bio's
-orignating from iocb with IOCB_NOWAIT. This flag indicates
-to return immediately if a request cannot be made instead
-of retrying.
+Andreas pointed out that we already have an unused field,
+e_value_block, in ext4_xattr_entry structure:
 
-To facilitate this, QUEUE_FLAG_NOWAIT is set to devices
-which support this. While currently this is set to
-virtio and sd only. Support to more devices will be added soon
-once I am sure they don't block. Currently blocks such as dm/md
-block while performing sync.
+struct ext4_xattr_entry {
+	__u8	e_name_len;	/* length of name */
+	__u8	e_name_index;	/* attribute name index */
+	__le16	e_value_offs;	/* offset in disk block of value */
+	__le32	e_value_block;	/* disk block attribute is stored on (n/i) */
+	__le32	e_value_size;	/* size of attribute value */
+	__le32	e_hash;		/* hash value of name and value */
+	char	e_name[0];	/* attribute name */
+};
 
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
----
- block/blk-core.c           | 24 ++++++++++++++++++++++--
- block/blk-mq-sched.c       |  3 +++
- block/blk-mq.c             |  4 ++++
- drivers/block/virtio_blk.c |  3 +++
- drivers/scsi/sd.c          |  3 +++
- fs/direct-io.c             | 10 ++++++++--
- include/linux/bio.h        |  6 ++++++
- include/linux/blk_types.h  |  2 ++
- include/linux/blkdev.h     |  3 +++
- 9 files changed, 54 insertions(+), 4 deletions(-)
+It's only a 32-bit field, and it was repurposed in a Lustre-specific
+feature, EXT4_FEATURE_INCOMPAT_EA_INODE as e_value_inum (since inodes
+are only 32-bit today).  If this feature flag is enabled, then kernels
+which understand the feature will treat e_value_block as an inode
+number, and if it is non-zero, the value of that extended attribute is
+stored in the inode.  This ends up burning a lot of extra inodes for
+each extended attribute, which is why there was never much excitement
+for this patch going upstream.
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index d772c221cc17..54698521756b 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1232,6 +1232,11 @@ static struct request *get_request(struct request_queue *q, unsigned int op,
- 	if (!IS_ERR(rq))
- 		return rq;
- 
-+	if (bio && (bio->bi_opf & REQ_NOWAIT)) {
-+		blk_put_rl(rl);
-+		return ERR_PTR(-EAGAIN);
-+	}
-+
- 	if (!gfpflags_allow_blocking(gfp_mask) || unlikely(blk_queue_dying(q))) {
- 		blk_put_rl(rl);
- 		return rq;
-@@ -1870,6 +1875,18 @@ generic_make_request_checks(struct bio *bio)
- 		goto end_io;
- 	}
- 
-+	if (bio->bi_opf & REQ_NOWAIT) {
-+		if (!blk_queue_nowait(q)) {
-+			err = -EOPNOTSUPP;
-+			goto end_io;
-+		}
-+		if (!(bio->bi_opf & REQ_SYNC)) {
-+			err = -EINVAL;
-+			goto end_io;
-+		}
-+	}
-+
-+
- 	part = bio->bi_bdev->bd_part;
- 	if (should_fail_request(part, bio->bi_iter.bi_size) ||
- 	    should_fail_request(&part_to_disk(part)->part0,
-@@ -2021,7 +2038,7 @@ blk_qc_t generic_make_request(struct bio *bio)
- 	do {
- 		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
- 
--		if (likely(blk_queue_enter(q, false) == 0)) {
-+		if (likely(blk_queue_enter(q, bio->bi_opf & REQ_NOWAIT) == 0)) {
- 			struct bio_list lower, same;
- 
- 			/* Create a fresh bio_list for all subordinate requests */
-@@ -2046,7 +2063,10 @@ blk_qc_t generic_make_request(struct bio *bio)
- 			bio_list_merge(&bio_list_on_stack[0], &same);
- 			bio_list_merge(&bio_list_on_stack[0], &bio_list_on_stack[1]);
- 		} else {
--			bio_io_error(bio);
-+			if (unlikely(!blk_queue_dying(q) && (bio->bi_opf & REQ_NOWAIT)))
-+				bio_wouldblock_error(bio);
-+			else
-+				bio_io_error(bio);
- 		}
- 		bio = bio_list_pop(&bio_list_on_stack[0]);
- 	} while (bio);
-diff --git a/block/blk-mq-sched.c b/block/blk-mq-sched.c
-index c974a1bbf4cb..9f88190ff395 100644
---- a/block/blk-mq-sched.c
-+++ b/block/blk-mq-sched.c
-@@ -119,6 +119,9 @@ struct request *blk_mq_sched_get_request(struct request_queue *q,
- 	if (likely(!data->hctx))
- 		data->hctx = blk_mq_map_queue(q, data->ctx->cpu);
- 
-+	if (bio && (bio->bi_opf & REQ_NOWAIT))
-+		data->flags |= BLK_MQ_REQ_NOWAIT;
-+
- 	if (e) {
- 		data->flags |= BLK_MQ_REQ_INTERNAL;
- 
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 572966f49596..8b9b1a411ce2 100644
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -1538,6 +1538,8 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
- 	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
- 	if (unlikely(!rq)) {
- 		__wbt_done(q->rq_wb, wb_acct);
-+		if (bio && (bio->bi_opf & REQ_NOWAIT))
-+			bio_wouldblock_error(bio);
- 		return BLK_QC_T_NONE;
- 	}
- 
-@@ -1662,6 +1664,8 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
- 	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
- 	if (unlikely(!rq)) {
- 		__wbt_done(q->rq_wb, wb_acct);
-+		if (bio && (bio->bi_opf & REQ_NOWAIT))
-+			bio_wouldblock_error(bio);
- 		return BLK_QC_T_NONE;
- 	}
- 
-diff --git a/drivers/block/virtio_blk.c b/drivers/block/virtio_blk.c
-index 1d4c9f8bc1e1..7481124c5025 100644
---- a/drivers/block/virtio_blk.c
-+++ b/drivers/block/virtio_blk.c
-@@ -731,6 +731,9 @@ static int virtblk_probe(struct virtio_device *vdev)
- 	/* No real sector limit. */
- 	blk_queue_max_hw_sectors(q, -1U);
- 
-+	/* Request queue supports BIO_NOWAIT */
-+	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
-+
- 	/* Host can optionally specify maximum segment size and number of
- 	 * segments. */
- 	err = virtio_cread_feature(vdev, VIRTIO_BLK_F_SIZE_MAX,
-diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
-index fcfeddc79331..9df85ee165be 100644
---- a/drivers/scsi/sd.c
-+++ b/drivers/scsi/sd.c
-@@ -3177,6 +3177,9 @@ static int sd_probe(struct device *dev)
- 					     SD_MOD_TIMEOUT);
- 	}
- 
-+	/* Support BIO_NOWAIT */
-+	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, sdp->request_queue);
-+
- 	device_initialize(&sdkp->dev);
- 	sdkp->dev.parent = dev;
- 	sdkp->dev.class = &sd_disk_class;
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index a04ebea77de8..a802168284e1 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -480,8 +480,12 @@ static int dio_bio_complete(struct dio *dio, struct bio *bio)
- 	unsigned i;
- 	int err;
- 
--	if (bio->bi_error)
--		dio->io_error = -EIO;
-+	if (bio->bi_error) {
-+		if (bio->bi_opf & REQ_NOWAIT)
-+			dio->io_error = -EAGAIN;
-+		else
-+			dio->io_error = -EIO;
-+	}
- 
- 	if (dio->is_async && dio->op == REQ_OP_READ && dio->should_dirty) {
- 		err = bio->bi_error;
-@@ -1197,6 +1201,8 @@ do_blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
- 	if (iov_iter_rw(iter) == WRITE) {
- 		dio->op = REQ_OP_WRITE;
- 		dio->op_flags = REQ_SYNC | REQ_IDLE;
-+		if (iocb->ki_flags & IOCB_NOWAIT)
-+			dio->op_flags |= REQ_NOWAIT;
- 	} else {
- 		dio->op = REQ_OP_READ;
- 	}
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 8e521194f6fc..1a9270744b1e 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -425,6 +425,12 @@ static inline void bio_io_error(struct bio *bio)
- 	bio_endio(bio);
- }
- 
-+static inline void bio_wouldblock_error(struct bio *bio)
-+{
-+	bio->bi_error = -EAGAIN;
-+	bio_endio(bio);
-+}
-+
- struct request_queue;
- extern int bio_phys_segments(struct request_queue *, struct bio *);
- 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index d703acb55d0f..5ce4da30ba43 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -187,6 +187,7 @@ enum req_flag_bits {
- 	__REQ_PREFLUSH,		/* request for cache flush */
- 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
- 	__REQ_BACKGROUND,	/* background IO */
-+	__REQ_NOWAIT,		/* Don't wait if request will block */
- 	__REQ_NR_BITS,		/* stops here */
- };
- 
-@@ -203,6 +204,7 @@ enum req_flag_bits {
- #define REQ_PREFLUSH		(1ULL << __REQ_PREFLUSH)
- #define REQ_RAHEAD		(1ULL << __REQ_RAHEAD)
- #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
-+#define REQ_NOWAIT		(1ULL << __REQ_NOWAIT)
- 
- #define REQ_FAILFAST_MASK \
- 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 7548f332121a..df0b1245d955 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -610,6 +610,8 @@ struct request_queue {
- #define QUEUE_FLAG_FLUSH_NQ    25	/* flush not queueuable */
- #define QUEUE_FLAG_DAX         26	/* device supports DAX */
- #define QUEUE_FLAG_STATS       27	/* track rq completion times */
-+/* can return immediately on congestion  (for REQ_NOWAIT) */
-+#define QUEUE_FLAG_NOWAIT      28
- 
- #define QUEUE_FLAG_DEFAULT	((1 << QUEUE_FLAG_IO_STAT) |		\
- 				 (1 << QUEUE_FLAG_STACKABLE)	|	\
-@@ -700,6 +702,7 @@ static inline void queue_flag_clear(unsigned int flag, struct request_queue *q)
- #define blk_queue_secure_erase(q) \
- 	(test_bit(QUEUE_FLAG_SECERASE, &(q)->queue_flags))
- #define blk_queue_dax(q)	test_bit(QUEUE_FLAG_DAX, &(q)->queue_flags)
-+#define blk_queue_nowait(q)	test_bit(QUEUE_FLAG_NOWAIT, &(q)->queue_flags)
- 
- #define blk_noretry_request(rq) \
- 	((rq)->cmd_flags & (REQ_FAILFAST_DEV|REQ_FAILFAST_TRANSPORT| \
--- 
-2.12.0
+However, we could extend this feature (it will almost certainly
+require a new INCOMPAT feature flag) such that a particular inode
+could be referenced from multiple strut ext4_xattr_entry's (from
+multiple inodes or from a single inode), since the inode for the xattr
+body already has a ref count, i_links_count.  And given that on a
+typical Windows CIFS file system, there will be dozens of unique
+acl's, the problem of exhausting inodes for xattrs won't be a issue in
+this case.
+
+
+However, another approach that we discussed on the weekly conference
+call was to change e_value_size to be an 16-bit field, and to use the
+high 16 bits for flags, where one of the flags bits (say, the MSB)
+would mean that e_value_block and e_value_size should be treated as a
+48-bit block number, where the block could be stored.
+
+Thinking about this some more, we can use another 4 bits from the high
+bits of e_value_size as a 16 bit number n, where if n=0, the block
+number is stored in e_Value_block and e_value_size as above, and if n
+> 1, that there are additional blocks for the xattr value, which will
+be stored in the place where the xattr value would normally be stored
+(e.g, in the inline xattr space or in the external xattr block).
+
+So pictorally, it would look like this:
+
++----------------+----------------+
+| 128-byte inode | in-line xattr  |
++----------------+----------------+
+                /                  \
+               /                    \
+              /                      \
+  +---------------------------------------------+
+  | XE | XE | XE |               | XV | XV | XV |   XE == xattr_entry   XV == xattr value
+  +---------------------------------------------+
+           /      \             /     \
+          /        \           /       \
+         /          \         /         \
+    +--------------------+  +-------------+
+    |   ...  | blk0 |... |  | blk1 | blk2 |
+    +--------------------+  +-------------+
+
+(to those using gmail; please view the above in a fixed-width font, or
+use "show original")
+
+So in this picture, XE is the ext4_xattr_entry, and in this case, the
+high bits of e_value_size indicate e_value_block and the low bits of
+e_value_size indicate the location of the first 4k block where the
+xattr value is to be stored, and if one were to look at region of
+memory indicated by e_value_offs, there would be two 8-byte block
+numbers indicating the location of the 2nd and 3rd file system blocks
+where the xattr value can be found.
+
+In the external xattr value blocks, at the beginning of the first
+block (e.g., at blk0), there will be an ext4_xattr_header, so we can
+take advantage of h_refcount field, but with the following changes:
+
+* The low 16 bits of h_blocks will be used for the size of the xattr;
+  the high bits of h_blocks must be zero (for now).
+
+* The h_hash field will be a crc32c of the value of the xattr stored
+  in the external xattr value block(s).
+
+* The h_checksum field will be calculated so that the crc32c covers
+  only the ext4_xattr_header, instead of the entire xattrblock.  e.g.,
+  crc32c(fs uuid || id || xattr header), where id is the inode number
+  if refcount = 1, and blknum otherwise.
+
+What are the advantages of this approach over the Lustre's
+xattr-value-in-inode approach?  First, we don't need to burn inodes
+for the xattr value.  This could potentially be an issue for Windows
+SID's, since there the number of SID's is roughly equal to number of
+users plus the number of groups.  And for a large enterprise with
+O(100,000) employees, we could burn a pretty large number of inodes.
+The other advantage of this scheme is that h_refcount field is 32
+bits, where as the inode's i_links_count field is only 16 bits, and
+there could very easily be more than 64k files that might share the
+same Windows ACL or Windows SID.  So we would need to figure out some
+way of dealing with an extended i_links_count field if we went with
+the xattr-value-in-inode approach.
+
+
+We don't need to make this to be an either-or choice, of course.  We
+could integrate the Lustre approach as well as this latter approach
+which is more optimized for Windows ACL's.  And I do want to reiterate
+that this is just a rough sketch as a design doc.  I'm sure we may
+want to make changes to it, but hopefully it will serve as a good
+starting point for discussion.
+
+Cheers,
+
+						- Ted
+
+
+On Thu, Apr 13, 2017 at 01:58:56PM -0600, Andreas Dilger wrote:
+> Large xattr support is implemented for EXT4_FEATURE_INCOMPAT_EA_INODE.
+> 
+> If the size of an xattr value is larger than will fit in a single
+> external block, then the xattr value will be saved into the body
+> of an external xattr inode.
+> 
+> The also helps support a larger number of xattr, since only the headers
+> will be stored in the in-inode space or the single external block.
+> 
+> The inode is referenced from the xattr header via "e_value_inum",
+> which was formerly "e_value_block", but that field was never used.
+> The e_value_size still contains the xattr size so that listing
+> xattrs does not need to look up the inode if the data is not accessed.
+> 
+> struct ext4_xattr_entry {
+>  	__u8	e_name_len;	/* length of name */
+>  	__u8	e_name_index;	/* attribute name index */
+>  	__le16	e_value_offs;	/* offset in disk block of value */
+> 	__le32	e_value_inum;	/* inode in which value is stored */
+>  	__le32	e_value_size;	/* size of attribute value */
+>  	__le32	e_hash;		/* hash value of name and value */
+>  	char	e_name[0];	/* attribute name */
+> };
+> 
+> The xattr inode is marked with the EXT4_EA_INODE_FL flag and also
+> holds a back-reference to the owning inode in its i_mtime field,
+> allowing the ext4/e2fsck to verify the correct inode is accessed.
