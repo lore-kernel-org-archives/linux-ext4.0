@@ -1,168 +1,282 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: xattr-in-inode support
-Date: Fri, 14 Apr 2017 09:27:20 -0400
-Message-ID: <20170414132720.je5ca2c5fibjn6qq@thunk.org>
-References: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        James Simmons <jsimmons@infradead.org>, tahsin@google.com,
-        nauman@google.com, tytso@google.com
-To: Andreas Dilger <adilger@dilger.ca>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v3] tune2fs: fix BUGs of tuning project quota
+Date: Fri, 14 Apr 2017 21:34:49 +0800
+Message-ID: <20170414133449.45607-1-wshilong@ddn.com>
+Cc: wshilong@ddn.com, andreas.dilger@intel.com, lixi@ddn.com,
+        sihara@ddn.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37372 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751192AbdDNN1Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Apr 2017 09:27:24 -0400
-Content-Disposition: inline
-In-Reply-To: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:35706 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751349AbdDNNfC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Apr 2017 09:35:02 -0400
+Received: by mail-pg0-f68.google.com with SMTP id g2so16475200pge.2
+        for <linux-ext4@vger.kernel.org>; Fri, 14 Apr 2017 06:35:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To summarize the discussion that we had on this week's ext4
-teleconference call, while discussing ways in which we might extend
-ext4's extended attributes to provide better support for Samba.
+Somehow project quota did not work well for enable/disable,
+Add some tests to address it.
 
-Andreas pointed out that we already have an unused field,
-e_value_block, in ext4_xattr_entry structure:
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ misc/tune2fs.c              | 12 ++++++++----
+ tests/t_project_1on/name    |  1 +
+ tests/t_project_1on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_2off/name   |  1 +
+ tests/t_project_2off/script | 35 +++++++++++++++++++++++++++++++++++
+ tests/t_project_3on/name    |  1 +
+ tests/t_project_3on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_4off/name   |  1 +
+ tests/t_project_4off/script | 35 +++++++++++++++++++++++++++++++++++
+ 9 files changed, 164 insertions(+), 4 deletions(-)
+ create mode 100644 tests/t_project_1on/name
+ create mode 100644 tests/t_project_1on/script
+ create mode 100644 tests/t_project_2off/name
+ create mode 100644 tests/t_project_2off/script
+ create mode 100644 tests/t_project_3on/name
+ create mode 100644 tests/t_project_3on/script
+ create mode 100644 tests/t_project_4off/name
+ create mode 100644 tests/t_project_4off/script
 
-struct ext4_xattr_entry {
-	__u8	e_name_len;	/* length of name */
-	__u8	e_name_index;	/* attribute name index */
-	__le16	e_value_offs;	/* offset in disk block of value */
-	__le32	e_value_block;	/* disk block attribute is stored on (n/i) */
-	__le32	e_value_size;	/* size of attribute value */
-	__le32	e_hash;		/* hash value of name and value */
-	char	e_name[0];	/* attribute name */
-};
-
-It's only a 32-bit field, and it was repurposed in a Lustre-specific
-feature, EXT4_FEATURE_INCOMPAT_EA_INODE as e_value_inum (since inodes
-are only 32-bit today).  If this feature flag is enabled, then kernels
-which understand the feature will treat e_value_block as an inode
-number, and if it is non-zero, the value of that extended attribute is
-stored in the inode.  This ends up burning a lot of extra inodes for
-each extended attribute, which is why there was never much excitement
-for this patch going upstream.
-
-However, we could extend this feature (it will almost certainly
-require a new INCOMPAT feature flag) such that a particular inode
-could be referenced from multiple strut ext4_xattr_entry's (from
-multiple inodes or from a single inode), since the inode for the xattr
-body already has a ref count, i_links_count.  And given that on a
-typical Windows CIFS file system, there will be dozens of unique
-acl's, the problem of exhausting inodes for xattrs won't be a issue in
-this case.
-
-
-However, another approach that we discussed on the weekly conference
-call was to change e_value_size to be an 16-bit field, and to use the
-high 16 bits for flags, where one of the flags bits (say, the MSB)
-would mean that e_value_block and e_value_size should be treated as a
-48-bit block number, where the block could be stored.
-
-Thinking about this some more, we can use another 4 bits from the high
-bits of e_value_size as a 16 bit number n, where if n=0, the block
-number is stored in e_Value_block and e_value_size as above, and if n
-> 1, that there are additional blocks for the xattr value, which will
-be stored in the place where the xattr value would normally be stored
-(e.g, in the inline xattr space or in the external xattr block).
-
-So pictorally, it would look like this:
-
-+----------------+----------------+
-| 128-byte inode | in-line xattr  |
-+----------------+----------------+
-                /                  \
-               /                    \
-              /                      \
-  +---------------------------------------------+
-  | XE | XE | XE |               | XV | XV | XV |   XE == xattr_entry   XV == xattr value
-  +---------------------------------------------+
-           /      \             /     \
-          /        \           /       \
-         /          \         /         \
-    +--------------------+  +-------------+
-    |   ...  | blk0 |... |  | blk1 | blk2 |
-    +--------------------+  +-------------+
-
-(to those using gmail; please view the above in a fixed-width font, or
-use "show original")
-
-So in this picture, XE is the ext4_xattr_entry, and in this case, the
-high bits of e_value_size indicate e_value_block and the low bits of
-e_value_size indicate the location of the first 4k block where the
-xattr value is to be stored, and if one were to look at region of
-memory indicated by e_value_offs, there would be two 8-byte block
-numbers indicating the location of the 2nd and 3rd file system blocks
-where the xattr value can be found.
-
-In the external xattr value blocks, at the beginning of the first
-block (e.g., at blk0), there will be an ext4_xattr_header, so we can
-take advantage of h_refcount field, but with the following changes:
-
-* The low 16 bits of h_blocks will be used for the size of the xattr;
-  the high bits of h_blocks must be zero (for now).
-
-* The h_hash field will be a crc32c of the value of the xattr stored
-  in the external xattr value block(s).
-
-* The h_checksum field will be calculated so that the crc32c covers
-  only the ext4_xattr_header, instead of the entire xattrblock.  e.g.,
-  crc32c(fs uuid || id || xattr header), where id is the inode number
-  if refcount = 1, and blknum otherwise.
-
-What are the advantages of this approach over the Lustre's
-xattr-value-in-inode approach?  First, we don't need to burn inodes
-for the xattr value.  This could potentially be an issue for Windows
-SID's, since there the number of SID's is roughly equal to number of
-users plus the number of groups.  And for a large enterprise with
-O(100,000) employees, we could burn a pretty large number of inodes.
-The other advantage of this scheme is that h_refcount field is 32
-bits, where as the inode's i_links_count field is only 16 bits, and
-there could very easily be more than 64k files that might share the
-same Windows ACL or Windows SID.  So we would need to figure out some
-way of dealing with an extended i_links_count field if we went with
-the xattr-value-in-inode approach.
-
-
-We don't need to make this to be an either-or choice, of course.  We
-could integrate the Lustre approach as well as this latter approach
-which is more optimized for Windows ACL's.  And I do want to reiterate
-that this is just a rough sketch as a design doc.  I'm sure we may
-want to make changes to it, but hopefully it will serve as a good
-starting point for discussion.
-
-Cheers,
-
-						- Ted
-
-
-On Thu, Apr 13, 2017 at 01:58:56PM -0600, Andreas Dilger wrote:
-> Large xattr support is implemented for EXT4_FEATURE_INCOMPAT_EA_INODE.
-> 
-> If the size of an xattr value is larger than will fit in a single
-> external block, then the xattr value will be saved into the body
-> of an external xattr inode.
-> 
-> The also helps support a larger number of xattr, since only the headers
-> will be stored in the in-inode space or the single external block.
-> 
-> The inode is referenced from the xattr header via "e_value_inum",
-> which was formerly "e_value_block", but that field was never used.
-> The e_value_size still contains the xattr size so that listing
-> xattrs does not need to look up the inode if the data is not accessed.
-> 
-> struct ext4_xattr_entry {
->  	__u8	e_name_len;	/* length of name */
->  	__u8	e_name_index;	/* attribute name index */
->  	__le16	e_value_offs;	/* offset in disk block of value */
-> 	__le32	e_value_inum;	/* inode in which value is stored */
->  	__le32	e_value_size;	/* size of attribute value */
->  	__le32	e_hash;		/* hash value of name and value */
->  	char	e_name[0];	/* attribute name */
-> };
-> 
-> The xattr inode is marked with the EXT4_EA_INODE_FL flag and also
-> holds a back-reference to the owning inode in its i_mtime field,
-> allowing the ext4/e2fsck to verify the correct inode is accessed.
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f1bad60..0d453db 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -189,7 +189,8 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT4_FEATURE_RO_COMPAT_QUOTA |
+ 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
+-		EXT4_FEATURE_RO_COMPAT_READONLY
++		EXT4_FEATURE_RO_COMPAT_READONLY |
++		EXT4_FEATURE_RO_COMPAT_PROJECT |
+ };
+ 
+ /**
+@@ -1309,14 +1310,17 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+-		if (!Q_flag && !ext2fs_has_feature_quota(sb))
+-			fputs(_("\nWarning: enabled project without quota together\n"),
+-				stderr);
+ 		Q_flag = 1;
+ 		quota_enable[PRJQUOTA] = QOPT_ENABLE;
+ 	}
+ 
+ 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++		Q_flag = 1;
++		quota_enable[PRJQUOTA] = QOPT_DISABLE;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+ 		/*
+ 		 * Set the Q_flag here and handle the quota options in the code
+diff --git a/tests/t_project_1on/name b/tests/t_project_1on/name
+new file mode 100644
+index 0000000..6b2dd29
+--- /dev/null
++++ b/tests/t_project_1on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -O option
+diff --git a/tests/t_project_1on/script b/tests/t_project_1on/script
+new file mode 100644
+index 0000000..52466a7
+--- /dev/null
++++ b/tests/t_project_1on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -O project  $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_2off/name b/tests/t_project_2off/name
+new file mode 100644
+index 0000000..293717d
+--- /dev/null
++++ b/tests/t_project_2off/name
+@@ -0,0 +1 @@
++disable project using tune2fs
+diff --git a/tests/t_project_2off/script b/tests/t_project_2off/script
+new file mode 100644
+index 0000000..98696b4
+--- /dev/null
++++ b/tests/t_project_2off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -O ^project $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
+diff --git a/tests/t_project_3on/name b/tests/t_project_3on/name
+new file mode 100644
+index 0000000..9a10680
+--- /dev/null
++++ b/tests/t_project_3on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -Q option
+diff --git a/tests/t_project_3on/script b/tests/t_project_3on/script
+new file mode 100644
+index 0000000..1143ba4
+--- /dev/null
++++ b/tests/t_project_3on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -Q prj  $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -Q project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_4off/name b/tests/t_project_4off/name
+new file mode 100644
+index 0000000..5ef6430
+--- /dev/null
++++ b/tests/t_project_4off/name
+@@ -0,0 +1 @@
++disable project using tune2fs -Q option
+diff --git a/tests/t_project_4off/script b/tests/t_project_4off/script
+new file mode 100644
+index 0000000..29de6bc
+--- /dev/null
++++ b/tests/t_project_4off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -Q ^prj $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
+-- 
+2.9.3
