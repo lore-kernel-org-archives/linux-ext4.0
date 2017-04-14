@@ -1,89 +1,343 @@
-From: Drew Davenport <ddavenport@google.com>
-Subject: [PATCH v2] e2fsprogs: Make -U option consistent between tune2fs and
- mke2fs
-Date: Thu, 13 Apr 2017 16:56:28 -0700
-Message-ID: <20170413235628.GA133121@google.com>
-References: <3501FCFF-B686-47DF-B530-802CB3A79FAB@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v2] tune2fs: fix BUGs of tuning project quota
+Date: Fri, 14 Apr 2017 14:55:36 +0800
+Message-ID: <20170414065536.39321-1-wshilong@ddn.com>
+Cc: wshilong@ddn.com, andreas.dilger@intel.com, lixi@ddn.com,
+        sihara@ddn.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f46.google.com ([74.125.83.46]:35818 "EHLO
-        mail-pg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752635AbdDMX45 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Apr 2017 19:56:57 -0400
-Received: by mail-pg0-f46.google.com with SMTP id 72so28654593pge.2
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Apr 2017 16:56:57 -0700 (PDT)
-Received: from google.com ([2620:0:1000:1301:4dba:d534:8e36:9af8])
-        by smtp.gmail.com with ESMTPSA id f6sm209266pfe.57.2017.04.13.16.56.55
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=AES128-SHA bits=128/128);
-        Thu, 13 Apr 2017 16:56:55 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <3501FCFF-B686-47DF-B530-802CB3A79FAB@dilger.ca>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:33524 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751083AbdDNGzv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Apr 2017 02:55:51 -0400
+Received: by mail-pf0-f196.google.com with SMTP id c198so14247826pfc.0
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Apr 2017 23:55:51 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Allow "null", "clear", "random", or "time" for the -U option for
-mke2fs, which are already allowed options for tune2fs.
+Somehow project quota did not work well for enable/disable,
+Add some tests to address it.
 
-Signed-off-by: Drew Davenport <ddavenport@google.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- misc/mke2fs.8.in | 20 +++++++++++++++++++-
- misc/mke2fs.c    |  9 ++++++++-
- 2 files changed, 27 insertions(+), 2 deletions(-)
+ misc/tune2fs.c              | 43 ++++++++++++++++++++++++++++++-------------
+ tests/t_project_1on/name    |  1 +
+ tests/t_project_1on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_2off/name   |  1 +
+ tests/t_project_2off/script | 35 +++++++++++++++++++++++++++++++++++
+ tests/t_project_3on/name    |  1 +
+ tests/t_project_3on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_4off/name   |  1 +
+ tests/t_project_4off/script | 35 +++++++++++++++++++++++++++++++++++
+ 9 files changed, 186 insertions(+), 13 deletions(-)
+ create mode 100644 tests/t_project_1on/name
+ create mode 100644 tests/t_project_1on/script
+ create mode 100644 tests/t_project_2off/name
+ create mode 100644 tests/t_project_2off/script
+ create mode 100644 tests/t_project_3on/name
+ create mode 100644 tests/t_project_3on/script
+ create mode 100644 tests/t_project_4off/name
+ create mode 100644 tests/t_project_4off/script
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index ef56d9ea..1c8c20f2 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -738,7 +738,25 @@ will use the default filesystem type
- .IR default .
- .TP
- .BI \-U " UUID"
--Create the filesystem with the specified UUID.
-+Set the universally unique identifier (UUID) of the filesystem to
-+.IR UUID .
-+The format of the UUID is a series of hex digits separated by hyphens, 
-+like this: 
-+"c1b9d5a2-f162-11cf-9ece-0020afc76f16".  
-+The 
-+.I UUID
-+parameter may also be one of the following:
-+.RS 1.2i
-+.TP
-+.I clear
-+clear the filesystem UUID
-+.TP
-+.I random
-+generate a new randomly-generated UUID
-+.TP
-+.I time
-+generate a new time-based UUID
-+.RE
- .TP
- .B \-v
- Verbose execution.
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 49c6e94d..b8d078a0 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2914,7 +2914,14 @@ int main (int argc, char *argv[])
- 	 * Parse or generate a UUID for the filesystem
- 	 */
- 	if (fs_uuid) {
--		if (uuid_parse(fs_uuid, fs->super->s_uuid) !=0) {
-+		if ((strcasecmp(fs_uuid, "null") == 0) ||
-+		    (strcasecmp(fs_uuid, "clear") == 0)) {
-+			uuid_clear(fs->super->s_uuid);
-+		} else if (strcasecmp(fs_uuid, "time") == 0) {
-+			uuid_generate_time(fs->super->s_uuid);
-+		} else if (strcasecmp(fs_uuid, "random") == 0) {
-+			uuid_generate(fs->super->s_uuid);
-+		} else if (uuid_parse(fs_uuid, fs->super->s_uuid) != 0) {
- 			com_err(device_name, 0, "could not parse UUID: %s\n",
- 				fs_uuid);
- 			exit(1);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f1bad60..a63da03 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -188,6 +188,7 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_PROJECT |
+ 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
+ 		EXT4_FEATURE_RO_COMPAT_READONLY
+ };
+@@ -1309,14 +1310,17 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+-		if (!Q_flag && !ext2fs_has_feature_quota(sb))
+-			fputs(_("\nWarning: enabled project without quota together\n"),
+-				stderr);
+ 		Q_flag = 1;
+ 		quota_enable[PRJQUOTA] = QOPT_ENABLE;
+ 	}
+ 
+ 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++		Q_flag = 1;
++		quota_enable[PRJQUOTA] = QOPT_DISABLE;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+ 		/*
+ 		 * Set the Q_flag here and handle the quota options in the code
+@@ -1484,6 +1488,7 @@ static void handle_quota_options(ext2_filsys fs)
+ 	ext2_ino_t qf_ino;
+ 	enum quota_type qtype;
+ 	unsigned int qtype_bits = 0;
++	int need_dirty = 0;
+ 
+ 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
+ 		if (quota_enable[qtype] != 0)
+@@ -1527,6 +1532,16 @@ static void handle_quota_options(ext2_filsys fs)
+ 					qtype);
+ 				exit(1);
+ 			}
++			/* Enable Quota feature if one of quota enabled */
++			if (!ext2fs_has_feature_quota(fs->super)) {
++				ext2fs_set_feature_quota(fs->super);
++				need_dirty = 1;
++			}
++			if (qtype == PRJQUOTA &&
++			    !ext2fs_has_feature_project(fs->super)) {
++				ext2fs_set_feature_project(fs->super);
++				need_dirty = 1;
++			}
+ 		} else if (quota_enable[qtype] == QOPT_DISABLE) {
+ 			retval = quota_remove_inode(fs, qtype);
+ 			if (retval) {
+@@ -1535,25 +1550,27 @@ static void handle_quota_options(ext2_filsys fs)
+ 					qtype);
+ 				exit(1);
+ 			}
++			if (qtype == PRJQUOTA) {
++				ext2fs_clear_feature_project(fs->super);
++				need_dirty = 1;
++			}
+ 		}
+ 	}
+ 
+ 	quota_release_context(&qctx);
+-
+-	if (qtype_bits) {
+-		ext2fs_set_feature_quota(fs->super);
+-		ext2fs_mark_super_dirty(fs);
+-	} else {
++	/* Clear Quota feature if all quota types disabled. */
++	if (!qtype_bits) {
+ 		for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
+-			if (*quota_sb_inump(fs->super, qtype) != 0)
++			if (*quota_sb_inump(fs->super, qtype))
+ 				break;
+ 		if (qtype == MAXQUOTAS) {
+-			fs->super->s_feature_ro_compat &=
+-					~EXT4_FEATURE_RO_COMPAT_QUOTA;
+-			ext2fs_mark_super_dirty(fs);
++			ext2fs_clear_feature_quota(fs->super);
++			need_dirty = 1;
+ 		}
+-	}
+ 
++	}
++	if (need_dirty)
++		ext2fs_mark_super_dirty(fs);
+ 	return;
+ }
+ 
+diff --git a/tests/t_project_1on/name b/tests/t_project_1on/name
+new file mode 100644
+index 0000000..6b2dd29
+--- /dev/null
++++ b/tests/t_project_1on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -O option
+diff --git a/tests/t_project_1on/script b/tests/t_project_1on/script
+new file mode 100644
+index 0000000..9232188
+--- /dev/null
++++ b/tests/t_project_1on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -O project $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_2off/name b/tests/t_project_2off/name
+new file mode 100644
+index 0000000..293717d
+--- /dev/null
++++ b/tests/t_project_2off/name
+@@ -0,0 +1 @@
++disable project using tune2fs
+diff --git a/tests/t_project_2off/script b/tests/t_project_2off/script
+new file mode 100644
+index 0000000..98696b4
+--- /dev/null
++++ b/tests/t_project_2off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -O ^project $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
+diff --git a/tests/t_project_3on/name b/tests/t_project_3on/name
+new file mode 100644
+index 0000000..9a10680
+--- /dev/null
++++ b/tests/t_project_3on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -Q option
+diff --git a/tests/t_project_3on/script b/tests/t_project_3on/script
+new file mode 100644
+index 0000000..1143ba4
+--- /dev/null
++++ b/tests/t_project_3on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -Q prj  $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -Q project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_4off/name b/tests/t_project_4off/name
+new file mode 100644
+index 0000000..5ef6430
+--- /dev/null
++++ b/tests/t_project_4off/name
+@@ -0,0 +1 @@
++disable project using tune2fs -Q option
+diff --git a/tests/t_project_4off/script b/tests/t_project_4off/script
+new file mode 100644
+index 0000000..29de6bc
+--- /dev/null
++++ b/tests/t_project_4off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -Q ^prj $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
 -- 
-2.12.2.762.g0e3151a226-goog
+2.9.3
