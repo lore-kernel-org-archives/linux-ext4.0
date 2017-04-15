@@ -1,74 +1,69 @@
-From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
-Subject: Re: [PATCH] e2fsck: fix type mismatch bug in the largedir patch
-Date: Sat, 15 Apr 2017 00:25:27 +0300
-Message-ID: <CAO3qy=Hs0aPRjQzAT7jceo9sikiT22yooJkRT8QUmyqEnCcqWQ@mail.gmail.com>
-References: <20170414205640.31710-1-tytso@mit.edu>
+From: <doiggl@velocitynet.com.au>
+Subject: Can the patch set [1] be put up on openSUSE Build Service as well please ?
+Date: Sat, 15 Apr 2017 13:22:51 +1000
+Message-ID: <65be8803bd32e856e3da59fcf5eee77a@mail.velocitynet.com.au>
+References: <20170412072611.29017-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0b-00003501.pphosted.com ([67.231.152.68]:40715 "EHLO
-        mx0a-000cda01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1752624AbdDNVke (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Apr 2017 17:40:34 -0400
-Received: from pps.filterd (m0075029.ppops.net [127.0.0.1])
-        by mx0b-00003501.pphosted.com (8.16.0.20/8.16.0.20) with SMTP id v3ELJsfg006996
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Apr 2017 17:25:30 -0400
-Received: from mail-qt0-f197.google.com (mail-qt0-f197.google.com [209.85.216.197])
-        by mx0b-00003501.pphosted.com with ESMTP id 29u08p9xxb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Apr 2017 17:25:29 -0400
-Received: by mail-qt0-f197.google.com with SMTP id l25so17611406qtf.11
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Apr 2017 14:25:29 -0700 (PDT)
-In-Reply-To: <20170414205640.31710-1-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 8bit
+Cc: <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <reiserfs-devel@vger.kernel.org>,
+        <jfs-discussion@lists.sourceforge.net>
+To: Jan Kara <jack@suse.cz>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Theodore,
+Hello,
+Can the patch set [1] be put up on openSUSE Build Service as well please ?
+ 
+- check it builds.
 
-Thank you for fixing this mistake. I didn't fixed this after switched
-from my ext2fs_has_feature_laregdir to
-EXT4_FEATURE_INCOMPAT_FUNCS(largedir, 4, LARGEDIR).
+example:
+kernel-vanilla
+https://build.opensuse.org/package/show/Kernel:vanilla/kernel-vanilla#
+https://build.opensuse.org/package/show/Kernel:vanilla/kernel-source
 
-Reviewed-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+Thanks
+--Glenn
 
-On Fri, Apr 14, 2017 at 11:56 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> Commit ae9efd05a986: "e2fsck: 3 level hash tree directory
-> optimization" introduced a bug when checking for the largedir feature.
->
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->
-> I should have noticed the build warning sooner, but then again, so the
-> patch author should have as well.  :-)
->
->  e2fsck/pass2.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-> index fc98e833..09b79c3b 100644
-> --- a/e2fsck/pass2.c
-> +++ b/e2fsck/pass2.c
-> @@ -978,7 +978,7 @@ static int check_dir_block(ext2_filsys fs,
->          * very large and then the files are deleted. For now, all that i=
-s
->          * needed is to avoid e2fsck filling in these holes as part of
->          * feature flag. */
-> -       if (db->blk =3D=3D 0 && ext2fs_has_feature_largedir(fs))
-> +       if (db->blk =3D=3D 0 && ext2fs_has_feature_largedir(fs->super))
->                 return 0;
->
->         if (db->blk =3D=3D 0 && !inline_data_size) {
-> --
-> 2.11.0.rc0.7.gbe5a750
->
+From:
+http://www.spinics.net/lists/reiserfs-devel/
 
+[PATCH 0/11] quota: Stop setting IMMUTABLE and NOATIME flags directly
+http://www.spinics.net/lists/reiserfs-devel/msg05442.html
 
+[1]
+[PATCH 0/11] quota: Stop setting IMMUTABLE and NOATIME flags directly, Jan
+Kara
 
---=20
-Artem Blagodarenko Ph.D.=C2=B7 SW Developer on my.seagate.com
-Seagate Technology, LLC
-www.seagate.com
+    [PATCH 04/11] jfs: Set flags on quota files directly, Jan Kara
+    [PATCH 08/11] jfs: Remove jfs_get_inode_flags(), Jan Kara
+    [PATCH 07/11] ext2: Remove ext2_get_inode_flags(), Jan Kara
+        Re: [PATCH 07/11] ext2: Remove ext2_get_inode_flags(), Andreas
+Dilger
+    [PATCH 06/11] ext4: Remove ext4_get_inode_flags(), Jan Kara
+        Re: [PATCH 06/11] ext4: Remove ext4_get_inode_flags(), Andreas
+Dilger
+    [PATCH 05/11] quota: Stop setting IMMUTABLE and NOATIME flags on quota
+files, Jan Kara
+        Re: [PATCH 05/11] quota: Stop setting IMMUTABLE and NOATIME flags
+on quota files, Andreas Dilger
+    [PATCH 11/11] quota: Remove dquot_quotactl_ops, Jan Kara
+    [PATCH 09/11] reiserfs: Remove useless setting of i_flags, Jan Kara
+    [PATCH 10/11] reiserfs: Remove i_attrs_to_sd_attrs(), Jan Kara
+    [PATCH 01/11] ext4: Set flags on quota files directly, Jan Kara
+        Re: [PATCH 01/11] ext4: Set flags on quota files directly, Andreas
+Dilger
+            Re: [PATCH 01/11] ext4: Set flags on quota files directly, Jan
+Kara
+    [PATCH 03/11] ext2: Set flags on quota files directly, Jan Kara
+    [PATCH 02/11] reiserfs: Set flags on quota files directly, Jan Kara
+
+[PATCH 1/2] reiserfs: Make cancel_old_flush() reliable, Jan Kara
+
+    [PATCH 2/2] reiserfs: Protect dquot_writeback_dquots() by s_umount
+semaphore, Jan Kara
+
+https://build.opensuse.org/package/show/Kernel:vanilla/kernel-source
