@@ -1,150 +1,131 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
-Date: Sun, 16 Apr 2017 12:17:39 -0700
-Message-ID: <20170416191739.GA5185@birch.djwong.org>
+Subject: Re: [PATCH 3/3] e2fsck: allow extent tree optimization to be disabled
+Date: Sun, 16 Apr 2017 12:24:30 -0700
+Message-ID: <20170416192430.GB5185@birch.djwong.org>
 References: <20170415134118.17808-1-tytso@mit.edu>
+ <20170415134118.17808-3-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:50136 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:50645 "EHLO
         aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932077AbdDPTRq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2017 15:17:46 -0400
+        with ESMTP id S1756597AbdDPTYf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2017 15:24:35 -0400
 Content-Disposition: inline
-In-Reply-To: <20170415134118.17808-1-tytso@mit.edu>
+In-Reply-To: <20170415134118.17808-3-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 15, 2017 at 09:41:16AM -0400, Theodore Ts'o wrote:
-> If quota is enabled, optimizing the extent tree wouldn't update the
-> in-memory quota statistics, so that a subsequent e2fsck run would show
-> that the quota usage statistics on disk were incorrect.
-> 
-> Google-Bug-Id: 36391645
+On Sat, Apr 15, 2017 at 09:41:18AM -0400, Theodore Ts'o wrote:
+> Add an extended option, -E no_optimize_extents, as well as a
+> e2fsck.conf profile option, to disable extent tree optimization.
 > 
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > ---
->  e2fsck/e2fsck.c  |  1 +
->  e2fsck/e2fsck.h  |  1 +
->  e2fsck/extents.c | 23 ++++++++++++++++++-----
->  e2fsck/pass1.c   |  1 +
->  4 files changed, 21 insertions(+), 5 deletions(-)
+>  e2fsck/e2fsck.8.in      | 4 ++++
+>  e2fsck/e2fsck.conf.5.in | 4 ++++
+>  e2fsck/e2fsck.h         | 1 +
+>  e2fsck/extents.c        | 3 +++
+>  e2fsck/unix.c           | 8 ++++++++
+>  5 files changed, 20 insertions(+)
 > 
-> diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-> index 0f9da46a..4baedbac 100644
-> --- a/e2fsck/e2fsck.c
-> +++ b/e2fsck/e2fsck.c
-> @@ -169,6 +169,7 @@ errcode_t e2fsck_reset_context(e2fsck_t ctx)
->  	ctx->fs_fragmented = 0;
->  	ctx->fs_fragmented_dir = 0;
->  	ctx->large_files = 0;
-> +	ctx->clusters_allocated = 0;
->  
->  	for (i=0; i < MAX_EXTENT_DEPTH_COUNT; i++)
->  		ctx->extent_depth_count[i] = 0;
-> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-> index f3568106..ecd3b1e1 100644
-> --- a/e2fsck/e2fsck.h
-> +++ b/e2fsck/e2fsck.h
-> @@ -372,6 +372,7 @@ struct e2fsck_struct {
->  	profile_t	profile;
->  	int blocks_per_page;
->  	ext2_u32_list encrypted_dirs;
-> +	__u32 clusters_allocated;
->  
->  	/* Reserve blocks for root and l+f re-creation */
->  	blk64_t root_repair_block, lnf_repair_block;
-> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-> index c4167e16..1df31d71 100644
-> --- a/e2fsck/extents.c
-> +++ b/e2fsck/extents.c
-> @@ -208,17 +208,21 @@ static int find_blocks(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
->  static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
->  				     ext2_ino_t ino)
->  {
-> -	struct ext2_inode	inode;
-> +	struct ext2_inode_large	inode;
-> +	struct ext2_inode	*inode_ptr;
->  	errcode_t		retval;
->  	ext2_extent_handle_t	handle;
->  	unsigned int		i, ext_written;
->  	struct ext2fs_extent	*ex, extent;
-> +	__u32			start_val;
->  
->  	list->count = 0;
->  	list->blocks_freed = 0;
->  	list->ino = ino;
->  	list->ext_read = 0;
-> -	e2fsck_read_inode(ctx, ino, &inode, "rebuild_extents");
-> +	inode_ptr = (struct ext2_inode *) &inode;
-> +	e2fsck_read_inode_full(ctx, ino, inode_ptr, sizeof(inode),
-> +			       "rebuild_extents");
->  
->  	/* Skip deleted inodes and inline data files */
->  	if (inode.i_links_count == 0 ||
-> @@ -248,16 +252,19 @@ extents_loaded:
->  	memset(inode.i_block, 0, sizeof(inode.i_block));
->  
->  	/* Make a note of freed blocks */
-> -	retval = ext2fs_iblk_sub_blocks(ctx->fs, &inode, list->blocks_freed);
-> +	quota_data_sub(ctx->qctx, &inode, ino,
-> +		       list->blocks_freed * ctx->fs->blocksize);
-> +	retval = ext2fs_iblk_sub_blocks(ctx->fs, inode_ptr, list->blocks_freed);
->  	if (retval)
->  		goto err;
->  
->  	/* Now stuff extents into the file */
-> -	retval = ext2fs_extent_open2(ctx->fs, ino, &inode, &handle);
-> +	retval = ext2fs_extent_open2(ctx->fs, ino, inode_ptr, &handle);
->  	if (retval)
->  		goto err;
->  
->  	ext_written = 0;
-> +	start_val = ctx->clusters_allocated;
->  	for (i = 0, ex = list->extents; i < list->count; i++, ex++) {
->  		memcpy(&extent, ex, sizeof(struct ext2fs_extent));
->  		extent.e_flags &= EXT2_EXTENT_FLAGS_UNINIT;
-> @@ -295,11 +302,17 @@ extents_loaded:
->  		ext_written++;
->  	}
->  
-> +	if (start_val != ctx->clusters_allocated) {
-> +		__u32 num = ctx->clusters_allocated - start_val;
-> +		quota_data_add(ctx->qctx, &inode, ino,
-> +			       num * ctx->fs->blocksize);
-> +	}
+> diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
+> index 915273d8..4ad575f4 100644
+> --- a/e2fsck/e2fsck.8.in
+> +++ b/e2fsck/e2fsck.8.in
+> @@ -226,6 +226,10 @@ option may prevent you from further manual data recovery.
+>  Do not attempt to discard free blocks and unused inode blocks. This option is
+>  exactly the opposite of discard option. This is set as default.
+>  .TP
+> +.BI no_optimize_extents
+> +Do not offer to optimize the extent tree by eliminating unnecessary
+> +width or depth.
+> +.TP
+>  .BI readahead_kb
+>  Use this many KiB of memory to pre-fetch metadata in the hopes of reducing
+>  e2fsck runtime.  By default, this is set to the size of two block groups' inode
+> diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
+> index 0bfc76ab..94525baf 100644
+> --- a/e2fsck/e2fsck.conf.5.in
+> +++ b/e2fsck/e2fsck.conf.5.in
+> @@ -205,6 +205,10 @@ of that type are squelched.  This can be useful if the console is slow
+>  (i.e., connected to a serial port) and so a large amount of output could
+>  end up delaying the boot process for a long time (potentially hours).
+>  .TP
+> +.I no_optimize_extents
+> +Do not offer to optimize the extent tree by eliminating unnecessary
+> +width or depth.
 
-Why not calculate the change in quota use by comparing the inode's
-i_blocks in between the ext2fs_iblk_sub_blocks call and the end of the
-ext2fs_extent_insert loop, rather than adding a counter to the global
-e2fsck state?
+Looks ok,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+/me wonders if there's a way to detect that we're being run by
+initscripts/systemd/whatever on a device that is mounted ro, and skip
+the optimization step to avoid the reboot.
+
+OTOH I wonder why the initramfs (if available) doesn't just build in
+e2fsck and fsck the root device before mounting the fs...
 
 --D
 
+> +.TP
+>  .I readahead_mem_pct
+>  Use this percentage of memory to try to read in metadata blocks ahead of the
+>  main e2fsck thread.  This should reduce run times, depending on the speed of
+> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+> index ecd3b1e1..a4b5fb24 100644
+> --- a/e2fsck/e2fsck.h
+> +++ b/e2fsck/e2fsck.h
+> @@ -169,6 +169,7 @@ struct resource_track {
+>  #define E2F_OPT_DISCARD		0x2000
+>  #define E2F_OPT_CONVERT_BMAP	0x4000 /* convert blockmap to extent */
+>  #define E2F_OPT_FIXES_ONLY	0x8000 /* skip all optimizations */
+> +#define E2F_OPT_NOOPT_EXTENTS	0x10000 /* don't optimize extents */
+>  
+>  /*
+>   * E2fsck flags
+> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
+> index 1df31d71..d9410028 100644
+> --- a/e2fsck/extents.c
+> +++ b/e2fsck/extents.c
+> @@ -518,6 +518,9 @@ errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
+>  	if (eti->force_rebuild)
+>  		goto rebuild;
+>  
+> +	if (ctx->options & E2F_OPT_NOOPT_EXTENTS)
+> +		return 0;
 > +
->  #if defined(DEBUG) || defined(DEBUG_SUMMARY)
->  	printf("rebuild: ino=%d extents=%d->%d\n", ino, list->ext_read,
->  	       ext_written);
->  #endif
-> -	e2fsck_write_inode(ctx, ino, &inode, "rebuild_extents");
-> +	e2fsck_write_inode(ctx, ino, inode_ptr, "rebuild_extents");
+>  	extents_per_block = (ctx->fs->blocksize -
+>  			     sizeof(struct ext3_extent_header)) /
+>  			    sizeof(struct ext3_extent);
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index b7322bc6..b6025535 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -709,6 +709,9 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+>  		} else if (strcmp(token, "nodiscard") == 0) {
+>  			ctx->options &= ~E2F_OPT_DISCARD;
+>  			continue;
+> +		} else if (strcmp(token, "no_optimize_extents") == 0) {
+> +			ctx->options |= E2F_OPT_NOOPT_EXTENTS;
+> +			continue;
+>  		} else if (strcmp(token, "log_filename") == 0) {
+>  			if (!arg)
+>  				extended_usage++;
+> @@ -1007,6 +1010,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+>  	if (c)
+>  		verbose = 1;
 >  
->  err2:
->  	ext2fs_extent_free(handle);
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 188cc562..99e8f66a 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -4017,6 +4017,7 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
->  	}
->  
->  	*ret = new_block;
-> +	ctx->clusters_allocated++;
->  	return (0);
->  }
->  
+> +	profile_get_boolean(ctx->profile, "options", "no_optimize_extents",
+> +			    0, 0, &c);
+> +	if (c)
+> +		ctx->options |= E2F_OPT_NOOPT_EXTENTS;
+> +
+>  	if (ctx->readahead_kb == ~0ULL) {
+>  		profile_get_integer(ctx->profile, "options",
+>  				    "readahead_mem_pct", 0, -1, &c);
 > -- 
 > 2.11.0.rc0.7.gbe5a750
 > 
