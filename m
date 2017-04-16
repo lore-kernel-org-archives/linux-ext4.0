@@ -1,38 +1,55 @@
-From: Julius Schwartzenberg <julius.schwartzenberg@gmail.com>
-Subject: e2fsck doesn't finish
-Date: Sun, 16 Apr 2017 19:07:23 +0200
-Message-ID: <f604727f-967c-0b49-a71c-f8adcaeb8945@gmail.com>
+From: <bkjf@rk.dk>
+Subject: (unknown)
+Date: Sun, 16 Apr 2017 17:44:30 -0000
+Message-ID: <149236467057.20709.17296769823680212276@50-207-102-26-static.hfc.comcastbusiness.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: application/zip; name="EMAIL_4067839100_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lb2-smtp-cloud2.xs4all.net ([194.109.24.25]:34583 "EHLO
-        lb2-smtp-cloud2.xs4all.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1756061AbdDPRH0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 16 Apr 2017 13:07:26 -0400
+Received: from 50-207-102-26-static.hfc.comcastbusiness.net ([50.207.102.26]:44839
+        "HELO 50-207-102-26-static.hfc.comcastbusiness.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+        id S1756599AbdDPRod (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 16 Apr 2017 13:44:33 -0400
+Content-Disposition: attachment
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
-
-I'm running into an e2fsck issue which seems to occur with one
-particular filesystem. The version from Ubuntu, Fedora and the latest
-release compiled from source all exhibit the same issue.
-
-On one filesystem I have, when I run e2fsck, it prints it's doing step 1
-and then after a while just:
-"e2fsck: aborted"
-Nothing else is printed. I tried a badblock scan on the partition, but
-that didn't reveal any badblocks.
-
-Here is the output of dumpe2fs:
-https://schwart6.home.xs4all.nl/dumpe2fs.sda4.gz
-
-I suspect there's some condition with that filesystem that e2fsck
-doesn't handle. What would be the best way to figure out more about this
-problem?
-
-Best regards,
-Julius
+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
+0gFQSwUGAAAAAAEAAQBbAAAAcgcAAAAA
