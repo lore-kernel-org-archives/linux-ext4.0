@@ -1,48 +1,54 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: fix ASAN error when using 128 byte inodes
-Date: Sat, 15 Apr 2017 10:36:22 -0400
-Message-ID: <20170415143622.11938-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: <bfoster@uca.edu>
+Subject: (unknown)
+Date: Sun, 16 Apr 2017 16:37:11 -0000
+Message-ID: <149236063161.21738.1992614880062995669@hinet.net>
+Mime-Version: 1.0
+Content-Type: application/zip; name="EMAIL_65750003_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40022 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754315AbdDOOgZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 15 Apr 2017 10:36:25 -0400
+Received: from 111-240-144-164.dynamic-ip.hinet.net ([111.240.144.164]:58044
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1755948AbdDPQhS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2017 12:37:18 -0400
+Subject: 
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Due to the inode table buffering, it's actually hard to overrun the
-end of allocated memory, so the ASAN error doesn't trigger all the
-time.
-
-Google-Bug-Id: 37326362
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- e2fsck/pass1.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 99e8f66a..cf2e9ed2 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1822,9 +1822,14 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		     inode->i_block[EXT2_DIND_BLOCK] ||
- 		     inode->i_block[EXT2_TIND_BLOCK] ||
- 		     ext2fs_file_acl_block(fs, inode))) {
-+			struct ext2_inode_large *ip;
-+
- 			inodes_to_process[process_inode_count].ino = ino;
--			inodes_to_process[process_inode_count].inode =
--				       *(struct ext2_inode_large *)inode;
-+			ip = &inodes_to_process[process_inode_count].inode;
-+			if (inode_size < sizeof(struct ext2_inode_large))
-+				memcpy(ip, inode, inode_size);
-+			else
-+				memcpy(ip, inode, sizeof(*ip));
- 			process_inode_count++;
- 		} else
- 			check_blocks(ctx, &pctx, block_buf);
--- 
-2.11.0.rc0.7.gbe5a750
+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
+AGEHAAAAAA==
