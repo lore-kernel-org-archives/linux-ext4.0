@@ -1,54 +1,37 @@
-From: <rlm85310@cox.net>
-Subject: (unknown)
-Date: Mon, 17 Apr 2017 02:06:54 -0000
-Message-ID: <149239481412.22388.14526501631350542459@aaanet.ru>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3] e2fsck: allow extent tree optimization to be disabled
+Date: Mon, 17 Apr 2017 01:45:05 -0400
+Message-ID: <20170417054505.ggou3yocbnqviqim@thunk.org>
+References: <20170415134118.17808-1-tytso@mit.edu>
+ <20170415134118.17808-3-tytso@mit.edu>
+ <20170416192430.GB5185@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: application/zip; name="SALE-78001048-linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from p142.mp119.aaanet.ru ([80.80.119.142]:38586 "HELO aaanet.ru"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S932320AbdDQCHA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 16 Apr 2017 22:07:00 -0400
-Content-Disposition: attachment
-Subject: 
+Received: from imap.thunk.org ([74.207.234.97]:42706 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751030AbdDQF5H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 17 Apr 2017 01:57:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20170416192430.GB5185@birch.djwong.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+On Sun, Apr 16, 2017 at 12:24:30PM -0700, Darrick J. Wong wrote:
+> 
+> /me wonders if there's a way to detect that we're being run by
+> initscripts/systemd/whatever on a device that is mounted ro, and skip
+> the optimization step to avoid the reboot.
+
+That wasn't actually the reason for this option; but adding feature
+where which does this for the root file system mounted read-only, the
+optimization is avoided would make sense, yes.
+
+> OTOH I wonder why the initramfs (if available) doesn't just build in
+> e2fsck and fsck the root device before mounting the fs...
+
+Debian does this already.  RHEL is just behind the times.  :-)
+
+       	    	 	   	   	- Ted
