@@ -1,39 +1,156 @@
-From: <rlm85310@cox.net>
-Subject: (unknown)
-Date: Tue, 18 Apr 2017 16:05:37 -0000
-Message-ID: <149253153748.22386.13271377482117597097@zaural.ru>
-Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_91332296_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: "linux-ext4" <linux-ext4@vger.kernel.org>
+From: Gwendal Grignou <gwendal@chromium.org>
+Subject: [PATCH] fscrypt: use 32 bytes of encrypted filename
+Date: Tue, 18 Apr 2017 14:06:42 -0700
+Message-ID: <20170418210642.6039-1-gwendal@chromium.org>
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        kinaba@chromium.org, hashimoto@chromium.org
+To: tytso@mit.edu, ebiggers@google.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ws187.251.50.zone94.zaural.ru ([94.50.251.187]:37499 "HELO
-        zaural.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751849AbdDRQFm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Apr 2017 12:05:42 -0400
-Content-Disposition: attachment
-Subject: 
+Received: from mail-pf0-f172.google.com ([209.85.192.172]:33424 "EHLO
+        mail-pf0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751678AbdDRVG7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Apr 2017 17:06:59 -0400
+Received: by mail-pf0-f172.google.com with SMTP id a188so2208786pfa.0
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Apr 2017 14:06:59 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBBQAAAAIAAGAkkqWqDRXCgQAAA4EAAAJAAAAMTc4MTYuemlwdVN7MBMAHJ5GMSqVpKhW6lYW
-NmlReaxcNaa2cknIcxjr5LlhY46M6TGTm+cSyyPUJZtHayGd8pg18i5DbViIMu3sqvW46667fr/7
-vu++775/P4wLUNMAAABoAzSoTOdenqcuCah2a9RQp/DDNnCERWhUzG1seAFMnzoGmXXw5eCRBWI9
-Hhc3A9QX48JO5oi4XFIEdU9gW8MgKt91Zf7oSGqsR9lgu1K4XDSPHmQMT536ONepokX4ichhpMp9
-CKW3tbe0cio3u26HFVYUR0TwO5Q3M8luriw/M7S8t3OLFdvyeYs1/ekk1ZN9U9eQCMnkHxjJvdo6
-F177dkHfoj5WJwCXxWxIrwBBg06W24YSMTkel2m3tLbwA8qkxr2uGxkjqzS7Hd3qR+uuZ+qe6JOP
-WiVO10UfEfSId3EoylYn43Ox/QYLt2F9KPSgZPipuQ81usj+NJ0HfjMt8g4UJBdPb7zXyu3xGnm3
-WGdhdOC4wBGnYzhgT9w+Nrv0ll2ON5NqY4cOKbY+Gk91nS6pmMLOyGwE/S8pdLvlne9DIg83RW43
-rih+2VzallGxwYPb9X2Cn9i3nHyPOQPuPp/27G5HX8AM0qk3hUIb13LEI53jsiuk+TtKN0MzHPm2
-pbMuH04AgAaNbrDGZQKH4ecacqHGt0aR8CAqEWYts+zES47Y4dxt8jRPT21ILnHGBHnQ5tyN4E5L
-OpbPL86uK16HMTwOG1jwSgBMBiOxCFMvFVjf1Gw1glkDAkF5VEpKHoH6eUdtCsH24LlIzkNOo2eO
-j0L7td4iT+Dfb128pl9K2IRsy5dLWzH0tVujMyLjhr3ogge8QghBnk7UwzOZ8+tG62N2NSeVCUWc
-naZCs44sH9wTQxJjvmniWjzrjqjpxRqVztC+g/QqJLYDjfaOLK5usiqaBCMxF0zsHp5+5rc4ZmBf
-Em2uqFZM+Jq8gYZ09w7HLbuJ8Q5wc3n2ELk5bfPsZ3nlNyZZoZJAu6qwTLTEo8WkzZOhGVQEeRWq
-7QzeIu5GOsGCd6N4WvvGfIPYZptGPafddYEG2yAoUA+39qMdd9V5xsQTGfQ8YyDhxnrctvtnH6fs
-z4iwGS43ciHuDYQ3qkCxl8NhLYcQn7qBikcXx1c6bast9LpYNiYSfGrAeuKCkYxkL0SlHSWlQ9ER
-O6PIN8olVS3tV1FifhSTNLj+jPSrOQJN8NdN9C60ANMg4C+m9i+CPx1tFzZSFrHmjjTuFUr8lRh5
-4SETslVSWK5IWTbPcuhcABYgx5ZaCizjjeFC2bipfPTYV/+YpP0BsjKtxc1gtl9WqzR/ZeVDpgPG
-RWOVA+B/+9wD+H3gX/x3raA/iQbACJDHKk9mNYg1/lWMi9bqXx31X1IrG/jT/QBQSwECPwAUAAAA
-CAABgJJKlqg0VwoEAAAOBAAACQAkAAAAAAAAACAAAAAAAAAAMTc4MTYuemlwCgAgAAAAAAABABgA
-cVusgZe40gGE+qmBl7jSAYT6qYGXuNIBUEsFBgAAAAABAAEAWwAAADEEAAAAAA==
+If we use only 16 bytes, due to how CBC works, if the names have the
+same beginning, their last ciphertext block (16 bytes) may be identical.
+
+It happens when two file names share the first 16k bytes and both have
+length withn 16 * n + 13 and 16 * n + 16.
+
+Instead use 32 bytes to build the filenames from encrypted data when
+directory is scrambled.
+
+The drawback is the scrambled filenames change after applying the patch.
+Consider an encrypted directory with:
+
+ls -il
+total 8
+1177380 -rw-r--r--. 1 root root 0 Apr 18 12:10
+system@framework@boot-telephony-common.art.crc
+1177379 -rw-r--r--. 1 root root 0 Apr 18 12:10
+system@framework@boot-telephony-common.oat.crc
+
+Once the key is invalidated, without the patch, ls -li produces:
+1177379 -rw-r--r--. 1 root root 0 Apr 18 12:10
+_a1Psh01n8FdhC8s9pUywlAyFzlz7n6C3
+1177379 -rw-r--r--. 1 root root 0 Apr 18 12:10
+_wJS,0akq14ehC8s9pUywlAyFzlz7n6C3
+
+Both files show with the same inode.
+
+After the patch, the names are different, but the inode information is
+now correct:
+ls -li
+1177380 -rw-r--r--. 1 root root 0 Apr 18 12:10
+_a1Psh01n8FtxbeglW8BqhuthSUxMqh6cFKwz2nSJDXCIXMXOvfqLcD
+1177379 -rw-r--r--. 1 root root 0 Apr 18 12:10
+_wJS,0akq14eJcuQks7f2Vsg,zE0Jdz98FKwz2nSJDXCIXMXOvfqLcD
+
+Tested only on ext4.
+
+Signed-off-by: Gwendal Grignou <gwendal@chromium.org>
+---
+Script to reproduce the error:
+
+BASE_DIR="~/"
+DIR="${BASE_DIR}/tmp"
+# Create directory.
+mkdir -p "${DIR}"
+echo foobar | e4crypt add_key "${DIR}"
+# Fill directory.
+cd "${DIR}"
+touch system@framework@boot-telephony-common.oat.crc
+touch system@framework@boot-telephony-common.art.crc
+cd ..
+# Check files have different inode.
+ls -il "${DIR}"
+# Invalidate key
+KEY="$(keyctl show | grep $(e4crypt get_policy "${DIR}" | cut -d ':' -f 2) | sed -ne 's/\(.*\) --al.*/\1/p')"
+sync
+keyctl invalidate "${KEY}"
+echo 3 > /proc/sys/vm/drop_caches
+# Once the key is invalidated, both files have the same inode:
+ls -il "${DIR}"
+if [ $(ls -i1 "${DIR}" | cut -d ' ' -f 1 | uniq | wc -l) -eq 1 ] ; then
+  echo same inode!
+fi
+# if we try to remove the directory, we will get an error
+# : Structure needs cleaning
+# rm -rf "${DIR}"
+
+ fs/crypto/fname.c | 20 +++++++++++++-------
+ fs/ext4/namei.c   |  4 ++--
+ 2 files changed, 15 insertions(+), 9 deletions(-)
+
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 80bb956e14e5..71ddc3eaa62d 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -274,7 +274,7 @@ int fscrypt_fname_disk_to_usr(struct inode *inode,
+ 			struct fscrypt_str *oname)
+ {
+ 	const struct qstr qname = FSTR_TO_QSTR(iname);
+-	char buf[24];
++	char buf[FS_FNAME_CRYPTO_DIGEST_SIZE + sizeof(u64)];
+ 
+ 	if (fscrypt_is_dot_dotdot(&qname)) {
+ 		oname->name[0] = '.';
+@@ -295,14 +295,19 @@ int fscrypt_fname_disk_to_usr(struct inode *inode,
+ 		return 0;
+ 	}
+ 	if (hash) {
+-		memcpy(buf, &hash, 4);
+-		memcpy(buf + 4, &minor_hash, 4);
++		memcpy(buf, &hash, sizeof(u32));
++		memcpy(buf + 4, &minor_hash, sizeof(u32));
+ 	} else {
+ 		memset(buf, 0, 8);
+ 	}
+-	memcpy(buf + 8, iname->name + iname->len - 16, 16);
++	memcpy(buf + sizeof(u64),
++	       iname->name + iname->len - FS_FNAME_CRYPTO_DIGEST_SIZE,
++	       FS_FNAME_CRYPTO_DIGEST_SIZE);
+ 	oname->name[0] = '_';
+-	oname->len = 1 + digest_encode(buf, 24, oname->name + 1);
++	oname->len = 1 + digest_encode(
++			buf,
++			FS_FNAME_CRYPTO_DIGEST_SIZE + sizeof(u64),
++			oname->name + 1);
+ 	return 0;
+ }
+ EXPORT_SYMBOL(fscrypt_fname_disk_to_usr);
+@@ -375,10 +380,11 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
+ 	 */
+ 	if (iname->name[0] == '_')
+ 		bigname = 1;
+-	if ((bigname && (iname->len != 33)) || (!bigname && (iname->len > 43)))
++	if ((bigname && iname->len != 55) || (!bigname && (iname->len > 43)))
+ 		return -ENOENT;
+ 
+-	fname->crypto_buf.name = kmalloc(32, GFP_KERNEL);
++	fname->crypto_buf.name = kmalloc(
++			FS_FNAME_CRYPTO_DIGEST_SIZE + sizeof(u64), GFP_KERNEL);
+ 	if (fname->crypto_buf.name == NULL)
+ 		return -ENOMEM;
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index c4a389a6027b..14b2a2335a32 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1257,8 +1257,8 @@ static inline int ext4_match(struct ext4_filename *fname,
+ 			int ret;
+ 			if (de->name_len < 16)
+ 				return 0;
+-			ret = memcmp(de->name + de->name_len - 16,
+-				     fname->crypto_buf.name + 8, 16);
++			ret = memcmp(de->name + de->name_len - 32,
++				     fname->crypto_buf.name + 8, 32);
+ 			return (ret == 0) ? 1 : 0;
+ 		}
+ 		name = fname->crypto_buf.name;
+-- 
+2.12.2.816.g2cccc81164-goog
