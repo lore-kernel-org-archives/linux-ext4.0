@@ -1,39 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/11] quota: Stop setting IMMUTABLE and NOATIME flags
- directly
-Date: Wed, 19 Apr 2017 12:34:03 +0200
-Message-ID: <20170419103403.GA16052@quack2.suse.cz>
-References: <20170412072611.29017-1-jack@suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 2/8] nowait aio: Introduce RWF_NOWAIT
+Date: Wed, 19 Apr 2017 13:03:13 +0200
+Message-ID: <20170419110313.GA17342@quack2.suse.cz>
+References: <20170414120257.8932-1-rgoldwyn@suse.de>
+ <20170414120257.8932-3-rgoldwyn@suse.de>
+ <20170419063930.GB20053@infradead.org>
+ <2d816e3e-3625-7ebd-8550-68a7cc9c1a2e@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, reiserfs-devel@vger.kernel.org,
-        jfs-discussion@lists.sourceforge.net, Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org,
+        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
+        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        tom.leiming-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
+To: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170412072611.29017-1-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <2d816e3e-3625-7ebd-8550-68a7cc9c1a2e-l3A5Bk7waGM@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 12-04-17 09:26:00, Jan Kara wrote:
-> Hello,
+On Wed 19-04-17 05:30:24, Goldwyn Rodrigues wrote:
 > 
-> this series removes setting of IMMUTABLE and NOATIME flags from generic quota
-> code and moves it to filesystem's quota_on / quota_off handlers. Since this
-> was the only place where generic code was modifying inode flags that need to
-> be persistent on disk, we can remove functions syncing inode->i_flags to
-> on-disk flags after this. This was motivated by recent statx() work that
-> wants consistent view of inode flags without holding i_mutex.
 > 
-> Patches passed basic testing for ext2, ext4, reiserfs, compile-tested for jfs
-> only. Please review, patches are mostly trivial but I could have missed
-> something. If people are fine with the changes, I plan to merge them through
-> my tree.
+> On 04/19/2017 01:39 AM, Christoph Hellwig wrote:
+> > 
+> >> @@ -1593,6 +1593,11 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
+> >>  	}
+> >>  
+> >>  	req->common.ki_flags |= iocb_rw_flags(iocb->aio_rw_flags);
+> >> +	if ((req->common.ki_flags & IOCB_NOWAIT) &&
+> >> +	    !(req->common.ki_flags & IOCB_DIRECT)) {
+> >> +			ret = -EINVAL;
+> >> +			goto out_put_req;
+> >> +		}
+> > 
+> > Wrong indentation.  Also I think this should be EOPNOTSUPP here.
+> > 
+> 
+> Do we plan to add support for nowait in buffered I/O in the future? It
+> is just too complicated. EINVAL suits best in this case.
 
-Since there were no objections to the patches I have pulled them into my
-tree and will push them to Linus during the merge window.
+Well, it may be complicated in the current implementation but IMO it makes
+sense to ask for such functionality (see e.g. patches for non-blocking
+buffered reads that were flying around year or two ago). So I agree with
+Christoph that EOPNOTSUPP is more logical.
 
 								Honza
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
