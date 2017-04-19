@@ -1,139 +1,52 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: Re: [f2fs-dev] [PATCH] fscrypt: use 32 bytes of encrypted filename
-Date: Wed, 19 Apr 2017 13:44:48 -0700
-Message-ID: <20170419204448.GA1021@jaegeuk.local>
-References: <20170418210642.6039-1-gwendal@chromium.org>
- <20170418230136.GA96152@gmail.com>
- <20170419001005.GA143911@gmail.com>
- <20170419014209.GB12215@jaegeuk.local>
- <20170419040138.GA563@zzz>
+From: Julius Schwartzenberg <julius.schwartzenberg@gmail.com>
+Subject: Re: e2fsck doesn't finish
+Date: Wed, 19 Apr 2017 22:57:00 +0200
+Message-ID: <46831715-eb83-51b3-a626-7f6669b02e8a@gmail.com>
+References: <f604727f-967c-0b49-a71c-f8adcaeb8945@gmail.com>
+ <059b964a-facb-cfd5-6691-4cc1d66fea61@redhat.com>
+ <20170418052415.jl44dt2jnmclpx5m@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        ebiggers@google.com, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
-        tytso@mit.edu, linux-ext4@vger.kernel.org, kinaba@chromium.org
-To: Eric Biggers <ebiggers3@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.136]:51316 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1765977AbdDSUpB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Apr 2017 16:45:01 -0400
-Content-Disposition: inline
-In-Reply-To: <20170419040138.GA563@zzz>
+Received: from lb1-smtp-cloud2.xs4all.net ([194.109.24.21]:60176 "EHLO
+        lb1-smtp-cloud2.xs4all.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S938916AbdDSU5F (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Apr 2017 16:57:05 -0400
+In-Reply-To: <20170418052415.jl44dt2jnmclpx5m@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 04/18, Eric Biggers wrote:
-> On Tue, Apr 18, 2017 at 06:42:09PM -0700, Jaegeuk Kim wrote:
-> > Hi Eric,
-> > 
-> > On 04/18, Eric Biggers wrote:
-> > > On Tue, Apr 18, 2017 at 04:01:36PM -0700, Eric Biggers wrote:
-> > > > 
-> > > > Strangely, f2fs and ubifs do not use the bytes from the filename at all when
-> > > > trying to find a specific directory entry in this case.  So this patch doesn't
-> > > > really affect them.  This seems unreliable; perhaps we should introduce a
-> > > > function like "fscrypt_name_matches()" which all the filesystems could call?
-> > > > Can any of the f2fs and ubifs developers explain why they don't look at any
-> > > > bytes from the filename?
-> > > > 
-> > 
-> > The fscrypt_setup_filename sets fname->hash in the bigname case, but doesn't
-> > give fname->disk_name. If it's not such the bigname case, we check its name
-> > since fname->hash is zero.
-> > 
-> 
-> Yes, that's what it does now.  The question is, in the "bigname" case why
-> doesn't f2fs check the 16 bytes of ciphertext in fname->crypto_buf too?  f2fs
-> doesn't even use 'minor_hash'; it can't possibly be the case that there are
-> never any collisions of a 32-bit hash in a directory, can it?
-> 
-> I actually tested it, and it definitely happens if you put a lot of files in an
-> encrypted directory on f2fs.  An example with 100000 files:
-> 
-> # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
-> # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-> 100000
-> # sync
-> # echo 3 > /proc/sys/vm/drop_caches
-> # keyctl new_session
-> # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-> 99999
-> 
-> So when I tried accessing the encrypted directory without the key, two dentries
-> showed the same inode, due to a hash collision.
+Theodore Ts'o wrote:
+> It looks like the problem is fixed with the latest version of
+> e2fsprogs, though.  I just tried running using a build of e2fsprogs
+> from the next branch, and this seems to allow e2fsck to fully fix the
+> file system and avoid the "aborted" message.
 
-Thank you for sharing more details. I could reproduce this issue and reach out
-to what you mentioned. In order to resolve this, I wrote a patch for f2fs first
-to act like ext4 for easy backports. Then, I expect a global fscrypt function
-is easily able to clean them up.
+I just tried the latest e2fsck from git and it indeed fully got through.
+I'm really glad here and I hope there will be a new release of e2fsprogs
+soon!
 
-Thanks,
+I still have a (dd) copy of the original full image on my external hard
+drive in case it would be useful.
 
->From 63ca24a64fb1625dac9740a2183fd8966388e185 Mon Sep 17 00:00:00 2001
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Date: Wed, 19 Apr 2017 10:49:21 -0700
-Subject: [PATCH] f2fs: check entire encrypted bigname when finding a dentry
+I don't know if this is relevant, but maybe it could also be related to
+a conversion? Till recently the filesystem was still ext3 and I was only
+using it from Ubuntu 16.04. After installing Fedora 25 on another
+partition, Ubuntu couldn't mount this partition anymore and I had to
+change its entry in /etc/fstab from ext3 to ext4. Then it could mount
+it, but Ubuntu's e2fsck complained there were features in use that it
+didn't support. I reported this Fedora bug then:
+https://bugzilla.redhat.com/show_bug.cgi?id=1440429
 
-If user has no key under an encrypted dir, fscrypt gives digested dentries.
-Previously, when looking up a dentry, f2fs only checks its hash value with
-first 4 bytes of the digested dentry, which didn't handle hash collisions fully.
-This patch enhances to check entire dentry bytes likewise ext4.
+After I reported bug, I ran into the issues with e2fsck failing to complete.
 
-Eric reported how to reproduce this issue by:
+In any case, thanks a lot Theodore and Eric for looking into this! My
+issue is solved now, but if there's anything that would still be useful
+to figure out I'll be glad to provide any information that could help.
 
- # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
- # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-100000
- # sync
- # echo 3 > /proc/sys/vm/drop_caches
- # keyctl new_session
- # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-99999
-
-Cc: <stable@vger.kernel.org>
-Reported-by: Eric Biggers <ebiggers@google.com>
-Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
----
- fs/f2fs/dir.c | 28 +++++++++++++++++++---------
- 1 file changed, 19 insertions(+), 9 deletions(-)
-
-diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
-index c143dffcae6e..007c3b4adc85 100644
---- a/fs/f2fs/dir.c
-+++ b/fs/f2fs/dir.c
-@@ -130,19 +130,29 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
- 			continue;
- 		}
- 
--		/* encrypted case */
-+		if (de->hash_code != namehash)
-+			goto not_match;
-+
- 		de_name.name = d->filename[bit_pos];
- 		de_name.len = le16_to_cpu(de->name_len);
- 
--		/* show encrypted name */
--		if (fname->hash) {
--			if (de->hash_code == cpu_to_le32(fname->hash))
--				goto found;
--		} else if (de_name.len == name->len &&
--			de->hash_code == namehash &&
--			!memcmp(de_name.name, name->name, name->len))
-+#ifdef CONFIG_F2FS_FS_ENCRYPTION
-+		if (unlikely(!name->name)) {
-+			if (fname->usr_fname->name[0] == '_') {
-+				if (de_name.len >= 16 &&
-+					!memcmp(de_name.name + de_name.len - 16,
-+						fname->crypto_buf.name + 8, 16))
-+					goto found;
-+				goto not_match;
-+			}
-+			name->name = fname->crypto_buf.name;
-+			name->len = fname->crypto_buf.len;
-+		}
-+#endif
-+		if (de_name.len == name->len &&
-+				!memcmp(de_name.name, name->name, name->len))
- 			goto found;
+Thanks!
+Julius
