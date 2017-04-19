@@ -1,89 +1,66 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Wed, 19 Apr 2017 10:21:39 -0500
-Message-ID: <d3467259-675a-2723-7cf9-d4f2f067d634@suse.de>
-References: <20170414120257.8932-1-rgoldwyn@suse.de>
- <20170414120257.8932-6-rgoldwyn@suse.de>
- <20170419064505.GD20053@infradead.org>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] fscrypt: use 32 bytes of encrypted filename
+Date: Wed, 19 Apr 2017 10:09:40 -0700
+Message-ID: <20170419170940.GA89688@gmail.com>
+References: <20170418210642.6039-1-gwendal@chromium.org>
+ <CAFLxGvz+kODD+8s9aPw_DeYtf3Gjv0aQBC=UfoBFx3Wn2b=wxQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170419064505.GD20053@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Gwendal Grignou <gwendal@chromium.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, kinaba@chromium.org,
+        hashimoto@chromium.org
+To: Richard Weinberger <richard.weinberger@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yb0-f195.google.com ([209.85.213.195]:36251 "EHLO
+        mail-yb0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S967798AbdDSRJ7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Apr 2017 13:09:59 -0400
+Content-Disposition: inline
+In-Reply-To: <CAFLxGvz+kODD+8s9aPw_DeYtf3Gjv0aQBC=UfoBFx3Wn2b=wxQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Richard,
 
-
-On 04/19/2017 01:45 AM, Christoph Hellwig wrote:
+On Wed, Apr 19, 2017 at 03:37:42PM +0200, Richard Weinberger wrote:
+> >
+> > Tested only on ext4.
 > 
->> +	if (bio->bi_opf & REQ_NOWAIT) {
->> +		if (!blk_queue_nowait(q)) {
->> +			err = -EOPNOTSUPP;
->> +			goto end_io;
->> +		}
->> +		if (!(bio->bi_opf & REQ_SYNC)) {
-> 
-> I don't understand this check at all..
-
-It is to ensure at the block layer that NOWAIT comes only for DIRECT
-calls only. I should probably change it to REQ_SYNC | REQ_IDLE.
-
-> 
->> +			if (unlikely(!blk_queue_dying(q) && (bio->bi_opf & REQ_NOWAIT)))
-> 
-> Please break lines after 80 characters.
-> 
->> @@ -119,6 +119,9 @@ struct request *blk_mq_sched_get_request(struct request_queue *q,
->>  	if (likely(!data->hctx))
->>  		data->hctx = blk_mq_map_queue(q, data->ctx->cpu);
->>  
->> +	if (bio && (bio->bi_opf & REQ_NOWAIT))
->> +		data->flags |= BLK_MQ_REQ_NOWAIT;
-> 
-> Check the op flag again here.
-> 
->> +++ b/block/blk-mq.c
->> @@ -1538,6 +1538,8 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
->>  	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
->>  	if (unlikely(!rq)) {
->>  		__wbt_done(q->rq_wb, wb_acct);
->> +		if (bio && (bio->bi_opf & REQ_NOWAIT))
->> +			bio_wouldblock_error(bio);
-> 
-> bio iѕ dereferences unconditionally above, so you can do the same.
-> 
->> @@ -1662,6 +1664,8 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
->>  	rq = blk_mq_sched_get_request(q, bio, bio->bi_opf, &data);
->>  	if (unlikely(!rq)) {
->>  		__wbt_done(q->rq_wb, wb_acct);
->> +		if (bio && (bio->bi_opf & REQ_NOWAIT))
->> +			bio_wouldblock_error(bio);
-> 
-> Same here.  Although blk_sq_make_request is gone anyway in the current
-> block tree..
-> 
->> +	/* Request queue supports BIO_NOWAIT */
->> +	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
-> 
-> BIO_NOWAIT is gone.  And the comment would not be needed if the
-> flag had a more descriptive name, e.g. QUEUE_FLAG_NOWAIT_SUPPORT.
-> 
-> And I think all request based drivers should set the flag implicitly
-> as ->queuecommand can't sleep, and ->queue_rq only when it's always
-> offloaded to a workqueue when the BLK_MQ_F_BLOCKING flag is set.
+> I hope you classify this patch as RFC then.
+> We'll have problems when you just develop and test for ext4. :-)
 > 
 
-Yes, Do we have a central point (like a probe() function call?) where
-this can be done?
+It's a little difficult for people to test stuff on UBIFS without a turn-key
+solution like kvm-xfstests where they can just run something like
+'kvm-xfstests -c ext4,f2fs,ubifs -g encrypt'.
 
+I did post patches to add UBIFS support to xfstests and kvm-xfstests a few
+months ago; maybe you're interested in taking them over and working to get them
+merged?
 
--- 
-Goldwyn
+> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> > index c4a389a6027b..14b2a2335a32 100644
+> > --- a/fs/ext4/namei.c
+> > +++ b/fs/ext4/namei.c
+> > @@ -1257,8 +1257,8 @@ static inline int ext4_match(struct ext4_filename *fname,
+> >                         int ret;
+> >                         if (de->name_len < 16)
+> >                                 return 0;
+> > -                       ret = memcmp(de->name + de->name_len - 16,
+> > -                                    fname->crypto_buf.name + 8, 16);
+> > +                       ret = memcmp(de->name + de->name_len - 32,
+> > +                                    fname->crypto_buf.name + 8, 32);
+> >                         return (ret == 0) ? 1 : 0;
+> >                 }
+> >                 name = fname->crypto_buf.name;
+> 
+> Can the code still be able to read filenames which have been encrypted
+> using the "old" scheme?
+> 
+
+The patch only changes the presentation of long encrypted filenames when
+accessed without the key.  It doesn't change how filenames are encrypted.
+
+- Eric
