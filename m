@@ -1,111 +1,153 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: e2fsck doesn't finish
-Date: Wed, 19 Apr 2017 15:07:47 -0600
-Message-ID: <4A1EA678-9982-4D9D-8559-713487A372B4@dilger.ca>
-References: <f604727f-967c-0b49-a71c-f8adcaeb8945@gmail.com>
- <059b964a-facb-cfd5-6691-4cc1d66fea61@redhat.com>
- <20170418052415.jl44dt2jnmclpx5m@thunk.org>
- <46831715-eb83-51b3-a626-7f6669b02e8a@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_CB969597-ABC7-4AD9-8260-38BB28462614";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Julius Schwartzenberg <julius.schwartzenberg@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: xattr-in-inode support
+Date: Thu, 20 Apr 2017 09:58:23 +0200
+Message-ID: <20170420075823.GA18523@quack2.suse.cz>
+References: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
+ <20170414132720.je5ca2c5fibjn6qq@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        James Simmons <jsimmons@infradead.org>, tahsin@google.com,
+        nauman@google.com, tytso@google.com
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36409 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966825AbdDSVHy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Apr 2017 17:07:54 -0400
-Received: by mail-io0-f195.google.com with SMTP id x86so7511643ioe.3
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Apr 2017 14:07:54 -0700 (PDT)
-In-Reply-To: <46831715-eb83-51b3-a626-7f6669b02e8a@gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:54267 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S943418AbdDTIIP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Apr 2017 04:08:15 -0400
+Content-Disposition: inline
+In-Reply-To: <20170414132720.je5ca2c5fibjn6qq@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri 14-04-17 09:27:20, Ted Tso wrote:
+> To summarize the discussion that we had on this week's ext4
+> teleconference call, while discussing ways in which we might extend
+> ext4's extended attributes to provide better support for Samba.
+> 
+> Andreas pointed out that we already have an unused field,
+> e_value_block, in ext4_xattr_entry structure:
+> 
+> struct ext4_xattr_entry {
+> 	__u8	e_name_len;	/* length of name */
+> 	__u8	e_name_index;	/* attribute name index */
+> 	__le16	e_value_offs;	/* offset in disk block of value */
+> 	__le32	e_value_block;	/* disk block attribute is stored on (n/i) */
+> 	__le32	e_value_size;	/* size of attribute value */
+> 	__le32	e_hash;		/* hash value of name and value */
+> 	char	e_name[0];	/* attribute name */
+> };
+> 
+> It's only a 32-bit field, and it was repurposed in a Lustre-specific
+> feature, EXT4_FEATURE_INCOMPAT_EA_INODE as e_value_inum (since inodes
+> are only 32-bit today).  If this feature flag is enabled, then kernels
+> which understand the feature will treat e_value_block as an inode
+> number, and if it is non-zero, the value of that extended attribute is
+> stored in the inode.  This ends up burning a lot of extra inodes for
+> each extended attribute, which is why there was never much excitement
+> for this patch going upstream.
+> 
+> However, we could extend this feature (it will almost certainly
+> require a new INCOMPAT feature flag) such that a particular inode
+> could be referenced from multiple strut ext4_xattr_entry's (from
+> multiple inodes or from a single inode), since the inode for the xattr
+> body already has a ref count, i_links_count.  And given that on a
+> typical Windows CIFS file system, there will be dozens of unique
+> acl's, the problem of exhausting inodes for xattrs won't be a issue in
+> this case.
+> 
+> 
+> However, another approach that we discussed on the weekly conference
+> call was to change e_value_size to be an 16-bit field, and to use the
+> high 16 bits for flags, where one of the flags bits (say, the MSB)
+> would mean that e_value_block and e_value_size should be treated as a
+> 48-bit block number, where the block could be stored.
+> 
+> Thinking about this some more, we can use another 4 bits from the high
+> bits of e_value_size as a 16 bit number n, where if n=0, the block
+> number is stored in e_Value_block and e_value_size as above, and if n
+> > 1, that there are additional blocks for the xattr value, which will
+> be stored in the place where the xattr value would normally be stored
+> (e.g, in the inline xattr space or in the external xattr block).
+> 
+> So pictorally, it would look like this:
+> 
+> +----------------+----------------+
+> | 128-byte inode | in-line xattr  |
+> +----------------+----------------+
+>                 /                  \
+>                /                    \
+>               /                      \
+>   +---------------------------------------------+
+>   | XE | XE | XE |               | XV | XV | XV |   XE == xattr_entry   XV == xattr value
+>   +---------------------------------------------+
+>            /      \             /     \
+>           /        \           /       \
+>          /          \         /         \
+>     +--------------------+  +-------------+
+>     |   ...  | blk0 |... |  | blk1 | blk2 |
+>     +--------------------+  +-------------+
+> 
+> (to those using gmail; please view the above in a fixed-width font, or
+> use "show original")
+> 
+> So in this picture, XE is the ext4_xattr_entry, and in this case, the
+> high bits of e_value_size indicate e_value_block and the low bits of
+> e_value_size indicate the location of the first 4k block where the
+> xattr value is to be stored, and if one were to look at region of
+> memory indicated by e_value_offs, there would be two 8-byte block
+> numbers indicating the location of the 2nd and 3rd file system blocks
+> where the xattr value can be found.
+> 
+> In the external xattr value blocks, at the beginning of the first
+> block (e.g., at blk0), there will be an ext4_xattr_header, so we can
+> take advantage of h_refcount field, but with the following changes:
+> 
+> * The low 16 bits of h_blocks will be used for the size of the xattr;
+>   the high bits of h_blocks must be zero (for now).
+> 
+> * The h_hash field will be a crc32c of the value of the xattr stored
+>   in the external xattr value block(s).
+> 
+> * The h_checksum field will be calculated so that the crc32c covers
+>   only the ext4_xattr_header, instead of the entire xattrblock.  e.g.,
+>   crc32c(fs uuid || id || xattr header), where id is the inode number
+>   if refcount = 1, and blknum otherwise.
+> 
+> What are the advantages of this approach over the Lustre's
+> xattr-value-in-inode approach?  First, we don't need to burn inodes
+> for the xattr value.  This could potentially be an issue for Windows
+> SID's, since there the number of SID's is roughly equal to number of
+> users plus the number of groups.  And for a large enterprise with
+> O(100,000) employees, we could burn a pretty large number of inodes.
+> The other advantage of this scheme is that h_refcount field is 32
+> bits, where as the inode's i_links_count field is only 16 bits, and
+> there could very easily be more than 64k files that might share the
+> same Windows ACL or Windows SID.  So we would need to figure out some
+> way of dealing with an extended i_links_count field if we went with
+> the xattr-value-in-inode approach.
 
---Apple-Mail=_CB969597-ABC7-4AD9-8260-38BB28462614
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+So the proposal seems to have implicit in it that we will be
+"deduplicating" xattr values. Currently we deduplicate only full external
+xattr blocks (which possibly contain more xattrs). Any idea how big win
+that is going to be over deduplicating only full sets of xattrs?
 
-On Apr 19, 2017, at 2:57 PM, Julius Schwartzenberg =
-<julius.schwartzenberg@gmail.com> wrote:
->=20
-> Theodore Ts'o wrote:
->> It looks like the problem is fixed with the latest version of
->> e2fsprogs, though.  I just tried running using a build of e2fsprogs
->> from the next branch, and this seems to allow e2fsck to fully fix the
->> file system and avoid the "aborted" message.
->=20
-> I just tried the latest e2fsck from git and it indeed fully got =
-through.
-> I'm really glad here and I hope there will be a new release of =
-e2fsprogs
-> soon!
->=20
-> I still have a (dd) copy of the original full image on my external =
-hard
-> drive in case it would be useful.
->=20
-> I don't know if this is relevant, but maybe it could also be related =
-to
-> a conversion? Till recently the filesystem was still ext3 and I was =
-only
-> using it from Ubuntu 16.04. After installing Fedora 25 on another
-> partition, Ubuntu couldn't mount this partition anymore and I had to
-> change its entry in /etc/fstab from ext3 to ext4. Then it could mount
-> it, but Ubuntu's e2fsck complained there were features in use that it
-> didn't support. I reported this Fedora bug then:
-> https://bugzilla.redhat.com/show_bug.cgi?id=3D1440429
+One idea I had in mind was that one way of supporting larger xattrs would
+be to support something like xattr fork - i.e., in the xattr space of the
+inode we would have root of an extent tree describing xattr space of the
+inode. Then inside the space described by the extent tree would be stored
+xattrs - possibly in the same format as they are currently stored in a
+block (we would just redefine that e_value_block+e_value_offs describe the
+offset of xattr value inside the xattr space). From the perspective of
+"disk reads required to get the xattrs" this proposal should be similar as
+above (xattr space description will mostly fully fit in the xattr space of
+the inode) so we will just go and read the xattr headers and then value.
+It has an advantage that it basically does not limit xattr size or number
+of xattrs. It has the disadvantage that deduplication possibilities are
+lower.
 
-It would be useful to know which feature(s) that Fedora 25 enabled that
-Ubuntu 16.04 didn't understand.  You could use something like:
-
-    dumpe2fs -h /dev/XXX | grep -i feature
-
-under Ubuntu.  Typically, the code shouldn't be enabling any feature on
-the filesystem without an explicit request from the admin.
-
-Also, the "failed to mount" case should print something to the console
-logs about an unsupported feature, which would help isolate the problem.
-
-Cheers, Andreas
-
-> After I reported bug, I ran into the issues with e2fsck failing to =
-complete.
->=20
-> In any case, thanks a lot Theodore and Eric for looking into this! My
-> issue is solved now, but if there's anything that would still be =
-useful
-> to figure out I'll be glad to provide any information that could help.
->=20
-> Thanks!
-> Julius
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_CB969597-ABC7-4AD9-8260-38BB28462614
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFY99GlpIg59Q01vtYRAt28AJ9uQiWzPKCSzt9dIsEDerrzQN27cQCbB94G
-aQuzxfM0jszQ8WQddFpNClg=
-=6s0F
------END PGP SIGNATURE-----
-
---Apple-Mail=_CB969597-ABC7-4AD9-8260-38BB28462614--
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
