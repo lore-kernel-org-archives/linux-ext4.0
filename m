@@ -1,68 +1,56 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [f2fs-dev] [PATCH] fscrypt: use 32 bytes of encrypted filename
-Date: Fri, 21 Apr 2017 11:53:59 -0700
-Message-ID: <20170421185359.GC12755@gmail.com>
-References: <20170418210642.6039-1-gwendal@chromium.org>
- <20170418230136.GA96152@gmail.com>
- <20170419001005.GA143911@gmail.com>
- <20170419014209.GB12215@jaegeuk.local>
- <20170419040138.GA563@zzz>
- <20170419204448.GA1021@jaegeuk.local>
- <20170421074402.GA7459@zzz>
- <CAMHSBOWCf4gy9ApNvuyYMWUr-UAZscTArS=x3aAD4ohSgMq3_g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>,
-        Ryo Hashimoto <hashimoto@chromium.org>,
-        Eric Biggers <ebiggers@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Kazuhiro Inaba <kinaba@chromium.org>
-To: Gwendal Grignou <gwendal@chromium.org>
+From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+Subject: Re: some large dir testing results
+Date: Fri, 21 Apr 2017 18:11:12 +0300
+Message-ID: <B65B18DF-BC4C-459A-AB87-DB10727E7290@gmail.com>
+References: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
+ <F883702D-CECE-4FE8-ACA7-706EAB3D69FB@dilger.ca>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33799 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1423877AbdDUSyC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 14:54:02 -0400
-Content-Disposition: inline
-In-Reply-To: <CAMHSBOWCf4gy9ApNvuyYMWUr-UAZscTArS=x3aAD4ohSgMq3_g@mail.gmail.com>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33778 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1424559AbdDUTLl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 15:11:41 -0400
+Received: by mail-io0-f194.google.com with SMTP id k87so33392583ioi.0
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Apr 2017 12:11:40 -0700 (PDT)
+In-Reply-To: <F883702D-CECE-4FE8-ACA7-706EAB3D69FB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Gwendal,
 
-On Fri, Apr 21, 2017 at 10:21:16AM -0700, Gwendal Grignou wrote:
-> >
-> > In any case, I guess that unless there are other ideas we can do these patches:
-> >
-> > 1.) f2fs patch to start checking the name, as above
-> > 2.) patch to start encoding last 32 bytes of the name (or second-to-last CTS
-> >     block, I haven't decided yet) rather than last 16 bytes, changing
-> >     fs/crypto/, fs/ext4/, and fs/f2fs/
-> 
-> Using second-to-last CTS block is CTS-CBC specific. If we use another
-> method to encode filename (I am thinking of HEH,
-> http://www.mail-archive.com/linux-crypto@vger.kernel.org/msg21826.html)
-> that may not work anymore.
-> We don't have to use the last 32 bytes: using for instance the last 24
-> should be good enough, the escape rate will be 1/2^64 instead 1/2^128.
-> 
+> 21 =D0=B0=D0=BF=D1=80. 2017 =D0=B3., =D0=B2 0:10, Andreas Dilger =
+<adilger@dilger.ca> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
+>=20
+>> 2) Some JBD problems when create thread have a wait a shadow BH from =
+a committed transaction.
+>> [root@pink03 ~]# cat /proc/100993/stack
+>> [<ffffffffa06a072e>] sleep_on_shadow_bh+0xe/0x20 [jbd2]
+>> [<ffffffffa06a1bad>] do_get_write_access+0x2dd/0x4e0 [jbd2]
+>> [<ffffffffa06a1dd7>] jbd2_journal_get_write_access+0x27/0x40 [jbd2]
+>> [<ffffffffa08c7cab>] __ldiskfs_journal_get_write_access+0x3b/0x80 =
+[ldiskfs]
+>> [<ffffffffa08ce817>] __ldiskfs_new_inode+0x447/0x1300 [ldiskfs]
+>> [<ffffffffa08948c8>] ldiskfs_create+0xd8/0x190 [ldiskfs]
+>> [<ffffffff811eb42d>] vfs_create+0xcd/0x130
+>> [<ffffffff811f0960>] SyS_mknodat+0x1f0/0x220
+>> [<ffffffff811f09ad>] SyS_mknod+0x1d/0x20
+>> [<ffffffff81645549>] system_call_fastpath+0x16/0x1b
+>=20
+> You might consider to use "createmany -l" to link entries (at least =
+65k
+> at a time) to the same inode (this would need changes to createmany to
+> create more than 65k files), so that you are exercising the directory
+> code and not loading so many inodes into memory?
+>=20
 
-The thing is, even using the last N bytes is depending on the encryption
-algorithm.  The only way to make it work for arbitrary algorithms would be to
-use a cryptographic hash like SHA-256 --- which actually seems to have been the
-original design, but apparently it got changed at some point.  (I guess so that
-hashes wouldn't have to be computed in so many places, and taking advantage of
-the encryption should be sufficient.)
+I have run a hardlink test now (it don=E2=80=99t finished all loops but =
+some initial results is exist).
+Initial creation rate for HDD case is ~130k hardlink per second,
+after ~ 83580000 entries it dropped to the 30k-40k hard links per =
+second.
 
-HEH is not a problem because it's a strong pseudorandom permutation, so any
-choice of bytes from the ciphertext is equally good for it.
-
-We can always change this later if different algorithms are added, or even make
-different algorithms choose different bytes.
-
-So I think I'm leaning towards making it use the second-to-last block, rather
-than the last 32 bytes.
-
-Eric
+Alex.=
