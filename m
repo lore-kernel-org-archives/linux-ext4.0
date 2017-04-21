@@ -1,81 +1,82 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+From: Bernd Schubert <bschubert@ddn.com>
 Subject: Re: some large dir testing results
-Date: Fri, 21 Apr 2017 17:11:43 +0300
-Message-ID: <52BDEB7E-D971-4BF3-8BE0-0351138E2742@gmail.com>
+Date: Fri, 21 Apr 2017 14:08:01 +0000
+Message-ID: <1725105.ueF9SMfe6v@t1700bs>
 References: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
- <1725105.ueF9SMfe6v@t1700bs>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
         Andreas Dilger <adilger@dilger.ca>,
         Artem Blagodarenko <artem.blagodarenko@gmail.com>
-To: Bernd Schubert <bschubert@ddn.com>
+To: Alexey Lyashkov <alexey.lyashkov@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f174.google.com ([209.85.223.174]:35691 "EHLO
-        mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1040435AbdDUONB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 10:13:01 -0400
-Received: by mail-io0-f174.google.com with SMTP id r16so115602952ioi.2
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Apr 2017 07:13:00 -0700 (PDT)
-In-Reply-To: <1725105.ueF9SMfe6v@t1700bs>
+Received: from legacy.ddn.com ([64.47.133.206]:50007 "EHLO legacy.ddn.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1040516AbdDUONk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 21 Apr 2017 10:13:40 -0400
+In-Reply-To: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
+Content-Language: en-US
+Content-ID: <DE732184B833614F842B7EE08035CF0B@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-> 21 =D0=B0=D0=BF=D1=80. 2017 =D0=B3., =D0=B2 17:08, Bernd Schubert =
-<bschubert@ddn.com> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
->>=20
->> Initial analyze say about several problems
->> 0) CPU load isn=E2=80=99t high, and perf top say ldiskfs functions =
-isn=E2=80=99t hot (2%-3%
->> cpu), most spent for dir entry checking function.
->>=20
->> 1) lookup have a large time to read a directory block to verify file =
-not
->> exist. I think it because a block fragmentation. [root@pink03 ~]# cat
->> /proc/100993/stack
->> [<ffffffff81211b1e>] sleep_on_buffer+0xe/0x20
->> [<ffffffff812130da>] __wait_on_buffer+0x2a/0x30
->> [<ffffffffa0899e6c>] ldiskfs_bread+0x7c/0xc0 [ldiskfs]
->> [<ffffffffa088ee4a>] __ldiskfs_read_dirblock+0x4a/0x400 [ldiskfs]
->> [<ffffffffa08915af>] ldiskfs_dx_find_entry+0xef/0x200 [ldiskfs]
->> [<ffffffffa0891b8b>] ldiskfs_find_entry+0x4cb/0x570 [ldiskfs]
->> [<ffffffffa08921d5>] ldiskfs_lookup+0x75/0x230 [ldiskfs]
->> [<ffffffff811e8e7d>] lookup_real+0x1d/0x50
->> [<ffffffff811e97f2>] __lookup_hash+0x42/0x60
->> [<ffffffff811ee848>] filename_create+0x98/0x180
->> [<ffffffff811ef6e1>] user_path_create+0x41/0x60
->> [<ffffffff811f084a>] SyS_mknodat+0xda/0x220
->> [<ffffffff811f09ad>] SyS_mknod+0x1d/0x20
->> [<ffffffff81645549>] system_call_fastpath+0x16/0x1b
->> [<ffffffffffffffff>] 0xffffffffffffffff
->=20
-> I wrote patches for ext4 a long time ago to get a better caching for =
-that
->=20
-> https://patchwork.ozlabs.org/patch/101200/
->=20
->=20
-> For FhGFS/BeeGFS we then decided to use a totally different directory =
-layout,=20
-> which totally eliminated the underlying issue for the main requirement =
-or=20
-> large dirs at all. (Personally I would recommend to do the something =
-similar=20
-> for Lustre - using hash dirs to store objects has a much too random =
-access=20
-> pattern once the file system gets used with many files...).
->=20
-> Also, a caching issue has been fixed by Mel Gorman in 3.11 (I didn't =
-check if=20
-> these patches are backported to any vendor kernel).
->=20
->=20
-Bernd,
-
-Thanks to point we to patches, I will test with it on my next test loop.
-As about a different layout - it=E2=80=99s exist as separate option.
-
-
-Alex
+T24gVGh1cnNkYXksIEFwcmlsIDIwLCAyMDE3IDEwOjAwOjQ4IFBNIENFU1QgQWxleGV5IEx5YXNo
+a292IHdyb3RlOg0KPiBIaSBBbGwsDQo+IA0KPiBJIHJ1biBzb21lIHRlc3Rpbmcgb24gbXkgZW52
+aXJvbm1lbnQgd2l0aCBsYXJnZSBkaXIgcGF0Y2hlcyBwcm92aWRlZCBieQ0KPiBBcnRlbS4gRWFj
+aCB0ZXN0IHJ1biBhIDExIGxvb3BzIHdpdGggY3JlYXRpbmcgMjA2ODAwMDAgbWtub2Qgb2JqZWN0
+cyBmb3INCj4gbm9ybWFsIGRpciwgYW5kIDIwNjgwMDAwIGZvciBsYXJnZSBkaXIuIEZTIHdhcyBy
+ZWZvcm1hdHRlZCBiZWZvcmUgZWFjaA0KPiB0ZXN0LCBmaWxlcyB3YXMgY3JlYXRlZCBpbiByb290
+IGRpciB0byBoYXZlIGFuIGFsbG9jYXRlIGlub2RlcyBhbmQgYmxvY2tzDQo+IGZyb20gR0QjMCBh
+bmQgdXAuIEpvdXJuYWwgaGF2ZSBhIHNpemUgLSA0RyBhbmQgaXQgd2FzIGludGVybmFsIGpvdXJu
+YWwuDQo+IEtlcm5lbCB3YXMgUkhFTCA3LjIgYmFzZWQgd2l0aCBsdXN0cmUgcGF0Y2hlcy4NCj4g
+DQo+IFRlc3Qgc2NyaXB0IGNvZGUNCj4gIyEvYmluL2Jhc2gNCj4gDQo+IExPT1BTPTExDQo+IA0K
+PiBmb3IgaSBpbiBgc2VxICR7TE9PUFN9YDsgZG8NCj4gCW1rZnMgLXQgZXh0NCAtRiAtSSAyNTYg
+LUogc2l6ZT00MDk2ICR7REVWfQ0KPiAJbW91bnQgLXQgbGRpc2tmcyAke0RFVn0gJHtNTlR9DQo+
+IAlwdXNoZCAke01OVH0NCj4gCS91c3IvbGliL2x1c3RyZS90ZXN0cy9jcmVhdGVtYW55IC1tIHRl
+c3QgMjA2ODAwMDAgPiYgL3RtcC9zbWFsbC1ta25vZCR7aX0NCj4gCXBvcGQNCj4gCXVtb3VudCAk
+e0RFVn0NCj4gZG9uZQ0KPiANCj4gDQo+IGZvciBpIGluIGBzZXEgJHtMT09QU31gOyBkbw0KPiAJ
+bWtmcyAtdCBleHQ0IC1GIC1JIDI1NiAtSiBzaXplPTQwOTYgLU8gbGFyZ2VfZGlyICR7REVWfQ0K
+PiAJbW91bnQgLXQgbGRpc2tmcyAke0RFVn0gJHtNTlR9DQo+IAlwdXNoZCAke01OVH0NCj4gCS91
+c3IvbGliL2x1c3RyZS90ZXN0cy9jcmVhdGVtYW55IC1tIHRlc3QgMjA2ODAwMDAwID4mIC90bXAv
+bGFyZ2UtbWtub2Qke2l9DQo+IAlwb3BkDQo+IAl1bW91bnQgJHtERVZ9DQo+IGRvbmUNCj4gDQo+
+IFRlc3RzIHdhcyBydW4gb24gdHdvIG5vZGVzIC0gZmlyc3Qgbm9kZSBoYXZlIGEgc3RvcmFnZSB3
+aXRoIHJhaWQxMCBvZiBmYXN0DQo+IEhEROKAmXMsIHNlY29uZCBub2RlIGhhdmUgYSBOTVZFIGFz
+IGJsb2NrIGRldmljZS4gQ3VycmVudCBkaXJlY3RvcnkgY29kZSBoYXZlDQo+IGEgbmVhciBvZiBz
+aW1pbGFyIHJlc3VsdHMgZm9yIGJvdGggbm9kZXMgZm9yIGZpcnN0IHRlc3Q6IC0gSEREIG5vZGUg
+NTZrLTY1aw0KPiBjcmVhdGVzL3MNCj4gIC0gU1NEIG5vZGUgfjgwayBjcmVhdGVzL3MNCj4gQnV0
+IGxhcmdlX2RpciB0ZXN0aW5nIGhhdmUgYSBsYXJnZSBkaWZmZXJlbmNlcyBmb3Igbm9kZXMuDQo+
+IC0gSEREIG5vZGUgaGF2ZSBhIGRyb3AgYSBjcmVhdGlvbiByYXRlIHRvIDExayBjcmVhdGUvcw0K
+PiAtIFNTRCBub2RlIGhhdmUgZHJvcCB0byA0NmsgY3JlYXRlL3MNCj4gDQo+IEluaXRpYWwgYW5h
+bHl6ZSBzYXkgYWJvdXQgc2V2ZXJhbCBwcm9ibGVtcw0KPiAwKSBDUFUgbG9hZCBpc27igJl0IGhp
+Z2gsIGFuZCBwZXJmIHRvcCBzYXkgbGRpc2tmcyBmdW5jdGlvbnMgaXNu4oCZdCBob3QgKDIlLTMl
+DQo+IGNwdSksIG1vc3Qgc3BlbnQgZm9yIGRpciBlbnRyeSBjaGVja2luZyBmdW5jdGlvbi4NCj4g
+DQo+IDEpIGxvb2t1cCBoYXZlIGEgbGFyZ2UgdGltZSB0byByZWFkIGEgZGlyZWN0b3J5IGJsb2Nr
+IHRvIHZlcmlmeSBmaWxlIG5vdA0KPiBleGlzdC4gSSB0aGluayBpdCBiZWNhdXNlIGEgYmxvY2sg
+ZnJhZ21lbnRhdGlvbi4gW3Jvb3RAcGluazAzIH5dIyBjYXQNCj4gL3Byb2MvMTAwOTkzL3N0YWNr
+DQo+IFs8ZmZmZmZmZmY4MTIxMWIxZT5dIHNsZWVwX29uX2J1ZmZlcisweGUvMHgyMA0KPiBbPGZm
+ZmZmZmZmODEyMTMwZGE+XSBfX3dhaXRfb25fYnVmZmVyKzB4MmEvMHgzMA0KPiBbPGZmZmZmZmZm
+YTA4OTllNmM+XSBsZGlza2ZzX2JyZWFkKzB4N2MvMHhjMCBbbGRpc2tmc10NCj4gWzxmZmZmZmZm
+ZmEwODhlZTRhPl0gX19sZGlza2ZzX3JlYWRfZGlyYmxvY2srMHg0YS8weDQwMCBbbGRpc2tmc10N
+Cj4gWzxmZmZmZmZmZmEwODkxNWFmPl0gbGRpc2tmc19keF9maW5kX2VudHJ5KzB4ZWYvMHgyMDAg
+W2xkaXNrZnNdDQo+IFs8ZmZmZmZmZmZhMDg5MWI4Yj5dIGxkaXNrZnNfZmluZF9lbnRyeSsweDRj
+Yi8weDU3MCBbbGRpc2tmc10NCj4gWzxmZmZmZmZmZmEwODkyMWQ1Pl0gbGRpc2tmc19sb29rdXAr
+MHg3NS8weDIzMCBbbGRpc2tmc10NCj4gWzxmZmZmZmZmZjgxMWU4ZTdkPl0gbG9va3VwX3JlYWwr
+MHgxZC8weDUwDQo+IFs8ZmZmZmZmZmY4MTFlOTdmMj5dIF9fbG9va3VwX2hhc2grMHg0Mi8weDYw
+DQo+IFs8ZmZmZmZmZmY4MTFlZTg0OD5dIGZpbGVuYW1lX2NyZWF0ZSsweDk4LzB4MTgwDQo+IFs8
+ZmZmZmZmZmY4MTFlZjZlMT5dIHVzZXJfcGF0aF9jcmVhdGUrMHg0MS8weDYwDQo+IFs8ZmZmZmZm
+ZmY4MTFmMDg0YT5dIFN5U19ta25vZGF0KzB4ZGEvMHgyMjANCj4gWzxmZmZmZmZmZjgxMWYwOWFk
+Pl0gU3lTX21rbm9kKzB4MWQvMHgyMA0KPiBbPGZmZmZmZmZmODE2NDU1NDk+XSBzeXN0ZW1fY2Fs
+bF9mYXN0cGF0aCsweDE2LzB4MWINCj4gWzxmZmZmZmZmZmZmZmZmZmZmPl0gMHhmZmZmZmZmZmZm
+ZmZmZmZmDQoNCkkgd3JvdGUgcGF0Y2hlcyBmb3IgZXh0NCBhIGxvbmcgdGltZSBhZ28gdG8gZ2V0
+IGEgYmV0dGVyIGNhY2hpbmcgZm9yIHRoYXQNCg0KaHR0cHM6Ly9wYXRjaHdvcmsub3psYWJzLm9y
+Zy9wYXRjaC8xMDEyMDAvDQoNCg0KRm9yIEZoR0ZTL0JlZUdGUyB3ZSB0aGVuIGRlY2lkZWQgdG8g
+dXNlIGEgdG90YWxseSBkaWZmZXJlbnQgZGlyZWN0b3J5IGxheW91dCwgDQp3aGljaCB0b3RhbGx5
+IGVsaW1pbmF0ZWQgdGhlIHVuZGVybHlpbmcgaXNzdWUgZm9yIHRoZSBtYWluIHJlcXVpcmVtZW50
+IG9yIA0KbGFyZ2UgZGlycyBhdCBhbGwuIChQZXJzb25hbGx5IEkgd291bGQgcmVjb21tZW5kIHRv
+IGRvIHRoZSBzb21ldGhpbmcgc2ltaWxhciANCmZvciBMdXN0cmUgLSB1c2luZyBoYXNoIGRpcnMg
+dG8gc3RvcmUgb2JqZWN0cyBoYXMgYSBtdWNoIHRvbyByYW5kb20gYWNjZXNzIA0KcGF0dGVybiBv
+bmNlIHRoZSBmaWxlIHN5c3RlbSBnZXRzIHVzZWQgd2l0aCBtYW55IGZpbGVzLi4uKS4NCg0KQWxz
+bywgYSBjYWNoaW5nIGlzc3VlIGhhcyBiZWVuIGZpeGVkIGJ5IE1lbCBHb3JtYW4gaW4gMy4xMSAo
+SSBkaWRuJ3QgY2hlY2sgaWYgDQp0aGVzZSBwYXRjaGVzIGFyZSBiYWNrcG9ydGVkIHRvIGFueSB2
+ZW5kb3Iga2VybmVsKS4NCg0KDQpCZXJuZA==
