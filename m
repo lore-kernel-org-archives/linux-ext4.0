@@ -1,82 +1,64 @@
-From: Bernd Schubert <bschubert@ddn.com>
-Subject: Re: some large dir testing results
-Date: Fri, 21 Apr 2017 14:08:01 +0000
-Message-ID: <1725105.ueF9SMfe6v@t1700bs>
-References: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
+From: Gwendal Grignou <gwendal@chromium.org>
+Subject: Re: [PATCH] fscrypt: use 32 bytes of encrypted filename
+Date: Fri, 21 Apr 2017 10:21:16 -0700
+Message-ID: <CAMHSBOWCf4gy9ApNvuyYMWUr-UAZscTArS=x3aAD4ohSgMq3_g@mail.gmail.com>
+References: <20170418210642.6039-1-gwendal@chromium.org>
+	<20170418230136.GA96152@gmail.com>
+	<20170419001005.GA143911@gmail.com>
+	<20170419014209.GB12215@jaegeuk.local>
+	<20170419040138.GA563@zzz> <20170419204448.GA1021@jaegeuk.local>
+	<20170421074402.GA7459@zzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>
-To: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from legacy.ddn.com ([64.47.133.206]:50007 "EHLO legacy.ddn.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1040516AbdDUONk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 21 Apr 2017 10:13:40 -0400
-In-Reply-To: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
-Content-Language: en-US
-Content-ID: <DE732184B833614F842B7EE08035CF0B@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ryo Hashimoto <hashimoto@chromium.org>, Eric Biggers <ebiggers@google.com>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
+	Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-ext4@vger.kernel.org, Kazuhiro Inaba <kinaba@chromium.org>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <20170421074402.GA7459@zzz>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-T24gVGh1cnNkYXksIEFwcmlsIDIwLCAyMDE3IDEwOjAwOjQ4IFBNIENFU1QgQWxleGV5IEx5YXNo
-a292IHdyb3RlOg0KPiBIaSBBbGwsDQo+IA0KPiBJIHJ1biBzb21lIHRlc3Rpbmcgb24gbXkgZW52
-aXJvbm1lbnQgd2l0aCBsYXJnZSBkaXIgcGF0Y2hlcyBwcm92aWRlZCBieQ0KPiBBcnRlbS4gRWFj
-aCB0ZXN0IHJ1biBhIDExIGxvb3BzIHdpdGggY3JlYXRpbmcgMjA2ODAwMDAgbWtub2Qgb2JqZWN0
-cyBmb3INCj4gbm9ybWFsIGRpciwgYW5kIDIwNjgwMDAwIGZvciBsYXJnZSBkaXIuIEZTIHdhcyBy
-ZWZvcm1hdHRlZCBiZWZvcmUgZWFjaA0KPiB0ZXN0LCBmaWxlcyB3YXMgY3JlYXRlZCBpbiByb290
-IGRpciB0byBoYXZlIGFuIGFsbG9jYXRlIGlub2RlcyBhbmQgYmxvY2tzDQo+IGZyb20gR0QjMCBh
-bmQgdXAuIEpvdXJuYWwgaGF2ZSBhIHNpemUgLSA0RyBhbmQgaXQgd2FzIGludGVybmFsIGpvdXJu
-YWwuDQo+IEtlcm5lbCB3YXMgUkhFTCA3LjIgYmFzZWQgd2l0aCBsdXN0cmUgcGF0Y2hlcy4NCj4g
-DQo+IFRlc3Qgc2NyaXB0IGNvZGUNCj4gIyEvYmluL2Jhc2gNCj4gDQo+IExPT1BTPTExDQo+IA0K
-PiBmb3IgaSBpbiBgc2VxICR7TE9PUFN9YDsgZG8NCj4gCW1rZnMgLXQgZXh0NCAtRiAtSSAyNTYg
-LUogc2l6ZT00MDk2ICR7REVWfQ0KPiAJbW91bnQgLXQgbGRpc2tmcyAke0RFVn0gJHtNTlR9DQo+
-IAlwdXNoZCAke01OVH0NCj4gCS91c3IvbGliL2x1c3RyZS90ZXN0cy9jcmVhdGVtYW55IC1tIHRl
-c3QgMjA2ODAwMDAgPiYgL3RtcC9zbWFsbC1ta25vZCR7aX0NCj4gCXBvcGQNCj4gCXVtb3VudCAk
-e0RFVn0NCj4gZG9uZQ0KPiANCj4gDQo+IGZvciBpIGluIGBzZXEgJHtMT09QU31gOyBkbw0KPiAJ
-bWtmcyAtdCBleHQ0IC1GIC1JIDI1NiAtSiBzaXplPTQwOTYgLU8gbGFyZ2VfZGlyICR7REVWfQ0K
-PiAJbW91bnQgLXQgbGRpc2tmcyAke0RFVn0gJHtNTlR9DQo+IAlwdXNoZCAke01OVH0NCj4gCS91
-c3IvbGliL2x1c3RyZS90ZXN0cy9jcmVhdGVtYW55IC1tIHRlc3QgMjA2ODAwMDAwID4mIC90bXAv
-bGFyZ2UtbWtub2Qke2l9DQo+IAlwb3BkDQo+IAl1bW91bnQgJHtERVZ9DQo+IGRvbmUNCj4gDQo+
-IFRlc3RzIHdhcyBydW4gb24gdHdvIG5vZGVzIC0gZmlyc3Qgbm9kZSBoYXZlIGEgc3RvcmFnZSB3
-aXRoIHJhaWQxMCBvZiBmYXN0DQo+IEhEROKAmXMsIHNlY29uZCBub2RlIGhhdmUgYSBOTVZFIGFz
-IGJsb2NrIGRldmljZS4gQ3VycmVudCBkaXJlY3RvcnkgY29kZSBoYXZlDQo+IGEgbmVhciBvZiBz
-aW1pbGFyIHJlc3VsdHMgZm9yIGJvdGggbm9kZXMgZm9yIGZpcnN0IHRlc3Q6IC0gSEREIG5vZGUg
-NTZrLTY1aw0KPiBjcmVhdGVzL3MNCj4gIC0gU1NEIG5vZGUgfjgwayBjcmVhdGVzL3MNCj4gQnV0
-IGxhcmdlX2RpciB0ZXN0aW5nIGhhdmUgYSBsYXJnZSBkaWZmZXJlbmNlcyBmb3Igbm9kZXMuDQo+
-IC0gSEREIG5vZGUgaGF2ZSBhIGRyb3AgYSBjcmVhdGlvbiByYXRlIHRvIDExayBjcmVhdGUvcw0K
-PiAtIFNTRCBub2RlIGhhdmUgZHJvcCB0byA0NmsgY3JlYXRlL3MNCj4gDQo+IEluaXRpYWwgYW5h
-bHl6ZSBzYXkgYWJvdXQgc2V2ZXJhbCBwcm9ibGVtcw0KPiAwKSBDUFUgbG9hZCBpc27igJl0IGhp
-Z2gsIGFuZCBwZXJmIHRvcCBzYXkgbGRpc2tmcyBmdW5jdGlvbnMgaXNu4oCZdCBob3QgKDIlLTMl
-DQo+IGNwdSksIG1vc3Qgc3BlbnQgZm9yIGRpciBlbnRyeSBjaGVja2luZyBmdW5jdGlvbi4NCj4g
-DQo+IDEpIGxvb2t1cCBoYXZlIGEgbGFyZ2UgdGltZSB0byByZWFkIGEgZGlyZWN0b3J5IGJsb2Nr
-IHRvIHZlcmlmeSBmaWxlIG5vdA0KPiBleGlzdC4gSSB0aGluayBpdCBiZWNhdXNlIGEgYmxvY2sg
-ZnJhZ21lbnRhdGlvbi4gW3Jvb3RAcGluazAzIH5dIyBjYXQNCj4gL3Byb2MvMTAwOTkzL3N0YWNr
-DQo+IFs8ZmZmZmZmZmY4MTIxMWIxZT5dIHNsZWVwX29uX2J1ZmZlcisweGUvMHgyMA0KPiBbPGZm
-ZmZmZmZmODEyMTMwZGE+XSBfX3dhaXRfb25fYnVmZmVyKzB4MmEvMHgzMA0KPiBbPGZmZmZmZmZm
-YTA4OTllNmM+XSBsZGlza2ZzX2JyZWFkKzB4N2MvMHhjMCBbbGRpc2tmc10NCj4gWzxmZmZmZmZm
-ZmEwODhlZTRhPl0gX19sZGlza2ZzX3JlYWRfZGlyYmxvY2srMHg0YS8weDQwMCBbbGRpc2tmc10N
-Cj4gWzxmZmZmZmZmZmEwODkxNWFmPl0gbGRpc2tmc19keF9maW5kX2VudHJ5KzB4ZWYvMHgyMDAg
-W2xkaXNrZnNdDQo+IFs8ZmZmZmZmZmZhMDg5MWI4Yj5dIGxkaXNrZnNfZmluZF9lbnRyeSsweDRj
-Yi8weDU3MCBbbGRpc2tmc10NCj4gWzxmZmZmZmZmZmEwODkyMWQ1Pl0gbGRpc2tmc19sb29rdXAr
-MHg3NS8weDIzMCBbbGRpc2tmc10NCj4gWzxmZmZmZmZmZjgxMWU4ZTdkPl0gbG9va3VwX3JlYWwr
-MHgxZC8weDUwDQo+IFs8ZmZmZmZmZmY4MTFlOTdmMj5dIF9fbG9va3VwX2hhc2grMHg0Mi8weDYw
-DQo+IFs8ZmZmZmZmZmY4MTFlZTg0OD5dIGZpbGVuYW1lX2NyZWF0ZSsweDk4LzB4MTgwDQo+IFs8
-ZmZmZmZmZmY4MTFlZjZlMT5dIHVzZXJfcGF0aF9jcmVhdGUrMHg0MS8weDYwDQo+IFs8ZmZmZmZm
-ZmY4MTFmMDg0YT5dIFN5U19ta25vZGF0KzB4ZGEvMHgyMjANCj4gWzxmZmZmZmZmZjgxMWYwOWFk
-Pl0gU3lTX21rbm9kKzB4MWQvMHgyMA0KPiBbPGZmZmZmZmZmODE2NDU1NDk+XSBzeXN0ZW1fY2Fs
-bF9mYXN0cGF0aCsweDE2LzB4MWINCj4gWzxmZmZmZmZmZmZmZmZmZmZmPl0gMHhmZmZmZmZmZmZm
-ZmZmZmZmDQoNCkkgd3JvdGUgcGF0Y2hlcyBmb3IgZXh0NCBhIGxvbmcgdGltZSBhZ28gdG8gZ2V0
-IGEgYmV0dGVyIGNhY2hpbmcgZm9yIHRoYXQNCg0KaHR0cHM6Ly9wYXRjaHdvcmsub3psYWJzLm9y
-Zy9wYXRjaC8xMDEyMDAvDQoNCg0KRm9yIEZoR0ZTL0JlZUdGUyB3ZSB0aGVuIGRlY2lkZWQgdG8g
-dXNlIGEgdG90YWxseSBkaWZmZXJlbnQgZGlyZWN0b3J5IGxheW91dCwgDQp3aGljaCB0b3RhbGx5
-IGVsaW1pbmF0ZWQgdGhlIHVuZGVybHlpbmcgaXNzdWUgZm9yIHRoZSBtYWluIHJlcXVpcmVtZW50
-IG9yIA0KbGFyZ2UgZGlycyBhdCBhbGwuIChQZXJzb25hbGx5IEkgd291bGQgcmVjb21tZW5kIHRv
-IGRvIHRoZSBzb21ldGhpbmcgc2ltaWxhciANCmZvciBMdXN0cmUgLSB1c2luZyBoYXNoIGRpcnMg
-dG8gc3RvcmUgb2JqZWN0cyBoYXMgYSBtdWNoIHRvbyByYW5kb20gYWNjZXNzIA0KcGF0dGVybiBv
-bmNlIHRoZSBmaWxlIHN5c3RlbSBnZXRzIHVzZWQgd2l0aCBtYW55IGZpbGVzLi4uKS4NCg0KQWxz
-bywgYSBjYWNoaW5nIGlzc3VlIGhhcyBiZWVuIGZpeGVkIGJ5IE1lbCBHb3JtYW4gaW4gMy4xMSAo
-SSBkaWRuJ3QgY2hlY2sgaWYgDQp0aGVzZSBwYXRjaGVzIGFyZSBiYWNrcG9ydGVkIHRvIGFueSB2
-ZW5kb3Iga2VybmVsKS4NCg0KDQpCZXJuZA==
+>
+> In any case, I guess that unless there are other ideas we can do these patches:
+>
+> 1.) f2fs patch to start checking the name, as above
+> 2.) patch to start encoding last 32 bytes of the name (or second-to-last CTS
+>     block, I haven't decided yet) rather than last 16 bytes, changing
+>     fs/crypto/, fs/ext4/, and fs/f2fs/
+
+Using second-to-last CTS block is CTS-CBC specific. If we use another
+method to encode filename (I am thinking of HEH,
+http://www.mail-archive.com/linux-crypto@vger.kernel.org/msg21826.html)
+that may not work anymore.
+We don't have to use the last 32 bytes: using for instance the last 24
+should be good enough, the escape rate will be 1/2^64 instead 1/2^128.
+
+Gwendal.
+
+> 3.) cleanup patches to introduce helper function and switch ext4 and f2fs to it
+>
+> (1) and (2) will be backported.
+>
+> UBIFS can be changed to use the helper function later if needed.  It's not as
+> important for it to be backported there since UBIFS does the "double hashing",
+> and UBIFS encryption was just added in 4.10 anyway.
+>
+> I can try to put together the full series when I have time.  It probably would
+> make sense for it to go through the fscrypt tree, given the dependencies.
+>
+> Eric
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
