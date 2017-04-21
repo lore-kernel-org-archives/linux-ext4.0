@@ -1,56 +1,167 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Subject: Re: some large dir testing results
-Date: Fri, 21 Apr 2017 18:11:12 +0300
-Message-ID: <B65B18DF-BC4C-459A-AB87-DB10727E7290@gmail.com>
-References: <52B4B404-9FE0-4586-A02A-3451AA5BE089@gmail.com>
- <F883702D-CECE-4FE8-ACA7-706EAB3D69FB@dilger.ca>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>
-To: Andreas Dilger <adilger@dilger.ca>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
+Date: Fri, 21 Apr 2017 09:27:11 -0700
+Message-ID: <20170421162711.GA3972@birch.djwong.org>
+References: <20170415134118.17808-1-tytso@mit.edu>
+ <20170416191739.GA5185@birch.djwong.org>
+ <20170421073743.btwz6274h4ou3bze@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33778 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1424559AbdDUTLl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 15:11:41 -0400
-Received: by mail-io0-f194.google.com with SMTP id k87so33392583ioi.0
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Apr 2017 12:11:40 -0700 (PDT)
-In-Reply-To: <F883702D-CECE-4FE8-ACA7-706EAB3D69FB@dilger.ca>
+Received: from userp1050.oracle.com ([156.151.31.82]:29643 "EHLO
+        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1424621AbdDUTQP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 15:16:15 -0400
+Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
+        by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id v3LGRlR8031929
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Apr 2017 16:27:47 GMT
+Content-Disposition: inline
+In-Reply-To: <20170421073743.btwz6274h4ou3bze@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Apr 21, 2017 at 03:37:43AM -0400, Theodore Ts'o wrote:
+> On Sun, Apr 16, 2017 at 12:17:39PM -0700, Darrick J. Wong wrote:
+> > 
+> > Why not calculate the change in quota use by comparing the inode's
+> > i_blocks in between the ext2fs_iblk_sub_blocks call and the end of the
+> > ext2fs_extent_insert loop, rather than adding a counter to the global
+> > e2fsck state?
+> 
+> Good point.  That's a much simpler patch.  I now have:
+> 
+> From 403bcb668e4f3d11baa5a503aff17fdaee5bf3c8 Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Sat, 15 Apr 2017 00:29:46 -0400
+> Subject: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
+> 
+> If quota is enabled, optimizing the extent tree wouldn't update the
+> in-memory quota statistics, so that a subsequent e2fsck run would show
+> that the quota usage statistics on disk were incorrect.
+> 
+> Google-Bug-Id: 36391645
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  e2fsck/e2fsck.c  |  1 +
+>  e2fsck/e2fsck.h  |  1 +
+>  e2fsck/extents.c | 23 ++++++++++++++++++-----
+>  e2fsck/pass1.c   |  1 +
+>  4 files changed, 21 insertions(+), 5 deletions(-)
+> 
+> diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
+> index 0f9da46a..4baedbac 100644
+> --- a/e2fsck/e2fsck.c
+> +++ b/e2fsck/e2fsck.c
+> @@ -169,6 +169,7 @@ errcode_t e2fsck_reset_context(e2fsck_t ctx)
+>  	ctx->fs_fragmented = 0;
+>  	ctx->fs_fragmented_dir = 0;
+>  	ctx->large_files = 0;
+> +	ctx->clusters_allocated = 0;
 
-> 21 =D0=B0=D0=BF=D1=80. 2017 =D0=B3., =D0=B2 0:10, Andreas Dilger =
-<adilger@dilger.ca> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
->=20
->> 2) Some JBD problems when create thread have a wait a shadow BH from =
-a committed transaction.
->> [root@pink03 ~]# cat /proc/100993/stack
->> [<ffffffffa06a072e>] sleep_on_shadow_bh+0xe/0x20 [jbd2]
->> [<ffffffffa06a1bad>] do_get_write_access+0x2dd/0x4e0 [jbd2]
->> [<ffffffffa06a1dd7>] jbd2_journal_get_write_access+0x27/0x40 [jbd2]
->> [<ffffffffa08c7cab>] __ldiskfs_journal_get_write_access+0x3b/0x80 =
-[ldiskfs]
->> [<ffffffffa08ce817>] __ldiskfs_new_inode+0x447/0x1300 [ldiskfs]
->> [<ffffffffa08948c8>] ldiskfs_create+0xd8/0x190 [ldiskfs]
->> [<ffffffff811eb42d>] vfs_create+0xcd/0x130
->> [<ffffffff811f0960>] SyS_mknodat+0x1f0/0x220
->> [<ffffffff811f09ad>] SyS_mknod+0x1d/0x20
->> [<ffffffff81645549>] system_call_fastpath+0x16/0x1b
->=20
-> You might consider to use "createmany -l" to link entries (at least =
-65k
-> at a time) to the same inode (this would need changes to createmany to
-> create more than 65k files), so that you are exercising the directory
-> code and not loading so many inodes into memory?
->=20
+Uh... isn't this the same patch as before?
 
-I have run a hardlink test now (it don=E2=80=99t finished all loops but =
-some initial results is exist).
-Initial creation rate for HDD case is ~130k hardlink per second,
-after ~ 83580000 entries it dropped to the 30k-40k hard links per =
-second.
+--D
 
-Alex.=
+>  
+>  	for (i=0; i < MAX_EXTENT_DEPTH_COUNT; i++)
+>  		ctx->extent_depth_count[i] = 0;
+> diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+> index f3568106..ecd3b1e1 100644
+> --- a/e2fsck/e2fsck.h
+> +++ b/e2fsck/e2fsck.h
+> @@ -372,6 +372,7 @@ struct e2fsck_struct {
+>  	profile_t	profile;
+>  	int blocks_per_page;
+>  	ext2_u32_list encrypted_dirs;
+> +	__u32 clusters_allocated;
+>  
+>  	/* Reserve blocks for root and l+f re-creation */
+>  	blk64_t root_repair_block, lnf_repair_block;
+> diff --git a/e2fsck/extents.c b/e2fsck/extents.c
+> index c4167e16..1df31d71 100644
+> --- a/e2fsck/extents.c
+> +++ b/e2fsck/extents.c
+> @@ -208,17 +208,21 @@ static int find_blocks(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
+>  static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
+>  				     ext2_ino_t ino)
+>  {
+> -	struct ext2_inode	inode;
+> +	struct ext2_inode_large	inode;
+> +	struct ext2_inode	*inode_ptr;
+>  	errcode_t		retval;
+>  	ext2_extent_handle_t	handle;
+>  	unsigned int		i, ext_written;
+>  	struct ext2fs_extent	*ex, extent;
+> +	__u32			start_val;
+>  
+>  	list->count = 0;
+>  	list->blocks_freed = 0;
+>  	list->ino = ino;
+>  	list->ext_read = 0;
+> -	e2fsck_read_inode(ctx, ino, &inode, "rebuild_extents");
+> +	inode_ptr = (struct ext2_inode *) &inode;
+> +	e2fsck_read_inode_full(ctx, ino, inode_ptr, sizeof(inode),
+> +			       "rebuild_extents");
+>  
+>  	/* Skip deleted inodes and inline data files */
+>  	if (inode.i_links_count == 0 ||
+> @@ -248,16 +252,19 @@ extents_loaded:
+>  	memset(inode.i_block, 0, sizeof(inode.i_block));
+>  
+>  	/* Make a note of freed blocks */
+> -	retval = ext2fs_iblk_sub_blocks(ctx->fs, &inode, list->blocks_freed);
+> +	quota_data_sub(ctx->qctx, &inode, ino,
+> +		       list->blocks_freed * ctx->fs->blocksize);
+> +	retval = ext2fs_iblk_sub_blocks(ctx->fs, inode_ptr, list->blocks_freed);
+>  	if (retval)
+>  		goto err;
+>  
+>  	/* Now stuff extents into the file */
+> -	retval = ext2fs_extent_open2(ctx->fs, ino, &inode, &handle);
+> +	retval = ext2fs_extent_open2(ctx->fs, ino, inode_ptr, &handle);
+>  	if (retval)
+>  		goto err;
+>  
+>  	ext_written = 0;
+> +	start_val = ctx->clusters_allocated;
+>  	for (i = 0, ex = list->extents; i < list->count; i++, ex++) {
+>  		memcpy(&extent, ex, sizeof(struct ext2fs_extent));
+>  		extent.e_flags &= EXT2_EXTENT_FLAGS_UNINIT;
+> @@ -295,11 +302,17 @@ extents_loaded:
+>  		ext_written++;
+>  	}
+>  
+> +	if (start_val != ctx->clusters_allocated) {
+> +		__u32 num = ctx->clusters_allocated - start_val;
+> +		quota_data_add(ctx->qctx, &inode, ino,
+> +			       num * ctx->fs->blocksize);
+> +	}
+> +
+>  #if defined(DEBUG) || defined(DEBUG_SUMMARY)
+>  	printf("rebuild: ino=%d extents=%d->%d\n", ino, list->ext_read,
+>  	       ext_written);
+>  #endif
+> -	e2fsck_write_inode(ctx, ino, &inode, "rebuild_extents");
+> +	e2fsck_write_inode(ctx, ino, inode_ptr, "rebuild_extents");
+>  
+>  err2:
+>  	ext2fs_extent_free(handle);
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 188cc562..99e8f66a 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -4017,6 +4017,7 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
+>  	}
+>  
+>  	*ret = new_block;
+> +	ctx->clusters_allocated++;
+>  	return (0);
+>  }
+>  
+> -- 
+> 2.11.0.rc0.7.gbe5a750
+> 
