@@ -1,155 +1,103 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
-Date: Fri, 21 Apr 2017 03:37:43 -0400
-Message-ID: <20170421073743.btwz6274h4ou3bze@thunk.org>
-References: <20170415134118.17808-1-tytso@mit.edu>
- <20170416191739.GA5185@birch.djwong.org>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] fscrypt: use 32 bytes of encrypted filename
+Date: Fri, 21 Apr 2017 00:44:02 -0700
+Message-ID: <20170421074402.GA7459@zzz>
+References: <20170418210642.6039-1-gwendal@chromium.org>
+	<20170418230136.GA96152@gmail.com>
+	<20170419001005.GA143911@gmail.com>
+	<20170419014209.GB12215@jaegeuk.local> <20170419040138.GA563@zzz>
+	<20170419204448.GA1021@jaegeuk.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60830 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1036112AbdDUHhr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 21 Apr 2017 03:37:47 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+	ebiggers@google.com, linux-f2fs-devel@lists.sourceforge.net,
+	linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
+	tytso@mit.edu, linux-ext4@vger.kernel.org, kinaba@chromium.org
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 Content-Disposition: inline
-In-Reply-To: <20170416191739.GA5185@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170419204448.GA1021@jaegeuk.local>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Apr 16, 2017 at 12:17:39PM -0700, Darrick J. Wong wrote:
+Hi Jaegeuk,
+
+On Wed, Apr 19, 2017 at 01:44:48PM -0700, Jaegeuk Kim wrote:
 > 
-> Why not calculate the change in quota use by comparing the inode's
-> i_blocks in between the ext2fs_iblk_sub_blocks call and the end of the
-> ext2fs_extent_insert loop, rather than adding a counter to the global
-> e2fsck state?
+> Thank you for sharing more details. I could reproduce this issue and reach out
+> to what you mentioned. In order to resolve this, I wrote a patch for f2fs first
+> to act like ext4 for easy backports. Then, I expect a global fscrypt function
+> is easily able to clean them up.
+[...]
+> @@ -130,19 +130,29 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
+>  			continue;
+>  		}
+>  
+> -		/* encrypted case */
+> +		if (de->hash_code != namehash)
+> +			goto not_match;
+> +
+>  		de_name.name = d->filename[bit_pos];
+>  		de_name.len = le16_to_cpu(de->name_len);
+>  
+> -		/* show encrypted name */
+> -		if (fname->hash) {
+> -			if (de->hash_code == cpu_to_le32(fname->hash))
+> -				goto found;
+> -		} else if (de_name.len == name->len &&
+> -			de->hash_code == namehash &&
+> -			!memcmp(de_name.name, name->name, name->len))
+> +#ifdef CONFIG_F2FS_FS_ENCRYPTION
+> +		if (unlikely(!name->name)) {
+> +			if (fname->usr_fname->name[0] == '_') {
+> +				if (de_name.len >= 16 &&
+> +					!memcmp(de_name.name + de_name.len - 16,
+> +						fname->crypto_buf.name + 8, 16))
+> +					goto found;
+> +				goto not_match;
+> +			}
+> +			name->name = fname->crypto_buf.name;
+> +			name->len = fname->crypto_buf.len;
+> +		}
+> +#endif
+> +		if (de_name.len == name->len &&
+> +				!memcmp(de_name.name, name->name, name->len))
+>  			goto found;
+> -
+> +not_match:
 
-Good point.  That's a much simpler patch.  I now have:
+I agree with this approach, but I don't think it's ever the case that
+fname->usr_fname->name[0] != '_'.  (Yes, ext4 checks it, but I think it's
+unneeded there too.)  And if it was, it doesn't make sense to modify the 'name'
+that is passed in.
 
->From 403bcb668e4f3d11baa5a503aff17fdaee5bf3c8 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Sat, 15 Apr 2017 00:29:46 -0400
-Subject: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
+In any case, I guess that unless there are other ideas we can do these patches:
 
-If quota is enabled, optimizing the extent tree wouldn't update the
-in-memory quota statistics, so that a subsequent e2fsck run would show
-that the quota usage statistics on disk were incorrect.
+1.) f2fs patch to start checking the name, as above
+2.) patch to start encoding last 32 bytes of the name (or second-to-last CTS
+    block, I haven't decided yet) rather than last 16 bytes, changing
+    fs/crypto/, fs/ext4/, and fs/f2fs/
+3.) cleanup patches to introduce helper function and switch ext4 and f2fs to it
 
-Google-Bug-Id: 36391645
+(1) and (2) will be backported.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- e2fsck/e2fsck.c  |  1 +
- e2fsck/e2fsck.h  |  1 +
- e2fsck/extents.c | 23 ++++++++++++++++++-----
- e2fsck/pass1.c   |  1 +
- 4 files changed, 21 insertions(+), 5 deletions(-)
+UBIFS can be changed to use the helper function later if needed.  It's not as
+important for it to be backported there since UBIFS does the "double hashing",
+and UBIFS encryption was just added in 4.10 anyway.
 
-diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-index 0f9da46a..4baedbac 100644
---- a/e2fsck/e2fsck.c
-+++ b/e2fsck/e2fsck.c
-@@ -169,6 +169,7 @@ errcode_t e2fsck_reset_context(e2fsck_t ctx)
- 	ctx->fs_fragmented = 0;
- 	ctx->fs_fragmented_dir = 0;
- 	ctx->large_files = 0;
-+	ctx->clusters_allocated = 0;
- 
- 	for (i=0; i < MAX_EXTENT_DEPTH_COUNT; i++)
- 		ctx->extent_depth_count[i] = 0;
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index f3568106..ecd3b1e1 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -372,6 +372,7 @@ struct e2fsck_struct {
- 	profile_t	profile;
- 	int blocks_per_page;
- 	ext2_u32_list encrypted_dirs;
-+	__u32 clusters_allocated;
- 
- 	/* Reserve blocks for root and l+f re-creation */
- 	blk64_t root_repair_block, lnf_repair_block;
-diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-index c4167e16..1df31d71 100644
---- a/e2fsck/extents.c
-+++ b/e2fsck/extents.c
-@@ -208,17 +208,21 @@ static int find_blocks(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
- static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
- 				     ext2_ino_t ino)
- {
--	struct ext2_inode	inode;
-+	struct ext2_inode_large	inode;
-+	struct ext2_inode	*inode_ptr;
- 	errcode_t		retval;
- 	ext2_extent_handle_t	handle;
- 	unsigned int		i, ext_written;
- 	struct ext2fs_extent	*ex, extent;
-+	__u32			start_val;
- 
- 	list->count = 0;
- 	list->blocks_freed = 0;
- 	list->ino = ino;
- 	list->ext_read = 0;
--	e2fsck_read_inode(ctx, ino, &inode, "rebuild_extents");
-+	inode_ptr = (struct ext2_inode *) &inode;
-+	e2fsck_read_inode_full(ctx, ino, inode_ptr, sizeof(inode),
-+			       "rebuild_extents");
- 
- 	/* Skip deleted inodes and inline data files */
- 	if (inode.i_links_count == 0 ||
-@@ -248,16 +252,19 @@ extents_loaded:
- 	memset(inode.i_block, 0, sizeof(inode.i_block));
- 
- 	/* Make a note of freed blocks */
--	retval = ext2fs_iblk_sub_blocks(ctx->fs, &inode, list->blocks_freed);
-+	quota_data_sub(ctx->qctx, &inode, ino,
-+		       list->blocks_freed * ctx->fs->blocksize);
-+	retval = ext2fs_iblk_sub_blocks(ctx->fs, inode_ptr, list->blocks_freed);
- 	if (retval)
- 		goto err;
- 
- 	/* Now stuff extents into the file */
--	retval = ext2fs_extent_open2(ctx->fs, ino, &inode, &handle);
-+	retval = ext2fs_extent_open2(ctx->fs, ino, inode_ptr, &handle);
- 	if (retval)
- 		goto err;
- 
- 	ext_written = 0;
-+	start_val = ctx->clusters_allocated;
- 	for (i = 0, ex = list->extents; i < list->count; i++, ex++) {
- 		memcpy(&extent, ex, sizeof(struct ext2fs_extent));
- 		extent.e_flags &= EXT2_EXTENT_FLAGS_UNINIT;
-@@ -295,11 +302,17 @@ extents_loaded:
- 		ext_written++;
- 	}
- 
-+	if (start_val != ctx->clusters_allocated) {
-+		__u32 num = ctx->clusters_allocated - start_val;
-+		quota_data_add(ctx->qctx, &inode, ino,
-+			       num * ctx->fs->blocksize);
-+	}
-+
- #if defined(DEBUG) || defined(DEBUG_SUMMARY)
- 	printf("rebuild: ino=%d extents=%d->%d\n", ino, list->ext_read,
- 	       ext_written);
- #endif
--	e2fsck_write_inode(ctx, ino, &inode, "rebuild_extents");
-+	e2fsck_write_inode(ctx, ino, inode_ptr, "rebuild_extents");
- 
- err2:
- 	ext2fs_extent_free(handle);
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 188cc562..99e8f66a 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -4017,6 +4017,7 @@ static errcode_t e2fsck_get_alloc_block(ext2_filsys fs, blk64_t goal,
- 	}
- 
- 	*ret = new_block;
-+	ctx->clusters_allocated++;
- 	return (0);
- }
- 
--- 
-2.11.0.rc0.7.gbe5a750
+I can try to put together the full series when I have time.  It probably would
+make sense for it to go through the fscrypt tree, given the dependencies.
+
+Eric
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
