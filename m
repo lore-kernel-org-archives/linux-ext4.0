@@ -1,103 +1,78 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] fscrypt: use 32 bytes of encrypted filename
-Date: Fri, 21 Apr 2017 00:44:02 -0700
-Message-ID: <20170421074402.GA7459@zzz>
-References: <20170418210642.6039-1-gwendal@chromium.org>
-	<20170418230136.GA96152@gmail.com>
-	<20170419001005.GA143911@gmail.com>
-	<20170419014209.GB12215@jaegeuk.local> <20170419040138.GA563@zzz>
-	<20170419204448.GA1021@jaegeuk.local>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH] ext4: xattr-in-inode support
+Date: Fri, 21 Apr 2017 10:54:23 +0300
+Message-ID: <CAOQ4uxj=QJogKzpHRPwjPF+a9OuTLqEJoVx-VZWJY7a1dkcu=Q@mail.gmail.com>
+References: <86611BEE-5695-4047-9404-D2D3E232318A@dilger.ca>
+ <20170414132720.je5ca2c5fibjn6qq@thunk.org> <20170420075823.GA18523@quack2.suse.cz>
+ <61D86619-018B-4ED3-B0FB-C391F6442315@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-	ebiggers@google.com, linux-f2fs-devel@lists.sourceforge.net,
-	linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
-	tytso@mit.edu, linux-ext4@vger.kernel.org, kinaba@chromium.org
-To: Jaegeuk Kim <jaegeuk@kernel.org>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <20170419204448.GA1021@jaegeuk.local>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        James Simmons <jsimmons@infradead.org>, tahsin@google.com,
+        nauman@google.com, Theodore Tso <tytso@google.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f66.google.com ([209.85.218.66]:35478 "EHLO
+        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1036135AbdDUHyY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Apr 2017 03:54:24 -0400
+Received: by mail-oi0-f66.google.com with SMTP id m34so8798745oik.2
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Apr 2017 00:54:24 -0700 (PDT)
+In-Reply-To: <61D86619-018B-4ED3-B0FB-C391F6442315@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jaegeuk,
-
-On Wed, Apr 19, 2017 at 01:44:48PM -0700, Jaegeuk Kim wrote:
-> 
-> Thank you for sharing more details. I could reproduce this issue and reach out
-> to what you mentioned. In order to resolve this, I wrote a patch for f2fs first
-> to act like ext4 for easy backports. Then, I expect a global fscrypt function
-> is easily able to clean them up.
+On Fri, Apr 21, 2017 at 12:22 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Apr 20, 2017, at 1:58 AM, Jan Kara <jack@suse.cz> wrote:
+>>
 [...]
-> @@ -130,19 +130,29 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
->  			continue;
->  		}
->  
-> -		/* encrypted case */
-> +		if (de->hash_code != namehash)
-> +			goto not_match;
-> +
->  		de_name.name = d->filename[bit_pos];
->  		de_name.len = le16_to_cpu(de->name_len);
->  
-> -		/* show encrypted name */
-> -		if (fname->hash) {
-> -			if (de->hash_code == cpu_to_le32(fname->hash))
-> -				goto found;
-> -		} else if (de_name.len == name->len &&
-> -			de->hash_code == namehash &&
-> -			!memcmp(de_name.name, name->name, name->len))
-> +#ifdef CONFIG_F2FS_FS_ENCRYPTION
-> +		if (unlikely(!name->name)) {
-> +			if (fname->usr_fname->name[0] == '_') {
-> +				if (de_name.len >= 16 &&
-> +					!memcmp(de_name.name + de_name.len - 16,
-> +						fname->crypto_buf.name + 8, 16))
-> +					goto found;
-> +				goto not_match;
-> +			}
-> +			name->name = fname->crypto_buf.name;
-> +			name->len = fname->crypto_buf.len;
-> +		}
-> +#endif
-> +		if (de_name.len == name->len &&
-> +				!memcmp(de_name.name, name->name, name->len))
->  			goto found;
-> -
-> +not_match:
+>> One idea I had in mind was that one way of supporting larger xattrs would
+>> be to support something like xattr fork - i.e., in the xattr space of the
+>> inode we would have root of an extent tree describing xattr space of the
+>> inode. Then inside the space described by the extent tree would be stored
+>> xattrs - possibly in the same format as they are currently stored in a
+>> block (we would just redefine that e_value_block+e_value_offs describe the
+>> offset of xattr value inside the xattr space).
 
-I agree with this approach, but I don't think it's ever the case that
-fname->usr_fname->name[0] != '_'.  (Yes, ext4 checks it, but I think it's
-unneeded there too.)  And if it was, it doesn't make sense to modify the 'name'
-that is passed in.
+BTW, 'xattr fork' is the xfs way AFAIK and btrfs has 'xattr inodes'.
 
-In any case, I guess that unless there are other ideas we can do these patches:
+>
+> Yes, this is what I was trying to get at with my previous email as well.
+> There isn't much difference between allocating a bunch of blocks directly
+> as the xattr space vs. an inode that is allocating those blocks.  The main
+> difference from the current xattr inode implementation is that this packs
+> multiple xattrs into a single inode, while the current code only stores a
+> single value starting at offset=0, without any header.
+>
 
-1.) f2fs patch to start checking the name, as above
-2.) patch to start encoding last 32 bytes of the name (or second-to-last CTS
-    block, I haven't decided yet) rather than last 16 bytes, changing
-    fs/crypto/, fs/ext4/, and fs/f2fs/
-3.) cleanup patches to introduce helper function and switch ext4 and f2fs to it
+That's not the only difference, is it?
+Current ea-in-inode code can allocate many xattr inodes per regular inode.
+'xattr fork' is equivalent to allocating a single 'xattr inode' per
+regular inode.
 
-(1) and (2) will be backported.
+I wonder if one-xattr-inode and one-EA-per-block can work out:
+- EA block cannot have more than 1 EA
+- EA can span more than 1 EA block (i.e. compound EA block)
+- Refcounting is in the EA block as it is now, but may refcount a compund block
+- inode A may have a reference to xattr-inode Ax, which is the host for writing
+  new unshared EAs for inode A
+- EA of inode B may have a shared EA with e_value_block pointing at block
+  of xattr-inode Ax
+- When refcount of any EA (compound) block drops to zero, punch holes in
+  the xattr-inode hosting these blocks
+- When inode A is deleted, it drops refcount on all the EA blocks its EAs
+  are referencing
+- If xattr-inode Ax has remaining EA block when inode A is going away,
+  it transitions into a 'shared xattr-inode' and lives on the orphan list, or
+  another dedicated list, until its own blocks count drops to zero.
 
-UBIFS can be changed to use the helper function later if needed.  It's not as
-important for it to be backported there since UBIFS does the "double hashing",
-and UBIFS encryption was just added in 4.10 anyway.
+I probably missed some details, maybe important ones as well,
+but if I haven't, then this could reuse some of the existing EA dedup
+code and cap the inodes overhead significantly (*).
 
-I can try to put together the full series when I have time.  It probably would
-make sense for it to go through the fscrypt tree, given the dependencies.
+(*) shared xattr-inodes may be compacted by handing their blocks over to
+     a dedicated SHARED_XATTR_INO or to any random xattr-inode victim
+     for that matter (i.e. of root inode).
 
-Eric
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+Amir.
