@@ -1,55 +1,45 @@
-From: Julius Schwartzenberg <julius.schwartzenberg@gmail.com>
-Subject: Re: e2fsck doesn't finish
-Date: Sun, 23 Apr 2017 16:07:29 +0200
-Message-ID: <4eb717f7-1ccb-95a0-0b53-e811651965ee@gmail.com>
-References: <f604727f-967c-0b49-a71c-f8adcaeb8945@gmail.com>
- <059b964a-facb-cfd5-6691-4cc1d66fea61@redhat.com>
- <20170418052415.jl44dt2jnmclpx5m@thunk.org>
- <46831715-eb83-51b3-a626-7f6669b02e8a@gmail.com>
- <4A1EA678-9982-4D9D-8559-713487A372B4@dilger.ca>
+From: <rlm85310@cox.net>
+Subject: 9540 linux-ext4
+Date: Sun, 23 Apr 2017 14:44:47 -0000
+Message-ID: <149295868749.16691.5736325593251166354@tfn.net.tw>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: application/zip; name="064516292.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lb1-smtp-cloud2.xs4all.net ([194.109.24.21]:38397 "EHLO
-        lb1-smtp-cloud2.xs4all.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1045566AbdDWOHd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 23 Apr 2017 10:07:33 -0400
-In-Reply-To: <4A1EA678-9982-4D9D-8559-713487A372B4@dilger.ca>
+Received: from 219-80-134-102.dynamic.tfn.net.tw ([219.80.134.102]:52223 "HELO
+        tfn.net.tw" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1045680AbdDWOoy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 23 Apr 2017 10:44:54 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> It would be useful to know which feature(s) that Fedora 25 enabled that
-> Ubuntu 16.04 didn't understand.  You could use something like:
-> 
->     dumpe2fs -h /dev/XXX | grep -i feature
-> 
-> under Ubuntu.  Typically, the code shouldn't be enabling any feature on
-> the filesystem without an explicit request from the admin.
-
-I expect that Ubuntu's kernel (4.4.0) supports more features than its
-e2fsck as I can mount it now. Ubuntu 16.04 comes with e2fsprogs version
-1.42.13. The feature that that version says it doesn't support is
-inline_data.
-
-
-> Also, the "failed to mount" case should print something to the console
-> logs about an unsupported feature, which would help isolate the problem.
-
-Yes, it printed it couldn't mount the filesystem as ext3 originally, but
-I changed /etc/fstab accordingly.
-
-I have always been quite ignorant on filesystem upgrades and features
-supported by either the kernel or e2fsprogs and upgrades/downgrades of
-existing filesystems as usually everything just works.
-I expect that the upgrade from ext3 to ext4 was triggered by Fedora's
-installer (not e2fsprogs) and that dual boot configurations are less
-tested in general.
-
-Best regards,
-Julius
+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
+AAAAnAUAAAAA
