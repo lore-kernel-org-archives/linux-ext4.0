@@ -1,52 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] e2fsck: update quota when optimizing the extent tree
-Date: Sat, 22 Apr 2017 17:48:02 -0400
-Message-ID: <20170422214802.z4qekigaoaucwffl@thunk.org>
-References: <20170415134118.17808-1-tytso@mit.edu>
- <20170416191739.GA5185@birch.djwong.org>
- <20170421073743.btwz6274h4ou3bze@thunk.org>
- <20170421162711.GA3972@birch.djwong.org>
- <20170421200600.zvgjbblbrftvlfb4@thunk.org>
- <C0EE07FD-40C0-4074-83CE-32F6A092A265@dilger.ca>
+From: Julius Schwartzenberg <julius.schwartzenberg@gmail.com>
+Subject: Re: e2fsck doesn't finish
+Date: Sun, 23 Apr 2017 16:07:29 +0200
+Message-ID: <4eb717f7-1ccb-95a0-0b53-e811651965ee@gmail.com>
+References: <f604727f-967c-0b49-a71c-f8adcaeb8945@gmail.com>
+ <059b964a-facb-cfd5-6691-4cc1d66fea61@redhat.com>
+ <20170418052415.jl44dt2jnmclpx5m@thunk.org>
+ <46831715-eb83-51b3-a626-7f6669b02e8a@gmail.com>
+ <4A1EA678-9982-4D9D-8559-713487A372B4@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37452 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1427146AbdDVVsW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 22 Apr 2017 17:48:22 -0400
-Content-Disposition: inline
-In-Reply-To: <C0EE07FD-40C0-4074-83CE-32F6A092A265@dilger.ca>
+Received: from lb1-smtp-cloud2.xs4all.net ([194.109.24.21]:38397 "EHLO
+        lb1-smtp-cloud2.xs4all.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1045566AbdDWOHd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 23 Apr 2017 10:07:33 -0400
+In-Reply-To: <4A1EA678-9982-4D9D-8559-713487A372B4@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 21, 2017 at 03:15:07PM -0600, Andreas Dilger wrote:
+Andreas Dilger wrote:
+> It would be useful to know which feature(s) that Fedora 25 enabled that
+> Ubuntu 16.04 didn't understand.  You could use something like:
 > 
-> Should this quota_data_sub() call be after ext2fs_iblk_sub_blocks() has
-> completed successfully, or are the blocks already freed at this point
-> and only the inode->i_blocks counter would be outdated?
+>     dumpe2fs -h /dev/XXX | grep -i feature
+> 
+> under Ubuntu.  Typically, the code shouldn't be enabling any feature on
+> the filesystem without an explicit request from the admin.
 
-The blocks are already freed at this point.
+I expect that Ubuntu's kernel (4.4.0) supports more features than its
+e2fsck as I can mount it now. Ubuntu 16.04 comes with e2fsprogs version
+1.42.13. The feature that that version says it doesn't support is
+inline_data.
 
-> In theory this could go at the start before any changes are made to the
-> inode, and then there wouldn't be the need for the intermediate call to
-> quota_data_sub() above?  That avoids a small amount of overhead, and
-> also avoids the more complicated issue of the quota file being modified
-> even if this operation hits an error and is skipped (i.e. any "goto err"
-> case).
 
-We're actually not modifying the quota file at this point; we're just
-modifying the in-memory "correct" quota data numbers.
+> Also, the "failed to mount" case should print something to the console
+> logs about an unsupported feature, which would help isolate the problem.
 
-Also, if we fail in the middle, given that the extent tree blocks have
-been freed and potentially partially reused, the fact that the quota
-file has been modified is the least of our problems.  In theory we
-could save the list of old extent tree index blocks, and try to use
-new blocks for the new extent tree index blocks as much as possible.
-But that's not true today.
+Yes, it printed it couldn't mount the filesystem as ext3 originally, but
+I changed /etc/fstab accordingly.
 
-    	   				- Ted
-				
+I have always been quite ignorant on filesystem upgrades and features
+supported by either the kernel or e2fsprogs and upgrades/downgrades of
+existing filesystems as usually everything just works.
+I expect that the upgrade from ext3 to ext4 was triggered by Fedora's
+installer (not e2fsprogs) and that dual boot configurations are less
+tested in general.
+
+Best regards,
+Julius
