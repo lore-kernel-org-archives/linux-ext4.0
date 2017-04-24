@@ -1,93 +1,77 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v3 20/20] gfs2: clean up some filemap_* calls
-Date: Mon, 24 Apr 2017 12:59:03 -0400
-Message-ID: <1493053143.2895.15.camel@redhat.com>
-References: <20170424132259.8680-1-jlayton@redhat.com>
-         <20170424132259.8680-21-jlayton@redhat.com>
-         <2139341349.405174.1493043175630.JavaMail.zimbra@redhat.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH 0/6] fscrypt: fixes for presentation of long
+	encrypted filenames
+Date: Mon, 24 Apr 2017 10:00:07 -0700
+Message-ID: <20170424170013.85175-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-mm@kvack.org,
-        jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
-        linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
-        dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
-        ross zwisler <ross.zwisler@linux.intel.com>,
-        mawilcox@microsoft.com, jack@suse.com, viro@zeniv.linux.org.uk,
-        corbet@lwn.net, neilb@suse.de, clm@fb.com, tytso@mit.edu,
-        axboe@kernel.dk
-To: Bob Peterson <rpeterso@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <2139341349.405174.1493043175630.JavaMail.zimbra@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: hashimoto@chromium.org, Gwendal Grignou <gwendal@chromium.org>,
+	"Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-ext4@vger.kernel.org, kinaba@chromium.org
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2017-04-24 at 10:12 -0400, Bob Peterson wrote:
-> ----- Original Message -----
-> > In some places, it's trying to reset the mapping error after calling
-> > filemap_fdatawait. That's no longer required. Also, turn several
-> > filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-> > That will at least return writeback errors that occur during the write
-> > phase.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/gfs2/glops.c | 12 ++++--------
-> >  fs/gfs2/lops.c  |  4 +---
-> >  fs/gfs2/super.c |  6 ++----
-> >  3 files changed, 7 insertions(+), 15 deletions(-)
-> > 
-> > diff --git a/fs/gfs2/glops.c b/fs/gfs2/glops.c
-> > index 5db59d444838..7362d19fdc4c 100644
-> > --- a/fs/gfs2/glops.c
-> > +++ b/fs/gfs2/glops.c
-> > @@ -158,9 +158,7 @@ static void rgrp_go_sync(struct gfs2_glock *gl)
-> >  	GLOCK_BUG_ON(gl, gl->gl_state != LM_ST_EXCLUSIVE);
-> >  
-> >  	gfs2_log_flush(sdp, gl, NORMAL_FLUSH);
-> > -	filemap_fdatawrite_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
-> > -	error = filemap_fdatawait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
-> > -	mapping_set_error(mapping, error);
-> > +	filemap_write_and_wait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
-> 
-> This should probably have "error = ", no?
-> 
+From: Eric Biggers <ebiggers@google.com>
 
-This error is discarded in the current code after resetting the error in
-the mapping. With the earlier patches in this set we don't need to reset
-the error like this anymore.
+This series fixes the bugs that have been identified with how filesystems handle
+presenting long encrypted filenames without the key.
 
-Now, if this code should doing something else with those errors, then
-that's a separate problem.
+Patch 1 is Jaegeuk's fix to make f2fs start checking the ciphertext portion of
+the digested names.  I made one change to this patch which is that to determine
+whether we should use the hash from the fscrypt_name structure rather than
+compute the hash, we should check for 'disk_name.name' being NULL rather than
+'hash' being nonzero, since 0 is a valid hash value.
 
-> >  	gfs2_ail_empty_gl(gl);
-> >  
-> >  	spin_lock(&gl->gl_lockref.lock);
-> > @@ -225,12 +223,10 @@ static void inode_go_sync(struct gfs2_glock *gl)
-> >  	filemap_fdatawrite(metamapping);
-> >  	if (ip) {
-> >  		struct address_space *mapping = ip->i_inode.i_mapping;
-> > -		filemap_fdatawrite(mapping);
-> > -		error = filemap_fdatawait(mapping);
-> > -		mapping_set_error(mapping, error);
-> > +		filemap_write_and_wait(mapping);
-> > +	} else {
-> > +		filemap_fdatawait(metamapping);
-> >  	}
-> > -	error = filemap_fdatawait(metamapping);
-> > -	mapping_set_error(metamapping, error);
-> 
-> This part doesn't look right at all. There's a big difference in gfs2 between
-> mapping and metamapping. We need to wait for metamapping regardless.
-> 
+Patch 2 fixes the bug found on Chrome OS where the wrong part of the ciphertext
+was included in the digested names, causing collisions and undeletable files.
 
-...and this should wait. Basically, filemap_write_and_wait does
-filemap_fdatawrite and then filemap_fdatawait. This is mostly just
-replacing the existing code with a more concise helper.
+Patches 3-6 clean things up to be less insane and confusing, e.g. by introducing
+a shared function for name matching and a struct to represent a digested name.
+
+Patches 1-2 will need to be backported and I think they should be merged into
+4.12 through the fscrypt tree.  The other patches are nice to have but it's not
+a big deal if they need to wait for next cycle.
+
+This patch series leaves out UBIFS; it can be changed to use the common matching
+function once available, if desired.
+
+Eric Biggers (5):
+  fscrypt: avoid collisions when presenting long encrypted filenames
+  fscrypt: introduce helper function for filename matching
+  ext4: switch to using fscrypt_match_name()
+  f2fs: switch to using fscrypt_match_name()
+  ext4: clean up ext4_match() and callers
+
+Jaegeuk Kim (1):
+  f2fs: check entire encrypted bigname when finding a dentry
+
+ fs/crypto/fname.c               |  90 +++++++++++++++++++++++++++--------
+ fs/crypto/fscrypt_private.h     |   2 -
+ fs/ext4/namei.c                 | 103 ++++++++++++----------------------------
+ fs/f2fs/dir.c                   |  25 ++--------
+ fs/f2fs/f2fs.h                  |   3 +-
+ fs/f2fs/hash.c                  |   7 ++-
+ fs/f2fs/inline.c                |   4 +-
+ include/linux/fscrypt_notsupp.h |   9 ++++
+ include/linux/fscrypt_supp.h    |  78 ++++++++++++++++++++++++++++++
+ 9 files changed, 202 insertions(+), 119 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+2.12.2.816.g2cccc81164-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
