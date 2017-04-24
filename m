@@ -1,52 +1,88 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v3 03/20] buffer: use mapping_set_error
-	instead of setting the flag
-Date: Mon, 24 Apr 2017 09:22:42 -0400
-Message-ID: <20170424132259.8680-4-jlayton@redhat.com>
+Subject: [PATCH v3 04/20] fs: check for writeback errors after syncing out buffers in generic_file_fsync
+Date: Mon, 24 Apr 2017 09:22:43 -0400
+Message-ID: <20170424132259.8680-5-jlayton@redhat.com>
 References: <20170424132259.8680-1-jlayton@redhat.com>
-Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
-	corbet@lwn.net, dhowells@redhat.com, clm@fb.com,
-	viro@zeniv.linux.org.uk, jack@suse.com,
-	akpm@linux-foundation.org, ross.zwisler@linux.intel.com
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-mm@kvack.org,
-	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
-	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org
-Return-path: <cluster-devel-bounces@redhat.com>
+Cc: dhowells@redhat.com,
+	akpm@linux-foundation.org,
+	hch@infradead.org,
+	ross.zwisler@linux.intel.com,
+	mawilcox@microsoft.com,
+	jack@suse.com,
+	viro@zeniv.linux.org.uk,
+	corbet@lwn.net,
+	neilb@suse.de,
+	clm@fb.com,
+	tytso@mit.edu,
+	axboe@kernel.dk
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-cifs@vger.kernel.org,
+	linux-mm@kvack.org,
+	jfs-discussion@lists.sourceforge.net,
+	linux-xfs@vger.kernel.org,
+	cluster-devel@redhat.com,
+	linux-f2fs-devel@lists.sourceforge.net,
+	v9fs-developer@lists.sourceforge.net,
+	osd-dev@open-osd.org,
+	linux-nilfs@vger.kernel.org,
+	linux-block@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170424132259.8680-1-jlayton@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
----
- fs/buffer.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ext2 currently does a test+clear of the AS_EIO flag, which is
+is problematic for some coming changes.
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 9196f2a270da..70638941066d 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -483,7 +483,7 @@ static void __remove_assoc_queue(struct buffer_head *bh)
- 	list_del_init(&bh->b_assoc_buffers);
- 	WARN_ON(!bh->b_assoc_map);
- 	if (buffer_write_io_error(bh))
--		set_bit(AS_EIO, &bh->b_assoc_map->flags);
-+		mapping_set_error(bh->b_assoc_map, -EIO);
- 	bh->b_assoc_map = NULL;
+What we really need to do instead is call filemap_check_errors
+in __generic_file_fsync after syncing out the buffers. That
+will be sufficient for this case, and help other callers detect
+these errors properly as well.
+
+With that, we don't need to twiddle it in ext2.
+
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/ext2/file.c | 2 +-
+ fs/libfs.c     | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index b21891a6bfca..ed00e7ae0ef3 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -177,7 +177,7 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+ 
+ 	ret = generic_file_fsync(file, start, end, datasync);
+-	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
++	if (ret == -EIO) {
+ 		/* We don't really know where the IO error happened... */
+ 		ext2_error(sb, __func__,
+ 			   "detected IO error when writing metadata buffers");
+diff --git a/fs/libfs.c b/fs/libfs.c
+index a8b62e5d43a9..12a48ee442d3 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -991,7 +991,8 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
+ 
+ out:
+ 	inode_unlock(inode);
+-	return ret;
++	err = filemap_check_errors(inode->i_mapping);
++	return ret ? : err;
  }
+ EXPORT_SYMBOL(__generic_file_fsync);
  
 -- 
 2.9.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
