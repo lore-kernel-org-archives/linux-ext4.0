@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v3 09/20] 9p: set mapping error when
-	writeback fails in launder_page
-Date: Mon, 24 Apr 2017 09:22:48 -0400
-Message-ID: <20170424132259.8680-10-jlayton@redhat.com>
+Subject: [PATCH v3 10/20] fuse: set mapping error in
+	writepage_locked when it fails
+Date: Mon, 24 Apr 2017 09:22:49 -0400
+Message-ID: <20170424132259.8680-11-jlayton@redhat.com>
 References: <20170424132259.8680-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, dhowells@redhat.com, clm@fb.com,
@@ -28,30 +28,24 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-launder_page is just writeback under the page lock. We still need to
-mark the mapping for errors there when they occur.
+This ensures that we see errors on fsync when writeback fails.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/9p/vfs_addr.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/fuse/file.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index adaf6f6dd858..7af6e6501698 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -223,8 +223,11 @@ static int v9fs_launder_page(struct page *page)
- 	v9fs_fscache_wait_on_page_write(inode, page);
- 	if (clear_page_dirty_for_io(page)) {
- 		retval = v9fs_vfs_writepage_locked(page);
--		if (retval)
-+		if (retval) {
-+			if (retval != -EAGAIN)
-+				mapping_set_error(page->mapping, retval);
- 			return retval;
-+		}
- 	}
- 	return 0;
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index ec238fb5a584..07d0efcb050c 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -1669,6 +1669,7 @@ static int fuse_writepage_locked(struct page *page)
+ err_free:
+ 	fuse_request_free(req);
+ err:
++	mapping_set_error(page->mapping, error);
+ 	end_page_writeback(page);
+ 	return error;
  }
 -- 
 2.9.3
