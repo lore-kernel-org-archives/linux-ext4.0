@@ -1,181 +1,143 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 1/6] f2fs: check entire encrypted bigname when finding a dentry
-Date: Mon, 24 Apr 2017 10:00:08 -0700
-Message-ID: <20170424170013.85175-2-ebiggers3@gmail.com>
+Subject: [PATCH 2/6] fscrypt: avoid collisions when presenting
+	long encrypted filenames
+Date: Mon, 24 Apr 2017 10:00:09 -0700
+Message-ID: <20170424170013.85175-3-ebiggers3@gmail.com>
 References: <20170424170013.85175-1-ebiggers3@gmail.com>
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, stable@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: hashimoto@chromium.org, Gwendal Grignou <gwendal@chromium.org>,
+	"Theodore Y . Ts'o" <tytso@mit.edu>,
+	Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-ext4@vger.kernel.org, kinaba@chromium.org
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:36124 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S975168AbdDXRCG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Apr 2017 13:02:06 -0400
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170424170013.85175-1-ebiggers3@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-From: Jaegeuk Kim <jaegeuk@kernel.org>
+From: Eric Biggers <ebiggers@google.com>
 
-If user has no key under an encrypted dir, fscrypt gives digested dentries.
-Previously, when looking up a dentry, f2fs only checks its hash value with
-first 4 bytes of the digested dentry, which didn't handle hash collisions fully.
-This patch enhances to check entire dentry bytes likewise ext4.
+When accessing an encrypted directory without the key, userspace must
+operate on filenames derived from the ciphertext names, which contain
+arbitrary bytes.  Since we must support filenames as long as NAME_MAX,
+we can't always just base64-encode the ciphertext, since that may make
+it too long.  Currently, this is solved by presenting long names in an
+abbreviated form containing any needed filesystem-specific hashes (e.g.
+to identify a directory block), then the last 16 bytes of ciphertext.
+This needs to be sufficient to identify the actual name on lookup.
 
-Eric reported how to reproduce this issue by:
+However, there is a bug.  It seems to have been assumed that due to the
+use of a CBC (ciphertext block chaining)-based encryption mode, the last
+16 bytes (i.e. the AES block size) of ciphertext would depend on the
+full plaintext, preventing collisions.  However, we actually use CBC
+with ciphertext stealing (CTS), which handles the last two blocks
+specially, causing them to appear "flipped".  Thus, it's actually the
+second-to-last block which depends on the full plaintext.
 
- # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
- # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-100000
- # sync
- # echo 3 > /proc/sys/vm/drop_caches
- # keyctl new_session
- # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-99999
+This caused long filenames that differ only near the end of their
+plaintexts to, when observed without the key, point to the wrong inode
+and be undeletable.  For example, with ext4:
 
-Cc: <stable@vger.kernel.org>
-Reported-by: Eric Biggers <ebiggers@google.com>
-Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
-(fixed f2fs_dentry_hash() to work even when the hash is 0)
+    # echo pass | e4crypt add_key -p 16 edir/
+    # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
+    # find edir/ -type f | xargs stat -c %i | sort | uniq | wc -l
+    100000
+    # sync
+    # echo 3 > /proc/sys/vm/drop_caches
+    # keyctl new_session
+    # find edir/ -type f | xargs stat -c %i | sort | uniq | wc -l
+    2004
+    # rm -rf edir/
+    rm: cannot remove 'edir/_A7nNFi3rhkEQlJ6P,hdzluhODKOeWx5V': Structure needs cleaning
+    ...
+
+To fix this, when presenting long encrypted filenames, encode the
+second-to-last block of ciphertext rather than the last 16 bytes.
+
+Although it would be nice to solve this without depending on a specific
+encryption mode, that would mean doing a cryptographic hash like SHA-256
+which would be much less efficient.  This way is sufficient for now, and
+it's still compatible with encryption modes like HEH which are strong
+pseudorandom permutations.  Also, changing the presented names is still
+allowed at any time because they are only provided to allow applications
+to do things like delete encrypted directories.  They're not designed to
+be used to persistently identify files --- which would be hard to do
+anyway, given that they're encrypted after all.
+
+For ease of backports, this patch only makes the minimal fix to both
+ext4 and f2fs.  It leaves ubifs as-is, since ubifs doesn't compare the
+ciphertext block yet.  Follow-on patches will clean things up properly
+and make the filesystems use a shared helper function.
+
+Fixes: 5de0b4d0cd15 ("ext4 crypto: simplify and speed up filename encryption")
+Reported-by: Gwendal Grignou <gwendal@chromium.org>
+Cc: stable@vger.kernel.org
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/f2fs/dir.c    | 37 +++++++++++++++++++++----------------
- fs/f2fs/f2fs.h   |  3 ++-
- fs/f2fs/hash.c   |  7 ++++++-
- fs/f2fs/inline.c |  4 ++--
- 4 files changed, 31 insertions(+), 20 deletions(-)
+ fs/crypto/fname.c | 2 +-
+ fs/ext4/namei.c   | 4 ++--
+ fs/f2fs/dir.c     | 4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 13052b85c393..932881f27f2f 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -300,7 +300,7 @@ int fscrypt_fname_disk_to_usr(struct inode *inode,
+ 	} else {
+ 		memset(buf, 0, 8);
+ 	}
+-	memcpy(buf + 8, iname->name + iname->len - 16, 16);
++	memcpy(buf + 8, iname->name + ((iname->len - 17) & ~15), 16);
+ 	oname->name[0] = '_';
+ 	oname->len = 1 + digest_encode(buf, 24, oname->name + 1);
+ 	return 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 6ad612c576fc..e6301b6933fc 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1255,9 +1255,9 @@ static inline int ext4_match(struct ext4_filename *fname,
+ 	if (unlikely(!name)) {
+ 		if (fname->usr_fname->name[0] == '_') {
+ 			int ret;
+-			if (de->name_len < 16)
++			if (de->name_len <= 32)
+ 				return 0;
+-			ret = memcmp(de->name + de->name_len - 16,
++			ret = memcmp(de->name + ((de->name_len - 17) & ~15),
+ 				     fname->crypto_buf.name + 8, 16);
+ 			return (ret == 0) ? 1 : 0;
+ 		}
 diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
-index c143dffcae6e..374e4b8f9b70 100644
+index 374e4b8f9b70..5df3596a667a 100644
 --- a/fs/f2fs/dir.c
 +++ b/fs/f2fs/dir.c
-@@ -130,19 +130,29 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
- 			continue;
- 		}
- 
--		/* encrypted case */
-+		if (de->hash_code != namehash)
-+			goto not_match;
-+
- 		de_name.name = d->filename[bit_pos];
- 		de_name.len = le16_to_cpu(de->name_len);
- 
--		/* show encrypted name */
--		if (fname->hash) {
--			if (de->hash_code == cpu_to_le32(fname->hash))
--				goto found;
--		} else if (de_name.len == name->len &&
--			de->hash_code == namehash &&
--			!memcmp(de_name.name, name->name, name->len))
-+#ifdef CONFIG_F2FS_FS_ENCRYPTION
-+		if (unlikely(!name->name)) {
-+			if (fname->usr_fname->name[0] == '_') {
-+				if (de_name.len >= 16 &&
-+					!memcmp(de_name.name + de_name.len - 16,
-+						fname->crypto_buf.name + 8, 16))
-+					goto found;
-+				goto not_match;
-+			}
-+			name->name = fname->crypto_buf.name;
-+			name->len = fname->crypto_buf.len;
-+		}
-+#endif
-+		if (de_name.len == name->len &&
-+				!memcmp(de_name.name, name->name, name->len))
- 			goto found;
--
-+not_match:
- 		if (max_slots && max_len > *max_slots)
- 			*max_slots = max_len;
- 		max_len = 0;
-@@ -170,12 +180,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
- 	struct f2fs_dir_entry *de = NULL;
- 	bool room = false;
- 	int max_slots;
--	f2fs_hash_t namehash;
--
--	if(fname->hash)
--		namehash = cpu_to_le32(fname->hash);
--	else
--		namehash = f2fs_dentry_hash(&name);
-+	f2fs_hash_t namehash = f2fs_dentry_hash(&name, fname);
- 
- 	nbucket = dir_buckets(level, F2FS_I(dir)->i_dir_level);
- 	nblock = bucket_blocks(level);
-@@ -527,7 +532,7 @@ int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
- 
- 	level = 0;
- 	slots = GET_DENTRY_SLOTS(new_name->len);
--	dentry_hash = f2fs_dentry_hash(new_name);
-+	dentry_hash = f2fs_dentry_hash(new_name, NULL);
- 
- 	current_depth = F2FS_I(dir)->i_current_depth;
- 	if (F2FS_I(dir)->chash == dentry_hash) {
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index 562db8989a4e..5bc232e21a6e 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -2145,7 +2145,8 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi);
- /*
-  * hash.c
-  */
--f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info);
-+f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info,
-+				struct fscrypt_name *fname);
- 
- /*
-  * node.c
-diff --git a/fs/f2fs/hash.c b/fs/f2fs/hash.c
-index 71b7206c431e..eb2e031ea887 100644
---- a/fs/f2fs/hash.c
-+++ b/fs/f2fs/hash.c
-@@ -70,7 +70,8 @@ static void str2hashbuf(const unsigned char *msg, size_t len,
- 		*buf++ = pad;
- }
- 
--f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info)
-+f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info,
-+				struct fscrypt_name *fname)
- {
- 	__u32 hash;
- 	f2fs_hash_t f2fs_hash;
-@@ -79,6 +80,10 @@ f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info)
- 	const unsigned char *name = name_info->name;
- 	size_t len = name_info->len;
- 
-+	/* encrypted bigname case */
-+	if (fname && !fname->disk_name.name)
-+		return cpu_to_le32(fname->hash);
-+
- 	if (is_dot_dotdot(name_info))
- 		return 0;
- 
-diff --git a/fs/f2fs/inline.c b/fs/f2fs/inline.c
-index 0ccdefe9fdba..e4c527c4e7d0 100644
---- a/fs/f2fs/inline.c
-+++ b/fs/f2fs/inline.c
-@@ -298,7 +298,7 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
- 		return NULL;
- 	}
- 
--	namehash = f2fs_dentry_hash(&name);
-+	namehash = f2fs_dentry_hash(&name, fname);
- 
- 	inline_dentry = inline_data_addr(ipage);
- 
-@@ -533,7 +533,7 @@ int f2fs_add_inline_entry(struct inode *dir, const struct qstr *new_name,
- 
- 	f2fs_wait_on_page_writeback(ipage, NODE, true);
- 
--	name_hash = f2fs_dentry_hash(new_name);
-+	name_hash = f2fs_dentry_hash(new_name, NULL);
- 	make_dentry_ptr_inline(NULL, &d, dentry_blk);
- 	f2fs_update_dentry(ino, mode, &d, new_name, name_hash, bit_pos);
- 
+@@ -139,8 +139,8 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
+ #ifdef CONFIG_F2FS_FS_ENCRYPTION
+ 		if (unlikely(!name->name)) {
+ 			if (fname->usr_fname->name[0] == '_') {
+-				if (de_name.len >= 16 &&
+-					!memcmp(de_name.name + de_name.len - 16,
++				if (de_name.len > 32 &&
++					!memcmp(de_name.name + ((de_name.len - 17) & ~15),
+ 						fname->crypto_buf.name + 8, 16))
+ 					goto found;
+ 				goto not_match;
 -- 
 2.12.2.816.g2cccc81164-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
