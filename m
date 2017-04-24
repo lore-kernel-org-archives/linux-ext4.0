@@ -1,12 +1,10 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v3 20/20] gfs2: clean up some filemap_* calls
-Date: Mon, 24 Apr 2017 09:22:59 -0400
-Message-ID: <20170424132259.8680-21-jlayton@redhat.com>
+Subject: [PATCH v3 18/20] mm: clean up error handling in
+	write_one_page
+Date: Mon, 24 Apr 2017 09:22:57 -0400
+Message-ID: <20170424132259.8680-19-jlayton@redhat.com>
 References: <20170424132259.8680-1-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, hch@infradead.org, tytso@mit.edu, mawilcox@microsoft.com,
+Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, dhowells@redhat.com, clm@fb.com,
 	viro@zeniv.linux.org.uk, jack@suse.com,
 	akpm@linux-foundation.org, ross.zwisler@linux.intel.com
@@ -17,98 +15,67 @@ To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
 	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
 	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <cluster-devel-bounces@redhat.com>
 In-Reply-To: <20170424132259.8680-1-jlayton@redhat.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-In some places, it's trying to reset the mapping error after calling
-filemap_fdatawait. That's no longer required. Also, turn several
-filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-That will at least return writeback errors that occur during the write
-phase.
+Don't try to check PageError since that's potentially racy and not
+necessarily going to be set after writepage errors out.
+
+Instead, sample the mapping error early on, and use that value to tell
+us whether we got a writeback error since then.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/gfs2/glops.c | 12 ++++--------
- fs/gfs2/lops.c  |  4 +---
- fs/gfs2/super.c |  6 ++----
- 3 files changed, 7 insertions(+), 15 deletions(-)
+ mm/page-writeback.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/gfs2/glops.c b/fs/gfs2/glops.c
-index 5db59d444838..7362d19fdc4c 100644
---- a/fs/gfs2/glops.c
-+++ b/fs/gfs2/glops.c
-@@ -158,9 +158,7 @@ static void rgrp_go_sync(struct gfs2_glock *gl)
- 	GLOCK_BUG_ON(gl, gl->gl_state != LM_ST_EXCLUSIVE);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index de0dbf12e2c1..1643456881b4 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2373,11 +2373,12 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ int write_one_page(struct page *page)
+ {
+ 	struct address_space *mapping = page->mapping;
+-	int ret = 0;
++	int ret = 0, ret2;
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
+ 		.nr_to_write = 1,
+ 	};
++	errseq_t since = filemap_sample_wb_error(mapping);
  
- 	gfs2_log_flush(sdp, gl, NORMAL_FLUSH);
--	filemap_fdatawrite_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
--	error = filemap_fdatawait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
--	mapping_set_error(mapping, error);
-+	filemap_write_and_wait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
- 	gfs2_ail_empty_gl(gl);
+ 	BUG_ON(!PageLocked(page));
  
- 	spin_lock(&gl->gl_lockref.lock);
-@@ -225,12 +223,10 @@ static void inode_go_sync(struct gfs2_glock *gl)
- 	filemap_fdatawrite(metamapping);
- 	if (ip) {
- 		struct address_space *mapping = ip->i_inode.i_mapping;
--		filemap_fdatawrite(mapping);
--		error = filemap_fdatawait(mapping);
--		mapping_set_error(mapping, error);
-+		filemap_write_and_wait(mapping);
-+	} else {
-+		filemap_fdatawait(metamapping);
+@@ -2386,16 +2387,14 @@ int write_one_page(struct page *page)
+ 	if (clear_page_dirty_for_io(page)) {
+ 		get_page(page);
+ 		ret = mapping->a_ops->writepage(page, &wbc);
+-		if (ret == 0) {
++		if (ret == 0)
+ 			wait_on_page_writeback(page);
+-			if (PageError(page))
+-				ret = -EIO;
+-		}
+ 		put_page(page);
+ 	} else {
+ 		unlock_page(page);
  	}
--	error = filemap_fdatawait(metamapping);
--	mapping_set_error(metamapping, error);
- 	gfs2_ail_empty_gl(gl);
- 	/*
- 	 * Writeback of the data mapping may cause the dirty flag to be set
-diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
-index b1f9144b42c7..565ce33dec9b 100644
---- a/fs/gfs2/lops.c
-+++ b/fs/gfs2/lops.c
-@@ -586,9 +586,7 @@ static void gfs2_meta_sync(struct gfs2_glock *gl)
- 	if (mapping == NULL)
- 		mapping = &sdp->sd_aspace;
- 
--	filemap_fdatawrite(mapping);
--	error = filemap_fdatawait(mapping);
--
-+	error = filemap_write_and_wait(mapping);
- 	if (error)
- 		gfs2_io_error(gl->gl_name.ln_sbd);
+-	return ret;
++	ret2 = filemap_check_wb_error(mapping, since);
++	return ret ? : ret2;
  }
-diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
-index 361796a84fce..675c39566ea1 100644
---- a/fs/gfs2/super.c
-+++ b/fs/gfs2/super.c
-@@ -1593,10 +1593,8 @@ static void gfs2_evict_inode(struct inode *inode)
- out_truncate:
- 	gfs2_log_flush(sdp, ip->i_gl, NORMAL_FLUSH);
- 	metamapping = gfs2_glock2aspace(ip->i_gl);
--	if (test_bit(GLF_DIRTY, &ip->i_gl->gl_flags)) {
--		filemap_fdatawrite(metamapping);
--		filemap_fdatawait(metamapping);
--	}
-+	if (test_bit(GLF_DIRTY, &ip->i_gl->gl_flags))
-+		filemap_write_and_wait(metamapping);
- 	write_inode_now(inode, 1);
- 	gfs2_ail_flush(ip->i_gl, 0);
+ EXPORT_SYMBOL(write_one_page);
  
 -- 
 2.9.3
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
