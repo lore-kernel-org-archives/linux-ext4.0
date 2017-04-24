@@ -1,13 +1,10 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v3 07/20] nilfs2: set the mapping error when
-	calling SetPageError on writeback
-Date: Mon, 24 Apr 2017 09:22:46 -0400
-Message-ID: <20170424132259.8680-8-jlayton@redhat.com>
+Subject: [PATCH v3 09/20] 9p: set mapping error when
+	writeback fails in launder_page
+Date: Mon, 24 Apr 2017 09:22:48 -0400
+Message-ID: <20170424132259.8680-10-jlayton@redhat.com>
 References: <20170424132259.8680-1-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, hch@infradead.org, tytso@mit.edu, mawilcox@microsoft.com,
+Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, dhowells@redhat.com, clm@fb.com,
 	viro@zeniv.linux.org.uk, jack@suse.com,
 	akpm@linux-foundation.org, ross.zwisler@linux.intel.com
@@ -18,48 +15,43 @@ To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
 	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
 	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <cluster-devel-bounces@redhat.com>
 In-Reply-To: <20170424132259.8680-1-jlayton@redhat.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-In a later patch, we're going to want to make the fsync codepath not do
-a TestClearPageError call as that can override the error set in the
-address space. To do that though, we need to ensure that filesystems
-that are relying on the PG_error bit for reporting writeback errors
-also set an error in the address space.
+launder_page is just writeback under the page lock. We still need to
+mark the mapping for errors there when they occur.
 
-Ensure that this is set in nilfs2.
-
-Cc: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nilfs2/segment.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/9p/vfs_addr.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
-index febed1217b3f..612d4b446793 100644
---- a/fs/nilfs2/segment.c
-+++ b/fs/nilfs2/segment.c
-@@ -1745,6 +1745,7 @@ static void nilfs_end_page_io(struct page *page, int err)
- 	} else {
- 		__set_page_dirty_nobuffers(page);
- 		SetPageError(page);
-+		mapping_set_error(page_mapping(page), err);
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index adaf6f6dd858..7af6e6501698 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -223,8 +223,11 @@ static int v9fs_launder_page(struct page *page)
+ 	v9fs_fscache_wait_on_page_write(inode, page);
+ 	if (clear_page_dirty_for_io(page)) {
+ 		retval = v9fs_vfs_writepage_locked(page);
+-		if (retval)
++		if (retval) {
++			if (retval != -EAGAIN)
++				mapping_set_error(page->mapping, retval);
+ 			return retval;
++		}
  	}
- 
- 	end_page_writeback(page);
+ 	return 0;
+ }
 -- 
 2.9.3
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
