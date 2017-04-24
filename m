@@ -1,54 +1,59 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
-Date: Mon, 24 Apr 2017 16:10:55 -0500
-Message-ID: <3485e23c-3a4d-23a5-50d5-69c824353d1a@suse.de>
-References: <20170414120257.8932-1-rgoldwyn@suse.de>
- <20170414120257.8932-6-rgoldwyn@suse.de>
- <20170419064505.GD20053@infradead.org>
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Subject: Re: [PATCH] fscrypt: use 32 bytes of encrypted filename
+Date: Mon, 24 Apr 2017 23:19:00 +0200
+Message-ID: <CAFLxGvwuiZ+5zPnQJ6bXKhWHs5jPA=0c5+3Vq5EZn_AsrgzeGg@mail.gmail.com>
+References: <20170418210642.6039-1-gwendal@chromium.org> <20170418230136.GA96152@gmail.com>
+ <CAFLxGvwtFQW=NL3NrNHx-vWR3wSUtewnBRy1XzMqRNTV8f5vwQ@mail.gmail.com>
+ <20170419171633.GB89688@gmail.com> <f415bfef-12d9-6444-9e94-9ae3e3363cfb@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
-        linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170419064505.GD20053@infradead.org>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Eric Biggers <ebiggers3@gmail.com>,
+        Gwendal Grignou <gwendal@chromium.org>,
+        Ryo Hashimoto <hashimoto@chromium.org>,
+        Eric Biggers <ebiggers@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Kazuhiro Inaba <kinaba@chromium.org>,
+        David Gstir <david@sigma-star.at>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f44.google.com ([209.85.218.44]:36703 "EHLO
+        mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S977799AbdDXVTB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Apr 2017 17:19:01 -0400
+In-Reply-To: <f415bfef-12d9-6444-9e94-9ae3e3363cfb@nod.at>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Eric,
 
+On Wed, Apr 19, 2017 at 7:21 PM, Richard Weinberger <richard@nod.at> wrote:
+>> Well, like I said to Jaegeuk for F2FS, that's what the code does, but _why_?
+>> Like F2FS, it's probably not the case that the hash is sufficient to reliably
+>> identify a directory entry.  Granted, UBIFS does it a lot better than F2FS since
+>> UBIFS uses two 32-bit hashes rather than just one, but it seems the second hash
+>> may be neither necessary nor sufficient to identify a specific directory entry,
+>> and it should be looking at the bytes of ciphertext from the filename instead,
+>> like what ext4 does.  (Provided that is fixed to account for how CTS mode
+>> encryption works.)
+>
+> Let me dig into this, maybe I made a boo boo.
+> The idea was looking up by the filename hash and resolving
+> possible collisions using the secondary hash.
 
-On 04/19/2017 01:45 AM, Christoph Hellwig wrote:
-> On Fri, Apr 14, 2017 at 07:02:54AM -0500, Goldwyn Rodrigues wrote:
->> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
->>
-> 
->> +	/* Request queue supports BIO_NOWAIT */
->> +	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
-> 
-> BIO_NOWAIT is gone.  And the comment would not be needed if the
-> flag had a more descriptive name, e.g. QUEUE_FLAG_NOWAIT_SUPPORT.
-> 
-> And I think all request based drivers should set the flag implicitly
-> as ->queuecommand can't sleep, and ->queue_rq only when it's always
-> offloaded to a workqueue when the BLK_MQ_F_BLOCKING flag is set.
-> 
+In ubifs_lookup() we handle two cases:
+1. lookup of a bigname, both fscrypt_name->hash and ->minor_hash are valid.
+    ->hash is r5(diskname) and ->minor_hash is the secondary hash, AKA cookie.
+   UBIFS fed this hashes in ubifs_readdir() to fscrypt.
+2. lookup of a non-bigname, in this case we compute r5(diskname) and
+use the diskname
+    itself for lookups.
 
-We introduced QUEUE_FLAG_NOWAIT for devices which would not wait for
-request completions. The ones which wait are MD devices because of sync
-or suspend operations.
-
-The only user of BLK_MQ_F_NONBLOCKING seems to be nbd. As you mentioned,
-it uses the flag to offload it to a workqueue.
-
-The other way to do it implicitly is to change the flag to
-BLK_MAY_BLOCK_REQS and use it for devices which do wait such as md/dm.
-Is that what you are hinting at? Or do you have something else in mind?
-
+So, in case 1 we avoid collisions by using a 64bit key and in case 2 by using
+the 32bit key plus a linear search and memcmp() of diskname.
 
 -- 
-Goldwyn
+Thanks,
+//richard
