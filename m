@@ -1,65 +1,36 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v3 06/20] dax: set errors in mapping when writeback fails
-Date: Mon, 24 Apr 2017 13:16:04 -0600
-Message-ID: <20170424191604.GA2884@linux.intel.com>
-References: <20170424132259.8680-1-jlayton@redhat.com>
- <20170424132259.8680-7-jlayton@redhat.com>
+From: "Ms. Katherine" <ulia@distral.ro>
+Subject: EXTREMELY IMPORTANT
+Date: Mon, 24 Apr 2017 19:52:12 +0100
+Message-ID: <20170424185219.079DA51B334E__49627.4153855213$1493062613$gmane$org@mail.distral.ro>
+Reply-To: kathrynnmison@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-mm@kvack.org,
-	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
-	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
-	dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
-	ross.zwisler@linux.intel.com, mawilcox@microsoft.com, jack@suse.com,
-	viro@zeniv.linux.org.uk, corbet@lwn.net, neilb@suse.de, clm@fb.com,
-	tytso@mit.edu, axboe@kernel.dk
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170424132259.8680-7-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 8BIT
+To: Recipients <ulia@distral.ro>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.distral.ro ([5.2.192.160]:34084 "EHLO mail.distral.ro"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S969100AbdDXTgp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Apr 2017 15:36:45 -0400
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 24, 2017 at 09:22:45AM -0400, Jeff Layton wrote:
-> In order to get proper error codes from fsync, we must set an error in
-> the mapping range when writeback fails.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Dear Beloved, Sorry for the inconvenience, I am getting in touch with you regarding an extremely important and urgent matter, Please I need your urgent assistance and idea to finish up a project (Orphanage Home) Due to my health condition, Everything is available to finish up the project, All I need is your idea and trust.
 
-Works fine in some error injection testing.
+Sehr geehrte Geliebte, traurig für die Unannehmlichkeiten, ich bin in Kontakt mit Ihnen über eine äußerst wichtige und dringende Angelegenheit, Bitte brauche ich Ihre dringende Hilfe und Idee, um ein Projekt zu beenden (Orphanage Home) Wegen meines Gesundheitszustandes ist alles verfügbar Beenden Sie das Projekt, Alles was ich brauche ist Ihre Idee und Vertrauen.
 
-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Please contact me for more details.
+Contact Email: kathrynnmison@gmail.com
 
-> ---
->  fs/dax.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 85abd741253d..9b6b04030c3f 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -901,8 +901,10 @@ int dax_writeback_mapping_range(struct address_space *mapping,
->  
->  			ret = dax_writeback_one(bdev, mapping, indices[i],
->  					pvec.pages[i]);
-> -			if (ret < 0)
-> +			if (ret < 0) {
-> +				mapping_set_error(mapping, ret);
->  				return ret;
-> +			}
->  		}
->  	}
->  	return 0;
-> -- 
-> 2.9.3
-> 
+Thanks
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
+
+-- 
+This message has been scanned for viruses and
+dangerous content by MailScanner, and is
+believed to be clean.
