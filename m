@@ -1,77 +1,181 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 0/6] fscrypt: fixes for presentation of long
-	encrypted filenames
-Date: Mon, 24 Apr 2017 10:00:07 -0700
-Message-ID: <20170424170013.85175-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: hashimoto@chromium.org, Gwendal Grignou <gwendal@chromium.org>,
-	"Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-	linux-ext4@vger.kernel.org, kinaba@chromium.org
+Subject: [PATCH 1/6] f2fs: check entire encrypted bigname when finding a dentry
+Date: Mon, 24 Apr 2017 10:00:08 -0700
+Message-ID: <20170424170013.85175-2-ebiggers3@gmail.com>
+References: <20170424170013.85175-1-ebiggers3@gmail.com>
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, stable@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:36124 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S975168AbdDXRCG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Apr 2017 13:02:06 -0400
+In-Reply-To: <20170424170013.85175-1-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Biggers <ebiggers@google.com>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
 
-This series fixes the bugs that have been identified with how filesystems handle
-presenting long encrypted filenames without the key.
+If user has no key under an encrypted dir, fscrypt gives digested dentries.
+Previously, when looking up a dentry, f2fs only checks its hash value with
+first 4 bytes of the digested dentry, which didn't handle hash collisions fully.
+This patch enhances to check entire dentry bytes likewise ext4.
 
-Patch 1 is Jaegeuk's fix to make f2fs start checking the ciphertext portion of
-the digested names.  I made one change to this patch which is that to determine
-whether we should use the hash from the fscrypt_name structure rather than
-compute the hash, we should check for 'disk_name.name' being NULL rather than
-'hash' being nonzero, since 0 is a valid hash value.
+Eric reported how to reproduce this issue by:
 
-Patch 2 fixes the bug found on Chrome OS where the wrong part of the ciphertext
-was included in the digested names, causing collisions and undeletable files.
+ # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
+ # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
+100000
+ # sync
+ # echo 3 > /proc/sys/vm/drop_caches
+ # keyctl new_session
+ # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
+99999
 
-Patches 3-6 clean things up to be less insane and confusing, e.g. by introducing
-a shared function for name matching and a struct to represent a digested name.
+Cc: <stable@vger.kernel.org>
+Reported-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+(fixed f2fs_dentry_hash() to work even when the hash is 0)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/f2fs/dir.c    | 37 +++++++++++++++++++++----------------
+ fs/f2fs/f2fs.h   |  3 ++-
+ fs/f2fs/hash.c   |  7 ++++++-
+ fs/f2fs/inline.c |  4 ++--
+ 4 files changed, 31 insertions(+), 20 deletions(-)
 
-Patches 1-2 will need to be backported and I think they should be merged into
-4.12 through the fscrypt tree.  The other patches are nice to have but it's not
-a big deal if they need to wait for next cycle.
-
-This patch series leaves out UBIFS; it can be changed to use the common matching
-function once available, if desired.
-
-Eric Biggers (5):
-  fscrypt: avoid collisions when presenting long encrypted filenames
-  fscrypt: introduce helper function for filename matching
-  ext4: switch to using fscrypt_match_name()
-  f2fs: switch to using fscrypt_match_name()
-  ext4: clean up ext4_match() and callers
-
-Jaegeuk Kim (1):
-  f2fs: check entire encrypted bigname when finding a dentry
-
- fs/crypto/fname.c               |  90 +++++++++++++++++++++++++++--------
- fs/crypto/fscrypt_private.h     |   2 -
- fs/ext4/namei.c                 | 103 ++++++++++++----------------------------
- fs/f2fs/dir.c                   |  25 ++--------
- fs/f2fs/f2fs.h                  |   3 +-
- fs/f2fs/hash.c                  |   7 ++-
- fs/f2fs/inline.c                |   4 +-
- include/linux/fscrypt_notsupp.h |   9 ++++
- include/linux/fscrypt_supp.h    |  78 ++++++++++++++++++++++++++++++
- 9 files changed, 202 insertions(+), 119 deletions(-)
-
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index c143dffcae6e..374e4b8f9b70 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -130,19 +130,29 @@ struct f2fs_dir_entry *find_target_dentry(struct fscrypt_name *fname,
+ 			continue;
+ 		}
+ 
+-		/* encrypted case */
++		if (de->hash_code != namehash)
++			goto not_match;
++
+ 		de_name.name = d->filename[bit_pos];
+ 		de_name.len = le16_to_cpu(de->name_len);
+ 
+-		/* show encrypted name */
+-		if (fname->hash) {
+-			if (de->hash_code == cpu_to_le32(fname->hash))
+-				goto found;
+-		} else if (de_name.len == name->len &&
+-			de->hash_code == namehash &&
+-			!memcmp(de_name.name, name->name, name->len))
++#ifdef CONFIG_F2FS_FS_ENCRYPTION
++		if (unlikely(!name->name)) {
++			if (fname->usr_fname->name[0] == '_') {
++				if (de_name.len >= 16 &&
++					!memcmp(de_name.name + de_name.len - 16,
++						fname->crypto_buf.name + 8, 16))
++					goto found;
++				goto not_match;
++			}
++			name->name = fname->crypto_buf.name;
++			name->len = fname->crypto_buf.len;
++		}
++#endif
++		if (de_name.len == name->len &&
++				!memcmp(de_name.name, name->name, name->len))
+ 			goto found;
+-
++not_match:
+ 		if (max_slots && max_len > *max_slots)
+ 			*max_slots = max_len;
+ 		max_len = 0;
+@@ -170,12 +180,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
+ 	struct f2fs_dir_entry *de = NULL;
+ 	bool room = false;
+ 	int max_slots;
+-	f2fs_hash_t namehash;
+-
+-	if(fname->hash)
+-		namehash = cpu_to_le32(fname->hash);
+-	else
+-		namehash = f2fs_dentry_hash(&name);
++	f2fs_hash_t namehash = f2fs_dentry_hash(&name, fname);
+ 
+ 	nbucket = dir_buckets(level, F2FS_I(dir)->i_dir_level);
+ 	nblock = bucket_blocks(level);
+@@ -527,7 +532,7 @@ int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
+ 
+ 	level = 0;
+ 	slots = GET_DENTRY_SLOTS(new_name->len);
+-	dentry_hash = f2fs_dentry_hash(new_name);
++	dentry_hash = f2fs_dentry_hash(new_name, NULL);
+ 
+ 	current_depth = F2FS_I(dir)->i_current_depth;
+ 	if (F2FS_I(dir)->chash == dentry_hash) {
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 562db8989a4e..5bc232e21a6e 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -2145,7 +2145,8 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi);
+ /*
+  * hash.c
+  */
+-f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info);
++f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info,
++				struct fscrypt_name *fname);
+ 
+ /*
+  * node.c
+diff --git a/fs/f2fs/hash.c b/fs/f2fs/hash.c
+index 71b7206c431e..eb2e031ea887 100644
+--- a/fs/f2fs/hash.c
++++ b/fs/f2fs/hash.c
+@@ -70,7 +70,8 @@ static void str2hashbuf(const unsigned char *msg, size_t len,
+ 		*buf++ = pad;
+ }
+ 
+-f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info)
++f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info,
++				struct fscrypt_name *fname)
+ {
+ 	__u32 hash;
+ 	f2fs_hash_t f2fs_hash;
+@@ -79,6 +80,10 @@ f2fs_hash_t f2fs_dentry_hash(const struct qstr *name_info)
+ 	const unsigned char *name = name_info->name;
+ 	size_t len = name_info->len;
+ 
++	/* encrypted bigname case */
++	if (fname && !fname->disk_name.name)
++		return cpu_to_le32(fname->hash);
++
+ 	if (is_dot_dotdot(name_info))
+ 		return 0;
+ 
+diff --git a/fs/f2fs/inline.c b/fs/f2fs/inline.c
+index 0ccdefe9fdba..e4c527c4e7d0 100644
+--- a/fs/f2fs/inline.c
++++ b/fs/f2fs/inline.c
+@@ -298,7 +298,7 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
+ 		return NULL;
+ 	}
+ 
+-	namehash = f2fs_dentry_hash(&name);
++	namehash = f2fs_dentry_hash(&name, fname);
+ 
+ 	inline_dentry = inline_data_addr(ipage);
+ 
+@@ -533,7 +533,7 @@ int f2fs_add_inline_entry(struct inode *dir, const struct qstr *new_name,
+ 
+ 	f2fs_wait_on_page_writeback(ipage, NODE, true);
+ 
+-	name_hash = f2fs_dentry_hash(new_name);
++	name_hash = f2fs_dentry_hash(new_name, NULL);
+ 	make_dentry_ptr_inline(NULL, &d, dentry_blk);
+ 	f2fs_update_dentry(ino, mode, &d, new_name, name_hash, bit_pos);
+ 
 -- 
 2.12.2.816.g2cccc81164-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
