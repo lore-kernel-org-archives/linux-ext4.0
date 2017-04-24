@@ -1,86 +1,63 @@
-From: Bob Peterson <rpeterso@redhat.com>
-Subject: Re: [PATCH v3 20/20] gfs2: clean up some filemap_* calls
-Date: Mon, 24 Apr 2017 10:12:55 -0400 (EDT)
-Message-ID: <2139341349.405174.1493043175630.JavaMail.zimbra@redhat.com>
-References: <20170424132259.8680-1-jlayton@redhat.com> <20170424132259.8680-21-jlayton@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: set an error code in ext4_quota_off()
+Date: Mon, 24 Apr 2017 16:46:34 +0200
+Message-ID: <20170424144634.GE23988@quack2.suse.cz>
+References: <20170421105345.slxfkl3jf2ucq6h7@mwanda>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-mm@kvack.org,
-	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
-	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
-	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
-	dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
-	ross zwisler <ross.zwisler@linux.intel.com>, mawilcox@microsoft.com,
-	jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
-	neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170424132259.8680-21-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170421105345.slxfkl3jf2ucq6h7@mwanda>
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
------ Original Message -----
-| In some places, it's trying to reset the mapping error after calling
-| filemap_fdatawait. That's no longer required. Also, turn several
-| filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-| That will at least return writeback errors that occur during the write
-| phase.
-| 
-| Signed-off-by: Jeff Layton <jlayton@redhat.com>
-| ---
-|  fs/gfs2/glops.c | 12 ++++--------
-|  fs/gfs2/lops.c  |  4 +---
-|  fs/gfs2/super.c |  6 ++----
-|  3 files changed, 7 insertions(+), 15 deletions(-)
-| 
-| diff --git a/fs/gfs2/glops.c b/fs/gfs2/glops.c
-| index 5db59d444838..7362d19fdc4c 100644
-| --- a/fs/gfs2/glops.c
-| +++ b/fs/gfs2/glops.c
-| @@ -158,9 +158,7 @@ static void rgrp_go_sync(struct gfs2_glock *gl)
-|  	GLOCK_BUG_ON(gl, gl->gl_state != LM_ST_EXCLUSIVE);
-|  
-|  	gfs2_log_flush(sdp, gl, NORMAL_FLUSH);
-| -	filemap_fdatawrite_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
-| -	error = filemap_fdatawait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
-| -	mapping_set_error(mapping, error);
-| +	filemap_write_and_wait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
+On Fri 21-04-17 13:53:45, Dan Carpenter wrote:
+> We accidentally return success instead of a negative error code on these
+> paths.
+> 
+> Fixes: 957153fce8d2 ("ext4: Set flags on quota files directly")
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-This should probably have "error = ", no?
+So actually this is deliberate. Although setting inode flags fails, we have
+already enabled / disabled quotas and so we just return success. Failing to
+set the flags is just a loss of safety measure but not a hard failure...
+But I guess it deserves a comment so I'll add it.
 
-|  	gfs2_ail_empty_gl(gl);
-|  
-|  	spin_lock(&gl->gl_lockref.lock);
-| @@ -225,12 +223,10 @@ static void inode_go_sync(struct gfs2_glock *gl)
-|  	filemap_fdatawrite(metamapping);
-|  	if (ip) {
-|  		struct address_space *mapping = ip->i_inode.i_mapping;
-| -		filemap_fdatawrite(mapping);
-| -		error = filemap_fdatawait(mapping);
-| -		mapping_set_error(mapping, error);
-| +		filemap_write_and_wait(mapping);
-| +	} else {
-| +		filemap_fdatawait(metamapping);
-|  	}
-| -	error = filemap_fdatawait(metamapping);
-| -	mapping_set_error(metamapping, error);
+								Honza
 
-This part doesn't look right at all. There's a big difference in gfs2 between
-mapping and metamapping. We need to wait for metamapping regardless.
-
-(snip)
-
-Regards,
-
-Bob Peterson
-Red Hat File Systems
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 4a32c9279f35..735adca37fdf 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -5377,8 +5377,10 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+>  
+>  		inode_lock(inode);
+>  		handle = ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
+> -		if (IS_ERR(handle))
+> +		if (IS_ERR(handle)) {
+> +			err = PTR_ERR(handle);
+>  			goto unlock_inode;
+> +		}
+>  		EXT4_I(inode)->i_flags |= EXT4_NOATIME_FL | EXT4_IMMUTABLE_FL;
+>  		inode_set_flags(inode, S_NOATIME | S_IMMUTABLE,
+>  				S_NOATIME | S_IMMUTABLE);
+> @@ -5478,8 +5480,10 @@ static int ext4_quota_off(struct super_block *sb, int type)
+>  	/* Update modification times of quota files when userspace can
+>  	 * start looking at them */
+>  	handle = ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
+> -	if (IS_ERR(handle))
+> +	if (IS_ERR(handle)) {
+> +		err = PTR_ERR(handle);
+>  		goto out_unlock;
+> +	}
+>  	EXT4_I(inode)->i_flags &= ~(EXT4_NOATIME_FL | EXT4_IMMUTABLE_FL);
+>  	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
+>  	inode->i_mtime = inode->i_ctime = current_time(inode);
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
