@@ -1,48 +1,164 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
- ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
- bitmap
-Date: Mon, 24 Apr 2017 04:51:50 +0000
-Message-ID: <bug-195561-13602-mfFFPFzJGz@https.bugzilla.kernel.org/>
-References: <bug-195561-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55126 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1164655AbdDXEvx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Apr 2017 00:51:53 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2AAF326B41
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Apr 2017 04:51:52 +0000 (UTC)
-In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v3 00/20] fs: introduce new writeback error reporting and convert existing API as a wrapper around it
+Date: Mon, 24 Apr 2017 09:22:39 -0400
+Message-ID: <20170424132259.8680-1-jlayton@redhat.com>
+Cc: dhowells@redhat.com,
+	akpm@linux-foundation.org,
+	hch@infradead.org,
+	ross.zwisler@linux.intel.com,
+	mawilcox@microsoft.com,
+	jack@suse.com,
+	viro@zeniv.linux.org.uk,
+	corbet@lwn.net,
+	neilb@suse.de,
+	clm@fb.com,
+	tytso@mit.edu,
+	axboe@kernel.dk
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-cifs@vger.kernel.org,
+	linux-mm@kvack.org,
+	jfs-discussion@lists.sourceforge.net,
+	linux-xfs@vger.kernel.org,
+	cluster-devel@redhat.com,
+	linux-f2fs-devel@lists.sourceforge.net,
+	v9fs-developer@lists.sourceforge.net,
+	osd-dev@open-osd.org,
+	linux-nilfs@vger.kernel.org,
+	linux-block@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=195561
+v3: wb_err_t -> errseq_t
+    clean up places that re-set errors after calling filemap_* functions
 
-Theodore Tso (tytso@mit.edu) changed:
+v2: introduce wb_err_t, use atomics
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Apologies for the wide posting here, but this touches a lot of areas.
+This is v3 of the patchset to improve how we're tracking and reporting
+errors that occur during pagecache writeback.
 
---- Comment #6 from Theodore Tso (tytso@mit.edu) ---
-This message generally means the file system has been corrupted.
+There are several situations where the kernel can "lose" errors that
+occur during writeback, such that fsync will return success even
+though it failed to write back some data previously. The basic idea
+here is to have the kernel be more deliberate about the point from
+which errors are checked to ensure that that doesn't happen.
 
-[ 1510.269945] EXT4-fs error (device sda1): ext4_validate_block_bitmap:395:
-comm main: bg 17: block 557056: invalid block bitmap
+Additionally, this set changes the behavior of fsync in Linux to report
+writeback errors on all fds instead of just the first one. This allows
+writers to reliably tell whether their data made it to the backing
+device without having to coordinate fsync calls with other writers.
 
-And that would explain why all of the kernel versions are complaining.   It
-would be useful to see the output of dumpe2fs or running e2fsck -fy on the file
-system.
+This set sprawls over a large swath of kernel code. I think the first 12
+patches in the series are pretty straightforward and are more or less
+ready for merge.
 
-Don't be too quick to assume it's a kernel bug before checking to see if the
-file system is just corrupted, and the kernel really is correct in complaining!
+The real changes start with patch 13. That adds support for errseq_t,
+builds a new writeback error tracking API on top of that, and converts
+the existing code to use it. After that, there are a few cleanup patches
+to eliminate some unneeded error re-setting, etc.
+
+Unfortunately, testing this across so many filesystems is rather
+difficult. I have a xfstest for block-based filesystems that uses
+dm_error that I'll post soon. That works well with ext4, but btrfs and
+xfs seem to go r/o soon after the first error. I also don't have a good
+general method for testing this on network filesystems (yet!).
+
+I'd like to see better testing here and am open to suggestions. I will
+note that the POSIX fsync spec says this:
+
+"It is reasonable to assert that the key aspects of fsync() are
+unreasonable to test in a test suite. That does not make the function
+any less valuable, just more difficult to test. [...] It would also not
+be unreasonable to omit testing for fsync(), allowing it to be treated
+as a quality-of-implementation issue."
+
+Of course, they're talking about a POSIX conformance test, but I
+think the same point applies here.
+
+At this point, I'd like to start getting some of the preliminary patches
+merged (the first 12 or so). Most of those aren't terribly controversial
+and seem like reasonable bugfixes and cleanups. If any subsystem
+maintainers want to pick those up, then please do.
+
+After that, I'd like to get the larger changes into linux-next with an
+aim for merge in v4.13 or v4.14 (depending on how testing goes).
+
+Feedback is of course welcome!
+
+Jeff Layton (20):
+  mm: drop "wait" parameter from write_one_page
+  mm: fix mapping_set_error call in me_pagecache_dirty
+  buffer: use mapping_set_error instead of setting the flag
+  fs: check for writeback errors after syncing out buffers in
+    generic_file_fsync
+  orangefs: don't call filemap_write_and_wait from fsync
+  dax: set errors in mapping when writeback fails
+  nilfs2: set the mapping error when calling SetPageError on writeback
+  mm: ensure that we set mapping error if writeout() fails
+  9p: set mapping error when writeback fails in launder_page
+  fuse: set mapping error in writepage_locked when it fails
+  cifs: set mapping error when page writeback fails in writepage or
+    launder_pages
+  lib: add errseq_t type and infrastructure for handling it
+  fs: new infrastructure for writeback error handling and reporting
+  fs: retrofit old error reporting API onto new infrastructure
+  mm: remove AS_EIO and AS_ENOSPC flags
+  mm: don't TestClearPageError in __filemap_fdatawait_range
+  cifs: cleanup writeback handling errors and comments
+  mm: clean up error handling in write_one_page
+  jbd2: don't reset error in journal_finish_inode_data_buffers
+  gfs2: clean up some filemap_* calls
+
+ Documentation/filesystems/vfs.txt |   9 +-
+ fs/9p/vfs_addr.c                  |   5 +-
+ fs/btrfs/file.c                   |  10 +-
+ fs/btrfs/tree-log.c               |   9 +-
+ fs/buffer.c                       |   2 +-
+ fs/cifs/cifsfs.c                  |   4 +-
+ fs/cifs/file.c                    |  17 ++--
+ fs/cifs/inode.c                   |  22 ++---
+ fs/dax.c                          |   4 +-
+ fs/exofs/dir.c                    |   2 +-
+ fs/ext2/dir.c                     |   2 +-
+ fs/ext2/file.c                    |   2 +-
+ fs/f2fs/file.c                    |   3 +
+ fs/f2fs/node.c                    |   6 +-
+ fs/fuse/file.c                    |   8 +-
+ fs/gfs2/glops.c                   |  12 +--
+ fs/gfs2/lops.c                    |   4 +-
+ fs/gfs2/super.c                   |   6 +-
+ fs/jbd2/commit.c                  |  13 +--
+ fs/jfs/jfs_metapage.c             |   4 +-
+ fs/libfs.c                        |   3 +
+ fs/minix/dir.c                    |   2 +-
+ fs/nilfs2/segment.c               |   1 +
+ fs/open.c                         |   3 +
+ fs/orangefs/file.c                |   5 +-
+ fs/sysv/dir.c                     |   2 +-
+ fs/ufs/dir.c                      |   2 +-
+ include/linux/errseq.h            |  16 +++
+ include/linux/fs.h                |  41 ++++++--
+ include/linux/mm.h                |   2 +-
+ include/linux/pagemap.h           |  18 ++--
+ lib/Makefile                      |   2 +-
+ lib/errseq.c                      | 199 ++++++++++++++++++++++++++++++++++++++
+ mm/filemap.c                      |  88 ++++++++++-------
+ mm/memory-failure.c               |   2 +-
+ mm/migrate.c                      |   6 +-
+ mm/page-writeback.c               |  23 +++--
+ 37 files changed, 398 insertions(+), 161 deletions(-)
+ create mode 100644 include/linux/errseq.h
+ create mode 100644 lib/errseq.c
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
