@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v3 13/20] fs: new infrastructure for
-	writeback error handling and reporting
-Date: Mon, 24 Apr 2017 09:22:52 -0400
-Message-ID: <20170424132259.8680-14-jlayton@redhat.com>
+Subject: [PATCH v3 16/20] mm: don't TestClearPageError in
+	__filemap_fdatawait_range
+Date: Mon, 24 Apr 2017 09:22:55 -0400
+Message-ID: <20170424132259.8680-17-jlayton@redhat.com>
 References: <20170424132259.8680-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, dhowells@redhat.com, clm@fb.com,
@@ -28,217 +28,89 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Most filesystems currently use mapping_set_error and
-filemap_check_errors for setting and reporting/clearing writeback errors
-at the mapping level. filemap_check_errors is indirectly called from
-most of the filemap_fdatawait_* functions and from
-filemap_write_and_wait*. These functions are called from all sorts of
-contexts to wait on writeback to finish -- e.g. mostly in fsync, but
-also in truncate calls, getattr, etc.
+The -EIO returned here can end up overriding whatever error is marked in
+the address space, and be returned at fsync time, even when there is a
+more appropriate error stored in the mapping.
 
-The non-fsync callers are problematic. We should be reporting writeback
-errors during fsync, but many places spread over the tree clear out
-errors before they can be properly reported, or report errors at
-nonsensical times.
+Read errors are also sometimes tracked on a per-page level using
+PG_error. Suppose we have a read error on a page, and then that page is
+subsequently dirtied by overwriting the whole page. Writeback doesn't
+clear PG_error, so we can then end up successfully writing back that
+page and still return -EIO on fsync.
 
-If I get -EIO on a stat() call, there is no reason for me to assume that
-it is because some previous writeback failed. The fact that it also
-clears out the error such that a subsequent fsync returns 0 is a bug,
-and a nasty one since that's potentially silent data corruption.
+Worse yet, PG_error is cleared during a sync() syscall, but the -EIO
+return from that is silently discarded. Any subsystem that is relying on
+PG_error to report errors during fsync can easily lose writeback errors
+due to this. All you need is a stray sync() call on the box at the wrong
+time and you've lost the error.
 
-This patch adds a small bit of new infrastructure for setting and
-reporting errors during address_space writeback. While the above was my
-original impetus for adding this, I think it's also the case that
-current fsync semantics are just problematic for userland. Most
-applications that call fsync do so to ensure that the data they wrote
-has hit the backing store.
-
-In the case where there are multiple writers to the file at the same
-time, this is really hard to determine. The first one to call fsync will
-see any stored error, and the rest get back 0. The processes with open
-fds may not be associated with one another in any way. They could even
-be in different containers, so ensuring coordination between all fsync
-callers is not really an option.
-
-One way to remedy this would be to track what file descriptor was used
-to dirty the file, but that's rather cumbersome and would likely be
-slow. However, there is a simpler way to improve the semantics here
-without incurring too much overhead.
-
-This set adds an errseq_t to struct address_space, and a corresponding
-one is added to struct file. Writeback errors are recorded in the
-mapping's errseq_t, and the one in struct file is used as the "since"
-value.
-
-This changes the semantics of the Linux fsync implementation such that
-applications can now use it to determine whether there were any
-writeback errors since fsync(fd) was last called (or since the file was
-opened in the case of fsync having never been called).
-
-Note that those writeback errors may have occurred when writing data
-that was dirtied via an entirely different fd, but that's the case now
-with the current mapping_set_error/filemap_check_error infrastructure.
-This will at least prevent you from getting a false report of success.
-
-The new behavior is still consistent with the POSIX spec, and is more
-reliable for application developers. This patch just adds some basic
-infrastructure for doing this. Later patches will change the existing
-code to use this new infrastructure.
+Since the handling of the PG_error flag is somewhat inconsistent across
+subsystems, let's just rely on marking the address space when there are
+writeback errors. Change the TestClearPageError call to ClearPageError,
+and make __filemap_fdatawait_range a void return function.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- Documentation/filesystems/vfs.txt | 10 +++++++++-
- fs/open.c                         |  3 +++
- include/linux/fs.h                | 24 ++++++++++++++++++++++++
- mm/filemap.c                      | 38 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 74 insertions(+), 1 deletion(-)
+ mm/filemap.c | 19 +++++--------------
+ 1 file changed, 5 insertions(+), 14 deletions(-)
 
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 94dd27ef4a76..ed06fb39822b 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -576,6 +576,11 @@ should clear PG_Dirty and set PG_Writeback.  It can be actually
- written at any point after PG_Dirty is clear.  Once it is known to be
- safe, PG_Writeback is cleared.
- 
-+If there is an error during writeback, then the address_space should be
-+marked with an error (typically using filemap_set_wb_error), in order to
-+ensure that the error can later be reported to the application when an
-+fsync is issued.
-+
- Writeback makes use of a writeback_control structure...
- 
- struct address_space_operations
-@@ -888,7 +893,10 @@ otherwise noted.
- 
-   release: called when the last reference to an open file is closed
- 
--  fsync: called by the fsync(2) system call
-+  fsync: called by the fsync(2) system call. Filesystems that use the
-+	pagecache should call filemap_report_wb_error before returning
-+	to ensure that any errors that occurred during writeback are
-+	reported and the file's error sequence advanced.
- 
-   fasync: called by the fcntl(2) system call when asynchronous
- 	(non-blocking) mode is enabled for a file
-diff --git a/fs/open.c b/fs/open.c
-index 949cef29c3bb..88bfed8d3c88 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -709,6 +709,9 @@ static int do_dentry_open(struct file *f,
- 	f->f_inode = inode;
- 	f->f_mapping = inode->i_mapping;
- 
-+	/* Ensure that we skip any errors that predate opening of the file */
-+	f->f_wb_err = filemap_sample_wb_error(f->f_mapping);
-+
- 	if (unlikely(f->f_flags & O_PATH)) {
- 		f->f_mode = FMODE_PATH;
- 		f->f_op = &empty_fops;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7251f7bb45e8..69a89f667c7f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -31,6 +31,7 @@
- #include <linux/workqueue.h>
- #include <linux/percpu-rwsem.h>
- #include <linux/delayed_call.h>
-+#include <linux/errseq.h>
- 
- #include <asm/byteorder.h>
- #include <uapi/linux/fs.h>
-@@ -394,6 +395,7 @@ struct address_space {
- 	gfp_t			gfp_mask;	/* implicit gfp mask for allocations */
- 	struct list_head	private_list;	/* ditto */
- 	void			*private_data;	/* ditto */
-+	errseq_t		wb_err;
- } __attribute__((aligned(sizeof(long))));
- 	/*
- 	 * On most architectures that alignment is already the case; but
-@@ -846,6 +848,7 @@ struct file {
- 	 * Must not be taken from IRQ context.
- 	 */
- 	spinlock_t		f_lock;
-+	errseq_t		f_wb_err;
- 	atomic_long_t		f_count;
- 	unsigned int 		f_flags;
- 	fmode_t			f_mode;
-@@ -2521,6 +2524,27 @@ extern int __filemap_fdatawrite_range(struct address_space *mapping,
- extern int filemap_fdatawrite_range(struct address_space *mapping,
- 				loff_t start, loff_t end);
- extern int filemap_check_errors(struct address_space *mapping);
-+extern int __must_check filemap_report_wb_error(struct file *file);
-+
-+/**
-+ * filemap_check_wb_error - has an error occurred since the mark was sampled?
-+ * @mapping: mapping to check for writeback errors
-+ * @since: previously-sampled errseq_t
-+ *
-+ * Grab the errseq_t value from the mapping, and see if it has changed "since"
-+ * the given value was sampled.
-+ *
-+ * If it has then report the latest error set, otherwise return 0.
-+ */
-+static inline int filemap_check_wb_error(struct address_space *mapping, errseq_t since)
-+{
-+	return errseq_check(&mapping->wb_err, since);
-+}
-+
-+static inline errseq_t filemap_sample_wb_error(struct address_space *mapping)
-+{
-+	return errseq_sample(&mapping->wb_err);
-+}
- 
- extern int vfs_fsync_range(struct file *file, loff_t start, loff_t end,
- 			   int datasync);
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 1694623a6289..ee1a798acfc1 100644
+index d94a76d4e023..47e7f50fb830 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -546,6 +546,44 @@ int filemap_write_and_wait_range(struct address_space *mapping,
- EXPORT_SYMBOL(filemap_write_and_wait_range);
+@@ -363,17 +363,16 @@ int filemap_flush(struct address_space *mapping)
+ }
+ EXPORT_SYMBOL(filemap_flush);
+ 
+-static int __filemap_fdatawait_range(struct address_space *mapping,
++static void __filemap_fdatawait_range(struct address_space *mapping,
+ 				     loff_t start_byte, loff_t end_byte)
+ {
+ 	pgoff_t index = start_byte >> PAGE_SHIFT;
+ 	pgoff_t end = end_byte >> PAGE_SHIFT;
+ 	struct pagevec pvec;
+ 	int nr_pages;
+-	int ret = 0;
+ 
+ 	if (end_byte < start_byte)
+-		goto out;
++		return;
+ 
+ 	pagevec_init(&pvec, 0);
+ 	while ((index <= end) &&
+@@ -390,14 +389,11 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
+ 				continue;
+ 
+ 			wait_on_page_writeback(page);
+-			if (TestClearPageError(page))
+-				ret = -EIO;
++			ClearPageError(page);
+ 		}
+ 		pagevec_release(&pvec);
+ 		cond_resched();
+ 	}
+-out:
+-	return ret;
+ }
  
  /**
-+ * filemap_report_wb_error - report wb error (if any) that was previously set
-+ * @file: struct file on which the error is being reported
-+ *
-+ * When userland calls fsync (or something like nfsd does the equivalent), we
-+ * want to report any writeback errors that occurred since the last fsync (or
-+ * since the file was opened if there haven't been any).
-+ *
-+ * Grab the wb_err from the mapping. If it matches what we have in the file,
-+ * then just quickly return 0. The file is all caught up.
-+ *
-+ * If it doesn't match, then take the mapping value, set the "seen" flag in
-+ * it and try to swap it into place. If it works, or another task beat us
-+ * to it with the new value, then update the f_wb_err and return the error
-+ * portion. The error at this point must be reported via proper channels
-+ * (a'la fsync, or NFS COMMIT operation, etc.).
-+ *
-+ * While we handle mapping->wb_err with atomic operations, the f_wb_err
-+ * value is protected by the f_lock since we must ensure that it reflects
-+ * the latest value swapped in for this file descriptor.
-+ */
-+int filemap_report_wb_error(struct file *file)
-+{
-+	int err = 0;
-+	struct address_space *mapping = file->f_mapping;
-+
-+	/* Locklessly handle the common case where nothing has changed */
-+	if (errseq_check(&mapping->wb_err, READ_ONCE(file->f_wb_err))) {
-+		/* Something changed, must use slow path */
-+		spin_lock(&file->f_lock);
-+		err = errseq_check_and_advance(&mapping->wb_err,
-+						&file->f_wb_err);
-+		spin_unlock(&file->f_lock);
-+	}
-+	return err;
-+}
-+EXPORT_SYMBOL(filemap_report_wb_error);
-+
-+/**
-  * replace_page_cache_page - replace a pagecache page with a new one
-  * @old:	page to be replaced
-  * @new:	page to replace with
+@@ -417,15 +413,10 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
+ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
+ 			    loff_t end_byte)
+ {
+-	int ret, ret2;
+ 	errseq_t since = filemap_sample_wb_error(mapping);
+ 
+-	ret = __filemap_fdatawait_range(mapping, start_byte, end_byte);
+-	ret2 = filemap_check_wb_error(mapping, since);
+-	if (!ret)
+-		ret = ret2;
+-
+-	return ret;
++	__filemap_fdatawait_range(mapping, start_byte, end_byte);
++	return filemap_check_wb_error(mapping, since);
+ }
+ EXPORT_SYMBOL(filemap_fdatawait_range);
+ 
 -- 
 2.9.3
