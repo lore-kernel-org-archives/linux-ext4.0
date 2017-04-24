@@ -1,34 +1,35 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] tune2fs: fix BUGs of tuning project quota
-Date: Mon, 24 Apr 2017 11:15:32 -0400
-Message-ID: <20170424151532.z464fzoynm5skzy5@thunk.org>
-References: <20170414133449.45607-1-wshilong@ddn.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v3 01/20] mm: drop "wait" parameter from write_one_page
+Date: Mon, 24 Apr 2017 08:22:23 -0700
+Message-ID: <20170424152223.GA9112@infradead.org>
+References: <20170424132259.8680-1-jlayton@redhat.com>
+ <20170424132259.8680-2-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, wshilong@ddn.com,
-        andreas.dilger@intel.com, lixi@ddn.com, sihara@ddn.com
-To: Wang Shilong <wangshilong1991@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41906 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934531AbdDXPPh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Apr 2017 11:15:37 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-cifs@vger.kernel.org, linux-mm@kvack.org,
+	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
+	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
+	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
+	dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
+	ross.zwisler@linux.intel.com, mawilcox@microsoft.com, jack@suse.com,
+	viro@zeniv.linux.org.uk, corbet@lwn.net, neilb@suse.de, clm@fb.com,
+	tytso@mit.edu, axboe@kernel.dk
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170414133449.45607-1-wshilong@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170424132259.8680-2-jlayton@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Apr 14, 2017 at 09:34:49PM +0800, Wang Shilong wrote:
-> Somehow project quota did not work well for enable/disable,
-> Add some tests to address it.
-> 
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+Looks fine,
 
-The patch summary says "fix BUGs of tuning project quota".  As near as
-I can tell all this patch does is enable disabling project quota and
-removes a warning message.  "BUGs" implies a kernel bug?
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-If you could make the patch description more descriptive, that would
-be helpful.
-
-						- Ted
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
