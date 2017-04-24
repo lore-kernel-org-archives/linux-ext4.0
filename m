@@ -1,36 +1,54 @@
-From: "Ms. Katherine" <ulia@distral.ro>
-Subject: EXTREMELY IMPORTANT
-Date: Mon, 24 Apr 2017 19:52:12 +0100
-Message-ID: <20170424185219.079DA51B334E__49627.4153855213$1493062613$gmane$org@mail.distral.ro>
-Reply-To: kathrynnmison@gmail.com
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
+Date: Mon, 24 Apr 2017 16:10:55 -0500
+Message-ID: <3485e23c-3a4d-23a5-50d5-69c824353d1a@suse.de>
+References: <20170414120257.8932-1-rgoldwyn@suse.de>
+ <20170414120257.8932-6-rgoldwyn@suse.de>
+ <20170419064505.GD20053@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <ulia@distral.ro>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.distral.ro ([5.2.192.160]:34084 "EHLO mail.distral.ro"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S969100AbdDXTgp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Apr 2017 15:36:45 -0400
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        sagi@grimberg.me, avi@scylladb.com, axboe@kernel.dk,
+        linux-api@vger.kernel.org, willy@infradead.org,
+        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170419064505.GD20053@infradead.org>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear Beloved, Sorry for the inconvenience, I am getting in touch with you regarding an extremely important and urgent matter, Please I need your urgent assistance and idea to finish up a project (Orphanage Home) Due to my health condition, Everything is available to finish up the project, All I need is your idea and trust.
 
-Sehr geehrte Geliebte, traurig für die Unannehmlichkeiten, ich bin in Kontakt mit Ihnen über eine äußerst wichtige und dringende Angelegenheit, Bitte brauche ich Ihre dringende Hilfe und Idee, um ein Projekt zu beenden (Orphanage Home) Wegen meines Gesundheitszustandes ist alles verfügbar Beenden Sie das Projekt, Alles was ich brauche ist Ihre Idee und Vertrauen.
 
-Please contact me for more details.
-Contact Email: kathrynnmison@gmail.com
+On 04/19/2017 01:45 AM, Christoph Hellwig wrote:
+> On Fri, Apr 14, 2017 at 07:02:54AM -0500, Goldwyn Rodrigues wrote:
+>> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+>>
+> 
+>> +	/* Request queue supports BIO_NOWAIT */
+>> +	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
+> 
+> BIO_NOWAIT is gone.  And the comment would not be needed if the
+> flag had a more descriptive name, e.g. QUEUE_FLAG_NOWAIT_SUPPORT.
+> 
+> And I think all request based drivers should set the flag implicitly
+> as ->queuecommand can't sleep, and ->queue_rq only when it's always
+> offloaded to a workqueue when the BLK_MQ_F_BLOCKING flag is set.
+> 
 
-Thanks
+We introduced QUEUE_FLAG_NOWAIT for devices which would not wait for
+request completions. The ones which wait are MD devices because of sync
+or suspend operations.
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+The only user of BLK_MQ_F_NONBLOCKING seems to be nbd. As you mentioned,
+it uses the flag to offload it to a workqueue.
+
+The other way to do it implicitly is to change the flag to
+BLK_MAY_BLOCK_REQS and use it for devices which do wait such as md/dm.
+Is that what you are hinting at? Or do you have something else in mind?
 
 
 -- 
-This message has been scanned for viruses and
-dangerous content by MailScanner, and is
-believed to be clean.
+Goldwyn
