@@ -1,10 +1,10 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3 09/20] 9p: set mapping error when writeback fails in
- launder_page
-Date: Mon, 24 Apr 2017 08:24:55 -0700
-Message-ID: <20170424152455.GI9112@infradead.org>
+Subject: Re: [PATCH v3 10/20] fuse: set mapping error in writepage_locked
+ when it fails
+Date: Mon, 24 Apr 2017 08:25:06 -0700
+Message-ID: <20170424152506.GJ9112@infradead.org>
 References: <20170424132259.8680-1-jlayton@redhat.com>
- <20170424132259.8680-10-jlayton@redhat.com>
+ <20170424132259.8680-11-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -21,15 +21,9 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170424132259.8680-10-jlayton@redhat.com>
+In-Reply-To: <20170424132259.8680-11-jlayton@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
-
-On Mon, Apr 24, 2017 at 09:22:48AM -0400, Jeff Layton wrote:
-> launder_page is just writeback under the page lock. We still need to
-> mark the mapping for errors there when they occur.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
 Looks fine,
 
