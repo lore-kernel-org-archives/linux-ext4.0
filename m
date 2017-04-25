@@ -1,351 +1,59 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH v4] tune2fs: fix BUGs of tuning project quota
-Date: Tue, 25 Apr 2017 21:03:07 +0800
-Message-ID: <20170425130307.29168-1-wshilong@ddn.com>
-Cc: wshilong@ddn.com, andreas.dilger@intel.com, lixi@ddn.com,
-        sihara@ddn.com
-To: linux-ext4@vger.kernel.org
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Subject: Re: [PATCH 5/6] f2fs: switch to using fscrypt_match_name()
+Date: Tue, 25 Apr 2017 15:37:56 +0200
+Message-ID: <CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
+References: <20170424170013.85175-1-ebiggers3@gmail.com> <20170424170013.85175-6-ebiggers3@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fscrypt@vger.kernel.org,
+        Ryo Hashimoto <hashimoto@chromium.org>,
+        Gwendal Grignou <gwendal@chromium.org>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        Kazuhiro Inaba <kinaba@chromium.org>,
+        David Gstir <david@sigma-star.at>
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:34225 "EHLO
-        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1947262AbdDYNDc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Apr 2017 09:03:32 -0400
-Received: by mail-pg0-f67.google.com with SMTP id t7so7535528pgt.1
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Apr 2017 06:03:32 -0700 (PDT)
+Received: from mail-oi0-f41.google.com ([209.85.218.41]:35050 "EHLO
+        mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1431201AbdDYNh6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Apr 2017 09:37:58 -0400
+In-Reply-To: <20170424170013.85175-6-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There are several problems for project quota enable/disable:
-tune2fs -O ^project did not work, because @clear_ok_features
-did not include @EXT4_FEATURE_RO_COMPAT_PROJECT.
+Eric, Jaegeuk,
 
-update_feature_set() works for -O option, but tune2fs -Q prj/^prj
-did not work well, because function handle_quota_options()
-did not set and clear @EXT4_FEATURE_RO_COMPAT_PROJECT feature very well.
 
-one warning message is removed, because with project feature
-enabled, quota feature will be enabled automatically.
+On Mon, Apr 24, 2017 at 7:00 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> From: Eric Biggers <ebiggers@google.com>
+>
+> Switch f2fs directory searches to use the fscrypt_match_name() helper
+> function.  There should be no functional change.
 
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
- misc/tune2fs.c              | 43 ++++++++++++++++++++++++++++++-------------
- tests/t_project_1on/name    |  1 +
- tests/t_project_1on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
- tests/t_project_2off/name   |  1 +
- tests/t_project_2off/script | 35 +++++++++++++++++++++++++++++++++++
- tests/t_project_3on/name    |  1 +
- tests/t_project_3on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
- tests/t_project_4off/name   |  1 +
- tests/t_project_4off/script | 35 +++++++++++++++++++++++++++++++++++
- 9 files changed, 186 insertions(+), 13 deletions(-)
- create mode 100644 tests/t_project_1on/name
- create mode 100644 tests/t_project_1on/script
- create mode 100644 tests/t_project_2off/name
- create mode 100644 tests/t_project_2off/script
- create mode 100644 tests/t_project_3on/name
- create mode 100644 tests/t_project_3on/script
- create mode 100644 tests/t_project_4off/name
- create mode 100644 tests/t_project_4off/script
+> -#ifdef CONFIG_F2FS_FS_ENCRYPTION
+> -               if (unlikely(!name->name)) {
+> -                       if (fname->usr_fname->name[0] == '_') {
+> -                               if (de_name.len > 32 &&
+> -                                       !memcmp(de_name.name + ((de_name.len - 17) & ~15),
+> -                                               fname->crypto_buf.name + 8, 16))
+> -                                       goto found;
+> -                               goto not_match;
+> -                       }
+> -                       name->name = fname->crypto_buf.name;
+> -                       name->len = fname->crypto_buf.len;
+> -               }
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index f1bad60..a63da03 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -188,6 +188,7 @@ static __u32 clear_ok_features[3] = {
- 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
- 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
- 		EXT4_FEATURE_RO_COMPAT_QUOTA |
-+		EXT4_FEATURE_RO_COMPAT_PROJECT |
- 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
- 		EXT4_FEATURE_RO_COMPAT_READONLY
- };
-@@ -1309,14 +1310,17 @@ mmp_error:
- 
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
--		if (!Q_flag && !ext2fs_has_feature_quota(sb))
--			fputs(_("\nWarning: enabled project without quota together\n"),
--				stderr);
- 		Q_flag = 1;
- 		quota_enable[PRJQUOTA] = QOPT_ENABLE;
- 	}
- 
- 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
-+			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
-+		Q_flag = 1;
-+		quota_enable[PRJQUOTA] = QOPT_DISABLE;
-+	}
-+
-+	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
- 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
- 		/*
- 		 * Set the Q_flag here and handle the quota options in the code
-@@ -1484,6 +1488,7 @@ static void handle_quota_options(ext2_filsys fs)
- 	ext2_ino_t qf_ino;
- 	enum quota_type qtype;
- 	unsigned int qtype_bits = 0;
-+	int need_dirty = 0;
- 
- 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
- 		if (quota_enable[qtype] != 0)
-@@ -1527,6 +1532,16 @@ static void handle_quota_options(ext2_filsys fs)
- 					qtype);
- 				exit(1);
- 			}
-+			/* Enable Quota feature if one of quota enabled */
-+			if (!ext2fs_has_feature_quota(fs->super)) {
-+				ext2fs_set_feature_quota(fs->super);
-+				need_dirty = 1;
-+			}
-+			if (qtype == PRJQUOTA &&
-+			    !ext2fs_has_feature_project(fs->super)) {
-+				ext2fs_set_feature_project(fs->super);
-+				need_dirty = 1;
-+			}
- 		} else if (quota_enable[qtype] == QOPT_DISABLE) {
- 			retval = quota_remove_inode(fs, qtype);
- 			if (retval) {
-@@ -1535,25 +1550,27 @@ static void handle_quota_options(ext2_filsys fs)
- 					qtype);
- 				exit(1);
- 			}
-+			if (qtype == PRJQUOTA) {
-+				ext2fs_clear_feature_project(fs->super);
-+				need_dirty = 1;
-+			}
- 		}
- 	}
- 
- 	quota_release_context(&qctx);
--
--	if (qtype_bits) {
--		ext2fs_set_feature_quota(fs->super);
--		ext2fs_mark_super_dirty(fs);
--	} else {
-+	/* Clear Quota feature if all quota types disabled. */
-+	if (!qtype_bits) {
- 		for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
--			if (*quota_sb_inump(fs->super, qtype) != 0)
-+			if (*quota_sb_inump(fs->super, qtype))
- 				break;
- 		if (qtype == MAXQUOTAS) {
--			fs->super->s_feature_ro_compat &=
--					~EXT4_FEATURE_RO_COMPAT_QUOTA;
--			ext2fs_mark_super_dirty(fs);
-+			ext2fs_clear_feature_quota(fs->super);
-+			need_dirty = 1;
- 		}
--	}
- 
-+	}
-+	if (need_dirty)
-+		ext2fs_mark_super_dirty(fs);
- 	return;
- }
- 
-diff --git a/tests/t_project_1on/name b/tests/t_project_1on/name
-new file mode 100644
-index 0000000..6b2dd29
---- /dev/null
-+++ b/tests/t_project_1on/name
-@@ -0,0 +1 @@
-+enable project using tune2fs -O option
-diff --git a/tests/t_project_1on/script b/tests/t_project_1on/script
-new file mode 100644
-index 0000000..9232188
---- /dev/null
-+++ b/tests/t_project_1on/script
-@@ -0,0 +1,41 @@
-+FSCK_OPT=-yf
-+
-+if [ "$QUOTA" != "y" ]; then
-+	echo "$test_name: $test_description: skipped"
-+	return 0
-+fi
-+
-+$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "mke2fs failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
-+cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
-+	write $TMPFILE.2 file1
-+	set_inode_field file1 projid 500
-+EOF
-+rm -f $TMPFILE.2
-+
-+$TUNE2FS -O project $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "tune2fs -O project failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "e2fsck with project enabled failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+rm -f $TMPFILE
-diff --git a/tests/t_project_2off/name b/tests/t_project_2off/name
-new file mode 100644
-index 0000000..293717d
---- /dev/null
-+++ b/tests/t_project_2off/name
-@@ -0,0 +1 @@
-+disable project using tune2fs
-diff --git a/tests/t_project_2off/script b/tests/t_project_2off/script
-new file mode 100644
-index 0000000..98696b4
---- /dev/null
-+++ b/tests/t_project_2off/script
-@@ -0,0 +1,35 @@
-+FSCK_OPT=-yf
-+
-+if [ "$QUOTA" != "y" ]; then
-+	echo "$test_name: $test_description: skipped"
-+	return 0
-+fi
-+
-+$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "mke2fs -O quota,project failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$TUNE2FS -O ^project $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "tune2fs -O ^project failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "e2fsck with project enabled failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+rm -f $TMPFILE
-diff --git a/tests/t_project_3on/name b/tests/t_project_3on/name
-new file mode 100644
-index 0000000..9a10680
---- /dev/null
-+++ b/tests/t_project_3on/name
-@@ -0,0 +1 @@
-+enable project using tune2fs -Q option
-diff --git a/tests/t_project_3on/script b/tests/t_project_3on/script
-new file mode 100644
-index 0000000..1143ba4
---- /dev/null
-+++ b/tests/t_project_3on/script
-@@ -0,0 +1,41 @@
-+FSCK_OPT=-yf
-+
-+if [ "$QUOTA" != "y" ]; then
-+	echo "$test_name: $test_description: skipped"
-+	return 0
-+fi
-+
-+$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "mke2fs failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
-+cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
-+	write $TMPFILE.2 file1
-+	set_inode_field file1 projid 500
-+EOF
-+rm -f $TMPFILE.2
-+
-+$TUNE2FS -Q prj  $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "tune2fs -Q project failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "e2fsck with project enabled failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+rm -f $TMPFILE
-diff --git a/tests/t_project_4off/name b/tests/t_project_4off/name
-new file mode 100644
-index 0000000..5ef6430
---- /dev/null
-+++ b/tests/t_project_4off/name
-@@ -0,0 +1 @@
-+disable project using tune2fs -Q option
-diff --git a/tests/t_project_4off/script b/tests/t_project_4off/script
-new file mode 100644
-index 0000000..29de6bc
---- /dev/null
-+++ b/tests/t_project_4off/script
-@@ -0,0 +1,35 @@
-+FSCK_OPT=-yf
-+
-+if [ "$QUOTA" != "y" ]; then
-+	echo "$test_name: $test_description: skipped"
-+	return 0
-+fi
-+
-+$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "mke2fs -O quota,project failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$TUNE2FS -Q ^prj $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" != 0 ] ; then
-+	echo "tune2fs -O ^project failed" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
-+status=$?
-+if [ "$status" = 0 ] ; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "e2fsck with project enabled failed with $status" > $test_name.failed
-+	echo "$test_name: $test_description: failed"
-+	return $status
-+fi
-+
-+rm -f $TMPFILE
+Sorry if this is a stupid question, but why do you have to compare hashes _and_
+the last few bytes of the bigname?
+A lookup via bigname gives you two 32bits hash values, and there I'd assume that
+this is sufficient for a collisions free lookup. Especially since an
+resumed readdir()
+with a 64bits cookie has to work too on your filesystem.
+
 -- 
-2.9.3
+Thanks,
+//richard
