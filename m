@@ -1,67 +1,93 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 5/6] f2fs: switch to using
-	fscrypt_match_name()
-Date: Tue, 25 Apr 2017 21:22:16 +0200
-Message-ID: <7b3931c1-dfc5-6e30-d950-204c4a9f480c@nod.at>
-References: <20170424170013.85175-1-ebiggers3@gmail.com>
-	<20170424170013.85175-6-ebiggers3@gmail.com>
-	<CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
-	<20170425174632.GA41477@gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp limits
+Date: Tue, 25 Apr 2017 21:47:45 +0200
+Message-ID: <CAK8P3a002GSya0oxiLnJjDjcsfULSfmOTkf=JMTJEaV0a=dKjQ@mail.gmail.com>
+References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
+ <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
+ <CA+55aFymxtrw8tr6Q9vLrP7nJ5zOjShstpyQOxxr-m1Wkv9gNg@mail.gmail.com> <CABeXuvo6UyvV2yqcju+Mxh8Mmsihrpf209D8p+u68SV5nHf2-A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Gwendal Grignou <gwendal@chromium.org>, "Theodore Y . Ts'o" <tytso@mit.edu>,
-	Eric Biggers <ebiggers@google.com>, David Gstir <david@sigma-star.at>,
-	linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
-	"linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-	Jaegeuk Kim <jaegeuk@kernel.org>, Ryo Hashimoto <hashimoto@chromium.org>,
-	linux-ext4@vger.kernel.org, Kazuhiro Inaba <kinaba@chromium.org>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20170425174632.GA41477@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        y2038 Mailman List <y2038@lists.linaro.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f68.google.com ([209.85.218.68]:32833 "EHLO
+        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1169344AbdDYTrq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Apr 2017 15:47:46 -0400
+In-Reply-To: <CABeXuvo6UyvV2yqcju+Mxh8Mmsihrpf209D8p+u68SV5nHf2-A@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Eric,
-
-Am 25.04.2017 um 19:46 schrieb Eric Biggers:
->> Sorry if this is a stupid question, but why do you have to compare hashes _and_
->> the last few bytes of the bigname?
->> A lookup via bigname gives you two 32bits hash values, and there I'd assume that
->> this is sufficient for a collisions free lookup. Especially since an
->> resumed readdir()
->> with a 64bits cookie has to work too on your filesystem.
+On Sun, Apr 9, 2017 at 4:58 AM, Deepa Dinamani <deepa.kernel@gmail.com> wrote:
+>>> Allow read only mounts for filesystems that do not
+>>> have maximum timestamps beyond the y2038 expiry
+>>> timestamp.
 >>
-> 
-> Well, the problem is that hashes may not be sufficient to uniquely identify a
-> name in all cases.  f2fs uses only a 32-bit hash so it's trivial to create
-> collisions on it, as I demonstrated.  Even collisions of two 32-bit hashes, as
-> used by ext4 and ubifs, are possible.  And ext4 currently doesn't even compare
-> the hashes during directory searches, beyond using them to find the correct
-> directory block, since the hashes aren't stored in the directory entries.
+>> This option seems arbitrary and pointless.
+>>
+>> Nobody sane should ever enable it except for testing, but for testing
+>> it would be much better to simply specify what the limit should be:
+>> 2038 is not magical for all filesystems, because the base may be
+>> different.
+>
+> Yes, the way the patch is right now, it is meant only for testing
+> y2038 readiness.
+> The feature is meant for system wide tests and not individual filesystem tests.
 
-I agree that finding a collision in a 32bits hash is easy, but for 64bits it
-is *much* harder.
+There is one global option that I want to see, and that is for completely
+disabling all components that are known to be broken in y2038.
 
-> Could this mean that telldir()/seekdir() is unreliable too, probably.  But for
-> lookups of the "digested" names we aren't limited to just the 64-bit readdir
-> position, so we can avoid duplicating the bug.  Also, collisions in the digested
-> names are very problematic since they result in undeletable files, rather than
-> just poor performance and broken telldir()/seekdir().
+We could do this with just a compile-time option that primarily
+turns off all drivers using the 32-bit time_t, but the same compile-time
+option can also force the file system to be read-only.
 
-True.
-Let me think whether we can add such a check to UBIFS.
+I don't see this just as something we want to do for testing, but
+also as a safeguard for people shipping embedded systems with
+long service life: If something can go wrong after write-mounting
+an ext3 file system after 2038, it's better to force a behavior now
+that can be reasonably expected not to change.
 
-Thanks,
-//richard
+Between doing a compile-time option or a boot-time option, doing
+it purely compile-time is probably better as it gives us the possible
+additional checking when we hide the time_t definition.
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+We can do the boot-time option as well, to set a particular limit
+other than the one enforced at compile time. Passing a year
+number like "fstimestampcheck=2099" would address Linus'
+concern about the cutoff being arbitrary.
+
+I would also make the default limit higher than 2038, as at
+least the Apple HFS/HFS+ file systems break only a bit later
+in 2040. However, I don't think any other file system breaks
+until 2099 (some Microsoft file systems), which would be
+the next reasonably default cutoff IMO.
+
+>> And honestly, for testing, it would be much better to just make it a
+>> mount option rather than some crazy system-wide one.
+>
+> The patch allows the y2038 number to be changed at compile time. I can
+> extend the sysctl and boot option to allow changing of this limit also
+> if that is preferred.
+>
+> We also proposed the mount option route in the RFC. But, we received
+> no preferences/ comments. We proceeded with the sysctl option because
+> this allows us to extend this feature into disallowing writes on non
+> updatable time filesystems.
+>
+> I could change this to providing a mount option instead if you think
+> that is better.
+
+I don't see much value in a mount option that prevents the use,
+but maybe a mount option to override the global setting to make
+an exception for someone who does want to mount a particular
+(known-broken) file system despite having the stricter global setting.
+
+         Arnd
