@@ -1,154 +1,82 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v3 10/20] fuse: set mapping error in writepage_locked
- when it fails
-Date: Tue, 25 Apr 2017 12:43:23 -0400
-Message-ID: <1493138603.2758.3.camel@redhat.com>
-References: <20170424132259.8680-1-jlayton@redhat.com>
-	 <20170424132259.8680-11-jlayton@redhat.com>
-	 <20170424160431.GK23988@quack2.suse.cz>
-	 <1493054076.2895.17.camel@redhat.com>
-	 <20170425081720.GA2793@quack2.suse.cz> <1493116513.2758.1.camel@redhat.com>
-	 <20170425111903.GI2793@quack2.suse.cz>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 5/6] f2fs: switch to using
+	fscrypt_match_name()
+Date: Tue, 25 Apr 2017 10:46:32 -0700
+Message-ID: <20170425174632.GA41477@gmail.com>
+References: <20170424170013.85175-1-ebiggers3@gmail.com>
+	<20170424170013.85175-6-ebiggers3@gmail.com>
+	<CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-cifs@vger.kernel.org, linux-mm@kvack.org,
- jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
- cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
- v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
- linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
- dhowells@redhat.com,  akpm@linux-foundation.org, hch@infradead.org,
- ross.zwisler@linux.intel.com,  mawilcox@microsoft.com, jack@suse.com,
- viro@zeniv.linux.org.uk, corbet@lwn.net,  neilb@suse.de, clm@fb.com,
- tytso@mit.edu, axboe@kernel.dk, Jonathan Corbet <corbet@lwn.net>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170425111903.GI2793@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
+Cc: Gwendal Grignou <gwendal@chromium.org>, "Theodore Y . Ts'o" <tytso@mit.edu>,
+	Eric Biggers <ebiggers@google.com>, David Gstir <david@sigma-star.at>,
+	linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
+	"linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+	Jaegeuk Kim <jaegeuk@kernel.org>, Ryo Hashimoto <hashimoto@chromium.org>,
+	linux-ext4@vger.kernel.org, Kazuhiro Inaba <kinaba@chromium.org>
+To: Richard Weinberger <richard.weinberger@gmail.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Disposition: inline
+In-Reply-To: <CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2017-04-25 at 13:19 +0200, Jan Kara wrote:
-> On Tue 25-04-17 06:35:13, Jeff Layton wrote:
-> > On Tue, 2017-04-25 at 10:17 +0200, Jan Kara wrote:
-> > > On Mon 24-04-17 13:14:36, Jeff Layton wrote:
-> > > > On Mon, 2017-04-24 at 18:04 +0200, Jan Kara wrote:
-> > > > > On Mon 24-04-17 09:22:49, Jeff Layton wrote:
-> > > > > > This ensures that we see errors on fsync when writeback fails.
-> > > > > > 
-> > > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > > 
-> > > > > Hum, but do we really want to clobber mapping errors with temporary stuff
-> > > > > like ENOMEM? Or do you want to handle that in mapping_set_error?
-> > > > > 
-> > > > 
-> > > > Right now we don't really have such a thing as temporary errors in the
-> > > > writeback codepath. If you return an error here, the data doesn't stay
-> > > > dirty or anything, and I think we want to ensure that that gets reported
-> > > > via fsync.
-> > > > 
-> > > > I'd like to see us add better handling for retryable errors for stuff
-> > > > like ENOMEM or EAGAIN. I think this is the first step toward that
-> > > > though. Once we have more consistent handling of writeback errors in
-> > > > general, then we can start doing more interesting things with retryable
-> > > > errors.
-> > > > 
-> > > > So yeah, I this is the right thing to do for now.
-> > > 
-> > > OK, fair enough. And question number 2):
-> > > 
-> > > Who is actually responsible for setting the error in the mapping when error
-> > > happens inside ->writepage()? Is it the ->writepage() callback or the
-> > > caller of ->writepage()? Or something else? Currently it seems to be a
-> > > strange mix (e.g. mm/page-writeback.c: __writepage() calls
-> > > mapping_set_error() when ->writepage() returns error) so I'd like to
-> > > understand what's the plan and have that recorded in the changelogs.
-> > > 
-> > 
-> > That's an excellent question.
-> > 
-> > I think we probably want the writepage/launder_page operations to call
-> > mapping_set_error. That makes it possible for filesystems (e.g. NFS) to
-> > handle their own error tracking and reporting without using the new
-> > infrastructure. If they never call mapping_set_error then we'll always
-> > just return whatever their ->fsync operation returns on an fsync.
-> 
-> OK, makes sense. It is also in line with what you did for DAX, 9p, or here
-> for FUSE. So feel free to add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> for this patch but please also add a sentense that ->writepage() is
-> responsible for calling mapping_set_error() if it fails and page is not
-> redirtied to the changelogs of patches changing writepage handlers.
-> 
-> > I'll make another pass through the tree and see whether we have some
-> > mapping_set_error calls that should be removed, and will flesh out
-> > vfs.txt to state this. Maybe that file needs a whole section on
-> > writeback error reporting? Hmmm...
-> 
-> I think it would be nice to have all the logic described in one place. So
-> +1 from me.
-> 
-> > That probably also means that I should drop patch 8 from this series
-> > (mm: ensure that we set mapping error if writeout fails), since that
-> > should be happening in writepage already.
-> 
-> Yes.
-> 
-> 								Honza
+Hi Richard,
 
-(cc'ing Jon since I'm proposing a doc update)
+On Tue, Apr 25, 2017 at 03:37:56PM +0200, Richard Weinberger wrote:
+> Eric, Jaegeuk,
+> 
+> 
+> On Mon, Apr 24, 2017 at 7:00 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > From: Eric Biggers <ebiggers@google.com>
+> >
+> > Switch f2fs directory searches to use the fscrypt_match_name() helper
+> > function.  There should be no functional change.
+> 
+> > -#ifdef CONFIG_F2FS_FS_ENCRYPTION
+> > -               if (unlikely(!name->name)) {
+> > -                       if (fname->usr_fname->name[0] == '_') {
+> > -                               if (de_name.len > 32 &&
+> > -                                       !memcmp(de_name.name + ((de_name.len - 17) & ~15),
+> > -                                               fname->crypto_buf.name + 8, 16))
+> > -                                       goto found;
+> > -                               goto not_match;
+> > -                       }
+> > -                       name->name = fname->crypto_buf.name;
+> > -                       name->len = fname->crypto_buf.len;
+> > -               }
+> 
+> Sorry if this is a stupid question, but why do you have to compare hashes _and_
+> the last few bytes of the bigname?
+> A lookup via bigname gives you two 32bits hash values, and there I'd assume that
+> this is sufficient for a collisions free lookup. Especially since an
+> resumed readdir()
+> with a 64bits cookie has to work too on your filesystem.
+> 
 
-Here's what I'm thinking for a vfs.txt update after this series. The
-section on writeback_control could probably be more specific.
+Well, the problem is that hashes may not be sufficient to uniquely identify a
+name in all cases.  f2fs uses only a 32-bit hash so it's trivial to create
+collisions on it, as I demonstrated.  Even collisions of two 32-bit hashes, as
+used by ext4 and ubifs, are possible.  And ext4 currently doesn't even compare
+the hashes during directory searches, beyond using them to find the correct
+directory block, since the hashes aren't stored in the directory entries.
 
-----------------------8<-------------------------
+Could this mean that telldir()/seekdir() is unreliable too, probably.  But for
+lookups of the "digested" names we aren't limited to just the 64-bit readdir
+position, so we can avoid duplicating the bug.  Also, collisions in the digested
+names are very problematic since they result in undeletable files, rather than
+just poor performance and broken telldir()/seekdir().
 
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 94dd27ef4a76..aa912b65792a 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -576,7 +576,23 @@ should clear PG_Dirty and set PG_Writeback.  It can be actually
- written at any point after PG_Dirty is clear.  Once it is known to be
- safe, PG_Writeback is cleared.
- 
--Writeback makes use of a writeback_control structure...
-+Writeback makes use of a writeback_control structure to direct the
-+operations. This tells the writepage and writepages operations something
-+about the nature of and reason for the writeback request, and the
-+constraints under which it is being done. It is also used to track state
-+between successive writeback requests.
-+
-+When there is an error during writeback, then an error should be
-+reported to fsync on all file descriptors that were open at the time of
-+the error. This is typically done by setting the wb_err value in the
-+address_space via mapping_set_error when writeback errors occur. The
-+vfs-layer fsync code will then report the errors on a per-fd basis.
-+
-+Filesystems are free to track errors internally if they choose, but they
-+should aim to provide the same semantics for error reporting when there
-+are multiple writers. Filesystems that track their own errors should
-+avoid calling mapping_set_error in order to ensure that errors stored in
-+the mapping aren't improperly reported by the generic filesystem code.
- 
- struct address_space_operations
- -------------------------------
-@@ -888,7 +904,9 @@ otherwise noted.
- 
-   release: called when the last reference to an open file is closed
- 
--  fsync: called by the fsync(2) system call
-+  fsync: called by the fsync(2) system call. Errors that were previously
-+	 recorded using mapping_set_error will automatically be returned to
-+	 the application and the file's error sequence advanced.
- 
-   fasync: called by the fcntl(2) system call when asynchronous
- 	(non-blocking) mode is enabled for a file
+- Eric
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
