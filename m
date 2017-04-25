@@ -1,102 +1,54 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: kernel/rcu/tree.c:1031 rcu_irq_enter() invoked with irqs
- enabled!!!!
-Date: Tue, 25 Apr 2017 13:28:41 -0700
-Message-ID: <20170425202841.GF3956@linux.vnet.ibm.com>
-References: <20170425201345.GB11773@linux.intel.com>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp
+	limits
+Date: Tue, 25 Apr 2017 22:31:15 +0200
+Message-ID: <CAK8P3a0_iRFODcbkkKirjSOxe-L5Nnk-2Pjp9icfbNye9ZzfRQ@mail.gmail.com>
+References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
+ <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
+ <CA+55aFymxtrw8tr6Q9vLrP7nJ5zOjShstpyQOxxr-m1Wkv9gNg@mail.gmail.com>
+ <CABeXuvo6UyvV2yqcju+Mxh8Mmsihrpf209D8p+u68SV5nHf2-A@mail.gmail.com>
+ <CAK8P3a002GSya0oxiLnJjDjcsfULSfmOTkf=JMTJEaV0a=dKjQ@mail.gmail.com>
+ <CA+55aFzFWma+EMB-xQ7QBPbOzUOkSc0XEwy9DgLpYfVzMYJQGg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        Josh Triplett <josh@joshtriplett.org>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40421 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1949853AbdDYU2p (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Apr 2017 16:28:45 -0400
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.20/8.16.0.20) with SMTP id v3PKSeBH004369
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Apr 2017 16:28:44 -0400
-Received: from e15.ny.us.ibm.com (e15.ny.us.ibm.com [129.33.205.205])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2a206msnvw-1
-        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Apr 2017 16:28:44 -0400
-Received: from localhost
-        by e15.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Tue, 25 Apr 2017 16:28:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20170425201345.GB11773@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, y2038 Mailman List <y2038@lists.linaro.org>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+ Deepa Dinamani <deepa.kernel@gmail.com>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ Thomas Gleixner <tglx@linutronix.de>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Al Viro <viro@zeniv.linux.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <CA+55aFzFWma+EMB-xQ7QBPbOzUOkSc0XEwy9DgLpYfVzMYJQGg@mail.gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 25, 2017 at 02:13:45PM -0600, Ross Zwisler wrote:
-> I hit this RCU warning while running mkfs.ext4 on a PMEM namespace with
-> an unmodified v4.11-rc8 (passed through kasan_symbolize.py):
-> 
-> ===============================
-> [ ERR: suspicious RCU usage.  ]
-> 4.11.0-rc8 #1 Not tainted
-> -------------------------------
-> kernel/rcu/tree.c:1031 rcu_irq_enter() invoked with irqs enabled!!!!
-
-Just in case there is any doubt, invoking rcu_irq_enter() with irqs
-enabled voids your kernel's RCU warranty.  ;-)
-
-So please don't do that.
-
-							Thanx, Paul
-
-> other info that might help us debug this:
-> 
-> 
-> rcu_scheduler_active = 2, debug_locks = 0
-> no locks held by mkfs.ext4/18493.
-> 
-> stack backtrace:
-> CPU: 10 PID: 18493 Comm: mkfs.ext4 Not tainted 4.11.0-rc8 #1
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.3-1.fc25 04/01/2014
-> Call Trace:
-> [<     inline     >] __dump_stack project/linux/lib/dump_stack.c:16
-> [<      none      >] dump_stack+0x86/0xc3 project/linux/lib/dump_stack.c:52
-> [<      none      >] lockdep_rcu_suspicious+0xd7/0x110 project/linux/kernel/locking/lockdep.c:4461
-> [<      none      >] rcu_irq_enter+0x74/0x80 project/linux/kernel/rcu/tree.c:1031
-> [<      none      >] kvm_async_pf_task_wait+0x1af/0x240 project/linux/arch/x86/kernel/kvm.c:164
-> [<      none      >] do_async_page_fault+0x63/0x90 project/linux/arch/x86/kernel/kvm.c:269
->  ?[<      none      >] do_async_page_fault+0x63/0x90 project/linux/arch/x86/kernel/kvm.c:269
-> [<      none      >] async_page_fault+0x28/0x30 project/linux_2/arch/x86/entry/entry_64.S:1014
-> RIP: 0010:copy_user_enhanced_fast_string+0x5/0x10
-> RSP: 0018:ffffc90008777c90 EFLAGS: 00010202
-> RAX: 0000000000000001 RBX: 0000000000001000 RCX: 0000000000001000
-> RDX: 0000000000001000 RSI: 00007f42a5d88010 RDI: ffff88007e82d000
-> RBP: ffffc90008777ce0 R08: ffff88007e82d000 R09: 0000000000000000
-> R10: 0000000000000000 R11: ffffea0001fa0b40 R12: 0000000000001000
-> R13: ffffc90008777e50 R14: ffff88007e82e000 R15: 0000000000001000
->  ?[<     inline     >] copy_user_generic project/linux/./arch/x86/include/asm/uaccess_64.h:37
->  ?[<     inline     >] __copy_from_user_nocheck project/linux/./arch/x86/include/asm/uaccess_64.h:59
->  ?[<     inline     >] __copy_from_user_inatomic project/linux/./arch/x86/include/asm/uaccess_64.h:251
->  ?[<      none      >] iov_iter_copy_from_user_atomic+0xbb/0x350 project/linux/lib/iov_iter.c:721
-> [<      none      >] generic_perform_write+0xf2/0x1d0 project/linux/mm/filemap.c:2843
-> [<      none      >] __generic_file_write_iter+0x185/0x1c0 project/linux/mm/filemap.c:2960
-> [<      none      >] blkdev_write_iter+0x96/0x110 project/linux/fs/block_dev.c:2008
-> [<     inline     >] call_write_iter project/linux/./include/linux/fs.h:1733
-> [<     inline     >] new_sync_write project/linux/fs/read_write.c:497
-> [<      none      >] __vfs_write+0xe8/0x160 project/linux/fs/read_write.c:510
->  ?[<     inline     >] call_write_iter project/linux/./include/linux/fs.h:1733
->  ?[<     inline     >] new_sync_write project/linux/fs/read_write.c:497
->  ?[<      none      >] __vfs_write+0xe8/0x160 project/linux/fs/read_write.c:510
-> [<      none      >] vfs_write+0xcb/0x1f0 project/linux/fs/read_write.c:558
-> [<     inline     >] SYSC_pwrite64 project/linux/fs/read_write.c:647
-> [<      none      >] SyS_pwrite64+0x98/0xc0 project/linux/fs/read_write.c:634
-> [<      none      >] entry_SYSCALL_64_fastpath+0x1f/0xc2 project/linux_2/arch/x86/entry/entry_64.S:204
-> RIP: 0033:0x7f42acd4d213
-> RSP: 002b:00007ffc846e4e38 EFLAGS: 00000246 ORIG_RAX: 0000000000000012
-> RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f42acd4d213
-> RDX: 00000000001e0000 RSI: 00007f42a5c9f010 RDI: 0000000000000003
-> RBP: 0000559bd6c46380 R08: 00007f42a5c9f010 R09: 0000000000000200
-> R10: 0000000680820000 R11: 0000000000000246 R12: 00007ffc846e4f9c
-> R13: 0000000000000425 R14: 0000000000000200 R15: 0000559bd6c46380
-> 
+T24gVHVlLCBBcHIgMjUsIDIwMTcgYXQgMTA6MDIgUE0sIExpbnVzIFRvcnZhbGRzCjx0b3J2YWxk
+c0BsaW51eC1mb3VuZGF0aW9uLm9yZz4gd3JvdGU6Cj4gT24gVHVlLCBBcHIgMjUsIDIwMTcgYXQg
+MTI6NDcgUE0sIEFybmQgQmVyZ21hbm4gPGFybmRAYXJuZGIuZGU+IHdyb3RlOgo+Pgo+PiBUaGVy
+ZSBpcyBvbmUgZ2xvYmFsIG9wdGlvbiB0aGF0IEkgd2FudCB0byBzZWUsIGFuZCB0aGF0IGlzIGZv
+ciBjb21wbGV0ZWx5Cj4+IGRpc2FibGluZyBhbGwgY29tcG9uZW50cyB0aGF0IGFyZSBrbm93biB0
+byBiZSBicm9rZW4gaW4geTIwMzguCj4KPiBJIHJlYWxseSBkb24ndCBzZWUgdGhlIHBvaW50Lgo+
+Cj4gRG9uJ3QgZG8gaXQuIE1ha2UgaXQgc29tZSBsb2NhbCBoYWNrLCBJJ20gbm90IHRha2luZyBj
+cmF6eSBwYXRjaGVzLgoKSSBoYXZlIHRoZSBsb2NhbCBoYWNrICwgYW5kIHVzZWQgaXQgdG8gZmlu
+ZCBhbGwgdGhlIGRyaXZlcnMgdGhhdCB1c2UgYQozMi1iaXQgdGltZV90IGludGVybmFsbHkgKGFu
+ZCBtYXJrIHRoZW0gd2l0aCBhIEtjb25maWcgZGVwZW5kZW5jeQpmb3IgdGVzdGluZykuCgpXb3Vs
+ZCBpdCBiZSBvayB0byBoYXZlIGEgc2ltcGxlIHdheSBvZiByZW1vdmluZyB0aGUgdGltZV90IGRl
+ZmluaXRpb24gKGUuZy4KYnkgcGFzc2luZyAnLURSRVFVSVJFX1RJTUU2NCcgdG8gdGhlIGNvbXBp
+bGVyLCBidXQgd2l0aG91dCB0aGUgS2NvbmZpZwpvcHRpb24/IFRoYXQgd2F5LCBzb21lb25lIHdo
+byB3YW50cyB0byBzaGlwIGEgcHJvZHVjdCBjYW4gYXQgbGVhc3QKZmluZCB0aGUgb2J2aW91cyBk
+ZXBlbmRlbmNpZXMgb24gc3R1ZmYgdGhhdCByZW1haW5zIGJyb2tlbi4KCiAgICAgICBBcm5kCl9f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClkyMDM4IG1haWxp
+bmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9t
+YWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
