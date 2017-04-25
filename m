@@ -1,70 +1,66 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 5/6] f2fs: switch to using fscrypt_match_name()
-Date: Tue, 25 Apr 2017 23:03:01 +0200
-Message-ID: <97d6d85e-6a4a-7ce9-0b23-4a3604c149b6@nod.at>
-References: <20170424170013.85175-1-ebiggers3@gmail.com>
- <20170424170013.85175-6-ebiggers3@gmail.com>
- <CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
- <20170425174632.GA41477@gmail.com>
- <7b3931c1-dfc5-6e30-d950-204c4a9f480c@nod.at>
- <20170425205821.GB133970@gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp
+	limits
+Date: Tue, 25 Apr 2017 23:23:41 +0200
+Message-ID: <CAK8P3a0-Ysp9tBHx7e9d1Yk1tco6CJrCJdG0-vjvTWCKjH0FZQ@mail.gmail.com>
+References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
+ <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
+ <CA+55aFymxtrw8tr6Q9vLrP7nJ5zOjShstpyQOxxr-m1Wkv9gNg@mail.gmail.com>
+ <CABeXuvo6UyvV2yqcju+Mxh8Mmsihrpf209D8p+u68SV5nHf2-A@mail.gmail.com>
+ <CAK8P3a002GSya0oxiLnJjDjcsfULSfmOTkf=JMTJEaV0a=dKjQ@mail.gmail.com>
+ <CA+55aFzFWma+EMB-xQ7QBPbOzUOkSc0XEwy9DgLpYfVzMYJQGg@mail.gmail.com>
+ <CAK8P3a0_iRFODcbkkKirjSOxe-L5Nnk-2Pjp9icfbNye9ZzfRQ@mail.gmail.com>
+ <CA+55aFwxqwnY7QLA8hbMG8AvwdWp5i94Tc=NoXEK+dcQnxHLMg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-fscrypt@vger.kernel.org,
-        Ryo Hashimoto <hashimoto@chromium.org>,
-        Gwendal Grignou <gwendal@chromium.org>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
-        Kazuhiro Inaba <kinaba@chromium.org>,
-        David Gstir <david@sigma-star.at>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from b.ns.miles-group.at ([95.130.255.144]:44723 "EHLO radon.swed.at"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1954683AbdDYVDG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Apr 2017 17:03:06 -0400
-In-Reply-To: <20170425205821.GB133970@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, y2038 Mailman List <y2038@lists.linaro.org>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+ Deepa Dinamani <deepa.kernel@gmail.com>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ Thomas Gleixner <tglx@linutronix.de>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Al Viro <viro@zeniv.linux.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <CA+55aFwxqwnY7QLA8hbMG8AvwdWp5i94Tc=NoXEK+dcQnxHLMg@mail.gmail.com>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Eric,
-
-Am 25.04.2017 um 22:58 schrieb Eric Biggers:
-> On Tue, Apr 25, 2017 at 09:22:16PM +0200, Richard Weinberger wrote:
->> Eric,
->>
->> Am 25.04.2017 um 19:46 schrieb Eric Biggers:
->>>> Sorry if this is a stupid question, but why do you have to compare hashes _and_
->>>> the last few bytes of the bigname?
->>>> A lookup via bigname gives you two 32bits hash values, and there I'd assume that
->>>> this is sufficient for a collisions free lookup. Especially since an
->>>> resumed readdir()
->>>> with a 64bits cookie has to work too on your filesystem.
->>>>
->>>
->>> Well, the problem is that hashes may not be sufficient to uniquely identify a
->>> name in all cases.  f2fs uses only a 32-bit hash so it's trivial to create
->>> collisions on it, as I demonstrated.  Even collisions of two 32-bit hashes, as
->>> used by ext4 and ubifs, are possible.  And ext4 currently doesn't even compare
->>> the hashes during directory searches, beyond using them to find the correct
->>> directory block, since the hashes aren't stored in the directory entries.
->>
->> I agree that finding a collision in a 32bits hash is easy, but for 64bits it
->> is *much* harder.
-> 
-> That's true for accidental collisions, but malicious users might create
-> intentional collisions.  In the case of UBIFS it looks like the first 32 bits of
-> the cookie depend solely only on the filename via key_r5_hash(), while the
-> second 32 bits is random.  So I imagine a collision in the full 64 bits could be
-> generated by precomputing on average about 65536 filenames which collide in
-> key_r5_hash(), then creating them all in the same directory.
-
-Correct. As I said, I'll think of a way to check the remaining bytes in the bigname
-case.
-
-Thanks,
-//richard
+T24gVHVlLCBBcHIgMjUsIDIwMTcgYXQgMTA6MzUgUE0sIExpbnVzIFRvcnZhbGRzCjx0b3J2YWxk
+c0BsaW51eC1mb3VuZGF0aW9uLm9yZz4gd3JvdGU6Cj4gT24gVHVlLCBBcHIgMjUsIDIwMTcgYXQg
+MTozMSBQTSwgQXJuZCBCZXJnbWFubiA8YXJuZEBhcm5kYi5kZT4gd3JvdGU6Cj4+Cj4+IFdvdWxk
+IGl0IGJlIG9rIHRvIGhhdmUgYSBzaW1wbGUgd2F5IG9mIHJlbW92aW5nIHRoZSB0aW1lX3QgZGVm
+aW5pdGlvbiAoZS5nLgo+PiBieSBwYXNzaW5nICctRFJFUVVJUkVfVElNRTY0JyB0byB0aGUgY29t
+cGlsZXIsIGJ1dCB3aXRob3V0IHRoZSBLY29uZmlnCj4+IG9wdGlvbj8gVGhhdCB3YXksIHNvbWVv
+bmUgd2hvIHdhbnRzIHRvIHNoaXAgYSBwcm9kdWN0IGNhbiBhdCBsZWFzdAo+PiBmaW5kIHRoZSBv
+YnZpb3VzIGRlcGVuZGVuY2llcyBvbiBzdHVmZiB0aGF0IHJlbWFpbnMgYnJva2VuLgo+Cj4gSG93
+IHdvdWxkIHlvdSBmaW5kIHRoZW0/Cj4KPiBQZW9wbGUgZG9uJ3QgbmVjZXNzYXJpbHkgdXNlICJ0
+aW1lX3QiLiBUaGV5IG1pZ2h0IHVzZSAiaW50IiBvciB3aGF0ZXZlci4KCk15IG1haW4gYXBwcm9h
+Y2ggaGFzIGJlZW46CgoqIEFzc3VtZSB0aGF0IGFsbCBvZiB0aGUgdGltZV90IGJhc2VkIGludGVy
+ZmFjZXMgYXJlIGJyb2tlbiBvbiAzMi1iaXQgc3lzdGVtcwogIChzb21lIGFyZSBub3QsIGJ1dCBh
+bG1vc3QgYWxsIGFyZSkKCiogRm9yIGVhY2ggaW50ZXJmYWNlIHRoYXQgZXhwb3NlcyBhIHRpbWVf
+dCB0byBvdGhlciBmaWxlcywgaW50cm9kdWNlIGEKICByZXBsYWNlbWVudCBpbnRlcmZhY2UgdGhh
+dCBpcyBrbm93biB0byB3b3JrCgoqIENoYW5nZSB1c2VycyBvZiB0aGUgb2xkIGludGVyZmFjZSBv
+dmVyIHRvIHRoZSBuZXcgb25lLCBvbmUgYXQgYSB0aW1lLAogIHdoaWxlIG1hbnVhbGx5IHJldmll
+d2luZyBhbGwgb3RoZXIgY29kZSB0aGlzIGludGVyYWN0cyB3aXRoLgoKTm90ZSB0aGF0IHRoZSB2
+YXN0IG1ham9yaXR5IG9mIGFsbCB0aGUgaW4ta2VybmVsIHVzZXMgb2YgdGltZV90IHZhcmlhYmxl
+cwphY3R1YWxseSB1c2UgdGltZXNwZWMgb3IgdGltZXZhbCBzdHJ1Y3R1cmVzIGJlY2F1c2UgdGhl
+eSByZXF1aXJlCnN1Yi1zZWNvbmQgcmVzb2x1dGlvbiwgc28gd2UgYWxyZWFkeSBrbm93IHRoYXQg
+dGhleSBjYW5ub3QKYWNjaWRlbnRhbGx5IGdldCBhc3NpZ25lZCB0byAnaW50Jy4gQWxzbywgd2Ug
+dHlwaWNhbGx5IHJlcGxhY2UgdGhlbSB3aXRoCmt0aW1lX3QgZm9yIGVmZmljaWVuY3kuIEluIGNh
+c2Ugd2UgcmVwbGFjZSBhIHRpbWVzcGVjIHdpdGggdGltZXNwZWM2NCwKd2UgZG8gaGF2ZSB0byBi
+ZSBjYXJlZnVsIHRvIGVuc3VyZSB0aGF0IG5vIGNvZGUganVzdCB0cmVhdHMgdGhlCnR2X3NlYyBt
+ZW1iZXIgYXMgJ2ludCcgb3IgJ2xvbmcnIHRob3VnaC4KCiAgICAgIEFybmQKX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KWTIwMzggbWFpbGluZyBsaXN0Clky
+MDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9saXN0cy5saW5hcm8ub3JnL21haWxtYW4vbGlz
+dGluZm8veTIwMzgK
