@@ -1,36 +1,61 @@
-From: "Ms. Katherine" <ulia@distral.ro>
-Subject: EXTREMELY IMPORTANT
-Date: Mon, 24 Apr 2017 23:25:18 +0100
-Message-ID: <20170424222523.C50F151C1436@mail.distral.ro>
-Reply-To: kathrynnmison@gmail.com
+From: Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
+Date: Mon, 24 Apr 2017 20:28:37 -0600
+Message-ID: <b1a0b06c-603b-e765-e3a3-2c91562549bc@kernel.dk>
+References: <20170414120257.8932-1-rgoldwyn@suse.de>
+ <20170414120257.8932-6-rgoldwyn@suse.de>
+ <20170419064505.GD20053@infradead.org>
+ <3485e23c-3a4d-23a5-50d5-69c824353d1a@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <ulia@distral.ro>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.distral.ro ([5.2.192.160]:49306 "EHLO mail.distral.ro"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1174709AbdDYBAa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Apr 2017 21:00:30 -0400
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        sagi@grimberg.me, avi@scylladb.com, linux-api@vger.kernel.org,
+        willy@infradead.org, tom.leiming@gmail.com,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>,
+        Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <3485e23c-3a4d-23a5-50d5-69c824353d1a@suse.de>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear Beloved, Sorry for the inconvenience, I am getting in touch with you regarding an extremely important and urgent matter, Please I need your urgent assistance and idea to finish up a project (Orphanage Home) Due to my health condition, Everything is available to finish up the project, All I need is your idea and trust...............
+On 04/24/2017 03:10 PM, Goldwyn Rodrigues wrote:
+> 
+> 
+> On 04/19/2017 01:45 AM, Christoph Hellwig wrote:
+>> On Fri, Apr 14, 2017 at 07:02:54AM -0500, Goldwyn Rodrigues wrote:
+>>> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+>>>
+>>
+>>> +	/* Request queue supports BIO_NOWAIT */
+>>> +	queue_flag_set_unlocked(QUEUE_FLAG_NOWAIT, q);
+>>
+>> BIO_NOWAIT is gone.  And the comment would not be needed if the
+>> flag had a more descriptive name, e.g. QUEUE_FLAG_NOWAIT_SUPPORT.
+>>
+>> And I think all request based drivers should set the flag implicitly
+>> as ->queuecommand can't sleep, and ->queue_rq only when it's always
+>> offloaded to a workqueue when the BLK_MQ_F_BLOCKING flag is set.
+>>
+> 
+> We introduced QUEUE_FLAG_NOWAIT for devices which would not wait for
+> request completions. The ones which wait are MD devices because of sync
+> or suspend operations.
+> 
+> The only user of BLK_MQ_F_NONBLOCKING seems to be nbd. As you mentioned,
+> it uses the flag to offload it to a workqueue.
+> 
+> The other way to do it implicitly is to change the flag to
+> BLK_MAY_BLOCK_REQS and use it for devices which do wait such as md/dm.
+> Is that what you are hinting at? Or do you have something else in mind?
 
-Geachte Geliefde, Sorry voor het ongemak, ik kom met je in contact met betrekking tot een zeer belangrijke en dringende zaak. Gelieve mijn dringende hulp en idee nodig om een project af te ronden (Weeshuishuis) Vanwege mijn gezondheidstoestand is alles beschikbaar voor Voltooi het project, alles wat ik nodig heb is jouw idee en vertrouwen.
-
-Please contact me for more details.
-Contact Email: kathrynnmison@gmail.com
-
-Thanks
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+You are misunderstanding. What Christoph (correctly) says is that request
+based drivers do not block, so all of those are fine. What you need to
+worry about is drivers that are NOT request based. In other words, drivers
+that hook into make_request_fn and process bio's.
 
 -- 
-This message has been scanned for viruses and
-dangerous content by MailScanner, and is
-believed to be clean.
+Jens Axboe
