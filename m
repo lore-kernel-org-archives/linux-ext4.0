@@ -1,115 +1,99 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: API for Vectorising IO
-Date: Mon, 24 Apr 2017 21:27:22 -0600
-Message-ID: <49AAE741-FE98-4DB0-8E3A-7D94C8C2E54F@dilger.ca>
-References: <CAAMvbhFmbLtMizB3KBPhUnvhN3iFeJkg06=O7utwyTtFxLDd6g@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_DC081B9D-BF3F-4D80-83AB-038930C373FF";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: James Courtier-Dutton <james.dutton@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:36156 "EHLO
-        mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S980274AbdDYD11 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Apr 2017 23:27:27 -0400
-Received: by mail-io0-f169.google.com with SMTP id p80so89228036iop.3
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Apr 2017 20:27:26 -0700 (PDT)
-In-Reply-To: <CAAMvbhFmbLtMizB3KBPhUnvhN3iFeJkg06=O7utwyTtFxLDd6g@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 10/20] fuse: set mapping error in writepage_locked
+ when it fails
+Date: Tue, 25 Apr 2017 10:17:20 +0200
+Message-ID: <20170425081720.GA2793@quack2.suse.cz>
+References: <20170424132259.8680-1-jlayton@redhat.com>
+ <20170424132259.8680-11-jlayton@redhat.com>
+ <20170424160431.GK23988@quack2.suse.cz>
+ <1493054076.2895.17.camel@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org,
+	linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
+	linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+	linux-f2fs-devel@lists.sourceforge.net,
+	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
+	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
+	dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
+	ross.zwisler@linux.intel.com, mawilcox@microsoft.com, jack@suse.com,
+	viro@zeniv.linux.org.uk, corbet@lwn.net, neilb@suse.de, clm@fb.com,
+	tytso@mit.edu, axboe@kernel.dk
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1493054076.2895.17.camel@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Mon 24-04-17 13:14:36, Jeff Layton wrote:
+> On Mon, 2017-04-24 at 18:04 +0200, Jan Kara wrote:
+> > On Mon 24-04-17 09:22:49, Jeff Layton wrote:
+> > > This ensures that we see errors on fsync when writeback fails.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > 
+> > Hum, but do we really want to clobber mapping errors with temporary stuff
+> > like ENOMEM? Or do you want to handle that in mapping_set_error?
+> > 
+> 
+> Right now we don't really have such a thing as temporary errors in the
+> writeback codepath. If you return an error here, the data doesn't stay
+> dirty or anything, and I think we want to ensure that that gets reported
+> via fsync.
+> 
+> I'd like to see us add better handling for retryable errors for stuff
+> like ENOMEM or EAGAIN. I think this is the first step toward that
+> though. Once we have more consistent handling of writeback errors in
+> general, then we can start doing more interesting things with retryable
+> errors.
+> 
+> So yeah, I this is the right thing to do for now.
 
---Apple-Mail=_DC081B9D-BF3F-4D80-83AB-038930C373FF
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+OK, fair enough. And question number 2):
 
-On Apr 22, 2017, at 4:39 AM, James Courtier-Dutton =
-<james.dutton@gmail.com> wrote:
->=20
-> Hi,
->=20
-> I recently read this, which talks about vectorised IO for NFS.
-> https://www.fsl.cs.sunysb.edu/docs/nfs4perf/vnfs-fast17.pdf
->=20
-> Are there any ways to do this for ext4?
-> For example:
-> A single syscall() that would list all the files in a directory.
-> I.e. A sort of list_all_files() all as a single syscall().
-> Also, having the API as async and partial results:
-> I.e. send list_all_files() message.
-> receive a request_id.
-> send get_next_1000_files(request_id)
-> receive the next 1000 files in that directory.
->=20
-> So, a sort of partial results, but with batching, in this case batch
-> 1000 files at a time.
->=20
-> similarly for a read_all_files(list_of_files).
-> would then send back all the file's contents.
->=20
-> Surely, if the file system knows the full picture, earlier, it can
-> better optimise the results.  So, this lets the application request
-> a list of many different file operations ahead of time. gets a
-> "request_id" back. And can then gather the results later.
->=20
-> The important point here, is finding ways to limit the round-trip time
-> and amount of requests/responses.  The returning of a "request_id"
-> means that the request is returned without even needing to access the
-> disk, thereby limiting round-trip time to a minimum.
->=20
-> A similar approach could be used to optimise file find operations, but
-> I suspect this sort of operation is still better optimised with an
-> index in user space. E.g. Apache Lucene.
->=20
-> While vectorised IO work improve file access over the network
-> considerably, if local file systems also used the same API,
-> applications could be written, using a single API, and work
-> efficiently on both local and remote filesystems.
+Who is actually responsible for setting the error in the mapping when error
+happens inside ->writepage()? Is it the ->writepage() callback or the
+caller of ->writepage()? Or something else? Currently it seems to be a
+strange mix (e.g. mm/page-writeback.c: __writepage() calls
+mapping_set_error() when ->writepage() returns error) so I'd like to
+understand what's the plan and have that recorded in the changelogs.
 
-One thing that has been discussed a bit in the past is to provide a
-generic interface for doing bulk stat operations for multiple files.
+								Honza
 
-One proposal is to make this similar to "readdirplus" for NFS, which
-returns directory and stat information for all files in a directory.
-This is useful if you are accessing all files in the directory.
+> 
+> > 
+> > > ---
+> > >  fs/fuse/file.c | 1 +
+> > >  1 file changed, 1 insertion(+)
+> > > 
+> > > diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+> > > index ec238fb5a584..07d0efcb050c 100644
+> > > --- a/fs/fuse/file.c
+> > > +++ b/fs/fuse/file.c
+> > > @@ -1669,6 +1669,7 @@ static int fuse_writepage_locked(struct page *page)
+> > >  err_free:
+> > >  	fuse_request_free(req);
+> > >  err:
+> > > +	mapping_set_error(page->mapping, error);
+> > >  	end_page_writeback(page);
+> > >  	return error;
+> > >  }
+> > > -- 
+> > > 2.9.3
+> > > 
+> > > 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
 
-Another proposal is to submit a list of inodes (file handles?) to the
-kernel and then get the stat information back in an array for all
-of the inodes at once.  This is about the same as readdirplus if
-you are accessing all of the inodes, but is potentially much better
-if you are only accessing a subset of files (e.g. "ls -l *.txt" or
-"find . -type d" or similar).
-
-I don't know if there was ever a discussion to allow reading of
-multiple files at once, though this could potentially help when there
-are lots of smaller files being accessed from high-latency storage
-(e.g. network and/or disk) since it would allow the storage to better
-optimize the IO pattern.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_DC081B9D-BF3F-4D80-83AB-038930C373FF
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFY/sIapIg59Q01vtYRAj12AJ9HWoUKDyvQuhPwOZnLbSoEgLITHwCgjWgC
-C3wF8dEBwq++lapqzyDXhcc=
-=wxnq
------END PGP SIGNATURE-----
-
---Apple-Mail=_DC081B9D-BF3F-4D80-83AB-038930C373FF--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
