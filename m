@@ -1,56 +1,62 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v5 2/5] vfs: Add checks for filesystem timestamp
-	limits
-Date: Tue, 25 Apr 2017 13:35:59 -0700
-Message-ID: <CA+55aFwxqwnY7QLA8hbMG8AvwdWp5i94Tc=NoXEK+dcQnxHLMg@mail.gmail.com>
-References: <1491680267-11171-1-git-send-email-deepa.kernel@gmail.com>
- <1491680267-11171-3-git-send-email-deepa.kernel@gmail.com>
- <CA+55aFymxtrw8tr6Q9vLrP7nJ5zOjShstpyQOxxr-m1Wkv9gNg@mail.gmail.com>
- <CABeXuvo6UyvV2yqcju+Mxh8Mmsihrpf209D8p+u68SV5nHf2-A@mail.gmail.com>
- <CAK8P3a002GSya0oxiLnJjDjcsfULSfmOTkf=JMTJEaV0a=dKjQ@mail.gmail.com>
- <CA+55aFzFWma+EMB-xQ7QBPbOzUOkSc0XEwy9DgLpYfVzMYJQGg@mail.gmail.com>
- <CAK8P3a0_iRFODcbkkKirjSOxe-L5Nnk-2Pjp9icfbNye9ZzfRQ@mail.gmail.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 5/6] f2fs: switch to using fscrypt_match_name()
+Date: Tue, 25 Apr 2017 13:58:21 -0700
+Message-ID: <20170425205821.GB133970@gmail.com>
+References: <20170424170013.85175-1-ebiggers3@gmail.com>
+ <20170424170013.85175-6-ebiggers3@gmail.com>
+ <CAFLxGvxdanXJhzioJmgvr3mzSkS=Bxfh1bbtAn1L+t6CoSaHcA@mail.gmail.com>
+ <20170425174632.GA41477@gmail.com>
+ <7b3931c1-dfc5-6e30-d950-204c4a9f480c@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso@mit.edu>, y2038 Mailman List <y2038@lists.linaro.org>,
- Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
- "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
- Deepa Dinamani <deepa.kernel@gmail.com>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>,
- Thomas Gleixner <tglx@linutronix.de>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- Al Viro <viro@zeniv.linux.org.uk>
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <CAK8P3a0_iRFODcbkkKirjSOxe-L5Nnk-2Pjp9icfbNye9ZzfRQ@mail.gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org,
+        Ryo Hashimoto <hashimoto@chromium.org>,
+        Gwendal Grignou <gwendal@chromium.org>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        Kazuhiro Inaba <kinaba@chromium.org>,
+        David Gstir <david@sigma-star.at>
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34191 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S971133AbdDYU6Z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Apr 2017 16:58:25 -0400
+Content-Disposition: inline
+In-Reply-To: <7b3931c1-dfc5-6e30-d950-204c4a9f480c@nod.at>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVHVlLCBBcHIgMjUsIDIwMTcgYXQgMTozMSBQTSwgQXJuZCBCZXJnbWFubiA8YXJuZEBhcm5k
-Yi5kZT4gd3JvdGU6Cj4KPiBXb3VsZCBpdCBiZSBvayB0byBoYXZlIGEgc2ltcGxlIHdheSBvZiBy
-ZW1vdmluZyB0aGUgdGltZV90IGRlZmluaXRpb24gKGUuZy4KPiBieSBwYXNzaW5nICctRFJFUVVJ
-UkVfVElNRTY0JyB0byB0aGUgY29tcGlsZXIsIGJ1dCB3aXRob3V0IHRoZSBLY29uZmlnCj4gb3B0
-aW9uPyBUaGF0IHdheSwgc29tZW9uZSB3aG8gd2FudHMgdG8gc2hpcCBhIHByb2R1Y3QgY2FuIGF0
-IGxlYXN0Cj4gZmluZCB0aGUgb2J2aW91cyBkZXBlbmRlbmNpZXMgb24gc3R1ZmYgdGhhdCByZW1h
-aW5zIGJyb2tlbi4KCkhvdyB3b3VsZCB5b3UgZmluZCB0aGVtPwoKUGVvcGxlIGRvbid0IG5lY2Vz
-c2FyaWx5IHVzZSAidGltZV90Ii4gVGhleSBtaWdodCB1c2UgImludCIgb3Igd2hhdGV2ZXIuCgpU
-aGVyZSBpcyBhYnNvbHV0ZWx5IHplcm8gcG9pbnQgdG8gbWFraW5nIHRoaXMgc29tZSBraW5kIG9m
-IGNyYXp5CmNvbmZpZyBvcHRpb24sIGJlY2F1c2Ugc3VjaCBhbiBvcHRpb24gd2lsbCBwcm92ZSBh
-YnNvbHV0ZWx5ICpOT1RISU5HKi4KClNlcmlvdXNseS4gVGhpcyB3aG9sZSBjb25jZXB0IGlzICBj
-b21wbGV0ZWx5IHN0dXBpZC4KClRoZSBvbmx5IHBvc3NpYmxlIHRoaW5nIHlvdSBjYW4gZG8gaXMg
-dG8KCiAoYSkgaGF2ZSBhbiBhY3R1YWwgdGVzdC1zdWl0ZQogKGIpIHNldCB0aGUgdGltZSB0byAz
-MisgYml0cwogKGMpIHNlZSB3aGF0IGJyZWFrcwoKYmVjYXVzZSBvdGhlcndpc2UgaXQgc2VlbXMg
-ZW50aXJlbHkgcG9pbnRsZXNzLgoKQW5kIG5vLCB3ZSdyZSBub3QgYWRkaW5nIHJhbmRvbSBjcmF6
-eSBzb3VyY2UgbW9kaWZpY2F0aW9ucyBmb3IgcG9pbnRsZXNzIGNyYXAuCgogICAgICAgICAgICAg
-ICAgICAgICAgTGludXMKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX18KWTIwMzggbWFpbGluZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6Ly9s
-aXN0cy5saW5hcm8ub3JnL21haWxtYW4vbGlzdGluZm8veTIwMzgK
+On Tue, Apr 25, 2017 at 09:22:16PM +0200, Richard Weinberger wrote:
+> Eric,
+> 
+> Am 25.04.2017 um 19:46 schrieb Eric Biggers:
+> >> Sorry if this is a stupid question, but why do you have to compare hashes _and_
+> >> the last few bytes of the bigname?
+> >> A lookup via bigname gives you two 32bits hash values, and there I'd assume that
+> >> this is sufficient for a collisions free lookup. Especially since an
+> >> resumed readdir()
+> >> with a 64bits cookie has to work too on your filesystem.
+> >>
+> > 
+> > Well, the problem is that hashes may not be sufficient to uniquely identify a
+> > name in all cases.  f2fs uses only a 32-bit hash so it's trivial to create
+> > collisions on it, as I demonstrated.  Even collisions of two 32-bit hashes, as
+> > used by ext4 and ubifs, are possible.  And ext4 currently doesn't even compare
+> > the hashes during directory searches, beyond using them to find the correct
+> > directory block, since the hashes aren't stored in the directory entries.
+> 
+> I agree that finding a collision in a 32bits hash is easy, but for 64bits it
+> is *much* harder.
+
+That's true for accidental collisions, but malicious users might create
+intentional collisions.  In the case of UBIFS it looks like the first 32 bits of
+the cookie depend solely only on the filename via key_r5_hash(), while the
+second 32 bits is random.  So I imagine a collision in the full 64 bits could be
+generated by precomputing on average about 65536 filenames which collide in
+key_r5_hash(), then creating them all in the same directory.
+
+Eric
