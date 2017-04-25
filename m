@@ -1,109 +1,351 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 10/20] fuse: set mapping error in writepage_locked
- when it fails
-Date: Tue, 25 Apr 2017 13:19:03 +0200
-Message-ID: <20170425111903.GI2793@quack2.suse.cz>
-References: <20170424132259.8680-1-jlayton@redhat.com>
- <20170424132259.8680-11-jlayton@redhat.com>
- <20170424160431.GK23988@quack2.suse.cz>
- <1493054076.2895.17.camel@redhat.com>
- <20170425081720.GA2793@quack2.suse.cz>
- <1493116513.2758.1.camel@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-	linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-	linux-f2fs-devel@lists.sourceforge.net,
-	v9fs-developer@lists.sourceforge.net, osd-dev@open-osd.org,
-	linux-nilfs@vger.kernel.org, linux-block@vger.kernel.org,
-	dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
-	ross.zwisler@linux.intel.com, mawilcox@microsoft.com, jack@suse.com,
-	viro@zeniv.linux.org.uk, corbet@lwn.net, neilb@suse.de, clm@fb.com,
-	tytso@mit.edu, axboe@kernel.dk
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1493116513.2758.1.camel@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v4] tune2fs: fix BUGs of tuning project quota
+Date: Tue, 25 Apr 2017 21:03:07 +0800
+Message-ID: <20170425130307.29168-1-wshilong@ddn.com>
+Cc: wshilong@ddn.com, andreas.dilger@intel.com, lixi@ddn.com,
+        sihara@ddn.com
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:34225 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1947262AbdDYNDc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Apr 2017 09:03:32 -0400
+Received: by mail-pg0-f67.google.com with SMTP id t7so7535528pgt.1
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Apr 2017 06:03:32 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-04-17 06:35:13, Jeff Layton wrote:
-> On Tue, 2017-04-25 at 10:17 +0200, Jan Kara wrote:
-> > On Mon 24-04-17 13:14:36, Jeff Layton wrote:
-> > > On Mon, 2017-04-24 at 18:04 +0200, Jan Kara wrote:
-> > > > On Mon 24-04-17 09:22:49, Jeff Layton wrote:
-> > > > > This ensures that we see errors on fsync when writeback fails.
-> > > > > 
-> > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > 
-> > > > Hum, but do we really want to clobber mapping errors with temporary stuff
-> > > > like ENOMEM? Or do you want to handle that in mapping_set_error?
-> > > > 
-> > > 
-> > > Right now we don't really have such a thing as temporary errors in the
-> > > writeback codepath. If you return an error here, the data doesn't stay
-> > > dirty or anything, and I think we want to ensure that that gets reported
-> > > via fsync.
-> > > 
-> > > I'd like to see us add better handling for retryable errors for stuff
-> > > like ENOMEM or EAGAIN. I think this is the first step toward that
-> > > though. Once we have more consistent handling of writeback errors in
-> > > general, then we can start doing more interesting things with retryable
-> > > errors.
-> > > 
-> > > So yeah, I this is the right thing to do for now.
-> > 
-> > OK, fair enough. And question number 2):
-> > 
-> > Who is actually responsible for setting the error in the mapping when error
-> > happens inside ->writepage()? Is it the ->writepage() callback or the
-> > caller of ->writepage()? Or something else? Currently it seems to be a
-> > strange mix (e.g. mm/page-writeback.c: __writepage() calls
-> > mapping_set_error() when ->writepage() returns error) so I'd like to
-> > understand what's the plan and have that recorded in the changelogs.
-> > 
-> 
-> That's an excellent question.
-> 
-> I think we probably want the writepage/launder_page operations to call
-> mapping_set_error. That makes it possible for filesystems (e.g. NFS) to
-> handle their own error tracking and reporting without using the new
-> infrastructure. If they never call mapping_set_error then we'll always
-> just return whatever their ->fsync operation returns on an fsync.
+There are several problems for project quota enable/disable:
+tune2fs -O ^project did not work, because @clear_ok_features
+did not include @EXT4_FEATURE_RO_COMPAT_PROJECT.
 
-OK, makes sense. It is also in line with what you did for DAX, 9p, or here
-for FUSE. So feel free to add:
+update_feature_set() works for -O option, but tune2fs -Q prj/^prj
+did not work well, because function handle_quota_options()
+did not set and clear @EXT4_FEATURE_RO_COMPAT_PROJECT feature very well.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+one warning message is removed, because with project feature
+enabled, quota feature will be enabled automatically.
 
-for this patch but please also add a sentense that ->writepage() is
-responsible for calling mapping_set_error() if it fails and page is not
-redirtied to the changelogs of patches changing writepage handlers.
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ misc/tune2fs.c              | 43 ++++++++++++++++++++++++++++++-------------
+ tests/t_project_1on/name    |  1 +
+ tests/t_project_1on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_2off/name   |  1 +
+ tests/t_project_2off/script | 35 +++++++++++++++++++++++++++++++++++
+ tests/t_project_3on/name    |  1 +
+ tests/t_project_3on/script  | 41 +++++++++++++++++++++++++++++++++++++++++
+ tests/t_project_4off/name   |  1 +
+ tests/t_project_4off/script | 35 +++++++++++++++++++++++++++++++++++
+ 9 files changed, 186 insertions(+), 13 deletions(-)
+ create mode 100644 tests/t_project_1on/name
+ create mode 100644 tests/t_project_1on/script
+ create mode 100644 tests/t_project_2off/name
+ create mode 100644 tests/t_project_2off/script
+ create mode 100644 tests/t_project_3on/name
+ create mode 100644 tests/t_project_3on/script
+ create mode 100644 tests/t_project_4off/name
+ create mode 100644 tests/t_project_4off/script
 
-> I'll make another pass through the tree and see whether we have some
-> mapping_set_error calls that should be removed, and will flesh out
-> vfs.txt to state this. Maybe that file needs a whole section on
-> writeback error reporting? Hmmm...
-
-I think it would be nice to have all the logic described in one place. So
-+1 from me.
-
-> That probably also means that I should drop patch 8 from this series
-> (mm: ensure that we set mapping error if writeout fails), since that
-> should be happening in writepage already.
-
-Yes.
-
-								Honza
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f1bad60..a63da03 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -188,6 +188,7 @@ static __u32 clear_ok_features[3] = {
+ 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
+ 		EXT4_FEATURE_RO_COMPAT_GDT_CSUM |
+ 		EXT4_FEATURE_RO_COMPAT_QUOTA |
++		EXT4_FEATURE_RO_COMPAT_PROJECT |
+ 		EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
+ 		EXT4_FEATURE_RO_COMPAT_READONLY
+ };
+@@ -1309,14 +1310,17 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_PROJECT)) {
+-		if (!Q_flag && !ext2fs_has_feature_quota(sb))
+-			fputs(_("\nWarning: enabled project without quota together\n"),
+-				stderr);
+ 		Q_flag = 1;
+ 		quota_enable[PRJQUOTA] = QOPT_ENABLE;
+ 	}
+ 
+ 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
++			EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++		Q_flag = 1;
++		quota_enable[PRJQUOTA] = QOPT_DISABLE;
++	}
++
++	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
+ 				EXT4_FEATURE_RO_COMPAT_QUOTA)) {
+ 		/*
+ 		 * Set the Q_flag here and handle the quota options in the code
+@@ -1484,6 +1488,7 @@ static void handle_quota_options(ext2_filsys fs)
+ 	ext2_ino_t qf_ino;
+ 	enum quota_type qtype;
+ 	unsigned int qtype_bits = 0;
++	int need_dirty = 0;
+ 
+ 	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
+ 		if (quota_enable[qtype] != 0)
+@@ -1527,6 +1532,16 @@ static void handle_quota_options(ext2_filsys fs)
+ 					qtype);
+ 				exit(1);
+ 			}
++			/* Enable Quota feature if one of quota enabled */
++			if (!ext2fs_has_feature_quota(fs->super)) {
++				ext2fs_set_feature_quota(fs->super);
++				need_dirty = 1;
++			}
++			if (qtype == PRJQUOTA &&
++			    !ext2fs_has_feature_project(fs->super)) {
++				ext2fs_set_feature_project(fs->super);
++				need_dirty = 1;
++			}
+ 		} else if (quota_enable[qtype] == QOPT_DISABLE) {
+ 			retval = quota_remove_inode(fs, qtype);
+ 			if (retval) {
+@@ -1535,25 +1550,27 @@ static void handle_quota_options(ext2_filsys fs)
+ 					qtype);
+ 				exit(1);
+ 			}
++			if (qtype == PRJQUOTA) {
++				ext2fs_clear_feature_project(fs->super);
++				need_dirty = 1;
++			}
+ 		}
+ 	}
+ 
+ 	quota_release_context(&qctx);
+-
+-	if (qtype_bits) {
+-		ext2fs_set_feature_quota(fs->super);
+-		ext2fs_mark_super_dirty(fs);
+-	} else {
++	/* Clear Quota feature if all quota types disabled. */
++	if (!qtype_bits) {
+ 		for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
+-			if (*quota_sb_inump(fs->super, qtype) != 0)
++			if (*quota_sb_inump(fs->super, qtype))
+ 				break;
+ 		if (qtype == MAXQUOTAS) {
+-			fs->super->s_feature_ro_compat &=
+-					~EXT4_FEATURE_RO_COMPAT_QUOTA;
+-			ext2fs_mark_super_dirty(fs);
++			ext2fs_clear_feature_quota(fs->super);
++			need_dirty = 1;
+ 		}
+-	}
+ 
++	}
++	if (need_dirty)
++		ext2fs_mark_super_dirty(fs);
+ 	return;
+ }
+ 
+diff --git a/tests/t_project_1on/name b/tests/t_project_1on/name
+new file mode 100644
+index 0000000..6b2dd29
+--- /dev/null
++++ b/tests/t_project_1on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -O option
+diff --git a/tests/t_project_1on/script b/tests/t_project_1on/script
+new file mode 100644
+index 0000000..9232188
+--- /dev/null
++++ b/tests/t_project_1on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -O project $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_2off/name b/tests/t_project_2off/name
+new file mode 100644
+index 0000000..293717d
+--- /dev/null
++++ b/tests/t_project_2off/name
+@@ -0,0 +1 @@
++disable project using tune2fs
+diff --git a/tests/t_project_2off/script b/tests/t_project_2off/script
+new file mode 100644
+index 0000000..98696b4
+--- /dev/null
++++ b/tests/t_project_2off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -O ^project $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
+diff --git a/tests/t_project_3on/name b/tests/t_project_3on/name
+new file mode 100644
+index 0000000..9a10680
+--- /dev/null
++++ b/tests/t_project_3on/name
+@@ -0,0 +1 @@
++enable project using tune2fs -Q option
+diff --git a/tests/t_project_3on/script b/tests/t_project_3on/script
+new file mode 100644
+index 0000000..1143ba4
+--- /dev/null
++++ b/tests/t_project_3on/script
+@@ -0,0 +1,41 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 $TMPFILE 10000 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++dd if=/dev/zero of=$TMPFILE.2 bs=1048576 count=1 >> $test_name.log 2>&1
++cat <<- EOF | $DEBUGFS -w -f /dev/stdin $TMPFILE >> $test_name.log 2>&1
++	write $TMPFILE.2 file1
++	set_inode_field file1 projid 500
++EOF
++rm -f $TMPFILE.2
++
++$TUNE2FS -Q prj  $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -Q project failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++rm -f $TMPFILE
+diff --git a/tests/t_project_4off/name b/tests/t_project_4off/name
+new file mode 100644
+index 0000000..5ef6430
+--- /dev/null
++++ b/tests/t_project_4off/name
+@@ -0,0 +1 @@
++disable project using tune2fs -Q option
+diff --git a/tests/t_project_4off/script b/tests/t_project_4off/script
+new file mode 100644
+index 0000000..29de6bc
+--- /dev/null
++++ b/tests/t_project_4off/script
+@@ -0,0 +1,35 @@
++FSCK_OPT=-yf
++
++if [ "$QUOTA" != "y" ]; then
++	echo "$test_name: $test_description: skipped"
++	return 0
++fi
++
++$MKE2FS -q -F -o Linux -I 256 -b 4096 -O quota,project $TMPFILE 100 > $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "mke2fs -O quota,project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$TUNE2FS -Q ^prj $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" != 0 ] ; then
++	echo "tune2fs -O ^project failed" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++$FSCK $FSCK_OPT $TMPFILE >> $test_name.log 2>&1
++status=$?
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "e2fsck with project enabled failed with $status" > $test_name.failed
++	echo "$test_name: $test_description: failed"
++	return $status
++fi
++
++rm -f $TMPFILE
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.9.3
