@@ -1,98 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: kernel/rcu/tree.c:1031 rcu_irq_enter() invoked with irqs
- enabled!!!!
-Date: Wed, 26 Apr 2017 09:16:36 +0200
-Message-ID: <20170426071636.GA21218@quack2.suse.cz>
-References: <20170425201345.GB11773@linux.intel.com>
- <20170425202841.GF3956@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        Josh Triplett <josh@joshtriplett.org>, kvm@vger.kernel.org,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Radim =?utf-8?B?S3LEjW3DocWZ?= <rkrcmar@redhat.com>
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Return-path: <kvm-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170425202841.GF3956@linux.vnet.ibm.com>
-Sender: kvm-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "George Spelvin" <linux@sciencehorizons.net>
+Subject: kernel BUG at fs/ext4/inline.c:1950!
+Date: 26 Apr 2017 04:16:51 -0400
+Message-ID: <20170426081651.9253.qmail@ns.sciencehorizons.net>
+Cc: linux@sciencehorizons.net
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ns.sciencehorizons.net ([71.41.210.147]:47469 "HELO
+        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1169438AbdDZIXg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Apr 2017 04:23:36 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-04-17 13:28:41, Paul E. McKenney wrote:
-> On Tue, Apr 25, 2017 at 02:13:45PM -0600, Ross Zwisler wrote:
-> > I hit this RCU warning while running mkfs.ext4 on a PMEM namespace with
-> > an unmodified v4.11-rc8 (passed through kasan_symbolize.py):
-> > 
-> > ===============================
-> > [ ERR: suspicious RCU usage.  ]
-> > 4.11.0-rc8 #1 Not tainted
-> > -------------------------------
-> > kernel/rcu/tree.c:1031 rcu_irq_enter() invoked with irqs enabled!!!!
-> 
-> Just in case there is any doubt, invoking rcu_irq_enter() with irqs
-> enabled voids your kernel's RCU warranty.  ;-)
-> 
-> So please don't do that.
+I was cleaning up the last of the wreckage in lost+found from my previous
+inline directory adventures, and ran into the following:
 
-OK, but looking at the stack trace, this has nothing to do with ext4. The
-problem seems to be in KVM - relevant CCs added.
+# ./#1625089
+Segmentation fault
+# dmesg | tail -40
+[  711.658809] EXT4-fs (md3): mounted filesystem with writeback data mode. Opts: data=writeback,delalloc
+[  741.694687] ------------[ cut here ]------------
+[  741.694711] kernel BUG at fs/ext4/inline.c:1950!
+[  741.694729] invalid opcode: 0000 [#1] SMP
+[  741.694731] Modules linked in: nfsd lockd grace sunrpc ablk_helper x86_pkg_temp_thermal crc32_pclmul crc32c_intel via_velocity [last unloaded: twofish_common]
+[  741.694742] CPU: 0 PID: 893 Comm: rmdir Not tainted 4.10.2-00128-gebfcca29-dirty #607
+[  741.694745] Hardware name: Gigabyte Technology Co., Ltd. To be filled by O.E.M./X79-UP4, BIOS F7 03/19/2014
+[  741.694750] task: ffff880403d3e400 task.stack: ffffc90007f66000
+[  741.694755] RIP: 0010:ext4_inline_data_truncate+0x3d5/0x3f0
+[  741.694758] RSP: 0018:ffffc90007f67ce0 EFLAGS: 00010286
+[  741.694761] RAX: 0000000000000000 RBX: ffff880428aeb270 RCX: 0000021810000000
+[  741.694765] RDX: 00000000ffffffc3 RSI: ffffc90007f67d00 RDI: ffff8803e469d440
+[  741.694768] RBP: ffffc90007f67d88 R08: ffff880428bab618 R09: ffff8804261fc0a0
+[  741.694771] R10: ffff88041061bc00 R11: 0000000000000000 R12: ffff8803e469d440
+[  741.694775] R13: ffff8803e469d3b0 R14: ffff8803e469d3f0 R15: 0000000000000000
+[  741.694778] FS:  0000000000000000(0000) GS:ffff88043fc00000(0063) knlGS:00000000f76da800
+[  741.694782] CS:  0010 DS: 002b ES: 002b CR0: 0000000080050033
+[  741.694785] CR2: 00000000f75b2cd0 CR3: 00000004055ff000 CR4: 00000000001406f0
+[  741.694788] Call Trace:
+[  741.694793]  ext4_truncate+0x1ea/0x300
+[  741.694797]  ext4_evict_inode+0x2c7/0x3d0
+[  741.694801]  evict+0xc2/0x190
+[  741.694803]  iput+0x162/0x1f0
+[  741.694806]  dentry_unlink_inode+0xbd/0x160
+[  741.694809]  d_delete+0x99/0xb0
+[  741.694812]  vfs_rmdir+0xfc/0x120
+[  741.694815]  do_rmdir+0x19e/0x1e0
+[  741.694818]  SyS_rmdir+0x11/0x20
+[  741.694821]  do_fast_syscall_32+0x87/0x160
+[  741.694825]  entry_SYSENTER_compat+0x4c/0x5b
+[  741.694827] RIP: 0023:0xf76ddaf9
+[  741.694830] RSP: 002b:00000000fffad8dc EFLAGS: 00000292 ORIG_RAX: 0000000000000028
+[  741.694833] RAX: ffffffffffffffda RBX: 00000000fffae31f RCX: 0000000000000000
+[  741.694837] RDX: 00000000565d5000 RSI: 00000000565d0cd8 RDI: 00000000fffae31f
+[  741.694840] RBP: 00000000fffad938 R08: 0000000000000000 R09: 0000000000000000
+[  741.694843] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  741.694846] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  741.694850] Code: ff ff 89 c1 48 89 d7 48 c7 44 0a f8 00 00 00 00 8d 48 ff 31 c0 c1 e9 03 f3 48 ab e9 34 fe ff ff 41 bf f4 ff ff ff e9 3f fe ff ff <0f> 0b 89 c0 c7 02 00 00 00 00 c7 44 02 fc 00 00 00 00 e9 12 fe 
+[  741.694872] RIP: ext4_inline_data_truncate+0x3d5/0x3f0 RSP: ffffc90007f67ce0
+[  741.697776] ---[ end trace abf8638ef9df5a2a ]---
 
-								Honza
+# debugfs /dev/md3
+debugfs 1.43.4 (31-Jan-2017)
+debugfs:  stat <1625089>
+Inode: 1625089   Type: directory    Mode:  0775   Flags: 0x10000000
+Generation: 927350643    Version: 0x00000000:00000004
+User:  1000   Group:   161   Project:     0   Size: 132
+File ACL: 1664090185    Directory ACL: 0
+Links: 0   Blockcount: 8
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x590051a9:3a00ef08 -- Wed Apr 26 03:52:09 2017
+ atime: 0x56b9e2f8:b68a7658 -- Tue Feb  9 08:00:40 2016
+ mtime: 0x56c1bc4b:a7765de8 -- Mon Feb 15 06:53:47 2016
+crtime: 0x56ba9eb4:a51d90ac -- Tue Feb  9 21:21:40 2016
+Size of extra inode fields: 32
+Extended attributes:
+  system.data (72)
+Inode checksum: 0x4ea228db
+Size of inline data: 132
 
->
-> > other info that might help us debug this:
-> > 
-> > 
-> > rcu_scheduler_active = 2, debug_locks = 0
-> > no locks held by mkfs.ext4/18493.
-> > 
-> > stack backtrace:
-> > CPU: 10 PID: 18493 Comm: mkfs.ext4 Not tainted 4.11.0-rc8 #1
-> > Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.3-1.fc25 04/01/2014
-> > Call Trace:
-> > [<     inline     >] __dump_stack project/linux/lib/dump_stack.c:16
-> > [<      none      >] dump_stack+0x86/0xc3 project/linux/lib/dump_stack.c:52
-> > [<      none      >] lockdep_rcu_suspicious+0xd7/0x110 project/linux/kernel/locking/lockdep.c:4461
-> > [<      none      >] rcu_irq_enter+0x74/0x80 project/linux/kernel/rcu/tree.c:1031
-> > [<      none      >] kvm_async_pf_task_wait+0x1af/0x240 project/linux/arch/x86/kernel/kvm.c:164
-> > [<      none      >] do_async_page_fault+0x63/0x90 project/linux/arch/x86/kernel/kvm.c:269
-> >  ?[<      none      >] do_async_page_fault+0x63/0x90 project/linux/arch/x86/kernel/kvm.c:269
-> > [<      none      >] async_page_fault+0x28/0x30 project/linux_2/arch/x86/entry/entry_64.S:1014
-> > RIP: 0010:copy_user_enhanced_fast_string+0x5/0x10
-> > RSP: 0018:ffffc90008777c90 EFLAGS: 00010202
-> > RAX: 0000000000000001 RBX: 0000000000001000 RCX: 0000000000001000
-> > RDX: 0000000000001000 RSI: 00007f42a5d88010 RDI: ffff88007e82d000
-> > RBP: ffffc90008777ce0 R08: ffff88007e82d000 R09: 0000000000000000
-> > R10: 0000000000000000 R11: ffffea0001fa0b40 R12: 0000000000001000
-> > R13: ffffc90008777e50 R14: ffff88007e82e000 R15: 0000000000001000
-> >  ?[<     inline     >] copy_user_generic project/linux/./arch/x86/include/asm/uaccess_64.h:37
-> >  ?[<     inline     >] __copy_from_user_nocheck project/linux/./arch/x86/include/asm/uaccess_64.h:59
-> >  ?[<     inline     >] __copy_from_user_inatomic project/linux/./arch/x86/include/asm/uaccess_64.h:251
-> >  ?[<      none      >] iov_iter_copy_from_user_atomic+0xbb/0x350 project/linux/lib/iov_iter.c:721
-> > [<      none      >] generic_perform_write+0xf2/0x1d0 project/linux/mm/filemap.c:2843
-> > [<      none      >] __generic_file_write_iter+0x185/0x1c0 project/linux/mm/filemap.c:2960
-> > [<      none      >] blkdev_write_iter+0x96/0x110 project/linux/fs/block_dev.c:2008
-> > [<     inline     >] call_write_iter project/linux/./include/linux/fs.h:1733
-> > [<     inline     >] new_sync_write project/linux/fs/read_write.c:497
-> > [<      none      >] __vfs_write+0xe8/0x160 project/linux/fs/read_write.c:510
-> >  ?[<     inline     >] call_write_iter project/linux/./include/linux/fs.h:1733
-> >  ?[<     inline     >] new_sync_write project/linux/fs/read_write.c:497
-> >  ?[<      none      >] __vfs_write+0xe8/0x160 project/linux/fs/read_write.c:510
-> > [<      none      >] vfs_write+0xcb/0x1f0 project/linux/fs/read_write.c:558
-> > [<     inline     >] SYSC_pwrite64 project/linux/fs/read_write.c:647
-> > [<      none      >] SyS_pwrite64+0x98/0xc0 project/linux/fs/read_write.c:634
-> > [<      none      >] entry_SYSCALL_64_fastpath+0x1f/0xc2 project/linux_2/arch/x86/entry/entry_64.S:204
-> > RIP: 0033:0x7f42acd4d213
-> > RSP: 002b:00007ffc846e4e38 EFLAGS: 00000246 ORIG_RAX: 0000000000000012
-> > RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f42acd4d213
-> > RDX: 00000000001e0000 RSI: 00007f42a5c9f010 RDI: 0000000000000003
-> > RBP: 0000559bd6c46380 R08: 00007f42a5c9f010 R09: 0000000000000200
-> > R10: 0000000680820000 R11: 0000000000000246 R12: 00007ffc846e4f9c
-> > R13: 0000000000000425 R14: 0000000000000200 R15: 0000559bd6c46380
-> > 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I know the directory appeared empty before I tried to rmdir it.
+Also, the file system had recently passed e2fsck 1.43.4 (31-Jan-2017).
+
+Kernel is 4.10.2-00128-gebfcca29-dirty. which includes
+
+ebfcca29 ext4: propagate error values from ext4_inline_data_truncate()
+47cfbb61 ext4: avoid calling ext4_mark_inode_dirty() under unneeded semaphores
+842ea5ea ext4: add debug_want_extra_isize mount option
+
+Line 1950 is the "BUG_ON(is.s.not_found);"
+
+Unfortunately, I have to keep working, and the inode did get unlinked
+(although with a missing dtime), so fsck will clean it up on reboot.
