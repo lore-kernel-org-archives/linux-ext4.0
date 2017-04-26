@@ -1,91 +1,46 @@
-From: <sterrenplan.kampen@deltasteur.nl>
-Subject: 20383 linux-ext4
-Date: Wed, 26 Apr 2017 16:38:20 -0000
-Message-ID: <149322470002.31455.14474225658581342136@saturn-internet.ru>
-Mime-Version: 1.0
-Content-Type: application/zip; name="95404344.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 178.161.233.188.dyn.v4.saturn-internet.ru ([178.161.233.188]:56367
-        "HELO saturn-internet.ru" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with SMTP id S1751590AbdDZQiZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 26 Apr 2017 12:38:25 -0400
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] MAINTAINERS: fscrypt: update mailing list, patchwork, and git
+Date: Wed, 26 Apr 2017 16:43:00 -0700
+Message-ID: <20170426234300.54741-1-ebiggers3@gmail.com>
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
+From: Eric Biggers <ebiggers@google.com>
+
+Now that there has been a dedicated mailing list, patchwork project, and
+git repository set up for filesystem encryption, update the MAINTAINERS
+file accordingly.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ MAINTAINERS | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 38d3e4ed7208..22b509fb1c5e 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -5365,10 +5365,12 @@ F:	Documentation/filesystems/caching/
+ F:	fs/fscache/
+ F:	include/linux/fscache*.h
+ 
+-FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
++FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
+ M:	Theodore Y. Ts'o <tytso@mit.edu>
+ M:	Jaegeuk Kim <jaegeuk@kernel.org>
+-L:	linux-fsdevel@vger.kernel.org
++L:	linux-fscrypt@vger.kernel.org
++Q:	https://patchwork.kernel.org/project/linux-fscrypt/list/
++T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git
+ S:	Supported
+ F:	fs/crypto/
+ F:	include/linux/fscrypt*.h
+-- 
+2.13.0.rc0.306.g87b477812d-goog
