@@ -1,68 +1,62 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH] kvm: async_pf: fix rcu_irq_enter() with irqs enabled
-Date: Wed, 26 Apr 2017 08:14:51 -0700
-Message-ID: <20170426151451.GS3956@linux.vnet.ibm.com>
-References: <20170426145626.6407-1-pbonzini@redhat.com>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
+ ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
+ bitmap
+Date: Wed, 26 Apr 2017 15:11:05 +0000
+Message-ID: <bug-195561-13602-58em5Pf7rq@https.bugzilla.kernel.org/>
+References: <bug-195561-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        rkrcmar@redhat.com, ross.zwisler@linux.intel.com, jack@suse.cz,
-        linux-ext4@vger.kernel.org, tytso@mit.edu, josh@joshtriplett.org,
-        stable@vger.kernel.org
-To: Paolo Bonzini <pbonzini@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:34540 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1043309AbdDZPQS (ORCPT
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:33254 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1437746AbdDZPLK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 26 Apr 2017 11:16:18 -0400
-Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.20/8.16.0.20) with SMTP id v3QF99g2027214
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Apr 2017 11:16:18 -0400
-Received: from e14.ny.us.ibm.com (e14.ny.us.ibm.com [129.33.205.204])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2a2wj31wbk-1
-        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 26 Apr 2017 11:16:17 -0400
-Received: from localhost
-        by e14.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Wed, 26 Apr 2017 11:16:16 -0400
-Content-Disposition: inline
-In-Reply-To: <20170426145626.6407-1-pbonzini@redhat.com>
+        Wed, 26 Apr 2017 11:11:10 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6FC6C28630
+        for <linux-ext4@vger.kernel.org>; Wed, 26 Apr 2017 15:11:09 +0000 (UTC)
+In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 26, 2017 at 04:56:26PM +0200, Paolo Bonzini wrote:
-> native_safe_halt enables interrupts, and you just shouldn't
-> call rcu_irq_enter() with interrupts enabled.  Reorder the
-> call with the following local_irq_disable() to respect the
-> invariant.
-> 
-> Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=195561
 
-Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+--- Comment #21 from Theodore Tso (tytso@mit.edu) ---
+So the fsck outputs demonstrate that the file system really *is* getting
+corrupted.  It's not an erroneous message.   So switching between kernels after
+the file system has been corrupted does not mean that the newer kernels have
+whatever bug might have caused the corruption.   The question is which kernel
+version *corrupted* the file system in the first place.
 
-> ---
->  arch/x86/kernel/kvm.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/arch/x86/kernel/kvm.c b/arch/x86/kernel/kvm.c
-> index 14f65a5f938e..2a7835932b71 100644
-> --- a/arch/x86/kernel/kvm.c
-> +++ b/arch/x86/kernel/kvm.c
-> @@ -161,8 +161,8 @@ void kvm_async_pf_task_wait(u32 token)
->  			 */
->  			rcu_irq_exit();
->  			native_safe_halt();
-> -			rcu_irq_enter();
->  			local_irq_disable();
-> +			rcu_irq_enter();
->  		}
->  	}
->  	if (!n.halted)
-> -- 
-> 2.9.3
-> 
+Since you are using an x86 kernel, my suggestion is before you try debugging it
+in an Android context, that you take that kernel and run a full set of
+regression tests on it.   See http://thunk.org/gce-xfstests for a very handy
+way to run the regression tests.  If you don't want to pay the cost for
+runnning tests in the cloud (a few pennies for each 30 minute smoke test, and
+around USD$ 1.50 for the full regression test), you can also use kvm-xfstests. 
+That will take longer, and it ties up a machine while the test is running
+(where as you can fire off many tests in parallel using gce-xfstests, and just
+wait for the test reports to be e-mailed back to you).
+
+Even when I was trying to debug ARM kernels, I would often convert/bludgeon the
+BSP kernel so that the non-portable hacks added by the vendors could be worked
+around so the kernel could be compiled for x86, just because running the
+regression tests was worth it.   These days, on an ARM android system, we do
+have something (probably alpha or very early beta quality) that will allow you
+to run the tests in a chroot.   This is primarily helpful you are trying to
+debug something like hardware In-line crypto, that is only available from a
+particular ARM SOC.    For more information, please see:
+
+https://github.com/tytso/xfstests-bld/blob/master/Documentation/android-xfstests.md
+
+One warning.... many mobile handsets have ah.... "cost-optimized flash", which
+may be subject to early write exhaustion and massive write amplifications when
+stressed.  So if you try to run xfstests on your mobile handset, do it on a
+throwaway development machine where the flash is considered sacrificial.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
