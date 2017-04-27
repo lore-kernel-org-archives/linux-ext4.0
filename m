@@ -1,53 +1,40 @@
-From: Richard Weinberger <richard.weinberger@gmail.com>
-Subject: Re: [PATCH] MAINTAINERS: fscrypt: update mailing list, patchwork, and git
-Date: Thu, 27 Apr 2017 09:37:18 +0200
-Message-ID: <CAFLxGvzEr94f90QzQFucc3bCrv56fyVtd4ryQ062ot5FUovqFQ@mail.gmail.com>
-References: <20170426234300.54741-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170426234300.54741-1-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] ext4: no need to cond_resched() in ext4_trim_all_free()
+Date: Thu, 27 Apr 2017 10:36:40 +0200
+Message-ID: <1493282200-32257-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56240 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S967368AbdD0Ih2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Apr 2017 04:37:28 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E20D9C057FA5
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Apr 2017 08:37:17 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Eric,
+There is no need to call cond_resched() in ext4_trim_all_free() since
+blkdev_issue_discard() already takes care of that. So just remove it.
 
-On Thu, Apr 27, 2017 at 1:43 AM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> From: Eric Biggers <ebiggers@google.com>
->
-> Now that there has been a dedicated mailing list, patchwork project, and
-> git repository set up for filesystem encryption, update the MAINTAINERS
-> file accordingly.
->
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
->  MAINTAINERS | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
->
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 38d3e4ed7208..22b509fb1c5e 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -5365,10 +5365,12 @@ F:      Documentation/filesystems/caching/
->  F:     fs/fscache/
->  F:     include/linux/fscache*.h
->
-> -FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
-> +FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
->  M:     Theodore Y. Ts'o <tytso@mit.edu>
->  M:     Jaegeuk Kim <jaegeuk@kernel.org>
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/mballoc.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-IMHO we should also add such an entry, to match reality:
-
-R:      Eric Biggers <ebiggers@google.com>
-
--- 
-Thanks,
-//richard
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 354dc1a..4879766 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5163,12 +5163,6 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 			break;
+ 		}
+ 
+-		if (need_resched()) {
+-			ext4_unlock_group(sb, group);
+-			cond_resched();
+-			ext4_lock_group(sb, group);
+-		}
