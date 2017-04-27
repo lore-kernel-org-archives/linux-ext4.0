@@ -1,46 +1,53 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] MAINTAINERS: fscrypt: update mailing list, patchwork, and git
-Date: Wed, 26 Apr 2017 16:43:00 -0700
-Message-ID: <20170426234300.54741-1-ebiggers3@gmail.com>
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Subject: Re: [PATCH] MAINTAINERS: fscrypt: update mailing list, patchwork, and git
+Date: Thu, 27 Apr 2017 09:37:18 +0200
+Message-ID: <CAFLxGvzEr94f90QzQFucc3bCrv56fyVtd4ryQ062ot5FUovqFQ@mail.gmail.com>
+References: <20170426234300.54741-1-ebiggers3@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170426234300.54741-1-ebiggers3@gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Eric,
 
-Now that there has been a dedicated mailing list, patchwork project, and
-git repository set up for filesystem encryption, update the MAINTAINERS
-file accordingly.
+On Thu, Apr 27, 2017 at 1:43 AM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> From: Eric Biggers <ebiggers@google.com>
+>
+> Now that there has been a dedicated mailing list, patchwork project, and
+> git repository set up for filesystem encryption, update the MAINTAINERS
+> file accordingly.
+>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  MAINTAINERS | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+>
+> diff --git a/MAINTAINERS b/MAINTAINERS
+> index 38d3e4ed7208..22b509fb1c5e 100644
+> --- a/MAINTAINERS
+> +++ b/MAINTAINERS
+> @@ -5365,10 +5365,12 @@ F:      Documentation/filesystems/caching/
+>  F:     fs/fscache/
+>  F:     include/linux/fscache*.h
+>
+> -FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
+> +FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
+>  M:     Theodore Y. Ts'o <tytso@mit.edu>
+>  M:     Jaegeuk Kim <jaegeuk@kernel.org>
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- MAINTAINERS | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+IMHO we should also add such an entry, to match reality:
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 38d3e4ed7208..22b509fb1c5e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -5365,10 +5365,12 @@ F:	Documentation/filesystems/caching/
- F:	fs/fscache/
- F:	include/linux/fscache*.h
- 
--FS-CRYPTO: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
-+FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
- M:	Theodore Y. Ts'o <tytso@mit.edu>
- M:	Jaegeuk Kim <jaegeuk@kernel.org>
--L:	linux-fsdevel@vger.kernel.org
-+L:	linux-fscrypt@vger.kernel.org
-+Q:	https://patchwork.kernel.org/project/linux-fscrypt/list/
-+T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git
- S:	Supported
- F:	fs/crypto/
- F:	include/linux/fscrypt*.h
+R:      Eric Biggers <ebiggers@google.com>
+
 -- 
-2.13.0.rc0.306.g87b477812d-goog
+Thanks,
+//richard
