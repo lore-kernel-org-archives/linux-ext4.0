@@ -1,48 +1,33 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier' mounts
-Date: Fri, 28 Apr 2017 11:59:34 +0200
-Message-ID: <20170428095934.11583-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier'
+ mounts
+Date: Fri, 28 Apr 2017 08:03:24 -0700
+Message-ID: <20170428150324.GA20122@infradead.org>
+References: <20170428095934.11583-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>, stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <stable-owner@vger.kernel.org>
-References: bsc#1033750
+Content-Disposition: inline
+In-Reply-To: <20170428095934.11583-1-jack@suse.cz>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Commit b685d3d65ac7 "block: treat REQ_FUA and REQ_PREFLUSH as
-synchronous" removed REQ_SYNC flag from WRITE_FUA implementation. Since
-JBD2 strips REQ_FUA and REQ_FLUSH flags from submitted IO when the
-filesystem is mounted with nobarrier mount option, journal superblock
-writes ended up being async writes after this patch and that caused
-heavy performance regression for dbench4 benchmark with high number of
-processes. In my test setup with HP RAID array with non-volatile write
-cache and 32 GB ram, dbench4 runs with 8 processes regressed by ~25%.
+On Fri, Apr 28, 2017 at 11:59:34AM +0200, Jan Kara wrote:
+> Fix the problem by making sure journal superblock writes are always
+> treated as synchronous since they generally block progress of the
+> journalling machinery and thus the whole filesystem.
 
-Fix the problem by making sure journal superblock writes are always
-treated as synchronous since they generally block progress of the
-journalling machinery and thus the whole filesystem.
+The callchains leading down to jbd2_write_superblock looks a little
+suspicious to me.  It seems like jbd2_journal_commit_transaction
+will actually call without FUA in the JBD2_FLUSHED case. Is that
+really intentional, and if yes should it be documented?
 
-Fixes: b685d3d65ac791406e0dfd8779cc9b3707fea5a3
-CC: stable@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Except for that it would seem more useful to move to a "bool preflush"
+argument passed down.
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5adc2fb62b0f..e768126f6a72 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1348,7 +1348,7 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
- 	jbd2_superblock_csum_set(journal, sb);
- 	get_bh(bh);
- 	bh->b_end_io = end_buffer_write_sync;
--	ret = submit_bh(REQ_OP_WRITE, write_flags, bh);
-+	ret = submit_bh(REQ_OP_WRITE, write_flags | REQ_SYNC, bh);
- 	wait_on_buffer(bh);
- 	if (buffer_write_io_error(bh)) {
- 		clear_buffer_write_io_error(bh);
--- 
-2.12.0
+But I guess we'll need a quick fix first, for that:
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
