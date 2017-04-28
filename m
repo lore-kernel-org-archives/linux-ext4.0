@@ -1,42 +1,48 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH] MAINTAINERS: fscrypt: update mailing list, patchwork, and git
-Date: Fri, 28 Apr 2017 08:47:41 +0300
-Message-ID: <CAOQ4uxgzVOqNXX1DBG8gtYf+81Crkwwi5_kQK=zCVcjiHK7+fg@mail.gmail.com>
-References: <20170426234300.54741-1-ebiggers3@gmail.com> <CAFLxGvzEr94f90QzQFucc3bCrv56fyVtd4ryQ062ot5FUovqFQ@mail.gmail.com>
- <20170427174557.GB8130@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Richard Weinberger <richard.weinberger@gmail.com>,
-        linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170427174557.GB8130@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier' mounts
+Date: Fri, 28 Apr 2017 11:59:34 +0200
+Message-ID: <20170428095934.11583-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+References: bsc#1033750
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 27, 2017 at 8:45 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> On Thu, Apr 27, 2017 at 09:37:18AM +0200, Richard Weinberger wrote:
->> > +FSCRYPT: FILE SYSTEM LEVEL ENCRYPTION SUPPORT
->> >  M:     Theodore Y. Ts'o <tytso@mit.edu>
->> >  M:     Jaegeuk Kim <jaegeuk@kernel.org>
->>
->> IMHO we should also add such an entry, to match reality:
->>
->> R:      Eric Biggers <ebiggers@google.com>
->>
->
-> Well, we could, but IMO it's a little pointless since there's now a dedicated
-> mailing list, so there's no need to Cc me separately from the list.  I think
-> explicitly listing reviewer(s) is more useful for subsystems that don't have a
-> dedicated mailing list.
->
+Commit b685d3d65ac7 "block: treat REQ_FUA and REQ_PREFLUSH as
+synchronous" removed REQ_SYNC flag from WRITE_FUA implementation. Since
+JBD2 strips REQ_FUA and REQ_FLUSH flags from submitted IO when the
+filesystem is mounted with nobarrier mount option, journal superblock
+writes ended up being async writes after this patch and that caused
+heavy performance regression for dbench4 benchmark with high number of
+processes. In my test setup with HP RAID array with non-volatile write
+cache and 32 GB ram, dbench4 runs with 8 processes regressed by ~25%.
 
-Does the fscrypt mailing list allow posting for non-subscribers?
-It is often a nuisance for a passing by developer to subscribe to a mailing list
-just to report a bug or CC a relevant patch.
+Fix the problem by making sure journal superblock writes are always
+treated as synchronous since they generally block progress of the
+journalling machinery and thus the whole filesystem.
+
+Fixes: b685d3d65ac791406e0dfd8779cc9b3707fea5a3
+CC: stable@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/journal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 5adc2fb62b0f..e768126f6a72 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1348,7 +1348,7 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
+ 	jbd2_superblock_csum_set(journal, sb);
+ 	get_bh(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+-	ret = submit_bh(REQ_OP_WRITE, write_flags, bh);
++	ret = submit_bh(REQ_OP_WRITE, write_flags | REQ_SYNC, bh);
+ 	wait_on_buffer(bh);
+ 	if (buffer_write_io_error(bh)) {
+ 		clear_buffer_write_io_error(bh);
+-- 
+2.12.0
