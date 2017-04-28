@@ -1,33 +1,94 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier'
- mounts
-Date: Fri, 28 Apr 2017 08:03:24 -0700
-Message-ID: <20170428150324.GA20122@infradead.org>
-References: <20170428095934.11583-1-jack@suse.cz>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 3/6] fscrypt: introduce helper function for filename
+ matching
+Date: Fri, 28 Apr 2017 14:18:45 -0700
+Message-ID: <20170428211845.GA62395@gmail.com>
+References: <20170424170013.85175-1-ebiggers3@gmail.com>
+ <20170424170013.85175-4-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>, stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f194.google.com ([209.85.192.194]:34021 "EHLO
+        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1030862AbdD1VSt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Apr 2017 17:18:49 -0400
 Content-Disposition: inline
-In-Reply-To: <20170428095934.11583-1-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170424170013.85175-4-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 28, 2017 at 11:59:34AM +0200, Jan Kara wrote:
-> Fix the problem by making sure journal superblock writes are always
-> treated as synchronous since they generally block progress of the
-> journalling machinery and thus the whole filesystem.
+On Mon, Apr 24, 2017 at 10:00:10AM -0700, Eric Biggers wrote:
+> +/**
+> + * fscrypt_digested_name - alternate identifier for an on-disk filename
+> + *
+> + * When userspace lists an encrypted directory without access to the key,
+> + * filenames whose ciphertext is longer than FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE
+> + * bytes are shown in this abbreviated form (base64-encoded) rather than as the
+> + * full ciphertext (base64-encoded).  This is necessary to allow supporting
+> + * filenames up to NAME_MAX bytes, since base64 encoding expands the length.
+> + *
+> + * To make it possible for filesystems to still find the correct directory entry
+> + * despite not knowing the full on-disk name, we encode any filesystem-specific
+> + * 'hash' and/or 'minor_hash' which the filesystem may need for its lookups,
+> + * followed by the second-to-last ciphertext block of the filename.  Due to the
+> + * use of the CBC-CTS encryption mode, the second-to-last ciphertext block
+> + * depends on the full plaintext.  (Note that ciphertext stealing causes the
+> + * last two blocks to appear "flipped".)  This makes collisions very unlikely:
+> + * just a 1 in 2^128 chance for two filenames to collide even if they share the
+> + * same filesystem-specific hashes.
+> + *
+> + * This scheme isn't strictly immune to intentional collisions because it's
+> + * basically like a CBC-MAC, which isn't secure on variable-length inputs.
+> + * However, generating a CBC-MAC collision requires the ability to choose
+> + * arbitrary ciphertext, which won't normally be possible with filename
+> + * encryption since it would require write access to the raw disk.
+> + *
+> + * Taking a real cryptographic hash like SHA-256 over the full ciphertext would
+> + * be better in theory but would be less efficient and more complicated to
+> + * implement, especially since the filesystem would need to calculate it for
+> + * each directory entry examined during a search.
+> + */
 
-The callchains leading down to jbd2_write_superblock looks a little
-suspicious to me.  It seems like jbd2_journal_commit_transaction
-will actually call without FUA in the JBD2_FLUSHED case. Is that
-really intentional, and if yes should it be documented?
+Hmm, after thinking about it more, my claim that creating intentional collisions
+in digested names requires write access to the raw disk is incorrect.  Actually
+it's pretty easy to create intentional collisions; it's sufficient to be able to
+create filenames and view their corresponding ciphertexts.  So someone could
+create undeletable files --- not necessarily the end of the world, but still
+annoying.
 
-Except for that it would seem more useful to move to a "bool preflush"
-argument passed down.
+Unfortunately, the same problem exists regardless of whether we use the
+second-to-last ciphertext block, the last block, or the last two blocks; and
+regardless of whether the length is encoded in the digested names.
 
-But I guess we'll need a quick fix first, for that:
+My patches are still an improvement, of course, and for now I'll probably just
+tweak the comment.  But to solve this for real I think we'd need to do one of
+the following:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+- Use a real cryptographic hash like SHA-256 of the ciphertext (which I think
+  was actually the original design)
+- Switch to an encryption mode like HEH (Hash-Encrypt-Hash) which is a
+  pseudorandom permutation over the whole input
+- Take some number (maybe 8 or 12) of bytes of ciphertext from each block;
+  definitely a hack cryptographically, but it *might* be good enough
+- Limit filenames in encrypted directories to (3*255)/4 bytes, so we can avoid
+  this mess entirely
+
+Another hack we maybe could do is remove the following sanity check in
+ext4_unlink(), and in other filesystems if needed, which requires that the inode
+number in a dir_entry being removed is as expected:
+
+	retval = -EFSCORRUPTED;
+	if (le32_to_cpu(de->inode) != inode->i_ino)
+		goto end_unlink;
+
+Then I think any colliding files could still be deleted; it just wouldn't happen
+in the right order...
+
+Eric
