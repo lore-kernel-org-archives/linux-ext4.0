@@ -2,66 +2,53 @@ From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
  ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
  bitmap
-Date: Sun, 30 Apr 2017 02:59:10 +0000
-Message-ID: <bug-195561-13602-E2sxYqMRyd@https.bugzilla.kernel.org/>
+Date: Sun, 30 Apr 2017 03:20:42 +0000
+Message-ID: <bug-195561-13602-m7zdzpoHtf@https.bugzilla.kernel.org/>
 References: <bug-195561-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34592 "EHLO
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35106 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S968503AbdD3C7O (ORCPT
+        by vger.kernel.org with ESMTP id S378482AbdD3DUq (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 29 Apr 2017 22:59:14 -0400
+        Sat, 29 Apr 2017 23:20:46 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 089B826490
-        for <linux-ext4@vger.kernel.org>; Sun, 30 Apr 2017 02:59:14 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A12E826E73
+        for <linux-ext4@vger.kernel.org>; Sun, 30 Apr 2017 03:20:45 +0000 (UTC)
 In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=195561
 
---- Comment #23 from Theodore Tso (tytso@mit.edu) ---
-What version of AOSP are you using, and how recently have you refreshed with
-latest AOSP master (if you are using AOSP master)?
+--- Comment #24 from Theodore Tso (tytso@mit.edu) ---
+Hmm, the original bug report said you are using Android 7.1.  Which I think was
+still using make_ext4fs.   I really don't trust make_ext4fs farther than I can
+throw it.   Something else to try --- use "dd if=/dev/zero of=/dev/sdXX" before
+doing whatever you do to install the file system.   There are multiple ways of
+calling into the  make_ext4fs codepaths (from fastboot, from the recovery
+partition, as part of the build process), and some of them didn't work
+correctly if the underlying storage device wasn't zero'ed out (as would be the
+case if you were using flash and the DISCARD command, or the eMMC equivalent). 
+ I wonder if the issue has to do with a slightly different way the file system
+is getting set up on android-x86, and if you are using magnetic HDD's that
+doesn't have discard, that might be way you're seeing it and other Android
+developers aren't.
 
-The reason why I ask is because there have been a number of changes that have
-recently landed in AOSP over the last couple of months changing how ext4 file
-systems are created.   They used to use make_ext4fs, and they are now using
-mke2fs plus a collection of Android-specific utilities in
-e2fsprogs/contrib/android.    (Note there are a lot of patches in AOSP's
-e2fsprogs that haven't been integrated into mainline e2fsprogs yet.)
-
-No one else is complaining about problems in the Linux kernel, and given that
-you are seeing this problem across a huge spread of kernels, I'm wondering if
-the problem is in the verison of AOSP you are using and whether it is creating
-file systems which are sane.   I know that version being used internally at
-Google is working, but it's possible (a) that what has been pushed out to AOSP
-doesn't have all of the bug fixes that they are using, or (b) you haven't doing
-a repo sync, and the bug has since been fixed in AOSP master, or (c) they have
-been doing mostly ARM-based testing and the problem hasn't been noticed in
-android-x86 yet.   (I have no idea which branches various Android development
-efforts are using; it's not my main area of focus and I've been way to busy
-recently to pay enough attention here.   So there is a bit of guessing here.)
-
-Something you might want to try is try installing the file system where you've
-been having trouble --- and then checking it with e2fsck before the kernel has
-a chance to mount it read/write.   If e2fsck is reporting problems before the
-kernel has mounted it, or mounted it read/write, then it's almost certainly a
-userspace bug in AOSP somewhere.
-
-One other thought.   I'm pretty sure there are some device kernels using 4.4
-under development, but I'm *certain* there are device kernels using 3.18
-(including, as it happens, my Pixel XL running Android 7.1.2).   So if you
-haven't tried 3.18, give it a quick spin.   If you are seeing the problem on
-3.18, then it's almost certainly not a kernel bug, but Something Else.  The
-thing I come back to is that I'm not seeing any other complaints similar to
-yours from Desktop distributions using Linux, or from people with shipped
-devices, or people internally at Google doing development on Android O.  
-(Which is out as a developer preview.  :-)
+I got tired of getting pulled in to debug weird problems that were traced down
+to make_ext4fs being fragile (it works fine writing to sparse files, since
+uninitialized blocks in a sparse file are all zeroes), which is why I was very
+happy to see Android switching over to use mke2fs, instead of make_ext4fs,
+which was a clean-room implementation back in the day when some Android
+management was overly paranoid about GPLv2 in userspace.  There were some rough
+spots since mke2fs -d doesn't deal with SELinux and other Android specific
+issues, which is why e2fsprogs/contrib/android exists in the AOSP version of
+e2fsprogs.   (It's there in the upstream version of e2fsprogs, but there a
+bunch of bug fixes in the AOSP version that haven't propagated back to the
+upstream e2fsprogs repo yet.)
 
 -- 
 You are receiving this mail because:
