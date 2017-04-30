@@ -1,36 +1,38 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] Add largedir feature
-Date: Sat, 29 Apr 2017 20:59:53 -0400
-Message-ID: <20170430005953.m74yjettitj7mzr6@thunk.org>
-References: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
+Subject: Re: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier'
+ mounts
+Date: Sat, 29 Apr 2017 21:14:18 -0400
+Message-ID: <20170430011418.4s6ncc4v5nwe75ah@thunk.org>
+References: <20170428095934.11583-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        alexey.lyashkov@gmail.com, Yang Sheng <yang.sheng@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33370 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S378359AbdD3BAA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 29 Apr 2017 21:00:00 -0400
+Cc: linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        stable@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170428095934.11583-1-jack@suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 16, 2017 at 05:51:17AM -0400, Artem Blagodarenko wrote:
-> From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+On Fri, Apr 28, 2017 at 11:59:34AM +0200, Jan Kara wrote:
+> Commit b685d3d65ac7 "block: treat REQ_FUA and REQ_PREFLUSH as
+> synchronous" removed REQ_SYNC flag from WRITE_FUA implementation. Since
+> JBD2 strips REQ_FUA and REQ_FLUSH flags from submitted IO when the
+> filesystem is mounted with nobarrier mount option, journal superblock
+> writes ended up being async writes after this patch and that caused
+> heavy performance regression for dbench4 benchmark with high number of
+> processes. In my test setup with HP RAID array with non-volatile write
+> cache and 32 GB ram, dbench4 runs with 8 processes regressed by ~25%.
 > 
-> This INCOMPAT_LARGEDIR feature allows larger directories to be created
-> in ldiskfs, both with directory sizes over 2GB and and a maximum htree
-> depth of 3 instead of the current limit of 2. These features are needed
-> in order to exceed the current limit of approximately 10M entries in a
-> single directory.
+> Fix the problem by making sure journal superblock writes are always
+> treated as synchronous since they generally block progress of the
+> journalling machinery and thus the whole filesystem.
 > 
-> Signed-off-by: Yang Sheng <yang.sheng@intel.com>
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+> Fixes: b685d3d65ac791406e0dfd8779cc9b3707fea5a3
+> CC: stable@vger.kernel.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
