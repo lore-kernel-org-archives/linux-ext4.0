@@ -1,31 +1,48 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: preload block group descriptors
-Date: Sun, 30 Apr 2017 00:54:54 -0400
-Message-ID: <20170430045454.bswu2osb4bynkxq6@thunk.org>
-References: <1487609153-3367-1-git-send-email-artem.blagodarenko@gmail.com>
+Subject: Re: [1/6] f2fs: check entire encrypted bigname when finding a dentry
+Date: Sun, 30 Apr 2017 02:19:22 -0400
+Message-ID: <20170430061922.djpzcguihke4o4lo@thunk.org>
+References: <20170424170013.85175-2-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, alexey.lyashkov@gmail.com,
-        Andrew Perepechko <andrew.perepechko@seagate.com>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33682 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S966371AbdD3Ey6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 30 Apr 2017 00:54:58 -0400
+Cc: linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, stable@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1487609153-3367-1-git-send-email-artem.blagodarenko@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170424170013.85175-2-ebiggers3@gmail.com>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 20, 2017 at 07:45:53PM +0300, Artem Blagodarenko wrote:
-> From: Andrew Perepechko <andrew.perepechko@seagate.com>
+On Mon, Apr 24, 2017 at 10:00:08AM -0700, Eric Biggers wrote:
+> From: Jaegeuk Kim <jaegeuk@kernel.org>
 > 
-> With enabled meta_bg option block group descriptors
-> reading IO is not sequential and requires optimization.
+> If user has no key under an encrypted dir, fscrypt gives digested dentries.
+> Previously, when looking up a dentry, f2fs only checks its hash value with
+> first 4 bytes of the digested dentry, which didn't handle hash collisions fully.
+> This patch enhances to check entire dentry bytes likewise ext4.
 > 
-> Signed-off-by: Andrew Perepechko <andrew.perepechko@seagate.com>
+> Eric reported how to reproduce this issue by:
+> 
+>  # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
+>  # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
+> 100000
+>  # sync
+>  # echo 3 > /proc/sys/vm/drop_caches
+>  # keyctl new_session
+>  # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
+> 99999
+> 
+> Cc: <stable@vger.kernel.org>
+> Reported-by: Eric Biggers <ebiggers@google.com>
+> Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+> (fixed f2fs_dentry_hash() to work even when the hash is 0)
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Thanks, applied.
+Thanks, applied to the fscrypt tree.
 
 					- Ted
