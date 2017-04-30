@@ -1,40 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: evict inline data when writing to memory map
-Date: Sun, 30 Apr 2017 00:13:57 -0400
-Message-ID: <20170430041357.5nrbpocxzbx5tf7p@thunk.org>
-References: <20170313004708.29838-1-ebiggers3@gmail.com>
- <20170313233313.GA23580@infradead.org>
- <20170314233239.GA127087@gmail.com>
+Subject: Re: [PATCH 1/2] ext4: no need to cond_resched() in
+ ext4_trim_all_free()
+Date: Sun, 30 Apr 2017 00:26:05 -0400
+Message-ID: <20170430042605.v3myihn2x4lolmso@thunk.org>
+References: <1493282200-32257-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Nick Alcock <nick.alcock@oracle.com>,
-        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33602 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755188AbdD3E0H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 30 Apr 2017 00:26:07 -0400
 Content-Disposition: inline
-In-Reply-To: <20170314233239.GA127087@gmail.com>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1493282200-32257-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 14, 2017 at 04:32:39PM -0700, Eric Biggers wrote:
-> I'm working on this, and I discovered there's still a bug.  After the data is
-> written with mwrite, if the filesystem is then mount-cycled, the contents of the
-> file are the old contents rather than the new contents.
-> 
-> I believe this is caused by a bug in ext4_convert_inline_data().  Specifically,
-> the new block containing the evicted data is journalled using a buffer_head
-> associated with the block device.  This is wrong because it can overwrite data
-> that is later written through non-journalled writeback.
+On Thu, Apr 27, 2017 at 10:36:40AM +0200, Lukas Czerner wrote:
+> There is no need to call cond_resched() in ext4_trim_all_free() since
+> blkdev_issue_discard() already takes care of that. So just remove it.
 
-I'll apply this patch for now, since it fixes a userspace-triggerable
-BUG, but you're right.  ext4_convert_inline_data() is busted; it
-should not be using data journalling, but rather it should check to
-make sure the page is already in memory (and creating it if
-necessary), and just write it out to memory.
+Actually, it could be needed.  If minblocks is a small value, say 2,
+and every other block in file system is allocated, then we could be in
+the while loop for a long time.  That's a pretty unusual case, but
+it's good to have the need_resched() check there.
 
-This is a separate bug, and we should fix it, but the first patch is
-correct and should go in.
-
-					- Ted
+						- Ted
