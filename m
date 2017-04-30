@@ -1,48 +1,84 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [1/6] f2fs: check entire encrypted bigname when finding a dentry
-Date: Sun, 30 Apr 2017 02:19:22 -0400
-Message-ID: <20170430061922.djpzcguihke4o4lo@thunk.org>
-References: <20170424170013.85175-2-ebiggers3@gmail.com>
+Subject: Re: [2/6] fscrypt: avoid collisions when presenting long encrypted
+ filenames
+Date: Sun, 30 Apr 2017 02:19:47 -0400
+Message-ID: <20170430061947.hawb6tsjg3tnxeue@thunk.org>
+References: <20170424170013.85175-3-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
         linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
         linux-mtd@lists.infradead.org,
         Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, stable@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
+        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>,
+        stable@vger.kernel.org
 To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170424170013.85175-2-ebiggers3@gmail.com>
+In-Reply-To: <20170424170013.85175-3-ebiggers3@gmail.com>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Apr 24, 2017 at 10:00:08AM -0700, Eric Biggers wrote:
-> From: Jaegeuk Kim <jaegeuk@kernel.org>
+On Mon, Apr 24, 2017 at 10:00:09AM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> If user has no key under an encrypted dir, fscrypt gives digested dentries.
-> Previously, when looking up a dentry, f2fs only checks its hash value with
-> first 4 bytes of the digested dentry, which didn't handle hash collisions fully.
-> This patch enhances to check entire dentry bytes likewise ext4.
+> When accessing an encrypted directory without the key, userspace must
+> operate on filenames derived from the ciphertext names, which contain
+> arbitrary bytes.  Since we must support filenames as long as NAME_MAX,
+> we can't always just base64-encode the ciphertext, since that may make
+> it too long.  Currently, this is solved by presenting long names in an
+> abbreviated form containing any needed filesystem-specific hashes (e.g.
+> to identify a directory block), then the last 16 bytes of ciphertext.
+> This needs to be sufficient to identify the actual name on lookup.
 > 
-> Eric reported how to reproduce this issue by:
+> However, there is a bug.  It seems to have been assumed that due to the
+> use of a CBC (ciphertext block chaining)-based encryption mode, the last
+> 16 bytes (i.e. the AES block size) of ciphertext would depend on the
+> full plaintext, preventing collisions.  However, we actually use CBC
+> with ciphertext stealing (CTS), which handles the last two blocks
+> specially, causing them to appear "flipped".  Thus, it's actually the
+> second-to-last block which depends on the full plaintext.
 > 
->  # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
->  # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-> 100000
->  # sync
->  # echo 3 > /proc/sys/vm/drop_caches
->  # keyctl new_session
->  # find edir -type f | xargs stat -c %i | sort | uniq | wc -l
-> 99999
+> This caused long filenames that differ only near the end of their
+> plaintexts to, when observed without the key, point to the wrong inode
+> and be undeletable.  For example, with ext4:
 > 
-> Cc: <stable@vger.kernel.org>
-> Reported-by: Eric Biggers <ebiggers@google.com>
-> Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
-> (fixed f2fs_dentry_hash() to work even when the hash is 0)
+>     # echo pass | e4crypt add_key -p 16 edir/
+>     # seq -f "edir/abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
+>     # find edir/ -type f | xargs stat -c %i | sort | uniq | wc -l
+>     100000
+>     # sync
+>     # echo 3 > /proc/sys/vm/drop_caches
+>     # keyctl new_session
+>     # find edir/ -type f | xargs stat -c %i | sort | uniq | wc -l
+>     2004
+>     # rm -rf edir/
+>     rm: cannot remove 'edir/_A7nNFi3rhkEQlJ6P,hdzluhODKOeWx5V': Structure needs cleaning
+>     ...
+> 
+> To fix this, when presenting long encrypted filenames, encode the
+> second-to-last block of ciphertext rather than the last 16 bytes.
+> 
+> Although it would be nice to solve this without depending on a specific
+> encryption mode, that would mean doing a cryptographic hash like SHA-256
+> which would be much less efficient.  This way is sufficient for now, and
+> it's still compatible with encryption modes like HEH which are strong
+> pseudorandom permutations.  Also, changing the presented names is still
+> allowed at any time because they are only provided to allow applications
+> to do things like delete encrypted directories.  They're not designed to
+> be used to persistently identify files --- which would be hard to do
+> anyway, given that they're encrypted after all.
+> 
+> For ease of backports, this patch only makes the minimal fix to both
+> ext4 and f2fs.  It leaves ubifs as-is, since ubifs doesn't compare the
+> ciphertext block yet.  Follow-on patches will clean things up properly
+> and make the filesystems use a shared helper function.
+> 
+> Fixes: 5de0b4d0cd15 ("ext4 crypto: simplify and speed up filename encryption")
+> Reported-by: Gwendal Grignou <gwendal@chromium.org>
+> Cc: stable@vger.kernel.org
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Thanks, applied to the fscrypt tree.
+Thanks, applied.
 
-					- Ted
+						- Ted
