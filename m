@@ -1,66 +1,75 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] fscrypt: correct collision claim for digested names
-Date: Mon,  1 May 2017 11:43:32 -0700
-Message-ID: <20170501184332.37532-1-ebiggers3@gmail.com>
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org
+Subject: Re: [PATCH] ext4: inherit encryption xattr before other xattrs
+Date: Mon, 1 May 2017 11:52:28 -0700
+Message-ID: <20170501185228.GA30027@gmail.com>
+References: <20170217233321.108637-1-ebiggers3@gmail.com>
+ <2F4F7FA9-37C2-4FF1-9365-EF38D57FE7CA@dilger.ca>
+ <20170227213637.GA123733@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Eric Biggers <ebiggers@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:35205 "EHLO
-        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750794AbdEASpV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 14:45:21 -0400
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:33349 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751571AbdEASwb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 14:52:31 -0400
+Content-Disposition: inline
+In-Reply-To: <20170227213637.GA123733@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Biggers <ebiggers@google.com>
+On Mon, Feb 27, 2017 at 01:36:37PM -0800, Eric Biggers wrote:
+> On Mon, Feb 27, 2017 at 01:28:28PM -0700, Andreas Dilger wrote:
+> > On Feb 17, 2017, at 4:33 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > > 
+> > > From: Eric Biggers <ebiggers@google.com>
+> > > 
+> > > When using both encryption and SELinux (or another feature that requires
+> > > an xattr per file) on a filesystem with 256-byte inodes, each file's
+> > > xattrs usually spill into an external xattr block.  Currently, the
+> > > xattrs are inherited in the order ACL, security, then encryption.
+> > > Therefore, if spillage occurs, the encryption xattr will always end up
+> > > in the external block.  This is not ideal because the encryption xattrs
+> > > contain a nonce, so they will always be unique and will prevent the
+> > > external xattr blocks from being deduplicated.
+> > > 
+> > > To improve the situation, change the inheritance order to encryption,
+> > > ACL, then security.  This gives the encryption xattr a better chance to
+> > > be stored in-inode, allowing the other xattr(s) to be deduplicated.
+> > > 
+> > > Note that it may be better for userspace to format the filesystem with
+> > > 512-byte inodes in this case.  However, it's not the default.
+> > > 
+> > > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > 
+> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> > 
+> > Note that we've been using 512-byte xattrs for Lustre metadata servers
+> > for ages.  We may want to consider enabling this by default when the
+> > filesystem features are set (e.g. crypto, inline data, etc).
+> > 
+> > Having a general mechanism to bias xattrs to in-inode or external xattr
+> > storage would be nice also, but I don't know any way to do this beyond
+> > just having a list of xattr names and then prioritizing the ones that
+> > go into the in-inode space.
+> > 
+> 
+> I think it's a good idea to have mke2fs default to 512-byte inodes if
+> '-O inline_data' is specified.  But with '-O encrypt' it may be more debatable
+> because there is no guarantee as to how many files userspace will actually
+> choose to encrypt.  It could be almost the whole filesystem, or just a few
+> files, or even nothing at all.
+> 
+> Regardless, I think adjusting the xattr inheritance order (as this patch does)
+> has advantages but no real disadvantages, so it might as well be done too.
+> 
+> Eric
 
-As I noted on the mailing list, it's easier than I originally thought to
-create intentional collisions in the digested names.  Unfortunately it's
-not too easy to solve this, so for now just fix the comment to not lie.
+Ted, this patch seems to have gotten missed; are you planning to apply it?  Next
+cycle is fine too, but I'd like to get it in sometime.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- include/linux/fscrypt_supp.h | 22 +++++++++-------------
- 1 file changed, 9 insertions(+), 13 deletions(-)
-
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index e12c224a0d1e..cd4e82c17304 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -81,20 +81,16 @@ extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
-  * followed by the second-to-last ciphertext block of the filename.  Due to the
-  * use of the CBC-CTS encryption mode, the second-to-last ciphertext block
-  * depends on the full plaintext.  (Note that ciphertext stealing causes the
-- * last two blocks to appear "flipped".)  This makes collisions very unlikely:
-- * just a 1 in 2^128 chance for two filenames to collide even if they share the
-- * same filesystem-specific hashes.
-+ * last two blocks to appear "flipped".)  This makes accidental collisions very
-+ * unlikely: just a 1 in 2^128 chance for two filenames to collide even if they
-+ * share the same filesystem-specific hashes.
-  *
-- * This scheme isn't strictly immune to intentional collisions because it's
-- * basically like a CBC-MAC, which isn't secure on variable-length inputs.
-- * However, generating a CBC-MAC collision requires the ability to choose
-- * arbitrary ciphertext, which won't normally be possible with filename
-- * encryption since it would require write access to the raw disk.
-- *
-- * Taking a real cryptographic hash like SHA-256 over the full ciphertext would
-- * be better in theory but would be less efficient and more complicated to
-- * implement, especially since the filesystem would need to calculate it for
-- * each directory entry examined during a search.
-+ * However, this scheme isn't immune to intentional collisions, which can be
-+ * created by anyone able to create arbitrary plaintext filenames and view them
-+ * without the key.  Making the "digest" be a real cryptographic hash like
-+ * SHA-256 over the full ciphertext would prevent this, although it would be
-+ * less efficient and harder to implement, especially since the filesystem would
-+ * need to calculate it for each directory entry examined during a search.
-  */
- struct fscrypt_digested_name {
- 	u32 hash;
--- 
-2.13.0.rc0.306.g87b477812d-goog
+- Eric
