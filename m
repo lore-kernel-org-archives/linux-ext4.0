@@ -1,133 +1,66 @@
-From: "George Spelvin" <linux@sciencehorizons.net>
-Subject: More inline data oddities
-Date: 1 May 2017 13:40:01 -0400
-Message-ID: <20170501174001.3541.qmail@ns.sciencehorizons.net>
-Cc: linux@sciencehorizons.net
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] fscrypt: correct collision claim for digested names
+Date: Mon,  1 May 2017 11:43:32 -0700
+Message-ID: <20170501184332.37532-1-ebiggers3@gmail.com>
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.sciencehorizons.net ([71.41.210.147]:51857 "HELO
-        ns.sciencehorizons.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1750703AbdEARkD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 13:40:03 -0400
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:35205 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750794AbdEASpV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 14:45:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The new e2fsck 1.43.4 (31-Jan-2017) has definitely helped, but I'm
-still seeing some flakiness with inline_data directories.  There's still
-a kernel problem, which is creating file systems that confuse e2fsck.
+From: Eric Biggers <ebiggers@google.com>
 
-But I have more data on the e2fsck problem which is mis-correcting that
-problem so it takes a second run to get a clean file system.
+As I noted on the mailing list, it's easier than I originally thought to
+create intentional collisions in the digested names.  Unfortunately it's
+not too easy to solve this, so for now just fix the comment to not lie.
 
-Specifically, e2fsck is creating the missing system.date problem on one
-run and then zeroing out the directory on another.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ include/linux/fscrypt_supp.h | 22 +++++++++-------------
+ 1 file changed, 9 insertions(+), 13 deletions(-)
 
-The problem is occurring when I rsync to a small directory.  Consider
-the following directories:
-
- 1461410  (12) .    1421827  (12) ..    1461583  (20) potd-800.jpg
- 1472133  (36) .xvpics    1461401  (72) .potd-800.jpg.4176
-
- 1461314  (12) .    1421827  (12) ..    1461426  (20) potd-800.jpg
- 1463943  (36) .xvpics    1461400  (72) .potd-800.jpg.4176
-
-During the rsync run, I got syslog complaints:
-
-[255031.626936] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461410: comm find: No space for directory leaf checksum. Please run e2fsck -D.
-[255031.626940] EXT4-fs error (device md3): ext4_readdir:198: inode #1461410: comm find: path $PATH1: directory fails checksum at offset 0
-[255035.720542] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461314: comm find: No space for directory leaf checksum. Please run e2fsck -D.
-[255035.720547] EXT4-fs error (device md3): ext4_readdir:198: inode #1461314: comm find: path $PATH2: directory fails checksum at offset 0
-
-
-The inline data consists of two parts: 60 bytes in the block pointers which
-hold the first four entries, and 72 bytes in an ea, which holds the fifth and
-last entry.
-
-debugfs on the directories reveals the following:
-Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-Generation: 927521379    Version: 0x00000000:00000007
-User:  1000   Group:    11   Project:     0   Size: 132
-File ACL: 1496481792    Directory ACL: 0
-Links: 3   Blockcount: 8
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-Size of extra inode fields: 32
-Extended attributes:
-  system.data (72)
-Inode checksum: 0x456bd90c
-Size of inline data: 132
-
-Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-Generation: 927521364    Version: 0x00000000:00000004
-User:  1000   Group:    11   Project:     0   Size: 132
-File ACL: 1496383488    Directory ACL: 0
-Links: 3   Blockcount: 8
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-Size of extra inode fields: 32
-Extended attributes:
-  system.data (72)
-Inode checksum: 0x008d7abf
-Size of inline data: 132
-
-
-If I run e2fsck on that stat, it complains about two things:
-
-Inode 1461314, i_blocks is 8, should be 0.  Fix<y>? yes
-Inode 1461410, i_blocks is 8, should be 0.  Fix<y>? yes
-i_file_acl for inode 1461314 ($PATH2) is 1496383488, should be zero.
-Clear<y>? yes
-i_file_acl for inode 1461410 ($PATH1) is 1496481792, should be zero.
-Clear<y>? yes
-
-I don't really understand how those two errors were created in the
-first place.
-
-However, after saying yes to those, the system.data ea is missing and the
-final entries in each directory get dropped, leading to being dumped
-in loat+found.
-
-Here's the state after the first e2fsck run completes:
-
-Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-Generation: 927521379    Version: 0x00000000:00000007
-User:  1000   Group:    11   Project:     0   Size: 132
-File ACL: 0    Directory ACL: 0
-Links: 3   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-Size of extra inode fields: 32
-Inode checksum: 0xcd34b98c
-Size of inline data: 60
-
-Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-Generation: 927521364    Version: 0x00000000:00000004
-User:  1000   Group:    11   Project:     0   Size: 132
-File ACL: 0    Directory ACL: 0
-Links: 3   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
- mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-Size of extra inode fields: 32
-Inode checksum: 0x042ed119
-Size of inline data: 60
-
-
-This then leads to a second run complaining about
-
-Inode 1461314 has INLINE_DATA_FL flag but extended attribute not found.  Truncate<y>?
-
-If I instead fix it by "ea_set -f /dev/null <1461314> system.data", I get the
-directory back in a relatively unbroken state.  But why is system.data
-being deleted in the first place?
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index e12c224a0d1e..cd4e82c17304 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -81,20 +81,16 @@ extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
+  * followed by the second-to-last ciphertext block of the filename.  Due to the
+  * use of the CBC-CTS encryption mode, the second-to-last ciphertext block
+  * depends on the full plaintext.  (Note that ciphertext stealing causes the
+- * last two blocks to appear "flipped".)  This makes collisions very unlikely:
+- * just a 1 in 2^128 chance for two filenames to collide even if they share the
+- * same filesystem-specific hashes.
++ * last two blocks to appear "flipped".)  This makes accidental collisions very
++ * unlikely: just a 1 in 2^128 chance for two filenames to collide even if they
++ * share the same filesystem-specific hashes.
+  *
+- * This scheme isn't strictly immune to intentional collisions because it's
+- * basically like a CBC-MAC, which isn't secure on variable-length inputs.
+- * However, generating a CBC-MAC collision requires the ability to choose
+- * arbitrary ciphertext, which won't normally be possible with filename
+- * encryption since it would require write access to the raw disk.
+- *
+- * Taking a real cryptographic hash like SHA-256 over the full ciphertext would
+- * be better in theory but would be less efficient and more complicated to
+- * implement, especially since the filesystem would need to calculate it for
+- * each directory entry examined during a search.
++ * However, this scheme isn't immune to intentional collisions, which can be
++ * created by anyone able to create arbitrary plaintext filenames and view them
++ * without the key.  Making the "digest" be a real cryptographic hash like
++ * SHA-256 over the full ciphertext would prevent this, although it would be
++ * less efficient and harder to implement, especially since the filesystem would
++ * need to calculate it for each directory entry examined during a search.
+  */
+ struct fscrypt_digested_name {
+ 	u32 hash;
+-- 
+2.13.0.rc0.306.g87b477812d-goog
