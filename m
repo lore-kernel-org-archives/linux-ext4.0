@@ -1,75 +1,58 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] ext4: inherit encryption xattr before other xattrs
-Date: Mon, 1 May 2017 11:52:28 -0700
-Message-ID: <20170501185228.GA30027@gmail.com>
-References: <20170217233321.108637-1-ebiggers3@gmail.com>
- <2F4F7FA9-37C2-4FF1-9365-EF38D57FE7CA@dilger.ca>
- <20170227213637.GA123733@gmail.com>
+Subject: Re: [PATCH] Add largedir feature
+Date: Mon, 1 May 2017 11:58:24 -0700
+Message-ID: <20170501185824.GB30027@gmail.com>
+References: <1489657877-34478-1-git-send-email-artem.blagodarenko@seagate.com>
+ <20170430005953.m74yjettitj7mzr6@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
+Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        alexey.lyashkov@gmail.com, Yang Sheng <yang.sheng@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:33349 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751571AbdEASwb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 14:52:31 -0400
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:36520 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751224AbdEAS6c (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 14:58:32 -0400
+Received: by mail-pg0-f68.google.com with SMTP id v1so17276758pgv.3
+        for <linux-ext4@vger.kernel.org>; Mon, 01 May 2017 11:58:32 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20170227213637.GA123733@gmail.com>
+In-Reply-To: <20170430005953.m74yjettitj7mzr6@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 27, 2017 at 01:36:37PM -0800, Eric Biggers wrote:
-> On Mon, Feb 27, 2017 at 01:28:28PM -0700, Andreas Dilger wrote:
-> > On Feb 17, 2017, at 4:33 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> > > 
-> > > From: Eric Biggers <ebiggers@google.com>
-> > > 
-> > > When using both encryption and SELinux (or another feature that requires
-> > > an xattr per file) on a filesystem with 256-byte inodes, each file's
-> > > xattrs usually spill into an external xattr block.  Currently, the
-> > > xattrs are inherited in the order ACL, security, then encryption.
-> > > Therefore, if spillage occurs, the encryption xattr will always end up
-> > > in the external block.  This is not ideal because the encryption xattrs
-> > > contain a nonce, so they will always be unique and will prevent the
-> > > external xattr blocks from being deduplicated.
-> > > 
-> > > To improve the situation, change the inheritance order to encryption,
-> > > ACL, then security.  This gives the encryption xattr a better chance to
-> > > be stored in-inode, allowing the other xattr(s) to be deduplicated.
-> > > 
-> > > Note that it may be better for userspace to format the filesystem with
-> > > 512-byte inodes in this case.  However, it's not the default.
-> > > 
-> > > Signed-off-by: Eric Biggers <ebiggers@google.com>
+On Sat, Apr 29, 2017 at 08:59:53PM -0400, Theodore Ts'o wrote:
+> On Thu, Mar 16, 2017 at 05:51:17AM -0400, Artem Blagodarenko wrote:
+> > From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 > > 
-> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> > This INCOMPAT_LARGEDIR feature allows larger directories to be created
+> > in ldiskfs, both with directory sizes over 2GB and and a maximum htree
+> > depth of 3 instead of the current limit of 2. These features are needed
+> > in order to exceed the current limit of approximately 10M entries in a
+> > single directory.
 > > 
-> > Note that we've been using 512-byte xattrs for Lustre metadata servers
-> > for ages.  We may want to consider enabling this by default when the
-> > filesystem features are set (e.g. crypto, inline data, etc).
-> > 
-> > Having a general mechanism to bias xattrs to in-inode or external xattr
-> > storage would be nice also, but I don't know any way to do this beyond
-> > just having a list of xattr names and then prioritizing the ones that
-> > go into the in-inode space.
-> > 
+> > Signed-off-by: Yang Sheng <yang.sheng@intel.com>
+> > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
 > 
-> I think it's a good idea to have mke2fs default to 512-byte inodes if
-> '-O inline_data' is specified.  But with '-O encrypt' it may be more debatable
-> because there is no guarantee as to how many files userspace will actually
-> choose to encrypt.  It could be almost the whole filesystem, or just a few
-> files, or even nothing at all.
+> Thanks, applied.
 > 
-> Regardless, I think adjusting the xattr inheritance order (as this patch does)
-> has advantages but no real disadvantages, so it might as well be done too.
-> 
-> Eric
+> 					- Ted
 
-Ted, this patch seems to have gotten missed; are you planning to apply it?  Next
-cycle is fine too, but I'd like to get it in sometime.
+FYI, this patch is causing a problem when creating many files in a directory
+(without the largedir feature enabled).  I haven't looked into it but maybe it
+will ring a bell for someone.
 
-- Eric
+seq -f "abcdefghijklmnopqrstuvwxyz012345%.0f" 100000 | xargs touch
+
+[   42.726480] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.729472] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.731689] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.734303] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.736383] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.739133] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.741307] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.743963] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+[   42.745998] EXT4-fs error (device vdc): dx_probe:840: inode #2: block 508: comm touch: Directory index failed checksum
+...
