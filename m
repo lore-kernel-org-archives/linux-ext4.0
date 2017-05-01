@@ -1,193 +1,180 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: More inline data oddities
-Date: Mon, 1 May 2017 16:00:02 -0600
-Message-ID: <04BDD82D-B764-49A8-9F5B-71303BE96857@dilger.ca>
-References: <20170501174001.3541.qmail@ns.sciencehorizons.net>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_A45CE96C-463F-4EAB-92C5-6EAD092B411F";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: George Spelvin <linux@sciencehorizons.net>,
-        Zheng Liu <wenqing.lz@taobao.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: evict inline data when writing to memory map
+Date: Mon, 1 May 2017 15:10:31 -0700
+Message-ID: <20170501221031.GA69912@gmail.com>
+References: <20170313004708.29838-1-ebiggers3@gmail.com>
+ <20170313233313.GA23580@infradead.org>
+ <20170314233239.GA127087@gmail.com>
+ <20170430041357.5nrbpocxzbx5tf7p@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Nick Alcock <nick.alcock@oracle.com>,
+        Eric Biggers <ebiggers@google.com>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33074 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752327AbdEAWAI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 18:00:08 -0400
-Received: by mail-io0-f196.google.com with SMTP id o22so422836iod.0
-        for <linux-ext4@vger.kernel.org>; Mon, 01 May 2017 15:00:07 -0700 (PDT)
-In-Reply-To: <20170501174001.3541.qmail@ns.sciencehorizons.net>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:34490 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750785AbdEAWKe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 May 2017 18:10:34 -0400
+Content-Disposition: inline
+In-Reply-To: <20170430041357.5nrbpocxzbx5tf7p@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sun, Apr 30, 2017 at 12:13:57AM -0400, Theodore Ts'o wrote:
+> On Tue, Mar 14, 2017 at 04:32:39PM -0700, Eric Biggers wrote:
+> > I'm working on this, and I discovered there's still a bug.  After the data is
+> > written with mwrite, if the filesystem is then mount-cycled, the contents of the
+> > file are the old contents rather than the new contents.
+> > 
+> > I believe this is caused by a bug in ext4_convert_inline_data().  Specifically,
+> > the new block containing the evicted data is journalled using a buffer_head
+> > associated with the block device.  This is wrong because it can overwrite data
+> > that is later written through non-journalled writeback.
+> 
+> I'll apply this patch for now, since it fixes a userspace-triggerable
+> BUG, but you're right.  ext4_convert_inline_data() is busted; it
+> should not be using data journalling, but rather it should check to
+> make sure the page is already in memory (and creating it if
+> necessary), and just write it out to memory.
+> 
+> This is a separate bug, and we should fix it, but the first patch is
+> correct and should go in.
+> 
+> 					- Ted
 
---Apple-Mail=_A45CE96C-463F-4EAB-92C5-6EAD092B411F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Okay, thanks.  A while ago I looked into the second bug a bit, but I never got
+around to a proper fix.  Just in case someone else wants to look into it sooner,
+this is the xfstest I wrote which reproduces both of these bugs:
 
-Add the original inline data author Zheng Liu <wenqing.lz@taobao.com>.
-
-On May 1, 2017, at 11:40 AM, George Spelvin <linux@sciencehorizons.net> =
-wrote:
->=20
-> The new e2fsck 1.43.4 (31-Jan-2017) has definitely helped, but I'm
-> still seeing some flakiness with inline_data directories.  There's =
-still
-> a kernel problem, which is creating file systems that confuse e2fsck.
->=20
-> But I have more data on the e2fsck problem which is mis-correcting =
-that
-> problem so it takes a second run to get a clean file system.
->=20
-> Specifically, e2fsck is creating the missing system.date problem on =
-one
-> run and then zeroing out the directory on another.
->=20
-> The problem is occurring when I rsync to a small directory.  Consider
-> the following directories:
->=20
-> 1461410  (12) .    1421827  (12) ..    1461583  (20) potd-800.jpg
-> 1472133  (36) .xvpics    1461401  (72) .potd-800.jpg.4176
->=20
-> 1461314  (12) .    1421827  (12) ..    1461426  (20) potd-800.jpg
-> 1463943  (36) .xvpics    1461400  (72) .potd-800.jpg.4176
->=20
-> During the rsync run, I got syslog complaints:
->=20
-> [255031.626936] EXT4-fs warning (device md3): =
-ext4_dirent_csum_verify:352: inode #1461410: comm find: No space for =
-directory leaf checksum. Please run e2fsck -D.
-> [255031.626940] EXT4-fs error (device md3): ext4_readdir:198: inode =
-#1461410: comm find: path $PATH1: directory fails checksum at offset 0
-> [255035.720542] EXT4-fs warning (device md3): =
-ext4_dirent_csum_verify:352: inode #1461314: comm find: No space for =
-directory leaf checksum. Please run e2fsck -D.
-> [255035.720547] EXT4-fs error (device md3): ext4_readdir:198: inode =
-#1461314: comm find: path $PATH2: directory fails checksum at offset 0
->=20
->=20
-> The inline data consists of two parts: 60 bytes in the block pointers =
-which
-> hold the first four entries, and 72 bytes in an ea, which holds the =
-fifth and
-> last entry.
->=20
-> debugfs on the directories reveals the following:
-> Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-> Generation: 927521379    Version: 0x00000000:00000007
-> User:  1000   Group:    11   Project:     0   Size: 132
-> File ACL: 1496481792    Directory ACL: 0
-> Links: 3   Blockcount: 8
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-> crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-> Size of extra inode fields: 32
-> Extended attributes:
->  system.data (72)
-> Inode checksum: 0x456bd90c
-> Size of inline data: 132
->=20
-> Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-> Generation: 927521364    Version: 0x00000000:00000004
-> User:  1000   Group:    11   Project:     0   Size: 132
-> File ACL: 1496383488    Directory ACL: 0
-> Links: 3   Blockcount: 8
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-> crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-> Size of extra inode fields: 32
-> Extended attributes:
->  system.data (72)
-> Inode checksum: 0x008d7abf
-> Size of inline data: 132
->=20
->=20
-> If I run e2fsck on that stat, it complains about two things:
->=20
-> Inode 1461314, i_blocks is 8, should be 0.  Fix<y>? yes
-> Inode 1461410, i_blocks is 8, should be 0.  Fix<y>? yes
-> i_file_acl for inode 1461314 ($PATH2) is 1496383488, should be zero.
-> Clear<y>? yes
-> i_file_acl for inode 1461410 ($PATH1) is 1496481792, should be zero.
-> Clear<y>? yes
->=20
-> I don't really understand how those two errors were created in the
-> first place.
->=20
-> However, after saying yes to those, the system.data ea is missing and =
-the
-> final entries in each directory get dropped, leading to being dumped
-> in loat+found.
->=20
-> Here's the state after the first e2fsck run completes:
->=20
-> Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-> Generation: 927521379    Version: 0x00000000:00000007
-> User:  1000   Group:    11   Project:     0   Size: 132
-> File ACL: 0    Directory ACL: 0
-> Links: 3   Blockcount: 0
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-> crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-> Size of extra inode fields: 32
-> Inode checksum: 0xcd34b98c
-> Size of inline data: 60
->=20
-> Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-> Generation: 927521364    Version: 0x00000000:00000004
-> User:  1000   Group:    11   Project:     0   Size: 132
-> File ACL: 0    Directory ACL: 0
-> Links: 3   Blockcount: 0
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-> crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-> Size of extra inode fields: 32
-> Inode checksum: 0x042ed119
-> Size of inline data: 60
->=20
->=20
-> This then leads to a second run complaining about
->=20
-> Inode 1461314 has INLINE_DATA_FL flag but extended attribute not =
-found.  Truncate<y>?
->=20
-> If I instead fix it by "ea_set -f /dev/null <1461314> system.data", I =
-get the
-> directory back in a relatively unbroken state.  But why is system.data
-> being deleted in the first place?
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_A45CE96C-463F-4EAB-92C5-6EAD092B411F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZB6/jpIg59Q01vtYRAtr+AKDIvcD2/EYBJQIJyqTNEZaKArS8EgCgg5Kt
-E+ohLjicVGjxoLR7PBQ10MM=
-=It5n
------END PGP SIGNATURE-----
-
---Apple-Mail=_A45CE96C-463F-4EAB-92C5-6EAD092B411F--
+diff --git a/tests/generic/500 b/tests/generic/500
+new file mode 100755
+index 00000000..8326791e
+--- /dev/null
++++ b/tests/generic/500
+@@ -0,0 +1,82 @@
++#! /bin/bash
++# FS QA Test generic/500
++#
++# Test writing to a file using a memory map, including a tiny file whose data
++# the filesystem may store inline.  On ext4 with inline_data, this reproduces
++# the crash fixed by: "ext4: evict inline data when writing to memory map".
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2017 Google, Inc.  All Rights Reserved.
++#
++# Author: Eric Biggers <ebiggers@google.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++	rm -f $testfile
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++
++# remove previous $seqres.full before test
++rm -f $seqres.full
++
++# real QA test starts here
++_supported_fs generic
++_require_test
++
++testfile=$TEST_DIR/test-$seq
++
++file_sizes=(   4 4096 65999)
++mwrite_starts=(1 2048 65500)
++mwrite_sizes=( 2 32   100)
++
++for i in ${!file_sizes[@]}; do
++
++	file_size=${file_sizes[$i]}
++	echo -e "\n=== File size $file_size ==="
++
++	# create a non-sparse file containing $file_size bytes
++	rm -f $testfile
++	yes | tr -d '\n' | head -c $file_size > $testfile
++
++	# sync the file to clean its pages, then write to it with mwrite
++	$XFS_IO_PROG $testfile \
++		-c "fsync" \
++		-c "mmap -w 0 1m" \
++		-c "mwrite ${mwrite_starts[$i]} ${mwrite_sizes[$i]}"
++
++	# cycle the mount and verify the data we wrote got to disk
++	_test_cycle_mount
++	hexdump -C $testfile
++done
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/500.out b/tests/generic/500.out
+new file mode 100644
+index 00000000..6e9103fc
+--- /dev/null
++++ b/tests/generic/500.out
+@@ -0,0 +1,24 @@
++QA output created by 500
++
++=== File size 4 ===
++00000000  79 58 58 79                                       |yXXy|
++00000004
++
++=== File size 4096 ===
++00000000  79 79 79 79 79 79 79 79  79 79 79 79 79 79 79 79  |yyyyyyyyyyyyyyyy|
++*
++00000800  58 58 58 58 58 58 58 58  58 58 58 58 58 58 58 58  |XXXXXXXXXXXXXXXX|
++*
++00000820  79 79 79 79 79 79 79 79  79 79 79 79 79 79 79 79  |yyyyyyyyyyyyyyyy|
++*
++00001000
++
++=== File size 65999 ===
++00000000  79 79 79 79 79 79 79 79  79 79 79 79 79 79 79 79  |yyyyyyyyyyyyyyyy|
++*
++0000ffd0  79 79 79 79 79 79 79 79  79 79 79 79 58 58 58 58  |yyyyyyyyyyyyXXXX|
++0000ffe0  58 58 58 58 58 58 58 58  58 58 58 58 58 58 58 58  |XXXXXXXXXXXXXXXX|
++*
++00010040  79 79 79 79 79 79 79 79  79 79 79 79 79 79 79 79  |yyyyyyyyyyyyyyyy|
++*
++000101cf
+diff --git a/tests/generic/group b/tests/generic/group
+index b3051752..1df3b409 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -431,3 +431,4 @@
+ 426 auto quick exportfs
+ 427 auto quick aio rw
+ 428 auto quick
++500 auto quick
+-- 
+2.13.0.rc0.306.g87b477812d-goog
