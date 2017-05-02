@@ -1,66 +1,61 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: Fix dbench4 performance regression for 'nobarrier'
- mounts
-Date: Tue, 2 May 2017 11:36:54 +0200
-Message-ID: <20170502093654.GC13916@quack2.suse.cz>
-References: <20170428095934.11583-1-jack@suse.cz>
- <20170428150324.GA20122@infradead.org>
+Subject: Re: [PATCH -v2] ext4: avoid unnecessary transaction stalls during
+ writeback
+Date: Tue, 2 May 2017 14:10:44 +0200
+Message-ID: <20170502121044.GG13916@quack2.suse.cz>
+References: <20170430220101.trrgiaphp756kxw4@thunk.org>
+ <20170430223053.20025-1-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, stable@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:36573 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750884AbdEBMKr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 May 2017 08:10:47 -0400
 Content-Disposition: inline
-In-Reply-To: <20170428150324.GA20122@infradead.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170430223053.20025-1-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 28-04-17 08:03:24, Christoph Hellwig wrote:
-> On Fri, Apr 28, 2017 at 11:59:34AM +0200, Jan Kara wrote:
-> > Fix the problem by making sure journal superblock writes are always
-> > treated as synchronous since they generally block progress of the
-> > journalling machinery and thus the whole filesystem.
+On Sun 30-04-17 18:30:53, Ted Tso wrote:
+> From: Jan Kara <jack@suse.cz>
 > 
-> The callchains leading down to jbd2_write_superblock looks a little
-> suspicious to me.  It seems like jbd2_journal_commit_transaction
-> will actually call without FUA in the JBD2_FLUSHED case. Is that
-> really intentional, and if yes should it be documented?
-
-I guess you mean this:
-
-                /*
-                 * We hold j_checkpoint_mutex so tail cannot change under us.
-                 * We don't need any special data guarantees for writing sb
-                 * since journal is empty and it is ok for write to be
-                 * flushed only with transaction commit.
-                 */
-                jbd2_journal_update_sb_log_tail(journal,
-                                                journal->j_tail_sequence,
-                                                journal->j_tail,
-                                                REQ_SYNC);
-
-And yes, omitting REQ_FUA is intentional and the comment mentions it as "We
-don't need any special data guarantees...". Maybe I could add there an
-explicit mentioning of REQ_FUA and REQ_PREFLUSH so that it is clearer what
-we are talking about.
-
-> Except for that it would seem more useful to move to a "bool preflush"
-> argument passed down.
-
-Well, we can call jbd2_write_superblock() with REQ_FUA, REQ_PREFLUSH |
-REQ_FUA, REQ_SYNC. So one bool argument won't be enough. However I do agree
-that it would be cleaner to pass REQ_SYNC directly from all the places
-which set some flags which are eventually passed down to
-jbd2_write_superblock(). I'll create a cleanup patch for that.
-
-> But I guess we'll need a quick fix first, for that:
+> Currently ext4_writepages() submits all pages with transaction started.
+> When no page needs block allocation or extent conversion we can submit
+> all dirty pages in the inode while holding a single transaction handle
+> and when device is congested this can take significant amount of time.
+> Thus ext4_writepages() can block transaction commits for extended
+> periods of time.
 > 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Take for example a simple benchmark simulating PostgreSQL database
+> (pgioperf in mmtest). The benchmark runs 16 processes doing random reads
+> from a huge file, one process doing random writes to the huge file, and
+> one process doing sequential writes to a small files and frequently
+> running fsync. With unpatched kernel transaction commits take on average
+> ~18s with standard deviation of ~41s, top 5 commit times are:
+> 
+> 274.466639s, 126.467347s, 86.992429s, 34.351563s, 31.517653s.
+> 
+> After this patch transaction commits take on average 0.1s with standard
+> deviation of 0.15s, top 5 commit times are:
+> 
+> 0.563792s, 0.519980s, 0.509841s, 0.471700s, 0.469899s
+> 
+> [ Modified so we use an explicit do_map flag instead of relying on
+>   io_end not being allocated, the since io_end->inode is needed for I/O
+>   error handling. -- tytso ]
 
-Thanks!
+Yeah, thanks for finding the problem and fixing it up! The updated patch
+looks good. It is actually relatively easy to fix the original approach so
+that we don't have to allocate ioend unnecessarily (we just fetch the inode
+pointer on error through bio_vec->bv_page->mapping->host) but I'll do that
+separately on top of this change.
 
 								Honza
+
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
