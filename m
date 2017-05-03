@@ -1,44 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/7] ext4: Mark superblock writes synchronous for nobarrier mounts
-Date: Tue,  2 May 2017 17:03:45 +0200
-Message-ID: <20170502150351.29452-2-jack@suse.cz>
-References: <20170502150351.29452-1-jack@suse.cz>
-Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170502150351.29452-1-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 1/6] f2fs: check entire encrypted bigname when finding a
+ dentry
+Date: Tue, 2 May 2017 19:56:28 -0700
+Message-ID: <20170503025628.GA624@zzz>
+References: <20170424170013.85175-1-ebiggers3@gmail.com>
+ <20170424170013.85175-2-ebiggers3@gmail.com>
+ <20170425001023.GA4983@jaegeuk.local>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, stable@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:34097 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751703AbdECC4c (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 May 2017 22:56:32 -0400
+Content-Disposition: inline
+In-Reply-To: <20170425001023.GA4983@jaegeuk.local>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Commit b685d3d65ac7 "block: treat REQ_FUA and REQ_PREFLUSH as
-synchronous" removed REQ_SYNC flag from WRITE_FUA implementation.
-generic_make_request_checks() however strips REQ_FUA flag from a bio
-when the storage doesn't report volatile write cache and thus write
-effectively becomes asynchronous which can lead to performance
-regressions. This affects superblock writes for ext4. Fix the problem
-by marking superblock writes always as synchronous.
+Hi Jaegeuk,
 
-Fixes: b685d3d65ac791406e0dfd8779cc9b3707fea5a3
-CC: linux-ext4@vger.kernel.org
-CC: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Mon, Apr 24, 2017 at 05:10:23PM -0700, Jaegeuk Kim wrote:
+> Hi Eric,
+> 
+> This looks good to me.
+> I'll drop it from my tree, so please move forward through fscrypt.
+> 
+> Thanks,
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a9448db1cf7e..f902852ac13e 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4629,7 +4629,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 	if (sync) {
- 		unlock_buffer(sbh);
- 		error = __sync_dirty_buffer(sbh,
--			test_opt(sb, BARRIER) ? REQ_FUA : REQ_SYNC);
-+			REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0));
- 		if (error)
- 			return error;
- 
--- 
-2.12.0
+This is in fscrypt/master now (along with the other patches in the series), but
+it's also in f2fs/dev.  Are you still planning to drop it from the f2fs tree?
+
+- Eric
