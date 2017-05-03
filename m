@@ -1,174 +1,85 @@
-From: Zheng Liu <gnehzuil.liu@gmail.com>
-Subject: Re: More inline data oddities
-Date: Wed, 3 May 2017 21:15:51 +0800
-Message-ID: <20170503131550.GA14305@gmail.com>
-References: <20170501174001.3541.qmail@ns.sciencehorizons.net>
- <04BDD82D-B764-49A8-9F5B-71303BE96857@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: [GIT PULL] Quota, reiserfs, udf, and ext2 changes for 4.12-rc1
+Date: Wed, 3 May 2017 15:55:35 +0200
+Message-ID: <20170503135535.GH10084@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: George Spelvin <linux@sciencehorizons.net>,
-        Zheng Liu <wenqing.lz@taobao.com>, linux-ext4@vger.kernel.org,
-        tytso@mit.edu
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:36342 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752089AbdECNOL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 May 2017 09:14:11 -0400
-Received: by mail-pf0-f195.google.com with SMTP id v14so4287070pfd.3
-        for <linux-ext4@vger.kernel.org>; Wed, 03 May 2017 06:14:11 -0700 (PDT)
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <04BDD82D-B764-49A8-9F5B-71303BE96857@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Andreas,
+  Hello Linus,
 
-Thanks for letting me know this.
+  could you please pull from
 
-Hello George,
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git generic
 
-I have tried to create a ext4 file system with inline_data feature,
-and try to create a directory hierarchy like you described in the
-mail.  But unfortunately I couldn't reproduce your issue.  That would
-be great if you could provide more details to me, such as the output
-of the following command.
+The branch contains changes to quota code so that it does not modify
+persistent flags in inode->i_flags (it was the only place in kernel doing
+that) and handle it inside filesystem's quotaon/off handlers instead.
+The branch also contains two UDF cleanups, couple of reiserfs fixes and
+one fix for ext2 quota locking.
 
-  $ debugfs ${DEV} -R 'stats'
+Top of the tree is 6c71100db53e. The full shortlog is:
 
->From this command I can know which features are enabled in your ext4
-file system and that would help me to reproduce the problem.  Further,
-could you please tell me your kernel version?
+Arnd Bergmann (1):
+      reiserfs: avoid a -Wmaybe-uninitialized warning
 
-On Mon, May 01, 2017 at 04:00:02PM -0600, Andreas Dilger wrote:
-> Add the original inline data author Zheng Liu <wenqing.lz@taobao.com>.
-> 
-> On May 1, 2017, at 11:40 AM, George Spelvin <linux@sciencehorizons.net> wrote:
-> > [255031.626936] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461410: comm find: No space for directory leaf checksum. Please run e2fsck -D.
-> > [255031.626940] EXT4-fs error (device md3): ext4_readdir:198: inode #1461410: comm find: path $PATH1: directory fails checksum at offset 0
-> > [255035.720542] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461314: comm find: No space for directory leaf checksum. Please run e2fsck -D.
-> > [255035.720547] EXT4-fs error (device md3): ext4_readdir:198: inode #1461314: comm find: path $PATH2: directory fails checksum at offset 0
+Fabian Frederick (2):
+      udf: use octal for permissions
+      udf: use kmap_atomic for memcpy copying
 
-It seems that the space is full in inline data and the kernel could not
-expand it to a new block.  From the following message I guess during
-this process kernel tries to allocate a new block for this directory
-and then an error is encountered that causes flags 0x10000000 could not
-have a chance to be cleared.  So this inode has flag 0x10000000 and
-blockcount is 8.
+Jan Kara (15):
+      ext2: Call dquot_writeback_dquots() with s_umount held
+      reiserfs: Make cancel_old_flush() reliable
+      reiserfs: Protect dquot_writeback_dquots() by s_umount semaphore
+      ext4: Set flags on quota files directly
+      reiserfs: Set flags on quota files directly
+      ext2: Set flags on quota files directly
+      jfs: Set flags on quota files directly
+      quota: Stop setting IMMUTABLE and NOATIME flags on quota files
+      ext4: Remove ext4_get_inode_flags()
+      ext2: Remove ext2_get_inode_flags()
+      jfs: Remove jfs_get_inode_flags()
+      reiserfs: Remove useless setting of i_flags
+      reiserfs: Remove i_attrs_to_sd_attrs()
+      quota: Remove dquot_quotactl_ops
+      ext4: Improve comments in ext4_quota_{on|off}()
 
-> > 
-> > 
-> > The inline data consists of two parts: 60 bytes in the block pointers which
-> > hold the first four entries, and 72 bytes in an ea, which holds the fifth and
-> > last entry.
-> > 
-> > debugfs on the directories reveals the following:
-> > Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-                                                      ^^^^^^^^^^^^^^^^^
-                          It means that this directory contains inline data
+The diffstat is
 
-> > Generation: 927521379    Version: 0x00000000:00000007
-> > User:  1000   Group:    11   Project:     0   Size: 132
-> > File ACL: 1496481792    Directory ACL: 0
-> > Links: 3   Blockcount: 8
-               ^^^^^^^^^^^^^
-It seems that this directory is currupted because a directory with
-inline data should be 0.  That is why e2fsck wants to fix this issue
-in first round.
+ fs/ext2/ext2.h           |  4 +--
+ fs/ext2/inode.c          | 22 +-----------
+ fs/ext2/ioctl.c          |  1 -
+ fs/ext2/super.c          | 87 +++++++++++++++++++++++++++++++++++++++++----
+ fs/ext4/ext4.h           |  1 -
+ fs/ext4/inode.c          | 26 --------------
+ fs/ext4/ioctl.c          |  2 --
+ fs/ext4/super.c          | 74 +++++++++++++++++++++++++++++++++-----
+ fs/jfs/ioctl.c           |  2 --
+ fs/jfs/jfs_imap.c        |  1 -
+ fs/jfs/jfs_inode.c       | 18 ----------
+ fs/jfs/jfs_inode.h       |  1 -
+ fs/jfs/super.c           | 79 +++++++++++++++++++++++++++++++++++++++--
+ fs/quota/dquot.c         | 31 +++-------------
+ fs/reiserfs/inode.c      | 31 +---------------
+ fs/reiserfs/ioctl.c      |  1 -
+ fs/reiserfs/journal.c    |  2 +-
+ fs/reiserfs/lbalance.c   |  2 +-
+ fs/reiserfs/reiserfs.h   |  3 +-
+ fs/reiserfs/super.c      | 92 +++++++++++++++++++++++++++++++++++++++++++-----
+ fs/udf/file.c            | 10 +++---
+ fs/udf/inode.c           | 22 ++++++------
+ fs/udf/namei.c           |  2 +-
+ include/linux/quotaops.h |  1 -
+ 24 files changed, 335 insertions(+), 180 deletions(-)
 
-I will take a closer look at this problem later, and thanks for
-reporting this.
+							Thanks
+								Honza
 
-Regards,
-                                                - Zheng
-
-> > Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-> > crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-> > Size of extra inode fields: 32
-> > Extended attributes:
-> >  system.data (72)
-> > Inode checksum: 0x456bd90c
-> > Size of inline data: 132
-> > 
-> > Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-> > Generation: 927521364    Version: 0x00000000:00000004
-> > User:  1000   Group:    11   Project:     0   Size: 132
-> > File ACL: 1496383488    Directory ACL: 0
-> > Links: 3   Blockcount: 8
-> > Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-> > crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-> > Size of extra inode fields: 32
-> > Extended attributes:
-> >  system.data (72)
-> > Inode checksum: 0x008d7abf
-> > Size of inline data: 132
-> > 
-> > 
-> > If I run e2fsck on that stat, it complains about two things:
-> > 
-> > Inode 1461314, i_blocks is 8, should be 0.  Fix<y>? yes
-> > Inode 1461410, i_blocks is 8, should be 0.  Fix<y>? yes
-> > i_file_acl for inode 1461314 ($PATH2) is 1496383488, should be zero.
-> > Clear<y>? yes
-> > i_file_acl for inode 1461410 ($PATH1) is 1496481792, should be zero.
-> > Clear<y>? yes
-> > 
-> > I don't really understand how those two errors were created in the
-> > first place.
-> > 
-> > However, after saying yes to those, the system.data ea is missing and the
-> > final entries in each directory get dropped, leading to being dumped
-> > in loat+found.
-> > 
-> > Here's the state after the first e2fsck run completes:
-> > 
-> > Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-> > Generation: 927521379    Version: 0x00000000:00000007
-> > User:  1000   Group:    11   Project:     0   Size: 132
-> > File ACL: 0    Directory ACL: 0
-> > Links: 3   Blockcount: 0
-> > Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
-> > crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
-> > Size of extra inode fields: 32
-> > Inode checksum: 0xcd34b98c
-> > Size of inline data: 60
-> > 
-> > Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
-> > Generation: 927521364    Version: 0x00000000:00000004
-> > User:  1000   Group:    11   Project:     0   Size: 132
-> > File ACL: 0    Directory ACL: 0
-> > Links: 3   Blockcount: 0
-> > Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
-> > mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
-> > crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
-> > Size of extra inode fields: 32
-> > Inode checksum: 0x042ed119
-> > Size of inline data: 60
-> > 
-> > 
-> > This then leads to a second run complaining about
-> > 
-> > Inode 1461314 has INLINE_DATA_FL flag but extended attribute not found.  Truncate<y>?
-> > 
-> > If I instead fix it by "ea_set -f /dev/null <1461314> system.data", I get the
-> > directory back in a relatively unbroken state.  But why is system.data
-> > being deleted in the first place?
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
