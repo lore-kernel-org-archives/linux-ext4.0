@@ -1,85 +1,81 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] Quota, reiserfs, udf, and ext2 changes for 4.12-rc1
-Date: Wed, 3 May 2017 15:55:35 +0200
-Message-ID: <20170503135535.GH10084@quack2.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
+ ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
+ bitmap
+Date: Wed, 03 May 2017 17:48:32 +0000
+Message-ID: <bug-195561-13602-7oau8MrC3j@https.bugzilla.kernel.org/>
+References: <bug-195561-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40364 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753255AbdECRss (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 May 2017 13:48:48 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9663A2866B
+        for <linux-ext4@vger.kernel.org>; Wed,  3 May 2017 17:48:47 +0000 (UTC)
+In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+https://bugzilla.kernel.org/show_bug.cgi?id=195561
 
-  could you please pull from
+--- Comment #26 from Theodore Tso (tytso@mit.edu) ---
+Can you use e2fsck -fy /dev/devXX on the sdcard *before* you copy the file?
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git generic
+How was the sdcard formatted?
 
-The branch contains changes to quota code so that it does not modify
-persistent flags in inode->i_flags (it was the only place in kernel doing
-that) and handle it inside filesystem's quotaon/off handlers instead.
-The branch also contains two UDF cleanups, couple of reiserfs fixes and
-one fix for ext2 quota locking.
+Can you give me a clean reproduction that doesn't involve using AOSP userspace?
 
-Top of the tree is 6c71100db53e. The full shortlog is:
+For example, on a build an x86 kernel and then boot it using using
+kvm-xfstests[1].
 
-Arnd Bergmann (1):
-      reiserfs: avoid a -Wmaybe-uninitialized warning
+[1]
+https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
 
-Fabian Frederick (2):
-      udf: use octal for permissions
-      udf: use kmap_atomic for memcpy copying
+Then try to reproduce it there.  For example:
 
-Jan Kara (15):
-      ext2: Call dquot_writeback_dquots() with s_umount held
-      reiserfs: Make cancel_old_flush() reliable
-      reiserfs: Protect dquot_writeback_dquots() by s_umount semaphore
-      ext4: Set flags on quota files directly
-      reiserfs: Set flags on quota files directly
-      ext2: Set flags on quota files directly
-      jfs: Set flags on quota files directly
-      quota: Stop setting IMMUTABLE and NOATIME flags on quota files
-      ext4: Remove ext4_get_inode_flags()
-      ext2: Remove ext2_get_inode_flags()
-      jfs: Remove jfs_get_inode_flags()
-      reiserfs: Remove useless setting of i_flags
-      reiserfs: Remove i_attrs_to_sd_attrs()
-      quota: Remove dquot_quotactl_ops
-      ext4: Improve comments in ext4_quota_{on|off}()
+% kvm-xfstests shell
+...
+root@kvm-xfstests:~# mke2fs -F -t ext4 /dev/vdc
+mke2fs 1.43.5-WIP-ed1e950f (26-Apr-2017)
+/dev/vdc contains a ext4 file system
+        last mounted on /vdc on Wed May  3 13:44:28 2017
+Creating filesystem with 1310720 4k blocks and 327680 inodes
+Filesystem UUID: 15426c7f-5695-4cd8-9b2e-78288883b877
+Superblock backups stored on blocks: 
+        32768, 98304, 163840, 229376, 294912, 819200, 884736
 
-The diffstat is
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (16384 blocks): done
+Writing superblocks and filesystem accounting information: done 
 
- fs/ext2/ext2.h           |  4 +--
- fs/ext2/inode.c          | 22 +-----------
- fs/ext2/ioctl.c          |  1 -
- fs/ext2/super.c          | 87 +++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/ext4.h           |  1 -
- fs/ext4/inode.c          | 26 --------------
- fs/ext4/ioctl.c          |  2 --
- fs/ext4/super.c          | 74 +++++++++++++++++++++++++++++++++-----
- fs/jfs/ioctl.c           |  2 --
- fs/jfs/jfs_imap.c        |  1 -
- fs/jfs/jfs_inode.c       | 18 ----------
- fs/jfs/jfs_inode.h       |  1 -
- fs/jfs/super.c           | 79 +++++++++++++++++++++++++++++++++++++++--
- fs/quota/dquot.c         | 31 +++-------------
- fs/reiserfs/inode.c      | 31 +---------------
- fs/reiserfs/ioctl.c      |  1 -
- fs/reiserfs/journal.c    |  2 +-
- fs/reiserfs/lbalance.c   |  2 +-
- fs/reiserfs/reiserfs.h   |  3 +-
- fs/reiserfs/super.c      | 92 +++++++++++++++++++++++++++++++++++++++++++-----
- fs/udf/file.c            | 10 +++---
- fs/udf/inode.c           | 22 ++++++------
- fs/udf/namei.c           |  2 +-
- include/linux/quotaops.h |  1 -
- 24 files changed, 335 insertions(+), 180 deletions(-)
+root@kvm-xfstests:~# mount /dev/vdc /vdc
+[   84.418730] EXT4-fs (vdc): mounted filesystem with ordered data mode. Opts:
+(null)
+root@kvm-xfstests:~# dd if=/dev/zero of=/vdc/test.img bs=1G count=3
+3+0 records in
+3+0 records out
+3221225472 bytes (3.2 GB) copied, 18.6019 s, 173 MB/s
+[  107.766622] dd (2616) used greatest stack depth: 5924 bytes left
+root@kvm-xfstests:~# umount /vdc
+root@kvm-xfstests:~# e2fsck -fy /dev/vdc
+e2fsck 1.43.5-WIP-ed1e950f (26-Apr-2017)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/dev/vdc: 12/327680 files (0.0% non-contiguous), 828511/1310720 blocks
+root@kvm-xfstests:~# 
 
-							Thanks
-								Honza
+(You can exit the VM by typing Control-A x -- control-A followed by the 'x'
+character.)
 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
