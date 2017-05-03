@@ -1,47 +1,30 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: Re: [PATCH 1/6] f2fs: check entire encrypted bigname when finding a
- dentry
-Date: Tue, 2 May 2017 21:21:49 -0700
-Message-ID: <20170503042149.GA92555@jaegeuk.local>
-References: <20170424170013.85175-1-ebiggers3@gmail.com>
- <20170424170013.85175-2-ebiggers3@gmail.com>
- <20170425001023.GA4983@jaegeuk.local>
- <20170503025628.GA624@zzz>
+From: "H.A" <mioara@viata-libera.ro>
+Subject: Re:
+Date: Wed, 03 May 2017 07:23:13 +0100
+Message-ID: <20170503062332.70F9C84AB6__25226.2727510699$1493793231$gmane$org@mail.viata-libera.ro>
+Reply-To: helenaroberts99@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, stable@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170503025628.GA624@zzz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+To: Recipients <mioara@viata-libera.ro>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.viata-libera.ro ([81.12.239.110]:36854 "EHLO
+        mail.viata-libera.ro" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751715AbdECGdg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 May 2017 02:33:36 -0400
+Content-Description: Mail message body
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,
+With profound love in my heart, I Kindly Oblige your interest to very important proposal.. It is Truly Divine and require your utmost attention..........
 
-On 05/02, Eric Biggers wrote:
-> Hi Jaegeuk,
-> 
-> On Mon, Apr 24, 2017 at 05:10:23PM -0700, Jaegeuk Kim wrote:
-> > Hi Eric,
-> > 
-> > This looks good to me.
-> > I'll drop it from my tree, so please move forward through fscrypt.
-> > 
-> > Thanks,
-> 
-> This is in fscrypt/master now (along with the other patches in the series), but
-> it's also in f2fs/dev.  Are you still planning to drop it from the f2fs tree?
+S hlubokou láskou v mém srdci, Laskave jsem prinutit svuj zájem k návrhu .. Je velmi duležité, skutecne Divine a vyžadují vaši nejvyšší pozornost.
 
-Oh, yup. I dropped it.
-Thank you for pointing this out.
+  Kontaktujte me prímo pres: helenaroberts99@gmail.com pro úplné podrobnosti.complete.
 
-Thanks,
 
-> 
-> - Eric
+HELINA .A ROBERTS
+
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
