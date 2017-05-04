@@ -1,35 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypt: correct collision claim for digested names
-Date: Thu, 4 May 2017 10:55:16 -0400
-Message-ID: <20170504145516.7vwyb3f44iz7njly@thunk.org>
-References: <20170501184332.37532-1-ebiggers3@gmail.com>
+Subject: Re: [PATCH 2/7] jbd2: Cleanup write flags handling from
+ jbd2_write_superblock()
+Date: Thu, 4 May 2017 11:00:00 -0400
+Message-ID: <20170504150000.4msomavjh7eqj2og@thunk.org>
+References: <20170502150351.29452-1-jack@suse.cz>
+ <20170502150351.29452-3-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
-        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47470 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752691AbdEDOzb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 May 2017 10:55:31 -0400
+Cc: linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170501184332.37532-1-ebiggers3@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170502150351.29452-3-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 01, 2017 at 11:43:32AM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Tue, May 02, 2017 at 05:03:46PM +0200, Jan Kara wrote:
+> Currently jbd2_write_superblock() silently adds REQ_SYNC to flags with
+> which journal superblock is written. Make this explicit by making flags
+> passed down to jbd2_write_superblock() contain REQ_SYNC.
 > 
-> As I noted on the mailing list, it's easier than I originally thought to
-> create intentional collisions in the digested names.  Unfortunately it's
-> not too easy to solve this, so for now just fix the comment to not lie.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> CC: "Theodore Ts'o" <tytso@mit.edu>
+> CC: linux-ext4@vger.kernel.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Applied, thanks.
+Thanks, applied.
 
-					- Ted
+						- Ted
