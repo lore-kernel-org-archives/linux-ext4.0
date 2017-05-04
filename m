@@ -1,38 +1,35 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH 1/2] ext4: no need to cond_resched() in
- ext4_trim_all_free()
-Date: Thu, 4 May 2017 13:19:16 +0200
-Message-ID: <20170504111916.2y4ali7kk6twij5n@localhost.localdomain>
-References: <1493282200-32257-1-git-send-email-lczerner@redhat.com>
- <20170430042605.v3myihn2x4lolmso@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] fscrypt: correct collision claim for digested names
+Date: Thu, 4 May 2017 10:55:16 -0400
+Message-ID: <20170504145516.7vwyb3f44iz7njly@thunk.org>
+References: <20170501184332.37532-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-fscrypt@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gwendal Grignou <gwendal@chromium.org>, hashimoto@chromium.org,
+        kinaba@chromium.org, Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58784 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:47470 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752496AbdEDLTU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 May 2017 07:19:20 -0400
+        id S1752691AbdEDOzb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 May 2017 10:55:31 -0400
 Content-Disposition: inline
-In-Reply-To: <20170430042605.v3myihn2x4lolmso@thunk.org>
+In-Reply-To: <20170501184332.37532-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 30, 2017 at 12:26:05AM -0400, Theodore Ts'o wrote:
-> On Thu, Apr 27, 2017 at 10:36:40AM +0200, Lukas Czerner wrote:
-> > There is no need to call cond_resched() in ext4_trim_all_free() since
-> > blkdev_issue_discard() already takes care of that. So just remove it.
+On Mon, May 01, 2017 at 11:43:32AM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Actually, it could be needed.  If minblocks is a small value, say 2,
-> and every other block in file system is allocated, then we could be in
-> the while loop for a long time.  That's a pretty unusual case, but
-> it's good to have the need_resched() check there.
+> As I noted on the mailing list, it's easier than I originally thought to
+> create intentional collisions in the digested names.  Unfortunately it's
+> not too easy to solve this, so for now just fix the comment to not lie.
 > 
-> 						- Ted
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Fair enough, it's unusuall case, but still possible. Let's keep it this
-way.
+Applied, thanks.
 
-Thanks!
--Lukas
+					- Ted
