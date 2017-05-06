@@ -1,218 +1,513 @@
-From: Damien Guibouret <damien.guibouret@partition-saving.com>
-Subject: Re: More inline data oddities
-Date: Sat, 06 May 2017 18:41:31 +0200
-Message-ID: <590DFCBB.4010706@partition-saving.com>
-References: <20170501174001.3541.qmail@ns.sciencehorizons.net> <04BDD82D-B764-49A8-9F5B-71303BE96857@dilger.ca> <20170503131550.GA14305@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Zheng Liu <wenqing.lz@taobao.com>, linux-ext4@vger.kernel.org,
-        tytso@mit.edu
-To: Zheng Liu <gnehzuil.liu@gmail.com>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] Add largedir feature
+Date: Sat, 6 May 2017 11:34:45 -0600
+Message-ID: <A4690934-D680-4735-AEA6-8BF995990546@dilger.ca>
+References: <1494060198-10806-1-git-send-email-artem.blagodarenko@seagate.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_76934ECE-F877-4786-A2E6-0FA11F995A1C";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Eric Biggers <ebiggers3@gmail.com>,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:35183 "EHLO smtp4-g21.free.fr"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751255AbdEFQio (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 6 May 2017 12:38:44 -0400
-In-Reply-To: <20170503131550.GA14305@gmail.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33749 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751542AbdEFRex (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 6 May 2017 13:34:53 -0400
+Received: by mail-it0-f66.google.com with SMTP id v135so3822563itv.0
+        for <linux-ext4@vger.kernel.org>; Sat, 06 May 2017 10:34:52 -0700 (PDT)
+In-Reply-To: <1494060198-10806-1-git-send-email-artem.blagodarenko@seagate.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
 
-You can quite easily create a directory with inline_data and an not zero block 
-count.
-Just create a directory and set on it several posix ACL (40 in my case for a 512 
-bytes inode).
-Then you get something like:
-Inode: 12   Type: directory    Mode:  0775   Flags: 0x10000000
-Generation: 3148309105    Version: 0x00000000:00000006
-User:  1000   Group:  1000   Project:     0   Size: 384
-File ACL: 7978    Directory ACL: 0
-Links: 7   Blockcount: 2
-Fragment:  Address: 0    Number: 0    Size: 0
-  ctime: 0x590dccec:a9cc6410 -- Sat May  6 15:17:32 2017
-  atime: 0x590dc07d:1f9f101c -- Sat May  6 14:24:29 2017
-  mtime: 0x590dccec:a9cc6410 -- Sat May  6 15:17:32 2017
-crtime: 0x590dc069:de64cc44 -- Sat May  6 14:24:09 2017
-Size of extra inode fields: 32
-Extended attributes:
-   system.data (324)
-   system.posix_acl_access (340)
-Size of inline data: 384
+--Apple-Mail=_76934ECE-F877-4786-A2E6-0FA11F995A1C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This does not seems an error and in my case e2fsck does not complain.
-Both inline data content and ACL block are correct.
+On May 6, 2017, at 2:43 AM, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
+>=20
+> From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+>=20
+> This INCOMPAT_LARGEDIR feature allows larger directories to be created
+> in ldiskfs, both with directory sizes over 2GB and and a maximum htree
+> depth of 3 instead of the current limit of 2. These features are =
+needed
+> in order to exceed the current limit of approximately 10M entries in a
+> single directory.
+>=20
+> This is second version of the patch set. Changes since v1:
+> * ext4_handle_dirty_dx_node is used instead of
+>  ext4_handle_dirty_metadata so checksum is reculculated.
 
-So perhaps is there something else wrong in George's case. Perhaps getting block 
-1496481792 content could help to check if it has some ACL header or not.
+Looks like the error checking is missing.  Comments inline.
 
-Regards,
+> Signed-off-by: Yang Sheng <yang.sheng@intel.com>
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+> ---
+> fs/ext4/ext4.h  |  23 ++++++++---
+> fs/ext4/inode.c |   4 +-
+> fs/ext4/namei.c | 124 =
+++++++++++++++++++++++++++++++++++++++------------------
+> 3 files changed, 105 insertions(+), 46 deletions(-)
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 01d52b9..0bbbd9b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1799,7 +1799,8 @@ static inline void ext4_clear_state_flags(struct =
+ext4_inode_info *ei)
+> 					 EXT4_FEATURE_INCOMPAT_MMP | \
+> 					 =
+EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+> 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | =
+\
+> -					 =
+EXT4_FEATURE_INCOMPAT_CSUM_SEED)
+> +					 EXT4_FEATURE_INCOMPAT_CSUM_SEED =
+| \
+> +					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
+> #define EXT4_FEATURE_RO_COMPAT_SUPP	=
+(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+> 					 =
+EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+> 					 =
+EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+> @@ -2125,6 +2126,16 @@ struct dir_private_info {
+>  */
+> #define ERR_BAD_DX_DIR	(-(MAX_ERRNO - 1))
+>=20
+> +/* htree levels for ext4 */
+> +#define	EXT4_HTREE_LEVEL_COMPAT	2
+> +#define	EXT4_HTREE_LEVEL	3
+> +
+> +static inline int ext4_dir_htree_level(struct super_block *sb)
+> +{
+> +	return ext4_has_feature_largedir(sb) ?
+> +		EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
+> +}
+> +
+> /*
+>  * Timeout and state flag for lazy initialization inode thread.
+>  */
+> @@ -2758,13 +2769,15 @@ static inline void =
+ext4_r_blocks_count_set(struct ext4_super_block *es,
+> 	es->s_r_blocks_count_hi =3D cpu_to_le32(blk >> 32);
+> }
+>=20
+> -static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
+> +static inline loff_t ext4_isize(struct super_block *sb,
+> +				struct ext4_inode *raw_inode)
+> {
+> -	if (S_ISREG(le16_to_cpu(raw_inode->i_mode)))
+> +	if (ext4_has_feature_largedir(sb) ||
+> +	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
+> 		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << =
+32) |
+> 			le32_to_cpu(raw_inode->i_size_lo);
+> -	else
+> -		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+> +
+> +	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+> }
+>=20
+> static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t =
+i_size)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f622d4a..5787f3d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4682,7 +4682,7 @@ struct inode *ext4_iget(struct super_block *sb, =
+unsigned long ino)
+> 	if (ext4_has_feature_64bit(sb))
+> 		ei->i_file_acl |=3D
+> 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) =
+<< 32;
+> -	inode->i_size =3D ext4_isize(raw_inode);
+> +	inode->i_size =3D ext4_isize(sb, raw_inode);
+> 	if ((size =3D i_size_read(inode)) < 0) {
+> 		EXT4_ERROR_INODE(inode, "bad i_size value: %lld", size);
+> 		ret =3D -EFSCORRUPTED;
+> @@ -5008,7 +5008,7 @@ static int ext4_do_update_inode(handle_t =
+*handle,
+> 		raw_inode->i_file_acl_high =3D
+> 			cpu_to_le16(ei->i_file_acl >> 32);
+> 	raw_inode->i_file_acl_lo =3D cpu_to_le32(ei->i_file_acl);
+> -	if (ei->i_disksize !=3D ext4_isize(raw_inode)) {
+> +	if (ei->i_disksize !=3D ext4_isize(inode->i_sb, raw_inode)) {
+> 		ext4_isize_set(raw_inode, ei->i_disksize);
+> 		need_datasync =3D 1;
+> 	}
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 6ad612c..c02eead 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -513,7 +513,7 @@ static inline int =
+ext4_handle_dirty_dx_node(handle_t *handle,
+>=20
+> static inline ext4_lblk_t dx_get_block(struct dx_entry *entry)
+> {
+> -	return le32_to_cpu(entry->block) & 0x00ffffff;
+> +	return le32_to_cpu(entry->block) & 0x0fffffff;
+> }
+>=20
+> static inline void dx_set_block(struct dx_entry *entry, ext4_lblk_t =
+value)
+> @@ -739,6 +739,7 @@ struct stats dx_show_entries(struct dx_hash_info =
+*hinfo, struct inode *dir,
+> 	struct dx_frame *ret_err =3D ERR_PTR(ERR_BAD_DX_DIR);
+> 	u32 hash;
+>=20
+> +	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
+> 	frame->bh =3D ext4_read_dirblock(dir, 0, INDEX);
+> 	if (IS_ERR(frame->bh))
+> 		return (struct dx_frame *) frame->bh;
+> @@ -768,9 +769,15 @@ struct stats dx_show_entries(struct dx_hash_info =
+*hinfo, struct inode *dir,
+> 	}
+>=20
+> 	indirect =3D root->info.indirect_levels;
+> -	if (indirect > 1) {
+> -		ext4_warning_inode(dir, "Unimplemented hash depth: =
+%#06x",
+> -				   root->info.indirect_levels);
+> +	if (indirect >=3D ext4_dir_htree_level(dir->i_sb)) {
+> +		ext4_warning(dir->i_sb,
+> +			     "Directory (ino: %lu) htree depth %#06x =
+exceed"
+> +			     "supported value", dir->i_ino,
+> +			     ext4_dir_htree_level(dir->i_sb));
+> +		if (ext4_dir_htree_level(dir->i_sb) < EXT4_HTREE_LEVEL) =
+{
+> +			ext4_warning(dir->i_sb, "Enable large directory =
+"
+> +						"feature to access it");
+> +		}
+> 		goto fail;
+> 	}
+>=20
+> @@ -859,12 +866,19 @@ struct stats dx_show_entries(struct dx_hash_info =
+*hinfo, struct inode *dir,
+>=20
+> static void dx_release(struct dx_frame *frames)
+> {
+> +	struct dx_root_info *info;
+> +	int i;
+> +
+> 	if (frames[0].bh =3D=3D NULL)
+> 		return;
+>=20
+> -	if (((struct dx_root =
+*)frames[0].bh->b_data)->info.indirect_levels)
+> -		brelse(frames[1].bh);
+> -	brelse(frames[0].bh);
+> +	info =3D &((struct dx_root *)frames[0].bh->b_data)->info;
+> +	for (i =3D 0; i <=3D info->indirect_levels; i++) {
+> +		if (frames[i].bh =3D=3D NULL)
+> +			break;
+> +		brelse(frames[i].bh);
+> +		frames[i].bh =3D NULL;
+> +	}
+> }
+>=20
+> /*
+> @@ -1050,7 +1064,7 @@ int ext4_htree_fill_tree(struct file *dir_file, =
+__u32 start_hash,
+> {
+> 	struct dx_hash_info hinfo;
+> 	struct ext4_dir_entry_2 *de;
+> -	struct dx_frame frames[2], *frame;
+> +	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+> 	struct inode *dir;
+> 	ext4_lblk_t block;
+> 	int count =3D 0;
+> @@ -1517,7 +1531,7 @@ static struct buffer_head * =
+ext4_dx_find_entry(struct inode *dir,
+> 			struct ext4_dir_entry_2 **res_dir)
+> {
+> 	struct super_block * sb =3D dir->i_sb;
+> -	struct dx_frame frames[2], *frame;
+> +	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+> 	const struct qstr *d_name =3D fname->usr_fname;
+> 	struct buffer_head *bh;
+> 	ext4_lblk_t block;
+> @@ -1947,7 +1961,7 @@ static int add_dirent_to_buf(handle_t *handle, =
+struct ext4_filename *fname,
+> 	 */
+> 	dir->i_mtime =3D dir->i_ctime =3D current_time(dir);
+> 	ext4_update_dx_flag(dir);
+> -	dir->i_version++;
+> +	inode_inc_iversion(dir);
+> 	ext4_mark_inode_dirty(handle, dir);
+> 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
+> 	err =3D ext4_handle_dirty_dirent_node(handle, dir, bh);
+> @@ -1966,7 +1980,7 @@ static int make_indexed_dir(handle_t *handle, =
+struct ext4_filename *fname,
+> {
+> 	struct buffer_head *bh2;
+> 	struct dx_root	*root;
+> -	struct dx_frame	frames[2], *frame;
+> +	struct dx_frame	frames[EXT4_HTREE_LEVEL], *frame;
+> 	struct dx_entry *entries;
+> 	struct ext4_dir_entry_2	*de, *de2;
+> 	struct ext4_dir_entry_tail *t;
+> @@ -2185,13 +2199,16 @@ static int ext4_add_entry(handle_t *handle, =
+struct dentry *dentry,
+> static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename =
+*fname,
+> 			     struct inode *dir, struct inode *inode)
+> {
+> -	struct dx_frame frames[2], *frame;
+> +	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+> 	struct dx_entry *entries, *at;
+> 	struct buffer_head *bh;
+> 	struct super_block *sb =3D dir->i_sb;
+> 	struct ext4_dir_entry_2 *de;
+> +	int restart;
+> 	int err;
+>=20
+> +again:
+> +	restart =3D 0;
+> 	frame =3D dx_probe(fname, dir, NULL, frames);
+> 	if (IS_ERR(frame))
+> 		return PTR_ERR(frame);
+> @@ -2213,24 +2230,44 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+> 	if (err !=3D -ENOSPC)
+> 		goto cleanup;
+>=20
+> +	err =3D 0;
+> 	/* Block full, should compress but for now just split */
+> 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
+> 		       dx_get_count(entries), dx_get_limit(entries)));
+> 	/* Need to split index? */
+> 	if (dx_get_count(entries) =3D=3D dx_get_limit(entries)) {
+> 		ext4_lblk_t newblock;
+> -		unsigned icount =3D dx_get_count(entries);
+> -		int levels =3D frame - frames;
+> +		int levels =3D frame - frames + 1;
+> +		unsigned int icount;
+> +		int add_level =3D 1;
+> 		struct dx_entry *entries2;
+> 		struct dx_node *node2;
+> 		struct buffer_head *bh2;
+>=20
+> -		if (levels && (dx_get_count(frames->entries) =3D=3D
+> -			       dx_get_limit(frames->entries))) {
+> -			ext4_warning_inode(dir, "Directory index =
+full!");
+> +		while (frame > frames) {
+> +			if (dx_get_count((frame - 1)->entries) <
+> +			    dx_get_limit((frame - 1)->entries)) {
+> +				add_level =3D 0;
+> +				break;
+> +			}
+> +			frame--; /* split higher index block */
+> +			at =3D frame->at;
+> +			entries =3D frame->entries;
+> +			restart =3D 1;
+> +		}
+> +		if (add_level && levels =3D=3D ext4_dir_htree_level(sb)) =
+{
+> +			ext4_warning(sb, "Directory (ino: %lu) index =
+full, "
+> +					 "reach max htree level :%d",
+> +					 dir->i_ino, levels);
+> +			if (ext4_dir_htree_level(sb) < EXT4_HTREE_LEVEL) =
+{
+> +				ext4_warning(sb, "Large directory =
+feature is "
+> +						 "not enabled on this "
+> +						 "filesystem");
+> +			}
+> 			err =3D -ENOSPC;
+> 			goto cleanup;
+> 		}
+> +		icount =3D dx_get_count(entries);
+> 		bh2 =3D ext4_append(handle, dir, &newblock);
+> 		if (IS_ERR(bh2)) {
+> 			err =3D PTR_ERR(bh2);
+> @@ -2245,7 +2282,7 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+> 		err =3D ext4_journal_get_write_access(handle, =
+frame->bh);
+> 		if (err)
+> 			goto journal_error;
+> -		if (levels) {
+> +		if (!add_level) {
+> 			unsigned icount1 =3D icount/2, icount2 =3D =
+icount - icount1;
+> 			unsigned hash2 =3D dx_get_hash(entries + =
+icount1);
+> 			dxtrace(printk(KERN_DEBUG "Split index %i/%i\n",
+> @@ -2253,7 +2290,7 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+>=20
+> 			BUFFER_TRACE(frame->bh, "get_write_access"); /* =
+index root */
+> 			err =3D ext4_journal_get_write_access(handle,
+> -							     =
+frames[0].bh);
+> +							     (frame - =
+1)->bh);
+> 			if (err)
+> 				goto journal_error;
+>=20
+> @@ -2269,17 +2306,25 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+> 				frame->entries =3D entries =3D entries2;
+> 				swap(frame->bh, bh2);
+> 			}
+> -			dx_insert_block(frames + 0, hash2, newblock);
+> -			dxtrace(dx_show_index("node", =
+frames[1].entries));
+> +			dx_insert_block((frame - 1), hash2, newblock);
+> +			dxtrace(dx_show_index("node", frame->entries));
+> 			dxtrace(dx_show_index("node",
+> 			       ((struct dx_node *) =
+bh2->b_data)->entries));
+> 			err =3D ext4_handle_dirty_dx_node(handle, dir, =
+bh2);
+> 			if (err)
+> 				goto journal_error;
+> 			brelse (bh2);
+> +			ext4_handle_dirty_dx_node(handle, dir,
+> +						   (frame - 1)->bh);
 
-Damien
-PS: I got some error on George's domain so add to remove it from recipient, hope 
-he could seen it on the list and this one was no sent twice
+(defect) missing "err" assignment:
 
-Zheng Liu wrote:
-> Hello Andreas,
-> 
-> Thanks for letting me know this.
-> 
-> Hello George,
-> 
-> I have tried to create a ext4 file system with inline_data feature,
-> and try to create a directory hierarchy like you described in the
-> mail.  But unfortunately I couldn't reproduce your issue.  That would
-> be great if you could provide more details to me, such as the output
-> of the following command.
-> 
->   $ debugfs ${DEV} -R 'stats'
-> 
->>From this command I can know which features are enabled in your ext4
-> file system and that would help me to reproduce the problem.  Further,
-> could you please tell me your kernel version?
-> 
-> On Mon, May 01, 2017 at 04:00:02PM -0600, Andreas Dilger wrote:
-> 
->>Add the original inline data author Zheng Liu <wenqing.lz@taobao.com>.
->>
->>On May 1, 2017, at 11:40 AM, George Spelvin <linux@sciencehorizons.net> wrote:
->>
->>>[255031.626936] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461410: comm find: No space for directory leaf checksum. Please run e2fsck -D.
->>>[255031.626940] EXT4-fs error (device md3): ext4_readdir:198: inode #1461410: comm find: path $PATH1: directory fails checksum at offset 0
->>>[255035.720542] EXT4-fs warning (device md3): ext4_dirent_csum_verify:352: inode #1461314: comm find: No space for directory leaf checksum. Please run e2fsck -D.
->>>[255035.720547] EXT4-fs error (device md3): ext4_readdir:198: inode #1461314: comm find: path $PATH2: directory fails checksum at offset 0
-> 
-> 
-> It seems that the space is full in inline data and the kernel could not
-> expand it to a new block.  From the following message I guess during
-> this process kernel tries to allocate a new block for this directory
-> and then an error is encountered that causes flags 0x10000000 could not
-> have a chance to be cleared.  So this inode has flag 0x10000000 and
-> blockcount is 8.
-> 
-> 
->>>
->>>The inline data consists of two parts: 60 bytes in the block pointers which
->>>hold the first four entries, and 72 bytes in an ea, which holds the fifth and
->>>last entry.
->>>
->>>debugfs on the directories reveals the following:
->>>Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
-> 
->                                                       ^^^^^^^^^^^^^^^^^
->                           It means that this directory contains inline data
-> 
-> 
->>>Generation: 927521379    Version: 0x00000000:00000007
->>>User:  1000   Group:    11   Project:     0   Size: 132
->>>File ACL: 1496481792    Directory ACL: 0
->>>Links: 3   Blockcount: 8
-> 
->                ^^^^^^^^^^^^^
-> It seems that this directory is currupted because a directory with
-> inline data should be 0.  That is why e2fsck wants to fix this issue
-> in first round.
-> 
-> I will take a closer look at this problem later, and thanks for
-> reporting this.
-> 
-> Regards,
->                                                 - Zheng
-> 
-> 
->>>Fragment:  Address: 0    Number: 0    Size: 0
->>>ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
->>>crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
->>>Size of extra inode fields: 32
->>>Extended attributes:
->>> system.data (72)
->>>Inode checksum: 0x456bd90c
->>>Size of inline data: 132
->>>
->>>Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
->>>Generation: 927521364    Version: 0x00000000:00000004
->>>User:  1000   Group:    11   Project:     0   Size: 132
->>>File ACL: 1496383488    Directory ACL: 0
->>>Links: 3   Blockcount: 8
->>>Fragment:  Address: 0    Number: 0    Size: 0
->>>ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
->>>crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
->>>Size of extra inode fields: 32
->>>Extended attributes:
->>> system.data (72)
->>>Inode checksum: 0x008d7abf
->>>Size of inline data: 132
->>>
->>>
->>>If I run e2fsck on that stat, it complains about two things:
->>>
->>>Inode 1461314, i_blocks is 8, should be 0.  Fix<y>? yes
->>>Inode 1461410, i_blocks is 8, should be 0.  Fix<y>? yes
->>>i_file_acl for inode 1461314 ($PATH2) is 1496383488, should be zero.
->>>Clear<y>? yes
->>>i_file_acl for inode 1461410 ($PATH1) is 1496481792, should be zero.
->>>Clear<y>? yes
->>>
->>>I don't really understand how those two errors were created in the
->>>first place.
->>>
->>>However, after saying yes to those, the system.data ea is missing and the
->>>final entries in each directory get dropped, leading to being dumped
->>>in loat+found.
->>>
->>>Here's the state after the first e2fsck run completes:
->>>
->>>Inode: 1461410   Type: directory    Mode:  0755   Flags: 0x10000000
->>>Generation: 927521379    Version: 0x00000000:00000007
->>>User:  1000   Group:    11   Project:     0   Size: 132
->>>File ACL: 0    Directory ACL: 0
->>>Links: 3   Blockcount: 0
->>>Fragment:  Address: 0    Number: 0    Size: 0
->>>ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>mtime: 0x55016b84:e7729ec8 -- Thu Mar 12 06:33:40 2015
->>>crtime: 0x56c1c093:0d01b4b4 -- Mon Feb 15 07:12:03 2016
->>>Size of extra inode fields: 32
->>>Inode checksum: 0xcd34b98c
->>>Size of inline data: 60
->>>
->>>Inode: 1461314   Type: directory    Mode:  0755   Flags: 0x10000000
->>>Generation: 927521364    Version: 0x00000000:00000004
->>>User:  1000   Group:    11   Project:     0   Size: 132
->>>File ACL: 0    Directory ACL: 0
->>>Links: 3   Blockcount: 0
->>>Fragment:  Address: 0    Number: 0    Size: 0
->>>ctime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>atime: 0x5902fa22:07728174 -- Fri Apr 28 04:15:30 2017
->>>mtime: 0x55016b84:1670325c -- Thu Mar 12 06:33:40 2015
->>>crtime: 0x56c1c093:01161e74 -- Mon Feb 15 07:12:03 2016
->>>Size of extra inode fields: 32
->>>Inode checksum: 0x042ed119
->>>Size of inline data: 60
->>>
->>>
->>>This then leads to a second run complaining about
->>>
->>>Inode 1461314 has INLINE_DATA_FL flag but extended attribute not found.  Truncate<y>?
->>>
->>>If I instead fix it by "ea_set -f /dev/null <1461314> system.data", I get the
->>>directory back in a relatively unbroken state.  But why is system.data
->>>being deleted in the first place?
->>
->>
->>Cheers, Andreas
->>
->>
->>
->>
->>
-> 
-> 
-> 
-> 
+			err =3D ext4_handle_dirty_dx_node(handle, dir
+							(frame - =
+1)->bh);
+
+> +			if (err)
+> +				goto journal_error;
+> +			if (restart) {
+> +				ext4_handle_dirty_dx_node(handle, dir,
+> +							   frame->bh);
+
+(defect) missing "err" assignment:
+
+				err =3D =
+ext4_handle_dirty_dx_node(handle, dir
+								=
+frame->bh);
+
+> +				goto journal_error;
+> +			}
+> 		} else {
+> -			dxtrace(printk(KERN_DEBUG
+> -				       "Creating second level =
+index...\n"));
+> +			struct dx_root *dxroot;
+> 			memcpy((char *) entries2, (char *) entries,
+> 			       icount * sizeof(struct dx_entry));
+> 			dx_set_limit(entries2, dx_node_limit(dir));
+> @@ -2287,22 +2332,18 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+> 			/* Set up root */
+> 			dx_set_count(entries, 1);
+> 			dx_set_block(entries + 0, newblock);
+> -			((struct dx_root *) =
+frames[0].bh->b_data)->info.indirect_levels =3D 1;
+> -
+> -			/* Add new access path frame */
+> -			frame =3D frames + 1;
+> -			frame->at =3D at =3D at - entries + entries2;
+> -			frame->entries =3D entries =3D entries2;
+> -			frame->bh =3D bh2;
+> -			err =3D ext4_journal_get_write_access(handle,
+> -							     frame->bh);
+> +			dxroot =3D (struct dx_root =
+*)frames[0].bh->b_data;
+> +			dxroot->info.indirect_levels +=3D 1;
+> +			dxtrace(printk(KERN_DEBUG
+> +				       "Creating %d level index...\n",
+> +				       info->indirect_levels));
+> +			ext4_handle_dirty_dx_node(handle, dir, =
+frame->bh);
+
+(defect) missing "err" assignment here too
+
+> 			if (err)
+> 				goto journal_error;
+> -		}
+> -		err =3D ext4_handle_dirty_dx_node(handle, dir, =
+frames[0].bh);
+> -		if (err) {
+> -			ext4_std_error(inode->i_sb, err);
+> -			goto cleanup;
+> +			ext4_handle_dirty_dx_node(handle, dir, bh2);
+
+(defect) missing "err" assignment and check
+
+> +			brelse(bh2);
+> +			restart =3D 1;
+> +			goto journal_error;
+> 		}
+> 	}
+> 	de =3D do_split(handle, dir, &bh, frame, &fname->hinfo);
+> @@ -2314,10 +2355,15 @@ static int ext4_dx_add_entry(handle_t *handle, =
+struct ext4_filename *fname,
+> 	goto cleanup;
+>=20
+> journal_error:
+> -	ext4_std_error(dir->i_sb, err);
+> +	ext4_std_error(dir->i_sb, err); /* this is a no-op if err =3D=3D =
+0 */
+> cleanup:
+> 	brelse(bh);
+> 	dx_release(frames);
+> +	/* @restart is true means htree-path has been changed, we need =
+to
+> +	 * repeat dx_probe() to find out valid htree-path
+> +	 */
+> +	if (restart && err =3D=3D 0)
+> +		goto again;
+> 	return err;
+> }
+>=20
+> @@ -2354,7 +2400,7 @@ int ext4_generic_delete_entry(handle_t *handle,
+> 					blocksize);
+> 			else
+> 				de->inode =3D 0;
+> -			dir->i_version++;
+> +			inode_inc_iversion(dir);
+> 			return 0;
+> 		}
+> 		i +=3D ext4_rec_len_from_disk(de->rec_len, blocksize);
+> --
+> 1.8.3.1
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_76934ECE-F877-4786-A2E6-0FA11F995A1C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZDgk3pIg59Q01vtYRAieHAJ45GyB6UJILJhdhGbJc0bNIoYJ1yACfWuKb
+1XBe4GhyOie7gJ/+z3v2KFU=
+=254F
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_76934ECE-F877-4786-A2E6-0FA11F995A1C--
