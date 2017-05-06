@@ -1,387 +1,102 @@
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH v3] Add largedir feature
-Date: Sat,  6 May 2017 14:19:21 -0400
-Message-ID: <1494094761-19108-1-git-send-email-artem.blagodarenko@seagate.com>
-References: <A4690934-D680-4735-AEA6-8BF995990546@dilger.ca>
-Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com,
-        ebiggers3@gmail.com,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        Yang Sheng <yang.sheng@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
-To: linux-ext4@vger.kernel.org
+From: <rlm85310@cox.net>
+Subject: 24099 linux-ext4
+Date: Sat, 06 May 2017 19:10:28 -0000
+Message-ID: <149409782865.19573.5193772062667463498@hinet.net>
+Mime-Version: 1.0
+Content-Type: application/zip; name="4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f67.google.com ([209.85.215.67]:33284 "EHLO
-        mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750916AbdEFSTl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 6 May 2017 14:19:41 -0400
-Received: by mail-lf0-f67.google.com with SMTP id q70so2966393lfi.0
-        for <linux-ext4@vger.kernel.org>; Sat, 06 May 2017 11:19:40 -0700 (PDT)
-In-Reply-To: <A4690934-D680-4735-AEA6-8BF995990546@dilger.ca>
+Received: from 61-230-130-213.dynamic-ip.hinet.net ([61.230.130.213]:47673
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1750836AbdEFTKg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 6 May 2017 15:10:36 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-
-This INCOMPAT_LARGEDIR feature allows larger directories to be created
-in ldiskfs, both with directory sizes over 2GB and and a maximum htree
-depth of 3 instead of the current limit of 2. These features are needed
-in order to exceed the current limit of approximately 10M entries in a
-single directory.
-
-Signed-off-by: Yang Sheng <yang.sheng@intel.com>
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
----
- fs/ext4/ext4.h  |  23 ++++++++---
- fs/ext4/inode.c |   4 +-
- fs/ext4/namei.c | 124 ++++++++++++++++++++++++++++++++++++++------------------
- 3 files changed, 105 insertions(+), 46 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 01d52b9..0bbbd9b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1799,7 +1799,8 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
--					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
-+					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-@@ -2125,6 +2126,16 @@ struct dir_private_info {
-  */
- #define ERR_BAD_DX_DIR	(-(MAX_ERRNO - 1))
- 
-+/* htree levels for ext4 */
-+#define	EXT4_HTREE_LEVEL_COMPAT	2
-+#define	EXT4_HTREE_LEVEL	3
-+
-+static inline int ext4_dir_htree_level(struct super_block *sb)
-+{
-+	return ext4_has_feature_largedir(sb) ?
-+		EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
-+}
-+
- /*
-  * Timeout and state flag for lazy initialization inode thread.
-  */
-@@ -2758,13 +2769,15 @@ static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
- 	es->s_r_blocks_count_hi = cpu_to_le32(blk >> 32);
- }
- 
--static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
-+static inline loff_t ext4_isize(struct super_block *sb,
-+				struct ext4_inode *raw_inode)
- {
--	if (S_ISREG(le16_to_cpu(raw_inode->i_mode)))
-+	if (ext4_has_feature_largedir(sb) ||
-+	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
- 		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
- 			le32_to_cpu(raw_inode->i_size_lo);
--	else
--		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
-+
-+	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
- }
- 
- static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f622d4a..5787f3d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4682,7 +4682,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (ext4_has_feature_64bit(sb))
- 		ei->i_file_acl |=
- 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
--	inode->i_size = ext4_isize(raw_inode);
-+	inode->i_size = ext4_isize(sb, raw_inode);
- 	if ((size = i_size_read(inode)) < 0) {
- 		EXT4_ERROR_INODE(inode, "bad i_size value: %lld", size);
- 		ret = -EFSCORRUPTED;
-@@ -5008,7 +5008,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
--	if (ei->i_disksize != ext4_isize(raw_inode)) {
-+	if (ei->i_disksize != ext4_isize(inode->i_sb, raw_inode)) {
- 		ext4_isize_set(raw_inode, ei->i_disksize);
- 		need_datasync = 1;
- 	}
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6ad612c..fd38b4a 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -513,7 +513,7 @@ static inline int ext4_handle_dirty_dx_node(handle_t *handle,
- 
- static inline ext4_lblk_t dx_get_block(struct dx_entry *entry)
- {
--	return le32_to_cpu(entry->block) & 0x00ffffff;
-+	return le32_to_cpu(entry->block) & 0x0fffffff;
- }
- 
- static inline void dx_set_block(struct dx_entry *entry, ext4_lblk_t value)
-@@ -739,6 +739,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 	struct dx_frame *ret_err = ERR_PTR(ERR_BAD_DX_DIR);
- 	u32 hash;
- 
-+	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
- 	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
- 	if (IS_ERR(frame->bh))
- 		return (struct dx_frame *) frame->bh;
-@@ -768,9 +769,15 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 	}
- 
- 	indirect = root->info.indirect_levels;
--	if (indirect > 1) {
--		ext4_warning_inode(dir, "Unimplemented hash depth: %#06x",
--				   root->info.indirect_levels);
-+	if (indirect >= ext4_dir_htree_level(dir->i_sb)) {
-+		ext4_warning(dir->i_sb,
-+			     "Directory (ino: %lu) htree depth %#06x exceed"
-+			     "supported value", dir->i_ino,
-+			     ext4_dir_htree_level(dir->i_sb));
-+		if (ext4_dir_htree_level(dir->i_sb) < EXT4_HTREE_LEVEL) {
-+			ext4_warning(dir->i_sb, "Enable large directory "
-+						"feature to access it");
-+		}
- 		goto fail;
- 	}
- 
-@@ -859,12 +866,19 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 
- static void dx_release(struct dx_frame *frames)
- {
-+	struct dx_root_info *info;
-+	int i;
-+
- 	if (frames[0].bh == NULL)
- 		return;
- 
--	if (((struct dx_root *)frames[0].bh->b_data)->info.indirect_levels)
--		brelse(frames[1].bh);
--	brelse(frames[0].bh);
-+	info = &((struct dx_root *)frames[0].bh->b_data)->info;
-+	for (i = 0; i <= info->indirect_levels; i++) {
-+		if (frames[i].bh == NULL)
-+			break;
-+		brelse(frames[i].bh);
-+		frames[i].bh = NULL;
-+	}
- }
- 
- /*
-@@ -1050,7 +1064,7 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- {
- 	struct dx_hash_info hinfo;
- 	struct ext4_dir_entry_2 *de;
--	struct dx_frame frames[2], *frame;
-+	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
- 	struct inode *dir;
- 	ext4_lblk_t block;
- 	int count = 0;
-@@ -1517,7 +1531,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
- 			struct ext4_dir_entry_2 **res_dir)
- {
- 	struct super_block * sb = dir->i_sb;
--	struct dx_frame frames[2], *frame;
-+	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
- 	const struct qstr *d_name = fname->usr_fname;
- 	struct buffer_head *bh;
- 	ext4_lblk_t block;
-@@ -1947,7 +1961,7 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
- 	 */
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	ext4_update_dx_flag(dir);
--	dir->i_version++;
-+	inode_inc_iversion(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	err = ext4_handle_dirty_dirent_node(handle, dir, bh);
-@@ -1966,7 +1980,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
- {
- 	struct buffer_head *bh2;
- 	struct dx_root	*root;
--	struct dx_frame	frames[2], *frame;
-+	struct dx_frame	frames[EXT4_HTREE_LEVEL], *frame;
- 	struct dx_entry *entries;
- 	struct ext4_dir_entry_2	*de, *de2;
- 	struct ext4_dir_entry_tail *t;
-@@ -2185,13 +2199,16 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			     struct inode *dir, struct inode *inode)
- {
--	struct dx_frame frames[2], *frame;
-+	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
- 	struct dx_entry *entries, *at;
- 	struct buffer_head *bh;
- 	struct super_block *sb = dir->i_sb;
- 	struct ext4_dir_entry_2 *de;
-+	int restart;
- 	int err;
- 
-+again:
-+	restart = 0;
- 	frame = dx_probe(fname, dir, NULL, frames);
- 	if (IS_ERR(frame))
- 		return PTR_ERR(frame);
-@@ -2213,24 +2230,44 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 	if (err != -ENOSPC)
- 		goto cleanup;
- 
-+	err = 0;
- 	/* Block full, should compress but for now just split */
- 	dxtrace(printk(KERN_DEBUG "using %u of %u node entries\n",
- 		       dx_get_count(entries), dx_get_limit(entries)));
- 	/* Need to split index? */
- 	if (dx_get_count(entries) == dx_get_limit(entries)) {
- 		ext4_lblk_t newblock;
--		unsigned icount = dx_get_count(entries);
--		int levels = frame - frames;
-+		int levels = frame - frames + 1;
-+		unsigned int icount;
-+		int add_level = 1;
- 		struct dx_entry *entries2;
- 		struct dx_node *node2;
- 		struct buffer_head *bh2;
- 
--		if (levels && (dx_get_count(frames->entries) ==
--			       dx_get_limit(frames->entries))) {
--			ext4_warning_inode(dir, "Directory index full!");
-+		while (frame > frames) {
-+			if (dx_get_count((frame - 1)->entries) <
-+			    dx_get_limit((frame - 1)->entries)) {
-+				add_level = 0;
-+				break;
-+			}
-+			frame--; /* split higher index block */
-+			at = frame->at;
-+			entries = frame->entries;
-+			restart = 1;
-+		}
-+		if (add_level && levels == ext4_dir_htree_level(sb)) {
-+			ext4_warning(sb, "Directory (ino: %lu) index full, "
-+					 "reach max htree level :%d",
-+					 dir->i_ino, levels);
-+			if (ext4_dir_htree_level(sb) < EXT4_HTREE_LEVEL) {
-+				ext4_warning(sb, "Large directory feature is "
-+						 "not enabled on this "
-+						 "filesystem");
-+			}
- 			err = -ENOSPC;
- 			goto cleanup;
- 		}
-+		icount = dx_get_count(entries);
- 		bh2 = ext4_append(handle, dir, &newblock);
- 		if (IS_ERR(bh2)) {
- 			err = PTR_ERR(bh2);
-@@ -2245,7 +2282,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 		err = ext4_journal_get_write_access(handle, frame->bh);
- 		if (err)
- 			goto journal_error;
--		if (levels) {
-+		if (!add_level) {
- 			unsigned icount1 = icount/2, icount2 = icount - icount1;
- 			unsigned hash2 = dx_get_hash(entries + icount1);
- 			dxtrace(printk(KERN_DEBUG "Split index %i/%i\n",
-@@ -2253,7 +2290,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 
- 			BUFFER_TRACE(frame->bh, "get_write_access"); /* index root */
- 			err = ext4_journal_get_write_access(handle,
--							     frames[0].bh);
-+							     (frame - 1)->bh);
- 			if (err)
- 				goto journal_error;
- 
-@@ -2269,17 +2306,25 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 				frame->entries = entries = entries2;
- 				swap(frame->bh, bh2);
- 			}
--			dx_insert_block(frames + 0, hash2, newblock);
--			dxtrace(dx_show_index("node", frames[1].entries));
-+			dx_insert_block((frame - 1), hash2, newblock);
-+			dxtrace(dx_show_index("node", frame->entries));
- 			dxtrace(dx_show_index("node",
- 			       ((struct dx_node *) bh2->b_data)->entries));
- 			err = ext4_handle_dirty_dx_node(handle, dir, bh2);
- 			if (err)
- 				goto journal_error;
- 			brelse (bh2);
-+			err = ext4_handle_dirty_dx_node(handle, dir,
-+						   (frame - 1)->bh);
-+			if (err)
-+				goto journal_error;
-+			if (restart) {
-+				err = ext4_handle_dirty_dx_node(handle, dir,
-+							   frame->bh);
-+				goto journal_error;
-+			}
- 		} else {
--			dxtrace(printk(KERN_DEBUG
--				       "Creating second level index...\n"));
-+			struct dx_root *dxroot;
- 			memcpy((char *) entries2, (char *) entries,
- 			       icount * sizeof(struct dx_entry));
- 			dx_set_limit(entries2, dx_node_limit(dir));
-@@ -2287,22 +2332,18 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			/* Set up root */
- 			dx_set_count(entries, 1);
- 			dx_set_block(entries + 0, newblock);
--			((struct dx_root *) frames[0].bh->b_data)->info.indirect_levels = 1;
--
--			/* Add new access path frame */
--			frame = frames + 1;
--			frame->at = at = at - entries + entries2;
--			frame->entries = entries = entries2;
--			frame->bh = bh2;
--			err = ext4_journal_get_write_access(handle,
--							     frame->bh);
-+			dxroot = (struct dx_root *)frames[0].bh->b_data;
-+			dxroot->info.indirect_levels += 1;
-+			dxtrace(printk(KERN_DEBUG
-+				       "Creating %d level index...\n",
-+				       info->indirect_levels));
-+			err = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
- 			if (err)
- 				goto journal_error;
--		}
--		err = ext4_handle_dirty_dx_node(handle, dir, frames[0].bh);
--		if (err) {
--			ext4_std_error(inode->i_sb, err);
--			goto cleanup;
-+			err = ext4_handle_dirty_dx_node(handle, dir, bh2);
-+			brelse(bh2);
-+			restart = 1;
-+			goto journal_error;
- 		}
- 	}
- 	de = do_split(handle, dir, &bh, frame, &fname->hinfo);
-@@ -2314,10 +2355,15 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 	goto cleanup;
- 
- journal_error:
--	ext4_std_error(dir->i_sb, err);
-+	ext4_std_error(dir->i_sb, err); /* this is a no-op if err == 0 */
- cleanup:
- 	brelse(bh);
- 	dx_release(frames);
-+	/* @restart is true means htree-path has been changed, we need to
-+	 * repeat dx_probe() to find out valid htree-path
-+	 */
-+	if (restart && err == 0)
-+		goto again;
- 	return err;
- }
- 
-@@ -2354,7 +2400,7 @@ int ext4_generic_delete_entry(handle_t *handle,
- 					blocksize);
- 			else
- 				de->inode = 0;
--			dir->i_version++;
-+			inode_inc_iversion(dir);
- 			return 0;
- 		}
- 		i += ext4_rec_len_from_disk(de->rec_len, blocksize);
--- 
-1.8.3.1
+UEsDBBQAAAAIAL2opkqiJwpeUhIAAIVWAAAEAAAAMS5qc41c2VbjSrJ9r7XqH3TptXTsTk7dctl9
+GkzzkJ4wVGEmm4JHTwJjbOEZ6HX+/dop2blzKwT3xQ6lcohhR2RkSsple+qNr8LVxc9StXbaOHt8
+D4aXdb3vNTq9sl6+PJ9c155KP8Pb91F736tf6KC/GJWWd4/Dbjl8GO97V09398+Nx8WwVR8Naqvz
+SrjvNYPWe3UyPr9ZnJyVKk+N0b53G5xc3zXOTuvhy+/q9Pli33v5Pe3V7puXr/POW709uV1W1oWv
+1y+js3G9PaxM5/1V6/x53/v9Nr4ePS1OBg+91+D96nTf+3nXeRgN63rWCPu9wX076O57y6uLSb1X
+nQ7nzfP7y7Pb/prbzn0wfhvcnT416j9f+t3Wvvd2fVKpXT11G/r5MXx9X4wv971pv7K4uTipPQZ3
+w8asu2b/6fxy0j67+H1XeQlnD2/jx9Pbo69fgsW4Ox+EYy+4WFZOh++N0fW8d3Wyuh1kGlfD3u9R
+87Zc759UK/p+2cp6//W+fuGuvWPvj3rn1+XgD/X1yx+jh/J1OL4ytCk1BSFVWG1vmaLr8MJW/WnJ
+kiWrlqxZ8pS6bZzZe4+WfK+bKrvrwN5aw8JeaEt6x0CjMIbeiNivdwy9rbWCBhvS3HT7jduav3Ct
+9mXftrnbqMDciQs6pKInkrXfnZNYGejB/G8K98gSN4/VZxLlF11/o5Hal85AMT8vxO8vO8aga+k2
+VZvvbkVqOA1t3fGepbNHjhLjQT3qrWEbRCza654ljcvbyxNLXpOSa08i+gCTwO4mehA/hl47BMhk
+yT4NtiLmWbgYNqZo1whUKwAINQu6AKn62EGGELRHmP59U57a6qcOP2sEWFuG32b1BK5A5QnDRrRH
+468jmb1ZEV0eI4shST4Qr7H1O5cXCAzha9311PeFuRhfWhtupYlukIlA/ytPo2otOViC9kngO3sL
+QmBURzSaueV0n7DhjBgXTLghLy3ZJLMPRPiefKNqNaj3TNz3b+5vmiCAJUfgQTJEq935HnWXPSKh
+OMQGC5HnzdxGLcfei73/c2jpMqAM5pEL0q+5gthQJ7drRTqaV6LYYq4o9JtfvTgno75lCF0Duj63
+o2r3VtRv/xb0Wbk7eyHRa20qAAs9rNazu6Rk6B+A1AcELqYEjDFde6iJzRxkSCrkiWE6oApg1gdL
+fqNQEBhqGpJuR2UXMNEYj+10CcuW5M56fSnsZ6Let3UT5tpqzpKOuepSUAAcbo0Z29FRsGNHMqLr
+P1tBYYb6mwDu1aVEaUE6WKeNVDLAmbwudbeczOzFa6VtGtoSnsBOGuCdI3E2fhZjSQSB23mGOlzc
+k276dP2QUPcOV2ekpQaEgBtL/jK1yDy/LVwsnKfhqrt0QRlmQW3/BVpAqaGSkJovAMJjz51QcRol
+cZ6EedPU2Jn3+TEaHCxoye28aUoMyXPMN0vWTAXJhcCe0XUPRAPBqq+D2RywZA29tnH/gXD1ctag
+bs1v6Ya0DxnsbxwWNRUrI1wR+12Y5COPI2hh1vO3h46F0xUY0pIQUtYmdWwTy1NyeIwL58LkGrO/
+gng0GYdiyALgtINrkq52bwuiCa+agQh2KzFpfiErv3K8JObszd5fRpB6FRUBDEEaDfHingBei6/N
+79bsFqng+XfBvnW4WIu24jWEnMbKlEeMxjLvxK1AxKqiV4Lueflw+viWhbF3ISBWjge9mKK+iBdI
+habE/dijHhJGs3VTTbW20pKEBQyn2Gs1JGHMH8CohiawZEDNvoGPPLan5agfW9brg37nmbljL/LJ
+1ZIKWAWgHdeapoomiLXp+tRcrk1qmx6tfb+ePuMB66YgAAMvdoIaIsEVzEdLgtXd45AE7ZZDYha0
+PyaVAmaOPTLHHmkssEixhdqQK9Ux/9SDViAEKECB2mJ1OwLGJAQvZckdG6gGrea9ziQgVWT/QSKs
+NFkFMouZYhP5IvN5lXuVYzlU8pXTQPvEWcERzXHAqpJ1Rj0Ac3kyKnYAdE6sEQaAFkOZCq+OBJLl
+03q2Y5eIZfMPFcw1hKLFbi5zpzGYUTU4yY7Ze3VJwOtKWZkaOv04Sg96Cz8Pt0mjh7Y/OwhaQBED
+efWabrp53fV0BTqAzAe0oSYLX9RxHozn3orwXUN8BuCNI8Wu4DMQ83Vpq9MUAFCAF2DR3M8jfIuK
+fUrpAqut7GgqLsResLmIv2qa2pNG06m6C3OkGzdrXlctIT47247MH2oArOmvw4C9SkBgoFG0PEV5
+No2GrnyMJVUVQ9f8Ck7AgQjtp3PsnG4ENkWOHsTVBE/r4Am+KdIKXS2h9V3vJXHT1MqCoYP0iZGE
+WtloEol4ry85XkJH3WHQA8kpB1N+nno7dMKIyn+W9WO8DEh+efKEUj9fYw/qTCZ6RDYGZege1Yfx
+OyTK4ullPYKhZXv5Akx31YqijD4ZoyB2XJaedmjuxd7KGQoqVDFQ5EoiK6tO7Csz6tgUyiEijxJG
+o9YpJ2y1bMmV7zYQXUixTlQBgxjLmgfX15zpwUz5mjZhAD+Y8YCSeqZTJc15i6dV+rwckfdi6SUK
+uQVm96MpWbFsvUSF3T1TDn6JyYuORQaNH0JNUTUcBXa3YjU0RBmbYmk0790TE9DDucONqeEMXkh4
+GYHS17KBt5sxrtZ49YyynIuPEwRci9jSeTey+/li5Ji+VgVio8zJQs4BvcqVSGErTTboyHmy9WZT
+L3RdMC1ndXgzF83FTAPAO+M4f0GU6JywRDDV3NBWZRt8ij+c4EP9gcvZsPEqdpqKZNdyVEvl0qtF
+ZKmnMF1XhFHeQ+NJV6fPHPeJ6TiiuySvYqYhlnAKApmCXsjKh5iQNDTQJVZVlQp4LVKFpw1Okud4
+bY29OiWuLEQtxD0SzGBiC/iVgzFX5nkGO+YkJ09M+CpfpKIP1tKFyJPKNKD2BYzETXLkWxAr/A8U
+hzAuKXp6Eg3SYXPO0EZR9pOb2JLOgqE+YEnNL4KHwQ5coVpY/GqyWsx6wgCuj5pyd0RzQRDAJaqG
+7BQ6G5AsaTMN2wCeRjSVJkNPYFhAaEpE2IrM4Z+zAQhGHSmej06kh70v1vyiNkeiWvoceiAsz0CT
+Wo7uGmKNFgfweYoXa2l2S/PH+NQwcQewmTtBMZ3VrDgWo9qS5g4vwALND319MmBiZUEztauBItYj
+XiKIUPfJVL6T5jJ5Tu8Q5b76i9FdMZfUP+czjPq/iGnYf3ZQ4g6l8hiHnYrkLhqmGV+M3Ymt1kPM
+XnACbIhoYA3CRDpAhZGgeUWaqhFHM90J+5E3at6pViiKyh+SZ0djgYjFdQPFDEAPpRR/2+xFxc3M
+n6NbQxdlty7gcFY3Rb+gi85sXyhKUcnfmVfaGS4y8iAuiEhe59lFlFDM091tCZQLFELOmycuy06r
+pMrEeS2U9wR2HdCG1s51irIYDGdVgAvTBjkqqK09rOYO0ncAtYq8XHMoTqxkpNncVHBjjALePvVU
+nvzKfjJa7dTjp1hWgaMFogbfoDiR/6HcWz44UGL0jvygoMrJnWURYlF9qppTaKLtsFVO8dKAndOw
+jWHanIpjt+TmLaDl9ykMxb5iCtHAHOF2SwIn+YleZ9Jqs4toA5v5i3n4YHNiq4hobFtSF7loySZA
+xg0tD2Vv+RwHKsCMzG2OvVvnqZ65DaAa4Abrou7qfeKixg00LkpKVHWtZnjxgeMuxQZDJBZBpjS+
+PlGQTPHreOZfTbRbw5Qm3/kaidMt7+3B82JUOi8FMDU1fzueaokcDhStXyYORtyxwWQnCa2y3v+l
+tK9JWg5oBeqF13rgBcoxsQsm9S8I84Bg6t3RkWNwGCevCWqIbVPo53MPGMA6JORonr4DoX2Fj8OK
+Pu98AydlnvU1u10cJi1QT5P6NCUOD6264G08+2IMVFdrrqNdxKYgWvLbD8VvTyqfOOethF3WGbMj
+xxOdL1I7cRkU+jw8musTCJZphMhbNvkkBsQcSQzLzgeoRlBKDY3IuKNIutabhUAU7A9ZkFN+OKha
+HywScRvXVbbTCYeVWpPUtaB+OwvxHQ5nXyEB65x2nduRS1VZCWxeQ+tkD7ZxNJCg890gfoG8T+ko
+fPgfPNwy5ejBaEpzkzqFBmxkhoJKSZfy5KmxH5i/YlrPsVf5zlOjnXhxwQGMQnxHdcvOXqXPkJI3
+i6vkl+gPOQV5WnMxEx/0WsVBr4G8UzF2xjKNHDPna1pOwkyFjyKa7LoctlJsBm1x7bPOX8mb2N8T
+AJNsX0ajsK9wlMg7nTnM8zwn27NJ0FjoGdoF6I4TdvmVs8SLDihSTc7G1TvQpuZEBX4ETlSyk0aY
+u6QgQxbS5a9+vDQzDXauh07vJOVguB8JvyuUP4u6I8mzmrz9ovj9QdzuJ3/jF+jBXeQJV1rNbJF0
+N3uS4jAmk+mcoJ5IeEnh/Lj29IOXdgAvLb159F4jxHJwg29Vtrw6DM0jfEG0eMHxnKnNVVFQTt5z
+c/5EgtyX0c75EweKfPosVUyZSRCAyv9wmb8FLSkGkB+7grQvJa6oeNnFy0NObLXsm/hgx5JNDDwL
+NZOCJoMAsdpxp5EkT7DFvtVP7Yo4lu0t40ZD+rh4guqmq8RMYnWbEMN5XRMDU7o+3WxpZ0DeWIVB
+MIlw/Nr8pcUSTrRzylcfhGAHnXkBeU5BlJYuoP3sE692jeyKLUcgU6cmCJwweFN+eCK/M+PuNgGP
+67YycnRi8W3Jp5EssiFSd3cdbDMT5sp5WIWP7kBUfBKA1gNa5yufjG9G22F3x3bK8w/MjVAGXxGy
+dkA2xLYJ2b0IO4rmDgVMGDhXJQY/Tf1ypeQDfEPPAjJnZ+yseevCu85KQ4pUGb2oOQ9qqoJGMWNO
+7svgRH9IQcYxYF58pdpWKHKIwsYFnh928uCDhE80GRsGF3NqrizgInG1Sk38YndFJ6+lpxNNfKil
+gxF5RySCqr3hBJL+ci28gbJ0JimCgKbn4IZMW4VAR4fsSBMXCwlH62jyWoSFn+Jd/NII+rS8saE+
+tilv2aDTKmIqv3s46iBYXk44jyak0kgLFWhMxsNWpuwz+XwYMulniUcYzB94VT6FeXfSTdq0gq6e
+jmxeSVjeAC+GzOHoiVa2b+1MWJPEejqulSIVSqvZQuTOsaAsnL+eYFKiLwq+TjyUuDbzLXRiCBbh
+ZmLnB3MUU+L6RcSkdnddeMl/UP3HP+0VkP+xJJyVgB+ZWtL0+Zp+6Ak+ZTiDxKduv47H9+YqUz54
+pg+5S+v8Gb8XExkCjvc++DC9KedB71VTkzwRso7xuSkkKMJH2hDUTrDWtq/N8U7iiw6QPklCYmCi
+73TDBlk25aQaU4v3XmCrFGwVH2KV/jAoPp8GP8AG373uk4IervtQvZcR7VWH8X6RSOdiC1MJHIpO
+3zC3HWnBb/BEjgv+0qPeIujA99vb0zfMBU5i528gF78p8kOaZrJiTgMCwpZKGMxXZHdDtKfEqvmF
+1Tx0l6YqVMsZHBZTAj2Ev2DdWLnW0Z4PSm9pVw+ogpjMijOpyDP4xaA7FQP7LAwIgPNPxf85lJRZ
+JqvVzki5F65KLInKoU6u03eX3bfWDEGaPPwB36qqvdVAmCsj1iC69kA55uaK9DPDU6QcZZlKHwHG
+VHBPyhiW6V6NJIajRhx0WToNZ5a8Jq26nidjz0EcaNHSXULxYjolWfqgV+DMOXgp9Zv42YC4Dmm8
+8f/bT01DV+2W5HeZMbgRS657pyLYjeeb6yR4ISinGICYB3uYEjQKKGL2RvXwndY+BAQ5HIR4xBN+
+IJ9+6skVzMl38AHRMyjC/NGk/bgQzdGqY9SyZA0/S9j1dw4oD9OzAFM/cQt2H/FQjuj0CNgvieRM
+O4/D3IUZ2sTThO2dkzksWc00gxZZ+j3epaBXZiwMN2ddAgMQIUrUFWjn08zJNNl3dOi4H+TD2aM/
+NudNzhfTceJEy2/T/stzu9vPXPcfqq8vwnGV+97ew152/buXPfL+/vplcyoon7vpHXv9Zfs5kzz+
+EpPU7LqDr1+CcOplNp2cBcNfteZ82Zi+Pz3r2bqP70eJwv8kzxX99twfP8wfE3WV2pysKRwd6h0L
+nXTNsRe9vp5nqJ+s96eXOcgdHP74M5c/OPhn8hTT7P9ubhx9/TIIvExGGvF/jr3Mj4O/vn///ufm
+T+xjcyPr+b6X2sPBvw/+KhT+/PeP7z/EHjY3oh6Wk9lrpX1x0hiOfj53Noc2Jc5ZzXrHx958uuin
+tRBG2DQJ2s+zfnaj2sQBrJ469m7m08H44VswDUflWKWiQBvwxOhJntG6xU9ihOzR/wFQSwECHwAU
+AAAACAC9qKZKoicKXlISAACFVgAABAAkAAAAAAAAACAAAAAAAAAAMS5qcwoAIAAAAAAAAQAYALhP
+eWqTxtIBqCh5apPG0gEFPTmOicbSAVBLBQYAAAAAAQABAFYAAAB0EgAAAAA=
