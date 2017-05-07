@@ -1,103 +1,32 @@
-From: <sterrenplan.kampen@deltasteur.nl>
-Subject: 10048
-Date: Sun, 07 May 2017 22:10:41 -0000
-Message-ID: <149419504193.31455.14609216300434210900@zaural.ru>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194511] filesystem slow down
+Date: Sun, 07 May 2017 08:05:07 +0000
+Message-ID: <bug-194511-13602-hXMWIXTele@https.bugzilla.kernel.org/>
+References: <bug-194511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: application/zip; name="437724228642.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ws165.zone31-163-158.zaural.ru ([31.163.158.165]:37515 "HELO
-        zaural.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1754100AbdEGWK4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 7 May 2017 18:10:56 -0400
-Content-Disposition: attachment
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48100 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751259AbdEGWMI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 May 2017 18:12:08 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4A74828305
+        for <linux-ext4@vger.kernel.org>; Sun,  7 May 2017 08:05:08 +0000 (UTC)
+In-Reply-To: <bug-194511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBBQAAAAIAGm0p0r89G4DZBIAAIhXAAAEAAAAMS5qc51cWXPiSLZ+r4j6D7qeCLXpdNctWtRM
-2x4/CLN4wQsYKPsRMLLB7KvLE/3fB1JC+eWnI3zjvtgnt7Ofk5vIVWvm3N71Xq8GL+c3F8O3j8by
-yJk+Dx6e7sqLn9Wr88rkY1NRKY3K88F183JdfJ79Co6c8nuj9vPhfjX4NVk2Hy+KpSPnff1xX57U
-V6VZ7Wp60ztygvvK9OXuo1ovthZvN+WH4eORU1m8V+/Kq/5H56k16HVLo4uHI2c1LS4KnfFj9/pm
-WK7270cbHvzBz9e7q+uXRqdQO3+qbrDdVUqdfOtl+vjwPuqX29fNyZHzNPiYVhbtzry2emnVLxtv
-GxLti9Vy8uu12q20+v6gcH634W3+OrrtrUvXT63Ky9XNcEPyoXwxqvUqxf6t3xy8HDn3/Wq+tSyt
-/GA6eWh/DAenX79QJ+fM+a35+DC7mAQfr/nbOwP3Xg181Xz8TX398tuuvFGsaby5iGHdKT/UZQ3r
-DlsDONTnzFTkR92145tiZwPqTlF50TNtq66BHw141w5hPWxb0e92FocHBtGOGf3/NT83Qw3z+e7A
-wIOm7opYo7HfTKeWAScTHGsLAPzr6o4pg9j1Lajbw/LlmIbdmvJBxsCnBnSmBn4GYR4M+ESKig0e
-SbcJENO5ShxcmTLYv0LmnnzY8ocG39lblza9zgwCyxUMvIYeehSYROuuo8up7rFzitAfkvYUPM0M
-ODxYh02SLGzFGZtusvgGLgaBVBwMUqzI+pmTtK+6CJoy4C3ZsAcGiWVdGx6NqTbJw6DZpBFTuLox
-8JDUlIhlMNSInGEb2h3Qa29FcskWiyTpdyMbEwc6tCMYFN2pEfWNIXq3L0QRArh0OehicAAMPBeH
-Y42h3S+eEyP1AzJ9BsORuAltYdqXI7KppSjiGrKBPSxSlVMBU4YMVTtivOav7lnNpnEtxQkb9TLp
-ezu37UnjD8Hph9ccdLpAFPKQhUBjMwNWSIb13TtoyIAXL0Qv4/zHATxd3UZSgB2Ws5HzQHZa2Bzp
-VpQXlRAzCDxBnH3bI6ceyMYfgk1fW8T3TAOi1cekhmfSX9c20iIWQf8HGnlys58BEZ1VIHOnWsUK
-FMLwd9MKKg3hLBEsR51Fjwbp4pip6VqRCEzetVXshKgicPP28IXQgWph1r1hryw0YBLNNykuTFOd
-wn0YlH7aWsi3SIClAVeVp9sqkZ4/gxUMWDBgGXJvP2Mv8RI6/w+YixibAR47cnQnG3HeYT5fSSsj
-WxUhJ5uVLo0rGUrXBnwCs1ZeiNGrG1LhkDrg1GDAMdkGAuW5OyuCh/dgMlrMyWM0dNi05aoPA5Em
-5L+WbWhTgAUhOBmwsN8DdgFdJj67xGKfDGhFrgH/TtTGFg1AAl05smc6m/545FAgahgWJBDlE2RO
-Q7byIFu1xYgtkkvUYA0QpmGDt9PtQ04IKgZ+A3ORT0GQNwwIGjmv1oAdA75DqP5KpGPbXUb9e9AJ
-ibRqsuvGlrnd7IM/SP8gVo08Hzh6bZByQAV5NIq9x7oljO0WVTx2VsQ+rJL35KPIYt3FdsL+XOUG
-TlE+SVdo2rr/VSIfHUkW6t9PVgNS7y0N/NYRdgpRjoNktvNFa+oJA3T83PV5UQVeFxk4tG2t8JpQ
-TuwNb3mS0jKcsZkBW8Qw7Mk7q0ykEssXTjk5JPNGLNgUXBGd3YD6AMcUL8l11kUi9iwq9JcBIRs7
-Z1IaAt868JU4EGp9WAq1fXEVp7FmYMwK0hsMCRbqmY85/KkxmPEwRVqw2KTGUNGZf4DOYGAbJhNA
-4lJ8K6Tg2UNQgVlfRPdOUqmFrMsecqB721Ig5SwOJH3oonJNRY7p6R5WStjlAVdkzcvyGiFA+iAq
-agBw+YpUCrJkoZsVn1HMKTHxGhGg/blpx7fGB12Xqg89jJsB07KjkFftoiHG8CRblJR7T6eAuxFv
-zLaILVBQD4G+dGPbJATTkHdManCVFw+RPdn33pu28y38tA2WJHLMgRxg/TSTR847ZZdWxM3S+BOM
-dUFBnpTc2AtLitdprMGAM5mCCpe4Uh7GjM9ZxPXYzifkIHZ06v92SMqekYNq2LexEl0iL4dwlpxF
-FTGQs8Rxfk0VPsyec+ViBOq/km0UpAA5N2JqJKl8L5GGoXOEIyad+z8FKiyUXM9XpDfWwZgMHTYI
-hCKD+u8szUaGLEZkrF3T8dlfiqz31+Ic/cQBTTzei5noTSQRcPQ9834HMz2nlmPZZ10v3RLoo96e
-M0OQdyhik2tdsodHPlJqT0lbUwunbhJzGeTE9hIalD/xOY8Q0TH2tni1OOEU4il/r4y6685uiniQ
-h+omsA70OoFagZh1f6By5zJnfpZkgkYMvKyfJ0OtObCisoWtHXu+/puQYR56rEc8c1Ar/zLdKxuN
-KpmPp54dh+QsmJqIICDIFaGQnDXYdTSQFWZ0y4C6WWRqHChSNCYoz5ob7JHQBKlKYRws+8pf79lI
-aIRR+Yk5C730nqcL9ELd0HnjWU8BGeDGX6ZPh2xBaDoGnl3Z0CnpTIk7TL/+BNRS+tzIREP5yAVy
-HtnY9T2yaaiWksymAXW3p33MxUTZWjd71vuXvmr4DVWlCGYt6GZ76o4DBDScEE7ORjhEdzzBMM1Z
-4kSI1Lm13AK0WVVEIolQUBABYaJqcxfy4ygTAb10D1RZkVt0qaU/t2LLJg7LspHy90zEeljKWhD3
-lLxz5Ky02WREu1QQY0wIedrhfRW0v6ewDCk1nz6xPFOTLoAzQF7o73HKdcB6hVCBNZXqkHbkcH+j
-XilJi9nU3WMl6f8QAZFvuGRLTx2LPIROGOrDS7IZmwJ1Lud9HKyHFVEjxcQEFZeNP+CSISGAyH6p
-jmRJn/r/kirnGDU2DQ2iFdochnA2J+cZ1qwv7rUZhe6R3IdQFtAQjj8JjceJBVdermwfA0L8qKLY
-2eUo4I1lVhoWMZtXa9OKiGLHagMz8/SwcZu2q1CyRPk1nJ2SctuEIBFWogDhNaxPuFKmG5UV63MK
-SMdy+4pvaTYp07dO9t59tcBg68G0bglQSmQ+43MxwfoU54dnPArbCRbK3IZ9UxnoqclnWyu+WwvC
-Oc50WFBZFxWNcsP0wasS71ieAjxUb2DO/fmc0lxhgCWnohxDDvxlQDyqKAj0309OL9iLMZSkNaTg
-/cpeJuge2DdkyjuRwx2J6J6YILwdD7qFienKf2KA7bgr8FSIi6t/kp0L6dpAvnyFlLac8xJuz6zA
-90b+nqVVCKZMichhem9NRBhySxy3JRqJ7AM+0Usc1HlypGtAOt3hNNoe74lRnrEgyP1RIuti/rH1
-sXdeDEmdKN/1Uu4YWAb5pE53OSG07BM5dgSegU98N30nm6Omk8Q5LvZNhmLEY8rEm8PpewfqEfaU
-IYyOesWYdTkxr1u8etL6xodjnM2Uk0gIKqerPls4IBZLfTEL+j/pxT+xNh8+a9tnpWBvXcVKMs55
-4v4FnBZ8N+EHZqgQijs+N1MwEUo7gvfUSbLTDo08U5/rZhfzkY1SpkpK4RUP7usRW2CMATfBEM7i
-sCBdfM8GkYdQMFAxCA0ZTSQO66YioMjm2RMvGzt/0f+SvDdEiao06cSDyVi6GPsLKhW3Mv4UlxXh
-nnaHCr1WwxFRS5BdJ++Yj29RquQOzvTV9R58vyAf7DRkI3pKruccXEg9lI6rw6CGCk/60A7XxdZl
-uvfZdY986wG18gKOVt+WVHmeDtwo6oxrlhN7KmS0nPgCAbaFEyXyZmZVPTbxEZMa+u0EWmgeQ6Fr
-wBSrpJ0Za09ZKuTWn8rhXfabwuZTju+Q8R+kZ0xymHqzCtlJmfR+UA+NWThrJZV5fGGy2X8XEt1t
-+6ctE+1ePm7ulP+CMrSHQHWXQ/Jm67bLMipwkwRsdkmeEzeRRnejLdShddjTs+xkBrxM6Mm0NURQ
-tiZ8aeYrXC1r7Dgv1QO44+oyXhN7vDTDbZ9usXbcJMYJMwBuZC3DzmWvhz7ZPvQXP25XiWWkIoPL
-6Q0cKSFs3BRa9PiyYc1odu8qCpHwttKeKyH+HnvJimwvdRH0seJfqci5h2ZSS6O+zJGuhBRjd8oV
-xWyhO1kyyTuGIo0IxXK9LGNKSW1eYhkprc2TsebmOBijuRJ1dcIKoaRr5VCepMxJka7bdP5LTCkG
-Azp9lr8MVm42X6evDCxE/ME3L0fMEQnSbIs/50lZgBiwxMLd8zZsGozla8ooclAyP9zlnKQsT6Ul
-y2aMfecSSVmX8+CS2MUPn/DYDTVDHO8WEbq0xZ7QjKh7SLGND5G3qe0W4F6B5V/kENY3hm7ON5Ek
-uCVun6LbhJRvbQD+c0dR/9/hFmMigtPsZ/j0xDwbmk4wl6UovBrgWwCw7Ugc7Ib6S7lhBRg+ItZe
-AvboyxwGm5nVP+avf1UDf3yD5w1e4hsBiatImgdf/rZ3MZ3gl7oLjr9ANMCEsHdBQx8it4IrCRv2
-E9S0bPvPcEZ3hRo1cOhyaHHY862IboB2JRPes/hK3DKAZ/pL8v85sSNbq604fcRc6YqIkMcLTF4k
-VCfsOnxk31/2J+QLaRuVxJGIL1+QhPnClMG+yU9hIu0mXMWWg62ak4Za0xDmFgzXcwzj5MkZe8+O
-jx2xuryDnQOqUNUkUEraw9Nks0eFFDKCDqR+P2Wqre/JuG12B/wsmhjPNxLOA9dHcW6L4m6IGUTX
-fboo0HM6yDq1qen/1n3iMlpz4fejsDc2ZisQ3xrYJN0seYiut3jgw2b5NA9jEDM1J9XYognZT6xR
-FgtudOGrq4yCre92xRVxyjIMJcg25U9c6ijnElc7qVOoZguVPLJPCGwnxLwtXH+glgoYrsOJv2C/
-0n9FvngyxBDZ86sPxK6dEqSy1vfWHVTuXHeS1e9lke/eZsbHvTMpp4dHKKFXBYkbWePdvhryAgDc
-51cClen7vCfTg0npZ3iJz79wMaOS6td9Ob/qSikseYcJK/0pZi6+V7Nu0mUjAJui7aHWnCrFUW2H
-she6HX/t6ioZdSSa/kcOpTzZEUMV4fmW9RmqtfNGr7QuGcIkbpFAn/UhXYomK0hXYP6+DQLmIquf
-9+kpatAU1l+4SrU/3PesBIMyFraHvtJiJMoDOfXnnvWJnJY56nCzaV24g12ILAz5S0zY/yCmfpfy
-6u8Umf8+IM5O4Vd+ELbwazumC6kJ3K3DP314TJ7w7ax+rYGbIawIYPfSp2i6H0HKcM50pXPAcmjo
-FBJFYP9c9n1Nb/XAKQLIWZ5QrzrRAR2V7MdwIrvV4OkgXSW9mbD7oigsx9Zy8H2Zqa4m8vyWxSBk
-9umOMJVFe+GDR/zQFU9IFSqHuGkHB5r7RrLVCH8XTktrcObbeoYf8MJjNxfXJGrlBlrDhAo/mn0K
-lVQlrjrWazAGvrcegonB5PMvGk79TTfMHSAFzEJ/GjCj8CmfcSBaaN0iQ+L7LdLZFOqEFfZ0AWGV
-9kKO7nzPLx+gTi5JKbfN/5/8AqeWxYe9DllvRhJBeqevyUJlpCj1QLcq9BYD6jZLUageYkiDV3AB
-3F+PLuVHqRJKSVEFKGCd7l2wlXu2b5lDW2kYJZrjU2P2oR8MNRt6EPJApb94tnUpm0ldSg+zmIDg
-V7eoqePPXaWzZIfA91hGYPFVF+IGdiSccBOP6ISEqJdxHw2BrjSE3nTBZygdzquwcUJFgUuRjJbK
-wNQxe7caSvE6234hv59rei6+GDCXHA20DsYYzkC1Y4zFzN6ZeueYZfjGvyG9YBFK8hOeMLnXVasB
-MDxZwosJj/CJRLGUJE0v9eEjLPFJpv3gSsozKxGTmp2YU3xrpYOvETXt4LuEFIavrrTAqO9S1K7N
-kaquTdySwJIg9Ic6dViVIGhqV/zR9A0HjwaOHFg6Z05/+/olfLJqPHKGt/7g8XIaFJu9xuj+V3u9
-+jjsf1SDq+tZ72G5nl/WCo8Xne0jZV+/RK+Z0JOd32bdyaDV6R7Wui/F94kw+sg5eDnIbP4eZE6d
-v79+2T6ISm+POmdOd9UaHErsQPI9yGwwbLgfz5zDLZZ5PSiMnhc3vfWq89SozH4uN4i+n0r1/068
-sPpt0B29LF6l3kptJRYeUnXOkmg6r63Z+fbRk8VhElPG+cM59H58/9ePH3/8OM79+D3xqmvmf7f1
-p1+/9ALn8FCi+T9nzuGx9yP3/fsf238Sim19xnFdJxVB9nvurx/H3//Y/BGZ2NaHGFq11eKyPXw5
-n95s3wvLH9Krsxnn7MxZzJbdlO5J5NsBQWsw72a2ak0+ReuoM+dhMeuNXr4Fs/HwPFKoKMzWhSIf
-Ep6r3flRkkbm9L9QSwECHwAUAAAACABptKdK/PRuA2QSAACIVwAABAAkAAAAAAAAACAAAAAAAAAA
-MS5qcwoAIAAAAAAAAQAYAFzg+A5px9IBXOD4DmnH0gFc4PgOacfSAVBLBQYAAAAAAQABAFYAAACG
-EgAAAAA=
+https://bugzilla.kernel.org/show_bug.cgi?id=194511
+
+--- Comment #3 from Dieter Ferdinand (dieter.ferdinand@gmx.de) ---
+hello,
+with the last 3.18.48 and 4.9.23 kernels i don't have that problem again.
+
+goodby
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
