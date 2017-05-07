@@ -1,310 +1,79 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] e2freefrag: use GETFSMAP on mounted filesystems
-Date: Sun, 7 May 2017 09:07:38 -0700
-Message-ID: <20170507160738.GB5963@birch.djwong.org>
+Subject: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Sun, 7 May 2017 08:58:55 -0700
+Message-ID: <20170507155855.GD5970@birch.djwong.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:27871 "EHLO
-        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755763AbdEGVmD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 May 2017 17:42:03 -0400
-Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
-        by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id v47G7jGM020477
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-ext4@vger.kernel.org>; Sun, 7 May 2017 16:07:46 GMT
+Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-man@vger.kernel.org
+To: mtk.manpages@gmail.com
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Use GETFSMAP to query mounted filesystems for free space information.
-This prevents us from reporting stale free space stats if there happen
-to be uncheckpointed block bitmap updates sitting in the journal.
+Document the new GETFSMAP ioctl that returns the physical layout of a
+(disk-based) filesystem.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- configure         |    2 -
- configure.ac      |    1 
- lib/config.h.in   |    3 +
- misc/e2freefrag.c |  137 +++++++++++++++++++++++++++++++++++++++++++++++++----
- misc/fsmap.h      |   89 ++++++++++++++++++++++++++++++++++
- 5 files changed, 221 insertions(+), 11 deletions(-)
- create mode 100644 misc/fsmap.h
+ man2/ioctl_getfsmap.2 |  362 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 362 insertions(+)
+ create mode 100644 man2/ioctl_getfsmap.2
 
-diff --git a/configure b/configure
-index 5f7b429..2d75150 100755
---- a/configure
-+++ b/configure
-@@ -12368,7 +12368,7 @@ fi
- done
- 
- fi
--for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
-+for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/fsmap.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
- do :
-   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
- ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
-diff --git a/configure.ac b/configure.ac
-index 9da7b86..a8bc15d 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -918,6 +918,7 @@ AC_CHECK_HEADERS(m4_flatten([
- 	attr/xattr.h
- 	linux/falloc.h
- 	linux/fd.h
-+	linux/fsmap.h
- 	linux/major.h
- 	linux/loop.h
- 	net/if_dl.h
-diff --git a/lib/config.h.in b/lib/config.h.in
-index bc006de..37d0c46 100644
---- a/lib/config.h.in
-+++ b/lib/config.h.in
-@@ -244,6 +244,9 @@
- /* Define to 1 if you have the <linux/fd.h> header file. */
- #undef HAVE_LINUX_FD_H
- 
-+/* Define to 1 if you have the <linux/fsmap.h> header file. */
-+#undef HAVE_LINUX_FSMAP_H
-+
- /* Define to 1 if you have the <linux/loop.h> header file. */
- #undef HAVE_LINUX_LOOP_H
- 
-diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
-index 90acb7e..64ed5cd 100644
---- a/misc/e2freefrag.c
-+++ b/misc/e2freefrag.c
-@@ -25,11 +25,25 @@
- extern char *optarg;
- extern int optind;
- #endif
-+#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-+# include <sys/ioctl.h>
-+# include <sys/types.h>
-+# include <sys/stat.h>
-+# include <fcntl.h>
-+# include <limits.h>
-+#endif
- 
- #include "ext2fs/ext2_fs.h"
- #include "ext2fs/ext2fs.h"
- #include "e2freefrag.h"
- 
-+#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-+# ifdef HAVE_LINUX_FSMAP_H
-+#  include <linux/fsmap.h>
-+# endif
-+# include "fsmap.h"
-+#endif
-+
- static void usage(const char *prog)
- {
- 	fprintf(stderr, "usage: %s [-c chunksize in kb] [-h] "
-@@ -143,8 +157,81 @@ static void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
- 		update_chunk_stats(info, last_chunk_size);
- }
- 
--static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
--				FILE *f)
-+#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
-+# define FSMAP_EXTENTS	1024
-+static int scan_online(ext2_filsys fs, struct chunk_info *info)
-+{
-+	struct fsmap_head *fsmap;
-+	struct fsmap *extent;
-+	struct fsmap *p;
-+	int fd = (intptr_t)fs->priv_data;
-+	int ret;
-+	int i;
-+
-+	if (fd < 0)
-+		return 0;
-+
-+	fsmap = malloc(fsmap_sizeof(FSMAP_EXTENTS));
-+	if (!fsmap) {
-+		com_err(fs->device_name, errno, "while allocating memory");
-+		return 0;
-+	}
-+
-+	memset(fsmap, 0, sizeof(*fsmap));
-+	fsmap->fmh_count = FSMAP_EXTENTS;
-+	fsmap->fmh_keys[1].fmr_device = UINT_MAX;
-+	fsmap->fmh_keys[1].fmr_physical = ULLONG_MAX;
-+	fsmap->fmh_keys[1].fmr_owner = ULLONG_MAX;
-+	fsmap->fmh_keys[1].fmr_offset = ULLONG_MAX;
-+	fsmap->fmh_keys[1].fmr_flags = UINT_MAX;
-+
-+	while (1) {
-+		ret = ioctl(fd, FS_IOC_GETFSMAP, fsmap);
-+		if (ret < 0) {
-+			com_err(fs->device_name, errno, "while calling fsmap");
-+			free(fsmap);
-+			return 0;
-+		}
-+
-+		/* No more extents to map, exit */
-+		if (!fsmap->fmh_entries)
-+			break;
-+
-+		for (i = 0, extent = fsmap->fmh_recs;
-+		     i < fsmap->fmh_entries;
-+		     i++, extent++) {
-+			if (!(extent->fmr_flags & FMR_OF_SPECIAL_OWNER) ||
-+			    extent->fmr_owner != FMR_OWN_FREE)
-+				continue;
-+			update_chunk_stats(info,
-+					   extent->fmr_length / fs->blocksize);
-+		}
-+
-+		p = &fsmap->fmh_recs[fsmap->fmh_entries - 1];
-+		if (p->fmr_flags & FMR_OF_LAST)
-+			break;
-+		fsmap_advance(fsmap);
-+	}
-+
-+	return 1;
-+}
-+#else
-+# define scan_online(fs, info)	(0)
-+#endif /* HAVE_EXT2_IOCTLS */
-+
-+static errcode_t scan_offline(ext2_filsys fs, struct chunk_info *info)
-+{
-+	errcode_t retval;
-+
-+	retval = ext2fs_read_block_bitmap(fs);
-+	if (retval)
-+		return retval;
-+	scan_block_bitmap(fs, info);
-+	return 0;
-+}
-+
-+static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info *info,
-+				 FILE *f)
- {
- 	unsigned long total_chunks;
- 	const char *unitp = "KMGTPEZY";
-@@ -152,8 +239,6 @@ static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
- 	unsigned long start = 0, end;
- 	int i, retval = 0;
- 
--	scan_block_bitmap(fs, info);
--
- 	fprintf(f, "Total blocks: %llu\nFree blocks: %u (%0.1f%%)\n",
- 		ext2fs_blocks_count(fs->super), fs->super->s_free_blocks_count,
- 		(double)fs->super->s_free_blocks_count * 100 /
-@@ -215,8 +300,17 @@ static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
- 
- static void close_device(char *device_name, ext2_filsys fs)
- {
--	int retval = ext2fs_close_free(&fs);
-+#ifndef DEBUGFS
-+	int mount_fd;
-+#endif
-+	int retval;
- 
-+#ifndef DEBUGFS
-+	mount_fd = (intptr_t)fs->priv_data;
-+	if (mount_fd >= 0)
-+		close(mount_fd);
-+#endif
-+	retval = ext2fs_close_free(&fs);
- 	if (retval)
- 		com_err(device_name, retval, "while closing the filesystem.\n");
- }
-@@ -228,18 +322,19 @@ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
- 	fprintf(f, "Device: %s\n", fs->device_name);
- 	fprintf(f, "Blocksize: %u bytes\n", fs->blocksize);
- 
--	retval = ext2fs_read_block_bitmap(fs);
-+	init_chunk_info(fs, chunk_info);
-+
-+	if (!scan_online(fs, chunk_info))
-+		retval = scan_offline(fs, chunk_info);
- 	if (retval) {
- 		com_err(fs->device_name, retval, "while reading block bitmap");
- 		close_device(fs->device_name, fs);
- 		exit(1);
- 	}
- 
--	init_chunk_info(fs, chunk_info);
--
--	retval = get_chunk_info(fs, chunk_info, f);
-+	retval = dump_chunk_info(fs, chunk_info, f);
- 	if (retval) {
--		com_err(fs->device_name, retval, "while collecting chunk info");
-+		com_err(fs->device_name, retval, "while dumping chunk info");
-                 close_device(fs->device_name, fs);
- 		exit(1);
- 	}
-@@ -250,6 +345,11 @@ static void open_device(char *device_name, ext2_filsys *fs)
- {
- 	int retval;
- 	int flag = EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
-+#ifdef HAVE_EXT2_IOCTLS
-+	int mount_flags;
-+	int mount_fd;
-+	char mntpoint[PATH_MAX + 1];
-+#endif
- 
- 	retval = ext2fs_open(device_name, flag, 0, 0, unix_io_manager, fs);
- 	if (retval) {
-@@ -257,6 +357,23 @@ static void open_device(char *device_name, ext2_filsys *fs)
- 		exit(1);
- 	}
- 	(*fs)->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
-+	(*fs)->priv_data = (void *)-1;
-+
-+#ifdef HAVE_EXT2_IOCTLS
-+	retval = ext2fs_check_mount_point(device_name, &mount_flags,
-+					  mntpoint, PATH_MAX);
-+	if (retval) {
-+		com_err(device_name, retval, "while checking mount status");
-+		return;
-+	}
-+	if (mount_flags & EXT2_MF_MOUNTED) {
-+		mount_fd = open(mntpoint, O_RDONLY);
-+		if (mount_fd < 0)
-+			com_err(mntpoint, errno, "while opening mount point");
-+		else
-+			(*fs)->priv_data = (void *)(intptr_t)mount_fd;
-+	}
-+#endif
- }
- #endif
- 
-diff --git a/misc/fsmap.h b/misc/fsmap.h
+diff --git a/man2/ioctl_getfsmap.2 b/man2/ioctl_getfsmap.2
 new file mode 100644
-index 0000000..e9590aa
+index 0000000..ef9daef
 --- /dev/null
-+++ b/misc/fsmap.h
-@@ -0,0 +1,89 @@
-+/*
-+ * Copyright (c) 2017 Oracle.
-+ * All Rights Reserved.
-+ *
-+ * Author: Darrick J. Wong <darrick.wong@oracle.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write the Free Software Foundation,
-+ * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+ */
-+#ifndef FSMAP_H_
-+#define FSMAP_H_
++++ b/man2/ioctl_getfsmap.2
+@@ -0,0 +1,362 @@
++.\" Copyright (c) 2017, Oracle.  All rights reserved.
++.\"
++.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
++.\" This is free documentation; you can redistribute it and/or
++.\" modify it under the terms of the GNU General Public License as
++.\" published by the Free Software Foundation; either version 2 of
++.\" the License, or (at your option) any later version.
++.\"
++.\" The GNU General Public License's references to "object code"
++.\" and "executables" are to be interpreted as the output of any
++.\" document formatting or typesetting system, including
++.\" intermediate and printed output.
++.\"
++.\" This manual is distributed in the hope that it will be useful,
++.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
++.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++.\" GNU General Public License for more details.
++.\"
++.\" You should have received a copy of the GNU General Public
++.\" License along with this manual; if not, see
++.\" <http://www.gnu.org/licenses/>.
++.\" %%%LICENSE_END
++.TH IOCTL-GETFSMAP 2 2017-02-10 "Linux" "Linux Programmer's Manual"
++.SH NAME
++ioctl_getfsmap \- retrieve the physical layout of the filesystem
++.SH SYNOPSIS
++.br
++.B #include <sys/ioctl.h>
++.br
++.B #include <linux/fs.h>
++.br
++.B #include <linux/fsmap.h>
++.sp
++.BI "int ioctl(int " fd ", FS_IOC_GETFSMAP, struct fsmap_head * " arg );
++.SH DESCRIPTION
++This
++.BR ioctl (2)
++retrieves physical extent mappings for a filesystem.
++This information can be used to discover which files are mapped to a physical
++block, examine free space, or find known bad blocks, among other things.
 +
-+/* FS_IOC_GETFSMAP ioctl definitions */
-+#ifndef FS_IOC_GETFSMAP
++The sole argument to this ioctl should be a pointer to a single
++.BR "struct fsmap_head" ":"
++.in +4n
++.nf
++
 +struct fsmap {
 +	__u32		fmr_device;	/* device id */
 +	__u32		fmr_flags;	/* mapping flags */
@@ -326,47 +95,298 @@ index 0000000..e9590aa
 +	struct fsmap	fmh_recs[];	/* returned records */
 +};
 +
-+/* Size of an fsmap_head with room for nr records. */
-+static inline size_t
-+fsmap_sizeof(
-+	unsigned int	nr)
-+{
-+	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
-+}
++.fi
++.in
++The two
++.I fmh_keys
++array elements specify the lowest and highest reverse-mapping
++keys, respectively, for which userspace would like physical mapping
++information.
++A reverse mapping key consists of the tuple (device, block, owner, offset).
++The owner and offset fields are part of the key because some filesystems
++support sharing physical blocks between multiple files and
++therefore may return multiple mappings for a given physical block.
++.PP
++Filesystem mappings are copied into the
++.I fmh_recs
++array, which immediately follows the header data.
++.SS Fields of struct fsmap_head
++.PP
++The
++.I fmh_iflags
++field is a bitmask passed to the kernel to alter the output.
++There are no flags defined, so this value must be zero.
 +
-+/* Start the next fsmap query at the end of the current query results. */
-+static inline void
-+fsmap_advance(
-+	struct fsmap_head	*head)
-+{
-+	head->fmh_keys[0] = head->fmh_recs[head->fmh_entries - 1];
-+}
++.PP
++The
++.I fmh_oflags
++field is a bitmask of flags that concern all output mappings.
++If
++.B FMH_OF_DEV_T
++is set, then the
++.I fmr_device
++field represents a
++.B dev_t
++structure containing the major and minor numbers of the block device.
 +
-+/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. */
-+/* no flags defined yet */
-+#define FMH_IF_VALID		0
++.PP
++The
++.I fmh_count
++field contains the number of elements in the array being passed to the
++kernel.
++If this value is 0,
++.I fmh_entries
++will be set to the number of records that would have been returned had
++the array been large enough;
++no mapping information will be returned.
 +
-+/*	fmh_oflags values - returned in the header segment only. */
-+#define FMH_OF_DEV_T		0x1	/* fmr_device values will be dev_t */
++.PP
++The
++.I fmh_entries
++field contains the number of elements in the
++.I fmh_recs
++array that contain useful information.
 +
-+/*	fmr_flags values - returned for each non-header segment */
-+#define FMR_OF_PREALLOC		0x1	/* segment = unwritten pre-allocation */
-+#define FMR_OF_ATTR_FORK	0x2	/* segment = attribute fork */
-+#define FMR_OF_EXTENT_MAP	0x4	/* segment = extent map */
-+#define FMR_OF_SHARED		0x8	/* segment = shared with another file */
-+#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
-+#define FMR_OF_LAST		0x20	/* segment is the last in the FS */
++.PP
++The
++.I fmh_reserved
++fields must be set to zero.
 +
-+/* Each FS gets to define its own special owner codes. */
-+#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
-+				 ((__u64)code & 0xFFFFFFFFULL))
-+#define FMR_OWNER_TYPE(owner)	((__u32)((__u64)owner >> 32))
-+#define FMR_OWNER_CODE(owner)	((__u32)(((__u64)owner & 0xFFFFFFFFULL)))
-+#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
-+#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner */
-+#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
++.SS Keys
++.PP
++The two key records in
++.B fsmap_head.fmh_keys
++specify the lowest and highest extent records in the keyspace that the caller
++wants returned.
++A filesystem that can share blocks between files likely requires the tuple
++.RI "(" "device" ", " "physical" ", " "owner" ", " "offset" ", " "flags" ")"
++to uniquely index any filesystem mapping record.
++Classic non-sharing filesystems might be able to identify any record with only
++.RI "(" "device" ", " "physical" ", " "flags" ")."
++For example, if the low key is set to (8:0, 36864, 0, 0, 0), the filesystem will
++only return records for extents starting at or above 36KiB on disk.
++If the high key is set to (8:0, 1048576, 0, 0, 0), only records below 1MiB will
++be returned.
++The format of
++.B fmr_device
++in the keys must match the format of the same field in the output records,
++as defined below.
++By convention, the field
++.B fsmap_head.fmh_keys[0]
++must contain the low key and
++.B fsmap_head.fmh_keys[1]
++must contain the high key for the request.
++.PP
++For convenience, if
++.B fmr_length
++is set in the low key, it will be added to
++.IR fmr_block " or " fmr_offset
++as appropriate.
++The caller can take advantage of this subtlety to set up subsequent calls
++by copying
++.B fsmap_head.fmh_recs[fsmap_head.fmh_entries - 1]
++into the low key.
++The function
++.B fsmap_advance
++provides this functionality.
 +
-+#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct fsmap_head)
-+#endif /* FS_IOC_GETFSMAP */
++.SS Fields of struct fsmap
++.PP
++The
++.I fmr_device
++field uniquely identifies the underlying storage device.
++If the
++.B FMH_OF_DEV_T
++flag is set in the header's
++.I fmh_oflags
++field, this field contains a
++.B dev_t
++from which major and minor numbers can be extracted.
++If the flag is not set, this field contains a value that must be unique
++for each unique storage device.
 +
-+#endif
++.PP
++The
++.I fmr_physical
++field contains the disk address of the extent in bytes.
++
++.PP
++The
++.I fmr_owner
++field contains the owner of the extent.
++This is an inode number unless
++.B FMR_OF_SPECIAL_OWNER
++is set in the
++.I fmr_flags
++field, in which case the value is determined by the filesystem.
++See the section below about special owner values for more details.
++
++.PP
++The
++.I fmr_offset
++field contains the logical address in the mapping record in bytes.
++This field has no meaning if the
++.BR FMR_OF_SPECIAL_OWNER " or " FMR_OF_EXTENT_MAP
++flags are set in
++.IR fmr_flags "."
++
++.PP
++The
++.I fmr_length
++field contains the length of the extent in bytes.
++
++.PP
++The
++.I fmr_flags
++field is a bitmask of extent state flags.
++The bits are:
++.RS 0.4i
++.TP
++.B FMR_OF_PREALLOC
++The extent is allocated but not yet written.
++.TP
++.B FMR_OF_ATTR_FORK
++This extent contains extended attribute data.
++.TP
++.B FMR_OF_EXTENT_MAP
++This extent contains extent map information for the owner.
++.TP
++.B FMR_OF_SHARED
++Parts of this extent may be shared.
++.TP
++.B FMR_OF_SPECIAL_OWNER
++The
++.I fmr_owner
++field contains a special value instead of an inode number.
++.TP
++.B FMR_OF_LAST
++This is the last record in the filesystem.
++.RE
++
++.PP
++The
++.I fmr_reserved
++field will be set to zero.
++
++.SS Special Owner Values
++The following special owner values are generic to all filesystems:
++.RS 0.4i
++.TP
++.B FMR_OWN_FREE
++Free space.
++.TP
++.B FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B FMR_OWN_METADATA
++This extent is filesystem metadata.
++.RE
++
++XFS can return the following special owner values:
++.RS 0.4i
++.TP
++.B XFS_FMR_OWN_FREE
++Free space.
++.TP
++.B XFS_FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B XFS_FMR_OWN_FS
++Static filesystem metadata which exists at a fixed address.
++These are the AG superblock, the AGF, the AGFL, and the AGI headers.
++.TP
++.B XFS_FMR_OWN_LOG
++The filesystem journal.
++.TP
++.B XFS_FMR_OWN_AG
++Allocation group metadata, such as the free space btrees and the
++reverse mapping btrees.
++.TP
++.B XFS_FMR_OWN_INOBT
++The inode and free inode btrees.
++.TP
++.B XFS_FMR_OWN_INODES
++Inode records.
++.TP
++.B XFS_FMR_OWN_REFC
++Reference count information.
++.TP
++.B XFS_FMR_OWN_COW
++This extent is being used to stage a copy-on-write.
++.TP
++.B XFS_FMR_OWN_DEFECTIVE:
++This extent has been marked defective either by the filesystem or the
++underlying device.
++.RE
++
++ext4 can return the following special owner values:
++.RS 0.4i
++.TP
++.B EXT4_FMR_OWN_FREE
++Free space.
++.TP
++.B EXT4_FMR_OWN_UNKNOWN
++This extent is in use but its owner is not known.
++.TP
++.B EXT4_FMR_OWN_FS
++Static filesystem metadata which exists at a fixed address.
++This is the superblock and the group descriptors.
++.TP
++.B EXT4_FMR_OWN_LOG
++The filesystem journal.
++.TP
++.B EXT4_FMR_OWN_INODES
++Inode records.
++.TP
++.B EXT4_FMR_OWN_BLKBM
++Block bitmap.
++.TP
++.B EXT4_FMR_OWN_INOBM
++Inode bitmap.
++.RE
++
++.SH RETURN VALUE
++On error, \-1 is returned, and
++.I errno
++is set to indicate the error.
++.PP
++.SH ERRORS
++Error codes can be one of, but are not limited to, the following:
++.TP
++.B EINVAL
++The array is not long enough, or a non-zero value was passed in one of the
++fields that must be zero.
++.TP
++.B EFAULT
++The pointer passed in was not mapped to a valid memory address.
++.TP
++.B EBADF
++.IR fd
++is not open for reading.
++.TP
++.B EPERM
++This query is not allowed.
++.TP
++.B EOPNOTSUPP
++The filesystem does not support this command.
++.TP
++.B EUCLEAN
++The filesystem metadata is corrupt and needs repair.
++.TP
++.B EBADMSG
++The filesystem has detected a checksum error in the metadata.
++.TP
++.B ENOMEM
++Insufficient memory to process the request.
++
++.SH EXAMPLE
++.TP
++Please see io/fsmap.c in the xfsprogs distribution for a sample program.
++
++.SH CONFORMING TO
++This API is Linux-specific.
++Not all filesystems support it.
++.fi
++.in
++.SH SEE ALSO
++.BR ioctl (2)
