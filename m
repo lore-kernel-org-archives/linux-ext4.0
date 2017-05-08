@@ -1,81 +1,59 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH] ext4: Clear lockdep subtype for quota files on quota off
-Date: Mon, 8 May 2017 10:44:42 -0600
-Message-ID: <20170508164442.GA10855@linux.intel.com>
-References: <20170505085327.27103-1-jack@suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 4/4] dax: Fix data corruption when fault races with write
+Date: Mon, 8 May 2017 11:25:27 -0600
+Message-ID: <20170508172527.GA18408@linux.intel.com>
+References: <20170505072500.25692-1-jack@suse.cz>
+ <20170505072500.25692-5-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:37538 "EHLO mga14.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752483AbdEHQot (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 8 May 2017 12:44:49 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170505085327.27103-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170505072500.25692-5-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 05, 2017 at 10:53:27AM +0200, Jan Kara wrote:
-> Quota files have special ranking of i_data_sem lock. We inform lockdep
-> about it when turning on quotas however when turning quotas off, we
-> don't clear the lockdep subclass from i_data_sem lock and thus when the
-> inode gets later reused for a normal file or directory, lockdep gets
-> confused and complains about possible deadlocks. Fix the problem by
-> resetting lockdep subclass of i_data_sem on quota off.
+On Fri, May 05, 2017 at 09:25:00AM +0200, Jan Kara wrote:
+> Currently DAX read fault can race with write(2) in the following way:
 > 
-> Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-
-Yep, this fixes the lockdep warning for me, thanks!
-
-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-
-> ---
->  fs/ext4/super.c | 14 +++++---------
->  1 file changed, 5 insertions(+), 9 deletions(-)
+> CPU1 - write(2)			CPU2 - read fault
+> 				dax_iomap_pte_fault()
+> 				  ->iomap_begin() - sees hole
+> dax_iomap_rw()
+>   iomap_apply()
+>     ->iomap_begin - allocates blocks
+>     dax_iomap_actor()
+>       invalidate_inode_pages2_range()
+>         - there's nothing to invalidate
+> 				  grab_mapping_entry()
+> 				  - we add zero page in the radix tree
+> 				    and map it to page tables
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index a9c72e39a4ee..77043dc7f704 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -846,14 +846,9 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
->  {
->  	int type;
->  
-> -	if (ext4_has_feature_quota(sb)) {
-> -		dquot_disable(sb, -1,
-> -			      DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
-> -	} else {
-> -		/* Use our quota_off function to clear inode flags etc. */
-> -		for (type = 0; type < EXT4_MAXQUOTAS; type++)
-> -			ext4_quota_off(sb, type);
-> -	}
-> +	/* Use our quota_off function to clear inode flags etc. */
-> +	for (type = 0; type < EXT4_MAXQUOTAS; type++)
-> +		ext4_quota_off(sb, type);
->  }
->  #else
->  static inline void ext4_quota_off_umount(struct super_block *sb)
-> @@ -5476,7 +5471,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
->  		goto out;
->  
->  	err = dquot_quota_off(sb, type);
-> -	if (err)
-> +	if (err || ext4_has_feature_quota(sb))
->  		goto out_put;
->  
->  	inode_lock(inode);
-> @@ -5496,6 +5491,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
->  out_unlock:
->  	inode_unlock(inode);
->  out_put:
-> +	lockdep_set_quota_inode(inode, I_DATA_SEM_NORMAL);
->  	iput(inode);
->  	return err;
->  out:
-> -- 
-> 2.12.0
+> The result is that hole page is mapped into page tables (and thus zeros
+> are seen in mmap) while file has data written in that place.
 > 
+> Fix the problem by locking exception entry before mapping blocks for the
+> fault. That way we are sure invalidate_inode_pages2_range() call for
+> racing write will either block on entry lock waiting for the fault to
+> finish (and unmap stale page tables after that) or read fault will see
+> already allocated blocks by write(2).
+> 
+> Fixes: 9f141d6ef6258a3a37a045842d9ba7e68f368956
+> CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+
+Yep, this looks correct to me.  Thanks!
+
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
