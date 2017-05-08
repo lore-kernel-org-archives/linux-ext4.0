@@ -1,82 +1,81 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 4.12
-Date: Sun, 7 May 2017 14:09:10 -0400
-Message-ID: <20170507180910.nxy6ho2zrdf3jfxn@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH] ext4: Clear lockdep subtype for quota files on quota off
+Date: Mon, 8 May 2017 10:44:42 -0600
+Message-ID: <20170508164442.GA10855@linux.intel.com>
+References: <20170505085327.27103-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga14.intel.com ([192.55.52.115]:37538 "EHLO mga14.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752483AbdEHQot (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 8 May 2017 12:44:49 -0400
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170505085327.27103-1-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-vThe following changes since commit 39da7c509acff13fc8cb12ec1bb20337c988ed36:
+On Fri, May 05, 2017 at 10:53:27AM +0200, Jan Kara wrote:
+> Quota files have special ranking of i_data_sem lock. We inform lockdep
+> about it when turning on quotas however when turning quotas off, we
+> don't clear the lockdep subclass from i_data_sem lock and thus when the
+> inode gets later reused for a normal file or directory, lockdep gets
+> confused and complains about possible deadlocks. Fix the problem by
+> resetting lockdep subclass of i_data_sem on quota off.
+> 
+> Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-  Linux 4.11-rc6 (2017-04-09 09:49:44 -0700)
+Yep, this fixes the lockdep warning for me, thanks!
 
-are available in the git repository at:
+Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 17f423b5160767a8ec43b0602767e5f4d3ecd083:
-
-  jbd2: cleanup write flags handling from jbd2_write_superblock() (2017-05-04 11:01:31 -0400)
-
-----------------------------------------------------------------
-Add GETFSMAP support; some performance improvements for very large
-file systems and for random write workloads into a preallocated file;
-bug fixes and cleanups.
-
-----------------------------------------------------------------
-Andrew Perepechko (1):
-      ext4: preload block group descriptors
-
-Darrick J. Wong (2):
-      vfs: add common GETFSMAP ioctl definitions
-      ext4: support GETFSMAP ioctls
-
-Eric Biggers (8):
-      ext4: trim return value and 'dir' argument from ext4_insert_dentry()
-      ext4: constify static data that is never modified
-      ext4: merge ext4_xattr_list() into ext4_listxattr()
-      ext4: rename ext4_xattr_check_names() to ext4_xattr_check_entries()
-      ext4: remove ext4_xattr_check_entry()
-      ext4: evict inline data when writing to memory map
-      ext4: make ext4_shutdown() static
-      ext4: inherit encryption xattr before other xattrs
-
-Jan Kara (5):
-      jbd2: Fix lockdep splat with generic/270 test
-      jbd2: fix dbench4 performance regression for 'nobarrier' mounts
-      ext4: avoid unnecessary transaction stalls during writeback
-      ext4: mark superblock writes synchronous for nobarrier mounts
-      jbd2: cleanup write flags handling from jbd2_write_superblock()
-
-Theodore Ts'o (2):
-      mm: retry writepages() on ENOMEM when doing an data integrity writeback
-      ext4: replace BUG_ON with WARN_ONCE in ext4_end_bio()
-
- fs/ext4/Makefile            |  10 +-
- fs/ext4/ext4.h              |  13 +-
- fs/ext4/fsmap.c             | 722 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/fsmap.h             |  69 ++++++
- fs/ext4/ialloc.c            |  17 +-
- fs/ext4/inline.c            |   2 +-
- fs/ext4/inode.c             |  40 ++++
- fs/ext4/ioctl.c             |  92 +++++++-
- fs/ext4/mballoc.c           |  51 ++++-
- fs/ext4/mballoc.h           |  17 ++
- fs/ext4/namei.c             |  17 +-
- fs/ext4/page-io.c           |  11 +-
- fs/ext4/super.c             |  14 +-
- fs/ext4/sysfs.c             |   8 +-
- fs/ext4/xattr.c             |  63 ++----
- fs/jbd2/journal.c           |  28 ++-
- include/trace/events/ext4.h |  74 ++++++
- include/uapi/linux/fsmap.h  | 112 +++++++++
- mm/page-writeback.c         |  14 +-
- 19 files changed, 1277 insertions(+), 97 deletions(-)
- create mode 100644 fs/ext4/fsmap.c
- create mode 100644 fs/ext4/fsmap.h
- create mode 100644 include/uapi/linux/fsmap.h
+> ---
+>  fs/ext4/super.c | 14 +++++---------
+>  1 file changed, 5 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index a9c72e39a4ee..77043dc7f704 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -846,14 +846,9 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
+>  {
+>  	int type;
+>  
+> -	if (ext4_has_feature_quota(sb)) {
+> -		dquot_disable(sb, -1,
+> -			      DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+> -	} else {
+> -		/* Use our quota_off function to clear inode flags etc. */
+> -		for (type = 0; type < EXT4_MAXQUOTAS; type++)
+> -			ext4_quota_off(sb, type);
+> -	}
+> +	/* Use our quota_off function to clear inode flags etc. */
+> +	for (type = 0; type < EXT4_MAXQUOTAS; type++)
+> +		ext4_quota_off(sb, type);
+>  }
+>  #else
+>  static inline void ext4_quota_off_umount(struct super_block *sb)
+> @@ -5476,7 +5471,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
+>  		goto out;
+>  
+>  	err = dquot_quota_off(sb, type);
+> -	if (err)
+> +	if (err || ext4_has_feature_quota(sb))
+>  		goto out_put;
+>  
+>  	inode_lock(inode);
+> @@ -5496,6 +5491,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
+>  out_unlock:
+>  	inode_unlock(inode);
+>  out_put:
+> +	lockdep_set_quota_inode(inode, I_DATA_SEM_NORMAL);
+>  	iput(inode);
+>  	return err;
+>  out:
+> -- 
+> 2.12.0
+> 
