@@ -1,40 +1,52 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 0/4 v2] mm,dax: Fix data corruption due to mmap
- inconsistency
-Date: Mon, 8 May 2017 11:27:07 -0600
-Message-ID: <20170508172707.GB18408@linux.intel.com>
-References: <20170505072500.25692-1-jack@suse.cz>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Mon, 8 May 2017 11:41:12 -0700
+Message-ID: <20170508184112.GJ5973@birch.djwong.org>
+References: <20170507155855.GD5970@birch.djwong.org>
+ <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Michael Kerrisk-manpages <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jann Horn <jannh-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170505072500.25692-1-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 05, 2017 at 09:24:56AM +0200, Jan Kara wrote:
-> Hello,
+On Mon, May 08, 2017 at 12:17:53AM +0200, Jann Horn wrote:
+> On Sun, May 7, 2017 at 5:58 PM, Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
+> > Document the new GETFSMAP ioctl that returns the physical layout of a
+> > (disk-based) filesystem.
+> [...]
+> > +.B EPERM
+> > +This query is not allowed.
 > 
-> this series fixes data corruption that can happen for DAX mounts when
-> page faults race with write(2) and as a result page tables get out of sync
-> with block mappings in the filesystem and thus data seen through mmap is
-> different from data seen through read(2).
-> 
-> The series passes testing with t_mmap_stale test program from Ross and also
-> other mmap related tests on DAX filesystem. Ross, what you think?
+> Please document the circumstances under which a query is allowed.
 
-I don't know if I have enough ext4-fu to properly review patch 3, but the rest
-looks great (and that patch looks good to me as well, FWIW).  Thanks for
-fixing this!
+For the two current implementations, queries are always allowed.
+
+(The doc could be more explicit about this decision being left to the
+implementation.)
+
+> Also: From a quick glance at the XFS implementation, I don't see any
+> privilege checks. Am I missing something, or does this API permit an
+> unprivileged user to determine the number of physical blocks allocated
+> for any inode, even for inodes the user can't ordinarily see in any
+> way?
+
+Correct.
+
+--D
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
