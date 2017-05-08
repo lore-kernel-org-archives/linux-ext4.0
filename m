@@ -1,111 +1,62 @@
-From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Mon, 8 May 2017 13:47:38 -0700
-Message-ID: <20170508204738.GL5973@birch.djwong.org>
-References: <20170507155855.GD5970@birch.djwong.org>
- <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
- <20170508184112.GJ5973@birch.djwong.org>
- <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Michael Kerrisk-manpages <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-        linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jann Horn <jannh-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] misc: fix 'zero_hugefiles = false' regression
+Date: Mon,  8 May 2017 15:47:57 -0700
+Message-ID: <20170508224757.94528-1-ebiggers3@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:34040 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750941AbdEHWso (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 May 2017 18:48:44 -0400
+Received: by mail-pf0-f196.google.com with SMTP id w69so5689564pfk.1
+        for <linux-ext4@vger.kernel.org>; Mon, 08 May 2017 15:48:44 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 08, 2017 at 08:47:56PM +0200, Jann Horn wrote:
-> On Mon, May 8, 2017 at 8:41 PM, Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
-> > On Mon, May 08, 2017 at 12:17:53AM +0200, Jann Horn wrote:
-> >> On Sun, May 7, 2017 at 5:58 PM, Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
-> >> > Document the new GETFSMAP ioctl that returns the physical layout of a
-> >> > (disk-based) filesystem.
-> [...]
-> >> Also: From a quick glance at the XFS implementation, I don't see any
-> >> privilege checks. Am I missing something, or does this API permit an
-> >> unprivileged user to determine the number of physical blocks allocated
-> >> for any inode, even for inodes the user can't ordinarily see in any
-> >> way?
-> >
-> > Correct.
-> 
-> What's your reasoning for why this doesn't create any new potential
-> security issues? For example, as far as I can tell, this would permit
+From: Eric Biggers <ebiggers@google.com>
 
-/Any/ ?  That is a huge request to be dropping on me after the vfs patch
-gets merged, after a year-long review cycle, etc.  AFAIK there aren't
-any problems, but then that's part of why I let this thing hang out to
-dry for such a long time.  Even posessing the inode number, an
-unprivileged process still cannot open files they wouldn't otherwise
-have access, since that requires the generation number, and only
-bulkstat provides that (if you have CAP_SYS_ADMIN).
+When mk_hugefiles() was switched to use ext2fs_fallocate(), it was
+accidentally changed to ignore the 'zero_hugefiles = false' setting,
+which should cause hugefiles to be allocated without initializing their
+contents.  Fix this by only passing EXT2_FALLOCATE_ZERO_BLOCKS to
+ext2fs_fallocate() when zero_hugefiles is true.
 
-The whole reason for dropping the CAP_SYS_ADMIN check from GETFSMAP was
-(a) so that unpriviledged users could compute free space information and
-(b) to allow dedupe tools to make better decisions about which file
-donates blocks and which file accepts blocks.
+Fixes: 4f868703f6f2 ("libext2fs: use fallocate for creating journals and hugefiles")
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ misc/mk_hugefiles.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-If you have specific complaints, then let's hear and address them.  I'm
-not going to try to prove a broad negative theoretical statement.
-
-Moving on...
-
-> an unprivileged user to determine with high probability whether a set
-> of large files with known sizes is stored anywhere in the filesystem, even
-> across containers or so.
-
-How large?  How high?
-
-Do you have a tool that analyzes a set of st_blocks values and compares
-the set to known profiles in order to guess what's on the filesystem?
-With what accuracy can it do that, especially without explicit path or
-stat data?  The maximum resolution provided by the ioctl is fs block
-size, so it's not like you can guess that this 1268432 byte file is
-libclangAnalysis.a; all you know is that there are four 310-block files
-on this filesystem -- on this system that's the desktop wallpaper, a
-file from each of libclang and libgimp, and libc6 from my aarch64 guest.
-The logical block map data could be more helpful for fingerprinting, but
-only if there are sparse files.
-
-Say our multi-tenant container hosts all the containers on the same fs.
-We now have a set of (inode, blockcount) data and a logical block map
-for every inode stored on that fs.  We have no path or stat data, so how
-do you tell what a 340-block file with a hole at offset 17 is?  You
-could try to infer path structure use the (XFS) heuristic that file
-inodes are usually created in the same AG as the directory inode they're
-created in, but GETFSMAP doesn't distinguish file extents from directory
-extents and AGs can host many different directories, so I don't think
-this will help much.  Even if you have a reasonably good idea which
-inodes are directories, you still don't know which other inodes have an
-entry in a particular directory.
-
-Then again once we throw reflink and dedupe between containers into the
-mix the extent maps become far more interesting, because dirs could
-potentially be identified by the lack of any shared blocks at all, and
-other containers with the same library files will tend to share the same
-blocks at the same offsets.  But that's still somewhat imprecise --
-btrfs directories can share blocks between snapshots, whereas xfs can't,
-and the existence of small unshared files with the same block count
-introduces a certain amount of noise into the directory inference
-process.  So maybe you'd be able to search for a reflinked .so file that
-you /can/ stat to infer that there are X containers running the same
-software as your container, though you still have to find them to mount
-an attack.
-
-FWIW I don't oppose having a CAP_SYS_ADMIN check again (patches gladly
-accepted for review!), but I'm not yet convinced that this is a big
-enough threat to forbid the use case.
-
-Sure would be nice if we had finer-grained capabilities...
-
---D
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index 71a15c5d..049c6f41 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -260,6 +260,7 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
+ {
+ 	errcode_t		retval;
+ 	struct ext2_inode	inode;
++	int			falloc_flags;
+ 
+ 	retval = ext2fs_new_inode(fs, 0, LINUX_S_IFREG, NULL, ino);
+ 	if (retval)
+@@ -281,10 +282,11 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
+ 
+ 	if (ext2fs_has_feature_extents(fs->super))
+ 		inode.i_flags |= EXT4_EXTENTS_FL;
+-	retval = ext2fs_fallocate(fs,
+-				  EXT2_FALLOCATE_FORCE_INIT |
+-				  EXT2_FALLOCATE_ZERO_BLOCKS,
+-				  *ino, &inode, goal, 0, num);
++
++	falloc_flags = EXT2_FALLOCATE_FORCE_INIT;
++	if (zero_hugefile)
++		falloc_flags |= EXT2_FALLOCATE_ZERO_BLOCKS;
++	retval = ext2fs_fallocate(fs, falloc_flags, *ino, &inode, goal, 0, num);
+ 	if (retval)
+ 		return retval;
+ 	retval = ext2fs_inode_size_set(fs, &inode, num * fs->blocksize);
+-- 
+2.13.0.rc2.291.g57267f2277-goog
