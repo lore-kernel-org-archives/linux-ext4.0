@@ -1,259 +1,97 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: lockdep splat with v4.11 and generic/386
-Date: Tue, 9 May 2017 10:17:41 +0200
-Message-ID: <20170509081741.GA21467@quack2.suse.cz>
-References: <20170504193838.GA808@linux.intel.com>
- <20170505075923.GB25424@quack2.suse.cz>
- <20170505084950.GC25424@quack2.suse.cz>
- <20170505165035.GA5963@birch.djwong.org>
+Subject: Re: [PATCH] ext4: Clear lockdep subtype for quota files on quota off
+Date: Tue, 9 May 2017 14:09:43 +0200
+Message-ID: <20170509120943.GC21467@quack2.suse.cz>
+References: <20170505085327.27103-1-jack@suse.cz>
+ <0A0D0EE6-38A2-4701-87EF-E8D63CA136C0@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51700 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:39252 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750825AbdEIIZl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 May 2017 04:25:41 -0400
+        id S1751210AbdEIMJq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 May 2017 08:09:46 -0400
 Content-Disposition: inline
-In-Reply-To: <20170505165035.GA5963@birch.djwong.org>
+In-Reply-To: <0A0D0EE6-38A2-4701-87EF-E8D63CA136C0@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 05-05-17 09:50:35, Darrick J. Wong wrote:
-> On Fri, May 05, 2017 at 10:49:50AM +0200, Jan Kara wrote:
-> > On Fri 05-05-17 09:59:23, Jan Kara wrote:
-> > > On Thu 04-05-17 13:38:38, Ross Zwisler wrote:
-> > > > I hit the following lockdep splat during some regression testing today, and
-> > > > was able to reproduce it on vanilla v4.11 without DAX.  My test setup is big
-> > > > memmap PMEM device in a QEMU virtual machine, but I don't think that the block
-> > > > device is important.  I was able to reproduce this easily by running
-> > > > generic/386 in a loop.  Here's the failure:
-> > > 
-> > > Thanks for report! This is false positive caused by a bug in our lockdep
-> > > annotation - locks on quota files (i_data_sem in this case) rank
-> > > differently than locks on normal files - specifically the lock ordering is
-> > > i_data_sem (normal file, directory, ...) -> dqio_mutex -> i_data_sem (quota
-> > > file). Now we do take care to tell lockdep about this by calling
-> > > lockdep_set_quota_inode() in fs/ext4/super.c for quota files. However we
-> > > don't return i_data_sem back to the normal locking class on freeing inode
-> > > and when quota file inode gets reused for something else, it has a wrong
-> > > locking class set which confuses lockdep. I'll send a fix.
+On Fri 05-05-17 14:20:38, Andreas Dilger wrote:
+> On May 5, 2017, at 2:53 AM, Jan Kara <jack@suse.cz> wrote:
 > > 
-> > Hum, I have the fix implemented but how did you make that test work for
-> > ext4? For me it is not run because:
+> > Quota files have special ranking of i_data_sem lock. We inform lockdep
+> > about it when turning on quotas however when turning quotas off, we
+> > don't clear the lockdep subclass from i_data_sem lock and thus when the
+> > inode gets later reused for a normal file or directory, lockdep gets
+> > confused and complains about possible deadlocks. Fix the problem by
+> > resetting lockdep subclass of i_data_sem on quota off.
 > > 
-> > xfs_quota binary does not support foreign filesystems
-> > 
-> > and looking at xfs_quota source in the latest git, -f still is not
-> > supported...
+> > Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> What git repo are you using?  xfs_quota has had -f since xfsprogs 4.8.
-> 
-> xfsprogs upstream lives at:
-> git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-> 
-> (XFS moved off SGI infrastructure last October.)
+> Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Ha! Good point. My git repo still points to SGI. I know the repo moved but
-didn't realize it could be the problem when looking at this :) Thanks!
+Thanks I'll add these tags.
+
+> The change to skip clearing the NOATIME/IMMUTABLE inode flags and times
+> on every mount/unmount when the journaled quota feature is enabled is
+> good, since it avoids needless overhead, but isn't really described in
+> the commit comment.  This isn't directly related to the lockdep, but
+> rather improving 957153fce8d2 "ext4: Set flags on quota files directly"
+> AFAICS.
+
+I don't think I'm changing anything in that code actually. Previously, we
+didn't call ext4_quota_off() at all when quota files were stored in system
+inodes, now we do call it but just skip NOATIME/IMMUTABLE flag handling. So
+what you write below is not related to this patch.
+
+> It might be worthwhile to add a line to this commit like:
+> 
+>  Don't clear NOATIME/IMMUTABLE flags when journaled quota is enabled.
+> 
+> It also looks like ext4_quota_on() could use a similar check, to avoid
+> setting the NOATIME/IMMUTABLE flags on every mount if they are already
+> set.
+
+I don't think it is worth it. Firstly, In don't think people care about
+quotaon() performance that much, secondly those flags are expected to be
+clear, thirdly, that function is called only for legacy quota files.
+
+> I guess it isn't harmful to clear IMMUTABLE in the case of non-journaled
+> quotas, to maximize compatibility with older quota utilities, so long as
+> we don't incur this needless overhead for the newer journaled quota case.
+
+We manipulate inode flags only for legacy quota files. For quota files that
+are hidden system inodes, there's no point so we avoid that.
+
+> There is a separate issue of what to do if the filesystem wasn't unmounted
+> cleanly and IMMUTABLE is still set?  If the userspace quotacheck always
+> clears IMMUTABLE when it is run, then there isn't much benefit in setting
+> the IMMUTABLE flag in the first place.  Is there some other way that the
+> userspace quota utilities know whether it is safe to update the quota files?
+
+Userspace quotacheck does remove IMMUTABLE flag if it sees it. But it
+checks using quotactl() calls whether quota isn't turned on on that
+filesystem before doing that. Generally quota-tools take care and check
+using quotactl() whether quota isn't turned on before going and modifying
+quota files directly. However there are some Perl modules out there
+modifying quota files which are not as careful...
+
+> One possibility would be to use a similar open(O_EXCL) hack as we use
+> with block devices to avoid userspace trying to modify the quota file while
+> the kernel is using it?
+
+Well, that would be possible and possibly more reliable than IMMUTABLE
+flag. However since the problem is there only for legacy quota files, I
+don't think it's worth the de fact API change. Hidden quota files solve all
+these problems (and couple others) nicely...
 
 								Honza
-
-
-> > > >   FSTYP         -- ext4
-> > > >   PLATFORM      -- Linux/x86_64 lorwyn 4.11.0
-> > > >   MKFS_OPTIONS  -- /dev/pmem0p2
-> > > >   MOUNT_OPTIONS -- -o acl,user_xattr -o context=system_u:object_r:root_t:s0 /dev/pmem0p2 /mnt/xfstests_scratch
-> > > >   
-> > > >   generic/386 1s ... 1s
-> > > >   _check_dmesg: something found in dmesg (see /root/xfstests/results//generic/386.dmesg)
-> > > >   Ran: generic/386
-> > > >   Failures: generic/386
-> > > >   Failed 1 of 1 tests
-> > > > 
-> > > > Here's the lockdep splat, passed through kasan_symbolize.py:
-> > > > 
-> > > >   run fstests generic/386 at 2017-05-04 13:36:35
-> > > >   EXT4-fs (pmem0p2): mounted filesystem with ordered data mode. Opts: acl,user_xattr,quota
-> > > >   
-> > > >   ======================================================
-> > > >   [ INFO: possible circular locking dependency detected ]
-> > > >   4.11.0 #1 Not tainted
-> > > >   -------------------------------------------------------
-> > > >   mkdir/8458 is trying to acquire lock:
-> > > >    (&s->s_dquot.dqio_mutex){+.+...}, at: [<ffffffff8133a8bb>] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >   
-> > > >   but task is already holding lock:
-> > > >    (&ei->i_data_sem/2){++++..}, at: [<ffffffff81371ba1>] ext4_map_blocks+0x151/0x5e0 fs/ext4/inode.c:612
-> > > >   
-> > > >   which lock already depends on the new lock.
-> > > >   
-> > > >   
-> > > >   the existing dependency chain (in reverse order) is:
-> > > >   
-> > > >   -> #1 (&ei->i_data_sem/2){++++..}:
-> > > >         [<      none      >] lock_acquire+0xea/0x1f0 kernel/locking/lockdep.c:3762
-> > > >         [<      none      >] down_read+0x43/0xa0 kernel/locking/rwsem.c:23
-> > > >         [<      none      >] ext4_map_blocks+0x2b4/0x5e0 fs/ext4/inode.c:540
-> > > >         [<      none      >] ext4_getblk+0x51/0x1a0 fs/ext4/inode.c:949
-> > > >         [<      none      >] ext4_bread+0x22/0xc0 fs/ext4/inode.c:999
-> > > >         [<      none      >] ext4_quota_read+0xce/0x110 fs/ext4/super.c:5470
-> > > >         [<      none      >] read_blk+0x4c/0x60 fs/quota/quota_tree.c:63
-> > > >         [<      none      >] find_tree_dqentry+0x44/0x230 fs/quota/quota_tree.c:579
-> > > >         [<      none      >] find_tree_dqentry+0x1ad/0x230 fs/quota/quota_tree.c:590
-> > > >         [<      none      >] find_tree_dqentry+0x1ad/0x230 fs/quota/quota_tree.c:590
-> > > >         [<      none      >] find_tree_dqentry+0x1ad/0x230 fs/quota/quota_tree.c:590
-> > > >         [<     inline     >] find_dqentry fs/quota/quota_tree.c:602
-> > > >         [<      none      >] qtree_read_dquot+0x12e/0x260 fs/quota/quota_tree.c:622
-> > > >         [<      none      >] v2_read_dquot+0x2e/0x30 fs/quota/quota_v2.c:288
-> > > >         [<      none      >] dquot_acquire+0xe3/0x120 fs/quota/dquot.c:411
-> > > >         [<      none      >] ext4_acquire_dquot+0x68/0xa0 fs/ext4/super.c:5227
-> > > >         [<      none      >] dqget+0x305/0x470 fs/quota/dquot.c:891
-> > > >         [<      none      >] __dquot_initialize+0x151/0x290 fs/quota/dquot.c:1460
-> > > >         [<      none      >] dquot_initialize+0x13/0x20 fs/quota/dquot.c:1511
-> > > >         [<      none      >] ext4_mkdir+0x66/0x470 fs/ext4/namei.c:2645
-> > > >         [<      none      >] vfs_mkdir+0x119/0x1c0 fs/namei.c:3769
-> > > >         [<     inline     >] SYSC_mkdirat fs/namei.c:3792
-> > > >         [<     inline     >] SyS_mkdirat fs/namei.c:3776
-> > > >         [<     inline     >] SYSC_mkdir fs/namei.c:3803
-> > > >         [<      none      >] SyS_mkdir+0x7a/0xf0 fs/namei.c:3801
-> > > >         [<      none      >] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:204
-> > > >   
-> > > >   -> #0 (&s->s_dquot.dqio_mutex){+.+...}:
-> > > >         [<     inline     >] check_prev_add kernel/locking/lockdep.c:1830
-> > > >         [<     inline     >] check_prevs_add kernel/locking/lockdep.c:1940
-> > > >         [<     inline     >] validate_chain kernel/locking/lockdep.c:2267
-> > > >         [<      none      >] __lock_acquire+0x12c2/0x1450 kernel/locking/lockdep.c:3347
-> > > >         [<      none      >] lock_acquire+0xea/0x1f0 kernel/locking/lockdep.c:3762
-> > > >         [<     inline     >] __mutex_lock_common kernel/locking/mutex.c:756
-> > > >         [<      none      >] __mutex_lock+0x8d/0xa80 kernel/locking/mutex.c:893
-> > > >         [<      none      >] mutex_lock_nested+0x1b/0x20 kernel/locking/mutex.c:908
-> > > >         [<      none      >] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >         [<      none      >] ext4_write_dquot+0x6f/0xa0 fs/ext4/super.c:5211
-> > > >         [<      none      >] ext4_mark_dquot_dirty+0x3f/0x60 fs/ext4/super.c:5262
-> > > >         [<     inline     >] mark_dquot_dirty fs/quota/dquot.c:337
-> > > >         [<     inline     >] mark_all_dquot_dirty fs/quota/dquot.c:369
-> > > >         [<      none      >] __dquot_alloc_space+0x275/0x2b0 fs/quota/dquot.c:1693
-> > > >         [<     inline     >] dquot_alloc_space_nodirty ./include/linux/quotaops.h:284
-> > > >         [<     inline     >] dquot_alloc_space ./include/linux/quotaops.h:297
-> > > >         [<     inline     >] dquot_alloc_block ./include/linux/quotaops.h:321
-> > > >         [<      none      >] ext4_mb_new_blocks+0x113/0x1110 fs/ext4/mballoc.c:4487
-> > > >         [<      none      >] ext4_ext_map_blocks+0xe2f/0x20d0 fs/ext4/extents.c:4478
-> > > >         [<      none      >] ext4_map_blocks+0x175/0x5e0 fs/ext4/inode.c:619
-> > > >         [<      none      >] ext4_getblk+0x51/0x1a0 fs/ext4/inode.c:949
-> > > >         [<      none      >] ext4_bread+0x22/0xc0 fs/ext4/inode.c:999
-> > > >         [<      none      >] ext4_append+0x4d/0xe0 fs/ext4/namei.c:64
-> > > >         [<     inline     >] ext4_init_new_dir fs/ext4/namei.c:2615
-> > > >         [<      none      >] ext4_mkdir+0x266/0x470 fs/ext4/namei.c:2662
-> > > >         [<      none      >] vfs_mkdir+0x119/0x1c0 fs/namei.c:3769
-> > > >         [<     inline     >] SYSC_mkdirat fs/namei.c:3792
-> > > >         [<     inline     >] SyS_mkdirat fs/namei.c:3776
-> > > >         [<     inline     >] SYSC_mkdir fs/namei.c:3803
-> > > >         [<      none      >] SyS_mkdir+0x7a/0xf0 fs/namei.c:3801
-> > > >         [<      none      >] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:204
-> > > >   
-> > > >   other info that might help us debug this:
-> > > >   
-> > > >    Possible unsafe locking scenario:
-> > > >   
-> > > >          CPU0                    CPU1
-> > > >          ----                    ----
-> > > >     lock(&ei->i_data_sem/2);
-> > > >                                  lock(&s->s_dquot.dqio_mutex);
-> > > >                                  lock(&ei->i_data_sem/2);
-> > > >     lock(&s->s_dquot.dqio_mutex);
-> > > >   
-> > > >    *** DEADLOCK ***
-> > > >   
-> > > >   5 locks held by mkdir/8458:
-> > > >    #0:  (sb_writers#14){.+.+.+}, at: [<     inline     >] sb_start_write ./include/linux/fs.h:1504
-> > > >    #0:  (sb_writers#14){.+.+.+}, at: [<ffffffff812e1e24>] mnt_want_write+0x24/0x50 fs/namespace.c:388
-> > > >    #1:  (&type->i_mutex_dir_key#5/1){+.+.+.}, at: [<     inline     >] inode_lock_nested ./include/linux/fs.h:731
-> > > >    #1:  (&type->i_mutex_dir_key#5/1){+.+.+.}, at: [<ffffffff812cb5e3>] filename_create+0x83/0x160 fs/namei.c:3594
-> > > >    #2:  (jbd2_handle){++++..}, at: [<ffffffff813d31b2>] start_this_handle+0x112/0x450 fs/jbd2/transaction.c:361
-> > > >    #3:  (&ei->i_data_sem/2){++++..}, at: [<ffffffff81371ba1>] ext4_map_blocks+0x151/0x5e0 fs/ext4/inode.c:612
-> > > >    #4:  (dquot_srcu){......}, at: [<     inline     >] srcu_read_lock ./include/linux/srcu.h:237
-> > > >    #4:  (dquot_srcu){......}, at: [<ffffffff8133c44b>] __dquot_alloc_space+0xbb/0x2b0 fs/quota/dquot.c:1668
-> > > >   
-> > > >   stack backtrace:
-> > > >   CPU: 3 PID: 8458 Comm: mkdir Not tainted 4.11.0 #1
-> > > >   Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.3-1.fc25 04/01/2014
-> > > >   Call Trace:
-> > > >   [<     inline     >] __dump_stack lib/dump_stack.c:16
-> > > >   [<      none      >] dump_stack+0x86/0xc3 lib/dump_stack.c:52
-> > > >   [<      none      >] print_circular_bug+0x1be/0x210 kernel/locking/lockdep.c:1204
-> > > >   [<     inline     >] check_prev_add kernel/locking/lockdep.c:1830
-> > > >   [<     inline     >] check_prevs_add kernel/locking/lockdep.c:1940
-> > > >   [<     inline     >] validate_chain kernel/locking/lockdep.c:2267
-> > > >   [<      none      >] __lock_acquire+0x12c2/0x1450 kernel/locking/lockdep.c:3347
-> > > >   [<      none      >] lock_acquire+0xea/0x1f0 kernel/locking/lockdep.c:3762
-> > > >    ?[<      none      >] lock_acquire+0xea/0x1f0 kernel/locking/lockdep.c:3762
-> > > >    ?[<      none      >] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >    ?[<      none      >] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >   [<     inline     >] __mutex_lock_common kernel/locking/mutex.c:756
-> > > >   [<      none      >] __mutex_lock+0x8d/0xa80 kernel/locking/mutex.c:893
-> > > >    ?[<      none      >] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >    ?[<     inline     >] spin_unlock ./include/linux/spinlock.h:339
-> > > >    ?[<      none      >] dquot_mark_dquot_dirty+0x57/0xc0 fs/quota/dquot.c:355
-> > > >    ?[<     inline     >] __ext4_journal_start fs/ext4/ext4_jbd2.h:318
-> > > >    ?[<      none      >] ext4_write_dquot+0x5c/0xa0 fs/ext4/super.c:5207
-> > > >    ?[<     inline     >] __ext4_journal_start fs/ext4/ext4_jbd2.h:318
-> > > >    ?[<      none      >] ext4_write_dquot+0x5c/0xa0 fs/ext4/super.c:5207
-> > > >   [<      none      >] mutex_lock_nested+0x1b/0x20 kernel/locking/mutex.c:908
-> > > >    ?[<      none      >] mutex_lock_nested+0x1b/0x20 kernel/locking/mutex.c:908
-> > > >   [<      none      >] dquot_commit+0x2b/0xd0 fs/quota/dquot.c:453
-> > > >   [<      none      >] ext4_write_dquot+0x6f/0xa0 fs/ext4/super.c:5211
-> > > >   [<      none      >] ext4_mark_dquot_dirty+0x3f/0x60 fs/ext4/super.c:5262
-> > > >   [<     inline     >] mark_dquot_dirty fs/quota/dquot.c:337
-> > > >   [<     inline     >] mark_all_dquot_dirty fs/quota/dquot.c:369
-> > > >   [<      none      >] __dquot_alloc_space+0x275/0x2b0 fs/quota/dquot.c:1693
-> > > >    ?[<      none      >] __this_cpu_preempt_check+0x13/0x20 lib/smp_processor_id.c:62
-> > > >    ?[<      none      >] __percpu_counter_add+0x85/0xb0 lib/percpu_counter.c:90
-> > > >   [<     inline     >] dquot_alloc_space_nodirty ./include/linux/quotaops.h:284
-> > > >   [<     inline     >] dquot_alloc_space ./include/linux/quotaops.h:297
-> > > >   [<     inline     >] dquot_alloc_block ./include/linux/quotaops.h:321
-> > > >   [<      none      >] ext4_mb_new_blocks+0x113/0x1110 fs/ext4/mballoc.c:4487
-> > > >    ?[<     inline     >] lock_is_held ./include/linux/lockdep.h:348
-> > > >    ?[<      none      >] rcu_read_lock_sched_held+0x4a/0x80 kernel/rcu/update.c:114
-> > > >    ?[<     inline     >] trace_kmalloc ./include/trace/events/kmem.h:45
-> > > >    ?[<      none      >] __kmalloc+0x2ce/0x300 mm/slub.c:3743
-> > > >    ?[<     inline     >] kmalloc ./include/linux/slab.h:495
-> > > >    ?[<     inline     >] kzalloc ./include/linux/slab.h:663
-> > > >    ?[<      none      >] ext4_find_extent+0x295/0x2d0 fs/ext4/extents.c:894
-> > > >    ?[<     inline     >] kmalloc ./include/linux/slab.h:495
-> > > >    ?[<     inline     >] kzalloc ./include/linux/slab.h:663
-> > > >    ?[<      none      >] ext4_find_extent+0x295/0x2d0 fs/ext4/extents.c:894
-> > > >   [<      none      >] ext4_ext_map_blocks+0xe2f/0x20d0 fs/ext4/extents.c:4478
-> > > >    ?[<      none      >] ext4_map_blocks+0x331/0x5e0 fs/ext4/inode.c:571
-> > > >    ?[<      none      >] ext4_map_blocks+0x331/0x5e0 fs/ext4/inode.c:571
-> > > >   [<      none      >] ext4_map_blocks+0x175/0x5e0 fs/ext4/inode.c:619
-> > > >   [<      none      >] ext4_getblk+0x51/0x1a0 fs/ext4/inode.c:949
-> > > >   [<      none      >] ext4_bread+0x22/0xc0 fs/ext4/inode.c:999
-> > > >   [<      none      >] ext4_append+0x4d/0xe0 fs/ext4/namei.c:64
-> > > >   [<     inline     >] ext4_init_new_dir fs/ext4/namei.c:2615
-> > > >   [<      none      >] ext4_mkdir+0x266/0x470 fs/ext4/namei.c:2662
-> > > >   [<      none      >] vfs_mkdir+0x119/0x1c0 fs/namei.c:3769
-> > > >   [<     inline     >] SYSC_mkdirat fs/namei.c:3792
-> > > >   [<     inline     >] SyS_mkdirat fs/namei.c:3776
-> > > >   [<     inline     >] SYSC_mkdir fs/namei.c:3803
-> > > >   [<      none      >] SyS_mkdir+0x7a/0xf0 fs/namei.c:3801
-> > > >   [<      none      >] entry_SYSCALL_64_fastpath+0x1f/0xc2 arch/x86/entry/entry_64.S:204
-> > > >   RIP: 0033:0x7fb614c15947
-> > > >   RSP: 002b:00007fff31be4938 EFLAGS: 00000216 ORIG_RAX: 0000000000000053
-> > > >   RAX: ffffffffffffffda RBX: 00007fff31be4c48 RCX: 00007fb614c15947
-> > > >   RDX: 0000000000000000 RSI: 00000000000001ff RDI: 00007fff31be6aa5
-> > > >   RBP: 0000000000000003 R08: 00000000000001ff R09: 0000564258eadac0
-> > > >   R10: 000056425b0a4060 R11: 0000000000000216 R12: 0000000000000000
-> > > >   R13: 0000564258eadb00 R14: 0000000000000000 R15: 0000000000000000
-> > > -- 
-> > > Jan Kara <jack@suse.com>
-> > > SUSE Labs, CR
-> > -- 
-> > Jan Kara <jack@suse.com>
-> > SUSE Labs, CR
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
