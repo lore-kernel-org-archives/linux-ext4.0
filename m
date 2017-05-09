@@ -1,107 +1,74 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 7/8] nowait aio: xfs
-Date: Tue,  9 May 2017 07:22:18 -0500
-Message-ID: <20170509122219.31756-8-rgoldwyn@suse.de>
-References: <20170509122219.31756-1-rgoldwyn@suse.de>
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20170509122219.31756-1-rgoldwyn@suse.de>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] ext4: Clear lockdep subtype for quota files on quota off
+Date: Tue,  9 May 2017 14:22:47 +0200
+Message-ID: <20170509122247.26345-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40468 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753895AbdEIMXD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 May 2017 08:23:03 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Quota files have special ranking of i_data_sem lock. We inform lockdep
+about it when turning on quotas however when turning quotas off, we
+don't clear the lockdep subclass from i_data_sem lock and thus when the
+inode gets later reused for a normal file or directory, lockdep gets
+confused and complains about possible deadlocks. Fix the problem by
+resetting lockdep subclass of i_data_sem on quota off.
 
-If IOCB_NOWAIT is set, bail if the i_rwsem is not lockable
-immediately.
-
-IF IOMAP_NOWAIT is set, return EAGAIN in xfs_file_iomap_begin
-if it needs allocation either due to file extension, writing to a hole,
-or COW or waiting for other DIOs to finish.
-
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
+Reported-and-tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/xfs/xfs_file.c  | 19 ++++++++++++++-----
- fs/xfs/xfs_iomap.c | 17 +++++++++++++++++
- 2 files changed, 31 insertions(+), 5 deletions(-)
+ fs/ext4/super.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 35703a801372..b307940e7d56 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -541,8 +541,11 @@ xfs_file_dio_aio_write(
- 		iolock = XFS_IOLOCK_SHARED;
- 	}
+Changes since v1: Updated tags.
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a9c72e39a4ee..77043dc7f704 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -846,14 +846,9 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
+ {
+ 	int type;
  
--	xfs_ilock(ip, iolock);
--
-+	if (!xfs_ilock_nowait(ip, iolock)) {
-+		if (iocb->ki_flags & IOCB_NOWAIT)
-+			return -EAGAIN;
-+		xfs_ilock(ip, iolock);
-+	}
- 	ret = xfs_file_aio_write_checks(iocb, from, &iolock);
- 	if (ret)
+-	if (ext4_has_feature_quota(sb)) {
+-		dquot_disable(sb, -1,
+-			      DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED);
+-	} else {
+-		/* Use our quota_off function to clear inode flags etc. */
+-		for (type = 0; type < EXT4_MAXQUOTAS; type++)
+-			ext4_quota_off(sb, type);
+-	}
++	/* Use our quota_off function to clear inode flags etc. */
++	for (type = 0; type < EXT4_MAXQUOTAS; type++)
++		ext4_quota_off(sb, type);
+ }
+ #else
+ static inline void ext4_quota_off_umount(struct super_block *sb)
+@@ -5476,7 +5471,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
  		goto out;
-@@ -553,9 +556,15 @@ xfs_file_dio_aio_write(
- 	 * otherwise demote the lock if we had to take the exclusive lock
- 	 * for other reasons in xfs_file_aio_write_checks.
- 	 */
--	if (unaligned_io)
--		inode_dio_wait(inode);
--	else if (iolock == XFS_IOLOCK_EXCL) {
-+	if (unaligned_io) {
-+		/* If we are going to wait for other DIO to finish, bail */
-+		if (iocb->ki_flags & IOCB_NOWAIT) {
-+			if (atomic_read(&inode->i_dio_count))
-+				return -EAGAIN;
-+		} else {
-+			inode_dio_wait(inode);
-+		}
-+	} else if (iolock == XFS_IOLOCK_EXCL) {
- 		xfs_ilock_demote(ip, XFS_IOLOCK_EXCL);
- 		iolock = XFS_IOLOCK_SHARED;
- 	}
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index 288ee5b840d7..9baa65eeae9e 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -1015,6 +1015,15 @@ xfs_file_iomap_begin(
  
- 	if ((flags & (IOMAP_WRITE | IOMAP_ZERO)) && xfs_is_reflink_inode(ip)) {
- 		if (flags & IOMAP_DIRECT) {
-+			/*
-+			 * A reflinked inode will result in CoW alloc.
-+			 * FIXME: It could still overwrite on unshared extents
-+			 * and not need allocation.
-+			 */
-+			if (flags & IOMAP_NOWAIT) {
-+				error = -EAGAIN;
-+				goto out_unlock;
-+			}
- 			/* may drop and re-acquire the ilock */
- 			error = xfs_reflink_allocate_cow(ip, &imap, &shared,
- 					&lockmode);
-@@ -1032,6 +1041,14 @@ xfs_file_iomap_begin(
+ 	err = dquot_quota_off(sb, type);
+-	if (err)
++	if (err || ext4_has_feature_quota(sb))
+ 		goto out_put;
  
- 	if ((flags & IOMAP_WRITE) && imap_needs_alloc(inode, &imap, nimaps)) {
- 		/*
-+		 * If nowait is set bail since we are going to make
-+		 * allocations.
-+		 */
-+		if (flags & IOMAP_NOWAIT) {
-+			error = -EAGAIN;
-+			goto out_unlock;
-+		}
-+		/*
- 		 * We cap the maximum length we map here to MAX_WRITEBACK_PAGES
- 		 * pages to keep the chunks of work done where somewhat symmetric
- 		 * with the work writeback does. This is a completely arbitrary
+ 	inode_lock(inode);
+@@ -5496,6 +5491,7 @@ static int ext4_quota_off(struct super_block *sb, int type)
+ out_unlock:
+ 	inode_unlock(inode);
+ out_put:
++	lockdep_set_quota_inode(inode, I_DATA_SEM_NORMAL);
+ 	iput(inode);
+ 	return err;
+ out:
 -- 
 2.12.0
-
