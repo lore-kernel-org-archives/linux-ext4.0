@@ -1,97 +1,69 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Clear lockdep subtype for quota files on quota off
-Date: Tue, 9 May 2017 14:09:43 +0200
-Message-ID: <20170509120943.GC21467@quack2.suse.cz>
-References: <20170505085327.27103-1-jack@suse.cz>
- <0A0D0EE6-38A2-4701-87EF-E8D63CA136C0@dilger.ca>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 4/4] dax: Fix data corruption when fault races with write
+Date: Tue, 9 May 2017 14:14:44 +0200
+Message-ID: <20170509121444.GD21467@quack2.suse.cz>
+References: <20170505072500.25692-1-jack@suse.cz>
+ <20170505072500.25692-5-jack@suse.cz>
+ <20170508172527.GA18408@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39252 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751210AbdEIMJq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 May 2017 08:09:46 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <0A0D0EE6-38A2-4701-87EF-E8D63CA136C0@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170508172527.GA18408-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 05-05-17 14:20:38, Andreas Dilger wrote:
-> On May 5, 2017, at 2:53 AM, Jan Kara <jack@suse.cz> wrote:
+On Mon 08-05-17 11:25:27, Ross Zwisler wrote:
+> On Fri, May 05, 2017 at 09:25:00AM +0200, Jan Kara wrote:
+> > Currently DAX read fault can race with write(2) in the following way:
 > > 
-> > Quota files have special ranking of i_data_sem lock. We inform lockdep
-> > about it when turning on quotas however when turning quotas off, we
-> > don't clear the lockdep subclass from i_data_sem lock and thus when the
-> > inode gets later reused for a normal file or directory, lockdep gets
-> > confused and complains about possible deadlocks. Fix the problem by
-> > resetting lockdep subclass of i_data_sem on quota off.
+> > CPU1 - write(2)			CPU2 - read fault
+> > 				dax_iomap_pte_fault()
+> > 				  ->iomap_begin() - sees hole
+> > dax_iomap_rw()
+> >   iomap_apply()
+> >     ->iomap_begin - allocates blocks
+> >     dax_iomap_actor()
+> >       invalidate_inode_pages2_range()
+> >         - there's nothing to invalidate
+> > 				  grab_mapping_entry()
+> > 				  - we add zero page in the radix tree
+> > 				    and map it to page tables
 > > 
-> > Reported-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > The result is that hole page is mapped into page tables (and thus zeros
+> > are seen in mmap) while file has data written in that place.
+> > 
+> > Fix the problem by locking exception entry before mapping blocks for the
+> > fault. That way we are sure invalidate_inode_pages2_range() call for
+> > racing write will either block on entry lock waiting for the fault to
+> > finish (and unmap stale page tables after that) or read fault will see
+> > already allocated blocks by write(2).
+> > 
+> > Fixes: 9f141d6ef6258a3a37a045842d9ba7e68f368956
+> > CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> > Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 > 
-> Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-Thanks I'll add these tags.
-
-> The change to skip clearing the NOATIME/IMMUTABLE inode flags and times
-> on every mount/unmount when the journaled quota feature is enabled is
-> good, since it avoids needless overhead, but isn't really described in
-> the commit comment.  This isn't directly related to the lockdep, but
-> rather improving 957153fce8d2 "ext4: Set flags on quota files directly"
-> AFAICS.
-
-I don't think I'm changing anything in that code actually. Previously, we
-didn't call ext4_quota_off() at all when quota files were stored in system
-inodes, now we do call it but just skip NOATIME/IMMUTABLE flag handling. So
-what you write below is not related to this patch.
-
-> It might be worthwhile to add a line to this commit like:
+> Yep, this looks correct to me.  Thanks!
 > 
->  Don't clear NOATIME/IMMUTABLE flags when journaled quota is enabled.
-> 
-> It also looks like ext4_quota_on() could use a similar check, to avoid
-> setting the NOATIME/IMMUTABLE flags on every mount if they are already
-> set.
+> Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 
-I don't think it is worth it. Firstly, In don't think people care about
-quotaon() performance that much, secondly those flags are expected to be
-clear, thirdly, that function is called only for legacy quota files.
-
-> I guess it isn't harmful to clear IMMUTABLE in the case of non-journaled
-> quotas, to maximize compatibility with older quota utilities, so long as
-> we don't incur this needless overhead for the newer journaled quota case.
-
-We manipulate inode flags only for legacy quota files. For quota files that
-are hidden system inodes, there's no point so we avoid that.
-
-> There is a separate issue of what to do if the filesystem wasn't unmounted
-> cleanly and IMMUTABLE is still set?  If the userspace quotacheck always
-> clears IMMUTABLE when it is run, then there isn't much benefit in setting
-> the IMMUTABLE flag in the first place.  Is there some other way that the
-> userspace quota utilities know whether it is safe to update the quota files?
-
-Userspace quotacheck does remove IMMUTABLE flag if it sees it. But it
-checks using quotactl() calls whether quota isn't turned on on that
-filesystem before doing that. Generally quota-tools take care and check
-using quotactl() whether quota isn't turned on before going and modifying
-quota files directly. However there are some Perl modules out there
-modifying quota files which are not as careful...
-
-> One possibility would be to use a similar open(O_EXCL) hack as we use
-> with block devices to avoid userspace trying to modify the quota file while
-> the kernel is using it?
-
-Well, that would be possible and possibly more reliable than IMMUTABLE
-flag. However since the problem is there only for legacy quota files, I
-don't think it's worth the de fact API change. Hidden quota files solve all
-these problems (and couple others) nicely...
-
+Thanks. I'll add your reviewed-by tag and send patches to Andrew for
+inclusion.
 								Honza
+
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
