@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [xfstests PATCH v2 2/3] ext4: allow ext4 to use
+Subject: [xfstests PATCH v2 3/3] btrfs: allow it to use
 	$SCRATCH_LOGDEV
-Date: Tue,  9 May 2017 12:12:44 -0400
-Message-ID: <20170509161245.29908-3-jlayton@redhat.com>
+Date: Tue,  9 May 2017 12:12:45 -0400
+Message-ID: <20170509161245.29908-4-jlayton@redhat.com>
 References: <20170509161245.29908-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, josef@toxicpanda.com, dhowells@redhat.com,
@@ -30,32 +30,28 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-The writeback error handling test requires that you put the journal on a
-separate device. This allows us to use dmerror to simulate data
-writeback failure, without affecting the journal.
-
-xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
-up the ext4 code so that it can do the same thing when _scratch_mkfs is
-called.
+With btrfs, we can't really put the log on a separate device. What we
+can do however is mirror the metadata across two devices and put the
+data on a single device. When we turn on dmerror then the metadata can
+fall back to using the other mirror while the data errors out.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- common/rc | 3 +++
- 1 file changed, 3 insertions(+)
+ common/rc | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/common/rc b/common/rc
-index 257b1903359d..8b815d9c8c33 100644
+index 8b815d9c8c33..2084c1f24f30 100644
 --- a/common/rc
 +++ b/common/rc
-@@ -675,6 +675,9 @@ _scratch_mkfs_ext4()
- 	local tmp=`mktemp`
- 	local mkfs_status
- 
-+	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-+	    $mkfs_cmd -O journal_dev $SCRATCH_LOGDEV && \
-+	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
- 
- 	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
- 	mkfs_status=$?
+@@ -829,6 +829,8 @@ _scratch_mkfs()
+ 		;;
+ 	btrfs)
+ 		mkfs_cmd="$MKFS_BTRFS_PROG"
++		[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
++			mkfs_cmd="$mkfs_cmd -d single -m raid1 $SCRATCH_LOGDEV"
+ 		mkfs_filter="cat"
+ 		;;
+ 	ext2|ext3)
 -- 
 2.9.3
