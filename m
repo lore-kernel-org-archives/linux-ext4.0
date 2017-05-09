@@ -1,66 +1,148 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v4 22/27] jbd2: don't reset error in
-	journal_finish_inode_data_buffers
-Date: Tue,  9 May 2017 11:49:25 -0400
-Message-ID: <20170509154930.29524-23-jlayton@redhat.com>
+Subject: [PATCH v4 20/27] cifs: cleanup writeback handling errors
+	and comments
+Date: Tue,  9 May 2017 11:49:23 -0400
+Message-ID: <20170509154930.29524-21-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
-Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: axboe@kernel.dk, hch@infradead.org, tytso@mit.edu, mawilcox@microsoft.com,
 	corbet@lwn.net, josef@toxicpanda.com, dhowells@redhat.com,
 	clm@fb.com, bo.li.liu@oracle.com, viro@zeniv.linux.org.uk,
-	jack@suse.com, akpm@linux-foundation.org,
+	jack@suse.com, rpeterso@redhat.com, akpm@linux-foundation.org,
 	ross.zwisler@linux.intel.com, hubcap@omnibond.com
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-	linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-	linux-f2fs-devel@lists.sourceforge.net,
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, linux-mm@kvack.org,
+	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+	cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
 	v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
 	linux-block@vger.kernel.org
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Now that we don't clear writeback errors after fetching them, there is
-no need to reset them. This is also potentially racy.
+Now that writeback errors are handled on a per-file basis using the new
+sequence counter method at the vfs layer, we no longer need to re-set
+errors in the mapping after doing writeback in non-fsync codepaths.
+
+Also, fix up some bogus comments.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/jbd2/commit.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ fs/cifs/cifsfs.c |  4 +---
+ fs/cifs/file.c   |  7 ++-----
+ fs/cifs/inode.c  | 22 +++++++---------------
+ 3 files changed, 10 insertions(+), 23 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index b6b194ec1b4f..4c6262652028 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -264,17 +264,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
- 		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
- 		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
--		if (err) {
--			/*
--			 * Because AS_EIO is cleared by
--			 * filemap_fdatawait_range(), set it again so
--			 * that user process can get -EIO from fsync().
--			 */
--			mapping_set_error(jinode->i_vfs_inode->i_mapping, -EIO);
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index dd3f5fabfdf6..017a2d1d02c7 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -829,10 +829,8 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
+ 		if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
+ 		    inode->i_mapping->nrpages != 0) {
+ 			rc = filemap_fdatawait(inode->i_mapping);
+-			if (rc) {
+-				mapping_set_error(inode->i_mapping, rc);
++			if (rc)
+ 				return rc;
+-			}
+ 		}
+ 		/*
+ 		 * Some applications poll for the file length in this strange
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 0bee7f8d91ad..9825d892716e 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -722,9 +722,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 	cinode = CIFS_I(inode);
+ 
+ 	if (can_flush) {
+-		rc = filemap_write_and_wait(inode->i_mapping);
+-		mapping_set_error(inode->i_mapping, rc);
 -
--			if (!ret)
--				ret = err;
++		filemap_write_and_wait(inode->i_mapping);
+ 		if (tcon->unix_ext)
+ 			rc = cifs_get_inode_info_unix(&inode, full_path,
+ 						      inode->i_sb, xid);
+@@ -3906,8 +3904,7 @@ void cifs_oplock_break(struct work_struct *work)
+ 			break_lease(inode, O_WRONLY);
+ 		rc = filemap_fdatawrite(inode->i_mapping);
+ 		if (!CIFS_CACHE_READ(cinode)) {
+-			rc = filemap_fdatawait(inode->i_mapping);
+-			mapping_set_error(inode->i_mapping, rc);
++			filemap_fdatawait(inode->i_mapping);
+ 			cifs_zap_mapping(inode);
+ 		}
+ 		cifs_dbg(FYI, "Oplock flush inode %p rc %d\n", inode, rc);
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index b261db34103c..a58e605240fc 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -2008,10 +2008,8 @@ int cifs_getattr(const struct path *path, struct kstat *stat,
+ 	if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
+ 	    inode->i_mapping->nrpages != 0) {
+ 		rc = filemap_fdatawait(inode->i_mapping);
+-		if (rc) {
+-			mapping_set_error(inode->i_mapping, rc);
++		if (rc)
+ 			return rc;
 -		}
-+		if (err && !ret)
-+			ret = err;
- 		spin_lock(&journal->j_list_lock);
- 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
- 		smp_mb();
+ 	}
+ 
+ 	rc = cifs_revalidate_dentry_attr(dentry);
+@@ -2171,15 +2169,12 @@ cifs_setattr_unix(struct dentry *direntry, struct iattr *attrs)
+ 	 * Attempt to flush data before changing attributes. We need to do
+ 	 * this for ATTR_SIZE and ATTR_MTIME for sure, and if we change the
+ 	 * ownership or mode then we may also need to do this. Here, we take
+-	 * the safe way out and just do the flush on all setattr requests. If
+-	 * the flush returns error, store it to report later and continue.
++	 * the safe way out and just do the flush on all setattr requests.
+ 	 *
+ 	 * BB: This should be smarter. Why bother flushing pages that
+-	 * will be truncated anyway? Also, should we error out here if
+-	 * the flush returns error?
++	 * will be truncated anyway?
+ 	 */
+-	rc = filemap_write_and_wait(inode->i_mapping);
+-	mapping_set_error(inode->i_mapping, rc);
++	filemap_write_and_wait(inode->i_mapping);
+ 	rc = 0;
+ 
+ 	if (attrs->ia_valid & ATTR_SIZE) {
+@@ -2314,15 +2309,12 @@ cifs_setattr_nounix(struct dentry *direntry, struct iattr *attrs)
+ 	 * Attempt to flush data before changing attributes. We need to do
+ 	 * this for ATTR_SIZE and ATTR_MTIME for sure, and if we change the
+ 	 * ownership or mode then we may also need to do this. Here, we take
+-	 * the safe way out and just do the flush on all setattr requests. If
+-	 * the flush returns error, store it to report later and continue.
++	 * the safe way out and just do the flush on all setattr requests.
+ 	 *
+ 	 * BB: This should be smarter. Why bother flushing pages that
+-	 * will be truncated anyway? Also, should we error out here if
+-	 * the flush returns error?
++	 * will be truncated anyway?
+ 	 */
+-	rc = filemap_write_and_wait(inode->i_mapping);
+-	mapping_set_error(inode->i_mapping, rc);
++	filemap_write_and_wait(inode->i_mapping);
+ 	rc = 0;
+ 
+ 	if (attrs->ia_valid & ATTR_SIZE) {
 -- 
 2.9.3
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
