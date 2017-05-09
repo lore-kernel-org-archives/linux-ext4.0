@@ -1,209 +1,346 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 2/8] nowait aio: Introduce RWF_NOWAIT
-Date: Tue,  9 May 2017 07:22:13 -0500
-Message-ID: <20170509122219.31756-3-rgoldwyn@suse.de>
-References: <20170509122219.31756-1-rgoldwyn@suse.de>
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, sagi@grimberg.me, avi@scylladb.com,
-        axboe@kernel.dk, linux-api@vger.kernel.org, willy@infradead.org,
-        tom.leiming@gmail.com, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170509122219.31756-1-rgoldwyn@suse.de>
-Sender: linux-block-owner@vger.kernel.org
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH v2] block, dax: move "select DAX" from BLOCK to FS_DAX
+Date: Tue, 09 May 2017 07:17:04 -0700
+Message-ID: <149433927812.2049.3430917601443895174.stgit@dwillia2-desk3.amr.corp.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jens Axboe <axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Geert Uytterhoeven <geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+For configurations that do not enable DAX filesystems or drivers, do not
+require the DAX core to be built.
 
-This flag informs kernel to bail out if an AIO request will block
-for reasons such as file allocations, or a writeback triggered,
-or would block while allocating requests while performing
-direct I/O.
+Given that the 'direct_access' method has been removed from
+'block_device_operations', we can also go ahead and remove the
+block-related dax helper functions from fs/block_dev.c to
+drivers/dax/super.c. This keeps dax details out of the block layer and
+lets the DAX core be built as a module in the FS_DAX=n case.
 
-Unfortunately, aio_flags is not checked for validity, which would
-break existing applications which have it set to anything besides zero
-or IOCB_FLAG_RESFD. So, we are using aio_reserved1 and renaming it
-to aio_rw_flags.
+Filesystems need to include dax.h to call bdev_dax_supported().
 
-RWF_NOWAIT is translated to IOCB_NOWAIT for iocb->ki_flags.
-
-The check for -EOPNOTSUPP is placed in generic_file_write_iter(). This
-is called by most filesystems, either through fsops.write_iter() or through
-the function defined by write_iter(). If not, we perform the check defined
-by .write_iter() which is called for direct IO specifically.
-
-Filesystems xfs, btrfs and ext4 would be supported in the following patches.
-
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+Cc: Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: Jens Axboe <axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org>
+Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Cc: Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
+Cc: Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Cc: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Cc: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reported-by: Geert Uytterhoeven <geert-Td1EMuHUCqxL1ZNQvxDV9g@public.gmane.org>
+Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 ---
- fs/9p/vfs_file.c        | 3 +++
- fs/aio.c                | 6 ++++++
- fs/ceph/file.c          | 3 +++
- fs/cifs/file.c          | 3 +++
- fs/fuse/file.c          | 3 +++
- fs/nfs/direct.c         | 3 +++
- fs/ocfs2/file.c         | 3 +++
- include/linux/fs.h      | 5 ++++-
- include/uapi/linux/fs.h | 1 +
- mm/filemap.c            | 3 +++
- 10 files changed, 32 insertions(+), 1 deletion(-)
+Changes in v2:
+* kill off the remainder of the dax specific routines in the block layer
+  and move it to the drivers/dax core.
 
-diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
-index 3de3b4a89d89..403681db7723 100644
---- a/fs/9p/vfs_file.c
-+++ b/fs/9p/vfs_file.c
-@@ -411,6 +411,9 @@ v9fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	loff_t origin;
- 	int err = 0;
+ block/Kconfig          |    1 -
+ drivers/dax/super.c    |   70 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/Kconfig             |    1 +
+ fs/block_dev.c         |   66 ---------------------------------------------
+ fs/ext2/super.c        |    1 +
+ fs/ext4/super.c        |    1 +
+ fs/xfs/xfs_super.c     |    1 +
+ include/linux/blkdev.h |    2 -
+ include/linux/dax.h    |   30 +++++++++++++++++++--
+ 9 files changed, 102 insertions(+), 71 deletions(-)
+
+diff --git a/block/Kconfig b/block/Kconfig
+index 93da7fc3f254..e9f780f815f5 100644
+--- a/block/Kconfig
++++ b/block/Kconfig
+@@ -6,7 +6,6 @@ menuconfig BLOCK
+        default y
+        select SBITMAP
+        select SRCU
+-       select DAX
+        help
+ 	 Provide block layer support for the kernel.
  
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
+diff --git a/drivers/dax/super.c b/drivers/dax/super.c
+index 465dcd7317d5..e8998d15f3cd 100644
+--- a/drivers/dax/super.c
++++ b/drivers/dax/super.c
+@@ -14,6 +14,7 @@
+ #include <linux/module.h>
+ #include <linux/mount.h>
+ #include <linux/magic.h>
++#include <linux/genhd.h>
+ #include <linux/cdev.h>
+ #include <linux/hash.h>
+ #include <linux/slab.h>
+@@ -47,6 +48,75 @@ void dax_read_unlock(int id)
+ }
+ EXPORT_SYMBOL_GPL(dax_read_unlock);
+ 
++int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
++		pgoff_t *pgoff)
++{
++	phys_addr_t phys_off = (get_start_sect(bdev) + sector) * 512;
 +
- 	retval = generic_write_checks(iocb, from);
- 	if (retval <= 0)
- 		return retval;
-diff --git a/fs/aio.c b/fs/aio.c
-index 020fa0045e3c..ea9f8581d902 100644
---- a/fs/aio.c
-+++ b/fs/aio.c
-@@ -1592,6 +1592,12 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
- 		goto out_put_req;
- 	}
- 
-+	if ((req->common.ki_flags & IOCB_NOWAIT) &&
-+		!(req->common.ki_flags & IOCB_DIRECT)) {
-+		ret = -EOPNOTSUPP;
-+		goto out_put_req;
++	if (pgoff)
++		*pgoff = PHYS_PFN(phys_off);
++	if (phys_off % PAGE_SIZE || size % PAGE_SIZE)
++		return -EINVAL;
++	return 0;
++}
++EXPORT_SYMBOL(bdev_dax_pgoff);
++
++/**
++ * __bdev_dax_supported() - Check if the device supports dax for filesystem
++ * @sb: The superblock of the device
++ * @blocksize: The block size of the device
++ *
++ * This is a library function for filesystems to check if the block device
++ * can be mounted with dax option.
++ *
++ * Return: negative errno if unsupported, 0 if supported.
++ */
++int __bdev_dax_supported(struct super_block *sb, int blocksize)
++{
++	struct block_device *bdev = sb->s_bdev;
++	struct dax_device *dax_dev;
++	pgoff_t pgoff;
++	int err, id;
++	void *kaddr;
++	pfn_t pfn;
++	long len;
++
++	if (blocksize != PAGE_SIZE) {
++		pr_err("VFS (%s): error: unsupported blocksize for dax\n",
++				sb->s_id);
++		return -EINVAL;
 +	}
 +
- 	ret = put_user(KIOCB_KEY, &user_iocb->aio_key);
- 	if (unlikely(ret)) {
- 		pr_debug("EFAULT: aio_key\n");
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 26cc95421cca..af28419b1731 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1267,6 +1267,9 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	int err, want, got;
- 	loff_t pos;
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
++	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
++	if (err) {
++		pr_err("VFS (%s): error: unaligned partition for dax\n",
++				sb->s_id);
++		return err;
++	}
 +
- 	if (ceph_snap(inode) != CEPH_NOSNAP)
- 		return -EROFS;
- 
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 21d404535739..f8858a06e119 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -2638,6 +2638,9 @@ ssize_t cifs_user_writev(struct kiocb *iocb, struct iov_iter *from)
- 	 * write request.
- 	 */
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
++	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
++	if (!dax_dev) {
++		pr_err("VFS (%s): error: device does not support dax\n",
++				sb->s_id);
 +		return -EOPNOTSUPP;
++	}
 +
- 	rc = generic_write_checks(iocb, from);
- 	if (rc <= 0)
- 		return rc;
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index ec238fb5a584..72786e798319 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1425,6 +1425,9 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct fuse_io_priv io = FUSE_IO_PRIV_SYNC(file);
- 	ssize_t res;
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
++	id = dax_read_lock();
++	len = dax_direct_access(dax_dev, pgoff, 1, &kaddr, &pfn);
++	dax_read_unlock(id);
 +
- 	if (is_bad_inode(inode))
- 		return -EIO;
- 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index c1b5fed7c863..dcea0caa5cb5 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -996,6 +996,9 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
- 		file, iov_iter_count(iter), (long long) iocb->ki_pos);
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
++	put_dax(dax_dev);
 +
- 	result = generic_write_checks(iocb, iter);
- 	if (result <= 0)
- 		return result;
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index bfeb647459d9..e7f8ba890305 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -2235,6 +2235,9 @@ static ssize_t ocfs2_file_write_iter(struct kiocb *iocb,
- 	if (count == 0)
- 		return 0;
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
++	if (len < 1) {
++		pr_err("VFS (%s): error: dax access failed (%ld)",
++				sb->s_id, len);
++		return len < 0 ? len : -EIO;
++	}
 +
- 	direct_io = iocb->ki_flags & IOCB_DIRECT ? 1 : 0;
- 
- 	inode_lock(inode);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 869c9a6fe58d..4cb62e032b70 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -270,6 +270,7 @@ struct writeback_control;
- #define IOCB_DSYNC		(1 << 4)
- #define IOCB_SYNC		(1 << 5)
- #define IOCB_WRITE		(1 << 6)
-+#define IOCB_NOWAIT		(1 << 7)
- 
- struct kiocb {
- 	struct file		*ki_filp;
-@@ -3051,7 +3052,7 @@ static inline int iocb_flags(struct file *file)
- 
- static inline int kiocb_set_rw_flags(struct kiocb *ki, int flags)
- {
--	if (unlikely(flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC)))
-+	if (unlikely(flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC | RWF_NOWAIT)))
- 		return -EOPNOTSUPP;
- 
- 	if (flags & RWF_HIPRI)
-@@ -3060,6 +3061,8 @@ static inline int kiocb_set_rw_flags(struct kiocb *ki, int flags)
- 		ki->ki_flags |= IOCB_DSYNC;
- 	if (flags & RWF_SYNC)
- 		ki->ki_flags |= (IOCB_DSYNC | IOCB_SYNC);
-+	if (flags & RWF_NOWAIT)
-+		ki->ki_flags |= IOCB_NOWAIT;
- 	return 0;
++	return 0;
++}
++EXPORT_SYMBOL_GPL(__bdev_dax_supported);
++
+ /**
+  * struct dax_device - anchor object for dax services
+  * @inode: core vfs
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 83eab52fb3f6..b0e42b6a96b9 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -39,6 +39,7 @@ config FS_DAX
+ 	depends on MMU
+ 	depends on !(ARM || MIPS || SPARC)
+ 	select FS_IOMAP
++	select DAX
+ 	help
+ 	  Direct Access (DAX) can be used on memory-backed block devices.
+ 	  If the block device supports DAX and the filesystem supports DAX,
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 666367e13711..3096ecd48304 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -718,72 +718,6 @@ int bdev_write_page(struct block_device *bdev, sector_t sector,
  }
+ EXPORT_SYMBOL_GPL(bdev_write_page);
  
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 048a85e9f017..7bcaef101876 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -347,5 +347,6 @@ struct fscrypt_policy {
- #define RWF_HIPRI			0x00000001 /* high priority request, poll if possible */
- #define RWF_DSYNC			0x00000002 /* per-IO O_DSYNC */
- #define RWF_SYNC			0x00000004 /* per-IO O_SYNC */
-+#define RWF_NOWAIT			0x00000008 /* per-IO, return -EAGAIN if operation would block */
+-int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
+-		pgoff_t *pgoff)
+-{
+-	phys_addr_t phys_off = (get_start_sect(bdev) + sector) * 512;
+-
+-	if (pgoff)
+-		*pgoff = PHYS_PFN(phys_off);
+-	if (phys_off % PAGE_SIZE || size % PAGE_SIZE)
+-		return -EINVAL;
+-	return 0;
+-}
+-EXPORT_SYMBOL(bdev_dax_pgoff);
+-
+-/**
+- * bdev_dax_supported() - Check if the device supports dax for filesystem
+- * @sb: The superblock of the device
+- * @blocksize: The block size of the device
+- *
+- * This is a library function for filesystems to check if the block device
+- * can be mounted with dax option.
+- *
+- * Return: negative errno if unsupported, 0 if supported.
+- */
+-int bdev_dax_supported(struct super_block *sb, int blocksize)
+-{
+-	struct block_device *bdev = sb->s_bdev;
+-	struct dax_device *dax_dev;
+-	pgoff_t pgoff;
+-	int err, id;
+-	void *kaddr;
+-	pfn_t pfn;
+-	long len;
+-
+-	if (blocksize != PAGE_SIZE) {
+-		vfs_msg(sb, KERN_ERR, "error: unsupported blocksize for dax");
+-		return -EINVAL;
+-	}
+-
+-	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
+-	if (err) {
+-		vfs_msg(sb, KERN_ERR, "error: unaligned partition for dax");
+-		return err;
+-	}
+-
+-	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
+-	if (!dax_dev) {
+-		vfs_msg(sb, KERN_ERR, "error: device does not support dax");
+-		return -EOPNOTSUPP;
+-	}
+-
+-	id = dax_read_lock();
+-	len = dax_direct_access(dax_dev, pgoff, 1, &kaddr, &pfn);
+-	dax_read_unlock(id);
+-
+-	put_dax(dax_dev);
+-
+-	if (len < 1) {
+-		vfs_msg(sb, KERN_ERR,
+-				"error: dax access failed (%ld)", len);
+-		return len < 0 ? len : -EIO;
+-	}
+-
+-	return 0;
+-}
+-EXPORT_SYMBOL_GPL(bdev_dax_supported);
+-
+ /*
+  * pseudo-fs
+  */
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 9e25a71fe1a2..d07773b81da9 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -32,6 +32,7 @@
+ #include <linux/log2.h>
+ #include <linux/quotaops.h>
+ #include <linux/uaccess.h>
++#include <linux/dax.h>
+ #include "ext2.h"
+ #include "xattr.h"
+ #include "acl.h"
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a9448db1cf7e..bf6bb8997124 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -37,6 +37,7 @@
+ #include <linux/ctype.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
++#include <linux/dax.h>
+ #include <linux/cleancache.h>
+ #include <linux/uaccess.h>
  
- #endif /* _UAPI_LINUX_FS_H */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 1694623a6289..d51670b7fe6b 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2982,6 +2982,9 @@ ssize_t generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index 685c042a120f..f5c58d6dcafb 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -52,6 +52,7 @@
+ #include "xfs_reflink.h"
  
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		return -EOPNOTSUPP;
+ #include <linux/namei.h>
++#include <linux/dax.h>
+ #include <linux/init.h>
+ #include <linux/slab.h>
+ #include <linux/mount.h>
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 848f87eb1905..e4d9899755a7 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1940,8 +1940,6 @@ extern int __blkdev_driver_ioctl(struct block_device *, fmode_t, unsigned int,
+ extern int bdev_read_page(struct block_device *, sector_t, struct page *);
+ extern int bdev_write_page(struct block_device *, sector_t, struct page *,
+ 						struct writeback_control *);
+-extern int bdev_dax_supported(struct super_block *, int);
+-int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
+ #else /* CONFIG_BLOCK */
+ 
+ struct block_device;
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index d3158e74a59e..7fdf1d710042 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -18,12 +18,38 @@ struct dax_operations {
+ 			void **, pfn_t *);
+ };
+ 
++int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
++#if IS_ENABLED(CONFIG_FS_DAX)
++int __bdev_dax_supported(struct super_block *sb, int blocksize);
++static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
++{
++	return __bdev_dax_supported(sb, blocksize);
++}
++#else
++static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
++{
++	return -EOPNOTSUPP;
++}
++#endif
 +
- 	inode_lock(inode);
- 	ret = generic_write_checks(iocb, from);
- 	if (ret > 0)
--- 
-2.12.0
++#if IS_ENABLED(CONFIG_DAX)
++struct dax_device *dax_get_by_host(const char *host);
++void put_dax(struct dax_device *dax_dev);
++#else
++static inline struct dax_device *dax_get_by_host(const char *host)
++{
++	return NULL;
++}
++
++static inline void put_dax(struct dax_device *dax_dev)
++{
++}
++#endif
++
+ int dax_read_lock(void);
+ void dax_read_unlock(int id);
+-struct dax_device *dax_get_by_host(const char *host);
+ struct dax_device *alloc_dax(void *private, const char *host,
+ 		const struct dax_operations *ops);
+-void put_dax(struct dax_device *dax_dev);
+ bool dax_alive(struct dax_device *dax_dev);
+ void kill_dax(struct dax_device *dax_dev);
+ void *dax_get_private(struct dax_device *dax_dev);
