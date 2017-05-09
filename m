@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v4 21/27] mm: clean up error handling in
-	write_one_page
-Date: Tue,  9 May 2017 11:49:24 -0400
-Message-ID: <20170509154930.29524-22-jlayton@redhat.com>
+Subject: [PATCH v4 22/27] jbd2: don't reset error in
+	journal_finish_inode_data_buffers
+Date: Tue,  9 May 2017 11:49:25 -0400
+Message-ID: <20170509154930.29524-23-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, josef@toxicpanda.com, dhowells@redhat.com,
@@ -30,54 +30,37 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Don't try to check PageError since that's potentially racy and not
-necessarily going to be set after writepage errors out.
-
-Instead, sample the mapping error early on, and use that value to tell
-us whether we got a writeback error since then.
+Now that we don't clear writeback errors after fetching them, there is
+no need to reset them. This is also potentially racy.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- mm/page-writeback.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ fs/jbd2/commit.c | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index de0dbf12e2c1..1643456881b4 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2373,11 +2373,12 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
- int write_one_page(struct page *page)
- {
- 	struct address_space *mapping = page->mapping;
--	int ret = 0;
-+	int ret = 0, ret2;
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
- 		.nr_to_write = 1,
- 	};
-+	errseq_t since = filemap_sample_wb_error(mapping);
- 
- 	BUG_ON(!PageLocked(page));
- 
-@@ -2386,16 +2387,14 @@ int write_one_page(struct page *page)
- 	if (clear_page_dirty_for_io(page)) {
- 		get_page(page);
- 		ret = mapping->a_ops->writepage(page, &wbc);
--		if (ret == 0) {
-+		if (ret == 0)
- 			wait_on_page_writeback(page);
--			if (PageError(page))
--				ret = -EIO;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index b6b194ec1b4f..4c6262652028 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -264,17 +264,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
+ 		jinode->i_flags |= JI_COMMIT_RUNNING;
+ 		spin_unlock(&journal->j_list_lock);
+ 		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
+-		if (err) {
+-			/*
+-			 * Because AS_EIO is cleared by
+-			 * filemap_fdatawait_range(), set it again so
+-			 * that user process can get -EIO from fsync().
+-			 */
+-			mapping_set_error(jinode->i_vfs_inode->i_mapping, -EIO);
+-
+-			if (!ret)
+-				ret = err;
 -		}
- 		put_page(page);
- 	} else {
- 		unlock_page(page);
- 	}
--	return ret;
-+	ret2 = filemap_check_wb_error(mapping, since);
-+	return ret ? : ret2;
- }
- EXPORT_SYMBOL(write_one_page);
- 
++		if (err && !ret)
++			ret = err;
+ 		spin_lock(&journal->j_list_lock);
+ 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
+ 		smp_mb();
 -- 
 2.9.3
