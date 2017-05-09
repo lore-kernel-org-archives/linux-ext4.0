@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v4 11/27] fuse: set mapping error in
-	writepage_locked when it fails
-Date: Tue,  9 May 2017 11:49:14 -0400
-Message-ID: <20170509154930.29524-12-jlayton@redhat.com>
+Subject: [PATCH v4 12/27] cifs: set mapping error when page
+	writeback fails in writepage or launder_pages
+Date: Tue,  9 May 2017 11:49:15 -0400
+Message-ID: <20170509154930.29524-13-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, josef@toxicpanda.com, dhowells@redhat.com,
@@ -30,25 +30,37 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-This ensures that we see errors on fsync when writeback fails.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/fuse/file.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/cifs/file.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index ec238fb5a584..07d0efcb050c 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1669,6 +1669,7 @@ static int fuse_writepage_locked(struct page *page)
- err_free:
- 	fuse_request_free(req);
- err:
-+	mapping_set_error(page->mapping, error);
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 21d404535739..0bee7f8d91ad 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -2234,14 +2234,16 @@ cifs_writepage_locked(struct page *page, struct writeback_control *wbc)
+ 	set_page_writeback(page);
+ retry_write:
+ 	rc = cifs_partialpagewrite(page, 0, PAGE_SIZE);
+-	if (rc == -EAGAIN && wbc->sync_mode == WB_SYNC_ALL)
+-		goto retry_write;
+-	else if (rc == -EAGAIN)
++	if (rc == -EAGAIN) {
++		if (wbc->sync_mode == WB_SYNC_ALL)
++			goto retry_write;
+ 		redirty_page_for_writepage(wbc, page);
+-	else if (rc != 0)
++	} else if (rc != 0) {
+ 		SetPageError(page);
+-	else
++		mapping_set_error(page->mapping, rc);
++	} else {
+ 		SetPageUptodate(page);
++	}
  	end_page_writeback(page);
- 	return error;
- }
+ 	put_page(page);
+ 	free_xid(xid);
 -- 
 2.9.3
