@@ -1,67 +1,88 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
- ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
- bitmap
-Date: Tue, 09 May 2017 16:10:16 +0000
-Message-ID: <bug-195561-13602-vwK2e3spMx@https.bugzilla.kernel.org/>
-References: <bug-195561-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58886 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754469AbdEIQKq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 May 2017 12:10:46 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 048A62858E
-        for <linux-ext4@vger.kernel.org>; Tue,  9 May 2017 16:10:45 +0000 (UTC)
-In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [xfstests PATCH v2 0/3] xfstest for updated writeback error handling
+Date: Tue,  9 May 2017 12:12:42 -0400
+Message-ID: <20170509161245.29908-1-jlayton@redhat.com>
+Cc: dhowells@redhat.com,
+	akpm@linux-foundation.org,
+	hch@infradead.org,
+	ross.zwisler@linux.intel.com,
+	mawilcox@microsoft.com,
+	jack@suse.com,
+	viro@zeniv.linux.org.uk,
+	corbet@lwn.net,
+	neilb@suse.de,
+	clm@fb.com,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	josef@toxicpanda.com,
+	hubcap@omnibond.com,
+	rpeterso@redhat.com,
+	bo.li.liu@oracle.com
+To: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-mm@kvack.org,
+	jfs-discussion@lists.sourceforge.net,
+	linux-xfs@vger.kernel.org,
+	cluster-devel@redhat.com,
+	linux-f2fs-devel@lists.sourceforge.net,
+	v9fs-developer@lists.sourceforge.net,
+	linux-nilfs@vger.kernel.org,
+	linux-block@vger.kernel.org,
+	fstests@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=195561
+I've numbered the new test as 999 for the moment so as not to collide with
+tests being added while I've been working on this. I can change that and
+resend if this should go in.
 
---- Comment #29 from Theodore Tso (tytso@mit.edu) ---
-If your firewall is not letting you access git.kernel.org, please complain to
-your management.
+I'm working on a set of kernel patches to change how writeback errors
+are handled and reported in the kernel. Instead of reporting a
+writeback error to only the first fsync caller on the file, I aim
+to make the kernel report them once on every file description:
 
-There is a mirror of the xfstests-bld git tree on github:
-https://github.com/tytso/xfstests-bld
+   http://www.spinics.net/lists/kernel/msg2504453.html
 
-However, to access the prebuilt test appliace files, or some of the other git
-repositories needed by xfstests-bld if you want to do a build from scratch of
-the test appliance, you will need access to either www.kernel.org or
-git.kernel.org, so you might as well deal with your firewall configuration
-issues sooner rather than later.
+This patch adds a test for the new behavior, on local filesystems that
+can handle journalling to a separate device. Basically, open many fds to
+the same file, turn on dm_error, write to each of the fds, and then
+fsync them all to ensure that they all get an error back. Then, flip the
+device back to working, reopen the files and ensure that no error is
+reported.
 
-I basically don't trust make_ext4fs at all.   There is a reason I have been
-pushing the android team to use e2fsprogs.  We do have an updated e2fsprogs in
-AOSP, and some of the tools so that make_ext4fs can be replaced by mke2fs plus
-some helper programs are mostly in AOSP.  They are not used by default, but
-rather the Android team has been cutting devices over one at a time for Android
-O, instead of whole sale.  My personal suspicion is that they very paranoid
-because they are used to make_ext4fs breaking at random, so they have been
-doing a slow migration over because they fear similar breakages as they migrate
-away from make_ext4fs, particular as it relates to building a new system.img
-file and doing a factory reset from the device.   However, if all you need to
-do is format an ext4 file system on an SD card, and not try to set up a system
-image or something else complicated where you have to set up SELinux labels,
-etc., using mke2fs should be just fine.   It's what the rest of the Linux
-ecosystem use, and what we upstream developers use for all of our regression
-testing and daily personal use.   
+With the kernel patch series in place, ext4 and xfs now pass. btrfs still
+clears the error after the first fsync, so it seems like it still needs a
+bit of work.
 
-To be clear, we do ****not**** make_ext4fs; that's an Android "special" that
-was originally developed when certain management/legal types had a pathological
-fear of the GPLv2, and then it grew all out of control and manageability.  
-Since it was done as a clean room reimplementation, by someone who was not an
-ext4 expert, and then had extra ext4 features as well as SELinux spliced into
-it over time, it has caused me no end of headaches over the years....   :-(
+Jeff Layton (3):
+  generic: add a writeback error handling test
+  ext4: allow ext4 to use $SCRATCH_LOGDEV
+  btrfs: allow it to use $SCRATCH_LOGDEV
 
-If so Linaro folks could help accelerate the move away from make_ext4fs, I
-would be most grateful.
+ common/dmerror        |  13 +++--
+ common/rc             |   5 ++
+ src/Makefile          |   2 +-
+ src/fsync-err.c       | 138 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/999     |  75 +++++++++++++++++++++++++++
+ tests/generic/999.out |   3 ++
+ tests/generic/group   |   1 +
+ tools/dmerror         |  47 +++++++++++++++++
+ 8 files changed, 278 insertions(+), 6 deletions(-)
+ create mode 100644 src/fsync-err.c
+ create mode 100755 tests/generic/999
+ create mode 100644 tests/generic/999.out
+ create mode 100755 tools/dmerror
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
