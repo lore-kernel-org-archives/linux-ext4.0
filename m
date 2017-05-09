@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v4 06/27] fs: check for writeback errors
-	after syncing out buffers in generic_file_fsync
-Date: Tue,  9 May 2017 11:49:09 -0400
-Message-ID: <20170509154930.29524-7-jlayton@redhat.com>
+Subject: [PATCH v4 08/27] dax: set errors in mapping when
+	writeback fails
+Date: Tue,  9 May 2017 11:49:11 -0400
+Message-ID: <20170509154930.29524-9-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Cc: axboe@kernel.dk, tytso@mit.edu, mawilcox@microsoft.com, neilb@suse.de,
 	corbet@lwn.net, josef@toxicpanda.com, dhowells@redhat.com,
@@ -30,51 +30,42 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-ext2 currently does a test+clear of the AS_EIO flag, which is
-is problematic for some coming changes.
+Jan's description for this patch is much better than mine, so I'm
+quoting it verbatim here:
 
-What we really need to do instead is call filemap_check_errors
-in __generic_file_fsync after syncing out the buffers. That
-will be sufficient for this case, and help other callers detect
-these errors properly as well.
+DAX currently doesn't set errors in the mapping when cache flushing
+fails in dax_writeback_mapping_range(). Since this function can get
+called only from fsync(2) or sync(2), this is actually as good as it can
+currently get since we correctly propagate the error up from
+dax_writeback_mapping_range() to filemap_fdatawrite(). However in the
+future better writeback error handling will enable us to properly report
+these errors on fsync(2) even if there are multiple file descriptors
+open against the file or if sync(2) gets called before fsync(2). So
+convert DAX to using standard error reporting through the mapping.
 
-With that, we don't need to twiddle it in ext2.
-
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-and-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- fs/ext2/file.c | 2 +-
- fs/libfs.c     | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/dax.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index b21891a6bfca..ed00e7ae0ef3 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -177,7 +177,7 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+diff --git a/fs/dax.c b/fs/dax.c
+index 85abd741253d..9b6b04030c3f 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -901,8 +901,10 @@ int dax_writeback_mapping_range(struct address_space *mapping,
  
- 	ret = generic_file_fsync(file, start, end, datasync);
--	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
-+	if (ret == -EIO) {
- 		/* We don't really know where the IO error happened... */
- 		ext2_error(sb, __func__,
- 			   "detected IO error when writing metadata buffers");
-diff --git a/fs/libfs.c b/fs/libfs.c
-index a8b62e5d43a9..efd23040ab25 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -991,7 +991,8 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
- 
- out:
- 	inode_unlock(inode);
--	return ret;
-+	err = filemap_check_errors(inode->i_mapping);
-+	return ret ? ret : err;
- }
- EXPORT_SYMBOL(__generic_file_fsync);
- 
+ 			ret = dax_writeback_one(bdev, mapping, indices[i],
+ 					pvec.pages[i]);
+-			if (ret < 0)
++			if (ret < 0) {
++				mapping_set_error(mapping, ret);
+ 				return ret;
++			}
+ 		}
+ 	}
+ 	return 0;
 -- 
 2.9.3
