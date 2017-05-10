@@ -1,56 +1,66 @@
-From: Bob Peterson <rpeterso@redhat.com>
-Subject: Re: [PATCH v4 23/27] gfs2: clean up some filemap_*
-	calls
-Date: Wed, 10 May 2017 12:18:51 -0400 (EDT)
-Message-ID: <1840580824.6421109.1494433131277.JavaMail.zimbra@redhat.com>
-References: <20170509154930.29524-1-jlayton@redhat.com>
-	<20170509154930.29524-24-jlayton@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Wed, 10 May 2017 12:38:18 -0400
+Message-ID: <20170510163818.7bleiykxgnx3pkds@thunk.org>
+References: <20170507155855.GD5970@birch.djwong.org>
+ <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
+ <20170508184112.GJ5973@birch.djwong.org>
+ <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
+ <20170508204738.GL5973@birch.djwong.org>
+ <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
+ <20170509015324.GM5973@birch.djwong.org>
+ <20170509211746.GA87747@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, neilb@suse.de, dhowells@redhat.com,
-	linux-mm@kvack.org, hubcap@omnibond.com,
-	linux-cifs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	corbet@lwn.net, cluster-devel@redhat.com, bo li liu <bo.li.liu@oracle.com>,
-	v9fs-developer@lists.sourceforge.net,
-	ross zwisler <ross.zwisler@linux.intel.com>,
-	linux-ext4@vger.kernel.org, josef@toxicpanda.com,
-	linux-block@vger.kernel.org, viro@zeniv.linux.org.uk,
-	axboe@kernel.dk, linux-nfs@vger.kernel.org, tytso@mit.edu,
-	clm@fb.com, mawilcox@microsoft.com, linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-xfs@vger.kernel.org, jack@suse.com,
-	linux-fsdevel@vger.kernel.org, akpm@linux-foundation.org,
-	linux-btrfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20170509154930.29524-24-jlayton@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jann Horn <jannh@google.com>,
+        Michael Kerrisk-manpages <mtk.manpages@gmail.com>,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        linux-man@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37412 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754053AbdEJQiW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 May 2017 12:38:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20170509211746.GA87747@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
------ Original Message -----
-| In some places, it's trying to reset the mapping error after calling
-| filemap_fdatawait. That's no longer required. Also, turn several
-| filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-| That will at least return writeback errors that occur during the write
-| phase.
-| 
-| Signed-off-by: Jeff Layton <jlayton@redhat.com>
-| ---
+On Tue, May 09, 2017 at 02:17:46PM -0700, Eric Biggers wrote:
+> 1.) Privacy implications.  Say the filesystem is being shared between multiple
+>     users, and one user unpacks foo.tar.gz into their home directory, which
+>     they've set to mode 700 to hide from other users.  Because of this new
+>     ioctl, all users will be able to see every (inode number, size in blocks)
+>     pair that was added to the filesystem, as well as the exact layout of the
+>     physical block allocations which might hint at how the files were created.
+>     If there is a known "fingerprint" for the unpacked foo.tar.gz in this
+>     regard, its presence on the filesystem will be revealed to all users.  And
+>     if any filesystems happen to prefer allocating blocks near the containing
+>     directory, the directory the files are in would likely be revealed too.
 
-Hi Jeff,
+Unix/Linux has historically not been terribly concerned about trying
+to protect this kind of privacy between users.  So for example, in
+order to do this, you would have to call GETFSMAP continously to track
+this sort of thing.  Someone who wanted to do this could probably get
+this information (and much, much more) by continuously running "ps" to
+see what processes are running.
 
-This version looks better. ACK.
+(I will note. wryly, that in the bad old days, when dozens of users
+were sharing a one MIPS Vax/780, it was considered a *good* thing
+that social pressure could be applied when it was found that someone
+was running a CPU or memory hogger on a time sharing system.  The
+privacy right of someone running "xtrek" to be able to hide this from
+other users on the system was never considered important at all.  :-)
 
-Regards,
+Fortunately, the days of timesharing seem to well behind us.  For
+those people who think that containers are as secure as VM's (hah,
+hah, hah), it might be that best way to handle this is to have a mount
+option that requires root access to this functionality.  For those
+people who really care about this, they can disable access.
 
-Bob Peterson
-Red Hat File Systems
+Cheers,
+
+					- Ted
