@@ -1,108 +1,62 @@
-From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Wed, 10 May 2017 13:14:37 -0700
-Message-ID: <20170510201437.GA9854@birch.djwong.org>
-References: <20170507155855.GD5970@birch.djwong.org>
- <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
- <20170508184112.GJ5973@birch.djwong.org>
- <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
- <20170508204738.GL5973@birch.djwong.org>
- <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
- <20170509015324.GM5973@birch.djwong.org>
- <20170509211746.GA87747@gmail.com>
- <20170510163818.7bleiykxgnx3pkds@thunk.org>
- <87mvakpl5m.fsf@xmission.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH] e2fsck: fix multiply-claimed block quota accounting when
+ deleting files
+Date: Wed, 10 May 2017 18:04:40 -0400
+Message-ID: <20170510220440.GA26875@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
-        Eric Biggers <ebiggers3-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-        Jann Horn <jannh-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
-        Michael Kerrisk-manpages <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-        linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-btrfs <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:33116 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751039AbdEJWCi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 May 2017 18:02:38 -0400
+Received: by mail-qt0-f196.google.com with SMTP id a46so650428qte.0
+        for <linux-ext4@vger.kernel.org>; Wed, 10 May 2017 15:02:38 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <87mvakpl5m.fsf-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-[cc btrfs, since afaict that's where most of the dedupe tool authors hang out]
+As e2fsck processes each file in pass1, the actual file system quota is
+increased by the number of blocks discovered in the file.  This can
+include both non-multiply-claimed and multiply-claimed blocks, if the
+latter exist.  However, if a file containing multiply-claimed blocks
+is then deleted in pass1b, those blocks are not taken into account when
+decreasing the actual quota.  In this case, the new quota values written
+to the file system by e2fsck overstate the space actually consumed.
+And, e2fsck must be run twice on the file system to fully correct
+quota.
 
-On Wed, May 10, 2017 at 02:27:33PM -0500, Eric W. Biederman wrote:
-> Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> writes:
-> 
-> > On Tue, May 09, 2017 at 02:17:46PM -0700, Eric Biggers wrote:
-> >> 1.) Privacy implications.  Say the filesystem is being shared between multiple
-> >>     users, and one user unpacks foo.tar.gz into their home directory, which
-> >>     they've set to mode 700 to hide from other users.  Because of this new
-> >>     ioctl, all users will be able to see every (inode number, size in blocks)
-> >>     pair that was added to the filesystem, as well as the exact layout of the
-> >>     physical block allocations which might hint at how the files were created.
-> >>     If there is a known "fingerprint" for the unpacked foo.tar.gz in this
-> >>     regard, its presence on the filesystem will be revealed to all users.  And
-> >>     if any filesystems happen to prefer allocating blocks near the containing
-> >>     directory, the directory the files are in would likely be revealed too.
+Fix this by counting multiply-claimed blocks as a debit to quota when
+deleting files in pass1b.
 
-Frankly, why are container users even allowed to make unrestricted ioctl
-calls?  I thought we had a bunch of security infrastructure to constrain
-what userspace can do to a system, so why don't ioctls fall under these
-same protections?  If your containers are really that adversarial, you
-ought to be blacklisting as much as you can.
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ e2fsck/pass1b.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-> > Unix/Linux has historically not been terribly concerned about trying
-> > to protect this kind of privacy between users.  So for example, in
-> > order to do this, you would have to call GETFSMAP continously to track
-> > this sort of thing.  Someone who wanted to do this could probably get
-> > this information (and much, much more) by continuously running "ps" to
-> > see what processes are running.
-> >
-> > (I will note. wryly, that in the bad old days, when dozens of users
-> > were sharing a one MIPS Vax/780, it was considered a *good* thing
-> > that social pressure could be applied when it was found that someone
-> > was running a CPU or memory hogger on a time sharing system.  The
-> > privacy right of someone running "xtrek" to be able to hide this from
-> > other users on the system was never considered important at all.  :-)
-
-Not to mention someone running GETFSMAP in a loop will be pretty obvious
-both from the high kernel cpu usage and the huge number of metadata
-operations.
-
-> > Fortunately, the days of timesharing seem to well behind us.  For
-> > those people who think that containers are as secure as VM's (hah,
-> > hah, hah), it might be that best way to handle this is to have a mount
-> > option that requires root access to this functionality.  For those
-> > people who really care about this, they can disable access.
-
-Or use separate filesystems for each container so that exploitable bugs
-that shut down the filesystem can't be used to kill the other
-containers.  You could use a torrent of metadata-heavy operations
-(fallocate a huge file, punch every block, truncate file, repeat) to DoS
-the other containers.
-
-> What would be the reason for not putting this behind
-> capable(CAP_SYS_ADMIN)?
-> 
-> What possible legitimate function could this functionality serve to
-> users who don't own your filesystem?
-
-As I've said before, it's to enable dedupe tools to decide, given a set
-of files with shareable blocks, roughly how many other times each of
-those shareable blocks are shared so that they can make better decisions
-about which file keeps its shareable blocks, and which file gets
-remapped.  Dedupe is not a privileged operation, nor are any of the
-tools.
-
-> I have seen several people speak up how this is a concern I don't see
-> anyone saying here is a legitimate use for a non-system administrator.
-
-/I/ said that a few emails ago.
-
---D
-
-> This doesn't seem like something where abuses of time-sharing systems
-> can be observed.
-> 
-> Eric
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index b40f026..8744fad 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -636,11 +636,13 @@ static int delete_file_block(ext2_filsys fs,
+ 	lc = EXT2FS_B2C(fs, blockcnt);
+ 	if (ext2fs_test_block_bitmap2(ctx->block_dup_map, *block_nr)) {
+ 		n = dict_lookup(&clstr_dict, INT_TO_VOIDPTR(c));
+-		if (n) {
+-			p = (struct dup_cluster *) dnode_get(n);
+-			if (lc != pb->cur_cluster)
++		if (n)
++			if (lc != pb->cur_cluster) {
++				p = (struct dup_cluster *) dnode_get(n);
+ 				decrement_badcount(ctx, *block_nr, p);
+-		} else
++				pb->dup_blocks++;
++			}
++		else
+ 			com_err("delete_file_block", 0,
+ 			    _("internal error: can't find dup_blk for %llu\n"),
+ 				*block_nr);
+-- 
+2.1.4
