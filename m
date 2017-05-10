@@ -1,92 +1,80 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/4] ext4: Remove unnecessary io_end allocation from ext4_writepages()
-Date: Wed, 10 May 2017 09:41:47 +0200
-Message-ID: <20170510074147.26743-5-jack@suse.cz>
-References: <20170510074147.26743-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45363 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752019AbdEJHro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 May 2017 03:47:44 -0400
-In-Reply-To: <20170510074147.26743-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 3/4] ext4: Return back to starting transaction in
+ ext4_dax_huge_fault()
+Date: Wed, 10 May 2017 10:54:18 +0200
+Message-ID: <20170510085419.27601-4-jack@suse.cz>
+References: <20170510085419.27601-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170510085419.27601-1-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-We don't have to allocate io_end when doing writeback from
-ext4_writepages() without doing allocation. Remove the unnecessary
-allocation. Also do_map argument is now unnecessary since we have io_end
-allocated only if we want blocks to be allocated so remove it.
+DAX will return to locking exceptional entry before mapping blocks
+for a page fault to fix possible races with concurrent writes. To avoid
+lock inversion between exceptional entry lock and transaction start,
+start the transaction already in ext4_dax_huge_fault().
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Fixes: 9f141d6ef6258a3a37a045842d9ba7e68f368956
+CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/inode.c | 15 ++-------------
- 1 file changed, 2 insertions(+), 13 deletions(-)
+ fs/ext4/file.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6bce4520d569..83cddd9d7fb2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1643,7 +1643,6 @@ struct mpage_da_data {
- 	 */
- 	struct ext4_map_blocks map;
- 	struct ext4_io_submit io_submit;	/* IO submission data */
--	unsigned int do_map:1;
- };
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cefa9835f275..831fd6beebf0 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -257,6 +257,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 		enum page_entry_size pe_size)
+ {
+ 	int result;
++	handle_t *handle = NULL;
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+ 	struct super_block *sb = inode->i_sb;
+ 	bool write = vmf->flags & FAULT_FLAG_WRITE;
+@@ -264,12 +265,24 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 	if (write) {
+ 		sb_start_pagefault(sb);
+ 		file_update_time(vmf->vma->vm_file);
++		down_read(&EXT4_I(inode)->i_mmap_sem);
++		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
++					       EXT4_DATA_TRANS_BLOCKS(sb));
++	} else {
++		down_read(&EXT4_I(inode)->i_mmap_sem);
+ 	}
+-	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
+-	up_read(&EXT4_I(inode)->i_mmap_sem);
+-	if (write)
++	if (!IS_ERR(handle))
++		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
++	else
++		result = VM_FAULT_SIGBUS;
++	if (write) {
++		if (!IS_ERR(handle))
++			ext4_journal_stop(handle);
++		up_read(&EXT4_I(inode)->i_mmap_sem);
+ 		sb_end_pagefault(sb);
++	} else {
++		up_read(&EXT4_I(inode)->i_mmap_sem);
++	}
  
- static void mpage_release_unused_pages(struct mpage_da_data *mpd,
-@@ -2173,7 +2172,7 @@ static bool mpage_add_bh_to_extent(struct mpage_da_data *mpd, ext4_lblk_t lblk,
- 	/* First block in the extent? */
- 	if (map->m_len == 0) {
- 		/* We cannot map unless handle is started... */
--		if (!mpd->do_map)
-+		if (!mpd->io_submit.io_end)
- 			return false;
- 		map->m_lblk = lblk;
- 		map->m_len = 1;
-@@ -2228,7 +2227,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
- 			if (mpd->map.m_len)
- 				return 0;
- 			/* Buffer needs mapping and handle is not started? */
--			if (!mpd->do_map)
-+			if (!mpd->io_submit.io_end)
- 				return 0;
- 			/* Everything mapped so far and we hit EOF */
- 			break;
-@@ -2753,17 +2752,9 @@ static int ext4_writepages(struct address_space *mapping,
- 	 * in the block layer on device congestion while having transaction
- 	 * started.
- 	 */
--	mpd.do_map = 0;
--	mpd.io_submit.io_end = ext4_init_io_end(inode, GFP_KERNEL);
--	if (!mpd.io_submit.io_end) {
--		ret = -ENOMEM;
--		goto unplug;
--	}
- 	ret = mpage_prepare_extent_to_map(&mpd);
- 	/* Submit prepared bio */
- 	ext4_io_submit(&mpd.io_submit);
--	ext4_put_io_end_defer(mpd.io_submit.io_end);
--	mpd.io_submit.io_end = NULL;
- 	/* Unlock pages we didn't use */
- 	mpage_release_unused_pages(&mpd, false);
- 	if (ret < 0)
-@@ -2800,7 +2791,6 @@ static int ext4_writepages(struct address_space *mapping,
- 			mpd.io_submit.io_end = NULL;
- 			break;
- 		}
--		mpd.do_map = 1;
- 
- 		trace_ext4_da_write_pages(inode, mpd.first_page, mpd.wbc);
- 		ret = mpage_prepare_extent_to_map(&mpd);
-@@ -2831,7 +2821,6 @@ static int ext4_writepages(struct address_space *mapping,
- 		if (!ext4_handle_valid(handle) || handle->h_sync == 0) {
- 			ext4_journal_stop(handle);
- 			handle = NULL;
--			mpd.do_map = 0;
- 		}
- 		/* Submit prepared bio */
- 		ext4_io_submit(&mpd.io_submit);
+ 	return result;
+ }
 -- 
 2.12.0
