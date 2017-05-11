@@ -1,151 +1,87 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/4] dax: Fix PMD data corruption when fault races with
- write
-Date: Thu, 11 May 2017 10:39:08 +0200
-Message-ID: <20170511083908.GA5956@quack2.suse.cz>
-References: <20170510085419.27601-5-jack@suse.cz>
- <20170510172700.18991-1-ross.zwisler@linux.intel.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH] e2fsck: fix multiply-claimed block quota accounting when
+ deleting files
+Date: Thu, 11 May 2017 11:42:35 -0400
+Message-ID: <20170511154235.GA11505@localhost.localdomain>
+References: <20170510220440.GA26875@localhost.localdomain>
+ <6A0785D3-A3D1-45F7-AD67-3C52D7364551@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Dan Williams <dan.j.williams@intel.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-mm@kvack.org,
-        stable@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <stable-owner@vger.kernel.org>
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+        tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:33884 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754545AbdEKPkb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 May 2017 11:40:31 -0400
+Received: by mail-qk0-f194.google.com with SMTP id u75so4171783qka.1
+        for <linux-ext4@vger.kernel.org>; Thu, 11 May 2017 08:40:31 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20170510172700.18991-1-ross.zwisler@linux.intel.com>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <6A0785D3-A3D1-45F7-AD67-3C52D7364551@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 10-05-17 11:27:00, Ross Zwisler wrote:
-> This is based on a patch from Jan Kara that fixed the equivalent race in
-> the DAX PTE fault path.
+* Andreas Dilger <adilger@dilger.ca>:
 > 
-> Currently DAX PMD read fault can race with write(2) in the following way:
+> > On May 10, 2017, at 4:04 PM, Eric Whitney <enwlinux@gmail.com> wrote:
+> > 
+> > As e2fsck processes each file in pass1, the actual file system quota is
+> > increased by the number of blocks discovered in the file.  This can
+> > include both non-multiply-claimed and multiply-claimed blocks, if the
+> > latter exist.  However, if a file containing multiply-claimed blocks
+> > is then deleted in pass1b, those blocks are not taken into account when
+> > decreasing the actual quota.  In this case, the new quota values written
+> > to the file system by e2fsck overstate the space actually consumed.
+> > And, e2fsck must be run twice on the file system to fully correct
+> > quota.
+> > 
+> > Fix this by counting multiply-claimed blocks as a debit to quota when
+> > deleting files in pass1b.
 > 
-> CPU1 - write(2)                 CPU2 - read fault
->                                 dax_iomap_pmd_fault()
->                                   ->iomap_begin() - sees hole
-> 
-> dax_iomap_rw()
->   iomap_apply()
->     ->iomap_begin - allocates blocks
->     dax_iomap_actor()
->       invalidate_inode_pages2_range()
->         - there's nothing to invalidate
-> 
->                                   grab_mapping_entry()
-> 				  - we add huge zero page to the radix tree
-> 				    and map it to page tables
-> 
-> The result is that hole page is mapped into page tables (and thus zeros
-> are seen in mmap) while file has data written in that place.
-> 
-> Fix the problem by locking exception entry before mapping blocks for the
-> fault. That way we are sure invalidate_inode_pages2_range() call for
-> racing write will either block on entry lock waiting for the fault to
-> finish (and unmap stale page tables after that) or read fault will see
-> already allocated blocks by write(2).
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Fixes: 9f141d6ef6258a3a37a045842d9ba7e68f368956
-> CC: stable@vger.kernel.org
-> ---
-> 
-> Jan, I just realized that we need an equivalent fix in the PMD path.  Let's
-> keep this with the rest of your series so they get applied together,
-> applied to stable together, etc.
-> 
-> This applies cleanly to the current linux/master (56868a460b83) + the four
-> patches from Jan's series.  I've run it through xfstests and some targeted
-> testing for the PMD path.
+> Nice catch.  It would be good to have an e2fsck test case that checks this.
+> Also, one minor code style nit (or possibly defect) below.
 
-Ah, right. Thanks for fixing it up. The patch looks good. You can add:
+Yeah, there's not much test coverage in this area.  I'll look at it.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/dax.c | 28 ++++++++++++++--------------
->  1 file changed, 14 insertions(+), 14 deletions(-)
 > 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 32f020c..93ae872 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -1388,6 +1388,16 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
->  		goto fallback;
->  
->  	/*
-> +	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
-> +	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
-> +	 * the tree, for instance), it will return -EEXIST and we just fall
-> +	 * back to 4k entries.
-> +	 */
-> +	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
-> +	if (IS_ERR(entry))
-> +		goto fallback;
-> +
-> +	/*
->  	 * Note that we don't use iomap_apply here.  We aren't doing I/O, only
->  	 * setting up a mapping, so really we're using iomap_begin() as a way
->  	 * to look up our filesystem block.
-> @@ -1395,21 +1405,11 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
->  	pos = (loff_t)pgoff << PAGE_SHIFT;
->  	error = ops->iomap_begin(inode, pos, PMD_SIZE, iomap_flags, &iomap);
->  	if (error)
-> -		goto fallback;
-> +		goto unlock_entry;
->  
->  	if (iomap.offset + iomap.length < pos + PMD_SIZE)
->  		goto finish_iomap;
->  
-> -	/*
-> -	 * grab_mapping_entry() will make sure we get a 2M empty entry, a DAX
-> -	 * PMD or a HZP entry.  If it can't (because a 4k page is already in
-> -	 * the tree, for instance), it will return -EEXIST and we just fall
-> -	 * back to 4k entries.
-> -	 */
-> -	entry = grab_mapping_entry(mapping, pgoff, RADIX_DAX_PMD);
-> -	if (IS_ERR(entry))
-> -		goto finish_iomap;
-> -
->  	switch (iomap.type) {
->  	case IOMAP_MAPPED:
->  		result = dax_pmd_insert_mapping(vmf, &iomap, pos, &entry);
-> @@ -1417,7 +1417,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
->  	case IOMAP_UNWRITTEN:
->  	case IOMAP_HOLE:
->  		if (WARN_ON_ONCE(write))
-> -			goto unlock_entry;
-> +			break;
->  		result = dax_pmd_load_hole(vmf, &iomap, &entry);
->  		break;
->  	default:
-> @@ -1425,8 +1425,6 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
->  		break;
->  	}
->  
-> - unlock_entry:
-> -	put_locked_mapping_entry(mapping, pgoff, entry);
->   finish_iomap:
->  	if (ops->iomap_end) {
->  		int copied = PMD_SIZE;
-> @@ -1442,6 +1440,8 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
->  		ops->iomap_end(inode, pos, PMD_SIZE, copied, iomap_flags,
->  				&iomap);
->  	}
-> + unlock_entry:
-> +	put_locked_mapping_entry(mapping, pgoff, entry);
->   fallback:
->  	if (result == VM_FAULT_FALLBACK) {
->  		split_huge_pmd(vma, vmf->pmd, vmf->address);
-> -- 
-> 2.9.3
+> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> > ---
+> > e2fsck/pass1b.c | 10 ++++++----
+> > 1 file changed, 6 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+> > index b40f026..8744fad 100644
+> > --- a/e2fsck/pass1b.c
+> > +++ b/e2fsck/pass1b.c
+> > @@ -636,11 +636,13 @@ static int delete_file_block(ext2_filsys fs,
+> > 	lc = EXT2FS_B2C(fs, blockcnt);
+> > 	if (ext2fs_test_block_bitmap2(ctx->block_dup_map, *block_nr)) {
+> > 		n = dict_lookup(&clstr_dict, INT_TO_VOIDPTR(c));
+> > -		if (n) {
+> > -			p = (struct dup_cluster *) dnode_get(n);
+> > -			if (lc != pb->cur_cluster)
+> > 				decrement_badcount(ctx, *block_nr, p);
+> > -		} else
+> > +		if (n)
+> > +			if (lc != pb->cur_cluster) {
+> > +				p = (struct dup_cluster *) dnode_get(n);
+> > 				decrement_badcount(ctx, *block_nr, p);
+> > +				pb->dup_blocks++;
+> > +			}
+> > +		else
+> > 			com_err("delete_file_block", 0,
+> > 			    _("internal error: can't find dup_blk for %llu\n"),
+> > 				*block_nr);
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> This is tricky to know which "if" the "else" is for without the added braces,
+> and to be honest I don't even know what the C standard says about this, which
+> is likely why the braces were there in the first place.  I would instead
+> recommend to add braces around the "else" clause to make it clear.
+> 
+
+Yes, that's a classic dangling else bug - I scrubbed too hard.  Thanks very
+much for finding that.  V2 coming along shortly.
+
+Thanks for the review,
+Eric
