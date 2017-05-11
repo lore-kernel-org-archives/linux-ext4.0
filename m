@@ -1,68 +1,130 @@
-From: <editor@coastreporter.net>
-Subject: 53858
-Date: Thu, 11 May 2017 04:27:46 -0000
-Message-ID: <149447686642.26770.2490032086375202040@centr.zp.ua>
+From: Eric Biggers <ebiggers3-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Wed, 10 May 2017 22:10:51 -0700
+Message-ID: <20170511051051.GA7533@zzz>
+References: <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
+ <20170508184112.GJ5973@birch.djwong.org>
+ <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
+ <20170508204738.GL5973@birch.djwong.org>
+ <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
+ <20170509015324.GM5973@birch.djwong.org>
+ <20170509211746.GA87747@gmail.com>
+ <20170510163818.7bleiykxgnx3pkds@thunk.org>
+ <87mvakpl5m.fsf@xmission.com>
+ <20170510201437.GA9854@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: application/zip; name="8114547974377.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 91-219-54-6.centr.zp.ua ([91.219.54.6]:56921 "HELO centr.zp.ua"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751028AbdEKE1v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 May 2017 00:27:51 -0400
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>,
+        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jann Horn <jannh-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
+        Michael Kerrisk-manpages <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170510201437.GA9854-PTl6brltDGh4DFYR7WNSRA@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
-VtS2lsnSAVBLBQYAAAAAAQABAFYAAADTCgAAAAA=
+On Wed, May 10, 2017 at 01:14:37PM -0700, Darrick J. Wong wrote:
+> [cc btrfs, since afaict that's where most of the dedupe tool authors hang out]
+> 
+> On Wed, May 10, 2017 at 02:27:33PM -0500, Eric W. Biederman wrote:
+> > Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> writes:
+> > 
+> > > On Tue, May 09, 2017 at 02:17:46PM -0700, Eric Biggers wrote:
+> > >> 1.) Privacy implications.  Say the filesystem is being shared between multiple
+> > >>     users, and one user unpacks foo.tar.gz into their home directory, which
+> > >>     they've set to mode 700 to hide from other users.  Because of this new
+> > >>     ioctl, all users will be able to see every (inode number, size in blocks)
+> > >>     pair that was added to the filesystem, as well as the exact layout of the
+> > >>     physical block allocations which might hint at how the files were created.
+> > >>     If there is a known "fingerprint" for the unpacked foo.tar.gz in this
+> > >>     regard, its presence on the filesystem will be revealed to all users.  And
+> > >>     if any filesystems happen to prefer allocating blocks near the containing
+> > >>     directory, the directory the files are in would likely be revealed too.
+> 
+> Frankly, why are container users even allowed to make unrestricted ioctl
+> calls?  I thought we had a bunch of security infrastructure to constrain
+> what userspace can do to a system, so why don't ioctls fall under these
+> same protections?  If your containers are really that adversarial, you
+> ought to be blacklisting as much as you can.
+> 
+
+Personally I don't find the presence of sandboxing features to be a very good
+excuse for introducing random insecure ioctls.  Not everyone has everything
+perfectly "sandboxed" all the time, for obvious reasons.  It's easy to forget
+about the filesystem ioctls, too, since they can be executed on any regular
+file, without having to open some device node in /dev.
+
+(And this actually does happen; the SELinux policy in Android, for example,
+still allows apps to call any ioctl on their data files, despite all the effort
+that has gone into whitelisting other types of ioctls.  Which should be fixed,
+of course, but it shows that this kind of mistake is very easy to make.)
+
+> > > Unix/Linux has historically not been terribly concerned about trying
+> > > to protect this kind of privacy between users.  So for example, in
+> > > order to do this, you would have to call GETFSMAP continously to track
+> > > this sort of thing.  Someone who wanted to do this could probably get
+> > > this information (and much, much more) by continuously running "ps" to
+> > > see what processes are running.
+> > >
+> > > (I will note. wryly, that in the bad old days, when dozens of users
+> > > were sharing a one MIPS Vax/780, it was considered a *good* thing
+> > > that social pressure could be applied when it was found that someone
+> > > was running a CPU or memory hogger on a time sharing system.  The
+> > > privacy right of someone running "xtrek" to be able to hide this from
+> > > other users on the system was never considered important at all.  :-)
+> 
+> Not to mention someone running GETFSMAP in a loop will be pretty obvious
+> both from the high kernel cpu usage and the huge number of metadata
+> operations.
+
+Well, only if that someone running GETFSMAP actually wants to watch things in
+real-time (it's not necessary for all scenarios that have been mentioned), *and*
+there is monitoring in place which actually detects it and can do something
+about it.
+
+Yes, PIDs have traditionally been global, but today we have PID namespaces, and
+many other isolation features such as mount namespaces.  Nothing is perfect, of
+course, and containers are a lot worse than VMs, but it seems weird to use that
+as an excuse to knowingly make things worse...
+
+> 
+> > > Fortunately, the days of timesharing seem to well behind us.  For
+> > > those people who think that containers are as secure as VM's (hah,
+> > > hah, hah), it might be that best way to handle this is to have a mount
+> > > option that requires root access to this functionality.  For those
+> > > people who really care about this, they can disable access.
+> 
+> Or use separate filesystems for each container so that exploitable bugs
+> that shut down the filesystem can't be used to kill the other
+> containers.  You could use a torrent of metadata-heavy operations
+> (fallocate a huge file, punch every block, truncate file, repeat) to DoS
+> the other containers.
+> 
+> > What would be the reason for not putting this behind
+> > capable(CAP_SYS_ADMIN)?
+> > 
+> > What possible legitimate function could this functionality serve to
+> > users who don't own your filesystem?
+> 
+> As I've said before, it's to enable dedupe tools to decide, given a set
+> of files with shareable blocks, roughly how many other times each of
+> those shareable blocks are shared so that they can make better decisions
+> about which file keeps its shareable blocks, and which file gets
+> remapped.  Dedupe is not a privileged operation, nor are any of the
+> tools.
+> 
+
+So why does the ioctl need to return all extent mappings for the entire
+filesystem, instead of just the share count of each block in the file that the
+ioctl is called on?
+
+- Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
