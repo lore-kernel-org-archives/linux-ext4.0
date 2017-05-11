@@ -1,10 +1,9 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/8] nowait aio: return if direct write will trigger
- writeback
-Date: Thu, 11 May 2017 00:42:50 -0700
-Message-ID: <20170511074250.GC15626@infradead.org>
+Subject: Re: [PATCH 5/8] nowait aio: return on congested block device
+Date: Thu, 11 May 2017 00:44:51 -0700
+Message-ID: <20170511074451.GD15626@infradead.org>
 References: <20170509122219.31756-1-rgoldwyn@suse.de>
- <20170509122219.31756-4-rgoldwyn@suse.de>
+ <20170509122219.31756-6-rgoldwyn@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, jack@suse.com, hch@infradead.org,
@@ -16,13 +15,13 @@ Cc: linux-fsdevel@vger.kernel.org, jack@suse.com, hch@infradead.org,
 To: Goldwyn Rodrigues <rgoldwyn@suse.de>
 Return-path: <linux-block-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170509122219.31756-4-rgoldwyn@suse.de>
+In-Reply-To: <20170509122219.31756-6-rgoldwyn@suse.de>
 Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-It might make sense to move filemap_range_has_page into a separate
-prep patch.
-
-Otherwise this looks fine:
+Looks fine,
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+Although lifting the make_request limit is something a lot of users
+would appreciate in the near future..
