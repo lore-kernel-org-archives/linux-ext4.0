@@ -1,142 +1,114 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] generic/285: Add more SEEK_HOLE tests
-Date: Thu, 11 May 2017 18:48:09 +0200
-Message-ID: <20170511164809.29739-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-To: fstests@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34418 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1757894AbdEKQsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 May 2017 12:48:20 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH] ext4: Fix SEEK_HOLE
+Date: Thu, 11 May 2017 18:49:08 +0200
+Message-ID: <20170511164908.29794-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
-fixed by following patches:
+Currently, SEEK_HOLE implementation in ext4 may both return that there's
+a hole at some offset although that offset already has data and skip
+some holes during a search for the next hole. The first problem is
+demostrated by:
 
-xfs: Fix missed holes in SEEK_HOLE implementation
-ext4: Fix SEEK_HOLE
+xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
+wrote 57344/57344 bytes at offset 0
+56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
+Whence	Result
+HOLE	0
 
+Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
+a hole although we have written data there. The second problem can be
+demonstrated by:
+
+xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
+       -c "seek -h 0" file
+
+wrote 57344/57344 bytes at offset 0
+56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
+wrote 8192/8192 bytes at offset 131072
+8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
+Whence	Result
+HOLE	139264
+
+Where we can see that hole at offsets 56k..128k has been ignored by the
+SEEK_HOLE call.
+
+The underlying problem is in the ext4_find_unwritten_pgoff()
+implementation which in some cases fails to update returned offset when it
+finds a hole and in some cases the condition for detecting a hole is
+just wrong.
+
+Fix ext4_find_unwritten_pgoff() to always properly update returned
+offset and detect a hole.
+
+CC: stable@vger.kernel.org
+Fixes: c8c0df241cc2719b1262e627f999638411934f60
+CC: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- src/seek_sanity_test.c | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 96 insertions(+)
+ fs/ext4/file.c | 25 +++++++++----------------
+ 1 file changed, 9 insertions(+), 16 deletions(-)
 
-diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
-index a6dd48cc257b..86a9397fa7e9 100644
---- a/src/seek_sanity_test.c
-+++ b/src/seek_sanity_test.c
-@@ -246,6 +246,100 @@ out:
- }
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 831fd6beebf0..e4de6769376b 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -486,29 +486,18 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 					  (pgoff_t)num);
+ 		if (nr_pages == 0) {
+ 			if (whence == SEEK_DATA)
+-				break;
++				goto out;
  
- /*
-+ * test file with unwritten extents, only have pagevec worth of dirty pages
-+ * in page cache, a hole and then another page.
-+ */
-+static int test14(int fd, int testnum)
-+{
-+	int ret = 0;
-+	char *buf = NULL;
-+	int bufsz = sysconf(_SC_PAGE_SIZE) * 14;
-+	int filsz = 4 << 20;
-+
-+	/* HOLE - unwritten DATA in dirty page */
-+	/* Each unit is bufsz */
-+	buf = do_malloc(bufsz);
-+	if (!buf)
-+		goto out;
-+	memset(buf, 'a', bufsz);
-+
-+	/* preallocate 4M space to file */
-+	ret = do_fallocate(fd, 0, filsz, 0);
-+	if (ret < 0) {
-+		/* Report success if fs doesn't support fallocate */
-+		if (errno == EOPNOTSUPP) {
-+			fprintf(stdout, "Test skipped as fs doesn't support fallocate.\n");
-+			ret = 0;
-+		}
-+		goto out;
-+	}
-+
-+	ret = do_pwrite(fd, buf, bufsz, 0);
-+	if (ret)
-+		goto out;
-+
-+	ret = do_pwrite(fd, buf, bufsz, 3 * bufsz);
-+	if (ret)
-+		goto out;
-+
-+	/* offset at the beginning */
-+	ret += do_lseek(testnum,  1, fd, filsz, SEEK_HOLE, 0, bufsz);
-+	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 1, bufsz);
-+	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 3 * bufsz, 4 * bufsz);
-+	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, 0, 0);
-+	ret += do_lseek(testnum,  4, fd, filsz, SEEK_DATA, 1, 1);
-+	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, bufsz, 3 * bufsz);
-+
-+out:
-+	do_free(buf);
-+	return ret;
-+}
-+
-+/*
-+ * test file with unwritten extents, only have pagevec worth of dirty pages
-+ * in page cache.
-+ */
-+static int test13(int fd, int testnum)
-+{
-+	int ret = 0;
-+	char *buf = NULL;
-+	int bufsz = sysconf(_SC_PAGE_SIZE) * 14;
-+	int filsz = 4 << 20;
-+
-+	/* HOLE - unwritten DATA in dirty page */
-+	/* Each unit is bufsz */
-+	buf = do_malloc(bufsz);
-+	if (!buf)
-+		goto out;
-+	memset(buf, 'a', bufsz);
-+
-+	/* preallocate 4M space to file */
-+	ret = do_fallocate(fd, 0, filsz, 0);
-+	if (ret < 0) {
-+		/* Report success if fs doesn't support fallocate */
-+		if (errno == EOPNOTSUPP) {
-+			fprintf(stdout, "Test skipped as fs doesn't support fallocate.\n");
-+			ret = 0;
-+		}
-+		goto out;
-+	}
-+
-+	ret = do_pwrite(fd, buf, bufsz, 0);
-+	if (ret)
-+		goto out;
-+
-+	/* offset at the beginning */
-+	ret += do_lseek(testnum,  1, fd, filsz, SEEK_HOLE, 0, bufsz);
-+	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 1, bufsz);
-+	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, 0, 0);
-+	ret += do_lseek(testnum,  4, fd, filsz, SEEK_DATA, 1, 1);
-+
-+out:
-+	do_free(buf);
-+	return ret;
-+}
-+
-+/*
-  * Test huge file to check for overflows of block counts due to usage of
-  * 32-bit types.
-  */
-@@ -678,6 +772,8 @@ struct testrec seek_tests[] = {
-        { 10, test10, "Test a huge file for offset overflow" },
-        { 11, test11, "Test a huge file for block number signed" },
-        { 12, test12, "Test a huge file for block number overflow" },
-+       { 13, test13, "Test file with unwritten extents, only have pagevec dirty pages" },
-+       { 14, test14, "Test file with unwritten extents, small hole after pagevec dirty pages" },
- };
+ 			BUG_ON(whence != SEEK_HOLE);
+-			/*
+-			 * If this is the first time to go into the loop and
+-			 * offset is not beyond the end offset, it will be a
+-			 * hole at this offset
+-			 */
+-			if (lastoff == startoff || lastoff < endoff)
+-				found = 1;
+ 			break;
+ 		}
  
- static int run_test(struct testrec *tr)
+ 		/*
+-		 * If this is the first time to go into the loop and
+-		 * offset is smaller than the first page offset, it will be a
+-		 * hole at this offset.
++		 * If current offset is smaller than the first page offset,
++		 * there is a hole at this offset.
+ 		 */
+-		if (lastoff == startoff && whence == SEEK_HOLE &&
+-		    lastoff < page_offset(pvec.pages[0])) {
+-			found = 1;
++		if (whence == SEEK_HOLE && lastoff < page_offset(pvec.pages[0]))
+ 			break;
+-		}
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -571,13 +560,17 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 		if (nr_pages < num && whence == SEEK_HOLE) {
+ 			found = 1;
+ 			*offset = lastoff;
+-			break;
++			goto out;
+ 		}
+ 
+ 		index = pvec.pages[i - 1]->index + 1;
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
+ 
++	if (whence == SEEK_HOLE && lastoff < endoff) {
++		found = 1;
++		*offset = lastoff;
++	}
+ out:
+ 	pagevec_release(&pvec);
+ 	return found;
 -- 
 2.12.0
