@@ -1,114 +1,84 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix SEEK_HOLE
-Date: Thu, 11 May 2017 18:49:08 +0200
-Message-ID: <20170511164908.29794-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: Re: [PATCH V2] e2fsck: fix multiply-claimed block quota accounting
+ when deleting files
+Date: Thu, 11 May 2017 13:27:55 -0400
+Message-ID: <20170511172755.GA23879@localhost.localdomain>
+References: <20170511154632.GB11505@localhost.localdomain>
+ <CFF2227D-6CA4-406E-A29F-CABBB20AFD89@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+        tytso@mit.edu
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:32938 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932418AbdEKRZv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 May 2017 13:25:51 -0400
+Received: by mail-qt0-f196.google.com with SMTP id a46so3705620qte.0
+        for <linux-ext4@vger.kernel.org>; Thu, 11 May 2017 10:25:51 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <CFF2227D-6CA4-406E-A29F-CABBB20AFD89@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, SEEK_HOLE implementation in ext4 may both return that there's
-a hole at some offset although that offset already has data and skip
-some holes during a search for the next hole. The first problem is
-demostrated by:
+* Andreas Dilger <adilger@dilger.ca>:
+> 
+> > On May 11, 2017, at 9:46 AM, Eric Whitney <enwlinux@gmail.com> wrote:
+> > 
+> > As e2fsck processes each file in pass1, the actual file system quota is
+> > increased by the number of blocks discovered in the file.  This can
+> > include both non-multiply-claimed and multiply-claimed blocks, if the
+> > latter exist.  However, if a file containing multiply-claimed blocks
+> > is then deleted in pass1b, those blocks are not taken into account when
+> > decreasing the actual quota.  In this case, the new quota values written
+> > to the file system by e2fsck overstate the space actually consumed.
+> > And, e2fsck must be run twice on the file system to fully correct
+> > quota.
+> > 
+> > Fix this by counting multiply-claimed blocks as a debit to quota when
+> > deleting files in pass1b.
+> > 
+> > [V2] Correct a dangling else bug in the original patch.
+> > 
+> > Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> 
+> > ---
+> > e2fsck/pass1b.c | 6 ++++--
+> > 1 file changed, 4 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+> > index b40f026..d22cffd 100644
+> > --- a/e2fsck/pass1b.c
+> > +++ b/e2fsck/pass1b.c
+> > @@ -637,9 +637,11 @@ static int delete_file_block(ext2_filsys fs,
+> > 	if (ext2fs_test_block_bitmap2(ctx->block_dup_map, *block_nr)) {
+> > 		n = dict_lookup(&clstr_dict, INT_TO_VOIDPTR(c));
+> > 		if (n) {
+> > -			p = (struct dup_cluster *) dnode_get(n);
+> > -			if (lc != pb->cur_cluster)
+> > +			if (lc != pb->cur_cluster) {
+> > +				p = (struct dup_cluster *) dnode_get(n);
+> > 				decrement_badcount(ctx, *block_nr, p);
+> > +				pb->dup_blocks++;
+> > +			}
+> > 		} else
+> > 			com_err("delete_file_block", 0,
+> > 			    _("internal error: can't find dup_blk for %llu\n"),
+> 
+> My preference would be to have {} around the else clause as well, and I
+> believe that checkpatch.pl agrees "braces {} should be used on all arms
+> of this statement".  That said, this is a pre-existing condition and is
+> only code style, while your patch fixes a real bug.
+> 
 
-xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
-wrote 57344/57344 bytes at offset 0
-56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
-Whence	Result
-HOLE	0
+Yes, I'd noticed that.  The bug I'd inadvertently created came from a quick
+attempt to address the coding standard problem by adjusting the previous
+clause.  I'm going to be modifying this same function again shortly with
+more patches (other bugs) - I'll clean up the braces for this else clause
+then.
 
-Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
-a hole although we have written data there. The second problem can be
-demonstrated by:
-
-xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
-       -c "seek -h 0" file
-
-wrote 57344/57344 bytes at offset 0
-56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
-wrote 8192/8192 bytes at offset 131072
-8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
-Whence	Result
-HOLE	139264
-
-Where we can see that hole at offsets 56k..128k has been ignored by the
-SEEK_HOLE call.
-
-The underlying problem is in the ext4_find_unwritten_pgoff()
-implementation which in some cases fails to update returned offset when it
-finds a hole and in some cases the condition for detecting a hole is
-just wrong.
-
-Fix ext4_find_unwritten_pgoff() to always properly update returned
-offset and detect a hole.
-
-CC: stable@vger.kernel.org
-Fixes: c8c0df241cc2719b1262e627f999638411934f60
-CC: Zheng Liu <wenqing.lz@taobao.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/file.c | 25 +++++++++----------------
- 1 file changed, 9 insertions(+), 16 deletions(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 831fd6beebf0..e4de6769376b 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -486,29 +486,18 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 					  (pgoff_t)num);
- 		if (nr_pages == 0) {
- 			if (whence == SEEK_DATA)
--				break;
-+				goto out;
- 
- 			BUG_ON(whence != SEEK_HOLE);
--			/*
--			 * If this is the first time to go into the loop and
--			 * offset is not beyond the end offset, it will be a
--			 * hole at this offset
--			 */
--			if (lastoff == startoff || lastoff < endoff)
--				found = 1;
- 			break;
- 		}
- 
- 		/*
--		 * If this is the first time to go into the loop and
--		 * offset is smaller than the first page offset, it will be a
--		 * hole at this offset.
-+		 * If current offset is smaller than the first page offset,
-+		 * there is a hole at this offset.
- 		 */
--		if (lastoff == startoff && whence == SEEK_HOLE &&
--		    lastoff < page_offset(pvec.pages[0])) {
--			found = 1;
-+		if (whence == SEEK_HOLE && lastoff < page_offset(pvec.pages[0]))
- 			break;
--		}
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
-@@ -571,13 +560,17 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 		if (nr_pages < num && whence == SEEK_HOLE) {
- 			found = 1;
- 			*offset = lastoff;
--			break;
-+			goto out;
- 		}
- 
- 		index = pvec.pages[i - 1]->index + 1;
- 		pagevec_release(&pvec);
- 	} while (index <= end);
- 
-+	if (whence == SEEK_HOLE && lastoff < endoff) {
-+		found = 1;
-+		*offset = lastoff;
-+	}
- out:
- 	pagevec_release(&pvec);
- 	return found;
--- 
-2.12.0
+Thanks,
+Eric
