@@ -1,127 +1,136 @@
-From: "PaX Team" <pageexec@freemail.hu>
-Subject: Re: PAX: size overflow detected in function ext4_llseek fs/ext4/file.c:670
-Date: Fri, 12 May 2017 11:58:54 +0200
-Message-ID: <5915875E.15260.4679D7CA@pageexec.freemail.hu>
-References: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>, <20170512050234.ohjoofele5gugxab@thunk.org>
-Reply-To: pageexec@freemail.hu
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+Date: Fri, 12 May 2017 07:01:25 -0400
+Message-ID: <1494586885.2787.3.camel@redhat.com>
+References: <20170329111507.GA18467@quack2.suse.cz>
+         <1490810071.2678.6.camel@redhat.com>
+         <20170330064724.GA21542@quack2.suse.cz>
+         <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org>
+         <1490898932.2667.1.camel@redhat.com> <20170404183138.GC14303@fieldses.org>
+         <878tnfiq7v.fsf@notabene.neil.brown.name>
+         <20170405080551.GC8899@quack2.suse.cz>
+         <20170405181409.GC28681@fieldses.org> <20170511185942.GD25434@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
-Cc: linux-ext4@vger.kernel.org, Brad Spengler <spender@grsecurity.net>,
-        Emese Revfy <re.emese@gmail.com>
-To: Shawn <citypw@gmail.com>, "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from r00tworld.com ([212.85.137.150]:43731 "EHLO r00tworld.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751442AbdELKk1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 May 2017 06:40:27 -0400
-In-reply-to: <20170512050234.ohjoofele5gugxab@thunk.org>
-Content-description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: NeilBrown <neil@brown.name>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170511185942.GD25434@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 12 May 2017 at 1:02, Theodore Ts'o wrote:
-
-[added Emese to CC and thus kept the whole mail for context even if
-i'm responding to some parts of it only]
-
-> On Fri, May 12, 2017 at 12:10:04PM +0800, Shawn wrote:
+On Thu, 2017-05-11 at 14:59 -0400, J. Bruce Fields wrote:
+> On Wed, Apr 05, 2017 at 02:14:09PM -0400, J. Bruce Fields wrote:
+> > On Wed, Apr 05, 2017 at 10:05:51AM +0200, Jan Kara wrote:
+> > > 1) Keep i_version as is, make clients also check for i_ctime.
 > > 
-> > thanks for the reports, keep them coming . this is an interesting one,
-> > here's the code (same at both lines in ext4_seek_hole and ext4_seek_data):
+> > That would be a protocol revision, which we'd definitely rather avoid.
 > > 
-> > 670 »·······start = offset >> blkbits;
+> > But can't we accomplish the same by using something like
 > > 
-> > in types this is
+> > 	ctime * (some constant) + i_version
 > > 
-> > u32 = long long >> int;
+> > ?
 > > 
-> > since the maximum value was exceeded it means that offset (long long,
-> > 64 bits even on 32 bit archs) had a value that didn't fit u32 when right
-> > shifted. based on some light code reading, blkbits is between 10-16 on
-> > ext4 (EXT4_MIN_BLOCK_SIZE-EXT4_MAX_BLOCK_SIZE) so depending on what the
-> > actual block size of the underlying filesystem was, offset must have been
-> > bigger than 2^42-2^48 (4TB-256TB).
+> > >    Pro: No on-disk format changes.
+> > >    Cons: After a crash, i_version can go backwards (but when file changes
+> > >    i_version, i_ctime pair should be still different) or not, data can be
+> > >    old or not.
+> > 
+> > This is probably good enough for NFS purposes: typically on an NFS
+> > filesystem, results of a read in the face of a concurrent write open are
+> > undefined.  And writers sync before close.
+> > 
+> > So after a crash with a dirty inode, we're in a situation where an NFS
+> > client still needs to resend some writes, sync, and close.  I'm OK with
+> > things being inconsistent during this window.
+> > 
+> > I do expect things to return to normal once that client's has resent its
+> > writes--hence the worry about actually resuing old values after boot
+> > (such as if i_version regresses on boot and then increments back to the
+> > same value after further writes).  Factoring in ctime fixes that.
 > 
-> Yes, this is indeed an interesting one.  I actually suspect that
-> offset was *negative*, and since start is a u32, this got translated
-> into a large number.
-
-Shawn, can you do the printk instrumentation i suggested to print out
-the value of offset (and isize too while at it)?
-
-thing is, IIRC the C standard makes right shifting a negative value
-implementation defined (so excluding such values would be good for that
-reason alone) and i think gcc simply executes it as an arithmetic shift,
-i.e., the sign of the result is preserved and thus the size overflow
-checks should have detected a minimum violation, not the maximum one.
-
-to tell for sure what check triggered exactly, i'd like to ask Shawn
-to execute
-
-	make fs/ext4/file.o EXTRA_CFLAGS="-fdump-tree-all -fdump-ipa-all"
-
-and send us (Emese in particular) all the resulting files (fs/ext4/file.*)
-
-> It is indeed a bug in ext4, although what we should do is an
-> interesting question, especially if I am correct that offset was in
-> fact negative.  The man page states:
+> So for now I'm thinking of just doing something like the following.
 > 
->        SEEK_DATA
->               Adjust the file offset to the next location in the file
->               greater than or equal to offset containing data.  If
->               offset points to data, then the file offset is set to
->               offset.
+> Only nfsd needs it for now, but it could be moved to a vfs helper for
+> statx, or for individual filesystems that want to do something
+> different.  (The NFSv4 client will want to use the server's change
+> attribute instead, I think.  And other filesystems might want to try
+> something more ambitious like Neil's proposal.)
 > 
-> (and SEEK_HOLE is similar).  The man page leaves unspecified what to
-> do if offset is negative.  We could say that this is an invalid value,
-> and return -EINVAL.  Or we could say that since the next location in
-> the file greater to or equal to offset is obviously going to be a
-> positive number we could simply set offset to zero if it is negative.
-> e.g., should we add to the beginning of ext4_seek_data():
+> --b.
 > 
->  if (offset < 0)
->   return -EINVAL;
-> 
-> or
-> 
->  if (offset < 0)
->   offset = 0;
-> 
-> If offset really were a large number, it should have returned -ENXIO
-> due to this check in those functions:
-> 
->  isize = i_size_read(inode);
->  if (offset >= isize) {
->   inode_unlock(inode);
->   return -ENXIO;
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 12feac6ee2fd..9636c9a60aba 100644
+> diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+> index f84fe6bf9aee..14f09f1ef605 100644
+> --- a/fs/nfsd/nfsfh.h
+> +++ b/fs/nfsd/nfsfh.h
+> @@ -240,6 +240,16 @@ fh_clear_wcc(struct svc_fh *fhp)
+>  	fhp->fh_pre_saved = false;
 >  }
+>  
+> +static inline u64 nfsd4_change_attribute(struct inode *inode)
+> +{
+> +	u64 chattr;
+> +
+> +	chattr = inode->i_ctime.tv_sec << 30;
+> +	chattr += inode->i_ctime.tv_nsec;
+> +	chattr += inode->i_version;
+> +	return chattr;
+> +}
+> +
+>  /*
+>   * Fill in the pre_op attr for the wcc data
+>   */
+> @@ -253,7 +263,7 @@ fill_pre_wcc(struct svc_fh *fhp)
+>  		fhp->fh_pre_mtime = inode->i_mtime;
+>  		fhp->fh_pre_ctime = inode->i_ctime;
+>  		fhp->fh_pre_size  = inode->i_size;
+> -		fhp->fh_pre_change = inode->i_version;
+> +		fhp->fh_pre_change = nfsd4_change_attribute(inode);
+>  		fhp->fh_pre_saved = true;
+>  	}
+>  }
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -260,7 +260,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+>  		printk("nfsd: inode locked twice during operation.\n");
+>  
+>  	err = fh_getattr(fhp, &fhp->fh_post_attr);
+> -	fhp->fh_post_change = d_inode(fhp->fh_dentry)->i_version;
+> +	fhp->fh_post_change = nfsd4_change_attribute(d_inode(fhp->fh_dentry));
+>  	if (err) {
+>  		fhp->fh_post_saved = false;
+>  		/* Grab the ctime anyway - set_change_info might use it */
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 26780d53a6f9..a09532d4a383 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1973,7 +1973,7 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+>  		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+>  		*p++ = 0;
+>  	} else if (IS_I_VERSION(inode)) {
+> -		p = xdr_encode_hyper(p, inode->i_version);
+> +		p = xdr_encode_hyper(p, nfsd4_change_attribute(inode));
+>  	} else {
+>  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+>  		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
 
-is it possible that isize was actually big enough itself to allow a large
-enough positive offset pass this test (we'll know for sure if Shawn can
-get the data i asked about)? what i'm basically asking is how the blocksize
-is tied to the maximum possible file size. say, can one create a >4TB file
-with a blocksize of 1024 bytes, etc? by the look of it, ext4_max_bitmap_size
-would allow bigger files than that.
 
-> ... and we do have checks in ext4_setattr() which doesn't allow i_size
-> to be set to a value larger than sb->s_maxbytes.  (Or
-> EXT4_SB(sb)->s_bitmap_maxbytes if the file is mapped using indirect
-> blocks.)  But since we do have maxbytes handy, we might as well add a
-> safety check:
-> 
->  if (offset > maxsize)
->   return -ENXIO;	/* or maybe -EINVAL; one could make an argument either way */
-> 
-> Still, it's possible for the file system to be corrupted such that the
-> on-disk i_size is large enough to allow offset to be insanely large.
-> 
-> The worse that will happen here is that we will return a bogus
-> location instead of returning an error, so the consequences of the
-> truncation are minor.  But we should properly reject the call with an
-> error if offset is insanely large, and decide what is the proper way
-> to respond if SEEK_HOLE or SEEK_DATA is passed a negative offset.
-> 
-> Cheers,
-> 
->      - Ted
+Sorry I've been MIA on this discussion. I've had a very busy spring...
+
+This looks reasonable to me (modulo Jan's comment about casting tv_sec
+to u64).
+
+To be clear, I think this is mostly orthogonal to the changes that I was
+originally proposing, right? I think we can still benefit from only
+bumping and storing i_version values after they've been queried.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
