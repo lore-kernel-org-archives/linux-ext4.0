@@ -2,63 +2,58 @@ From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 195729] JBD2: Spotted dirty metadata buffer (dev = sda1,
  blocknr = 1766784).There's a risk of filesystem corruption in case of system
  crash.
-Date: Fri, 12 May 2017 14:53:51 +0000
-Message-ID: <bug-195729-13602-zHVWZWx6Wd@https.bugzilla.kernel.org/>
+Date: Fri, 12 May 2017 14:54:17 +0000
+Message-ID: <bug-195729-13602-XhKOe0NuqL@https.bugzilla.kernel.org/>
 References: <bug-195729-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43422 "EHLO
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43478 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932315AbdELOxw (ORCPT
+        by vger.kernel.org with ESMTP id S932315AbdELOyS (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 May 2017 10:53:52 -0400
+        Fri, 12 May 2017 10:54:18 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 44A0328833
-        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2017 14:53:52 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1A19F28833
+        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2017 14:54:18 +0000 (UTC)
 In-Reply-To: <bug-195729-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=195729
 
---- Comment #2 from jqiaoulk@gmail.com ---
-So briefly speaking, one following call must incorrect call spin_lock or other
-functions that disable the preemption in this failure case:
+--- Comment #3 from jqiaoulk@gmail.com ---
+This is the root cause, which is pretty straightforward:
 
-For example:
+The spin lock is firstly acquired at the following function:
 
-Failure case:
+OutputResults CSTmMasterOutput::Start(const stm_display_mode_t* pModeLine) {
+vibe_os_lock_resource(m_lock);
 
-stm_display_output_start()
-spin_lock()
-_ZN16CSTmMasterOutput5StartEPK18stm_display_mode_s  -------> We can't sleep
-here since it is in the critical section !!!
-spin_unlock()
-Call Sequence:
+if(!this->SetOutputFormat(m_ulOutputFormat)) {
+TRC;
+goto stop_and_exit;
+}
 
-(1) vibe_os_clk_set_parent
+vibe_os_unlock_resource(m_lock);
+}
 
-(2)
-_ZN12CSTmClockLLA6EnableE29stm_clk_divider_output_name_t31stm_clk_divider_output_source_t31stm_clk_divider_output_divide_t
+and this->SetOutputFormat will eventually call vibe_os_clk_set_parent() as
+below:
 
-(3) _ZN16CSTmMainTVOutput15SetOutputFormatEj
+bool CSTmClockLLA::Enable {
+vibe_os_clk_set_parent(output, source);
+}
 
-(4) _ZN16CSTmMasterOutput5StartEPK18stm_display_mode_s
+Based on the callstack, we know vibe_os_clk_set_parent will call
+clk_set_parent().
+clk_set_parent() is a basic kernel API that would potentially go to sleep,
+based on the call stack in the log.
 
-(5) stm_display_output_start()
-
-(6) dil_blender_output_start
-
-(7) cdi_hdmi_exit
-
-(8) dil_hdmi_set_video_code
-
-(9) hdmi_release
-
-(10) hdmi_ioctl()
+Therefore, CSTmMasterOutput::Start would potentially go to sleeps while holding
+spin_Lock().
 
 -- 
 You are receiving this mail because:
