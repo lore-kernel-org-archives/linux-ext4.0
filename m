@@ -1,7 +1,7 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>
 Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Date: Fri, 12 May 2017 11:57:04 -0400
-Message-ID: <20170512155704.GF7704@fieldses.org>
+Date: Fri, 12 May 2017 12:21:15 -0400
+Message-ID: <20170512162115.GH7704@fieldses.org>
 References: <20170330064724.GA21542@quack2.suse.cz>
  <1490872308.2694.1.camel@redhat.com>
  <20170330161231.GA9824@fieldses.org>
@@ -11,29 +11,102 @@ References: <20170330064724.GA21542@quack2.suse.cz>
  <20170405080551.GC8899@quack2.suse.cz>
  <20170405181409.GC28681@fieldses.org>
  <20170511185942.GD25434@fieldses.org>
- <1494586885.2787.3.camel@redhat.com>
+ <87r2zvkp9c.fsf@notabene.neil.brown.name>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: NeilBrown <neil-+NVA1uvv1dVBDLzU/O5InQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1494586885.2787.3.camel@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <87r2zvkp9c.fsf-wvvUuzkyo1HefUI2i7LXDhCRmIWqnp/j@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 12, 2017 at 07:01:25AM -0400, Jeff Layton wrote:
-> This looks reasonable to me (modulo Jan's comment about casting tv_sec
-> to u64).
+On Fri, May 12, 2017 at 08:22:23AM +1000, NeilBrown wrote:
+> On Thu, May 11 2017, J. Bruce Fields wrote:
+> > +static inline u64 nfsd4_change_attribute(struct inode *inode)
+> > +{
+> > +	u64 chattr;
+> > +
+> > +	chattr = inode->i_ctime.tv_sec << 30;
+> > +	chattr += inode->i_ctime.tv_nsec;
+> > +	chattr += inode->i_version;
+> > +	return chattr;
 > 
-> To be clear, I think this is mostly orthogonal to the changes that I was
-> originally proposing, right? I think we can still benefit from only
-> bumping and storing i_version values after they've been queried.
+> So if I chmod a file, all clients will need to flush the content from their cache?
+> Maybe they already do?  Maybe it is a boring corner case?
 
-Definitely, yes.
+Yeah, that's the assumption, maybe it's wrong.  I can't recall
+complaints about anyone bitten by that case.
+
+> >  /*
+> >   * Fill in the pre_op attr for the wcc data
+> >   */
+> > @@ -253,7 +263,7 @@ fill_pre_wcc(struct svc_fh *fhp)
+> >  		fhp->fh_pre_mtime = inode->i_mtime;
+> >  		fhp->fh_pre_ctime = inode->i_ctime;
+> >  		fhp->fh_pre_size  = inode->i_size;
+> > -		fhp->fh_pre_change = inode->i_version;
+> > +		fhp->fh_pre_change = nfsd4_change_attribute(inode);
+> >  		fhp->fh_pre_saved = true;
+> >  	}
+> >  }
+> > --- a/fs/nfsd/nfs3xdr.c
+> > +++ b/fs/nfsd/nfs3xdr.c
+> > @@ -260,7 +260,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+> >  		printk("nfsd: inode locked twice during operation.\n");
+> >  
+> >  	err = fh_getattr(fhp, &fhp->fh_post_attr);
+> > -	fhp->fh_post_change = d_inode(fhp->fh_dentry)->i_version;
+> > +	fhp->fh_post_change = nfsd4_change_attribute(d_inode(fhp->fh_dentry));
+> >  	if (err) {
+> >  		fhp->fh_post_saved = false;
+> >  		/* Grab the ctime anyway - set_change_info might use it */
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 26780d53a6f9..a09532d4a383 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -1973,7 +1973,7 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+> >  		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+> >  		*p++ = 0;
+> >  	} else if (IS_I_VERSION(inode)) {
+> > -		p = xdr_encode_hyper(p, inode->i_version);
+> > +		p = xdr_encode_hyper(p, nfsd4_change_attribute(inode));
+> >  	} else {
+> >  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+> >  		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+> 
+> It is *really* confusing to find that fh_post_change is only set in nfs3
+> code, and only used in nfs4 code.
+
+Yup.
+
+> It is probably time to get a 'version' field in 'struct kstat'.
+
+The pre/post_wcc code doesn't seem to be doing an explicit stat, I
+wonder if that matters?
 
 --b.
+
+> That would allow this code to get a little cleaner.
+> 
+> (to me, this exercise is just a reminder that the NFSv4 change attribute
+> is poorly designed ... so it just makes me grumpy).
+> 
+> NeilBrown
+> 
+> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> > the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
