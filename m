@@ -1,224 +1,99 @@
-From: kiki good <jqiaoulk@gmail.com>
-Subject: [Suggested Ex4 Patch] JBD2: Spotted dirty metadata buffer (dev =
- sda1, blocknr = 1766784). There's a risk of filesystem corruption in case of
- system crash.
-Date: Thu, 11 May 2017 23:41:05 +0100
-Message-ID: <CACM3Aaw=MRNUZpOH+fV3RNLwzS3hUt=+0GPg9v9pTh=tVNbKVA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: PAX: size overflow detected in function ext4_llseek
+ fs/ext4/file.c:670
+Date: Fri, 12 May 2017 01:02:34 -0400
+Message-ID: <20170512050234.ohjoofele5gugxab@thunk.org>
+References: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, Pipacs <pageexec@gmail.com>,
+        Brad Spengler <spender@grsecurity.net>
+To: Shawn <citypw@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f52.google.com ([74.125.82.52]:36913 "EHLO
-        mail-wm0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756109AbdEKWlH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 May 2017 18:41:07 -0400
-Received: by mail-wm0-f52.google.com with SMTP id m123so52202193wma.0
-        for <linux-ext4@vger.kernel.org>; Thu, 11 May 2017 15:41:07 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:43616 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756874AbdELFCv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 12 May 2017 01:02:51 -0400
+Content-Disposition: inline
+In-Reply-To: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi:
+On Fri, May 12, 2017 at 12:10:04PM +0800, Shawn wrote:
+> 
+> thanks for the reports, keep them coming . this is an interesting one,
+> here's the code (same at both lines in ext4_seek_hole and ext4_seek_data):
+> 
+> 670 »·······start = offset >> blkbits;
+> 
+> in types this is
+> 
+> u32 = long long >> int;
+> 
+> since the maximum value was exceeded it means that offset (long long,
+> 64 bits even on 32 bit archs) had a value that didn't fit u32 when right
+> shifted. based on some light code reading, blkbits is between 10-16 on
+> ext4 (EXT4_MIN_BLOCK_SIZE-EXT4_MAX_BLOCK_SIZE) so depending on what the
+> actual block size of the underlying filesystem was, offset must have been
+> bigger than 2^42-2^48 (4TB-256TB).
 
+Yes, this is indeed an interesting one.  I actually suspect that
+offset was *negative*, and since start is a u32, this got translated
+into a large number.
 
-I recently see the error message below when doing the following mount
-option in hard drive, after a while, Kernel reports BUG_ON.
+It is indeed a bug in ext4, although what we should do is an
+interesting question, especially if I am correct that offset was in
+fact negative.  The man page states:
 
-The standard kernel version is 3.10.27. This issue can been seen in
-many other customer devices with this kernel version.
+       SEEK_DATA
+              Adjust the file offset to the next location in the file
+              greater than or equal to offset containing data.  If
+              offset points to data, then the file offset is set to
+              offset.
 
+(and SEEK_HOLE is similar).  The man page leaves unspecified what to
+do if offset is negative.  We could say that this is an invalid value,
+and return -EINVAL.  Or we could say that since the next location in
+the file greater to or equal to offset is obviously going to be a
+positive number we could simply set offset to zero if it is negative.
+e.g., should we add to the beginning of ext4_seek_data():
 
-There are several things worthwhile to mention beforehand:
+	if (offset < 0)
+		return -EINVAL;
 
-1. I don't believe its a hardware related issue since it could be
-duplicated in our many devices.
+or
 
-2. I don't think it is a real Filesystem corruption since these box
-never reboot or remount during the test.
+	if (offset < 0)
+		offset = 0;
 
-3. Devices are under heavy memory pressure when this issue occur,
+If offset really were a large number, it should have returned -ENXIO
+due to this check in those functions:
 
-4. It is not straightforward and might involve tremendous work to
-switch to the latest kernel version.
+	isize = i_size_read(inode);
+	if (offset >= isize) {
+		inode_unlock(inode);
+		return -ENXIO;
+	}
 
+... and we do have checks in ext4_setattr() which doesn't allow i_size
+to be set to a value larger than sb->s_maxbytes.  (Or
+EXT4_SB(sb)->s_bitmap_maxbytes if the file is mapped using indirect
+blocks.)  But since we do have maxbytes handy, we might as well add a
+safety check:
 
-Mount Option:
+	if (offset > maxsize)
+		return -ENXIO;	/* or maybe -EINVAL; one could make an argument either way */
 
-/dev/sda1 on /mnt/ type ext4
-(rw,nosuid,relatime,nodelalloc,journal_checksum,nobarrier,data=journal)
+Still, it's possible for the file system to be corrupted such that the
+on-disk i_size is large enough to allow offset to be insanely large.
 
+The worse that will happen here is that we will return a bogus
+location instead of returning an error, so the consequences of the
+truncation are minor.  But we should properly reject the call with an
+error if offset is insanely large, and decide what is the proper way
+to respond if SEEK_HOLE or SEEK_DATA is passed a negative offset.
 
+Cheers,
 
-"
-
-JBD2: Spotted dirty metadata buffer (dev = sda1, blocknr = 1766784).
-There's a risk of filesystem corruption in case of system crash.
-
-...........................................................
-
-kernel BUG at fs/jbd2/commit.c:1059!
-[<801b0e10>] (jbd2_journal_commit_transaction+0x1304/0x177c) from
-[<801b569c>] (kjournald2+0xa8/0x248)
-[<801b569c>] (kjournald2+0xa8/0x248) from [<800414c8>] (kthread+0xa0/0xac)
-[<800414c8>] (kthread+0xa0/0xac) from [<8000dc98>] (ret_from_fork+0x14/0x3c)
-
-"
-
-The code is listed below at Line 1059:
-
-
-jbd2_journal_commit_transaction
-
-{
-
-         .....................................................
-
-J_ASSERT_BH(bh, !buffer_dirty(bh));
-/*
-* The buffer on BJ_Forget list and not jbddirty means
-* it has been freed by this transaction and hence it
-* could not have been reallocated until this
-
-}
-
-
-So, I firstly get the call stack to understand why JBD2 reports
-Spotted dirty metadata buffer. The dump stack is listed below:
-
-
-4,173710,227778211328,-;[<80015cf0>] (unwind_backtrace+0x0/0x118) from
-[<80011f98>] (show_stack+0x10/0x14)
-4,173711,227778220057,-;[<80011f98>] (show_stack+0x10/0x14) from
-[<80013b5c>] (ipi_backtrace+0x70/0xa8)
-4,173712,227778228492,-;[<80013b5c>] (ipi_backtrace+0x70/0xa8) from
-[<80013cf0>] (arch_trigger_all_cpu_backtrace+0x40/0xe0)
-4,173713,227778238689,-;[<80013cf0>]
-(arch_trigger_all_cpu_backtrace+0x40/0xe0) from [<801ac99c>]
-(warn_dirty_buffer+0x2c/0x38)
-4,173714,227778249227,-;[<801ac99c>] (warn_dirty_buffer+0x2c/0x38)
-from [<801adcc4>] (__jbd2_journal_file_buffer+0xa8/0x1d0)
-4,173715,227778259500,-;[<801adcc4>]
-(__jbd2_journal_file_buffer+0xa8/0x1d0) from [<801ae8cc>]
-(jbd2_journal_dirty_metadata+0x1ec/0x258)
-4,173716,227778270828,-;[<801ae8cc>]
-(jbd2_journal_dirty_metadata+0x1ec/0x258) from [<8018f680>]
-(__ext4_handle_dirty_metadata+0xe0/0x190)
-4,173717,227778282332,-;[<8018f680>]
-(__ext4_handle_dirty_metadata+0xe0/0x190) from [<8016949c>]
-(write_end_fn+0x50/0x7c)
-4,173718,227778292340,-;[<8016949c>] (write_end_fn+0x50/0x7c) from
-[<8016a860>] (ext4_walk_page_buffers+0x88/0xa0)
-4,173719,227778301741,-;[<8016a860>]
-(ext4_walk_page_buffers+0x88/0xa0) from [<8016ee8c>]
-(ext4_journalled_write_end+0x160/0x308)
-4,173720,227778312462,-;[<8016ee8c>]
-(ext4_journalled_write_end+0x160/0x308) from [<800afd44>]
-(generic_file_buffered_write+0x154/0x224)
-4,173721,227778323775,-;[<800afd44>]
-(generic_file_buffered_write+0x154/0x224) from [<800b146c>]
-(__generic_file_aio_write+0x350/0x3a0)
-4,173722,227778334999,-;[<800b146c>]
-(__generic_file_aio_write+0x350/0x3a0) from [<800b1510>]
-(generic_file_aio_write+0x54/0xb4)
-4,173723,227778345615,-;[<800b1510>]
-(generic_file_aio_write+0x54/0xb4) from [<80165478>]
-(ext4_file_write+0x348/0x430)
-4,173724,227778355453,-;[<80165478>] (ext4_file_write+0x348/0x430)
-from [<800ef3ec>] (do_sync_readv_writev+0x74/0x98)
-4,173725,227778365115,-;[<800ef3ec>] (do_sync_readv_writev+0x74/0x98)
-from [<800f01e8>] (do_readv_writev+0xd4/0x200)
-4,173726,227778374690,-;[<800f01e8>] (do_readv_writev+0xd4/0x200) from
-[<800f03dc>] (vfs_writev+0x58/0x70)
-4,173727,227778383399,-;[<800f03dc>] (vfs_writev+0x58/0x70) from
-[<800f0494>] (SyS_writev+0x38/0x68)
-4,173728,227778391586,-;[<800f0494>] (SyS_writev+0x38/0x68) from
-[<8000dbc0>] (ret_fast_syscall+0x0/0x30)
-
-Based on the comment of the JBD2 code in __jbd2_journal_file_buffer, I
-quote "For metadata buffers, we track dirty bit in buffer_jbddirty
-instead of buffer_dirty. We should not see a dirty bit set here
-because we clear it in do_get_write_access but e.g.
-tune2fs can modify the sb and set the dirty bit at any time so we try
-to gracefully handle that."
-it means jbd2 code shouldn't set this buffer_dirty anyway.
-
-and Another comment in do_get_write_access() in transaction.c, it says
-more, i quote " it is journaled, and we don't expect dirty buffers
-in that state (the buffers should be marked JBD_Dirty instead.)  So
-either the IO is being done under our own control and this is a bug,
-or it's a third party IO such as dump(8) (which may leave the buffer
-scheduled for read --- ie. locked but not dirty) or tune2fs (which may
-actually havethe buffer dirtied, ugh.)
-"
-
-In our case, the dirty bit of buffer_head is changed between
-ext4_write_begin() and ext4_journalled_write_end() as bleow:
-
-"
-ext4_write_begin() --> BH dirty bit is 0
-
-ext4_journalled_write_end() --> BH dirty bit is changed to 1 !!! and
-error is reported
-"
-
-Then I do an experiment change as below in ext4_journalled_write_end()
-to see whether the original issue could be duplicated.
-After almost a week test, the issue doesn't appear. Therefore, it
-seems there are some race conditions that change the value
-of BH dirty between ext4_write_begin() and
-ext4_journalled_write_end(). (Note: do_journal_get_write_access has
-already been
-called at ext4_write_begin )
-
-+               ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
-+                                            to,
-&partial,do_journal_get_write_access);
-+
-                ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
-                                             to, &partial, write_end_fn);
-
-
-
-After reviewing the code, it looks although
-do_journal_get_write_access() imposes lock on buffer header, it
-doesn't lock the whole routine between ext4_write_begin() and
-ext4_journalled_write_end(). so i think the buffer head should be
-locked at the time until ext4_journalled_write_end() is finished.
-Initially, I imagine that I can do the following change but then I
-realise a existing buffer lock has already been placed in
-jbd2_journal_get_write_access, so making a big buffer lock will
-quickly become a performance issue and
-also involves a lot of changes.
-
-+ lock all the buffer headers belonging to this page
-
-ext4_write_begin()
-.....................................................
- ext4_journalled_write_end()
-
-+ unlock all the buffer headers belonging to this page
-
-Therefore, I propose the following change for simplicity and performance:
-
---- /linux-3.10.27_old/fs/ext4/inode.c 2014-01-15 23:29:14.000000000 +0000
-+++/linux-3.10.27_new/fs/ext4/inode.c 2017-05-11 22:47:58.986146486 +0100
-@@ -1084,10 +1084,18 @@
-  int ret;
-  if (!buffer_mapped(bh) || buffer_freed(bh))
-  return 0;
-+
-+ lock_buffer();
-+ if (buffer_dirty(bh)) {
-+     clear_buffer_dirty(bh);
-+ }
-+
-  set_buffer_uptodate(bh);
-  ret = ext4_handle_dirty_metadata(handle, NULL, bh);
-  clear_buffer_meta(bh);
-  clear_buffer_prio(bh);
-+
-+ unlock_buffer();
-  return ret;
- }
-
-Thanks
-Jmqiao
+					- Ted
