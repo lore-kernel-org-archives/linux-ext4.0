@@ -1,99 +1,167 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: PAX: size overflow detected in function ext4_llseek
- fs/ext4/file.c:670
-Date: Fri, 12 May 2017 01:02:34 -0400
-Message-ID: <20170512050234.ohjoofele5gugxab@thunk.org>
-References: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] generic/285: Add more SEEK_HOLE tests
+Date: Fri, 12 May 2017 16:04:43 +0800
+Message-ID: <20170512080443.GN7250@eguan.usersys.redhat.com>
+References: <20170511164809.29739-1-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, Pipacs <pageexec@gmail.com>,
-        Brad Spengler <spender@grsecurity.net>
-To: Shawn <citypw@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43616 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756874AbdELFCv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 May 2017 01:02:51 -0400
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170511164809.29739-1-jack@suse.cz>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 12, 2017 at 12:10:04PM +0800, Shawn wrote:
+On Thu, May 11, 2017 at 06:48:09PM +0200, Jan Kara wrote:
+> Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
+> fixed by following patches:
 > 
-> thanks for the reports, keep them coming . this is an interesting one,
-> here's the code (same at both lines in ext4_seek_hole and ext4_seek_data):
+> xfs: Fix missed holes in SEEK_HOLE implementation
+> ext4: Fix SEEK_HOLE
 > 
-> 670 »·······start = offset >> blkbits;
+> Signed-off-by: Jan Kara <jack@suse.cz>
+
+This will cause ext4 and xfs start to fail with current linus tree and
+appear as a new regression. So we usually don't add new tests to
+existing cases.
+
+But seek_sanity_test.c deals with different SEEK_DATA/HOLE implentations
+nicely, which would be a bit tricky to do in a new test by shell, and it
+has all the infrastructures for new tests like this. So I think I'd
+prefer merging this patch as is, and document the false regression alert
+in release announce email.
+
+I'm including this patch in release testing now, please shout if ext4
+and/or xfs developers have different thoughts, there'll be around two
+days before new release :)
+
+Thanks,
+Eryu
+
+> ---
+>  src/seek_sanity_test.c | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 96 insertions(+)
 > 
-> in types this is
+> diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
+> index a6dd48cc257b..86a9397fa7e9 100644
+> --- a/src/seek_sanity_test.c
+> +++ b/src/seek_sanity_test.c
+> @@ -246,6 +246,100 @@ out:
+>  }
+>  
+>  /*
+> + * test file with unwritten extents, only have pagevec worth of dirty pages
+> + * in page cache, a hole and then another page.
+> + */
+> +static int test14(int fd, int testnum)
+> +{
+> +	int ret = 0;
+> +	char *buf = NULL;
+> +	int bufsz = sysconf(_SC_PAGE_SIZE) * 14;
+> +	int filsz = 4 << 20;
+> +
+> +	/* HOLE - unwritten DATA in dirty page */
+> +	/* Each unit is bufsz */
+> +	buf = do_malloc(bufsz);
+> +	if (!buf)
+> +		goto out;
+> +	memset(buf, 'a', bufsz);
+> +
+> +	/* preallocate 4M space to file */
+> +	ret = do_fallocate(fd, 0, filsz, 0);
+> +	if (ret < 0) {
+> +		/* Report success if fs doesn't support fallocate */
+> +		if (errno == EOPNOTSUPP) {
+> +			fprintf(stdout, "Test skipped as fs doesn't support fallocate.\n");
+> +			ret = 0;
+> +		}
+> +		goto out;
+> +	}
+> +
+> +	ret = do_pwrite(fd, buf, bufsz, 0);
+> +	if (ret)
+> +		goto out;
+> +
+> +	ret = do_pwrite(fd, buf, bufsz, 3 * bufsz);
+> +	if (ret)
+> +		goto out;
+> +
+> +	/* offset at the beginning */
+> +	ret += do_lseek(testnum,  1, fd, filsz, SEEK_HOLE, 0, bufsz);
+> +	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 1, bufsz);
+> +	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 3 * bufsz, 4 * bufsz);
+> +	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, 0, 0);
+> +	ret += do_lseek(testnum,  4, fd, filsz, SEEK_DATA, 1, 1);
+> +	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, bufsz, 3 * bufsz);
+> +
+> +out:
+> +	do_free(buf);
+> +	return ret;
+> +}
+> +
+> +/*
+> + * test file with unwritten extents, only have pagevec worth of dirty pages
+> + * in page cache.
+> + */
+> +static int test13(int fd, int testnum)
+> +{
+> +	int ret = 0;
+> +	char *buf = NULL;
+> +	int bufsz = sysconf(_SC_PAGE_SIZE) * 14;
+> +	int filsz = 4 << 20;
+> +
+> +	/* HOLE - unwritten DATA in dirty page */
+> +	/* Each unit is bufsz */
+> +	buf = do_malloc(bufsz);
+> +	if (!buf)
+> +		goto out;
+> +	memset(buf, 'a', bufsz);
+> +
+> +	/* preallocate 4M space to file */
+> +	ret = do_fallocate(fd, 0, filsz, 0);
+> +	if (ret < 0) {
+> +		/* Report success if fs doesn't support fallocate */
+> +		if (errno == EOPNOTSUPP) {
+> +			fprintf(stdout, "Test skipped as fs doesn't support fallocate.\n");
+> +			ret = 0;
+> +		}
+> +		goto out;
+> +	}
+> +
+> +	ret = do_pwrite(fd, buf, bufsz, 0);
+> +	if (ret)
+> +		goto out;
+> +
+> +	/* offset at the beginning */
+> +	ret += do_lseek(testnum,  1, fd, filsz, SEEK_HOLE, 0, bufsz);
+> +	ret += do_lseek(testnum,  2, fd, filsz, SEEK_HOLE, 1, bufsz);
+> +	ret += do_lseek(testnum,  3, fd, filsz, SEEK_DATA, 0, 0);
+> +	ret += do_lseek(testnum,  4, fd, filsz, SEEK_DATA, 1, 1);
+> +
+> +out:
+> +	do_free(buf);
+> +	return ret;
+> +}
+> +
+> +/*
+>   * Test huge file to check for overflows of block counts due to usage of
+>   * 32-bit types.
+>   */
+> @@ -678,6 +772,8 @@ struct testrec seek_tests[] = {
+>         { 10, test10, "Test a huge file for offset overflow" },
+>         { 11, test11, "Test a huge file for block number signed" },
+>         { 12, test12, "Test a huge file for block number overflow" },
+> +       { 13, test13, "Test file with unwritten extents, only have pagevec dirty pages" },
+> +       { 14, test14, "Test file with unwritten extents, small hole after pagevec dirty pages" },
+>  };
+>  
+>  static int run_test(struct testrec *tr)
+> -- 
+> 2.12.0
 > 
-> u32 = long long >> int;
-> 
-> since the maximum value was exceeded it means that offset (long long,
-> 64 bits even on 32 bit archs) had a value that didn't fit u32 when right
-> shifted. based on some light code reading, blkbits is between 10-16 on
-> ext4 (EXT4_MIN_BLOCK_SIZE-EXT4_MAX_BLOCK_SIZE) so depending on what the
-> actual block size of the underlying filesystem was, offset must have been
-> bigger than 2^42-2^48 (4TB-256TB).
-
-Yes, this is indeed an interesting one.  I actually suspect that
-offset was *negative*, and since start is a u32, this got translated
-into a large number.
-
-It is indeed a bug in ext4, although what we should do is an
-interesting question, especially if I am correct that offset was in
-fact negative.  The man page states:
-
-       SEEK_DATA
-              Adjust the file offset to the next location in the file
-              greater than or equal to offset containing data.  If
-              offset points to data, then the file offset is set to
-              offset.
-
-(and SEEK_HOLE is similar).  The man page leaves unspecified what to
-do if offset is negative.  We could say that this is an invalid value,
-and return -EINVAL.  Or we could say that since the next location in
-the file greater to or equal to offset is obviously going to be a
-positive number we could simply set offset to zero if it is negative.
-e.g., should we add to the beginning of ext4_seek_data():
-
-	if (offset < 0)
-		return -EINVAL;
-
-or
-
-	if (offset < 0)
-		offset = 0;
-
-If offset really were a large number, it should have returned -ENXIO
-due to this check in those functions:
-
-	isize = i_size_read(inode);
-	if (offset >= isize) {
-		inode_unlock(inode);
-		return -ENXIO;
-	}
-
-... and we do have checks in ext4_setattr() which doesn't allow i_size
-to be set to a value larger than sb->s_maxbytes.  (Or
-EXT4_SB(sb)->s_bitmap_maxbytes if the file is mapped using indirect
-blocks.)  But since we do have maxbytes handy, we might as well add a
-safety check:
-
-	if (offset > maxsize)
-		return -ENXIO;	/* or maybe -EINVAL; one could make an argument either way */
-
-Still, it's possible for the file system to be corrupted such that the
-on-disk i_size is large enough to allow offset to be insanely large.
-
-The worse that will happen here is that we will return a bogus
-location instead of returning an error, so the consequences of the
-truncation are minor.  But we should properly reject the call with an
-error if offset is insanely large, and decide what is the proper way
-to respond if SEEK_HOLE or SEEK_DATA is passed a negative offset.
-
-Cheers,
-
-					- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
