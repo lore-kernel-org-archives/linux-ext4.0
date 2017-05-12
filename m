@@ -1,300 +1,204 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 195767] New: PAYROLL$$SUPPORT((1-8OO-367-2164))QUICKBOOKS
- PAYROLL SUPPORT PHONE NUMBER QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER
- ((1-8OO-367-2164))
-Date: Mon, 15 May 2017 06:04:23 +0000
-Message-ID: <bug-195767-13602@https.bugzilla.kernel.org/>
+From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Subject: [PATCH 00/36] Convert DocBook documents to ReST
+Date: Fri, 12 May 2017 10:59:43 -0300
+Message-ID: <cover.1494596071.git.mchehab@s-opensource.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:46952 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751536AbdEOGEZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 15 May 2017 02:04:25 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E46432895B
-        for <linux-ext4@vger.kernel.org>; Mon, 15 May 2017 06:04:24 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Lunn <andrew@lunn.ch>, alsa-devel@alsa-project.org,
+ Takashi Iwai <tiwai@suse.de>, Jan Kiszka <jan.kiszka@siemens.com>,
+ "Herton R. Krzesinski" <herton@redhat.com>,
+ Alexei Starovoitov <ast@kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+ linux-ide@vger.kernel.org, Eric Dumazet <edumazet@google.com>,
+ netdev@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
+ Jan Kara <jack@suse.com>, Soheil Hassas Yeganeh <soheil@google.com>,
+ linux-s390@vger.kernel.org, Florian Fainelli <f.fainelli@gmail.com>,
+ "James E.J. Bottomley" <jejb@linux.vnet.ibm.com>,
+ Herbert Xu <herbert@gondor.apana.org.au>, linux-scsi@vger.kernel.org,
+ Jonathan Corbet <corbet@lwn.net>, Ursula Braun <ubraun@linux.vnet.ibm.com>,
+ "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>,
+ Mauro Carvalho Chehab <mchehab@s-opensource.com>,
+ Peter Zijlstra <peterz@infradead.org>, Julian Anastasov <ja@ssi.bg>,
+ Ingo
+To: linux-kernel@vger.kernel.org,
+ Linux Doc Mailing List <linux-doc@vger.kernel.org>
+Return-path: <alsa-devel-bounces@alsa-project.org>
+List-Unsubscribe: <http://mailman.alsa-project.org/mailman/options/alsa-devel>,
+ <mailto:alsa-devel-request@alsa-project.org?subject=unsubscribe>
+List-Archive: <http://mailman.alsa-project.org/pipermail/alsa-devel/>
+List-Post: <mailto:alsa-devel@alsa-project.org>
+List-Help: <mailto:alsa-devel-request@alsa-project.org?subject=help>
+List-Subscribe: <http://mailman.alsa-project.org/mailman/listinfo/alsa-devel>,
+ <mailto:alsa-devel-request@alsa-project.org?subject=subscribe>
+Errors-To: alsa-devel-bounces@alsa-project.org
+Sender: alsa-devel-bounces@alsa-project.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=195767
+This patch series convert the following books from
+DocBook to ReST:
 
-            Bug ID: 195767
-           Summary: PAYROLL$$SUPPORT((1-8OO-367-2164))QUICKBOOKS PAYROLL
-                    SUPPORT PHONE NUMBER QUICKBOOKS PAYROLL SUPPORT PHONE
-                    NUMBER ((1-8OO-367-2164))
-           Product: File System
-           Version: 2.5
-    Kernel Version: 9.0
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-          Assignee: fs_ext3@kernel-bugs.osdl.org
-          Reporter: dk923483@gmail.com
-        Regression: No
+   - filesystems
+   - kernel-hacking
+   - kernel-locking
+   - kgdb
+   - libata
+   - networking
+   - rapidio
+   - s390-drivers
+   - scsi
+   - w1
+   - z8530book
 
-PAYROLL$$SUPPORT((1-8OO-367-2164))QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER
-QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER ((1-8OO-367-2164))
-QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER
-((1-8OO-367-2164))Quickbookssupportphonenumber***quickbookssupportphone number
-QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER ((1-8OO-367-2164))QUICKBOOKS payroll
-SUPPORT phonenumber***quickbookssupportphone number
-QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER ((1-8OO-367-2164))QUICKBOOKS payroll
-SUPPORT phonenumber***quickbookssupportphone number
-QUICKBOOKS PAYROLL SUPPORT PHONE NUMBER ((1-8OO-367-2164))QUICKBOOKS payroll
-SUPPORT phonenumber***quickbookssupportphone number
-Desi Dance=@=1.8OO<367<2164=@= @ QUICKBOOKS payroll SUPPORT Phone
-NumBER!@!!1-8OO-367-2164 @@! @ QUICKBOOKS payroll SUPPORT 1-8OO-367-2164 @
-QUICKBOOKS payroll SUPPORT PHonE NumbER USA!JEETôßPppu? 1 8OO 367 2164 @
-QUICKBOOKS payroll SUPPORT PHonE NumbER..,O»G!!!!??ô US 1-8OO-367-2164 @
-QuiCKbOOks help TELEPhoNE Number..,, !!!!??ô@ QuiCKbOOks help Number..,,
-!!!!??ô@ QUICKBOOKS payroll SUPPORT Number..,, @ QuiCKbOOks Number..,, @
-QuiCKbOOks PhoNE Number..,, @ QuiCKbOOks TELEPHonE NumbER.. 1-8OO-367-2164 ,, @
-QuiCKbOOks 24 hourNumber.QuiCKbOOks customer SuPpoRT Number..,, @ QuiCKbOOks
-Enterprise TEch SuPpoRT PHonE NumbER, Intuit @ QuiCKbOOks Enterprise TEch
-SuPpoRT PhoNE Number, @ QuiCKbOOks Help Desk PhoNE Number, @ QUICKBOOKS payroll
-SUPPORT number, @ QUICKBOOKS payroll SUPPORT PHonE NumbER, @
-QuiCKbOOks1-8OO-367-2164 PHonE NumbER, @ QuiCKbOOks 1-8OO-367-2164 SuPpoRT
-number, @ QuiCKbOOks Enterprise TEchnical support number -1-8OO-367-2164- PHonE
-NumbER. It is very popular toll free number which vide by @ QuiCKbOOks SuPpoRT,
-@ QuiCKbOOks Customer PhoNE Number, @ QuiCKbOOks CustomerNumber, 1-8OO-367-2164
-@ QuiCKbOOks Customer SuPpoRT PhoNE Number, @ QuiCKbOOks Customer SuPpoRT
-Number,@ QuiCKbOOks Customer Number, @ QuiCKbOOks Customer Number, @ QUICKBOOKS
-payroll SUPPORT team PhoNE number. Call, @ QuiCKbOOks Enterprise TEch SuPpoRT
-PHonE NumbER, Intuit @ QuiCKbOOks Enterprise TEchSuPpoRT 1-8OO-367-2164 PhoNE
-Number, @ QuiCKbOOks Help Desk PhoNE Number, @ QuiCKbOOks Enterprise TEch
-SuPpoRT number, @ QUICKBOOKS payroll SUPPORT PHonE NumbER, @ QuiCKbOOksPhoNE
-number, @ QUICKBOOKS payroll SUPPORT number, @ QUICKBOOKS payroll SUPPORT PHonE
-NumbER, @ QuiCKbOOks SuPpoRT, @ QuiCKbOOks Customer PhoNE Number, @ QuiCKbOOks
-CustomerNumber, @ QuiCKbOOks Customer SuPpoRT PhoNE Number, @ QuiCKbOOks
-Customer SuPpoRT Number, @ QuiCKbOOks Customer Number, @ QuiCKbOOks Customer
-Number, @ QuiCKbOOksSuPpoRT team PhoNE number, @ QuiCKbOOks help number-@
-QuiCKbOOks Number; @ QuiCKbOOks help PHonE NumbER, @ QuiCKbOOks Number, @
-QuiCKbOOks Enterprise TEch SuPpoRT Toll freeNumber, @ QUICKBOOKS payroll
-SUPPORT TELEPhoNE Number, @ QuiCKbOOks Enterprise TEch SuPpoRT TELEPhoNE
-number, @ QuiCKbOOks Enterprise TEch SuPpoRT number, @ QUICKBOOKS payroll
-SUPPORT number, @ QUICKBOOKS payroll SUPPORT number, @ QuiCKbOOks 24/7
-SuPpoRTPhoNE number,@ QuiCKbOOks TELEPhoNE number @ QuiCKbOOks Customer Service
-Helpline?????for SuPpoRT? call 18OO -367-2164/ NumberQuiCKbOOks Customer Care
-Number, @ QUICKBOOKS payroll SUPPORT team PhoNE number@ QuiCKbOOks PhoNE????,
-number, @ QuiCKbOOks Enterprise TEchnical SuPpoRT number, @ QUICKBOOKS payroll
-SUPPORT PHonE NumbER, @ QuiCKbOOks Enterprise TEchnical SuPpoRT, @ QuiCKbOOks
-Customer Service PhoNE Number, @ QuiCKbOOks Customer ServiceNumber, @
-QuiCKbOOks Customer SuPpoRT PhoNE Number, @ QuiCKbOOks Customer SuPpoRT
-NumberCall, 1-8OO -367-2164 for all type help by @ QuiCKbOOks Enterprise TEch
-SuPpoRT PhoNE number???, number, Intuit @ QuiCKbOOks Enterprise TEch SuPpoRT
-PhoNE Number, @ QuiCKbOOks Help Desk PhoNE Number, @ QuiCKbOOks Enterprise TEch
-SuPpoRT number, @ QuiCKbOOks Enterprise TEchnical SuPpoRT PHonE NumbER @
-QuiCKbOOks Enterprise TEch SuPpoRT PhoNE?? ((1-8OO-367-2164@ Quickbooks tech
-support number Quickbooks pro 2014 support phone USA, Enterprise support
-here.Describe @@Tollfree 1-8OO-367-2164.++Quickbooks phone number@@ here. +1
-8OO, 367, 2164..Quickbooks technical support phone number QUICKBOOKS payroll
-SUPPORT phone number Enterprise Quickbooks proadvisor login phone number for
-Quickbooks technical support Quickbooks phone number for tech support
-Quickbooks Enterprise phone number Quickbooks phone number tech support
-Quickbooks technical support contact number Quickbooks helpline tech support
-phone number Quickbooks error 1603 Quickbooks error 1334 Quickbooks error -166
-Quickbooks error code 6660 Quickbooks error Quickbooks error -1666
-QuickbookDesi Dance=@=1.8OO<367<2164=@= @ QUICKBOOKS payroll SUPPORT Phone
-NumBER!@!!1-8OO-367-2164 @@! @ QUICKBOOKS payroll SUPPORT 1-8OO-367-2164 @
-QUICKBOOKS payroll SUPPORT PHonE NumbER USA!JEETôßPppu? 1 8OO 367 2164 @
-QUICKBOOKS payroll SUPPORT PHonE NumbER..,O»G!!!!??ô US 1-8OO-367-2164 @
-QuiCKbOOks help TELEPhoNE Number..,, !!!!??ô@ QuiCKbOOks help Number..,,
-!!!!??ô@ QUICKBOOKS payroll SUPPORT Number..,, @ QuiCKbOOks Number..,, @
-QuiCKbOOks PhoNE Number..,, @ QuiCKbOOks TELEPHonE NumbER.. 1-8OO-367-2164 ,, @
-QuiCKbOOks 24 hourNumber.QuiCKbOOks customer SuPpoRT Number..,, @ QuiCKbOOks
-Enterprise TEch SuPpoRT PHonE NumbER, Intuit @ QuiCKbOOks Enterprise TEch
-SuPpoRT PhoNE Number, @ QuiCKbOOks Help Desk PhoNE Number, @ QUICKBOOKS payroll
-SUPPORT number, @ QUICKBOOKS payroll SUPPORT PHonE NumbER, @
-QuiCKbOOks1-8OO-367-2164 PHonE NumbER, @ QuiCKbOOks 1-8OO-367-2164 SuPpoRT
-number, @ QuiCKbOOks Enterprise TEchnical support number -1-8OO-367-2164- PHonE
-NumbER. It is very popular toll free number which vide by @ QuiCKbOOks SuPpoRT,
-@ QuiCKbOOks Customer PhoNE Number, @ QuiCKbOOks CustomerNumber, 1-8OO-367-2164
-@ QuiCKbOOks Customer SuPpoRT PhoNE Number, @ QuiCKbOOks Customer SuPpoRT
-Number,@ QuiCKbOOks Customer Number, @ QuiCKbOOks Customer Number, @ QUICKBOOKS
-payroll SUPPORT team PhoNE number. Call, @ QuiCKbOOks Enterprise TEch SuPpoRT
-PHonE NumbER, Intuit @ QuiCKbOOks Enterprise TEchSuPpoRT 1-8OO-367-2164 PhoNE
-Number, @ QuiCKbOOks Help Desk PhoNE Number, @ QuiCKbOOks Enterprise TEch
-SuPpoRT number, @ QUICKBOOKS payroll SUPPORT PHonE NumbER, @ QuiCKbOOksPhoNE
-number, @ QUICKBOOKS payroll SUPPORT number, @ QUICKBOOKS payroll SUPPORT PHonE
-NumbER, @ QuiCKbOOks SuPpoRT, @ QuiCKbOOks Customer PhoNE Number, @ QuiCKbOOks
-CustomerNumber, @ QuiCKbOOks Customer SuPpoRT PhoNE Number, @ QuiCKbOOks
-Customer SuPpoRT Number, @ QuiCKbOOks Customer Number, @ QuiCKbOOks Customer
-Number, @ QuiCKbOOksSuPpoRT team PhoNE number, @ QuiCKbOOks help number-@
-QuiCKbOOks Number; @ QuiCKbOOks help PHonE NumbER, @ QuiCKbOOks Number, @
-QuiCKbOOks Enterprise TEch SuPpoRT Toll freeNumber, @ QUICKBOOKS payroll
-SUPPORT TELEPhoNE Number, @ QuiCKbOOks Enterprise TEch SuPpoRT TELEPhoNE
-number, @ QuiCKbOOks Enterprise TEch SuPpoRT number, @ QUICKBOOKS payroll
-SUPPORT number, @ QUICKBOOKS payroll SUPPORT number, @ QuiCKbOOks 24/7
-SuPpoRTPhoNE number,@ QuiCKbOOks TELEPhoNE number @ QuiCKbOOks Customer Service
-Helpline?????for SuPpoRT? call 18OO -367-2164/ NumberQuiCKbOOks Customer Care
-Number, @ QUICKBOOKS payroll SUPPORT team PhoNE number@ QuiCKbOOks PhoNE????,
-number, @ QuiCKbOOks Enterprise TEchnical SuPpoRT number, @ QUICKBOOKS payroll
-SUPPORT PHonE NumbER, @ QuiCKbOOks Enterprise TEchnical SuPpoRT, @ QuiCKbOOks
-Customer Service PhoNE Number, @ QuiCKbOOks Customer ServiceNumber, @
-QuiCKbOOks Customer SuPpoit Quickbooks Enterprise support phone number. Intuit
-Quickbooks Enterprise customer support phone Intuit Quickbooks pro Toll Free,
-Intuit@(+1.8OO.367.2164)@-: Intuit Quickbooks pro Tech Support Phone Number
-provides helpline solution for all USA/CANADA clients. For any help of query
-call 1 8OO to get all Intuit Quickbooks pro account solution. @@Call,
-+1.8OO.367.2164 for all type help by Intuit Quickbooks pro tech support phone
-number, Intuit Quickbooks pro Tech Support Phone Number, Intuit Quickbooks pro
-Help Desk Phone Number, Intuit Quickbooks pro tech support number, Intuit
-Quickbooks pro technical support phone number,@@@ Intuit Quickbooks pro phone
-number, Intuit Quickbooks pro technical support number, Intuit Quickbooks pro
-support phone number, Intuit Quickbooks pro technical support, Intuit
-Quickbooks pro Customer Service Phone Number, Intuit Quickbooks pro Customer
-Service Number, Intuit Quickbooks pro Customer Support Phone Number, Intuit
-Quickbooks pro Customer Support Number,helpline Intuit Quickbooks pro Customer
-Service Helpline Number, Intuit Quickbooks pro Customer Care Number, Intuit
-Quickbooks pro support team phone number, helpline Intuit Quickbooks pro help
-number-Intuit Quickbooks pro Helpline Number; Intuit Quickbooks pro help phone
-number-Intuit Quickbooks pro Helpline Number, Intuit Quickbooks pro Tech
-Support Toll free Number, Intuit Quickbooks pro Support Telephone Number,
-Intuit Quickbooks pro Tech Support Telephone number, Intuit Quickbooks pro Tech
-Support contact number, Intuit Quickbooks pro support contact number, Intuit
-Quickbooks pro technical support contact number. Call, Intuit Quickbooks pro
-tech support phone number, Intuit Quickbooks pro Tech Support Phone Number,
-Intuit Quickbooks pro Help Desk Phone Number, Intuit Quickbooks pro tech
-support number, Intuit Quickbooks pro technical support phone number, Intuit
-Quickbooks pro phone number, Intuit Quickbooks pro technical support number,
-Intuit Quickbooks pro support phone number. It is very popular toll free number
-which provide by Intuit Quickbooks pro technical support, Intuit Quickbooks pro
-Customer Service Phone Number,
-QuickBooks Customer Number, QUICKBOOKS payroll SUPPORT team PhoNE number. Call,
-QuickBooks tech SuPpoRTPhoNE number, Intuit QuickBooks TechSuPpoRT
-1-8OO-2164-2164 PhoNE Number, QuickBooks Help Desk PhoNENumber, QuickBooks tech
-SuPpoRT number, QUickBOokS SupPORTPHonE NumbER, QuickBooksPhoNE number,
-QUICKBOOKS payroll SUPPORT number, QUICKBOOKS payroll SUPPORT PHonENumbER,
-QuickBooks SuPpoRT, QuickBooks Customer PhoNENumber, QuickBooks CustomerNumber,
-QuickBooks Customer SuPpoRT PhoNE Number, QuickBooks Customer SuPpoRTNumber,
-QuickBooks Customer Number, QuickBooks Customer Number, QuickBooksSuPpoRT team
-PhoNE number, QuickBooks help number-QuickBooks Number; QuickBooks help
-PhoNEnumber, QuickBooks Number, QuickBooks Tech SuPpoRT Toll freeNumber,
-QUICKBOOKS payroll SUPPORT TELEPhoNE Number, QuickBooks Tech SuPpoRT TELEPhoNE
-number, QuickBooks Tech SuPpoRT number, QUICKBOOKS payroll SUPPORT number,
-QUICKBOOKS payroll SUPPORT number, quickbooks 24/7 SuPpoRT
-PhoNEnumber,quickbooks TELEPhoNE number Quickbooks Customer Service
-Helpline?????for SuPpoRT? call 18OO -2164-2164/ Number, Quickbooks Customer
-Care Number, QUICKBOOKS payroll SUPPORT team PhoNE number Quickbooks PhoNE????,
-number, Quickbooks technical SuPpoRT number, QUICKBOOKS payroll SUPPORT
-PHonENumbER, Quickbooks technical SuPpoRT, Quickbooks Customer Service PhoNE
-Number, Quickbooks Customer Service Number, Quickbooks Customer SuPpoRT
-PhoNENumber, Quickbooks Customer SuPpoRT NumberCall, 1-8OO -2164-2164 for all
-type help by Quickbooks tech SuPpoRT PhoNE???, number, Intuit Quickbooks Tech
-SuPpoRT PhoNENumber, Quickbooks Help Desk PhoNE Number, Quickbooks tech SuPpoRT
-number, Quickbooks technical SuPpoRT PhoNE number Quickbooks Tech SuPpoRT
-PhoNE??,NumberQuickBooks help?(1-8OO -2164-2164)?vides @ solution for all
-USA/CANADA clients For any help of query call 1 8OO -2164-2164 to get all
-Quickbooks account solution number-QuickBooks Helpline Number; QuickBooks help
-PhoNEnumber-QuickBooks HelplineNumber, QuickBooks HELP DESK Toll free Number,
-QUICKBOOKS payroll SUPPORT TELEPhoNE Number, QuickBooks HELP DESK TELEPhoNE
-number, QuickBooks HELP DESK contact number, QUICKBOOKS payroll SUPPORT contact
-number, QuickBooks technical SuPpoRT contact number Helpline TECH ))1-8OO
--2164-2164(( Quickbooks technical SuPpoRT PhoNEnumber 1-8OO -2164-2164
-QUICKBOOKS payroll SUPPORT phone number 18OO -2164-2164 QB SuPpoRT ON ((1-8OO
--2164-2164)) Quickbooks PhoNENUMBER AND QUICKBOOKS payroll SUPPORT PHonE
-NumbERQuickBooks Customer Service Helpline?????Quickbooks Toll Free, Intuit
-Number, QuickBooks Customer Care Number, QUICKBOOKS payroll SUPPORT team PhoNE
-num
-https://www.eventbrite.com/e/qb1-8OO-70o-2164-quickbooks-support-phone-number-quickb-tickets-34483975499https://www.eventbrite.com/e/123qb1-8OO-70o-2164-quickbooks-support-phone-number-quickb-tickets-34483978508EPFOE***QUICKBOOKS
-payroll SUPPORT PHONE number((I-8OO-367-2164))QUickBOokS phon...
-EPFOE***QUICKBOOKS payroll SUPPORT PHONE number((I-8OO-367-2164))QUickBOokS
-phon...
-EPFOE***QUICKBOOKS payroll SUPPORT PHONE number((I-8OO-367-2164))QUickBOokS
-phon...
-QUICKBOOKS payroll SUPPORT support SUPPORT PHONE NumbER..,O»G!!!!??ô US
-I-8OO-367-2164 @ QuiCKbOOks help TELEsupport SUPPORT PHONE Number..,, !!!!??ô@
-QuiCKbOOks help Number..,, !!!!??ô@ QUICKBOOKS payroll SUPPORT Number..,, @
-QuiCKbOOks Number..,, @ QUICKBOOKS payroll SUPPORT SUPPORT PHONE Number..,, @
-QuiCKbOOks TELEsupport SUPPORT PHONE NumbER.. I-8OO-367-2164 ,, @ QuiCKbOOks 24
-hourNumber.QuiCKbOOks customer SuPpoRT Number..,, @ QuiCKbOOks Enterprise
-SuPpoRTsupport SUPPORT PHONE NumbER, Intuit @ QuiCKbOOks Enterprise SuPpoRT
-support SUPPORT PHONE Number, @ QuiCKbOOks Help Desk support SUPPORT PHONE
-Number, @ QUICKBOOKS payroll SUPPORT number, @ QuiCKbOOks SupPORTsupport
-SUPPORT PHONE NumbER, @ QuiCKbOOksI-8OO-367-2164 support SUPPORT PHONE NumbER,
-@ QuiCKbOOks I-8OO-367-2164 SuPpoRT number, @ QuiCKbOOks Enterprise TEchnical
-support number -I-8OO-367-2164- support SUPPORT PHONE NumbER. It is very
-popular toll free numberwhich vide by @ QuiCKbOOks SuPpoRT, @ QuiCKbOOks
-Customer support SUPPORT PHONE Number, @ QuiCKbOOks CustomerNumber,
-I-8OO-367-2164 @ QuiCKbOOks Customer SuPpoRT support SUPPORT PHONE Number, @
-QuiCKbOOks Customer SuPpoRT Number,@ QuiCKbOOks Customer Number, @ QuiCKbOOks
-Customer Number, @ QuiCKbOOks SuPpoRTteam support SUPPORT PHONE number. Call, @
-QuiCKbOOks Enterprise SuPpoRT support SUPPORT PHONE NumbER, Intuit
-ber QuickBooks PhoNE????, number, QuickBooks technicalSuPpoRT number
+It also adjusts some Sphinx-pedantic errors/warnings on
+some kernel-doc markups.
 
-QUICKBOOKS payroll SUPPORT Phone Number +1-8OO-367-2164 is intended to provide
-round-the-clock services to maintain your accounts provide you the best
-services related to QB. QUICKBOOKS payroll SUPPORT Number is a toll-free
-technical support number to help its customers.
-QuickBooks is an awesome software, although it is also not free from issues; In
-order to get rid of QuickBooks technical issues there is a need of expert
-technician who can fix your QB issues immediately and remotely. The QuickBooks
-Customer Service offers 24*7*365 support to QuickBooks customers to quickly
-resolve each issue within no time. When you face any sort of technical issue
-with your QB software, you can contact our QUICKBOOKS payroll SUPPORT number
-and leave the rest to us. Our QuickBooks Consultant can be reached for any
-technical help through telephone number, email or through talk.
-A team of expert technicians will be dependably there for you to help you with
-the goal to provide you on the spot help and support to fix your QB technical
-issues instantly. You can get support from our tech support team 24/7 with the
-help of QUICKBOOKS payroll SUPPORT Number.
-You can get our helpdesk support for Backup Support Multi-user Support, Payroll
-Support, Synchronization with Devices support, QB Installation Support,
-QuickBooks Tech Support for Updating your QB, Error Support etc. Call us today
-for instant support !
-QuickBooks Customer Support Number
-Are you facing issues in your QuickBooks? If yes, then you are at the right
-destination. Dial QuickBooks Customer Support Number +1-8OO-367-2164 and
-experienced best third party QuickBooks customer service & Support. Here you
-will experience the most excellent Quickbooks Customer Service and support by
-the trained professionals and qualified customer care executives. Our qualified
-team holds a specialization in managing and handling the complicated QuickBooks
-issues in less span of turnaround time. We and our team always ready to give
-round the clock services to our valuable customers.
-We have the aim to offer quick, effective and easily accessible solutions to
-you. Connect with us at our toll-free and 24/7 Quickbooks Customer Service
-Phone Number +1-8OO-367-2164 and get all the solutions at your fingertips. We
-serve our fabulous and quick support services for installation issues,
-troubleshoot, upgrading related problems and other QuickBooks queries.
-QuickBooks Technical Support
-The QuickBooks Customer Service provides help to QuickBooks Technical Support,
-those who face issues while using QuickBooks.Dial number +1-8OO-367-2164 They
-provide technical help and support remotely by taking remote access of your
-computer. They are accessible anyplace and anytime. QuickBooks is known to be
-one of the main bookkeeping software accessible in the market. It deals with
-our finance, business and managing an account and so on. QuickBooks is basic
-and simple to utilize internet bookkeeping software which helps you oversee
-finances in a simple manner. Our QUICKBOOKS payroll SUPPORT Phone Number is a
-toll-free number that provides third party technical support at a reasonable
-cost.
-Our talented professionals provide instant help to get your issues fixed
-immediately. They take you through the step by step process to resolve your
-technical issues. They help us save time and money simultaneously. Our
-QuickBooks Customer Support is accessible 24/7. At whatever point you give a
-call, our specialists are in that spot at your doorstep. With QuickBooks you
-can deal with your money, sales, business, profit, taxation and your expenses.
-Our expert professionals are upright there to determine your issue. QuickBooks
-customer service phone number prime intention is to fix your issues
-immediately. Don't hesitate to get in touch with us as our QuickBooks Technical
-Support team is available in your service all the time. Contacting on our
-support number will help you analyze and fix the issue immediately.
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
-Quickbooks payroll support phone number
+I also added some patches here to add PDF output for all
+existing ReST books.
+
+I did my best to check if what's there is not too outdated, but
+the best is if the subsystem maintainers could check it.
+
+After this series, there are only 4 DocBook remaining conversion:
+   - librs
+   - lsm
+   - mtdnand
+   - sh
+
+I'll likely convert those remaining ones during this weekend.
+
+-
+
+This patch series is based on docs tree (next branch).
+The full patch series is on this tree:
+
+   https://git.linuxtv.org//mchehab/experimental.git/log/?h=docbook
+
+And the HTML output at:
+
+  http://www.infradead.org/~mchehab/kernel_docs/
+  https://mchehab.fedorapeople.org/kernel_docs/  
+
+Mauro Carvalho Chehab (36):
+  docs-rst: convert kernel-hacking to ReST
+  kernel-hacking: update document
+  docs-rst: convert kernel-locking to ReST
+  mutex, futex: adjust kernel-doc markups to generate ReST
+  locking.rst: reformat locking table
+  locking.rst: add captions to two tables
+  locking.rst: Update some ReST markups
+  docs-rst: convert kgdb DocBook to ReST
+  kgdb.rst: Adjust ReST markups
+  conf.py: define a color for important markup on PDF output
+  docs-rst: conf.py: sort LaTeX documents in alphabetical order
+  docs-rst: conf.py: remove kernel-documentation from LaTeX
+  docs-rst: add crypto API book to pdf output
+  docs-rst: add dev-tools book to pdf output
+  docs-rst: add sound book to pdf output
+  docs-rst: add userspace API book to pdf output
+  docs-rst: convert filesystems book to ReST
+  docs-rst: filesystems: use c domain references where needed
+  fs: jbd2: make jbd2_journal_start() kernel-doc parseable
+  docs-rst: don't ignore internal functions for jbd2 docs
+  fs: locks: Fix some troubles at kernel-doc comments
+  fs: add a blank lines on some kernel-doc comments
+  fs: eventfd: fix identation on kernel-doc
+  fs: jbd2: escape a string with special chars on a kernel-doc
+  docs-rst: convert libata book to ReST
+  libata.rst: add c function and struct cross-references
+  libata: fix identation on a kernel-doc markup
+  docs-rst: convert s390-drivers DocBook to ReST
+  docs-rst: convert networking book to ReST
+  net: skbuff.h: properly escape a macro name on kernel-doc
+  net: fix some identation issues at kernel-doc markups
+  docs-rst: convert z8530book DocBook to ReST
+  docs-rst: convert scsi DocBook to ReST
+  scsi: fix some kernel-doc markups
+  docs-rst: convert w1 book to ReST
+  docs-rst: convert rapidio book to ReST
+
+ Documentation/DocBook/Makefile            |   11 +-
+ Documentation/DocBook/filesystems.tmpl    |  381 -----
+ Documentation/DocBook/kernel-hacking.tmpl | 1312 ------------------
+ Documentation/DocBook/kernel-locking.tmpl | 2151 -----------------------------
+ Documentation/DocBook/kgdb.tmpl           |  918 ------------
+ Documentation/DocBook/libata.tmpl         | 1625 ----------------------
+ Documentation/DocBook/networking.tmpl     |  111 --
+ Documentation/DocBook/rapidio.tmpl        |  155 ---
+ Documentation/DocBook/s390-drivers.tmpl   |  161 ---
+ Documentation/DocBook/scsi.tmpl           |  409 ------
+ Documentation/DocBook/w1.tmpl             |  101 --
+ Documentation/DocBook/z8530book.tmpl      |  371 -----
+ Documentation/conf.py                     |   35 +-
+ Documentation/crypto/conf.py              |   10 +
+ Documentation/dev-tools/index.rst         |    1 +
+ Documentation/dev-tools/kgdb.rst          |  907 ++++++++++++
+ Documentation/driver-api/index.rst        |    5 +
+ Documentation/driver-api/libata.rst       | 1031 ++++++++++++++
+ Documentation/driver-api/rapidio.rst      |  107 ++
+ Documentation/driver-api/s390-drivers.rst |  111 ++
+ Documentation/driver-api/scsi.rst         |  344 +++++
+ Documentation/driver-api/w1.rst           |   70 +
+ Documentation/filesystems/conf.py         |   10 +
+ Documentation/filesystems/index.rst       |  317 +++++
+ Documentation/index.rst                   |    3 +
+ Documentation/kernel-hacking/conf.py      |   10 +
+ Documentation/kernel-hacking/hacking.rst  |  811 +++++++++++
+ Documentation/kernel-hacking/index.rst    |    5 +
+ Documentation/kernel-hacking/locking.rst  | 1446 +++++++++++++++++++
+ Documentation/networking/conf.py          |   10 +
+ Documentation/networking/index.rst        |   18 +
+ Documentation/networking/kapi.rst         |  147 ++
+ Documentation/networking/z8530book.rst    |  256 ++++
+ Documentation/sound/conf.py               |   10 +
+ drivers/ata/libata-scsi.c                 |    7 +-
+ drivers/net/phy/phy.c                     |    1 +
+ drivers/scsi/scsi_scan.c                  |    7 +-
+ drivers/scsi/scsi_transport_fc.c          |   18 +-
+ drivers/scsi/scsicam.c                    |    4 +-
+ fs/eventfd.c                              |    4 +-
+ fs/fs-writeback.c                         |   12 +-
+ fs/jbd2/transaction.c                     |   42 +-
+ fs/locks.c                                |   18 +-
+ fs/mpage.c                                |    1 +
+ fs/namei.c                                |    1 +
+ include/linux/mutex.h                     |    6 +-
+ include/linux/netdevice.h                 |    9 +-
+ include/linux/skbuff.h                    |    2 +-
+ include/net/sock.h                        |    9 +-
+ kernel/futex.c                            |   40 +-
+ kernel/locking/mutex.c                    |    6 +-
+ net/core/datagram.c                       |    2 +-
+ net/core/sock.c                           |    7 +-
+ 53 files changed, 5764 insertions(+), 7802 deletions(-)
+ delete mode 100644 Documentation/DocBook/filesystems.tmpl
+ delete mode 100644 Documentation/DocBook/kernel-hacking.tmpl
+ delete mode 100644 Documentation/DocBook/kernel-locking.tmpl
+ delete mode 100644 Documentation/DocBook/kgdb.tmpl
+ delete mode 100644 Documentation/DocBook/libata.tmpl
+ delete mode 100644 Documentation/DocBook/networking.tmpl
+ delete mode 100644 Documentation/DocBook/rapidio.tmpl
+ delete mode 100644 Documentation/DocBook/s390-drivers.tmpl
+ delete mode 100644 Documentation/DocBook/scsi.tmpl
+ delete mode 100644 Documentation/DocBook/w1.tmpl
+ delete mode 100644 Documentation/DocBook/z8530book.tmpl
+ create mode 100644 Documentation/crypto/conf.py
+ create mode 100644 Documentation/dev-tools/kgdb.rst
+ create mode 100644 Documentation/driver-api/libata.rst
+ create mode 100644 Documentation/driver-api/rapidio.rst
+ create mode 100644 Documentation/driver-api/s390-drivers.rst
+ create mode 100644 Documentation/driver-api/scsi.rst
+ create mode 100644 Documentation/driver-api/w1.rst
+ create mode 100644 Documentation/filesystems/conf.py
+ create mode 100644 Documentation/filesystems/index.rst
+ create mode 100644 Documentation/kernel-hacking/conf.py
+ create mode 100644 Documentation/kernel-hacking/hacking.rst
+ create mode 100644 Documentation/kernel-hacking/index.rst
+ create mode 100644 Documentation/kernel-hacking/locking.rst
+ create mode 100644 Documentation/networking/conf.py
+ create mode 100644 Documentation/networking/index.rst
+ create mode 100644 Documentation/networking/kapi.rst
+ create mode 100644 Documentation/networking/z8530book.rst
+ create mode 100644 Documentation/sound/conf.py
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.3
