@@ -1,104 +1,53 @@
-From: <nbensoncole81@yahoo.com.hk>
-Subject: 9881 linux-ext4
-Date: Sat, 13 May 2017 17:08:42 -0000
-Message-ID: <149469532229.15597.9569668621409057520@ttknet.ru>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] generic/285: Add more SEEK_HOLE tests
+Date: Sun, 14 May 2017 01:26:21 +0800
+Message-ID: <20170513172620.GR7250@eguan.usersys.redhat.com>
+References: <20170511164809.29739-1-jack@suse.cz>
+ <20170512080443.GN7250@eguan.usersys.redhat.com>
+ <20170512230657.GP12369@dastard>
 Mime-Version: 1.0
-Content-Type: application/zip; name="63902.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 53.63.access.ttknet.ru ([31.163.63.53]:36282 "HELO ttknet.ru"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1752766AbdEMRIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 13 May 2017 13:08:47 -0400
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170512230657.GP12369@dastard>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
-AAEAAQBaAAAAxRIAAAAA
+On Sat, May 13, 2017 at 09:06:57AM +1000, Dave Chinner wrote:
+> On Fri, May 12, 2017 at 04:04:43PM +0800, Eryu Guan wrote:
+> > On Thu, May 11, 2017 at 06:48:09PM +0200, Jan Kara wrote:
+> > > Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
+> > > fixed by following patches:
+> > > 
+> > > xfs: Fix missed holes in SEEK_HOLE implementation
+> > > ext4: Fix SEEK_HOLE
+> > > 
+> > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > 
+> > This will cause ext4 and xfs start to fail with current linus tree and
+> > appear as a new regression. So we usually don't add new tests to
+> > existing cases.
+> > 
+> > But seek_sanity_test.c deals with different SEEK_DATA/HOLE implentations
+> > nicely, which would be a bit tricky to do in a new test by shell, and it
+> > has all the infrastructures for new tests like this. So I think I'd
+> > prefer merging this patch as is, and document the false regression alert
+> > in release announce email.
+> 
+> Make the new tests optional (i.e. on a cli switch) and add a new
+> xfstest that runs them? Old test remains unchanged, doesn't fail,
+> new test covers the new tests, will fail on old kernels (which is ok
+> for new tests).
+
+Yeah, this should work and looks a better solution to me. This avoids
+regressing generic/285 again when adding another new test in future,
+future tests could just follow this path too. Thanks for the suggestion!
+
+Jan, could you please update the patch and, as suggested by Dave, make
+it a new test? I can do it too if you like.
+
+Thanks,
+Eryu
