@@ -1,113 +1,104 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 195561] Suspicious persistent EXT4-fs error:
- ext4_validate_block_bitmap:395: [Proc] bg 17: block 557056: invalid block
- bitmap
-Date: Sat, 13 May 2017 12:00:16 +0000
-Message-ID: <bug-195561-13602-BFX2lJ5gMB@https.bugzilla.kernel.org/>
-References: <bug-195561-13602@https.bugzilla.kernel.org/>
+From: <nbensoncole81@yahoo.com.hk>
+Subject: 9881 linux-ext4
+Date: Sat, 13 May 2017 17:08:42 -0000
+Message-ID: <149469532229.15597.9569668621409057520@ttknet.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: application/zip; name="63902.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51772 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751018AbdEMMAS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 13 May 2017 08:00:18 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 86217288E4
-        for <linux-ext4@vger.kernel.org>; Sat, 13 May 2017 12:00:17 +0000 (UTC)
-In-Reply-To: <bug-195561-13602@https.bugzilla.kernel.org/>
+Received: from 53.63.access.ttknet.ru ([31.163.63.53]:36282 "HELO ttknet.ru"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1752766AbdEMRIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 13 May 2017 13:08:47 -0400
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=195561
-
---- Comment #30 from Mauro Rossi (issor.oruam@gmail.com) ---
-Hi,
-I've checked with new installation of nougat-x86 from scratch and without
-booting, so it is clean as per "installation just finished"
-and the free blocks counts seem to be effectively tainted by make_ext4fs.
-
-[1] seem to be Android's make_ext4fs patch for the problem
-[2] is a commit where in Android master they move away from make_ext4fs
-
-
-utente@utente-System-Product-Name:~$ e2fsck -fn /dev/sdb1
-e2fsck 1.43.4 (31-Jan-2017)
-
-Warning: skipping journal recovery because doing a read-only filesystem check.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  +(557056--557060) +(557066--557068) +557070 +557072
-+(557074--557075) +(557077--557090) +557092 +(557094--557095) +557097
-+(557099--557102) +557104 +557106 +(557108--557109) +(557111--557248)
-+(557250--557280) +(557282--557326) +(557328--557358) +(557360--557379) +557381
-+(557389--557488) +557490 +(557492--557503) +(557506--557507) +557509 +557511
-+557516 +(557521--557536) +(557538--557566) -557664 -(557728--557729) -557731
--557768 -557776 -557780 -557782 -(557794--557796) -557825 -557830
--(557856--557857) -557860 -(557888--557889) -(557897--557901) -(557904--557907)
--(557911--557914) -(557918--557919) -(557922--557923) -557926 -(557929--557935)
--557938 -557940 -557943 -557946 -557948 -557950 -(557954--557957)
--(557959--557960) -(557963--557964) -557966 -(557968--557972) -(557974--557977)
--(557980--557982) -557984 -557987 -557989 -557993 -557995 -(557998--557999)
--(558001--558002) -(558007--558008) -(558010--558011) -558013 -558016 -558022
--(558025--558027) -(558029--558030) -558034 -(558037--558038) -558041
--(558044--558046) -(558048--558051) -(558053--558054) -558056 -558059
--(558061--558062) -558066 -(558069--558070) -558072 -(558074--558075) -558077
--(558083--558086) -(558091--558093) -(558097--558098) -(558100--558101) -558714
--558851 -559073 -559080 -559093 -(559842--559844) -(559858--559860) -559873
-+(950272--950276) +(950282--950284) +950286 +950288 +(950290--950291)
-+(950293--950306) +950308 +(950310--950311) +950313 +(950315--950318) +950320
-+950322 +(950324--950325) +(950327--950464) +(950466--950496) +(950498--950542)
-+(950544--950574) +(950576--950595) +950597 +(950605--950704) +950706
-+(950708--950719) +(950722--950723) +950725 +950727 +950732 +(950737--950752)
-+(950754--950782) -950880 -(950944--950945) -950947 -950984 -950992
--(950994--950998) -(951010--951012) -951041 -951046 -(951072--951073) -951076
--(951104--951105) -(951113--951117) -(951120--951123) -(951127--951130)
--(951134--951135) -(951138--951139) -951142 -(951145--951151) -951154 -951156
--951159 -951162 -951164 -951166 -(951170--951173) -(951175--951176)
--(951179--951180) -951182 -(951184--951188) -(951190--951193) -(951196--951198)
--951200 -951203 -951205 -951209 -951211 -(951214--951215) -(951217--951218)
--(951223--951224) -(951226--951227) -951229 -951232 -951238 -(951241--951243)
--(951245--951246) -951250 -(951253--951254) -951257 -(951260--951262)
--(951264--951267) -(951269--951270) -951272 -951275 -(951277--951278) -951282
--(951285--951286) -951288 -(951290--951291) -951293 -(951299--951302)
--(951307--951309) -(951313--951314) -(951316--951317) -951930 -952067 -952289
--952296 -952309 -(953058--953060) -(953074--953076) -953089
-Fix? no
-
-Free blocks count wrong for group #17 (32257, counted=32586).
-Fix? no
-
-Free blocks count wrong for group #29 (32257, counted=32583).
-Fix? no
-
-Free blocks count wrong (4763034, counted=4376260).
-Fix? no
-
-Free inodes count wrong (1221589, counted=1215139).
-Fix? no
-
-
-Android-x86: ********** WARNING: Filesystem still has errors **********
-
-Android-x86: 11/1221600 files (254.5% non-contiguous), 120718/4883752 blocks
-
-
-
-References:
-
-[1]
-https://android.googlesource.com/platform/system/extras/+/c71eaf37486bed9163ad528f51de29dd56b34fd2
-
-[2]
-https://android.googlesource.com/platform/system/extras/+/3f6ea671d55b0f8ba9bab8826c817327d67ee9bb
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+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
+AAEAAQBaAAAAxRIAAAAA
