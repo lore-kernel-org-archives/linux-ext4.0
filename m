@@ -1,330 +1,91 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH] ext4: fsmap tests
-Date: Fri, 12 May 2017 20:58:13 -0700
-Message-ID: <20170513035813.GA4514@birch.djwong.org>
+From: Shawn C <citypw@gmail.com>
+Subject: Re: PAX: size overflow detected in function ext4_llseek
+ fs/ext4/file.c:670
+Date: Sat, 13 May 2017 12:23:30 +0800
+Message-ID: <81b23073-00e7-9cd0-71e3-b9c085a2ac34@gmail.com>
+References: <CABniQZMSW6DiSvJ7Y2TZTwUKX6sGH6-WkQRjL-kPOmdm7PnKHA@mail.gmail.com>
+ <20170512050234.ohjoofele5gugxab@thunk.org>
+ <5915875E.15260.4679D7CA@pageexec.freemail.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests <fstests@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Eryu Guan <eguan@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, Brad Spengler <spender@grsecurity.net>
+To: pageexec@freemail.hu, Theodore Ts'o <tytso@mit.edu>,
+        Emese Revfy <re.emese@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f49.google.com ([74.125.83.49]:34437 "EHLO
+        mail-pg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750734AbdEMEXf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 May 2017 00:23:35 -0400
+Received: by mail-pg0-f49.google.com with SMTP id u28so38362892pgn.1
+        for <linux-ext4@vger.kernel.org>; Fri, 12 May 2017 21:23:35 -0700 (PDT)
+In-Reply-To: <5915875E.15260.4679D7CA@pageexec.freemail.hu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Test the GETFSMAP ioctl against ext4.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- common/ext4        |   11 +++++++
- tests/ext4/700     |   86 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/700.out |    7 ++++
- tests/ext4/701     |   65 +++++++++++++++++++++++++++++++++++++++
- tests/ext4/701.out |    3 ++
- tests/ext4/702     |   66 ++++++++++++++++++++++++++++++++++++++++
- tests/ext4/702.out |    4 ++
- tests/ext4/group   |    3 ++
- 8 files changed, 245 insertions(+)
- create mode 100644 common/ext4
- create mode 100755 tests/ext4/700
- create mode 100644 tests/ext4/700.out
- create mode 100755 tests/ext4/701
- create mode 100644 tests/ext4/701.out
- create mode 100755 tests/ext4/702
- create mode 100644 tests/ext4/702.out
 
-diff --git a/common/ext4 b/common/ext4
-new file mode 100644
-index 0000000..1528c86
---- /dev/null
-+++ b/common/ext4
-@@ -0,0 +1,11 @@
-+#
-+# ext4 specific common functions
-+#
-+
-+_ext4_sbfield()
-+{
-+	field="$1"
-+	dev="$2"
-+
-+	dumpe2fs -h $dev 2>/dev/null | grep "^$field" | sed -e "s/^.*$field:[[:space:]]*\(.*\)$/\1/g"
-+}
-diff --git a/tests/ext4/700 b/tests/ext4/700
-new file mode 100755
-index 0000000..64c86ed
---- /dev/null
-+++ b/tests/ext4/700
-@@ -0,0 +1,86 @@
-+#! /bin/bash
-+# FS QA Test No. 700
-+#
-+# Check that getfsmap reports the BG metadata we're expecting.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename "$0"`
-+seqres="$RESULT_DIR/$seq"
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -rf "$tmp".* $TEST_DIR/fsmap $TEST_DIR/testout
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/ext4
-+
-+# real QA test starts here
-+_supported_os Linux
-+_supported_fs ext4
-+_require_scratch
-+_require_xfs_io_command "fsmap"
-+
-+rm -f "$seqres.full"
-+
-+echo "Format and mount"
-+_scratch_mkfs > "$seqres.full" 2>&1
-+blocks=$(_ext4_sbfield "Block count" $SCRATCH_DEV)
-+blocks_per_group=$(_ext4_sbfield "Blocks per group" $SCRATCH_DEV)
-+bg_per_flex=$(_ext4_sbfield "Flex block group size" $SCRATCH_DEV)
-+bgs=$(( (blocks + blocks_per_group - 1) / blocks_per_group ))
-+if [ -z "$bg_per_flex" ]; then
-+	fbg=$((bgs / bg_per_flex))
-+else
-+	fbg=$bgs
-+fi
-+_scratch_mount
-+
-+echo "Get fsmap" | tee -a $seqres.full
-+$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT > $TEST_DIR/fsmap
-+cat $TEST_DIR/fsmap >> $seqres.full
-+
-+echo "Check fs metadata" | tee -a $seqres.full
-+x=$(grep -c 'static fs metadata' $TEST_DIR/fsmap)
-+test $x -gt 0 || echo "No fs metadata?"
-+
-+echo "Check block bitmap" | tee -a $seqres.full
-+x=$(grep -c 'special 102:1' $TEST_DIR/fsmap)
-+test $x -gt 0 || echo "No block bitmaps?"
-+
-+echo "Check inode bitmap" | tee -a $seqres.full
-+x=$(grep -c 'special 102:2' $TEST_DIR/fsmap)
-+test $x -gt 0 || echo "No inode bitmaps?"
-+
-+echo "Check inodes" | tee -a $seqres.full
-+x=$(grep -c 'inodes' $TEST_DIR/fsmap)
-+test $x -gt 0 || echo "No inodes?"
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/ext4/700.out b/tests/ext4/700.out
-new file mode 100644
-index 0000000..3984319
---- /dev/null
-+++ b/tests/ext4/700.out
-@@ -0,0 +1,7 @@
-+QA output created by 700
-+Format and mount
-+Get fsmap
-+Check fs metadata
-+Check block bitmap
-+Check inode bitmap
-+Check inodes
-diff --git a/tests/ext4/701 b/tests/ext4/701
-new file mode 100755
-index 0000000..c50bbf2
---- /dev/null
-+++ b/tests/ext4/701
-@@ -0,0 +1,65 @@
-+#! /bin/bash
-+# FS QA Test No. 701
-+#
-+# Populate filesystem, check that fsmap -n10000 matches fsmap -n1.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename "$0"`
-+seqres="$RESULT_DIR/$seq"
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -rf "$tmp".* $TEST_DIR/a $TEST_DIR/b
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+. ./common/populate
-+
-+# real QA test starts here
-+_supported_os Linux
-+_supported_fs ext4
-+_require_scratch
-+_require_populate_commands
-+_require_xfs_io_command "fsmap"
-+
-+rm -f "$seqres.full"
-+
-+echo "Format and mount"
-+_scratch_populate_cached nofill > $seqres.full 2>&1
-+
-+echo "Compare fsmap" | tee -a $seqres.full
-+_scratch_mount
-+$XFS_IO_PROG -c 'fsmap -n 65536' $SCRATCH_MNT | grep -v 'EXT:' > $TEST_DIR/a
-+$XFS_IO_PROG -c 'fsmap -n 1' $SCRATCH_MNT | grep -v 'EXT:' > $TEST_DIR/b
-+cat $TEST_DIR/a $TEST_DIR/b >> $seqres.full
-+
-+diff -uw $TEST_DIR/a $TEST_DIR/b
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/ext4/701.out b/tests/ext4/701.out
-new file mode 100644
-index 0000000..41ef1c6
---- /dev/null
-+++ b/tests/ext4/701.out
-@@ -0,0 +1,3 @@
-+QA output created by 701
-+Format and mount
-+Compare fsmap
-diff --git a/tests/ext4/702 b/tests/ext4/702
-new file mode 100755
-index 0000000..d5e15ef
---- /dev/null
-+++ b/tests/ext4/702
-@@ -0,0 +1,66 @@
-+#! /bin/bash
-+# FS QA Test No. 702
-+#
-+# Check that getfsmap reports external log devices
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename "$0"`
-+seqres="$RESULT_DIR/$seq"
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -rf "$tmp".* $TEST_DIR/fsmap $TEST_DIR/testout
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# real QA test starts here
-+_supported_os Linux
-+_supported_fs ext4
-+_require_logdev
-+_require_scratch
-+_require_xfs_io_command "fsmap"
-+
-+rm -f "$seqres.full"
-+
-+echo "Format and mount"
-+_scratch_mkfs > "$seqres.full" 2>&1
-+_scratch_mount
-+
-+echo "Get fsmap" | tee -a $seqres.full
-+$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT >> $seqres.full
-+$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT | tr '[]()' '    ' > $TEST_DIR/fsmap
-+
-+echo "Check device field of FS metadata and journalling log"
-+data_dev=$(grep 'static fs metadata' $TEST_DIR/fsmap | head -n 1 | awk '{print $2}')
-+journal_dev=$(grep 'journalling log' $TEST_DIR/fsmap | head -n 1 | awk '{print $2}')
-+test "${data_dev}" != "${journal_dev}" || echo "data ${data_dev} journal ${journal_dev}?"
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/ext4/702.out b/tests/ext4/702.out
-new file mode 100644
-index 0000000..1d3b7ef
---- /dev/null
-+++ b/tests/ext4/702.out
-@@ -0,0 +1,4 @@
-+QA output created by 702
-+Format and mount
-+Get fsmap
-+Check device field of FS metadata and journalling log
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 664c059..9007adf 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -37,3 +37,6 @@
- 306 auto rw resize quick
- 307 auto ioctl rw defrag
- 308 auto ioctl rw prealloc quick defrag
-+700 auto quick fsmap
-+701 auto quick fsmap
-+702 auto quick fsmap
+On 05/12/2017 05:58 PM, PaX Team wrote:
+> On 12 May 2017 at 1:02, Theodore Ts'o wrote:
+> 
+> [added Emese to CC and thus kept the whole mail for context even if
+> i'm responding to some parts of it only]
+> 
+>> On Fri, May 12, 2017 at 12:10:04PM +0800, Shawn wrote:
+>>>
+>>> thanks for the reports, keep them coming . this is an interesting one,
+>>> here's the code (same at both lines in ext4_seek_hole and ext4_seek_data):
+>>>
+>>> 670 »·······start = offset >> blkbits;
+>>>
+>>> in types this is
+>>>
+>>> u32 = long long >> int;
+>>>
+>>> since the maximum value was exceeded it means that offset (long long,
+>>> 64 bits even on 32 bit archs) had a value that didn't fit u32 when right
+>>> shifted. based on some light code reading, blkbits is between 10-16 on
+>>> ext4 (EXT4_MIN_BLOCK_SIZE-EXT4_MAX_BLOCK_SIZE) so depending on what the
+>>> actual block size of the underlying filesystem was, offset must have been
+>>> bigger than 2^42-2^48 (4TB-256TB).
+>>
+>> Yes, this is indeed an interesting one.  I actually suspect that
+>> offset was *negative*, and since start is a u32, this got translated
+>> into a large number.
+> 
+> Shawn, can you do the printk instrumentation i suggested to print out
+> the value of offset (and isize too while at it)?
+>
+I inserted the printk info in fs/ext4/file.c:677
+
+00------------------
+        printk(KERN_DEBUG"offset: %lld, isize: %lld, blkbits: %d\n",
+offset, isize, blkbits);
+11------------------
+
+result:
+
+offset: 105, isize: 19595264, blkbits: 12
+
+
+> thing is, IIRC the C standard makes right shifting a negative value
+> implementation defined (so excluding such values would be good for that
+> reason alone) and i think gcc simply executes it as an arithmetic shift,
+> i.e., the sign of the result is preserved and thus the size overflow
+> checks should have detected a minimum violation, not the maximum one.
+> 
+> to tell for sure what check triggered exactly, i'd like to ask Shawn
+> to execute
+> 
+> 	make fs/ext4/file.o EXTRA_CFLAGS="-fdump-tree-all -fdump-ipa-all"
+> 
+> and send us (Emese in particular) all the resulting files (fs/ext4/file.*)
+> 
+find the file here:
+https://ufile.io/9ie40
+
+Let me know if you need anything else.
+
+
+regards
+Shawn
