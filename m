@@ -1,185 +1,222 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH] dax, xfs,
- ext4: compile out iomap-dax paths in the FS_DAX=n case
-Date: Sat, 13 May 2017 17:53:04 -0700
-Message-ID: <149472318419.18012.5702423859819830972.stgit@dwillia2-desk3.amr.corp.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Tetsuo Handa <penguin-kernel-1yMVhJb1mP/7nzcFbJAaVXf5DAMn2ifp@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Sat, 13 May 2017 19:41:24 -0600
+Message-ID: <38F56772-7836-4902-929C-80908BFBEA7B@dilger.ca>
+References: <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
+ <20170508184112.GJ5973@birch.djwong.org>
+ <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
+ <20170508204738.GL5973@birch.djwong.org>
+ <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
+ <20170509015324.GM5973@birch.djwong.org> <20170509211746.GA87747@gmail.com>
+ <20170510163818.7bleiykxgnx3pkds@thunk.org> <87mvakpl5m.fsf@xmission.com>
+ <20170510201437.GA9854@birch.djwong.org> <20170511051051.GA7533@zzz>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Theodore Ts'o <tytso@mit.edu>, Jann Horn <jannh@google.com>,
+        Michael Kerrisk-manpages <mtk.manpages@gmail.com>,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        linux-man@vger.kernel.org,
+        linux-btrfs <linux-btrfs@vger.kernel.org>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170511051051.GA7533@zzz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Tetsuo reports:
 
-  fs/built-in.o: In function `xfs_file_iomap_end':
-  xfs_iomap.c:(.text+0xe0ef9): undefined reference to `put_dax'
-  fs/built-in.o: In function `xfs_file_iomap_begin':
-  xfs_iomap.c:(.text+0xe1a7f): undefined reference to `dax_get_by_host'
-  make: *** [vmlinux] Error 1
-  $ grep DAX .config
-  CONFIG_DAX=m
-  # CONFIG_DEV_DAX is not set
-  # CONFIG_FS_DAX is not set
+--Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-When FS_DAX=n we can/must throw away the dax code in filesystems.
-Implement 'fs_' versions of dax_get_by_host() and put_dax() that are
-nops in the FS_DAX=n case.
+On May 10, 2017, at 11:10 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+>=20
+> On Wed, May 10, 2017 at 01:14:37PM -0700, Darrick J. Wong wrote:
+>> [cc btrfs, since afaict that's where most of the dedupe tool authors =
+hang out]
+>>=20
+>> On Wed, May 10, 2017 at 02:27:33PM -0500, Eric W. Biederman wrote:
+>>> Theodore Ts'o <tytso@mit.edu> writes:
+>>>=20
+>>>> On Tue, May 09, 2017 at 02:17:46PM -0700, Eric Biggers wrote:
+>>>>> 1.) Privacy implications.  Say the filesystem is being shared =
+between multiple
+>>>>>    users, and one user unpacks foo.tar.gz into their home =
+directory, which
+>>>>>    they've set to mode 700 to hide from other users.  Because of =
+this new
+>>>>>    ioctl, all users will be able to see every (inode number, size =
+in blocks)
+>>>>>    pair that was added to the filesystem, as well as the exact =
+layout of the
+>>>>>    physical block allocations which might hint at how the files =
+were created.
+>>>>>    If there is a known "fingerprint" for the unpacked foo.tar.gz =
+in this
+>>>>>    regard, its presence on the filesystem will be revealed to all =
+users.  And
+>>>>>    if any filesystems happen to prefer allocating blocks near the =
+containing
+>>>>>    directory, the directory the files are in would likely be =
+revealed too.
+>>=20
+>> Frankly, why are container users even allowed to make unrestricted =
+ioctl
+>> calls?  I thought we had a bunch of security infrastructure to =
+constrain
+>> what userspace can do to a system, so why don't ioctls fall under =
+these
+>> same protections?  If your containers are really that adversarial, =
+you
+>> ought to be blacklisting as much as you can.
+>>=20
+>=20
+> Personally I don't find the presence of sandboxing features to be a =
+very good
+> excuse for introducing random insecure ioctls.  Not everyone has =
+everything
+> perfectly "sandboxed" all the time, for obvious reasons.  It's easy to =
+forget
+> about the filesystem ioctls, too, since they can be executed on any =
+regular
+> file, without having to open some device node in /dev.
+>=20
+> (And this actually does happen; the SELinux policy in Android, for =
+example,
+> still allows apps to call any ioctl on their data files, despite all =
+the effort
+> that has gone into whitelisting other types of ioctls.  Which should =
+be fixed,
+> of course, but it shows that this kind of mistake is very easy to =
+make.)
+>=20
+>>>> Unix/Linux has historically not been terribly concerned about =
+trying
+>>>> to protect this kind of privacy between users.  So for example, in
+>>>> order to do this, you would have to call GETFSMAP continously to =
+track
+>>>> this sort of thing.  Someone who wanted to do this could probably =
+get
+>>>> this information (and much, much more) by continuously running "ps" =
+to
+>>>> see what processes are running.
+>>>>=20
+>>>> (I will note. wryly, that in the bad old days, when dozens of users
+>>>> were sharing a one MIPS Vax/780, it was considered a *good* thing
+>>>> that social pressure could be applied when it was found that =
+someone
+>>>> was running a CPU or memory hogger on a time sharing system.  The
+>>>> privacy right of someone running "xtrek" to be able to hide this =
+from
+>>>> other users on the system was never considered important at all.  =
+:-)
+>>=20
+>> Not to mention someone running GETFSMAP in a loop will be pretty =
+obvious
+>> both from the high kernel cpu usage and the huge number of metadata
+>> operations.
+>=20
+> Well, only if that someone running GETFSMAP actually wants to watch =
+things in
+> real-time (it's not necessary for all scenarios that have been =
+mentioned), *and*
+> there is monitoring in place which actually detects it and can do =
+something
+> about it.
+>=20
+> Yes, PIDs have traditionally been global, but today we have PID =
+namespaces, and
+> many other isolation features such as mount namespaces.  Nothing is =
+perfect, of
+> course, and containers are a lot worse than VMs, but it seems weird to =
+use that
+> as an excuse to knowingly make things worse...
+>=20
+>>=20
+>>>> Fortunately, the days of timesharing seem to well behind us.  For
+>>>> those people who think that containers are as secure as VM's (hah,
+>>>> hah, hah), it might be that best way to handle this is to have a =
+mount
+>>>> option that requires root access to this functionality.  For those
+>>>> people who really care about this, they can disable access.
+>>=20
+>> Or use separate filesystems for each container so that exploitable =
+bugs
+>> that shut down the filesystem can't be used to kill the other
+>> containers.  You could use a torrent of metadata-heavy operations
+>> (fallocate a huge file, punch every block, truncate file, repeat) to =
+DoS
+>> the other containers.
+>>=20
+>>> What would be the reason for not putting this behind
+>>> capable(CAP_SYS_ADMIN)?
+>>>=20
+>>> What possible legitimate function could this functionality serve to
+>>> users who don't own your filesystem?
+>>=20
+>> As I've said before, it's to enable dedupe tools to decide, given a =
+set
+>> of files with shareable blocks, roughly how many other times each of
+>> those shareable blocks are shared so that they can make better =
+decisions
+>> about which file keeps its shareable blocks, and which file gets
+>> remapped.  Dedupe is not a privileged operation, nor are any of the
+>> tools.
+>>=20
+>=20
+> So why does the ioctl need to return all extent mappings for the =
+entire
+> filesystem, instead of just the share count of each block in the file =
+that the
+> ioctl is called on?
 
-Cc: <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Cc: <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Cc: Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Cc: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Cc: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Fixes: ef51042472f5 ("block, dax: move 'select DAX' from BLOCK to FS_DAX")
-Reported-by: Tetsuo Handa <penguin-kernel-1yMVhJb1mP/7nzcFbJAaVXf5DAMn2ifp@public.gmane.org>
-Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
----
- fs/ext2/inode.c     |    4 ++--
- fs/ext4/inode.c     |    4 ++--
- fs/xfs/xfs_iomap.c  |    4 ++--
- include/linux/dax.h |   34 +++++++++++++++++++++++++++-------
- 4 files changed, 33 insertions(+), 13 deletions(-)
+One possibility is that the ioctl() can return the mapping for all =
+inodes
+owned by the calling PID (or others if CAP_SYS_ADMIN, CAP_DAC_OVERRIDE,
+or CAP_FOWNER is set), and return an "filesystem aggregate inode" (or =
+more
+than one if there is a reason to do so) with all the other allocated =
+blocks
+for inodes the user doesn't have permission to access?
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 26d77f9f8c12..2dcbd5698884 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -817,7 +817,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	iomap->bdev = bdev;
- 	iomap->offset = (u64)first_block << blkbits;
- 	if (blk_queue_dax(bdev->bd_queue))
--		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
-+		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
- 	else
- 		iomap->dax_dev = NULL;
- 
-@@ -841,7 +841,7 @@ static int
- ext2_iomap_end(struct inode *inode, loff_t offset, loff_t length,
- 		ssize_t written, unsigned flags, struct iomap *iomap)
- {
--	put_dax(iomap->dax_dev);
-+	fs_put_dax(iomap->dax_dev);
- 	if (iomap->type == IOMAP_MAPPED &&
- 	    written < length &&
- 	    (flags & IOMAP_WRITE))
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5834c4d76be8..1bd0bfa547f6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3412,7 +3412,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	bdev = inode->i_sb->s_bdev;
- 	iomap->bdev = bdev;
- 	if (blk_queue_dax(bdev->bd_queue))
--		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
-+		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
- 	else
- 		iomap->dax_dev = NULL;
- 	iomap->offset = first_block << blkbits;
-@@ -3447,7 +3447,7 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
- 	int blkbits = inode->i_blkbits;
- 	bool truncate = false;
- 
--	put_dax(iomap->dax_dev);
-+	fs_put_dax(iomap->dax_dev);
- 	if (!(flags & IOMAP_WRITE) || (flags & IOMAP_FAULT))
- 		return 0;
- 
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index a63f61c256bd..94e5bdf7304c 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -1068,7 +1068,7 @@ xfs_file_iomap_begin(
- 	/* optionally associate a dax device with the iomap bdev */
- 	bdev = iomap->bdev;
- 	if (blk_queue_dax(bdev->bd_queue))
--		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
-+		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
- 	else
- 		iomap->dax_dev = NULL;
- 
-@@ -1149,7 +1149,7 @@ xfs_file_iomap_end(
- 	unsigned		flags,
- 	struct iomap		*iomap)
- {
--	put_dax(iomap->dax_dev);
-+	fs_put_dax(iomap->dax_dev);
- 	if ((flags & IOMAP_WRITE) && iomap->type == IOMAP_DELALLOC)
- 		return xfs_file_iomap_end_delalloc(XFS_I(inode), offset,
- 				length, written, iomap);
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 00ebac854bb7..5ec1f6c47716 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -18,6 +18,20 @@ struct dax_operations {
- 			void **, pfn_t *);
- };
- 
-+#if IS_ENABLED(CONFIG_DAX)
-+struct dax_device *dax_get_by_host(const char *host);
-+void put_dax(struct dax_device *dax_dev);
-+#else
-+static inline struct dax_device *dax_get_by_host(const char *host)
-+{
-+	return NULL;
-+}
-+
-+static inline void put_dax(struct dax_device *dax_dev)
-+{
-+}
-+#endif
-+
- int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
- #if IS_ENABLED(CONFIG_FS_DAX)
- int __bdev_dax_supported(struct super_block *sb, int blocksize);
-@@ -25,23 +39,29 @@ static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
- {
- 	return __bdev_dax_supported(sb, blocksize);
- }
-+
-+static inline struct dax_device *fs_dax_get_by_host(const char *host)
-+{
-+	return dax_get_by_host(host);
-+}
-+
-+static inline void fs_put_dax(struct dax_device *dax_dev)
-+{
-+	put_dax(dax_dev);
-+}
-+
- #else
- static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
- {
- 	return -EOPNOTSUPP;
- }
--#endif
- 
--#if IS_ENABLED(CONFIG_DAX)
--struct dax_device *dax_get_by_host(const char *host);
--void put_dax(struct dax_device *dax_dev);
--#else
--static inline struct dax_device *dax_get_by_host(const char *host)
-+static inline struct dax_device *fs_dax_get_by_host(const char *host)
- {
- 	return NULL;
- }
- 
--static inline void put_dax(struct dax_device *dax_dev)
-+static inline void fs_put_dax(struct dax_device *dax_dev)
- {
- }
- #endif
+IMHO, this would allow a non-root user the main benefit of GETFSMAP,  =
+which
+is trying to determine how fragmented their files are and/or how =
+fragmented
+the free space is, without leaking any information about file sizes, =
+location,
+or other information the user can't already get today in a less =
+efficient
+manner.
+
+I don't know how hard this is to implement, but seems not impossible.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZF7XEpIg59Q01vtYRAiNSAJ9ZT3jqJ8hRUm9aDdLQ+XWEYkAbWQCg56Dp
+1u64LMA/lrDzEXBM9Nj+rD0=
+=uZ10
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762--
