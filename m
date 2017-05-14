@@ -1,200 +1,460 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Sat, 13 May 2017 19:41:24 -0600
-Message-ID: <38F56772-7836-4902-929C-80908BFBEA7B@dilger.ca>
-References: <CAG48ez1AWewJRg8gySgihn0y15jRhC6C+5DNwGsDpAhtokB=Lw@mail.gmail.com>
- <20170508184112.GJ5973@birch.djwong.org>
- <CAG48ez3e+2VuvjtEfJuMujEo6PWBO3z8oM-otN2juq96jKdjCw@mail.gmail.com>
- <20170508204738.GL5973@birch.djwong.org>
- <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
- <20170509015324.GM5973@birch.djwong.org> <20170509211746.GA87747@gmail.com>
- <20170510163818.7bleiykxgnx3pkds@thunk.org> <87mvakpl5m.fsf@xmission.com>
- <20170510201437.GA9854@birch.djwong.org> <20170511051051.GA7533@zzz>
+Subject: Re: [PATCH] e2freefrag: use GETFSMAP on mounted filesystems
+Date: Sat, 13 May 2017 19:31:43 -0600
+Message-ID: <8F9B1165-E722-4488-91BE-944C978296E9@dilger.ca>
+References: <20170507160738.GB5963@birch.djwong.org>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762";
+ boundary="Apple-Mail=_FCB3E6FD-56A0-4893-B7CE-7E56863D9391";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Theodore Ts'o <tytso@mit.edu>, Jann Horn <jannh@google.com>,
-        Michael Kerrisk-manpages <mtk.manpages@gmail.com>,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-        linux-man@vger.kernel.org,
-        linux-btrfs <linux-btrfs@vger.kernel.org>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170511051051.GA7533@zzz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34855 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756706AbdENBld (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 May 2017 21:41:33 -0400
+Received: by mail-io0-f193.google.com with SMTP id o12so8918683iod.2
+        for <linux-ext4@vger.kernel.org>; Sat, 13 May 2017 18:41:33 -0700 (PDT)
+In-Reply-To: <20170507160738.GB5963@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762
+--Apple-Mail=_FCB3E6FD-56A0-4893-B7CE-7E56863D9391
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On May 10, 2017, at 11:10 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
->=20
-> On Wed, May 10, 2017 at 01:14:37PM -0700, Darrick J. Wong wrote:
->> [cc btrfs, since afaict that's where most of the dedupe tool authors =
-hang out]
->>=20
->> On Wed, May 10, 2017 at 02:27:33PM -0500, Eric W. Biederman wrote:
->>> Theodore Ts'o <tytso@mit.edu> writes:
->>>=20
->>>> On Tue, May 09, 2017 at 02:17:46PM -0700, Eric Biggers wrote:
->>>>> 1.) Privacy implications.  Say the filesystem is being shared =
-between multiple
->>>>>    users, and one user unpacks foo.tar.gz into their home =
-directory, which
->>>>>    they've set to mode 700 to hide from other users.  Because of =
-this new
->>>>>    ioctl, all users will be able to see every (inode number, size =
-in blocks)
->>>>>    pair that was added to the filesystem, as well as the exact =
-layout of the
->>>>>    physical block allocations which might hint at how the files =
-were created.
->>>>>    If there is a known "fingerprint" for the unpacked foo.tar.gz =
-in this
->>>>>    regard, its presence on the filesystem will be revealed to all =
-users.  And
->>>>>    if any filesystems happen to prefer allocating blocks near the =
-containing
->>>>>    directory, the directory the files are in would likely be =
-revealed too.
->>=20
->> Frankly, why are container users even allowed to make unrestricted =
-ioctl
->> calls?  I thought we had a bunch of security infrastructure to =
-constrain
->> what userspace can do to a system, so why don't ioctls fall under =
-these
->> same protections?  If your containers are really that adversarial, =
-you
->> ought to be blacklisting as much as you can.
->>=20
->=20
-> Personally I don't find the presence of sandboxing features to be a =
-very good
-> excuse for introducing random insecure ioctls.  Not everyone has =
-everything
-> perfectly "sandboxed" all the time, for obvious reasons.  It's easy to =
-forget
-> about the filesystem ioctls, too, since they can be executed on any =
-regular
-> file, without having to open some device node in /dev.
->=20
-> (And this actually does happen; the SELinux policy in Android, for =
-example,
-> still allows apps to call any ioctl on their data files, despite all =
-the effort
-> that has gone into whitelisting other types of ioctls.  Which should =
-be fixed,
-> of course, but it shows that this kind of mistake is very easy to =
-make.)
->=20
->>>> Unix/Linux has historically not been terribly concerned about =
-trying
->>>> to protect this kind of privacy between users.  So for example, in
->>>> order to do this, you would have to call GETFSMAP continously to =
-track
->>>> this sort of thing.  Someone who wanted to do this could probably =
-get
->>>> this information (and much, much more) by continuously running "ps" =
-to
->>>> see what processes are running.
->>>>=20
->>>> (I will note. wryly, that in the bad old days, when dozens of users
->>>> were sharing a one MIPS Vax/780, it was considered a *good* thing
->>>> that social pressure could be applied when it was found that =
-someone
->>>> was running a CPU or memory hogger on a time sharing system.  The
->>>> privacy right of someone running "xtrek" to be able to hide this =
-from
->>>> other users on the system was never considered important at all.  =
-:-)
->>=20
->> Not to mention someone running GETFSMAP in a loop will be pretty =
-obvious
->> both from the high kernel cpu usage and the huge number of metadata
->> operations.
->=20
-> Well, only if that someone running GETFSMAP actually wants to watch =
-things in
-> real-time (it's not necessary for all scenarios that have been =
-mentioned), *and*
-> there is monitoring in place which actually detects it and can do =
-something
-> about it.
->=20
-> Yes, PIDs have traditionally been global, but today we have PID =
-namespaces, and
-> many other isolation features such as mount namespaces.  Nothing is =
-perfect, of
-> course, and containers are a lot worse than VMs, but it seems weird to =
-use that
-> as an excuse to knowingly make things worse...
->=20
->>=20
->>>> Fortunately, the days of timesharing seem to well behind us.  For
->>>> those people who think that containers are as secure as VM's (hah,
->>>> hah, hah), it might be that best way to handle this is to have a =
-mount
->>>> option that requires root access to this functionality.  For those
->>>> people who really care about this, they can disable access.
->>=20
->> Or use separate filesystems for each container so that exploitable =
-bugs
->> that shut down the filesystem can't be used to kill the other
->> containers.  You could use a torrent of metadata-heavy operations
->> (fallocate a huge file, punch every block, truncate file, repeat) to =
-DoS
->> the other containers.
->>=20
->>> What would be the reason for not putting this behind
->>> capable(CAP_SYS_ADMIN)?
->>>=20
->>> What possible legitimate function could this functionality serve to
->>> users who don't own your filesystem?
->>=20
->> As I've said before, it's to enable dedupe tools to decide, given a =
-set
->> of files with shareable blocks, roughly how many other times each of
->> those shareable blocks are shared so that they can make better =
-decisions
->> about which file keeps its shareable blocks, and which file gets
->> remapped.  Dedupe is not a privileged operation, nor are any of the
->> tools.
->>=20
->=20
-> So why does the ioctl need to return all extent mappings for the =
-entire
-> filesystem, instead of just the share count of each block in the file =
-that the
-> ioctl is called on?
 
-One possibility is that the ioctl() can return the mapping for all =
-inodes
-owned by the calling PID (or others if CAP_SYS_ADMIN, CAP_DAC_OVERRIDE,
-or CAP_FOWNER is set), and return an "filesystem aggregate inode" (or =
-more
-than one if there is a reason to do so) with all the other allocated =
-blocks
-for inodes the user doesn't have permission to access?
+> On May 7, 2017, at 10:07 AM, Darrick J. Wong <darrick.wong@oracle.com> =
+wrote:
+>=20
+> Use GETFSMAP to query mounted filesystems for free space information.
+> This prevents us from reporting stale free space stats if there happen
+> to be uncheckpointed block bitmap updates sitting in the journal.
+>=20
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> configure         |    2 -
+> configure.ac      |    1
+> lib/config.h.in   |    3 +
+> misc/e2freefrag.c |  137 =
++++++++++++++++++++++++++++++++++++++++++++++++++----
+> misc/fsmap.h      |   89 ++++++++++++++++++++++++++++++++++
+> 5 files changed, 221 insertions(+), 11 deletions(-)
+> create mode 100644 misc/fsmap.h
+>=20
+> diff --git a/configure b/configure
+> index 5f7b429..2d75150 100755
+> --- a/configure
+> +++ b/configure
+> @@ -12368,7 +12368,7 @@ fi
+> done
+>=20
+> fi
+> -for ac_header in  	dirent.h 	errno.h 	execinfo.h 	=
+getopt.h 	malloc.h 	mntent.h 	paths.h 	=
+semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h =
+	stdlib.h 	termios.h 	termio.h 	unistd.h 	=
+utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	=
+linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	=
+sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	=
+sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	=
+sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	=
+sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	=
+sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	=
+sys/un.h 	sys/wait.h
+> +for ac_header in  	dirent.h 	errno.h 	execinfo.h 	=
+getopt.h 	malloc.h 	mntent.h 	paths.h 	=
+semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h =
+	stdlib.h 	termios.h 	termio.h 	unistd.h 	=
+utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	=
+linux/fsmap.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	=
+netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	=
+sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	=
+sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	=
+sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	=
+sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	=
+sys/types.h 	sys/un.h 	sys/wait.h
+> do :
+>   as_ac_Header=3D`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+> ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" =
+"$ac_includes_default"
+> diff --git a/configure.ac b/configure.ac
+> index 9da7b86..a8bc15d 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -918,6 +918,7 @@ AC_CHECK_HEADERS(m4_flatten([
+> 	attr/xattr.h
+> 	linux/falloc.h
+> 	linux/fd.h
+> +	linux/fsmap.h
+> 	linux/major.h
+> 	linux/loop.h
+> 	net/if_dl.h
+> diff --git a/lib/config.h.in b/lib/config.h.in
+> index bc006de..37d0c46 100644
+> --- a/lib/config.h.in
+> +++ b/lib/config.h.in
+> @@ -244,6 +244,9 @@
+> /* Define to 1 if you have the <linux/fd.h> header file. */
+> #undef HAVE_LINUX_FD_H
+>=20
+> +/* Define to 1 if you have the <linux/fsmap.h> header file. */
+> +#undef HAVE_LINUX_FSMAP_H
+> +
+> /* Define to 1 if you have the <linux/loop.h> header file. */
+> #undef HAVE_LINUX_LOOP_H
+>=20
+> diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+> index 90acb7e..64ed5cd 100644
+> --- a/misc/e2freefrag.c
+> +++ b/misc/e2freefrag.c
+> @@ -25,11 +25,25 @@
+> extern char *optarg;
+> extern int optind;
+> #endif
+> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> +# include <sys/ioctl.h>
+> +# include <sys/types.h>
+> +# include <sys/stat.h>
+> +# include <fcntl.h>
+> +# include <limits.h>
+> +#endif
+>=20
+> #include "ext2fs/ext2_fs.h"
+> #include "ext2fs/ext2fs.h"
+> #include "e2freefrag.h"
+>=20
+> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> +# ifdef HAVE_LINUX_FSMAP_H
+> +#  include <linux/fsmap.h>
+> +# endif
+> +# include "fsmap.h"
+> +#endif
+> +
+> static void usage(const char *prog)
+> {
+> 	fprintf(stderr, "usage: %s [-c chunksize in kb] [-h] "
+> @@ -143,8 +157,81 @@ static void scan_block_bitmap(ext2_filsys fs, =
+struct chunk_info *info)
+> 		update_chunk_stats(info, last_chunk_size);
+> }
+>=20
+> -static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info =
+*info,
+> -				FILE *f)
+> +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> +# define FSMAP_EXTENTS	1024
+> +static int scan_online(ext2_filsys fs, struct chunk_info *info)
+> +{
+> +	struct fsmap_head *fsmap;
+> +	struct fsmap *extent;
+> +	struct fsmap *p;
+> +	int fd =3D (intptr_t)fs->priv_data;
+> +	int ret;
+> +	int i;
+> +
+> +	if (fd < 0)
+> +		return 0;
+> +
+> +	fsmap =3D malloc(fsmap_sizeof(FSMAP_EXTENTS));
+> +	if (!fsmap) {
+> +		com_err(fs->device_name, errno, "while allocating =
+memory");
+> +		return 0;
+> +	}
+> +
+> +	memset(fsmap, 0, sizeof(*fsmap));
+> +	fsmap->fmh_count =3D FSMAP_EXTENTS;
+> +	fsmap->fmh_keys[1].fmr_device =3D UINT_MAX;
+> +	fsmap->fmh_keys[1].fmr_physical =3D ULLONG_MAX;
+> +	fsmap->fmh_keys[1].fmr_owner =3D ULLONG_MAX;
+> +	fsmap->fmh_keys[1].fmr_offset =3D ULLONG_MAX;
+> +	fsmap->fmh_keys[1].fmr_flags =3D UINT_MAX;
+> +
+> +	while (1) {
+> +		ret =3D ioctl(fd, FS_IOC_GETFSMAP, fsmap);
+> +		if (ret < 0) {
+> +			com_err(fs->device_name, errno, "while calling =
+fsmap");
+> +			free(fsmap);
+> +			return 0;
+> +		}
+> +
+> +		/* No more extents to map, exit */
+> +		if (!fsmap->fmh_entries)
+> +			break;
+> +
+> +		for (i =3D 0, extent =3D fsmap->fmh_recs;
+> +		     i < fsmap->fmh_entries;
+> +		     i++, extent++) {
+> +			if (!(extent->fmr_flags & FMR_OF_SPECIAL_OWNER) =
+||
+> +			    extent->fmr_owner !=3D FMR_OWN_FREE)
+> +				continue;
+> +			update_chunk_stats(info,
+> +					   extent->fmr_length / =
+fs->blocksize);
+> +		}
+> +
+> +		p =3D &fsmap->fmh_recs[fsmap->fmh_entries - 1];
+> +		if (p->fmr_flags & FMR_OF_LAST)
+> +			break;
+> +		fsmap_advance(fsmap);
+> +	}
+> +
+> +	return 1;
+> +}
+> +#else
+> +# define scan_online(fs, info)	(0)
+> +#endif /* HAVE_EXT2_IOCTLS */
+> +
+> +static errcode_t scan_offline(ext2_filsys fs, struct chunk_info =
+*info)
+> +{
+> +	errcode_t retval;
+> +
+> +	retval =3D ext2fs_read_block_bitmap(fs);
+> +	if (retval)
+> +		return retval;
+> +	scan_block_bitmap(fs, info);
+> +	return 0;
+> +}
+> +
+> +static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info =
+*info,
+> +				 FILE *f)
+> {
+> 	unsigned long total_chunks;
+> 	const char *unitp =3D "KMGTPEZY";
+> @@ -152,8 +239,6 @@ static errcode_t get_chunk_info(ext2_filsys fs, =
+struct chunk_info *info,
+> 	unsigned long start =3D 0, end;
+> 	int i, retval =3D 0;
+>=20
+> -	scan_block_bitmap(fs, info);
+> -
+> 	fprintf(f, "Total blocks: %llu\nFree blocks: %u (%0.1f%%)\n",
+> 		ext2fs_blocks_count(fs->super), =
+fs->super->s_free_blocks_count,
+> 		(double)fs->super->s_free_blocks_count * 100 /
+> @@ -215,8 +300,17 @@ static errcode_t get_chunk_info(ext2_filsys fs, =
+struct chunk_info *info,
+>=20
+> static void close_device(char *device_name, ext2_filsys fs)
+> {
+> -	int retval =3D ext2fs_close_free(&fs);
+> +#ifndef DEBUGFS
+> +	int mount_fd;
+> +#endif
+> +	int retval;
+>=20
+> +#ifndef DEBUGFS
+> +	mount_fd =3D (intptr_t)fs->priv_data;
+> +	if (mount_fd >=3D 0)
+> +		close(mount_fd);
+> +#endif
+> +	retval =3D ext2fs_close_free(&fs);
+> 	if (retval)
+> 		com_err(device_name, retval, "while closing the =
+filesystem.\n");
+> }
+> @@ -228,18 +322,19 @@ static void collect_info(ext2_filsys fs, struct =
+chunk_info *chunk_info, FILE *f)
+> 	fprintf(f, "Device: %s\n", fs->device_name);
+> 	fprintf(f, "Blocksize: %u bytes\n", fs->blocksize);
+>=20
+> -	retval =3D ext2fs_read_block_bitmap(fs);
+> +	init_chunk_info(fs, chunk_info);
 
-IMHO, this would allow a non-root user the main benefit of GETFSMAP,  =
-which
-is trying to determine how fragmented their files are and/or how =
-fragmented
-the free space is, without leaking any information about file sizes, =
-location,
-or other information the user can't already get today in a less =
-efficient
-manner.
+Should init_chunk_info() be called inside both scan_online() and =
+scan_offline(),
+so that it is reset if scan_online() fails internally for some reason?
 
-I don't know how hard this is to implement, but seems not impossible.
+> +
+> +	if (!scan_online(fs, chunk_info))
+> +		retval =3D scan_offline(fs, chunk_info);
+> 	if (retval) {
+> 		com_err(fs->device_name, retval, "while reading block =
+bitmap");
+> 		close_device(fs->device_name, fs);
+> 		exit(1);
+> 	}
+>=20
+> -	init_chunk_info(fs, chunk_info);
+> -
+> -	retval =3D get_chunk_info(fs, chunk_info, f);
+> +	retval =3D dump_chunk_info(fs, chunk_info, f);
+> 	if (retval) {
+> -		com_err(fs->device_name, retval, "while collecting chunk =
+info");
+> +		com_err(fs->device_name, retval, "while dumping chunk =
+info");
+>                 close_device(fs->device_name, fs);
+> 		exit(1);
+> 	}
+> @@ -250,6 +345,11 @@ static void open_device(char *device_name, =
+ext2_filsys *fs)
+> {
+> 	int retval;
+> 	int flag =3D EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
+> +#ifdef HAVE_EXT2_IOCTLS
+> +	int mount_flags;
+> +	int mount_fd;
+> +	char mntpoint[PATH_MAX + 1];
+> +#endif
+>=20
+> 	retval =3D ext2fs_open(device_name, flag, 0, 0, unix_io_manager, =
+fs);
+> 	if (retval) {
+> @@ -257,6 +357,23 @@ static void open_device(char *device_name, =
+ext2_filsys *fs)
+> 		exit(1);
+> 	}
+> 	(*fs)->default_bitmap_type =3D EXT2FS_BMAP64_RBTREE;
+> +	(*fs)->priv_data =3D (void *)-1;
+> +
+> +#ifdef HAVE_EXT2_IOCTLS
+> +	retval =3D ext2fs_check_mount_point(device_name, &mount_flags,
+> +					  mntpoint, PATH_MAX);
+> +	if (retval) {
+> +		com_err(device_name, retval, "while checking mount =
+status");
+> +		return;
+> +	}
+> +	if (mount_flags & EXT2_MF_MOUNTED) {
+> +		mount_fd =3D open(mntpoint, O_RDONLY);
+
+Should this all be done inside scan_online(), since it isn't needed for =
+use
+by scan_offline()?  That also avoids the need to pass the open mount =
+point
+fd via ->priv_data.
+
+Cheers, Andreas
+
+> +		if (mount_fd < 0)
+> +			com_err(mntpoint, errno, "while opening mount =
+point");
+> +		else
+> +			(*fs)->priv_data =3D (void *)(intptr_t)mount_fd;
+> +	}
+> +#endif
+> }
+> #endif
+>=20
+> diff --git a/misc/fsmap.h b/misc/fsmap.h
+> new file mode 100644
+> index 0000000..e9590aa
+> --- /dev/null
+> +++ b/misc/fsmap.h
+> @@ -0,0 +1,89 @@
+> +/*
+> + * Copyright (c) 2017 Oracle.
+> + * All Rights Reserved.
+> + *
+> + * Author: Darrick J. Wong <darrick.wong@oracle.com>
+> + *
+> + * This program is free software; you can redistribute it and/or
+> + * modify it under the terms of the GNU General Public License as
+> + * published by the Free Software Foundation.
+> + *
+> + * This program is distributed in the hope that it would be useful,
+> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> + * GNU General Public License for more details.
+> + *
+> + * You should have received a copy of the GNU General Public License
+> + * along with this program; if not, write the Free Software =
+Foundation,
+> + * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> + */
+> +#ifndef FSMAP_H_
+> +#define FSMAP_H_
+> +
+> +/* FS_IOC_GETFSMAP ioctl definitions */
+> +#ifndef FS_IOC_GETFSMAP
+> +struct fsmap {
+> +	__u32		fmr_device;	/* device id */
+> +	__u32		fmr_flags;	/* mapping flags */
+> +	__u64		fmr_physical;	/* device offset of segment */
+> +	__u64		fmr_owner;	/* owner id */
+> +	__u64		fmr_offset;	/* file offset of segment */
+> +	__u64		fmr_length;	/* length of segment */
+> +	__u64		fmr_reserved[3];	/* must be zero */
+> +};
+> +
+> +struct fsmap_head {
+> +	__u32		fmh_iflags;	/* control flags */
+> +	__u32		fmh_oflags;	/* output flags */
+> +	__u32		fmh_count;	/* # of entries in array incl. =
+input */
+> +	__u32		fmh_entries;	/* # of entries filled in =
+(output). */
+> +	__u64		fmh_reserved[6];	/* must be zero */
+> +
+> +	struct fsmap	fmh_keys[2];	/* low and high keys for the =
+mapping search */
+> +	struct fsmap	fmh_recs[];	/* returned records */
+> +};
+> +
+> +/* Size of an fsmap_head with room for nr records. */
+> +static inline size_t
+> +fsmap_sizeof(
+> +	unsigned int	nr)
+> +{
+> +	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
+> +}
+> +
+> +/* Start the next fsmap query at the end of the current query =
+results. */
+> +static inline void
+> +fsmap_advance(
+> +	struct fsmap_head	*head)
+> +{
+> +	head->fmh_keys[0] =3D head->fmh_recs[head->fmh_entries - 1];
+> +}
+> +
+> +/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. =
+*/
+> +/* no flags defined yet */
+> +#define FMH_IF_VALID		0
+> +
+> +/*	fmh_oflags values - returned in the header segment only. */
+> +#define FMH_OF_DEV_T		0x1	/* fmr_device values will be =
+dev_t */
+> +
+> +/*	fmr_flags values - returned for each non-header segment */
+> +#define FMR_OF_PREALLOC		0x1	/* segment =3D unwritten =
+pre-allocation */
+> +#define FMR_OF_ATTR_FORK	0x2	/* segment =3D attribute fork */
+> +#define FMR_OF_EXTENT_MAP	0x4	/* segment =3D extent map */
+> +#define FMR_OF_SHARED		0x8	/* segment =3D shared =
+with another file */
+> +#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
+> +#define FMR_OF_LAST		0x20	/* segment is the last in the FS =
+*/
+> +
+> +/* Each FS gets to define its own special owner codes. */
+> +#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
+> +				 ((__u64)code & 0xFFFFFFFFULL))
+> +#define FMR_OWNER_TYPE(owner)	((__u32)((__u64)owner >> 32))
+> +#define FMR_OWNER_CODE(owner)	((__u32)(((__u64)owner & =
+0xFFFFFFFFULL)))
+> +#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
+> +#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner =
+*/
+> +#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
+> +
+> +#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct =
+fsmap_head)
+> +#endif /* FS_IOC_GETFSMAP */
+> +
+> +#endif
+
 
 Cheers, Andreas
 
@@ -203,7 +463,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762
+--Apple-Mail=_FCB3E6FD-56A0-4893-B7CE-7E56863D9391
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -214,9 +474,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFZF7XEpIg59Q01vtYRAiNSAJ9ZT3jqJ8hRUm9aDdLQ+XWEYkAbWQCg56Dp
-1u64LMA/lrDzEXBM9Nj+rD0=
-=uZ10
+iD8DBQFZF7OApIg59Q01vtYRAsuEAJ9hwEUEkprwe0vEXPVvuwfqR8qqQgCfZdsv
+iHghKeiXBWyBxjQqgiz2/f4=
+=c37D
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_C16D2EC1-0DAE-4DEB-9C8D-0B16C5B5B762--
+--Apple-Mail=_FCB3E6FD-56A0-4893-B7CE-7E56863D9391--
