@@ -1,53 +1,185 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH] generic/285: Add more SEEK_HOLE tests
-Date: Sun, 14 May 2017 01:26:21 +0800
-Message-ID: <20170513172620.GR7250@eguan.usersys.redhat.com>
-References: <20170511164809.29739-1-jack@suse.cz>
- <20170512080443.GN7250@eguan.usersys.redhat.com>
- <20170512230657.GP12369@dastard>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH] dax, xfs,
+ ext4: compile out iomap-dax paths in the FS_DAX=n case
+Date: Sat, 13 May 2017 17:53:04 -0700
+Message-ID: <149472318419.18012.5702423859819830972.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170512230657.GP12369@dastard>
-Sender: fstests-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Tetsuo Handa <penguin-kernel-1yMVhJb1mP/7nzcFbJAaVXf5DAMn2ifp@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, May 13, 2017 at 09:06:57AM +1000, Dave Chinner wrote:
-> On Fri, May 12, 2017 at 04:04:43PM +0800, Eryu Guan wrote:
-> > On Thu, May 11, 2017 at 06:48:09PM +0200, Jan Kara wrote:
-> > > Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
-> > > fixed by following patches:
-> > > 
-> > > xfs: Fix missed holes in SEEK_HOLE implementation
-> > > ext4: Fix SEEK_HOLE
-> > > 
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > 
-> > This will cause ext4 and xfs start to fail with current linus tree and
-> > appear as a new regression. So we usually don't add new tests to
-> > existing cases.
-> > 
-> > But seek_sanity_test.c deals with different SEEK_DATA/HOLE implentations
-> > nicely, which would be a bit tricky to do in a new test by shell, and it
-> > has all the infrastructures for new tests like this. So I think I'd
-> > prefer merging this patch as is, and document the false regression alert
-> > in release announce email.
-> 
-> Make the new tests optional (i.e. on a cli switch) and add a new
-> xfstest that runs them? Old test remains unchanged, doesn't fail,
-> new test covers the new tests, will fail on old kernels (which is ok
-> for new tests).
+Tetsuo reports:
 
-Yeah, this should work and looks a better solution to me. This avoids
-regressing generic/285 again when adding another new test in future,
-future tests could just follow this path too. Thanks for the suggestion!
+  fs/built-in.o: In function `xfs_file_iomap_end':
+  xfs_iomap.c:(.text+0xe0ef9): undefined reference to `put_dax'
+  fs/built-in.o: In function `xfs_file_iomap_begin':
+  xfs_iomap.c:(.text+0xe1a7f): undefined reference to `dax_get_by_host'
+  make: *** [vmlinux] Error 1
+  $ grep DAX .config
+  CONFIG_DAX=m
+  # CONFIG_DEV_DAX is not set
+  # CONFIG_FS_DAX is not set
 
-Jan, could you please update the patch and, as suggested by Dave, make
-it a new test? I can do it too if you like.
+When FS_DAX=n we can/must throw away the dax code in filesystems.
+Implement 'fs_' versions of dax_get_by_host() and put_dax() that are
+nops in the FS_DAX=n case.
 
-Thanks,
-Eryu
+Cc: <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Cc: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Cc: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Fixes: ef51042472f5 ("block, dax: move 'select DAX' from BLOCK to FS_DAX")
+Reported-by: Tetsuo Handa <penguin-kernel-1yMVhJb1mP/7nzcFbJAaVXf5DAMn2ifp@public.gmane.org>
+Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+---
+ fs/ext2/inode.c     |    4 ++--
+ fs/ext4/inode.c     |    4 ++--
+ fs/xfs/xfs_iomap.c  |    4 ++--
+ include/linux/dax.h |   34 +++++++++++++++++++++++++++-------
+ 4 files changed, 33 insertions(+), 13 deletions(-)
+
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 26d77f9f8c12..2dcbd5698884 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -817,7 +817,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	iomap->bdev = bdev;
+ 	iomap->offset = (u64)first_block << blkbits;
+ 	if (blk_queue_dax(bdev->bd_queue))
+-		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
++		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
+ 	else
+ 		iomap->dax_dev = NULL;
+ 
+@@ -841,7 +841,7 @@ static int
+ ext2_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+ 		ssize_t written, unsigned flags, struct iomap *iomap)
+ {
+-	put_dax(iomap->dax_dev);
++	fs_put_dax(iomap->dax_dev);
+ 	if (iomap->type == IOMAP_MAPPED &&
+ 	    written < length &&
+ 	    (flags & IOMAP_WRITE))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5834c4d76be8..1bd0bfa547f6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3412,7 +3412,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	bdev = inode->i_sb->s_bdev;
+ 	iomap->bdev = bdev;
+ 	if (blk_queue_dax(bdev->bd_queue))
+-		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
++		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
+ 	else
+ 		iomap->dax_dev = NULL;
+ 	iomap->offset = first_block << blkbits;
+@@ -3447,7 +3447,7 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+ 	int blkbits = inode->i_blkbits;
+ 	bool truncate = false;
+ 
+-	put_dax(iomap->dax_dev);
++	fs_put_dax(iomap->dax_dev);
+ 	if (!(flags & IOMAP_WRITE) || (flags & IOMAP_FAULT))
+ 		return 0;
+ 
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index a63f61c256bd..94e5bdf7304c 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -1068,7 +1068,7 @@ xfs_file_iomap_begin(
+ 	/* optionally associate a dax device with the iomap bdev */
+ 	bdev = iomap->bdev;
+ 	if (blk_queue_dax(bdev->bd_queue))
+-		iomap->dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
++		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
+ 	else
+ 		iomap->dax_dev = NULL;
+ 
+@@ -1149,7 +1149,7 @@ xfs_file_iomap_end(
+ 	unsigned		flags,
+ 	struct iomap		*iomap)
+ {
+-	put_dax(iomap->dax_dev);
++	fs_put_dax(iomap->dax_dev);
+ 	if ((flags & IOMAP_WRITE) && iomap->type == IOMAP_DELALLOC)
+ 		return xfs_file_iomap_end_delalloc(XFS_I(inode), offset,
+ 				length, written, iomap);
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 00ebac854bb7..5ec1f6c47716 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -18,6 +18,20 @@ struct dax_operations {
+ 			void **, pfn_t *);
+ };
+ 
++#if IS_ENABLED(CONFIG_DAX)
++struct dax_device *dax_get_by_host(const char *host);
++void put_dax(struct dax_device *dax_dev);
++#else
++static inline struct dax_device *dax_get_by_host(const char *host)
++{
++	return NULL;
++}
++
++static inline void put_dax(struct dax_device *dax_dev)
++{
++}
++#endif
++
+ int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
+ #if IS_ENABLED(CONFIG_FS_DAX)
+ int __bdev_dax_supported(struct super_block *sb, int blocksize);
+@@ -25,23 +39,29 @@ static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
+ {
+ 	return __bdev_dax_supported(sb, blocksize);
+ }
++
++static inline struct dax_device *fs_dax_get_by_host(const char *host)
++{
++	return dax_get_by_host(host);
++}
++
++static inline void fs_put_dax(struct dax_device *dax_dev)
++{
++	put_dax(dax_dev);
++}
++
+ #else
+ static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
+ {
+ 	return -EOPNOTSUPP;
+ }
+-#endif
+ 
+-#if IS_ENABLED(CONFIG_DAX)
+-struct dax_device *dax_get_by_host(const char *host);
+-void put_dax(struct dax_device *dax_dev);
+-#else
+-static inline struct dax_device *dax_get_by_host(const char *host)
++static inline struct dax_device *fs_dax_get_by_host(const char *host)
+ {
+ 	return NULL;
+ }
+ 
+-static inline void put_dax(struct dax_device *dax_dev)
++static inline void fs_put_dax(struct dax_device *dax_dev)
+ {
+ }
+ #endif
