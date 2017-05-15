@@ -1,60 +1,61 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] generic/285: Add more SEEK_HOLE tests
-Date: Mon, 15 May 2017 14:31:26 +0200
-Message-ID: <20170515123126.GG16182@quack2.suse.cz>
-References: <20170511164809.29739-1-jack@suse.cz>
- <20170512080443.GN7250@eguan.usersys.redhat.com>
- <20170512230657.GP12369@dastard>
- <20170513172620.GR7250@eguan.usersys.redhat.com>
+Subject: Re: [PATCH 24/36] fs: jbd2: escape a string with special chars on a
+ kernel-doc
+Date: Mon, 15 May 2017 15:05:47 +0200
+Message-ID: <20170515130547.GH16182@quack2.suse.cz>
+References: <cover.1494596071.git.mchehab@s-opensource.com>
+ <97087d218a047d8d166c02f7f9b62dd8890963d5.1494596071.git.mchehab@s-opensource.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-        fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: linux-kernel@vger.kernel.org,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Mauro Carvalho Chehab <mchehab@infradead.org>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org
+To: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170513172620.GR7250@eguan.usersys.redhat.com>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <97087d218a047d8d166c02f7f9b62dd8890963d5.1494596071.git.mchehab@s-opensource.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 14-05-17 01:26:21, Eryu Guan wrote:
-> On Sat, May 13, 2017 at 09:06:57AM +1000, Dave Chinner wrote:
-> > On Fri, May 12, 2017 at 04:04:43PM +0800, Eryu Guan wrote:
-> > > On Thu, May 11, 2017 at 06:48:09PM +0200, Jan Kara wrote:
-> > > > Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
-> > > > fixed by following patches:
-> > > > 
-> > > > xfs: Fix missed holes in SEEK_HOLE implementation
-> > > > ext4: Fix SEEK_HOLE
-> > > > 
-> > > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > 
-> > > This will cause ext4 and xfs start to fail with current linus tree and
-> > > appear as a new regression. So we usually don't add new tests to
-> > > existing cases.
-> > > 
-> > > But seek_sanity_test.c deals with different SEEK_DATA/HOLE implentations
-> > > nicely, which would be a bit tricky to do in a new test by shell, and it
-> > > has all the infrastructures for new tests like this. So I think I'd
-> > > prefer merging this patch as is, and document the false regression alert
-> > > in release announce email.
-> > 
-> > Make the new tests optional (i.e. on a cli switch) and add a new
-> > xfstest that runs them? Old test remains unchanged, doesn't fail,
-> > new test covers the new tests, will fail on old kernels (which is ok
-> > for new tests).
+On Fri 12-05-17 11:00:07, Mauro Carvalho Chehab wrote:
+> kernel-doc will try to interpret a foo() string, except if
+> properly escaped.
 > 
-> Yeah, this should work and looks a better solution to me. This avoids
-> regressing generic/285 again when adding another new test in future,
-> future tests could just follow this path too. Thanks for the suggestion!
-> 
-> Jan, could you please update the patch and, as suggested by Dave, make
-> it a new test? I can do it too if you like.
+> Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
 
-Yeah, Dave's idea looks good. I'll work on it and send an updated version.
+Looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/jbd2/transaction.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index fe7f4a373436..38e1dcabbaca 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1066,10 +1066,10 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
+>   * @handle: transaction to add buffer modifications to
+>   * @bh:     bh to be used for metadata writes
+>   *
+> - * Returns an error code or 0 on success.
+> + * Returns: error code or 0 on success.
+>   *
+>   * In full data journalling mode the buffer may be of type BJ_AsyncData,
+> - * because we're write()ing a buffer which is also part of a shared mapping.
+> + * because we're ``write()ing`` a buffer which is also part of a shared mapping.
+>   */
+>  
+>  int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+> -- 
+> 2.9.3
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
