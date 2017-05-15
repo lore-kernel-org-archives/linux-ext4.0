@@ -1,203 +1,361 @@
-From: Johannes Weiner <hannes@cmpxchg.org>
-Subject: [RFC PATCH] fs: ext4: don't trap kswapd and allocating tasks on ext4 inode IO
-Date: Mon, 15 May 2017 11:46:34 -0400
-Message-ID: <20170515154634.19733-1-hannes@cmpxchg.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-team@fb.com
-To: Jan Kara <jack@suse.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH] ext4: fsmap tests
+Date: Tue, 16 May 2017 00:33:31 +0800
+Message-ID: <20170515163331.GW7250@eguan.usersys.redhat.com>
+References: <20170513035813.GA4514@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, fstests <fstests@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <fstests-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170513035813.GA4514@birch.djwong.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We have observed across several workloads situations where kswapd and
-direct reclaimers get stuck in the inode shrinker of the ext4 / mount,
-causing allocation latencies across tasks in the system, while there
-are dozens of gigabytes of clean page cache covering multiple disks.
+On Fri, May 12, 2017 at 08:58:13PM -0700, Darrick J. Wong wrote:
+> Test the GETFSMAP ioctl against ext4.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  common/ext4        |   11 +++++++
+>  tests/ext4/700     |   86 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/700.out |    7 ++++
+>  tests/ext4/701     |   65 +++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/701.out |    3 ++
+>  tests/ext4/702     |   66 ++++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/702.out |    4 ++
+>  tests/ext4/group   |    3 ++
+>  8 files changed, 245 insertions(+)
+>  create mode 100644 common/ext4
+>  create mode 100755 tests/ext4/700
+>  create mode 100644 tests/ext4/700.out
+>  create mode 100755 tests/ext4/701
+>  create mode 100644 tests/ext4/701.out
+>  create mode 100755 tests/ext4/702
+>  create mode 100644 tests/ext4/702.out
+> 
+> diff --git a/common/ext4 b/common/ext4
+> new file mode 100644
+> index 0000000..1528c86
+> --- /dev/null
+> +++ b/common/ext4
+> @@ -0,0 +1,11 @@
+> +#
+> +# ext4 specific common functions
+> +#
+> +
+> +_ext4_sbfield()
+> +{
+> +	field="$1"
+> +	dev="$2"
+> +
+> +	dumpe2fs -h $dev 2>/dev/null | grep "^$field" | sed -e "s/^.*$field:[[:space:]]*\(.*\)$/\1/g"
 
-The stack traces of such an instance looks like this:
+$DUMPE2FS_PROG?
 
-[<ffffffff812b3225>] jbd2_log_wait_commit+0x95/0x110
-[<ffffffff812b4f29>] jbd2_complete_transaction+0x59/0x90
-[<ffffffff812668da>] ext4_evict_inode+0x2da/0x480
-[<ffffffff811f2230>] evict+0xc0/0x190
-[<ffffffff811f2339>] dispose_list+0x39/0x50
-[<ffffffff811f323b>] prune_icache_sb+0x4b/0x60
-[<ffffffff811dba71>] super_cache_scan+0x141/0x190
-[<ffffffff8116e755>] shrink_slab+0x235/0x440
-[<ffffffff81172b48>] shrink_zone+0x268/0x2d0
-[<ffffffff81172f04>] do_try_to_free_pages+0x164/0x410
-[<ffffffff81173265>] try_to_free_pages+0xb5/0x160
-[<ffffffff811656b6>] __alloc_pages_nodemask+0x636/0xb30
-[<ffffffff811acac8>] alloc_pages_current+0x88/0x120
-[<ffffffff816d4e46>] skb_page_frag_refill+0xc6/0xf0
-[<ffffffff816d4e8d>] sk_page_frag_refill+0x1d/0x80
-[<ffffffff8173f86b>] tcp_sendmsg+0x28b/0xb10
-[<ffffffff81769727>] inet_sendmsg+0x67/0xa0
-[<ffffffff816d0488>] sock_sendmsg+0x38/0x50
-[<ffffffff816d0518>] sock_write_iter+0x78/0xd0
-[<ffffffff811d774e>] do_iter_readv_writev+0x5e/0xa0
-[<ffffffff811d8468>] do_readv_writev+0x178/0x210
-[<ffffffff811d871c>] vfs_writev+0x3c/0x50
-[<ffffffff811d8782>] do_writev+0x52/0xd0
-[<ffffffff811d9810>] SyS_writev+0x10/0x20
-[<ffffffff81002910>] do_syscall_64+0x50/0xa0
-[<ffffffff817eed3c>] return_from_SYSCALL_64+0x0/0x6a
-[<ffffffffffffffff>] 0xffffffffffffffff
+> +}
+> diff --git a/tests/ext4/700 b/tests/ext4/700
+> new file mode 100755
+> index 0000000..64c86ed
+> --- /dev/null
+> +++ b/tests/ext4/700
+> @@ -0,0 +1,86 @@
+> +#! /bin/bash
+> +# FS QA Test No. 700
+> +#
+> +# Check that getfsmap reports the BG metadata we're expecting.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename "$0"`
+> +seqres="$RESULT_DIR/$seq"
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +	cd /
+> +	rm -rf "$tmp".* $TEST_DIR/fsmap $TEST_DIR/testout
 
-The inode shrinker has provisions to skip any inodes that require
-writeback, to avoid tarpitting the entire system behind a single
-object when there are many other pools to recycle memory from. But
-that logic doesn't cover the situation where an ext4 inode is clean
-but journaled and tied to a commit that yet needs to hit the platter.
+rm -rf looks dangerous, there're no directories, rm -f should just work,
+and 'testout' isn't used in this test.
 
-Add a superblock operation that lets the generic inode shrinker query
-the filesystem whether evicting a given inode will require any IO; add
-an ext4 implementation that checks whether the journal is caught up to
-the commit id associated with the inode.
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +. ./common/ext4
 
-Fixes: 2d859db3e4a8 ("ext4: fix data corruption in inodes with journalled data")
-Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
----
- fs/ext4/ext4.h       |  1 +
- fs/ext4/inode.c      | 17 +++++++++++++++++
- fs/ext4/super.c      |  1 +
- fs/inode.c           |  7 +++++++
- fs/jbd2/journal.c    |  9 ++++++++-
- include/linux/fs.h   |  1 +
- include/linux/jbd2.h |  1 +
- 7 files changed, 36 insertions(+), 1 deletion(-)
+Hmm, I think we should source common/ext4 in common/rc, as where we
+source common/{xfs,btrfs}, not in individual test.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8e8046104f4d..b552978fc31f 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2463,6 +2463,7 @@ extern struct inode *ext4_iget_normal(struct super_block *, unsigned long);
- extern int  ext4_write_inode(struct inode *, struct writeback_control *);
- extern int  ext4_setattr(struct dentry *, struct iattr *);
- extern int  ext4_getattr(const struct path *, struct kstat *, u32, unsigned int);
-+extern int ext4_evict_needs_io(struct inode *);
- extern void ext4_evict_inode(struct inode *);
- extern void ext4_clear_inode(struct inode *);
- extern int  ext4_file_getattr(const struct path *, struct kstat *, u32, unsigned int);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5834c4d76be8..4cb6cf932d9a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -182,6 +182,23 @@ int ext4_truncate_restart_trans(handle_t *handle, struct inode *inode,
- 	return ret;
- }
- 
-+int ext4_evict_needs_io(struct inode *inode)
-+{
-+	if (inode->i_nlink &&
-+	    inode->i_ino != EXT4_JOURNAL_INO &&
-+	    ext4_should_journal_data(inode) &&
-+	    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
-+		journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
-+		tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
-+		int err;
-+
-+		err = __jbd2_complete_transaction(journal, commit_tid, false);
-+		if (err == -EAGAIN)
-+			return 1;
-+	}
-+	return 0;
-+}
-+
- /*
-  * Called at the last iput() if i_nlink is zero.
-  */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c90edf09b0c3..e0e7cff589eb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1287,6 +1287,7 @@ static const struct super_operations ext4_sops = {
- 	.write_inode	= ext4_write_inode,
- 	.dirty_inode	= ext4_dirty_inode,
- 	.drop_inode	= ext4_drop_inode,
-+	.evict_needs_io	= ext4_evict_needs_io,
- 	.evict_inode	= ext4_evict_inode,
- 	.put_super	= ext4_put_super,
- 	.sync_fs	= ext4_sync_fs,
-diff --git a/fs/inode.c b/fs/inode.c
-index db5914783a71..730d2034b8a1 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -703,6 +703,7 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
- {
- 	struct list_head *freeable = arg;
- 	struct inode	*inode = container_of(item, struct inode, i_lru);
-+	const struct super_operations *op = inode->i_sb->s_op;
- 
- 	/*
- 	 * we are inverting the lru lock/inode->i_lock here, so use a trylock.
-@@ -723,6 +724,12 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
- 		return LRU_REMOVED;
- 	}
- 
-+	/* If eviction may block on IO, defer for now */
-+	if (op->evict_needs_io && !op->evict_needs_io(inode)) {
-+		spin_unlock(&inode->i_lock);
-+		return LRU_ROTATE;
-+	}
-+
- 	/* recently referenced inodes get one more pass */
- 	if (inode->i_state & I_REFERENCED) {
- 		inode->i_state &= ~I_REFERENCED;
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5a0245e36240..e353f3a0abf5 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -745,7 +745,7 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
-  * the transaction id is stale, it is by definition already completed,
-  * so just return SUCCESS.
-  */
--int jbd2_complete_transaction(journal_t *journal, tid_t tid)
-+int __jbd2_complete_transaction(journal_t *journal, tid_t tid, bool wait)
- {
- 	int	need_to_wait = 1;
- 
-@@ -765,8 +765,15 @@ int jbd2_complete_transaction(journal_t *journal, tid_t tid)
- 	if (!need_to_wait)
- 		return 0;
- wait_commit:
-+	if (!wait)
-+		return -EAGAIN;
- 	return jbd2_log_wait_commit(journal, tid);
- }
-+
-+int jbd2_complete_transaction(journal_t *journal, tid_t tid)
-+{
-+	return __jbd2_complete_transaction(journal, tid, true);
-+}
- EXPORT_SYMBOL(jbd2_complete_transaction);
- 
- /*
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 26488b419965..3a895f31afa7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1777,6 +1777,7 @@ struct super_operations {
-    	void (*dirty_inode) (struct inode *, int flags);
- 	int (*write_inode) (struct inode *, struct writeback_control *wbc);
- 	int (*drop_inode) (struct inode *);
-+	int (*evict_needs_io) (struct inode *);
- 	void (*evict_inode) (struct inode *);
- 	void (*put_super) (struct super_block *);
- 	int (*sync_fs)(struct super_block *sb, int wait);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 606b6bce3a5b..3b902bed6e8b 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1367,6 +1367,7 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
- int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
- int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
-+int __jbd2_complete_transaction(journal_t *journal, tid_t tid, bool wait);
- int jbd2_complete_transaction(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
- int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
--- 
-2.12.2
+> +
+> +# real QA test starts here
+> +_supported_os Linux
+> +_supported_fs ext4
+> +_require_scratch
+> +_require_xfs_io_command "fsmap"
+> +
+> +rm -f "$seqres.full"
+> +
+> +echo "Format and mount"
+> +_scratch_mkfs > "$seqres.full" 2>&1
+> +blocks=$(_ext4_sbfield "Block count" $SCRATCH_DEV)
+> +blocks_per_group=$(_ext4_sbfield "Blocks per group" $SCRATCH_DEV)
+> +bg_per_flex=$(_ext4_sbfield "Flex block group size" $SCRATCH_DEV)
+> +bgs=$(( (blocks + blocks_per_group - 1) / blocks_per_group ))
+> +if [ -z "$bg_per_flex" ]; then
+> +	fbg=$((bgs / bg_per_flex))
+> +else
+> +	fbg=$bgs
+> +fi
+
+I don't see how these vars are used, blocks, blocks_per_ground, bgs and
+fbg, test still passes even if I comment the whole code block out.
+Missed some checks on these vars?
+
+> +_scratch_mount
+> +
+> +echo "Get fsmap" | tee -a $seqres.full
+> +$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT > $TEST_DIR/fsmap
+> +cat $TEST_DIR/fsmap >> $seqres.full
+> +
+> +echo "Check fs metadata" | tee -a $seqres.full
+> +x=$(grep -c 'static fs metadata' $TEST_DIR/fsmap)
+> +test $x -gt 0 || echo "No fs metadata?"
+> +
+> +echo "Check block bitmap" | tee -a $seqres.full
+> +x=$(grep -c 'special 102:1' $TEST_DIR/fsmap)
+> +test $x -gt 0 || echo "No block bitmaps?"
+> +
+> +echo "Check inode bitmap" | tee -a $seqres.full
+> +x=$(grep -c 'special 102:2' $TEST_DIR/fsmap)
+> +test $x -gt 0 || echo "No inode bitmaps?"
+> +
+> +echo "Check inodes" | tee -a $seqres.full
+> +x=$(grep -c 'inodes' $TEST_DIR/fsmap)
+> +test $x -gt 0 || echo "No inodes?"
+> +
+> +# success, all done
+> +status=0
+> +exit
+> diff --git a/tests/ext4/700.out b/tests/ext4/700.out
+> new file mode 100644
+> index 0000000..3984319
+> --- /dev/null
+> +++ b/tests/ext4/700.out
+> @@ -0,0 +1,7 @@
+> +QA output created by 700
+> +Format and mount
+> +Get fsmap
+> +Check fs metadata
+> +Check block bitmap
+> +Check inode bitmap
+> +Check inodes
+> diff --git a/tests/ext4/701 b/tests/ext4/701
+> new file mode 100755
+> index 0000000..c50bbf2
+> --- /dev/null
+> +++ b/tests/ext4/701
+> @@ -0,0 +1,65 @@
+> +#! /bin/bash
+> +# FS QA Test No. 701
+> +#
+> +# Populate filesystem, check that fsmap -n10000 matches fsmap -n1.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename "$0"`
+> +seqres="$RESULT_DIR/$seq"
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +	cd /
+> +	rm -rf "$tmp".* $TEST_DIR/a $TEST_DIR/b
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +. ./common/populate
+> +
+> +# real QA test starts here
+> +_supported_os Linux
+> +_supported_fs ext4
+> +_require_scratch
+> +_require_populate_commands
+> +_require_xfs_io_command "fsmap"
+> +
+> +rm -f "$seqres.full"
+> +
+> +echo "Format and mount"
+> +_scratch_populate_cached nofill > $seqres.full 2>&1
+> +
+> +echo "Compare fsmap" | tee -a $seqres.full
+> +_scratch_mount
+> +$XFS_IO_PROG -c 'fsmap -n 65536' $SCRATCH_MNT | grep -v 'EXT:' > $TEST_DIR/a
+> +$XFS_IO_PROG -c 'fsmap -n 1' $SCRATCH_MNT | grep -v 'EXT:' > $TEST_DIR/b
+> +cat $TEST_DIR/a $TEST_DIR/b >> $seqres.full
+> +
+> +diff -uw $TEST_DIR/a $TEST_DIR/b
+> +
+> +# success, all done
+> +status=0
+> +exit
+> diff --git a/tests/ext4/701.out b/tests/ext4/701.out
+> new file mode 100644
+> index 0000000..41ef1c6
+> --- /dev/null
+> +++ b/tests/ext4/701.out
+> @@ -0,0 +1,3 @@
+> +QA output created by 701
+> +Format and mount
+> +Compare fsmap
+> diff --git a/tests/ext4/702 b/tests/ext4/702
+> new file mode 100755
+> index 0000000..d5e15ef
+> --- /dev/null
+> +++ b/tests/ext4/702
+> @@ -0,0 +1,66 @@
+> +#! /bin/bash
+> +# FS QA Test No. 702
+> +#
+> +# Check that getfsmap reports external log devices
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename "$0"`
+> +seqres="$RESULT_DIR/$seq"
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +	cd /
+> +	rm -rf "$tmp".* $TEST_DIR/fsmap $TEST_DIR/testout
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +# real QA test starts here
+> +_supported_os Linux
+> +_supported_fs ext4
+> +_require_logdev
+
+ext4 has no SCRATCH_LOGDEV support yet. Jeff added such support to ext4
+in his patchset, but I haven't looked at that patch closely yet..
+
+> +_require_scratch
+> +_require_xfs_io_command "fsmap"
+> +
+> +rm -f "$seqres.full"
+> +
+> +echo "Format and mount"
+> +_scratch_mkfs > "$seqres.full" 2>&1
+> +_scratch_mount
+> +
+> +echo "Get fsmap" | tee -a $seqres.full
+> +$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT >> $seqres.full
+> +$XFS_IO_PROG -c 'fsmap' $SCRATCH_MNT | tr '[]()' '    ' > $TEST_DIR/fsmap
+> +
+> +echo "Check device field of FS metadata and journalling log"
+> +data_dev=$(grep 'static fs metadata' $TEST_DIR/fsmap | head -n 1 | awk '{print $2}')
+> +journal_dev=$(grep 'journalling log' $TEST_DIR/fsmap | head -n 1 | awk '{print $2}')
+> +test "${data_dev}" != "${journal_dev}" || echo "data ${data_dev} journal ${journal_dev}?"
+
+Test passed even if there's no LOGDEV support for ext4, as long as I
+have SCRATCH_LOGDEV set and USE_EXTERNAL set to yes. But journal_dev is
+empty in this case, apparently "8:34" != "" :)
+
+Thanks,
+Eryu
+
+> +
+> +# success, all done
+> +status=0
+> +exit
+> diff --git a/tests/ext4/702.out b/tests/ext4/702.out
+> new file mode 100644
+> index 0000000..1d3b7ef
+> --- /dev/null
+> +++ b/tests/ext4/702.out
+> @@ -0,0 +1,4 @@
+> +QA output created by 702
+> +Format and mount
+> +Get fsmap
+> +Check device field of FS metadata and journalling log
+> diff --git a/tests/ext4/group b/tests/ext4/group
+> index 664c059..9007adf 100644
+> --- a/tests/ext4/group
+> +++ b/tests/ext4/group
+> @@ -37,3 +37,6 @@
+>  306 auto rw resize quick
+>  307 auto ioctl rw defrag
+>  308 auto ioctl rw prealloc quick defrag
+> +700 auto quick fsmap
+> +701 auto quick fsmap
+> +702 auto quick fsmap
