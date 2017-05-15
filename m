@@ -1,102 +1,85 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: RE: Re: [PATCH] ext4: hand over jobs handling discard commands on
- commit complete phase to kworkers
-Date: Wed, 17 May 2017 01:24:06 +0000
-Message-ID: <20170517012406epcms1p8d4e5c4e54bf7e97c5856b1d62af6cd83@epcms1p8>
-References: <20170516151153.GB7316@quack2.suse.cz>
-        <1494920262-10128-1-git-send-email-daeho.jeong@samsung.com>
-        <CGME20170516073738epcas1p42daa31d04ae9d07eae07d9fcee6708a2@epcms1p8>
-Reply-To: daeho.jeong@samsung.com
+From: Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [PATCH 00/36] Convert DocBook documents to ReST
+Date: Mon, 15 May 2017 11:11:41 -0600
+Message-ID: <20170515111141.0fcd5ee6@lwn.net>
+References: <cover.1494596071.git.mchehab@s-opensource.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8BIT
-Cc: "jack@suse.com" <jack@suse.com>, "tytso@mit.edu" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>, Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:27665 "EHLO
-        mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751433AbdEQBYL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 May 2017 21:24:11 -0400
-Received: from epcas1p1.samsung.com (unknown [182.195.41.45])
-        by mailout2.samsung.com (KnoxPortal) with ESMTP id 20170517012409epoutp022f44c0063bc03a3b7581f4f2b4450c40~-QEENjaSd0068600686epoutp02P
-        for <linux-ext4@vger.kernel.org>; Wed, 17 May 2017 01:24:09 +0000 (GMT)
-In-Reply-To: <20170516151153.GB7316@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Lunn <andrew@lunn.ch>, alsa-devel@alsa-project.org,
+ Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+ Takashi Iwai <tiwai@suse.de>, Jan Kiszka <jan.kiszka@siemens.com>, "Herton R.
+ Krzesinski" <herton@redhat.com>, Alexei Starovoitov <ast@kernel.org>,
+ Takashi Iwai <tiwai@suse.com>, "J. Bruce
+ Fields" <bfields@fieldses.org>, linux-ide@vger.kernel.org,
+ Eric Dumazet <edumazet@google.com>, netdev@vger.kernel.org,
+ Jeff Layton <jlayton@poochiereds.net>, Jan Kara <jack@suse.com>,
+ Soheil Hassas Yeganeh <soheil@google.com>, linux-s390@vger.kernel.org,
+ Florian Fainelli <f.fainelli@gmail.com>,
+ "James E.J. Bottomley" <jejb@linux.vnet.ibm.com>,
+ Herbert Xu <herbert@gondor.apana.org.au>, linux-scsi@vger.kernel.org,
+ Ursula Braun <ubraun@linux.vnet.ibm.com>,
+ "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>,
+ Peter Zijlstra <peterz@infradead.org>, Julian Anastasov <ja@ssi.bg>,
+ Ingo
+To: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+Return-path: <alsa-devel-bounces@alsa-project.org>
+In-Reply-To: <cover.1494596071.git.mchehab@s-opensource.com>
+List-Unsubscribe: <http://mailman.alsa-project.org/mailman/options/alsa-devel>,
+ <mailto:alsa-devel-request@alsa-project.org?subject=unsubscribe>
+List-Archive: <http://mailman.alsa-project.org/pipermail/alsa-devel/>
+List-Post: <mailto:alsa-devel@alsa-project.org>
+List-Help: <mailto:alsa-devel-request@alsa-project.org?subject=help>
+List-Subscribe: <http://mailman.alsa-project.org/mailman/listinfo/alsa-devel>,
+ <mailto:alsa-devel-request@alsa-project.org?subject=subscribe>
+Errors-To: alsa-devel-bounces@alsa-project.org
+Sender: alsa-devel-bounces@alsa-project.org
+List-Id: linux-ext4.vger.kernel.org
 
-> So I see several problems with this. Firstly, it breaks the ENOSPC handling
+On Fri, 12 May 2017 10:59:43 -0300
+Mauro Carvalho Chehab <mchehab@s-opensource.com> wrote:
 
-> logic which relies on the fact that after forcing a transaction commit all
+> This patch series convert the following books from
+> DocBook to ReST:
+> 
+>    - filesystems
+>    - kernel-hacking
+>    - kernel-locking
+>    - kgdb
+>    - libata
+>    - networking
+>    - rapidio
+>    - s390-drivers
+>    - scsi
+>    - w1
+>    - z8530book
+> 
+> It also adjusts some Sphinx-pedantic errors/warnings on
+> some kernel-doc markups.
+> 
+> I also added some patches here to add PDF output for all
+> existing ReST books.
 
-> blocks held by the transaction are released - now they will be released
+So I've been through the series (including digging out the parts that
+weren't sent to me).  
 
-> only after the work is completed and thus we can prematurely report ENOSPC.
+> I did my best to check if what's there is not too outdated, but
+> the best is if the subsystem maintainers could check it.
 
+That has been my real concern with those remaining books; many of them
+have not been touched in any significant way in at least ten years.  Just
+shoveling a bunch of stuff into RST doesn't really solve the problem that
+Documentation/ is an unorganized jumble of sometimes highly outdated
+documentation.
 
+But, then, I guess there's value in having a disorganized jumble that
+depends on only one fragile toolchain rather than two :)  So maybe we
+should just do this.
 
+I only had one real comment with the series beyond the general stuff
+here.  I see Markus had a few.  When the tweaks are done, can you send me
+a series for the stuff I can apply, and I'll do it?
 
+Thanks,
 
-Hi, Jan.
-
-
-
-We already freed all the blocks in the block bitmap and increased
-
-sbi->s_freeclusters_counter in ext4_free_blocks() in advance of
-
-ext4_free_data_callback() which is handling discard commands and releasing
-
-blocks in the buddy cache. So, I think that it's ok about ENOSPC, because
-
-we are ckecking whether we can allocate the blocks or not using
-
-ext4_claim_free_clusters(), which is just seeing sbi->s_freeclusters_counter,
-
-and the blocks were already freed from on-disk block bitmap.
-
-
-
-
-
-> Secondly, offloading the discard work doesn't change the fundamental fact
-
-> that discard is slow (for some devices) and this change just hides this
-
-> fact at the possible cost of for example higher file fragmentation as a
-
-> result of delayed block freeing. Also the outstanding queue of discard
-
-> requests isn't limited in any way again leading to possible strange
-
-> allocation / ENOSPC issues.
-
-
-
-
-
-Yes, I agree with you about that the discard handling will be still slow.
-
-However, by hiding this, we can get a better responsiveness of fsync() from
-
-30s to 0.255s in the worst case and this is very important to mobile environments
-
-where fsync() delay means the users have to wait to do the next action in a while.
-
-For the higher file fragmentation, even now, we cannot free the blocks fastly
-
-in the buddy cache because we have to handle all the discard commands before
-
-freeing blocks in the buddy. So, we already have the same problem now. :-)
-
-
-
-Thank you.
-
-
-
-
-
-
-
- 
+jon
