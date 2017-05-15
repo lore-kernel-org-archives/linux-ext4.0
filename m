@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 24/36] fs: jbd2: escape a string with special chars on a
- kernel-doc
-Date: Mon, 15 May 2017 15:05:47 +0200
-Message-ID: <20170515130547.GH16182@quack2.suse.cz>
+Subject: Re: [PATCH 19/36] fs: jbd2: make jbd2_journal_start() kernel-doc
+ parseable
+Date: Mon, 15 May 2017 15:06:08 +0200
+Message-ID: <20170515130608.GI16182@quack2.suse.cz>
 References: <cover.1494596071.git.mchehab@s-opensource.com>
- <97087d218a047d8d166c02f7f9b62dd8890963d5.1494596071.git.mchehab@s-opensource.com>
+ <eae9e9e158f441020ae347f4bf07de19dec3305d.1494596071.git.mchehab@s-opensource.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org,
@@ -13,15 +13,17 @@ Cc: linux-kernel@vger.kernel.org,
         Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
         linux-ext4@vger.kernel.org
 To: Mauro Carvalho Chehab <mchehab@s-opensource.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <97087d218a047d8d166c02f7f9b62dd8890963d5.1494596071.git.mchehab@s-opensource.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <eae9e9e158f441020ae347f4bf07de19dec3305d.1494596071.git.mchehab@s-opensource.com>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 12-05-17 11:00:07, Mauro Carvalho Chehab wrote:
-> kernel-doc will try to interpret a foo() string, except if
-> properly escaped.
+On Fri 12-05-17 11:00:02, Mauro Carvalho Chehab wrote:
+> kernel-doc script expects that a function documentation to
+> be just before the function, otherwise it will be ignored.
+> 
+> So, move the kernel-doc markup to the right place.
 > 
 > Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
 
@@ -32,26 +34,65 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/jbd2/transaction.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+>  fs/jbd2/transaction.c | 38 +++++++++++++++++++-------------------
+>  1 file changed, 19 insertions(+), 19 deletions(-)
 > 
 > diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index fe7f4a373436..38e1dcabbaca 100644
+> index 9ee4832b6f8b..fe7f4a373436 100644
 > --- a/fs/jbd2/transaction.c
 > +++ b/fs/jbd2/transaction.c
-> @@ -1066,10 +1066,10 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
->   * @handle: transaction to add buffer modifications to
->   * @bh:     bh to be used for metadata writes
->   *
-> - * Returns an error code or 0 on success.
-> + * Returns: error code or 0 on success.
->   *
->   * In full data journalling mode the buffer may be of type BJ_AsyncData,
-> - * because we're write()ing a buffer which is also part of a shared mapping.
-> + * because we're ``write()ing`` a buffer which is also part of a shared mapping.
->   */
+> @@ -409,25 +409,6 @@ static handle_t *new_handle(int nblocks)
+>  	return handle;
+>  }
 >  
->  int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+> -/**
+> - * handle_t *jbd2_journal_start() - Obtain a new handle.
+> - * @journal: Journal to start transaction on.
+> - * @nblocks: number of block buffer we might modify
+> - *
+> - * We make sure that the transaction can guarantee at least nblocks of
+> - * modified buffers in the log.  We block until the log can guarantee
+> - * that much space. Additionally, if rsv_blocks > 0, we also create another
+> - * handle with rsv_blocks reserved blocks in the journal. This handle is
+> - * is stored in h_rsv_handle. It is not attached to any particular transaction
+> - * and thus doesn't block transaction commit. If the caller uses this reserved
+> - * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
+> - * on the parent handle will dispose the reserved one. Reserved handle has to
+> - * be converted to a normal handle using jbd2_journal_start_reserved() before
+> - * it can be used.
+> - *
+> - * Return a pointer to a newly allocated handle, or an ERR_PTR() value
+> - * on failure.
+> - */
+>  handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+>  			      gfp_t gfp_mask, unsigned int type,
+>  			      unsigned int line_no)
+> @@ -478,6 +459,25 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+>  EXPORT_SYMBOL(jbd2__journal_start);
+>  
+>  
+> +/**
+> + * handle_t *jbd2_journal_start() - Obtain a new handle.
+> + * @journal: Journal to start transaction on.
+> + * @nblocks: number of block buffer we might modify
+> + *
+> + * We make sure that the transaction can guarantee at least nblocks of
+> + * modified buffers in the log.  We block until the log can guarantee
+> + * that much space. Additionally, if rsv_blocks > 0, we also create another
+> + * handle with rsv_blocks reserved blocks in the journal. This handle is
+> + * is stored in h_rsv_handle. It is not attached to any particular transaction
+> + * and thus doesn't block transaction commit. If the caller uses this reserved
+> + * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
+> + * on the parent handle will dispose the reserved one. Reserved handle has to
+> + * be converted to a normal handle using jbd2_journal_start_reserved() before
+> + * it can be used.
+> + *
+> + * Return a pointer to a newly allocated handle, or an ERR_PTR() value
+> + * on failure.
+> + */
+>  handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+>  {
+>  	return jbd2__journal_start(journal, nblocks, 0, GFP_NOFS, 0, 0);
 > -- 
 > 2.9.3
 > 
