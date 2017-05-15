@@ -1,62 +1,60 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 04/10] fs: Introduce RWF_NOWAIT
-Date: Mon, 15 May 2017 11:47:09 +0200
-Message-ID: <20170515094709.GA16182@quack2.suse.cz>
-References: <20170511191710.31959-1-rgoldwyn@suse.de>
- <20170511191710.31959-5-rgoldwyn@suse.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] generic/285: Add more SEEK_HOLE tests
+Date: Mon, 15 May 2017 14:31:26 +0200
+Message-ID: <20170515123126.GG16182@quack2.suse.cz>
+References: <20170511164809.29739-1-jack@suse.cz>
+ <20170512080443.GN7250@eguan.usersys.redhat.com>
+ <20170512230657.GP12369@dastard>
+ <20170513172620.GR7250@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
-        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        sagi-NQWnxTmZq1alnMjI0IkVqw@public.gmane.org, avi-VrcmuVmyx1hWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org,
-        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
-To: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
-Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170511191710.31959-5-rgoldwyn-l3A5Bk7waGM@public.gmane.org>
-Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20170513172620.GR7250@eguan.usersys.redhat.com>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 11-05-17 14:17:04, Goldwyn Rodrigues wrote:
-> From: Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+On Sun 14-05-17 01:26:21, Eryu Guan wrote:
+> On Sat, May 13, 2017 at 09:06:57AM +1000, Dave Chinner wrote:
+> > On Fri, May 12, 2017 at 04:04:43PM +0800, Eryu Guan wrote:
+> > > On Thu, May 11, 2017 at 06:48:09PM +0200, Jan Kara wrote:
+> > > > Add tests for bugs found in ext4 & xfs SEEK_HOLE implementations
+> > > > fixed by following patches:
+> > > > 
+> > > > xfs: Fix missed holes in SEEK_HOLE implementation
+> > > > ext4: Fix SEEK_HOLE
+> > > > 
+> > > > Signed-off-by: Jan Kara <jack@suse.cz>
+> > > 
+> > > This will cause ext4 and xfs start to fail with current linus tree and
+> > > appear as a new regression. So we usually don't add new tests to
+> > > existing cases.
+> > > 
+> > > But seek_sanity_test.c deals with different SEEK_DATA/HOLE implentations
+> > > nicely, which would be a bit tricky to do in a new test by shell, and it
+> > > has all the infrastructures for new tests like this. So I think I'd
+> > > prefer merging this patch as is, and document the false regression alert
+> > > in release announce email.
+> > 
+> > Make the new tests optional (i.e. on a cli switch) and add a new
+> > xfstest that runs them? Old test remains unchanged, doesn't fail,
+> > new test covers the new tests, will fail on old kernels (which is ok
+> > for new tests).
 > 
-> RWF_NOWAIT informs kernel to bail out if an AIO request will block
-> for reasons such as file allocations, or a writeback triggered,
-> or would block while allocating requests while performing
-> direct I/O.
+> Yeah, this should work and looks a better solution to me. This avoids
+> regressing generic/285 again when adding another new test in future,
+> future tests could just follow this path too. Thanks for the suggestion!
 > 
-> RWF_NOWAIT is translated to IOCB_NOWAIT for iocb->ki_flags.
-> 
-> The check for -EOPNOTSUPP is placed in generic_file_write_iter(). This
-> is called by most filesystems, either through fsops.write_iter() or through
-> the function defined by write_iter(). If not, we perform the check defined
-> by .write_iter() which is called for direct IO specifically.
-> 
-> Filesystems xfs, btrfs and ext4 would be supported in the following patches.
-...
-> diff --git a/fs/aio.c b/fs/aio.c
-> index 020fa0045e3c..34027b67e2f4 100644
-> --- a/fs/aio.c
-> +++ b/fs/aio.c
-> @@ -1592,6 +1592,12 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
->  		goto out_put_req;
->  	}
->  
-> +	if ((req->common.ki_flags & IOCB_NOWAIT) &&
-> +			!(req->common.ki_flags & IOCB_DIRECT)) {
-> +		ret = -EOPNOTSUPP;
-> +		goto out_put_req;
-> +	}
-> +
->  	ret = put_user(KIOCB_KEY, &user_iocb->aio_key);
->  	if (unlikely(ret)) {
->  		pr_debug("EFAULT: aio_key\n");
+> Jan, could you please update the patch and, as suggested by Dave, make
+> it a new test? I can do it too if you like.
 
-I think you need to also check here that the IO is write. So that NOWAIT
-reads don't silently pass.
+Yeah, Dave's idea looks good. I'll work on it and send an updated version.
 
 								Honza
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+Jan Kara <jack@suse.com>
 SUSE Labs, CR
