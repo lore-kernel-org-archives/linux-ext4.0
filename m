@@ -1,166 +1,402 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v4 15/27] fs: retrofit old error reporting API onto new
- infrastructure
-Date: Mon, 15 May 2017 13:58:59 -0400
-Message-ID: <1494871139.4080.3.camel@redhat.com>
-References: <20170509154930.29524-1-jlayton@redhat.com>
-	 <20170509154930.29524-16-jlayton@redhat.com>
-	 <20170515104246.GC16182@quack2.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] e2freefrag: use GETFSMAP on mounted filesystems
+Date: Mon, 15 May 2017 11:35:30 -0700
+Message-ID: <20170515183530.GD4521@birch.djwong.org>
+References: <20170507160738.GB5963@birch.djwong.org>
+ <8F9B1165-E722-4488-91BE-944C978296E9@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, linux-mm@kvack.org,
- jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
- cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
- v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
- linux-block@vger.kernel.org, dhowells@redhat.com,
- akpm@linux-foundation.org,  hch@infradead.org,
- ross.zwisler@linux.intel.com, mawilcox@microsoft.com,  jack@suse.com,
- viro@zeniv.linux.org.uk, corbet@lwn.net, neilb@suse.de, clm@fb.com,
- tytso@mit.edu, axboe@kernel.dk, josef@toxicpanda.com, hubcap@omnibond.com,
- rpeterso@redhat.com, bo.li.liu@oracle.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170515104246.GC16182@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:44515 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965511AbdEOSfi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 May 2017 14:35:38 -0400
+Content-Disposition: inline
+In-Reply-To: <8F9B1165-E722-4488-91BE-944C978296E9@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2017-05-15 at 12:42 +0200, Jan Kara wrote:
-> On Tue 09-05-17 11:49:18, Jeff Layton wrote:
-> > Now that we have a better way to store and report errors that occur
-> > during writeback, we need to convert the existing codebase to use it. We
-> > could just adapt all of the filesystem code and related infrastructure
-> > to the new API, but that's a lot of churn.
-> > 
-> > When it comes to setting errors in the mapping, filemap_set_wb_error is
-> > a drop-in replacement for mapping_set_error. Turn that function into a
-> > simple wrapper around the new one.
-> > 
-> > Because we want to ensure that writeback errors are always reported at
-> > fsync time, inject filemap_report_wb_error calls much closer to the
-> > syscall boundary, in call_fsync.
-> > 
-> > For fsync calls (and things like the nfsd equivalent), we either return
-> > the error that the fsync operation returns, or the one returned by
-> > filemap_report_wb_error. In both cases, we advance the file->f_wb_err to
-> > the latest value. This allows us to provide new fsync semantics that
-> > will return errors that may have occurred previously and been viewed
-> > via other file descriptors.
-> > 
-> > The final piece of the puzzle is what to do about filemap_check_errors
-> > calls that are being called directly or via filemap_* functions. Here,
-> > we must take a little "creative license".
-> > 
-> > Since we now handle advancing the file->f_wb_err value at the generic
-> > filesystem layer, we no longer need those callers to clear errors out
-> > of the mapping or advance an errseq_t.
-> > 
-> > A lot of the existing codebase relies on being getting an error back
-> > from those functions when there is a writeback problem, so we do still
-> > want to have them report writeback errors somehow.
-> > 
-> > When reporting writeback errors, we will always report errors that have
-> > occurred since a particular point in time. With the old writeback error
-> > reporting, the time we used was "since it was last tested/cleared" which
-> > is entirely arbitrary and potentially racy. Now, we can at least report
-> > the latest error that has occurred since an arbitrary point in time
-> > (represented as a sampled errseq_t value).
-> > 
-> > In the case where we don't have a struct file to work with, this patch
-> > just has the wrappers sample the current mapping->wb_err value, and use
-> > that as an arbitrary point from which to check for errors.
+On Sat, May 13, 2017 at 07:31:43PM -0600, Andreas Dilger wrote:
 > 
-> I think this is really dangerous and we shouldn't do this. You are quite
-> likely to lose IO errors in such calls because you will ignore all errors
-> that happened during previous background writeback or even for IO that
-> managed to complete before we called filemap_fdatawait(). Maybe we need to
-> keep the original set-clear-bit IO error reporting for these cases, until
-> we can convert them to fdatawait_range_since()?
-> 
-
-Yes that is a danger.
-
-In fact, late last week I was finally able to make my xfstest work with
-btrfs, and started hitting oopses with it because of the way the error
-reporting changed. I rolled up a patch to fix that (and it simplifies
-the code some, IMO), but other callers of filemap_fdatawait may have
-similar problems here.
-
-I'll pick up working on this again in a more piecemeal way. I had
-originally looked at doing that, but there are some problematic places
-(e.g. buffer.c), where the code is shared by a bunch of different
-filesystems that makes it difficult.
-
-We may end up needing some sort of FS_WB_ERRSEQ flag to do this
-correctly, at least until the transition to errseq_t is done.
-
-> > That's probably not "correct" in all cases, particularly in the case of
-> > something like filemap_fdatawait, but I'm not sure it's any worse than
-> > what we already have, and this gives us a basis from which to work.
+> > On May 7, 2017, at 10:07 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
 > > 
-> > A lot of those callers will likely want to change to a model where they
-> > sample the errseq_t much earlier (perhaps when starting a transaction),
-> > store it in an appropriate place and then use that value later when
-> > checking to see if an error occurred.
+> > Use GETFSMAP to query mounted filesystems for free space information.
+> > This prevents us from reporting stale free space stats if there happen
+> > to be uncheckpointed block bitmap updates sitting in the journal.
 > > 
-> > That will almost certainly take some involvement from other subsystem
-> > maintainers. I'm quite open to adding new API functions to help enable
-> > this if that would be helpful, but I don't really want to do that until
-> > I better understand what's needed.
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> > configure         |    2 -
+> > configure.ac      |    1
+> > lib/config.h.in   |    3 +
+> > misc/e2freefrag.c |  137 +++++++++++++++++++++++++++++++++++++++++++++++++----
+> > misc/fsmap.h      |   89 ++++++++++++++++++++++++++++++++++
+> > 5 files changed, 221 insertions(+), 11 deletions(-)
+> > create mode 100644 misc/fsmap.h
 > > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > diff --git a/configure b/configure
+> > index 5f7b429..2d75150 100755
+> > --- a/configure
+> > +++ b/configure
+> > @@ -12368,7 +12368,7 @@ fi
+> > done
+> > 
+> > fi
+> > -for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
+> > +for ac_header in  	dirent.h 	errno.h 	execinfo.h 	getopt.h 	malloc.h 	mntent.h 	paths.h 	semaphore.h 	setjmp.h 	signal.h 	stdarg.h 	stdint.h 	stdlib.h 	termios.h 	termio.h 	unistd.h 	utime.h 	attr/xattr.h 	linux/falloc.h 	linux/fd.h 	linux/fsmap.h 	linux/major.h 	linux/loop.h 	net/if_dl.h 	netinet/in.h 	sys/acl.h 	sys/disklabel.h 	sys/disk.h 	sys/file.h 	sys/ioctl.h 	sys/key.h 	sys/mkdev.h 	sys/mman.h 	sys/mount.h 	sys/prctl.h 	sys/resource.h 	sys/select.h 	sys/socket.h 	sys/sockio.h 	sys/stat.h 	sys/syscall.h 	sys/sysctl.h 	sys/sysmacros.h 	sys/time.h 	sys/types.h 	sys/un.h 	sys/wait.h
+> > do :
+> >   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+> > ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+> > diff --git a/configure.ac b/configure.ac
+> > index 9da7b86..a8bc15d 100644
+> > --- a/configure.ac
+> > +++ b/configure.ac
+> > @@ -918,6 +918,7 @@ AC_CHECK_HEADERS(m4_flatten([
+> > 	attr/xattr.h
+> > 	linux/falloc.h
+> > 	linux/fd.h
+> > +	linux/fsmap.h
+> > 	linux/major.h
+> > 	linux/loop.h
+> > 	net/if_dl.h
+> > diff --git a/lib/config.h.in b/lib/config.h.in
+> > index bc006de..37d0c46 100644
+> > --- a/lib/config.h.in
+> > +++ b/lib/config.h.in
+> > @@ -244,6 +244,9 @@
+> > /* Define to 1 if you have the <linux/fd.h> header file. */
+> > #undef HAVE_LINUX_FD_H
+> > 
+> > +/* Define to 1 if you have the <linux/fsmap.h> header file. */
+> > +#undef HAVE_LINUX_FSMAP_H
+> > +
+> > /* Define to 1 if you have the <linux/loop.h> header file. */
+> > #undef HAVE_LINUX_LOOP_H
+> > 
+> > diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+> > index 90acb7e..64ed5cd 100644
+> > --- a/misc/e2freefrag.c
+> > +++ b/misc/e2freefrag.c
+> > @@ -25,11 +25,25 @@
+> > extern char *optarg;
+> > extern int optind;
+> > #endif
+> > +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> > +# include <sys/ioctl.h>
+> > +# include <sys/types.h>
+> > +# include <sys/stat.h>
+> > +# include <fcntl.h>
+> > +# include <limits.h>
+> > +#endif
+> > 
+> > #include "ext2fs/ext2_fs.h"
+> > #include "ext2fs/ext2fs.h"
+> > #include "e2freefrag.h"
+> > 
+> > +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> > +# ifdef HAVE_LINUX_FSMAP_H
+> > +#  include <linux/fsmap.h>
+> > +# endif
+> > +# include "fsmap.h"
+> > +#endif
+> > +
+> > static void usage(const char *prog)
+> > {
+> > 	fprintf(stderr, "usage: %s [-c chunksize in kb] [-h] "
+> > @@ -143,8 +157,81 @@ static void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
+> > 		update_chunk_stats(info, last_chunk_size);
+> > }
+> > 
+> > -static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
+> > -				FILE *f)
+> > +#if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+> > +# define FSMAP_EXTENTS	1024
+> > +static int scan_online(ext2_filsys fs, struct chunk_info *info)
+> > +{
+> > +	struct fsmap_head *fsmap;
+> > +	struct fsmap *extent;
+> > +	struct fsmap *p;
+> > +	int fd = (intptr_t)fs->priv_data;
+> > +	int ret;
+> > +	int i;
+> > +
+> > +	if (fd < 0)
+> > +		return 0;
+> > +
+> > +	fsmap = malloc(fsmap_sizeof(FSMAP_EXTENTS));
+> > +	if (!fsmap) {
+> > +		com_err(fs->device_name, errno, "while allocating memory");
+> > +		return 0;
+> > +	}
+> > +
+> > +	memset(fsmap, 0, sizeof(*fsmap));
+> > +	fsmap->fmh_count = FSMAP_EXTENTS;
+> > +	fsmap->fmh_keys[1].fmr_device = UINT_MAX;
+> > +	fsmap->fmh_keys[1].fmr_physical = ULLONG_MAX;
+> > +	fsmap->fmh_keys[1].fmr_owner = ULLONG_MAX;
+> > +	fsmap->fmh_keys[1].fmr_offset = ULLONG_MAX;
+> > +	fsmap->fmh_keys[1].fmr_flags = UINT_MAX;
+> > +
+> > +	while (1) {
+> > +		ret = ioctl(fd, FS_IOC_GETFSMAP, fsmap);
+> > +		if (ret < 0) {
+> > +			com_err(fs->device_name, errno, "while calling fsmap");
+> > +			free(fsmap);
+> > +			return 0;
+> > +		}
+> > +
+> > +		/* No more extents to map, exit */
+> > +		if (!fsmap->fmh_entries)
+> > +			break;
+> > +
+> > +		for (i = 0, extent = fsmap->fmh_recs;
+> > +		     i < fsmap->fmh_entries;
+> > +		     i++, extent++) {
+> > +			if (!(extent->fmr_flags & FMR_OF_SPECIAL_OWNER) ||
+> > +			    extent->fmr_owner != FMR_OWN_FREE)
+> > +				continue;
+> > +			update_chunk_stats(info,
+> > +					   extent->fmr_length / fs->blocksize);
+> > +		}
+> > +
+> > +		p = &fsmap->fmh_recs[fsmap->fmh_entries - 1];
+> > +		if (p->fmr_flags & FMR_OF_LAST)
+> > +			break;
+> > +		fsmap_advance(fsmap);
+> > +	}
+> > +
+> > +	return 1;
+> > +}
+> > +#else
+> > +# define scan_online(fs, info)	(0)
+> > +#endif /* HAVE_EXT2_IOCTLS */
+> > +
+> > +static errcode_t scan_offline(ext2_filsys fs, struct chunk_info *info)
+> > +{
+> > +	errcode_t retval;
+> > +
+> > +	retval = ext2fs_read_block_bitmap(fs);
+> > +	if (retval)
+> > +		return retval;
+> > +	scan_block_bitmap(fs, info);
+> > +	return 0;
+> > +}
+> > +
+> > +static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info *info,
+> > +				 FILE *f)
+> > {
+> > 	unsigned long total_chunks;
+> > 	const char *unitp = "KMGTPEZY";
+> > @@ -152,8 +239,6 @@ static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
+> > 	unsigned long start = 0, end;
+> > 	int i, retval = 0;
+> > 
+> > -	scan_block_bitmap(fs, info);
+> > -
+> > 	fprintf(f, "Total blocks: %llu\nFree blocks: %u (%0.1f%%)\n",
+> > 		ext2fs_blocks_count(fs->super), fs->super->s_free_blocks_count,
+> > 		(double)fs->super->s_free_blocks_count * 100 /
+> > @@ -215,8 +300,17 @@ static errcode_t get_chunk_info(ext2_filsys fs, struct chunk_info *info,
+> > 
+> > static void close_device(char *device_name, ext2_filsys fs)
+> > {
+> > -	int retval = ext2fs_close_free(&fs);
+> > +#ifndef DEBUGFS
+> > +	int mount_fd;
+> > +#endif
+> > +	int retval;
+> > 
+> > +#ifndef DEBUGFS
+> > +	mount_fd = (intptr_t)fs->priv_data;
+> > +	if (mount_fd >= 0)
+> > +		close(mount_fd);
+> > +#endif
+> > +	retval = ext2fs_close_free(&fs);
+> > 	if (retval)
+> > 		com_err(device_name, retval, "while closing the filesystem.\n");
+> > }
+> > @@ -228,18 +322,19 @@ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
+> > 	fprintf(f, "Device: %s\n", fs->device_name);
+> > 	fprintf(f, "Blocksize: %u bytes\n", fs->blocksize);
+> > 
+> > -	retval = ext2fs_read_block_bitmap(fs);
+> > +	init_chunk_info(fs, chunk_info);
 > 
-> ...
+> Should init_chunk_info() be called inside both scan_online() and scan_offline(),
+> so that it is reset if scan_online() fails internally for some reason?
+
+oops, yes, the histogram data ought to be reset.
+
+> > +
+> > +	if (!scan_online(fs, chunk_info))
+> > +		retval = scan_offline(fs, chunk_info);
+> > 	if (retval) {
+> > 		com_err(fs->device_name, retval, "while reading block bitmap");
+> > 		close_device(fs->device_name, fs);
+> > 		exit(1);
+> > 	}
+> > 
+> > -	init_chunk_info(fs, chunk_info);
+> > -
+> > -	retval = get_chunk_info(fs, chunk_info, f);
+> > +	retval = dump_chunk_info(fs, chunk_info, f);
+> > 	if (retval) {
+> > -		com_err(fs->device_name, retval, "while collecting chunk info");
+> > +		com_err(fs->device_name, retval, "while dumping chunk info");
+> >                 close_device(fs->device_name, fs);
+> > 		exit(1);
+> > 	}
+> > @@ -250,6 +345,11 @@ static void open_device(char *device_name, ext2_filsys *fs)
+> > {
+> > 	int retval;
+> > 	int flag = EXT2_FLAG_FORCE | EXT2_FLAG_64BITS;
+> > +#ifdef HAVE_EXT2_IOCTLS
+> > +	int mount_flags;
+> > +	int mount_fd;
+> > +	char mntpoint[PATH_MAX + 1];
+> > +#endif
+> > 
+> > 	retval = ext2fs_open(device_name, flag, 0, 0, unix_io_manager, fs);
+> > 	if (retval) {
+> > @@ -257,6 +357,23 @@ static void open_device(char *device_name, ext2_filsys *fs)
+> > 		exit(1);
+> > 	}
+> > 	(*fs)->default_bitmap_type = EXT2FS_BMAP64_RBTREE;
+> > +	(*fs)->priv_data = (void *)-1;
+> > +
+> > +#ifdef HAVE_EXT2_IOCTLS
+> > +	retval = ext2fs_check_mount_point(device_name, &mount_flags,
+> > +					  mntpoint, PATH_MAX);
+> > +	if (retval) {
+> > +		com_err(device_name, retval, "while checking mount status");
+> > +		return;
+> > +	}
+> > +	if (mount_flags & EXT2_MF_MOUNTED) {
+> > +		mount_fd = open(mntpoint, O_RDONLY);
 > 
-> > diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-> > index 5f7317875a67..7ce13281925f 100644
-> > --- a/fs/f2fs/file.c
-> > +++ b/fs/f2fs/file.c
-> > @@ -187,6 +187,7 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
-> >  		.nr_to_write = LONG_MAX,
-> >  		.for_reclaim = 0,
-> >  	};
-> > +	errseq_t since = READ_ONCE(file->f_wb_err);
-> >  
-> >  	if (unlikely(f2fs_readonly(inode->i_sb)))
-> >  		return 0;
-> > @@ -265,6 +266,8 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
-> >  	}
-> >  
-> >  	ret = wait_on_node_pages_writeback(sbi, ino);
-> > +	if (ret == 0)
-> > +		ret = filemap_check_wb_error(NODE_MAPPING(sbi), since);
-> >  	if (ret)
-> >  		goto out;
+> Should this all be done inside scan_online(), since it isn't needed for use
+> by scan_offline()?  That also avoids the need to pass the open mount point
+> fd via ->priv_data.
+
+Yes.  Good point.
+
+--D
+
 > 
-> So this conversion looks wrong and actually points to a larger issue with
-> the scheme. The problem is there are two mappings that come into play here
-> - file_inode(file)->i_mapping which is the data mapping and
-> NODE_MAPPING(sbi) which is the metadata mapping (and this is not a problem
-> specific to f2fs. For example ext2 also uses this scheme where block
-> devices' mapping is the metadata mapping). And we need to merge error
-> information from these two mappings so for the stamping scheme to work,
-> we'd need two stamps stored in struct file. One for data mapping and one
-> for metadata mapping. Or maybe there's some more clever scheme but for now
-> I don't see one...
+> Cheers, Andreas
 > 
-
-Got it -- since there are two mappings, there are two errseq_t's and
-you'd need a since cursor for each. I don't really like having to add a
-second 32-bit word to struct file, but I also don't see a real
-alternative right offhand. May be able to stash it in file->private_data 
-for some of these filesystems.
-
-In any case, I'll ponder how to do this in a more piecemeal way.
-
-Thanks for all of the review so far!
--- 
-Jeff Layton <jlayton@redhat.com>
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> > +		if (mount_fd < 0)
+> > +			com_err(mntpoint, errno, "while opening mount point");
+> > +		else
+> > +			(*fs)->priv_data = (void *)(intptr_t)mount_fd;
+> > +	}
+> > +#endif
+> > }
+> > #endif
+> > 
+> > diff --git a/misc/fsmap.h b/misc/fsmap.h
+> > new file mode 100644
+> > index 0000000..e9590aa
+> > --- /dev/null
+> > +++ b/misc/fsmap.h
+> > @@ -0,0 +1,89 @@
+> > +/*
+> > + * Copyright (c) 2017 Oracle.
+> > + * All Rights Reserved.
+> > + *
+> > + * Author: Darrick J. Wong <darrick.wong@oracle.com>
+> > + *
+> > + * This program is free software; you can redistribute it and/or
+> > + * modify it under the terms of the GNU General Public License as
+> > + * published by the Free Software Foundation.
+> > + *
+> > + * This program is distributed in the hope that it would be useful,
+> > + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > + * GNU General Public License for more details.
+> > + *
+> > + * You should have received a copy of the GNU General Public License
+> > + * along with this program; if not, write the Free Software Foundation,
+> > + * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> > + */
+> > +#ifndef FSMAP_H_
+> > +#define FSMAP_H_
+> > +
+> > +/* FS_IOC_GETFSMAP ioctl definitions */
+> > +#ifndef FS_IOC_GETFSMAP
+> > +struct fsmap {
+> > +	__u32		fmr_device;	/* device id */
+> > +	__u32		fmr_flags;	/* mapping flags */
+> > +	__u64		fmr_physical;	/* device offset of segment */
+> > +	__u64		fmr_owner;	/* owner id */
+> > +	__u64		fmr_offset;	/* file offset of segment */
+> > +	__u64		fmr_length;	/* length of segment */
+> > +	__u64		fmr_reserved[3];	/* must be zero */
+> > +};
+> > +
+> > +struct fsmap_head {
+> > +	__u32		fmh_iflags;	/* control flags */
+> > +	__u32		fmh_oflags;	/* output flags */
+> > +	__u32		fmh_count;	/* # of entries in array incl. input */
+> > +	__u32		fmh_entries;	/* # of entries filled in (output). */
+> > +	__u64		fmh_reserved[6];	/* must be zero */
+> > +
+> > +	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
+> > +	struct fsmap	fmh_recs[];	/* returned records */
+> > +};
+> > +
+> > +/* Size of an fsmap_head with room for nr records. */
+> > +static inline size_t
+> > +fsmap_sizeof(
+> > +	unsigned int	nr)
+> > +{
+> > +	return sizeof(struct fsmap_head) + nr * sizeof(struct fsmap);
+> > +}
+> > +
+> > +/* Start the next fsmap query at the end of the current query results. */
+> > +static inline void
+> > +fsmap_advance(
+> > +	struct fsmap_head	*head)
+> > +{
+> > +	head->fmh_keys[0] = head->fmh_recs[head->fmh_entries - 1];
+> > +}
+> > +
+> > +/*	fmh_iflags values - set by FS_IOC_GETFSMAP caller in the header. */
+> > +/* no flags defined yet */
+> > +#define FMH_IF_VALID		0
+> > +
+> > +/*	fmh_oflags values - returned in the header segment only. */
+> > +#define FMH_OF_DEV_T		0x1	/* fmr_device values will be dev_t */
+> > +
+> > +/*	fmr_flags values - returned for each non-header segment */
+> > +#define FMR_OF_PREALLOC		0x1	/* segment = unwritten pre-allocation */
+> > +#define FMR_OF_ATTR_FORK	0x2	/* segment = attribute fork */
+> > +#define FMR_OF_EXTENT_MAP	0x4	/* segment = extent map */
+> > +#define FMR_OF_SHARED		0x8	/* segment = shared with another file */
+> > +#define FMR_OF_SPECIAL_OWNER	0x10	/* owner is a special value */
+> > +#define FMR_OF_LAST		0x20	/* segment is the last in the FS */
+> > +
+> > +/* Each FS gets to define its own special owner codes. */
+> > +#define FMR_OWNER(type, code)	(((__u64)type << 32) | \
+> > +				 ((__u64)code & 0xFFFFFFFFULL))
+> > +#define FMR_OWNER_TYPE(owner)	((__u32)((__u64)owner >> 32))
+> > +#define FMR_OWNER_CODE(owner)	((__u32)(((__u64)owner & 0xFFFFFFFFULL)))
+> > +#define FMR_OWN_FREE		FMR_OWNER(0, 1) /* free space */
+> > +#define FMR_OWN_UNKNOWN		FMR_OWNER(0, 2) /* unknown owner */
+> > +#define FMR_OWN_METADATA	FMR_OWNER(0, 3) /* metadata */
+> > +
+> > +#define FS_IOC_GETFSMAP		_IOWR('X', 59, struct fsmap_head)
+> > +#endif /* FS_IOC_GETFSMAP */
+> > +
+> > +#endif
+> 
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
