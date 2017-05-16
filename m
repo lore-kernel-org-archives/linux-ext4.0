@@ -1,85 +1,62 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH] fs: ext4: don't trap kswapd and allocating tasks on
- ext4 inode IO
-Date: Tue, 16 May 2017 16:36:45 +0200
-Message-ID: <20170516143645.GA7316@quack2.suse.cz>
-References: <20170515154634.19733-1-hannes@cmpxchg.org>
+Subject: Re: [PATCH] ext4: hand over jobs handling discard commands on commit
+ complete phase to kworkers
+Date: Tue, 16 May 2017 17:11:53 +0200
+Message-ID: <20170516151153.GB7316@quack2.suse.cz>
+References: <CGME20170516073738epcas1p42daa31d04ae9d07eae07d9fcee6708a2@epcas1p4.samsung.com>
+ <1494920262-10128-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-team@fb.com
-To: Johannes Weiner <hannes@cmpxchg.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: jack@suse.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Daeho Jeong <daeho.jeong@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59573 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753481AbdEPPME (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 16 May 2017 11:12:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20170515154634.19733-1-hannes@cmpxchg.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1494920262-10128-1-git-send-email-daeho.jeong@samsung.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 15-05-17 11:46:34, Johannes Weiner wrote:
-> We have observed across several workloads situations where kswapd and
-> direct reclaimers get stuck in the inode shrinker of the ext4 / mount,
-> causing allocation latencies across tasks in the system, while there
-> are dozens of gigabytes of clean page cache covering multiple disks.
+On Tue 16-05-17 16:37:42, Daeho Jeong wrote:
+> Now, when we mount ext4 filesystem with '-o discard' option, we have to
+> issue all the discard commands for the blocks to be deallocated and
+> wait for the completion of the commands on the commit complete phase.
+> Because this procedure might involve a lot of sequential combinations of
+> issuing discard commands and waiting for that, the delay of this
+> procedure might be too much long, even to half a minute in our test,
+> and it results in long commit delay and fsync() performance degradation.
 > 
-> The stack traces of such an instance looks like this:
+> If we process these jobs handlig discard commands with work items and
+> delegate the jobs to kworkers, the journaling thread doesn't need to
+> wait for the discard command handling anymore, and the sequentially
+> handled discard commands will be handled in parallel by several kworkers
+> and discard command handling performance also will be enhanced.
+> By doing this, half a minute delay of a single commit in the worst case
+> has been enhanced to 255ms in our test.
 > 
-> [<ffffffff812b3225>] jbd2_log_wait_commit+0x95/0x110
-> [<ffffffff812b4f29>] jbd2_complete_transaction+0x59/0x90
-> [<ffffffff812668da>] ext4_evict_inode+0x2da/0x480
-> [<ffffffff811f2230>] evict+0xc0/0x190
-> [<ffffffff811f2339>] dispose_list+0x39/0x50
-> [<ffffffff811f323b>] prune_icache_sb+0x4b/0x60
-> [<ffffffff811dba71>] super_cache_scan+0x141/0x190
-> [<ffffffff8116e755>] shrink_slab+0x235/0x440
-> [<ffffffff81172b48>] shrink_zone+0x268/0x2d0
-> [<ffffffff81172f04>] do_try_to_free_pages+0x164/0x410
-> [<ffffffff81173265>] try_to_free_pages+0xb5/0x160
-> [<ffffffff811656b6>] __alloc_pages_nodemask+0x636/0xb30
-> [<ffffffff811acac8>] alloc_pages_current+0x88/0x120
-> [<ffffffff816d4e46>] skb_page_frag_refill+0xc6/0xf0
-> [<ffffffff816d4e8d>] sk_page_frag_refill+0x1d/0x80
-> [<ffffffff8173f86b>] tcp_sendmsg+0x28b/0xb10
-> [<ffffffff81769727>] inet_sendmsg+0x67/0xa0
-> [<ffffffff816d0488>] sock_sendmsg+0x38/0x50
-> [<ffffffff816d0518>] sock_write_iter+0x78/0xd0
-> [<ffffffff811d774e>] do_iter_readv_writev+0x5e/0xa0
-> [<ffffffff811d8468>] do_readv_writev+0x178/0x210
-> [<ffffffff811d871c>] vfs_writev+0x3c/0x50
-> [<ffffffff811d8782>] do_writev+0x52/0xd0
-> [<ffffffff811d9810>] SyS_writev+0x10/0x20
-> [<ffffffff81002910>] do_syscall_64+0x50/0xa0
-> [<ffffffff817eed3c>] return_from_SYSCALL_64+0x0/0x6a
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> 
-> The inode shrinker has provisions to skip any inodes that require
-> writeback, to avoid tarpitting the entire system behind a single
-> object when there are many other pools to recycle memory from. But
-> that logic doesn't cover the situation where an ext4 inode is clean
-> but journaled and tied to a commit that yet needs to hit the platter.
-> 
-> Add a superblock operation that lets the generic inode shrinker query
-> the filesystem whether evicting a given inode will require any IO; add
-> an ext4 implementation that checks whether the journal is caught up to
-> the commit id associated with the inode.
-> 
-> Fixes: 2d859db3e4a8 ("ext4: fix data corruption in inodes with journalled data")
-> Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Tested-by: Hobin Woo <hobin.woo@samsung.com>
+> Tested-by: Kitae Lee <kitae87.lee@samsung.com>
 
-OK. I have to say I'm somewhat surprised you use data journalling on some
-of your files / filesystems but whatever - maybe these are long symlink
-after all which would make sense. And I'm actually doubly surprised you can
-see these stack traces as these days inode_lru_isolate() checks
-inode->i_data.nrpages and uncommitted pages cannot be evicted from
-pagecache (ext4_releasepage() will refuse to free them) so I don't see how
-such inode can get to dispose_list(). But maybe the inode doesn't really
-have any pages and i_datasync_tid just happens to be set to the current
-transaction because it is initialized that way and we are evicting inode
-that was recently read from disk.
+So I see several problems with this. Firstly, it breaks the ENOSPC handling
+logic which relies on the fact that after forcing a transaction commit all
+blocks held by the transaction are released - now they will be released
+only after the work is completed and thus we can prematurely report ENOSPC.
+Secondly, offloading the discard work doesn't change the fundamental fact
+that discard is slow (for some devices) and this change just hides this
+fact at the possible cost of for example higher file fragmentation as a
+result of delayed block freeing. Also the outstanding queue of discard
+requests isn't limited in any way again leading to possible strange
+allocation / ENOSPC issues.
 
-Anyway if you add: "&& inode->i_data.nrpages" to the test in
-ext4_evict_inode() do the stalls go away?
+So I agree with Christoph that you should rather submit discards directly
+from jbd2 thread as we do now, just submit all of them and then wait for
+completion to allow parallel processing in the device. And if the device
+doesn't support fast enough parallel processing of discards then 'discard'
+mount option isn't really suited for such device and no amount of
+offloading is going to fix that fact.
 
 								Honza
 -- 
