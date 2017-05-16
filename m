@@ -1,53 +1,37 @@
-From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
-Subject: [PATCH v2 23/53] fs: jbd2: escape a string with special chars on a kernel-doc
-Date: Tue, 16 May 2017 09:16:15 -0300
-Message-ID: <df1b560a4a04ac2e7591ffa7aff37899a45bf01a.1494935649.git.mchehab@s-opensource.com>
-References: <cover.1494935649.git.mchehab@s-opensource.com>
-Cc: Mauro Carvalho Chehab <mchehab@s-opensource.com>,
-        Mauro Carvalho Chehab <mchehab@infradead.org>,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
-        Cyrille Pitchen <cyrille.pitchen@atmel.com>,
-        linux-mtd@lists.infradead.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
-To: Linux Doc Mailing List <linux-doc@vger.kernel.org>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <cover.1494935649.git.mchehab@s-opensource.com>
-In-Reply-To: <cover.1494935649.git.mchehab@s-opensource.com>
-References: <cover.1494935649.git.mchehab@s-opensource.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 195733] JBD2: [Suggested Patch]Spotted dirty metadata buffer
+ (dev = sda1, blocknr = 1766784).There's a risk of filesystem corruption in
+ case of system crash.
+Date: Tue, 16 May 2017 12:19:01 +0000
+Message-ID: <bug-195733-13602-yaXvVuIGgQ@https.bugzilla.kernel.org/>
+References: <bug-195733-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45178 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751974AbdEPMTJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 16 May 2017 08:19:09 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9B16828A0D
+        for <linux-ext4@vger.kernel.org>; Tue, 16 May 2017 12:19:03 +0000 (UTC)
+In-Reply-To: <bug-195733-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-kernel-doc will try to interpret a foo() string, except if
-properly escaped.
+https://bugzilla.kernel.org/show_bug.cgi?id=195733
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
----
- fs/jbd2/transaction.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+--- Comment #1 from jqiaoulk@gmail.com ---
+Looks
+https://github.com/torvalds/linux/commit/3b136499e906460919f0d21a49db1aaccf0ae963
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index fe7f4a373436..38e1dcabbaca 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1066,10 +1066,10 @@ static bool jbd2_write_access_granted(handle_t *handle, struct buffer_head *bh,
-  * @handle: transaction to add buffer modifications to
-  * @bh:     bh to be used for metadata writes
-  *
-- * Returns an error code or 0 on success.
-+ * Returns: error code or 0 on success.
-  *
-  * In full data journalling mode the buffer may be of type BJ_AsyncData,
-- * because we're write()ing a buffer which is also part of a shared mapping.
-+ * because we're ``write()ing`` a buffer which is also part of a shared mapping.
-  */
- 
- int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+did the similar change.
+
+So will do the test.
+
 -- 
-2.9.3
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
