@@ -1,93 +1,87 @@
-From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
-Subject: [PATCH v2 19/53] fs: jbd2: make jbd2_journal_start() kernel-doc parseable
-Date: Tue, 16 May 2017 09:16:11 -0300
-Message-ID: <91e4775d0fe30d105df56bf13a796001f20780ad.1494935649.git.mchehab@s-opensource.com>
-References: <cover.1494935649.git.mchehab@s-opensource.com>
-Cc: Mauro Carvalho Chehab <mchehab@s-opensource.com>,
-        Mauro Carvalho Chehab <mchehab@infradead.org>,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
-        Cyrille Pitchen <cyrille.pitchen@atmel.com>,
-        linux-mtd@lists.infradead.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
-To: Linux Doc Mailing List <linux-doc@vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH] fs: ext4: don't trap kswapd and allocating tasks on
+ ext4 inode IO
+Date: Tue, 16 May 2017 16:36:45 +0200
+Message-ID: <20170516143645.GA7316@quack2.suse.cz>
+References: <20170515154634.19733-1-hannes@cmpxchg.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, kernel-team@fb.com
+To: Johannes Weiner <hannes@cmpxchg.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <cover.1494935649.git.mchehab@s-opensource.com>
-In-Reply-To: <cover.1494935649.git.mchehab@s-opensource.com>
-References: <cover.1494935649.git.mchehab@s-opensource.com>
+Content-Disposition: inline
+In-Reply-To: <20170515154634.19733-1-hannes@cmpxchg.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-kernel-doc script expects that a function documentation to
-be just before the function, otherwise it will be ignored.
+On Mon 15-05-17 11:46:34, Johannes Weiner wrote:
+> We have observed across several workloads situations where kswapd and
+> direct reclaimers get stuck in the inode shrinker of the ext4 / mount,
+> causing allocation latencies across tasks in the system, while there
+> are dozens of gigabytes of clean page cache covering multiple disks.
+> 
+> The stack traces of such an instance looks like this:
+> 
+> [<ffffffff812b3225>] jbd2_log_wait_commit+0x95/0x110
+> [<ffffffff812b4f29>] jbd2_complete_transaction+0x59/0x90
+> [<ffffffff812668da>] ext4_evict_inode+0x2da/0x480
+> [<ffffffff811f2230>] evict+0xc0/0x190
+> [<ffffffff811f2339>] dispose_list+0x39/0x50
+> [<ffffffff811f323b>] prune_icache_sb+0x4b/0x60
+> [<ffffffff811dba71>] super_cache_scan+0x141/0x190
+> [<ffffffff8116e755>] shrink_slab+0x235/0x440
+> [<ffffffff81172b48>] shrink_zone+0x268/0x2d0
+> [<ffffffff81172f04>] do_try_to_free_pages+0x164/0x410
+> [<ffffffff81173265>] try_to_free_pages+0xb5/0x160
+> [<ffffffff811656b6>] __alloc_pages_nodemask+0x636/0xb30
+> [<ffffffff811acac8>] alloc_pages_current+0x88/0x120
+> [<ffffffff816d4e46>] skb_page_frag_refill+0xc6/0xf0
+> [<ffffffff816d4e8d>] sk_page_frag_refill+0x1d/0x80
+> [<ffffffff8173f86b>] tcp_sendmsg+0x28b/0xb10
+> [<ffffffff81769727>] inet_sendmsg+0x67/0xa0
+> [<ffffffff816d0488>] sock_sendmsg+0x38/0x50
+> [<ffffffff816d0518>] sock_write_iter+0x78/0xd0
+> [<ffffffff811d774e>] do_iter_readv_writev+0x5e/0xa0
+> [<ffffffff811d8468>] do_readv_writev+0x178/0x210
+> [<ffffffff811d871c>] vfs_writev+0x3c/0x50
+> [<ffffffff811d8782>] do_writev+0x52/0xd0
+> [<ffffffff811d9810>] SyS_writev+0x10/0x20
+> [<ffffffff81002910>] do_syscall_64+0x50/0xa0
+> [<ffffffff817eed3c>] return_from_SYSCALL_64+0x0/0x6a
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> The inode shrinker has provisions to skip any inodes that require
+> writeback, to avoid tarpitting the entire system behind a single
+> object when there are many other pools to recycle memory from. But
+> that logic doesn't cover the situation where an ext4 inode is clean
+> but journaled and tied to a commit that yet needs to hit the platter.
+> 
+> Add a superblock operation that lets the generic inode shrinker query
+> the filesystem whether evicting a given inode will require any IO; add
+> an ext4 implementation that checks whether the journal is caught up to
+> the commit id associated with the inode.
+> 
+> Fixes: 2d859db3e4a8 ("ext4: fix data corruption in inodes with journalled data")
+> Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
 
-So, move the kernel-doc markup to the right place.
+OK. I have to say I'm somewhat surprised you use data journalling on some
+of your files / filesystems but whatever - maybe these are long symlink
+after all which would make sense. And I'm actually doubly surprised you can
+see these stack traces as these days inode_lru_isolate() checks
+inode->i_data.nrpages and uncommitted pages cannot be evicted from
+pagecache (ext4_releasepage() will refuse to free them) so I don't see how
+such inode can get to dispose_list(). But maybe the inode doesn't really
+have any pages and i_datasync_tid just happens to be set to the current
+transaction because it is initialized that way and we are evicting inode
+that was recently read from disk.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Mauro Carvalho Chehab <mchehab@s-opensource.com>
----
- fs/jbd2/transaction.c | 38 +++++++++++++++++++-------------------
- 1 file changed, 19 insertions(+), 19 deletions(-)
+Anyway if you add: "&& inode->i_data.nrpages" to the test in
+ext4_evict_inode() do the stalls go away?
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 9ee4832b6f8b..fe7f4a373436 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -409,25 +409,6 @@ static handle_t *new_handle(int nblocks)
- 	return handle;
- }
- 
--/**
-- * handle_t *jbd2_journal_start() - Obtain a new handle.
-- * @journal: Journal to start transaction on.
-- * @nblocks: number of block buffer we might modify
-- *
-- * We make sure that the transaction can guarantee at least nblocks of
-- * modified buffers in the log.  We block until the log can guarantee
-- * that much space. Additionally, if rsv_blocks > 0, we also create another
-- * handle with rsv_blocks reserved blocks in the journal. This handle is
-- * is stored in h_rsv_handle. It is not attached to any particular transaction
-- * and thus doesn't block transaction commit. If the caller uses this reserved
-- * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
-- * on the parent handle will dispose the reserved one. Reserved handle has to
-- * be converted to a normal handle using jbd2_journal_start_reserved() before
-- * it can be used.
-- *
-- * Return a pointer to a newly allocated handle, or an ERR_PTR() value
-- * on failure.
-- */
- handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
- 			      gfp_t gfp_mask, unsigned int type,
- 			      unsigned int line_no)
-@@ -478,6 +459,25 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
- EXPORT_SYMBOL(jbd2__journal_start);
- 
- 
-+/**
-+ * handle_t *jbd2_journal_start() - Obtain a new handle.
-+ * @journal: Journal to start transaction on.
-+ * @nblocks: number of block buffer we might modify
-+ *
-+ * We make sure that the transaction can guarantee at least nblocks of
-+ * modified buffers in the log.  We block until the log can guarantee
-+ * that much space. Additionally, if rsv_blocks > 0, we also create another
-+ * handle with rsv_blocks reserved blocks in the journal. This handle is
-+ * is stored in h_rsv_handle. It is not attached to any particular transaction
-+ * and thus doesn't block transaction commit. If the caller uses this reserved
-+ * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
-+ * on the parent handle will dispose the reserved one. Reserved handle has to
-+ * be converted to a normal handle using jbd2_journal_start_reserved() before
-+ * it can be used.
-+ *
-+ * Return a pointer to a newly allocated handle, or an ERR_PTR() value
-+ * on failure.
-+ */
- handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
- {
- 	return jbd2__journal_start(journal, nblocks, 0, GFP_NOFS, 0, 0);
+								Honza
 -- 
-2.9.3
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
