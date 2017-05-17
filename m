@@ -1,49 +1,153 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] ext4: Fix off-by-in in loop termination in ext4_find_unwritten_pgoff()
-Date: Wed, 17 May 2017 14:07:39 +0200
-Message-ID: <20170517120739.2529-3-jack@suse.cz>
+Subject: [PATCH 1/2] ext4: Fix SEEK_HOLE
+Date: Wed, 17 May 2017 14:07:38 +0200
+Message-ID: <20170517120739.2529-2-jack@suse.cz>
 References: <20170517120739.2529-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
 To: Ted Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33757 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:33741 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1753426AbdEQMHs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 May 2017 08:07:48 -0400
+        id S1754044AbdEQMHv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 17 May 2017 08:07:51 -0400
 In-Reply-To: <20170517120739.2529-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is an off-by-one error in loop termination conditions in
-ext4_find_unwritten_pgoff(). It doesn't have any visible effects but
-still it is good to fix it.
+Currently, SEEK_HOLE implementation in ext4 may both return that there's
+a hole at some offset although that offset already has data and skip
+some holes during a search for the next hole. The first problem is
+demostrated by:
 
+xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
+wrote 57344/57344 bytes at offset 0
+56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
+Whence	Result
+HOLE	0
+
+Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
+a hole although we have written data there. The second problem can be
+demonstrated by:
+
+xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
+       -c "seek -h 0" file
+
+wrote 57344/57344 bytes at offset 0
+56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
+wrote 8192/8192 bytes at offset 131072
+8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
+Whence	Result
+HOLE	139264
+
+Where we can see that hole at offsets 56k..128k has been ignored by the
+SEEK_HOLE call.
+
+The underlying problem is in the ext4_find_unwritten_pgoff() which is
+just buggy. In some cases it fails to update returned offset when it
+finds a hole (when no pages are found or when the first found page has
+higher index than expected), in some cases conditions for detecting hole
+are just missing (we fail to detect a situation where indices of
+returned pages are not contiguous).
+
+Fix ext4_find_unwritten_pgoff() to properly detect non-contiguous page
+indices and also handle all cases where we got less pages then expected
+in one place and handle it properly there.
+
+CC: stable@vger.kernel.org
+Fixes: c8c0df241cc2719b1262e627f999638411934f60
+CC: Zheng Liu <wenqing.lz@taobao.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/file.c | 50 ++++++++++++++------------------------------------
+ 1 file changed, 14 insertions(+), 36 deletions(-)
 
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index bbea2dccd584..a80f42d189e3 100644
+index 831fd6beebf0..bbea2dccd584 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -502,7 +502,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+@@ -484,47 +484,27 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
+ 		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
+ 					  (pgoff_t)num);
+-		if (nr_pages == 0) {
+-			if (whence == SEEK_DATA)
+-				break;
+-
+-			BUG_ON(whence != SEEK_HOLE);
+-			/*
+-			 * If this is the first time to go into the loop and
+-			 * offset is not beyond the end offset, it will be a
+-			 * hole at this offset
+-			 */
+-			if (lastoff == startoff || lastoff < endoff)
+-				found = 1;
+-			break;
+-		}
+-
+-		/*
+-		 * If this is the first time to go into the loop and
+-		 * offset is smaller than the first page offset, it will be a
+-		 * hole at this offset.
+-		 */
+-		if (lastoff == startoff && whence == SEEK_HOLE &&
+-		    lastoff < page_offset(pvec.pages[0])) {
+-			found = 1;
++		if (nr_pages == 0)
+ 			break;
+-		}
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+ 			struct buffer_head *bh, *head;
+ 
+ 			/*
+-			 * If the current offset is not beyond the end of given
+-			 * range, it will be a hole.
++			 * If current offset is smaller than the page offset,
++			 * there is a hole at this offset.
+ 			 */
+-			if (lastoff < endoff && whence == SEEK_HOLE &&
+-			    page->index > end) {
++			if (whence == SEEK_HOLE && lastoff < endoff &&
++			    lastoff < page_offset(pvec.pages[i])) {
+ 				found = 1;
+ 				*offset = lastoff;
  				goto out;
  			}
  
--			if (page->index > end)
-+			if (page->index >= end)
- 				goto out;
- 
++			if (page->index > end)
++				goto out;
++
  			lock_page(page);
-@@ -550,7 +550,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 
+ 			if (unlikely(page->mapping != inode->i_mapping)) {
+@@ -564,20 +544,18 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			unlock_page(page);
+ 		}
+ 
+-		/*
+-		 * The no. of pages is less than our desired, that would be a
+-		 * hole in there.
+-		 */
+-		if (nr_pages < num && whence == SEEK_HOLE) {
+-			found = 1;
+-			*offset = lastoff;
++		/* The no. of pages is less than our desired, we are done. */
++		if (nr_pages < num)
+ 			break;
+-		}
  
  		index = pvec.pages[i - 1]->index + 1;
  		pagevec_release(&pvec);
--	} while (index <= end);
-+	} while (index < end);
+ 	} while (index <= end);
  
- 	if (whence == SEEK_HOLE && lastoff < endoff) {
- 		found = 1;
++	if (whence == SEEK_HOLE && lastoff < endoff) {
++		found = 1;
++		*offset = lastoff;
++	}
+ out:
+ 	pagevec_release(&pvec);
+ 	return found;
 -- 
 2.12.0
