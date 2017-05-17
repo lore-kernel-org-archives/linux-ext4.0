@@ -1,153 +1,54 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext4: Fix SEEK_HOLE
-Date: Wed, 17 May 2017 14:07:38 +0200
-Message-ID: <20170517120739.2529-2-jack@suse.cz>
-References: <20170517120739.2529-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org, Zheng Liu <wenqing.lz@taobao.com>
-To: Ted Tso <tytso@mit.edu>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH] jbd2: preserve original nofs flag during journal restart
+Date: Wed, 17 May 2017 05:33:01 -0700
+Message-ID: <20170517123301.24211-1-tahsin@google.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Tahsin Erdogan <tahsin@google.com>
+To: Michal Hocko <mhocko@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Jan Kara <jack@suse.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33741 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754044AbdEQMHv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 May 2017 08:07:51 -0400
-In-Reply-To: <20170517120739.2529-1-jack@suse.cz>
+Received: from mail-pf0-f174.google.com ([209.85.192.174]:36432 "EHLO
+        mail-pf0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753892AbdEQMdg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 May 2017 08:33:36 -0400
+Received: by mail-pf0-f174.google.com with SMTP id m17so6793525pfg.3
+        for <linux-ext4@vger.kernel.org>; Wed, 17 May 2017 05:33:36 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently, SEEK_HOLE implementation in ext4 may both return that there's
-a hole at some offset although that offset already has data and skip
-some holes during a search for the next hole. The first problem is
-demostrated by:
+When a transaction starts, start_this_handle() saves current
+PF_MEMALLOC_NOFS value so that it can be restored at journal stop time.
+Journal restart is a special case that calls start_this_handle() without
+stopping the transaction. start_this_handle() isn't aware that the
+original value is already stored so it overwrites it with current value.
 
-xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
-wrote 57344/57344 bytes at offset 0
-56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
-Whence	Result
-HOLE	0
+For instance, a call sequence like below leaves PF_MEMALLOC_NOFS flag set
+at the end:
 
-Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
-a hole although we have written data there. The second problem can be
-demonstrated by:
+  jbd2_journal_start()
+  jbd2__journal_restart()
+  jbd2_journal_stop()
 
-xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
-       -c "seek -h 0" file
+Make jbd2__journal_restart() restore the original value before calling
+start_this_handle().
 
-wrote 57344/57344 bytes at offset 0
-56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
-wrote 8192/8192 bytes at offset 131072
-8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
-Whence	Result
-HOLE	139264
-
-Where we can see that hole at offsets 56k..128k has been ignored by the
-SEEK_HOLE call.
-
-The underlying problem is in the ext4_find_unwritten_pgoff() which is
-just buggy. In some cases it fails to update returned offset when it
-finds a hole (when no pages are found or when the first found page has
-higher index than expected), in some cases conditions for detecting hole
-are just missing (we fail to detect a situation where indices of
-returned pages are not contiguous).
-
-Fix ext4_find_unwritten_pgoff() to properly detect non-contiguous page
-indices and also handle all cases where we got less pages then expected
-in one place and handle it properly there.
-
-CC: stable@vger.kernel.org
-Fixes: c8c0df241cc2719b1262e627f999638411934f60
-CC: Zheng Liu <wenqing.lz@taobao.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Fixes: 81378da64de6 ("jbd2: mark the transaction context with the scope GFP_NOFS context")
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/file.c | 50 ++++++++++++++------------------------------------
- 1 file changed, 14 insertions(+), 36 deletions(-)
+ fs/jbd2/transaction.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 831fd6beebf0..bbea2dccd584 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -484,47 +484,27 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
- 		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
- 					  (pgoff_t)num);
--		if (nr_pages == 0) {
--			if (whence == SEEK_DATA)
--				break;
--
--			BUG_ON(whence != SEEK_HOLE);
--			/*
--			 * If this is the first time to go into the loop and
--			 * offset is not beyond the end offset, it will be a
--			 * hole at this offset
--			 */
--			if (lastoff == startoff || lastoff < endoff)
--				found = 1;
--			break;
--		}
--
--		/*
--		 * If this is the first time to go into the loop and
--		 * offset is smaller than the first page offset, it will be a
--		 * hole at this offset.
--		 */
--		if (lastoff == startoff && whence == SEEK_HOLE &&
--		    lastoff < page_offset(pvec.pages[0])) {
--			found = 1;
-+		if (nr_pages == 0)
- 			break;
--		}
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 9ee4832b6f8b..dfd6afebdfeb 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -680,6 +680,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
  
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
- 			struct buffer_head *bh, *head;
- 
- 			/*
--			 * If the current offset is not beyond the end of given
--			 * range, it will be a hole.
-+			 * If current offset is smaller than the page offset,
-+			 * there is a hole at this offset.
- 			 */
--			if (lastoff < endoff && whence == SEEK_HOLE &&
--			    page->index > end) {
-+			if (whence == SEEK_HOLE && lastoff < endoff &&
-+			    lastoff < page_offset(pvec.pages[i])) {
- 				found = 1;
- 				*offset = lastoff;
- 				goto out;
- 			}
- 
-+			if (page->index > end)
-+				goto out;
-+
- 			lock_page(page);
- 
- 			if (unlikely(page->mapping != inode->i_mapping)) {
-@@ -564,20 +544,18 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 			unlock_page(page);
- 		}
- 
--		/*
--		 * The no. of pages is less than our desired, that would be a
--		 * hole in there.
--		 */
--		if (nr_pages < num && whence == SEEK_HOLE) {
--			found = 1;
--			*offset = lastoff;
-+		/* The no. of pages is less than our desired, we are done. */
-+		if (nr_pages < num)
- 			break;
--		}
- 
- 		index = pvec.pages[i - 1]->index + 1;
- 		pagevec_release(&pvec);
- 	} while (index <= end);
- 
-+	if (whence == SEEK_HOLE && lastoff < endoff) {
-+		found = 1;
-+		*offset = lastoff;
-+	}
- out:
- 	pagevec_release(&pvec);
- 	return found;
+ 	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
+ 	handle->h_buffer_credits = nblocks;
++	memalloc_nofs_restore(handle->saved_alloc_context);
+ 	ret = start_this_handle(journal, handle, gfp_mask);
+ 	return ret;
+ }
 -- 
-2.12.0
+2.13.0.303.g4ebf302169-goog
