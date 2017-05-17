@@ -1,13 +1,12 @@
-From: Jan Kara <jack@suse.cz>
+From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: [PATCH] jbd2: preserve original nofs flag during journal restart
-Date: Wed, 17 May 2017 16:04:08 +0200
-Message-ID: <20170517140408.GA5632@quack2.suse.cz>
+Date: Wed, 17 May 2017 16:13:57 +0200
+Message-ID: <20170517141357.GN18247@dhcp22.suse.cz>
 References: <20170517123301.24211-1-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Michal Hocko <mhocko@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
@@ -34,13 +33,6 @@ On Wed 17-05-17 05:33:01, Tahsin Erdogan wrote:
 > 
 > Fixes: 81378da64de6 ("jbd2: mark the transaction context with the scope GFP_NOFS context")
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
-
-Thanks for catching this! The patch looks good. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
 > ---
 >  fs/jbd2/transaction.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -57,10 +49,20 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 >  	ret = start_this_handle(journal, handle, gfp_mask);
 >  	return ret;
 >  }
-> -- 
-> 2.13.0.303.g4ebf302169-goog
-> 
-> 
+
+I remember Jack has mentioned something about nested transaction back
+then when reviewing the patch. But I cannot remember or find a pointer
+to that email. I have a vague recollection that there is a reference
+counting for those transactions.
+
+Anyway, Is this patch really correct? So let's say we are in
+the transaction context already and then you disable the scope
+NOFS protection, start_this_handle will allocate before it calls
+memalloc_nofs_save and that would recurse to the filesystem.  If
+anything wouldn't it be better to simply call memalloc_nofs_save only if
+we start a new transaction? I thought we were doing that already but the
+code is so convoluted I have hard time to wrap my head around it.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Michal Hocko
+SUSE Labs
