@@ -1,62 +1,109 @@
-From: Ming Lei <ming.lei@redhat.com>
-Subject: Re: BUG: hot removal during writes on ext4 formatted nvme device
-Date: Thu, 18 May 2017 09:34:59 +0800
-Message-ID: <20170518013454.GA13864@ming.t460p>
-References: <037dd98d-595e-f96b-6241-2474bd2c3e8f@intel.com>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] ioctl_getfsmap.2: document the GETFSMAP ioctl
+Date: Wed, 17 May 2017 19:04:16 -0700
+Message-ID: <20170518020416.GF4514@birch.djwong.org>
+References: <20170508204738.GL5973@birch.djwong.org>
+ <CAG48ez0iLRazKvXty9CG8ENXvkG6b1xjO0Q75p+16HKNptFnow@mail.gmail.com>
+ <20170509015324.GM5973@birch.djwong.org>
+ <20170509211746.GA87747@gmail.com>
+ <20170510163818.7bleiykxgnx3pkds@thunk.org>
+ <87mvakpl5m.fsf@xmission.com>
+ <20170510201437.GA9854@birch.djwong.org>
+ <20170511051051.GA7533@zzz>
+ <38F56772-7836-4902-929C-80908BFBEA7B@dilger.ca>
+ <CALCETrX0=w8tDQbAysZH3AHvvaGvPb54Jj7=Eiuk0uoB+fRfzQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-nvme@lists.infradead.org,
-        Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>,
-        sagi@grimberg.me, Keith Busch <keith.busch@intel.com>
-To: Jon Derrick <jonathan.derrick@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59574 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754435AbdERBfQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 May 2017 21:35:16 -0400
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+        Eric Biggers <ebiggers3-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+        "Eric W. Biederman" <ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org>,
+        "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, Jann Horn <jannh-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
+        Michael Kerrisk-manpages <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-man <linux-man-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-btrfs <linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Andy Lutomirski <luto-kltTT9wpgjJwATOyAt5JVQ@public.gmane.org>
+Return-path: <linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <037dd98d-595e-f96b-6241-2474bd2c3e8f@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CALCETrX0=w8tDQbAysZH3AHvvaGvPb54Jj7=Eiuk0uoB+fRfzQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-man-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 22, 2017 at 06:38:12PM -0600, Jon Derrick wrote:
-> Hello,
+On Sun, May 14, 2017 at 06:56:10AM -0700, Andy Lutomirski wrote:
+> On Sat, May 13, 2017 at 6:41 PM, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org> wrote:
+> > On May 10, 2017, at 11:10 PM, Eric Biggers <ebiggers3-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org> wrote:
+> >>
+> >> On Wed, May 10, 2017 at 01:14:37PM -0700, Darrick J. Wong wrote:
+> >>> [cc btrfs, since afaict that's where most of the dedupe tool authors hang out]
 > 
-> I've encountered a BUG that I've experienced during hot removal on an
-> ext4-formatted nvme device undergoing writes. I have been able to verify
-> that 4.5, 4.6, 4.10.12, 4.11, and 4.12-rc1 show similar issues (the v4.6
-> trace below shows issues with block that have already been fixed). I'm
-> using VMD hardware for my hotplug controller so 4.5 is as far back as I
-> can go (maybe someone else can verify on non-VMD hardware?).
+> >> Yes, PIDs have traditionally been global, but today we have PID namespaces, and
+> >> many other isolation features such as mount namespaces.  Nothing is perfect, of
+> >> course, and containers are a lot worse than VMs, but it seems weird to use that
+> >> as an excuse to knowingly make things worse...
+> >>
 > 
-> To reproduce:
-> 1) mkfs.ext4 <nvme>
-> 2) mount <nvme> <mnt>
-> 3) dd if=/dev/zero of=<mnt>/file bs=1M count=10000
-> 4) Hot remove the drive while above is writing
+> Indeed.  Not only PID namespaces -- we have hidepid and we can simply
+> unmount /proc.  "There are other info leaks" is a poor excuse.
+
+Eh.  From the sounds of it I'm not all that impressed at the isolation
+and leakproofness of any of these schemes.  Regardless, I will rephrase
+the manpage to emphasize more strongly that filesystems are under no
+obligation to share inode numbers, privileged callers or otherwise.
+
+> >>>
+> >>>>> Fortunately, the days of timesharing seem to well behind us.  For
+> >>>>> those people who think that containers are as secure as VM's (hah,
+> >>>>> hah, hah), it might be that best way to handle this is to have a mount
+> >>>>> option that requires root access to this functionality.  For those
+> >>>>> people who really care about this, they can disable access.
+> >>>
+> >>> Or use separate filesystems for each container so that exploitable bugs
+> >>> that shut down the filesystem can't be used to kill the other
+> >>> containers.  You could use a torrent of metadata-heavy operations
+> >>> (fallocate a huge file, punch every block, truncate file, repeat) to DoS
+> >>> the other containers.
+> >>>
+> >>>> What would be the reason for not putting this behind
+> >>>> capable(CAP_SYS_ADMIN)?
+> >>>>
+> >>>> What possible legitimate function could this functionality serve to
+> >>>> users who don't own your filesystem?
+> >>>
+> >>> As I've said before, it's to enable dedupe tools to decide, given a set
+> >>> of files with shareable blocks, roughly how many other times each of
+> >>> those shareable blocks are shared so that they can make better decisions
+> >>> about which file keeps its shareable blocks, and which file gets
+> >>> remapped.  Dedupe is not a privileged operation, nor are any of the
+> >>> tools.
+> >>>
+> >>
+> >> So why does the ioctl need to return all extent mappings for the entire
+> >> filesystem, instead of just the share count of each block in the file that the
+> >> ioctl is called on?
+> >
+> > One possibility is that the ioctl() can return the mapping for all inodes
+> > owned by the calling PID (or others if CAP_SYS_ADMIN, CAP_DAC_OVERRIDE,
+> > or CAP_FOWNER is set), and return an "filesystem aggregate inode" (or more
+> > than one if there is a reason to do so) with all the other allocated blocks
+> > for inodes the user doesn't have permission to access?
 > 
-> From what I can tell, the ext4 sb is trying to be committed in the error
-> path. There is supposed to be a check if the device is still alive via
-> block_device_ejected(), but my guess is that there is a race between the
-> removal/deletion in genhd and this check. I would appreciate any help
-> resolving this.
->
+> Sounds like it could be reasonable.  But you don't want "owned by the
+> calling PID" precisely -- you also need to check
+> kgid_has_mapping(current_user_ns(), inode->i_gid), I think.
 
-Recently I played fio over NVMe partition direclty with hot-remove too, and
-found that d3cfb2a0ac0b8487d28(block: block new I/O just after queue is set
-as dying) is helpful for this kind of issue.
+Not to mention that I don't want to go xfs_igetting every inode across
+the entire filesystem... :)
 
-Also the following patch fixes one issue in remove path.
+--D
 
-	http://marc.info/?l=linux-block&m=149498450028434&w=2
-
-So could you test v4.12-rc1(d3cfb2a0 is merged) with the above patch?
-
-With these patches in, block layer & NVMe should make sure that all I/O can
-be finished with -EIO before del_gendisk() returns once after hot-remove
-is triggered, then the failure handling of fs might need further investigation.
-
-
-Thanks,
-Ming
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-api" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-man" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
