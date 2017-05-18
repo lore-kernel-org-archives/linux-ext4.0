@@ -1,419 +1,51 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2] ioctl_getfsmap.2: document the GETFSMAP ioctl
-Date: Wed, 17 May 2017 19:07:33 -0700
-Message-ID: <20170518020733.GG4514@birch.djwong.org>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: [PATCH v2] jbd2: preserve original nofs flag during journal
+ restart
+Date: Thu, 18 May 2017 11:12:53 +0200
+Message-ID: <20170518091253.GE25462@dhcp22.suse.cz>
+References: <20170517152432.GA20660@dhcp22.suse.cz>
+ <20170517161629.15170-1-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Eric Biggers <ebiggers3@gmail.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jann Horn <jannh@google.com>,
-        Andy Lutomirski <luto@amacapital.net>,
-        linux-xfs@vger.kernel.org,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        linux-man <linux-man@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>
-To: Michael Kerrisk-manpages <mtk.manpages@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:44424 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754073AbdERCHr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 May 2017 22:07:47 -0400
+Received: from mx2.suse.de ([195.135.220.15]:36915 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751782AbdERJNB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 May 2017 05:13:01 -0400
 Content-Disposition: inline
+In-Reply-To: <20170517161629.15170-1-tahsin@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Document the new GETFSMAP ioctl that returns the physical layout of a
-(disk-based) filesystem.
+On Wed 17-05-17 09:16:29, Tahsin Erdogan wrote:
+[...]
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 9ee4832b6f8b..05c0323493fb 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -680,6 +680,8 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+> 
+>  	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
+>  	handle->h_buffer_credits = nblocks;
+> +	/* Restore original nofs flag as jbd2_journal_stop() would do. */
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
-v2: emphasize that filesystems are not obligated to return inode numbers
----
- man2/ioctl_getfsmap.2 |  375 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 375 insertions(+)
- create mode 100644 man2/ioctl_getfsmap.2
+I was thinking something more specific like
+	/*
+	 * Restore the original nofs context because the journal restart
+	 * is basically the same thing as journal stop and start.
+	 * start_this_handle will start a new nofs context.
+	 */
+> +	memalloc_nofs_restore(handle->saved_alloc_context);
+>  	ret = start_this_handle(journal, handle, gfp_mask);
+>  	return ret;
+>  }
+> -- 
+> 2.13.0.303.g4ebf302169-goog
+> 
 
-diff --git a/man2/ioctl_getfsmap.2 b/man2/ioctl_getfsmap.2
-new file mode 100644
-index 0000000..b451950
---- /dev/null
-+++ b/man2/ioctl_getfsmap.2
-@@ -0,0 +1,375 @@
-+.\" Copyright (c) 2017, Oracle.  All rights reserved.
-+.\"
-+.\" %%%LICENSE_START(GPLv2+_DOC_FULL)
-+.\" This is free documentation; you can redistribute it and/or
-+.\" modify it under the terms of the GNU General Public License as
-+.\" published by the Free Software Foundation; either version 2 of
-+.\" the License, or (at your option) any later version.
-+.\"
-+.\" The GNU General Public License's references to "object code"
-+.\" and "executables" are to be interpreted as the output of any
-+.\" document formatting or typesetting system, including
-+.\" intermediate and printed output.
-+.\"
-+.\" This manual is distributed in the hope that it will be useful,
-+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
-+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+.\" GNU General Public License for more details.
-+.\"
-+.\" You should have received a copy of the GNU General Public
-+.\" License along with this manual; if not, see
-+.\" <http://www.gnu.org/licenses/>.
-+.\" %%%LICENSE_END
-+.TH IOCTL-GETFSMAP 2 2017-02-10 "Linux" "Linux Programmer's Manual"
-+.SH NAME
-+ioctl_getfsmap \- retrieve the physical layout of the filesystem
-+.SH SYNOPSIS
-+.br
-+.B #include <sys/ioctl.h>
-+.br
-+.B #include <linux/fs.h>
-+.br
-+.B #include <linux/fsmap.h>
-+.sp
-+.BI "int ioctl(int " fd ", FS_IOC_GETFSMAP, struct fsmap_head * " arg );
-+.SH DESCRIPTION
-+This
-+.BR ioctl (2)
-+retrieves physical extent mappings for a filesystem.
-+This information can be used to discover which files are mapped to a physical
-+block, examine free space, or find known bad blocks, among other things.
-+
-+The sole argument to this ioctl should be a pointer to a single
-+.BR "struct fsmap_head" ":"
-+.in +4n
-+.nf
-+
-+struct fsmap {
-+	__u32		fmr_device;	/* device id */
-+	__u32		fmr_flags;	/* mapping flags */
-+	__u64		fmr_physical;	/* device offset of segment */
-+	__u64		fmr_owner;	/* owner id */
-+	__u64		fmr_offset;	/* file offset of segment */
-+	__u64		fmr_length;	/* length of segment */
-+	__u64		fmr_reserved[3];	/* must be zero */
-+};
-+
-+struct fsmap_head {
-+	__u32		fmh_iflags;	/* control flags */
-+	__u32		fmh_oflags;	/* output flags */
-+	__u32		fmh_count;	/* # of entries in array incl. input */
-+	__u32		fmh_entries;	/* # of entries filled in (output). */
-+	__u64		fmh_reserved[6];	/* must be zero */
-+
-+	struct fsmap	fmh_keys[2];	/* low and high keys for the mapping search */
-+	struct fsmap	fmh_recs[];	/* returned records */
-+};
-+
-+.fi
-+.in
-+The two
-+.I fmh_keys
-+array elements specify the lowest and highest reverse-mapping
-+keys, respectively, for which userspace would like physical mapping
-+information.
-+A reverse mapping key consists of the tuple (device, block, owner, offset).
-+The owner and offset fields are part of the key because some filesystems
-+support sharing physical blocks between multiple files and
-+therefore may return multiple mappings for a given physical block.
-+.PP
-+Filesystem mappings are copied into the
-+.I fmh_recs
-+array, which immediately follows the header data.
-+.SS Fields of struct fsmap_head
-+.PP
-+The
-+.I fmh_iflags
-+field is a bitmask passed to the kernel to alter the output.
-+There are no flags defined, so callers must set this value to zero.
-+
-+.PP
-+The
-+.I fmh_oflags
-+field is a bitmask of flags set by the kernel concerning the returned mappings.
-+If
-+.B FMH_OF_DEV_T
-+is set, then the
-+.I fmr_device
-+field represents a
-+.B dev_t
-+structure containing the major and minor numbers of the block device.
-+
-+.PP
-+The
-+.I fmh_count
-+field contains the number of elements in the array being passed to the
-+kernel.
-+If this value is 0,
-+.I fmh_entries
-+will be set to the number of records that would have been returned had
-+the array been large enough;
-+no mapping information will be returned.
-+
-+.PP
-+The
-+.I fmh_entries
-+field contains the number of elements in the
-+.I fmh_recs
-+array that contain useful information.
-+
-+.PP
-+The
-+.I fmh_reserved
-+fields must be set to zero.
-+
-+.SS Keys
-+.PP
-+The two key records in
-+.B fsmap_head.fmh_keys
-+specify the lowest and highest extent records in the keyspace that the caller
-+wants returned.
-+A filesystem that can share blocks between files likely requires the tuple
-+.RI "(" "device" ", " "physical" ", " "owner" ", " "offset" ", " "flags" ")"
-+to uniquely index any filesystem mapping record.
-+Classic non-sharing filesystems might be able to identify any record with only
-+.RI "(" "device" ", " "physical" ", " "flags" ")."
-+For example, if the low key is set to (8:0, 36864, 0, 0, 0), the filesystem will
-+only return records for extents starting at or above 36KiB on disk.
-+If the high key is set to (8:0, 1048576, 0, 0, 0), only records below 1MiB will
-+be returned.
-+The format of
-+.B fmr_device
-+in the keys must match the format of the same field in the output records,
-+as defined below.
-+By convention, the field
-+.B fsmap_head.fmh_keys[0]
-+must contain the low key and
-+.B fsmap_head.fmh_keys[1]
-+must contain the high key for the request.
-+.PP
-+For convenience, if
-+.B fmr_length
-+is set in the low key, it will be added to
-+.IR fmr_block " or " fmr_offset
-+as appropriate.
-+The caller can take advantage of this subtlety to set up subsequent calls
-+by copying
-+.B fsmap_head.fmh_recs[fsmap_head.fmh_entries - 1]
-+into the low key.
-+The function
-+.B fsmap_advance
-+provides this functionality.
-+
-+.SS Fields of struct fsmap
-+.PP
-+The
-+.I fmr_device
-+field uniquely identifies the underlying storage device.
-+If the
-+.B FMH_OF_DEV_T
-+flag is set in the header's
-+.I fmh_oflags
-+field, this field contains a
-+.B dev_t
-+from which major and minor numbers can be extracted.
-+If the flag is not set, this field contains a value that must be unique
-+for each unique storage device.
-+
-+.PP
-+The
-+.I fmr_physical
-+field contains the disk address of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_owner
-+field contains the owner of the extent.
-+This is an inode number unless
-+.B FMR_OF_SPECIAL_OWNER
-+is set in the
-+.I fmr_flags
-+field, in which case the value is determined by the filesystem.
-+See the section below about owner values for more details.
-+
-+.PP
-+The
-+.I fmr_offset
-+field contains the logical address in the mapping record in bytes.
-+This field has no meaning if the
-+.BR FMR_OF_SPECIAL_OWNER " or " FMR_OF_EXTENT_MAP
-+flags are set in
-+.IR fmr_flags "."
-+
-+.PP
-+The
-+.I fmr_length
-+field contains the length of the extent in bytes.
-+
-+.PP
-+The
-+.I fmr_flags
-+field is a bitmask of extent state flags.
-+The bits are:
-+.RS 0.4i
-+.TP
-+.B FMR_OF_PREALLOC
-+The extent is allocated but not yet written.
-+.TP
-+.B FMR_OF_ATTR_FORK
-+This extent contains extended attribute data.
-+.TP
-+.B FMR_OF_EXTENT_MAP
-+This extent contains extent map information for the owner.
-+.TP
-+.B FMR_OF_SHARED
-+Parts of this extent may be shared.
-+.TP
-+.B FMR_OF_SPECIAL_OWNER
-+The
-+.I fmr_owner
-+field contains a special value instead of an inode number.
-+.TP
-+.B FMR_OF_LAST
-+This is the last record in the filesystem.
-+.RE
-+
-+.PP
-+The
-+.I fmr_reserved
-+field will be set to zero.
-+
-+.SS Owner Values
-+Generally, the value of the
-+.I fmr_owner
-+field for non-metadata extents should be an inode number.
-+However, filesystems are under no obligation to report inode numbers;
-+they may instead report
-+.B FMR_OWN_UNKNOWN
-+if the inode number cannot easily be retrieved, if the caller lacks
-+sufficient privilege, if the filesystem does not support stable
-+inode numbers, or for any other reason.
-+If a filesystem wishes to condition the reporting of inode numbers based
-+on process capabilities, it is strongly urged that the
-+.B CAP_SYS_ADMIN
-+capability be used for this purpose.
-+.TP
-+The following special owner values are generic to all filesystems:
-+.RS 0.4i
-+.TP
-+.B FMR_OWN_FREE
-+Free space.
-+.TP
-+.B FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known or not easily retrieved.
-+.TP
-+.B FMR_OWN_METADATA
-+This extent is filesystem metadata.
-+.RE
-+
-+XFS can return the following special owner values:
-+.RS 0.4i
-+.TP
-+.B XFS_FMR_OWN_FREE
-+Free space.
-+.TP
-+.B XFS_FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known or not easily retrieved.
-+.TP
-+.B XFS_FMR_OWN_FS
-+Static filesystem metadata which exists at a fixed address.
-+These are the AG superblock, the AGF, the AGFL, and the AGI headers.
-+.TP
-+.B XFS_FMR_OWN_LOG
-+The filesystem journal.
-+.TP
-+.B XFS_FMR_OWN_AG
-+Allocation group metadata, such as the free space btrees and the
-+reverse mapping btrees.
-+.TP
-+.B XFS_FMR_OWN_INOBT
-+The inode and free inode btrees.
-+.TP
-+.B XFS_FMR_OWN_INODES
-+Inode records.
-+.TP
-+.B XFS_FMR_OWN_REFC
-+Reference count information.
-+.TP
-+.B XFS_FMR_OWN_COW
-+This extent is being used to stage a copy-on-write.
-+.TP
-+.B XFS_FMR_OWN_DEFECTIVE:
-+This extent has been marked defective either by the filesystem or the
-+underlying device.
-+.RE
-+
-+ext4 can return the following special owner values:
-+.RS 0.4i
-+.TP
-+.B EXT4_FMR_OWN_FREE
-+Free space.
-+.TP
-+.B EXT4_FMR_OWN_UNKNOWN
-+This extent is in use but its owner is not known or not easily retrieved.
-+.TP
-+.B EXT4_FMR_OWN_FS
-+Static filesystem metadata which exists at a fixed address.
-+This is the superblock and the group descriptors.
-+.TP
-+.B EXT4_FMR_OWN_LOG
-+The filesystem journal.
-+.TP
-+.B EXT4_FMR_OWN_INODES
-+Inode records.
-+.TP
-+.B EXT4_FMR_OWN_BLKBM
-+Block bitmap.
-+.TP
-+.B EXT4_FMR_OWN_INOBM
-+Inode bitmap.
-+.RE
-+
-+.SH RETURN VALUE
-+On error, \-1 is returned, and
-+.I errno
-+is set to indicate the error.
-+.PP
-+.SH ERRORS
-+Error codes can be one of, but are not limited to, the following:
-+.TP
-+.B EINVAL
-+The array is not long enough, the keys do not point to a valid part of
-+the filesystem, the low key points to a higher point in the filesystem's
-+physical storage address space than the high key, or a non-zero value
-+was passed in one of the fields that must be zero.
-+.TP
-+.B EFAULT
-+The pointer passed in was not mapped to a valid memory address.
-+.TP
-+.B EBADF
-+.IR fd
-+is not open for reading.
-+.TP
-+.B EOPNOTSUPP
-+The filesystem does not support this command.
-+.TP
-+.B EUCLEAN
-+The filesystem metadata is corrupt and needs repair.
-+.TP
-+.B EBADMSG
-+The filesystem has detected a checksum error in the metadata.
-+.TP
-+.B ENOMEM
-+Insufficient memory to process the request.
-+
-+.SH EXAMPLE
-+.TP
-+Please see io/fsmap.c in the xfsprogs distribution for a sample program.
-+
-+.SH CONFORMING TO
-+This API is Linux-specific.
-+Not all filesystems support it.
-+.fi
-+.in
-+.SH SEE ALSO
-+.BR ioctl (2)
+-- 
+Michal Hocko
+SUSE Labs
