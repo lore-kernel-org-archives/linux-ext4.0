@@ -1,90 +1,101 @@
-From: Liu Bo <bo.li.liu@oracle.com>
-Subject: Re: [PATCH v4 05/27] btrfs:
- btrfs_wait_tree_block_writeback can be void return
-Date: Thu, 18 May 2017 21:07:31 -0700
-Message-ID: <20170519040731.GA30704@lim.localdomain>
-References: <20170509154930.29524-1-jlayton@redhat.com>
-	<20170509154930.29524-6-jlayton@redhat.com>
-Reply-To: bo.li.liu@oracle.com
+From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Subject: [PATCH] ext4: handle the rest of ext4_mb_load_buddy() ENOMEM errors
+Date: Fri, 19 May 2017 10:09:54 +0300
+Message-ID: <149517779388.33359.16474190951431954772.stgit@buzz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, hch@infradead.org,
-	dhowells@redhat.com, linux-mm@kvack.org, hubcap@omnibond.com,
-	linux-cifs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-	corbet@lwn.net, cluster-devel@redhat.com,
-	v9fs-developer@lists.sourceforge.net,
-	ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-	josef@toxicpanda.com, linux-block@vger.kernel.org,
-	rpeterso@redhat.com, viro@zeniv.linux.org.uk, axboe@kernel.dk,
-	linux-nfs@vger.kernel.org, tytso@mit.edu, clm@fb.com,
-	mawilcox@microsoft.com, linux-kernel@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-xfs@vger.kernel.org, jack@suse.com,
-	linux-fsdevel@vger.kernel.org, akpm@linux-foundation.org,
-	linux-btrfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <20170509154930.29524-6-jlayton@redhat.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: linux-mm@kvack.org
+To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+ Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, May 09, 2017 at 11:49:08AM -0400, Jeff Layton wrote:
-> Nothing checks its return value.
+I've got another report about breaking ext4 by ENOMEM error returned from
+ext4_mb_load_buddy() caused by memory shortage in memory cgroup.
+This time inside ext4_discard_preallocations().
 
-Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+This patch replaces ext4_error() with ext4_warning() where errors returned
+from ext4_mb_load_buddy() are not fatal and handled by caller:
+* ext4_mb_discard_group_preallocations() - called before generating ENOSPC,
+  we'll try to discard other group or return ENOSPC into user-space.
+* ext4_trim_all_free() - just stop trimming and return ENOMEM from ioctl.
 
--liubo
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/btrfs/disk-io.c | 6 +++---
->  fs/btrfs/disk-io.h | 2 +-
->  2 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
-> index eb1ee7b6f532..8c479bd5534a 100644
-> --- a/fs/btrfs/disk-io.c
-> +++ b/fs/btrfs/disk-io.c
-> @@ -1222,10 +1222,10 @@ int btrfs_write_tree_block(struct extent_buffer *buf)
->  					buf->start + buf->len - 1);
->  }
->  
-> -int btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
-> +void btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
->  {
-> -	return filemap_fdatawait_range(buf->pages[0]->mapping,
-> -				       buf->start, buf->start + buf->len - 1);
-> +	filemap_fdatawait_range(buf->pages[0]->mapping,
-> +			        buf->start, buf->start + buf->len - 1);
->  }
->  
->  struct extent_buffer *read_tree_block(struct btrfs_fs_info *fs_info, u64 bytenr,
-> diff --git a/fs/btrfs/disk-io.h b/fs/btrfs/disk-io.h
-> index 2e0ec29bfd69..9cc87835abb5 100644
-> --- a/fs/btrfs/disk-io.h
-> +++ b/fs/btrfs/disk-io.h
-> @@ -127,7 +127,7 @@ int btrfs_wq_submit_bio(struct btrfs_fs_info *fs_info, struct inode *inode,
->  			extent_submit_bio_hook_t *submit_bio_done);
->  unsigned long btrfs_async_submit_limit(struct btrfs_fs_info *info);
->  int btrfs_write_tree_block(struct extent_buffer *buf);
-> -int btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
-> +void btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
->  int btrfs_init_log_root_tree(struct btrfs_trans_handle *trans,
->  			     struct btrfs_fs_info *fs_info);
->  int btrfs_add_log_tree(struct btrfs_trans_handle *trans,
-> -- 
-> 2.9.3
-> 
+Some callers cannot handle errors, thus __GFP_NOFAIL is used for them:
+* ext4_discard_preallocations()
+* ext4_mb_discard_lg_preallocations()
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+The only unclear case is ext4_group_add_blocks(), probably ext4_std_error()
+should handle ENOMEM as warning and don't break filesystem.
+
+Fixes: adb7ef600cc9 ("ext4: use __GFP_NOFAIL in ext4_free_blocks()")
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+---
+ fs/ext4/mballoc.c |   23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5083bce20ac4..b7928cddd539 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3887,7 +3887,8 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 
+ 	err = ext4_mb_load_buddy(sb, group, &e4b);
+ 	if (err) {
+-		ext4_error(sb, "Error loading buddy information for %u", group);
++		ext4_warning(sb, "Error %d loading buddy information for %u",
++			     err, group);
+ 		put_bh(bitmap_bh);
+ 		return 0;
+ 	}
+@@ -4044,10 +4045,11 @@ void ext4_discard_preallocations(struct inode *inode)
+ 		BUG_ON(pa->pa_type != MB_INODE_PA);
+ 		group = ext4_get_group_number(sb, pa->pa_pstart);
+ 
+-		err = ext4_mb_load_buddy(sb, group, &e4b);
++		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
++					     GFP_NOFS|__GFP_NOFAIL);
+ 		if (err) {
+-			ext4_error(sb, "Error loading buddy information for %u",
+-					group);
++			ext4_error(sb, "Error %d loading buddy information for %u",
++				   err, group);
+ 			continue;
+ 		}
+ 
+@@ -4303,11 +4305,14 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 	spin_unlock(&lg->lg_prealloc_lock);
+ 
+ 	list_for_each_entry_safe(pa, tmp, &discard_list, u.pa_tmp_list) {
++		int err;
+ 
+ 		group = ext4_get_group_number(sb, pa->pa_pstart);
+-		if (ext4_mb_load_buddy(sb, group, &e4b)) {
+-			ext4_error(sb, "Error loading buddy information for %u",
+-					group);
++		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
++					     GFP_NOFS|__GFP_NOFAIL);
++		if (err) {
++			ext4_error(sb, "Error %d loading buddy information for %u",
++				   err, group);
+ 			continue;
+ 		}
+ 		ext4_lock_group(sb, group);
+@@ -5127,8 +5132,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+ 
+ 	ret = ext4_mb_load_buddy(sb, group, &e4b);
+ 	if (ret) {
+-		ext4_error(sb, "Error in loading buddy "
+-				"information for %u", group);
++		ext4_warning(sb, "Error %d loading buddy information for %u",
++			     ret, group);
+ 		return ret;
+ 	}
+ 	bitmap = e4b.bd_bitmap;
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
