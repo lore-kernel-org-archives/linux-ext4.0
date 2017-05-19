@@ -1,37 +1,90 @@
-From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH] ext4: keep existing extra fields when inode expands
-Date: Fri, 19 May 2017 10:13:39 +0300
-Message-ID: <149517801870.34533.16399602916806300461.stgit@buzz>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
+Date: Fri, 19 May 2017 11:29:04 +0300
+Message-ID: <CAOQ4uxhbck8g0o1mSrY7wGvvYtqGpiJjWG8vHFN8Pc5pWc0X+A@mail.gmail.com>
+References: <20170519002032.GA21202@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170519002032.GA21202@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_expand_extra_isize() should clear only space between old and new size.
+On Fri, May 19, 2017 at 3:20 AM, Darrick J. Wong
+<darrick.wong@oracle.com> wrote:
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
----
- fs/ext4/inode.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+>
+> Therefore, add a reboot hook to freeze all filesystems (which in general
+> will induce ext4/xfs/btrfs to checkpoint the log) just prior to reboot.
+> This is an unfortunate and insufficient workaround for multiple layers
+> of inadequate external software, but at least it will reduce boot time
+> surprises for the "OS updater failed to disengage the filesystem before
+> rebooting" case.
+>
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5834c4d76be8..7204e1a2801a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5637,8 +5637,9 @@ static int ext4_expand_extra_isize(struct inode *inode,
- 	/* No extended attributes present */
- 	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR) ||
- 	    header->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC)) {
--		memset((void *)raw_inode + EXT4_GOOD_OLD_INODE_SIZE, 0,
--			new_extra_isize);
-+		memset((void *)raw_inode + EXT4_GOOD_OLD_INODE_SIZE +
-+		       EXT4_I(inode)->i_extra_isize, 0,
-+		       new_extra_isize - EXT4_I(inode)->i_extra_isize);
- 		EXT4_I(inode)->i_extra_isize = new_extra_isize;
- 		return 0;
- 	}
+Darrick,
+
+Did you consider how many support calls this will generate for a stuck
+reboot command?
+
+I can think of at least one situation where this is guarantied to hang.
+See this patch for the details:
+https://patchwork.kernel.org/patch/6266791/
+
+The referenced patch was applied to Android kernel to prevent
+system crash on emergency remount-ro via sysrq trigger.
+
+I don't know if it was even seriously considered by Al, because
+I got no comment, but I do realize that the change of behavior
+could generate support calls, so it's scary to make that change
+in mainline.
+
+I know it's not going to work around broken system software update,
+but how about providing sysrq trigger for emergency_freeze_all()?
+like emergency_remount(), but stronger.
+And this time, iterate supers in reverse order like I suggested to
+avoid loop mounted fs freeze dependencies.
+
+There is one little tiny problem though. Eric used up the last sysrq trigger
+key for emergency_thaw_all(). Do you see the irony in that? ;)
+
+I am wondering how many people know about or use the emergency
+thaw trigger, but one dodgy option is to use the 't' trigger to toggle
+thaw_all/freeze_all.
+
+Another perhaps slightly less dodgy option is to trigger freeze_all
+on a sequence of sysrq "emergency" triggers where it makes sense
+and is least likely to change any existing behavior, for example:
+
+echo u > /proc/sysrq-trigger
+
+# Remember if do_emergency_remount() completed with failures
+
+echo u > /proc/sysrq-trigger
+
+# Escalate to emergency freeze
+
+OR
+
+echo u > /proc/sysrq-trigger
+
+# Remember if do_emergency_remount() completed with failures
+
+echo s > /proc/sysrq-trigger
+
+# Sync *after* remount r/o? That must mean emergency freeze
+
+I bet that system software that is already aware of and is issuing
+emergency remount r/o trigger prior to reboot, won't see any harm
+in adding an extra u/s trigger for good luck.
+
+Do you know if the gnarly system software in question is issuing
+emergency remount r/o prior to reboot?
+
+Amir.
