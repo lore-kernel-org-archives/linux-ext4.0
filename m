@@ -1,46 +1,33 @@
-From: Colin Walters <walters@verbum.org>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Fri, 19 May 2017 12:48:41 -0400
-Message-ID: <1495212521.1935005.982278280.1453433F@webmail.messagingengine.com>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519152734.qd4lf32e7wst4jdh@thunk.org>
- <1495211669.1931975.982263184.0F641F32@webmail.messagingengine.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH e2fsprogs] include sys/sysmacros.h as needed
+Date: Fri, 19 May 2017 14:08:22 -0400
+Message-ID: <20170519180822.d2bsla3pdmlitljo@thunk.org>
+References: <1459212168-25407-1-git-send-email-vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4" <linux-ext4@vger.kernel.org>
-To: Colin Walters <walters@verbum.org>, "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:38331 "EHLO
-        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755157AbdESQsm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 May 2017 12:48:42 -0400
-In-Reply-To: <1495211669.1931975.982263184.0F641F32@webmail.messagingengine.com>
+Received: from imap.thunk.org ([74.207.234.97]:43638 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753568AbdESSI1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 May 2017 14:08:27 -0400
+Content-Disposition: inline
+In-Reply-To: <1459212168-25407-1-git-send-email-vapier@gentoo.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 19, 2017, at 12:34 PM, Colin Walters wrote:
->
-> So as far as I can see, a userspace API to ensure the journal is
-> flushed on a mounted filesystem is going to be necessary for
-> the general case.  I don't have a strong opinion on whether or not
-> that's `syncfs()` - if it's e.g. a `XFS_IOC_FREEZE` `_THAW` pair
-> that seems OK to me too.
+On Mon, Mar 28, 2016 at 08:42:48PM -0400, Mike Frysinger wrote:
+> The minor/major/makedev macros are not entirely standard.  glibc has had
+> the definitions in sys/sysmacros.h since the start, and wants to move away
+> from always defining them implicitly via sys/types.h (as this pollutes the
+> namespace in violation of POSIX).  Other C libraries have already dropped
+> them.  Since the configure script already checks for this header, use that
+> to pull in the header in files that use these macros.
+> 
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 
-Or (thinking about this more) maybe we indeed could implement that today by pivoting back to
-the initramfs, and using umount()+mount() as our "syncfs() + journal flush" implementation.
+This fell through the cracks; my apologies.  But I've just applied it
+to the e2fsprogs maint and master branches.
 
-Basically when we have to update /boot, we unmount, then remount again and add
-new kernel+initramfs, unmount, remount and mv(/boot/grub2.conf.new,/boot/grub2.conf),
-then finally unmount again.
-
-In current design this would require keeping the initramfs resident in memory
-just for this purpose, or to re-synthesize it on shutdown.
-
-Not impossible, but it'd sure be simpler if say syncfs() had a flags argument
-and there were a special "flush the journal" argument for this.
+							- Ted
