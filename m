@@ -1,101 +1,37 @@
 From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Subject: [PATCH] ext4: handle the rest of ext4_mb_load_buddy() ENOMEM errors
-Date: Fri, 19 May 2017 10:09:54 +0300
-Message-ID: <149517779388.33359.16474190951431954772.stgit@buzz>
+Subject: [PATCH] ext4: keep existing extra fields when inode expands
+Date: Fri, 19 May 2017 10:13:39 +0300
+Message-ID: <149517801870.34533.16399602916806300461.stgit@buzz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
- Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Sender: owner-linux-mm@kvack.org
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I've got another report about breaking ext4 by ENOMEM error returned from
-ext4_mb_load_buddy() caused by memory shortage in memory cgroup.
-This time inside ext4_discard_preallocations().
+ext4_expand_extra_isize() should clear only space between old and new size.
 
-This patch replaces ext4_error() with ext4_warning() where errors returned
-from ext4_mb_load_buddy() are not fatal and handled by caller:
-* ext4_mb_discard_group_preallocations() - called before generating ENOSPC,
-  we'll try to discard other group or return ENOSPC into user-space.
-* ext4_trim_all_free() - just stop trimming and return ENOMEM from ioctl.
-
-Some callers cannot handle errors, thus __GFP_NOFAIL is used for them:
-* ext4_discard_preallocations()
-* ext4_mb_discard_lg_preallocations()
-
-The only unclear case is ext4_group_add_blocks(), probably ext4_std_error()
-should handle ENOMEM as warning and don't break filesystem.
-
-Fixes: adb7ef600cc9 ("ext4: use __GFP_NOFAIL in ext4_free_blocks()")
 Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
 ---
- fs/ext4/mballoc.c |   23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5083bce20ac4..b7928cddd539 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3887,7 +3887,8 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 
- 	err = ext4_mb_load_buddy(sb, group, &e4b);
- 	if (err) {
--		ext4_error(sb, "Error loading buddy information for %u", group);
-+		ext4_warning(sb, "Error %d loading buddy information for %u",
-+			     err, group);
- 		put_bh(bitmap_bh);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 5834c4d76be8..7204e1a2801a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5637,8 +5637,9 @@ static int ext4_expand_extra_isize(struct inode *inode,
+ 	/* No extended attributes present */
+ 	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR) ||
+ 	    header->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC)) {
+-		memset((void *)raw_inode + EXT4_GOOD_OLD_INODE_SIZE, 0,
+-			new_extra_isize);
++		memset((void *)raw_inode + EXT4_GOOD_OLD_INODE_SIZE +
++		       EXT4_I(inode)->i_extra_isize, 0,
++		       new_extra_isize - EXT4_I(inode)->i_extra_isize);
+ 		EXT4_I(inode)->i_extra_isize = new_extra_isize;
  		return 0;
  	}
-@@ -4044,10 +4045,11 @@ void ext4_discard_preallocations(struct inode *inode)
- 		BUG_ON(pa->pa_type != MB_INODE_PA);
- 		group = ext4_get_group_number(sb, pa->pa_pstart);
- 
--		err = ext4_mb_load_buddy(sb, group, &e4b);
-+		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
-+					     GFP_NOFS|__GFP_NOFAIL);
- 		if (err) {
--			ext4_error(sb, "Error loading buddy information for %u",
--					group);
-+			ext4_error(sb, "Error %d loading buddy information for %u",
-+				   err, group);
- 			continue;
- 		}
- 
-@@ -4303,11 +4305,14 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 	spin_unlock(&lg->lg_prealloc_lock);
- 
- 	list_for_each_entry_safe(pa, tmp, &discard_list, u.pa_tmp_list) {
-+		int err;
- 
- 		group = ext4_get_group_number(sb, pa->pa_pstart);
--		if (ext4_mb_load_buddy(sb, group, &e4b)) {
--			ext4_error(sb, "Error loading buddy information for %u",
--					group);
-+		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
-+					     GFP_NOFS|__GFP_NOFAIL);
-+		if (err) {
-+			ext4_error(sb, "Error %d loading buddy information for %u",
-+				   err, group);
- 			continue;
- 		}
- 		ext4_lock_group(sb, group);
-@@ -5127,8 +5132,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 
- 	ret = ext4_mb_load_buddy(sb, group, &e4b);
- 	if (ret) {
--		ext4_error(sb, "Error in loading buddy "
--				"information for %u", group);
-+		ext4_warning(sb, "Error %d loading buddy information for %u",
-+			     ret, group);
- 		return ret;
- 	}
- 	bitmap = e4b.bd_bitmap;
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
