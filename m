@@ -1,47 +1,110 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Fri, 19 May 2017 14:20:57 -0400
-Message-ID: <20170519182057.qyx3sevm4vatff6a@thunk.org>
+Date: Fri, 19 May 2017 11:58:47 -0700
+Message-ID: <20170519185847.GI4519@birch.djwong.org>
 References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519152734.qd4lf32e7wst4jdh@thunk.org>
- <1495211669.1931975.982263184.0F641F32@webmail.messagingengine.com>
+ <CAOQ4uxhbck8g0o1mSrY7wGvvYtqGpiJjWG8vHFN8Pc5pWc0X+A@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        xfs <linux-xfs@vger.kernel.org>,
+Cc: xfs <linux-xfs@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Colin Walters <walters@verbum.org>
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>
+To: Amir Goldstein <amir73il@gmail.com>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1495211669.1931975.982263184.0F641F32@webmail.messagingengine.com>
+In-Reply-To: <CAOQ4uxhbck8g0o1mSrY7wGvvYtqGpiJjWG8vHFN8Pc5pWc0X+A@mail.gmail.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 19, 2017 at 12:34:29PM -0400, Colin Walters wrote:
-> > One of the things that came up when Darrick and I discussed this on
-> > the weekly ext4 developer's conference call was our mutual wonderment
-> > that none of the userspace tools implemented a reboot by created a
-> > tmpfs chroot, pivoting into the chroot, and then unmounting all of the
-> > remaining file systems.
+On Fri, May 19, 2017 at 11:29:04AM +0300, Amir Goldstein wrote:
+> On Fri, May 19, 2017 at 3:20 AM, Darrick J. Wong
+> <darrick.wong@oracle.com> wrote:
 > 
-> On general purpose systems we have a tmpfs chroot already: the initramfs.
+> >
+> > Therefore, add a reboot hook to freeze all filesystems (which in general
+> > will induce ext4/xfs/btrfs to checkpoint the log) just prior to reboot.
+> > This is an unfortunate and insufficient workaround for multiple layers
+> > of inadequate external software, but at least it will reduce boot time
+> > surprises for the "OS updater failed to disengage the filesystem before
+> > rebooting" case.
+> >
+> 
+> Darrick,
+> 
+> Did you consider how many support calls this will generate for a stuck
+> reboot command?
+> 
+> I can think of at least one situation where this is guarantied to hang.
+> See this patch for the details:
+> https://patchwork.kernel.org/patch/6266791/
+> 
+> The referenced patch was applied to Android kernel to prevent
+> system crash on emergency remount-ro via sysrq trigger.
 
-Aren't we discarding the initramfs after we've pivoted away from it,
-to save on memory?  Keeping the tmpfs chroot around forever would be a
-waste of memory, and in some cases, especially if you are using a
-distribution kernel, the initramfs chroot can be rather large.
+Hmmm, I agree that we ought to avoid hanging on loopmounted filesystems,
+and that iterating superblocks backwards is one (rough) way to do that.
 
-Creating an tmpfs chroot that was only good enough to manage the
-shutdown would be pretty easy, though; the number of files you would
-need would be quite very few in number.
+> I don't know if it was even seriously considered by Al, because
+> I got no comment, but I do realize that the change of behavior
+> could generate support calls, so it's scary to make that change
+> in mainline.
+> 
+> I know it's not going to work around broken system software update,
+> but how about providing sysrq trigger for emergency_freeze_all()?
+> like emergency_remount(), but stronger.
+> And this time, iterate supers in reverse order like I suggested to
+> avoid loop mounted fs freeze dependencies.
+> 
+> There is one little tiny problem though. Eric used up the last sysrq trigger
+> key for emergency_thaw_all(). Do you see the irony in that? ;)
 
-> That narrows the problem down to keeping `/boot` consistent at
-> shutdown time.  AIUI, a problem here is that XFS doesn't flush the
-> journal on `syncfs`, only on unmount?  And from what I can tell,
-> even the `XFS_IOC_FREEZE` ioctl won't do that either.
+LOL.
 
-I believe the log *is* checkpointed on an XFS_IOC_FREEZE.
+> I am wondering how many people know about or use the emergency
+> thaw trigger, but one dodgy option is to use the 't' trigger to toggle
+> thaw_all/freeze_all.
+> 
+> Another perhaps slightly less dodgy option is to trigger freeze_all
+> on a sequence of sysrq "emergency" triggers where it makes sense
+> and is least likely to change any existing behavior, for example:
+> 
+> echo u > /proc/sysrq-trigger
+> 
+> # Remember if do_emergency_remount() completed with failures
+> 
+> echo u > /proc/sysrq-trigger
+> 
+> # Escalate to emergency freeze
 
-  	      	       		       	  - Ted
+Or maybe it's simpler just to have a counter -- three sysrq-u in a row
+and we freeze all?
+
+> OR
+> 
+> echo u > /proc/sysrq-trigger
+> 
+> # Remember if do_emergency_remount() completed with failures
+> 
+> echo s > /proc/sysrq-trigger
+> 
+> # Sync *after* remount r/o? That must mean emergency freeze
+> 
+> I bet that system software that is already aware of and is issuing
+> emergency remount r/o trigger prior to reboot, won't see any harm
+> in adding an extra u/s trigger for good luck.
+> 
+> Do you know if the gnarly system software in question is issuing
+> emergency remount r/o prior to reboot?
+
+It does not.
+
+--D
+
+> 
+> Amir.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
