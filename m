@@ -1,63 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: Fix SEEK_HOLE
-Date: Sat, 20 May 2017 00:14:00 -0400
-Message-ID: <20170520041400.xrcels53pwk5py33@thunk.org>
+Subject: Re: [PATCH 2/2] ext4: Fix off-by-in in loop termination in
+ ext4_find_unwritten_pgoff()
+Date: Sat, 20 May 2017 00:15:34 -0400
+Message-ID: <20170520041534.25req27q6epii3rr@thunk.org>
 References: <20170518104942.14588-1-jack@suse.cz>
- <20170518104942.14588-2-jack@suse.cz>
+ <20170518104942.14588-3-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org,
-        Zheng Liu <wenqing.lz@taobao.com>
+Cc: linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45074 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750940AbdETEPi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 20 May 2017 00:15:38 -0400
 Content-Disposition: inline
-In-Reply-To: <20170518104942.14588-2-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170518104942.14588-3-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 18, 2017 at 12:49:41PM +0200, Jan Kara wrote:
-> Currently, SEEK_HOLE implementation in ext4 may both return that there's
-> a hole at some offset although that offset already has data and skip
-> some holes during a search for the next hole. The first problem is
-> demostrated by:
+On Thu, May 18, 2017 at 12:49:42PM +0200, Jan Kara wrote:
+> There is an off-by-one error in loop termination conditions in
+> ext4_find_unwritten_pgoff() since 'end' may index a page beyond end of
+> desired range if 'endoff' is page aligned. It doesn't have any visible
+> effects but still it is good to fix it.
 > 
-> xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
-> wrote 57344/57344 bytes at offset 0
-> 56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
-> Whence	Result
-> HOLE	0
-> 
-> Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
-> a hole although we have written data there. The second problem can be
-> demonstrated by:
-> 
-> xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
->        -c "seek -h 0" file
-> 
-> wrote 57344/57344 bytes at offset 0
-> 56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
-> wrote 8192/8192 bytes at offset 131072
-> 8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
-> Whence	Result
-> HOLE	139264
-> 
-> Where we can see that hole at offsets 56k..128k has been ignored by the
-> SEEK_HOLE call.
-> 
-> The underlying problem is in the ext4_find_unwritten_pgoff() which is
-> just buggy. In some cases it fails to update returned offset when it
-> finds a hole (when no pages are found or when the first found page has
-> higher index than expected), in some cases conditions for detecting hole
-> are just missing (we fail to detect a situation where indices of
-> returned pages are not contiguous).
-> 
-> Fix ext4_find_unwritten_pgoff() to properly detect non-contiguous page
-> indices and also handle all cases where we got less pages then expected
-> in one place and handle it properly there.
-> 
-> CC: stable@vger.kernel.org
-> Fixes: c8c0df241cc2719b1262e627f999638411934f60
-> CC: Zheng Liu <wenqing.lz@taobao.com>
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
