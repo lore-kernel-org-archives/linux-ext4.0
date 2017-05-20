@@ -1,70 +1,38 @@
-From: <board@gowoodlawn.com>
-Subject: (unknown)
-Date: Sat, 20 May 2017 01:09:33 -0000
-Message-ID: <149524257367.1557.3076063330148164501@wateen.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: Clear lockdep subtype for quota files on quota
+ off
+Date: Fri, 19 May 2017 22:39:46 -0400
+Message-ID: <20170520023946.coy7u5bfsbae35dh@thunk.org>
+References: <20170509122247.26345-1-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: application/zip; name="17734612411.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andreas Dilger <adilger@dilger.ca>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from WimaxUser3644-144.wateen.net ([110.36.44.144]:59920 "HELO
-        wateen.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1753701AbdETBJx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 May 2017 21:09:53 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from imap.thunk.org ([74.207.234.97]:44948 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755213AbdETCkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 May 2017 22:40:46 -0400
+Content-Disposition: inline
+In-Reply-To: <20170509122247.26345-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-8AoAAAAA
+On Tue, May 09, 2017 at 02:22:47PM +0200, Jan Kara wrote:
+> Quota files have special ranking of i_data_sem lock. We inform lockdep
+> about it when turning on quotas however when turning quotas off, we
+> don't clear the lockdep subclass from i_data_sem lock and thus when the
+> inode gets later reused for a normal file or directory, lockdep gets
+> confused and complains about possible deadlocks. Fix the problem by
+> resetting lockdep subclass of i_data_sem on quota off.
+> 
+> Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
+> Reported-and-tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+
+Thanks, applied.
+
+					- Ted
