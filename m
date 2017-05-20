@@ -1,46 +1,65 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] jbd2: preserve original nofs flag during journal
- restart
-Date: Sat, 20 May 2017 00:09:43 -0400
-Message-ID: <20170520040943.kf4sy4ssixoz7coo@thunk.org>
-References: <20170518093939.GD9084@quack2.suse.cz>
- <20170518162850.7618-1-tahsin@google.com>
+Subject: Re: [PATCH 1/2] ext4: Fix SEEK_HOLE
+Date: Sat, 20 May 2017 00:14:00 -0400
+Message-ID: <20170520041400.xrcels53pwk5py33@thunk.org>
+References: <20170518104942.14588-1-jack@suse.cz>
+ <20170518104942.14588-2-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Michal Hocko <mhocko@suse.com>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45042 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750709AbdETEJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 20 May 2017 00:09:48 -0400
+Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org,
+        Zheng Liu <wenqing.lz@taobao.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170518162850.7618-1-tahsin@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170518104942.14588-2-jack@suse.cz>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 18, 2017 at 09:28:50AM -0700, Tahsin Erdogan wrote:
-> When a transaction starts, start_this_handle() saves current
-> PF_MEMALLOC_NOFS value so that it can be restored at journal stop time.
-> Journal restart is a special case that calls start_this_handle() without
-> stopping the transaction. start_this_handle() isn't aware that the
-> original value is already stored so it overwrites it with current value.
+On Thu, May 18, 2017 at 12:49:41PM +0200, Jan Kara wrote:
+> Currently, SEEK_HOLE implementation in ext4 may both return that there's
+> a hole at some offset although that offset already has data and skip
+> some holes during a search for the next hole. The first problem is
+> demostrated by:
 > 
-> For instance, a call sequence like below leaves PF_MEMALLOC_NOFS flag set
-> at the end:
+> xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "seek -h 0" file
+> wrote 57344/57344 bytes at offset 0
+> 56 KiB, 14 ops; 0.0000 sec (2.054 GiB/sec and 538461.5385 ops/sec)
+> Whence	Result
+> HOLE	0
 > 
->   jbd2_journal_start()
->   jbd2__journal_restart()
->   jbd2_journal_stop()
+> Where we can see that SEEK_HOLE wrongly returned offset 0 as containing
+> a hole although we have written data there. The second problem can be
+> demonstrated by:
 > 
-> Make jbd2__journal_restart() restore the original value before calling
-> start_this_handle().
+> xfs_io -c "falloc 0 256k" -c "pwrite 0 56k" -c "pwrite 128k 8k"
+>        -c "seek -h 0" file
 > 
-> Fixes: 81378da64de6 ("jbd2: mark the transaction context with the scope GFP_NOFS context")
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+> wrote 57344/57344 bytes at offset 0
+> 56 KiB, 14 ops; 0.0000 sec (1.978 GiB/sec and 518518.5185 ops/sec)
+> wrote 8192/8192 bytes at offset 131072
+> 8 KiB, 2 ops; 0.0000 sec (2 GiB/sec and 500000.0000 ops/sec)
+> Whence	Result
+> HOLE	139264
+> 
+> Where we can see that hole at offsets 56k..128k has been ignored by the
+> SEEK_HOLE call.
+> 
+> The underlying problem is in the ext4_find_unwritten_pgoff() which is
+> just buggy. In some cases it fails to update returned offset when it
+> finds a hole (when no pages are found or when the first found page has
+> higher index than expected), in some cases conditions for detecting hole
+> are just missing (we fail to detect a situation where indices of
+> returned pages are not contiguous).
+> 
+> Fix ext4_find_unwritten_pgoff() to properly detect non-contiguous page
+> indices and also handle all cases where we got less pages then expected
+> in one place and handle it properly there.
+> 
+> CC: stable@vger.kernel.org
+> Fixes: c8c0df241cc2719b1262e627f999638411934f60
+> CC: Zheng Liu <wenqing.lz@taobao.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
