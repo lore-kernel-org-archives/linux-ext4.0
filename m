@@ -1,38 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: Clear lockdep subtype for quota files on quota
- off
-Date: Fri, 19 May 2017 22:39:46 -0400
-Message-ID: <20170520023946.coy7u5bfsbae35dh@thunk.org>
-References: <20170509122247.26345-1-jack@suse.cz>
+Subject: Re: [PATCH v3] jbd2: preserve original nofs flag during journal
+ restart
+Date: Sat, 20 May 2017 00:09:43 -0400
+Message-ID: <20170520040943.kf4sy4ssixoz7coo@thunk.org>
+References: <20170518093939.GD9084@quack2.suse.cz>
+ <20170518162850.7618-1-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andreas Dilger <adilger@dilger.ca>
-To: Jan Kara <jack@suse.cz>
+Cc: Michal Hocko <mhocko@suse.com>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:44948 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:45042 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755213AbdETCkq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 May 2017 22:40:46 -0400
+        id S1750709AbdETEJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 20 May 2017 00:09:48 -0400
 Content-Disposition: inline
-In-Reply-To: <20170509122247.26345-1-jack@suse.cz>
+In-Reply-To: <20170518162850.7618-1-tahsin@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 09, 2017 at 02:22:47PM +0200, Jan Kara wrote:
-> Quota files have special ranking of i_data_sem lock. We inform lockdep
-> about it when turning on quotas however when turning quotas off, we
-> don't clear the lockdep subclass from i_data_sem lock and thus when the
-> inode gets later reused for a normal file or directory, lockdep gets
-> confused and complains about possible deadlocks. Fix the problem by
-> resetting lockdep subclass of i_data_sem on quota off.
+On Thu, May 18, 2017 at 09:28:50AM -0700, Tahsin Erdogan wrote:
+> When a transaction starts, start_this_handle() saves current
+> PF_MEMALLOC_NOFS value so that it can be restored at journal stop time.
+> Journal restart is a special case that calls start_this_handle() without
+> stopping the transaction. start_this_handle() isn't aware that the
+> original value is already stored so it overwrites it with current value.
 > 
-> Fixes: daf647d2dd58cec59570d7698a45b98e580f2076
-> Reported-and-tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> For instance, a call sequence like below leaves PF_MEMALLOC_NOFS flag set
+> at the end:
+> 
+>   jbd2_journal_start()
+>   jbd2__journal_restart()
+>   jbd2_journal_stop()
+> 
+> Make jbd2__journal_restart() restore the original value before calling
+> start_this_handle().
+> 
+> Fixes: 81378da64de6 ("jbd2: mark the transaction context with the scope GFP_NOFS context")
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
-					- Ted
+						- Ted
