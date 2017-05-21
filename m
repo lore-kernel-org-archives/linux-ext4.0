@@ -1,64 +1,88 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] ext4: fix off-by-one on max nr_pages in ext4_find_unwritten_pgoff()
-Date: Sun, 21 May 2017 16:00:26 +0800
-Message-ID: <20170521080026.20986-1-eguan@redhat.com>
-Cc: Eryu Guan <eguan@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Richard Weinberger <richard@nod.at>
+Subject: [PATCH 5/6] ubifs: Implement export_operations
+Date: Sun, 21 May 2017 22:20:50 +0200
+Message-ID: <1495398051-4604-6-git-send-email-richard@nod.at>
+References: <1495398051-4604-1-git-send-email-richard@nod.at>
+Cc: david@sigma-star.at, dedekind1@gmail.com, adrian.hunter@intel.com,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+        linux-ext4@vger.kernel.org, bfields@redhat.com,
+        marcus.folkesson@gmail.com, hyc.lee@gmail.com,
+        rockdotlee@gmail.com, leon.pollak@gmail.com,
+        Richard Weinberger <richard@nod.at>
+To: linux-mtd@lists.infradead.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52374 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750872AbdEUIA2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 21 May 2017 04:00:28 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id DFFA172495
-        for <linux-ext4@vger.kernel.org>; Sun, 21 May 2017 08:00:27 +0000 (UTC)
+Received: from mail.sigma-star.at ([95.130.255.111]:46001 "EHLO
+        mail.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757074AbdEUUVV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 May 2017 16:21:21 -0400
+In-Reply-To: <1495398051-4604-1-git-send-email-richard@nod.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4_find_unwritten_pgoff() is used to search for offset of hole or
-data in page range [index, end] (both inclusive), and the max number
-of pages to search should be at least one, if end == index.
-Otherwise the only page is missed and no hole or data is found,
-which is not correct.
-
-When block size is smaller than page size, this can be demonstrated
-by preallocating a file with size smaller than page size and writing
-data to the last block. E.g. run this xfs_io command on a 1k block
-size ext4 on x86_64 host.
-
-  # xfs_io -fc "falloc 0 3k" -c "pwrite 2k 1k" \
-  	    -c "seek -d 0" /mnt/ext4/testfile
-  wrote 1024/1024 bytes at offset 2048
-  1 KiB, 1 ops; 0.0000 sec (42.459 MiB/sec and 43478.2609 ops/sec)
-  Whence  Result
-  DATA    EOF
-
-Data at offset 2k was missed, and lseek(2) returned ENXIO.
-
-This is unconvered by generic/285 subtest 07 and 08 on ppc64 host,
-where pagesize is 64k. Because a recent change to generic/285
-reduced the preallocated file size to smaller than 64k.
-
-Cc: stable@vger.kernel.org # v3.7+
-Signed-off-by: Eryu Guan <eguan@redhat.com>
+Signed-off-by: Richard Weinberger <richard@nod.at>
 ---
- fs/ext4/file.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ubifs/super.c | 35 +++++++++++++++++++++++++++++++++++
+ fs/ubifs/ubifs.h |  1 +
+ 2 files changed, 36 insertions(+)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 831fd6b..7b206e5 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -481,7 +481,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 		int i, num;
- 		unsigned long nr_pages;
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index 7560071534bf..4788420162b8 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -2005,6 +2005,41 @@ const struct fscrypt_operations ubifs_crypt_operations = {
+ };
+ #endif
  
--		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
-+		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE - 1) + 1;
- 		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
- 					  (pgoff_t)num);
- 		if (nr_pages == 0) {
++static struct dentry *ubifs_get_parent(struct dentry *child)
++{
++	struct ubifs_inode *ui = ubifs_inode(d_inode(child));
++
++	return d_obtain_alias(ubifs_iget(child->d_sb, ui->parent_inum));
++}
++
++static struct inode *ubifs_nfs_get_inode(struct super_block *sb, uint64_t ino,
++					 uint32_t generation)
++{
++	return ubifs_iget(sb, ino);
++}
++
++static struct dentry *ubifs_fh_to_dentry(struct super_block *sb,
++					 struct fid *fid, int fh_len,
++					 int fh_type)
++{
++	return generic_fh_to_dentry(sb, fid, fh_len, fh_type,
++				    ubifs_nfs_get_inode);
++}
++
++static struct dentry *ubifs_fh_to_parent(struct super_block *sb,
++					 struct fid *fid, int fh_len,
++					 int fh_type)
++{
++	return generic_fh_to_parent(sb, fid, fh_len, fh_type,
++				    ubifs_nfs_get_inode);
++}
++
++static const struct export_operations ubifs_export_ops = {
++	.get_parent = ubifs_get_parent,
++	.fh_to_dentry = ubifs_fh_to_dentry,
++	.fh_to_parent = ubifs_fh_to_parent,
++};
++
+ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct ubifs_info *c = sb->s_fs_info;
+diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
+index 3c64481f4032..a728d6e3eb47 100644
+--- a/fs/ubifs/ubifs.h
++++ b/fs/ubifs/ubifs.h
+@@ -45,6 +45,7 @@
+ #endif
+ #include <linux/random.h>
+ #include <linux/compat.h>
++#include <linux/exportfs.h>
+ #include "ubifs-media.h"
+ 
+ /* Version of this UBIFS implementation */
 -- 
-2.9.4
+2.12.0
