@@ -1,84 +1,82 @@
 From: Richard Weinberger <richard@nod.at>
-Subject: [PATCH 1/6] ext4: Move is_32bit_api() to generic code
-Date: Sun, 21 May 2017 22:20:46 +0200
-Message-ID: <1495398051-4604-2-git-send-email-richard@nod.at>
+Subject: [PATCH 2/6] ubifs: Provide a custom llseek for directories
+Date: Sun, 21 May 2017 22:20:47 +0200
+Message-ID: <1495398051-4604-3-git-send-email-richard@nod.at>
 References: <1495398051-4604-1-git-send-email-richard@nod.at>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: david@sigma-star.at, bfields@redhat.com, dedekind1@gmail.com,
- Richard Weinberger <richard@nod.at>, linux-kernel@vger.kernel.org,
- hyc.lee@gmail.com, adrian.hunter@intel.com, leon.pollak@gmail.com,
- adilger.kernel@dilger.ca, linux-fsdevel@vger.kernel.org,
- marcus.folkesson@gmail.com, akpm@linux-foundation.org,
- linux-ext4@vger.kernel.org, rockdotlee@gmail.com
+Cc: david@sigma-star.at, dedekind1@gmail.com, adrian.hunter@intel.com,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+        linux-ext4@vger.kernel.org, bfields@redhat.com,
+        marcus.folkesson@gmail.com, hyc.lee@gmail.com,
+        rockdotlee@gmail.com, leon.pollak@gmail.com,
+        Richard Weinberger <richard@nod.at>
 To: linux-mtd@lists.infradead.org
-Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1495398051-4604-1-git-send-email-richard@nod.at>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
-List-Post: <mailto:linux-mtd@lists.infradead.org>
-List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
- <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
-Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Since UBIFS will also use this function, move it to compat.h.
+When UBIFS is using 64bit cookies for directory offsets,
+we have to support seeking that deep into direcoties.
+Since generic_file_llseek() is uses sb->s_maxbytes it will
+fail for use because on ubifs sb->s_maxbytes is the real maxmal
+file size which can be much smaller than 64bit due to limitations
+of the flash device.
+
+Therefore provie a custom llseek operation.
 
 Signed-off-by: Richard Weinberger <richard@nod.at>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/dir.c          | 9 ---------
- include/linux/compat.h | 2 ++
- 2 files changed, 2 insertions(+), 9 deletions(-)
+ fs/ubifs/dir.c         | 12 +++++++++++-
+ fs/ubifs/ubifs-media.h |  6 ++++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index e8b365000d73..464e6e99d744 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -290,15 +290,6 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 	return err;
+diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
+index 566079d9b402..cada60690c22 100644
+--- a/fs/ubifs/dir.c
++++ b/fs/ubifs/dir.c
+@@ -1686,6 +1686,16 @@ static int ubifs_dir_open(struct inode *dir, struct file *file)
+ 	return 0;
  }
  
--static inline int is_32bit_api(void)
--{
--#ifdef CONFIG_COMPAT
--	return in_compat_syscall();
--#else
--	return (BITS_PER_LONG == 32);
--#endif
--}
--
++static loff_t ubifs_dir_llseek(struct file *file, loff_t offset, int whence)
++{
++	struct inode *inode = file->f_mapping->host;
++
++	return generic_file_llseek_size(file, offset, whence,
++					(loff_t)UBIFS_S_KEY_HASH_MASK <<
++					UBIFS_DH_BITS | UBIFS_DH_MASK,
++					i_size_read(inode));
++}
++
+ const struct inode_operations ubifs_dir_inode_operations = {
+ 	.lookup      = ubifs_lookup,
+ 	.create      = ubifs_create,
+@@ -1706,7 +1716,7 @@ const struct inode_operations ubifs_dir_inode_operations = {
+ };
+ 
+ const struct file_operations ubifs_dir_operations = {
+-	.llseek         = generic_file_llseek,
++	.llseek         = ubifs_dir_llseek,
+ 	.release        = ubifs_dir_release,
+ 	.read           = generic_read_dir,
+ 	.iterate_shared = ubifs_readdir,
+diff --git a/fs/ubifs/ubifs-media.h b/fs/ubifs/ubifs-media.h
+index e8c23c9d4f4a..5939776c7359 100644
+--- a/fs/ubifs/ubifs-media.h
++++ b/fs/ubifs/ubifs-media.h
+@@ -214,6 +214,12 @@ enum {
+ #define UBIFS_S_KEY_HASH_MASK  UBIFS_S_KEY_BLOCK_MASK
+ 
  /*
-  * These functions convert from the major/minor hash to an f_pos
-  * value for dx directories
-diff --git a/include/linux/compat.h b/include/linux/compat.h
-index 1c5f3152cbb5..f33ffd8040a1 100644
---- a/include/linux/compat.h
-+++ b/include/linux/compat.h
-@@ -736,6 +736,7 @@ asmlinkage long compat_sys_arch_prctl(int option, unsigned long arg2);
- #ifndef in_compat_syscall
- static inline bool in_compat_syscall(void) { return is_compat_task(); }
- #endif
-+static inline int is_32bit_api(void) { return in_compat_syscall(); }
- 
- /**
-  * ns_to_compat_timeval - Compat version of ns_to_timeval
-@@ -759,6 +760,7 @@ static inline struct compat_timeval ns_to_compat_timeval(s64 nsec)
- 
- #define is_compat_task() (0)
- static inline bool in_compat_syscall(void) { return false; }
-+static inline int is_32bit_api(void) { return BITS_PER_LONG == 32; }
- 
- #endif /* CONFIG_COMPAT */
- 
++ * We use 32 bits for the double hash cookie.
++ */
++#define UBIFS_DH_MASK 0xffffffff
++#define UBIFS_DH_BITS 32
++
++/*
+  * Key types.
+  *
+  * UBIFS_INO_KEY: inode node key
 -- 
 2.12.0
-
-
-______________________________________________________
-Linux MTD discussion mailing list
-http://lists.infradead.org/mailman/listinfo/linux-mtd/
