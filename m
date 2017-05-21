@@ -1,76 +1,84 @@
 From: Richard Weinberger <richard@nod.at>
-Subject: [PATCH 6/6] ubifs: Wire up NFS support
-Date: Sun, 21 May 2017 22:20:51 +0200
-Message-ID: <1495398051-4604-7-git-send-email-richard@nod.at>
+Subject: [PATCH 1/6] ext4: Move is_32bit_api() to generic code
+Date: Sun, 21 May 2017 22:20:46 +0200
+Message-ID: <1495398051-4604-2-git-send-email-richard@nod.at>
 References: <1495398051-4604-1-git-send-email-richard@nod.at>
-Cc: david@sigma-star.at, dedekind1@gmail.com, adrian.hunter@intel.com,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org, bfields@redhat.com,
-        marcus.folkesson@gmail.com, hyc.lee@gmail.com,
-        rockdotlee@gmail.com, leon.pollak@gmail.com,
-        Richard Weinberger <richard@nod.at>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: david@sigma-star.at, bfields@redhat.com, dedekind1@gmail.com,
+ Richard Weinberger <richard@nod.at>, linux-kernel@vger.kernel.org,
+ hyc.lee@gmail.com, adrian.hunter@intel.com, leon.pollak@gmail.com,
+ adilger.kernel@dilger.ca, linux-fsdevel@vger.kernel.org,
+ marcus.folkesson@gmail.com, akpm@linux-foundation.org,
+ linux-ext4@vger.kernel.org, rockdotlee@gmail.com
 To: linux-mtd@lists.infradead.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.sigma-star.at ([95.130.255.111]:46002 "EHLO
-        mail.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1757089AbdEUUVW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 May 2017 16:21:22 -0400
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
 In-Reply-To: <1495398051-4604-1-git-send-email-richard@nod.at>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+List-Id: linux-ext4.vger.kernel.org
 
-Since we have 64bit readdir cookies and export operations
-we can finally enable NFS export support for UBIFS.
+Since UBIFS will also use this function, move it to compat.h.
 
 Signed-off-by: Richard Weinberger <richard@nod.at>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ubifs/dir.c   | 10 ++--------
- fs/ubifs/super.c |  3 +++
- 2 files changed, 5 insertions(+), 8 deletions(-)
+ fs/ext4/dir.c          | 9 ---------
+ include/linux/compat.h | 2 ++
+ 2 files changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index a6eadb52a1a8..13b0db37be41 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -298,12 +298,8 @@ static struct dentry *ubifs_lookup(struct inode *dir, struct dentry *dentry,
- done:
- 	kfree(dent);
- 	fscrypt_free_filename(&nm);
--	/*
--	 * Note, d_splice_alias() would be required instead if we supported
--	 * NFS.
--	 */
--	d_add(dentry, inode);
--	return NULL;
-+
-+	return d_splice_alias(inode, dentry);
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index e8b365000d73..464e6e99d744 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -290,15 +290,6 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 	return err;
+ }
  
- out_inode:
- 	iput(inode);
-@@ -525,8 +521,6 @@ static unsigned int vfs_dent_type(uint8_t type)
-  * properly by means of saving full directory entry name in the private field
-  * of the file description object.
-  *
-- * This means that UBIFS cannot support NFS which requires full
-- * 'seekdir()'/'telldir()' support.
-  */
- static int ubifs_readdir(struct file *file, struct dir_context *ctx)
- {
-diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
-index 4788420162b8..00ddde36e546 100644
---- a/fs/ubifs/super.c
-+++ b/fs/ubifs/super.c
-@@ -2091,6 +2091,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
- 		goto out_unlock;
- 	}
+-static inline int is_32bit_api(void)
+-{
+-#ifdef CONFIG_COMPAT
+-	return in_compat_syscall();
+-#else
+-	return (BITS_PER_LONG == 32);
+-#endif
+-}
+-
+ /*
+  * These functions convert from the major/minor hash to an f_pos
+  * value for dx directories
+diff --git a/include/linux/compat.h b/include/linux/compat.h
+index 1c5f3152cbb5..f33ffd8040a1 100644
+--- a/include/linux/compat.h
++++ b/include/linux/compat.h
+@@ -736,6 +736,7 @@ asmlinkage long compat_sys_arch_prctl(int option, unsigned long arg2);
+ #ifndef in_compat_syscall
+ static inline bool in_compat_syscall(void) { return is_compat_task(); }
+ #endif
++static inline int is_32bit_api(void) { return in_compat_syscall(); }
  
-+	if (c->parent_pointer && c->double_hash)
-+		sb->s_export_op = &ubifs_export_ops;
-+
- 	/* Read the root inode */
- 	root = ubifs_iget(sb, UBIFS_ROOT_INO);
- 	if (IS_ERR(root)) {
+ /**
+  * ns_to_compat_timeval - Compat version of ns_to_timeval
+@@ -759,6 +760,7 @@ static inline struct compat_timeval ns_to_compat_timeval(s64 nsec)
+ 
+ #define is_compat_task() (0)
+ static inline bool in_compat_syscall(void) { return false; }
++static inline int is_32bit_api(void) { return BITS_PER_LONG == 32; }
+ 
+ #endif /* CONFIG_COMPAT */
+ 
 -- 
 2.12.0
+
+
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
