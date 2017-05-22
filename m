@@ -1,63 +1,103 @@
-From: Konstantin Chistyakov <Konstantin.Chistyakov@paragon-software.com>
-Subject: [PATCH] libext2fs: don't flush to device opened in read-only mode
-Date: Mon, 22 May 2017 09:48:00 +0000
-Message-ID: <118AAB5F26BFB34DB5CDA7DA33334DB9B5FF41@vmsk-exch-01.paragon-software.com>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: [PATCH] fs: Initialize tmp.b_page in generic_block_bmap()
+Date: Mon, 22 May 2017 10:58:45 -0700
+Message-ID: <CAGXu5j+XON=8U7BfS2W_YJZh8=0zfeuAPkds9Q+oXZPzvgvkqw@mail.gmail.com>
+References: <1482409815-89034-1-git-send-email-glider@google.com>
+ <20170118163220.vbdkcjmkkyjmfqxb@thunk.org> <CAG_fn=UEtkQmN3gjn_-1dAf=fRLX0PG7f8GDEHq_7y4B0o3aNw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="koi8-r"
-Content-Transfer-Encoding: quoted-printable
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relaymsk-01.paragon-software.com ([91.226.210.14]:57085 "EHLO
-        relaymsk-01.paragon-software.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1757877AbdEVJsC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 22 May 2017 05:48:02 -0400
-Received: from msk.paragon-software.com (vmsk-exch-01.paragon-software.com [172.30.30.80])
-        by relaymsk-01.paragon-software.com (Postfix) with ESMTPS id 9933341EC3
-        for <linux-ext4@vger.kernel.org>; Mon, 22 May 2017 12:47:59 +0300 (MSK)
-Content-Language: ru-RU
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Kostya Serebryany <kcc@google.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        LKML <linux-kernel@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Alexander Potapenko <glider@google.com>,
+        Dmitriy Vyukov <dvyukov@google.com>, "Ted Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CAG_fn=UEtkQmN3gjn_-1dAf=fRLX0PG7f8GDEHq_7y4B0o3aNw@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Konstantin Chistyakov <Konstantin.Chistyakov@Paragon-software.com>
-Date: Tue, 19 May 2017 09:23:29 -0600
-Subject: [PATCH] libext2fs: don't flush to device opened in read-only mode
+On Tue, Mar 28, 2017 at 9:28 AM, Alexander Potapenko <glider@google.com> wrote:
+> On Wed, Jan 18, 2017 at 5:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> On Thu, Dec 22, 2016 at 01:30:15PM +0100, Alexander Potapenko wrote:
+>>> KMSAN (KernelMemorySanitizer, a new error detection tool) reports use of
+>>> uninitialized memory in ext4_update_bh_state():
+>>>
+>>> ==================================================================
+>>> BUG: KMSAN: use of unitialized memory
+>>> CPU: 3 PID: 1 Comm: swapper/0 Tainted: G    B           4.8.0-rc6+ #597
+>>> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs
+>>> 01/01/2011
+>>>  0000000000000282 ffff88003cc96f68 ffffffff81f30856 0000003000000008
+>>>  ffff88003cc96f78 0000000000000096 ffffffff8169742a ffff88003cc96ff8
+>>>  ffffffff812fc1fc 0000000000000008 ffff88003a1980e8 0000000100000000
+>>> Call Trace:
+>>>  [<     inline     >] __dump_stack lib/dump_stack.c:15
+>>>  [<ffffffff81f30856>] dump_stack+0xa6/0xc0 lib/dump_stack.c:51
+>>>  [<ffffffff812fc1fc>] kmsan_report+0x1ec/0x300 mm/kmsan/kmsan.c:?
+>>>  [<ffffffff812fc33b>] __msan_warning+0x2b/0x40 ??:?
+>>>  [<     inline     >] ext4_update_bh_state fs/ext4/inode.c:727
+>>>  [<ffffffff8169742a>] _ext4_get_block+0x6ca/0x8a0 fs/ext4/inode.c:759
+>>>  [<ffffffff81696d4c>] ext4_get_block+0x8c/0xa0 fs/ext4/inode.c:769
+>>>  [<ffffffff814a2d36>] generic_block_bmap+0x246/0x2b0 fs/buffer.c:2991
+>>>  [<ffffffff816ca30e>] ext4_bmap+0x5ee/0x660 fs/ext4/inode.c:3177
+>>> ...
+>>> origin description: ----tmp@generic_block_bmap
+>>> ==================================================================
+>>>
+>>> (the line numbers are relative to 4.8-rc6, but the bug persists
+>>> upstream)
+>>>
+>>> The local |tmp| is created in generic_block_bmap() and then passed into
+>>> ext4_bmap() => ext4_get_block() => _ext4_get_block() =>
+>>> ext4_update_bh_state(). Along the way tmp.b_page is never initialized
+>>> before ext4_update_bh_state() checks its value.
+>>>
+>>> Signed-off-by: Alexander Potapenko <glider@google.com>
+>>
+>> This is a one-line fix to fs/buffer.c; but I've investigated, and
+>> since it only affects ext4, and no one else has responded, I'll take
+>> the change through the ext4 git tree.
+>>
+>> Thanks!!
+>>
+>>                                                 - Ted
+>
+> Hi Ted,
+>
+> any updates on this patch?
+> Looks like it hasn't been landed yet.
 
-From: Konstantin Chistyakov <Konstantin.Chistyakov@Paragon-software.com>
+I think the following would be better (pardon any whitespace damage
+via gmail...):
 
-If the e2fsck is called with both -f -n options, the checking completing wi=
-th a flushing error (retcode 8).
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 161be58c5cb0..20292b858b61 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3021,11 +3021,11 @@ EXPORT_SYMBOL(block_write_full_page);
+ sector_t generic_block_bmap(struct address_space *mapping, sector_t block,
+                            get_block_t *get_block)
+ {
+-       struct buffer_head tmp;
+        struct inode *inode = mapping->host;
+-       tmp.b_state = 0;
+-       tmp.b_blocknr = 0;
+-       tmp.b_size = i_blocksize(inode);
++       struct buffer_head tmp = {
++               .b_size = i_blocksize(inode);
++       };
++
+        get_block(inode, block, &tmp, 0);
+        return tmp.b_blocknr;
+ }
 
-Catch error from the unix_flush() fsync(data->dev) when data->dev is opened=
- in read-only mode:
+This will keep all unspecified fields zero-initialized. (i.e. a more
+robust fix than just a single zero-initialization being added)
 
-...
-e2fsck -n -f /dev/sdd1
-e2fsck 1.43.4 (31-Jan-2017)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Error flushing writes to storage device: Permission denied
+-Kees
 
----
-lib/ext2fs/unix_io.c | 2 +-
-1 file changed, 1 insertion(+), 1 deletion(-)
-
-(limited to 'lib/ext2fs/unix_io.c')
-
-diff -up lib/ext2fs/unix_io.c{.orig,}
---- lib/ext2fs/unix_io.c.orig=9A=9A=9A=9A=9A=9A=9A 2017-05-19 14:32:12.5504=
-14900 +0300
-+++ lib/ext2fs/unix_io.c=9A=9A=9A=9A=9A=9A=9A=9A=9A=9A=9A=9A=9A 2017-05-19 =
-14:33:48.520878000 +0300
-@@ -1030,7 +1030,7 @@ static errcode_t unix_flush(io_channel channel)
-#ifndef NO_IO_CACHE
-=9A	retval =3D flush_cached_blocks(channel, data, 0);
-#endif
--	if (!retval && fsync(data->dev) !=3D 0)
-+	if (!retval && (data->flags & IO_FLAG_RW) && fsync(data->dev) !=3D 0)
-=9A		return errno;
-=9A	return retval;
-}
+-- 
+Kees Cook
+Pixel Security
