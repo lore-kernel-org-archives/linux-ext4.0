@@ -1,73 +1,78 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: remove redundant check for encrypted file on dio
- write path
-Date: Tue, 23 May 2017 10:24:10 +0200
-Message-ID: <20170523082410.GD1230@quack2.suse.cz>
-References: <20170523005316.18996-1-ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: fix off-by-one on max nr_pages in
+ ext4_find_unwritten_pgoff()
+Date: Tue, 23 May 2017 10:34:32 +0200
+Message-ID: <20170523083432.GE1230@quack2.suse.cz>
+References: <20170521080026.20986-1-eguan@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        linux-fscrypt@vger.kernel.org, Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Eryu Guan <eguan@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39877 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40520 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S965302AbdEWIYN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 May 2017 04:24:13 -0400
+        id S1759734AbdEWIee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 23 May 2017 04:34:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20170523005316.18996-1-ebiggers3@gmail.com>
+In-Reply-To: <20170521080026.20986-1-eguan@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 22-05-17 17:53:16, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Sun 21-05-17 16:00:26, Eryu Guan wrote:
+> ext4_find_unwritten_pgoff() is used to search for offset of hole or
+> data in page range [index, end] (both inclusive), and the max number
+> of pages to search should be at least one, if end == index.
+> Otherwise the only page is missed and no hole or data is found,
+> which is not correct.
 > 
-> Currently we don't allow direct I/O on encrypted regular files, so in
-> such cases we return 0 early in ext4_direct_IO().  There was also an
-> additional BUG_ON() check in ext4_direct_IO_write(), but it can never be
-> hit because of the earlier check for the exact same condition in
-> ext4_direct_IO().  There was also no matching check on the read path,
-> which made the write path specific check seem very ad-hoc.
+> When block size is smaller than page size, this can be demonstrated
+> by preallocating a file with size smaller than page size and writing
+> data to the last block. E.g. run this xfs_io command on a 1k block
+> size ext4 on x86_64 host.
 > 
-> Just remove the unnecessary BUG_ON().
+>   # xfs_io -fc "falloc 0 3k" -c "pwrite 2k 1k" \
+>   	    -c "seek -d 0" /mnt/ext4/testfile
+>   wrote 1024/1024 bytes at offset 2048
+>   1 KiB, 1 ops; 0.0000 sec (42.459 MiB/sec and 43478.2609 ops/sec)
+>   Whence  Result
+>   DATA    EOF
 > 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Data at offset 2k was missed, and lseek(2) returned ENXIO.
+> 
+> This is unconvered by generic/285 subtest 07 and 08 on ppc64 host,
+> where pagesize is 64k. Because a recent change to generic/285
+> reduced the preallocated file size to smaller than 64k.
+> 
+> Cc: stable@vger.kernel.org # v3.7+
+> Signed-off-by: Eryu Guan <eguan@redhat.com>
 
-Yeah, the check is rather before the BUG_ON so I guess that there's no big
-point in the BUG_ON. When looking at this code I have one question though:
+Yeah, thanks for fixing this! Actually this is a bug introduced by my
+recent fixes. Previously, 'end' used to be "one block after the end" and so
+the math worked out correctly :-|. You can add:
 
-So when you mount the filesystem with 'dioread_nolock', do overwriting
-direct write to the file, and just after we do inode_unlock() in
-ext4_direct_IO_write() someone calls EXT4_IOC_SET_ENCRYPTION_POLICY ioctl
-on the file, the BUG_ON could actually trigger. So I think you need 
-to wait for outstanding direct IO for the file when setting encryption
-policy. Likely in ext4_set_context() or maybe in the generic fscrypt code
-(you need to wait after acquiring inode_lock), I'm not sure how other
-filesystems using fscrypt handle this and whether it would make more sense
-in the generic code or in ext4 specific one.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext4/inode.c | 3 ---
->  1 file changed, 3 deletions(-)
+>  fs/ext4/file.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 1bd0bfa547f6..7c6e715b4d2e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3629,9 +3629,6 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
->  		get_block_func = ext4_dio_get_block_unwritten_async;
->  		dio_flags = DIO_LOCKING;
->  	}
-> -#ifdef CONFIG_EXT4_FS_ENCRYPTION
-> -	BUG_ON(ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode));
-> -#endif
->  	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev, iter,
->  				   get_block_func, ext4_end_io_dio, NULL,
->  				   dio_flags);
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 831fd6b..7b206e5 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -481,7 +481,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+>  		int i, num;
+>  		unsigned long nr_pages;
+>  
+> -		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
+> +		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE - 1) + 1;
+>  		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
+>  					  (pgoff_t)num);
+>  		if (nr_pages == 0) {
 > -- 
-> 2.13.0.303.g4ebf302169-goog
+> 2.9.4
 > 
 -- 
 Jan Kara <jack@suse.com>
