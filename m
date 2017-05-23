@@ -1,37 +1,40 @@
 From: Chao Yu <chao@kernel.org>
-Subject: Re: [f2fs-dev] [PATCH 2/4] f2fs: don't bother checking for encryption
- key in ->mmap()
-Date: Tue, 23 May 2017 21:38:40 +0800
-Message-ID: <c38f38c1-7d74-d4a9-8b0a-51317fb20162@kernel.org>
+Subject: Re: [PATCH 4/4] f2fs: don't bother checking for
+ encryption key in ->write_iter()
+Date: Tue, 23 May 2017 21:39:13 +0800
+Message-ID: <6016f168-9c2b-e7a6-4d21-9b40c4cb6edc@kernel.org>
 References: <20170523003945.14279-1-ebiggers3@gmail.com>
- <20170523003945.14279-3-ebiggers3@gmail.com>
+	<20170523003945.14279-5-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-ext4@vger.kernel.org
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-ext4@vger.kernel.org
 To: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:49198 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1759036AbdEWNjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 May 2017 09:39:42 -0400
-In-Reply-To: <20170523003945.14279-3-ebiggers3@gmail.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <20170523003945.14279-5-ebiggers3@gmail.com>
 Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
 On 2017/5/23 8:39, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> Since only an open file can be mmap'ed, and we only allow open()ing an
-> encrypted file when its key is available, there is no need to check for
-> the key again before permitting each mmap().
+> Since only an open file can be written to, and we only allow open()ing
+> an encrypted file when its key is available, there is no need to check
+> for the key again before permitting each ->write_iter().
 > 
-> This f2fs copy of this code was also broken in that it wouldn't actually
-> have failed if the key was in fact unavailable.
+> This code was also broken in that it wouldn't actually have failed if
+> the key was in fact unavailable.
 > 
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
@@ -40,26 +43,27 @@ Acked-by: Chao Yu <yuchao0@huawei.com>
 Thanks,
 
 > ---
->  fs/f2fs/file.c | 8 --------
->  1 file changed, 8 deletions(-)
+>  fs/f2fs/file.c | 5 -----
+>  1 file changed, 5 deletions(-)
 > 
 > diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-> index 61af721329fa..ff4db3efc0ac 100644
+> index ff4db3efc0ac..3ccc63089a47 100644
 > --- a/fs/f2fs/file.c
 > +++ b/fs/f2fs/file.c
-> @@ -415,14 +415,6 @@ static int f2fs_file_mmap(struct file *file, struct vm_area_struct *vma)
->  	struct inode *inode = file_inode(file);
->  	int err;
+> @@ -2318,11 +2318,6 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+>  	struct blk_plug plug;
+>  	ssize_t ret;
 >  
-> -	if (f2fs_encrypted_inode(inode)) {
-> -		err = fscrypt_get_encryption_info(inode);
-> -		if (err)
-> -			return 0;
-> -		if (!f2fs_encrypted_inode(inode))
-> -			return -ENOKEY;
-> -	}
+> -	if (f2fs_encrypted_inode(inode) &&
+> -				!fscrypt_has_encryption_key(inode) &&
+> -				fscrypt_get_encryption_info(inode))
+> -		return -EACCES;
 > -
->  	/* we don't need to use inline_data strictly */
->  	err = f2fs_convert_inline_inode(inode);
->  	if (err)
+>  	inode_lock(inode);
+>  	ret = generic_write_checks(iocb, from);
+>  	if (ret > 0) {
 > 
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
