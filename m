@@ -1,45 +1,51 @@
-From: Richard Weinberger <richard@nod.at>
-Subject: Re: [PATCH 5/6] ubifs: Implement export_operations
-Date: Tue, 23 May 2017 10:50:14 +0200
-Message-ID: <d3501e43-07c7-5e11-7057-dfee8b619caf@nod.at>
-References: <1495398051-4604-1-git-send-email-richard@nod.at>
- <1495398051-4604-6-git-send-email-richard@nod.at>
- <20170523083932.GC4107@infradead.org>
- <04af5127-e8f3-a2e9-4d2f-af5ef9fc1531@nod.at>
- <20170523084818.GA26514@infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
+Date: Tue, 23 May 2017 13:10:07 +0200
+Message-ID: <20170523111007.GH1230@quack2.suse.cz>
+References: <20170519002032.GA21202@birch.djwong.org>
+ <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
+ <20170519152734.qd4lf32e7wst4jdh@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: linux-mtd@lists.infradead.org, david@sigma-star.at,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org, bfields@redhat.com,
-        marcus.folkesson@gmail.com, hyc.lee@gmail.com,
-        rockdotlee@gmail.com, leon.pollak@gmail.com
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170523084818.GA26514@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Colin Walters <walters@verbum.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170519152734.qd4lf32e7wst4jdh@thunk.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph,
+On Fri 19-05-17 11:27:34, Ted Tso wrote:
+> The other thing that would be useful is if grub2 would actually be
+> able to replay the file system journal --- but given that grub2 is
+> GPLv3, and both ext4 and xfs are GPLv2-only, and given that past
+> attempts of teams attempting to do clean room reimplementations of
+> complex code bases for licensing reasons only (cough, make_ext4fs,
+> *cough*) have not necessarily turned out well, I'm at least not going
+> to hold my breath.
 
-Am 23.05.2017 um 10:48 schrieb Christoph Hellwig:
-> On Tue, May 23, 2017 at 10:41:16AM +0200, Richard Weinberger wrote:
->> UBIFS has no inode generations, inodes simply can't wrap around.
->> We "handle" it like JFF2 does, we assumes that the NAND is long dead
->> before we reach the maximum inode number.
-> 
-> So you never ever reuse an inode number once it's been unlinked and
-> the last opener went away?
+Boot loader really should *not* write to the filesystem. Firstly, it would
+have to be completely separate codebase running under very different
+constraints (real mode, no real memory management, etc) so there's no easy
+way to share the code with any other userspace libraries and thus the code
+will be inherently buggy. Secondly, think of stuff like suspend to disk -
+if someone touches the filesystem in any way under the hands of suspended
+kernel, file system corruption is very likely to follow sooner or later.
+Just last year, I've spent couple of interesting days hunting down ext4
+corruption on s390 only to find out that the boot procedure(*) there ended
+up replaying the journal under suspended kernel...
 
-Correct.
+(*) Just for the ones interested in mainframe woes: s390 in SLES doesn't
+use grub to parse the filesystem (as it is too difficult to access some
+storage types from the boot loader AFAIU) so it uses "first-stage" Linux
+kernel to mount the root filesystem, finds proper kernel image there and
+then kexecs into it...
 
-> If that is the case please add a comment explaining this next to
-> the get_inode helper.
-
-Will do.
-
-Thanks,
-//richard
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
