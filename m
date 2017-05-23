@@ -1,69 +1,107 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Marc Thomas <marc@dragonfly.plus.com>
 Subject: Re: e2fsck bug? - Sparse files corrupt after "e2fsck -E bmap2extent".
-Date: Tue, 23 May 2017 09:25:21 -0700
-Message-ID: <20170523162521.GD4510@birch.djwong.org>
+Date: Tue, 23 May 2017 18:41:48 +0100
+Message-ID: <67373dc3-46e1-33e5-ea6f-940b82ad86b6@dragonfly.plus.com>
 References: <a7a4fc1f-c1d9-bd69-cc2a-1a8094931e6d@dragonfly.plus.com>
  <20170523154152.glfcx7aryt5x4otj@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Marc Thomas <marc@dragonfly.plus.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:17542 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1757612AbdEWQZb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2017 12:25:31 -0400
-Content-Disposition: inline
+Received: from avasout01.plus.net ([84.93.230.227]:53766 "EHLO
+        avasout01.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752497AbdEWRta (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2017 13:49:30 -0400
 In-Reply-To: <20170523154152.glfcx7aryt5x4otj@thunk.org>
+Content-Language: en-GB
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 23, 2017 at 11:41:52AM -0400, Theodore Ts'o wrote:
-> On Tue, May 23, 2017 at 12:20:59AM +0100, Marc Thomas wrote:
-> > Hi All,
-> > 
-> > Would you agree this is a bug? As I understand it, reading from an
-> > "unpopulated" region of a sparse file should return all zeros - so the
-> > md5sum should be the same before and after migration.
-> 
-> I agree that sparse files should be properly handled after bmap2extent
-> conversion.  This code hasn't received that much use or testing, but
-> I've tried to replicate the problem and I haven't succeeded.  This
-> script works for me:
-> 
-> ----- cut here -----
-> #!/bin/bash
-> 
-> rm -f /tmp/foo.img
-> mke2fs -t ext3 -Fq /tmp/foo.img 65536
-> mount -o loop /tmp/foo.img /mnt
-> dd if=/etc/motd of=/mnt/test bs=4k >& /dev/null
-> dd if=/etc/motd of=/mnt/test conv=notrunc seek=32 bs=4k >& /dev/null
-> dd if=/etc/motd of=/mnt/test2 bs=4k >& /dev/null
-> dd if=/etc/motd of=/mnt/test2 conv=notrunc seek=1024 bs=4k >& /dev/null
-> lsattr /mnt/test*
-> md5sum /mnt/test* > /mnt/MD5SUMS
-> umount /mnt
-> e2fsck -fy -E bmap2extent /tmp/foo.img
-> mount -o loop /tmp/foo.img /mnt
-> md5sum -c /mnt/MD5SUMS
-> lsattr /mnt/test*
-> umount /mnt
-> ----- cut here -----
-> 
-> Maybe you can come up with a simple repro case that fails for you?
+Hi Ted,
 
-Or take an e2image of one of the affected filesystems so that the
-developers can directly reproduce your error case. :)
+Firstly, thank-you for taking the time to look into this.
 
-e2image -Q /dev/sda1 /some/qcow/dump/file
+I have modified your script with a "test-case" which fails for me every
+time, as I noticed there is a file created by a Linux kernel build which
+exhibits the problem (arch/x86/realmode/rm/realmode.bin) I think any
+kernel version 3.10.x on x86_64 ought to work. I've also included a few
+extra steps which I'm doing as part of the ext3 to ext4 conversion, and
+added the "-b" (binary) flag to md5sum.
 
-(Preferably xz the dumpfile before uploading...)
+Here's the script. I'm not sure if it counts as a "simple" repro! :)
 
---D
 
-> 
-> Thanks,
-> 
-> 						- Ted
-> 						
+----- cut here -----
+#!/bin/bash
+
+rm -f /tmp/foo.img
+mke2fs -t ext3 -Fq /tmp/foo.img 5G
+mount -o loop /tmp/foo.img /mnt
+dd if=/etc/motd of=/mnt/test bs=4k >& /dev/null
+dd if=/etc/motd of=/mnt/test conv=notrunc seek=32 bs=4k >& /dev/null
+dd if=/etc/motd of=/mnt/test2 bs=4k >& /dev/null
+dd if=/etc/motd of=/mnt/test2 conv=notrunc seek=1024 bs=4k >& /dev/null
+md5sum -b /mnt/test* > /mnt/MD5SUMS
+lsattr /mnt/test*
+( cd /mnt
+xz -dc ~marc/LinuxStuff/Linux4.x/linux-4.11.1.tar.xz | tar xvf -
+cd linux-4.11.1
+make defconfig
+time make -j 15 ) > /dev/null 2>&1
+md5sum -b /mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin >>
+/mnt/MD5SUMS
+lsattr /mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin
+umount /mnt
+tune2fs -O extents,uninit_bg,dir_index /tmp/foo.img
+e2fsck -fy /tmp/foo.img
+e2fsck -fy -E bmap2extent /tmp/foo.img
+mount -o loop /tmp/foo.img /mnt
+md5sum -c /mnt/MD5SUMS
+lsattr /mnt/test*
+lsattr /mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin
+umount /mnt
+----- cut here -----
+
+
+The output of the script is:
+
+time ./marc2.sh
+------------------- /mnt/test
+------------------- /mnt/test2
+------------------- /mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin
+tune2fs 1.43.4 (31-Jan-2017)
+e2fsck 1.43.4 (31-Jan-2017)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+/tmp/foo.img: 71184/327680 files (6.4% non-contiguous), 338237/1310720
+blocks
+e2fsck 1.43.4 (31-Jan-2017)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 1E: Optimizing extent trees
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+
+/tmp/foo.img: ***** FILE SYSTEM WAS MODIFIED *****
+/tmp/foo.img: 71184/327680 files (6.4% non-contiguous), 334994/1310720
+blocks
+/mnt/test: OK
+/mnt/test2: OK
+/mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin: FAILED
+md5sum: WARNING: 1 computed checksum did NOT match
+--------------e---- /mnt/test
+--------------e---- /mnt/test2
+--------------e---- /mnt/linux-4.11.1/arch/x86/realmode/rm/realmode.bin
+
+real    1m46.829s
+user    17m41.611s
+sys     1m39.268s
+
+Thanks & Kind Regards,
+Marc
