@@ -1,51 +1,65 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Tue, 23 May 2017 13:10:07 +0200
-Message-ID: <20170523111007.GH1230@quack2.suse.cz>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519152734.qd4lf32e7wst4jdh@thunk.org>
+From: Chao Yu <chao@kernel.org>
+Subject: Re: [f2fs-dev] [PATCH 2/4] f2fs: don't bother checking for encryption
+ key in ->mmap()
+Date: Tue, 23 May 2017 21:38:40 +0800
+Message-ID: <c38f38c1-7d74-d4a9-8b0a-51317fb20162@kernel.org>
+References: <20170523003945.14279-1-ebiggers3@gmail.com>
+ <20170523003945.14279-3-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Colin Walters <walters@verbum.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170519152734.qd4lf32e7wst4jdh@thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-ext4@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:49198 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1759036AbdEWNjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 23 May 2017 09:39:42 -0400
+In-Reply-To: <20170523003945.14279-3-ebiggers3@gmail.com>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 19-05-17 11:27:34, Ted Tso wrote:
-> The other thing that would be useful is if grub2 would actually be
-> able to replay the file system journal --- but given that grub2 is
-> GPLv3, and both ext4 and xfs are GPLv2-only, and given that past
-> attempts of teams attempting to do clean room reimplementations of
-> complex code bases for licensing reasons only (cough, make_ext4fs,
-> *cough*) have not necessarily turned out well, I'm at least not going
-> to hold my breath.
+On 2017/5/23 8:39, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Since only an open file can be mmap'ed, and we only allow open()ing an
+> encrypted file when its key is available, there is no need to check for
+> the key again before permitting each mmap().
+> 
+> This f2fs copy of this code was also broken in that it wouldn't actually
+> have failed if the key was in fact unavailable.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Boot loader really should *not* write to the filesystem. Firstly, it would
-have to be completely separate codebase running under very different
-constraints (real mode, no real memory management, etc) so there's no easy
-way to share the code with any other userspace libraries and thus the code
-will be inherently buggy. Secondly, think of stuff like suspend to disk -
-if someone touches the filesystem in any way under the hands of suspended
-kernel, file system corruption is very likely to follow sooner or later.
-Just last year, I've spent couple of interesting days hunting down ext4
-corruption on s390 only to find out that the boot procedure(*) there ended
-up replaying the journal under suspended kernel...
+Acked-by: Chao Yu <yuchao0@huawei.com>
 
-(*) Just for the ones interested in mainframe woes: s390 in SLES doesn't
-use grub to parse the filesystem (as it is too difficult to access some
-storage types from the boot loader AFAIU) so it uses "first-stage" Linux
-kernel to mount the root filesystem, finds proper kernel image there and
-then kexecs into it...
+Thanks,
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> ---
+>  fs/f2fs/file.c | 8 --------
+>  1 file changed, 8 deletions(-)
+> 
+> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+> index 61af721329fa..ff4db3efc0ac 100644
+> --- a/fs/f2fs/file.c
+> +++ b/fs/f2fs/file.c
+> @@ -415,14 +415,6 @@ static int f2fs_file_mmap(struct file *file, struct vm_area_struct *vma)
+>  	struct inode *inode = file_inode(file);
+>  	int err;
+>  
+> -	if (f2fs_encrypted_inode(inode)) {
+> -		err = fscrypt_get_encryption_info(inode);
+> -		if (err)
+> -			return 0;
+> -		if (!f2fs_encrypted_inode(inode))
+> -			return -ENOKEY;
+> -	}
+> -
+>  	/* we don't need to use inline_data strictly */
+>  	err = f2fs_convert_inline_inode(inode);
+>  	if (err)
+> 
