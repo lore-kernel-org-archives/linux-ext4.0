@@ -1,57 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsck bug? - Sparse files corrupt after "e2fsck -E bmap2extent".
-Date: Tue, 23 May 2017 11:41:52 -0400
-Message-ID: <20170523154152.glfcx7aryt5x4otj@thunk.org>
-References: <a7a4fc1f-c1d9-bd69-cc2a-1a8094931e6d@dragonfly.plus.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: remove redundant check for encrypted file on dio
+ write path
+Date: Tue, 23 May 2017 09:13:54 -0700
+Message-ID: <20170523161354.GB106748@gmail.com>
+References: <20170523005316.18996-1-ebiggers3@gmail.com>
+ <20170523082410.GD1230@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Marc Thomas <marc@dragonfly.plus.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-fscrypt@vger.kernel.org, Eric Biggers <ebiggers@google.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:55854 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1764616AbdEWPly (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 May 2017 11:41:54 -0400
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:36074 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S968511AbdEWQN5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 May 2017 12:13:57 -0400
 Content-Disposition: inline
-In-Reply-To: <a7a4fc1f-c1d9-bd69-cc2a-1a8094931e6d@dragonfly.plus.com>
+In-Reply-To: <20170523082410.GD1230@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 23, 2017 at 12:20:59AM +0100, Marc Thomas wrote:
-> Hi All,
+Hi Jan,
+
+On Tue, May 23, 2017 at 10:24:10AM +0200, Jan Kara wrote:
+> On Mon 22-05-17 17:53:16, Eric Biggers wrote:
+> > From: Eric Biggers <ebiggers@google.com>
+> > 
+> > Currently we don't allow direct I/O on encrypted regular files, so in
+> > such cases we return 0 early in ext4_direct_IO().  There was also an
+> > additional BUG_ON() check in ext4_direct_IO_write(), but it can never be
+> > hit because of the earlier check for the exact same condition in
+> > ext4_direct_IO().  There was also no matching check on the read path,
+> > which made the write path specific check seem very ad-hoc.
+> > 
+> > Just remove the unnecessary BUG_ON().
+> > 
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
 > 
-> Would you agree this is a bug? As I understand it, reading from an
-> "unpopulated" region of a sparse file should return all zeros - so the
-> md5sum should be the same before and after migration.
+> Yeah, the check is rather before the BUG_ON so I guess that there's no big
+> point in the BUG_ON. When looking at this code I have one question though:
+> 
+> So when you mount the filesystem with 'dioread_nolock', do overwriting
+> direct write to the file, and just after we do inode_unlock() in
+> ext4_direct_IO_write() someone calls EXT4_IOC_SET_ENCRYPTION_POLICY ioctl
+> on the file, the BUG_ON could actually trigger. So I think you need 
+> to wait for outstanding direct IO for the file when setting encryption
+> policy. Likely in ext4_set_context() or maybe in the generic fscrypt code
+> (you need to wait after acquiring inode_lock), I'm not sure how other
+> filesystems using fscrypt handle this and whether it would make more sense
+> in the generic code or in ext4 specific one.
+> 
 
-I agree that sparse files should be properly handled after bmap2extent
-conversion.  This code hasn't received that much use or testing, but
-I've tried to replicate the problem and I haven't succeeded.  This
-script works for me:
+That's not possible because the ioctl can only set an encryption policy on a
+directory, and specifically an empty one.  Other files can only acquire an
+encryption policy through inheritance.  There have been thoughts about
+implementing "in-place" encryption but it's not something we currently support.
 
------ cut here -----
-#!/bin/bash
-
-rm -f /tmp/foo.img
-mke2fs -t ext3 -Fq /tmp/foo.img 65536
-mount -o loop /tmp/foo.img /mnt
-dd if=/etc/motd of=/mnt/test bs=4k >& /dev/null
-dd if=/etc/motd of=/mnt/test conv=notrunc seek=32 bs=4k >& /dev/null
-dd if=/etc/motd of=/mnt/test2 bs=4k >& /dev/null
-dd if=/etc/motd of=/mnt/test2 conv=notrunc seek=1024 bs=4k >& /dev/null
-lsattr /mnt/test*
-md5sum /mnt/test* > /mnt/MD5SUMS
-umount /mnt
-e2fsck -fy -E bmap2extent /tmp/foo.img
-mount -o loop /tmp/foo.img /mnt
-md5sum -c /mnt/MD5SUMS
-lsattr /mnt/test*
-umount /mnt
------ cut here -----
-
-Maybe you can come up with a simple repro case that fails for you?
-
-Thanks,
-
-						- Ted
-						
+Eric
