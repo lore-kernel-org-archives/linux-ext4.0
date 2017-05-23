@@ -1,79 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix off-by-one on max nr_pages in
- ext4_find_unwritten_pgoff()
-Date: Tue, 23 May 2017 10:34:32 +0200
-Message-ID: <20170523083432.GE1230@quack2.suse.cz>
-References: <20170521080026.20986-1-eguan@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/6] ext4: Move is_32bit_api() to generic code
+Date: Tue, 23 May 2017 01:36:05 -0700
+Message-ID: <20170523083605.GA4107@infradead.org>
+References: <1495398051-4604-1-git-send-email-richard@nod.at>
+ <1495398051-4604-2-git-send-email-richard@nod.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40520 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1759734AbdEWIee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 May 2017 04:34:34 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: david@sigma-star.at, bfields@redhat.com, dedekind1@gmail.com,
+ linux-kernel@vger.kernel.org, hyc.lee@gmail.com, adrian.hunter@intel.com,
+ leon.pollak@gmail.com, linux-mtd@lists.infradead.org,
+ marcus.folkesson@gmail.com, linux-fsdevel@vger.kernel.org,
+ adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+ linux-ext4@vger.kernel.org, rockdotlee@gmail.com
+To: Richard Weinberger <richard@nod.at>
+Return-path: <linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org>
 Content-Disposition: inline
-In-Reply-To: <20170521080026.20986-1-eguan@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1495398051-4604-2-git-send-email-richard@nod.at>
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-mtd/>
+List-Post: <mailto:linux-mtd@lists.infradead.org>
+List-Help: <mailto:linux-mtd-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-mtd>,
+ <mailto:linux-mtd-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-mtd" <linux-mtd-bounces@lists.infradead.org>
+Errors-To: linux-mtd-bounces+gldm-linux-mtd-36=gmane.org@lists.infradead.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun 21-05-17 16:00:26, Eryu Guan wrote:
-> ext4_find_unwritten_pgoff() is used to search for offset of hole or
-> data in page range [index, end] (both inclusive), and the max number
-> of pages to search should be at least one, if end == index.
-> Otherwise the only page is missed and no hole or data is found,
-> which is not correct.
-> 
-> When block size is smaller than page size, this can be demonstrated
-> by preallocating a file with size smaller than page size and writing
-> data to the last block. E.g. run this xfs_io command on a 1k block
-> size ext4 on x86_64 host.
-> 
->   # xfs_io -fc "falloc 0 3k" -c "pwrite 2k 1k" \
->   	    -c "seek -d 0" /mnt/ext4/testfile
->   wrote 1024/1024 bytes at offset 2048
->   1 KiB, 1 ops; 0.0000 sec (42.459 MiB/sec and 43478.2609 ops/sec)
->   Whence  Result
->   DATA    EOF
-> 
-> Data at offset 2k was missed, and lseek(2) returned ENXIO.
-> 
-> This is unconvered by generic/285 subtest 07 and 08 on ppc64 host,
-> where pagesize is 64k. Because a recent change to generic/285
-> reduced the preallocated file size to smaller than 64k.
-> 
-> Cc: stable@vger.kernel.org # v3.7+
-> Signed-off-by: Eryu Guan <eguan@redhat.com>
+On Sun, May 21, 2017 at 10:20:46PM +0200, Richard Weinberger wrote:
+> Since UBIFS will also use this function, move it to compat.h.
 
-Yeah, thanks for fixing this! Actually this is a bug introduced by my
-recent fixes. Previously, 'end' used to be "one block after the end" and so
-the math worked out correctly :-|. You can add:
+The name is very generic for a common header.  Please give it a
+better name.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/file.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 831fd6b..7b206e5 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -481,7 +481,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
->  		int i, num;
->  		unsigned long nr_pages;
->  
-> -		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
-> +		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE - 1) + 1;
->  		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
->  					  (pgoff_t)num);
->  		if (nr_pages == 0) {
-> -- 
-> 2.9.4
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+______________________________________________________
+Linux MTD discussion mailing list
+http://lists.infradead.org/mailman/listinfo/linux-mtd/
