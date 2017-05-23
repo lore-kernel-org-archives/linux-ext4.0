@@ -1,46 +1,42 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH] ext4: fix off-by-one error when writing back pages before dio read
-Date: Mon, 22 May 2017 18:34:41 -0700
-Message-ID: <20170523013441.49030-1-ebiggers3@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        Eric Biggers <ebiggers@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f196.google.com ([209.85.192.196]:34480 "EHLO
-        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752520AbdEWBgz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 May 2017 21:36:55 -0400
-Received: by mail-pf0-f196.google.com with SMTP id w69so23704004pfk.1
-        for <linux-ext4@vger.kernel.org>; Mon, 22 May 2017 18:36:55 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH] ext4: fix quota charging for shared xattr blocks
+Date: Mon, 22 May 2017 20:01:48 -0700
+Message-ID: <20170523030148.24361-1-tahsin@google.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
+block when new references are made. However if dquot_initialize() hasn't
+been called on an inode, request for charging is effectively ignored
+because ext4_inode_info->i_dquot is not initialized yet.
 
-The 'lend' argument of filemap_write_and_wait_range() is inclusive, so
-we need to subtract 1 from pos + count.
+Add dquot_initialize() call to ext4_xattr_set_handle().
 
-Note that 'count' is guaranteed to be nonzero since
-ext4_file_read_iter() returns early when given a 0 count.
-
-Fixes: 16c54688592c ("ext4: Allow parallel DIO reads")
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/xattr.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7c6e715b4d2e..3080ea82dd6d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3710,7 +3710,7 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- 	 */
- 	inode_lock_shared(inode);
- 	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
--					   iocb->ki_pos + count);
-+					   iocb->ki_pos + count - 1);
- 	if (ret)
- 		goto out_unlock;
- 	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 8fb7ce14e6eb..e94575448550 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1166,6 +1166,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		return -EINVAL;
+ 	if (strlen(name) > 255)
+ 		return -ERANGE;
++
++	error = dquot_initialize(inode);
++	if (error)
++		return error;
++
+ 	ext4_write_lock_xattr(inode, &no_expand);
+ 
+ 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
 -- 
 2.13.0.219.gdb65acc882-goog
