@@ -1,62 +1,164 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix quota charging for shared xattr blocks
-Date: Tue, 23 May 2017 10:10:55 +0200
-Message-ID: <20170523081055.GB1230@quack2.suse.cz>
-References: <20170523030148.24361-1-tahsin@google.com>
+Subject: Re: [PATCH RESEND] ext4: remove unused d_name argument from
+ ext4_search_dir() et al.
+Date: Tue, 23 May 2017 10:12:32 +0200
+Message-ID: <20170523081232.GC1230@quack2.suse.cz>
+References: <20170523012259.41989-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:38964 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1757407AbdEWIMk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 23 May 2017 04:12:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20170523030148.24361-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170523012259.41989-1-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 22-05-17 20:01:48, Tahsin Erdogan wrote:
-> ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
-> block when new references are made. However if dquot_initialize() hasn't
-> been called on an inode, request for charging is effectively ignored
-> because ext4_inode_info->i_dquot is not initialized yet.
+On Mon 22-05-17 18:22:59, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Add dquot_initialize() call to ext4_xattr_set_handle().
+> Now that we are passing a struct ext4_filename, we do not need to pass
+> around the original struct qstr too.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Thanks for finding the bug! However this is a wrong place where to insert
-dquot_initialize(). Generally we try really hard to do dquot_initalize()
-calls outside of a transaction (as they may have pretty big requirements on
-the amount of transaction credits - and for your patch to be correct you'd
-have to update credit estimates for each possible transaction involved). So
-you should rather place these calls into ext4_xattr_set(), ext4_set_acl(),
-ext4_set_context() (only in the case when transaction needs to be started
-before starting it). You can then add a warning in ext4_xattr_set_handle()
-checking whether quota is indeed initialized as expected.
+Looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> 
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 > ---
->  fs/ext4/xattr.c | 5 +++++
->  1 file changed, 5 insertions(+)
+>  fs/ext4/ext4.h   |  2 --
+>  fs/ext4/inline.c |  5 ++---
+>  fs/ext4/namei.c  | 13 +++++--------
+>  3 files changed, 7 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 8fb7ce14e6eb..e94575448550 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1166,6 +1166,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
->  		return -EINVAL;
->  	if (strlen(name) > 255)
->  		return -ERANGE;
-> +
-> +	error = dquot_initialize(inode);
-> +	if (error)
-> +		return error;
-> +
->  	ext4_write_lock_xattr(inode, &no_expand);
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 8e8046104f4d..32191548abed 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2523,7 +2523,6 @@ extern int ext4_search_dir(struct buffer_head *bh,
+>  			   int buf_size,
+>  			   struct inode *dir,
+>  			   struct ext4_filename *fname,
+> -			   const struct qstr *d_name,
+>  			   unsigned int offset,
+>  			   struct ext4_dir_entry_2 **res_dir);
+>  extern int ext4_generic_delete_entry(handle_t *handle,
+> @@ -3007,7 +3006,6 @@ extern int htree_inlinedir_to_tree(struct file *dir_file,
+>  				   int *has_inline_data);
+>  extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+>  					struct ext4_filename *fname,
+> -					const struct qstr *d_name,
+>  					struct ext4_dir_entry_2 **res_dir,
+>  					int *has_inline_data);
+>  extern int ext4_delete_inline_entry(handle_t *handle,
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index d5dea4c293ef..8d141c0c8ff9 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1627,7 +1627,6 @@ int ext4_try_create_inline_dir(handle_t *handle, struct inode *parent,
 >  
->  	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
+>  struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+>  					struct ext4_filename *fname,
+> -					const struct qstr *d_name,
+>  					struct ext4_dir_entry_2 **res_dir,
+>  					int *has_inline_data)
+>  {
+> @@ -1649,7 +1648,7 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+>  						EXT4_INLINE_DOTDOT_SIZE;
+>  	inline_size = EXT4_MIN_INLINE_DATA_SIZE - EXT4_INLINE_DOTDOT_SIZE;
+>  	ret = ext4_search_dir(iloc.bh, inline_start, inline_size,
+> -			      dir, fname, d_name, 0, res_dir);
+> +			      dir, fname, 0, res_dir);
+>  	if (ret == 1)
+>  		goto out_find;
+>  	if (ret < 0)
+> @@ -1662,7 +1661,7 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+>  	inline_size = ext4_get_inline_size(dir) - EXT4_MIN_INLINE_DATA_SIZE;
+>  
+>  	ret = ext4_search_dir(iloc.bh, inline_start, inline_size,
+> -			      dir, fname, d_name, 0, res_dir);
+> +			      dir, fname, 0, res_dir);
+>  	if (ret == 1)
+>  		goto out_find;
+>  
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index b81f7d46f344..404256caf9cf 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1155,12 +1155,11 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+>  static inline int search_dirblock(struct buffer_head *bh,
+>  				  struct inode *dir,
+>  				  struct ext4_filename *fname,
+> -				  const struct qstr *d_name,
+>  				  unsigned int offset,
+>  				  struct ext4_dir_entry_2 **res_dir)
+>  {
+>  	return ext4_search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
+> -			       fname, d_name, offset, res_dir);
+> +			       fname, offset, res_dir);
+>  }
+>  
+>  /*
+> @@ -1262,7 +1261,6 @@ static inline bool ext4_match(const struct ext4_filename *fname,
+>   */
+>  int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+>  		    struct inode *dir, struct ext4_filename *fname,
+> -		    const struct qstr *d_name,
+>  		    unsigned int offset, struct ext4_dir_entry_2 **res_dir)
+>  {
+>  	struct ext4_dir_entry_2 * de;
+> @@ -1355,7 +1353,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+>  
+>  	if (ext4_has_inline_data(dir)) {
+>  		int has_inline_data = 1;
+> -		ret = ext4_find_inline_entry(dir, &fname, d_name, res_dir,
+> +		ret = ext4_find_inline_entry(dir, &fname, res_dir,
+>  					     &has_inline_data);
+>  		if (has_inline_data) {
+>  			if (inlined)
+> @@ -1447,7 +1445,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+>  			goto next;
+>  		}
+>  		set_buffer_verified(bh);
+> -		i = search_dirblock(bh, dir, &fname, d_name,
+> +		i = search_dirblock(bh, dir, &fname,
+>  			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
+>  		if (i == 1) {
+>  			EXT4_I(dir)->i_dir_start_lookup = block;
+> @@ -1488,7 +1486,6 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+>  {
+>  	struct super_block * sb = dir->i_sb;
+>  	struct dx_frame frames[2], *frame;
+> -	const struct qstr *d_name = fname->usr_fname;
+>  	struct buffer_head *bh;
+>  	ext4_lblk_t block;
+>  	int retval;
+> @@ -1505,7 +1502,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+>  		if (IS_ERR(bh))
+>  			goto errout;
+>  
+> -		retval = search_dirblock(bh, dir, fname, d_name,
+> +		retval = search_dirblock(bh, dir, fname,
+>  					 block << EXT4_BLOCK_SIZE_BITS(sb),
+>  					 res_dir);
+>  		if (retval == 1)
+> @@ -1530,7 +1527,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+>  
+>  	bh = NULL;
+>  errout:
+> -	dxtrace(printk(KERN_DEBUG "%s not found\n", d_name->name));
+> +	dxtrace(printk(KERN_DEBUG "%s not found\n", fname->usr_fname->name));
+>  success:
+>  	dx_release(frames);
+>  	return bh;
 > -- 
 > 2.13.0.219.gdb65acc882-goog
 > 
