@@ -1,168 +1,96 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH v3] ext4: fix quota charging for shared xattr blocks
-Date: Wed, 24 May 2017 04:35:19 -0700
-Message-ID: <20170524113519.16232-1-tahsin@google.com>
-References: <20170524090658.GD10604@quack2.suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Tahsin Erdogan <tahsin@google.com>
-To: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170524090658.GD10604@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: [PATCH 0/10 v9] No wait AIO
+Date: Wed, 24 May 2017 11:41:40 -0500
+Message-ID: <20170524164150.9492-1-rgoldwyn@suse.de>
+Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, axboe@kernel.dk,
+        linux-api@vger.kernel.org, adam.manzanares@wdc.com,
+        viro@zeniv.linux.org.uk
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-block-owner@vger.kernel.org>
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
-block when new references are made. However if dquot_initialize() hasn't
-been called on an inode, request for charging is effectively ignored
-because ext4_inode_info->i_dquot is not initialized yet.
+Formerly known as non-blocking AIO.
 
-Add dquot_initialize() to call paths that lead to ext4_xattr_block_set().
+This series adds nonblocking feature to asynchronous I/O writes.
+io_submit() can be delayed because of a number of reason:
+ - Block allocation for files
+ - Data writebacks for direct I/O
+ - Sleeping because of waiting to acquire i_rwsem
+ - Congested block device
 
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
-v3: added Reviewed-by tag
-v2:
- - moved dquot_initialize() to outside the main transaction
- - added dquot_initialize_needed() function that is used by
-   ext4_xattr_release_block() to warn about call paths that don't
-   call dquot_initialize()
+The goal of the patch series is to return -EAGAIN/-EWOULDBLOCK if
+any of these conditions are met. This way userspace can push most
+of the write()s to the kernel to the best of its ability to complete
+and if it returns -EAGAIN, can defer it to another thread.
 
- fs/ext4/acl.c            |  4 ++++
- fs/ext4/super.c          |  3 +++
- fs/ext4/xattr.c          |  8 ++++++++
- fs/quota/dquot.c         | 16 ++++++++++++++++
- include/linux/quotaops.h |  6 ++++++
- 5 files changed, 37 insertions(+)
+In order to enable this, IOCB_RW_FLAG_NOWAIT is introduced in
+uapi/linux/aio_abi.h. If set for aio_rw_flags, it translates to
+IOCB_NOWAIT for struct iocb, REQ_NOWAIT for bio.bi_opf and IOMAP_NOWAIT for
+iomap. aio_rw_flags is a new flag replacing aio_reserved1. We could
+not use aio_flags because it is not currently checked for invalidity
+in the kernel.
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index fd389935ecd1..3ec0e46de95f 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -4,6 +4,7 @@
-  * Copyright (C) 2001-2003 Andreas Gruenbacher, <agruen@suse.de>
-  */
+This feature is provided for direct I/O of asynchronous I/O only. I have
+tested it against xfs, ext4, and btrfs while I intend to add more filesystems.
+The nowait feature is for request based devices. In the future, I intend to
+add support to stacked devices such as md.
+
+Applications will have to check supportability
+by sending a async direct write and any other error besides -EAGAIN
+would mean it is not supported.
+
+First two patches are prep patches into nowait I/O.
+
+Changes since v1:
+ + changed name from _NONBLOCKING to *_NOWAIT
+ + filemap_range_has_page call moved to closer to (just before) calling filemap_write_and_wait_range().
+ + BIO_NOWAIT limited to get_request()
+ + XFS fixes 
+	- included reflink 
+	- use of xfs_ilock_nowait() instead of a XFS_IOLOCK_NONBLOCKING flag
+	- Translate the flag through IOMAP_NOWAIT (iomap) to check for
+	  block allocation for the file.
+ + ext4 coding style
+
+Changes since v2:
+ + Using aio_reserved1 as aio_rw_flags instead of aio_flags
+ + blk-mq support
+ + xfs uptodate with kernel and reflink changes
+
+ Changes since v3:
+  + Added FS_NOWAIT, which is set if the filesystem supports NOWAIT feature.
+  + Checks in generic_make_request() to make sure BIO_NOWAIT comes in
+    for async direct writes only.
+  + Added QUEUE_FLAG_NOWAIT, which is set if the device supports BIO_NOWAIT.
+    This is added (rather not set) to block devices such as dm/md currently.
+
+ Changes since v4:
+  + Ported AIO code to use RWF_* flags. Check for RWF_* flags in
+    generic_file_write_iter().
+  + Changed IOCB_RW_FLAGS_NOWAIT to RWF_NOWAIT.
+
+ Changes since v5:
+  + BIO_NOWAIT to REQ_NOWAIT
+  + Common helper for RWF flags.
+
+ Changes since v6:
+  + REQ_NOWAIT will be ignored for request based devices since they
+    cannot block. So, removed QUEUE_FLAG_NOWAIT since it is not
+    required in the current implementation. It will be resurrected
+    when we program for stacked devices.
+  + changed kiocb_rw_flags() to kiocb_set_rw_flags() in order to accomodate
+    for errors. Moved checks in the function.
+
+ Changes since v7:
+  + split patches into prep so the main patches are smaller and easier
+    to understand
+  + All patches are reviewed or acked!
  
-+#include <linux/quotaops.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "xattr.h"
-@@ -232,6 +233,9 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 	handle_t *handle;
- 	int error, retries = 0;
- 
-+	error = dquot_initialize(inode);
-+	if (error)
-+		return error;
- retry:
- 	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
- 				    ext4_jbd2_credits_xattr(inode));
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0b177da9ea82..e2e0eb7ac9a0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1179,6 +1179,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 		return res;
- 	}
- 
-+	res = dquot_initialize(inode);
-+	if (res)
-+		return res;
- retry:
- 	handle = ext4_journal_start(inode, EXT4_HT_MISC,
- 			ext4_jbd2_credits_xattr(inode));
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 8fb7ce14e6eb..5d3c2536641c 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -888,6 +888,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			else {
- 				u32 ref;
- 
-+				WARN_ON_ONCE(dquot_initialize_needed(inode));
-+
- 				/* The old block is released after updating
- 				   the inode. */
- 				error = dquot_alloc_block(inode,
-@@ -954,6 +956,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			/* We need to allocate a new block */
- 			ext4_fsblk_t goal, block;
- 
-+			WARN_ON_ONCE(dquot_initialize_needed(inode));
-+
- 			goal = ext4_group_first_block_no(sb,
- 						EXT4_I(inode)->i_block_group);
- 
-@@ -1166,6 +1170,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 		return -EINVAL;
- 	if (strlen(name) > 255)
- 		return -ERANGE;
-+
- 	ext4_write_lock_xattr(inode, &no_expand);
- 
- 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
-@@ -1267,6 +1272,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- 	int error, retries = 0;
- 	int credits = ext4_jbd2_credits_xattr(inode);
- 
-+	error = dquot_initialize(inode);
-+	if (error)
-+		return error;
- retry:
- 	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
- 	if (IS_ERR(handle)) {
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index ebf80c7739e1..48813aeaab80 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -1512,6 +1512,22 @@ int dquot_initialize(struct inode *inode)
- }
- EXPORT_SYMBOL(dquot_initialize);
- 
-+bool dquot_initialize_needed(struct inode *inode)
-+{
-+	struct dquot **dquots;
-+	int i;
-+
-+	if (!dquot_active(inode))
-+		return false;
-+
-+	dquots = i_dquot(inode);
-+	for (i = 0; i < MAXQUOTAS; i++)
-+		if (!dquots[i] && sb_has_quota_active(inode->i_sb, i))
-+			return true;
-+	return false;
-+}
-+EXPORT_SYMBOL(dquot_initialize_needed);
-+
- /*
-  * Release all quotas referenced by inode.
-  *
-diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
-index 9c6f768b7d32..dda22f45fc1b 100644
---- a/include/linux/quotaops.h
-+++ b/include/linux/quotaops.h
-@@ -44,6 +44,7 @@ void inode_sub_rsv_space(struct inode *inode, qsize_t number);
- void inode_reclaim_rsv_space(struct inode *inode, qsize_t number);
- 
- int dquot_initialize(struct inode *inode);
-+bool dquot_initialize_needed(struct inode *inode);
- void dquot_drop(struct inode *inode);
- struct dquot *dqget(struct super_block *sb, struct kqid qid);
- static inline struct dquot *dqgrab(struct dquot *dquot)
-@@ -207,6 +208,11 @@ static inline int dquot_initialize(struct inode *inode)
- 	return 0;
- }
- 
-+static inline bool dquot_initialize_needed(struct inode *inode)
-+{
-+	return false;
-+}
-+
- static inline void dquot_drop(struct inode *inode)
- {
- }
+ Changes since v8:
+ + Err out AIO reads with -EINVAL flagged as RWF_NOWAIT
+
 -- 
-2.13.0.219.gdb65acc882-goog
+Goldwyn
