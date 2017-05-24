@@ -1,73 +1,182 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: remove redundant check for encrypted file on dio
- write path
-Date: Wed, 24 May 2017 10:10:41 +0200
-Message-ID: <20170524081041.GB10604@quack2.suse.cz>
-References: <20170523005316.18996-1-ebiggers3@gmail.com>
- <20170523082410.GD1230@quack2.suse.cz>
- <20170523161354.GB106748@gmail.com>
+Subject: Re: [PATCH v2] ext4: fix quota charging for shared xattr blocks
+Date: Wed, 24 May 2017 11:06:58 +0200
+Message-ID: <20170524090658.GD10604@quack2.suse.cz>
+References: <20170523081055.GB1230@quack2.suse.cz>
+ <20170523230351.5476-1-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58293 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S933663AbdEXIKp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 May 2017 04:10:45 -0400
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170523161354.GB106748@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170523230351.5476-1-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 23-05-17 09:13:54, Eric Biggers wrote:
-> Hi Jan,
+On Tue 23-05-17 16:03:51, Tahsin Erdogan wrote:
+> ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
+> block when new references are made. However if dquot_initialize() hasn't
+> been called on an inode, request for charging is effectively ignored
+> because ext4_inode_info->i_dquot is not initialized yet.
 > 
-> On Tue, May 23, 2017 at 10:24:10AM +0200, Jan Kara wrote:
-> > On Mon 22-05-17 17:53:16, Eric Biggers wrote:
-> > > From: Eric Biggers <ebiggers@google.com>
-> > > 
-> > > Currently we don't allow direct I/O on encrypted regular files, so in
-> > > such cases we return 0 early in ext4_direct_IO().  There was also an
-> > > additional BUG_ON() check in ext4_direct_IO_write(), but it can never
-> > > be hit because of the earlier check for the exact same condition in
-> > > ext4_direct_IO().  There was also no matching check on the read path,
-> > > which made the write path specific check seem very ad-hoc.
-> > > 
-> > > Just remove the unnecessary BUG_ON().
-> > > 
-> > > Signed-off-by: Eric Biggers <ebiggers@google.com>
-> > 
-> > Yeah, the check is rather before the BUG_ON so I guess that there's no
-> > big point in the BUG_ON. When looking at this code I have one question
-> > though:
-> > 
-> > So when you mount the filesystem with 'dioread_nolock', do overwriting
-> > direct write to the file, and just after we do inode_unlock() in
-> > ext4_direct_IO_write() someone calls EXT4_IOC_SET_ENCRYPTION_POLICY
-> > ioctl on the file, the BUG_ON could actually trigger. So I think you
-> > need to wait for outstanding direct IO for the file when setting
-> > encryption policy. Likely in ext4_set_context() or maybe in the generic
-> > fscrypt code (you need to wait after acquiring inode_lock), I'm not
-> > sure how other filesystems using fscrypt handle this and whether it
-> > would make more sense in the generic code or in ext4 specific one.
-> > 
+> Add dquot_initialize() to call paths that lead to ext4_xattr_block_set().
 > 
-> That's not possible because the ioctl can only set an encryption policy
-> on a directory, and specifically an empty one.  Other files can only
-> acquire an encryption policy through inheritance.  There have been
-> thoughts about implementing "in-place" encryption but it's not something
-> we currently support.
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Ah, good. Thanks for explanation. Then you can add:
+Looks good to me. You can add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
-to your patch.
-
 								Honza
+
+> ---
+> v2:
+>  - moved dquot_initialize() to outside the main transaction
+>  - added dquot_initialize_needed() function that is used by
+>    ext4_xattr_release_block() to warn about call paths that don't
+>    call dquot_initialize()
+> 
+>  fs/ext4/acl.c            |  4 ++++
+>  fs/ext4/super.c          |  3 +++
+>  fs/ext4/xattr.c          |  8 ++++++++
+>  fs/quota/dquot.c         | 16 ++++++++++++++++
+>  include/linux/quotaops.h |  6 ++++++
+>  5 files changed, 37 insertions(+)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index fd389935ecd1..3ec0e46de95f 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -4,6 +4,7 @@
+>   * Copyright (C) 2001-2003 Andreas Gruenbacher, <agruen@suse.de>
+>   */
+>  
+> +#include <linux/quotaops.h>
+>  #include "ext4_jbd2.h"
+>  #include "ext4.h"
+>  #include "xattr.h"
+> @@ -232,6 +233,9 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+>  	handle_t *handle;
+>  	int error, retries = 0;
+>  
+> +	error = dquot_initialize(inode);
+> +	if (error)
+> +		return error;
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+>  				    ext4_jbd2_credits_xattr(inode));
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 0b177da9ea82..e2e0eb7ac9a0 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1179,6 +1179,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>  		return res;
+>  	}
+>  
+> +	res = dquot_initialize(inode);
+> +	if (res)
+> +		return res;
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_HT_MISC,
+>  			ext4_jbd2_credits_xattr(inode));
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 8fb7ce14e6eb..5d3c2536641c 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -888,6 +888,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  			else {
+>  				u32 ref;
+>  
+> +				WARN_ON_ONCE(dquot_initialize_needed(inode));
+> +
+>  				/* The old block is released after updating
+>  				   the inode. */
+>  				error = dquot_alloc_block(inode,
+> @@ -954,6 +956,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  			/* We need to allocate a new block */
+>  			ext4_fsblk_t goal, block;
+>  
+> +			WARN_ON_ONCE(dquot_initialize_needed(inode));
+> +
+>  			goal = ext4_group_first_block_no(sb,
+>  						EXT4_I(inode)->i_block_group);
+>  
+> @@ -1166,6 +1170,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>  		return -EINVAL;
+>  	if (strlen(name) > 255)
+>  		return -ERANGE;
+> +
+>  	ext4_write_lock_xattr(inode, &no_expand);
+>  
+>  	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
+> @@ -1267,6 +1272,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+>  	int error, retries = 0;
+>  	int credits = ext4_jbd2_credits_xattr(inode);
+>  
+> +	error = dquot_initialize(inode);
+> +	if (error)
+> +		return error;
+>  retry:
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+>  	if (IS_ERR(handle)) {
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index ebf80c7739e1..48813aeaab80 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -1512,6 +1512,22 @@ int dquot_initialize(struct inode *inode)
+>  }
+>  EXPORT_SYMBOL(dquot_initialize);
+>  
+> +bool dquot_initialize_needed(struct inode *inode)
+> +{
+> +	struct dquot **dquots;
+> +	int i;
+> +
+> +	if (!dquot_active(inode))
+> +		return false;
+> +
+> +	dquots = i_dquot(inode);
+> +	for (i = 0; i < MAXQUOTAS; i++)
+> +		if (!dquots[i] && sb_has_quota_active(inode->i_sb, i))
+> +			return true;
+> +	return false;
+> +}
+> +EXPORT_SYMBOL(dquot_initialize_needed);
+> +
+>  /*
+>   * Release all quotas referenced by inode.
+>   *
+> diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+> index 9c6f768b7d32..dda22f45fc1b 100644
+> --- a/include/linux/quotaops.h
+> +++ b/include/linux/quotaops.h
+> @@ -44,6 +44,7 @@ void inode_sub_rsv_space(struct inode *inode, qsize_t number);
+>  void inode_reclaim_rsv_space(struct inode *inode, qsize_t number);
+>  
+>  int dquot_initialize(struct inode *inode);
+> +bool dquot_initialize_needed(struct inode *inode);
+>  void dquot_drop(struct inode *inode);
+>  struct dquot *dqget(struct super_block *sb, struct kqid qid);
+>  static inline struct dquot *dqgrab(struct dquot *dquot)
+> @@ -207,6 +208,11 @@ static inline int dquot_initialize(struct inode *inode)
+>  	return 0;
+>  }
+>  
+> +static inline bool dquot_initialize_needed(struct inode *inode)
+> +{
+> +	return false;
+> +}
+> +
+>  static inline void dquot_drop(struct inode *inode)
+>  {
+>  }
+> -- 
+> 2.13.0.219.gdb65acc882-goog
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
