@@ -1,51 +1,168 @@
-From: Marc Thomas <marc@dragonfly.plus.com>
-Subject: Re: [PATCH] e2fsck: fix sparse bmap to extent conversion
-Date: Wed, 24 May 2017 12:30:58 +0100
-Message-ID: <982fc176-2a8d-1318-8eec-2524c6af1e00@dragonfly.plus.com>
-References: <20170523190019.GF4510@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from avasout01.plus.net ([84.93.230.227]:49702 "EHLO
-        avasout01.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932911AbdEXLbB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 May 2017 07:31:01 -0400
-In-Reply-To: <20170523190019.GF4510@birch.djwong.org>
-Content-Language: en-GB
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH v3] ext4: fix quota charging for shared xattr blocks
+Date: Wed, 24 May 2017 04:35:19 -0700
+Message-ID: <20170524113519.16232-1-tahsin@google.com>
+References: <20170524090658.GD10604@quack2.suse.cz>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170524090658.GD10604@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Darrick,
+ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
+block when new references are made. However if dquot_initialize() hasn't
+been called on an inode, request for charging is effectively ignored
+because ext4_inode_info->i_dquot is not initialized yet.
 
-Thanks very much for the patch. I applied it to the git-master and built
-e2fsprogs. The new "make check" test for "f_convert_bmap_sparse" passes,
-and indeed my test-case script now passes.
-However the test for "f_detect_junk" is failing for me:
+Add dquot_initialize() to call paths that lead to ext4_xattr_block_set().
 
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
-$ cat f_detect_junk.failed
---- ../../tests/f_detect_junk/expect    2017-05-24 08:58:29.025273717 +0000
-+++ f_detect_junk.log   2017-05-24 09:23:41.426168239 +0000
-@@ -13,6 +13,7 @@
+v3: added Reviewed-by tag
+v2:
+ - moved dquot_initialize() to outside the main transaction
+ - added dquot_initialize_needed() function that is used by
+   ext4_xattr_release_block() to warn about call paths that don't
+   call dquot_initialize()
+
+ fs/ext4/acl.c            |  4 ++++
+ fs/ext4/super.c          |  3 +++
+ fs/ext4/xattr.c          |  8 ++++++++
+ fs/quota/dquot.c         | 16 ++++++++++++++++
+ include/linux/quotaops.h |  6 ++++++
+ 5 files changed, 37 insertions(+)
+
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index fd389935ecd1..3ec0e46de95f 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -4,6 +4,7 @@
+  * Copyright (C) 2001-2003 Andreas Gruenbacher, <agruen@suse.de>
+  */
  
- *** debugfs
- test.img: Bad magic number in super-block while opening filesystem
-+Checksum errors in superblock!  Retrying...
- *** tune2fs
- ../misc/tune2fs: Bad magic number in super-block while trying to open
-test.img
- *** mke2fs
----
-
-I think the expect test maybe just needs updating.
-
-
-I will now try the patched e2fsck on the full data-migration process I'm
-doing and report back. This will take a few hours.
-
-Kind Regards,
-Marc
++#include <linux/quotaops.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "xattr.h"
+@@ -232,6 +233,9 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ 	handle_t *handle;
+ 	int error, retries = 0;
+ 
++	error = dquot_initialize(inode);
++	if (error)
++		return error;
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+ 				    ext4_jbd2_credits_xattr(inode));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0b177da9ea82..e2e0eb7ac9a0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1179,6 +1179,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 		return res;
+ 	}
+ 
++	res = dquot_initialize(inode);
++	if (res)
++		return res;
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_HT_MISC,
+ 			ext4_jbd2_credits_xattr(inode));
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 8fb7ce14e6eb..5d3c2536641c 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -888,6 +888,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			else {
+ 				u32 ref;
+ 
++				WARN_ON_ONCE(dquot_initialize_needed(inode));
++
+ 				/* The old block is released after updating
+ 				   the inode. */
+ 				error = dquot_alloc_block(inode,
+@@ -954,6 +956,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			/* We need to allocate a new block */
+ 			ext4_fsblk_t goal, block;
+ 
++			WARN_ON_ONCE(dquot_initialize_needed(inode));
++
+ 			goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+ 
+@@ -1166,6 +1170,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		return -EINVAL;
+ 	if (strlen(name) > 255)
+ 		return -ERANGE;
++
+ 	ext4_write_lock_xattr(inode, &no_expand);
+ 
+ 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
+@@ -1267,6 +1272,9 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	int error, retries = 0;
+ 	int credits = ext4_jbd2_credits_xattr(inode);
+ 
++	error = dquot_initialize(inode);
++	if (error)
++		return error;
+ retry:
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+ 	if (IS_ERR(handle)) {
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index ebf80c7739e1..48813aeaab80 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1512,6 +1512,22 @@ int dquot_initialize(struct inode *inode)
+ }
+ EXPORT_SYMBOL(dquot_initialize);
+ 
++bool dquot_initialize_needed(struct inode *inode)
++{
++	struct dquot **dquots;
++	int i;
++
++	if (!dquot_active(inode))
++		return false;
++
++	dquots = i_dquot(inode);
++	for (i = 0; i < MAXQUOTAS; i++)
++		if (!dquots[i] && sb_has_quota_active(inode->i_sb, i))
++			return true;
++	return false;
++}
++EXPORT_SYMBOL(dquot_initialize_needed);
++
+ /*
+  * Release all quotas referenced by inode.
+  *
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index 9c6f768b7d32..dda22f45fc1b 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -44,6 +44,7 @@ void inode_sub_rsv_space(struct inode *inode, qsize_t number);
+ void inode_reclaim_rsv_space(struct inode *inode, qsize_t number);
+ 
+ int dquot_initialize(struct inode *inode);
++bool dquot_initialize_needed(struct inode *inode);
+ void dquot_drop(struct inode *inode);
+ struct dquot *dqget(struct super_block *sb, struct kqid qid);
+ static inline struct dquot *dqgrab(struct dquot *dquot)
+@@ -207,6 +208,11 @@ static inline int dquot_initialize(struct inode *inode)
+ 	return 0;
+ }
+ 
++static inline bool dquot_initialize_needed(struct inode *inode)
++{
++	return false;
++}
++
+ static inline void dquot_drop(struct inode *inode)
+ {
+ }
+-- 
+2.13.0.219.gdb65acc882-goog
