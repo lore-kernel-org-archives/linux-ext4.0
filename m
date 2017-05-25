@@ -1,56 +1,94 @@
-From: Konstantin Chistyakov <Konstantin.Chistyakov@paragon-software.com>
-Subject: RE: libext2fs: don't flush to device opened in read-only mode
-Date: Thu, 25 May 2017 05:50:18 +0000
-Message-ID: <118AAB5F26BFB34DB5CDA7DA33334DB9B6065F@vmsk-exch-01.paragon-software.com>
-References: <118AAB5F26BFB34DB5CDA7DA33334DB9B5FF41@vmsk-exch-01.paragon-software.com>
- <20170524215622.fh7yin4fttggw36f@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 01/10] fs: Separate out kiocb flags setup based on RWF_*
+ flags
+Date: Thu, 25 May 2017 10:16:14 +0200
+Message-ID: <20170525081614.GB28950@quack2.suse.cz>
+References: <20170524164150.9492-1-rgoldwyn@suse.de>
+ <20170524164150.9492-2-rgoldwyn@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from relaymsk-01.paragon-software.com ([91.226.210.14]:34802 "EHLO
-        relaymsk-01.paragon-software.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754312AbdEYFuV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 May 2017 01:50:21 -0400
-In-Reply-To: <20170524215622.fh7yin4fttggw36f@thunk.org>
-Content-Language: ru-RU
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, jack@suse.com, hch@infradead.org,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        axboe@kernel.dk, linux-api@vger.kernel.org,
+        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170524164150.9492-2-rgoldwyn@suse.de>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Thanks for suggestion how to fix the bug correctly. Platform for reproducin=
-g: CYGWin build (x86, x64, cygwin1.dll v.2.8.0), Windows 8.1 x64 and Window=
-s  10 x64 (x86 not tested).
+On Wed 24-05-17 11:41:41, Goldwyn Rodrigues wrote:
+> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+> 
+> Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
------Original Message-----
-From: Theodore Ts'o [mailto:tytso@mit.edu]=20
-Sent: Thursday, May 25, 2017 12:56 AM
-To: Konstantin Chistyakov <Konstantin.Chistyakov@paragon-software.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: libext2fs: don't flush to device opened in read-only mode
+Looks good. You can add:
 
-On Mon, May 22, 2017 at 09:48:00AM +0000, Konstantin Chistyakov wrote:
-> From: Konstantin Chistyakov=20
-> <Konstantin.Chistyakov@Paragon-software.com>
-> Date: Tue, 19 May 2017 09:23:29 -0600
-> Subject: [PATCH] libext2fs: don't flush to device opened in read-only=20
-> mode
->=20
-> From: Konstantin Chistyakov=20
-> <Konstantin.Chistyakov@Paragon-software.com>
->=20
-> If the e2fsck is called with both -f -n options, the checking completing =
-with a flushing error (retcode 8).
->=20
-> Catch error from the unix_flush() fsync(data->dev) when data->dev is open=
-ed in read-only mode:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I can't reproduce this problem.  What storage device or operating system ar=
-e you using?
+								Honza
 
-That being said, this is probably the wrong place to fix it.  The better fi=
-x is in e2fsck/unix.c, by adding a read-only test.
-
-       	      	 		   	  - Ted
+> ---
+>  fs/read_write.c    | 12 +++---------
+>  include/linux/fs.h | 14 ++++++++++++++
+>  2 files changed, 17 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 47c1d4484df9..53c816c61122 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -678,16 +678,10 @@ static ssize_t do_iter_readv_writev(struct file *filp, struct iov_iter *iter,
+>  	struct kiocb kiocb;
+>  	ssize_t ret;
+>  
+> -	if (flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC))
+> -		return -EOPNOTSUPP;
+> -
+>  	init_sync_kiocb(&kiocb, filp);
+> -	if (flags & RWF_HIPRI)
+> -		kiocb.ki_flags |= IOCB_HIPRI;
+> -	if (flags & RWF_DSYNC)
+> -		kiocb.ki_flags |= IOCB_DSYNC;
+> -	if (flags & RWF_SYNC)
+> -		kiocb.ki_flags |= (IOCB_DSYNC | IOCB_SYNC);
+> +	ret = kiocb_set_rw_flags(&kiocb, flags);
+> +	if (ret)
+> +		return ret;
+>  	kiocb.ki_pos = *ppos;
+>  
+>  	if (type == READ)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 803e5a9b2654..f53867140f43 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -3056,6 +3056,20 @@ static inline int iocb_flags(struct file *file)
+>  	return res;
+>  }
+>  
+> +static inline int kiocb_set_rw_flags(struct kiocb *ki, int flags)
+> +{
+> +	if (unlikely(flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC)))
+> +		return -EOPNOTSUPP;
+> +
+> +	if (flags & RWF_HIPRI)
+> +		ki->ki_flags |= IOCB_HIPRI;
+> +	if (flags & RWF_DSYNC)
+> +		ki->ki_flags |= IOCB_DSYNC;
+> +	if (flags & RWF_SYNC)
+> +		ki->ki_flags |= (IOCB_DSYNC | IOCB_SYNC);
+> +	return 0;
+> +}
+> +
+>  static inline ino_t parent_ino(struct dentry *dentry)
+>  {
+>  	ino_t res;
+> -- 
+> 2.12.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
