@@ -1,59 +1,34 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] fs: check for writeback errors after syncing out buffers in generic_file_fsync
-Date: Thu, 25 May 2017 06:44:08 -0400
-Message-ID: <20170525104408.7453-1-jlayton@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.com>, Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194071] data loss using fallocate and mmap
+Date: Thu, 25 May 2017 11:29:21 +0000
+Message-ID: <bug-194071-13602-tilg0vNPZB@https.bugzilla.kernel.org/>
+References: <bug-194071-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38836 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1759205AbdEYL30 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 May 2017 07:29:26 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4ACA827852
+        for <linux-ext4@vger.kernel.org>; Thu, 25 May 2017 11:29:25 +0000 (UTC)
+In-Reply-To: <bug-194071-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext2 currently does a test+clear of the AS_EIO flag, which is
-is problematic for some coming changes.
+https://bugzilla.kernel.org/show_bug.cgi?id=194071
 
-What we really need to do instead is call filemap_check_errors
-in __generic_file_fsync after syncing out the buffers. That
-will be sufficient for this case, and help other callers detect
-these errors properly as well.
+--- Comment #3 from Jan Kara (jack@suse.cz) ---
+Created attachment 256719
+  --> https://bugzilla.kernel.org/attachment.cgi?id=256719&action=edit
+[PATCH] ext4: Fix data corruption for mmap writes
 
-With that, we don't need to twiddle it in ext2.
+This patch fixes the issue for me.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
----
- fs/ext2/file.c | 2 +-
- fs/libfs.c     | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index b21891a6bfca..ed00e7ae0ef3 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -177,7 +177,7 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
- 
- 	ret = generic_file_fsync(file, start, end, datasync);
--	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
-+	if (ret == -EIO) {
- 		/* We don't really know where the IO error happened... */
- 		ext2_error(sb, __func__,
- 			   "detected IO error when writing metadata buffers");
-diff --git a/fs/libfs.c b/fs/libfs.c
-index a04395334bb1..1dec90819366 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -991,7 +991,8 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
- 
- out:
- 	inode_unlock(inode);
--	return ret;
-+	err = filemap_check_errors(inode->i_mapping);
-+	return ret ? ret : err;
- }
- EXPORT_SYMBOL(__generic_file_fsync);
- 
 -- 
-2.9.4
+You are receiving this mail because:
+You are watching the assignee of the bug.
