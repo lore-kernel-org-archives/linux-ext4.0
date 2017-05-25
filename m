@@ -1,65 +1,30 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix data corruption for mmap writes
-Date: Thu, 25 May 2017 13:46:22 +0200
-Message-ID: <20170525114622.1543-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Michael Zimmer <michael@swarm64.com>,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 194071] data loss using fallocate and mmap
+Date: Thu, 25 May 2017 11:55:53 +0000
+Message-ID: <bug-194071-13602-osXuMoVu6i@https.bugzilla.kernel.org/>
+References: <bug-194071-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41786 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S935583AbdEYLzy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 May 2017 07:55:54 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2600B27F4B
+        for <linux-ext4@vger.kernel.org>; Thu, 25 May 2017 11:55:54 +0000 (UTC)
+In-Reply-To: <bug-194071-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-mpage_submit_page() can race with another process growing i_size and
-writing data via mmap to the written-back page. As mpage_submit_page()
-samples i_size too early, it may happen that ext4_bio_write_page()
-zeroes out too large tail of the page and thus corrupts user data.
+https://bugzilla.kernel.org/show_bug.cgi?id=194071
 
-Fix the problem by sampling i_size only after the page has been
-write-protected in page tables by clear_page_dirty_for_io() call.
+--- Comment #4 from Jan Kara (jack@suse.cz) ---
+BTW, can I base a testcase for fstests on your example program?
 
-Reported-by: Michael Zimmer <michael@swarm64.com>
-CC: stable@vger.kernel.org
-Fixes: cb20d5188366f04d96d2e07b1240cc92170ade40
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/inode.c | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1bd0bfa547f6..14539ce38034 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2124,15 +2124,29 @@ static int ext4_writepage(struct page *page,
- static int mpage_submit_page(struct mpage_da_data *mpd, struct page *page)
- {
- 	int len;
--	loff_t size = i_size_read(mpd->inode);
-+	loff_t size;
- 	int err;
- 
- 	BUG_ON(page->index != mpd->first_page);
-+	clear_page_dirty_for_io(page);
-+	/*
-+	 * We have to be very careful here!  Nothing protects writeback path
-+	 * against i_size changes and the page can be writeably mapped into
-+	 * page tables. So an application can be growing i_size and writing
-+	 * data through mmap while writeback runs. clear_page_dirty_for_io()
-+	 * write-protects our page in page tables and the page cannot get
-+	 * written to again until we release page lock. So only after
-+	 * clear_page_dirty_for_io() we are safe to sample i_size for
-+	 * ext4_bio_write_page() to zero-out tail of the written page. We rely
-+	 * on the barrier provided by TestClearPageDirty in
-+	 * clear_page_dirty_for_io() to make sure i_size is really sampled only
-+	 * after page tables are updated.
-+	 */
-+	size = i_size_read(mpd->inode);
- 	if (page->index == size >> PAGE_SHIFT)
- 		len = size & ~PAGE_MASK;
- 	else
- 		len = PAGE_SIZE;
--	clear_page_dirty_for_io(page);
- 	err = ext4_bio_write_page(&mpd->io_submit, page, len, mpd->wbc, false);
- 	if (!err)
- 		mpd->wbc->nr_to_write--;
 -- 
-2.12.0
+You are receiving this mail because:
+You are watching the assignee of the bug.
