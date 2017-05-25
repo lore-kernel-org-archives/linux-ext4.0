@@ -1,76 +1,193 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 06/10] fs: Introduce IOMAP_NOWAIT
-Date: Thu, 25 May 2017 10:33:49 +0200
-Message-ID: <20170525083349.GG28950@quack2.suse.cz>
-References: <20170524164150.9492-1-rgoldwyn@suse.de>
- <20170524164150.9492-7-rgoldwyn@suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, jack@suse.com, hch@infradead.org,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        axboe@kernel.dk, linux-api@vger.kernel.org,
-        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55223 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750746AbdEYIdx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 May 2017 04:33:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20170524164150.9492-7-rgoldwyn@suse.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH] ext4: Fix data corruption with EXT4_GET_BLOCKS_ZERO
+Date: Thu, 25 May 2017 10:43:13 +0200
+Message-ID: <20170525084313.29894-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-05-17 11:41:46, Goldwyn Rodrigues wrote:
-> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
-> 
-> IOCB_NOWAIT translates to IOMAP_NOWAIT for iomaps.
-> This is used by XFS in the XFS patch.
-> 
-> Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+When ext4_map_blocks() is called with EXT4_GET_BLOCKS_ZERO to zero-out
+allocated blocks and these blocks are actually converted from unwritten
+extent the following race can happen:
 
-Looks good. You can add:
+CPU0					CPU1
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+page fault				page fault
+...					...
+ext4_map_blocks()
+  ext4_ext_map_blocks()
+    ext4_ext_handle_unwritten_extents()
+      ext4_ext_convert_to_initialized()
+	- zero out converted extent
+	ext4_zeroout_es()
+	  - inserts extent as initialized in status tree
 
-								Honza
+					ext4_map_blocks()
+					  ext4_es_lookup_extent()
+					    - finds initialized extent
+					write data
+  ext4_issue_zeroout()
+    - zeroes out new extent overwriting data
 
-> ---
->  fs/iomap.c            | 2 ++
->  include/linux/iomap.h | 1 +
->  2 files changed, 3 insertions(+)
-> 
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 4b10892967a5..5d85ec6e7b20 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -879,6 +879,8 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
->  	} else {
->  		dio->flags |= IOMAP_DIO_WRITE;
->  		flags |= IOMAP_WRITE;
-> +		if (iocb->ki_flags & IOCB_NOWAIT)
-> +			flags |= IOMAP_NOWAIT;
->  	}
->  
->  	ret = filemap_write_and_wait_range(mapping, start, end);
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index f753e788da31..69f4e9470084 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -52,6 +52,7 @@ struct iomap {
->  #define IOMAP_REPORT		(1 << 2) /* report extent status, e.g. FIEMAP */
->  #define IOMAP_FAULT		(1 << 3) /* mapping for page fault */
->  #define IOMAP_DIRECT		(1 << 4) /* direct I/O */
-> +#define IOMAP_NOWAIT		(1 << 5) /* Don't wait for writeback */
->  
->  struct iomap_ops {
->  	/*
-> -- 
-> 2.12.0
-> 
+This problem can be reproduced by generic/340 for the fallocated case
+for the last block in the file.
+
+Fix the problem by avoiding zeroing out the area we are mapping with
+ext4_map_blocks() in ext4_ext_convert_to_initialized(). It is pointless
+to zero out this area in the first place as the caller asked us to
+convert the area to initialized because he is just going to write data
+there before the transaction finishes. To achieve this we delete the
+special case of zeroing out full extent as that will be handled by the
+cases below zeroing only the part of the extent that needs it. We also
+instruct ext4_split_extent() that the middle of extent being split
+contains data so that ext4_split_extent_at() cannot zero out full extent
+in case of ENOSPC.
+
+CC: stable@vger.kernel.org
+Fixes: 12735f881952c32b31bc4e433768f18489f79ec9
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/extents.c | 80 +++++++++++++++++++++++++------------------------------
+ 1 file changed, 37 insertions(+), 43 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2a97dff87b96..83a513efc824 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3413,13 +3413,13 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	struct ext4_sb_info *sbi;
+ 	struct ext4_extent_header *eh;
+ 	struct ext4_map_blocks split_map;
+-	struct ext4_extent zero_ex;
++	struct ext4_extent zero_ex1, zero_ex2;
+ 	struct ext4_extent *ex, *abut_ex;
+ 	ext4_lblk_t ee_block, eof_block;
+ 	unsigned int ee_len, depth, map_len = map->m_len;
+ 	int allocated = 0, max_zeroout = 0;
+ 	int err = 0;
+-	int split_flag = 0;
++	int split_flag = EXT4_EXT_DATA_VALID2;
+ 
+ 	ext_debug("ext4_ext_convert_to_initialized: inode %lu, logical"
+ 		"block %llu, max_blocks %u\n", inode->i_ino,
+@@ -3436,7 +3436,8 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	ex = path[depth].p_ext;
+ 	ee_block = le32_to_cpu(ex->ee_block);
+ 	ee_len = ext4_ext_get_actual_len(ex);
+-	zero_ex.ee_len = 0;
++	zero_ex1.ee_len = 0;
++	zero_ex2.ee_len = 0;
+ 
+ 	trace_ext4_ext_convert_to_initialized_enter(inode, map, ex);
+ 
+@@ -3576,62 +3577,52 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	if (ext4_encrypted_inode(inode))
+ 		max_zeroout = 0;
+ 
+-	/* If extent is less than s_max_zeroout_kb, zeroout directly */
+-	if (max_zeroout && (ee_len <= max_zeroout)) {
+-		err = ext4_ext_zeroout(inode, ex);
+-		if (err)
+-			goto out;
+-		zero_ex.ee_block = ex->ee_block;
+-		zero_ex.ee_len = cpu_to_le16(ext4_ext_get_actual_len(ex));
+-		ext4_ext_store_pblock(&zero_ex, ext4_ext_pblock(ex));
+-
+-		err = ext4_ext_get_access(handle, inode, path + depth);
+-		if (err)
+-			goto out;
+-		ext4_ext_mark_initialized(ex);
+-		ext4_ext_try_to_merge(handle, inode, path, ex);
+-		err = ext4_ext_dirty(handle, inode, path + path->p_depth);
+-		goto out;
+-	}
+-
+ 	/*
+-	 * four cases:
++	 * five cases:
+ 	 * 1. split the extent into three extents.
+-	 * 2. split the extent into two extents, zeroout the first half.
+-	 * 3. split the extent into two extents, zeroout the second half.
++	 * 2. split the extent into two extents, zeroout the head of the first
++	 *    extent.
++	 * 3. split the extent into two extents, zeroout the tail of the second
++	 *    extent.
+ 	 * 4. split the extent into two extents with out zeroout.
++	 * 5. no splitting needed, just possibly zeroout the head and / or the
++	 *    tail of the extent.
+ 	 */
+ 	split_map.m_lblk = map->m_lblk;
+ 	split_map.m_len = map->m_len;
+ 
+-	if (max_zeroout && (allocated > map->m_len)) {
++	if (max_zeroout && (allocated > split_map.m_len)) {
+ 		if (allocated <= max_zeroout) {
+-			/* case 3 */
+-			zero_ex.ee_block =
+-					 cpu_to_le32(map->m_lblk);
+-			zero_ex.ee_len = cpu_to_le16(allocated);
+-			ext4_ext_store_pblock(&zero_ex,
+-				ext4_ext_pblock(ex) + map->m_lblk - ee_block);
+-			err = ext4_ext_zeroout(inode, &zero_ex);
++			/* case 3 or 5 */
++			zero_ex1.ee_block =
++				 cpu_to_le32(split_map.m_lblk +
++					     split_map.m_len);
++			zero_ex1.ee_len =
++				cpu_to_le16(allocated - split_map.m_len);
++			ext4_ext_store_pblock(&zero_ex1,
++				ext4_ext_pblock(ex) + split_map.m_lblk +
++				split_map.m_len - ee_block);
++			err = ext4_ext_zeroout(inode, &zero_ex1);
+ 			if (err)
+ 				goto out;
+-			split_map.m_lblk = map->m_lblk;
+ 			split_map.m_len = allocated;
+-		} else if (map->m_lblk - ee_block + map->m_len < max_zeroout) {
+-			/* case 2 */
+-			if (map->m_lblk != ee_block) {
+-				zero_ex.ee_block = ex->ee_block;
+-				zero_ex.ee_len = cpu_to_le16(map->m_lblk -
++		}
++		if (split_map.m_lblk - ee_block + split_map.m_len <
++								max_zeroout) {
++			/* case 2 or 5 */
++			if (split_map.m_lblk != ee_block) {
++				zero_ex2.ee_block = ex->ee_block;
++				zero_ex2.ee_len = cpu_to_le16(split_map.m_lblk -
+ 							ee_block);
+-				ext4_ext_store_pblock(&zero_ex,
++				ext4_ext_store_pblock(&zero_ex2,
+ 						      ext4_ext_pblock(ex));
+-				err = ext4_ext_zeroout(inode, &zero_ex);
++				err = ext4_ext_zeroout(inode, &zero_ex2);
+ 				if (err)
+ 					goto out;
+ 			}
+ 
++			split_map.m_len += split_map.m_lblk - ee_block;
+ 			split_map.m_lblk = ee_block;
+-			split_map.m_len = map->m_lblk - ee_block + map->m_len;
+ 			allocated = map->m_len;
+ 		}
+ 	}
+@@ -3642,8 +3633,11 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		err = 0;
+ out:
+ 	/* If we have gotten a failure, don't zero out status tree */
+-	if (!err)
+-		err = ext4_zeroout_es(inode, &zero_ex);
++	if (!err) {
++		err = ext4_zeroout_es(inode, &zero_ex1);
++		if (!err)
++			err = ext4_zeroout_es(inode, &zero_ex2);
++	}
+ 	return err ? err : allocated;
+ }
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.12.0
