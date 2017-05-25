@@ -1,31 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] ext4: fix quota charging for shared xattr blocks
-Date: Wed, 24 May 2017 18:25:41 -0400
-Message-ID: <20170524222541.bmefxdhbdhle4in2@thunk.org>
-References: <20170524090658.GD10604@quack2.suse.cz>
- <20170524113519.16232-1-tahsin@google.com>
+Subject: Re: [PATCH V2] e2fsck: fix multiply-claimed block quota accounting
+ when deleting files
+Date: Wed, 24 May 2017 21:36:50 -0400
+Message-ID: <20170525013650.hdpbufx44uj6yum5@thunk.org>
+References: <20170511154632.GB11505@localhost.localdomain>
+ <CFF2227D-6CA4-406E-A29F-CABBB20AFD89@dilger.ca>
+ <20170511172755.GA23879@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35530 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754932AbdEYBgx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 24 May 2017 21:36:53 -0400
 Content-Disposition: inline
-In-Reply-To: <20170524113519.16232-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170511172755.GA23879@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 24, 2017 at 04:35:19AM -0700, Tahsin Erdogan wrote:
-> ext4_xattr_block_set() calls dquot_alloc_block() to charge for an xattr
-> block when new references are made. However if dquot_initialize() hasn't
-> been called on an inode, request for charging is effectively ignored
-> because ext4_inode_info->i_dquot is not initialized yet.
-> 
-> Add dquot_initialize() to call paths that lead to ext4_xattr_block_set().
-> 
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
