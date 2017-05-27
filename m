@@ -1,66 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix data corruption with EXT4_GET_BLOCKS_ZERO
-Date: Fri, 26 May 2017 17:44:56 -0400
-Message-ID: <20170526214456.4dihz6evugpfrlff@thunk.org>
-References: <20170525084313.29894-1-jack@suse.cz>
+From: Eryu Guan <guaneryu@gmail.com>
+Subject: Re: [PATCH] ext4: fix off-by-one on max nr_pages in
+ ext4_find_unwritten_pgoff()
+Date: Sat, 27 May 2017 14:06:24 +0800
+Message-ID: <20170527060624.GK1946@eguan.usersys.redhat.com>
+References: <20170521080026.20986-1-eguan@redhat.com>
+ <20170523083432.GE1230@quack2.suse.cz>
+ <20170524220340.nf65pp6u3p7vi7f2@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, Eryu Guan <eguan@redhat.com>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:42866 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1948755AbdEZVpC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 26 May 2017 17:45:02 -0400
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:35695 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752833AbdE0GG1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 May 2017 02:06:27 -0400
+Received: by mail-pf0-f196.google.com with SMTP id u26so6462416pfd.2
+        for <linux-ext4@vger.kernel.org>; Fri, 26 May 2017 23:06:27 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20170525084313.29894-1-jack@suse.cz>
+In-Reply-To: <20170524220340.nf65pp6u3p7vi7f2@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 25, 2017 at 10:43:13AM +0200, Jan Kara wrote:
-> When ext4_map_blocks() is called with EXT4_GET_BLOCKS_ZERO to zero-out
-> allocated blocks and these blocks are actually converted from unwritten
-> extent the following race can happen:
-> 
-> CPU0					CPU1
-> 
-> page fault				page fault
-> ...					...
-> ext4_map_blocks()
->   ext4_ext_map_blocks()
->     ext4_ext_handle_unwritten_extents()
->       ext4_ext_convert_to_initialized()
-> 	- zero out converted extent
-> 	ext4_zeroout_es()
-> 	  - inserts extent as initialized in status tree
-> 
-> 					ext4_map_blocks()
-> 					  ext4_es_lookup_extent()
-> 					    - finds initialized extent
-> 					write data
->   ext4_issue_zeroout()
->     - zeroes out new extent overwriting data
-> 
-> This problem can be reproduced by generic/340 for the fallocated case
-> for the last block in the file.
-> 
-> Fix the problem by avoiding zeroing out the area we are mapping with
-> ext4_map_blocks() in ext4_ext_convert_to_initialized(). It is pointless
-> to zero out this area in the first place as the caller asked us to
-> convert the area to initialized because he is just going to write data
-> there before the transaction finishes. To achieve this we delete the
-> special case of zeroing out full extent as that will be handled by the
-> cases below zeroing only the part of the extent that needs it. We also
-> instruct ext4_split_extent() that the middle of extent being split
-> contains data so that ext4_split_extent_at() cannot zero out full extent
-> in case of ENOSPC.
-> 
-> CC: stable@vger.kernel.org
-> Fixes: 12735f881952c32b31bc4e433768f18489f79ec9
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Hi Ted,
 
-Thanks, applied.
+On Wed, May 24, 2017 at 06:03:40PM -0400, Theodore Ts'o wrote:
+> On Tue, May 23, 2017 at 10:34:32AM +0200, Jan Kara wrote:
+> > > Cc: stable@vger.kernel.org # v3.7+
+> > > Signed-off-by: Eryu Guan <eguan@redhat.com>
+> > 
+> > Yeah, thanks for fixing this! Actually this is a bug introduced by my
+> > recent fixes. Previously, 'end' used to be "one block after the end" and so
+> > the math worked out correctly :-|. You can add:
+> > 
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> Thanks, applied.  (And I've dropped the Cc: stable)
 
-						- Ted
+(Sorry for the late response, not sure why my redhat account didn't get
+this email, and my gmail account just got this mail today..)
+
+Actually this is an old bug and can be reproduced without Jan's
+patchset. So I think "Cc: stable" is still needed.
+
+Thanks,
+Eryu
