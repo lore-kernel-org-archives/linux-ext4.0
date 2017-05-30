@@ -1,165 +1,73 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: change sequential discard handling on commit
- complete phase into parallel manner
-Date: Tue, 30 May 2017 11:16:26 +0200
-Message-ID: <20170530091626.GA3284@quack2.suse.cz>
-References: <CGME20170530030551epcas5p327c9acbabf266842887bcc86cac43cba@epcas5p3.samsung.com>
- <1496113566-18899-1-git-send-email-daeho.jeong@samsung.com>
+From: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Subject: Re: [PATCH 09/10] xfs: nowait aio support
+Date: Tue, 30 May 2017 11:13:29 -0500
+Message-ID: <f105d585-e88c-b037-9905-d0c608c609d9@suse.de>
+References: <20170524164150.9492-1-rgoldwyn@suse.de>
+ <20170524164150.9492-10-rgoldwyn@suse.de>
+ <20170528093113.GB14519@infradead.org>
+ <cfc1e7ad-f74b-a14a-ac30-8472f7f684af@suse.de>
+ <20170529083338.GC1899@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.com, hch@infradead.org, tytso@mit.edu,
-        linux-ext4@vger.kernel.org
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52438 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750896AbdE3JQ3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 30 May 2017 05:16:29 -0400
-Content-Disposition: inline
-In-Reply-To: <1496113566-18899-1-git-send-email-daeho.jeong@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org,
+        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        adam.manzanares-Sjgp3cTcYWE@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
+        Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20170529083338.GC1899-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Content-Language: en-US
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello Daeho!
 
-On Tue 30-05-17 12:06:06, Daeho Jeong wrote:
-> Now, when we mount ext4 filesystem with '-o discard' option, we have to
-> issue all the discard commands for the blocks to be deallocated and
-> wait for the completion of the commands on the commit complete phase.
-> Because this procedure might involve a lot of sequential combinations of
-> issuing discard commands and waiting for that, the delay of this
-> procedure might be too much long, even to half a minute in our test,
-> and it results in long commit delay and fsync() performance degradation.
+
+On 05/29/2017 03:33 AM, Christoph Hellwig wrote:
+> On Sun, May 28, 2017 at 09:38:26PM -0500, Goldwyn Rodrigues wrote:
+>>
+>>
+>> On 05/28/2017 04:31 AM, Christoph Hellwig wrote:
+>>> Despite my previous reviewed-by tag this will need another fix:
+>>>
+>>> xfs_file_iomap_begin needs to return EAGAIN if we don't have the extent
+>>> list in memoery already.  E.g. something like this:
+>>>
+>>> 	if ((flags & IOMAP_NOWAIT) && !(ip->i_d.if_flags & XFS_IFEXTENTS)) {
+>>> 		error = -EAGAIN;
+>>> 		goto out_unlock;
+>>> 	}
+>>>
+>>> right after locking the ilock.
+>>>
+>>
+>> I am not sure if it is right to penalize the application to write to
+>> file which has been freshly opened (and is the first one to open). It
+>> basically means extent maps needs to be read from disk. Do you see a
+>> reason it would have a non-deterministic wait if it is the only user? I
+>> understand the block layer can block if it has too many requests though.
 > 
-> When we converted this sequential discard handling on commit complete
-> phase into a parallel manner like XFS filesystem, we could enhance the
-> discard command handling performance. The result was such that 17.0s
-> delay of a single commit in the worst case has been enhanced to 4.8s.
+> For either a read or a write we might have to read in the extent list
+> (note that for few enough extents they are stored in the inode and
+> we won't have to), in which case the call will block and by the
+> semantics you define we'll need to return -EAGAIN.
+
+Yes, that is right. I will include it in.
+
 > 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Tested-by: Hobin Woo <hobin.woo@samsung.com>
-> Tested-by: Kitae Lee <kitae87.lee@samsung.com>
+> Btw, can you write a small blurb up for the man page to document these
+> ѕemantics in man-page like language?
+> 
 
-Thanks for the patch. The design looks good now! Some comments below.
+Yes, but which man page would it belong to?
+Should it be a subsection of errors in io_getevents/io_submit. We don't
+want to add ERRORS to io_getevents() because it would be the return
+value of the io_getevents call, and not the ones in the iocb structure.
+Should it be a new man page, say for iocb(7/8)?
 
-> @@ -2810,18 +2812,6 @@ static void ext4_free_data_callback(struct super_block *sb,
->  	mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
->  		 entry->efd_count, entry->efd_group, entry);
->  
-> -	if (test_opt(sb, DISCARD)) {
-> -		err = ext4_issue_discard(sb, entry->efd_group,
-> -					 entry->efd_start_cluster,
-> -					 entry->efd_count);
-> -		if (err && err != -EOPNOTSUPP)
-> -			ext4_msg(sb, KERN_WARNING, "discard request in"
-> -				 " group:%d block:%d count:%d failed"
-> -				 " with %d", entry->efd_group,
-> -				 entry->efd_start_cluster,
-> -				 entry->efd_count, err);
-> -	}
-> -
->  	err = ext4_mb_load_buddy(sb, entry->efd_group, &e4b);
->  	/* we expect to find existing buddy because it's pinned */
->  	BUG_ON(err != 0);
-> @@ -2862,6 +2852,67 @@ static void ext4_free_data_callback(struct super_block *sb,
->  	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
->  }
->  
-> +/*
-> + * This function is called by the jbd2 layer once the commit has finished,
-> + * so we know we can free the blocks that were released with that commit.
-> + */
-> +static void ext4_free_data_callback(struct super_block *sb,
-> +				    struct ext4_journal_cb_entry *jce,
-> +				    int rc, struct list_head *post_cb_list)
-> +{
-> +	struct ext4_free_data *entry = (struct ext4_free_data *)jce;
-> +
-> +	ext4_free_data_in_buddy(sb, entry);
-> +}
-> +
-> +static void ext4_bio_wait_endio(struct bio *bio)
-> +{
-> +	struct completion *wait = (struct completion *)bio->bi_private;
-> +
-> +	complete(wait);
-> +}
-> +
-> +static void ext4_free_after_discard_callback(struct super_block *sb,
-> +				    struct ext4_journal_cb_entry *jce,
-> +				    int rc, struct list_head *post_cb_list)
-> +{
-> +	struct ext4_free_data *entry = (struct ext4_free_data *)jce;
-> +
-> +	wait_for_completion_io(&entry->efd_bio_wait);
-> +	ext4_free_data_in_buddy(sb, entry);
-> +}
-> +
-> +static void ext4_discard_callback(struct super_block *sb,
-> +				    struct ext4_journal_cb_entry *jce,
-> +				    int rc, struct list_head *post_cb_list)
-> +{
-> +	struct ext4_free_data *entry = (struct ext4_free_data *)jce;
-> +	int err;
-> +
-> +	err = ext4_issue_discard(sb, entry->efd_group,
-> +				 entry->efd_start_cluster,
-> +				 entry->efd_count,
-> +				 &entry->efd_discard_bio);
-> +	if (err && err != -EOPNOTSUPP) {
-> +		ext4_msg(sb, KERN_WARNING, "discard request in"
-> +			 " group:%d block:%d count:%d failed"
-> +			 " with %d", entry->efd_group,
-> +			 entry->efd_start_cluster,
-> +			 entry->efd_count, err);
-> +	}
-> +
-> +	if (entry->efd_discard_bio) {
-> +		init_completion(&entry->efd_bio_wait);
-> +		entry->efd_discard_bio->bi_end_io = ext4_bio_wait_endio;
-> +		entry->efd_discard_bio->bi_private = &entry->efd_bio_wait;
-> +		submit_bio(entry->efd_discard_bio);
-> +		jce->jce_func = ext4_free_after_discard_callback;
-> +	} else
-> +		jce->jce_func = ext4_free_data_callback;
-> +
-> +	list_add_tail(&jce->jce_list, post_cb_list);
-> +}
 
-Hum, these games with several callbacks, lists, etc. look awkward and
-unnecessary. It think they mostly come from the fact that we call separate
-freeing callback for each extent to free which doesn't fit the needs of
-async discard well.
 
-So instead of adding post_cb_list and several callback functions, it would
-seem easier to have just one callback structure instead of one for every
-extent. Then the structure would contain a list of extents that need to be
-freed freed. So something like:
-
-struct ext4_free_data {
-	struct ext4_journal_cb_entry efd_jce;
-	struct list_head efd_extents;
-}
-
-struct ext4_freed_extent {
-	struct list_head efe_list;
-	struct rb_node efe_node;
-	ext4_group_t efe_group;
-	ext4_grpblk_t efe_start_cluster;
-	ext4_grpblk_t efe_count;
-	tid_t efe_tid;
-}
-
-When commit happens, we can just walk the efd_extents list while efe_tid is
-equal tid of the transaction for which the callback was called and submit all
-discard requests. You can use bio chaining implemented in
-__blkdev_issue_discard() which XFS already uses and so the result of all
-the discards you submit will be just one bio. Then you walk the list of
-extents again and free them in the buddy bitmaps. And finally, you wait for
-the bio to complete. All will be then happening in one function and it will
-be much easier to understand.
-
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Goldwyn
