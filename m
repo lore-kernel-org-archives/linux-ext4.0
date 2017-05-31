@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 05/28] ext4: attach jinode after creation of xattr inode
-Date: Wed, 31 May 2017 01:14:54 -0700
-Message-ID: <20170531081517.11438-5-tahsin@google.com>
+Subject: [PATCH 08/28] ext4: fix ref counting for ea_inode
+Date: Wed, 31 May 2017 01:14:57 -0700
+Message-ID: <20170531081517.11438-8-tahsin@google.com>
 References: <20170531081517.11438-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
@@ -15,84 +15,39 @@ To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Mike Christie <mchristi@redhat.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In data=ordered mode jinode needs to be attached to the xattr inode when
-writing data to it. Attachment normally occurs during file open for regular
-files. Since we are not using file interface to write to the xattr inode,
-the jinode attach needs to be done manually.
+The ref count on ea_inode is incremented by
+ext4_xattr_inode_orphan_add() which is supposed to be decremented by
+ext4_xattr_inode_array_free(). The decrement is conditioned on whether
+the ea_inode is currently on the orphan list. However, the orphan list
+addition only happens when journaling is enabled. In non-journaled case,r
+we fail to release the ref count causing an error message like below.
 
-Otherwise the following crash occurs in data=ordered mode.
-
- BUG: unable to handle kernel NULL pointer dereference at           (null)
- IP: jbd2_journal_file_inode+0x37/0x110
- PGD 13b3c0067
- P4D 13b3c0067
- PUD 137660067
- PMD 0
-
- Oops: 0000 [#1] SMP
- CPU: 3 PID: 1877 Comm: python Not tainted 4.12.0-rc1+ #749
- Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
- task: ffff88010e368980 task.stack: ffffc90000374000
- RIP: 0010:jbd2_journal_file_inode+0x37/0x110
- RSP: 0018:ffffc90000377980 EFLAGS: 00010246
- RAX: 0000000000000000 RBX: ffff880123b06230 RCX: 0000000000280000
- RDX: 0000000000000006 RSI: 0000000000000000 RDI: ffff88012c8585d0
- RBP: ffffc900003779b0 R08: 0000000000000202 R09: 0000000000000001
- R10: 0000000000000000 R11: 0000000000000400 R12: ffff8801111f81c0
- R13: ffff88013b2b6800 R14: ffffc90000377ab0 R15: 0000000000000001
- FS:  00007f0c99b77740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 0000000000000000 CR3: 0000000136d91000 CR4: 00000000000006e0
- Call Trace:
-  jbd2_journal_inode_add_write+0xe/0x10
-  ext4_map_blocks+0x59e/0x620
-  ext4_xattr_set_entry+0x501/0x7d0
-  ext4_xattr_block_set+0x1b2/0x9b0
-  ext4_xattr_set_handle+0x322/0x4f0
-  ext4_xattr_set+0x144/0x1a0
-  ext4_xattr_user_set+0x34/0x40
-  __vfs_setxattr+0x66/0x80
-  __vfs_setxattr_noperm+0x69/0x1c0
-  vfs_setxattr+0xa2/0xb0
-  setxattr+0x12e/0x150
-  path_setxattr+0x87/0xb0
-  SyS_setxattr+0xf/0x20
-  entry_SYSCALL_64_fastpath+0x18/0xad
+"VFS: Busy inodes after unmount of sdb. Self-destruct in 5 seconds.
+Have a nice day..."
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/ext4/xattr.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 12210fe87ea3..8e123533315f 100644
+index 32ad2f2870e9..13daf634244b 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -826,6 +826,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
- 					     struct inode *inode)
- {
- 	struct inode *ea_inode = NULL;
-+	int err;
- 
- 	/*
- 	 * Let the next inode be the goal, so we try and allocate the EA inode
-@@ -848,6 +849,11 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
- 		 */
- 		EXT4_XATTR_INODE_SET_PARENT(ea_inode, inode->i_ino);
- 		unlock_new_inode(ea_inode);
-+		err = ext4_inode_attach_jinode(ea_inode);
-+		if (err) {
-+			iput(ea_inode);
-+			return ERR_PTR(err);
-+		}
+@@ -2098,8 +2098,7 @@ ext4_xattr_inode_array_free(struct inode *inode,
+ 		if (err)
+ 			continue;
+ 		/* for inode's i_count get from ext4_xattr_delete_inode */
+-		if (!list_empty(&EXT4_I(ea_inode)->i_orphan))
+-			iput(ea_inode);
++		iput(ea_inode);
+ 		clear_nlink(ea_inode);
+ 		iput(ea_inode);
  	}
- 
- 	return ea_inode;
 -- 
 2.13.0.219.gdb65acc882-goog
-
