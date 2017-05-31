@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 18/28] ext4: retry storing value in external inode with xattr block too
-Date: Wed, 31 May 2017 01:15:07 -0700
-Message-ID: <20170531081517.11438-18-tahsin@google.com>
+Subject: [PATCH 20/28] ext4: improve journal credit handling in set xattr paths
+Date: Wed, 31 May 2017 01:15:09 -0700
+Message-ID: <20170531081517.11438-20-tahsin@google.com>
 References: <20170531081517.11438-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
@@ -15,93 +15,198 @@ To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Mike Christie <mchristi@redhat.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When value size is <= EXT4_XATTR_MIN_LARGE_EA_SIZE(), and it
-doesn't fit in either inline or xattr block, a second try is made to
-store it in an external inode while storing the entry itself in inline
-area. There should also be an attempt to store the entry in xattr block.
+Both ext4_set_acl() and ext4_set_context() need to be made aware of
+ea_inode feature when it comes to credits calculation.
 
-This patch adds a retry loop to do that. It also makes the caller the
-sole decider on whether to store a value in an external inode.
+Also add a sufficient credits check in ext4_xattr_set_handle() right
+after xattr write lock is grabbed. Original credits calculation is done
+outside the lock so there is a possiblity that the initially calculated
+credits are not sufficient anymore.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 35 ++++++++++++++++++-----------------
- 1 file changed, 18 insertions(+), 17 deletions(-)
+ fs/ext4/acl.c       |  7 ++++---
+ fs/ext4/ext4_jbd2.h | 14 --------------
+ fs/ext4/super.c     |  6 +++---
+ fs/ext4/xattr.c     | 55 +++++++++++++++++++++++++++++++++++++++++------------
+ fs/ext4/xattr.h     |  1 +
+ 5 files changed, 51 insertions(+), 32 deletions(-)
 
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 3ec0e46de95f..74f7ac539e00 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -231,14 +231,15 @@ int
+ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	handle_t *handle;
+-	int error, retries = 0;
++	int error, credits, retries = 0;
++	size_t acl_size = acl ? ext4_acl_size(acl->a_count) : 0;
+ 
+ 	error = dquot_initialize(inode);
+ 	if (error)
+ 		return error;
+ retry:
+-	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+-				    ext4_jbd2_credits_xattr(inode));
++	credits = ext4_xattr_set_credits(inode, acl_size);
++	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index f97611171023..a5bda70feed5 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -104,20 +104,6 @@
+ #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (EXT4_MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
+ #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (EXT4_MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
+ 
+-static inline int ext4_jbd2_credits_xattr(struct inode *inode)
+-{
+-	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
+-
+-	/*
+-	 * In case of inline data, we may push out the data to a block,
+-	 * so we need to reserve credits for this eventuality
+-	 */
+-	if (ext4_has_inline_data(inode))
+-		credits += ext4_writepage_trans_blocks(inode) + 1;
+-	return credits;
+-}
+-
+-
+ /*
+  * Ext4 handle operation types -- for logging purposes
+  */
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d37c81f327e7..b02a23ec92ca 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1143,7 +1143,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 							void *fs_data)
+ {
+ 	handle_t *handle = fs_data;
+-	int res, res2, retries = 0;
++	int res, res2, credits, retries = 0;
+ 
+ 	res = ext4_convert_inline_data(inode);
+ 	if (res)
+@@ -1178,8 +1178,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 	if (res)
+ 		return res;
+ retry:
+-	handle = ext4_journal_start(inode, EXT4_HT_MISC,
+-			ext4_jbd2_credits_xattr(inode));
++	credits = ext4_xattr_set_credits(inode, len);
++	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index dcf7ec98f138..1d354e447842 100644
+index 230e0aa76777..5bce73b43b2a 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -911,11 +911,6 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 	int in_inode = i->in_inode;
- 	int rc;
+@@ -1473,6 +1473,17 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
  
--	if (ext4_has_feature_ea_inode(inode->i_sb) &&
--	    (EXT4_XATTR_SIZE(i->value_len) >
--	     EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
--		in_inode = 1;
--
- 	/* Compute min_offs and last. */
- 	last = s->first;
- 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
-@@ -1097,7 +1092,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- {
+ 	ext4_write_lock_xattr(inode, &no_expand);
+ 
++	/* Check journal credits under write lock. */
++	if (ext4_handle_valid(handle)) {
++		int credits;
++
++		credits = ext4_xattr_set_credits(inode, value_len);
++		if (!ext4_handle_has_enough_credits(handle, credits)) {
++			error = -ENOSPC;
++			goto cleanup;
++		}
++	}
++
+ 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
+ 	if (error)
+ 		goto cleanup;
+@@ -1570,6 +1581,36 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	return error;
+ }
+ 
++int ext4_xattr_set_credits(struct inode *inode, size_t value_len)
++{
++	struct super_block *sb = inode->i_sb;
++	int credits;
++
++	if (!EXT4_SB(sb)->s_journal)
++		return 0;
++
++	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
++
++	/*
++	 * In case of inline data, we may push out the data to a block,
++	 * so we need to reserve credits for this eventuality
++	 */
++	if (ext4_has_inline_data(inode))
++	        credits += ext4_writepage_trans_blocks(inode) + 1;
++
++	if (ext4_has_feature_ea_inode(sb)) {
++		int nrblocks = (value_len + sb->s_blocksize - 1) >>
++					sb->s_blocksize_bits;
++
++		/* For new inode */
++		credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
++
++		/* For data blocks of EA inode */
++		credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
++	}
++	return credits;
++}
++
+ /*
+  * ext4_xattr_set()
+  *
+@@ -1585,24 +1626,14 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	handle_t *handle;
  	struct super_block *sb = inode->i_sb;
- 	struct buffer_head *new_bh = NULL;
--	struct ext4_xattr_search *s = &bs->s;
-+	struct ext4_xattr_search s_copy = bs->s;
-+	struct ext4_xattr_search *s = &s_copy;
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
- 	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
-@@ -1519,6 +1515,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 		if (!bs.s.not_found && ext4_xattr_value_same(&bs.s, &i))
- 			goto cleanup;
+ 	int error, retries = 0;
+-	int credits = ext4_jbd2_credits_xattr(inode);
++	int credits;
  
-+		if (ext4_has_feature_ea_inode(inode->i_sb) &&
-+		    (EXT4_XATTR_SIZE(i.value_len) >
-+			EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
-+			i.in_inode = 1;
-+	retry_inode:
- 		error = ext4_xattr_ibody_set(handle, inode, &i, &is);
- 		if (!error && !bs.s.not_found) {
- 			i.value = NULL;
-@@ -1530,20 +1531,20 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 					goto cleanup;
- 			}
- 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
--			if (ext4_has_feature_ea_inode(inode->i_sb) &&
--			    error == -ENOSPC) {
--				/* xattr not fit to block, store at external
--				 * inode */
--				i.in_inode = 1;
--				error = ext4_xattr_ibody_set(handle, inode,
--							     &i, &is);
--			}
--			if (error)
--				goto cleanup;
--			if (!is.s.not_found) {
-+			if (!error && !is.s.not_found) {
- 				i.value = NULL;
- 				error = ext4_xattr_ibody_set(handle, inode, &i,
- 							     &is);
-+			} else if (error == -ENOSPC) {
-+				/*
-+				 * Xattr does not fit in the block, store at
-+				 * external inode if possible.
-+				 */
-+				if (ext4_has_feature_ea_inode(inode->i_sb) &&
-+				    !i.in_inode) {
-+					i.in_inode = 1;
-+					goto retry_inode;
-+				}
- 			}
- 		}
- 	}
+ 	error = dquot_initialize(inode);
+ 	if (error)
+ 		return error;
+ 
+-	if (ext4_has_feature_ea_inode(sb)) {
+-		int nrblocks = (value_len + sb->s_blocksize - 1) >>
+-					sb->s_blocksize_bits;
+-
+-		/* For new inode */
+-		credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
+-
+-		/* For data blocks of EA inode */
+-		credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
+-	}
+-
+ retry:
++	credits = ext4_xattr_set_credits(inode, value_len);
+ 	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index b6ef99d1a061..e82c5fe36a26 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -160,6 +160,7 @@ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
+ extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
+ extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+ extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
++extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len);
+ 
+ extern int ext4_xattr_inode_unlink(struct inode *inode, unsigned long ea_ino);
+ extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
 -- 
 2.13.0.219.gdb65acc882-goog
+
