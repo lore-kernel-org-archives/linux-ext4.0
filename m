@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 22/28] ext4: move struct ext4_xattr_inode_array to xattr.h
-Date: Wed, 31 May 2017 01:15:11 -0700
-Message-ID: <20170531081517.11438-22-tahsin@google.com>
+Subject: [PATCH 18/28] ext4: retry storing value in external inode with xattr block too
+Date: Wed, 31 May 2017 01:15:07 -0700
+Message-ID: <20170531081517.11438-18-tahsin@google.com>
 References: <20170531081517.11438-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
@@ -15,51 +15,93 @@ To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Mike Christie <mchristi@redhat.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Since this is a xattr specific data structure it is cleaner to keep it in
-xattr header file.
+When value size is <= EXT4_XATTR_MIN_LARGE_EA_SIZE(), and it
+doesn't fit in either inline or xattr block, a second try is made to
+store it in an external inode while storing the entry itself in inline
+area. There should also be an attempt to store the entry in xattr block.
+
+This patch adds a retry loop to do that. It also makes the caller the
+sole decider on whether to store a value in an external inode.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/ext4.h  | 4 ----
- fs/ext4/xattr.h | 5 +++++
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ fs/ext4/xattr.c | 35 ++++++++++++++++++-----------------
+ 1 file changed, 18 insertions(+), 17 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 603edb5ff304..580fdb753f29 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2232,10 +2232,6 @@ struct mmpd_data {
- # define ATTRIB_NORET	__attribute__((noreturn))
- # define NORET_AND	noreturn,
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index dcf7ec98f138..1d354e447842 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -911,11 +911,6 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 	int in_inode = i->in_inode;
+ 	int rc;
  
--struct ext4_xattr_inode_array {
--	unsigned int count;		/* # of used items in the array */
--	struct inode *inodes[0];
--};
- /* bitmap.c */
- extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
- void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 323eba54f72f..adf761518a73 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -117,6 +117,11 @@ struct ext4_xattr_ibody_find {
- 	struct ext4_iloc iloc;
- };
+-	if (ext4_has_feature_ea_inode(inode->i_sb) &&
+-	    (EXT4_XATTR_SIZE(i->value_len) >
+-	     EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
+-		in_inode = 1;
+-
+ 	/* Compute min_offs and last. */
+ 	last = s->first;
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+@@ -1097,7 +1092,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *new_bh = NULL;
+-	struct ext4_xattr_search *s = &bs->s;
++	struct ext4_xattr_search s_copy = bs->s;
++	struct ext4_xattr_search *s = &s_copy;
+ 	struct mb_cache_entry *ce = NULL;
+ 	int error = 0;
+ 	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+@@ -1519,6 +1515,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		if (!bs.s.not_found && ext4_xattr_value_same(&bs.s, &i))
+ 			goto cleanup;
  
-+struct ext4_xattr_inode_array {
-+	unsigned int count;		/* # of used items in the array */
-+	struct inode *inodes[0];
-+};
-+
- extern const struct xattr_handler ext4_xattr_user_handler;
- extern const struct xattr_handler ext4_xattr_trusted_handler;
- extern const struct xattr_handler ext4_xattr_security_handler;
++		if (ext4_has_feature_ea_inode(inode->i_sb) &&
++		    (EXT4_XATTR_SIZE(i.value_len) >
++			EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
++			i.in_inode = 1;
++	retry_inode:
+ 		error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+ 		if (!error && !bs.s.not_found) {
+ 			i.value = NULL;
+@@ -1530,20 +1531,20 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 					goto cleanup;
+ 			}
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+-			if (ext4_has_feature_ea_inode(inode->i_sb) &&
+-			    error == -ENOSPC) {
+-				/* xattr not fit to block, store at external
+-				 * inode */
+-				i.in_inode = 1;
+-				error = ext4_xattr_ibody_set(handle, inode,
+-							     &i, &is);
+-			}
+-			if (error)
+-				goto cleanup;
+-			if (!is.s.not_found) {
++			if (!error && !is.s.not_found) {
+ 				i.value = NULL;
+ 				error = ext4_xattr_ibody_set(handle, inode, &i,
+ 							     &is);
++			} else if (error == -ENOSPC) {
++				/*
++				 * Xattr does not fit in the block, store at
++				 * external inode if possible.
++				 */
++				if (ext4_has_feature_ea_inode(inode->i_sb) &&
++				    !i.in_inode) {
++					i.in_inode = 1;
++					goto retry_inode;
++				}
+ 			}
+ 		}
+ 	}
 -- 
 2.13.0.219.gdb65acc882-goog
-
