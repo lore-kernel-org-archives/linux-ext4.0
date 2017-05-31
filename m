@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v5 17/17] fs: convert ext2 to use write_one_page_since
-Date: Wed, 31 May 2017 08:45:40 -0400
-Message-ID: <20170531124540.8782-18-jlayton@redhat.com>
+Subject: [PATCH v5 07/17] mm: add filemap_fdatawait_range_since and filemap_write_and_wait_range_since
+Date: Wed, 31 May 2017 08:45:30 -0400
+Message-ID: <20170531124540.8782-8-jlayton@redhat.com>
 References: <20170531124540.8782-1-jlayton@redhat.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
@@ -15,103 +15,139 @@ In-Reply-To: <20170531124540.8782-1-jlayton@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Sample the wb_err before changing the directory, so that we can catch
-errors that occur since that point.
+Add new filemap_*wait* variants that take a "since" value and return an
+error if one occurred since that sample point.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/ext2/dir.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+ include/linux/fs.h |  9 ++++++++
+ mm/filemap.c       | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 76 insertions(+)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 6e476c9929f8..073f096ac5e6 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -85,7 +85,8 @@ ext2_last_byte(struct inode *inode, unsigned long page_nr)
- 	return last_byte;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2f3bcf4eb73b..7d1bd3163d99 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2516,12 +2516,21 @@ extern int write_inode_now(struct inode *, int);
+ extern int filemap_fdatawrite(struct address_space *);
+ extern int filemap_flush(struct address_space *);
+ extern int filemap_fdatawait(struct address_space *);
++extern int filemap_fdatawait_since(struct address_space *, errseq_t);
+ extern void filemap_fdatawait_keep_errors(struct address_space *);
+ extern int filemap_fdatawait_range(struct address_space *, loff_t lstart,
+ 				   loff_t lend);
++extern int filemap_fdatawait_range_since(struct address_space *mapping,
++				   loff_t start_byte, loff_t end_byte,
++				   errseq_t since);
+ extern int filemap_write_and_wait(struct address_space *mapping);
++extern int filemap_write_and_wait_since(struct address_space *mapping,
++					errseq_t since);
+ extern int filemap_write_and_wait_range(struct address_space *mapping,
+ 				        loff_t lstart, loff_t lend);
++extern int filemap_write_and_wait_range_since(struct address_space *mapping,
++				   loff_t start_byte, loff_t end_byte,
++				   errseq_t since);
+ extern int __filemap_fdatawrite_range(struct address_space *mapping,
+ 				loff_t start, loff_t end, int sync_mode);
+ extern int filemap_fdatawrite_range(struct address_space *mapping,
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 97dc28f853fc..38a14dc825ad 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -431,6 +431,14 @@ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
  }
+ EXPORT_SYMBOL(filemap_fdatawait_range);
  
--static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
-+static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len,
-+				errseq_t since)
++int filemap_fdatawait_range_since(struct address_space *mapping, loff_t start_byte,
++				  loff_t end_byte, errseq_t since)
++{
++	__filemap_fdatawait_range(mapping, start_byte, end_byte);
++	return filemap_check_wb_err(mapping, since);
++}
++EXPORT_SYMBOL(filemap_fdatawait_range_since);
++
+ /**
+  * filemap_fdatawait_keep_errors - wait for writeback without clearing errors
+  * @mapping: address space structure to wait for
+@@ -476,6 +484,17 @@ int filemap_fdatawait(struct address_space *mapping)
+ }
+ EXPORT_SYMBOL(filemap_fdatawait);
+ 
++int filemap_fdatawait_since(struct address_space *mapping, errseq_t since)
++{
++	loff_t i_size = i_size_read(mapping->host);
++
++	if (i_size == 0)
++		return 0;
++
++	return filemap_fdatawait_range_since(mapping, 0, i_size - 1, since);
++}
++EXPORT_SYMBOL(filemap_fdatawait_since);
++
+ int filemap_write_and_wait(struct address_space *mapping)
  {
- 	struct address_space *mapping = page->mapping;
- 	struct inode *dir = mapping->host;
-@@ -100,7 +101,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	}
+ 	int err = 0;
+@@ -501,6 +520,31 @@ int filemap_write_and_wait(struct address_space *mapping)
+ }
+ EXPORT_SYMBOL(filemap_write_and_wait);
  
- 	if (IS_DIRSYNC(dir)) {
--		err = write_one_page(page);
-+		err = write_one_page_since(page, since);
- 		if (!err)
- 			err = sync_inode_metadata(dir, 1);
- 	} else {
-@@ -462,13 +463,14 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
- 			(char *) de - (char *) page_address(page);
- 	unsigned len = ext2_rec_len_from_disk(de->rec_len);
- 	int err;
-+	errseq_t since = filemap_sample_wb_err(dir->i_mapping);
++int filemap_write_and_wait_since(struct address_space *mapping, errseq_t since)
++{
++	int err = 0;
++
++	if ((!dax_mapping(mapping) && mapping->nrpages) ||
++	    (dax_mapping(mapping) && mapping->nrexceptional)) {
++		err = filemap_fdatawrite(mapping);
++		/*
++		 * Even if the above returned error, the pages may be
++		 * written partially (e.g. -ENOSPC), so we wait for it.
++		 * But the -EIO is special case, it may indicate the worst
++		 * thing (e.g. bug) happened, so we avoid waiting for it.
++		 */
++		if (err != -EIO) {
++			int err2 = filemap_fdatawait_since(mapping, since);
++			if (!err)
++				err = err2;
++		}
++	} else {
++		err = filemap_check_wb_err(mapping, since);
++	}
++	return err;
++}
++EXPORT_SYMBOL(filemap_write_and_wait_since);
++
+ /**
+  * filemap_write_and_wait_range - write out & wait on a file range
+  * @mapping:	the address_space for the pages
+@@ -535,6 +579,29 @@ int filemap_write_and_wait_range(struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(filemap_write_and_wait_range);
  
- 	lock_page(page);
- 	err = ext2_prepare_chunk(page, pos, len);
- 	BUG_ON(err);
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	ext2_set_de_type(de, inode);
--	err = ext2_commit_chunk(page, pos, len);
-+	err = ext2_commit_chunk(page, pos, len, since);
- 	ext2_put_page(page);
- 	if (update_times)
- 		dir->i_mtime = dir->i_ctime = current_time(dir);
-@@ -494,6 +496,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	char *kaddr;
- 	loff_t pos;
- 	int err;
-+	errseq_t since = filemap_sample_wb_err(dir->i_mapping);
- 
- 	/*
- 	 * We take care of directory expansion in the same loop.
-@@ -560,7 +563,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	memcpy(de->name, name, namelen);
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	ext2_set_de_type (de, inode);
--	err = ext2_commit_chunk(page, pos, rec_len);
-+	err = ext2_commit_chunk(page, pos, rec_len, since);
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(dir);
-@@ -589,6 +592,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
- 	ext2_dirent * pde = NULL;
- 	ext2_dirent * de = (ext2_dirent *) (kaddr + from);
- 	int err;
-+	errseq_t since = filemap_sample_wb_err(inode->i_mapping);
- 
- 	while ((char*)de < (char*)dir) {
- 		if (de->rec_len == 0) {
-@@ -609,7 +613,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
- 	if (pde)
- 		pde->rec_len = ext2_rec_len_to_disk(to - from);
- 	dir->inode = 0;
--	err = ext2_commit_chunk(page, pos, to - from);
-+	err = ext2_commit_chunk(page, pos, to - from, since);
- 	inode->i_ctime = inode->i_mtime = current_time(inode);
- 	EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(inode);
-@@ -628,6 +632,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
- 	struct ext2_dir_entry_2 * de;
- 	int err;
- 	void *kaddr;
-+	errseq_t since = filemap_sample_wb_err(inode->i_mapping);
- 
- 	if (!page)
- 		return -ENOMEM;
-@@ -653,7 +658,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
- 	memcpy (de->name, "..\0", 4);
- 	ext2_set_de_type (de, inode);
- 	kunmap_atomic(kaddr);
--	err = ext2_commit_chunk(page, 0, chunk_size);
-+	err = ext2_commit_chunk(page, 0, chunk_size, since);
- fail:
- 	put_page(page);
- 	return err;
++int filemap_write_and_wait_range_since(struct address_space *mapping,
++				 loff_t lstart, loff_t lend, errseq_t since)
++{
++	int err = 0;
++
++	if ((!dax_mapping(mapping) && mapping->nrpages) ||
++	    (dax_mapping(mapping) && mapping->nrexceptional)) {
++		err = __filemap_fdatawrite_range(mapping, lstart, lend,
++						 WB_SYNC_ALL);
++		/* See comment of filemap_write_and_wait() */
++		if (err != -EIO) {
++			int err2 = filemap_fdatawait_range_since(mapping,
++						lstart, lend, since);
++			if (!err)
++				err = err2;
++		}
++	} else {
++		err = filemap_check_wb_err(mapping, since);
++	}
++	return err;
++}
++EXPORT_SYMBOL(filemap_write_and_wait_range_since);
++
+ void __filemap_set_wb_err(struct address_space *mapping, int err)
+ {
+ 	errseq_t eseq = __errseq_set(&mapping->wb_err, err);
 -- 
 2.9.4
