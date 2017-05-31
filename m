@@ -1,185 +1,50 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 04/28] ext4: do not set posix acls on xattr inodes
-Date: Wed, 31 May 2017 01:14:53 -0700
-Message-ID: <20170531081517.11438-4-tahsin@google.com>
-References: <20170531081517.11438-1-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Mark Fasheh <mfasheh@versity.com>,
-        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
-        Deepa Dinamani <deepa.kernel@gmail.com>,
-        Mike Christie <mchristi@redhat.com>,
-        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 09/10] xfs: nowait aio support
+Date: Wed, 31 May 2017 10:51:37 +0200
+Message-ID: <20170531085137.GB14011@quack2.suse.cz>
+References: <20170524164150.9492-1-rgoldwyn@suse.de>
+ <20170524164150.9492-10-rgoldwyn@suse.de>
+ <20170528093113.GB14519@infradead.org>
+ <cfc1e7ad-f74b-a14a-ac30-8472f7f684af@suse.de>
+ <20170529083338.GC1899@infradead.org>
+ <f105d585-e88c-b037-9905-d0c608c609d9@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        axboe@kernel.dk, linux-api@vger.kernel.org,
+        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Return-path: <linux-block-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <f105d585-e88c-b037-9905-d0c608c609d9@suse.de>
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We don't need acls on xattr inodes because they are not directly
-accessible from user mode.
+On Tue 30-05-17 11:13:29, Goldwyn Rodrigues wrote:
+> > Btw, can you write a small blurb up for the man page to document these
+> > ѕemantics in man-page like language?
+> > 
+> 
+> Yes, but which man page would it belong to?
+> Should it be a subsection of errors in io_getevents/io_submit. We don't
+> want to add ERRORS to io_getevents() because it would be the return
+> value of the io_getevents call, and not the ones in the iocb structure.
+> Should it be a new man page, say for iocb(7/8)?
 
-Besides lockdep complains about recursive locking of xattr_sem as seen
-below.
+I think you should extend the manpage for io_submit(8). There you can add
+definition of struct iocb in 'DESCRIPTION' section explaining at least the
+most common fields. You can also explain there which flags can be passed
+and what are they intended to do.
 
-  =============================================
-  [ INFO: possible recursive locking detected ]
-  4.11.0-rc8+ #402 Not tainted
-  ---------------------------------------------
-  python/1894 is trying to acquire lock:
-   (&ei->xattr_sem){++++..}, at: [<ffffffff804878a6>] ext4_xattr_get+0x66/0x270
+You can also expand EAGAIN error description to specifically mention that
+in case of NOWAIT aio EAGAIN can be returned if io submission would block.
 
-  but task is already holding lock:
-   (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-
-  other info that might help us debug this:
-   Possible unsafe locking scenario:
-
-         CPU0
-         ----
-    lock(&ei->xattr_sem);
-    lock(&ei->xattr_sem);
-
-   *** DEADLOCK ***
-
-   May be due to missing lock nesting notation
-
-  3 locks held by python/1894:
-   #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d829f>] mnt_want_write+0x1f/0x50
-   #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803dda27>] vfs_setxattr+0x57/0xb0
-   #2:  (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-
-  stack backtrace:
-  CPU: 0 PID: 1894 Comm: python Not tainted 4.11.0-rc8+ #402
-  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-  Call Trace:
-   dump_stack+0x67/0x99
-   __lock_acquire+0x5f3/0x1830
-   lock_acquire+0xb5/0x1d0
-   down_read+0x2f/0x60
-   ext4_xattr_get+0x66/0x270
-   ext4_get_acl+0x43/0x1e0
-   get_acl+0x72/0xf0
-   posix_acl_create+0x5e/0x170
-   ext4_init_acl+0x21/0xc0
-   __ext4_new_inode+0xffd/0x16b0
-   ext4_xattr_set_entry+0x5ea/0xb70
-   ext4_xattr_block_set+0x1b5/0x970
-   ext4_xattr_set_handle+0x351/0x5d0
-   ext4_xattr_set+0x124/0x180
-   ext4_xattr_user_set+0x34/0x40
-   __vfs_setxattr+0x66/0x80
-   __vfs_setxattr_noperm+0x69/0x1c0
-   vfs_setxattr+0xa2/0xb0
-   setxattr+0x129/0x160
-   path_setxattr+0x87/0xb0
-   SyS_setxattr+0xf/0x20
-   entry_SYSCALL_64_fastpath+0x18/0xad
-
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- fs/ext4/ext4.h    | 11 ++++++-----
- fs/ext4/ialloc.c  | 14 +++++++++-----
- fs/ext4/migrate.c |  2 +-
- fs/ext4/xattr.c   |  3 ++-
- 4 files changed, 18 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 24ef56b4572f..5d5fc0d0e2bc 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2400,16 +2400,17 @@ extern int ext4fs_dirhash(const char *name, int len, struct
- /* ialloc.c */
- extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
- 				      const struct qstr *qstr, __u32 goal,
--				      uid_t *owner, int handle_type,
--				      unsigned int line_no, int nblocks);
-+				      uid_t *owner, __u32 i_flags,
-+				      int handle_type, unsigned int line_no,
-+				      int nblocks);
- 
--#define ext4_new_inode(handle, dir, mode, qstr, goal, owner) \
-+#define ext4_new_inode(handle, dir, mode, qstr, goal, owner, i_flags) \
- 	__ext4_new_inode((handle), (dir), (mode), (qstr), (goal), (owner), \
--			 0, 0, 0)
-+			 i_flags, 0, 0, 0)
- #define ext4_new_inode_start_handle(dir, mode, qstr, goal, owner, \
- 				    type, nblocks)		    \
- 	__ext4_new_inode(NULL, (dir), (mode), (qstr), (goal), (owner), \
--			 (type), __LINE__, (nblocks))
-+			 0, (type), __LINE__, (nblocks))
- 
- 
- extern void ext4_free_inode(handle_t *, struct inode *);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index e2eb3cc06820..fb1b3df17f6e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -742,8 +742,9 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
-  */
- struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			       umode_t mode, const struct qstr *qstr,
--			       __u32 goal, uid_t *owner, int handle_type,
--			       unsigned int line_no, int nblocks)
-+			       __u32 goal, uid_t *owner, __u32 i_flags,
-+			       int handle_type, unsigned int line_no,
-+			       int nblocks)
- {
- 	struct super_block *sb;
- 	struct buffer_head *inode_bitmap_bh = NULL;
-@@ -1052,6 +1053,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	/* Don't inherit extent flag from directory, amongst others. */
- 	ei->i_flags =
- 		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
-+	ei->i_flags |= i_flags;
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
-@@ -1108,9 +1110,11 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			goto fail_free_drop;
- 	}
- 
--	err = ext4_init_acl(handle, inode, dir);
--	if (err)
--		goto fail_free_drop;
-+	if (!(ei->i_flags & EXT4_EA_INODE_FL)) {
-+		err = ext4_init_acl(handle, inode, dir);
-+		if (err)
-+			goto fail_free_drop;
-+	}
- 
- 	err = ext4_init_security(handle, inode, dir, qstr);
- 	if (err)
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 364ea4d4a943..cf5181b62df1 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -475,7 +475,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	owner[0] = i_uid_read(inode);
- 	owner[1] = i_gid_read(inode);
- 	tmp_inode = ext4_new_inode(handle, d_inode(inode->i_sb->s_root),
--				   S_IFREG, NULL, goal, owner);
-+				   S_IFREG, NULL, goal, owner, 0);
- 	if (IS_ERR(tmp_inode)) {
- 		retval = PTR_ERR(tmp_inode);
- 		ext4_journal_stop(handle);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 09ba0137d529..12210fe87ea3 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -832,7 +832,8 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
- 	 * in the same group, or nearby one.
- 	 */
- 	ea_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
--				  S_IFREG | 0600, NULL, inode->i_ino + 1, NULL);
-+				  S_IFREG | 0600, NULL, inode->i_ino + 1, NULL,
-+				  EXT4_EA_INODE_FL);
- 	if (!IS_ERR(ea_inode)) {
- 		ea_inode->i_op = &ext4_file_inode_operations;
- 		ea_inode->i_fop = &ext4_file_operations;
+								Honza
 -- 
-2.13.0.219.gdb65acc882-goog
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
