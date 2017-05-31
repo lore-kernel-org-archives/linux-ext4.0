@@ -1,550 +1,1656 @@
-From: kbuild test robot <lkp@intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH 27/28] ext4: xattr inode deduplication
-Date: Wed, 31 May 2017 23:50:27 +0800
-Message-ID: <201705312307.CulhbaOe%fengguang.wu@intel.com>
-References: <20170531081517.11438-27-tahsin@google.com>
+Date: Wed, 31 May 2017 09:00:04 -0700
+Message-ID: <20170531160004.GG4510@birch.djwong.org>
+References: <20170531081517.11438-1-tahsin@google.com>
+	<20170531081517.11438-27-tahsin@google.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="x+6KMIRAuhnl3hBn"
-Cc: kbuild-all@01.org, Jan Kara <jack@suse.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Mark Fasheh <mfasheh@versity.com>,
-        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
-        Deepa Dinamani <deepa.kernel@gmail.com>,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Deepa Dinamani <deepa.kernel@gmail.com>, Dave Kleikamp <shaggy@kernel.org>,
+        jfs-discussion@lists.sourceforge.net, "Theodore Ts'o" <tytso@mit.edu>,
+        linux-kernel@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+        Jens Axboe <axboe@fb.com>, linux-fsdevel@vger.kernel.org,
         Mike Christie <mchristi@redhat.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+        ocfs2-devel@oss.oracle.com
 To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
 Content-Disposition: inline
 In-Reply-To: <20170531081517.11438-27-tahsin@google.com>
-Sender: reiserfs-devel-owner@vger.kernel.org
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
 List-Id: linux-ext4.vger.kernel.org
 
+On Wed, May 31, 2017 at 01:15:16AM -0700, Tahsin Erdogan wrote:
+> Ext4 now supports xattr values that are up to 64k in size (vfs limit).
+> Large xattr values are stored in external inodes each one holding a
+> single value. Once written the data blocks of these inodes are immutable.
+> 
+> The real world use cases are expected to have a lot of value duplication
+> such as inherited acls etc. To reduce data duplication on disk, this patch
+> implements a deduplicator that allows sharing of xattr inodes.
+> 
+> The deduplication is based on an in-memory hash lookup that is a best
+> effort sharing scheme. When a xattr inode is read from disk (i.e.
+> getxattr() call), its crc32c hash is added to a hash table. Before
+> creating a new xattr inode for a value being set, the hash table is
+> checked to see if an existing inode holds an identical value. If such an
+> inode is found, the ref count on that inode is incremented. On value
+> removal the ref count is decremented and if it reaches zero the inode is
+> deleted.
+> 
+> The quota charging for such inodes is manually managed. Every reference
+> holder is charged the full size as if there was no sharing happening.
+> This is consistent with how xattr blocks are also charged.
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> ---
+>  fs/ext4/acl.c   |    5 +-
+>  fs/ext4/ext4.h  |    7 +-
+>  fs/ext4/inode.c |    9 +-
+>  fs/ext4/super.c |   22 +-
+>  fs/ext4/xattr.c | 1073 +++++++++++++++++++++++++++++++++++++++++++------------
+>  fs/ext4/xattr.h |   17 +-
+>  fs/mbcache.c    |    9 +-
+>  7 files changed, 881 insertions(+), 261 deletions(-)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index 74f7ac539e00..8db03e5c78bc 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -238,7 +238,10 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+>  	if (error)
+>  		return error;
+>  retry:
+> -	credits = ext4_xattr_set_credits(inode, acl_size);
+> +	error = ext4_xattr_set_credits(inode, acl_size, &credits);
+> +	if (error)
+> +		return error;
+> +
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index d79d8d7bee88..79f06290e723 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1517,6 +1517,7 @@ struct ext4_sb_info {
+>  	long s_es_nr_inode;
+>  	struct ext4_es_stats s_es_stats;
+>  	struct mb_cache *s_mb_cache;
+> +	struct mb_cache *s_ea_inode_cache;
+>  	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
+>  
+>  	/* Ratelimit ext4 messages. */
+> @@ -2099,7 +2100,11 @@ static inline struct ext4_inode *ext4_raw_inode(struct ext4_iloc *iloc)
+>  	return (struct ext4_inode *) (iloc->bh->b_data + iloc->offset);
+>  }
+>  
+> -#define ext4_is_quota_file(inode) IS_NOQUOTA(inode)
+> +static inline bool ext4_is_quota_file(struct inode *inode)
+> +{
+> +	return IS_NOQUOTA(inode) &&
+> +	       !(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL);
+> +}
+>  
+>  /*
+>   * This structure is stuffed into the struct file's private_data field
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 4d6936f0d8a4..6f5872197d6c 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4843,8 +4843,15 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>  	}
+>  	brelse(iloc.bh);
+>  	ext4_set_inode_flags(inode);
+> -	if (ei->i_flags & EXT4_EA_INODE_FL)
+> +
+> +	if (ei->i_flags & EXT4_EA_INODE_FL) {
+>  		ext4_xattr_inode_set_class(inode);
+> +
+> +		inode_lock(inode);
+> +		inode->i_flags |= S_NOQUOTA;
+> +		inode_unlock(inode);
+> +	}
+> +
+>  	unlock_new_inode(inode);
+>  	return inode;
+>  
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index b02a23ec92ca..7d2b692d52ea 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -927,6 +927,10 @@ static void ext4_put_super(struct super_block *sb)
+>  		invalidate_bdev(sbi->journal_bdev);
+>  		ext4_blkdev_remove(sbi);
+>  	}
+> +	if (sbi->s_ea_inode_cache) {
+> +		ext4_xattr_destroy_cache(sbi->s_ea_inode_cache);
+> +		sbi->s_ea_inode_cache = NULL;
+> +	}
+>  	if (sbi->s_mb_cache) {
+>  		ext4_xattr_destroy_cache(sbi->s_mb_cache);
+>  		sbi->s_mb_cache = NULL;
+> @@ -1178,7 +1182,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>  	if (res)
+>  		return res;
+>  retry:
+> -	credits = ext4_xattr_set_credits(inode, len);
+> +	res = ext4_xattr_set_credits(inode, len, &credits);
+> +	if (res)
+> +		return res;
+> +
+>  	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
+> @@ -4067,6 +4074,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  		goto failed_mount_wq;
+>  	}
+>  
+> +	if (ext4_has_feature_ea_inode(sb)) {
+> +		sbi->s_ea_inode_cache = ext4_xattr_create_cache();
+> +		if (!sbi->s_ea_inode_cache) {
+> +			ext4_msg(sb, KERN_ERR,
+> +				 "Failed to create an s_ea_inode_cache");
+> +			goto failed_mount_wq;
+> +		}
+> +	}
+> +
+>  	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
+>  	    (blocksize != PAGE_SIZE)) {
+>  		ext4_msg(sb, KERN_ERR,
+> @@ -4296,6 +4312,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	if (EXT4_SB(sb)->rsv_conversion_wq)
+>  		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
+>  failed_mount_wq:
+> +	if (sbi->s_ea_inode_cache) {
+> +		ext4_xattr_destroy_cache(sbi->s_ea_inode_cache);
+> +		sbi->s_ea_inode_cache = NULL;
+> +	}
+>  	if (sbi->s_mb_cache) {
+>  		ext4_xattr_destroy_cache(sbi->s_mb_cache);
+>  		sbi->s_mb_cache = NULL;
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 6acce1f689ab..caddc176a612 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -55,6 +55,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/mbcache.h>
+>  #include <linux/quotaops.h>
+> +#include <linux/crc32c.h>
+>  #include "ext4_jbd2.h"
+>  #include "ext4.h"
+>  #include "xattr.h"
+> @@ -79,6 +80,7 @@ ext4_xattr_block_cache_find(struct inode *, struct ext4_xattr_header *,
+>  			    struct mb_cache_entry **);
+>  static void ext4_xattr_rehash(struct ext4_xattr_header *,
+>  			      struct ext4_xattr_entry *);
+> +static int ext4_xattr_read_ea_hash(struct inode *ea_inode, u32 *hash);
+>  
+>  static const struct xattr_handler * const ext4_xattr_handler_map[] = {
+>  	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
+> @@ -105,13 +107,23 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
+>  	NULL
+>  };
+>  
+> +#define EXT4_XATTR_SYSTEM_EA_INFO  "eai"
+> +
+>  #define EXT4_GET_MB_CACHE(inode)	(((struct ext4_sb_info *) \
+>  				inode->i_sb->s_fs_info)->s_mb_cache)
+>  
+> +#define EA_INODE_CACHE(inode)	(((struct ext4_sb_info *) \
+> +				inode->i_sb->s_fs_info)->s_ea_inode_cache)
+> +
+>  static int
+>  ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
+>  			struct inode *inode);
+>  
+> +static int ext4_xattr_inode_init(handle_t *handle, struct inode *ea_inode,
+> +				 u32 hash);
+> +static int ext4_xattr_update_ea_info(struct inode *ea_inode, int ref_change,
+> +				     u64 *ref_return, u32 *hash);
+> +
+>  #ifdef CONFIG_LOCKDEP
+>  void ext4_xattr_inode_set_class(struct inode *ea_inode)
+>  {
+> @@ -329,14 +341,6 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+>  		goto error;
+>  	}
+>  
+> -	if (EXT4_XATTR_INODE_GET_PARENT(inode) != parent->i_ino ||
+> -	    inode->i_generation != parent->i_generation) {
+> -		ext4_error(parent->i_sb, "Backpointer from EA inode %lu "
+> -			   "to parent is invalid.", ea_ino);
+> -		err = -EINVAL;
+> -		goto error;
+> -	}
+> -
+>  	if (!(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL)) {
+>  		ext4_error(parent->i_sb, "EA inode %lu does not have "
+>  			   "EXT4_EA_INODE_FL flag set.\n", ea_ino);
+> @@ -351,6 +355,11 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+>  	return err;
+>  }
+>  
+> +static u32 ext4_xattr_inode_hash(const void *buffer, size_t size)
+> +{
+> +	return crc32c(0, buffer, size);
 
---x+6KMIRAuhnl3hBn
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The metadata checksumming code uses crypto_alloc_shash to dynamically
+bind to the crc32c implementation only when ext4 actually needs it.
+This introduces a static module dependency on libcrc32c even though we
+only need it if we're deduplicating xattrs, which is done only when
+EXT4_FEATURE_INCOMPAT_EA_INODE is enabled, correct?
 
-Hi Tahsin,
+Or, looking through the code, maybe not; are we now capable of deduping
+for any filesystem?
 
-[auto build test ERROR on ext4/dev]
-[also build test ERROR on next-20170531]
-[cannot apply to v4.12-rc3]
-[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+Anyway, if this dedupe feature is hidden behind INCOMPAT_EA_INODE then
+this crc32c call binding should be done dynamically; however, if it
+works for any filesystem and is therefore on all the time, the existing
+users ought to be converted to use libcrc32c.
 
-url:    https://github.com/0day-ci/linux/commits/Tahsin-Erdogan/ext4-xattr-in-inode-support/20170531-214310
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-config: i386-defconfig (attached as .config)
-compiler: gcc-6 (Debian 6.2.0-3) 6.2.0 20160901
-reproduce:
-        # save the attached .config to linux build tree
-        make ARCH=i386 
+--D
 
-All errors (new ones prefixed by >>):
-
-   fs/built-in.o: In function `ext4_xattr_inode_get':
->> xattr.c:(.text+0xb8818): undefined reference to `crc32c'
-   fs/built-in.o: In function `ext4_xattr_set_entry':
-   xattr.c:(.text+0xb9614): undefined reference to `crc32c'
-
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
-
---x+6KMIRAuhnl3hBn
-Content-Type: application/gzip
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
-
-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
-
---x+6KMIRAuhnl3hBn--
+> +}
+> +
+>  /*
+>   * Read the value from the EA inode.
+>   */
+> @@ -358,17 +367,52 @@ static int
+>  ext4_xattr_inode_get(struct inode *inode, unsigned long ea_ino, void *buffer,
+>  		     size_t size)
+>  {
+> +	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(inode);
+>  	struct inode *ea_inode;
+> -	int ret;
+> +	u32 hash, calc_hash;
+> +	struct mb_cache_entry *ce;
+> +	int err;
+>  
+> -	ret = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
+> -	if (ret)
+> -		return ret;
+> +	err = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
+> +	if (err) {
+> +		ea_inode = NULL;
+> +		goto out;
+> +	}
+>  
+> -	ret = ext4_xattr_inode_read(ea_inode, buffer, size);
+> -	iput(ea_inode);
+> +	if (i_size_read(ea_inode) != size) {
+> +		ext4_warning_inode(ea_inode,
+> +				   "ea_inode file size=%llu entry size=%zu",
+> +				   i_size_read(ea_inode), size);
+> +		err = -EFSCORRUPTED;
+> +		goto out;
+> +	}
+>  
+> -	return ret;
+> +	err = ext4_xattr_inode_read(ea_inode, buffer, size);
+> +	if (!err) {
+> +		if (ext4_xattr_read_ea_hash(ea_inode, &hash))
+> +			goto out;
+> +
+> +		/* Avoid hash calculation if already cached. */
+> +		ce = mb_cache_entry_get(ea_inode_cache, hash, ea_inode->i_ino);
+> +		if (ce) {
+> +			mb_cache_entry_put(ea_inode_cache, ce);
+> +			goto out;
+> +		}
+> +
+> +		calc_hash = ext4_xattr_inode_hash(buffer, size);
+> +		if (hash != calc_hash) {
+> +			ext4_warning_inode(ea_inode, "EA inode saved hash=%#x "
+> +					   "does not match calc_hash=%#x",
+> +					   hash, calc_hash);
+> +			goto out;
+> +		}
+> +
+> +		mb_cache_entry_create(ea_inode_cache, GFP_NOFS, hash,
+> +				      ea_inode->i_ino, true /* reusable */);
+> +	}
+> +out:
+> +	iput(ea_inode);
+> +	return err;
+>  }
+>  
+>  static int
+> @@ -657,6 +701,101 @@ static void ext4_xattr_update_super_block(handle_t *handle,
+>  	}
+>  }
+>  
+> +static inline size_t round_up_cluster(struct inode *inode, size_t length)
+> +{
+> +	struct super_block *sb = inode->i_sb;
+> +	size_t cluster_size = 1 << (EXT4_SB(sb)->s_cluster_bits +
+> +				    inode->i_blkbits);
+> +	size_t mask = ~(cluster_size - 1);
+> +
+> +	return (length + cluster_size - 1) & mask;
+> +}
+> +
+> +static int ext4_xattr_inode_alloc_quota(struct inode *inode, size_t len)
+> +{
+> +	int err;
+> +
+> +	err = dquot_alloc_inode(inode);
+> +	if (err)
+> +		return err;
+> +	err = dquot_alloc_space_nodirty(inode, round_up_cluster(inode, len));
+> +	if (err)
+> +		dquot_free_inode(inode);
+> +	return err;
+> +}
+> +
+> +static void ext4_xattr_inode_free_quota(struct inode *inode, size_t len)
+> +{
+> +	dquot_free_space_nodirty(inode, round_up_cluster(inode, len));
+> +	dquot_free_inode(inode);
+> +}
+> +
+> +static int __ext4_xattr_set_credits(struct super_block *sb,
+> +				    struct buffer_head *block_bh,
+> +				    size_t value_len)
+> +{
+> +	int credits;
+> +	int blocks;
+> +
+> +	/*
+> +	 * 1) Owner inode update
+> +	 * 2) Ref count update on old xattr block
+> +	 * 3) new xattr block
+> +	 * 4) block bitmap update for new xattr block
+> +	 * 5) group descriptor for new xattr block
+> +	 */
+> +	credits = 5;
+> +
+> +	/* We are done if ea_inode feature is not enabled. */
+> +	if (!ext4_has_feature_ea_inode(sb))
+> +		return credits;
+> +
+> +	/* New ea_inode, inode map, block bitmap, group descriptor. */
+> +	credits += 4;
+> +
+> +	/* Data blocks. */
+> +	blocks = (value_len + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
+> +
+> +	/* Indirection block. */
+> +	blocks += 1;
+> +
+> +	/* Block bitmap and group descriptor updates for each block. */
+> +	credits += blocks * 2;
+> +
+> +	/* Blocks themselves. */
+> +	credits += blocks;
+> +
+> +	/* Dereference ea_inode holding old xattr value.
+> +	 * Old ea_inode, inode map, block bitmap, group descriptor.
+> +	 */
+> +	credits += 4;
+> +
+> +	/* Data blocks for old ea_inode. */
+> +	blocks = XATTR_SIZE_MAX >> sb->s_blocksize_bits;
+> +
+> +	/* Indirection block for old ea_inode. */
+> +	blocks += 1;
+> +
+> +	/* Block bitmap and group descriptor updates for each block. */
+> +	credits += blocks * 2;
+> +
+> +	/* Quota updates. */
+> +	credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(sb);
+> +
+> +	/* We may need to clone the existing xattr block in which case we need
+> +	 * to increment ref counts for existing ea_inodes referenced by it.
+> +	 */
+> +	if (block_bh) {
+> +		struct ext4_xattr_entry *entry = BFIRST(block_bh);
+> +
+> +		for (; !IS_LAST_ENTRY(entry); entry = EXT4_XATTR_NEXT(entry))
+> +			if (entry->e_value_inum)
+> +				/* Ref count update on ea_inode. */
+> +				credits += 1;
+> +	}
+> +	return credits;
+> +}
+> +
+>  int ext4_xattr_ensure_credits(handle_t *handle, struct inode *inode,
+>  			      int credits, struct buffer_head *bh,
+>  			      bool dirty, bool block_csum)
+> @@ -706,12 +845,139 @@ int ext4_xattr_ensure_credits(handle_t *handle, struct inode *inode,
+>  	return 0;
+>  }
+>  
+> +static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
+> +				       int ref_change)
+> +{
+> +	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(ea_inode);
+> +	struct ext4_iloc iloc;
+> +	s64 ref_return;
+> +	u32 hash;
+> +	int ret;
+> +
+> +	inode_lock(ea_inode);
+> +
+> +	ret = ext4_reserve_inode_write(handle, ea_inode, &iloc);
+> +	if (ret) {
+> +		iloc.bh = NULL;
+> +		goto out;
+> +	}
+> +
+> +	ret = ext4_xattr_update_ea_info(ea_inode, ref_change, &ref_return,
+> +					&hash);
+> +	if (ret)
+> +		goto out;
+> +
+> +	if (ref_change > 0) {
+> +		WARN_ONCE(ref_return <= 0, "EA inode %lu ref_return=%lld",
+> +			  ea_inode->i_ino, ref_return);
+> +
+> +		if (ref_return == 1) {
+> +			WARN_ONCE(ea_inode->i_nlink, "EA inode %lu i_nlink=%u",
+> +				  ea_inode->i_ino, ea_inode->i_nlink);
+> +
+> +			set_nlink(ea_inode, 1);
+> +			ext4_orphan_del(handle, ea_inode);
+> +
+> +			mb_cache_entry_create(ea_inode_cache, GFP_NOFS, hash,
+> +					      ea_inode->i_ino,
+> +					      true /* reusable */);
+> +		}
+> +	} else {
+> +		WARN_ONCE(ref_return < 0, "EA inode %lu ref_return=%lld",
+> +			  ea_inode->i_ino, ref_return);
+> +
+> +		if (ref_return == 0) {
+> +			WARN_ONCE(ea_inode->i_nlink != 1,
+> +				  "EA inode %lu i_nlink=%u",
+> +				  ea_inode->i_ino, ea_inode->i_nlink);
+> +
+> +			clear_nlink(ea_inode);
+> +			ext4_orphan_add(handle, ea_inode);
+> +
+> +			mb_cache_entry_delete(ea_inode_cache, hash,
+> +					      ea_inode->i_ino);
+> +		}
+> +	}
+> +
+> +	ret = ext4_mark_iloc_dirty(handle, ea_inode, &iloc);
+> +	iloc.bh = NULL;
+> +	if (ret)
+> +		ext4_warning_inode(ea_inode,
+> +				   "ext4_mark_iloc_dirty() failed ret=%d", ret);
+> +out:
+> +	brelse(iloc.bh);
+> +	inode_unlock(ea_inode);
+> +	return ret;
+> +}
+> +
+> +static int ext4_xattr_inode_inc_ref(handle_t *handle, struct inode *ea_inode)
+> +{
+> +	return ext4_xattr_inode_update_ref(handle, ea_inode, 1);
+> +}
+> +
+> +static int ext4_xattr_inode_dec_ref(handle_t *handle, struct inode *ea_inode)
+> +{
+> +	return ext4_xattr_inode_update_ref(handle, ea_inode, -1);
+> +}
+> +
+> +static int ext4_xattr_inode_inc_ref_all(handle_t *handle, struct inode *parent,
+> +					struct ext4_xattr_entry *first)
+> +{
+> +	struct inode *ea_inode;
+> +	struct ext4_xattr_entry *entry;
+> +	struct ext4_xattr_entry *failed_entry;
+> +	unsigned int ea_ino;
+> +	int err, saved_err;
+> +
+> +	for (entry = first; !IS_LAST_ENTRY(entry);
+> +	     entry = EXT4_XATTR_NEXT(entry)) {
+> +		if (!entry->e_value_inum)
+> +			continue;
+> +		ea_ino = le32_to_cpu(entry->e_value_inum);
+> +		err = ext4_xattr_inode_iget(parent, ea_ino, &ea_inode);
+> +		if (err)
+> +			goto cleanup;
+> +		err = ext4_xattr_inode_inc_ref(handle, ea_inode);
+> +		if (err) {
+> +			ext4_warning_inode(ea_inode, "inc ref error %d", err);
+> +			iput(ea_inode);
+> +			goto cleanup;
+> +		}
+> +		iput(ea_inode);
+> +	}
+> +	return 0;
+> +
+> +cleanup:
+> +	saved_err = err;
+> +	failed_entry = entry;
+> +
+> +	for (entry = first; entry != failed_entry;
+> +	     entry = EXT4_XATTR_NEXT(entry)) {
+> +		if (!entry->e_value_inum)
+> +			continue;
+> +		ea_ino = le32_to_cpu(entry->e_value_inum);
+> +		err = ext4_xattr_inode_iget(parent, ea_ino, &ea_inode);
+> +		if (err) {
+> +			ext4_warning(parent->i_sb,
+> +				     "cleanup ea_ino %u iget error %d", ea_ino,
+> +				     err);
+> +			continue;
+> +		}
+> +		err = ext4_xattr_inode_dec_ref(handle, ea_inode);
+> +		if (err)
+> +			ext4_warning_inode(ea_inode, "cleanup dec ref error %d",
+> +					   err);
+> +		iput(ea_inode);
+> +	}
+> +	return saved_err;
+> +}
+> +
+>  static void
+> -ext4_xattr_inode_remove_all(handle_t *handle, struct inode *parent,
+> -			    struct buffer_head *bh,
+> -			    struct ext4_xattr_entry *first, bool block_csum,
+> -			    struct ext4_xattr_inode_array **ea_inode_array,
+> -			    int extra_credits)
+> +ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+> +			     struct buffer_head *bh,
+> +			     struct ext4_xattr_entry *first, bool block_csum,
+> +			     struct ext4_xattr_inode_array **ea_inode_array,
+> +			     int extra_credits, bool skip_quota)
+>  {
+>  	struct inode *ea_inode;
+>  	struct ext4_xattr_entry *entry;
+> @@ -748,10 +1014,16 @@ ext4_xattr_inode_remove_all(handle_t *handle, struct inode *parent,
+>  			continue;
+>  		}
+>  
+> -		inode_lock(ea_inode);
+> -		clear_nlink(ea_inode);
+> -		ext4_orphan_add(handle, ea_inode);
+> -		inode_unlock(ea_inode);
+> +		err = ext4_xattr_inode_dec_ref(handle, ea_inode);
+> +		if (err) {
+> +			ext4_warning_inode(ea_inode, "ea_inode dec ref err=%d",
+> +					   err);
+> +			continue;
+> +		}
+> +
+> +		if (!skip_quota)
+> +			ext4_xattr_inode_free_quota(parent,
+> +					      le32_to_cpu(entry->e_value_size));
+>  
+>  		/*
+>  		 * Forget about ea_inode within the same transaction that decrements the ref
+> @@ -784,7 +1056,9 @@ ext4_xattr_inode_remove_all(handle_t *handle, struct inode *parent,
+>   */
+>  static void
+>  ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+> -			 struct buffer_head *bh)
+> +			 struct buffer_head *bh,
+> +			 struct ext4_xattr_inode_array **ea_inode_array,
+> +			 int extra_credits)
+>  {
+>  	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+>  	u32 hash, ref;
+> @@ -807,6 +1081,14 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+>  		mb_cache_entry_delete(ext4_mb_cache, hash, bh->b_blocknr);
+>  		get_bh(bh);
+>  		unlock_buffer(bh);
+> +
+> +		if (ext4_has_feature_ea_inode(inode->i_sb))
+> +			ext4_xattr_inode_dec_ref_all(handle, inode, bh,
+> +						     BFIRST(bh),
+> +						     true /* block_csum */,
+> +						     ea_inode_array,
+> +						     extra_credits,
+> +						     true /* skip_quota */);
+>  		ext4_free_blocks(handle, inode, bh, 0, 1,
+>  				 EXT4_FREE_BLOCKS_METADATA |
+>  				 EXT4_FREE_BLOCKS_FORGET);
+> @@ -947,7 +1229,7 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
+>   * Create an inode to store the value of a large EA.
+>   */
+>  static struct inode *ext4_xattr_inode_create(handle_t *handle,
+> -					     struct inode *inode)
+> +					     struct inode *inode, u32 hash)
+>  {
+>  	struct inode *ea_inode = NULL;
+>  	uid_t owner[2] = { i_uid_read(inode), i_gid_read(inode) };
+> @@ -965,67 +1247,118 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+>  		ea_inode->i_fop = &ext4_file_operations;
+>  		ext4_set_aops(ea_inode);
+>  		ext4_xattr_inode_set_class(ea_inode);
+> -		ea_inode->i_generation = inode->i_generation;
+> -		EXT4_I(ea_inode)->i_flags |= EXT4_EA_INODE_FL;
+> -
+> -		/*
+> -		 * A back-pointer from EA inode to parent inode will be useful
+> -		 * for e2fsck.
+> -		 */
+> -		EXT4_XATTR_INODE_SET_PARENT(ea_inode, inode->i_ino);
+>  		unlock_new_inode(ea_inode);
+>  		err = ext4_inode_attach_jinode(ea_inode);
+> +		if (!err)
+> +			err = ext4_xattr_inode_init(handle, ea_inode, hash);
+>  		if (err) {
+>  			iput(ea_inode);
+>  			return ERR_PTR(err);
+>  		}
+> +
+> +		/*
+> +		 * Xattr inodes are shared therefore quota charging is performed
+> +		 * at a higher level.
+> +		 */
+> +		dquot_free_inode(ea_inode);
+> +		dquot_drop(ea_inode);
+> +		inode_lock(ea_inode);
+> +		ea_inode->i_flags |= S_NOQUOTA;
+> +		inode_unlock(ea_inode);
+>  	}
+>  
+>  	return ea_inode;
+>  }
+>  
+> -/*
+> - * Unlink the inode storing the value of the EA.
+> - */
+> -int ext4_xattr_inode_unlink(struct inode *inode, unsigned long ea_ino)
+> +static struct inode *
+> +ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
+> +			    size_t value_len, u32 hash)
+>  {
+> -	struct inode *ea_inode = NULL;
+> +	struct inode *ea_inode;
+> +	struct mb_cache_entry *ce;
+> +	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(inode);
+> +	void *ea_data = NULL;
+>  	int err;
+>  
+> -	err = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
+> -	if (err)
+> -		return err;
+> +	ce = mb_cache_entry_find_first(ea_inode_cache, hash);
+> +	while (ce) {
+> +		ea_inode = ext4_iget(inode->i_sb, ce->e_value);
+> +		if (IS_ERR(ea_inode)) {
+> +			ea_inode = NULL;
+> +			goto next;
+> +		}
+>  
+> -	clear_nlink(ea_inode);
+> -	iput(ea_inode);
+> +		if (is_bad_inode(ea_inode) ||
+> +		    !(EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) ||
+> +		    i_size_read(ea_inode) != value_len)
+> +			goto next;
+>  
+> -	return 0;
+> +		if (!ea_data)
+> +			ea_data = ext4_kvmalloc(value_len, GFP_NOFS);
+> +
+> +		if (!ea_data) {
+> +			iput(ea_inode);
+> +			return NULL;
+> +		}
+> +
+> +		err = ext4_xattr_inode_read(ea_inode, ea_data, value_len);
+> +		if (unlikely(err))
+> +			goto next;
+> +
+> +		if (!memcmp(value, ea_data, value_len)) {
+> +			mb_cache_entry_touch(ea_inode_cache, ce);
+> +			mb_cache_entry_put(ea_inode_cache, ce);
+> +			kvfree(ea_data);
+> +			return ea_inode;
+> +		}
+> +	next:
+> +		iput(ea_inode);
+> +		ce = mb_cache_entry_find_next(ea_inode_cache, ce);
+> +	}
+> +	kvfree(ea_data);
+> +	return NULL;
+>  }
+>  
+>  /*
+>   * Add value of the EA in an inode.
+>   */
+> -static int ext4_xattr_inode_set(handle_t *handle, struct inode *inode,
+> -				unsigned long *ea_ino, const void *value,
+> -				size_t value_len)
+> +static int ext4_xattr_inode_lookup_create(handle_t *handle, struct inode *inode,
+> +					  const void *value, size_t value_len,
+> +					  struct inode **ret_inode)
+>  {
+> +	u32 hash = ext4_xattr_inode_hash(value, value_len);
+>  	struct inode *ea_inode;
+>  	int err;
+>  
+> +	ea_inode = ext4_xattr_inode_cache_find(inode, value, value_len, hash);
+> +	if (ea_inode) {
+> +		err = ext4_xattr_inode_inc_ref(handle, ea_inode);
+> +		if (err) {
+> +			iput(ea_inode);
+> +			return err;
+> +		}
+> +
+> +		*ret_inode = ea_inode;
+> +		return 0;
+> +	}
+> +
+>  	/* Create an inode for the EA value */
+> -	ea_inode = ext4_xattr_inode_create(handle, inode);
+> +	ea_inode = ext4_xattr_inode_create(handle, inode, hash);
+>  	if (IS_ERR(ea_inode))
+>  		return PTR_ERR(ea_inode);
+>  
+>  	err = ext4_xattr_inode_write(handle, ea_inode, value, value_len);
+> -	if (err)
+> -		clear_nlink(ea_inode);
+> -	else
+> -		*ea_ino = ea_inode->i_ino;
+> +	if (err) {
+> +		ext4_xattr_inode_dec_ref(handle, ea_inode);
+> +		iput(ea_inode);
+> +		return err;
+> +	}
+>  
+> -	iput(ea_inode);
+> +	mb_cache_entry_create(EA_INODE_CACHE(inode), GFP_NOFS, hash,
+> +			      ea_inode->i_ino, true /* reusable */);
+>  
+> -	return err;
+> +	*ret_inode = ea_inode;
+> +	return 0;
+>  }
+>  
+>  static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+> @@ -1033,11 +1366,37 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+>  				handle_t *handle, struct inode *inode)
+>  {
+>  	struct ext4_xattr_entry *last;
+> +	struct ext4_xattr_entry *here = s->here;
+>  	size_t free, min_offs = s->end - s->base, name_len = strlen(i->name);
+>  	int in_inode = i->in_inode;
+> -	int rc;
+> +	struct inode *old_ea_inode = NULL;
+> +	struct inode *new_ea_inode = NULL;
+> +	int ret;
+>  
+> -	/* Compute min_offs and last. */
+> +	/*
+> +	 * Optimization for the simple case when old and new values have the
+> +	 * same padded sizes. Not applicable if the existing value is stored in
+> +	 * an external inode.
+> +	 */
+> +	if (i->value && !s->not_found && !here->e_value_inum &&
+> +	    EXT4_XATTR_SIZE(le32_to_cpu(here->e_value_size)) ==
+> +	    EXT4_XATTR_SIZE(i->value_len)) {
+> +		size_t offs = le16_to_cpu(here->e_value_offs);
+> +		void *val = s->base + offs;
+> +		size_t size = EXT4_XATTR_SIZE(i->value_len);
+> +
+> +		here->e_value_size = cpu_to_le32(i->value_len);
+> +		if (i->value == EXT4_ZERO_XATTR_VALUE) {
+> +			memset(val, 0, size);
+> +		} else {
+> +			memcpy(val, i->value, i->value_len);
+> +			/* Clear padding bytes. */
+> +			memset(val + i->value_len, 0, size - i->value_len);
+> +		}
+> +		return 0;
+> +	}
+> +
+> +	/* Find out min_offs and last to calculate the free space. */
+>  	last = s->first;
+>  	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+>  		if (!last->e_value_inum && last->e_value_size) {
+> @@ -1048,120 +1407,149 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+>  	}
+>  	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
+>  	if (!s->not_found) {
+> -		if (!in_inode &&
+> -		    !s->here->e_value_inum && s->here->e_value_size) {
+> -			size_t size = le32_to_cpu(s->here->e_value_size);
+> +		if (!here->e_value_inum && here->e_value_size) {
+> +			size_t size = le32_to_cpu(here->e_value_size);
+>  			free += EXT4_XATTR_SIZE(size);
+>  		}
+>  		free += EXT4_XATTR_LEN(name_len);
+>  	}
+>  	if (i->value) {
+> -		size_t value_len = EXT4_XATTR_SIZE(i->value_len);
+> +		size_t value_len = in_inode ? 0 : EXT4_XATTR_SIZE(i->value_len);
+>  
+> -		if (in_inode)
+> -			value_len = 0;
+> +		if (free < EXT4_XATTR_LEN(name_len) + value_len) {
+> +			ret = -ENOSPC;
+> +			goto out;
+> +		}
+> +	}
+>  
+> -		if (free < EXT4_XATTR_LEN(name_len) + value_len)
+> -			return -ENOSPC;
+> +	/*
+> +	 * Getting access to old and new ea inodes is subject to failures.
+> +	 * Finish that work before doing any modifications to the xattr data.
+> +	 */
+> +	if (!s->not_found && here->e_value_inum) {
+> +		ret = ext4_xattr_inode_iget(inode,
+> +		 			    le32_to_cpu(here->e_value_inum),
+> +		 			    &old_ea_inode);
+> +		if (ret) {
+> +			old_ea_inode = NULL;
+> +			goto out;
+> +		}
+>  	}
+> +	if (i->value && in_inode) {
+> +		WARN_ON_ONCE(!i->value_len);
+>  
+> -	if (i->value && s->not_found) {
+> -		/* Insert the new name. */
+> -		size_t size = EXT4_XATTR_LEN(name_len);
+> -		size_t rest = (void *)last - (void *)s->here + sizeof(__u32);
+> -		memmove((void *)s->here + size, s->here, rest);
+> -		memset(s->here, 0, size);
+> -		s->here->e_name_index = i->name_index;
+> -		s->here->e_name_len = name_len;
+> -		memcpy(s->here->e_name, i->name, name_len);
+> -	} else {
+> -		if (!s->here->e_value_inum && s->here->e_value_size &&
+> -		    s->here->e_value_offs > 0) {
+> -			void *first_val = s->base + min_offs;
+> -			size_t offs = le16_to_cpu(s->here->e_value_offs);
+> -			void *val = s->base + offs;
+> -			size_t size = EXT4_XATTR_SIZE(
+> -				le32_to_cpu(s->here->e_value_size));
+> -
+> -			if (i->value && size == EXT4_XATTR_SIZE(i->value_len)) {
+> -				/* The old and the new value have the same
+> -				   size. Just replace. */
+> -				s->here->e_value_size =
+> -					cpu_to_le32(i->value_len);
+> -				if (i->value == EXT4_ZERO_XATTR_VALUE) {
+> -					memset(val, 0, size);
+> -				} else {
+> -					/* Clear pad bytes first. */
+> -					memset(val + size - EXT4_XATTR_PAD, 0,
+> -					       EXT4_XATTR_PAD);
+> -					memcpy(val, i->value, i->value_len);
+> -				}
+> -				return 0;
+> -			}
+> +		ret = ext4_xattr_inode_alloc_quota(inode, i->value_len);
+> +		if (ret)
+> +			goto out;
+>  
+> -			/* Remove the old value. */
+> -			memmove(first_val + size, first_val, val - first_val);
+> -			memset(first_val, 0, size);
+> -			s->here->e_value_size = 0;
+> -			s->here->e_value_offs = 0;
+> -			min_offs += size;
+> -
+> -			/* Adjust all value offsets. */
+> -			last = s->first;
+> -			while (!IS_LAST_ENTRY(last)) {
+> -				size_t o = le16_to_cpu(last->e_value_offs);
+> -				if (!last->e_value_inum &&
+> -				    last->e_value_size && o < offs)
+> -					last->e_value_offs =
+> -						cpu_to_le16(o + size);
+> -				last = EXT4_XATTR_NEXT(last);
+> -			}
+> +		ret = ext4_xattr_inode_lookup_create(handle, inode, i->value,
+> +						     i->value_len,
+> +						     &new_ea_inode);
+> +		if (ret) {
+> +			new_ea_inode = NULL;
+> +			ext4_xattr_inode_free_quota(inode, i->value_len);
+> +			goto out;
+>  		}
+> -		if (s->here->e_value_inum) {
+> -			ext4_xattr_inode_unlink(inode,
+> -					    le32_to_cpu(s->here->e_value_inum));
+> -			s->here->e_value_inum = 0;
+> +	}
+> +
+> +	if (old_ea_inode) {
+> +		/* We are ready to release ref count on the old_ea_inode. */
+> +		ret = ext4_xattr_inode_dec_ref(handle, old_ea_inode);
+> +		if (ret) {
+> +			/* Release newly required ref count on new_ea_inode. */
+> +			if (new_ea_inode) {
+> +				int err;
+> +
+> +				err = ext4_xattr_inode_dec_ref(handle,
+> +							       new_ea_inode);
+> +				if (err)
+> +					ext4_warning_inode(new_ea_inode,
+> +						  "dec ref new_ea_inode err=%d",
+> +						  err);
+> +				ext4_xattr_inode_free_quota(inode,
+> +							    i->value_len);
+> +			}
+> +			goto out;
+>  		}
+> -		if (!i->value) {
+> -			/* Remove the old name. */
+> -			size_t size = EXT4_XATTR_LEN(name_len);
+> -			last = ENTRY((void *)last - size);
+> -			memmove(s->here, (void *)s->here + size,
+> -				(void *)last - (void *)s->here + sizeof(__u32));
+> -			memset(last, 0, size);
+> +
+> +		ext4_xattr_inode_free_quota(inode,
+> +					    le32_to_cpu(here->e_value_size));
+> +	}
+> +
+> +	/* No failures allowed past this point. */
+> +
+> +	if (!s->not_found && here->e_value_offs) {
+> +		/* Remove the old value. */
+> +		void *first_val = s->base + min_offs;
+> +		size_t offs = le16_to_cpu(here->e_value_offs);
+> +		void *val = s->base + offs;
+> +		size_t size = EXT4_XATTR_SIZE(
+> +			le32_to_cpu(here->e_value_size));
+> +
+> +		memmove(first_val + size, first_val, val - first_val);
+> +		memset(first_val, 0, size);
+> +		min_offs += size;
+> +
+> +		/* Adjust all value offsets. */
+> +		last = s->first;
+> +		while (!IS_LAST_ENTRY(last)) {
+> +			size_t o = le16_to_cpu(last->e_value_offs);
+> +			if (!last->e_value_inum &&
+> +			    last->e_value_size && o < offs)
+> +				last->e_value_offs =
+> +					cpu_to_le16(o + size);
+> +			last = EXT4_XATTR_NEXT(last);
+>  		}
+>  	}
+>  
+> +	if (!s->not_found && !i->value) {
+> +		/* Remove old name. */
+> +		size_t size = EXT4_XATTR_LEN(name_len);
+> +		last = ENTRY((void *)last - size);
+> +		memmove(here, (void *)here + size,
+> +			(void *)last - (void *)here + sizeof(__u32));
+> +		memset(last, 0, size);
+> +	} else if (s->not_found && i->value) {
+> +		/* Insert new name. */
+> +		size_t size = EXT4_XATTR_LEN(name_len);
+> +		size_t rest = (void *)last - (void *)here + sizeof(__u32);
+> +		memmove((void *)here + size, here, rest);
+> +		memset(here, 0, size);
+> +		here->e_name_index = i->name_index;
+> +		here->e_name_len = name_len;
+> +		memcpy(here->e_name, i->name, name_len);
+> +	} else {
+> +		WARN_ON_ONCE(s->not_found || !i->value);
+> +		/* This is an update, reset value info. */
+> +		here->e_value_inum = 0;
+> +		here->e_value_offs = 0;
+> +		here->e_value_size = 0;
+> +	}
+> +
+>  	if (i->value) {
+> -		/* Insert the new value. */
+> +		/* Insert new value. */
+>  		if (in_inode) {
+> -			unsigned long ea_ino =
+> -				le32_to_cpu(s->here->e_value_inum);
+> -			rc = ext4_xattr_inode_set(handle, inode, &ea_ino,
+> -						  i->value, i->value_len);
+> -			if (rc)
+> -				goto out;
+> -			s->here->e_value_inum = cpu_to_le32(ea_ino);
+> -			s->here->e_value_offs = 0;
+> +			here->e_value_inum = cpu_to_le32(new_ea_inode->i_ino);
+>  		} else if (i->value_len) {
+>  			size_t size = EXT4_XATTR_SIZE(i->value_len);
+>  			void *val = s->base + min_offs - size;
+> -			s->here->e_value_offs = cpu_to_le16(min_offs - size);
+> -			s->here->e_value_inum = 0;
+> +			here->e_value_offs = cpu_to_le16(min_offs - size);
+>  			if (i->value == EXT4_ZERO_XATTR_VALUE) {
+>  				memset(val, 0, size);
+>  			} else {
+> -				/* Clear the pad bytes first. */
+> -				memset(val + size - EXT4_XATTR_PAD, 0,
+> -				       EXT4_XATTR_PAD);
+>  				memcpy(val, i->value, i->value_len);
+> +				/* Clear padding bytes. */
+> +				memset(val + i->value_len, 0,
+> +				       size - i->value_len);
+>  			}
+>  		}
+> -		s->here->e_value_size = cpu_to_le32(i->value_len);
+> +		here->e_value_size = cpu_to_le32(i->value_len);
+>  	}
+> -
+> +	ret = 0;
+>  out:
+> -	return rc;
+> +	iput(old_ea_inode);
+> +	iput(new_ea_inode);
+> +	return ret;
+>  }
+>  
+>  struct ext4_xattr_block_find {
+> @@ -1223,6 +1611,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  	struct mb_cache_entry *ce = NULL;
+>  	int error = 0;
+>  	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+> +	struct inode *ea_inode = NULL;
+> +	size_t old_ea_inode_size = 0;
+>  
+>  #define header(x) ((struct ext4_xattr_header *)(x))
+>  
+> @@ -1277,6 +1667,24 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  			header(s->base)->h_refcount = cpu_to_le32(1);
+>  			s->here = ENTRY(s->base + offset);
+>  			s->end = s->base + bs->bh->b_size;
+> +
+> +			/*
+> +			 * If existing entry points to an xattr inode, we need
+> +			 * to prevent ext4_xattr_set_entry() from decrementing
+> +			 * ref count on it because the reference belongs to the
+> +			 * original block. In this case, make the entry look
+> +			 * like it has an empty value.
+> +			 */
+> +			if (!s->not_found && s->here->e_value_inum) {
+> +				/*
+> +				 * Defer quota free call for previous inode
+> +				 * until success is guaranteed.
+> +				 */
+> +				old_ea_inode_size = le32_to_cpu(
+> +							s->here->e_value_size);
+> +				s->here->e_value_inum = 0;
+> +				s->here->e_value_size = 0;
+> +			}
+>  		}
+>  	} else {
+>  		/* Allocate a buffer where we construct the new block. */
+> @@ -1298,6 +1706,24 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  		goto bad_block;
+>  	if (error)
+>  		goto cleanup;
+> +
+> +	if (i->value && s->here->e_value_inum) {
+> +		unsigned int ea_ino;
+> +
+> +		/*
+> +		 * A ref count on ea_inode has been taken as part of the call to
+> +		 * ext4_xattr_set_entry() above. We would like to drop this
+> +		 * extra ref but we have to wait until the xattr block is
+> +		 * initialized and has its own ref count on the ea_inode.
+> +		 */
+> +		ea_ino = le32_to_cpu(s->here->e_value_inum);
+> +		error = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
+> +		if (error) {
+> +			ea_inode = NULL;
+> +			goto cleanup;
+> +		}
+> +	}
+> +
+>  	if (!IS_LAST_ENTRY(s->first))
+>  		ext4_xattr_rehash(header(s->base), s->here);
+>  
+> @@ -1408,6 +1834,22 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  						 EXT4_FREE_BLOCKS_METADATA);
+>  				goto cleanup;
+>  			}
+> +			error = ext4_xattr_inode_inc_ref_all(handle, inode,
+> +						      ENTRY(header(s->base)+1));
+> +			if (error)
+> +				goto getblk_failed;
+> +			if (ea_inode) {
+> +				/* Drop the extra ref on ea_inode. */
+> +				error = ext4_xattr_inode_dec_ref(handle,
+> +								 ea_inode);
+> +				if (error)
+> +					ext4_warning_inode(ea_inode,
+> +							   "dec ref error=%d",
+> +							   error);
+> +				iput(ea_inode);
+> +				ea_inode = NULL;
+> +			}
+> +
+>  			lock_buffer(new_bh);
+>  			error = ext4_journal_get_create_access(handle, new_bh);
+>  			if (error) {
+> @@ -1427,15 +1869,36 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  		}
+>  	}
+>  
+> +	if (old_ea_inode_size)
+> +		ext4_xattr_inode_free_quota(inode, old_ea_inode_size);
+> +
+>  	/* Update the inode. */
+>  	EXT4_I(inode)->i_file_acl = new_bh ? new_bh->b_blocknr : 0;
+>  
+>  	/* Drop the previous xattr block. */
+> -	if (bs->bh && bs->bh != new_bh)
+> -		ext4_xattr_release_block(handle, inode, bs->bh);
+> +	if (bs->bh && bs->bh != new_bh) {
+> +		struct ext4_xattr_inode_array *ea_inode_array = NULL;
+> +		ext4_xattr_release_block(handle, inode, bs->bh,
+> +					 &ea_inode_array,
+> +					 0 /* extra_credits */);
+> +		ext4_xattr_inode_array_free(ea_inode_array);
+> +	}
+>  	error = 0;
+>  
+>  cleanup:
+> +	if (ea_inode) {
+> +		int error2;
+> +		error2 = ext4_xattr_inode_dec_ref(handle, ea_inode);
+> +		if (error2)
+> +			ext4_warning_inode(ea_inode, "dec ref error=%d",
+> +					   error2);
+> +
+> +		/* If there was an error, revert the quota charge. */
+> +		if (error)
+> +			ext4_xattr_inode_free_quota(inode,
+> +						    i_size_read(ea_inode));
+> +		iput(ea_inode);
+> +	}
+>  	if (ce)
+>  		mb_cache_entry_put(ext4_mb_cache, ce);
+>  	brelse(new_bh);
+> @@ -1546,6 +2009,117 @@ static int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+>  	return 0;
+>  }
+>  
+> +struct ext4_xattr_ea_info {
+> +	__le64 ref_count;	/* number of xattr entry references */
+> +	__le32 hash;		/* crc32c hash of xattr data */
+> +	__le32 reserved;	/* reserved, must be 0 */
+> +};
+> +
+> +static int ext4_xattr_inode_init(handle_t *handle, struct inode *ea_inode,
+> +				 u32 hash)
+> +{
+> +	struct ext4_xattr_ea_info ea_info = {
+> +		.ref_count = cpu_to_le64(1),
+> +		.hash = cpu_to_le32(hash),
+> +		.reserved = 0,
+> +	};
+> +	struct ext4_xattr_info i = {
+> +                .name_index = EXT4_XATTR_INDEX_SYSTEM,
+> +		.name = EXT4_XATTR_SYSTEM_EA_INFO,
+> +		.value = &ea_info,
+> +		.value_len = sizeof(ea_info),
+> +	};
+> +	struct ext4_xattr_ibody_find is = {
+> +		.s = { .not_found = -ENODATA, },
+> +	};
+> +	int err;
+> +
+> +	err = ext4_get_inode_loc(ea_inode, &is.iloc);
+> +	if (err)
+> +		return err;
+> +
+> +	err = ext4_xattr_ibody_find(ea_inode, &i, &is);
+> +	if (err)
+> +		return err;
+> +
+> +	return ext4_xattr_ibody_set(handle, ea_inode, &i, &is);
+> +}
+> +
+> +static int ext4_xattr_update_ea_info(struct inode *ea_inode, int ref_change,
+> +				     u64 *ref_return, u32 *hash)
+> +{
+> +	struct ext4_xattr_ea_info ea_info;
+> +	struct ext4_xattr_info i = {
+> +                .name_index = EXT4_XATTR_INDEX_SYSTEM,
+> +		.name = EXT4_XATTR_SYSTEM_EA_INFO,
+> +		.value = &ea_info,
+> +		.value_len = sizeof(ea_info),
+> +	};
+> +	struct ext4_xattr_ibody_find is = {
+> +		.s = { .not_found = -ENODATA, },
+> +	};
+> +	int err;
+> +
+> +	err = ext4_get_inode_loc(ea_inode, &is.iloc);
+> +	if (err)
+> +		return err;
+> +
+> +	err = ext4_xattr_ibody_find(ea_inode, &i, &is);
+> +	if (err)
+> +		return err;
+> +
+> +	if (WARN_ON(is.s.not_found) ||
+> +	    WARN_ON(le32_to_cpu(is.s.here->e_value_size) != sizeof(ea_info)))
+> +		return -EFSCORRUPTED;
+> +
+> +	memcpy(&ea_info,
+> +	       ((void *)is.s.base) + le16_to_cpu(is.s.here->e_value_offs),
+> +	       sizeof(ea_info));
+> +
+> +	if (hash)
+> +		*hash = le32_to_cpu(ea_info.hash);
+> +
+> +	*ref_return = le64_to_cpu(ea_info.ref_count) + ref_change;
+> +	ea_info.ref_count = cpu_to_le64(*ref_return);
+> +
+> +	return ext4_xattr_set_entry(&i, &is.s, NULL, ea_inode);
+> +}
+> +
+> +static int ext4_xattr_read_ea_hash(struct inode *ea_inode, u32 *hash)
+> +{
+> +	struct ext4_xattr_info i = {
+> +                .name_index = EXT4_XATTR_INDEX_SYSTEM,
+> +		.name = EXT4_XATTR_SYSTEM_EA_INFO,
+> +	};
+> +	struct ext4_xattr_ibody_find is = {
+> +		.s = { .not_found = -ENODATA, },
+> +	};
+> +	struct ext4_xattr_ea_info *ea_info;
+> +	void *ptr;
+> +	int err;
+> +
+> +	err = ext4_get_inode_loc(ea_inode, &is.iloc);
+> +	if (err)
+> +		return err;
+> +
+> +	err = ext4_xattr_ibody_find(ea_inode, &i, &is);
+> +	if (err)
+> +		return err;
+> +
+> +	if (WARN_ON(is.s.not_found) ||
+> +	    WARN_ON(le32_to_cpu(is.s.here->e_value_size) != sizeof(*ea_info)))
+> +		return -EFSCORRUPTED;
+> +
+> +	ptr = ((void *)is.s.base) + le16_to_cpu(is.s.here->e_value_offs);
+> +	ea_info = (struct ext4_xattr_ea_info *)ptr;
+> +
+> +	if (WARN_ON(ea_info->reserved != 0))
+> +		return -EFSCORRUPTED;
+> +
+> +	*hash = le32_to_cpu(ea_info->hash);
+> +	return 0;
+> +}
+> +
+>  static int ext4_xattr_value_same(struct ext4_xattr_search *s,
+>  				 struct ext4_xattr_info *i)
+>  {
+> @@ -1560,6 +2134,22 @@ static int ext4_xattr_value_same(struct ext4_xattr_search *s,
+>  	return !memcmp(value, i->value, i->value_len);
+>  }
+>  
+> +struct buffer_head *ext4_xattr_get_block(struct inode *inode)
+> +{
+> +	struct buffer_head *bh;
+> +	int error;
+> +
+> +	if (!EXT4_I(inode)->i_file_acl)
+> +		return NULL;
+> +	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+> +	if (!bh)
+> +		return ERR_PTR(-EIO);
+> +	error = ext4_xattr_check_block(inode, bh);
+> +	if (error)
+> +		return ERR_PTR(error);
+> +	return bh;
+> +}
+> +
+>  /*
+>   * ext4_xattr_set_handle()
+>   *
+> @@ -1602,9 +2192,18 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>  
+>  	/* Check journal credits under write lock. */
+>  	if (ext4_handle_valid(handle)) {
+> +		struct buffer_head *bh;
+>  		int credits;
+>  
+> -		credits = ext4_xattr_set_credits(inode, value_len);
+> +		bh = ext4_xattr_get_block(inode);
+> +		if (IS_ERR(bh)) {
+> +			error = PTR_ERR(bh);
+> +			goto cleanup;
+> +		}
+> +
+> +		credits = __ext4_xattr_set_credits(inode->i_sb, bh, value_len);
+> +		brelse(bh);
+> +
+>  		if (!ext4_handle_has_enough_credits(handle, credits)) {
+>  			error = -ENOSPC;
+>  			goto cleanup;
+> @@ -1640,6 +2239,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>  		if (flags & XATTR_CREATE)
+>  			goto cleanup;
+>  	}
+> +
+>  	if (!value) {
+>  		if (!is.s.not_found)
+>  			error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+> @@ -1708,34 +2308,29 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+>  	return error;
+>  }
+>  
+> -int ext4_xattr_set_credits(struct inode *inode, size_t value_len)
+> +int ext4_xattr_set_credits(struct inode *inode, size_t value_len, int *credits)
+>  {
+> -	struct super_block *sb = inode->i_sb;
+> -	int credits;
+> -
+> -	if (!EXT4_SB(sb)->s_journal)
+> -		return 0;
+> -
+> -	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
+> +	struct buffer_head *bh;
+> +	int err;
+>  
+> -	/*
+> -	 * In case of inline data, we may push out the data to a block,
+> -	 * so we need to reserve credits for this eventuality
+> -	 */
+> -	if (ext4_has_inline_data(inode))
+> -	        credits += ext4_writepage_trans_blocks(inode) + 1;
+> +	*credits = 0;
+>  
+> -	if (ext4_has_feature_ea_inode(sb)) {
+> -		int nrblocks = (value_len + sb->s_blocksize - 1) >>
+> -					sb->s_blocksize_bits;
+> +	if (!EXT4_SB(inode->i_sb)->s_journal)
+> +		return 0;
+>  
+> -		/* For new inode */
+> -		credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
+> +	down_read(&EXT4_I(inode)->xattr_sem);
+>  
+> -		/* For data blocks of EA inode */
+> -		credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
+> +	bh = ext4_xattr_get_block(inode);
+> +	if (IS_ERR(bh)) {
+> +		err = PTR_ERR(bh);
+> +	} else {
+> +		*credits = __ext4_xattr_set_credits(inode->i_sb, bh, value_len);
+> +		brelse(bh);
+> +		err = 0;
+>  	}
+> -	return credits;
+> +
+> +	up_read(&EXT4_I(inode)->xattr_sem);
+> +	return err;
+>  }
+>  
+>  /*
+> @@ -1760,7 +2355,10 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+>  		return error;
+>  
+>  retry:
+> -	credits = ext4_xattr_set_credits(inode, value_len);
+> +	error = ext4_xattr_set_credits(inode, value_len, &credits);
+> +	if (error)
+> +		return error;
+> +
+>  	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
+>  	if (IS_ERR(handle)) {
+>  		error = PTR_ERR(handle);
+> @@ -2066,10 +2664,10 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+>  	return error;
+>  }
+>  
+> -
+>  #define EIA_INCR 16 /* must be 2^n */
+>  #define EIA_MASK (EIA_INCR - 1)
+> -/* Add the large xattr @inode into @ea_inode_array for later deletion.
+> +
+> +/* Add the large xattr @inode into @ea_inode_array for deferred iput().
+>   * If @ea_inode_array is new or full it will be grown and the old
+>   * contents copied over.
+>   */
+> @@ -2114,21 +2712,19 @@ ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
+>   * ext4_xattr_delete_inode()
+>   *
+>   * Free extended attribute resources associated with this inode. Traverse
+> - * all entries and unlink any xattr inodes associated with this inode. This
+> - * is called immediately before an inode is freed. We have exclusive
+> - * access to the inode. If an orphan inode is deleted it will also delete any
+> - * xattr block and all xattr inodes. They are checked by ext4_xattr_inode_iget()
+> - * to ensure they belong to the parent inode and were not deleted already.
+> + * all entries and decrement reference on any xattr inodes associated with this
+> + * inode. This is called immediately before an inode is freed. We have exclusive
+> + * access to the inode. If an orphan inode is deleted it will also release its
+> + * references on xattr block and xattr inodes.
+>   */
+> -int
+> -ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+> -			struct ext4_xattr_inode_array **ea_inode_array,
+> -			int extra_credits)
+> +int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+> +			    struct ext4_xattr_inode_array **ea_inode_array,
+> +			    int extra_credits)
+>  {
+>  	struct buffer_head *bh = NULL;
+>  	struct ext4_xattr_ibody_header *header;
+> -	struct ext4_inode *raw_inode;
+>  	struct ext4_iloc iloc = { .bh = NULL };
+> +	struct ext4_xattr_entry *entry;
+>  	int error;
+>  
+>  	error = ext4_xattr_ensure_credits(handle, inode, extra_credits,
+> @@ -2140,66 +2736,71 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+>  		goto cleanup;
+>  	}
+>  
+> -	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> -		goto delete_external_ea;
+> -
+> -	error = ext4_get_inode_loc(inode, &iloc);
+> -	if (error)
+> -		goto cleanup;
+> +	if (ext4_has_feature_ea_inode(inode->i_sb) &&
+> +	    ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
+>  
+> -	error = ext4_journal_get_write_access(handle, iloc.bh);
+> -	if (error)
+> -		goto cleanup;
+> +		error = ext4_get_inode_loc(inode, &iloc);
+> +		if (error) {
+> +			EXT4_ERROR_INODE(inode, "inode loc (error %d)", error);
+> +			goto cleanup;
+> +		}
+>  
+> -	raw_inode = ext4_raw_inode(&iloc);
+> -	header = IHDR(inode, raw_inode);
+> -	ext4_xattr_inode_remove_all(handle, inode, iloc.bh, IFIRST(header),
+> -				    false /* block_csum */, ea_inode_array,
+> -				    extra_credits);
+> +		error = ext4_journal_get_write_access(handle, iloc.bh);
+> +		if (error) {
+> +			EXT4_ERROR_INODE(inode, "write access (error %d)",
+> +					 error);
+> +			goto cleanup;
+> +		}
+>  
+> -delete_external_ea:
+> -	if (!EXT4_I(inode)->i_file_acl) {
+> -		error = 0;
+> -		goto cleanup;
+> -	}
+> -	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+> -	if (!bh) {
+> -		EXT4_ERROR_INODE(inode, "block %llu read error",
+> -				 EXT4_I(inode)->i_file_acl);
+> -		error = -EIO;
+> -		goto cleanup;
+> -	}
+> -	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
+> -	    BHDR(bh)->h_blocks != cpu_to_le32(1)) {
+> -		EXT4_ERROR_INODE(inode, "bad block %llu",
+> -				 EXT4_I(inode)->i_file_acl);
+> -		error = -EFSCORRUPTED;
+> -		goto cleanup;
+> +		header = IHDR(inode, ext4_raw_inode(&iloc));
+> +		if (header->h_magic == cpu_to_le32(EXT4_XATTR_MAGIC))
+> +			ext4_xattr_inode_dec_ref_all(handle, inode, iloc.bh,
+> +						     IFIRST(header),
+> +						     false /* block_csum */,
+> +						     ea_inode_array,
+> +						     extra_credits,
+> +						     false /* skip_quota */);
+>  	}
+>  
+> -	if (ext4_has_feature_ea_inode(inode->i_sb)) {
+> -		error = ext4_journal_get_write_access(handle, bh);
+> -		if (error) {
+> -			EXT4_ERROR_INODE(inode, "write access %llu",
+> +	if (EXT4_I(inode)->i_file_acl) {
+> +		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+> +		if (!bh) {
+> +			EXT4_ERROR_INODE(inode, "block %llu read error",
+>  					 EXT4_I(inode)->i_file_acl);
+> +			error = -EIO;
+> +			goto cleanup;
+> +		}
+> +		error = ext4_xattr_check_block(inode, bh);
+> +		if (error) {
+> +			EXT4_ERROR_INODE(inode, "bad block %llu (error %d)",
+> +					 EXT4_I(inode)->i_file_acl, error);
+>  			goto cleanup;
+>  		}
+> -		ext4_xattr_inode_remove_all(handle, inode, bh,
+> -					    BFIRST(bh),
+> -					    true /* block_csum */,
+> -					    ea_inode_array,
+> -					    extra_credits);
+> -	}
+>  
+> -	ext4_xattr_release_block(handle, inode, bh);
+> -	/* Update i_file_acl within the same transaction that releases block. */
+> -	EXT4_I(inode)->i_file_acl = 0;
+> -	error = ext4_mark_inode_dirty(handle, inode);
+> -	if (error) {
+> -		EXT4_ERROR_INODE(inode, "mark inode dirty (error %d)",
+> -				 error);
+> -		goto cleanup;
+> +		if (ext4_has_feature_ea_inode(inode->i_sb)) {
+> +			for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
+> +			     entry = EXT4_XATTR_NEXT(entry))
+> +				if (entry->e_value_inum)
+> +					ext4_xattr_inode_free_quota(inode,
+> +					      le32_to_cpu(entry->e_value_size));
+> +
+> +		}
+> +
+> +		ext4_xattr_release_block(handle, inode, bh, ea_inode_array,
+> +					 extra_credits);
+> +		/*
+> +		 * Update i_file_acl value in the same transaction that releases
+> +		 * block.
+> +		 */
+> +		EXT4_I(inode)->i_file_acl = 0;
+> +		error = ext4_mark_inode_dirty(handle, inode);
+> +		if (error) {
+> +			EXT4_ERROR_INODE(inode, "mark inode dirty (error %d)",
+> +					 error);
+> +			goto cleanup;
+> +		}
+>  	}
+> +	error = 0;
+>  cleanup:
+>  	brelse(iloc.bh);
+>  	brelse(bh);
+> @@ -2208,17 +2809,13 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+>  
+>  void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *ea_inode_array)
+>  {
+> -	struct inode	*ea_inode;
+> -	int		idx = 0;
+> +	int idx;
+>  
+>  	if (ea_inode_array == NULL)
+>  		return;
+>  
+> -	for (; idx < ea_inode_array->count; ++idx) {
+> -		ea_inode = ea_inode_array->inodes[idx];
+> -		clear_nlink(ea_inode);
+> -		iput(ea_inode);
+> -	}
+> +	for (idx = 0; idx < ea_inode_array->count; ++idx)
+> +		iput(ea_inode_array->inodes[idx]);
+>  	kfree(ea_inode_array);
+>  }
+>  
+> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+> index b2005a2716d9..67616cb9a059 100644
+> --- a/fs/ext4/xattr.h
+> +++ b/fs/ext4/xattr.h
+> @@ -70,19 +70,6 @@ struct ext4_xattr_entry {
+>  #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+>  
+>  /*
+> - * Link EA inode back to parent one using i_mtime field.
+> - * Extra integer type conversion added to ignore higher
+> - * bits in i_mtime.tv_sec which might be set by ext4_get()
+> - */
+> -#define EXT4_XATTR_INODE_SET_PARENT(inode, inum)      \
+> -do {                                                  \
+> -      (inode)->i_mtime.tv_sec = inum;                 \
+> -} while(0)
+> -
+> -#define EXT4_XATTR_INODE_GET_PARENT(inode)            \
+> -((__u32)(inode)->i_mtime.tv_sec)
+> -
+> -/*
+>   * The minimum size of EA value when you start storing it in an external inode
+>   * size of block - size of header - size of 1 entry - 4 null bytes
+>  */
+> @@ -165,9 +152,9 @@ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
+>  extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
+>  extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+>  extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
+> -extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len);
+> +extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
+> +				  int *credits);
+>  
+> -extern int ext4_xattr_inode_unlink(struct inode *inode, unsigned long ea_ino);
+>  extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+>  				   struct ext4_xattr_inode_array **array,
+>  				   int extra_credits);
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index 77a5b99d8f92..7dfdca822ccb 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -13,10 +13,11 @@
+>   * mb_cache_entry_delete()).
+>   *
+>   * Ext2 and ext4 use this cache for deduplication of extended attribute blocks.
+> - * They use hash of a block contents as a key and block number as a value.
+> - * That's why keys need not be unique (different xattr blocks may end up having
+> - * the same hash). However block number always uniquely identifies a cache
+> - * entry.
+> + * Ext4 also uses it for deduplication of xattr values stored in inodes.
+> + * They use hash of data as a key and provide a value that may represent a
+> + * block or inode number. That's why keys need not be unique (hash of different
+> + * data may be the same). However user provided value always uniquely
+> + * identifies a cache entry.
+>   *
+>   * We provide functions for creation and removal of entries, search by key,
+>   * and a special "delete entry with given key-value pair" operation. Fixed
+> -- 
+> 2.13.0.219.gdb65acc882-goog
+> 
