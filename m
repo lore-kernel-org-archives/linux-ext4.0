@@ -1,48 +1,91 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 09/10] xfs: nowait aio support
-Date: Wed, 31 May 2017 10:51:37 +0200
-Message-ID: <20170531085137.GB14011@quack2.suse.cz>
-References: <20170524164150.9492-1-rgoldwyn@suse.de>
- <20170524164150.9492-10-rgoldwyn@suse.de>
- <20170528093113.GB14519@infradead.org>
- <cfc1e7ad-f74b-a14a-ac30-8472f7f684af@suse.de>
- <20170529083338.GC1899@infradead.org>
- <f105d585-e88c-b037-9905-d0c608c609d9@suse.de>
+Subject: Re: RE: Re: [PATCH] ext4: change sequential discard handling on
+ commit complete phase into parallel manner
+Date: Wed, 31 May 2017 12:12:40 +0200
+Message-ID: <20170531101240.GC14011@quack2.suse.cz>
+References: <20170531004926epcms1p5ea300c8e634f7a0a42af283c4df9a1b7@epcms1p5>
+ <20170530091626.GA3284@quack2.suse.cz>
+ <1496113566-18899-1-git-send-email-daeho.jeong@samsung.com>
+ <CGME20170530030551epcas5p327c9acbabf266842887bcc86cac43cba@epcms1p2>
+ <20170531022240epcms1p27bf64e351cc61e84378ea8de38e192ac@epcms1p2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: 8bit
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, jack@suse.com,
-        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        axboe@kernel.dk, linux-api@vger.kernel.org,
-        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Return-path: <linux-block-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, "jack@suse.com" <jack@suse.com>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "tytso@mit.edu" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Daeho Jeong <daeho.jeong@samsung.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40271 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751096AbdEaKMx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 May 2017 06:12:53 -0400
 Content-Disposition: inline
-In-Reply-To: <f105d585-e88c-b037-9905-d0c608c609d9@suse.de>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170531022240epcms1p27bf64e351cc61e84378ea8de38e192ac@epcms1p2>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 30-05-17 11:13:29, Goldwyn Rodrigues wrote:
-> > Btw, can you write a small blurb up for the man page to document these
-> > Ñ•emantics in man-page like language?
-> > 
+On Wed 31-05-17 02:22:40, Daeho Jeong wrote:
+> Hi Jan,
 > 
-> Yes, but which man page would it belong to?
-> Should it be a subsection of errors in io_getevents/io_submit. We don't
-> want to add ERRORS to io_getevents() because it would be the return
-> value of the io_getevents call, and not the ones in the iocb structure.
-> Should it be a new man page, say for iocb(7/8)?
+> > Hi Jan,
+>  
+> > > Hum, these games with several callbacks, lists, etc. look awkward and
+> > > unnecessary. It think they mostly come from the fact that we call separate
+> > > freeing callback for each extent to free which doesn't fit the needs of
+> > > async discard well.
+>  
+> > > So instead of adding post_cb_list and several callback functions, it would
+> > > seem easier to have just one callback structure instead of one for every
+> > > extent. Then the structure would contain a list of extents that need to be
+> > > freed freed. So something like:
+>  
+> > > struct ext4_free_data {
+> > >         struct ext4_journal_cb_entry efd_jce;
+> > >         struct list_head efd_extents;
+> > > }
+>  
+> > > struct ext4_freed_extent {
+> > >         struct list_head efe_list;
+> > >         struct rb_node efe_node;
+> > >         ext4_group_t efe_group;
+> > >         ext4_grpblk_t efe_start_cluster;
+> > >         ext4_grpblk_t efe_count;
+> > >         tid_t efe_tid;
+> > > }
+>  
+> > > When commit happens, we can just walk the efd_extents list while efe_tid is
+> > > equal tid of the transaction for which the callback was called and submit all
+> > > discard requests. You can use bio chaining implemented in
+> > > __blkdev_issue_discard() which XFS already uses and so the result of all
+> > > the discards you submit will be just one bio. Then you walk the list of
+> > > extents again and free them in the buddy bitmaps. And finally, you wait for
+> > > the bio to complete. All will be then happening in one function and it will
+> > > be much easier to understand.
+>  
+> > It's right. the patch didn't look neat because of a few callbacks and the
+> > post callback list. I will modify the patch as your suggestion. It will
+> > look better.
+>  
+> > Thank you very much. :-)
+> 
+> It's a little difficult to decide when we have to add new ext4_free_data
+> entry for a transaction for the first time and how do we know whether the
+> ext4_free_data entry for a transaction is already added or not? I think
+> that it is a bad idea to search in t_private_list of the transaction for
+> that, because there might be the different type of callback entries in
+> the future.
+> 
+> And how do we find the exact ext4_free_data entry for a newly created
+> ext4_freed_extent?  We only know which transcation is related to the
+> ext4_freed_extent, so we could use this but I don't have any good idea
+> for that. 
 
-I think you should extend the manpage for io_submit(8). There you can add
-definition of struct iocb in 'DESCRIPTION' section explaining at least the
-most common fields. You can also explain there which flags can be passed
-and what are they intended to do.
-
-You can also expand EAGAIN error description to specifically mention that
-in case of NOWAIT aio EAGAIN can be returned if io submission would block.
+Right, so looking at ext4_journal_commit_callback() it will be probably the
+easiest to just call some new function ext4_process_freed_extents(sb)
+directly from there (i.e., avoid the ext4 callback infrastructure
+altogether) and anchor the list of extents in the superblock.
 
 								Honza
 -- 
