@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 03/28] ext4: lock inode before calling ext4_orphan_add()
-Date: Wed, 31 May 2017 01:14:52 -0700
-Message-ID: <20170531081517.11438-3-tahsin@google.com>
+Subject: [PATCH 05/28] ext4: attach jinode after creation of xattr inode
+Date: Wed, 31 May 2017 01:14:54 -0700
+Message-ID: <20170531081517.11438-5-tahsin@google.com>
 References: <20170531081517.11438-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
@@ -15,56 +15,84 @@ To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Mike Christie <mchristi@redhat.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_orphan_add() requires caller to be holding the inode lock.
-Add missing lock statements.
+In data=ordered mode jinode needs to be attached to the xattr inode when
+writing data to it. Attachment normally occurs during file open for regular
+files. Since we are not using file interface to write to the xattr inode,
+the jinode attach needs to be done manually.
 
- WARNING: CPU: 3 PID: 1806 at fs/ext4/namei.c:2731 ext4_orphan_add+0x4e/0x240
- CPU: 3 PID: 1806 Comm: python Not tainted 4.12.0-rc1+ #746
+Otherwise the following crash occurs in data=ordered mode.
+
+ BUG: unable to handle kernel NULL pointer dereference at           (null)
+ IP: jbd2_journal_file_inode+0x37/0x110
+ PGD 13b3c0067
+ P4D 13b3c0067
+ PUD 137660067
+ PMD 0
+
+ Oops: 0000 [#1] SMP
+ CPU: 3 PID: 1877 Comm: python Not tainted 4.12.0-rc1+ #749
  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
- task: ffff880135d466c0 task.stack: ffffc900014b0000
- RIP: 0010:ext4_orphan_add+0x4e/0x240
- RSP: 0018:ffffc900014b3d50 EFLAGS: 00010246
- RAX: 0000000000000000 RBX: ffff8801348fe1f0 RCX: ffffc900014b3c64
- RDX: 0000000000000000 RSI: ffff8801348fe1f0 RDI: ffff8801348fe1f0
- RBP: ffffc900014b3da0 R08: 0000000000000000 R09: ffffffff80e82025
- R10: 0000000000004692 R11: 000000000000468d R12: ffff880137598000
- R13: ffff880137217000 R14: ffff880134ac58d0 R15: 0000000000000000
- FS:  00007fc50f09e740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
+ task: ffff88010e368980 task.stack: ffffc90000374000
+ RIP: 0010:jbd2_journal_file_inode+0x37/0x110
+ RSP: 0018:ffffc90000377980 EFLAGS: 00010246
+ RAX: 0000000000000000 RBX: ffff880123b06230 RCX: 0000000000280000
+ RDX: 0000000000000006 RSI: 0000000000000000 RDI: ffff88012c8585d0
+ RBP: ffffc900003779b0 R08: 0000000000000202 R09: 0000000000000001
+ R10: 0000000000000000 R11: 0000000000000400 R12: ffff8801111f81c0
+ R13: ffff88013b2b6800 R14: ffffc90000377ab0 R15: 0000000000000001
+ FS:  00007f0c99b77740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 00000000008bc2e0 CR3: 00000001375ac000 CR4: 00000000000006e0
+ CR2: 0000000000000000 CR3: 0000000136d91000 CR4: 00000000000006e0
  Call Trace:
-  ext4_xattr_inode_orphan_add.constprop.19+0x9d/0xf0
-  ext4_xattr_delete_inode+0x1c4/0x2f0
-  ext4_evict_inode+0x15a/0x7f0
-  evict+0xc0/0x1a0
-  iput+0x16a/0x270
-  do_unlinkat+0x172/0x290
-  SyS_unlink+0x11/0x20
+  jbd2_journal_inode_add_write+0xe/0x10
+  ext4_map_blocks+0x59e/0x620
+  ext4_xattr_set_entry+0x501/0x7d0
+  ext4_xattr_block_set+0x1b2/0x9b0
+  ext4_xattr_set_handle+0x322/0x4f0
+  ext4_xattr_set+0x144/0x1a0
+  ext4_xattr_user_set+0x34/0x40
+  __vfs_setxattr+0x66/0x80
+  __vfs_setxattr_noperm+0x69/0x1c0
+  vfs_setxattr+0xa2/0xb0
+  setxattr+0x12e/0x150
+  path_setxattr+0x87/0xb0
+  SyS_setxattr+0xf/0x20
   entry_SYSCALL_64_fastpath+0x18/0xad
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/xattr.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 26d2705950a5..09ba0137d529 100644
+index 12210fe87ea3..8e123533315f 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -1963,7 +1963,9 @@ ext4_xattr_inode_orphan_add(handle_t *handle, struct inode *inode,
- 				lea_ino_array->xia_inodes[idx], &error);
- 		if (error)
- 			continue;
-+		inode_lock(ea_inode);
- 		ext4_orphan_add(handle, ea_inode);
-+		inode_unlock(ea_inode);
- 		/* the inode's i_count will be released by caller */
+@@ -826,6 +826,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 					     struct inode *inode)
+ {
+ 	struct inode *ea_inode = NULL;
++	int err;
+ 
+ 	/*
+ 	 * Let the next inode be the goal, so we try and allocate the EA inode
+@@ -848,6 +849,11 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 		 */
+ 		EXT4_XATTR_INODE_SET_PARENT(ea_inode, inode->i_ino);
+ 		unlock_new_inode(ea_inode);
++		err = ext4_inode_attach_jinode(ea_inode);
++		if (err) {
++			iput(ea_inode);
++			return ERR_PTR(err);
++		}
  	}
  
+ 	return ea_inode;
 -- 
 2.13.0.219.gdb65acc882-goog
+
