@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v5 15/17] fs: add a write_one_page_since
-Date: Wed, 31 May 2017 08:45:38 -0400
-Message-ID: <20170531124540.8782-16-jlayton@redhat.com>
+Subject: [PATCH v5 17/17] fs: convert ext2 to use write_one_page_since
+Date: Wed, 31 May 2017 08:45:40 -0400
+Message-ID: <20170531124540.8782-18-jlayton@redhat.com>
 References: <20170531124540.8782-1-jlayton@redhat.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
@@ -15,115 +15,103 @@ In-Reply-To: <20170531124540.8782-1-jlayton@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Allow filesystems to pass in an errseq_t for a since value.
+Sample the wb_err before changing the directory, so that we can catch
+errors that occur since that point.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/mm.h  |  2 ++
- mm/page-writeback.c | 53 +++++++++++++++++++++++++++++++++++++++++------------
- 2 files changed, 43 insertions(+), 12 deletions(-)
+ fs/ext2/dir.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index ca9c8b27cecb..c901d7313374 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -23,6 +23,7 @@
- #include <linux/page_ext.h>
- #include <linux/err.h>
- #include <linux/page_ref.h>
-+#include <linux/errseq.h>
- 
- struct mempolicy;
- struct anon_vma;
-@@ -2200,6 +2201,7 @@ extern int filemap_page_mkwrite(struct vm_fault *vmf);
- 
- /* mm/page-writeback.c */
- int __must_check write_one_page(struct page *page);
-+int __must_check write_one_page_since(struct page *page, errseq_t since);
- void task_dirty_inc(struct task_struct *tsk);
- 
- /* readahead.c */
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index e369e8ea2a29..63058e35c60d 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2365,19 +2365,10 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
- 	return ret;
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 6e476c9929f8..073f096ac5e6 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -85,7 +85,8 @@ ext2_last_byte(struct inode *inode, unsigned long page_nr)
+ 	return last_byte;
  }
  
--/**
-- * write_one_page - write out a single page and wait on I/O
-- * @page: the page to write
-- *
-- * The page must be locked by the caller and will be unlocked upon return.
-- *
-- * Note that the mapping's AS_EIO/AS_ENOSPC flags will be cleared when this
-- * function returns.
-- */
--int write_one_page(struct page *page)
-+static int __write_one_page(struct page *page)
+-static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
++static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len,
++				errseq_t since)
  {
  	struct address_space *mapping = page->mapping;
--	int ret = 0, ret2;
-+	int ret;
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
- 		.nr_to_write = 1,
-@@ -2394,16 +2385,54 @@ int write_one_page(struct page *page)
- 			wait_on_page_writeback(page);
- 		put_page(page);
- 	} else {
-+		ret = 0;
- 		unlock_page(page);
+ 	struct inode *dir = mapping->host;
+@@ -100,7 +101,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
  	}
-+	return ret;
-+}
  
-+/**
-+ * write_one_page - write out a single page and wait on I/O
-+ * @page: the page to write
-+ *
-+ * The page must be locked by the caller and will be unlocked upon return.
-+ *
-+ * Note that the mapping's AS_EIO/AS_ENOSPC flags will be cleared when this
-+ * function returns.
-+ */
-+int write_one_page(struct page *page)
-+{
-+	int ret;
-+
-+	ret = __write_one_page(page);
- 	if (!ret)
--		ret = filemap_check_errors(mapping);
-+		ret = filemap_check_errors(page->mapping);
- 	return ret;
- }
- EXPORT_SYMBOL(write_one_page);
+ 	if (IS_DIRSYNC(dir)) {
+-		err = write_one_page(page);
++		err = write_one_page_since(page, since);
+ 		if (!err)
+ 			err = sync_inode_metadata(dir, 1);
+ 	} else {
+@@ -462,13 +463,14 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+ 			(char *) de - (char *) page_address(page);
+ 	unsigned len = ext2_rec_len_from_disk(de->rec_len);
+ 	int err;
++	errseq_t since = filemap_sample_wb_err(dir->i_mapping);
  
- /*
-+ * write_one_page_since - write out a single page and wait on I/O
-+ * @page: the page to write
-+ * @since: previously sampled errseq_t
-+ *
-+ * The page must be locked by the caller and will be unlocked upon return.
-+ *
-+ * The caller should pass in a previously-sampled errseq_t. The mapping will
-+ * be checked for errors since that point.
-+ */
-+int write_one_page_since(struct page *page, errseq_t since)
-+{
-+	int ret;
-+
-+	ret = __write_one_page(page);
-+	if (!ret)
-+		ret = filemap_check_wb_err(page->mapping, since);
-+	return ret;
-+}
-+EXPORT_SYMBOL(write_one_page_since);
-+
-+/*
-  * For address_spaces which do not use buffers nor write back.
-  */
- int __set_page_dirty_no_writeback(struct page *page)
+ 	lock_page(page);
+ 	err = ext2_prepare_chunk(page, pos, len);
+ 	BUG_ON(err);
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	ext2_set_de_type(de, inode);
+-	err = ext2_commit_chunk(page, pos, len);
++	err = ext2_commit_chunk(page, pos, len, since);
+ 	ext2_put_page(page);
+ 	if (update_times)
+ 		dir->i_mtime = dir->i_ctime = current_time(dir);
+@@ -494,6 +496,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 	char *kaddr;
+ 	loff_t pos;
+ 	int err;
++	errseq_t since = filemap_sample_wb_err(dir->i_mapping);
+ 
+ 	/*
+ 	 * We take care of directory expansion in the same loop.
+@@ -560,7 +563,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 	memcpy(de->name, name, namelen);
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	ext2_set_de_type (de, inode);
+-	err = ext2_commit_chunk(page, pos, rec_len);
++	err = ext2_commit_chunk(page, pos, rec_len, since);
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+ 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
+ 	mark_inode_dirty(dir);
+@@ -589,6 +592,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
+ 	ext2_dirent * pde = NULL;
+ 	ext2_dirent * de = (ext2_dirent *) (kaddr + from);
+ 	int err;
++	errseq_t since = filemap_sample_wb_err(inode->i_mapping);
+ 
+ 	while ((char*)de < (char*)dir) {
+ 		if (de->rec_len == 0) {
+@@ -609,7 +613,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
+ 	if (pde)
+ 		pde->rec_len = ext2_rec_len_to_disk(to - from);
+ 	dir->inode = 0;
+-	err = ext2_commit_chunk(page, pos, to - from);
++	err = ext2_commit_chunk(page, pos, to - from, since);
+ 	inode->i_ctime = inode->i_mtime = current_time(inode);
+ 	EXT2_I(inode)->i_flags &= ~EXT2_BTREE_FL;
+ 	mark_inode_dirty(inode);
+@@ -628,6 +632,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
+ 	struct ext2_dir_entry_2 * de;
+ 	int err;
+ 	void *kaddr;
++	errseq_t since = filemap_sample_wb_err(inode->i_mapping);
+ 
+ 	if (!page)
+ 		return -ENOMEM;
+@@ -653,7 +658,7 @@ int ext2_make_empty(struct inode *inode, struct inode *parent)
+ 	memcpy (de->name, "..\0", 4);
+ 	ext2_set_de_type (de, inode);
+ 	kunmap_atomic(kaddr);
+-	err = ext2_commit_chunk(page, 0, chunk_size);
++	err = ext2_commit_chunk(page, 0, chunk_size, since);
+ fail:
+ 	put_page(page);
+ 	return err;
 -- 
 2.9.4
