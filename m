@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v5 01/17] lib: add errseq_t type and infrastructure for handling it
-Date: Wed, 31 May 2017 08:45:24 -0400
-Message-ID: <20170531124540.8782-2-jlayton@redhat.com>
+Subject: [PATCH v5 04/17] fs: add a new fstype flag to indicate how writeback errors are tracked
+Date: Wed, 31 May 2017 08:45:27 -0400
+Message-ID: <20170531124540.8782-5-jlayton@redhat.com>
 References: <20170531124540.8782-1-jlayton@redhat.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
@@ -15,281 +15,117 @@ In-Reply-To: <20170531124540.8782-1-jlayton@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-An errseq_t is a way of recording errors in one place, and allowing any
-number of "subscribers" to tell whether an error has been set again
-since a previous time.
+Now that we have new infrastructure for handling writeback errors using
+errseq_t, we need to convert the existing code to use it. We could
+attempt to retrofit the old interfaces on top of the new, but there is
+a conceptual disconnect here in the case of internal callers that
+invoke filemap_fdatawait and the like.
 
-It's implemented as an unsigned 32-bit value that is managed with atomic
-operations. The low order bits are designated to hold an error code
-(max size of MAX_ERRNO). The upper bits are used as a counter.
+When reporting writeback errors, we will always report errors that have
+occurred since a particular point in time. With the old writeback error
+reporting, the time we used was "since it was last tested/cleared" which
+is entirely arbitrary and potentially racy. Now, we can report the
+latest error that has occurred since an arbitrary point in time
+(represented as a sampled errseq_t value).
 
-The API works with consumers sampling an errseq_t value at a particular
-point in time. Later, that value can be used to tell whether new errors
-have been set since that time.
+This means that we need to touch each filesystem that calls
+filemap_check_errors in some fashion and ensure that we establish sane
+"since" values for those callers. But...some code is shared between
+filesystems and needs to be able to handle both error tracking schemes.
 
-Note that there is a 1 in 512k risk of collisions here if new errors
-are being recorded frequently, since we have so few bits to use as a
-counter. To mitigate this, one bit is used as a flag to tell whether the
-value has been sampled since a new value was recorded. That allows
-us to avoid bumping the counter if no one has sampled it since it
-was last bumped.
+Add a new FS_WB_ERRSEQ flag to the fstype. When mapping_set_error is
+called, set mapping->wb_err if it's set, along with setting the
+"legacy" AS_EIO/AS_ENOSPC flags. When calling filemap_report_wb_err,
+always clear the legacy flags out as well.
 
-Later patches will build on this infrastructure to change how writeback
-errors are tracked in the kernel.
+This should allow subsystems to use the new errseq_t based error
+reporting while simultaneously allowing the traditional semantics of
+AS_EIO/AS_ENOSPC flags.
+
+Eventually, this flag should be removed once everything is converted
+to errseq_t based error tracking.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/errseq.h |  19 +++++
- lib/Makefile           |   2 +-
- lib/errseq.c           | 200 +++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 220 insertions(+), 1 deletion(-)
- create mode 100644 include/linux/errseq.h
- create mode 100644 lib/errseq.c
+ include/linux/fs.h      |  1 +
+ include/linux/pagemap.h | 32 ++++++++++++++++++++++++++------
+ mm/filemap.c            |  7 +++++++
+ 3 files changed, 34 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/errseq.h b/include/linux/errseq.h
-new file mode 100644
-index 000000000000..0d2555f310cd
---- /dev/null
-+++ b/include/linux/errseq.h
-@@ -0,0 +1,19 @@
-+#ifndef _LINUX_ERRSEQ_H
-+#define _LINUX_ERRSEQ_H
-+
-+/* See lib/errseq.c for more info */
-+
-+typedef u32	errseq_t;
-+
-+void __errseq_set(errseq_t *eseq, int err);
-+static inline void errseq_set(errseq_t *eseq, int err)
-+{
-+	/* Optimize for the common case of no error */
-+	if (unlikely(err))
-+		__errseq_set(eseq, err);
-+}
-+
-+errseq_t errseq_sample(errseq_t *eseq);
-+int errseq_check(errseq_t *eseq, errseq_t since);
-+int errseq_check_and_advance(errseq_t *eseq, errseq_t *since);
-+#endif
-diff --git a/lib/Makefile b/lib/Makefile
-index 0166fbc0fa81..519782d9ca3f 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -41,7 +41,7 @@ obj-y += bcd.o div64.o sort.o parser.o debug_locks.o random32.o \
- 	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iov_iter.o clz_ctz.o \
- 	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
- 	 percpu-refcount.o percpu_ida.o rhashtable.o reciprocal_div.o \
--	 once.o refcount.o usercopy.o
-+	 once.o refcount.o usercopy.o errseq.o
- obj-y += string_helpers.o
- obj-$(CONFIG_TEST_STRING_HELPERS) += test-string_helpers.o
- obj-y += hexdump.o
-diff --git a/lib/errseq.c b/lib/errseq.c
-new file mode 100644
-index 000000000000..d129c0611c1f
---- /dev/null
-+++ b/lib/errseq.c
-@@ -0,0 +1,200 @@
-+#include <linux/err.h>
-+#include <linux/bug.h>
-+#include <linux/atomic.h>
-+#include <linux/errseq.h>
-+
-+/*
-+ * An errseq_t is a way of recording errors in one place, and allowing any
-+ * number of "subscribers" to tell whether it has changed since a previous
-+ * point where it was sampled.
-+ *
-+ * It's implemented as an unsigned 32-bit value. The low order bits are
-+ * designated to hold an error code (between 0 and -MAX_ERRNO). The upper bits
-+ * are used as a counter. This is done with atomics instead of locking so that
-+ * these functions can be called from any context.
-+ *
-+ * The general idea is for consumers to sample an errseq_t value. That value
-+ * can later be used to tell whether any new errors have occurred since that
-+ * sampling was done.
-+ *
-+ * Note that there is a risk of collisions if new errors are being recorded
-+ * frequently, since we have so few bits to use as a counter.
-+ *
-+ * To mitigate this, one bit is used as a flag to tell whether the value has
-+ * been sampled since a new value was recorded. That allows us to avoid bumping
-+ * the counter if no one has sampled it since the last time an error was
-+ * recorded.
-+ *
-+ * A new errseq_t should always be zeroed out.  A errseq_t value of all zeroes
-+ * is the special (but common) case where there has never been an error. An all
-+ * zero value thus serves as the "epoch" if one wishes to know whether there
-+ * has ever been an error set since it was first initialized.
-+ */
-+
-+/* The low bits are designated for error code (max of MAX_ERRNO) */
-+#define ERRSEQ_SHIFT		ilog2(MAX_ERRNO + 1)
-+
-+/* This bit is used as a flag to indicate whether the value has been seen */
-+#define ERRSEQ_SEEN		(1 << ERRSEQ_SHIFT)
-+
-+/* The lowest bit of the counter */
-+#define ERRSEQ_CTR_INC		(1 << (ERRSEQ_SHIFT + 1))
-+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 293cbc7f3520..2f3bcf4eb73b 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2021,6 +2021,7 @@ struct file_system_type {
+ #define FS_BINARY_MOUNTDATA	2
+ #define FS_HAS_SUBTYPE		4
+ #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
++#define FS_WB_ERRSEQ		16	/* errseq_t writeback err tracking */
+ #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
+ 	struct dentry *(*mount) (struct file_system_type *, int,
+ 		       const char *, void *);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 316a19f6b635..1dbc2dd6fdd2 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -28,14 +28,34 @@ enum mapping_flags {
+ 	AS_NO_WRITEBACK_TAGS = 5,
+ };
+ 
 +/**
-+ * __errseq_set - set a errseq_t for later reporting
-+ * @eseq: errseq_t field that should be set
-+ * @err: error to set
++ * mapping_set_error - record a writeback error in the address_space
++ * @mapping - the mapping in which an error should be set
++ * @error - the error to set in the mapping
 + *
-+ * This function sets the error in *eseq, and increments the sequence counter
-+ * if the last sequence was sampled at some point in the past.
++ * When writeback fails in some way, we must record that error so that
++ * userspace can be informed when fsync and the like are called.  We endeavor
++ * to report errors on any file that was open at the time of the error.  Some
++ * internal callers also need to know when writeback errors have occurred.
 + *
-+ * Any error set will always overwrite an existing error.
-+ *
-+ * Most callers will want to use the errseq_set inline wrapper to efficiently
-+ * handle the common case where err is 0.
++ * When a writeback error occurs, most filesystems will want to call
++ * mapping_set_error to record the error in the mapping so that it can be
++ * reported when the application calls fsync(2).
 + */
-+void __errseq_set(errseq_t *eseq, int err)
-+{
-+	errseq_t old;
-+
-+	/* MAX_ERRNO must be able to serve as a mask */
-+	BUILD_BUG_ON_NOT_POWER_OF_2(MAX_ERRNO + 1);
-+
-+	/*
-+	 * Ensure the error code actually fits where we want it to go. If it
-+	 * doesn't then just throw a warning and don't record anything. We
-+	 * also don't accept zero here as that would effectively clear a
-+	 * previous error.
-+	 */
-+	if (WARN(unlikely(err == 0 || (unsigned int)-err > MAX_ERRNO),
-+				"err = %d\n", err))
+ static inline void mapping_set_error(struct address_space *mapping, int error)
+ {
+-	if (unlikely(error)) {
+-		if (error == -ENOSPC)
+-			set_bit(AS_ENOSPC, &mapping->flags);
+-		else
+-			set_bit(AS_EIO, &mapping->flags);
+-	}
++	if (likely(!error))
 +		return;
 +
-+	old = READ_ONCE(*eseq);
-+	for (;;) {
-+		errseq_t new, cur;
++	/* Record it in wb_err if fs is using errseq_t based error tracking */
++	if (mapping->host->i_sb->s_type->fs_flags & FS_WB_ERRSEQ)
++		filemap_set_wb_err(mapping, error);
 +
-+		/* Clear out error bits and set new error */
-+		new = (old & ~(MAX_ERRNO|ERRSEQ_SEEN)) | -err;
++	/* Unconditionally record it in flags for now, for legacy callers */
++	if (error == -ENOSPC)
++		set_bit(AS_ENOSPC, &mapping->flags);
++	else
++		set_bit(AS_EIO, &mapping->flags);
+ }
+ 
+ static inline void mapping_set_unevictable(struct address_space *mapping)
+diff --git a/mm/filemap.c b/mm/filemap.c
+index c5e19ea0bf12..97dc28f853fc 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -580,6 +580,13 @@ int filemap_report_wb_err(struct file *file)
+ 		trace_filemap_report_wb_err(file, old);
+ 		spin_unlock(&file->f_lock);
+ 	}
 +
-+		/* Only increment if someone has looked at it */
-+		if (old & ERRSEQ_SEEN)
-+			new += ERRSEQ_CTR_INC;
++	/* Now clear the AS_* flags if any are set */
++	if (test_bit(AS_ENOSPC, &mapping->flags))
++	    clear_bit(AS_ENOSPC, &mapping->flags);
++	if (test_bit(AS_EIO, &mapping->flags))
++	    clear_bit(AS_EIO, &mapping->flags);
 +
-+		/* If there would be no change, then call it done */
-+		if (new == old)
-+			break;
-+
-+		/* Try to swap the new value into place */
-+		cur = cmpxchg(eseq, old, new);
-+
-+		/*
-+		 * Call it success if we did the swap or someone else beat us
-+		 * to it for the same value.
-+		 */
-+		if (likely(cur == old || cur == new))
-+			break;
-+
-+		/* Raced with an update, try again */
-+		old = cur;
-+	}
-+}
-+EXPORT_SYMBOL(__errseq_set);
-+
-+/**
-+ * errseq_sample - grab current errseq_t value
-+ * @eseq: pointer to errseq_t to be sampled
-+ *
-+ * This function allows callers to sample an errseq_t value, marking it as
-+ * "seen" if required.
-+ */
-+errseq_t errseq_sample(errseq_t *eseq)
-+{
-+	errseq_t old = READ_ONCE(*eseq);
-+	errseq_t new = old;
-+
-+	/*
-+	 * For the common case of no errors ever having been set, we can skip
-+	 * marking the SEEN bit. Once an error has been set, the value will
-+	 * never go back to zero.
-+	 */
-+	if (old != 0) {
-+		new |= ERRSEQ_SEEN;
-+		if (old != new)
-+			cmpxchg(eseq, old, new);
-+	}
-+	return new;
-+}
-+EXPORT_SYMBOL(errseq_sample);
-+
-+/**
-+ * errseq_check - has an error occurred since a particular sample point?
-+ * @eseq: pointer to errseq_t value to be checked
-+ * @since: previously-sampled errseq_t from which to check
-+ *
-+ * Grab the value that eseq points to, and see if it has changed "since"
-+ * the given value was sampled. The "since" value is not advanced, so there
-+ * is no need to mark the value as seen.
-+ *
-+ * Returns the latest error set in the errseq_t or 0 if it hasn't changed.
-+ */
-+int errseq_check(errseq_t *eseq, errseq_t since)
-+{
-+	errseq_t cur = READ_ONCE(*eseq);
-+
-+	if (likely(cur == since))
-+		return 0;
-+	return -(cur & MAX_ERRNO);
-+}
-+EXPORT_SYMBOL(errseq_check);
-+
-+/**
-+ * errseq_check_and_advance - check an errseq_t and advance it to the current value
-+ * @eseq: pointer to value being checked and reported
-+ * @since: pointer to previously-sampled errseq_t to check against and advance
-+ *
-+ * Grab the eseq value, and see whether it matches the value that "since"
-+ * points to. If it does, then just return 0.
-+ *
-+ * If it doesn't, then the value has changed. Set the "seen" flag, and try to
-+ * swap it into place as the new eseq value. Then, set that value as the new
-+ * "since" value, and return whatever the error portion is set to.
-+ *
-+ * Note that no locking is provided here for concurrent updates to the "since"
-+ * value. The caller must provide that if necessary. Because of this, callers
-+ * may want to do a lockless errseq_check before taking the lock and calling
-+ * this.
-+ */
-+int errseq_check_and_advance(errseq_t *eseq, errseq_t *since)
-+{
-+	int err = 0;
-+	errseq_t old, new;
-+
-+	/*
-+	 * Most callers will want to use the inline wrapper to check this,
-+	 * so that the common case of no error is handled without needing
-+	 * to take the lock that protects the "since" value.
-+	 */
-+	old = READ_ONCE(*eseq);
-+	if (old != *since) {
-+		/*
-+		 * Set the flag and try to swap it into place if it has
-+		 * changed.
-+		 *
-+		 * We don't care about the outcome of the swap here. If the
-+		 * swap doesn't occur, then it has either been updated by a
-+		 * writer who is altering the value in some way (updating
-+		 * counter or resetting the error), or another reader who is
-+		 * just setting the "seen" flag. Either outcome is OK, and we
-+		 * can advance "since" and return an error based on what we
-+		 * have.
-+		 */
-+		new = old | ERRSEQ_SEEN;
-+		if (new != old)
-+			cmpxchg(eseq, old, new);
-+		*since = new;
-+		err = -(new & MAX_ERRNO);
-+	}
-+	return err;
-+}
-+EXPORT_SYMBOL(errseq_check_and_advance);
+ 	return err;
+ }
+ EXPORT_SYMBOL(filemap_report_wb_err);
 -- 
 2.9.4
