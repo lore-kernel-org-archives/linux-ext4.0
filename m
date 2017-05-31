@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 17/28] ext4: fix credits calculation for xattr inode
-Date: Wed, 31 May 2017 01:15:06 -0700
-Message-ID: <20170531081517.11438-17-tahsin@google.com>
+Subject: [PATCH 22/28] ext4: move struct ext4_xattr_inode_array to xattr.h
+Date: Wed, 31 May 2017 01:15:11 -0700
+Message-ID: <20170531081517.11438-22-tahsin@google.com>
 References: <20170531081517.11438-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
@@ -15,34 +15,51 @@ To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Mike Christie <mchristi@redhat.com>,
         Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
 In-Reply-To: <20170531081517.11438-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When there is no space for a value in xattr block, it may be stored
-in an xattr inode even if the value length is less than
-EXT4_XATTR_MIN_LARGE_EA_SIZE(). So the current assumption in credits
-calculation is wrong.
+Since this is a xattr specific data structure it is cleaner to keep it in
+xattr header file.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/ext4/ext4.h  | 4 ----
+ fs/ext4/xattr.h | 5 +++++
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 739f73a5a345..dcf7ec98f138 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1590,8 +1590,7 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- 	if (error)
- 		return error;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 603edb5ff304..580fdb753f29 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2232,10 +2232,6 @@ struct mmpd_data {
+ # define ATTRIB_NORET	__attribute__((noreturn))
+ # define NORET_AND	noreturn,
  
--	if ((value_len >= EXT4_XATTR_MIN_LARGE_EA_SIZE(sb->s_blocksize)) &&
--	    ext4_has_feature_ea_inode(sb)) {
-+	if (ext4_has_feature_ea_inode(sb)) {
- 		int nrblocks = (value_len + sb->s_blocksize - 1) >>
- 					sb->s_blocksize_bits;
+-struct ext4_xattr_inode_array {
+-	unsigned int count;		/* # of used items in the array */
+-	struct inode *inodes[0];
+-};
+ /* bitmap.c */
+ extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
+ void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 323eba54f72f..adf761518a73 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -117,6 +117,11 @@ struct ext4_xattr_ibody_find {
+ 	struct ext4_iloc iloc;
+ };
  
++struct ext4_xattr_inode_array {
++	unsigned int count;		/* # of used items in the array */
++	struct inode *inodes[0];
++};
++
+ extern const struct xattr_handler ext4_xattr_user_handler;
+ extern const struct xattr_handler ext4_xattr_trusted_handler;
+ extern const struct xattr_handler ext4_xattr_security_handler;
 -- 
 2.13.0.219.gdb65acc882-goog
+
