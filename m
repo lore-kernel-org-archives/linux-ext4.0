@@ -1,93 +1,129 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: RE: Re: [PATCH] ext4: change sequential discard handling on
- commit complete phase into parallel manner
-Date: Wed, 31 May 2017 12:12:40 +0200
-Message-ID: <20170531101240.GC14011@quack2.suse.cz>
-References: <20170531004926epcms1p5ea300c8e634f7a0a42af283c4df9a1b7@epcms1p5>
- <20170530091626.GA3284@quack2.suse.cz>
- <1496113566-18899-1-git-send-email-daeho.jeong@samsung.com>
- <CGME20170530030551epcas5p327c9acbabf266842887bcc86cac43cba@epcms1p2>
- <20170531022240epcms1p27bf64e351cc61e84378ea8de38e192ac@epcms1p2>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: Jan Kara <jack@suse.cz>, "jack@suse.com" <jack@suse.com>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "tytso@mit.edu" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40271 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751096AbdEaKMx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 May 2017 06:12:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20170531022240epcms1p27bf64e351cc61e84378ea8de38e192ac@epcms1p2>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v5 00/17] fs: introduce new writeback error reporting and convert ext2 and ext4 to use it
+Date: Wed, 31 May 2017 08:45:23 -0400
+Message-ID: <20170531124540.8782-1-jlayton@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-doc@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net
+Return-path: <linux-block-owner@vger.kernel.org>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 31-05-17 02:22:40, Daeho Jeong wrote:
-> Hi Jan,
-> 
-> > Hi Jan,
->  
-> > > Hum, these games with several callbacks, lists, etc. look awkward and
-> > > unnecessary. It think they mostly come from the fact that we call separate
-> > > freeing callback for each extent to free which doesn't fit the needs of
-> > > async discard well.
->  
-> > > So instead of adding post_cb_list and several callback functions, it would
-> > > seem easier to have just one callback structure instead of one for every
-> > > extent. Then the structure would contain a list of extents that need to be
-> > > freed freed. So something like:
->  
-> > > struct ext4_free_data {
-> > >         struct ext4_journal_cb_entry efd_jce;
-> > >         struct list_head efd_extents;
-> > > }
->  
-> > > struct ext4_freed_extent {
-> > >         struct list_head efe_list;
-> > >         struct rb_node efe_node;
-> > >         ext4_group_t efe_group;
-> > >         ext4_grpblk_t efe_start_cluster;
-> > >         ext4_grpblk_t efe_count;
-> > >         tid_t efe_tid;
-> > > }
->  
-> > > When commit happens, we can just walk the efd_extents list while efe_tid is
-> > > equal tid of the transaction for which the callback was called and submit all
-> > > discard requests. You can use bio chaining implemented in
-> > > __blkdev_issue_discard() which XFS already uses and so the result of all
-> > > the discards you submit will be just one bio. Then you walk the list of
-> > > extents again and free them in the buddy bitmaps. And finally, you wait for
-> > > the bio to complete. All will be then happening in one function and it will
-> > > be much easier to understand.
->  
-> > It's right. the patch didn't look neat because of a few callbacks and the
-> > post callback list. I will modify the patch as your suggestion. It will
-> > look better.
->  
-> > Thank you very much. :-)
-> 
-> It's a little difficult to decide when we have to add new ext4_free_data
-> entry for a transaction for the first time and how do we know whether the
-> ext4_free_data entry for a transaction is already added or not? I think
-> that it is a bad idea to search in t_private_list of the transaction for
-> that, because there might be the different type of callback entries in
-> the future.
-> 
-> And how do we find the exact ext4_free_data entry for a newly created
-> ext4_freed_extent?  We only know which transcation is related to the
-> ext4_freed_extent, so we could use this but I don't have any good idea
-> for that. 
+v5: don't retrofit old API over the new infrastructure
+    add fstype flag to indicate how wb errors are tracked within that fs
+    add more function variants that take a errseq_t "since" value
+    add second errseq_t to struct file to track metadata wb errors
+    convert ext4 and ext2 to use the new APIs
 
-Right, so looking at ext4_journal_commit_callback() it will be probably the
-easiest to just call some new function ext4_process_freed_extents(sb)
-directly from there (i.e., avoid the ext4 callback infrastructure
-altogether) and anchor the list of extents in the superblock.
+v4: several more cleanup patches
+    documentation and kerneldoc comment updates
+    fix bugs in gfs2 patches
+    make sync_file_range use same error reporting semantics
+    bugfixes in buffer.c
+    convert nfs to new scheme (maybe bogus, can be dropped)
 
-								Honza
+v3: wb_err_t -> errseq_t conversion
+    clean up places that re-set errors after calling filemap_* functions
+
+v2: introduce wb_err_t, use atomics
+
+This is v5 of the patchset to improve how we're tracking and reporting
+errors that occur during pagecache writeback. The main difference in
+this set from the last one is that I've stopped trying to retrofit the
+old error tracking API on top of the new one. This is more work since
+we'll have to touch each fs individually, but should be safer as the
+"since" values used for checking errors will be more deliberate.
+
+There are several situations where the kernel can "lose" errors that
+occur during writeback, such that fsync will return success even
+though it failed to write back some data previously. The basic idea
+here is to have the kernel be more deliberate about the point from
+which errors are checked to ensure that that doesn't happen.
+
+An additional aim of this set is to change the behavior of fsync in
+Linux to report writeback errors on all fds instead of just the first
+one. This allows writers to reliably tell whether their data made it to
+the backing device without having to coordinate fsync calls with other
+writers.
+
+To do this, we add a new typedef: errseq_t. This is a 32-bit value
+that can store an error code, and a sequence number so we can tell
+whether it has changed since we last sampled it. This allows us to
+record errors in the address_space and then report those errors only
+once per file description.
+
+This set just alters block device files, ext4 and the legacy ext2
+driver. If this general approach seems acceptable, then I'll start
+converting other filesystems in follow-on patchsets. I'd also like
+to get this into linux-next as soon as possible to ensure that we're
+banging out any bugs that might be lurking here.
+
+I also have a couple of xfstests for this as well that I'll re-post
+soon.
+
+Jeff Layton (17):
+  lib: add errseq_t type and infrastructure for handling it
+  fs: new infrastructure for writeback error handling and reporting
+  mm: tracepoints for writeback error events
+  fs: add a new fstype flag to indicate how writeback errors are tracked
+  Documentation: flesh out the section in vfs.txt on storing and
+    reporting writeback errors
+  fs: adapt sync_file_range to new reporting infrastructure
+  mm: add filemap_fdatawait_range_since and
+    filemap_write_and_wait_range_since
+  dax: set errors in mapping when writeback fails
+  block: convert to errseq_t based writeback error tracking
+  block: add sync_blockdev_since and sync_filesystem_since
+  fs: add f_md_wb_err field to struct file for tracking metadata errors
+  fs: allow __generic_file_fsync to support both flavors of error
+    reporting
+  jbd2: conditionally handle errors using errseq_t based on FS_WB_ERRSEQ
+    flag
+  ext4: convert to errseq_t based error tracking
+  fs: add a write_one_page_since
+  ext2: convert to errseq_t based writeback error tracking
+  fs: convert ext2 to use write_one_page_since
+
+ Documentation/filesystems/vfs.txt |  50 ++++++++-
+ drivers/dax/device.c              |   1 +
+ fs/block_dev.c                    |  29 +++++-
+ fs/dax.c                          |  18 +++-
+ fs/ext2/dir.c                     |  25 +++--
+ fs/ext2/file.c                    |  29 ++++--
+ fs/ext2/super.c                   |   2 +-
+ fs/ext4/dir.c                     |   8 +-
+ fs/ext4/ext4.h                    |   8 +-
+ fs/ext4/extents.c                 |  24 +++--
+ fs/ext4/file.c                    |   5 +-
+ fs/ext4/fsync.c                   |  23 ++++-
+ fs/ext4/inode.c                   |  19 ++--
+ fs/ext4/ioctl.c                   |   9 +-
+ fs/ext4/super.c                   |   9 +-
+ fs/file_table.c                   |   1 +
+ fs/internal.h                     |   8 ++
+ fs/jbd2/commit.c                  |  29 ++++--
+ fs/jbd2/recovery.c                |   5 +-
+ fs/jbd2/transaction.c             |   1 +
+ fs/libfs.c                        |  26 +++--
+ fs/open.c                         |   3 +
+ fs/sync.c                         |  62 +++++++++++-
+ include/linux/errseq.h            |  19 ++++
+ include/linux/fs.h                |  82 ++++++++++++++-
+ include/linux/jbd2.h              |   3 +
+ include/linux/mm.h                |   2 +
+ include/linux/pagemap.h           |  32 ++++--
+ include/trace/events/filemap.h    |  52 ++++++++++
+ lib/Makefile                      |   2 +-
+ lib/errseq.c                      | 208 ++++++++++++++++++++++++++++++++++++++
+ mm/filemap.c                      | 145 ++++++++++++++++++++++++++
+ mm/page-writeback.c               |  53 +++++++---
+ 33 files changed, 892 insertions(+), 100 deletions(-)
+ create mode 100644 include/linux/errseq.h
+ create mode 100644 lib/errseq.c
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.9.4
