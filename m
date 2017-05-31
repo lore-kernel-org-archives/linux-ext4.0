@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v5 04/17] fs: add a new fstype flag to indicate how writeback errors are tracked
-Date: Wed, 31 May 2017 08:45:27 -0400
-Message-ID: <20170531124540.8782-5-jlayton@redhat.com>
+Subject: [PATCH v5 02/17] fs: new infrastructure for writeback error handling and reporting
+Date: Wed, 31 May 2017 08:45:25 -0400
+Message-ID: <20170531124540.8782-3-jlayton@redhat.com>
 References: <20170531124540.8782-1-jlayton@redhat.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
@@ -10,72 +10,168 @@ To: Andrew Morton <akpm@linux-foundation.org>,
         Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
         tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
         ross.zwisler@linux.intel.com, corbet@lwn.net
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-doc-owner@vger.kernel.org>
 In-Reply-To: <20170531124540.8782-1-jlayton@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Now that we have new infrastructure for handling writeback errors using
-errseq_t, we need to convert the existing code to use it. We could
-attempt to retrofit the old interfaces on top of the new, but there is
-a conceptual disconnect here in the case of internal callers that
-invoke filemap_fdatawait and the like.
+Most filesystems currently use mapping_set_error and
+filemap_check_errors for setting and reporting/clearing writeback errors
+at the mapping level. filemap_check_errors is indirectly called from
+most of the filemap_fdatawait_* functions and from
+filemap_write_and_wait*. These functions are called from all sorts of
+contexts to wait on writeback to finish -- e.g. mostly in fsync, but
+also in truncate calls, getattr, etc.
 
-When reporting writeback errors, we will always report errors that have
-occurred since a particular point in time. With the old writeback error
-reporting, the time we used was "since it was last tested/cleared" which
-is entirely arbitrary and potentially racy. Now, we can report the
-latest error that has occurred since an arbitrary point in time
-(represented as a sampled errseq_t value).
+The non-fsync callers are problematic. We should be reporting writeback
+errors during fsync, but many places spread over the tree clear out
+errors before they can be properly reported, or report errors at
+nonsensical times.
 
-This means that we need to touch each filesystem that calls
-filemap_check_errors in some fashion and ensure that we establish sane
-"since" values for those callers. But...some code is shared between
-filesystems and needs to be able to handle both error tracking schemes.
+If I get -EIO on a stat() call, there is no reason for me to assume that
+it is because some previous writeback failed. The fact that it also
+clears out the error such that a subsequent fsync returns 0 is a bug,
+and a nasty one since that's potentially silent data corruption.
 
-Add a new FS_WB_ERRSEQ flag to the fstype. When mapping_set_error is
-called, set mapping->wb_err if it's set, along with setting the
-"legacy" AS_EIO/AS_ENOSPC flags. When calling filemap_report_wb_err,
-always clear the legacy flags out as well.
+This patch adds a small bit of new infrastructure for setting and
+reporting errors during address_space writeback. While the above was my
+original impetus for adding this, I think it's also the case that
+current fsync semantics are just problematic for userland. Most
+applications that call fsync do so to ensure that the data they wrote
+has hit the backing store.
 
-This should allow subsystems to use the new errseq_t based error
-reporting while simultaneously allowing the traditional semantics of
-AS_EIO/AS_ENOSPC flags.
+In the case where there are multiple writers to the file at the same
+time, this is really hard to determine. The first one to call fsync will
+see any stored error, and the rest get back 0. The processes with open
+fds may not be associated with one another in any way. They could even
+be in different containers, so ensuring coordination between all fsync
+callers is not really an option.
 
-Eventually, this flag should be removed once everything is converted
-to errseq_t based error tracking.
+One way to remedy this would be to track what file descriptor was used
+to dirty the file, but that's rather cumbersome and would likely be
+slow. However, there is a simpler way to improve the semantics here
+without incurring too much overhead.
+
+This set adds an errseq_t to struct address_space, and a corresponding
+one is added to struct file. Writeback errors are recorded in the
+mapping's errseq_t, and the one in struct file is used as the "since"
+value.
+
+This changes the semantics of the Linux fsync implementation such that
+applications can now use it to determine whether there were any
+writeback errors since fsync(fd) was last called (or since the file was
+opened in the case of fsync having never been called).
+
+Note that those writeback errors may have occurred when writing data
+that was dirtied via an entirely different fd, but that's the case now
+with the current mapping_set_error/filemap_check_error infrastructure.
+This will at least prevent you from getting a false report of success.
+
+The new behavior is still consistent with the POSIX spec, and is more
+reliable for application developers. This patch just adds some basic
+infrastructure for doing this, and ensures that the f_wb_err "cursor"
+is properly set when a file is opened. Later patches will change the
+existing code to use this new infrastructure.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/fs.h      |  1 +
- include/linux/pagemap.h | 32 ++++++++++++++++++++++++++------
- mm/filemap.c            |  7 +++++++
- 3 files changed, 34 insertions(+), 6 deletions(-)
+ drivers/dax/device.c |  1 +
+ fs/block_dev.c       |  1 +
+ fs/file_table.c      |  1 +
+ fs/open.c            |  3 +++
+ include/linux/fs.h   | 53 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/filemap.c         | 38 +++++++++++++++++++++++++++++++++++++
+ 6 files changed, 97 insertions(+)
 
+diff --git a/drivers/dax/device.c b/drivers/dax/device.c
+index 006e657dfcb9..12943d19bfc4 100644
+--- a/drivers/dax/device.c
++++ b/drivers/dax/device.c
+@@ -499,6 +499,7 @@ static int dax_open(struct inode *inode, struct file *filp)
+ 	inode->i_mapping = __dax_inode->i_mapping;
+ 	inode->i_mapping->host = __dax_inode;
+ 	filp->f_mapping = inode->i_mapping;
++	filp->f_wb_err = filemap_sample_wb_err(filp->f_mapping);
+ 	filp->private_data = dev_dax;
+ 	inode->i_flags = S_DAX;
+ 
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 519599dddd36..4d62fe771587 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -1743,6 +1743,7 @@ static int blkdev_open(struct inode * inode, struct file * filp)
+ 		return -ENOMEM;
+ 
+ 	filp->f_mapping = bdev->bd_inode->i_mapping;
++	filp->f_wb_err = filemap_sample_wb_err(filp->f_mapping);
+ 
+ 	return blkdev_get(bdev, filp->f_mode, filp);
+ }
+diff --git a/fs/file_table.c b/fs/file_table.c
+index 954d510b765a..72e861a35a7f 100644
+--- a/fs/file_table.c
++++ b/fs/file_table.c
+@@ -168,6 +168,7 @@ struct file *alloc_file(const struct path *path, fmode_t mode,
+ 	file->f_path = *path;
+ 	file->f_inode = path->dentry->d_inode;
+ 	file->f_mapping = path->dentry->d_inode->i_mapping;
++	file->f_wb_err = filemap_sample_wb_err(file->f_mapping);
+ 	if ((mode & FMODE_READ) &&
+ 	     likely(fop->read || fop->read_iter))
+ 		mode |= FMODE_CAN_READ;
+diff --git a/fs/open.c b/fs/open.c
+index cd0c5be8d012..280d4a963791 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -707,6 +707,9 @@ static int do_dentry_open(struct file *f,
+ 	f->f_inode = inode;
+ 	f->f_mapping = inode->i_mapping;
+ 
++	/* Ensure that we skip any errors that predate opening of the file */
++	f->f_wb_err = filemap_sample_wb_err(f->f_mapping);
++
+ 	if (unlikely(f->f_flags & O_PATH)) {
+ 		f->f_mode = FMODE_PATH;
+ 		f->f_op = &empty_fops;
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 293cbc7f3520..2f3bcf4eb73b 100644
+index 26f0c64cd4fb..24178107379d 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2021,6 +2021,7 @@ struct file_system_type {
- #define FS_BINARY_MOUNTDATA	2
- #define FS_HAS_SUBTYPE		4
- #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
-+#define FS_WB_ERRSEQ		16	/* errseq_t writeback err tracking */
- #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
- 	struct dentry *(*mount) (struct file_system_type *, int,
- 		       const char *, void *);
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 316a19f6b635..1dbc2dd6fdd2 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -28,14 +28,34 @@ enum mapping_flags {
- 	AS_NO_WRITEBACK_TAGS = 5,
- };
+@@ -30,6 +30,7 @@
+ #include <linux/percpu-rwsem.h>
+ #include <linux/workqueue.h>
+ #include <linux/delayed_call.h>
++#include <linux/errseq.h>
  
+ #include <asm/byteorder.h>
+ #include <uapi/linux/fs.h>
+@@ -392,6 +393,7 @@ struct address_space {
+ 	gfp_t			gfp_mask;	/* implicit gfp mask for allocations */
+ 	struct list_head	private_list;	/* ditto */
+ 	void			*private_data;	/* ditto */
++	errseq_t		wb_err;
+ } __attribute__((aligned(sizeof(long))));
+ 	/*
+ 	 * On most architectures that alignment is already the case; but
+@@ -846,6 +848,7 @@ struct file {
+ 	 * Must not be taken from IRQ context.
+ 	 */
+ 	spinlock_t		f_lock;
++	errseq_t		f_wb_err;
+ 	atomic_long_t		f_count;
+ 	unsigned int 		f_flags;
+ 	fmode_t			f_mode;
+@@ -2524,6 +2527,56 @@ extern int filemap_fdatawrite_range(struct address_space *mapping,
+ 				loff_t start, loff_t end);
+ extern int filemap_check_errors(struct address_space *mapping);
+ 
++extern int __must_check filemap_report_wb_err(struct file *file);
++
 +/**
-+ * mapping_set_error - record a writeback error in the address_space
-+ * @mapping - the mapping in which an error should be set
-+ * @error - the error to set in the mapping
++ * filemap_set_wb_err - set a writeback error on an address_space
++ * @mapping: mapping in which to set writeback error
++ * @err: error to be set in mapping
 + *
 + * When writeback fails in some way, we must record that error so that
 + * userspace can be informed when fsync and the like are called.  We endeavor
@@ -83,49 +179,95 @@ index 316a19f6b635..1dbc2dd6fdd2 100644
 + * internal callers also need to know when writeback errors have occurred.
 + *
 + * When a writeback error occurs, most filesystems will want to call
-+ * mapping_set_error to record the error in the mapping so that it can be
-+ * reported when the application calls fsync(2).
++ * filemap_set_wb_err to record the error in the mapping so that it will be
++ * automatically reported whenever fsync is called on the file.
++ *
++ * FIXME: mention FS_* flag here?
 + */
- static inline void mapping_set_error(struct address_space *mapping, int error)
- {
--	if (unlikely(error)) {
--		if (error == -ENOSPC)
--			set_bit(AS_ENOSPC, &mapping->flags);
--		else
--			set_bit(AS_EIO, &mapping->flags);
--	}
-+	if (likely(!error))
-+		return;
++static inline void filemap_set_wb_err(struct address_space *mapping, int err)
++{
++	errseq_set(&mapping->wb_err, err);
++}
 +
-+	/* Record it in wb_err if fs is using errseq_t based error tracking */
-+	if (mapping->host->i_sb->s_type->fs_flags & FS_WB_ERRSEQ)
-+		filemap_set_wb_err(mapping, error);
++/**
++ * filemap_check_wb_error - has an error occurred since the mark was sampled?
++ * @mapping: mapping to check for writeback errors
++ * @since: previously-sampled errseq_t
++ *
++ * Grab the errseq_t value from the mapping, and see if it has changed "since"
++ * the given value was sampled.
++ *
++ * If it has then report the latest error set, otherwise return 0.
++ */
++static inline int filemap_check_wb_err(struct address_space *mapping, errseq_t since)
++{
++	return errseq_check(&mapping->wb_err, since);
++}
 +
-+	/* Unconditionally record it in flags for now, for legacy callers */
-+	if (error == -ENOSPC)
-+		set_bit(AS_ENOSPC, &mapping->flags);
-+	else
-+		set_bit(AS_EIO, &mapping->flags);
- }
- 
- static inline void mapping_set_unevictable(struct address_space *mapping)
++/**
++ * filemap_sample_wb_err - sample the current errseq_t to test for later errors
++ * @mapping: mapping to be sampled
++ *
++ * Writeback errors are always reported relative to a particular sample point
++ * in the past. This function provides those sample points.
++ */
++static inline errseq_t filemap_sample_wb_err(struct address_space *mapping)
++{
++	return errseq_sample(&mapping->wb_err);
++}
++
+ extern int vfs_fsync_range(struct file *file, loff_t start, loff_t end,
+ 			   int datasync);
+ extern int vfs_fsync(struct file *file, int datasync);
 diff --git a/mm/filemap.c b/mm/filemap.c
-index c5e19ea0bf12..97dc28f853fc 100644
+index 1de71753de28..aeb58db10688 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -580,6 +580,13 @@ int filemap_report_wb_err(struct file *file)
- 		trace_filemap_report_wb_err(file, old);
- 		spin_unlock(&file->f_lock);
- 	}
+@@ -536,6 +536,44 @@ int filemap_write_and_wait_range(struct address_space *mapping,
+ EXPORT_SYMBOL(filemap_write_and_wait_range);
+ 
+ /**
++ * filemap_report_wb_err - report wb error (if any) that was previously set
++ * @file: struct file on which the error is being reported
++ *
++ * When userland calls fsync (or something like nfsd does the equivalent), we
++ * want to report any writeback errors that occurred since the last fsync (or
++ * since the file was opened if there haven't been any).
++ *
++ * Grab the wb_err from the mapping. If it matches what we have in the file,
++ * then just quickly return 0. The file is all caught up.
++ *
++ * If it doesn't match, then take the mapping value, set the "seen" flag in
++ * it and try to swap it into place. If it works, or another task beat us
++ * to it with the new value, then update the f_wb_err and return the error
++ * portion. The error at this point must be reported via proper channels
++ * (a'la fsync, or NFS COMMIT operation, etc.).
++ *
++ * While we handle mapping->wb_err with atomic operations, the f_wb_err
++ * value is protected by the f_lock since we must ensure that it reflects
++ * the latest value swapped in for this file descriptor.
++ */
++int filemap_report_wb_err(struct file *file)
++{
++	int err = 0;
++	struct address_space *mapping = file->f_mapping;
 +
-+	/* Now clear the AS_* flags if any are set */
-+	if (test_bit(AS_ENOSPC, &mapping->flags))
-+	    clear_bit(AS_ENOSPC, &mapping->flags);
-+	if (test_bit(AS_EIO, &mapping->flags))
-+	    clear_bit(AS_EIO, &mapping->flags);
++	/* Locklessly handle the common case where nothing has changed */
++	if (errseq_check(&mapping->wb_err, READ_ONCE(file->f_wb_err))) {
++		/* Something changed, must use slow path */
++		spin_lock(&file->f_lock);
++		err = errseq_check_and_advance(&mapping->wb_err,
++						&file->f_wb_err);
++		spin_unlock(&file->f_lock);
++	}
++	return err;
++}
++EXPORT_SYMBOL(filemap_report_wb_err);
 +
- 	return err;
- }
- EXPORT_SYMBOL(filemap_report_wb_err);
++/**
+  * replace_page_cache_page - replace a pagecache page with a new one
+  * @old:	page to be replaced
+  * @new:	page to replace with
 -- 
 2.9.4
+
