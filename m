@@ -1,55 +1,64 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 03/35] ext4: Fix off-by-in in loop termination in ext4_find_unwritten_pgoff()
-Date: Thu,  1 Jun 2017 11:32:13 +0200
-Message-ID: <20170601093245.29238-4-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/35] dax: Fix inefficiency in dax_writeback_mapping_range()
+Date: Thu,  1 Jun 2017 11:32:14 +0200
+Message-ID: <20170601093245.29238-5-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
-Cc: Hugh Dickins <hughd-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
-        David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-        Ryusuke Konishi <konishi.ryusuke-Zyj7fXuS5i5L9jVzuh4AOg@public.gmane.org>,
-        linux-nilfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Bob Peterson <rpeterso-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-        cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Jaegeuk Kim <jaegeuk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
-        linux-f2fs-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Ilya Dryomov <idryomov-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-        "Yan, Zheng" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, David Sterba <dsterba-IBi9RG/b67k@public.gmane.org>,
-        "Darrick J . Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        Nadia Yvette Chambers <nyc-tGiaVUSOoeej7qYf8Sx8sA@public.gmane.org>,
-        Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-To: <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>
-Return-path: <linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20170601093245.29238-1-jack-AlSwsSmVLrQ@public.gmane.org>
-Sender: linux-nilfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: Hugh Dickins <hughd@google.com>,
+	David Howells <dhowells@redhat.com>,
+	linux-afs@lists.infradead.org,
+	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+	linux-nilfs@vger.kernel.org,
+	Bob Peterson <rpeterso@redhat.com>,
+	cluster-devel@redhat.com,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	tytso@mit.edu,
+	linux-ext4@vger.kernel.org,
+	Ilya Dryomov <idryomov@gmail.com>,
+	"Yan, Zheng" <zyan@redhat.com>,
+	ceph-devel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>,
+	linux-xfs@vger.kernel.org,
+	Nadia Yvette Chambers <nyc@holomorphy.com>,
+	Jan Kara <jack@suse.cz>,
+	stable@vger.kernel.org
+To: <linux-mm@kvack.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-There is an off-by-one error in loop termination conditions in
-ext4_find_unwritten_pgoff() since 'end' may index a page beyond end of
-desired range if 'endoff' is page aligned. It doesn't have any visible
-effects but still it is good to fix it.
+dax_writeback_mapping_range() fails to update iteration index when
+searching radix tree for entries needing cache flushing. Thus each
+pagevec worth of entries is searched starting from the start which is
+inefficient and prone to livelocks. Update index properly.
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+CC: stable@vger.kernel.org
+Fixes: 9973c98ecfda3a1dfcab981665b5f1e39bcde64a
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/dax.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index bbea2dccd584..2b00bf84c05b 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -474,7 +474,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
- 	endoff = (loff_t)end_blk << blkbits;
- 
- 	index = startoff >> PAGE_SHIFT;
--	end = endoff >> PAGE_SHIFT;
-+	end = (endoff - 1) >> PAGE_SHIFT;
- 
- 	pagevec_init(&pvec, 0);
- 	do {
+diff --git a/fs/dax.c b/fs/dax.c
+index c22eaf162f95..c204445a69b0 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -859,6 +859,7 @@ int dax_writeback_mapping_range(struct address_space *mapping,
+ 			if (ret < 0)
+ 				goto out;
+ 		}
++		start_index = indices[pvec.nr - 1] + 1;
+ 	}
+ out:
+ 	put_dax(dax_dev);
 -- 
 2.12.3
 
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nilfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
