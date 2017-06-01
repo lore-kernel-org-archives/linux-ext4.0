@@ -1,9 +1,12 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/35] ext4: Use pagevec_lookup_range() in
-	writeback code
-Date: Thu,  1 Jun 2017 11:32:20 +0200
-Message-ID: <20170601093245.29238-11-jack@suse.cz>
+Subject: [PATCH 09/35] ext4: Use pagevec_lookup_range() in
+ ext4_find_unwritten_pgoff()
+Date: Thu,  1 Jun 2017 11:32:19 +0200
+Message-ID: <20170601093245.29238-10-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
 	Jan Kara <jack@suse.cz>, "Darrick J . Wong" <darrick.wong@oracle.com>,
@@ -12,71 +15,82 @@ Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	David Sterba <dsterba@suse.com>, ceph-devel@vger.kernel.org,
 	Nadia Yvette Chambers <nyc@holomorphy.com>,
 	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Bob Peterson <rpeterso@redhat.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
 	Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
 	linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org
 To: <linux-mm@kvack.org>
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Both occurences of pagevec_lookup() actually want only pages from a
-given range. Use pagevec_lookup_range() for the lookup.
+Use pagevec_lookup_range() in ext4_find_unwritten_pgoff() since we are
+interested only in pages in the given range. Simplify the logic as a
+result of not getting pages out of range and index getting automatically
+advanced.
 
-CC: "Theodore Ts'o" <tytso@mit.edu>
 CC: linux-ext4@vger.kernel.org
+CC: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ fs/ext4/file.c | 14 ++++----------
+ 1 file changed, 4 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 784f41328dc8..59d82530d269 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1670,13 +1670,13 @@ static void mpage_release_unused_pages(struct mpage_da_data *mpd,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index ddca17c7875a..6821070a388b 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -478,12 +478,11 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
  
  	pagevec_init(&pvec, 0);
- 	while (index <= end) {
--		nr_pages = pagevec_lookup(&pvec, mapping, &index, PAGEVEC_SIZE);
-+		nr_pages = pagevec_lookup_range(&pvec, mapping, &index, end,
-+						PAGEVEC_SIZE);
- 		if (nr_pages == 0)
- 			break;
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
--			if (page->index > end)
--				break;
-+
- 			BUG_ON(!PageLocked(page));
- 			BUG_ON(PageWriteback(page));
- 			if (invalidate) {
-@@ -2283,15 +2283,13 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 	do {
+-		int i, num;
++		int i;
+ 		unsigned long nr_pages;
  
- 	pagevec_init(&pvec, 0);
- 	while (start <= end) {
--		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, &start,
--					  PAGEVEC_SIZE);
+-		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE);
+-		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, &index,
+-					  (pgoff_t)num);
 +		nr_pages = pagevec_lookup_range(&pvec, inode->i_mapping,
-+						&start, end, PAGEVEC_SIZE);
++					&index, end, PAGEVEC_SIZE);
  		if (nr_pages == 0)
  			break;
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
+ 
+@@ -502,9 +501,6 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 				goto out;
+ 			}
  
 -			if (page->index > end)
--				break;
- 			bh = head = page_buffers(page);
- 			do {
- 				if (lblk < mpd->map.m_lblk)
+-				goto out;
+-
+ 			lock_page(page);
+ 
+ 			if (unlikely(page->mapping != inode->i_mapping)) {
+@@ -544,12 +540,10 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
+ 			unlock_page(page);
+ 		}
+ 
+-		/* The no. of pages is less than our desired, we are done. */
+-		if (nr_pages < num)
+-			break;
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
+ 
++	/* There are no pages upto endoff - that would be a hole in there. */
+ 	if (whence == SEEK_HOLE && lastoff < endoff) {
+ 		found = 1;
+ 		*offset = lastoff;
 -- 
 2.12.3
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
