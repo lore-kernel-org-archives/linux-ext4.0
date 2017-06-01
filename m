@@ -1,9 +1,12 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 27/35] shmem: Use pagevec_lookup() in
-	shmem_unlock_mapping()
-Date: Thu,  1 Jun 2017 11:32:37 +0200
-Message-ID: <20170601093245.29238-28-jack@suse.cz>
+Subject: [PATCH 11/35] hugetlbfs: Use pagevec_lookup_range() in
+ remove_inode_hugepages()
+Date: Thu,  1 Jun 2017 11:32:21 +0200
+Message-ID: <20170601093245.29238-12-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
 	Jan Kara <jack@suse.cz>, "Darrick J . Wong" <darrick.wong@oracle.com>,
@@ -12,63 +15,80 @@ Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	David Sterba <dsterba@suse.com>, ceph-devel@vger.kernel.org,
 	Nadia Yvette Chambers <nyc@holomorphy.com>,
 	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Bob Peterson <rpeterso@redhat.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
 	Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
 	linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org
 To: <linux-mm@kvack.org>
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-The comment about find_get_pages() returning if it finds a row of swap
-entries seems to be stale. Use pagevec_lookup() in
-shmem_unlock_mapping() to simplify the code.
+We want only pages from given range in remove_inode_hugepages(). Use
+pagevec_lookup_range() instead of pagevec_lookup().
 
-CC: Hugh Dickins <hughd@google.com>
+CC: Nadia Yvette Chambers <nyc@holomorphy.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- mm/shmem.c | 14 ++------------
- 1 file changed, 2 insertions(+), 12 deletions(-)
+ fs/hugetlbfs/inode.c | 18 ++----------------
+ 1 file changed, 2 insertions(+), 16 deletions(-)
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index e67d6ba4e98e..a614a9cfb58c 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -729,24 +729,14 @@ unsigned long shmem_swap_usage(struct vm_area_struct *vma)
- void shmem_unlock_mapping(struct address_space *mapping)
- {
+diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
+index 372fc8aac38e..99885f9b9d56 100644
+--- a/fs/hugetlbfs/inode.c
++++ b/fs/hugetlbfs/inode.c
+@@ -403,7 +403,6 @@ static void remove_inode_hugepages(struct inode *inode, loff_t lstart,
  	struct pagevec pvec;
--	pgoff_t indices[PAGEVEC_SIZE];
- 	pgoff_t index = 0;
+ 	pgoff_t next, index;
+ 	int i, freed = 0;
+-	long lookup_nr = PAGEVEC_SIZE;
+ 	bool truncate_op = (lend == LLONG_MAX);
  
- 	pagevec_init(&pvec, 0);
- 	/*
- 	 * Minor point, but we might as well stop if someone else SHM_LOCKs it.
- 	 */
--	while (!mapping_unevictable(mapping)) {
--		/*
--		 * Avoid pagevec_lookup(): find_get_pages() returns 0 as if it
--		 * has finished, if it hits a row of PAGEVEC_SIZE swap entries.
+ 	memset(&pseudo_vma, 0, sizeof(struct vm_area_struct));
+@@ -412,30 +411,17 @@ static void remove_inode_hugepages(struct inode *inode, loff_t lstart,
+ 	next = start;
+ 	while (next < end) {
+ 		/*
+-		 * Don't grab more pages than the number left in the range.
 -		 */
--		pvec.nr = find_get_entries(mapping, index,
--					   PAGEVEC_SIZE, pvec.pages, indices);
--		if (!pvec.nr)
--			break;
--		index = indices[pvec.nr - 1] + 1;
--		pagevec_remove_exceptionals(&pvec);
-+	while (!mapping_unevictable(mapping) &&
-+			pagevec_lookup(&pvec, mapping, &index)) {
- 		check_move_unevictable_pages(pvec.pages, pvec.nr);
- 		pagevec_release(&pvec);
- 		cond_resched();
+-		if (end - next < lookup_nr)
+-			lookup_nr = end - next;
+-
+-		/*
+ 		 * When no more pages are found, we are done.
+ 		 */
+-		if (!pagevec_lookup(&pvec, mapping, &next, lookup_nr))
++		if (!pagevec_lookup_range(&pvec, mapping, &next, end - 1,
++					  PAGEVEC_SIZE))
+ 			break;
+ 
+ 		for (i = 0; i < pagevec_count(&pvec); ++i) {
+ 			struct page *page = pvec.pages[i];
+ 			u32 hash;
+ 
+-			/*
+-			 * The page (index) could be beyond end.  This is
+-			 * only possible in the punch hole case as end is
+-			 * max page offset in the truncate case.
+-			 */
+ 			index = page->index;
+-			if (index >= end)
+-				break;
+-
+ 			hash = hugetlb_fault_mutex_hash(h, current->mm,
+ 							&pseudo_vma,
+ 							mapping, index, 0);
 -- 
 2.12.3
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
