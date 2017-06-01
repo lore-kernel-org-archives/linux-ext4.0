@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 20/35] f2fs: Use find_get_pages_tag() for
-	looking up single page
-Date: Thu,  1 Jun 2017 11:32:30 +0200
-Message-ID: <20170601093245.29238-21-jack@suse.cz>
+Subject: [PATCH 28/35] shmem: Use pagevec_lookup_entries()
+Date: Thu,  1 Jun 2017 11:32:38 +0200
+Message-ID: <20170601093245.29238-29-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -29,46 +28,47 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-__get_first_dirty_index() wants to lookup only the first dirty page
-after given index. There's no point in using pagevec_lookup_tag() for
-that. Just use find_get_pages_tag() directly.
+Currently we use find_get_entries() shmem which just opencode what
+pagevec_lookup_entries() does. Use pagevec_lookup_entries() instead
+except for one case which plays tricks with number of pages looked up
+and it won't fit in how we will make pagevec_lookup_entries() work.
 
-CC: Jaegeuk Kim <jaegeuk@kernel.org>
-CC: linux-f2fs-devel@lists.sourceforge.net
+CC: Hugh Dickins <hughd@google.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/f2fs/file.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ mm/shmem.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 61af721329fa..52df1ef66883 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -286,18 +286,19 @@ int f2fs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- static pgoff_t __get_first_dirty_index(struct address_space *mapping,
- 						pgoff_t pgofs, int whence)
- {
--	struct pagevec pvec;
-+	struct page *page;
- 	int nr_pages;
+diff --git a/mm/shmem.c b/mm/shmem.c
+index a614a9cfb58c..8a6fddec27a1 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -768,10 +768,9 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
+ 	pagevec_init(&pvec, 0);
+ 	index = start;
+ 	while (index < end) {
+-		pvec.nr = find_get_entries(mapping, index,
+-			min(end - index, (pgoff_t)PAGEVEC_SIZE),
+-			pvec.pages, indices);
+-		if (!pvec.nr)
++		if (!pagevec_lookup_entries(&pvec, mapping, index,
++				min(end - index, (pgoff_t)PAGEVEC_SIZE),
++				indices))
+ 			break;
+ 		for (i = 0; i < pagevec_count(&pvec); i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -859,10 +858,9 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
+ 	while (index < end) {
+ 		cond_resched();
  
- 	if (whence != SEEK_DATA)
- 		return 0;
- 
- 	/* find first dirty page index */
--	pagevec_init(&pvec, 0);
--	nr_pages = pagevec_lookup_tag(&pvec, mapping, &pgofs,
--					PAGECACHE_TAG_DIRTY, 1);
--	pgofs = nr_pages ? pvec.pages[0]->index : ULONG_MAX;
--	pagevec_release(&pvec);
-+	nr_pages = find_get_pages_tag(mapping, &pgofs, PAGECACHE_TAG_DIRTY,
-+				      1, &page);
-+	if (!nr_pages)
-+		return ULONG_MAX;
-+	pgofs = page->index;
-+	put_page(page);
- 	return pgofs;
- }
- 
+-		pvec.nr = find_get_entries(mapping, index,
++		if (!pagevec_lookup_entries(&pvec, mapping, index,
+ 				min(end - index, (pgoff_t)PAGEVEC_SIZE),
+-				pvec.pages, indices);
+-		if (!pvec.nr) {
++				indices)) {
+ 			/* If all gone or hole-punch or unfalloc, we're done */
+ 			if (index == start || end != -1)
+ 				break;
 -- 
 2.12.3
