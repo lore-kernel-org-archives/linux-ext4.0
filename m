@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 19/35] f2fs: Simplify page iteration loops
-Date: Thu,  1 Jun 2017 11:32:29 +0200
-Message-ID: <20170601093245.29238-20-jack@suse.cz>
+Subject: [PATCH 34/35] mm: Make find_get_entries_tag() update
+ index
+Date: Thu,  1 Jun 2017 11:32:44 +0200
+Message-ID: <20170601093245.29238-35-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -30,186 +31,83 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-In several places we want to iterate over all tagged pages in a mapping.
-However the code was apparently copied from places that iterate only
-over a limited range and thus it checks for index <= end, optimizes the
-case where we are coming close to range end which is all pointless when
-end == ULONG_MAX. So just remove this dead code.
+Make find_get_entries_tag() update 'start' to index the next page for
+iteration.
 
-CC: Jaegeuk Kim <jaegeuk@kernel.org>
-CC: linux-f2fs-devel@lists.sourceforge.net
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/f2fs/checkpoint.c | 13 ++++-------
- fs/f2fs/node.c       | 65 +++++++++++++++++++---------------------------------
- 2 files changed, 28 insertions(+), 50 deletions(-)
+ fs/dax.c                | 3 +--
+ include/linux/pagemap.h | 2 +-
+ mm/filemap.c            | 8 ++++++--
+ 3 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
-index ea9c317b5916..6da86eac758a 100644
---- a/fs/f2fs/checkpoint.c
-+++ b/fs/f2fs/checkpoint.c
-@@ -296,9 +296,10 @@ long sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
- 						long nr_to_write)
- {
- 	struct address_space *mapping = META_MAPPING(sbi);
--	pgoff_t index = 0, end = ULONG_MAX, prev = ULONG_MAX;
-+	pgoff_t index = 0, prev = ULONG_MAX;
- 	struct pagevec pvec;
- 	long nwritten = 0;
-+	int nr_pages;
- 	struct writeback_control wbc = {
- 		.for_reclaim = 0,
- 	};
-@@ -308,13 +309,9 @@ long sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
- 
- 	blk_start_plug(&plug);
- 
--	while (index <= end) {
--		int i, nr_pages;
--		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
--				PAGECACHE_TAG_DIRTY,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
--		if (unlikely(nr_pages == 0))
--			break;
-+	while (nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
-+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
-+		int i;
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
-diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
-index 4547c5c5cd98..dd53bcd9fc46 100644
---- a/fs/f2fs/node.c
-+++ b/fs/f2fs/node.c
-@@ -1259,21 +1259,17 @@ void move_node_page(struct page *node_page, int gc_type)
- 
- static struct page *last_fsync_dnode(struct f2fs_sb_info *sbi, nid_t ino)
- {
--	pgoff_t index, end;
-+	pgoff_t index;
- 	struct pagevec pvec;
- 	struct page *last_page = NULL;
-+	int nr_pages;
+diff --git a/fs/dax.c b/fs/dax.c
+index c204445a69b0..4b295c544fd4 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -841,7 +841,7 @@ int dax_writeback_mapping_range(struct address_space *mapping,
  
  	pagevec_init(&pvec, 0);
- 	index = 0;
--	end = ULONG_MAX;
--
--	while (index <= end) {
--		int i, nr_pages;
--		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
--				PAGECACHE_TAG_DIRTY,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
--		if (nr_pages == 0)
--			break;
+ 	while (!done) {
+-		pvec.nr = find_get_entries_tag(mapping, start_index,
++		pvec.nr = find_get_entries_tag(mapping, &start_index,
+ 				PAGECACHE_TAG_TOWRITE, PAGEVEC_SIZE,
+ 				pvec.pages, indices);
+ 
+@@ -859,7 +859,6 @@ int dax_writeback_mapping_range(struct address_space *mapping,
+ 			if (ret < 0)
+ 				goto out;
+ 		}
+-		start_index = indices[pvec.nr - 1] + 1;
+ 	}
+ out:
+ 	put_dax(dax_dev);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index df128a56f44b..1dc7e54ec32a 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -365,7 +365,7 @@ static inline unsigned find_get_pages_tag(struct address_space *mapping,
+ 	return find_get_pages_range_tag(mapping, index, (pgoff_t)-1, tag,
+ 					nr_pages, pages);
+ }
+-unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
++unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t *start,
+ 			int tag, unsigned int nr_entries,
+ 			struct page **entries, pgoff_t *indices);
+ 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index e55100459710..3eb05c91c07a 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1731,7 +1731,7 @@ EXPORT_SYMBOL(find_get_pages_range_tag);
+  * Like find_get_entries, except we only return entries which are tagged with
+  * @tag.
+  */
+-unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
++unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t *start,
+ 			int tag, unsigned int nr_entries,
+ 			struct page **entries, pgoff_t *indices)
+ {
+@@ -1744,7 +1744,7 @@ unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
+ 
+ 	rcu_read_lock();
+ 	radix_tree_for_each_tagged(slot, &mapping->page_tree,
+-				   &iter, start, tag) {
++				   &iter, *start, tag) {
+ 		struct page *head, *page;
+ repeat:
+ 		page = radix_tree_deref_slot(slot);
+@@ -1786,6 +1786,10 @@ unsigned find_get_entries_tag(struct address_space *mapping, pgoff_t start,
+ 			break;
+ 	}
+ 	rcu_read_unlock();
 +
-+	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
-+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
-+		int i;
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
-@@ -1403,13 +1399,14 @@ static int f2fs_write_node_page(struct page *page,
- int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
- 			struct writeback_control *wbc, bool atomic)
- {
--	pgoff_t index, end;
-+	pgoff_t index;
- 	pgoff_t last_idx = ULONG_MAX;
- 	struct pagevec pvec;
- 	int ret = 0;
- 	struct page *last_page = NULL;
- 	bool marked = false;
- 	nid_t ino = inode->i_ino;
-+	int nr_pages;
- 
- 	if (atomic) {
- 		last_page = last_fsync_dnode(sbi, ino);
-@@ -1419,15 +1416,10 @@ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
- retry:
- 	pagevec_init(&pvec, 0);
- 	index = 0;
--	end = ULONG_MAX;
--
--	while (index <= end) {
--		int i, nr_pages;
--		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
--				PAGECACHE_TAG_DIRTY,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
--		if (nr_pages == 0)
--			break;
++	if (ret)
++		*start = indices[ret - 1] + 1;
 +
-+	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
-+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
-+		int i;
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
-@@ -1525,25 +1517,21 @@ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
- 
- int sync_node_pages(struct f2fs_sb_info *sbi, struct writeback_control *wbc)
- {
--	pgoff_t index, end;
-+	pgoff_t index;
- 	struct pagevec pvec;
- 	int step = 0;
- 	int nwritten = 0;
- 	int ret = 0;
-+	int nr_pages;
- 
- 	pagevec_init(&pvec, 0);
- 
- next_step:
- 	index = 0;
--	end = ULONG_MAX;
--
--	while (index <= end) {
--		int i, nr_pages;
--		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
--				PAGECACHE_TAG_DIRTY,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
--		if (nr_pages == 0)
--			break;
-+
-+	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
-+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
-+		int i;
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
-@@ -1631,27 +1619,20 @@ int sync_node_pages(struct f2fs_sb_info *sbi, struct writeback_control *wbc)
- 
- int wait_on_node_pages_writeback(struct f2fs_sb_info *sbi, nid_t ino)
- {
--	pgoff_t index = 0, end = ULONG_MAX;
-+	pgoff_t index = 0;
- 	struct pagevec pvec;
- 	int ret2, ret = 0;
-+	int nr_pages;
- 
- 	pagevec_init(&pvec, 0);
- 
--	while (index <= end) {
--		int i, nr_pages;
--		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
--				PAGECACHE_TAG_WRITEBACK,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
--		if (nr_pages == 0)
--			break;
-+	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
-+				PAGECACHE_TAG_WRITEBACK, PAGEVEC_SIZE)) {
-+		int i;
- 
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
- 
--			/* until radix tree lookup accepts end_index */
--			if (unlikely(page->index > end))
--				continue;
--
- 			if (ino && ino_of_node(page) == ino) {
- 				f2fs_wait_on_page_writeback(page, NODE, true);
- 				if (TestClearPageError(page))
+ 	return ret;
+ }
+ EXPORT_SYMBOL(find_get_entries_tag);
 -- 
 2.12.3
 
