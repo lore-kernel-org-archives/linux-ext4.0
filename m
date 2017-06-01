@@ -1,9 +1,11 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 33/35] mm: Remove nr_entries argument from
-	pagevec_lookup_entries{, _range}()
-Date: Thu,  1 Jun 2017 11:32:43 +0200
-Message-ID: <20170601093245.29238-34-jack@suse.cz>
+Subject: [PATCH 19/35] f2fs: Simplify page iteration loops
+Date: Thu,  1 Jun 2017 11:32:29 +0200
+Message-ID: <20170601093245.29238-20-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
 	Jan Kara <jack@suse.cz>, "Darrick J . Wong" <darrick.wong@oracle.com>,
@@ -12,142 +14,206 @@ Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	David Sterba <dsterba@suse.com>, ceph-devel@vger.kernel.org,
 	Nadia Yvette Chambers <nyc@holomorphy.com>,
 	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Bob Peterson <rpeterso@redhat.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
 	Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
 	linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org
 To: <linux-mm@kvack.org>
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-All users pass PAGEVEC_SIZE as the number of entries now. Remove the
-argument.
+In several places we want to iterate over all tagged pages in a mapping.
+However the code was apparently copied from places that iterate only
+over a limited range and thus it checks for index <= end, optimizes the
+case where we are coming close to range end which is all pointless when
+end == ULONG_MAX. So just remove this dead code.
 
+CC: Jaegeuk Kim <jaegeuk@kernel.org>
+CC: linux-f2fs-devel@lists.sourceforge.net
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/pagevec.h | 7 +++----
- mm/shmem.c              | 4 ++--
- mm/swap.c               | 6 ++----
- mm/truncate.c           | 8 ++++----
- 4 files changed, 11 insertions(+), 14 deletions(-)
+ fs/f2fs/checkpoint.c | 13 ++++-------
+ fs/f2fs/node.c       | 65 +++++++++++++++++++---------------------------------
+ 2 files changed, 28 insertions(+), 50 deletions(-)
 
-diff --git a/include/linux/pagevec.h b/include/linux/pagevec.h
-index 93308689d6a7..f765fc5eca31 100644
---- a/include/linux/pagevec.h
-+++ b/include/linux/pagevec.h
-@@ -25,14 +25,13 @@ void __pagevec_lru_add(struct pagevec *pvec);
- unsigned pagevec_lookup_entries_range(struct pagevec *pvec,
- 				struct address_space *mapping,
- 				pgoff_t *start, pgoff_t end,
--				unsigned nr_entries, pgoff_t *indices);
-+				pgoff_t *indices);
- static inline unsigned pagevec_lookup_entries(struct pagevec *pvec,
- 				struct address_space *mapping,
--				pgoff_t *start, unsigned nr_entries,
--				pgoff_t *indices)
-+				pgoff_t *start, pgoff_t *indices)
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index ea9c317b5916..6da86eac758a 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -296,9 +296,10 @@ long sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
+ 						long nr_to_write)
  {
- 	return pagevec_lookup_entries_range(pvec, mapping, start, (pgoff_t)-1,
--					    nr_entries, indices);
-+					    indices);
- }
- void pagevec_remove_exceptionals(struct pagevec *pvec);
- unsigned pagevec_lookup_range(struct pagevec *pvec,
-diff --git a/mm/shmem.c b/mm/shmem.c
-index e5ea044aae24..dd8144230ecf 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -769,7 +769,7 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 	index = start;
- 	while (index < end) {
- 		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
--				end - 1, PAGEVEC_SIZE, indices))
-+				end - 1, indices))
- 			break;
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
-@@ -857,7 +857,7 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 		cond_resched();
+ 	struct address_space *mapping = META_MAPPING(sbi);
+-	pgoff_t index = 0, end = ULONG_MAX, prev = ULONG_MAX;
++	pgoff_t index = 0, prev = ULONG_MAX;
+ 	struct pagevec pvec;
+ 	long nwritten = 0;
++	int nr_pages;
+ 	struct writeback_control wbc = {
+ 		.for_reclaim = 0,
+ 	};
+@@ -308,13 +309,9 @@ long sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
  
- 		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
--				end - 1, PAGEVEC_SIZE, indices)) {
-+				end - 1, indices)) {
- 			/* If all gone or hole-punch or unfalloc, we're done */
- 			if (lookup_start == start || end != -1)
- 				break;
-diff --git a/mm/swap.c b/mm/swap.c
-index 88c7eb4e97db..1640bbb34e59 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -894,7 +894,6 @@ EXPORT_SYMBOL(__pagevec_lru_add);
-  * @mapping:	The address_space to search
-  * @start:	The starting entry index
-  * @end:	The final entry index (inclusive)
-- * @nr_entries:	The maximum number of entries
-  * @indices:	The cache indices corresponding to the entries in @pvec
-  *
-  * pagevec_lookup_entries() will search for and return a group of up
-@@ -911,10 +910,9 @@ EXPORT_SYMBOL(__pagevec_lru_add);
-  */
- unsigned pagevec_lookup_entries_range(struct pagevec *pvec,
- 				struct address_space *mapping,
--				pgoff_t *start, pgoff_t end, unsigned nr_pages,
--				pgoff_t *indices)
-+				pgoff_t *start, pgoff_t end, pgoff_t *indices)
+ 	blk_start_plug(&plug);
+ 
+-	while (index <= end) {
+-		int i, nr_pages;
+-		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
+-				PAGECACHE_TAG_DIRTY,
+-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+-		if (unlikely(nr_pages == 0))
+-			break;
++	while (nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
++		int i;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 4547c5c5cd98..dd53bcd9fc46 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1259,21 +1259,17 @@ void move_node_page(struct page *node_page, int gc_type)
+ 
+ static struct page *last_fsync_dnode(struct f2fs_sb_info *sbi, nid_t ino)
  {
--	pvec->nr = find_get_entries_range(mapping, start, end, nr_pages,
-+	pvec->nr = find_get_entries_range(mapping, start, end, PAGEVEC_SIZE,
- 					  pvec->pages, indices);
- 	return pagevec_count(pvec);
- }
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 31d5c5f3da30..d35531d83cb3 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -290,7 +290,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 	pagevec_init(&pvec, 0);
- 	index = start;
- 	while (index < end && pagevec_lookup_entries_range(&pvec, mapping,
--			&index, end - 1, PAGEVEC_SIZE, indices)) {
-+			&index, end - 1, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
- 
-@@ -354,7 +354,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 
- 		cond_resched();
- 		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
--					end - 1, PAGEVEC_SIZE, indices)) {
-+					end - 1, indices)) {
- 			/* If all gone from start onwards, we're done */
- 			if (lookup_start == start)
- 				break;
-@@ -476,7 +476,7 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
+-	pgoff_t index, end;
++	pgoff_t index;
+ 	struct pagevec pvec;
+ 	struct page *last_page = NULL;
++	int nr_pages;
  
  	pagevec_init(&pvec, 0);
- 	while (index <= end && pagevec_lookup_entries_range(&pvec, mapping,
--			&index, end, PAGEVEC_SIZE, indices)) {
-+			&index, end, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
+ 	index = 0;
+-	end = ULONG_MAX;
+-
+-	while (index <= end) {
+-		int i, nr_pages;
+-		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
+-				PAGECACHE_TAG_DIRTY,
+-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+-		if (nr_pages == 0)
+-			break;
++
++	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
++				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
++		int i;
  
-@@ -601,7 +601,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -1403,13 +1399,14 @@ static int f2fs_write_node_page(struct page *page,
+ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
+ 			struct writeback_control *wbc, bool atomic)
+ {
+-	pgoff_t index, end;
++	pgoff_t index;
+ 	pgoff_t last_idx = ULONG_MAX;
+ 	struct pagevec pvec;
+ 	int ret = 0;
+ 	struct page *last_page = NULL;
+ 	bool marked = false;
+ 	nid_t ino = inode->i_ino;
++	int nr_pages;
+ 
+ 	if (atomic) {
+ 		last_page = last_fsync_dnode(sbi, ino);
+@@ -1419,15 +1416,10 @@ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
+ retry:
  	pagevec_init(&pvec, 0);
- 	index = start;
- 	while (index <= end && pagevec_lookup_entries_range(&pvec, mapping,
--			&index, end, PAGEVEC_SIZE, indices)) {
-+			&index, end, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
+ 	index = 0;
+-	end = ULONG_MAX;
+-
+-	while (index <= end) {
+-		int i, nr_pages;
+-		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
+-				PAGECACHE_TAG_DIRTY,
+-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+-		if (nr_pages == 0)
+-			break;
++
++	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
++				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
++		int i;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -1525,25 +1517,21 @@ int fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
+ 
+ int sync_node_pages(struct f2fs_sb_info *sbi, struct writeback_control *wbc)
+ {
+-	pgoff_t index, end;
++	pgoff_t index;
+ 	struct pagevec pvec;
+ 	int step = 0;
+ 	int nwritten = 0;
+ 	int ret = 0;
++	int nr_pages;
+ 
+ 	pagevec_init(&pvec, 0);
+ 
+ next_step:
+ 	index = 0;
+-	end = ULONG_MAX;
+-
+-	while (index <= end) {
+-		int i, nr_pages;
+-		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
+-				PAGECACHE_TAG_DIRTY,
+-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+-		if (nr_pages == 0)
+-			break;
++
++	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
++				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE)) {
++		int i;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+@@ -1631,27 +1619,20 @@ int sync_node_pages(struct f2fs_sb_info *sbi, struct writeback_control *wbc)
+ 
+ int wait_on_node_pages_writeback(struct f2fs_sb_info *sbi, nid_t ino)
+ {
+-	pgoff_t index = 0, end = ULONG_MAX;
++	pgoff_t index = 0;
+ 	struct pagevec pvec;
+ 	int ret2, ret = 0;
++	int nr_pages;
+ 
+ 	pagevec_init(&pvec, 0);
+ 
+-	while (index <= end) {
+-		int i, nr_pages;
+-		nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
+-				PAGECACHE_TAG_WRITEBACK,
+-				min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
+-		if (nr_pages == 0)
+-			break;
++	while (nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
++				PAGECACHE_TAG_WRITEBACK, PAGEVEC_SIZE)) {
++		int i;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
  			struct page *page = pvec.pages[i];
  
+-			/* until radix tree lookup accepts end_index */
+-			if (unlikely(page->index > end))
+-				continue;
+-
+ 			if (ino && ino_of_node(page) == ino) {
+ 				f2fs_wait_on_page_writeback(page, NODE, true);
+ 				if (TestClearPageError(page))
 -- 
 2.12.3
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
