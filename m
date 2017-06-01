@@ -1,110 +1,193 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 31/35] shmem: Convert to
-	pagevec_lookup_entries_range()
-Date: Thu,  1 Jun 2017 11:32:41 +0200
-Message-ID: <20170601093245.29238-32-jack@suse.cz>
+Subject: [PATCH 30/35] mm: Implement find_get_entries_range()
+Date: Thu,  1 Jun 2017 11:32:40 +0200
+Message-ID: <20170601093245.29238-31-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
-Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
-	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
-	Jan Kara <jack@suse.cz>, "Darrick J . Wong" <darrick.wong@oracle.com>,
-	Hugh Dickins <hughd@google.com>, linux-f2fs-devel@lists.sourceforge.net,
-	David Howells <dhowells@redhat.com>,
-	David Sterba <dsterba@suse.com>, ceph-devel@vger.kernel.org,
-	Nadia Yvette Chambers <nyc@holomorphy.com>,
-	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
-	linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org
+Cc: Hugh Dickins <hughd@google.com>,
+        David Howells <dhowells@redhat.com>,
+        linux-afs@lists.infradead.org,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        linux-nilfs@vger.kernel.org, Bob Peterson <rpeterso@redhat.com>,
+        cluster-devel@redhat.com, Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu,
+        linux-ext4@vger.kernel.org, Ilya Dryomov <idryomov@gmail.com>,
+        "Yan, Zheng" <zyan@redhat.com>, ceph-devel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org,
+        Nadia Yvette Chambers <nyc@holomorphy.com>,
+        Jan Kara <jack@suse.cz>
 To: <linux-mm@kvack.org>
-Return-path: <cluster-devel-bounces@redhat.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Convert radix tree scanners to use pagevec_lookup_entries_range() and
-find_get_entries_range() since they all want only entries from given
-range.
+Implement a variant of find_get_entries() that stops iterating at
+given index. Some callers want this, so let's provide the interface.
+Also it makes the interface consistent with find_get_pages().
 
-CC: Hugh Dickins <hughd@google.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- mm/shmem.c | 23 +++++++----------------
- 1 file changed, 7 insertions(+), 16 deletions(-)
+ include/linux/pagemap.h | 13 ++++++++++---
+ include/linux/pagevec.h | 12 ++++++++++--
+ mm/filemap.c            | 32 ++++++++++++++++++++++++--------
+ mm/swap.c               | 11 ++++++-----
+ 4 files changed, 50 insertions(+), 18 deletions(-)
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index f9c4afbdd70c..e5ea044aae24 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -768,16 +768,12 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 	pagevec_init(&pvec, 0);
- 	index = start;
- 	while (index < end) {
--		if (!pagevec_lookup_entries(&pvec, mapping, &index,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE),
--				indices))
-+		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
-+				end - 1, PAGEVEC_SIZE, indices))
- 			break;
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 283d191c18be..df128a56f44b 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -333,9 +333,16 @@ static inline struct page *grab_cache_page_nowait(struct address_space *mapping,
  
--			if (indices[i] >= end)
--				break;
--
- 			if (radix_tree_exceptional_entry(page)) {
- 				if (unfalloc)
- 					continue;
-@@ -860,9 +856,8 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
+ struct page *find_get_entry(struct address_space *mapping, pgoff_t offset);
+ struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset);
+-unsigned find_get_entries(struct address_space *mapping, pgoff_t *start,
+-			  unsigned int nr_entries, struct page **entries,
+-			  pgoff_t *indices);
++unsigned find_get_entries_range(struct address_space *mapping, pgoff_t *start,
++			pgoff_t end, unsigned int nr_entries,
++			struct page **entries, pgoff_t *indices);
++static inline unsigned find_get_entries(struct address_space *mapping,
++			pgoff_t *start, unsigned int nr_entries,
++			struct page **entries, pgoff_t *indices)
++{
++	return find_get_entries_range(mapping, start, (pgoff_t)-1, nr_entries,
++				      entries, indices);
++}
+ unsigned find_get_pages_range(struct address_space *mapping, pgoff_t *start,
+ 			pgoff_t end, unsigned int nr_pages,
+ 			struct page **pages);
+diff --git a/include/linux/pagevec.h b/include/linux/pagevec.h
+index 3798c142338d..93308689d6a7 100644
+--- a/include/linux/pagevec.h
++++ b/include/linux/pagevec.h
+@@ -22,10 +22,18 @@ struct pagevec {
  
- 		cond_resched();
+ void __pagevec_release(struct pagevec *pvec);
+ void __pagevec_lru_add(struct pagevec *pvec);
+-unsigned pagevec_lookup_entries(struct pagevec *pvec,
++unsigned pagevec_lookup_entries_range(struct pagevec *pvec,
++				struct address_space *mapping,
++				pgoff_t *start, pgoff_t end,
++				unsigned nr_entries, pgoff_t *indices);
++static inline unsigned pagevec_lookup_entries(struct pagevec *pvec,
+ 				struct address_space *mapping,
+ 				pgoff_t *start, unsigned nr_entries,
+-				pgoff_t *indices);
++				pgoff_t *indices)
++{
++	return pagevec_lookup_entries_range(pvec, mapping, start, (pgoff_t)-1,
++					    nr_entries, indices);
++}
+ void pagevec_remove_exceptionals(struct pagevec *pvec);
+ unsigned pagevec_lookup_range(struct pagevec *pvec,
+ 			      struct address_space *mapping,
+diff --git a/mm/filemap.c b/mm/filemap.c
+index de12b7355821..e55100459710 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1354,9 +1354,10 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t offset,
+ EXPORT_SYMBOL(pagecache_get_page);
  
--		if (!pagevec_lookup_entries(&pvec, mapping, &index,
--				min(end - index, (pgoff_t)PAGEVEC_SIZE),
--				indices)) {
-+		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
-+				end - 1, PAGEVEC_SIZE, indices)) {
- 			/* If all gone or hole-punch or unfalloc, we're done */
- 			if (lookup_start == start || end != -1)
- 				break;
-@@ -873,9 +868,6 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
+ /**
+- * find_get_entries - gang pagecache lookup
++ * find_get_entries_range - gang pagecache lookup
+  * @mapping:	The address_space to search
+  * @start:	The starting page cache index
++ * @end:	The final page cache index (inclusive)
+  * @nr_entries:	The maximum number of entries
+  * @entries:	Where the resulting entries are placed
+  * @indices:	The cache indices corresponding to the entries in @entries
+@@ -1376,9 +1377,9 @@ EXPORT_SYMBOL(pagecache_get_page);
+  * find_get_entries() returns the number of pages and shadow entries which were
+  * found. It also updates @start to index the next page for the traversal.
+  */
+-unsigned find_get_entries(struct address_space *mapping,
+-			  pgoff_t *start, unsigned int nr_entries,
+-			  struct page **entries, pgoff_t *indices)
++unsigned find_get_entries_range(struct address_space *mapping,
++			pgoff_t *start, pgoff_t end, unsigned int nr_entries,
++			struct page **entries, pgoff_t *indices)
+ {
+ 	void **slot;
+ 	unsigned int ret = 0;
+@@ -1390,6 +1391,9 @@ unsigned find_get_entries(struct address_space *mapping,
+ 	rcu_read_lock();
+ 	radix_tree_for_each_slot(slot, &mapping->page_tree, &iter, *start) {
+ 		struct page *head, *page;
++
++		if (iter.index > end)
++			break;
+ repeat:
+ 		page = radix_tree_deref_slot(slot);
+ 		if (unlikely(!page))
+@@ -1425,13 +1429,25 @@ unsigned find_get_entries(struct address_space *mapping,
+ export:
+ 		indices[ret] = iter.index;
+ 		entries[ret] = page;
+-		if (++ret == nr_entries)
+-			break;
++		if (++ret == nr_entries) {
++			*start = indices[ret - 1] + 1;
++			goto out;
++		}
+ 	}
++
++	/*
++	 * We come here when there is no page beyond @end. We take care to not
++	 * overflow the index @start as it confuses some of the callers. This
++	 * breaks the iteration when there is page at index -1 but that is
++	 * already broken anyway.
++	 */
++	if (end == (pgoff_t)-1)
++		*start = (pgoff_t)-1;
++	else
++		*start = end + 1;
++out:
+ 	rcu_read_unlock();
  
--			if (indices[i] >= end)
--				break;
--
- 			if (radix_tree_exceptional_entry(page)) {
- 				if (unfalloc)
- 					continue;
-@@ -2494,9 +2486,9 @@ static pgoff_t shmem_seek_hole_data(struct address_space *mapping,
+-	if (ret)
+-		*start = indices[ret - 1] + 1;
+ 	return ret;
+ }
  
- 	pagevec_init(&pvec, 0);
- 	pvec.nr = 1;		/* start small: we may be there already */
--	while (!done) {
-+	while (!done && index < end) {
- 		last = index;
--		pvec.nr = find_get_entries(mapping, &index,
-+		pvec.nr = find_get_entries_range(mapping, &index, end - 1,
- 					pvec.nr, pvec.pages, indices);
- 		if (!pvec.nr) {
- 			if (whence == SEEK_DATA)
-@@ -2516,8 +2508,7 @@ static pgoff_t shmem_seek_hole_data(struct address_space *mapping,
- 				if (!PageUptodate(page))
- 					page = NULL;
- 			}
--			if (last >= end ||
--			    (page && whence == SEEK_DATA) ||
-+			if ((page && whence == SEEK_DATA) ||
- 			    (!page && whence == SEEK_HOLE)) {
- 				done = true;
- 				break;
+diff --git a/mm/swap.c b/mm/swap.c
+index 6ba3dab6e905..88c7eb4e97db 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -889,10 +889,11 @@ void __pagevec_lru_add(struct pagevec *pvec)
+ EXPORT_SYMBOL(__pagevec_lru_add);
+ 
+ /**
+- * pagevec_lookup_entries - gang pagecache lookup
++ * pagevec_lookup_entries_range - gang pagecache lookup
+  * @pvec:	Where the resulting entries are placed
+  * @mapping:	The address_space to search
+  * @start:	The starting entry index
++ * @end:	The final entry index (inclusive)
+  * @nr_entries:	The maximum number of entries
+  * @indices:	The cache indices corresponding to the entries in @pvec
+  *
+@@ -908,13 +909,13 @@ EXPORT_SYMBOL(__pagevec_lru_add);
+  * pagevec_lookup_entries() returns the number of entries which were
+  * found. It also updates @start to index the next page for the traversal.
+  */
+-unsigned pagevec_lookup_entries(struct pagevec *pvec,
++unsigned pagevec_lookup_entries_range(struct pagevec *pvec,
+ 				struct address_space *mapping,
+-				pgoff_t *start, unsigned nr_pages,
++				pgoff_t *start, pgoff_t end, unsigned nr_pages,
+ 				pgoff_t *indices)
+ {
+-	pvec->nr = find_get_entries(mapping, start, nr_pages,
+-				    pvec->pages, indices);
++	pvec->nr = find_get_entries_range(mapping, start, end, nr_pages,
++					  pvec->pages, indices);
+ 	return pagevec_count(pvec);
+ }
+ 
 -- 
 2.12.3
+
