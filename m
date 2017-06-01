@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 24/35] mm: Use pagevec_lookup_range_tag() in
-	write_cache_pages()
-Date: Thu,  1 Jun 2017 11:32:34 +0200
-Message-ID: <20170601093245.29238-25-jack@suse.cz>
+Subject: [PATCH 22/35] nilfs2: Use pagevec_lookup_range_tag()
+Date: Thu,  1 Jun 2017 11:32:32 +0200
+Message-ID: <20170601093245.29238-23-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -29,51 +28,41 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Use pagevec_lookup_range_tag() in write_cache_pages() as it is
-interested only in pages from given range. Remove unnecessary code
-resulting from this.
+We want only pages from given range in
+nilfs_lookup_dirty_data_buffers(). Use pagevec_lookup_range_tag()
+instead of pagevec_lookup_tag() and remove unnecessary code.
 
+CC: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+CC: linux-nilfs@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- mm/page-writeback.c | 20 ++------------------
- 1 file changed, 2 insertions(+), 18 deletions(-)
+ fs/nilfs2/segment.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 143c1c25d680..c77c387465ec 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2194,30 +2194,14 @@ int write_cache_pages(struct address_space *mapping,
- 	while (!done && (index <= end)) {
- 		int i;
+diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
+index febed1217b3f..fd9eeca5f784 100644
+--- a/fs/nilfs2/segment.c
++++ b/fs/nilfs2/segment.c
+@@ -711,18 +711,14 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
+ 	pagevec_init(&pvec, 0);
+  repeat:
+ 	if (unlikely(index > last) ||
+-	    !pagevec_lookup_tag(&pvec, mapping, &index, PAGECACHE_TAG_DIRTY,
+-				min_t(pgoff_t, last - index,
+-				      PAGEVEC_SIZE - 1) + 1))
++	    !pagevec_lookup_range_tag(&pvec, mapping, &index, last,
++				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE))
+ 		return ndirties;
  
--		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
--			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
-+		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
-+				tag, PAGEVEC_SIZE);
- 		if (nr_pages == 0)
- 			break;
+ 	for (i = 0; i < pagevec_count(&pvec); i++) {
+ 		struct buffer_head *bh, *head;
+ 		struct page *page = pvec.pages[i];
  
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
- 
--			/*
--			 * At this point, the page may be truncated or
--			 * invalidated (changing page->mapping to NULL), or
--			 * even swizzled back from swapper_space to tmpfs file
--			 * mapping. However, page->index will not change
--			 * because we have a reference on the page.
--			 */
--			if (page->index > end) {
--				/*
--				 * can't be range_cyclic (1st pass) because
--				 * end == -1 in that case.
--				 */
--				done = 1;
--				break;
--			}
+-		if (unlikely(page->index > last))
+-			break;
 -
- 			done_index = page->index;
- 
- 			lock_page(page);
+ 		lock_page(page);
+ 		if (!page_has_buffers(page))
+ 			create_empty_buffers(page, i_blocksize(inode), 0);
 -- 
 2.12.3
