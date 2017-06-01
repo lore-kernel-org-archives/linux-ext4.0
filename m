@@ -1,12 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/35] hugetlbfs: Use pagevec_lookup_range() in
- remove_inode_hugepages()
-Date: Thu,  1 Jun 2017 11:32:21 +0200
-Message-ID: <20170601093245.29238-12-jack@suse.cz>
+Subject: [PATCH 12/35] xfs: Use pagevec_lookup_range() in
+	xfs_find_get_desired_pgoff()
+Date: Thu,  1 Jun 2017 11:32:22 +0200
+Message-ID: <20170601093245.29238-13-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
 	Jan Kara <jack@suse.cz>, "Darrick J . Wong" <darrick.wong@oracle.com>,
@@ -15,80 +12,79 @@ Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	David Sterba <dsterba@suse.com>, ceph-devel@vger.kernel.org,
 	Nadia Yvette Chambers <nyc@holomorphy.com>,
 	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	Bob Peterson <rpeterso@redhat.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
 	Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
 	linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org
 To: <linux-mm@kvack.org>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <cluster-devel-bounces@redhat.com>
 In-Reply-To: <20170601093245.29238-1-jack@suse.cz>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-We want only pages from given range in remove_inode_hugepages(). Use
-pagevec_lookup_range() instead of pagevec_lookup().
+We want only pages from given range in xfs_find_get_desired_pgoff(). Use
+pagevec_lookup_range() instead of pagevec_lookup() and remove
+unnecessary code. Note that the check for getting less pages than
+desired can be removed because index gets updated by
+pagevec_lookup_range().
 
-CC: Nadia Yvette Chambers <nyc@holomorphy.com>
+CC: Darrick J. Wong <darrick.wong@oracle.com>
+CC: linux-xfs@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/hugetlbfs/inode.c | 18 ++----------------
- 1 file changed, 2 insertions(+), 16 deletions(-)
+ fs/xfs/xfs_file.c | 16 ++--------------
+ 1 file changed, 2 insertions(+), 14 deletions(-)
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 372fc8aac38e..99885f9b9d56 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -403,7 +403,6 @@ static void remove_inode_hugepages(struct inode *inode, loff_t lstart,
- 	struct pagevec pvec;
- 	pgoff_t next, index;
- 	int i, freed = 0;
--	long lookup_nr = PAGEVEC_SIZE;
- 	bool truncate_op = (lend == LLONG_MAX);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 487342078fc7..f9343dac7ff9 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1045,13 +1045,11 @@ xfs_find_get_desired_pgoff(
+ 	endoff = XFS_FSB_TO_B(mp, map->br_startoff + map->br_blockcount);
+ 	end = (endoff - 1) >> PAGE_SHIFT;
+ 	do {
+-		int		want;
+ 		unsigned	nr_pages;
+ 		unsigned int	i;
  
- 	memset(&pseudo_vma, 0, sizeof(struct vm_area_struct));
-@@ -412,30 +411,17 @@ static void remove_inode_hugepages(struct inode *inode, loff_t lstart,
- 	next = start;
- 	while (next < end) {
- 		/*
--		 * Don't grab more pages than the number left in the range.
--		 */
--		if (end - next < lookup_nr)
--			lookup_nr = end - next;
--
--		/*
- 		 * When no more pages are found, we are done.
- 		 */
--		if (!pagevec_lookup(&pvec, mapping, &next, lookup_nr))
-+		if (!pagevec_lookup_range(&pvec, mapping, &next, end - 1,
-+					  PAGEVEC_SIZE))
+-		want = min_t(pgoff_t, end - index, PAGEVEC_SIZE - 1) + 1;
+-		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, &index,
+-					  want);
++		nr_pages = pagevec_lookup_range(&pvec, inode->i_mapping,
++						&index, end, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
  			break;
  
- 		for (i = 0; i < pagevec_count(&pvec); ++i) {
- 			struct page *page = pvec.pages[i];
- 			u32 hash;
+@@ -1075,9 +1073,6 @@ xfs_find_get_desired_pgoff(
+ 				*offset = lastoff;
+ 				goto out;
+ 			}
+-			/* Searching done if the page index is out of range. */
+-			if (page->index > end)
+-				goto out;
  
--			/*
--			 * The page (index) could be beyond end.  This is
--			 * only possible in the punch hole case as end is
--			 * max page offset in the truncate case.
--			 */
- 			index = page->index;
--			if (index >= end)
--				break;
+ 			lock_page(page);
+ 			/*
+@@ -1117,13 +1112,6 @@ xfs_find_get_desired_pgoff(
+ 			unlock_page(page);
+ 		}
+ 
+-		/*
+-		 * The number of returned pages less than our desired, search
+-		 * done.
+-		 */
+-		if (nr_pages < want)
+-			break;
 -
- 			hash = hugetlb_fault_mutex_hash(h, current->mm,
- 							&pseudo_vma,
- 							mapping, index, 0);
+ 		pagevec_release(&pvec);
+ 	} while (index <= end);
+ 
 -- 
 2.12.3
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
