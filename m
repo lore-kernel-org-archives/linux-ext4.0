@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 22/35] nilfs2: Use pagevec_lookup_range_tag()
-Date: Thu,  1 Jun 2017 11:32:32 +0200
-Message-ID: <20170601093245.29238-23-jack@suse.cz>
+Subject: [PATCH 26/35] afs: Use find_get_pages_range_tag()
+Date: Thu,  1 Jun 2017 11:32:36 +0200
+Message-ID: <20170601093245.29238-27-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -28,41 +28,43 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-We want only pages from given range in
-nilfs_lookup_dirty_data_buffers(). Use pagevec_lookup_range_tag()
-instead of pagevec_lookup_tag() and remove unnecessary code.
+Use find_get_pages_range_tag() in afs_writepages_region() as we are
+interested only in pages from given range. Remove unnecessary code after
+this conversion.
 
-CC: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
-CC: linux-nilfs@vger.kernel.org
+CC: David Howells <dhowells@redhat.com>
+CC: linux-afs@lists.infradead.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/nilfs2/segment.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/afs/write.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
-index febed1217b3f..fd9eeca5f784 100644
---- a/fs/nilfs2/segment.c
-+++ b/fs/nilfs2/segment.c
-@@ -711,18 +711,14 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
- 	pagevec_init(&pvec, 0);
-  repeat:
- 	if (unlikely(index > last) ||
--	    !pagevec_lookup_tag(&pvec, mapping, &index, PAGECACHE_TAG_DIRTY,
--				min_t(pgoff_t, last - index,
--				      PAGEVEC_SIZE - 1) + 1))
-+	    !pagevec_lookup_range_tag(&pvec, mapping, &index, last,
-+				PAGECACHE_TAG_DIRTY, PAGEVEC_SIZE))
- 		return ndirties;
+diff --git a/fs/afs/write.c b/fs/afs/write.c
+index 2d2fccd5044b..630f2a42fae7 100644
+--- a/fs/afs/write.c
++++ b/fs/afs/write.c
+@@ -497,20 +497,13 @@ static int afs_writepages_region(struct address_space *mapping,
+ 	_enter(",,%lx,%lx,", index, end);
  
- 	for (i = 0; i < pagevec_count(&pvec); i++) {
- 		struct buffer_head *bh, *head;
- 		struct page *page = pvec.pages[i];
+ 	do {
+-		n = find_get_pages_tag(mapping, &index, PAGECACHE_TAG_DIRTY,
+-				       1, &page);
++		n = find_get_pages_range_tag(mapping, &index, end,
++					PAGECACHE_TAG_DIRTY, 1, &page);
+ 		if (!n)
+ 			break;
  
--		if (unlikely(page->index > last))
--			break;
+ 		_debug("wback %lx", page->index);
+ 
+-		if (page->index > end) {
+-			*_next = index;
+-			put_page(page);
+-			_leave(" = 0 [%lx]", *_next);
+-			return 0;
+-		}
 -
- 		lock_page(page);
- 		if (!page_has_buffers(page))
- 			create_empty_buffers(page, i_blocksize(inode), 0);
+ 		/* at this point we hold neither mapping->tree_lock nor lock on
+ 		 * the page itself: the page may be truncated or invalidated
+ 		 * (changing page->mapping to NULL), or even swizzled back from
 -- 
 2.12.3
