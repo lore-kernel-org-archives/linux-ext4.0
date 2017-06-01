@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 28/35] shmem: Use pagevec_lookup_entries()
-Date: Thu,  1 Jun 2017 11:32:38 +0200
-Message-ID: <20170601093245.29238-29-jack@suse.cz>
+Subject: [PATCH 23/35] mm: Use pagevec_lookup_range_tag() in
+	__filemap_fdatawait_range()
+Date: Thu,  1 Jun 2017 11:32:33 +0200
+Message-ID: <20170601093245.29238-24-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -28,47 +29,39 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Currently we use find_get_entries() shmem which just opencode what
-pagevec_lookup_entries() does. Use pagevec_lookup_entries() instead
-except for one case which plays tricks with number of pages looked up
-and it won't fit in how we will make pagevec_lookup_entries() work.
+Use pagevec_lookup_range_tag() in __filemap_fdatawait_range() as it is
+interested only in pages from given range. Remove unnecessary code
+resulting from this.
 
-CC: Hugh Dickins <hughd@google.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- mm/shmem.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ mm/filemap.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index a614a9cfb58c..8a6fddec27a1 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -768,10 +768,9 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 	pagevec_init(&pvec, 0);
- 	index = start;
- 	while (index < end) {
--		pvec.nr = find_get_entries(mapping, index,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE),
--			pvec.pages, indices);
--		if (!pvec.nr)
-+		if (!pagevec_lookup_entries(&pvec, mapping, index,
-+				min(end - index, (pgoff_t)PAGEVEC_SIZE),
-+				indices))
- 			break;
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
-@@ -859,10 +858,9 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, loff_t lend,
- 	while (index < end) {
- 		cond_resched();
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 56af68f6a375..8039b6bb9c27 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -390,18 +390,13 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
  
--		pvec.nr = find_get_entries(mapping, index,
-+		if (!pagevec_lookup_entries(&pvec, mapping, index,
- 				min(end - index, (pgoff_t)PAGEVEC_SIZE),
--				pvec.pages, indices);
--		if (!pvec.nr) {
-+				indices)) {
- 			/* If all gone or hole-punch or unfalloc, we're done */
- 			if (index == start || end != -1)
- 				break;
+ 	pagevec_init(&pvec, 0);
+ 	while ((index <= end) &&
+-			(nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
+-			PAGECACHE_TAG_WRITEBACK,
+-			min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1)) != 0) {
++			(nr_pages = pagevec_lookup_range_tag(&pvec, mapping,
++			&index, end, PAGECACHE_TAG_WRITEBACK, PAGEVEC_SIZE))) {
+ 		unsigned i;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+ 
+-			/* until radix tree lookup accepts end_index */
+-			if (page->index > end)
+-				continue;
+-
+ 			wait_on_page_writeback(page);
+ 			if (TestClearPageError(page))
+ 				ret = -EIO;
 -- 
 2.12.3
