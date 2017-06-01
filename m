@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/35] mm: Implement find_get_pages_range()
-Date: Thu,  1 Jun 2017 11:32:17 +0200
-Message-ID: <20170601093245.29238-8-jack@suse.cz>
+Subject: [PATCH 20/35] f2fs: Use find_get_pages_tag() for
+	looking up single page
+Date: Thu,  1 Jun 2017 11:32:30 +0200
+Message-ID: <20170601093245.29238-21-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -28,198 +29,46 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Implement a variant of find_get_pages() that stops iterating at given
-index. This may be substantial performance gain if the mapping is
-sparse. See following commit for details. Furthermore lots of users of
-this function (through pagevec_lookup()) actually want a range lookup
-and all of them are currently open-coding this.
+__get_first_dirty_index() wants to lookup only the first dirty page
+after given index. There's no point in using pagevec_lookup_tag() for
+that. Just use find_get_pages_tag() directly.
 
-Also create corresponding pagevec_lookup_range() function.
-
+CC: Jaegeuk Kim <jaegeuk@kernel.org>
+CC: linux-f2fs-devel@lists.sourceforge.net
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/pagemap.h | 12 ++++++++++--
- include/linux/pagevec.h | 13 +++++++++++--
- mm/filemap.c            | 42 ++++++++++++++++++++++++++++++------------
- mm/swap.c               | 22 ++++++++++++++--------
- 4 files changed, 65 insertions(+), 24 deletions(-)
+ fs/f2fs/file.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 86de6f9c8607..2bb5e636a8c8 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -336,8 +336,16 @@ struct page *find_lock_entry(struct address_space *mapping, pgoff_t offset);
- unsigned find_get_entries(struct address_space *mapping, pgoff_t start,
- 			  unsigned int nr_entries, struct page **entries,
- 			  pgoff_t *indices);
--unsigned find_get_pages(struct address_space *mapping, pgoff_t *start,
--			unsigned int nr_pages, struct page **pages);
-+unsigned find_get_pages_range(struct address_space *mapping, pgoff_t *start,
-+			pgoff_t end, unsigned int nr_pages,
-+			struct page **pages);
-+static inline unsigned find_get_pages(struct address_space *mapping,
-+			pgoff_t *start, unsigned int nr_pages,
-+			struct page **pages)
-+{
-+	return find_get_pages_range(mapping, start, (pgoff_t)-1, nr_pages,
-+				    pages);
-+}
- unsigned find_get_pages_contig(struct address_space *mapping, pgoff_t start,
- 			       unsigned int nr_pages, struct page **pages);
- unsigned find_get_pages_tag(struct address_space *mapping, pgoff_t *index,
-diff --git a/include/linux/pagevec.h b/include/linux/pagevec.h
-index c395a5bb58b2..7df056910437 100644
---- a/include/linux/pagevec.h
-+++ b/include/linux/pagevec.h
-@@ -27,8 +27,17 @@ unsigned pagevec_lookup_entries(struct pagevec *pvec,
- 				pgoff_t start, unsigned nr_entries,
- 				pgoff_t *indices);
- void pagevec_remove_exceptionals(struct pagevec *pvec);
--unsigned pagevec_lookup(struct pagevec *pvec, struct address_space *mapping,
--		pgoff_t *start, unsigned nr_pages);
-+unsigned pagevec_lookup_range(struct pagevec *pvec,
-+			      struct address_space *mapping,
-+			      pgoff_t *start, pgoff_t end, unsigned nr_pages);
-+static inline unsigned pagevec_lookup(struct pagevec *pvec,
-+				      struct address_space *mapping,
-+				      pgoff_t *start, unsigned nr_pages)
-+{
-+	return pagevec_lookup_range(pvec, mapping, start, (pgoff_t)-1,
-+				    nr_pages);
-+}
-+
- unsigned pagevec_lookup_tag(struct pagevec *pvec,
- 		struct address_space *mapping, pgoff_t *index, int tag,
- 		unsigned nr_pages);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 10d926a423e2..2693f87a7968 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1438,24 +1438,29 @@ unsigned find_get_entries(struct address_space *mapping,
- }
- 
- /**
-- * find_get_pages - gang pagecache lookup
-+ * find_get_pages_range - gang pagecache lookup
-  * @mapping:	The address_space to search
-  * @start:	The starting page index
-+ * @end:	The final page index (inclusive)
-  * @nr_pages:	The maximum number of pages
-  * @pages:	Where the resulting pages are placed
-  *
-- * find_get_pages() will search for and return a group of up to
-- * @nr_pages pages in the mapping.  The pages are placed at @pages.
-- * find_get_pages() takes a reference against the returned pages.
-+ * find_get_pages_range() will search for and return a group of up to @nr_pages
-+ * pages in the mapping starting at index @start and up to index @end
-+ * (inclusive).  The pages are placed at @pages.  find_get_pages_range() takes
-+ * a reference against the returned pages.
-  *
-  * The search returns a group of mapping-contiguous pages with ascending
-  * indexes.  There may be holes in the indices due to not-present pages.
-  * We also update @start to index the next page for the traversal.
-  *
-- * find_get_pages() returns the number of pages which were found.
-+ * find_get_pages_range() returns the number of pages which were found. If this
-+ * number is smaller than @nr_pages, the end of specified range has been
-+ * reached.
-  */
--unsigned find_get_pages(struct address_space *mapping, pgoff_t *start,
--			    unsigned int nr_pages, struct page **pages)
-+unsigned find_get_pages_range(struct address_space *mapping, pgoff_t *start,
-+			      pgoff_t end, unsigned int nr_pages,
-+			      struct page **pages)
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 61af721329fa..52df1ef66883 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -286,18 +286,19 @@ int f2fs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ static pgoff_t __get_first_dirty_index(struct address_space *mapping,
+ 						pgoff_t pgofs, int whence)
  {
- 	struct radix_tree_iter iter;
- 	void **slot;
-@@ -1467,6 +1472,9 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t *start,
- 	rcu_read_lock();
- 	radix_tree_for_each_slot(slot, &mapping->page_tree, &iter, *start) {
- 		struct page *head, *page;
-+
-+		if (iter.index > end)
-+			break;
- repeat:
- 		page = radix_tree_deref_slot(slot);
- 		if (unlikely(!page))
-@@ -1502,15 +1510,25 @@ unsigned find_get_pages(struct address_space *mapping, pgoff_t *start,
- 		}
+-	struct pagevec pvec;
++	struct page *page;
+ 	int nr_pages;
  
- 		pages[ret] = page;
--		if (++ret == nr_pages)
--			break;
-+		if (++ret == nr_pages) {
-+			*start = pages[ret - 1]->index + 1;
-+			goto out;
-+		}
- 	}
+ 	if (whence != SEEK_DATA)
+ 		return 0;
  
-+	/*
-+	 * We come here when there is no page beyond @end. We take care to not
-+	 * overflow the index @start as it confuses some of the callers. This
-+	 * breaks the iteration when there is page at index -1 but that is
-+	 * already broken anyway.
-+	 */
-+	if (end == (pgoff_t)-1)
-+		*start = (pgoff_t)-1;
-+	else
-+		*start = end + 1;
-+out:
- 	rcu_read_unlock();
- 
--	if (ret)
--		*start = pages[ret - 1]->index + 1;
--
- 	return ret;
+ 	/* find first dirty page index */
+-	pagevec_init(&pvec, 0);
+-	nr_pages = pagevec_lookup_tag(&pvec, mapping, &pgofs,
+-					PAGECACHE_TAG_DIRTY, 1);
+-	pgofs = nr_pages ? pvec.pages[0]->index : ULONG_MAX;
+-	pagevec_release(&pvec);
++	nr_pages = find_get_pages_tag(mapping, &pgofs, PAGECACHE_TAG_DIRTY,
++				      1, &page);
++	if (!nr_pages)
++		return ULONG_MAX;
++	pgofs = page->index;
++	put_page(page);
+ 	return pgofs;
  }
  
-diff --git a/mm/swap.c b/mm/swap.c
-index 368d627cf279..804c9867af96 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -940,29 +940,35 @@ void pagevec_remove_exceptionals(struct pagevec *pvec)
- }
- 
- /**
-- * pagevec_lookup - gang pagecache lookup
-+ * pagevec_lookup_range - gang pagecache lookup
-  * @pvec:	Where the resulting pages are placed
-  * @mapping:	The address_space to search
-  * @start:	The starting page index
-+ * @end:	The final page index
-  * @nr_pages:	The maximum number of pages
-  *
-- * pagevec_lookup() will search for and return a group of up to @nr_pages pages
-- * in the mapping.  The pages are placed in @pvec.  pagevec_lookup() takes a
-+ * pagevec_lookup_range() will search for and return a group of up to @nr_pages
-+ * pages in the mapping starting from index @start and upto index @end
-+ * (inclusive).  The pages are placed in @pvec.  pagevec_lookup() takes a
-  * reference against the pages in @pvec.
-  *
-  * The search returns a group of mapping-contiguous pages with ascending
-  * indexes.  There may be holes in the indices due to not-present pages. We
-  * also update @start to index the next page for the traversal.
-  *
-- * pagevec_lookup() returns the number of pages which were found.
-+ * pagevec_lookup_range() returns the number of pages which were found. If this
-+ * number is smaller than @nr_pages, the end of specified range has been
-+ * reached.
-  */
--unsigned pagevec_lookup(struct pagevec *pvec, struct address_space *mapping,
--		pgoff_t *start, unsigned nr_pages)
-+unsigned pagevec_lookup_range(struct pagevec *pvec,
-+		struct address_space *mapping, pgoff_t *start, pgoff_t end,
-+		unsigned nr_pages)
- {
--	pvec->nr = find_get_pages(mapping, start, nr_pages, pvec->pages);
-+	pvec->nr = find_get_pages_range(mapping, start, end, nr_pages,
-+					pvec->pages);
- 	return pagevec_count(pvec);
- }
--EXPORT_SYMBOL(pagevec_lookup);
-+EXPORT_SYMBOL(pagevec_lookup_range);
- 
- unsigned pagevec_lookup_tag(struct pagevec *pvec, struct address_space *mapping,
- 		pgoff_t *index, int tag, unsigned nr_pages)
 -- 
 2.12.3
