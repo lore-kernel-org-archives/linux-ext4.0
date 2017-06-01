@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 21/35] gfs2: Use pagevec_lookup_range_tag()
-Date: Thu,  1 Jun 2017 11:32:31 +0200
-Message-ID: <20170601093245.29238-22-jack@suse.cz>
+Subject: [PATCH 17/35] ext4: Use pagevec_lookup_range_tag()
+Date: Thu,  1 Jun 2017 11:32:27 +0200
+Message-ID: <20170601093245.29238-18-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -28,54 +28,48 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-We want only pages from given range in gfs2_write_cache_jdata(). Use
+We want only pages from given range in ext4_writepages(). Use
 pagevec_lookup_range_tag() instead of pagevec_lookup_tag() and remove
 unnecessary code.
 
-CC: Bob Peterson <rpeterso@redhat.com>
-CC: cluster-devel@redhat.com
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/gfs2/aops.c | 20 ++------------------
- 1 file changed, 2 insertions(+), 18 deletions(-)
+ fs/ext4/inode.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
-index ed7a2e252ad8..158ceb900ab5 100644
---- a/fs/gfs2/aops.c
-+++ b/fs/gfs2/aops.c
-@@ -268,22 +268,6 @@ static int gfs2_write_jdata_pagevec(struct address_space *mapping,
- 	for(i = 0; i < nr_pages; i++) {
- 		struct page *page = pvec->pages[i];
- 
--		/*
--		 * At this point, the page may be truncated or
--		 * invalidated (changing page->mapping to NULL), or
--		 * even swizzled back from swapper_space to tmpfs file
--		 * mapping. However, page->index will not change
--		 * because we have a reference on the page.
--		 */
--		if (page->index > end) {
--			/*
--			 * can't be range_cyclic (1st pass) because
--			 * end == -1 in that case.
--			 */
--			ret = 1;
--			break;
--		}
--
- 		*done_index = page->index;
- 
- 		lock_page(page);
-@@ -401,8 +385,8 @@ static int gfs2_write_cache_jdata(struct address_space *mapping,
- 		tag_pages_for_writeback(mapping, index, end);
- 	done_index = index;
- 	while (!done && (index <= end)) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ace4bb9073d8..050fba2d12c2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2555,8 +2555,8 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 	mpd->map.m_len = 0;
+ 	mpd->next_page = index;
+ 	while (index <= end) {
 -		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
 -			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
 +		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
 +				tag, PAGEVEC_SIZE);
  		if (nr_pages == 0)
- 			break;
+ 			goto out;
  
+@@ -2564,16 +2564,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			struct page *page = pvec.pages[i];
+ 
+ 			/*
+-			 * At this point, the page may be truncated or
+-			 * invalidated (changing page->mapping to NULL), or
+-			 * even swizzled back from swapper_space to tmpfs file
+-			 * mapping. However, page->index will not change
+-			 * because we have a reference on the page.
+-			 */
+-			if (page->index > end)
+-				goto out;
+-
+-			/*
+ 			 * Accumulated enough dirty pages? This doesn't apply
+ 			 * to WB_SYNC_ALL mode. For integrity sync we have to
+ 			 * keep going because someone may be concurrently
 -- 
 2.12.3
