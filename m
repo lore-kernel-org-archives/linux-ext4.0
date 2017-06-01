@@ -1,8 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 32/35] mm: Convert truncate code to
-	pagevec_lookup_entries_range()
-Date: Thu,  1 Jun 2017 11:32:42 +0200
-Message-ID: <20170601093245.29238-33-jack@suse.cz>
+Subject: [PATCH 24/35] mm: Use pagevec_lookup_range_tag() in
+	write_cache_pages()
+Date: Thu,  1 Jun 2017 11:32:34 +0200
+Message-ID: <20170601093245.29238-25-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -29,121 +29,51 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-All radix tree scanning code in truncate paths is interested only in
-pages from given range. Convert them to pagevec_lookup_entries_range().
+Use pagevec_lookup_range_tag() in write_cache_pages() as it is
+interested only in pages from given range. Remove unnecessary code
+resulting from this.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- mm/truncate.c | 52 +++++++++-------------------------------------------
- 1 file changed, 9 insertions(+), 43 deletions(-)
+ mm/page-writeback.c | 20 ++------------------
+ 1 file changed, 2 insertions(+), 18 deletions(-)
 
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 9efc82f18b74..31d5c5f3da30 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -289,16 +289,11 @@ void truncate_inode_pages_range(struct address_space *mapping,
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 143c1c25d680..c77c387465ec 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2194,30 +2194,14 @@ int write_cache_pages(struct address_space *mapping,
+ 	while (!done && (index <= end)) {
+ 		int i;
  
- 	pagevec_init(&pvec, 0);
- 	index = start;
--	while (index < end && pagevec_lookup_entries(&pvec, mapping, &index,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE),
--			indices)) {
-+	while (index < end && pagevec_lookup_entries_range(&pvec, mapping,
-+			&index, end - 1, PAGEVEC_SIZE, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
+-		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
+-			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
++		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
++				tag, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+ 			break;
+ 
+ 		for (i = 0; i < nr_pages; i++) {
  			struct page *page = pvec.pages[i];
  
--			/* We rely upon deletion not changing page->index */
--			if (indices[i] >= end)
--				break;
--
- 			if (radix_tree_exceptional_entry(page)) {
- 				truncate_exceptional_entry(mapping, indices[i],
- 							   page);
-@@ -352,20 +347,14 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			put_page(page);
- 		}
- 	}
--	/*
--	 * If the truncation happened within a single page no pages
--	 * will be released, just zeroed, so we can bail out now.
--	 */
--	if (start >= end)
--		goto out;
- 
- 	index = start;
--	for ( ; ; ) {
-+	while (index < end) {
- 		pgoff_t lookup_start = index;
- 
- 		cond_resched();
--		if (!pagevec_lookup_entries(&pvec, mapping, &index,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE), indices)) {
-+		if (!pagevec_lookup_entries_range(&pvec, mapping, &index,
-+					end - 1, PAGEVEC_SIZE, indices)) {
- 			/* If all gone from start onwards, we're done */
- 			if (lookup_start == start)
- 				break;
-@@ -373,22 +362,9 @@ void truncate_inode_pages_range(struct address_space *mapping,
- 			index = start;
- 			continue;
- 		}
--		if (lookup_start == start && indices[0] >= end) {
--			/* All gone out of hole to be punched, we're done */
--			pagevec_remove_exceptionals(&pvec);
--			pagevec_release(&pvec);
--			break;
--		}
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
- 
--			/* We rely upon deletion not changing page->index */
--			if (indices[i] >= end) {
--				/* Restart punch to make sure all gone */
--				index = start;
+-			/*
+-			 * At this point, the page may be truncated or
+-			 * invalidated (changing page->mapping to NULL), or
+-			 * even swizzled back from swapper_space to tmpfs file
+-			 * mapping. However, page->index will not change
+-			 * because we have a reference on the page.
+-			 */
+-			if (page->index > end) {
+-				/*
+-				 * can't be range_cyclic (1st pass) because
+-				 * end == -1 in that case.
+-				 */
+-				done = 1;
 -				break;
 -			}
 -
- 			if (radix_tree_exceptional_entry(page)) {
- 				truncate_exceptional_entry(mapping, indices[i],
- 							   page);
-@@ -499,16 +475,11 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
- 	int i;
+ 			done_index = page->index;
  
- 	pagevec_init(&pvec, 0);
--	while (index <= end && pagevec_lookup_entries(&pvec, mapping, &index,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1,
--			indices)) {
-+	while (index <= end && pagevec_lookup_entries_range(&pvec, mapping,
-+			&index, end, PAGEVEC_SIZE, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
- 
--			/* We rely upon deletion not changing page->index */
--			if (indices[i] > end)
--				break;
--
- 			if (radix_tree_exceptional_entry(page)) {
- 				invalidate_exceptional_entry(mapping,
- 							     indices[i], page);
-@@ -629,16 +600,11 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 
- 	pagevec_init(&pvec, 0);
- 	index = start;
--	while (index <= end && pagevec_lookup_entries(&pvec, mapping, &index,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE - 1) + 1,
--			indices)) {
-+	while (index <= end && pagevec_lookup_entries_range(&pvec, mapping,
-+			&index, end, PAGEVEC_SIZE, indices)) {
- 		for (i = 0; i < pagevec_count(&pvec); i++) {
- 			struct page *page = pvec.pages[i];
- 
--			/* We rely upon deletion not changing page->index */
--			if (indices[i] > end)
--				break;
--
- 			if (radix_tree_exceptional_entry(page)) {
- 				if (!invalidate_exceptional_entry2(mapping,
- 							indices[i], page))
+ 			lock_page(page);
 -- 
 2.12.3
