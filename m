@@ -1,7 +1,8 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 15/35] btrfs: Use pagevec_lookup_range_tag()
-Date: Thu,  1 Jun 2017 11:32:25 +0200
-Message-ID: <20170601093245.29238-16-jack@suse.cz>
+Subject: [PATCH 05/35] mm: Fix THP handling in
+	invalidate_mapping_pages()
+Date: Thu,  1 Jun 2017 11:32:15 +0200
+Message-ID: <20170601093245.29238-6-jack@suse.cz>
 References: <20170601093245.29238-1-jack@suse.cz>
 Cc: cluster-devel@redhat.com, linux-nilfs@vger.kernel.org, tytso@mit.edu,
 	linux-xfs@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
@@ -28,67 +29,45 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-We want only pages from given range in btree_write_cache_pages() and
-extent_write_cache_pages(). Use pagevec_lookup_range_tag() instead of
-pagevec_lookup_tag() and remove unnecessary code.
+The condition checking for THP straddling end of invalidated range is
+wrong - it checks 'index' against 'end' but 'index' has been already
+advanced to point to the end of THP and thus the condition can never be
+true. As a result THP straddling 'end' has been fully invalidated. Given
+the nature of invalidate_mapping_pages(), this could be only performance
+issue. In fact, we are lucky the condition is wrong because if it was
+ever true, we'd leave locked page behind.
 
-CC: linux-btrfs@vger.kernel.org
-CC: David Sterba <dsterba@suse.com>
+Fix the condition checking for THP straddling 'end' and also properly
+unlock the page. Also update the comment before the condition to explain
+why we decide not to invalidate the page as it was not clear to me and I
+had to ask Kirill.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/btrfs/extent_io.c | 19 ++++---------------
- 1 file changed, 4 insertions(+), 15 deletions(-)
+ mm/truncate.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index d8da3edf2ac3..6287eaba30ac 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -3837,8 +3837,8 @@ int btree_write_cache_pages(struct address_space *mapping,
- 	if (wbc->sync_mode == WB_SYNC_ALL)
- 		tag_pages_for_writeback(mapping, index, end);
- 	while (!done && !nr_to_write_done && (index <= end) &&
--	       (nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1))) {
-+	       (nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
-+			tag, PAGEVEC_SIZE))) {
- 		unsigned i;
- 
- 		scanned = 1;
-@@ -3848,11 +3848,6 @@ int btree_write_cache_pages(struct address_space *mapping,
- 			if (!PagePrivate(page))
- 				continue;
- 
--			if (!wbc->range_cyclic && page->index > end) {
--				done = 1;
--				break;
--			}
--
- 			spin_lock(&mapping->private_lock);
- 			if (!PagePrivate(page)) {
- 				spin_unlock(&mapping->private_lock);
-@@ -3984,8 +3979,8 @@ static int extent_write_cache_pages(struct address_space *mapping,
- 		tag_pages_for_writeback(mapping, index, end);
- 	done_index = index;
- 	while (!done && !nr_to_write_done && (index <= end) &&
--	       (nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
--			min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1))) {
-+	       (nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
-+			tag, PAGEVEC_SIZE))) {
- 		unsigned i;
- 
- 		scanned = 1;
-@@ -4010,12 +4005,6 @@ static int extent_write_cache_pages(struct address_space *mapping,
- 				continue;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 6479ed2afc53..2330223841fb 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -530,9 +530,15 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
+ 			} else if (PageTransHuge(page)) {
+ 				index += HPAGE_PMD_NR - 1;
+ 				i += HPAGE_PMD_NR - 1;
+-				/* 'end' is in the middle of THP */
+-				if (index ==  round_down(end, HPAGE_PMD_NR))
++				/*
++				 * 'end' is in the middle of THP. Don't
++				 * invalidate the page as the part outside of
++				 * 'end' could be still useful.
++				 */
++				if (index > end) {
++					unlock_page(page);
+ 					continue;
++				}
  			}
  
--			if (!wbc->range_cyclic && page->index > end) {
--				done = 1;
--				unlock_page(page);
--				continue;
--			}
--
- 			if (wbc->sync_mode != WB_SYNC_NONE) {
- 				if (PageWriteback(page))
- 					flush_fn(data);
+ 			ret = invalidate_inode_page(page);
 -- 
 2.12.3
