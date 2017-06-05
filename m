@@ -1,78 +1,43 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: [PATCH 01/10] fs: Separate out kiocb flags setup based on RWF_* flags
-Date: Mon,  5 Jun 2017 00:35:31 -0500
-Message-ID: <20170605053540.19393-2-rgoldwyn@suse.de>
+From: Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH 07/10] fs: return on congested block device
+Date: Mon, 5 Jun 2017 09:35:24 -0600
+Message-ID: <dedfe92d-6452-4f29-044d-34837c4da825@kernel.dk>
 References: <20170605053540.19393-1-rgoldwyn@suse.de>
+ <20170605053540.19393-8-rgoldwyn@suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, axboe@kernel.dk,
-        linux-api@vger.kernel.org, adam.manzanares@wdc.com,
-        viro@zeniv.linux.org.uk, Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20170605053540.19393-1-rgoldwyn@suse.de>
-Sender: linux-btrfs-owner@vger.kernel.org
+        linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
+        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>, linux-fsdevel@vger.kernel.org
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170605053540.19393-8-rgoldwyn@suse.de>
+Content-Language: en-US
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+On 06/04/2017 11:35 PM, Goldwyn Rodrigues wrote:
+> @@ -1900,6 +1905,17 @@ generic_make_request_checks(struct bio *bio)
+>  		goto end_io;
+>  	}
+>  
+> +	/*
+> +	 * For a REQ_NOWAIT based request, return -EOPNOTSUPP
+> +	 * if queue does not have QUEUE_FLAG_NOWAIT_SUPPORT set
+> +	 * and if it is not a request based queue.
+> +	 */
+> +
+> +	if ((bio->bi_opf & REQ_NOWAIT) && !queue_is_rq_based(q)) {
+> +		err = -EOPNOTSUPP;
+> +		goto end_io;
+> +	}
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
----
- fs/read_write.c    | 12 +++---------
- include/linux/fs.h | 14 ++++++++++++++
- 2 files changed, 17 insertions(+), 9 deletions(-)
+There is no QUEUE_FLAG_NOWAIT, this looks like a somewhat stale comment.
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 47c1d4484df9..53c816c61122 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -678,16 +678,10 @@ static ssize_t do_iter_readv_writev(struct file *filp, struct iov_iter *iter,
- 	struct kiocb kiocb;
- 	ssize_t ret;
- 
--	if (flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC))
--		return -EOPNOTSUPP;
--
- 	init_sync_kiocb(&kiocb, filp);
--	if (flags & RWF_HIPRI)
--		kiocb.ki_flags |= IOCB_HIPRI;
--	if (flags & RWF_DSYNC)
--		kiocb.ki_flags |= IOCB_DSYNC;
--	if (flags & RWF_SYNC)
--		kiocb.ki_flags |= (IOCB_DSYNC | IOCB_SYNC);
-+	ret = kiocb_set_rw_flags(&kiocb, flags);
-+	if (ret)
-+		return ret;
- 	kiocb.ki_pos = *ppos;
- 
- 	if (type == READ)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 803e5a9b2654..f53867140f43 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3056,6 +3056,20 @@ static inline int iocb_flags(struct file *file)
- 	return res;
- }
- 
-+static inline int kiocb_set_rw_flags(struct kiocb *ki, int flags)
-+{
-+	if (unlikely(flags & ~(RWF_HIPRI | RWF_DSYNC | RWF_SYNC)))
-+		return -EOPNOTSUPP;
-+
-+	if (flags & RWF_HIPRI)
-+		ki->ki_flags |= IOCB_HIPRI;
-+	if (flags & RWF_DSYNC)
-+		ki->ki_flags |= IOCB_DSYNC;
-+	if (flags & RWF_SYNC)
-+		ki->ki_flags |= (IOCB_DSYNC | IOCB_SYNC);
-+	return 0;
-+}
-+
- static inline ino_t parent_ino(struct dentry *dentry)
- {
- 	ino_t res;
+This patch should be prefixed with 'block', not 'fs'.
+
 -- 
-2.12.0
-
+Jens Axboe
