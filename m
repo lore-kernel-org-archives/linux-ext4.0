@@ -1,43 +1,81 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 07/10] fs: return on congested block device
-Date: Mon, 5 Jun 2017 09:35:24 -0600
-Message-ID: <dedfe92d-6452-4f29-044d-34837c4da825@kernel.dk>
-References: <20170605053540.19393-1-rgoldwyn@suse.de>
- <20170605053540.19393-8-rgoldwyn@suse.de>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: generic/346 fails on ext4 DAX mount
+Date: Mon, 5 Jun 2017 13:30:22 -0600
+Message-ID: <20170605193022.GA19661@linux.intel.com>
+References: <20170602053319.GF23805@eguan.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: jack@suse.com, hch@infradead.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
-        adam.manzanares@wdc.com, viro@zeniv.linux.org.uk,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>
-To: Goldwyn Rodrigues <rgoldwyn@suse.de>, linux-fsdevel@vger.kernel.org
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170605053540.19393-8-rgoldwyn@suse.de>
-Content-Language: en-US
-Sender: linux-block-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Xiong Zhou <xzhou@redhat.com>, Theodore Ts'o <tytso@mit.edu>
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170602053319.GF23805@eguan.usersys.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 06/04/2017 11:35 PM, Goldwyn Rodrigues wrote:
-> @@ -1900,6 +1905,17 @@ generic_make_request_checks(struct bio *bio)
->  		goto end_io;
->  	}
+On Fri, Jun 02, 2017 at 01:33:19PM +0800, Eryu Guan wrote:
+> Hi all,
+> 
+> I occasionally hit generic/344 and generic/346 failures when testing
+> 4.12-rc[1-3] kernels on ext4 DAX mount.
+> 
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/x86_64 hp-xl420gen9-01 4.12.0-rc3
+> MKFS_OPTIONS  -- /dev/pmem2
+> MOUNT_OPTIONS -- -o dax -o context=system_u:object_r:root_t:s0 /dev/pmem2 /mnt/testarea/scratch
+> 
+> generic/344 1s ... 1s
+> generic/346 1s ... - output mismatch (see /var/lib/xfstests/results//generic/346.out.bad)
+>     --- tests/generic/346.out   2017-05-24 10:13:38.592436565 -0400
+>     +++ /var/lib/xfstests/results//generic/346.out.bad  2017-06-01 12:46:50.122007818 -0400
+>     @@ -10,7 +10,8 @@
+>      INFO: sz = 1048576
+>      INFO: thread 0 created
+>      INFO: thread 1 created
+>     -INFO: 0 error(s) detected
+>     +ERROR: thread 0, offset 000ff400, 00000000 != 7f1068063700
+>     +INFO: 1 error(s) detected
 >  
-> +	/*
-> +	 * For a REQ_NOWAIT based request, return -EOPNOTSUPP
-> +	 * if queue does not have QUEUE_FLAG_NOWAIT_SUPPORT set
-> +	 * and if it is not a request based queue.
-> +	 */
-> +
-> +	if ((bio->bi_opf & REQ_NOWAIT) && !queue_is_rq_based(q)) {
-> +		err = -EOPNOTSUPP;
-> +		goto end_io;
-> +	}
+>      INFO: ftruncate test...
+>      INFO: sz = 1048576
+> 
+> And it seems generic/346 is easer to hit, usually it can be reproduced
+> within 20 iterations on 4.12-rc kernels.
+> 
+> At first I thought it was a regression introduced in 4.12-rc1, but after
+> two failed bisects (pointed first bad to unrelated networking patch), I
+> enlarged the iteration count to 5000 and found that generic/346 failure
+> can also be seen on 4.11 and 4.10 kernel. I haven't tried other old
+> kernels yet. It's just much harder to hit on 4.10/4.11 kernels (need
+> hundreds of iterations).
+> 
+> But the failure could only be reproduced with ext4 DAX mount, XFS DAX
+> mount survived 5000 runs of generic/346 on 4.12-rc3 kernel.
+> 
+> I was testing with pmem device created by memmap kernel param
+> "memmap=10G!5G memmap=15G!15G", but it can be reproduced with brd
+> ramdisk too.
+> 
+> If more info is needed please let me know.
+> 
+> Thanks,
+> Eryu
 
-There is no QUEUE_FLAG_NOWAIT, this looks like a somewhat stale comment.
+It turns out that this has already been fixed by Jan, with this commit:
 
-This patch should be prefixed with 'block', not 'fs'.
+https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=4f8caa60a5a13a78f26198618f21774bd6aa6498
 
--- 
-Jens Axboe
+I have a test setup that was failing with this error very constantly within
+100 iterations using v4.12-rc4.  I was able to run 10,000+ iterations without
+issue with v4.12-rc4 + that one patch.
+
+That patch clearly isn't upstream yet, but I think it's headed for v4.12?  
+(Ted, Jan?)  It's marked for stable as well.
+
+It's currently in the ext4/dev tree:
+https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=dev
+
+- Ross
