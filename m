@@ -1,143 +1,101 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [xfstests PATCH v3 1/5] generic: add a writeback error handling
- test
-Date: Tue, 6 Jun 2017 15:07:29 -0700
-Message-ID: <20170606220729.GB5192@birch.djwong.org>
-References: <20170531130820.17634-1-jlayton@redhat.com>
- <20170531130820.17634-2-jlayton@redhat.com>
- <20170606085855.GN19952@eguan.usersys.redhat.com>
- <1496744157.27183.1.camel@redhat.com>
- <20170606122325.GS19952@eguan.usersys.redhat.com>
- <20170606171703.GA5192@birch.djwong.org>
- <1496779978.3362.4.camel@redhat.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [LTP] [BUG] Unable to handle kernel paging request for unaligned
+ access at address 0xc0000001c52c53df
+Date: Wed, 7 Jun 2017 11:27:32 +0800
+Message-ID: <20170607032732.GV19952@eguan.usersys.redhat.com>
+References: <CAEemH2fq0ciRxhpi2m7Rv1HTyzB1z=jFkEUOvan5jtSkw-tDSw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net, dhowells@redhat.com,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-doc@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>, b@birch.djwong.org
-Return-path: <linux-doc-owner@vger.kernel.org>
+Cc: ebiggers@google.com, jack@suse.cz, tytso@mit.edu,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        ltp@lists.linux.it
+To: Li Wang <liwang@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:53158 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751481AbdFGD1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Jun 2017 23:27:39 -0400
 Content-Disposition: inline
-In-Reply-To: <1496779978.3362.4.camel@redhat.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAEemH2fq0ciRxhpi2m7Rv1HTyzB1z=jFkEUOvan5jtSkw-tDSw@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 06, 2017 at 04:12:58PM -0400, Jeff Layton wrote:
-> On Tue, 2017-06-06 at 10:17 -0700, Darrick J. Wong wrote:
-> > On Tue, Jun 06, 2017 at 08:23:25PM +0800, Eryu Guan wrote:
-> > > On Tue, Jun 06, 2017 at 06:15:57AM -0400, Jeff Layton wrote:
-> > > > On Tue, 2017-06-06 at 16:58 +0800, Eryu Guan wrote:
-> > > > > On Wed, May 31, 2017 at 09:08:16AM -0400, Jeff Layton wrote:
-> > > > > > I'm working on a set of kernel patches to change how writeback errors
-> > > > > > are handled and reported in the kernel. Instead of reporting a
-> > > > > > writeback error to only the first fsync caller on the file, I aim
-> > > > > > to make the kernel report them once on every file description.
-> > > > > > 
-> > > > > > This patch adds a test for the new behavior. Basically, open many fds
-> > > > > > to the same file, turn on dm_error, write to each of the fds, and then
-> > > > > > fsync them all to ensure that they all get an error back.
-> > > > > > 
-> > > > > > To do that, I'm adding a new tools/dmerror script that the C program
-> > > > > > can use to load the error table. For now, that's all it can do, but
-> > > > > > we can fill it out with other commands as necessary.
-> > > > > > 
-> > > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > > 
-> > > > > Thanks for the new tests! And sorry for the late review..
-> > > > > 
-> > > > > It's testing a new behavior on error reporting on writeback, I'm not
-> > > > > sure if we can call it a new feature or it fixed a bug? But it's more
-> > > > > like a behavior change, I'm not sure how to categorize it.
-> > > > > 
-> > > > > Because if it's testing a new feature, we usually let test do proper
-> > > > > detection of current test environment (based on actual behavior not
-> > > > > kernel version) and _notrun on filesystems that don't have this feature
-> > > > > yet, instead of failing the test; if it's testing a bug fix, we could
-> > > > > leave the test fail on unfixed filesystems, this also serves as a
-> > > > > reminder that there's bug to fix.
-> > > > > 
-> > > > 
-> > > > Thanks for the review! I'm not sure how to categorize this either. Since
-> > > > the plan is to convert all the filesystems piecemeal, maybe we should
-> > > > just consider it a new feature.
-> > > 
-> > > Then we need a new _require rule to properly detect for the 'feature'
-> > > support. I'm not sure if this is doable, but something like
-> > > _require_statx, _require_seek_data_hole would be good.
-> > > 
-> > > > 
-> > > > > I pulled your test kernel tree, and test passed on EXT4 but failed on
-> > > > > other local filesystems (XFS, btrfs). I assume that's expected.
-> > > > > 
-> > > > > Besides this kinda high-level question, some minor comments inline.
-> > > > > 
-> > > > 
-> > > > Yes, ext4 should pass on my latest kernel tree, but everything else
-> > > > should fail. 
+On Tue, Jun 06, 2017 at 06:00:34PM +0800, Li Wang wrote:
+> Hi,
 > 
-> Oh, and I should mention that ext2/3 also pass when mounted using ext4
-> driver. Legacy ext2 driver sort of works, but it reports a few too many
-> errors because of the way the ext2_error macro works. That shouldn't be
-> too hard to fix, I just need some guidance on that one.
+> ltp/access04 always panic the latest mainstream kernel-4.12-rc4 on
+> ppc64le. From the calltrace
+> I guess the reason is probably that the tests mount ext2 file system
+> using ext4 driver.
 > 
-> I had xfs and btrfs working with an earlier iteration of the patches,
-> but now that we're converting a fs at a time, it's a little more work to
-> get there. It shouldn't be too hard to do though. I'll probably re-post
-> in a few days, and will try to take a stab at XFS and btrfs conversion
-> too.
+> A simple way to reproduce:
 > 
-> > > 
-> > > With the new _require rule, test should _notrun on XFS and btrfs then.
-> > 
-> > Frankly I personally prefer that upstream XFS fails until someone fixes it. :)
-> > (But that's just my opinion.)
-> > 
-> > That said, I'm not 100% sure what's required of XFS to play nicely with
-> > this new mechanism -- glancing at the ext* patches it looks like we'd
-> > need to set a fs flag and possibly change some or all of the "write
-> > cached dirty buffers out to disk" calls to their _since variants?
-> 
-> Yeah, that's pretty much the size of it.
-> 
-> In fact, the latter part (changing to the _since variants) is somewhat
-> optional. We can have the errseq_t based tracking coexist with the
-> AS_EIO/AS_ENOSPC flags. It's weird but I don't see a real downside to
-> preserving them until we've got more of this converted over.
-> 
-> In the latest branch I'm working on, I'm breaking up those changes into
-> different patches so it should be a little clearer for other fs
-> maintainers to see what I'm doing and why. Stay tuned...
+> # dd of=wangli if=/dev/zero count=1024 bs=1024
+> # mkfs -t ext2 wangli
+> # mount -t ext4 wangli /mnt/
 
-Ok.
-
-> > Metadata writeback errors are handled by retrying writes and/or shutting
-> > down the fs, so I think the f_md_wb_error case is already covered.
-> 
-> Thanks. I think we do need f_md_wb_err for ext2/4 though, IIUC?
-
-Yes.  Sorry, the previous statement applies only to XFS.
-
-> > That said, I agree that it's useful to detect that the kernel simply
-> > lacks any of the new wb error reporting at all, so therefore we can skip
-> > the tests.
-> > 
-> 
-> Suggestions on ways to implement such a check would be welcome. Maybe a
-> file in /sys or in debugfs?
-
-Assuming that this patchset applies the same wb error reporting behavior
-to block devices, you could open a bunch of file descriptors to a linear
-dm target sitting atop $SCRATCH_DEV, switch out the table to dm_error,
-then write something, fsync, and see if we get more than one EIO.  Then
-you'd know if the kernel supports it, at least... I think?
-
---D
+I can't reproduce this crash either by your reproducer nor by ltp
+access04 test on ppc64le host.
 
 > 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+> 
+> Are there any new changes in ext4 (on kernel-4.12-rc4) recently?
+
+I don't think it's an ext4 bug, I've seen similar crashes twice in
+4.12-rc4 kernel testings, once testing XFS running fstests, and once
+running ltp on ext3. But it seems not related to filesystem code.
+
+[  828.119270] run fstests generic/034 at 2017-06-06 19:16:10 
+[  828.720341] XFS (sda5): Unmounting Filesystem 
+[  828.814003] device-mapper: uevent: version 1.0.3 
+[  828.814096] Unable to handle kernel paging request for unaligned access at address 0xc0000001c52c5e7f 
+[  828.814103] Faulting instruction address: 0xc0000000004d214c 
+[  828.814109] Oops: Kernel access of bad area, sig: 7 [#1] 
+[  828.814113] SMP NR_CPUS=2048  
+[  828.814114] NUMA  
+[  828.814117] pSeries 
+[  828.814122] Modules linked in: dm_mod(+) sg pseries_rng ghash_generic gf128mul xts vmx_crypto nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod ibmvscsi ibmveth scsi_transport_srp 
+[  828.814150] CPU: 10 PID: 137772 Comm: modprobe Not tainted 4.12.0-rc4 #1 
+[  828.814155] task: c0000003fe13c800 task.stack: c00000046ec68000 
+[  828.814163] NIP: c0000000004d214c LR: c00000000011c884 CTR: c000000000130900 
+[  828.814168] REGS: c00000046ec6b3d0 TRAP: 0600   Not tainted  (4.12.0-rc4) 
+[  828.814173] MSR: 800000010280b033 <SF,VEC,VSX,EE,FP,ME,IR,DR,RI,LE,TM[E]> 
+[  828.814184]   CR: 28228244  XER: 00000005 
+[  828.814191] CFAR: c00000000011c880 DAR: c0000001c52c5e7f DSISR: 00000000 SOFTE: 0  
+[  828.814191] GPR00: c00000000011c848 c00000046ec6b650 c000000001049100 c0000003f3b77020  
+[  828.814191] GPR04: c0000003f3b77020 c0000001c52c5e7f 0000000000000000 0000000000000001  
+[  828.814191] GPR08: 0008f92d89943c42 00000024000048b7 0000000000000008 0000000000000000  
+[  828.814191] GPR12: c000000000130900 c00000000fac6900 d000000007dd3908 d000000007dd3908  
+[  828.814191] GPR16: c00000046ec6bdec c00000046ec6bda0 000000000000ff20 0000000000000000  
+[  828.814191] GPR20: 00000000000052f8 0000000000000000 0000000000004000 c000000000cc5780  
+[  828.814191] GPR24: 00000001c45ffc5f 0000000000000000 00000001c45ffc5f c00000000107dd00  
+[  828.814191] GPR28: c0000003f3b77834 0000000000000004 0000000000000800 c0000003f3b77000  
+[  828.814257] NIP [c0000000004d214c] llist_add_batch+0xc/0x40 
+[  828.814263] LR [c00000000011c884] try_to_wake_up+0x4a4/0x5b0 
+[  828.814268] Call Trace: 
+[  828.814273] [c00000046ec6b650] [c00000000011c848] try_to_wake_up+0x468/0x5b0 (unreliable) 
+[  828.814282] [c00000046ec6b6d0] [c000000000102828] create_worker+0x148/0x250 
+[  828.814290] [c00000046ec6b770] [c0000000001059dc] alloc_unbound_pwq+0x3bc/0x4c0 
+[  828.814296] [c00000046ec6b7d0] [c00000000010601c] apply_wqattrs_prepare+0x2ac/0x320 
+[  828.814304] [c00000046ec6b840] [c0000000001060cc] apply_workqueue_attrs_locked+0x3c/0xa0 
+[  828.814313] [c00000046ec6b870] [c00000000010662c] apply_workqueue_attrs+0x4c/0x80 
+[  828.814322] [c00000046ec6b8b0] [c0000000001081cc] __alloc_workqueue_key+0x16c/0x4e0 
+[  828.814343] [c00000046ec6b970] [d000000007e04748] local_init+0xdc/0x1a4 [dm_mod] 
+[  828.814362] [c00000046ec6b9f0] [d000000007e04854] dm_init+0x44/0xc4 [dm_mod] 
+[  828.814375] [c00000046ec6ba30] [c00000000000ccf0] do_one_initcall+0x60/0x1c0 
+[  828.814390] [c00000046ec6baf0] [c00000000091e748] do_init_module+0x8c/0x244 
+[  828.814405] [c00000046ec6bb80] [c000000000197e08] load_module+0x12f8/0x1600 
+[  828.814414] [c00000046ec6bd30] [c000000000198388] SyS_finit_module+0xa8/0x110 
+[  828.814424] [c00000046ec6be30] [c00000000000af84] system_call+0x38/0xe0 
+[  828.814429] Instruction dump: 
+[  828.814436] 60420000 38600000 4e800020 60000000 60420000 7c832378 4e800020 60000000  
+[  828.814448] 60000000 e9250000 f9240000 7c0004ac <7d4028a8> 7c2a4800 40c20010 7c6029ad  
+[  828.814466] ---[ end trace 87ec4ff1fa8e1a3d ]--- 
+
+I suspect it's a regression introduced in 4.12-rc4 kernel, I didn't see
+such crashes when testing 4.12-rc3 kernel. I'll do bisect once I worked
+out a reliable reproducer (unless you can reliably reproduce it with
+your reproducer :).
+
+Thanks,
+Eryu
