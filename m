@@ -1,39 +1,52 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] libext2fs: Fix fsync(2) detection
-Date: Thu, 8 Jun 2017 12:04:04 -0400
-Message-ID: <20170608160404.euiprmtcvlo76n3g@thunk.org>
-References: <20170607133114.27799-1-jack@suse.cz>
+Subject: Re: e4defrag: Corrupt file after running e4defrag
+Date: Thu, 8 Jun 2017 18:35:11 -0400
+Message-ID: <20170608223511.2dw7gyqzgwgxxz2q@thunk.org>
+References: <a9518dce-b61a-3c28-b597-f21b6db9be0a@dragonfly.plus.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Marc Thomas <marc@dragonfly.plus.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:32838 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34238 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751614AbdFHQEH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 8 Jun 2017 12:04:07 -0400
+        id S1751598AbdFHWfT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 8 Jun 2017 18:35:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20170607133114.27799-1-jack@suse.cz>
+In-Reply-To: <a9518dce-b61a-3c28-b597-f21b6db9be0a@dragonfly.plus.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 07, 2017 at 03:31:14PM +0200, Jan Kara wrote:
-> For some reason lib/config.h.in was missing a definition of HAVE_FSYNC
-> and as a result lib/config.h never had HAVE_FSYNC defined. As a result
-> we never called fsync(2) for example from
-> lib/ext2fs/unix_io.c:unix_flush() when we finished creating filesystem
-> and could miss IO errors happening during creating of the filesystem.
-> Test generic/405 exposes this problem.
+On Thu, Jun 08, 2017 at 03:12:27PM +0100, Marc Thomas wrote:
+> Hello All,
 > 
-> Fix the problem by defining HAVE_FSYNC in lib/config.h.in.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> After running "e4defrag" on an idle filesystem, I found a single file
+> out of 893084 regular files had become corrupt (md5sum changed).
+> I have repeated the process using an almost identical copy of the
+> original filesystem, and a different single file became corrupt.
 
-Thanks for tracking down this regression.  This bug was introduced by
-my cherry-picking in changes from the Android AOSP version of
-e2fsprogs a few weeks ago.  I was wondering why generic/405 had
-regressed.
+How big is the file system, and what file system features are enabled.
+Can you send me a copy of "dumpe2fs -h" on the file system?  Something
+else that would be useful would be to unmount the file system after
+seeing the md5sum failure, and run e2fsck -fn to see if e2fsck noticed
+any file system corruption.
 
-Thanks, applied.
+I don't know if this will be doable, since it depends on how big the
+file system is and how much extra space you have in your LVM volume
+group, but what would be *wonderful* would be if you can do a full
+image backup, or failing that, an compressed raw e2image backup (see
+the e2image man page, or the "REPORTING BUGS" section of the e2fsck
+man page).  The compressed raw e2image backup only contains the file
+system metadata, and no the data blocks, so it takes much less space.
+
+The idea then is after you discover which file is getting corrupted,
+you can look that inode both on the "before" file system image
+(looking only at the metadata blocks) and the "after" file system
+image, and see if there are any clues about how to make a reproducible
+test case, using the "stat" command of debugfs.  Getting a full
+dumpe2fs output of the filesystem before and after might give us a
+clue.
+
+Thanks,
 
 					- Ted
