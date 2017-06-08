@@ -1,74 +1,67 @@
-From: <koopk@madisonnjps.org>
-Subject: (unknown)
-Date: Thu, 08 Jun 2017 12:51:30 -0000
-Message-ID: <149692629049.12492.2248415176656858492@permonline.ru>
+From: Marc Thomas <marc@dragonfly.plus.com>
+Subject: e4defrag: Corrupt file after running e4defrag
+Date: Thu, 8 Jun 2017 15:12:27 +0100
+Message-ID: <a9518dce-b61a-3c28-b597-f21b6db9be0a@dragonfly.plus.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="99695261699.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dsl-5-140-165-96.permonline.ru ([5.140.165.96]:39013 "HELO
-        permonline.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with SMTP id S1751405AbdFHMve (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jun 2017 08:51:34 -0400
-Content-Disposition: attachment
-Subject: 
+Received: from avasout01.plus.net ([84.93.230.227]:47372 "EHLO
+        avasout01.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751641AbdFHOMa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jun 2017 10:12:30 -0400
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        by anvil.lan (8.15.2/8.15.2) with ESMTP id v58ECRcI004283
+        for <linux-ext4@vger.kernel.org>; Thu, 8 Jun 2017 15:12:27 +0100
+Content-Language: en-GB
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+Hello All,
+
+After running "e4defrag" on an idle filesystem, I found a single file
+out of 893084 regular files had become corrupt (md5sum changed).
+I have repeated the process using an almost identical copy of the
+original filesystem, and a different single file became corrupt.
+
+In both cases the nature of the corruption was the first 4096 bytes of
+the file being replaced with something different. The remainder of each
+file was intact.
+I don't think it's a hardware issue. The machine has ECC RAM, and no I/O
+errors are being reported.
+
+The ext4 filesystem is inside an LVM volume, and the underlying storage
+is RAID1 md-raid.
+
+The system is running vanilla kernel 4.11.3, with e2fsprogs-1.43.4 on an
+8 core / 16 thread x86_64 CPU.
+
+
+After the first e4defrag run:
+# time md5sum --quiet -c CHECKSUMS_home_050617.md5
+./marc/LinuxStuff/Linux4.x/patch-4.10.12.xz: FAILED
+md5sum: WARNING: 1 computed checksum did NOT match
+
+real    62m30.816s
+user    10m15.144s
+sys     2m29.436s
+
+After the second run:
+# time md5sum --quiet -c CHECKSUMS_home_050617.md5
+./marc/.mozilla/firefox/jh6wc1il.default/formhistory.sqlite: FAILED
+md5sum: WARNING: 1 computed checksum did NOT match
+
+real    61m45.874s
+user    10m24.339s
+sys     2m12.107s
+
+
+Can anyone help pin down the cause of the corruption? I'm happy to
+repeat the process again (I have an image copy of the original source
+filesystem) - but the "e4defrag" process takes about 4hours, and it
+takes a further hour to do the md5sum check - so it's not quick to
+reproduce.
+
+Thanks & Kind Regards,
+Marc
