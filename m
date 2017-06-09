@@ -1,73 +1,93 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] test-appliance: add new test configuration:
- ext4/lustre_mds
-Date: Fri, 9 Jun 2017 15:00:56 -0600
-Message-ID: <087C00FA-AF13-498F-8D6A-B67A115D8DCE@dilger.ca>
-References: <20170609035943.26447-1-tytso@mit.edu>
- <CAO3qy=EVQtVVe2hvEvaYOTyArPpK7U6AYA9abu6Zum-p_sWqpg@mail.gmail.com>
- <20170609175910.shwqocbi3npfmoid@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33256 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751536AbdFIVBC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jun 2017 17:01:02 -0400
-Received: by mail-it0-f66.google.com with SMTP id l6so6921860iti.0
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Jun 2017 14:01:02 -0700 (PDT)
-In-Reply-To: <20170609175910.shwqocbi3npfmoid@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 1/3] mm: add vm_insert_mixed_mkwrite()
+Date: Fri, 9 Jun 2017 14:23:51 -0700
+Message-ID: <CAA9_cmcPsyZCB7-pd9djL0+bLamfL49SJVgkyoJ22G6tgOxyww@mail.gmail.com>
+References: <20170607204859.13104-1-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, linux-xfs@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <mawilcox@microsoft.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>, Jonathan Corbet <corbet@lwn.net>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-mm <linux-mm@kvack.org>, Dave Hansen <dave.hansen@intel.com>,
+	Ingo Molnar <mingo@redhat.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, ext4 hackers <linux-ext4@vger.kernel.org>,
+	Christoph Hellwig <hch@lst.de>, "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170607204859.13104-1-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed, Jun 7, 2017 at 1:48 PM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> To be able to use the common 4k zero page in DAX we need to have our PTE
+> fault path look more like our PMD fault path where a PTE entry can be
+> marked as dirty and writeable as it is first inserted, rather than waiting
+> for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
+>
+> Right now we can rely on having a dax_pfn_mkwrite() call because we can
+> distinguish between these two cases in do_wp_page():
+>
+>         case 1: 4k zero page => writable DAX storage
+>         case 2: read-only DAX storage => writeable DAX storage
+>
+> This distinction is made by via vm_normal_page().  vm_normal_page() returns
+> false for the common 4k zero page, though, just as it does for DAX ptes.
+> Instead of special casing the DAX + 4k zero page case, we will simplify our
+> DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
+> get rid of dax_pfn_mkwrite() completely.
+>
+> This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
+> and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
+> will do the work that was previously done by wp_page_reuse() as part of the
+> dax_pfn_mkwrite() call path.
+>
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> ---
+>  include/linux/mm.h |  9 +++++++--
+>  mm/memory.c        | 21 ++++++++++++++-------
+>  2 files changed, 21 insertions(+), 9 deletions(-)
+>
+> diff --git a/include/linux/mm.h b/include/linux/mm.h
+> index b892e95..11e323a 100644
+> --- a/include/linux/mm.h
+> +++ b/include/linux/mm.h
+> @@ -2294,10 +2294,15 @@ int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+>                         unsigned long pfn);
+>  int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
+>                         unsigned long pfn, pgprot_t pgprot);
+> -int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+> -                       pfn_t pfn);
+> +int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
+> +                       pfn_t pfn, bool mkwrite);
 
---Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+Are there any other planned public users of vm_insert_mixed_mkwrite()
+that would pass false? I think not.
 
-On Jun 9, 2017, at 11:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> 
-> On Fri, Jun 09, 2017 at 11:55:56AM +0300, Artem Blagodarenko wrote:
->> Hello Theodore,
->> 
->> Is it good time to add large_dir feature to this configuration?
-> 
-> Andreas didn't include large_dir on the list of features that he
-> enabled; what's the status of use of that feature by Lustre system in
-> production?
+>  int vm_iomap_memory(struct vm_area_struct *vma, phys_addr_t start, unsigned long len);
+>
+> +static inline int vm_insert_mixed(struct vm_area_struct *vma,
+> +               unsigned long addr, pfn_t pfn)
+> +{
+> +       return vm_insert_mixed_mkwrite(vma, addr, pfn, false);
+> +}
 
-I didn't include large_dir because it isn't included in the upstream
-kernels yet, and we haven't been using this in production due to lack
-of e2fsck support (which Seagate has finally implemented, thank you).
+...in other words instead of making the distinction of
+vm_insert_mixed_mkwrite() and vm_insert_mixed() with extra flag
+argument just move the distinction into mm/memory.c directly.
 
-By all means, I'm in favour of adding this feature to the testing matrix.
+So, the prototype remains the same as vm_insert_mixed()
 
-Cheers, Andreas
+int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long
+addr, pfn_t pfn);
 
+...and only static insert_pfn(...) needs to change.
 
-
-
-
-
---Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZOwyKpIg59Q01vtYRApwzAJ48hCH1o5Tu9/E5fhByQJ9BSmkRKgCeJxvb
-pEIQCEgR8kmV/gqz4hvjjro=
-=HnsH
------END PGP SIGNATURE-----
-
---Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
