@@ -1,74 +1,73 @@
-From: <editor@coastreporter.net>
-Subject: (unknown)
-Date: Fri, 09 Jun 2017 18:57:45 -0000
-Message-ID: <149703466551.30695.16647918932267624231@hinet.net>
-Mime-Version: 1.0
-Content-Type: application/zip; name="93304718.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] test-appliance: add new test configuration:
+ ext4/lustre_mds
+Date: Fri, 9 Jun 2017 15:00:56 -0600
+Message-ID: <087C00FA-AF13-498F-8D6A-B67A115D8DCE@dilger.ca>
+References: <20170609035943.26447-1-tytso@mit.edu>
+ <CAO3qy=EVQtVVe2hvEvaYOTyArPpK7U6AYA9abu6Zum-p_sWqpg@mail.gmail.com>
+ <20170609175910.shwqocbi3npfmoid@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 118-163-58-117.HINET-IP.hinet.net ([118.163.58.117]:40966 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751712AbdFIS5w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Jun 2017 14:57:52 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33256 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751536AbdFIVBC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jun 2017 17:01:02 -0400
+Received: by mail-it0-f66.google.com with SMTP id l6so6921860iti.0
+        for <linux-ext4@vger.kernel.org>; Fri, 09 Jun 2017 14:01:02 -0700 (PDT)
+In-Reply-To: <20170609175910.shwqocbi3npfmoid@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+
+--Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jun 9, 2017, at 11:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> 
+> On Fri, Jun 09, 2017 at 11:55:56AM +0300, Artem Blagodarenko wrote:
+>> Hello Theodore,
+>> 
+>> Is it good time to add large_dir feature to this configuration?
+> 
+> Andreas didn't include large_dir on the list of features that he
+> enabled; what's the status of use of that feature by Lustre system in
+> production?
+
+I didn't include large_dir because it isn't included in the upstream
+kernels yet, and we haven't been using this in production due to lack
+of e2fsck support (which Seagate has finally implemented, thank you).
+
+By all means, I'm in favour of adding this feature to the testing matrix.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZOwyKpIg59Q01vtYRApwzAJ48hCH1o5Tu9/E5fhByQJ9BSmkRKgCeJxvb
+pEIQCEgR8kmV/gqz4hvjjro=
+=HnsH
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_EF996288-8AC0-42E2-82F8-634671038081--
