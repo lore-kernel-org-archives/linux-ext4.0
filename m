@@ -1,129 +1,61 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 1/3] mm: add vm_insert_mixed_mkwrite()
-Date: Fri, 9 Jun 2017 20:35:08 -0700
-Message-ID: <CAPcyv4jsgUfL5Cr5a342aVNKXBrtXzpuar_1U3w3auHoT2E08A@mail.gmail.com>
-References: <20170607204859.13104-1-ross.zwisler@linux.intel.com>
- <CAA9_cmcPsyZCB7-pd9djL0+bLamfL49SJVgkyoJ22G6tgOxyww@mail.gmail.com> <20170610030346.GA3575@linux.intel.com>
+From: Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Subject: Re: [PATCH 04/10] fs: Introduce RWF_NOWAIT
+Date: Sat, 10 Jun 2017 06:27:03 +0100
+Message-ID: <20170610052703.GC6365@ZenIV.linux.org.uk>
+References: <20170606111939.27272-1-rgoldwyn@suse.de>
+ <20170606111939.27272-5-rgoldwyn@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: Ross Zwisler <ross.zwisler@linux.intel.com>, Dan Williams <dan.j.williams@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, linux-xfs@vger.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <mawilcox@microsoft.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>, Jonathan Corbet <corbet@lwn.net>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
-	linux-mm <linux-mm@kvack.org>, Dave Hansen <dave.hansen@intel.com>,
-	Ingo Molnar <mingo@redhat.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	Jan Kara <jack@suse.cz>, ext4 hackers <linux-ext4@vger.kernel.org>,
-	Christoph Hellwig <hch@lst.de>, "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170610030346.GA3575@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org,
+        linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        adam.manzanares-Sjgp3cTcYWE@public.gmane.org, Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+To: Goldwyn Rodrigues <rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170606111939.27272-5-rgoldwyn-l3A5Bk7waGM@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 9, 2017 at 8:03 PM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> On Fri, Jun 09, 2017 at 02:23:51PM -0700, Dan Williams wrote:
->> On Wed, Jun 7, 2017 at 1:48 PM, Ross Zwisler
->> <ross.zwisler@linux.intel.com> wrote:
->> > To be able to use the common 4k zero page in DAX we need to have our PTE
->> > fault path look more like our PMD fault path where a PTE entry can be
->> > marked as dirty and writeable as it is first inserted, rather than waiting
->> > for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
->> >
->> > Right now we can rely on having a dax_pfn_mkwrite() call because we can
->> > distinguish between these two cases in do_wp_page():
->> >
->> >         case 1: 4k zero page => writable DAX storage
->> >         case 2: read-only DAX storage => writeable DAX storage
->> >
->> > This distinction is made by via vm_normal_page().  vm_normal_page() returns
->> > false for the common 4k zero page, though, just as it does for DAX ptes.
->> > Instead of special casing the DAX + 4k zero page case, we will simplify our
->> > DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
->> > get rid of dax_pfn_mkwrite() completely.
->> >
->> > This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
->> > and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
->> > will do the work that was previously done by wp_page_reuse() as part of the
->> > dax_pfn_mkwrite() call path.
->> >
->> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
->> > ---
->> >  include/linux/mm.h |  9 +++++++--
->> >  mm/memory.c        | 21 ++++++++++++++-------
->> >  2 files changed, 21 insertions(+), 9 deletions(-)
->> >
->> > diff --git a/include/linux/mm.h b/include/linux/mm.h
->> > index b892e95..11e323a 100644
->> > --- a/include/linux/mm.h
->> > +++ b/include/linux/mm.h
->> > @@ -2294,10 +2294,15 @@ int vm_insert_pfn(struct vm_area_struct *vma, unsigned long addr,
->> >                         unsigned long pfn);
->> >  int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
->> >                         unsigned long pfn, pgprot_t pgprot);
->> > -int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
->> > -                       pfn_t pfn);
->> > +int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
->> > +                       pfn_t pfn, bool mkwrite);
->>
->> Are there any other planned public users of vm_insert_mixed_mkwrite()
->> that would pass false? I think not.
->>
->> >  int vm_iomap_memory(struct vm_area_struct *vma, phys_addr_t start, unsigned long len);
->> >
->> > +static inline int vm_insert_mixed(struct vm_area_struct *vma,
->> > +               unsigned long addr, pfn_t pfn)
->> > +{
->> > +       return vm_insert_mixed_mkwrite(vma, addr, pfn, false);
->> > +}
->>
->> ...in other words instead of making the distinction of
->> vm_insert_mixed_mkwrite() and vm_insert_mixed() with extra flag
->> argument just move the distinction into mm/memory.c directly.
->>
->> So, the prototype remains the same as vm_insert_mixed()
->>
->> int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long
->> addr, pfn_t pfn);
->>
->> ...and only static insert_pfn(...) needs to change.
->
-> My usage of vm_insert_mixed_mkwrite() in fs/dax.c needs the mkwrite flag to be
-> there.  From dax_insert_mapping():
->
->         return vm_insert_mixed_mkwrite(vma, vaddr, pfn,
->                                 vmf->flags & FAULT_FLAG_WRITE);
+On Tue, Jun 06, 2017 at 06:19:33AM -0500, Goldwyn Rodrigues wrote:
+> From: Goldwyn Rodrigues <rgoldwyn-IBi9RG/b67k@public.gmane.org>
+> 
+> RWF_NOWAIT informs kernel to bail out if an AIO request will block
+> for reasons such as file allocations, or a writeback triggered,
+> or would block while allocating requests while performing
+> direct I/O.
+> 
+> RWF_NOWAIT is translated to IOCB_NOWAIT for iocb->ki_flags.
+> 
+> The check for -EOPNOTSUPP is placed in generic_file_write_iter(). This
+> is called by most filesystems, either through fsops.write_iter() or through
+> the function defined by write_iter(). If not, we perform the check defined
+> by .write_iter() which is called for direct IO specifically.
+> 
+> Filesystems xfs, btrfs and ext4 would be supported in the following patches.
 
-Ok, I missed that.
+Umm...  What about ->write_iter() instances outside of fs/*?  Even in fs/*,
+consider e.g.
+int cifs_get_writer(struct cifsInodeInfo *cinode)
+{
+        int rc;
 
->
-> So, yes, we could do what you suggest, but then that code becomes:
->
->         if (vmf->flags & FAULT_FLAG_WRITE)
->                 vm_insert_mixed_mkwrite(vma, vaddr, pfn);
->         else
->                 vm_insert_mixed(vma, vaddr, pfn);
+start:
+        rc = wait_on_bit(&cinode->flags, CIFS_INODE_PENDING_OPLOCK_BREAK,
+                         TASK_KILLABLE);
 
-I think that's more readable / greppable.
+and cifs_file_write_iter() calling it before going to generic_file_write_iter().
+Ditto for cifs_struct_writev()...  coda_file_write_iter() does inode_lock()
+before calling vfs_iter_write().  ext2_dax_write_iter(): inode_lock().
+f2fs_file_write_iter(): ditto.  fuse_file_write_iter(): ditto in case when
+->writeback_cache is false.  gfs2 is O_APPEND case: almost certainly blocks.
+ncp_file_write_iter(): blocks (mutex_lock(&NCP_FINFO(inode)->open_mutex)
+in ncp_make_open(), not to mention anything else). ntfs_file_write_iter():
+inode_lock().  orangefs_file_write_iter(): ditto.  ubifs_write_iter():
+may block in update_mctime().  udf_file_write_iter(): inode_lock().
 
->
-> And vm_insert_mixed_mkwrite() and vm_insert_mixed() are redundant with only
-> the insert_pfn() line differing?  This doesn't seem better...unless I'm
-> missing something?
->
-> The way it is, vm_insert_mixed_mkwrite() also closely matches
-> insert_pfn_pmd(), which we use in the PMD case and which also takes a 'write'
-> boolean which works the same as our newly added 'mkwrite'.
+Lustre sure as hell does block before it gets anywhere near mm/filemap.c.
 
-Hmm, but now the pfn and pmd cases are inconsistent, if you put the
-flag name in the function then don't add an argument, or make it like
-the pmd case and add an argument to vm_insert_mixed(). I prefer the
-former.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+And that - just from looking at regular files.  Then we have sockets and
+pipes, not to mention weird stuff like fs/fuse/cuse.c, etc.
