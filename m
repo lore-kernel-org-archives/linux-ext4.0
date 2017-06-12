@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 12/20] fs: add a new fstype flag to indicate how writeback errors are tracked
-Date: Mon, 12 Jun 2017 08:23:06 -0400
-Message-ID: <20170612122316.13244-15-jlayton@redhat.com>
+Subject: [PATCH v6 14/20] dax: set errors in mapping when writeback fails
+Date: Mon, 12 Jun 2017 08:23:10 -0400
+Message-ID: <20170612122316.13244-19-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
 Cc: linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
@@ -26,44 +26,67 @@ In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Now that we have new infrastructure for handling writeback errors using
-errseq_t, we need to convert the existing code to use it. We could
-attempt to retrofit the old interfaces on top of the new, but there is
-a conceptual disconnect here in the case of internal callers that
-invoke filemap_fdatawait and the like.
+Jan Kara's description for this patch is much better than mine, so I'm
+quoting it verbatim here:
 
-When reporting writeback errors, we will always report errors that have
-occurred since a particular point in time. With the old writeback error
-reporting, the time we used was "since it was last tested/cleared" which
-is entirely arbitrary and potentially racy. Now, we can report the
-latest error that has occurred since an arbitrary point in time
-(represented as a sampled errseq_t value).
+-----------------8<-----------------
+DAX currently doesn't set errors in the mapping when cache flushing
+fails in dax_writeback_mapping_range(). Since this function can get
+called only from fsync(2) or sync(2), this is actually as good as it can
+currently get since we correctly propagate the error up from
+dax_writeback_mapping_range() to filemap_fdatawrite()
 
-This means that we need to touch each filesystem that calls
-filemap_check_errors in some fashion and ensure that we establish sane
-"since" values for those callers. But...some code is shared between
-filesystems and needs to be able to handle both error tracking schemes.
+However, in the future better writeback error handling will enable us to
+properly report these errors on fsync(2) even if there are multiple file
+descriptors open against the file or if sync(2) gets called before
+fsync(2). So convert DAX to using standard error reporting through the
+mapping.
+-----------------8<-----------------
 
-Add a new FS_WB_ERRSEQ flag to the fstype. Later patches will set and
-key off of that to decide what behavior should be used.
+For now, only do this when the FS_WB_ERRSEQ flag is set. The
+AS_EIO/AS_ENOSPC flags are not currently cleared in the older code when
+writeback initiation fails, only when we discover an error after waiting
+on writeback to complete, so we only want to do this with errseq_t based
+error handling to prevent seeing duplicate errors on fsync.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-and-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- include/linux/fs.h | 1 +
- 1 file changed, 1 insertion(+)
+ fs/dax.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6cd87887430b..17ba6284ab14 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2023,6 +2023,7 @@ struct file_system_type {
- #define FS_BINARY_MOUNTDATA	2
- #define FS_HAS_SUBTYPE		4
- #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
-+#define FS_WB_ERRSEQ		16	/* errseq_t writeback err tracking */
- #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
- 	struct dentry *(*mount) (struct file_system_type *, int,
- 		       const char *, void *);
+diff --git a/fs/dax.c b/fs/dax.c
+index 2a6889b3585f..ba3b17eefcfc 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -856,8 +856,24 @@ int dax_writeback_mapping_range(struct address_space *mapping,
+ 
+ 			ret = dax_writeback_one(bdev, dax_dev, mapping,
+ 					indices[i], pvec.pages[i]);
+-			if (ret < 0)
++			if (ret < 0) {
++				/*
++				 * For fs' that use errseq_t based error
++				 * tracking, we must call mapping_set_error
++				 * here to ensure that fsync on all open fds
++				 * get back an error. Doing this with the old
++				 * wb error tracking infrastructure is
++				 * problematic though, as DAX writeback is
++				 * synchronous, and the error flags are not
++				 * cleared when initiation fails, only when
++				 * it fails after the write has been submitted
++				 * to the backing store.
++				 */
++				if (mapping->host->i_sb->s_type->fs_flags &
++						FS_WB_ERRSEQ)
++					mapping_set_error(mapping, ret);
+ 				goto out;
++			}
+ 		}
+ 	}
+ out:
 -- 
 2.13.0
 
