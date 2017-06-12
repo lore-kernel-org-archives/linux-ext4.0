@@ -1,119 +1,109 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 05/20] mm: don't TestClearPageError in __filemap_fdatawait_range
-Date: Mon, 12 Jun 2017 08:22:57 -0400
-Message-ID: <20170612122316.13244-6-jlayton@redhat.com>
+Subject: [PATCH v6 11/13] Documentation: flesh out the section in vfs.txt on storing and reporting writeback errors
+Date: Mon, 12 Jun 2017 08:23:04 -0400
+Message-ID: <20170612122316.13244-13-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-block@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Jan Kara <jack@suse.cz>,
-	tytso@mit.edu,
-	axboe@kernel.dk,
-	mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com,
-	corbet@lwn.net,
-	Chris Mason <clm@fb.com>,
-	Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        David Sterba <dsterba@suse.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <linux-block-owner@vger.kernel.org>
 In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The -EIO returned here can end up overriding whatever error is marked in
-the address space, and be returned at fsync time, even when there is a
-more appropriate error stored in the mapping.
+I waxed a little loquacious here, but I figured that more detail was
+better, and writeback error handling is so hard to get right.
 
-Read errors are also sometimes tracked on a per-page level using
-PG_error. Suppose we have a read error on a page, and then that page is
-subsequently dirtied by overwriting the whole page. Writeback doesn't
-clear PG_error, so we can then end up successfully writing back that
-page and still return -EIO on fsync.
+Although I think we'll eventually remove it once the transition is
+complete, I've gone ahead and documented the FS_WB_ERRSEQ flag as well.
 
-Worse yet, PG_error is cleared during a sync() syscall, but the -EIO
-return from that is silently discarded. Any subsystem that is relying on
-PG_error to report errors during fsync can easily lose writeback errors
-due to this. All you need is a stray sync() call to wait for writeback
-to complete and you've lost the error.
-
-Since the handling of the PG_error flag is somewhat inconsistent across
-subsystems, let's just rely on marking the address space when there are
-writeback errors. Change the TestClearPageError call to ClearPageError,
-and make __filemap_fdatawait_range a void return function.
-
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- mm/filemap.c | 20 +++++---------------
- 1 file changed, 5 insertions(+), 15 deletions(-)
+ Documentation/filesystems/vfs.txt | 50 ++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 47 insertions(+), 3 deletions(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 6f1be573a5e6..1de71753de28 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -376,17 +376,16 @@ int filemap_flush(struct address_space *mapping)
- }
- EXPORT_SYMBOL(filemap_flush);
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index f42b90687d40..c3efdd833a3d 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -576,7 +576,49 @@ should clear PG_Dirty and set PG_Writeback.  It can be actually
+ written at any point after PG_Dirty is clear.  Once it is known to be
+ safe, PG_Writeback is cleared.
  
--static int __filemap_fdatawait_range(struct address_space *mapping,
-+static void __filemap_fdatawait_range(struct address_space *mapping,
- 				     loff_t start_byte, loff_t end_byte)
- {
- 	pgoff_t index = start_byte >> PAGE_SHIFT;
- 	pgoff_t end = end_byte >> PAGE_SHIFT;
- 	struct pagevec pvec;
- 	int nr_pages;
--	int ret = 0;
+-Writeback makes use of a writeback_control structure...
++Writeback makes use of a writeback_control structure to direct the
++operations.  This gives the the writepage and writepages operations some
++information about the nature of and reason for the writeback request,
++and the constraints under which it is being done.  It is also used to
++return information back to the caller about the result of a writepage or
++writepages request.
++
++Handling errors during writeback
++--------------------------------
++Most applications that utilize the pagecache will periodically call
++fsync to ensure that data written has made it to the backing store.
++When there is an error during writeback, expect that error to be
++reported when fsync is called.  After an error has been reported to
++fsync, subsequent fsync calls on the same file descriptor should return
++0, unless further writeback errors have occurred since the previous
++fsync.
++
++Ideally, the kernel would report an error only on file descriptions on
++which writes were done that subsequently failed to be written back.  The
++generic pagecache infrastructure does not track the file descriptions
++that have dirtied each individual page however, so determining which
++file descriptors should get back an error is not possible.
++
++Instead, the generic writeback error tracking infrastructure in the
++kernel settles for reporting errors to fsync on all file descriptions
++that were open at the time that the error occurred.  In a situation with
++multiple writers, all of them will get back an error on a subsequent fsync,
++even if all of the writes done through that particular file descriptor
++succeeded (or even if there were no writes on that file descriptor at all).
++
++Filesystems that wish to use this infrastructure should call
++filemap_set_wb_err to record the error in the address_space when it
++occurs.  Then, at the end of their fsync operation, they should call
++filemap_report_wb_err to ensure that the struct file's error cursor
++has advanced to the correct point in the stream of errors emitted by
++the backing device(s).
++
++Older kernels used a different method for tracking errors, based on flags
++in the address_space. We're currently switching everything over to use
++the infrastructure based on errseq_t values. During the transition,
++filesystem authors will want to also ensure their file_system_type has
++FS_WB_ERRSEQ set in fs_flags to ensure that shared infrastructure is
++aware of the model in use.
  
- 	if (end_byte < start_byte)
--		goto out;
-+		return;
+ struct address_space_operations
+ -------------------------------
+@@ -804,7 +846,8 @@ struct address_space_operations {
+ The File Object
+ ===============
  
- 	pagevec_init(&pvec, 0);
- 	while ((index <= end) &&
-@@ -403,14 +402,11 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- 				continue;
+-A file object represents a file opened by a process.
++A file object represents a file opened by a process. This is also known
++as an "open file description" in POSIX parlance.
  
- 			wait_on_page_writeback(page);
--			if (TestClearPageError(page))
--				ret = -EIO;
-+			ClearPageError(page);
- 		}
- 		pagevec_release(&pvec);
- 		cond_resched();
- 	}
--out:
--	return ret;
- }
  
- /**
-@@ -430,14 +426,8 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
- 			    loff_t end_byte)
- {
--	int ret, ret2;
--
--	ret = __filemap_fdatawait_range(mapping, start_byte, end_byte);
--	ret2 = filemap_check_errors(mapping);
--	if (!ret)
--		ret = ret2;
--
--	return ret;
-+	__filemap_fdatawait_range(mapping, start_byte, end_byte);
-+	return filemap_check_errors(mapping);
- }
- EXPORT_SYMBOL(filemap_fdatawait_range);
+ struct file_operations
+@@ -887,7 +930,8 @@ otherwise noted.
  
+   release: called when the last reference to an open file is closed
+ 
+-  fsync: called by the fsync(2) system call
++  fsync: called by the fsync(2) system call. Also see the section above
++	 entitled "Handling errors during writeback".
+ 
+   fasync: called by the fcntl(2) system call when asynchronous
+ 	(non-blocking) mode is enabled for a file
 -- 
 2.13.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
