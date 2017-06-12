@@ -1,68 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [GIT PULL] ext4 bug fixes for 4.12
-Date: Sun, 11 Jun 2017 14:41:13 -0400
-Message-ID: <20170611184113.tkkuofuvugkdb5dw@thunk.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 1/3] mm: add vm_insert_mixed_mkwrite()
+Date: Sun, 11 Jun 2017 22:02:36 -0600
+Message-ID: <20170612040236.GA7352@linux.intel.com>
+References: <20170607204859.13104-1-ross.zwisler@linux.intel.com>
+ <CAA9_cmcPsyZCB7-pd9djL0+bLamfL49SJVgkyoJ22G6tgOxyww@mail.gmail.com>
+ <20170610030346.GA3575@linux.intel.com>
+ <CAPcyv4jsgUfL5Cr5a342aVNKXBrtXzpuar_1U3w3auHoT2E08A@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-mm <linux-mm@kvack.org>, Dave Hansen <dave.hansen@intel.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>, ext4 hackers <linux-ext4@vger.kernel.org>,
+	Christoph Hellwig <hch@lst.de>,
+	"linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAPcyv4jsgUfL5Cr5a342aVNKXBrtXzpuar_1U3w3auHoT2E08A@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 08332893e37af6ae779367e78e444f8f9571511d:
+On Fri, Jun 09, 2017 at 08:35:08PM -0700, Dan Williams wrote:
+> On Fri, Jun 9, 2017 at 8:03 PM, Ross Zwisler
+> <ross.zwisler@linux.intel.com> wrote:
+> > And vm_insert_mixed_mkwrite() and vm_insert_mixed() are redundant with only
+> > the insert_pfn() line differing?  This doesn't seem better...unless I'm
+> > missing something?
+> >
+> > The way it is, vm_insert_mixed_mkwrite() also closely matches
+> > insert_pfn_pmd(), which we use in the PMD case and which also takes a 'write'
+> > boolean which works the same as our newly added 'mkwrite'.
+> 
+> Hmm, but now the pfn and pmd cases are inconsistent, if you put the
+> flag name in the function then don't add an argument, or make it like
+> the pmd case and add an argument to vm_insert_mixed(). I prefer the
+> former.
 
-  Linux 4.12-rc2 (2017-05-21 19:30:23 -0700)
+Okay, I'll fix this for v2.  Thanks for the review.
 
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
-
-for you to fetch changes up to 67a7d5f561f469ad2fa5154d2888258ab8e6df7c:
-
-  ext4: fix fdatasync(2) after extent manipulation operations (2017-05-29 13:24:55 -0400)
-
-----------------------------------------------------------------
-Fix various bug fixes in ext4 caused by races and memory allocation
-failures.
-
-----------------------------------------------------------------
-Eric Biggers (3):
-      ext4: fix off-by-one error when writing back pages before dio read
-      ext4: remove unused d_name argument from ext4_search_dir() et al.
-      ext4: remove redundant check for encrypted file on dio write path
-
-Eryu Guan (1):
-      ext4: fix off-by-one on max nr_pages in ext4_find_unwritten_pgoff()
-
-Jan Kara (6):
-      ext4: clear lockdep subtype for quota files on quota off
-      ext4: fix SEEK_HOLE
-      ext4: fix off-by-in in loop termination in ext4_find_unwritten_pgoff()
-      ext4: fix data corruption with EXT4_GET_BLOCKS_ZERO
-      ext4: fix data corruption for mmap writes
-      ext4: fix fdatasync(2) after extent manipulation operations
-
-Konstantin Khlebnikov (2):
-      ext4: handle the rest of ext4_mb_load_buddy() ENOMEM errors
-      ext4: keep existing extra fields when inode expands
-
-Tahsin Erdogan (2):
-      jbd2: preserve original nofs flag during journal restart
-      ext4: fix quota charging for shared xattr blocks
-
- fs/ext4/acl.c            |  4 ++++
- fs/ext4/ext4.h           |  2 --
- fs/ext4/extents.c        | 85 ++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
- fs/ext4/file.c           | 54 ++++++++++++++++--------------------------------------
- fs/ext4/inline.c         |  5 ++---
- fs/ext4/inode.c          | 30 ++++++++++++++++++++++--------
- fs/ext4/mballoc.c        | 23 ++++++++++++++---------
- fs/ext4/namei.c          | 13 +++++--------
- fs/ext4/super.c          | 17 ++++++++---------
- fs/ext4/xattr.c          |  8 ++++++++
- fs/jbd2/transaction.c    |  6 ++++++
- fs/quota/dquot.c         | 16 ++++++++++++++++
- include/linux/quotaops.h |  6 ++++++
- 13 files changed, 149 insertions(+), 120 deletions(-)
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
