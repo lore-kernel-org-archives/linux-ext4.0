@@ -1,101 +1,202 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 10/13] ext4: add more robust reporting of metadata writeback errors
-Date: Mon, 12 Jun 2017 08:23:02 -0400
-Message-ID: <20170612122316.13244-11-jlayton@redhat.com>
+Subject: [PATCH v6 06/20] mm: drop "wait" parameter from write_one_page
+Date: Mon, 12 Jun 2017 08:22:58 -0400
+Message-ID: <20170612122316.13244-7-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4 uses the blockdev mapping for tracking metadata stored in the
-pagecache. Sample its wb_err when opening a file and store that in
-the f_md_wb_err field.
+The callers all set it to 1.
 
-Change ext4_sync_file to check for data errors first, and then check the
-blockdev mapping for metadata errors afterward.
+Also, make it clear that this function will not set any sort of AS_*
+error, and that the caller must do so if necessary. No existing caller
+uses this on normal files, so none of them need it.
 
-Note that because metadata writeback errors are only tracked on a
-per-device level, this does mean that we'll end up reporting an error on
-all open file descriptors when there is a metadata writeback failure.
-That's not ideal, but we can possibly improve upon it in the future.
+Also, add __must_check here since, in general, the callers need to
+handle an error here in some fashion.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ext4/dir.c   |  8 ++++++--
- fs/ext4/file.c  |  5 ++++-
- fs/ext4/fsync.c | 13 +++++++++++++
- 3 files changed, 23 insertions(+), 3 deletions(-)
+ fs/exofs/dir.c        |  2 +-
+ fs/ext2/dir.c         |  2 +-
+ fs/jfs/jfs_metapage.c |  4 ++--
+ fs/minix/dir.c        |  2 +-
+ fs/sysv/dir.c         |  2 +-
+ fs/ufs/dir.c          |  2 +-
+ include/linux/mm.h    |  2 +-
+ mm/page-writeback.c   | 14 +++++++-------
+ 8 files changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index e8b365000d73..6bbb19510f74 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -611,9 +611,13 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
+diff --git a/fs/exofs/dir.c b/fs/exofs/dir.c
+index 8eeb694332fe..98233a97b7b8 100644
+--- a/fs/exofs/dir.c
++++ b/fs/exofs/dir.c
+@@ -72,7 +72,7 @@ static int exofs_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 	set_page_dirty(page);
  
- static int ext4_dir_open(struct inode * inode, struct file * filp)
- {
-+	int ret = 0;
-+
- 	if (ext4_encrypted_inode(inode))
--		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
--	return 0;
-+		ret = fscrypt_get_encryption_info(inode) ? -EACCES : 0;
-+	if (!ret)
-+		filp->f_md_wb_err = filemap_sample_wb_err(inode->i_sb->s_bdev->bd_inode->i_mapping);
-+	return ret;
- }
+ 	if (IS_DIRSYNC(dir))
+-		err = write_one_page(page, 1);
++		err = write_one_page(page);
+ 	else
+ 		unlock_page(page);
  
- static int ext4_release_dir(struct inode *inode, struct file *filp)
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 831fd6beebf0..fe0d6e01c4b7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -435,7 +435,10 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 		if (ret < 0)
- 			return ret;
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index d9650c9508e4..e2709695b177 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -100,7 +100,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
  	}
--	return dquot_file_open(inode, filp);
-+	ret = dquot_file_open(inode, filp);
-+	if (!ret)
-+		filp->f_md_wb_err = filemap_sample_wb_err(sb->s_bdev->bd_inode->i_mapping);
-+	return ret;
+ 
+ 	if (IS_DIRSYNC(dir)) {
+-		err = write_one_page(page, 1);
++		err = write_one_page(page);
+ 		if (!err)
+ 			err = sync_inode_metadata(dir, 1);
+ 	} else {
+diff --git a/fs/jfs/jfs_metapage.c b/fs/jfs/jfs_metapage.c
+index 489aaa1403e5..744fa3c079e6 100644
+--- a/fs/jfs/jfs_metapage.c
++++ b/fs/jfs/jfs_metapage.c
+@@ -711,7 +711,7 @@ void force_metapage(struct metapage *mp)
+ 	get_page(page);
+ 	lock_page(page);
+ 	set_page_dirty(page);
+-	write_one_page(page, 1);
++	write_one_page(page);
+ 	clear_bit(META_forcewrite, &mp->flag);
+ 	put_page(page);
+ }
+@@ -756,7 +756,7 @@ void release_metapage(struct metapage * mp)
+ 		set_page_dirty(page);
+ 		if (test_bit(META_sync, &mp->flag)) {
+ 			clear_bit(META_sync, &mp->flag);
+-			write_one_page(page, 1);
++			write_one_page(page);
+ 			lock_page(page); /* write_one_page unlocks the page */
+ 		}
+ 	} else if (mp->lsn)	/* discard_metapage doesn't remove it */
+diff --git a/fs/minix/dir.c b/fs/minix/dir.c
+index 7edc9b395700..baa9721f1299 100644
+--- a/fs/minix/dir.c
++++ b/fs/minix/dir.c
+@@ -57,7 +57,7 @@ static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 		mark_inode_dirty(dir);
+ 	}
+ 	if (IS_DIRSYNC(dir))
+-		err = write_one_page(page, 1);
++		err = write_one_page(page);
+ 	else
+ 		unlock_page(page);
+ 	return err;
+diff --git a/fs/sysv/dir.c b/fs/sysv/dir.c
+index 5bdae85ceef7..f5191cb2c947 100644
+--- a/fs/sysv/dir.c
++++ b/fs/sysv/dir.c
+@@ -45,7 +45,7 @@ static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 		mark_inode_dirty(dir);
+ 	}
+ 	if (IS_DIRSYNC(dir))
+-		err = write_one_page(page, 1);
++		err = write_one_page(page);
+ 	else
+ 		unlock_page(page);
+ 	return err;
+diff --git a/fs/ufs/dir.c b/fs/ufs/dir.c
+index de01b8f2aa78..48609f1d9580 100644
+--- a/fs/ufs/dir.c
++++ b/fs/ufs/dir.c
+@@ -53,7 +53,7 @@ static int ufs_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 		mark_inode_dirty(dir);
+ 	}
+ 	if (IS_DIRSYNC(dir))
+-		err = write_one_page(page, 1);
++		err = write_one_page(page);
+ 	else
+ 		unlock_page(page);
+ 	return err;
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b892e95d4929..c0b1759304ec 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2199,7 +2199,7 @@ extern void filemap_map_pages(struct vm_fault *vmf,
+ extern int filemap_page_mkwrite(struct vm_fault *vmf);
+ 
+ /* mm/page-writeback.c */
+-int write_one_page(struct page *page, int wait);
++int __must_check write_one_page(struct page *page);
+ void task_dirty_inc(struct task_struct *tsk);
+ 
+ /* readahead.c */
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 143c1c25d680..b901fe52b153 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2366,15 +2366,16 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
  }
  
- /*
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 03d6259d8662..36363a6730d7 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -165,6 +165,19 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	err = filemap_report_wb_err(file);
- 	if (!ret)
- 		ret = err;
-+
-+	/*
-+	 * Was there a metadata writeback error since last fsync?
-+	 *
-+	 * FIXME: ext4 tracks metadata with a whole-block device mapping. So,
-+	 * if there is any sort of metadata writeback error, we'll report an
-+	 * error on all open fds, even ones not associated with the inode
-+	 */
-+	err = filemap_report_md_wb_err(file,
-+				inode->i_sb->s_bdev->bd_inode->i_mapping);
-+	if (!ret)
-+		ret = err;
-+
- 	trace_ext4_sync_file_exit(inode, ret);
- 	return ret;
- }
+ /**
+- * write_one_page - write out a single page and optionally wait on I/O
++ * write_one_page - write out a single page and wait on I/O
+  * @page: the page to write
+- * @wait: if true, wait on writeout
+  *
+  * The page must be locked by the caller and will be unlocked upon return.
+  *
+- * write_one_page() returns a negative error code if I/O failed.
++ * write_one_page() returns a negative error code if I/O failed. Note that
++ * the address_space is not marked for error. The caller must do this if
++ * needed.
+  */
+-int write_one_page(struct page *page, int wait)
++int write_one_page(struct page *page)
+ {
+ 	struct address_space *mapping = page->mapping;
+ 	int ret = 0;
+@@ -2385,13 +2386,12 @@ int write_one_page(struct page *page, int wait)
+ 
+ 	BUG_ON(!PageLocked(page));
+ 
+-	if (wait)
+-		wait_on_page_writeback(page);
++	wait_on_page_writeback(page);
+ 
+ 	if (clear_page_dirty_for_io(page)) {
+ 		get_page(page);
+ 		ret = mapping->a_ops->writepage(page, &wbc);
+-		if (ret == 0 && wait) {
++		if (ret == 0) {
+ 			wait_on_page_writeback(page);
+ 			if (PageError(page))
+ 				ret = -EIO;
 -- 
 2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
