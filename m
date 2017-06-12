@@ -1,43 +1,96 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 20/20] btrfs: minimal conversion to errseq_t writeback error reporting on fsync
-Date: Mon, 12 Jun 2017 08:23:16 -0400
-Message-ID: <20170612122316.13244-25-jlayton@redhat.com>
+Subject: [PATCH v6 11/20] mm: set both AS_EIO/AS_ENOSPC and errseq_t in mapping_set_error
+Date: Mon, 12 Jun 2017 08:23:05 -0400
+Message-ID: <20170612122316.13244-14-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Set the FS_WB_ERRSEQ flag to opt-in to errseq_t based reporting.
-Internal call to filemap_* functions are left as-is.
+When a writeback error occurs, we want later callers to be able to pick
+up that fact when they go to wait on that writeback to complete.
+Traditionally, we've used AS_EIO/AS_ENOSPC flags to track that, but
+that's problematic since only one "checker" will be informed when an
+error occurs.
+
+In later patches, we're going to want to convert many of these callers
+to check for errors since a well-defined point in time. For now, ensure
+that we can handle both sorts of checks by both setting errors in both
+places when there is a writeback failure.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/btrfs/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/pagemap.h | 31 +++++++++++++++++++++++++------
+ 1 file changed, 25 insertions(+), 6 deletions(-)
 
-diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
-index 4f1cdd5058f1..c99af09cd3e7 100644
---- a/fs/btrfs/super.c
-+++ b/fs/btrfs/super.c
-@@ -2184,7 +2184,7 @@ static struct file_system_type btrfs_fs_type = {
- 	.name		= "btrfs",
- 	.mount		= btrfs_mount,
- 	.kill_sb	= btrfs_kill_super,
--	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA | FS_WB_ERRSEQ,
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 316a19f6b635..28acc94e0f81 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -28,14 +28,33 @@ enum mapping_flags {
+ 	AS_NO_WRITEBACK_TAGS = 5,
  };
- MODULE_ALIAS_FS("btrfs");
  
++/**
++ * mapping_set_error - record a writeback error in the address_space
++ * @mapping - the mapping in which an error should be set
++ * @error - the error to set in the mapping
++ *
++ * When writeback fails in some way, we must record that error so that
++ * userspace can be informed when fsync and the like are called.  We endeavor
++ * to report errors on any file that was open at the time of the error.  Some
++ * internal callers also need to know when writeback errors have occurred.
++ *
++ * When a writeback error occurs, most filesystems will want to call
++ * mapping_set_error to record the error in the mapping so that it can be
++ * reported when the application calls fsync(2).
++ */
+ static inline void mapping_set_error(struct address_space *mapping, int error)
+ {
+-	if (unlikely(error)) {
+-		if (error == -ENOSPC)
+-			set_bit(AS_ENOSPC, &mapping->flags);
+-		else
+-			set_bit(AS_EIO, &mapping->flags);
+-	}
++	if (likely(!error))
++		return;
++
++	/* Record in wb_err for checkers using errseq_t based tracking */
++	filemap_set_wb_err(mapping, error);
++
++	/* Record it in flags for now, for legacy callers */
++	if (error == -ENOSPC)
++		set_bit(AS_ENOSPC, &mapping->flags);
++	else
++		set_bit(AS_EIO, &mapping->flags);
+ }
+ 
+ static inline void mapping_set_unevictable(struct address_space *mapping)
 -- 
 2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
