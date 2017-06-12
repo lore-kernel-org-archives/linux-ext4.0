@@ -1,75 +1,147 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 07/20] mm: clean up error handling in write_one_page
-Date: Mon, 12 Jun 2017 08:22:59 -0400
-Message-ID: <20170612122316.13244-8-jlayton@redhat.com>
+Subject: [PATCH v6 04/20] buffer: set errors in mapping at the time that the error occurs
+Date: Mon, 12 Jun 2017 08:22:56 -0400
+Message-ID: <20170612122316.13244-5-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <linux-block-owner@vger.kernel.org>
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
-Sender: linux-block-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Don't try to check PageError since that's potentially racy and not
-necessarily going to be set after writepage errors out.
+I noticed on xfs that I could still sometimes get back an error on fsync
+on a fd that was opened after the error condition had been cleared.
 
-Instead, check the mapping for an error after writepage returns.
+The problem is that the buffer code sets the write_io_error flag and
+then later checks that flag to set the error in the mapping. That flag
+perisists for quite a while however. If the file is later opened with
+O_TRUNC, the buffers will then be invalidated and the mapping's error
+set such that a subsequent fsync will return error. I think this is
+incorrect, as there was no writeback between the open and fsync.
+
+Add a new mark_buffer_write_io_error operation that sets the flag and
+the error in the mapping at the same time. Replace all calls to
+set_buffer_write_io_error with mark_buffer_write_io_error, and remove
+the places that check this flag in order to set the error in the
+mapping.
+
+This sets the error in the mapping earlier, at the time that it's first
+detected.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- mm/page-writeback.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ fs/buffer.c                 | 20 +++++++++++++-------
+ fs/gfs2/lops.c              |  2 +-
+ include/linux/buffer_head.h |  1 +
+ 3 files changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index b901fe52b153..e369e8ea2a29 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -2371,14 +2371,13 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
-  *
-  * The page must be locked by the caller and will be unlocked upon return.
-  *
-- * write_one_page() returns a negative error code if I/O failed. Note that
-- * the address_space is not marked for error. The caller must do this if
-- * needed.
-+ * Note that the mapping's AS_EIO/AS_ENOSPC flags will be cleared when this
-+ * function returns.
-  */
- int write_one_page(struct page *page)
- {
- 	struct address_space *mapping = page->mapping;
--	int ret = 0;
-+	int ret = 0, ret2;
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL,
- 		.nr_to_write = 1,
-@@ -2391,15 +2390,15 @@ int write_one_page(struct page *page)
- 	if (clear_page_dirty_for_io(page)) {
- 		get_page(page);
- 		ret = mapping->a_ops->writepage(page, &wbc);
--		if (ret == 0) {
-+		if (ret == 0)
- 			wait_on_page_writeback(page);
--			if (PageError(page))
--				ret = -EIO;
--		}
- 		put_page(page);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 4be8b914a222..b946149e8214 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -178,7 +178,7 @@ void end_buffer_write_sync(struct buffer_head *bh, int uptodate)
+ 		set_buffer_uptodate(bh);
  	} else {
- 		unlock_page(page);
+ 		buffer_io_error(bh, ", lost sync page write");
+-		set_buffer_write_io_error(bh);
++		mark_buffer_write_io_error(bh);
+ 		clear_buffer_uptodate(bh);
  	}
-+
-+	if (!ret)
-+		ret = filemap_check_errors(mapping);
- 	return ret;
+ 	unlock_buffer(bh);
+@@ -352,8 +352,7 @@ void end_buffer_async_write(struct buffer_head *bh, int uptodate)
+ 		set_buffer_uptodate(bh);
+ 	} else {
+ 		buffer_io_error(bh, ", lost async page write");
+-		mapping_set_error(page->mapping, -EIO);
+-		set_buffer_write_io_error(bh);
++		mark_buffer_write_io_error(bh);
+ 		clear_buffer_uptodate(bh);
+ 		SetPageError(page);
+ 	}
+@@ -481,8 +480,6 @@ static void __remove_assoc_queue(struct buffer_head *bh)
+ {
+ 	list_del_init(&bh->b_assoc_buffers);
+ 	WARN_ON(!bh->b_assoc_map);
+-	if (buffer_write_io_error(bh))
+-		mapping_set_error(bh->b_assoc_map, -EIO);
+ 	bh->b_assoc_map = NULL;
  }
- EXPORT_SYMBOL(write_one_page);
+ 
+@@ -1181,6 +1178,17 @@ void mark_buffer_dirty(struct buffer_head *bh)
+ }
+ EXPORT_SYMBOL(mark_buffer_dirty);
+ 
++void mark_buffer_write_io_error(struct buffer_head *bh)
++{
++	set_buffer_write_io_error(bh);
++	/* FIXME: do we need to set this in both places? */
++	if (bh->b_page && bh->b_page->mapping)
++		mapping_set_error(bh->b_page->mapping, -EIO);
++	if (bh->b_assoc_map)
++		mapping_set_error(bh->b_assoc_map, -EIO);
++}
++EXPORT_SYMBOL(mark_buffer_write_io_error);
++
+ /*
+  * Decrement a buffer_head's reference count.  If all buffers against a page
+  * have zero reference count, are clean and unlocked, and if the page is clean
+@@ -3279,8 +3287,6 @@ drop_buffers(struct page *page, struct buffer_head **buffers_to_free)
+ 
+ 	bh = head;
+ 	do {
+-		if (buffer_write_io_error(bh) && page->mapping)
+-			mapping_set_error(page->mapping, -EIO);
+ 		if (buffer_busy(bh))
+ 			goto failed;
+ 		bh = bh->b_this_page;
+diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
+index b1f9144b42c7..cd7857ab1a6a 100644
+--- a/fs/gfs2/lops.c
++++ b/fs/gfs2/lops.c
+@@ -182,7 +182,7 @@ static void gfs2_end_log_write_bh(struct gfs2_sbd *sdp, struct bio_vec *bvec,
+ 		bh = bh->b_this_page;
+ 	do {
+ 		if (error)
+-			set_buffer_write_io_error(bh);
++			mark_buffer_write_io_error(bh);
+ 		unlock_buffer(bh);
+ 		next = bh->b_this_page;
+ 		size -= bh->b_size;
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index bd029e52ef5e..e0abeba3ced7 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -149,6 +149,7 @@ void buffer_check_dirty_writeback(struct page *page,
+  */
+ 
+ void mark_buffer_dirty(struct buffer_head *bh);
++void mark_buffer_write_io_error(struct buffer_head *bh);
+ void init_buffer(struct buffer_head *, bh_end_io_t *, void *);
+ void touch_buffer(struct buffer_head *bh);
+ void set_bh_page(struct buffer_head *bh,
 -- 
 2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
