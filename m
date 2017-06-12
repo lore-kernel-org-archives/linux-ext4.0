@@ -1,35 +1,54 @@
-From: Johannes Weiner <hannes@cmpxchg.org>
-Subject: Re: [RFC PATCH] fs: ext4: don't trap kswapd and allocating tasks on
- ext4 inode IO
-Date: Mon, 12 Jun 2017 17:51:50 -0400
-Message-ID: <20170612215150.GA17505@cmpxchg.org>
-References: <20170515154634.19733-1-hannes@cmpxchg.org>
- <20170516143645.GA7316@quack2.suse.cz>
- <20170516154105.GA22633@cmpxchg.org>
- <20170516160337.GD7316@quack2.suse.cz>
- <20170612080957.GA22728@quack2.suse.cz>
- <20170612143727.GA1198@cmpxchg.org>
- <20170612151934.GA3930@quack2.suse.cz>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: [PATCH 0/10 v11] No wait AIO
+Date: Mon, 12 Jun 2017 17:38:13 -0500
+Message-ID: <58bbe95e-5a4a-4387-3a00-16ed2e861bd3@suse.de>
+References: <20170606111939.27272-1-rgoldwyn@suse.de>
+ <20170608073910.GB9292@infradead.org>
+ <20170610053441.GD6365@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-team@fb.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170612151934.GA3930@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        jack@suse.com, linux-block@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, axboe@kernel.dk,
+        linux-api@vger.kernel.org, adam.manzanares@wdc.com
+To: Al Viro <viro@ZenIV.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170610053441.GD6365@ZenIV.linux.org.uk>
+Content-Language: en-US
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 12, 2017 at 05:19:34PM +0200, Jan Kara wrote:
-> On Mon 12-06-17 10:37:27, Johannes Weiner wrote:
-> > However, with or without a reproducer, it seems to make sense to not
-> > serialize evict() on commits when we don't have to from a correctness
-> > point of view. Would you be opposed to just merging the patch anyway?
-> 
-> No, I guess the patch makes sense even without a reproducer. I'll send it
-> to Ted for inclusion.
 
-Thank you, I appreciate it!
+
+On 06/10/2017 12:34 AM, Al Viro wrote:
+> On Thu, Jun 08, 2017 at 12:39:10AM -0700, Christoph Hellwig wrote:
+>> As already indicated this whole series looks fine to me.
+>>
+>> Al: are you going to pick this up?  Or Andrew?
+> 
+> The main issue here is "let's bail out from ->write_iter() instances"
+> patch.  It very obviously has holes in coverage.
+> 
+> Could we have FMODE_AIO_NOWAIT and make those who claim to support it
+> set that in ->open()?  And make aio check that and bail out if asked
+> for nowait on a file without that flag...
+> 
+
+Yes, I would agree.
+
+We had FS_NOWAIT in filesystem type flags (in v3), but retracted it
+later in v4.
+
+Another option could be to keep the feature against FS_REQUIRES_DEV to
+rule out filesystems which are not local, but it again has the problem
+of holes in coverage.
+
+I will work on adding FMODE_AIO_NOWAIT in the meantime.
+
+Thanks,
+
+-- 
+Goldwyn
