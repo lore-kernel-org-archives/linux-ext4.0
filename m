@@ -1,48 +1,57 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v6 01/20] mm: fix mapping_set_error call in me_pagecache_dirty
-Date: Mon, 12 Jun 2017 08:22:53 -0400
-Message-ID: <20170612122316.13244-2-jlayton@redhat.com>
+Subject: [PATCH v6 02/20] buffer: use mapping_set_error instead of setting the flag
+Date: Mon, 12 Jun 2017 08:22:54 -0400
+Message-ID: <20170612122316.13244-3-jlayton@redhat.com>
 References: <20170612122316.13244-1-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170612122316.13244-1-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The error code should be negative. Since this ends up in the default
-case anyway, this is harmless, but it's less confusing to negate it.
-Also, later patches will require a negative error code here.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- mm/memory-failure.c | 2 +-
+ fs/buffer.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/memory-failure.c b/mm/memory-failure.c
-index 342fac9ba89b..55bc61791fe1 100644
---- a/mm/memory-failure.c
-+++ b/mm/memory-failure.c
-@@ -684,7 +684,7 @@ static int me_pagecache_dirty(struct page *p, unsigned long pfn)
- 		 * the first EIO, but we're not worse than other parts
- 		 * of the kernel.
- 		 */
--		mapping_set_error(mapping, EIO);
-+		mapping_set_error(mapping, -EIO);
- 	}
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 161be58c5cb0..4be8b914a222 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -482,7 +482,7 @@ static void __remove_assoc_queue(struct buffer_head *bh)
+ 	list_del_init(&bh->b_assoc_buffers);
+ 	WARN_ON(!bh->b_assoc_map);
+ 	if (buffer_write_io_error(bh))
+-		set_bit(AS_EIO, &bh->b_assoc_map->flags);
++		mapping_set_error(bh->b_assoc_map, -EIO);
+ 	bh->b_assoc_map = NULL;
+ }
  
- 	return me_pagecache_clean(p, pfn);
 -- 
 2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
