@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 2/3] f2fs: require key for truncate(2) of encrypted file
-Date: Tue, 13 Jun 2017 16:47:54 -0700
-Message-ID: <20170613234755.111167-3-ebiggers3@gmail.com>
+Subject: [PATCH 3/3] ubifs: require key for truncate(2) of encrypted file
+Date: Tue, 13 Jun 2017 16:47:55 -0700
+Message-ID: <20170613234755.111167-4-ebiggers3@gmail.com>
 References: <20170613234755.111167-1-ebiggers3@gmail.com>
 Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -25,29 +25,27 @@ the key, just prohibit truncate(2) as well, making it fail with ENOKEY.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/f2fs/file.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/ubifs/file.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 61af721329fa..be0b32bd1297 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -682,9 +682,13 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
+index 2cda3d67e2d0..ee3ff4c6bf4a 100644
+--- a/fs/ubifs/file.c
++++ b/fs/ubifs/file.c
+@@ -1284,6 +1284,14 @@ int ubifs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
  		return err;
  
- 	if (attr->ia_valid & ATTR_SIZE) {
--		if (f2fs_encrypted_inode(inode) &&
--				fscrypt_get_encryption_info(inode))
--			return -EACCES;
-+		if (f2fs_encrypted_inode(inode)) {
-+			err = fscrypt_get_encryption_info(inode);
-+			if (err)
-+				return err;
-+			if (!fscrypt_has_encryption_key(inode))
-+				return -ENOKEY;
-+		}
- 
- 		if (attr->ia_size <= i_size_read(inode)) {
- 			truncate_setsize(inode, attr->ia_size);
++	if (ubifs_crypt_is_encrypted(inode) && (attr->ia_valid & ATTR_SIZE)) {
++		err = fscrypt_get_encryption_info(inode);
++		if (err)
++			return err;
++		if (!fscrypt_has_encryption_key(inode))
++			return -ENOKEY;
++	}
++
+ 	if ((attr->ia_valid & ATTR_SIZE) && attr->ia_size < inode->i_size)
+ 		/* Truncation to a smaller size */
+ 		err = do_truncation(c, inode, attr);
 -- 
 2.13.1.508.gb3defc5cc-goog
