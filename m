@@ -1,29 +1,43 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: CRASH : RCU detected stall
-Date: Tue, 13 Jun 2017 13:30:44 -0400
-Message-ID: <20170613173044.sdibg23cfvpwwxud@thunk.org>
-References: <CAKEzZ8wRAFxXOcgxzu2KkntvNz8QvGocWpH_xDbRxRg=7LgbPA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller@googlegroups.com
-To: Ramin Farajpour Cami <ramin.blackhat@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAKEzZ8wRAFxXOcgxzu2KkntvNz8QvGocWpH_xDbRxRg=7LgbPA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH 0/3] fscrypt: forbid truncate(2) without key
+Date: Tue, 13 Jun 2017 16:47:52 -0700
+Message-ID: <20170613234755.111167-1-ebiggers3@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f194.google.com ([209.85.192.194]:33943 "EHLO
+        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752259AbdFMXtD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jun 2017 19:49:03 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 13, 2017 at 07:35:37PM +0430, Ramin Farajpour Cami wrote:
-> Hi,
-> 
-> I've got the following error report while fuzzing the kernel with syzkaller
-> version (4.12-rc5)
-> 
-> https://groups.google.com/forum/#!topic/syzkaller/4e8MkNnRFRQ
+From: Eric Biggers <ebiggers@google.com>
 
-Can you reliably reproduce this failure?  If so, please give details.
-Unfortunately this sort of RCU self-stall can be caused by any number
-of things.
+These patches update the various filesystems to forbid userspace from
+truncating encrypted files without the encryption key, as it's not
+possible to handle this correctly in general.  I believe this may have
+been missed because truncate() doesn't require opening the file first,
+and therefore it's not prevented by the existing requirement that open()
+is only allowed with the encryption key.
 
-				- Ted
+It probably makes sense to take this series through the fscrypt tree, as
+the changes for each filesystem are basically identical.  (Eventually it
+might make sense to add an S_ENCRYPTED flag to struct inode and move
+some of these "hooks" up into the VFS; this one might fit nicely into
+setattr_prepare(), for example.)
+
+Eric Biggers (3):
+  ext4: require key for truncate(2) of encrypted file
+  f2fs: require key for truncate(2) of encrypted file
+  ubifs: require key for truncate(2) of encrypted file
+
+ fs/ext4/inode.c |  8 ++++++++
+ fs/f2fs/file.c  | 10 +++++++---
+ fs/ubifs/file.c |  8 ++++++++
+ 3 files changed, 23 insertions(+), 3 deletions(-)
+
+-- 
+2.13.1.508.gb3defc5cc-goog
