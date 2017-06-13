@@ -1,9 +1,10 @@
 From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [xfstests PATCH v4 2/5] ext4: allow ext4 to use $SCRATCH_LOGDEV
-Date: Tue, 13 Jun 2017 16:38:17 +0800
-Message-ID: <20170613083817.GD4788@eguan.usersys.redhat.com>
+Subject: Re: [xfstests PATCH v4 5/5] btrfs: make a btrfs version of writeback
+ error reporting test
+Date: Tue, 13 Jun 2017 16:40:34 +0800
+Message-ID: <20170613084034.GE4788@eguan.usersys.redhat.com>
 References: <20170612124213.14855-1-jlayton@redhat.com>
- <20170612124213.14855-3-jlayton@redhat.com>
+ <20170612124213.14855-6-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -20,49 +21,142 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
 To: Jeff Layton <jlayton@redhat.com>
 Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170612124213.14855-3-jlayton@redhat.com>
+In-Reply-To: <20170612124213.14855-6-jlayton@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 12, 2017 at 08:42:10AM -0400, Jeff Layton wrote:
-> The writeback error handling test requires that you put the journal on a
-> separate device. This allows us to use dmerror to simulate data
-> writeback failure, without affecting the journal.
+On Mon, Jun 12, 2017 at 08:42:13AM -0400, Jeff Layton wrote:
+> Make a new btrfs/999 test that works the way Chris Mason suggested:
 > 
-> xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
-> up the ext4 code so that it can do the same thing when _scratch_mkfs is
-> called.
+> Build a filesystem with 2 devices that stripes the data across
+> both devices, but mirrors metadata across both. Then, make one
+> of the devices fail and see how fsync is handled.
 > 
 > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->  common/rc | 3 +++
->  1 file changed, 3 insertions(+)
+>  tests/btrfs/999   | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Missing btrfs/999.out file
+
+>  tests/btrfs/group |  1 +
+>  2 files changed, 94 insertions(+)
+>  create mode 100755 tests/btrfs/999
 > 
-> diff --git a/common/rc b/common/rc
-> index 87e6ff08b18d..08807ac7c22a 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -676,6 +676,9 @@ _scratch_mkfs_ext4()
->  	local tmp=`mktemp`
->  	local mkfs_status
->  
-> +	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-> +	    $mkfs_cmd -O journal_dev $SCRATCH_LOGDEV && \
-> +	    mkfs_cmd="$mkfs_cmd $MKFS_OPTIONS -J device=$SCRATCH_LOGDEV"
+> diff --git a/tests/btrfs/999 b/tests/btrfs/999
+> new file mode 100755
+> index 000000000000..84031cc0d913
+> --- /dev/null
+> +++ b/tests/btrfs/999
+> @@ -0,0 +1,93 @@
+> +#! /bin/bash
+> +# FS QA Test No. 999
+> +#
+> +# Open a file several times, write to it, fsync on all fds and make sure that
+> +# they all return 0. Change the device to start throwing errors. Write again
+> +# on all fds and fsync on all fds. Ensure that we get errors on all of them.
+> +# Then fsync on all one last time and verify that all return 0.
+> +#
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2017, Jeff Layton <jlayton@redhat.com>
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    cd /
+> +    rm -rf $tmp.* $testdir
+> +    _dmerror_cleanup
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +. ./common/dmerror
+> +
+> +# real QA test starts here
+> +_supported_os Linux
+> +_require_dm_target error
+> +_require_test_program fsync-err
+> +_require_test_program dmerror
+> +
+> +# bring up dmerror device
+> +_scratch_unmount
+> +_dmerror_init
+> +
+> +# Replace first device with error-test device
+> +old_SCRATCH_DEV=$SCRATCH_DEV
+> +SCRATCH_DEV_POOL=`echo $SCRATCH_DEV_POOL | perl -pe "s#$SCRATCH_DEV#$DMERROR_DEV#"`
+> +SCRATCH_DEV=$DMERROR_DEV
+> +
+> +_require_scratch
+> +_require_scratch_dev_pool
 
-This $MKFS_OPTIONS should be added to the first command when creating
-the journal device so that journal dev has the same block size as data
-dev, there's no need to update mkfs_cmd string.
-
-The external log dev support for ext3 patch has similar issue.
+Need "_require_scratch_dev_pool_equal_size" too, since test creates
+raid1 profile for metadata.
 
 Thanks,
 Eryu
 
->  
->  	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
->  	mkfs_status=$?
+> +
+> +rm -f $seqres.full
+> +
+> +echo "Format and mount"
+> +
+> +_scratch_pool_mkfs "-d raid0 -m raid1" > $seqres.full 2>&1
+> +_scratch_mount
+> +
+> +# How much do we need to write? We need to hit all of the stripes. btrfs uses
+> +# a fixed 64k stripesize, so write enough to hit each one
+> +number_of_devices=`echo $SCRATCH_DEV_POOL | wc -w`
+> +write_kb=$(($number_of_devices * 64))
+> +_require_fs_space $SCRATCH_MNT $write_kb
+> +
+> +testfile=$SCRATCH_MNT/fsync-err-test
+> +
+> +SCRATCH_DEV=$old_SCRATCH_DEV
+> +$here/src/fsync-err -b $(($write_kb * 1024)) -d $here/src/dmerror $testfile
+> +
+> +# success, all done
+> +_dmerror_load_working_table
+> +
+> +# fs may be corrupt after this -- attempt to repair it
+> +_repair_scratch_fs >> $seqres.full
+> +
+> +# remove dmerror device
+> +_dmerror_cleanup
+> +
+> +status=0
+> +exit
+> diff --git a/tests/btrfs/group b/tests/btrfs/group
+> index 6f19619e877c..8dbdfbfe29fd 100644
+> --- a/tests/btrfs/group
+> +++ b/tests/btrfs/group
+> @@ -145,3 +145,4 @@
+>  141 auto quick
+>  142 auto quick
+>  143 auto quick
+> +999 auto quick
 > -- 
 > 2.13.0
 > 
