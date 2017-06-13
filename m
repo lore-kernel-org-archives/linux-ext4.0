@@ -1,54 +1,297 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 0/10 v11] No wait AIO
-Date: Mon, 12 Jun 2017 17:38:13 -0500
-Message-ID: <58bbe95e-5a4a-4387-3a00-16ed2e861bd3@suse.de>
-References: <20170606111939.27272-1-rgoldwyn@suse.de>
- <20170608073910.GB9292@infradead.org>
- <20170610053441.GD6365@ZenIV.linux.org.uk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: akpm@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-        jack@suse.com, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, axboe@kernel.dk,
-        linux-api@vger.kernel.org, adam.manzanares@wdc.com
-To: Al Viro <viro@ZenIV.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170610053441.GD6365@ZenIV.linux.org.uk>
-Content-Language: en-US
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH v3] ext4: change sequential discard handling on commit
+ complete phase into parallel manner
+Date: Tue, 13 Jun 2017 10:15:15 +0900
+Message-ID: <1497316515-4196-1-git-send-email-daeho.jeong@samsung.com>
+References: <CGME20170613011515epcas1p102b88e7316f3bb79449f21b32dba6b8b@epcas1p1.samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>
+To: jack@suse.com, tytso@mit.edu, hch@infradead.org,
+        linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout3.samsung.com ([203.254.224.33]:43226 "EHLO
+        mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753136AbdFMBPX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jun 2017 21:15:23 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Now, when we mount ext4 filesystem with '-o discard' option, we have to
+issue all the discard commands for the blocks to be deallocated and
+wait for the completion of the commands on the commit complete phase.
+Because this procedure might involve a lot of sequential combinations of
+issuing discard commands and waiting for that, the delay of this
+procedure might be too much long, even to 17.0s in our test,
+and it results in long commit delay and fsync() performance degradation.
 
+When we converted this sequential discard handling on commit complete
+phase into a parallel manner like XFS filesystem, we could enhance the
+discard command handling performance. The result was such that 17.0s
+delay of a single commit in the worst case has been enhanced to 4.8s.
 
-On 06/10/2017 12:34 AM, Al Viro wrote:
-> On Thu, Jun 08, 2017 at 12:39:10AM -0700, Christoph Hellwig wrote:
->> As already indicated this whole series looks fine to me.
->>
->> Al: are you going to pick this up?  Or Andrew?
-> 
-> The main issue here is "let's bail out from ->write_iter() instances"
-> patch.  It very obviously has holes in coverage.
-> 
-> Could we have FMODE_AIO_NOWAIT and make those who claim to support it
-> set that in ->open()?  And make aio check that and bail out if asked
-> for nowait on a file without that flag...
-> 
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+Tested-by: Hobin Woo <hobin.woo@samsung.com>
+Tested-by: Kitae Lee <kitae87.lee@samsung.com>
+---
+ fs/ext4/ext4.h    |   3 ++
+ fs/ext4/mballoc.c | 141 +++++++++++++++++++++++++++++++++++-------------------
+ fs/ext4/mballoc.h |   6 +--
+ fs/ext4/super.c   |   3 ++
+ 4 files changed, 100 insertions(+), 53 deletions(-)
 
-Yes, I would agree.
-
-We had FS_NOWAIT in filesystem type flags (in v3), but retracted it
-later in v4.
-
-Another option could be to keep the feature against FS_REQUIRES_DEV to
-rule out filesystems which are not local, but it again has the problem
-of holes in coverage.
-
-I will work on adding FMODE_AIO_NOWAIT in the meantime.
-
-Thanks,
-
--- 
-Goldwyn
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fb69ee2..7dce2cf 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1444,6 +1444,8 @@ struct ext4_sb_info {
+ 	unsigned int *s_mb_maxs;
+ 	unsigned int s_group_info_size;
+ 	unsigned int s_mb_free_pending;
++	struct list_head s_freed_data_list;	/* List of blocks to be freed
++						   after commit completed */
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+@@ -2434,6 +2436,7 @@ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ extern int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count);
+ extern int ext4_trim_fs(struct super_block *, struct fstrim_range *);
++extern void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid);
+ 
+ /* inode.c */
+ int ext4_inode_is_fast_symlink(struct inode *inode);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 354dc1a..b1684f6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -367,8 +367,6 @@ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 					ext4_group_t group);
+ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
+ 						ext4_group_t group);
+-static void ext4_free_data_callback(struct super_block *sb,
+-				struct ext4_journal_cb_entry *jce, int rc);
+ 
+ static inline void *mb_correct_addr_and_bit(int *bit, void *addr)
+ {
+@@ -2639,6 +2637,7 @@ int ext4_mb_init(struct super_block *sb)
+ 	spin_lock_init(&sbi->s_md_lock);
+ 	spin_lock_init(&sbi->s_bal_lock);
+ 	sbi->s_mb_free_pending = 0;
++	INIT_LIST_HEAD(&sbi->s_freed_data_list);
+ 
+ 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+ 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+@@ -2782,7 +2781,8 @@ int ext4_mb_release(struct super_block *sb)
+ }
+ 
+ static inline int ext4_issue_discard(struct super_block *sb,
+-		ext4_group_t block_group, ext4_grpblk_t cluster, int count)
++		ext4_group_t block_group, ext4_grpblk_t cluster, int count,
++		struct bio **biop)
+ {
+ 	ext4_fsblk_t discard_block;
+ 
+@@ -2791,18 +2791,18 @@ static inline int ext4_issue_discard(struct super_block *sb,
+ 	count = EXT4_C2B(EXT4_SB(sb), count);
+ 	trace_ext4_discard_blocks(sb,
+ 			(unsigned long long) discard_block, count);
+-	return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
++	if (biop) {
++		return __blkdev_issue_discard(sb->s_bdev,
++				discard_block << (sb->s_blocksize_bits - 9),
++				count << (sb->s_blocksize_bits - 9),
++				GFP_NOFS, 0, biop);
++	} else
++		return sb_issue_discard(sb, discard_block, count, GFP_NOFS, 0);
+ }
+ 
+-/*
+- * This function is called by the jbd2 layer once the commit has finished,
+- * so we know we can free the blocks that were released with that commit.
+- */
+-static void ext4_free_data_callback(struct super_block *sb,
+-				    struct ext4_journal_cb_entry *jce,
+-				    int rc)
++static void ext4_free_data_in_buddy(struct super_block *sb,
++				    struct ext4_free_data *entry)
+ {
+-	struct ext4_free_data *entry = (struct ext4_free_data *)jce;
+ 	struct ext4_buddy e4b;
+ 	struct ext4_group_info *db;
+ 	int err, count = 0, count2 = 0;
+@@ -2810,18 +2810,6 @@ static void ext4_free_data_callback(struct super_block *sb,
+ 	mb_debug(1, "gonna free %u blocks in group %u (0x%p):",
+ 		 entry->efd_count, entry->efd_group, entry);
+ 
+-	if (test_opt(sb, DISCARD)) {
+-		err = ext4_issue_discard(sb, entry->efd_group,
+-					 entry->efd_start_cluster,
+-					 entry->efd_count);
+-		if (err && err != -EOPNOTSUPP)
+-			ext4_msg(sb, KERN_WARNING, "discard request in"
+-				 " group:%d block:%d count:%d failed"
+-				 " with %d", entry->efd_group,
+-				 entry->efd_start_cluster,
+-				 entry->efd_count, err);
+-	}
+-
+ 	err = ext4_mb_load_buddy(sb, entry->efd_group, &e4b);
+ 	/* we expect to find existing buddy because it's pinned */
+ 	BUG_ON(err != 0);
+@@ -2862,6 +2850,56 @@ static void ext4_free_data_callback(struct super_block *sb,
+ 	mb_debug(1, "freed %u blocks in %u structures\n", count, count2);
+ }
+ 
++/*
++ * This function is called by the jbd2 layer once the commit has finished,
++ * so we know we can free the blocks that were released with that commit.
++ */
++void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_free_data *entry, *tmp;
++	struct bio *discard_bio = NULL;
++	struct list_head freed_data_list;
++	struct list_head *cut_pos = NULL;
++	int err;
++
++	INIT_LIST_HEAD(&freed_data_list);
++
++	spin_lock(&sbi->s_md_lock);
++	list_for_each_entry(entry, &sbi->s_freed_data_list, efd_list) {
++		if (entry->efd_tid != commit_tid)
++			break;
++		cut_pos = &entry->efd_list;
++	}
++	if (cut_pos)
++		list_cut_position(&freed_data_list, &sbi->s_freed_data_list,
++				  cut_pos);
++	spin_unlock(&sbi->s_md_lock);
++
++	if (test_opt(sb, DISCARD)) {
++		list_for_each_entry(entry, &freed_data_list, efd_list) {
++			err = ext4_issue_discard(sb, entry->efd_group,
++						 entry->efd_start_cluster,
++						 entry->efd_count,
++						 &discard_bio);
++			if (err && err != -EOPNOTSUPP) {
++				ext4_msg(sb, KERN_WARNING, "discard request in"
++					 " group:%d block:%d count:%d failed"
++					 " with %d", entry->efd_group,
++					 entry->efd_start_cluster,
++					 entry->efd_count, err);
++			} else if (err == -EOPNOTSUPP)
++				break;
++		}
++
++		if (discard_bio)
++			submit_bio_wait(discard_bio);
++	}
++
++	list_for_each_entry_safe(entry, tmp, &freed_data_list, efd_list)
++		ext4_free_data_in_buddy(sb, entry);
++}
++
+ int __init ext4_init_mballoc(void)
+ {
+ 	ext4_pspace_cachep = KMEM_CACHE(ext4_prealloc_space,
+@@ -4578,14 +4616,28 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+  * are contiguous, AND the extents were freed by the same transaction,
+  * AND the blocks are associated with the same group.
+  */
+-static int can_merge(struct ext4_free_data *entry1,
+-			struct ext4_free_data *entry2)
++static void ext4_try_merge_freed_extent(struct ext4_sb_info *sbi,
++					struct ext4_free_data *entry,
++					struct ext4_free_data *new_entry,
++					struct rb_root *entry_rb_root)
+ {
+-	if ((entry1->efd_tid == entry2->efd_tid) &&
+-	    (entry1->efd_group == entry2->efd_group) &&
+-	    ((entry1->efd_start_cluster + entry1->efd_count) == entry2->efd_start_cluster))
+-		return 1;
+-	return 0;
++	if ((entry->efd_tid != new_entry->efd_tid) ||
++	    (entry->efd_group != new_entry->efd_group))
++		return;
++	if (entry->efd_start_cluster + entry->efd_count ==
++	    new_entry->efd_start_cluster) {
++		new_entry->efd_start_cluster = entry->efd_start_cluster;
++		new_entry->efd_count += entry->efd_count;
++	} else if (new_entry->efd_start_cluster + new_entry->efd_count ==
++		   entry->efd_start_cluster) {
++		new_entry->efd_count += entry->efd_count;
++	} else
++		return;
++	spin_lock(&sbi->s_md_lock);
++	list_del(&entry->efd_list);
++	spin_unlock(&sbi->s_md_lock);
++	rb_erase(&entry->efd_node, entry_rb_root);
++	kmem_cache_free(ext4_free_data_cachep, entry);
+ }
+ 
+ static noinline_for_stack int
+@@ -4641,29 +4693,19 @@ static int can_merge(struct ext4_free_data *entry1,
+ 	node = rb_prev(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(entry, new_entry) &&
+-		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
+-			new_entry->efd_start_cluster = entry->efd_start_cluster;
+-			new_entry->efd_count += entry->efd_count;
+-			rb_erase(node, &(db->bb_free_root));
+-			kmem_cache_free(ext4_free_data_cachep, entry);
+-		}
++		ext4_try_merge_freed_extent(sbi, entry, new_entry,
++					    &(db->bb_free_root));
+ 	}
+ 
+ 	node = rb_next(new_node);
+ 	if (node) {
+ 		entry = rb_entry(node, struct ext4_free_data, efd_node);
+-		if (can_merge(new_entry, entry) &&
+-		    ext4_journal_callback_try_del(handle, &entry->efd_jce)) {
+-			new_entry->efd_count += entry->efd_count;
+-			rb_erase(node, &(db->bb_free_root));
+-			kmem_cache_free(ext4_free_data_cachep, entry);
+-		}
++		ext4_try_merge_freed_extent(sbi, entry, new_entry,
++					    &(db->bb_free_root));
+ 	}
+-	/* Add the extent to transaction's private list */
+-	new_entry->efd_jce.jce_func = ext4_free_data_callback;
++
+ 	spin_lock(&sbi->s_md_lock);
+-	_ext4_journal_callback_add(handle, &new_entry->efd_jce);
++	list_add_tail(&new_entry->efd_list, &sbi->s_freed_data_list);
+ 	sbi->s_mb_free_pending += clusters;
+ 	spin_unlock(&sbi->s_md_lock);
+ 	return 0;
+@@ -4866,7 +4908,8 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 		 * them with group lock_held
+ 		 */
+ 		if (test_opt(sb, DISCARD)) {
+-			err = ext4_issue_discard(sb, block_group, bit, count);
++			err = ext4_issue_discard(sb, block_group, bit, count,
++						 NULL);
+ 			if (err && err != -EOPNOTSUPP)
+ 				ext4_msg(sb, KERN_WARNING, "discard request in"
+ 					 " group:%d block:%d count:%lu failed"
+@@ -5089,7 +5132,7 @@ static int ext4_trim_extent(struct super_block *sb, int start, int count,
+ 	 */
+ 	mb_mark_used(e4b, &ex);
+ 	ext4_unlock_group(sb, group);
+-	ret = ext4_issue_discard(sb, group, start, count);
++	ret = ext4_issue_discard(sb, group, start, count, NULL);
+ 	ext4_lock_group(sb, group);
+ 	mb_free_blocks(NULL, e4b, start, ex.fe_len);
+ 	return ret;
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 1aba469..694204d 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -78,10 +78,8 @@
+ 
+ 
+ struct ext4_free_data {
+-	/* MUST be the first member */
+-	struct ext4_journal_cb_entry	efd_jce;
