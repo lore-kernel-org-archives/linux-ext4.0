@@ -1,50 +1,37 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v6 12/20] fs: add a new fstype flag to indicate how
- writeback errors are tracked
-Date: Tue, 13 Jun 2017 23:47:31 -0700
-Message-ID: <20170614064731.GB3598@infradead.org>
-References: <20170612122316.13244-1-jlayton@redhat.com>
- <20170612122316.13244-15-jlayton@redhat.com>
- <20170612124513.GC18360@infradead.org>
- <1497349472.5762.1.camel@redhat.com>
+Subject: Re: [PATCH 1/3] ext4: require key for truncate(2) of encrypted file
+Date: Tue, 13 Jun 2017 23:52:10 -0700
+Message-ID: <20170614065210.GA10411@infradead.org>
+References: <20170613234755.111167-1-ebiggers3@gmail.com>
+ <20170613234755.111167-2-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com, corbet@lwn.net,
-	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:49379 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750751AbdFNGwL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jun 2017 02:52:11 -0400
 Content-Disposition: inline
-In-Reply-To: <1497349472.5762.1.camel@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170613234755.111167-2-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 13, 2017 at 06:24:32AM -0400, Jeff Layton wrote:
-> That's definitely what I want for the endgame here. My plan was to add
-> this flag for now, and then eventually reverse it (or drop it) once all
-> or most filesystems are converted.
+On Tue, Jun 13, 2017 at 04:47:53PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> We can do it that way from the get-go if you like. It'll mean tossing in
->  a patch add this flag to all filesystems that have an fsync operation
-> and that use the pagecache, and then gradually remove it from them as we
-> convert them.
+> Currently, filesystems allow truncate(2) on an encrypted file without
+> the encryption key.  However, it's impossible to correctly handle the
+> case where the size being truncated to is not a multiple of the
+> filesystem block size, because that would require decrypting the final
+> block, zeroing the part beyond i_size, then encrypting the block.
 > 
-> Which method do you prefer?
+> As other modifications to encrypted file contents are prohibited without
+> the key, just prohibit truncate(2) as well, making it fail with ENOKEY.
 
-Please do it from the get-go.  Or in fact figure out if we can get
-away without it entirely.  Moving the error reporting into ->fsync
-should help greatly with that, so what's missing after that?
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+What about hole punches?  What about fallocate which just adds zeroes
+but still changes the content.  What about insert or collapse range?
