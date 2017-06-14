@@ -1,7 +1,8 @@
 From: Michael Halcrow <mhalcrow@google.com>
-Subject: [RFC PATCH 0/4] Allow file systems to selectively bypass dm-crypt
-Date: Wed, 14 Jun 2017 16:40:36 -0700
-Message-ID: <20170614234040.4326-1-mhalcrow@google.com>
+Subject: [RFC PATCH 3/4] ext4: Set the bio REQ_NOENCRYPT flag
+Date: Wed, 14 Jun 2017 16:40:39 -0700
+Message-ID: <20170614234040.4326-4-mhalcrow@google.com>
+References: <20170614234040.4326-1-mhalcrow@google.com>
 To: Michael Halcrow <mhalcrow@google.com>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Eric Biggers <ebiggers@google.com>,
@@ -10,68 +11,141 @@ To: Michael Halcrow <mhalcrow@google.com>,
         linux-block@vger.kernel.org, dm-devel@redhat.com,
         linux-ext4@vger.kernel.org, Tyler Hicks <tyler.hicks@canonical.com>
 Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170614234040.4326-1-mhalcrow@google.com>
 Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Several file systems either have already implemented encryption or are
-in the process of doing so.  This addresses usability and storage
-isolation requirements on mobile devices and in multi-tenant
-environments.
+When lower layers such as dm-crypt observe the REQ_NOENCRYPT flag, it
+helps the I/O stack avoid redundant encryption, improving performance
+and power utilization.
 
-While distinct keys locked down to user accounts protect the names and
-contents of individual files, a volume-level encryption key should
-protect the file system metadata.  When using dm-crypt to do this, the
-blocks that the file system encrypts undergo another round of
-encryption.  In many contexts this isn't necessary, and it results in
-decreased performance and increased power consumption.  This
-discourages users and vendors from taking steps to protect file system
-metadata in addition to file contents.
+Note that lower layers must be consistent in their observation of this
+flag in order to avoid the possibility of data corruption.
 
-This patchset provides a new I/O request flag that suggests to lower
-layers that encryption may not be necessary because the file system
-has already done it.  The first patch targets the block subsystem and
-adds the REQ_NOENCRYPT flag.  The second patch targets dm-crypt and
-adds logic to observe the flag only when the user has opted-in by
-passing allow_encrypt_override as one of the optional parameters to
-the dm-crypt target.  The third patch targets ext4 and sets the
-REQ_NOENCRYPT flag for blocks it encrypts and decrypts.  The fourth
-patch does the same for f2fs.
+Signed-off-by: Michael Halcrow <mhalcrow@google.com>
+---
+ fs/crypto/bio.c    |  2 +-
+ fs/ext4/ext4.h     |  3 +++
+ fs/ext4/inode.c    | 13 ++++++++-----
+ fs/ext4/page-io.c  |  5 +++++
+ fs/ext4/readpage.c |  3 ++-
+ 5 files changed, 19 insertions(+), 7 deletions(-)
 
-In this patchset I'm proposing that we make dm-crypt's observation of
-the file system "don't encrypt" request optional, but I'm not sure
-that's a good tradeoff.  Under the assumption that encryption in
-upstream file systems is sound, the most common way I expect things
-can go awry is if the file system keys don't meet security
-requirements while dm-crypt keys do.  However I'm not convinced that
-will end up being a widespread problem in practice, and there's a real
-data corruption concern with making dm-crypt's observation of the flag
-optional.
-
-The problem is that once dm-crypt observes the flag, it must always
-continue to do so or dm-crypt might decrypt content that it didn't
-encrypt.  This can lead to scenarios where a vendor sets the dm-crypt
-option to observe the "don't encrypt" flag, and then down the road a
-user follows one of the many online guides to manually recover a
-dm-crypt partition without setting this new option.
-
-Should there be an encryption disable flag?  I'm interested in
-considering other solutions.
-
-Michael Halcrow (4):
-  block: Add bio req flag to disable encryption in block
-  dm-crypt: Skip encryption of file system-encrypted blocks
-  ext4: Set the bio REQ_NOENCRYPT flag
-  f2fs: Set the bio REQ_NOENCRYPT flag
-
- drivers/md/dm-crypt.c     | 17 +++++++++++++----
- fs/crypto/bio.c           |  2 +-
- fs/ext4/ext4.h            |  3 +++
- fs/ext4/inode.c           | 13 ++++++++-----
- fs/ext4/page-io.c         |  5 +++++
- fs/ext4/readpage.c        |  3 ++-
- fs/f2fs/data.c            | 10 ++++++++--
- include/linux/blk_types.h |  2 ++
- 8 files changed, 42 insertions(+), 13 deletions(-)
-
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index a409a84f1bca..9093a715d2be 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -118,7 +118,7 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+ 		bio->bi_bdev = inode->i_sb->s_bdev;
+ 		bio->bi_iter.bi_sector =
+ 			pblk << (inode->i_sb->s_blocksize_bits - 9);
+-		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
++		bio_set_op_attrs(bio, REQ_OP_WRITE, REQ_NOENCRYPT);
+ 		ret = bio_add_page(bio, ciphertext_page,
+ 					inode->i_sb->s_blocksize, 0);
+ 		if (ret != inode->i_sb->s_blocksize) {
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8e8046104f4d..48c2bc9f8688 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -206,7 +206,10 @@ typedef struct ext4_io_end {
+ 	ssize_t			size;		/* size of the extent */
+ } ext4_io_end_t;
+ 
++#define EXT4_IO_ENCRYPTED	1
++
+ struct ext4_io_submit {
++	unsigned int		io_flags;
+ 	struct writeback_control *io_wbc;
+ 	struct bio		*io_bio;
+ 	ext4_io_end_t		*io_end;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1bd0bfa547f6..25a9b7265692 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1154,10 +1154,11 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
+ 		    !buffer_unwritten(bh) &&
+ 		    (block_start < from || block_end > to)) {
+-			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+-			*wait_bh++ = bh;
+ 			decrypt = ext4_encrypted_inode(inode) &&
+ 				S_ISREG(inode->i_mode);
++			ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0),
++				    1, &bh);
++			*wait_bh++ = bh;
+ 		}
+ 	}
+ 	/*
+@@ -3863,6 +3864,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	struct inode *inode = mapping->host;
+ 	struct buffer_head *bh;
+ 	struct page *page;
++	bool decrypt;
+ 	int err = 0;
+ 
+ 	page = find_or_create_page(mapping, from >> PAGE_SHIFT,
+@@ -3905,13 +3907,14 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 
+ 	if (!buffer_uptodate(bh)) {
+ 		err = -EIO;
+-		ll_rw_block(REQ_OP_READ, 0, 1, &bh);
++		decrypt = S_ISREG(inode->i_mode) &&
++			ext4_encrypted_inode(inode);
++		ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0), 1, &bh);
+ 		wait_on_buffer(bh);
+ 		/* Uhhuh. Read error. Complain and punt. */
+ 		if (!buffer_uptodate(bh))
+ 			goto unlock;
+-		if (S_ISREG(inode->i_mode) &&
+-		    ext4_encrypted_inode(inode)) {
++		if (decrypt) {
+ 			/* We expect the key to be set. */
+ 			BUG_ON(!fscrypt_has_encryption_key(inode));
+ 			BUG_ON(blocksize != PAGE_SIZE);
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 1a82138ba739..e25bf6cb216a 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -349,6 +349,8 @@ void ext4_io_submit(struct ext4_io_submit *io)
+ 	if (bio) {
+ 		int io_op_flags = io->io_wbc->sync_mode == WB_SYNC_ALL ?
+ 				  REQ_SYNC : 0;
++		if (io->io_flags & EXT4_IO_ENCRYPTED)
++			io_op_flags |= REQ_NOENCRYPT;
+ 		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
+ 		submit_bio(io->io_bio);
+ 	}
+@@ -358,6 +360,7 @@ void ext4_io_submit(struct ext4_io_submit *io)
+ void ext4_io_submit_init(struct ext4_io_submit *io,
+ 			 struct writeback_control *wbc)
+ {
++	io->io_flags = 0;
+ 	io->io_wbc = wbc;
+ 	io->io_bio = NULL;
+ 	io->io_end = NULL;
+@@ -499,6 +502,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	do {
+ 		if (!buffer_async_write(bh))
+ 			continue;
++		if (data_page)
++			io->io_flags |= EXT4_IO_ENCRYPTED;
+ 		ret = io_submit_add_bh(io, inode,
+ 				       data_page ? data_page : page, bh);
+ 		if (ret) {
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index a81b829d56de..008d14d74f33 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -258,7 +258,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
+ 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
+ 			bio->bi_end_io = mpage_end_io;
+ 			bio->bi_private = ctx;
+-			bio_set_op_attrs(bio, REQ_OP_READ, 0);
++			bio_set_op_attrs(bio, REQ_OP_READ,
++					 ctx ? REQ_NOENCRYPT : 0);
+ 		}
+ 
+ 		length = first_hole << blkbits;
 -- 
 2.13.1.508.gb3defc5cc-goog
