@@ -1,7 +1,7 @@
 From: Michael Halcrow <mhalcrow@google.com>
-Subject: [RFC PATCH 1/4] block: Add bio req flag to disable encryption in block
-Date: Wed, 14 Jun 2017 16:40:37 -0700
-Message-ID: <20170614234040.4326-2-mhalcrow@google.com>
+Subject: [RFC PATCH 4/4] f2fs: Set the bio REQ_NOENCRYPT flag
+Date: Wed, 14 Jun 2017 16:40:40 -0700
+Message-ID: <20170614234040.4326-5-mhalcrow@google.com>
 References: <20170614234040.4326-1-mhalcrow@google.com>
 To: Michael Halcrow <mhalcrow@google.com>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
@@ -10,49 +10,70 @@ To: Michael Halcrow <mhalcrow@google.com>,
         linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-block@vger.kernel.org, dm-devel@redhat.com,
         linux-ext4@vger.kernel.org, Tyler Hicks <tyler.hicks@canonical.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f179.google.com ([209.85.192.179]:34603 "EHLO
+        mail-pf0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752821AbdFNXk4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jun 2017 19:40:56 -0400
+Received: by mail-pf0-f179.google.com with SMTP id s66so7549794pfs.1
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Jun 2017 16:40:56 -0700 (PDT)
 In-Reply-To: <20170614234040.4326-1-mhalcrow@google.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When both the file system and a lower layer such as dm-crypt encrypt
-the same file contents, it impacts performance and power utilization.
-Depending on how the operating environment manages the encryption
-keys, there is often no significant security benefit to redundantly
-encrypting.
+When lower layers such as dm-crypt observe the REQ_NOENCRYPT flag, it
+helps the I/O stack avoid redundant encryption, improving performance
+and power utilization.
 
-File systems that encrypt some of their blocks can set the
-REQ_NOENCRYPT flag as a directive to lower layers to not encrypt.
-
-Lower layers may optionally observe the flag, but once thay do, they
-must continue to observe it on subsequent I/O on the device.
-Otherwise they will decrypt content that they didn't previously
-encrypt, resulting in data corruption.
+Note that lower layers must be consistent in their observation of this
+flag in order to avoid the possibility of data corruption.
 
 Signed-off-by: Michael Halcrow <mhalcrow@google.com>
 ---
- include/linux/blk_types.h | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/f2fs/data.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 61339bc44400..89da8f5f7be1 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -205,6 +205,7 @@ enum req_flag_bits {
- 	/* command specific flags for REQ_OP_WRITE_ZEROES: */
- 	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 7c0f6bdf817d..2a000c0ec7e1 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -359,6 +359,7 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
+ 		bio_put(bio);
+ 		return -EFAULT;
+ 	}
++	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
+ 	bio_set_op_attrs(bio, fio->op, fio->op_flags);
  
-+	__REQ_NOENCRYPT,	/* ok to not encrypt */
- 	__REQ_NR_BITS,		/* stops here */
- };
+ 	__submit_bio(fio->sbi, bio, fio->type);
+@@ -384,6 +385,7 @@ int f2fs_submit_page_mbio(struct f2fs_io_info *fio)
+ 	verify_block_addr(sbi, fio->new_blkaddr);
  
-@@ -223,6 +224,7 @@ enum req_flag_bits {
- #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
+ 	bio_page = fio->encrypted_page ? fio->encrypted_page : fio->page;
++	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
  
- #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
-+#define REQ_NOENCRYPT		(1ULL << __REQ_NOENCRYPT)
+ 	/* set submitted = 1 as a return value */
+ 	fio->submitted = 1;
+@@ -1242,7 +1244,10 @@ static int f2fs_mpage_readpages(struct address_space *mapping,
+ 				bio = NULL;
+ 				goto set_error_page;
+ 			}
+-			bio_set_op_attrs(bio, REQ_OP_READ, 0);
++			bio_set_op_attrs(bio, REQ_OP_READ,
++					 (f2fs_encrypted_inode(inode) ?
++					  REQ_NOENCRYPT :
++					  0));
+ 		}
  
- #define REQ_FAILFAST_MASK \
- 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)
+ 		if (bio_add_page(bio, page, blocksize, 0) < blocksize)
+@@ -1914,7 +1919,8 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
+ 			err = PTR_ERR(bio);
+ 			goto fail;
+ 		}
+-		bio->bi_opf = REQ_OP_READ;
++		bio->bi_opf = REQ_OP_READ |
++			(f2fs_encrypted_inode(inode) ? REQ_NOENCRYPT : 0);
+ 		if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
+ 			bio_put(bio);
+ 			err = -EFAULT;
 -- 
 2.13.1.508.gb3defc5cc-goog
