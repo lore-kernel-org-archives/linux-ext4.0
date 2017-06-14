@@ -1,75 +1,116 @@
-From: <koopk@madisonnjps.org>
-Subject: (unknown)
-Date: Wed, 14 Jun 2017 21:25:16 -0000
-Message-ID: <149747551659.12490.14937035272747235017@saturn-internet.ru>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 29/31] ext4: reserve space for xattr
+	entries/names
+Date: Wed, 14 Jun 2017 16:05:18 -0700
+Message-ID: <20170614230518.GA4518@birch.djwong.org>
+References: <20170614172326.18670-1-tahsin@google.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="927328920469.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 178.161.230.129.dyn.v4.saturn-internet.ru ([178.161.230.129]:57113
-        "HELO saturn-internet.ru" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with SMTP id S1751760AbdFNVZU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Jun 2017 17:25:20 -0400
-Content-Disposition: attachment
-Subject: 
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Deepa Dinamani <deepa.kernel@gmail.com>, Dave Kleikamp <shaggy@kernel.org>,
+        jfs-discussion@lists.sourceforge.net, "Theodore Ts'o" <tytso@mit.edu>,
+        linux-kernel@vger.kernel.org, reiserfs-devel@vger.kernel.org,
+        Jens Axboe <axboe@fb.com>, linux-fsdevel@vger.kernel.org,
+        Mike Christie <mchristi@redhat.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
+        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <20170614172326.18670-1-tahsin@google.com>
+List-Unsubscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <https://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-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
+On Wed, Jun 14, 2017 at 10:23:26AM -0700, Tahsin Erdogan wrote:
+> New ea_inode feature allows putting large xattr values into external
+> inodes. struct ext4_xattr_entry and the attribute name however have to
+> remain in the inode extra space or external attribute block. Once that
+> space is exhausted, no further entries can be added. Some of that space
+> could also be used by values that fit in there at the time of addition.
+> 
+> So, a single xattr entry whose value barely fits in the external block
+> could prevent further entries being added.
+> 
+> To mitigate the problem, this patch introduces a notion of reserve in
+> the
+> external attribute block that cannot be used by value data. This reserve
+> is enforced when ea_inode feature is enabled. The amount of reserve is
+> arbitrarily chosen to be min(block_size/8, 1024). The table below shows
+> how much space is reserved for each block size and the guaranteed
+> mininum
+> number of entries that can be placed in the external attribute block.
+> 
+> block size     reserved bytes  entries (name length = 16)
+>  1k            128              3
+>  2k            256              7
+>  4k            512             15
+
+Why not just spill the values into their own ea_inodes if we need the
+space?  I guess that has the disadvantage that now we need to reserve
+quite a few more journal credits ((1 inode block, 1 bbitmap block, 1
+ibitmap block, 1 data block) * nr_inline_values) just in case we end up
+spilling all the values.
+
+--D
+
+>  8k            1024            31
+> 16k            1024            31
+> 32k            1024            31
+> 64k            1024            31
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> ---
+>  fs/ext4/xattr.c | 20 ++++++++++++++++++++
+>  1 file changed, 20 insertions(+)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 3ad1fc62cbf0..c9579d220a0c 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -1428,6 +1428,12 @@ static int ext4_xattr_inode_lookup_create(handle_t *handle, struct inode *inode,
+>  	return 0;
+>  }
+>  
+> +/*
+> + * Reserve min(block_size/8, 1024) bytes for xattr entries/names if ea_inode
+> + * feature is enabled.
+> + */
+> +#define EXT4_XATTR_BLOCK_RESERVE(inode)	min(i_blocksize(inode)/8, 1024U)
+> +
+>  static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+>  				struct ext4_xattr_search *s,
+>  				handle_t *handle, struct inode *inode)
+> @@ -1487,6 +1493,20 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+>  			ret = -ENOSPC;
+>  			goto out;
+>  		}
+> +
+> +		/*
+> +		 * If storing the value in an external inode is an option,
+> +		 * reserve space for xattr entries/names in the external
+> +		 * attribute block so that a long value does not occupy the
+> +		 * whole space and prevent futher entries being added.
+> +		 */
+> +		if (ext4_has_feature_ea_inode(inode->i_sb) && new_size &&
+> +		    (s->end - s->base) == i_blocksize(inode) &&
+> +		    (min_offs + old_size - new_size) <
+> +					EXT4_XATTR_BLOCK_RESERVE(inode)) {
+> +			ret = -ENOSPC;
+> +			goto out;
+> +		}
+>  	}
+>  
+>  	/*
+> -- 
+> 2.13.1.508.gb3defc5cc-goog
+> 
