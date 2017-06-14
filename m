@@ -1,49 +1,45 @@
-From: Chao Yu <chao@kernel.org>
-Subject: Re: [PATCH 2/3] f2fs: require key for truncate(2) of
- encrypted file
-Date: Wed, 14 Jun 2017 20:44:19 +0800
-Message-ID: <e558657c-d383-4528-9be0-8c2d1ab8344c@kernel.org>
-References: <20170613234755.111167-1-ebiggers3@gmail.com>
-	<20170613234755.111167-3-ebiggers3@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: CRASH : RCU detected stall
+Date: Wed, 14 Jun 2017 08:55:24 -0400
+Message-ID: <20170614125524.qxg3dkfbcaqxscp3@thunk.org>
+References: <CAKEzZ8wRAFxXOcgxzu2KkntvNz8QvGocWpH_xDbRxRg=7LgbPA@mail.gmail.com>
+ <20170613173044.sdibg23cfvpwwxud@thunk.org>
+ <CAKEzZ8yb_n+iCy8+_fYujc1LAbijjjd97+dEh9qrwNfx0GAqUw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20170613234755.111167-3-ebiggers3@gmail.com>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller@googlegroups.com
+To: Ramin Farajpour Cami <ramin.blackhat@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAKEzZ8yb_n+iCy8+_fYujc1LAbijjjd97+dEh9qrwNfx0GAqUw@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2017/6/14 7:47, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Wed, Jun 14, 2017 at 10:02:00AM +0430, Ramin Farajpour Cami wrote:
 > 
-> Currently, filesystems allow truncate(2) on an encrypted file without
-> the encryption key.  However, it's impossible to correctly handle the
-> case where the size being truncated to is not a multiple of the
-> filesystem block size, because that would require decrypting the final
-> block, zeroing the part beyond i_size, then encrypting the block.
-> 
-> As other modifications to encrypted file contents are prohibited without
-> the key, just prohibit truncate(2) as well, making it fail with ENOKEY.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Unfortunately it's not reproducible. do you have idea about it?
 
-Acked-by: Chao Yu <yuchao0@huawei.com>
+Nope.  Note that this isn't necessarily an ext4 bug.  We have two
+complaints about an rcu_sched thread getting staved and an NMI handler
+getting taking too long to run:
 
-Thanks,
+rcu_sched kthread starved for 22270 jiffies! g2951 c2950 f0x0
+INFO: NMI handler (nmi_cpu_backtrace_handler) took too long to run: 2.762 msecs
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+We also happened be doing writeback on another CPU and the ext4 thread
+was doing a slab allocation.
+
+What ultimiately caused the RCU starvation is not at all clear.  Were
+we spinning inside the slab allocator, or not?  Getting some
+magic-sysrq triggers to see if the PC was always in the slab allocator
+would be useful.  And if that's the case, it's not clear what might
+have caused us to spinning in the slab allocator.  It could be due to
+some slab state getting corrupted by a previous system call, and ext4
+was just unlucky enough to do the slab allocation which caused it to
+go for a loop.
+
+We just don't have enough information to do any kind of useful
+investigation.
+
+					- Ted
