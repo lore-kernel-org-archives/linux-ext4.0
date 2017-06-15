@@ -1,166 +1,132 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: forbid encrypting root directory
-Date: Wed, 14 Jun 2017 20:02:05 -0600
-Message-ID: <F7BF6774-18AA-4A57-AF64-D7D125A7E73C@dilger.ca>
-References: <20170614231753.113206-1-ebiggers3@gmail.com>
- <350BEDC7-0307-4624-A1E7-301D29747159@dilger.ca>
- <20170615002453.GA30126@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_6F02D73A-D315-4927-AA89-45FB59E93E59";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34233 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751960AbdFOCCO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jun 2017 22:02:14 -0400
-Received: by mail-io0-f194.google.com with SMTP id a96so450321ioj.1
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Jun 2017 19:02:13 -0700 (PDT)
-In-Reply-To: <20170615002453.GA30126@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [xfstests PATCH v4 5/5] btrfs: make a btrfs version of writeback
+ error reporting test
+Date: Thu, 15 Jun 2017 13:38:36 +0800
+Message-ID: <20170615053836.GD17436@eguan.usersys.redhat.com>
+References: <20170612124213.14855-1-jlayton@redhat.com>
+ <20170612124213.14855-6-jlayton@redhat.com>
+ <20170613084034.GE4788@eguan.usersys.redhat.com>
+ <1497441317.6752.2.camel@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com, corbet@lwn.net,
+	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>,
+	David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <1497441317.6752.2.camel@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Wed, Jun 14, 2017 at 07:55:17AM -0400, Jeff Layton wrote:
+> On Tue, 2017-06-13 at 16:40 +0800, Eryu Guan wrote:
+> > On Mon, Jun 12, 2017 at 08:42:13AM -0400, Jeff Layton wrote:
+> > > Make a new btrfs/999 test that works the way Chris Mason suggested:
+> > > 
+> > > Build a filesystem with 2 devices that stripes the data across
+> > > both devices, but mirrors metadata across both. Then, make one
+> > > of the devices fail and see how fsync is handled.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > >  tests/btrfs/999   | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> > 
+> > Missing btrfs/999.out file
+> > 
+> > >  tests/btrfs/group |  1 +
+> > >  2 files changed, 94 insertions(+)
+> > >  create mode 100755 tests/btrfs/999
+> > > 
+> > > diff --git a/tests/btrfs/999 b/tests/btrfs/999
+> > > new file mode 100755
+> > > index 000000000000..84031cc0d913
+> > > --- /dev/null
+> > > +++ b/tests/btrfs/999
+> > > @@ -0,0 +1,93 @@
+> > > +#! /bin/bash
+> > > +# FS QA Test No. 999
+> > > +#
+> > > +# Open a file several times, write to it, fsync on all fds and make sure that
+> > > +# they all return 0. Change the device to start throwing errors. Write again
+> > > +# on all fds and fsync on all fds. Ensure that we get errors on all of them.
+> > > +# Then fsync on all one last time and verify that all return 0.
+> > > +#
+> > > +#-----------------------------------------------------------------------
+> > > +# Copyright (c) 2017, Jeff Layton <jlayton@redhat.com>
+> > > +#
+> > > +# This program is free software; you can redistribute it and/or
+> > > +# modify it under the terms of the GNU General Public License as
+> > > +# published by the Free Software Foundation.
+> > > +#
+> > > +# This program is distributed in the hope that it would be useful,
+> > > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > > +# GNU General Public License for more details.
+> > > +#
+> > > +# You should have received a copy of the GNU General Public License
+> > > +# along with this program; if not, write the Free Software Foundation,
+> > > +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> > > +#-----------------------------------------------------------------------
+> > > +
+> > > +seq=`basename $0`
+> > > +seqres=$RESULT_DIR/$seq
+> > > +echo "QA output created by $seq"
+> > > +
+> > > +here=`pwd`
+> > > +tmp=/tmp/$$
+> > > +status=1    # failure is the default!
+> > > +trap "_cleanup; exit \$status" 0 1 2 3 15
+> > > +
+> > > +_cleanup()
+> > > +{
+> > > +    cd /
+> > > +    rm -rf $tmp.* $testdir
+> > > +    _dmerror_cleanup
+> > > +}
+> > > +
+> > > +# get standard environment, filters and checks
+> > > +. ./common/rc
+> > > +. ./common/filter
+> > > +. ./common/dmerror
+> > > +
+> > > +# real QA test starts here
+> > > +_supported_os Linux
+> > > +_require_dm_target error
+> > > +_require_test_program fsync-err
+> > > +_require_test_program dmerror
+> > > +
+> > > +# bring up dmerror device
+> > > +_scratch_unmount
+> > > +_dmerror_init
+> > > +
+> > > +# Replace first device with error-test device
+> > > +old_SCRATCH_DEV=$SCRATCH_DEV
+> > > +SCRATCH_DEV_POOL=`echo $SCRATCH_DEV_POOL | perl -pe "s#$SCRATCH_DEV#$DMERROR_DEV#"`
+> > > +SCRATCH_DEV=$DMERROR_DEV
+> > > +
+> > > +_require_scratch
+> > > +_require_scratch_dev_pool
+> > 
+> > Need "_require_scratch_dev_pool_equal_size" too, since test creates
+> > raid1 profile for metadata.
 
---Apple-Mail=_6F02D73A-D315-4927-AA89-45FB59E93E59
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Sorry, it's not needed here. I got confused with device replace
+operation, only "replace" needs this require rule. Thanks for
+confirming!
 
-On Jun 14, 2017, at 6:24 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
->=20
-> Hi Andreas,
->=20
-> On Wed, Jun 14, 2017 at 06:00:33PM -0600, Andreas Dilger wrote:
->> On Jun 14, 2017, at 5:17 PM, Eric Biggers <ebiggers3@gmail.com> =
-wrote:
->>>=20
->>> From: Eric Biggers <ebiggers@google.com>
->>>=20
->>> Currently it's possible to encrypt all files and directories on an =
-ext4
->>> filesystem by deleting everything, including lost+found, then =
-setting an
->>> encryption policy on the root directory.  However, this is =
-incompatible
->>> with e2fsck because e2fsck expects to find, create, and/or write to
->>> lost+found and does not have access to any encryption keys.  =
-Especially
->>> problematic is that if e2fsck can't find lost+found, it will create =
-it
->>> without regard for whether the root directory is encrypted.  This is
->>> wrong for obvious reasons, and it causes a later run of e2fsck to
->>> consider the lost+found directory entry to be corrupted.
->>>=20
->>> It's not clear it would be useful to support encrypting the root
->>> directory, because in that scenario dm-crypt might as well be used
->>> instead.
->>=20
->> The benefit of per-file encryption over dm-crypt is that it isn't an
->> all-or-nothing usage case like dm-crypt (e.g. there could be =
-different
->> users/keys for different subdirectories), and secure file delete (as
->> mentioned earlier) works properly with per-file encryption, and =
-doesn't
->> work at all with dm-crypt.
->=20
-> Well, encrypting the root directory *is* the all-or-nothing use case =
---- all
-> files and directories on the filesystem would be encrypted with the =
-same key,
-> and by design it cannot be overridden for individual =
-files/directories.
->=20
-> "Secure file delete" would be an advantage if/when it's implemented, =
-though.
->=20
->>> But in any case, it's broken currently and must not be allowed; so
->>> start returning an error if userspace tries to set an encryption
->>> policy on the root directory.
->>>=20
->>> For now do this in ext4 only, because f2fs and ubifs do not appear =
-to
->>> have the lost+found requirement.  We could move it into
->>> fscrypt_ioctl_set_policy() later if desired, though.
->>=20
->> What about a special case to handle an unencrypted lost+found inode?
->>=20
->> There was also a patch series a while ago to explicitly add =
-lost+found
->> into the superblock so that it could be found even if the root =
-directory
->> was corrupted, and to allow flexibility in whether it is always shown =
-in
->> the root directory or not (e.g. allowing ".lost+found" or similar).
->=20
-> It could be done if the lost+found inode was not linked to from any =
-directory
-> and instead had its inode number stored in the superblock so that =
-e2fsck could
-> still find it.  However, if e2fsck put files in a lost+found directory =
-that
-> doesn't exist in the filesystem directory structure, how would users =
-retrieve
-> those files?  Would users be required to run a special e2fsprogs =
-command to
-> list/read/delete the files in lost+found?
+Eryu
 
-I was thinking that readdir on the root inode could insert the =
-"lost+found"
-or ".lost+found" entry dynamically, or (a bit less pleasant) is to add a
-special case that this entry is just never encrypted (could compare the
-inode number to the one stored in the superblock, instead of comparing =
-names)?
-
-Cheers, Andreas
-
->>> +	/*
->>> +	 * Encrypting the root directory is not allowed because e2fsck =
-expects
->>> +	 * lost+found to exist and be unencrypted, and encrypting the =
-root
->>> +	 * directory would imply encrypting the lost+found directory as =
-well as
->>> +	 * the filename "lost+found" itself.
->>> +	 */
->>> +	if (inode->i_ino =3D=3D EXT4_ROOT_INO)
->>> +		return -EBUSY;
->>=20
->> Why -EBUSY and not -EPERM?
->>=20
->=20
-> No strong reason; I had in mind that EBUSY is returned when running a =
-command
-> like 'rmdir /mnt'.  Probably EPERM would be better.
->=20
-> Eric
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_6F02D73A-D315-4927-AA89-45FB59E93E59
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZQeqfpIg59Q01vtYRAhjMAKDd/0t0eslzr1jFNtIL+WpvFck+nwCfSRCo
-BV1UNy3ob7WBzmV4V/ERaqg=
-=Scj4
------END PGP SIGNATURE-----
-
---Apple-Mail=_6F02D73A-D315-4927-AA89-45FB59E93E59--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
