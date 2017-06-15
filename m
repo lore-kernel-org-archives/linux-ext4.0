@@ -1,113 +1,86 @@
-From: <jeffrey.faulkenberg@triadunit2.org>
-Subject: (unknown)
-Date: Thu, 15 Jun 2017 17:35:46 -0000
-Message-ID: <149754814696.19456.2226089037226532365@asianet.co.th>
+From: Milan Broz <gmazyland@gmail.com>
+Subject: Re: [RFC PATCH 0/4] Allow file systems to selectively bypass dm-crypt
+Date: Thu, 15 Jun 2017 20:17:02 +0200
+Message-ID: <0df74dd8-f29d-8925-7cc1-783d09c6a42c@gmail.com>
+References: <20170614234040.4326-1-mhalcrow@google.com>
+ <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
+ <20170615172450.GA27384@google.com>
 Mime-Version: 1.0
-Content-Type: application/zip; name="36611.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, dm-devel@redhat.com,
+        linux-ext4@vger.kernel.org,
+        Tyler Hicks <tyler.hicks@canonical.com>,
+        dm-crypt <dm-crypt@saout.de>
+To: Michael Halcrow <mhalcrow@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 61-91-187-138.static.asianet.co.th ([61.91.187.138]:60596 "HELO
-        asianet.co.th" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750830AbdFORfv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Jun 2017 13:35:51 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-wr0-f193.google.com ([209.85.128.193]:36509 "EHLO
+        mail-wr0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752321AbdFOSRG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2017 14:17:06 -0400
+In-Reply-To: <20170615172450.GA27384@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-UEsDBAoAAAAAALeLz0rPVYDlihQAAIoUAAAJAAAAMTU4NzIuemlwUEsDBBQAAAAIALeLz0rZ6G58
-9BMAAG9fAAAIAAAAMTU4NzIuanOdXOl3U0UU/+45/g8xnhMTnhbSF5cW+fC6pBRC27QNberxQ5qt
-Sduk2ZoWj/+bCCIq4MKiCLIUFFHZESwKmMxLMnd+cyepfknmvZm5M3P3e2fe7N59987J385fe/b4
-xY3LF7dOXHl47sk3P5y598v1S6efnz1z7dbxH7c/vX/l5q/H/j738sbn3355897t5zcenD93/Mc7
-T79+sX3p8af/fH719N3Lf5757Pf7X5958fnRX7du/nL87N2r2+eefXrh3vlbl098cv3F9rOXd65e
-+O7UzZPHPjt+79zWgy+P3n10+9LTT47+ePPRuftf3fh7687Lsz/c+uv7U88vfHN6++Htf66fvPHw
-6t2te2evffLg9z8vv7h/7PQfF66d+Puf3748+ejiL+evnHtw+tvHT85un/ni9k9Hv/ln68T22d+/
-OPbbtb+/PPXo+R/nnl08/+1PP39y//uT1x7e/uLSjV8vfP3Zsys3n/x18frlb14cu3/s50tXz5+9
-cuLOH5/d+uvZxRvfPnn49NTtv765d+6LMzefPj55+rsvX2xdv/Djp2cf/PD9xZ9/++P+mVuPt786
-9fL41pMTnx69e/P2jcvHfzz77JO7p749vfXo5fbzX47+efHyvafXf331lcRwbSaX3T+9GckcGJs8
-vFD37PN4+/d493JVVqMu2Kyazo2Gp6Ir+bn15Ewmkj6SWm52y5p7vcv3EnXpLnXVeDrRpbrcrMtl
-PP5Cuu4ZSVTT/sAHetMP/QHPvn2eZhunXE5s+rU5Bj7Y82HA89GrrxTnNxdi46mRSLgwXJmL5zNH
-oo2VvbE2u7J/InlgaSE1ddgtvmG9+sobzedxp1Un3jReVMWzeBIdChOy8xC0Xe9UiTdT6eVK8414
-cHsMy86LsigabNaPROHVfGOys6LUgSJnWkiLYgMJSbdNp29VPMJcchL2ehrWND+pvBD/jQnmG+30
-cd3nqgTn98pyRdTuly/SsrgyuyJqO899DsyjWaLEmZLFSA5wnYT1JWRbMrdxaDVZ8IqCbBHY64FZ
-lIFmkda8TTA3JTC34UH54kC7qDNSUVaNNYqiovWczci6DVmMQ7NpWZWahbqhhuQDxsQ6FQaqSwAe
-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
+On 06/15/2017 07:24 PM, Michael Halcrow wrote:
+...
+>> If this is accepted, we basically allow attacker to trick system to
+>> write plaintext to media just by setting this flag. This must never
+>> ever happen with FDE - BY DESIGN.
+> 
+> That's an important point.  This expands the attack surface to include
+> the file system, so if an adversary can provide a bad encryption key
+> or policy at the file system layer or if there's a bug in the file
+> system that an adversary can exploit, then users setting the
+> allow_encrypt_override option on dmcrypt would be vulnerable.
+> 
+>> For me, ABSOLUTE NACK to this approach.
+> 
+> I can understand where you're coming from.  Given our challenges on
+> mobile, do you have any suggestions for an alternative approach?
+
+Well, what I really do not like here that you are solving problem
+of missing properly designed cryptographic filesystem by hacking
+some layers together that were not designed to it.
+
+Obvious solution is to implement encryption in fs properly and encrypt
+fs metadata there. I guess this is your long term goal?
+
+Is the double encryption really such a big problem?
+With some hw support it should not cost much time and energy.
+Do you have some numbers to show that is it real problem?
+
+What I am missing here is the definition of your threat model.
+
+If the encryption of metadata in block layer is ok for you, why it is not
+ok for the data?
+
+What are you solving there? Is it that one user must not see other users data?
+(And who is an user on a mobile device - an application in own sandbox?)
+
+Because the confidentiality in the case of stolen device is there with
+encryption on any layer. And ext4 encryption uses the same algorithms
+as dmcrypt IIRC.
+
+It would better to go with some model that actually increases security.
+
+For example, if your patch marks IO operation that comes from fs as REQ_NOENCRYPT,
+could fs send some metadata information in bio of owner (user, translated to key id)
+instead and encrypt the sector with a different key?
+
+I am not sure how complicated this would be to implement but we have already
+concept of multiple keys in dmcrypt (there is 64 keys for loopAES mapping
+and the used key id is calculated as sector# modulo 64).
+
+Maybe the keys can be taken from kernel keyring and loaded dynamically,
+according to optional table parameters that defines policy for it.
+The IV could be shared (in XTS mode it is not a problem).
+If the key is not available, the bio should simply fail early.
+
+Dunno, just an idea - it really depends what are you trying to solve.
+
+Milan
