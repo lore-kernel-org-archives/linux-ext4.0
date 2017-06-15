@@ -1,132 +1,111 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [xfstests PATCH v4 5/5] btrfs: make a btrfs version of writeback
- error reporting test
-Date: Thu, 15 Jun 2017 13:38:36 +0800
-Message-ID: <20170615053836.GD17436@eguan.usersys.redhat.com>
-References: <20170612124213.14855-1-jlayton@redhat.com>
- <20170612124213.14855-6-jlayton@redhat.com>
- <20170613084034.GE4788@eguan.usersys.redhat.com>
- <1497441317.6752.2.camel@redhat.com>
+From: Milan Broz <gmazyland@gmail.com>
+Subject: Re: [RFC PATCH 0/4] Allow file systems to selectively bypass dm-crypt
+Date: Thu, 15 Jun 2017 09:33:39 +0200
+Message-ID: <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
+References: <20170614234040.4326-1-mhalcrow@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com, corbet@lwn.net,
-	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <1497441317.6752.2.camel@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: Michael Halcrow <mhalcrow@google.com>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, dm-devel@redhat.com,
+        linux-ext4@vger.kernel.org,
+        Tyler Hicks <tyler.hicks@canonical.com>,
+        dm-crypt <dm-crypt@saout.de>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170614234040.4326-1-mhalcrow@google.com>
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 14, 2017 at 07:55:17AM -0400, Jeff Layton wrote:
-> On Tue, 2017-06-13 at 16:40 +0800, Eryu Guan wrote:
-> > On Mon, Jun 12, 2017 at 08:42:13AM -0400, Jeff Layton wrote:
-> > > Make a new btrfs/999 test that works the way Chris Mason suggested:
-> > > 
-> > > Build a filesystem with 2 devices that stripes the data across
-> > > both devices, but mirrors metadata across both. Then, make one
-> > > of the devices fail and see how fsync is handled.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  tests/btrfs/999   | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> > 
-> > Missing btrfs/999.out file
-> > 
-> > >  tests/btrfs/group |  1 +
-> > >  2 files changed, 94 insertions(+)
-> > >  create mode 100755 tests/btrfs/999
-> > > 
-> > > diff --git a/tests/btrfs/999 b/tests/btrfs/999
-> > > new file mode 100755
-> > > index 000000000000..84031cc0d913
-> > > --- /dev/null
-> > > +++ b/tests/btrfs/999
-> > > @@ -0,0 +1,93 @@
-> > > +#! /bin/bash
-> > > +# FS QA Test No. 999
-> > > +#
-> > > +# Open a file several times, write to it, fsync on all fds and make sure that
-> > > +# they all return 0. Change the device to start throwing errors. Write again
-> > > +# on all fds and fsync on all fds. Ensure that we get errors on all of them.
-> > > +# Then fsync on all one last time and verify that all return 0.
-> > > +#
-> > > +#-----------------------------------------------------------------------
-> > > +# Copyright (c) 2017, Jeff Layton <jlayton@redhat.com>
-> > > +#
-> > > +# This program is free software; you can redistribute it and/or
-> > > +# modify it under the terms of the GNU General Public License as
-> > > +# published by the Free Software Foundation.
-> > > +#
-> > > +# This program is distributed in the hope that it would be useful,
-> > > +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> > > +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> > > +# GNU General Public License for more details.
-> > > +#
-> > > +# You should have received a copy of the GNU General Public License
-> > > +# along with this program; if not, write the Free Software Foundation,
-> > > +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> > > +#-----------------------------------------------------------------------
-> > > +
-> > > +seq=`basename $0`
-> > > +seqres=$RESULT_DIR/$seq
-> > > +echo "QA output created by $seq"
-> > > +
-> > > +here=`pwd`
-> > > +tmp=/tmp/$$
-> > > +status=1    # failure is the default!
-> > > +trap "_cleanup; exit \$status" 0 1 2 3 15
-> > > +
-> > > +_cleanup()
-> > > +{
-> > > +    cd /
-> > > +    rm -rf $tmp.* $testdir
-> > > +    _dmerror_cleanup
-> > > +}
-> > > +
-> > > +# get standard environment, filters and checks
-> > > +. ./common/rc
-> > > +. ./common/filter
-> > > +. ./common/dmerror
-> > > +
-> > > +# real QA test starts here
-> > > +_supported_os Linux
-> > > +_require_dm_target error
-> > > +_require_test_program fsync-err
-> > > +_require_test_program dmerror
-> > > +
-> > > +# bring up dmerror device
-> > > +_scratch_unmount
-> > > +_dmerror_init
-> > > +
-> > > +# Replace first device with error-test device
-> > > +old_SCRATCH_DEV=$SCRATCH_DEV
-> > > +SCRATCH_DEV_POOL=`echo $SCRATCH_DEV_POOL | perl -pe "s#$SCRATCH_DEV#$DMERROR_DEV#"`
-> > > +SCRATCH_DEV=$DMERROR_DEV
-> > > +
-> > > +_require_scratch
-> > > +_require_scratch_dev_pool
-> > 
-> > Need "_require_scratch_dev_pool_equal_size" too, since test creates
-> > raid1 profile for metadata.
+On 06/15/2017 01:40 AM, Michael Halcrow wrote:
+> Several file systems either have already implemented encryption or are
+> in the process of doing so.  This addresses usability and storage
+> isolation requirements on mobile devices and in multi-tenant
+> environments.
+> 
+> While distinct keys locked down to user accounts protect the names and
+> contents of individual files, a volume-level encryption key should
+> protect the file system metadata.  When using dm-crypt to do this, the
+> blocks that the file system encrypts undergo another round of
+> encryption.  In many contexts this isn't necessary, and it results in
+> decreased performance and increased power consumption.  This
+> discourages users and vendors from taking steps to protect file system
+> metadata in addition to file contents.
+> 
+> This patchset provides a new I/O request flag that suggests to lower
+> layers that encryption may not be necessary because the file system
+> has already done it.  The first patch targets the block subsystem and
+> adds the REQ_NOENCRYPT flag.  The second patch targets dm-crypt and
+> adds logic to observe the flag only when the user has opted-in by
+> passing allow_encrypt_override as one of the optional parameters to
+> the dm-crypt target.  The third patch targets ext4 and sets the
+> REQ_NOENCRYPT flag for blocks it encrypts and decrypts.  The fourth
+> patch does the same for f2fs.
+> 
+> In this patchset I'm proposing that we make dm-crypt's observation of
+> the file system "don't encrypt" request optional, but I'm not sure
+> that's a good tradeoff.  Under the assumption that encryption in
+> upstream file systems is sound, the most common way I expect things
+> can go awry is if the file system keys don't meet security
+> requirements while dm-crypt keys do.  However I'm not convinced that
+> will end up being a widespread problem in practice, and there's a real
+> data corruption concern with making dm-crypt's observation of the flag
+> optional.
+> 
+> The problem is that once dm-crypt observes the flag, it must always
+> continue to do so or dm-crypt might decrypt content that it didn't
+> encrypt.  This can lead to scenarios where a vendor sets the dm-crypt
+> option to observe the "don't encrypt" flag, and then down the road a
+> user follows one of the many online guides to manually recover a
+> dm-crypt partition without setting this new option.
+> 
+> Should there be an encryption disable flag?  I'm interested in
+> considering other solutions.
 
-Sorry, it's not needed here. I got confused with device replace
-operation, only "replace" needs this require rule. Thanks for
-confirming!
+The whole reason for full disk encryption (FDE) is the it is FULL disk
+encryption.
 
-Eryu
+If you do not need encryption on dmcrypt level, just do not use it
+by properly configuring storage stack!
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+The file-level encryption and dm-crypt encryption can have completely different
+purpose, even one can be authenticated one (providing integrity)
+and second just providing confidentiality.
+
+It is not "redundant" encryption, it is the encryption for different purpose
+on different layer.
+
+IMO what you are proposing is incredible security hack and very ugly
+layer violation.
+
+If this is accepted, we basically allow attacker to trick system to write
+plaintext to media just by setting this flag. This must never ever happen
+with FDE - BY DESIGN.
+
+For me, ABSOLUTE NACK to this approach.
+
+(cc dmcrypt list as well)
+
+Milan
+
+
+> 
+> Michael Halcrow (4):
+>   block: Add bio req flag to disable encryption in block
+>   dm-crypt: Skip encryption of file system-encrypted blocks
+>   ext4: Set the bio REQ_NOENCRYPT flag
+>   f2fs: Set the bio REQ_NOENCRYPT flag
+> 
+>  drivers/md/dm-crypt.c     | 17 +++++++++++++----
+>  fs/crypto/bio.c           |  2 +-
+>  fs/ext4/ext4.h            |  3 +++
+>  fs/ext4/inode.c           | 13 ++++++++-----
+>  fs/ext4/page-io.c         |  5 +++++
+>  fs/ext4/readpage.c        |  3 ++-
+>  fs/f2fs/data.c            | 10 ++++++++--
+>  include/linux/blk_types.h |  2 ++
+>  8 files changed, 42 insertions(+), 13 deletions(-)
+> 
