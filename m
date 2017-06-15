@@ -1,86 +1,43 @@
-From: Milan Broz <gmazyland@gmail.com>
-Subject: Re: [RFC PATCH 0/4] Allow file systems to selectively bypass dm-crypt
-Date: Thu, 15 Jun 2017 20:17:02 +0200
-Message-ID: <0df74dd8-f29d-8925-7cc1-783d09c6a42c@gmail.com>
-References: <20170614234040.4326-1-mhalcrow@google.com>
- <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
- <20170615172450.GA27384@google.com>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH 23/28] mbcache: make mbcache more generic
+Date: Thu, 15 Jun 2017 11:25:02 -0700
+Message-ID: <CAAeU0aMLrfhnhqzD9PH2UjHSrc64AC_85rAEz626jcuFjLXY2g@mail.gmail.com>
+References: <20170531081517.11438-1-tahsin@google.com> <20170531081517.11438-23-tahsin@google.com>
+ <20170615074158.GA1764@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-ext4@vger.kernel.org,
-        Tyler Hicks <tyler.hicks@canonical.com>,
-        dm-crypt <dm-crypt@saout.de>
-To: Michael Halcrow <mhalcrow@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Mark Fasheh <mfasheh@versity.com>,
+        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
+        Deepa Dinamani <deepa.kernel@gmail.com>,
+        Mike Christie <mchristi@redhat.com>,
+        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wr0-f193.google.com ([209.85.128.193]:36509 "EHLO
-        mail-wr0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752321AbdFOSRG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2017 14:17:06 -0400
-In-Reply-To: <20170615172450.GA27384@google.com>
+Received: from mail-yw0-f170.google.com ([209.85.161.170]:36155 "EHLO
+        mail-yw0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752656AbdFOSZE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jun 2017 14:25:04 -0400
+Received: by mail-yw0-f170.google.com with SMTP id l75so10534044ywc.3
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Jun 2017 11:25:04 -0700 (PDT)
+In-Reply-To: <20170615074158.GA1764@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 06/15/2017 07:24 PM, Michael Halcrow wrote:
-...
->> If this is accepted, we basically allow attacker to trick system to
->> write plaintext to media just by setting this flag. This must never
->> ever happen with FDE - BY DESIGN.
-> 
-> That's an important point.  This expands the attack surface to include
-> the file system, so if an adversary can provide a bad encryption key
-> or policy at the file system layer or if there's a bug in the file
-> system that an adversary can exploit, then users setting the
-> allow_encrypt_override option on dmcrypt would be vulnerable.
-> 
->> For me, ABSOLUTE NACK to this approach.
-> 
-> I can understand where you're coming from.  Given our challenges on
-> mobile, do you have any suggestions for an alternative approach?
+On Thu, Jun 15, 2017 at 12:41 AM, Jan Kara <jack@suse.cz> wrote:
+> Can you explain a bit more what do you mean by "make it more generic" as it
+> seems you just rename a couple of things here...
 
-Well, what I really do not like here that you are solving problem
-of missing properly designed cryptographic filesystem by hacking
-some layers together that were not designed to it.
-
-Obvious solution is to implement encryption in fs properly and encrypt
-fs metadata there. I guess this is your long term goal?
-
-Is the double encryption really such a big problem?
-With some hw support it should not cost much time and energy.
-Do you have some numbers to show that is it real problem?
-
-What I am missing here is the definition of your threat model.
-
-If the encryption of metadata in block layer is ok for you, why it is not
-ok for the data?
-
-What are you solving there? Is it that one user must not see other users data?
-(And who is an user on a mobile device - an application in own sandbox?)
-
-Because the confidentiality in the case of stolen device is there with
-encryption on any layer. And ext4 encryption uses the same algorithms
-as dmcrypt IIRC.
-
-It would better to go with some model that actually increases security.
-
-For example, if your patch marks IO operation that comes from fs as REQ_NOENCRYPT,
-could fs send some metadata information in bio of owner (user, translated to key id)
-instead and encrypt the sector with a different key?
-
-I am not sure how complicated this would be to implement but we have already
-concept of multiple keys in dmcrypt (there is 64 keys for loopAES mapping
-and the used key id is calculated as sector# modulo 64).
-
-Maybe the keys can be taken from kernel keyring and loaded dynamically,
-according to optional table parameters that defines policy for it.
-The IV could be shared (in XTS mode it is not a problem).
-If the key is not available, the bio should simply fail early.
-
-Dunno, just an idea - it really depends what are you trying to solve.
-
-Milan
+The change is really just that, having names that are more generic
+which do not limit use cases to block sharing. In a subsequent patch
+in the series ("[PATCH v4 27/28] ext4: xattr inode deduplication"), we
+start using the mbcache code to share xattr inodes. With that patch,
+old mb_cache_entry.e_block field could be holding either a block
+number or an inode number, so I renamed things to make them more
+generic.
