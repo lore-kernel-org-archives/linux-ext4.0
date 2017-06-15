@@ -1,151 +1,136 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: [RFC PATCH 3/4] ext4: Set the bio REQ_NOENCRYPT flag
-Date: Wed, 14 Jun 2017 16:40:39 -0700
-Message-ID: <20170614234040.4326-4-mhalcrow@google.com>
-References: <20170614234040.4326-1-mhalcrow@google.com>
-To: Michael Halcrow <mhalcrow@google.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: forbid encrypting root directory
+Date: Wed, 14 Jun 2017 18:00:33 -0600
+Message-ID: <350BEDC7-0307-4624-A1E7-301D29747159@dilger.ca>
+References: <20170614231753.113206-1-ebiggers3@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_A19AF8F1-6517-4DC5-BE85-5A74D3591DAF";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-ext4@vger.kernel.org, Tyler Hicks <tyler.hicks@canonical.com>
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170614234040.4326-1-mhalcrow@google.com>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33369 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750768AbdFOAAi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jun 2017 20:00:38 -0400
+Received: by mail-io0-f193.google.com with SMTP id j200so316842ioe.0
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Jun 2017 17:00:37 -0700 (PDT)
+In-Reply-To: <20170614231753.113206-1-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When lower layers such as dm-crypt observe the REQ_NOENCRYPT flag, it
-helps the I/O stack avoid redundant encryption, improving performance
-and power utilization.
 
-Note that lower layers must be consistent in their observation of this
-flag in order to avoid the possibility of data corruption.
+--Apple-Mail=_A19AF8F1-6517-4DC5-BE85-5A74D3591DAF
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Signed-off-by: Michael Halcrow <mhalcrow@google.com>
----
- fs/crypto/bio.c    |  2 +-
- fs/ext4/ext4.h     |  3 +++
- fs/ext4/inode.c    | 13 ++++++++-----
- fs/ext4/page-io.c  |  5 +++++
- fs/ext4/readpage.c |  3 ++-
- 5 files changed, 19 insertions(+), 7 deletions(-)
+On Jun 14, 2017, at 5:17 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+>=20
+> From: Eric Biggers <ebiggers@google.com>
+>=20
+> Currently it's possible to encrypt all files and directories on an =
+ext4
+> filesystem by deleting everything, including lost+found, then setting =
+an
+> encryption policy on the root directory.  However, this is =
+incompatible
+> with e2fsck because e2fsck expects to find, create, and/or write to
+> lost+found and does not have access to any encryption keys.  =
+Especially
+> problematic is that if e2fsck can't find lost+found, it will create it
+> without regard for whether the root directory is encrypted.  This is
+> wrong for obvious reasons, and it causes a later run of e2fsck to
+> consider the lost+found directory entry to be corrupted.
+>=20
+> It's not clear it would be useful to support encrypting the root
+> directory, because in that scenario dm-crypt might as well be used
+> instead.
 
-diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-index a409a84f1bca..9093a715d2be 100644
---- a/fs/crypto/bio.c
-+++ b/fs/crypto/bio.c
-@@ -118,7 +118,7 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
- 		bio->bi_bdev = inode->i_sb->s_bdev;
- 		bio->bi_iter.bi_sector =
- 			pblk << (inode->i_sb->s_blocksize_bits - 9);
--		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
-+		bio_set_op_attrs(bio, REQ_OP_WRITE, REQ_NOENCRYPT);
- 		ret = bio_add_page(bio, ciphertext_page,
- 					inode->i_sb->s_blocksize, 0);
- 		if (ret != inode->i_sb->s_blocksize) {
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8e8046104f4d..48c2bc9f8688 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -206,7 +206,10 @@ typedef struct ext4_io_end {
- 	ssize_t			size;		/* size of the extent */
- } ext4_io_end_t;
- 
-+#define EXT4_IO_ENCRYPTED	1
-+
- struct ext4_io_submit {
-+	unsigned int		io_flags;
- 	struct writeback_control *io_wbc;
- 	struct bio		*io_bio;
- 	ext4_io_end_t		*io_end;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1bd0bfa547f6..25a9b7265692 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1154,10 +1154,11 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
- 		    !buffer_unwritten(bh) &&
- 		    (block_start < from || block_end > to)) {
--			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
--			*wait_bh++ = bh;
- 			decrypt = ext4_encrypted_inode(inode) &&
- 				S_ISREG(inode->i_mode);
-+			ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0),
-+				    1, &bh);
-+			*wait_bh++ = bh;
- 		}
- 	}
- 	/*
-@@ -3863,6 +3864,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	struct inode *inode = mapping->host;
- 	struct buffer_head *bh;
- 	struct page *page;
-+	bool decrypt;
- 	int err = 0;
- 
- 	page = find_or_create_page(mapping, from >> PAGE_SHIFT,
-@@ -3905,13 +3907,14 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 
- 	if (!buffer_uptodate(bh)) {
- 		err = -EIO;
--		ll_rw_block(REQ_OP_READ, 0, 1, &bh);
-+		decrypt = S_ISREG(inode->i_mode) &&
-+			ext4_encrypted_inode(inode);
-+		ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0), 1, &bh);
- 		wait_on_buffer(bh);
- 		/* Uhhuh. Read error. Complain and punt. */
- 		if (!buffer_uptodate(bh))
- 			goto unlock;
--		if (S_ISREG(inode->i_mode) &&
--		    ext4_encrypted_inode(inode)) {
-+		if (decrypt) {
- 			/* We expect the key to be set. */
- 			BUG_ON(!fscrypt_has_encryption_key(inode));
- 			BUG_ON(blocksize != PAGE_SIZE);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 1a82138ba739..e25bf6cb216a 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -349,6 +349,8 @@ void ext4_io_submit(struct ext4_io_submit *io)
- 	if (bio) {
- 		int io_op_flags = io->io_wbc->sync_mode == WB_SYNC_ALL ?
- 				  REQ_SYNC : 0;
-+		if (io->io_flags & EXT4_IO_ENCRYPTED)
-+			io_op_flags |= REQ_NOENCRYPT;
- 		bio_set_op_attrs(io->io_bio, REQ_OP_WRITE, io_op_flags);
- 		submit_bio(io->io_bio);
- 	}
-@@ -358,6 +360,7 @@ void ext4_io_submit(struct ext4_io_submit *io)
- void ext4_io_submit_init(struct ext4_io_submit *io,
- 			 struct writeback_control *wbc)
- {
-+	io->io_flags = 0;
- 	io->io_wbc = wbc;
- 	io->io_bio = NULL;
- 	io->io_end = NULL;
-@@ -499,6 +502,8 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 	do {
- 		if (!buffer_async_write(bh))
- 			continue;
-+		if (data_page)
-+			io->io_flags |= EXT4_IO_ENCRYPTED;
- 		ret = io_submit_add_bh(io, inode,
- 				       data_page ? data_page : page, bh);
- 		if (ret) {
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index a81b829d56de..008d14d74f33 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -258,7 +258,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
- 			bio->bi_end_io = mpage_end_io;
- 			bio->bi_private = ctx;
--			bio_set_op_attrs(bio, REQ_OP_READ, 0);
-+			bio_set_op_attrs(bio, REQ_OP_READ,
-+					 ctx ? REQ_NOENCRYPT : 0);
- 		}
- 
- 		length = first_hole << blkbits;
--- 
-2.13.1.508.gb3defc5cc-goog
+The benefit of per-file encryption over dm-crypt is that it isn't an
+all-or-nothing usage case like dm-crypt (e.g. there could be different
+users/keys for different subdirectories), and secure file delete (as
+mentioned earlier) works properly with per-file encryption, and doesn't
+work at all with dm-crypt.
+
+> But in any case, it's broken currently and must not be allowed; so
+> start returning an error if userspace tries to set an encryption
+> policy on the root directory.
+>=20
+> For now do this in ext4 only, because f2fs and ubifs do not appear to
+> have the lost+found requirement.  We could move it into
+> fscrypt_ioctl_set_policy() later if desired, though.
+
+What about a special case to handle an unencrypted lost+found inode?
+
+There was also a patch series a while ago to explicitly add lost+found
+into the superblock so that it could be found even if the root directory
+was corrupted, and to allow flexibility in whether it is always shown in
+the root directory or not (e.g. allowing ".lost+found" or similar).
+
+Cheers, Andreas
+
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+> fs/ext4/super.c | 9 +++++++++
+> 1 file changed, 9 insertions(+)
+>=20
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index d37c81f327e7..ed8eacdf61da 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1145,6 +1145,15 @@ static int ext4_set_context(struct inode =
+*inode, const void *ctx, size_t len,
+> 	handle_t *handle =3D fs_data;
+> 	int res, res2, retries =3D 0;
+>=20
+> +	/*
+> +	 * Encrypting the root directory is not allowed because e2fsck =
+expects
+> +	 * lost+found to exist and be unencrypted, and encrypting the =
+root
+> +	 * directory would imply encrypting the lost+found directory as =
+well as
+> +	 * the filename "lost+found" itself.
+> +	 */
+> +	if (inode->i_ino =3D=3D EXT4_ROOT_INO)
+> +		return -EBUSY;
+
+Why -EBUSY and not -EPERM?
+
+> 	res =3D ext4_convert_inline_data(inode);
+> 	if (res)
+> 		return res;
+> --
+> 2.13.1.508.gb3defc5cc-goog
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_A19AF8F1-6517-4DC5-BE85-5A74D3591DAF
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD4DBQFZQc4hpIg59Q01vtYRAmG8AKCXC5dAe4qFJpCP7GieBc6WgKGr9ACYmEYG
+l61iuQtkWyuZQN0YhOTyUA==
+=ewQr
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_A19AF8F1-6517-4DC5-BE85-5A74D3591DAF--
