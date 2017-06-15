@@ -1,70 +1,42 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v6 12/20] fs: add a new fstype flag to indicate how
- writeback errors are tracked
-Date: Thu, 15 Jun 2017 06:42:12 -0400
-Message-ID: <1497523332.4556.1.camel@redhat.com>
-References: <20170612122316.13244-1-jlayton@redhat.com>
-	 <20170612122316.13244-15-jlayton@redhat.com>
-	 <20170612124513.GC18360@infradead.org> <1497349472.5762.1.camel@redhat.com>
-	 <20170614064731.GB3598@infradead.org> <1497461083.6752.7.camel@redhat.com>
-	 <20170615082221.GA22809@infradead.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 0/10 v11] No wait AIO
+Date: Thu, 15 Jun 2017 12:11:58 +0100
+Message-ID: <20170615111157.GL31671@ZenIV.linux.org.uk>
+References: <20170606111939.27272-1-rgoldwyn@suse.de>
+ <20170608073910.GB9292@infradead.org>
+ <20170610053441.GD6365@ZenIV.linux.org.uk>
+ <58bbe95e-5a4a-4387-3a00-16ed2e861bd3@suse.de>
+ <20170613061431.GA11432@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
- <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
- axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
- corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
- David Sterba <dsterba@suse.com>, "Darrick J . Wong"
- <darrick.wong@oracle.com>, linux-fsdevel@vger.kernel.org,
- linux-mm@kvack.org,  linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-  linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>, akpm@linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, jack@suse.com,
+        linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        axboe@kernel.dk, linux-api@vger.kernel.org, adam.manzanares@wdc.com
 To: Christoph Hellwig <hch@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170615082221.GA22809@infradead.org>
-Sender: owner-linux-mm@kvack.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170613061431.GA11432@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2017-06-15 at 01:22 -0700, Christoph Hellwig wrote:
-> On Wed, Jun 14, 2017 at 01:24:43PM -0400, Jeff Layton wrote:
-> > In this smaller set, it's only really used for DAX.
+On Mon, Jun 12, 2017 at 11:14:31PM -0700, Christoph Hellwig wrote:
+> On Mon, Jun 12, 2017 at 05:38:13PM -0500, Goldwyn Rodrigues wrote:
+> > We had FS_NOWAIT in filesystem type flags (in v3), but retracted it
+> > later in v4.
 > 
-> DAX only is implemented by three filesystems, please just fix them
-> up in one go.
+> A per-fs flag is wrong as file_operation may have different
+> capabilities.
 > 
-
-Ok.
-
-> > sync_file_range: ->fsync isn't called directly there, and I think we
-> > probably want similar semantics to fsync() for it
+> > I will work on adding FMODE_AIO_NOWAIT in the meantime.
 > 
-> sync_file_range is only supposed to sync data, so it should not call
-> ->fsync.
-> 
+> If Al prefers that let's go with it for now.  One other thing I'd
+> love is a supported flags field in struct file_operations that we
+> can compare the flags against.  Al, does that sound good as well?
 
-Correct.
-
-But if there is a data writeback error, should we report an error on all
-open fds at that time (like we will for fsync)?
-
-I think we probably do want to do that, but like you say...there is no
-file op for sync_file_range. It'll need some way to figure out what sort
-of error tracking is in play.
-
-> > JBD2: will try to re-set the error after clearing it with
-> > filemap_fdatawait. That's problematic with the new infrastructure so we
-> > need some way to avoid it.
-> 
-> JBD2 only has two users, please fix them up in one go.
-
-I came up with a fix yesterday that makes the flag unnecessary there.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Which flags are you talking about?  aio ones?  AFAICS, it's the same
+kind of thing as "can we lseek?" or "can we read/pread?", etc.
+What would that field look like?  Note that some of those might depend
+upon the flags passed to open(), so shoving them into file_operations
+might mean splitting file_operations instances...  Details, please.
