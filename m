@@ -1,54 +1,67 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [xfstests PATCH v5 1/5] ext4: allow ext4 to use $SCRATCH_LOGDEV
-Date: Fri, 16 Jun 2017 15:36:15 -0400
-Message-ID: <20170616193619.14576-2-jlayton@redhat.com>
+Subject: [xfstests PATCH v5 2/5] ext3: allow it to put journal on a separate device when doing scratch_mkfs
+Date: Fri, 16 Jun 2017 15:36:16 -0400
+Message-ID: <20170616193619.14576-3-jlayton@redhat.com>
 References: <20170616193619.14576-1-jlayton@redhat.com>
 Cc: Carlos Maiolino <cmaiolino@redhat.com>,
-        Eryu Guan <eguan@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+	Eryu Guan <eguan@redhat.com>,
+	David Howells <dhowells@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20170616193619.14576-1-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-The writeback error handling test requires that you put the journal on a
-separate device. This allows us to use dmerror to simulate data
-writeback failure, without affecting the journal.
-
-xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
-up the ext4 code so that it can do the same thing when _scratch_mkfs is
-called.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- common/rc | 3 +++
- 1 file changed, 3 insertions(+)
+ common/rc | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
 diff --git a/common/rc b/common/rc
-index ff1b75c9cd25..57001b47a8b7 100644
+index 57001b47a8b7..43e160e91360 100644
 --- a/common/rc
 +++ b/common/rc
-@@ -679,6 +679,9 @@ _scratch_mkfs_ext4()
- 	local tmp=`mktemp`
- 	local mkfs_status
- 
-+	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-+	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
-+	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
- 
- 	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
- 	mkfs_status=$?
+@@ -840,7 +840,16 @@ _scratch_mkfs()
+ 		mkfs_cmd="$MKFS_BTRFS_PROG"
+ 		mkfs_filter="cat"
+ 		;;
+-	ext2|ext3)
++	ext3)
++		mkfs_cmd="$MKFS_PROG -t $FSTYP -- -F"
++		mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \""
++
++		# put journal on separate device?
++		[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
++		$mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
++		mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
++		;;
++	ext2)
+ 		mkfs_cmd="$MKFS_PROG -t $FSTYP -- -F"
+ 		mkfs_filter="grep -v -e ^Warning: -e \"^mke2fs \""
+ 		;;
 -- 
 2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
