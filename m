@@ -1,118 +1,63 @@
-From: Arno Wagner <arno@wagner.name>
-Subject: Re: [dm-crypt] [RFC PATCH 0/4] Allow file systems to selectively
- bypass dm-crypt
-Date: Fri, 16 Jun 2017 16:02:40 +0200
-Message-ID: <20170616140240.GA6284@tansi.org>
-References: <20170614234040.4326-1-mhalcrow@google.com>
- <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: forbid encrypting root directory
+Date: Fri, 16 Jun 2017 10:54:57 -0700
+Message-ID: <20170616175457.GA20865@gmail.com>
+References: <20170614231753.113206-1-ebiggers3@gmail.com>
+ <350BEDC7-0307-4624-A1E7-301D29747159@dilger.ca>
+ <20170615002453.GA30126@gmail.com>
+ <F7BF6774-18AA-4A57-AF64-D7D125A7E73C@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Michael Halcrow <mhalcrow@google.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-ext4@vger.kernel.org,
-        Tyler Hicks <tyler.hicks@canonical.com>,
-        dm-crypt <dm-crypt@saout.de>
-To: Milan Broz <gmazyland@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+        Eric Biggers <ebiggers@google.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:34777 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752059AbdFPRzV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2017 13:55:21 -0400
 Content-Disposition: inline
-In-Reply-To: <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <F7BF6774-18AA-4A57-AF64-D7D125A7E73C@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 15, 2017 at 09:33:39 CEST, Milan Broz wrote:
-> On 06/15/2017 01:40 AM, Michael Halcrow wrote:
-> > Several file systems either have already implemented encryption or are
-> > in the process of doing so.  This addresses usability and storage
-> > isolation requirements on mobile devices and in multi-tenant
-> > environments.
-> >
-[...]
+On Wed, Jun 14, 2017 at 08:02:05PM -0600, Andreas Dilger wrote:
+> >> 
+> >> What about a special case to handle an unencrypted lost+found inode?
+> >> 
+> >> There was also a patch series a while ago to explicitly add lost+found
+> >> into the superblock so that it could be found even if the root directory
+> >> was corrupted, and to allow flexibility in whether it is always shown in
+> >> the root directory or not (e.g. allowing ".lost+found" or similar).
 > > 
-> > Should there be an encryption disable flag?  I'm interested in
-> > considering other solutions.
+> > It could be done if the lost+found inode was not linked to from any directory
+> > and instead had its inode number stored in the superblock so that e2fsck could
+> > still find it.  However, if e2fsck put files in a lost+found directory that
+> > doesn't exist in the filesystem directory structure, how would users retrieve
+> > those files?  Would users be required to run a special e2fsprogs command to
+> > list/read/delete the files in lost+found?
 > 
-> The whole reason for full disk encryption (FDE) is the it is FULL disk
-> encryption.
-> 
-> If you do not need encryption on dmcrypt level, just do not use it
-> by properly configuring storage stack!
-> 
-> The file-level encryption and dm-crypt encryption can have completely different
-> purpose, even one can be authenticated one (providing integrity)
-> and second just providing confidentiality.
->
-> It is not "redundant" encryption, it is the encryption for different purpose
-> on different layer.
+> I was thinking that readdir on the root inode could insert the "lost+found"
+> or ".lost+found" entry dynamically,
 
-I fully agree. And FDE does protect unused space as well and swap.
-FDE is for when you need to be sure that nothing unencrypted goes
-to the disk (or specific area of the disk, loop-file, etc.) under 
-any circumstances. 
- 
-> IMO what you are proposing is incredible security hack and very ugly
-> layer violation.
+I think this is possible, but not trivial.  It's not just readdir; ->lookup()
+would also have to special-case lookups of "lost+found", and we'd have to
+override the fscrypt_permitted_context() check.  It would also have to be a
+RO_COMPAT filesystem feature, lest an unaware ext4 driver or e2fsprogs create a
+lost+found directory which would then be ambiguous with the "real" one.
 
-Indeed. Do _NOT_ do this. It would have to be disabled or patched 
-out by anybody that really cares about security. Performance must
-not trump security or you lose security. And performance is really
-good enough in most cases anyways.
+> or (a bit less pleasant) is to add a
+> special case that this entry is just never encrypted (could compare the
+> inode number to the one stored in the superblock, instead of comparing names)?
 
-This would also mean that you lose the ability to move a LUKS 
-container transparently because it is not self-contained anymore.
-That iwould be extremely bad for backups.
+I think that would be similarly difficult, as it would still require special
+logic in readdir and ->lookup(), and would still require a RO_COMPAT filesystem
+feature.
 
-> If this is accepted, we basically allow attacker to trick system to write
-> plaintext to media just by setting this flag. This must never ever happen
-> with FDE - BY DESIGN.
+Either way, not all filesystems will have the implicit "lost+found" directory
+feature, so we're still going to need to forbid encrypting the root directory on
+some filesystems anyway.
 
-Indeed.
- 
-> For me, ABSOLUTE NACK to this approach.
-
-Same here. And I do not want to maintain documentation telling
-users how to reliably get rid of this "feature". 
-
-Regards,
-Arno
-
-
-> (cc dmcrypt list as well)
-> 
-> Milan
-> 
-> 
-> > 
-> > Michael Halcrow (4):
-> >   block: Add bio req flag to disable encryption in block
-> >   dm-crypt: Skip encryption of file system-encrypted blocks
-> >   ext4: Set the bio REQ_NOENCRYPT flag
-> >   f2fs: Set the bio REQ_NOENCRYPT flag
-> > 
-> >  drivers/md/dm-crypt.c     | 17 +++++++++++++----
-> >  fs/crypto/bio.c           |  2 +-
-> >  fs/ext4/ext4.h            |  3 +++
-> >  fs/ext4/inode.c           | 13 ++++++++-----
-> >  fs/ext4/page-io.c         |  5 +++++
-> >  fs/ext4/readpage.c        |  3 ++-
-> >  fs/f2fs/data.c            | 10 ++++++++--
-> >  include/linux/blk_types.h |  2 ++
-> >  8 files changed, 42 insertions(+), 13 deletions(-)
-> > 
-> 
-> _______________________________________________
-> dm-crypt mailing list
-> dm-crypt@saout.de
-> http://www.saout.de/mailman/listinfo/dm-crypt
-
--- 
-Arno Wagner,     Dr. sc. techn., Dipl. Inform.,    Email: arno@wagner.name
-GnuPG: ID: CB5D9718  FP: 12D6 C03B 1B30 33BB 13CF  B774 E35C 5FA1 CB5D 9718
-----
-A good decision is based on knowledge and not on numbers. -- Plato
-
-If it's in the news, don't worry about it.  The very definition of 
-"news" is "something that hardly ever happens." -- Bruce Schneier
+Eric
