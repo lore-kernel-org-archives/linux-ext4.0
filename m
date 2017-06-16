@@ -1,80 +1,54 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v7 22/22] btrfs: minimal conversion to errseq_t writeback error reporting on fsync
-Date: Fri, 16 Jun 2017 15:34:27 -0400
-Message-ID: <20170616193427.13955-23-jlayton@redhat.com>
-References: <20170616193427.13955-1-jlayton@redhat.com>
+Subject: [xfstests PATCH v5 1/5] ext4: allow ext4 to use $SCRATCH_LOGDEV
+Date: Fri, 16 Jun 2017 15:36:15 -0400
+Message-ID: <20170616193619.14576-2-jlayton@redhat.com>
+References: <20170616193619.14576-1-jlayton@redhat.com>
 Cc: Carlos Maiolino <cmaiolino@redhat.com>,
-	Eryu Guan <eguan@redhat.com>,
-	David Howells <dhowells@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org,
-	linux-block@vger.kernel.org
+        Eryu Guan <eguan@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Jan Kara <jack@suse.cz>,
-	tytso@mit.edu,
-	axboe@kernel.dk,
-	mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com,
-	corbet@lwn.net,
-	Chris Mason <clm@fb.com>,
-	Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170616193427.13955-1-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        David Sterba <dsterba@suse.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170616193619.14576-1-jlayton@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Just check and advance the errseq_t in the file before returning.
-Internal callers of filemap_* functions are left as-is.
+The writeback error handling test requires that you put the journal on a
+separate device. This allows us to use dmerror to simulate data
+writeback failure, without affecting the journal.
+
+xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
+up the ext4 code so that it can do the same thing when _scratch_mkfs is
+called.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/btrfs/file.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ common/rc | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index 0f102a1b851f..609226beea43 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -2017,7 +2017,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct btrfs_root *root = BTRFS_I(inode)->root;
- 	struct btrfs_trans_handle *trans;
- 	struct btrfs_log_ctx ctx;
--	int ret = 0;
-+	int ret = 0, err;
- 	bool full_sync = 0;
- 	u64 len;
+diff --git a/common/rc b/common/rc
+index ff1b75c9cd25..57001b47a8b7 100644
+--- a/common/rc
++++ b/common/rc
+@@ -679,6 +679,9 @@ _scratch_mkfs_ext4()
+ 	local tmp=`mktemp`
+ 	local mkfs_status
  
-@@ -2036,7 +2036,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	 */
- 	ret = start_ordered_ops(inode, start, end);
- 	if (ret)
--		return ret;
-+		goto out;
++	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
++	    $mkfs_cmd -O journal_dev $MKFS_OPTIONS $SCRATCH_LOGDEV && \
++	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
  
- 	inode_lock(inode);
- 	atomic_inc(&root->log_batch);
-@@ -2233,6 +2233,9 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 		ret = btrfs_end_transaction(trans);
- 	}
- out:
-+	err = filemap_report_wb_err(file);
-+	if (!ret)
-+		ret = err;
- 	return ret > 0 ? -EIO : ret;
- }
- 
+ 	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
+ 	mkfs_status=$?
 -- 
 2.13.0
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
