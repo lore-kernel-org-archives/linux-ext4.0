@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH v7 01/22] fs: remove call_fsync helper function
-Date: Fri, 16 Jun 2017 15:34:06 -0400
-Message-ID: <20170616193427.13955-2-jlayton@redhat.com>
+Subject: [PATCH v7 03/22] fs: check for writeback errors after syncing out buffers in generic_file_fsync
+Date: Fri, 16 Jun 2017 15:34:08 -0400
+Message-ID: <20170616193427.13955-4-jlayton@redhat.com>
 References: <20170616193427.13955-1-jlayton@redhat.com>
 Cc: Carlos Maiolino <cmaiolino@redhat.com>,
 	Eryu Guan <eguan@redhat.com>,
@@ -30,57 +30,53 @@ In-Reply-To: <20170616193427.13955-1-jlayton@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-Requested-by: Christoph Hellwig <hch@infradead.org>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/sync.c          | 2 +-
- include/linux/fs.h | 6 ------
- ipc/shm.c          | 2 +-
- 3 files changed, 2 insertions(+), 8 deletions(-)
+ext2 currently does a test+clear of the AS_EIO flag, which is
+is problematic for some coming changes.
 
-diff --git a/fs/sync.c b/fs/sync.c
-index 11ba023434b1..2a54c1f22035 100644
---- a/fs/sync.c
-+++ b/fs/sync.c
-@@ -192,7 +192,7 @@ int vfs_fsync_range(struct file *file, loff_t start, loff_t end, int datasync)
- 		spin_unlock(&inode->i_lock);
- 		mark_inode_dirty_sync(inode);
- 	}
--	return call_fsync(file, start, end, datasync);
-+	return file->f_op->fsync(file, start, end, datasync);
+What we really need to do instead is call filemap_check_errors
+in __generic_file_fsync after syncing out the buffers. That
+will be sufficient for this case, and help other callers detect
+these errors properly as well.
+
+With that, we don't need to twiddle it in ext2.
+
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+---
+ fs/ext2/file.c | 2 +-
+ fs/libfs.c     | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index b21891a6bfca..ed00e7ae0ef3 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -177,7 +177,7 @@ int ext2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
+ 
+ 	ret = generic_file_fsync(file, start, end, datasync);
+-	if (ret == -EIO || test_and_clear_bit(AS_EIO, &mapping->flags)) {
++	if (ret == -EIO) {
+ 		/* We don't really know where the IO error happened... */
+ 		ext2_error(sb, __func__,
+ 			   "detected IO error when writing metadata buffers");
+diff --git a/fs/libfs.c b/fs/libfs.c
+index a04395334bb1..1dec90819366 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -991,7 +991,8 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
+ 
+ out:
+ 	inode_unlock(inode);
+-	return ret;
++	err = filemap_check_errors(inode->i_mapping);
++	return ret ? ret : err;
  }
- EXPORT_SYMBOL(vfs_fsync_range);
+ EXPORT_SYMBOL(__generic_file_fsync);
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4929a8f28cc3..1a135274b4f8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1740,12 +1740,6 @@ static inline int call_mmap(struct file *file, struct vm_area_struct *vma)
- 	return file->f_op->mmap(file, vma);
- }
- 
--static inline int call_fsync(struct file *file, loff_t start, loff_t end,
--			     int datasync)
--{
--	return file->f_op->fsync(file, start, end, datasync);
--}
--
- ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
- 			      unsigned long nr_segs, unsigned long fast_segs,
- 			      struct iovec *fast_pointer,
-diff --git a/ipc/shm.c b/ipc/shm.c
-index ec5688e98f25..28a444861a8f 100644
---- a/ipc/shm.c
-+++ b/ipc/shm.c
-@@ -453,7 +453,7 @@ static int shm_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- 
- 	if (!sfd->file->f_op->fsync)
- 		return -EINVAL;
--	return call_fsync(sfd->file, start, end, datasync);
-+	return sfd->file->f_op->fsync(sfd->file, start, end, datasync);
- }
- 
- static long shm_fallocate(struct file *file, int mode, loff_t offset,
 -- 
 2.13.0
 
