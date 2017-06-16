@@ -1,159 +1,184 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: Re: [RFC PATCH 0/4] Allow file systems to selectively bypass dm-crypt
-Date: Fri, 16 Jun 2017 11:42:40 -0700
-Message-ID: <20170616184240.GA13904@google.com>
-References: <20170614234040.4326-1-mhalcrow@google.com>
- <0b268ff7-5fc8-c85f-a530-82e9844f0400@gmail.com>
- <20170615172450.GA27384@google.com>
- <0df74dd8-f29d-8925-7cc1-783d09c6a42c@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-ext4@vger.kernel.org,
-        Tyler Hicks <tyler.hicks@canonical.com>,
-        dm-crypt <dm-crypt@saout.de>,
-        "Daniel P. Berrange" <berrange@redhat.com>
-To: Milan Broz <gmazyland@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f41.google.com ([74.125.83.41]:35567 "EHLO
-        mail-pg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751590AbdFPSmn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2017 14:42:43 -0400
-Received: by mail-pg0-f41.google.com with SMTP id k71so23755500pgd.2
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2017 11:42:43 -0700 (PDT)
-Content-Disposition: inline
-In-Reply-To: <0df74dd8-f29d-8925-7cc1-783d09c6a42c@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v7 00/22] fs: enhanced writeback error reporting with errseq_t (pile #1)
+Date: Fri, 16 Jun 2017 15:34:05 -0400
+Message-ID: <20170616193427.13955-1-jlayton@redhat.com>
+Cc: Carlos Maiolino <cmaiolino@redhat.com>,
+	Eryu Guan <eguan@redhat.com>,
+	David Howells <dhowells@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-block@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	tytso@mit.edu,
+	axboe@kernel.dk,
+	mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com,
+	corbet@lwn.net,
+	Chris Mason <clm@fb.com>,
+	Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 15, 2017 at 08:17:02PM +0200, Milan Broz wrote:
-> On 06/15/2017 07:24 PM, Michael Halcrow wrote:
-> ...
-> >> If this is accepted, we basically allow attacker to trick system to
-> >> write plaintext to media just by setting this flag. This must never
-> >> ever happen with FDE - BY DESIGN.
-> > 
-> > That's an important point.  This expands the attack surface to include
-> > the file system, so if an adversary can provide a bad encryption key
-> > or policy at the file system layer or if there's a bug in the file
-> > system that an adversary can exploit, then users setting the
-> > allow_encrypt_override option on dmcrypt would be vulnerable.
-> > 
-> >> For me, ABSOLUTE NACK to this approach.
-> > 
-> > I can understand where you're coming from.  Given our challenges on
-> > mobile, do you have any suggestions for an alternative approach?
-> 
-> Well, what I really do not like here that you are solving problem
-> of missing properly designed cryptographic filesystem by hacking
-> some layers together that were not designed to it.
+v7:
+===
+This is the seventh posting of the patchset to revamp the way writeback
+errors are tracked and reported.
 
-Agreed.  I enthusiastically withdraw this proposal.
+The main difference from the v6 posting is the removal of the
+FS_WB_ERRSEQ flag. That requires a few other incremental patches in the
+writeback code to ensure that both error tracking models are handled
+in a suitable way.
 
-I think I'm instead going to look into proposing something new in the
-block layer to address performance concerns with file system
-encryption and inline cryptographic engine support.
+Also, a bit more cleanup of the metadata writeback codepaths, and some
+documentation updates.
 
-> Obvious solution is to implement encryption in fs properly and encrypt
-> fs metadata there. I guess this is your long term goal?
+Some of these patches have been posted separately, but I'm re-posting
+them here to make it clear that they're prerequisites of the later
+patches in the series.
 
-My long-term goal is to delegate all encryption to the block layer,
-with the file system indicating which keys should encrypt which
-blocks.  Given your concerns along with the backup/restore scenario
-that Daniel Barrange pointed out, I'm convinced dmcrypt is not the
-right place to do that.  At least not without more substantial
-modifications to dmcrypt, and I would rather leave dmcrypt's behavior
-as boring and predictable as possible.
+This series is based on top of linux-next from a day or so ago. I'd like
+to have this picked up by linux-next in the near future so we can get
+some more extensive testing with it. Should I just plan to maintain a
+topic branch on top of -next and ask Stephen to pick it up?
 
-> Is the double encryption really such a big problem?  With some hw
-> support it should not cost much time and energy.  Do you have some
-> numbers to show that is it real problem?
+Background:
+===========
+The basic problem is that we have (for a very long time) tracked and
+reported writeback errors based on two flags in the address_space:
+AS_EIO and AS_ENOSPC. Those flags are cleared when they are checked,
+so only the first caller to check them is able to consume them.
 
-We have run numbers on several devices to measure the perf impact of
-storage encryption, and it's a big enough on some of the lower-end
-devices to threaten the ability to ship with storage encryption
-enabled by default.
+That model is quite unreliable, for several related reasons:
 
-> What I am missing here is the definition of your threat model.
+* only the first fsync caller on the inode will see the error. In a
+  world of containerized setups, that's no longer viable. Applications
+  need to know that their writes are safely stored, and they can
+  currently miss seeing errors that they should be aware of when
+  they're not.
 
-The original design document has some details regarding the threat
-model for file system-level encryption, but there's a lot more the
-story as you factor in how various approaches to storage encryption
-impact device behavior.
+* there are a lot of internal callers to filemap_fdatawait* and
+  filemap_write_and_wait* that clear these errors but then never report
+  them to userland in any fashion.
 
-https://docs.google.com/document/d/1ft26lUQyuSpiu6VleP70_npaWdRfXFoNnB8JYnykNTg/preview
+* Some internal callers report writeback errors, but can do so at
+  non-sensical times. For instance, we might want to truncate a file,
+  which triggers a pagecache flush. If that writeback fails, we might
+  report that error to the truncate caller, but a subsequent fsync
+  will likely not see it.
 
-> If the encryption of metadata in block layer is ok for you, why it
-> is not ok for the data?
+* Some internal callers try to reset the error flags after clearing
+  them, but that's racy. Another task could check the flags between
+  those two events.
 
-In short, because there are classes of data and classes of
-adversaries.
+Solution:
+=========
+This patchset adds a new datatype called an errseq_t that represents a
+sequence of errors. It's a u32, with a field for a POSIX-flavor error
+and a counter, managed with atomics. We can sample that value at a
+particular point in time, and can later tell whether there have been any
+errors since that point.
 
-The longer answer to that question also brings up how keys are managed
-and protected across a spectrum of devices with a variety of hardware
-capabilities.
+That allows us to provide traditional check-and-clear fsync semantics
+on every open file description in a lightweight fashion. fsync callers
+no longer need to coordinate between one another in order to ensure
+that errors at fsync time are handled correctly.
 
-Ideally, it would be impossible for an adversary to access any
-plaintext at all without the user's credentials.  However, for the
-vast majority of users a device needs to be able to boot and be
-minimally functional without the user authenticating on the device --
-think of a device rebooting in the middle of the night, and then its
-alarm doesn't go off in the morning because it's stuck on a screen
-asking for a pin.  Incoming phone calls don't go through.  That's a
-recipe for encryption being disabled by default.
+Strategy:
+=========
+The aim with this pile is to do the minimum possible to support for
+reliable reporting of errors on fsync, without substantially changing
+the internals of the filesystems themselves.
 
-While a user might not care whether someone with enough resources to
-mount a hardware attack can find out that that their alarm is set for
-6:45am or that the directory structure reveals that they have a
-particular app installed, they might care if a sophisticated and
-well-funded adversary can read the contents of their email or their
-location history without the user authenticating with "something they
-know."
+Most of the internal calls to filemap_fdatawait are left alone, so all
+of the internal error checkers are using the same error handling they
+always have. The only real difference here is that we're better
+reporting errors at fsync.
 
-Meanwhile, if the key that protects metadata is locked in a secure
-hardware element, a non-trivial number adversaries can be effectively
-locked out from discovering anything at all simply because of the
-costs associated with compromising the key.  This protection is
-worthwhile.
+I think that we probably will want to eventually convert all of those
+internal callers to use errseq_t based reporting, but that can be done
+in an incremental fashion in follow-on patchsets.
 
-> What are you solving there? Is it that one user must not see other users data?
-> (And who is an user on a mobile device - an application in own sandbox?)
-> 
-> Because the confidentiality in the case of stolen device is there with
-> encryption on any layer. And ext4 encryption uses the same algorithms
-> as dmcrypt IIRC.
-> 
-> It would better to go with some model that actually increases security.
-> 
-> For example, if your patch marks IO operation that comes from fs as
-> REQ_NOENCRYPT, could fs send some metadata information in bio of
-> owner (user, translated to key id) instead and encrypt the sector
-> with a different key?
+Testing:
+========
+I've primarily been testing this with some new xfstests that I will post
+in a separate series. These tests use dm-error fault injection to make
+the underlying block device start throwing I/O errors, and then test the
+how the filesystem layer reports errors after that.
 
-I really like this idea.  However because users can access the dmcrypt
-device without the file system, I wouldn't want to try to do it
-without dmcrypt maintaining additional metadata about which keys
-protect which blocks.  Even then, the user directly accessing the
-dmcrypt device would be surprised when dmcrypt returns EIO because it
-doesn't have a key for the blocks at offsets 42 and 128.
+Jeff Layton (22):
+  fs: remove call_fsync helper function
+  buffer: use mapping_set_error instead of setting the flag
+  fs: check for writeback errors after syncing out buffers in
+    generic_file_fsync
+  buffer: set errors in mapping at the time that the error occurs
+  jbd2: don't clear and reset errors after waiting on writeback
+  mm: clear AS_EIO/AS_ENOSPC when writeback initiation fails
+  mm: don't TestClearPageError in __filemap_fdatawait_range
+  mm: clean up error handling in write_one_page
+  fs: always sync metadata in __generic_file_fsync
+  lib: add errseq_t type and infrastructure for handling it
+  fs: new infrastructure for writeback error handling and reporting
+  mm: tracepoints for writeback error events
+  mm: set both AS_EIO/AS_ENOSPC and errseq_t in mapping_set_error
+  Documentation: flesh out the section in vfs.txt on storing and
+    reporting writeback errors
+  dax: set errors in mapping when writeback fails
+  block: convert to errseq_t based writeback error tracking
+  ext4: use errseq_t based error handling for reporting data writeback
+    errors
+  fs: add f_md_wb_err field to struct file for tracking metadata errors
+  ext4: add more robust reporting of metadata writeback errors
+  ext2: convert to errseq_t based writeback error tracking
+  xfs: minimal conversion to errseq_t writeback error reporting
+  btrfs: minimal conversion to errseq_t writeback error reporting on
+    fsync
 
-At this point I do think something new at the block layer for file
-system managed encryption and inline cryptographic engine support will
-be necessary.
+ Documentation/filesystems/vfs.txt |  43 +++++++-
+ drivers/dax/device.c              |   1 +
+ fs/block_dev.c                    |   9 +-
+ fs/btrfs/file.c                   |   7 +-
+ fs/buffer.c                       |  20 ++--
+ fs/dax.c                          |   4 +-
+ fs/ext2/dir.c                     |   8 ++
+ fs/ext2/file.c                    |  26 ++++-
+ fs/ext4/dir.c                     |   8 +-
+ fs/ext4/file.c                    |   5 +-
+ fs/ext4/fsync.c                   |  28 ++++-
+ fs/file_table.c                   |   1 +
+ fs/gfs2/lops.c                    |   2 +-
+ fs/jbd2/commit.c                  |  15 +--
+ fs/libfs.c                        |  12 +--
+ fs/open.c                         |   3 +
+ fs/sync.c                         |   2 +-
+ fs/xfs/xfs_file.c                 |  15 ++-
+ include/linux/buffer_head.h       |   1 +
+ include/linux/errseq.h            |  19 ++++
+ include/linux/fs.h                |  67 ++++++++++--
+ include/linux/pagemap.h           |  31 ++++--
+ include/trace/events/filemap.h    |  52 ++++++++++
+ ipc/shm.c                         |   2 +-
+ lib/Makefile                      |   2 +-
+ lib/errseq.c                      | 208 ++++++++++++++++++++++++++++++++++++++
+ mm/filemap.c                      | 113 +++++++++++++++++----
+ mm/page-writeback.c               |  15 ++-
+ 28 files changed, 628 insertions(+), 91 deletions(-)
+ create mode 100644 include/linux/errseq.h
+ create mode 100644 lib/errseq.c
 
-> I am not sure how complicated this would be to implement but we have already
-> concept of multiple keys in dmcrypt (there is 64 keys for loopAES mapping
-> and the used key id is calculated as sector# modulo 64).
-> 
-> Maybe the keys can be taken from kernel keyring and loaded dynamically,
-> according to optional table parameters that defines policy for it.
-> The IV could be shared (in XTS mode it is not a problem).
-> If the key is not available, the bio should simply fail early.
-> 
-> Dunno, just an idea - it really depends what are you trying to solve.
-> 
-> Milan
+-- 
+2.13.0
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
