@@ -1,88 +1,49 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v2 3/3] dax: use common 4k zero page for dax mmap reads
-Date: Fri, 16 Jun 2017 13:45:40 -0600
-Message-ID: <20170616194540.GB20742@linux.intel.com>
-References: <20170614172211.19820-1-ross.zwisler@linux.intel.com>
- <20170614172211.19820-4-ross.zwisler@linux.intel.com>
- <20170615145856.GO1764@quack2.suse.cz>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH 28/28] quota: add extra inode count to dquot transfer functions
+Date: Fri, 16 Jun 2017 18:50:58 -0700
+Message-ID: <CAAeU0aNgon_ERWyUNmAGaBCuk3dU9qAxA7QnZ4D8cb5g6JZcPg@mail.gmail.com>
+References: <20170531081517.11438-1-tahsin@google.com> <20170531081517.11438-28-tahsin@google.com>
+ <20170615075735.GB1764@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Dave Hansen <dave.hansen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170615145856.GO1764-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Mark Fasheh <mfasheh@versity.com>,
+        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
+        Deepa Dinamani <deepa.kernel@gmail.com>,
+        Mike Christie <mchristi@redhat.com>,
+        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f180.google.com ([209.85.161.180]:35843 "EHLO
+        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752391AbdFQBvA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jun 2017 21:51:00 -0400
+Received: by mail-yw0-f180.google.com with SMTP id l75so25919470ywc.3
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Jun 2017 18:51:00 -0700 (PDT)
+In-Reply-To: <20170615075735.GB1764@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 15, 2017 at 04:58:56PM +0200, Jan Kara wrote:
-> On Wed 14-06-17 11:22:11, Ross Zwisler wrote:
-> > @@ -216,17 +217,6 @@ static void dax_unlock_mapping_entry(struct address_space *mapping,
-> >  	dax_wake_mapping_entry_waiter(mapping, index, entry, false);
-> >  }
-> >  
-> > -static void put_locked_mapping_entry(struct address_space *mapping,
-> > -				     pgoff_t index, void *entry)
-> > -{
-> > -	if (!radix_tree_exceptional_entry(entry)) {
-> > -		unlock_page(entry);
-> > -		put_page(entry);
-> > -	} else {
-> > -		dax_unlock_mapping_entry(mapping, index);
-> > -	}
-> > -}
-> > -
-> 
-> The naming becomes asymetric with this. So I'd prefer keeping
-> put_locked_mapping_entry() as a trivial wrapper around
-> dax_unlock_mapping_entry() unless we can craft more sensible naming / API
-> for entry grabbing (and that would be a separate patch anyway).
+On Thu, Jun 15, 2017 at 12:57 AM, Jan Kara <jack@suse.cz> wrote:
+> Hum, rather handle this similarly to how we handle delalloc reserved space.
+> Add a callback to dq_ops to get "inode usage" of an inode and then use it
+> in dquot_transfer(), dquot_free_inode(), dquot_alloc_inode().
 
-Sure, that works for me.  I'll fix for v3.
+I tried that approach by adding a "int get_inode_usage(struct inode
+*inode, qsize_t *usage)" callback to dquot_operations. Unfortunately,
+ext4 code that calculates the number of internal inodes
+(ext4_xattr_inode_count()) is subject to failures so the callback has
+to be able to report errors. And, that itself is problematic because
+we can't afford to have errors in dquot_free_inode(). If you have
+thoughts about how to address this please let me know.
 
-> > -static int dax_load_hole(struct address_space *mapping, void **entry,
-> > +static int dax_load_hole(struct address_space *mapping, void *entry,
-> >  			 struct vm_fault *vmf)
-> >  {
-> >  	struct inode *inode = mapping->host;
-> > -	struct page *page;
-> > -	int ret;
-> > -
-> > -	/* Hole page already exists? Return it...  */
-> > -	if (!radix_tree_exceptional_entry(*entry)) {
-> > -		page = *entry;
-> > -		goto finish_fault;
-> > -	}
-> > +	unsigned long vaddr = vmf->address;
-> > +	int ret = VM_FAULT_NOPAGE;
-> > +	struct page *zero_page;
-> > +	void *entry2;
-> >  
-> > -	/* This will replace locked radix tree entry with a hole page */
-> > -	page = find_or_create_page(mapping, vmf->pgoff,
-> > -				   vmf->gfp_mask | __GFP_ZERO);
-> 
-> With this gone, you can also remove the special DAX handling from
-> mm/filemap.c: page_cache_tree_insert() and remove from dax.h
-> dax_wake_mapping_entry_waiter(), dax_radix_locked_entry() and RADIX_DAX
-> definitions. Yay! As a separate patch please.
-
-Oh, yay!  :)  Sure, I'll have this patch for v3.
+Alternatively, I could try to make this patch less intrusive by
+keeping the existing dquot_transfer() signature and add a new
+dquot_transfer_usage() that accepts inode_usage as a parameter. What
+do you think?
