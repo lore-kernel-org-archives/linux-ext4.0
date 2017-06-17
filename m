@@ -1,86 +1,29 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v7 15/22] dax: set errors in mapping when writeback fails
-Date: Sat, 17 Jun 2017 08:39:53 -0400
-Message-ID: <1497703193.4684.9.camel@redhat.com>
-References: <20170616193427.13955-1-jlayton@redhat.com>
-	 <20170616193427.13955-16-jlayton@redhat.com>
+From: Danesh Daroui <danesh.daroui@gmail.com>
+Subject: Regression test (or generic tests) for Linux filesystems
+Date: Sat, 17 Jun 2017 19:45:17 +0200
+Message-ID: <CABjLfgi=TK6-od5GhL=VtzzLs0bV5GGBrgh2s9WvKaAn5YCCoA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Carlos Maiolino <cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>,
- David Howells <dhowells@redhat.com>, Christoph Hellwig <hch@infradead.org>,
- linux-fsdevel@vger.kernel.org,  linux-mm@kvack.org,
- linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>, Al Viro
- <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
- axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
- corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
- David Sterba <dsterba@suse.com>, "Darrick J . Wong"
- <darrick.wong@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170616193427.13955-16-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, 2017-06-16 at 15:34 -0400, Jeff Layton wrote:
-> Jan Kara's description for this patch is much better than mine, so I'm
-> quoting it verbatim here:
-> 
-> DAX currently doesn't set errors in the mapping when cache flushing
-> fails in dax_writeback_mapping_range(). Since this function can get
-> called only from fsync(2) or sync(2), this is actually as good as it can
-> currently get since we correctly propagate the error up from
-> dax_writeback_mapping_range() to filemap_fdatawrite()
-> 
-> However, in the future better writeback error handling will enable us to
-> properly report these errors on fsync(2) even if there are multiple file
-> descriptors open against the file or if sync(2) gets called before
-> fsync(2). So convert DAX to using standard error reporting through the
-> mapping.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> Reviewed-and-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  fs/dax.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 9899f07acf72..c663e8cc2a76 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -856,8 +856,10 @@ int dax_writeback_mapping_range(struct address_space *mapping,
->  
->  			ret = dax_writeback_one(bdev, dax_dev, mapping,
->  					indices[i], pvec.pages[i]);
-> -			if (ret < 0)
-> +			if (ret < 0) {
-> +				mapping_set_error(mapping, ret);
->  				goto out;
-> +			}
->  		}
->  	}
->  out:
+Hello all,
 
-I should point out here that Ross had an issue with this patch in an
-earlier set, that I addressed with a flag in the last set. The flag is
-icky though.
+Just a quick question. I am wondering if there is any test suite
+available for ext4 fs or basic fs functionalists in Linux, shipped
+with kernel as a module or so, then developers would be able to run
+the test (or modify them for new features) to ensure fs integrity on a
+local branch before submitting a patch for review?
 
-In this set, patch #6 should make it unnecessary:
+I have already found xfstests at:
 
-    mm: clear AS_EIO/AS_ENOSPC when writeback initiation fails
+https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git/tree/
 
-Ross, could you test that this set still works ok for you with dax? It
-should apply reasonably cleanly on top of linux-next.
+but I am not sure if this is the right one (haven't tried yet) or if
+there is any better test suite even more specific tailored for ext4.
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+Thanks for your answer,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Dan
