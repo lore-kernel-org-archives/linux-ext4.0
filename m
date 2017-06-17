@@ -1,51 +1,116 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH 30/31] ext4: eliminate xattr entry e_hash recalculation
- for removes
-Date: Fri, 16 Jun 2017 19:04:44 -0700
-Message-ID: <CAAeU0aMuV7EHw5ZwdF52__baS36CsaB4MN03iqUdyLh1Fc6HzA@mail.gmail.com>
-References: <20170614172340.18720-1-tahsin@google.com> <20170615091026.GG1764@quack2.suse.cz>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH v2 1/3] mm: add vm_insert_mixed_mkwrite()
+Date: Fri, 16 Jun 2017 22:09:26 -0600
+Message-ID: <20170617040926.GA26554@linux.intel.com>
+References: <20170614172211.19820-1-ross.zwisler@linux.intel.com>
+ <20170614172211.19820-2-ross.zwisler@linux.intel.com>
+ <20170615144204.GN1764@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Mark Fasheh <mfasheh@versity.com>,
-        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
-        Deepa Dinamani <deepa.kernel@gmail.com>,
-        Mike Christie <mchristi@redhat.com>,
-        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
-In-Reply-To: <20170615091026.GG1764@quack2.suse.cz>
-Sender: reiserfs-devel-owner@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170615144204.GN1764@quack2.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 15, 2017 at 2:10 AM, Jan Kara <jack@suse.cz> wrote:
-> I agree with moving ext4_xattr_rehash_entry() out of ext4_xattr_rehash().
-> However how about just keeping ext4_xattr_rehash() in
-> ext4_xattr_block_set() (so that you don't have to pass aditional argument
-> to ext4_xattr_set_entry()) and calling ext4_xattr_rehash_entry() when
-> i->value != NULL? That would seem easier and cleaner as well...
+On Thu, Jun 15, 2017 at 04:42:04PM +0200, Jan Kara wrote:
+> On Wed 14-06-17 11:22:09, Ross Zwisler wrote:
+> > To be able to use the common 4k zero page in DAX we need to have our PTE
+> > fault path look more like our PMD fault path where a PTE entry can be
+> > marked as dirty and writeable as it is first inserted, rather than waiting
+> > for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
+> > 
+> > Right now we can rely on having a dax_pfn_mkwrite() call because we can
+> > distinguish between these two cases in do_wp_page():
+> > 
+> > 	case 1: 4k zero page => writable DAX storage
+> > 	case 2: read-only DAX storage => writeable DAX storage
+> > 
+> > This distinction is made by via vm_normal_page().  vm_normal_page() returns
+> > false for the common 4k zero page, though, just as it does for DAX ptes.
+> > Instead of special casing the DAX + 4k zero page case, we will simplify our
+> > DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
+> > get rid of dax_pfn_mkwrite() completely.
+> > 
+> > This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
+> > and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
+> > will do the work that was previously done by wp_page_reuse() as part of the
+> > dax_pfn_mkwrite() call path.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> 
+> So I agree that getting rid of dax_pfn_mkwrite() and using fault handler in
+> that case is a way to go. However I somewhat dislike the
+> vm_insert_mixed_mkwrite() thing - it looks like a hack - and I'm aware that
+> we have a similar thing for PMD which is ugly as well. Besides being ugly
+> I'm also concerned that when 'mkwrite' is set, we just silently overwrite
+> whatever PTE was installed at that position. Not that I'd see how that
+> could screw us for DAX but still a concern that e.g. some PTE flag could
+> get discarded by this is there... In fact, for !HAVE_PTE_SPECIAL
+> architectures, you will leak zero page references by just overwriting the
+> PTE - for those archs you really need to unmap zero page before replacing
+> PTE (and the same for PMD I suppose).
+> 
+> So how about some vmf_insert_pfn(vmf, pe_size, pfn) helper that would
+> properly detect PTE / PMD case, read / write case etc., check that PTE did
+> not change from orig_pte, and handle all the nasty details instead of
+> messing with insert_pfn?
 
-The is_block parameter is also used to decide whether block reserve
-check should be performed:
+I played around with this some today, and I wasn't super happy with the
+results.  Here were some issues I encountered:
 
-@@ -1500,8 +1502,8 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
-                 * attribute block so that a long value does not occupy the
-                 * whole space and prevent futher entries being added.
-                 */
--               if (ext4_has_feature_ea_inode(inode->i_sb) && new_size &&
--                   (s->end - s->base) == i_blocksize(inode) &&
-+               if (ext4_has_feature_ea_inode(inode->i_sb) &&
-+                   new_size && is_block &&
-                    (min_offs + old_size - new_size) <
-                                        EXT4_XATTR_BLOCK_RESERVE(inode)) {
-                        ret = -ENOSPC;
+1) The pte_mkyoung(), maybe_mkwrite() and pte_mkdirty() calls need to happen
+with the PTE locked, and I'm currently able to piggy-back on the locking done
+in insert_pfn().  If I keep those steps out of insert_pfn() I either have to
+essentially duplicate all the work done by insert_pfn() into another function
+so I can do everything I need under one lock, or I have to insert the PFN via
+insert_pfn() (which as you point out, will just leave the pfn alone if it's
+already present), then for writes I have to re-grab the PTE lock and set do
+the mkwrite steps.
 
-Because of that, I think moving ext4_xattr_rehash to caller makes it
-bit more complicated. Let me know if you disagree.
+Either of these work, but they both also seem kind of gross...
+
+2) Combining the PTE and PMD cases into a common function will require
+mm/memory.c to call vmf_insert_pfn_pmd(), which depends on
+CONFIG_TRANSPARENT_HUGEPAGE being defined.  This works, it just means some
+more #ifdef CONFIG_TRANSPARENT_HUGEPAGE hackery in mm/memory.c.
+
+I agree that unconditionally overwriting the PTE when mkwrite is set is
+undesireable, and should be fixed.  My implementation of the wrapper just
+didn't seem that natural, which usually tells me I'm headed down the wrong
+path.  Maybe I'm just not fully understanding what you intended?
+
+In any case, my current favorite soultion for this issue is still what I had
+in v1:
+
+https://patchwork.kernel.org/patch/9772809/
+
+with perhaps the removal of the new vm_insert_mixed_mkwrite() symbol, and just
+adding a 'write' flag to vm_insert_mixed() and updating all the call sites,
+and fixing the flow where mkwrite unconditionally overwrites the PTE?
+
+If not, can you help me understand what you think is ugly about the 'write'
+flag to vm_insert_mixed() and vmf_insert_pfn_pmd()?
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
