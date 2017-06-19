@@ -1,66 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Regression test (or generic tests) for Linux filesystems
-Date: Mon, 19 Jun 2017 01:41:28 -0400
-Message-ID: <20170619054128.zwegvknm5uhumlpa@thunk.org>
-References: <CABjLfgi=TK6-od5GhL=VtzzLs0bV5GGBrgh2s9WvKaAn5YCCoA@mail.gmail.com>
- <30ec9f1e-f360-c634-727b-ce73e0f352ba@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 30/31] ext4: eliminate xattr entry e_hash recalculation
+ for removes
+Date: Mon, 19 Jun 2017 10:10:02 +0200
+Message-ID: <20170619081002.GC11837@quack2.suse.cz>
+References: <20170614172340.18720-1-tahsin@google.com>
+ <20170615091026.GG1764@quack2.suse.cz>
+ <CAAeU0aMuV7EHw5ZwdF52__baS36CsaB4MN03iqUdyLh1Fc6HzA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Danesh Daroui <danesh.daroui@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Nikolay Borisov <n.borisov.lkml@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Mark Fasheh <mfasheh@versity.com>,
+        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
+        Deepa Dinamani <deepa.kernel@gmail.com>,
+        Mike Christie <mchristi@redhat.com>,
+        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <30ec9f1e-f360-c634-727b-ce73e0f352ba@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <CAAeU0aMuV7EHw5ZwdF52__baS36CsaB4MN03iqUdyLh1Fc6HzA@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jun 18, 2017 at 11:37:16PM +0300, Nikolay Borisov wrote:
+On Fri 16-06-17 19:04:44, Tahsin Erdogan wrote:
+> On Thu, Jun 15, 2017 at 2:10 AM, Jan Kara <jack@suse.cz> wrote:
+> > I agree with moving ext4_xattr_rehash_entry() out of ext4_xattr_rehash().
+> > However how about just keeping ext4_xattr_rehash() in
+> > ext4_xattr_block_set() (so that you don't have to pass aditional argument
+> > to ext4_xattr_set_entry()) and calling ext4_xattr_rehash_entry() when
+> > i->value != NULL? That would seem easier and cleaner as well...
 > 
-> xfstest is the de-facto testsuite for linux filesystems. It not only has
-> generic tests but also fs-specific ones e.g. ext4. So go with it.
+> The is_block parameter is also used to decide whether block reserve
+> check should be performed:
+> 
+> @@ -1500,8 +1502,8 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+>                  * attribute block so that a long value does not occupy the
+>                  * whole space and prevent futher entries being added.
+>                  */
+> -               if (ext4_has_feature_ea_inode(inode->i_sb) && new_size &&
+> -                   (s->end - s->base) == i_blocksize(inode) &&
+> +               if (ext4_has_feature_ea_inode(inode->i_sb) &&
+> +                   new_size && is_block &&
+>                     (min_offs + old_size - new_size) <
+>                                         EXT4_XATTR_BLOCK_RESERVE(inode)) {
+>                         ret = -ENOSPC;
+> 
+> Because of that, I think moving ext4_xattr_rehash to caller makes it
+> bit more complicated. Let me know if you disagree.
 
-If you want a really convenient way of running xfstests, I have a set
-of wrapper scripts that make it easy to run xfstests using either KVM
-or GCE (Google Compute Engine).  The idea is to do something which is
-turn-key and really easy, so that people who are submitting patches
-for me to review have no excuse not to run tests first.  :-)
+What I dislike is the leakage of information about particular type of
+storage into ext4_xattr_set_entry(). However I agree that it would be
+cumbersome to handle this reservation check differently so ok.
 
-I also was making it easy because there were some graduate students
-who were interesting writing their own file system or making changes
-to existing file systems, and this made it easy for them to do their
-testing.  So it was deisgned for that use case as well.  For more
-information, please see these URL's:
+								Honza
 
-	http://thunk.org/gce-xfstests
-	https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
-	https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-xfstests.md
-	https://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md
-
-And, for extra fun, we have alpha support for using xfstests in an
-Android environment.  This can be used if you need to test some
-feature that requires hardware support, such as the ext4 integration
-with hardware inline-crypto encryption (ICE):
-
-	https://github.com/tytso/xfstests-bld/blob/master/Documentation/android-xfstests.md
-
-(This is rather bleeding edge code, and it's mainly only been tested
-on a small set of devices.  It will also destroy existing user data on
-the device, and xfstests can use up a large number of write cycles on
-low-end flash.  So I recommend only using android-xfstests on
-sacrificial development devices where you don't have a strong
-attachment to any data on the device or the longevity of of said
-device.  :-)
-
-Cheers!
-
-						- Ted
-
-P.S.  gce-xfstest and kvm-xfstests have support to test file systems
-beyond ext4, but to date it's been primarily used to test ext4 file
-system code.  I have basic support for btrfs, f2fs, xfs, overlayfs,
-tmpfs, and it would be trivial to add support for more file systems,
-or for people who want to give me file system test configurations for
-file systems beyond ext4.  So if you are interested in using
-kvm-xfstests or gce-xfstests for other filesystems --- please drop me
-a line and let's chat.
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
