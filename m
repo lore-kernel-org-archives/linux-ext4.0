@@ -1,26 +1,22 @@
-From: Eric Biggers <ebiggers3@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] mke2fs: fix hugefile creation so the hugefile(s) are
  contiguous
-Date: Mon, 19 Jun 2017 16:29:45 -0700
-Message-ID: <20170619232945.GB76149@gmail.com>
+Date: Mon, 19 Jun 2017 16:40:39 -0700
+Message-ID: <20170619234039.GA4728@birch.djwong.org>
 References: <20170619224927.3176-1-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f54.google.com ([74.125.83.54]:34538 "EHLO
-        mail-pg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752289AbdFSX3s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jun 2017 19:29:48 -0400
-Received: by mail-pg0-f54.google.com with SMTP id e187so2352992pgc.1
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Jun 2017 16:29:48 -0700 (PDT)
+Received: from aserp1040.oracle.com ([141.146.126.69]:28363 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752801AbdFSXk6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jun 2017 19:40:58 -0400
 Content-Disposition: inline
 In-Reply-To: <20170619224927.3176-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-Hi Ted,
 
 On Mon, Jun 19, 2017 at 06:49:27PM -0400, Theodore Ts'o wrote:
 > Commit 4f868703f6f2: "libext2fs: use fallocate for creating journals
@@ -37,11 +33,13 @@ On Mon, Jun 19, 2017 at 06:49:27PM -0400, Theodore Ts'o wrote:
 > before fixing mke2fs, and also fixes the mke2fs hugefile by reverting
 > the mke2fs hugefile portion of commit 4f868703f6f2.
 > 
-
-Can you also update the mke2fs.conf man page to document under what
-circumstances it can be assumed that the preallocated "hugefiles" will be
-physically contiguous?  Currently I don't see any mention of it.
-
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>  misc/mk_hugefiles.c     |  99 +++++++++++++++++++++++++++++++++++------
+>  tests/m_hugefile/expect | 114 ++++++++++++++++++++++++++++++++++++++++--------
+>  tests/m_hugefile/script |   4 +-
+>  3 files changed, 185 insertions(+), 32 deletions(-)
+> 
 > diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
 > index 5882394d..ec4e0470 100644
 > --- a/misc/mk_hugefiles.c
@@ -72,17 +70,124 @@ physically contiguous?  Currently I don't see any mention of it.
 > -		falloc_flags |= EXT2_FALLOCATE_ZERO_BLOCKS;
 > -	retval = ext2fs_fallocate(fs, falloc_flags, *ino, &inode, goal, 0, num);
 > +	retval = ext2fs_extent_open2(fs, *ino, &inode, &handle);
+
+/me wonders if it'd be better just to teach ext2fs_fallocate to allocate
+one huge chunk of space and then cut up the chunk into max_{,un}init_len
+pieces for inserting into the extent tree, rather than re-open-coding the
+_fallocate and _new_range library functions into mkfs.
+
+OTOH "Yes Darrick, whenever you come up with a patch" is a fairly valid
+counterargument. :P
+
+--D
+
 >  	if (retval)
 >  		return retval;
 > -	retval = ext2fs_inode_size_set(fs, &inode, num * fs->blocksize);
 > +
 > +	lblk = 0;
 > +	left = num ? num : 1;
-
-Add a comment explaining why ext2fs_fallocate() isn't sufficient?
-
-Alternatively, would it be possible to fix ext2fs_fallocate() instead?
-
+> +	while (left) {
+> +		blk64_t pblk, end;
+> +		blk64_t n = left;
+> +
+> +		retval =  ext2fs_find_first_zero_block_bitmap2(fs->block_map,
+> +			goal, ext2fs_blocks_count(fs->super) - 1, &end);
+> +		if (retval)
+> +			goto errout;
+> +		goal = end;
+> +
+> +		retval =  ext2fs_find_first_set_block_bitmap2(fs->block_map, goal,
+> +			       ext2fs_blocks_count(fs->super) - 1, &bend);
+> +		if (retval == ENOENT) {
+> +			bend = ext2fs_blocks_count(fs->super);
+> +			if (num == 0)
+> +				left = 0;
+> +		}
+> +		if (!num || bend - goal < left)
+> +			n = bend - goal;
+> +		pblk = goal;
+> +		if (num)
+> +			left -= n;
+> +		goal += n;
+> +		count += n;
+> +		ext2fs_block_alloc_stats_range(fs, pblk, n, +1);
+> +
+> +		if (zero_hugefile) {
+> +			blk64_t ret_blk;
+> +			retval = ext2fs_zero_blocks2(fs, pblk, n,
+> +						     &ret_blk, NULL);
+> +
+> +			if (retval)
+> +				com_err(program_name, retval,
+> +					_("while zeroing block %llu "
+> +					  "for hugefile"), ret_blk);
+> +		}
+> +
+> +		while (n) {
+> +			blk64_t l = n;
+> +			struct ext2fs_extent newextent;
+> +
+> +			if (l > EXT_INIT_MAX_LEN)
+> +				l = EXT_INIT_MAX_LEN;
+> +
+> +			newextent.e_len = l;
+> +			newextent.e_pblk = pblk;
+> +			newextent.e_lblk = lblk;
+> +			newextent.e_flags = 0;
+> +
+> +			retval = ext2fs_extent_insert(handle,
+> +					EXT2_EXTENT_INSERT_AFTER, &newextent);
+> +			if (retval)
+> +				return retval;
+> +			pblk += l;
+> +			lblk += l;
+> +			n -= l;
+> +		}
+> +	}
+> +
+> +	retval = ext2fs_read_inode(fs, *ino, &inode);
+>  	if (retval)
+> -		return retval;
+> +		goto errout;
+> +
+> +	retval = ext2fs_iblk_add_blocks(fs, &inode,
+> +					count / EXT2FS_CLUSTER_RATIO(fs));
+> +	if (retval)
+> +		goto errout;
+> +	size = (__u64) count * fs->blocksize;
+> +	retval = ext2fs_inode_size_set(fs, &inode, size);
+> +	if (retval)
+> +		goto errout;
+>  
+> -	retval = ext2fs_write_inode(fs, *ino, &inode);
+> +	retval = ext2fs_write_new_inode(fs, *ino, &inode);
+>  	if (retval)
+>  		goto errout;
+>  
+> @@ -314,7 +383,13 @@ retry:
+>  		goto retry;
+>  	}
+>  
+> +	if (retval)
+> +		goto errout;
+> +
+>  errout:
+> +	if (handle)
+> +		ext2fs_extent_free(handle);
+> +
+>  	return retval;
+>  }
+>  
+> @@ -499,8 +574,6 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
+>  			printf(_("with %llu blocks each"), num_blocks);
+>  		fputs(": ", stdout);
+>  	}
+> -	if (num_blocks == 0)
+> -		num_blocks = ext2fs_blocks_count(fs->super) - goal;
+>  	for (i=0; i < num_files; i++) {
+>  		ext2_ino_t ino;
+>  
 > diff --git a/tests/m_hugefile/expect b/tests/m_hugefile/expect
 > index 82a60319..aee63f90 100644
 > --- a/tests/m_hugefile/expect
@@ -208,57 +313,22 @@ Alternatively, would it be possible to fix ext2fs_fallocate() instead?
 > + 1/ 2  95/ 97 1044185088 - 1055293439      98660              11108352
 > + 1/ 2  96/ 97 1055293440 - 1066401791      98661              11108352
 > + 1/ 2  97/ 97 1066401792 - 1073610751      98662              7208960
-
-This only verifies that the extent tree blocks are in the expected locations.
-How about also verifying that the file is actually physically contigious?  If
-storing the full output file is too large it could be done algorithmically, e.g.
-verifying that the following doesn't produce any output:
-
-debugfs -R "dump_extents /store/big-data" test.img | awk '
-BEGIN {
-	expected_logical_start = 0;
-	expected_physical_start = 0;
-}
-{
-	if (NR != 1) {
-		level = $1;
-		sub(/\//, "", level);
-		total_levels = $2;
-		if (level == total_levels) {
-			logical_start=$4;
-			logical_end=$6;
-			physical_start=$7;
-			physical_end=$9;
-			len = $10;
-
-			if (logical_end + 1 - logical_start != len) {
-				print "UNEXPECTED LENGTH for extent", $0;
-			}
-			if (physical_end + 1 - physical_start != len) {
-				print "UNEXPECTED LENGTH for extent", $0;
-			}
-
-			if (logical_start != expected_logical_start) {
-				print "UNEXPECTED LOGICAL DISCONTINUITY between extents:";
-				print "\t", prev;
-				print "\t", $0;
-			}
-			if (physical_start != expected_physical_start &&
-				expected_logical_start != 0) {
-				print "PHYSICAL DISCONTINUITY between extents:";
-				print "\t", prev;
-				print "\t", $0;
-			}
-
-			expected_logical_start = logical_end + 1;
-			expected_physical_start = physical_end + 1;
-		}
-	}
-	prev=$0;
-}
-'
-
-(The awk script maybe can be cleaned up a bit; it's just something I hacked
-together.  Also there may be a simpler way to do it.)
-
-- Eric
+> diff --git a/tests/m_hugefile/script b/tests/m_hugefile/script
+> index 2750d538..317deabf 100644
+> --- a/tests/m_hugefile/script
+> +++ b/tests/m_hugefile/script
+> @@ -44,9 +44,9 @@ $FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
+>  status=$?
+>  echo Exit status is $status >> $OUT
+>  
+> -echo 'debugfs -R "extents /store/big-data" test.img | head' >> $OUT
+> +echo 'debugfs -R "extents /store/big-data" test.img' >> $OUT
+>  
+> -$DEBUGFS -R "extents /store/big-data" $TMPFILE 2>&1 | head -n 20 >> $OUT 2>&1
+> +$DEBUGFS -R "extents -n /store/big-data" $TMPFILE 2>&1 >> $OUT 2>&1
+>  
+>  rm $TMPFILE
+>  
+> -- 
+> 2.11.0.rc0.7.gbe5a750
+> 
