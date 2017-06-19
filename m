@@ -1,74 +1,129 @@
-From: <chrisbi_anelyst@mail.dk>
-Subject: (unknown)
-Date: Mon, 19 Jun 2017 18:46:10 -0000
-Message-ID: <149789797069.29697.9740056280975019664@zaural.ru>
-Mime-Version: 1.0
-Content-Type: application/zip; name="9052001159285.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] ext4: forbid encrypting root directory
+Date: Mon, 19 Jun 2017 15:18:24 -0600
+Message-ID: <CFA0E924-C86A-4B01-8104-4B89FDCDF10E@dilger.ca>
+References: <20170616183411.31587-1-ebiggers3@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_0DA0D103-7816-42DF-A1EF-01464FFA83AC";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ws207.zone31-163-131.zaural.ru ([31.163.131.207]:58134 "HELO
-        zaural.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1753565AbdFSSqP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Jun 2017 14:46:15 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33232 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751022AbdFSVSc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jun 2017 17:18:32 -0400
+Received: by mail-it0-f65.google.com with SMTP id g184so10848996ita.0
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Jun 2017 14:18:32 -0700 (PDT)
+In-Reply-To: <20170616183411.31587-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+
+--Apple-Mail=_0DA0D103-7816-42DF-A1EF-01464FFA83AC
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jun 16, 2017, at 12:34 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+>=20
+> From: Eric Biggers <ebiggers@google.com>
+>=20
+> Currently it's possible to encrypt all files and directories on an =
+ext4
+> filesystem by deleting everything, including lost+found, then setting =
+an
+> encryption policy on the root directory.  However, this is =
+incompatible
+> with e2fsck because e2fsck expects to find, create, and/or write to
+> lost+found and does not have access to any encryption keys.  =
+Especially
+> problematic is that if e2fsck can't find lost+found, it will create it
+> without regard for whether the root directory is encrypted.  This is
+> wrong for obvious reasons, and it causes a later run of e2fsck to
+> consider the lost+found directory entry to be corrupted.
+>=20
+> Encrypting the root directory may also be of limited use because it is
+> the "all-or-nothing" use case, for which dm-crypt can be used instead.
+> (By design, encryption policies are inherited and cannot be =
+overridden;
+> so the root directory having an encryption policy implies that all =
+files
+> and directories on the filesystem have that same encryption policy.)
+>=20
+> In any case, encrypting the root directory is broken currently and =
+must
+> not be allowed; so start returning an error if userspace requests it.
+> For now only do this in ext4, because f2fs and ubifs do not appear to
+> have the lost+found requirement.  We could move it into
+> fscrypt_ioctl_set_policy() later if desired, though.
+>=20
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+> ---
+>=20
+> v2: use EPERM instead of EBUSY, and tweak commit message
+>=20
+> fs/ext4/super.c | 9 +++++++++
+> 1 file changed, 9 insertions(+)
+>=20
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index d37c81f327e7..d5b5c80c23f5 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1145,6 +1145,15 @@ static int ext4_set_context(struct inode =
+*inode, const void *ctx, size_t len,
+> 	handle_t *handle =3D fs_data;
+> 	int res, res2, retries =3D 0;
+>=20
+> +	/*
+> +	 * Encrypting the root directory is not allowed because e2fsck =
+expects
+> +	 * lost+found to exist and be unencrypted, and encrypting the =
+root
+> +	 * directory would imply encrypting the lost+found directory as =
+well as
+> +	 * the filename "lost+found" itself.
+> +	 */
+> +	if (inode->i_ino =3D=3D EXT4_ROOT_INO)
+> +		return -EPERM;
+> +
+> 	res =3D ext4_convert_inline_data(inode);
+> 	if (res)
+> 		return res;
+> --
+> 2.13.1.518.g3df882009-goog
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_0DA0D103-7816-42DF-A1EF-01464FFA83AC
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZSD+ipIg59Q01vtYRAujzAKDQxZuweksAMa3jJpr4m3b9QgomowCeJz5s
+nj2rW3OKpZtvlsNyZMkEG5Q=
+=bk2p
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_0DA0D103-7816-42DF-A1EF-01464FFA83AC--
