@@ -1,11 +1,12 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 23/28] mbcache: make mbcache more generic
-Date: Mon, 19 Jun 2017 10:50:26 +0200
-Message-ID: <20170619085026.GD11837@quack2.suse.cz>
+Subject: Re: [PATCH 28/28] quota: add extra inode count to dquot transfer
+ functions
+Date: Mon, 19 Jun 2017 11:03:29 +0200
+Message-ID: <20170619090329.GE11837@quack2.suse.cz>
 References: <20170531081517.11438-1-tahsin@google.com>
- <20170531081517.11438-23-tahsin@google.com>
- <20170615074158.GA1764@quack2.suse.cz>
- <CAAeU0aMLrfhnhqzD9PH2UjHSrc64AC_85rAEz626jcuFjLXY2g@mail.gmail.com>
+ <20170531081517.11438-28-tahsin@google.com>
+ <20170615075735.GB1764@quack2.suse.cz>
+ <CAAeU0aNgon_ERWyUNmAGaBCuk3dU9qAxA7QnZ4D8cb5g6JZcPg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
@@ -22,27 +23,38 @@ Cc: Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
         reiserfs-devel@vger.kernel.org
 To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAAeU0aMLrfhnhqzD9PH2UjHSrc64AC_85rAEz626jcuFjLXY2g@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAAeU0aNgon_ERWyUNmAGaBCuk3dU9qAxA7QnZ4D8cb5g6JZcPg@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 15-06-17 11:25:02, Tahsin Erdogan wrote:
-> On Thu, Jun 15, 2017 at 12:41 AM, Jan Kara <jack@suse.cz> wrote:
-> > Can you explain a bit more what do you mean by "make it more generic" as it
-> > seems you just rename a couple of things here...
+On Fri 16-06-17 18:50:58, Tahsin Erdogan wrote:
+> On Thu, Jun 15, 2017 at 12:57 AM, Jan Kara <jack@suse.cz> wrote:
+> > Hum, rather handle this similarly to how we handle delalloc reserved space.
+> > Add a callback to dq_ops to get "inode usage" of an inode and then use it
+> > in dquot_transfer(), dquot_free_inode(), dquot_alloc_inode().
 > 
-> The change is really just that, having names that are more generic
-> which do not limit use cases to block sharing. In a subsequent patch
-> in the series ("[PATCH v4 27/28] ext4: xattr inode deduplication"), we
-> start using the mbcache code to share xattr inodes. With that patch,
-> old mb_cache_entry.e_block field could be holding either a block
-> number or an inode number, so I renamed things to make them more
-> generic.
+> I tried that approach by adding a "int get_inode_usage(struct inode
+> *inode, qsize_t *usage)" callback to dquot_operations. Unfortunately,
+> ext4 code that calculates the number of internal inodes
+> (ext4_xattr_inode_count()) is subject to failures so the callback has
+> to be able to report errors. And, that itself is problematic because
+> we can't afford to have errors in dquot_free_inode(). If you have
+> thoughts about how to address this please let me know.
 
-OK, then I'd suggest to change title to "mbcache: make mbcache naming more
-generic" and explain what you wrote here in the changelog. Thanks!
+Well, you can just make dquot_free_inode() return error. Now most callers
+won't be able to do much with an error from dquot_free_inode() but that's
+the case also for other things during inode deletion - just handle it as
+other fatal failures during inode freeing.
+
+> Alternatively, I could try to make this patch less intrusive by
+> keeping the existing dquot_transfer() signature and add a new
+> dquot_transfer_usage() that accepts inode_usage as a parameter. What
+> do you think?
+
+That would be somewhat better than what you do in this patch but I prefer
+to handle this like I suggested above.
 
 								Honza
 -- 
