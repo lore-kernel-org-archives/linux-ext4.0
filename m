@@ -1,72 +1,68 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 28/28] quota: add extra inode count to dquot transfer
- functions
-Date: Mon, 19 Jun 2017 14:36:14 +0200
-Message-ID: <20170619123614.GA20405@quack2.suse.cz>
-References: <20170531081517.11438-1-tahsin@google.com>
- <20170531081517.11438-28-tahsin@google.com>
- <20170615075735.GB1764@quack2.suse.cz>
- <CAAeU0aNgon_ERWyUNmAGaBCuk3dU9qAxA7QnZ4D8cb5g6JZcPg@mail.gmail.com>
- <20170619090329.GE11837@quack2.suse.cz>
- <CAAeU0aM=QDb-iCnr5KVatQmmbQy8A7XmbyFBttK72SGt3oNTUg@mail.gmail.com>
+Subject: Re: [PATCH 01/35] fscache: Remove unused ->now_uncached callback
+Date: Mon, 19 Jun 2017 15:12:53 +0200
+Message-ID: <20170619131253.GA22128@quack2.suse.cz>
+References: <20170601093245.29238-2-jack@suse.cz>
+ <20170601093245.29238-1-jack@suse.cz>
+ <10376.1496312768@warthog.procyon.org.uk>
+ <20170601113434.GC23077@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Mark Fasheh <mfasheh@versity.com>,
-        Joel Becker <jlbec@evilplan.org>, Jens Axboe <axboe@fb.com>,
-        Deepa Dinamani <deepa.kernel@gmail.com>,
-        Mike Christie <mchristi@redhat.com>,
-        Fabian Frederick <fabf@skynet.be>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+	Hugh Dickins <hughd@google.com>, linux-afs@lists.infradead.org,
+	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+	linux-nilfs@vger.kernel.org, Bob Peterson <rpeterso@redhat.com>,
+	cluster-devel@redhat.com, Jaegeuk Kim <jaegeuk@kernel.org>,
+	linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu,
+	linux-ext4@vger.kernel.org, Ilya Dryomov <idryomov@gmail.com>,
+	"Yan, Zheng" <zyan@redhat.com>, ceph-devel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>,
+	linux-xfs@vger.kernel.org,
+	Nadia Yvette Chambers <nyc@holomorphy.com>
+To: David Howells <dhowells@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <CAAeU0aM=QDb-iCnr5KVatQmmbQy8A7XmbyFBttK72SGt3oNTUg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20170601113434.GC23077@quack2.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 19-06-17 04:46:00, Tahsin Erdogan wrote:
-> >> I tried that approach by adding a "int get_inode_usage(struct inode
-> >> *inode, qsize_t *usage)" callback to dquot_operations. Unfortunately,
-> >> ext4 code that calculates the number of internal inodes
-> >> (ext4_xattr_inode_count()) is subject to failures so the callback has
-> >> to be able to report errors. And, that itself is problematic because
-> >> we can't afford to have errors in dquot_free_inode(). If you have
-> >> thoughts about how to address this please let me know.
-> >
-> > Well, you can just make dquot_free_inode() return error. Now most callers
-> > won't be able to do much with an error from dquot_free_inode() but that's
-> > the case also for other things during inode deletion - just handle it as
-> > other fatal failures during inode freeing.
-> >
-> I just checked dquot_free_inode() to see whether it calls anything
-> that could fail. It calls mark_all_dquot_dirty() and ignores the
-> return code from it. I would like to follow the same for the
-> get_inode_usage() as the only use case for get_inode_usage() (ext4)
-> should not fail at inode free time.
+On Thu 01-06-17 13:34:34, Jan Kara wrote:
+> On Thu 01-06-17 11:26:08, David Howells wrote:
+> > Jan Kara <jack@suse.cz> wrote:
+> > 
+> > > The callback doesn't ever get called. Remove it.
+> > 
+> > Hmmm...  I should perhaps be calling this.  I'm not sure why I never did.
+> > 
+> > At the moment, it doesn't strictly matter as ops on pages marked with
+> > PG_fscache get ignored if the cache has suffered an I/O error or has been
+> > withdrawn - but it will incur a performance penalty (the PG_fscache flag is
+> > checked in the netfs before calling into fscache).
+> > 
+> > The downside of calling this is that when a cache is removed, fscache would go
+> > through all the cookies for that cache and iterate over all the pages
+> > associated with those cookies - which could cause a performance dip in the
+> > system.
 > 
-> Basically, I want to avoid changing return type from void to int
-> because it would create a new responsibility for the filesystem
-> implementations who do not know how to deal with it.
+> So I know nothing about fscache. If you decide these functions should stay
+> in as you are going to use them soon, then I can just convert them to the
+> new API as everything else. What just caught my eye and why I had a more
+> detailed look is that I didn't understand that 'PAGEVEC_SIZE -
+> pagevec_count(&pvec)' as a pagevec_lookup() argument since pagevec_count()
+> should always return 0 at that point?
 
-Heh, this "pushing of responsibility" looks like a silly game. If an error
-can happen in a function, it is better to report it as far as easily
-possible (unless we can cleanly handle it which we cannot here). I'm guilty
-of making dquot_free_inode() ignore errors from mark_all_dquot_dirty() and
-in retrospect it would have been better if these were propagated to the
-caller as well. And eventually we can fix this if we decide we care enough.
-I'm completely fine with just returning an error from dquot_free_inode()
-and ignore it in all the callers except for ext4. Then filesystems which
-care enough can try to handle the error. That way we at least don't
-increase the design debt from the past.
+David, what is your final decision regarding this? Do you want to keep
+these unused functions (and I will just update my patch to convert them to
+the new calling convention) or will you apply the patch to remove them?
 
 								Honza
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
