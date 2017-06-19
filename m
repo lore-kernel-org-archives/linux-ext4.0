@@ -1,65 +1,196 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 01/35] fscache: Remove unused ->now_uncached callback
-Date: Mon, 19 Jun 2017 15:12:53 +0200
-Message-ID: <20170619131253.GA22128@quack2.suse.cz>
-References: <20170601093245.29238-2-jack@suse.cz>
- <20170601093245.29238-1-jack@suse.cz>
- <10376.1496312768@warthog.procyon.org.uk>
- <20170601113434.GC23077@quack2.suse.cz>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v7 00/22] fs: enhanced writeback error reporting with
+ errseq_t (pile #1)
+Date: Mon, 19 Jun 2017 12:23:46 -0400
+Message-ID: <1497889426.4654.7.camel@redhat.com>
+References: <20170616193427.13955-1-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-	Hugh Dickins <hughd@google.com>, linux-afs@lists.infradead.org,
-	Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-	linux-nilfs@vger.kernel.org, Bob Peterson <rpeterso@redhat.com>,
-	cluster-devel@redhat.com, Jaegeuk Kim <jaegeuk@kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, Ilya Dryomov <idryomov@gmail.com>,
-	"Yan, Zheng" <zyan@redhat.com>, ceph-devel@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	linux-xfs@vger.kernel.org,
-	Nadia Yvette Chambers <nyc@holomorphy.com>
-To: David Howells <dhowells@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Carlos Maiolino <cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>,
+ David Howells <dhowells@redhat.com>, Christoph Hellwig <hch@infradead.org>,
+ linux-fsdevel@vger.kernel.org,  linux-mm@kvack.org,
+ linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, Al Viro
+ <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
+ axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
+ corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+ David Sterba <dsterba@suse.com>, "Darrick J . Wong"
+ <darrick.wong@oracle.com>, Stephen Rothwell <sfr@canb.auug.org.au>
 Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170601113434.GC23077@quack2.suse.cz>
+In-Reply-To: <20170616193427.13955-1-jlayton@redhat.com>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 01-06-17 13:34:34, Jan Kara wrote:
-> On Thu 01-06-17 11:26:08, David Howells wrote:
-> > Jan Kara <jack@suse.cz> wrote:
-> > 
-> > > The callback doesn't ever get called. Remove it.
-> > 
-> > Hmmm...  I should perhaps be calling this.  I'm not sure why I never did.
-> > 
-> > At the moment, it doesn't strictly matter as ops on pages marked with
-> > PG_fscache get ignored if the cache has suffered an I/O error or has been
-> > withdrawn - but it will incur a performance penalty (the PG_fscache flag is
-> > checked in the netfs before calling into fscache).
-> > 
-> > The downside of calling this is that when a cache is removed, fscache would go
-> > through all the cookies for that cache and iterate over all the pages
-> > associated with those cookies - which could cause a performance dip in the
-> > system.
+On Fri, 2017-06-16 at 15:34 -0400, Jeff Layton wrote:
+> v7:
+> ===
+> This is the seventh posting of the patchset to revamp the way writeback
+> errors are tracked and reported.
 > 
-> So I know nothing about fscache. If you decide these functions should stay
-> in as you are going to use them soon, then I can just convert them to the
-> new API as everything else. What just caught my eye and why I had a more
-> detailed look is that I didn't understand that 'PAGEVEC_SIZE -
-> pagevec_count(&pvec)' as a pagevec_lookup() argument since pagevec_count()
-> should always return 0 at that point?
+> The main difference from the v6 posting is the removal of the
+> FS_WB_ERRSEQ flag. That requires a few other incremental patches in the
+> writeback code to ensure that both error tracking models are handled
+> in a suitable way.
+> 
+> Also, a bit more cleanup of the metadata writeback codepaths, and some
+> documentation updates.
+> 
+> Some of these patches have been posted separately, but I'm re-posting
+> them here to make it clear that they're prerequisites of the later
+> patches in the series.
+> 
+> This series is based on top of linux-next from a day or so ago. I'd like
+> to have this picked up by linux-next in the near future so we can get
+> some more extensive testing with it. Should I just plan to maintain a
+> topic branch on top of -next and ask Stephen to pick it up?
+> 
+> Background:
+> ===========
+> The basic problem is that we have (for a very long time) tracked and
+> reported writeback errors based on two flags in the address_space:
+> AS_EIO and AS_ENOSPC. Those flags are cleared when they are checked,
+> so only the first caller to check them is able to consume them.
+> 
+> That model is quite unreliable, for several related reasons:
+> 
+> * only the first fsync caller on the inode will see the error. In a
+>   world of containerized setups, that's no longer viable. Applications
+>   need to know that their writes are safely stored, and they can
+>   currently miss seeing errors that they should be aware of when
+>   they're not.
+> 
+> * there are a lot of internal callers to filemap_fdatawait* and
+>   filemap_write_and_wait* that clear these errors but then never report
+>   them to userland in any fashion.
+> 
+> * Some internal callers report writeback errors, but can do so at
+>   non-sensical times. For instance, we might want to truncate a file,
+>   which triggers a pagecache flush. If that writeback fails, we might
+>   report that error to the truncate caller, but a subsequent fsync
+>   will likely not see it.
+> 
+> * Some internal callers try to reset the error flags after clearing
+>   them, but that's racy. Another task could check the flags between
+>   those two events.
+> 
+> Solution:
+> =========
+> This patchset adds a new datatype called an errseq_t that represents a
+> sequence of errors. It's a u32, with a field for a POSIX-flavor error
+> and a counter, managed with atomics. We can sample that value at a
+> particular point in time, and can later tell whether there have been any
+> errors since that point.
+> 
+> That allows us to provide traditional check-and-clear fsync semantics
+> on every open file description in a lightweight fashion. fsync callers
+> no longer need to coordinate between one another in order to ensure
+> that errors at fsync time are handled correctly.
+> 
+> Strategy:
+> =========
+> The aim with this pile is to do the minimum possible to support for
+> reliable reporting of errors on fsync, without substantially changing
+> the internals of the filesystems themselves.
+> 
+> Most of the internal calls to filemap_fdatawait are left alone, so all
+> of the internal error checkers are using the same error handling they
+> always have. The only real difference here is that we're better
+> reporting errors at fsync.
+> 
+> I think that we probably will want to eventually convert all of those
+> internal callers to use errseq_t based reporting, but that can be done
+> in an incremental fashion in follow-on patchsets.
+> 
+> Testing:
+> ========
+> I've primarily been testing this with some new xfstests that I will post
+> in a separate series. These tests use dm-error fault injection to make
+> the underlying block device start throwing I/O errors, and then test the
+> how the filesystem layer reports errors after that.
+> 
+> Jeff Layton (22):
+>   fs: remove call_fsync helper function
+>   buffer: use mapping_set_error instead of setting the flag
+>   fs: check for writeback errors after syncing out buffers in
+>     generic_file_fsync
+>   buffer: set errors in mapping at the time that the error occurs
+>   jbd2: don't clear and reset errors after waiting on writeback
+>   mm: clear AS_EIO/AS_ENOSPC when writeback initiation fails
+>   mm: don't TestClearPageError in __filemap_fdatawait_range
+>   mm: clean up error handling in write_one_page
+>   fs: always sync metadata in __generic_file_fsync
+>   lib: add errseq_t type and infrastructure for handling it
+>   fs: new infrastructure for writeback error handling and reporting
+>   mm: tracepoints for writeback error events
+>   mm: set both AS_EIO/AS_ENOSPC and errseq_t in mapping_set_error
+>   Documentation: flesh out the section in vfs.txt on storing and
+>     reporting writeback errors
+>   dax: set errors in mapping when writeback fails
+>   block: convert to errseq_t based writeback error tracking
+>   ext4: use errseq_t based error handling for reporting data writeback
+>     errors
+>   fs: add f_md_wb_err field to struct file for tracking metadata errors
+>   ext4: add more robust reporting of metadata writeback errors
+>   ext2: convert to errseq_t based writeback error tracking
+>   xfs: minimal conversion to errseq_t writeback error reporting
+>   btrfs: minimal conversion to errseq_t writeback error reporting on
+>     fsync
+> 
+>  Documentation/filesystems/vfs.txt |  43 +++++++-
+>  drivers/dax/device.c              |   1 +
+>  fs/block_dev.c                    |   9 +-
+>  fs/btrfs/file.c                   |   7 +-
+>  fs/buffer.c                       |  20 ++--
+>  fs/dax.c                          |   4 +-
+>  fs/ext2/dir.c                     |   8 ++
+>  fs/ext2/file.c                    |  26 ++++-
+>  fs/ext4/dir.c                     |   8 +-
+>  fs/ext4/file.c                    |   5 +-
+>  fs/ext4/fsync.c                   |  28 ++++-
+>  fs/file_table.c                   |   1 +
+>  fs/gfs2/lops.c                    |   2 +-
+>  fs/jbd2/commit.c                  |  15 +--
+>  fs/libfs.c                        |  12 +--
+>  fs/open.c                         |   3 +
+>  fs/sync.c                         |   2 +-
+>  fs/xfs/xfs_file.c                 |  15 ++-
+>  include/linux/buffer_head.h       |   1 +
+>  include/linux/errseq.h            |  19 ++++
+>  include/linux/fs.h                |  67 ++++++++++--
+>  include/linux/pagemap.h           |  31 ++++--
+>  include/trace/events/filemap.h    |  52 ++++++++++
+>  ipc/shm.c                         |   2 +-
+>  lib/Makefile                      |   2 +-
+>  lib/errseq.c                      | 208 ++++++++++++++++++++++++++++++++++++++
+>  mm/filemap.c                      | 113 +++++++++++++++++----
+>  mm/page-writeback.c               |  15 ++-
+>  28 files changed, 628 insertions(+), 91 deletions(-)
+>  create mode 100644 include/linux/errseq.h
+>  create mode 100644 lib/errseq.c
+> 
 
-David, what is your final decision regarding this? Do you want to keep
-these unused functions (and I will just update my patch to convert them to
-the new calling convention) or will you apply the patch to remove them?
+If there are no major objections to this set, I'd like to have
+linux-next start picking it up to get some wider testing. What's the
+right vehicle for this, given that it touches stuff all over the tree?
 
-								Honza
+I can see 3 potential options:
+
+1) I could just pull these into the branch that Stephen is already
+picking up for file-locks in my tree
+
+2) I could put them into a new branch, and have Stephen pull that one in
+addition to the file-locks branch
+
+3) It could go in via someone else's tree entirely (Andrew or Al's
+maybe?)
+
+I'm fine with any of these. Anyone have thoughts?
+
+Thanks,
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Jeff Layton <jlayton@redhat.com>
 
 --
 To unsubscribe, send a message with 'unsubscribe linux-mm' in
