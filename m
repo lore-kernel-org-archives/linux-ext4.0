@@ -1,80 +1,268 @@
-From: <editor@coastreporter.net>
-Subject: (unknown)
-Date: Tue, 20 Jun 2017 17:50:42 -0000
-Message-ID: <149798104218.30695.5884937155642872497@wideopenwest.com>
-Mime-Version: 1.0
-Content-Type: application/zip; name="2566839.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vaasbnpo0exfo3100.wideopenwest.com ([76.73.237.38]:60159 "HELO
-        wideopenwest.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with SMTP id S1751071AbdFTRur (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jun 2017 13:50:47 -0400
-Subject: 
-Content-Disposition: attachment
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH v3 28/31] quota: add get_inode_usage callback to transfer multi-inode charges
+Date: Tue, 20 Jun 2017 11:08:04 -0700
+Message-ID: <20170620180804.17618-1-tahsin@google.com>
+References: <20170620152816.GA31922@quack2.suse.cz>
+Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170620152816.GA31922@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-UEsDBBQAAgAIAMO71EorAaH28wwAAPQMAAAJABwAMjQ0MzAuemlwVVQJAAOeW0lZnltJWXV4CwAB
-BAAAAAAEAAAAAHWXZzQbitvAQ2xae5Zq05EQokaNFmkRilqX2qFmbbdCjZKiN62Sa7WkaKNGb6kV
-RCVWbUFCjdpKG7SCUKO2/Hvf/4f3nPec9znn96xzni/Pt5+1OZBDDMAO4AF0NI6auQEFf1gKAADL
-IMDvjSxATUND/QosAHXHjhcAxLuYOv1LRBQ/gI0D8Dv+J1U494bM3BLRm45nFbSllNkZRYbdM7AF
-Csi8nI7nlq8DuAbXBYtbK++WeOzNgd06zTMvmdMDqFJvEGr1jm5NSbfHthdbHpGuz7BGZXM72uQ0
-LegLA13c309X3p/WqvrYEn3M0NaP1TEDBzb50Bfzxue+NOGzFWa+fiLR2GgWjxW8x57YHg2d9Ym9
-YMEtvcv4uvfuKI0rmDxtwgqQBxGbPKuOl9BHu1ashdU8HhWfZ5DU8G+GRZHpPOt26DhJ7zqmwxAz
-RDKO5DmYdyp/kuVb2zwfPp3X73dotyeldkSPCmLNXLwvc+++Rtw12dShX4qN+y1rE18Enw5OkWYN
-JFUHy1rifsCDuunZB2iXafUJ+mgqqxF6xRAlFPzmrQv5Rniim1DINVktHM5lJ4HccVRwjJ42Gba4
-7K+5EUjPhWbc4dLSgrNO3h4efyWZ0sMbm7PqQQnP7ZsbVeUZsvK7NqyvFS9jo3cIaWI8mn5W/DVA
-n8OBn3vcPfBVUHVE7p3qyPu5PaVb9906o8VxIPPsLtM7nfrP+i9aMlzzh4nZD8mZQWdsM/TATTGH
-TufqD0kpaHILevcq61f/w23/u5+OI8Llukaj1mEeUL6QUE8GNDh2V8uStfXu58lxx9ONmHp+ZGTj
-2nijf8e7j+v+HL/m0EjfI2OFB4fAGB6JwtnQRr+H+8pTBbhy4uTJPGzqz8yKtql4wlXzyJ7q45L6
-G3Reo2cJjc150w5JyHkUez2BcW10Vr1goN5KT4CUEivTHS/LxIrvxZZ+yqreJIQm9TdWtKBnBju9
-5Dwt65uLP6URbpw1yZ+Cd/+gtoYPcl6W5NK6teXsEmG7Zefy8FAPLw42c2cgZxISZOodLl5O7OyP
-eGW+Ub1Ce6JHK7tMEQUl6xuqehRs35bIxcB3Sjum8myVERL1abCQFeY3zdewkLLNbx/MVUL4H93P
-64/LuOVyCUf0adYdl6xvPpJ7+whJadYFM7996IoiVxWHgteyZiQfu6o5qKAEKogP8wa/a8ovyRVb
-gRyU19Wxux/0xx6ELdY8kS9379s99sPhHqoE6kjbpghIL2CUML3uFJln22dIbvbWJ734odD0j5Yn
-Y8NgzEw6ojvbkX/TKyj0Woc+74Iw0th/3ehEVauRCHrklCdwzW0Boj5lu5TTqW9ZabS0QWTzlhcZ
-ka8pBgX2kl9haT6psQsHm5V9QUcXxyFq4cNMk1oU/GWsT+CKDlU1p+Vq+AAVHqUfecx+wqRaxfXs
-eAjuTxsOji7FVzRjB4vdMdF6a3M5R3pHtw/FiZc25qFn8ulO4aXxwhPZam2sjXwrGitn5vuX8C7U
-3zoHfmA/CQ5wqRPf2XgxpK86XZGvkAAyW0BninNnfLr+nMdvOV7EsVodunDjpuet1pkLxRSL69R3
-2RSLM0Zs1gIvgAhRUBGRByKlTEgMYBOrf7B88EUpdf8u5r36OmNq24hG6X9V8CckGNn0dMdXDPsk
-0X6hL7AWJHQ6TbAU4bTBDvsh3pREjhdBDPlp5hQR1KO/Iqhlm+DRR87bDoeirzfQ+Dw5jSkXw95c
-TrtHy9/DXOQh5osBD1N8o3QFIQKQPhpu6+D1eVEK0LMVdEMjdl2x1iKJHem+JKW7ky/QXFn38/1H
-6nQfqqVhqm1BAII3LiTUQsyqT7wPOkxsfR+MQOZnHLknOOw9Us5qQoGJh+26KaQ+EUObFakUuQoJ
-UuXVtFOcXtV12jdngP5JRUS11MR7d7OK66++4OfeAllzQFv5X/Ifi2EUbABEIG/FeWnX8jU5MhFZ
-Dlj5cf2N0Cb4Q8sZKv887I0FeUZdC9D21uk0/bHkPVheUOwAz+dXQJWYLXZdQQ5IbkdUDG82F9/A
-N4PQJMD63aaa+O0Vs1rRVXeM3wr1RPyCQTPEq0eo69mkYFwD2FXbewlO+QdSTnXLpQdMfVw4+EJy
-Q6kWld47MbxeCKSMQPxoXM/qyWbnLA7+bt6X0+RgtGqQWkUQvg3z77mfn9JnN9bAAR+VTvIqcYgN
-7t30trrJir9Lo3Bm8CmrPfc0wz6e8csG4AQWhl9JCzvJeM1zLkLDhNUg3VAc9okMoq0VwmNfYU+3
-PZPmaGScx1VIUYHwucqqyZCE8UCcZ1PYeV0dVb6mRU7s7gL7m0uCbkaIdKV1DwW7m5+fJ3PovhNe
-SfIMa2uNZHCClNducy/WvBC3MBCrtSATNCaz6CjDpjC9vT+6UwdAgB92f1ksfGtffTdkm9nveLwf
-AaMqS7ZFqic7DnEecy/JV1Ccy0oI+ps0jvzthWE8uXMyakJeWIfAZ4RYZsctabpB2/HkK8gJY5ST
-6S8+ur8XrauIVrC3LHEUteRmpLDp4k6Vvd3vlf1X0iuvhJ2isTrqVG6Gi6GukiD/aDlUtJv/IoS7
-rH/T+2e763jqHErYs+Ec/HGP8OBKMnt2POcQXFmaE1/tmqOUbjoOxn2QtuGAlaDtHF472OwQwz7B
-7YwYXVgbbSd9Qxpfo/iC2GCDhFvnQZ9PSB26FyIVbGF0PkrIJp5iQPSDSdFaak+aJxHjEAdx4SER
-kDDkFeqrX037ZT3opZ1HgU3ueyNxwmHsYzmKK+9cz246+RwEZmlPnnCQDdYGW5I4suDVEFO1MkgM
-QwBJmLNhxXhVv4H/knAW9v2Anwxduus7mrCKXU1zTJS4Zh7Kc+OBgmKYf2DWU187/V1sAajTzn+4
-qHIIiz+T3HYKhbRLf2woVlyW/I8n0i7fXgMZ6DaSHO86Nm4enO1wmV9IGyUceKWiLCnqBzBkeztm
-HmQHI1W9FHzRz38mhcoj7RFsVL0E8t27ZhSJgEHJ129Lsb0u4FUCjPohRqVVigSb5MKkA/ztvKWq
-XLNVXEctn8RUmDdPWpLFDqoU3ydnFJLnMZASku+gK1ejH6IdYvACwqfez60T7TyZ3Ij0UbVHpxtG
-9mA+d94taO16D19jg3us4RTb5WtKpuDnHIV7psxsXjn+0v6OBZ1qzMtwvlIE4m/nI4T1Youvp2TY
-lzhEKJOJ7xafZDTmDUUp0Zk3or2v/HXw3VqjYuAWpcqnC/vhPbTNoqHHSpnuMGOzXX6p7gkqW7Im
-/Bloo4jhnsfpAcTmR0aWK/+U3NEai48LjxsLnSh40ZGZEl/Yyn410rSvS9RGYyJqMMbOxroaHXoq
-+M7ErFh5SVS3iGLhn27x6hJG4QgnMJNJLLyLwUC26Zn8NtU/mDW1fX+sBDA960CQ3rfia/lK4qcc
-OSBj6u+pR/YVjkbkFzp8SV05f9+7eHm/lGVtU3rs4KpLuyc8GJDh/M9Yw2UXKbns3vzRrAIYbyPw
-XGixuCHyH7CPnrJ+9VKI8mPdepPTrqdzTjLFD+6kUoJNRBndlUvSiMCxT30+r/lJPfIklU+36NIc
-4eUjl5K3scUffr//oQ0s7MEfGnu2KgONtqGyVRAecJZ3QkKdD+1VsbhF72xw8OobpT9eM1MNEJKO
-t+KsMzDtLYVFLEoeGya3XwrpjMtHDTsNfTkOMxYOy8HbqA5C+LYwKfeNRX4hAqbHQLwChfeMsAG0
-3hwPTvqI5JqkUGyleFuXR2R8uUi5lFoDXlWgLHmh6k8dchAPPtgqEse6WnTRl1NSkb2wd8SzANQq
-awXNJaB7UbcQodoX9oZMR6QjKvBENh85p9aKAYjbhNyKwudOdZmaRLxqVMz9whNeKGjiqazeRpAh
-indQSiMZnELUjE7AKDLgm8XVenoqDjAYbra5T6jboeynyhtr6DBWaTjnxLTkxG0CGQC7wP/thRB9
-Olmcl6AzELFB0UN3k7yMbZV1d+Ok2rBlblTciMzqYg/BpCo7l4oax4yIjlaq3Nk9X+RTnmIgtgOF
-bY+K3OPQXrY5C95l7KvVVuC3t8vrKN/PX1BweLCEAXl7M0O4GNkEUOnWInG1uNBxbaDd1IUS24aO
-sZzOTDFm3nXa9Uc2TM3qzb4GmU8x7T8KqMyVbuwv90a+38hyns4dSQsbRCeG/yZotew6XFefWXVh
-N0pube+AsdbxdbbjJ/PkeDqPthzZRWBGu0/hD8ulWn4y3rWAP+Ja61uWcubMdZkXkkTRVwpmW1ht
-HEaPzSL3apJDiVu4zxsKR0jiwxnEelVl0bLMRywpVZ/Y4161n0PWmQnS7i/XMDGI4JM16en47l70
-vCp9yEOqaO1OGHP9XCKelT938698OHXuSj2OxWZtzsZ+Fvj/GYnUv8IBYPtNccK/3f/6Ced//eT/
-uIm1OSfXfy/YAJa/a7rAv9N/AFBLAQIeAxQAAgAIAMO71EorAaH28wwAAPQMAAAJABgAAAAAAAAA
-AACkgQAAAAAyNDQzMC56aXBVVAUAA55bSVl1eAsAAQQAAAAABAAAAABQSwUGAAAAAAEAAQBPAAAA
-Ng0AAAAA
+Ext4 ea_inode feature allows storing xattr values in external inodes to
+be able to store values that are bigger than a block in size. Ext4 also
+has deduplication support for these type of inodes. With deduplication,
+the actual storage waste is eliminated but the users of such inodes are
+still charged full quota for the inodes as if there was no sharing
+happening in the background.
+
+This design requires ext4 to manually charge the users because the
+inodes are shared.
+
+An implication of this is that, if someone calls chown on a file that
+has such references we need to transfer the quota for the file and xattr
+inodes. Current dquot_transfer() function implicitly transfers one inode
+charge. With ea_inode feature, we would like to transfer multiple inode
+charges.
+
+Add get_inode_usage callback which can interrogate the total number of
+inodes that were charged for a given inode.
+
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+Acked-by: Jan Kara <jack@suse.cz>
+---
+v3: added Acked-by
+
+v2:
+  - added get_inode_usage() callback to query total inodes charge to
+    be transferred
+
+ fs/ext4/inode.c       |  7 +++++++
+ fs/ext4/ioctl.c       |  6 ++++++
+ fs/ext4/super.c       | 21 ++++++++++----------
+ fs/ext4/xattr.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.h       |  2 ++
+ fs/quota/dquot.c      | 16 +++++++++++----
+ include/linux/quota.h |  2 ++
+ 7 files changed, 94 insertions(+), 14 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ea95bd9eab81..cd22de0b5d2c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5295,7 +5295,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 			error = PTR_ERR(handle);
+ 			goto err_out;
+ 		}
++
++		/* dquot_transfer() calls back ext4_get_inode_usage() which
++		 * counts xattr inode references.
++		 */
++		down_read(&EXT4_I(inode)->xattr_sem);
+ 		error = dquot_transfer(inode, attr);
++		up_read(&EXT4_I(inode)->xattr_sem);
++
+ 		if (error) {
+ 			ext4_journal_stop(handle);
+ 			return error;
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index dde8deb11e59..42b3a73143cf 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -373,7 +373,13 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 
+ 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+ 	if (!IS_ERR(transfer_to[PRJQUOTA])) {
++
++		/* __dquot_transfer() calls back ext4_get_inode_usage() which
++		 * counts xattr inode references.
++		 */
++		down_read(&EXT4_I(inode)->xattr_sem);
+ 		err = __dquot_transfer(inode, transfer_to);
++		up_read(&EXT4_I(inode)->xattr_sem);
+ 		dqput(transfer_to[PRJQUOTA]);
+ 		if (err)
+ 			goto out_dirty;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2bfacd737bb6..4b15bf674d45 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1263,16 +1263,17 @@ static struct dquot **ext4_get_dquots(struct inode *inode)
+ }
+ 
+ static const struct dquot_operations ext4_quota_operations = {
+-	.get_reserved_space = ext4_get_reserved_space,
+-	.write_dquot	= ext4_write_dquot,
+-	.acquire_dquot	= ext4_acquire_dquot,
+-	.release_dquot	= ext4_release_dquot,
+-	.mark_dirty	= ext4_mark_dquot_dirty,
+-	.write_info	= ext4_write_info,
+-	.alloc_dquot	= dquot_alloc,
+-	.destroy_dquot	= dquot_destroy,
+-	.get_projid	= ext4_get_projid,
+-	.get_next_id	= ext4_get_next_id,
++	.get_reserved_space	= ext4_get_reserved_space,
++	.write_dquot		= ext4_write_dquot,
++	.acquire_dquot		= ext4_acquire_dquot,
++	.release_dquot		= ext4_release_dquot,
++	.mark_dirty		= ext4_mark_dquot_dirty,
++	.write_info		= ext4_write_info,
++	.alloc_dquot		= dquot_alloc,
++	.destroy_dquot		= dquot_destroy,
++	.get_projid		= ext4_get_projid,
++	.get_inode_usage	= ext4_get_inode_usage,
++	.get_next_id		= ext4_get_next_id,
+ };
+ 
+ static const struct quotactl_ops ext4_qctl_operations = {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index d7e60358ec91..5e20f29afe9e 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -734,6 +734,60 @@ static void ext4_xattr_update_super_block(handle_t *handle,
+ 	}
+ }
+ 
++int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
++{
++	struct ext4_iloc iloc = { .bh = NULL };
++	struct buffer_head *bh = NULL;
++	struct ext4_inode *raw_inode;
++	struct ext4_xattr_ibody_header *header;
++	struct ext4_xattr_entry *entry;
++	qsize_t ea_inode_refs = 0;
++	void *end;
++	int ret;
++
++	lockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);
++
++	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
++		ret = ext4_get_inode_loc(inode, &iloc);
++		if (ret)
++			goto out;
++		raw_inode = ext4_raw_inode(&iloc);
++		header = IHDR(inode, raw_inode);
++		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
++		ret = xattr_check_inode(inode, header, end);
++		if (ret)
++			goto out;
++
++		for (entry = IFIRST(header); !IS_LAST_ENTRY(entry);
++		     entry = EXT4_XATTR_NEXT(entry))
++			if (entry->e_value_inum)
++				ea_inode_refs++;
++	}
++
++	if (EXT4_I(inode)->i_file_acl) {
++		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++		if (!bh) {
++			ret = -EIO;
++			goto out;
++		}
++
++		if (ext4_xattr_check_block(inode, bh)) {
++			ret = -EFSCORRUPTED;
++			goto out;
++		}
++
++		for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
++		     entry = EXT4_XATTR_NEXT(entry))
++			if (entry->e_value_inum)
++				ea_inode_refs++;
++	}
++	*usage = ea_inode_refs + 1;
++out:
++	brelse(iloc.bh);
++	brelse(bh);
++	return ret;
++}
++
+ static inline size_t round_up_cluster(struct inode *inode, size_t length)
+ {
+ 	struct super_block *sb = inode->i_sb;
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 67616cb9a059..26119a67c8c3 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -193,3 +193,5 @@ extern void ext4_xattr_inode_set_class(struct inode *ea_inode);
+ #else
+ static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
+ #endif
++
++extern int ext4_get_inode_usage(struct inode *inode, qsize_t *usage);
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 48813aeaab80..53a17496c5c5 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1910,6 +1910,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ {
+ 	qsize_t space, cur_space;
+ 	qsize_t rsv_space = 0;
++	qsize_t inode_usage = 1;
+ 	struct dquot *transfer_from[MAXQUOTAS] = {};
+ 	int cnt, ret = 0;
+ 	char is_valid[MAXQUOTAS] = {};
+@@ -1919,6 +1920,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 
+ 	if (IS_NOQUOTA(inode))
+ 		return 0;
++
++	if (inode->i_sb->dq_op->get_inode_usage) {
++		ret = inode->i_sb->dq_op->get_inode_usage(inode, &inode_usage);
++		if (ret)
++			return ret;
++	}
++
+ 	/* Initialize the arrays */
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		warn_to[cnt].w_type = QUOTA_NL_NOWARN;
+@@ -1946,7 +1954,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 			continue;
+ 		is_valid[cnt] = 1;
+ 		transfer_from[cnt] = i_dquot(inode)[cnt];
+-		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
++		ret = check_idq(transfer_to[cnt], inode_usage, &warn_to[cnt]);
+ 		if (ret)
+ 			goto over_quota;
+ 		ret = check_bdq(transfer_to[cnt], space, 0, &warn_to[cnt]);
+@@ -1963,7 +1971,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 		/* Due to IO error we might not have transfer_from[] structure */
+ 		if (transfer_from[cnt]) {
+ 			int wtype;
+-			wtype = info_idq_free(transfer_from[cnt], 1);
++			wtype = info_idq_free(transfer_from[cnt], inode_usage);
+ 			if (wtype != QUOTA_NL_NOWARN)
+ 				prepare_warning(&warn_from_inodes[cnt],
+ 						transfer_from[cnt], wtype);
+@@ -1971,13 +1979,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 			if (wtype != QUOTA_NL_NOWARN)
+ 				prepare_warning(&warn_from_space[cnt],
+ 						transfer_from[cnt], wtype);
+-			dquot_decr_inodes(transfer_from[cnt], 1);
++			dquot_decr_inodes(transfer_from[cnt], inode_usage);
+ 			dquot_decr_space(transfer_from[cnt], cur_space);
+ 			dquot_free_reserved_space(transfer_from[cnt],
+ 						  rsv_space);
+ 		}
+ 
+-		dquot_incr_inodes(transfer_to[cnt], 1);
++		dquot_incr_inodes(transfer_to[cnt], inode_usage);
+ 		dquot_incr_space(transfer_to[cnt], cur_space);
+ 		dquot_resv_space(transfer_to[cnt], rsv_space);
+ 
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index 3434eef2a5aa..bfd077ca6ac3 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -332,6 +332,8 @@ struct dquot_operations {
+ 	 * quota code only */
+ 	qsize_t *(*get_reserved_space) (struct inode *);
+ 	int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
++	/* Get number of inodes that were charged for a given inode */
++	int (*get_inode_usage) (struct inode *, qsize_t *);
+ 	/* Get next ID with active quota structure */
+ 	int (*get_next_id) (struct super_block *sb, struct kqid *qid);
+ };
+-- 
+2.13.1.518.g3df882009-goog
