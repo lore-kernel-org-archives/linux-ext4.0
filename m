@@ -1,203 +1,68 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH v2 20/31] ext4: improve journal credit handling in set xattr paths
-Date: Tue, 20 Jun 2017 01:59:19 -0700
-Message-ID: <20170620085919.5880-1-tahsin@google.com>
-References: <20170531081517.11438-20-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170531081517.11438-20-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] mke2fs: fix hugefile creation so the hugefile(s) are
+ contiguous
+Date: Tue, 20 Jun 2017 05:31:36 -0400
+Message-ID: <20170620093136.ciiothqlcnoihl53@thunk.org>
+References: <20170619224927.3176-1-tytso@mit.edu>
+ <20170619232945.GB76149@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48892 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751007AbdFTJbm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 20 Jun 2017 05:31:42 -0400
+Content-Disposition: inline
+In-Reply-To: <20170619232945.GB76149@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Both ext4_set_acl() and ext4_set_context() need to be made aware of
-ea_inode feature when it comes to credits calculation.
+On Mon, Jun 19, 2017 at 04:29:45PM -0700, Eric Biggers wrote:
+> Can you also update the mke2fs.conf man page to document under what
+> circumstances it can be assumed that the preallocated "hugefiles" will be
+> physically contiguous?  Currently I don't see any mention of it.
 
-Also add a sufficient credits check in ext4_xattr_set_handle() right
-after xattr write lock is grabbed. Original credits calculation is done
-outside the lock so there is a possiblity that the initially calculated
-credits are not sufficient anymore.
+Good point, I'll do that.
 
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
-v2: fixed checkpatch.pl warning about replacing spaces with tab
 
- fs/ext4/acl.c       |  7 ++++---
- fs/ext4/ext4_jbd2.h | 14 --------------
- fs/ext4/super.c     |  6 +++---
- fs/ext4/xattr.c     | 55 +++++++++++++++++++++++++++++++++++++++++------------
- fs/ext4/xattr.h     |  1 +
- 5 files changed, 51 insertions(+), 32 deletions(-)
+> > diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+> > -	retval = ext2fs_fallocate(fs, falloc_flags, *ino, &inode, goal, 0, num);
+> > +	retval = ext2fs_extent_open2(fs, *ino, &inode, &handle);
+> >  	if (retval)
+> >  		return retval;
+> > -	retval = ext2fs_inode_size_set(fs, &inode, num * fs->blocksize);
+> > +
+> > +	lblk = 0;
+> > +	left = num ? num : 1;
+> 
+> Add a comment explaining why ext2fs_fallocate() isn't sufficient?
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 3ec0e46de95f..74f7ac539e00 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -231,14 +231,15 @@ int
- ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	handle_t *handle;
--	int error, retries = 0;
-+	int error, credits, retries = 0;
-+	size_t acl_size = acl ? ext4_acl_size(acl->a_count) : 0;
- 
- 	error = dquot_initialize(inode);
- 	if (error)
- 		return error;
- retry:
--	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
--				    ext4_jbd2_credits_xattr(inode));
-+	credits = ext4_xattr_set_credits(inode, acl_size);
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index f97611171023..a5bda70feed5 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -104,20 +104,6 @@
- #define EXT4_MAXQUOTAS_INIT_BLOCKS(sb) (EXT4_MAXQUOTAS*EXT4_QUOTA_INIT_BLOCKS(sb))
- #define EXT4_MAXQUOTAS_DEL_BLOCKS(sb) (EXT4_MAXQUOTAS*EXT4_QUOTA_DEL_BLOCKS(sb))
- 
--static inline int ext4_jbd2_credits_xattr(struct inode *inode)
--{
--	int credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
--
--	/*
--	 * In case of inline data, we may push out the data to a block,
--	 * so we need to reserve credits for this eventuality
--	 */
--	if (ext4_has_inline_data(inode))
--		credits += ext4_writepage_trans_blocks(inode) + 1;
--	return credits;
--}
--
--
- /*
-  * Ext4 handle operation types -- for logging purposes
-  */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d37c81f327e7..b02a23ec92ca 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1143,7 +1143,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 							void *fs_data)
- {
- 	handle_t *handle = fs_data;
--	int res, res2, retries = 0;
-+	int res, res2, credits, retries = 0;
- 
- 	res = ext4_convert_inline_data(inode);
- 	if (res)
-@@ -1178,8 +1178,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 	if (res)
- 		return res;
- retry:
--	handle = ext4_journal_start(inode, EXT4_HT_MISC,
--			ext4_jbd2_credits_xattr(inode));
-+	credits = ext4_xattr_set_credits(inode, len);
-+	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 97d33ecf0818..fd017faaf221 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1473,6 +1473,17 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 
- 	ext4_write_lock_xattr(inode, &no_expand);
- 
-+	/* Check journal credits under write lock. */
-+	if (ext4_handle_valid(handle)) {
-+		int credits;
-+
-+		credits = ext4_xattr_set_credits(inode, value_len);
-+		if (!ext4_handle_has_enough_credits(handle, credits)) {
-+			error = -ENOSPC;
-+			goto cleanup;
-+		}
-+	}
-+
- 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
- 	if (error)
- 		goto cleanup;
-@@ -1570,6 +1581,36 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	return error;
- }
- 
-+int ext4_xattr_set_credits(struct inode *inode, size_t value_len)
-+{
-+	struct super_block *sb = inode->i_sb;
-+	int credits;
-+
-+	if (!EXT4_SB(sb)->s_journal)
-+		return 0;
-+
-+	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
-+
-+	/*
-+	 * In case of inline data, we may push out the data to a block,
-+	 * so we need to reserve credits for this eventuality
-+	 */
-+	if (ext4_has_inline_data(inode))
-+		credits += ext4_writepage_trans_blocks(inode) + 1;
-+
-+	if (ext4_has_feature_ea_inode(sb)) {
-+		int nrblocks = (value_len + sb->s_blocksize - 1) >>
-+					sb->s_blocksize_bits;
-+
-+		/* For new inode */
-+		credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
-+
-+		/* For data blocks of EA inode */
-+		credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
-+	}
-+	return credits;
-+}
-+
- /*
-  * ext4_xattr_set()
-  *
-@@ -1585,24 +1626,14 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- 	handle_t *handle;
- 	struct super_block *sb = inode->i_sb;
- 	int error, retries = 0;
--	int credits = ext4_jbd2_credits_xattr(inode);
-+	int credits;
- 
- 	error = dquot_initialize(inode);
- 	if (error)
- 		return error;
- 
--	if (ext4_has_feature_ea_inode(sb)) {
--		int nrblocks = (value_len + sb->s_blocksize - 1) >>
--					sb->s_blocksize_bits;
--
--		/* For new inode */
--		credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
--
--		/* For data blocks of EA inode */
--		credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
--	}
--
- retry:
-+	credits = ext4_xattr_set_credits(inode, value_len);
- 	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
- 	if (IS_ERR(handle)) {
- 		error = PTR_ERR(handle);
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index b6ef99d1a061..e82c5fe36a26 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -160,6 +160,7 @@ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
- extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
- extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
- extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
-+extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len);
- 
- extern int ext4_xattr_inode_unlink(struct inode *inode, unsigned long ea_ino);
- extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
--- 
-2.13.1.518.g3df882009-goog
+Done.
+
+> Alternatively, would it be possible to fix ext2fs_fallocate() instead?
+
+We could possibly add this feature to ext2fs_fallocate(); it would
+mean changing extent_fallocate() so that it used one goal block
+variable for data blocks, and different goal block variable for extent
+tree blocks and to default the goal block variable for the
+metadata blocks to be "near the inode".
+
+My preference though is to change the behavior back to the original
+1.42 behaviour, since this is regression broke production code.  Once
+we have this fixed we can always try again to refactor the code after
+adding a new feature flag to ext2fs_fallocate().
+
+> This only verifies that the extent tree blocks are in the expected locations.
+> How about also verifying that the file is actually physically contigious?  If
+> storing the full output file is too large it could be done algorithmically, e.g.
+> verifying that the following doesn't produce any output:
+
+Yeah, I've already modified the test to store the full output of the
+dump_extents of the hugefile in compressed form and then to use zcmp
+and zdiff to compare the actual output to the expected out.  That
+seems to be the simplest way to do things, and doesn't require that we
+validate the algorihmic code.
+
+						- Ted
