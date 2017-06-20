@@ -1,60 +1,80 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v7 16/22] block: convert to errseq_t based writeback
- error tracking
-Date: Tue, 20 Jun 2017 13:44:44 -0400
-Message-ID: <1497980684.4555.16.camel@redhat.com>
-References: <20170616193427.13955-1-jlayton@redhat.com>
-	 <20170616193427.13955-17-jlayton@redhat.com>
-	 <20170620123544.GC19781@infradead.org>
+From: <editor@coastreporter.net>
+Subject: (unknown)
+Date: Tue, 20 Jun 2017 17:50:42 -0000
+Message-ID: <149798104218.30695.5884937155642872497@wideopenwest.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
- <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
- axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
- corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
- David Sterba <dsterba@suse.com>, "Darrick J . Wong"
- <darrick.wong@oracle.com>, Carlos Maiolino <cmaiolino@redhat.com>, Eryu
- Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
- linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
- linux-ext4@vger.kernel.org,  linux-xfs@vger.kernel.org,
- linux-btrfs@vger.kernel.org,  linux-block@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170620123544.GC19781@infradead.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="2566839.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from vaasbnpo0exfo3100.wideopenwest.com ([76.73.237.38]:60159 "HELO
+        wideopenwest.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751071AbdFTRur (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jun 2017 13:50:47 -0400
+Subject: 
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2017-06-20 at 05:35 -0700, Christoph Hellwig wrote:
-> >  	error = filemap_write_and_wait_range(filp->f_mapping, start, end);
-> >  	if (error)
-> > -		return error;
-> > +		goto out;
-> >  
-> >  	/*
-> >  	 * There is no need to serialise calls to blkdev_issue_flush with
-> > @@ -640,6 +640,10 @@ int blkdev_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
-> >  	if (error == -EOPNOTSUPP)
-> >  		error = 0;
-> >  
-> > +out:
-> > +	wberr = filemap_report_wb_err(filp);
-> > +	if (!error)
-> > +		error = wberr;
-> 
-> Just curious: what's the reason filemap_write_and_wait_range couldn't
-> query for the error using filemap_report_wb_err internally?
-
-In order to query for errors with errseq_t, you need a previously-
-sampled point from which to check. When you call
-filemap_write_and_wait_range though you don't have a struct file and so
-no previously-sampled value.
-
--- 
-Jeff Layton <jlayton@redhat.com>
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+UEsDBBQAAgAIAMO71EorAaH28wwAAPQMAAAJABwAMjQ0MzAuemlwVVQJAAOeW0lZnltJWXV4CwAB
+BAAAAAAEAAAAAHWXZzQbitvAQ2xae5Zq05EQokaNFmkRilqX2qFmbbdCjZKiN62Sa7WkaKNGb6kV
+RCVWbUFCjdpKG7SCUKO2/Hvf/4f3nPec9znn96xzni/Pt5+1OZBDDMAO4AF0NI6auQEFf1gKAADL
+IMDvjSxATUND/QosAHXHjhcAxLuYOv1LRBQ/gI0D8Dv+J1U494bM3BLRm45nFbSllNkZRYbdM7AF
+Csi8nI7nlq8DuAbXBYtbK++WeOzNgd06zTMvmdMDqFJvEGr1jm5NSbfHthdbHpGuz7BGZXM72uQ0
+LegLA13c309X3p/WqvrYEn3M0NaP1TEDBzb50Bfzxue+NOGzFWa+fiLR2GgWjxW8x57YHg2d9Ym9
+YMEtvcv4uvfuKI0rmDxtwgqQBxGbPKuOl9BHu1ashdU8HhWfZ5DU8G+GRZHpPOt26DhJ7zqmwxAz
+RDKO5DmYdyp/kuVb2zwfPp3X73dotyeldkSPCmLNXLwvc+++Rtw12dShX4qN+y1rE18Enw5OkWYN
+JFUHy1rifsCDuunZB2iXafUJ+mgqqxF6xRAlFPzmrQv5Rniim1DINVktHM5lJ4HccVRwjJ42Gba4
+7K+5EUjPhWbc4dLSgrNO3h4efyWZ0sMbm7PqQQnP7ZsbVeUZsvK7NqyvFS9jo3cIaWI8mn5W/DVA
+n8OBn3vcPfBVUHVE7p3qyPu5PaVb9906o8VxIPPsLtM7nfrP+i9aMlzzh4nZD8mZQWdsM/TATTGH
+TufqD0kpaHILevcq61f/w23/u5+OI8Llukaj1mEeUL6QUE8GNDh2V8uStfXu58lxx9ONmHp+ZGTj
+2nijf8e7j+v+HL/m0EjfI2OFB4fAGB6JwtnQRr+H+8pTBbhy4uTJPGzqz8yKtql4wlXzyJ7q45L6
+G3Reo2cJjc150w5JyHkUez2BcW10Vr1goN5KT4CUEivTHS/LxIrvxZZ+yqreJIQm9TdWtKBnBju9
+5Dwt65uLP6URbpw1yZ+Cd/+gtoYPcl6W5NK6teXsEmG7Zefy8FAPLw42c2cgZxISZOodLl5O7OyP
+eGW+Ub1Ce6JHK7tMEQUl6xuqehRs35bIxcB3Sjum8myVERL1abCQFeY3zdewkLLNbx/MVUL4H93P
+64/LuOVyCUf0adYdl6xvPpJ7+whJadYFM7996IoiVxWHgteyZiQfu6o5qKAEKogP8wa/a8ovyRVb
+gRyU19Wxux/0xx6ELdY8kS9379s99sPhHqoE6kjbpghIL2CUML3uFJln22dIbvbWJ734odD0j5Yn
+Y8NgzEw6ojvbkX/TKyj0Woc+74Iw0th/3ehEVauRCHrklCdwzW0Boj5lu5TTqW9ZabS0QWTzlhcZ
+ka8pBgX2kl9haT6psQsHm5V9QUcXxyFq4cNMk1oU/GWsT+CKDlU1p+Vq+AAVHqUfecx+wqRaxfXs
+eAjuTxsOji7FVzRjB4vdMdF6a3M5R3pHtw/FiZc25qFn8ulO4aXxwhPZam2sjXwrGitn5vuX8C7U
+3zoHfmA/CQ5wqRPf2XgxpK86XZGvkAAyW0BninNnfLr+nMdvOV7EsVodunDjpuet1pkLxRSL69R3
+2RSLM0Zs1gIvgAhRUBGRByKlTEgMYBOrf7B88EUpdf8u5r36OmNq24hG6X9V8CckGNn0dMdXDPsk
+0X6hL7AWJHQ6TbAU4bTBDvsh3pREjhdBDPlp5hQR1KO/Iqhlm+DRR87bDoeirzfQ+Dw5jSkXw95c
+TrtHy9/DXOQh5osBD1N8o3QFIQKQPhpu6+D1eVEK0LMVdEMjdl2x1iKJHem+JKW7ky/QXFn38/1H
+6nQfqqVhqm1BAII3LiTUQsyqT7wPOkxsfR+MQOZnHLknOOw9Us5qQoGJh+26KaQ+EUObFakUuQoJ
+UuXVtFOcXtV12jdngP5JRUS11MR7d7OK66++4OfeAllzQFv5X/Ifi2EUbABEIG/FeWnX8jU5MhFZ
+Dlj5cf2N0Cb4Q8sZKv887I0FeUZdC9D21uk0/bHkPVheUOwAz+dXQJWYLXZdQQ5IbkdUDG82F9/A
+N4PQJMD63aaa+O0Vs1rRVXeM3wr1RPyCQTPEq0eo69mkYFwD2FXbewlO+QdSTnXLpQdMfVw4+EJy
+Q6kWld47MbxeCKSMQPxoXM/qyWbnLA7+bt6X0+RgtGqQWkUQvg3z77mfn9JnN9bAAR+VTvIqcYgN
+7t30trrJir9Lo3Bm8CmrPfc0wz6e8csG4AQWhl9JCzvJeM1zLkLDhNUg3VAc9okMoq0VwmNfYU+3
+PZPmaGScx1VIUYHwucqqyZCE8UCcZ1PYeV0dVb6mRU7s7gL7m0uCbkaIdKV1DwW7m5+fJ3PovhNe
+SfIMa2uNZHCClNducy/WvBC3MBCrtSATNCaz6CjDpjC9vT+6UwdAgB92f1ksfGtffTdkm9nveLwf
+AaMqS7ZFqic7DnEecy/JV1Ccy0oI+ps0jvzthWE8uXMyakJeWIfAZ4RYZsctabpB2/HkK8gJY5ST
+6S8+ur8XrauIVrC3LHEUteRmpLDp4k6Vvd3vlf1X0iuvhJ2isTrqVG6Gi6GukiD/aDlUtJv/IoS7
+rH/T+2e763jqHErYs+Ec/HGP8OBKMnt2POcQXFmaE1/tmqOUbjoOxn2QtuGAlaDtHF472OwQwz7B
+7YwYXVgbbSd9Qxpfo/iC2GCDhFvnQZ9PSB26FyIVbGF0PkrIJp5iQPSDSdFaak+aJxHjEAdx4SER
+kDDkFeqrX037ZT3opZ1HgU3ueyNxwmHsYzmKK+9cz246+RwEZmlPnnCQDdYGW5I4suDVEFO1MkgM
+QwBJmLNhxXhVv4H/knAW9v2Anwxduus7mrCKXU1zTJS4Zh7Kc+OBgmKYf2DWU187/V1sAajTzn+4
+qHIIiz+T3HYKhbRLf2woVlyW/I8n0i7fXgMZ6DaSHO86Nm4enO1wmV9IGyUceKWiLCnqBzBkeztm
+HmQHI1W9FHzRz38mhcoj7RFsVL0E8t27ZhSJgEHJ129Lsb0u4FUCjPohRqVVigSb5MKkA/ztvKWq
+XLNVXEctn8RUmDdPWpLFDqoU3ydnFJLnMZASku+gK1ejH6IdYvACwqfez60T7TyZ3Ij0UbVHpxtG
+9mA+d94taO16D19jg3us4RTb5WtKpuDnHIV7psxsXjn+0v6OBZ1qzMtwvlIE4m/nI4T1Youvp2TY
+lzhEKJOJ7xafZDTmDUUp0Zk3or2v/HXw3VqjYuAWpcqnC/vhPbTNoqHHSpnuMGOzXX6p7gkqW7Im
+/Bloo4jhnsfpAcTmR0aWK/+U3NEai48LjxsLnSh40ZGZEl/Yyn410rSvS9RGYyJqMMbOxroaHXoq
++M7ErFh5SVS3iGLhn27x6hJG4QgnMJNJLLyLwUC26Zn8NtU/mDW1fX+sBDA960CQ3rfia/lK4qcc
+OSBj6u+pR/YVjkbkFzp8SV05f9+7eHm/lGVtU3rs4KpLuyc8GJDh/M9Yw2UXKbns3vzRrAIYbyPw
+XGixuCHyH7CPnrJ+9VKI8mPdepPTrqdzTjLFD+6kUoJNRBndlUvSiMCxT30+r/lJPfIklU+36NIc
+4eUjl5K3scUffr//oQ0s7MEfGnu2KgONtqGyVRAecJZ3QkKdD+1VsbhF72xw8OobpT9eM1MNEJKO
+t+KsMzDtLYVFLEoeGya3XwrpjMtHDTsNfTkOMxYOy8HbqA5C+LYwKfeNRX4hAqbHQLwChfeMsAG0
+3hwPTvqI5JqkUGyleFuXR2R8uUi5lFoDXlWgLHmh6k8dchAPPtgqEse6WnTRl1NSkb2wd8SzANQq
+awXNJaB7UbcQodoX9oZMR6QjKvBENh85p9aKAYjbhNyKwudOdZmaRLxqVMz9whNeKGjiqazeRpAh
+indQSiMZnELUjE7AKDLgm8XVenoqDjAYbra5T6jboeynyhtr6DBWaTjnxLTkxG0CGQC7wP/thRB9
+Olmcl6AzELFB0UN3k7yMbZV1d+Ok2rBlblTciMzqYg/BpCo7l4oax4yIjlaq3Nk9X+RTnmIgtgOF
+bY+K3OPQXrY5C95l7KvVVuC3t8vrKN/PX1BweLCEAXl7M0O4GNkEUOnWInG1uNBxbaDd1IUS24aO
+sZzOTDFm3nXa9Uc2TM3qzb4GmU8x7T8KqMyVbuwv90a+38hyns4dSQsbRCeG/yZotew6XFefWXVh
+N0pube+AsdbxdbbjJ/PkeDqPthzZRWBGu0/hD8ulWn4y3rWAP+Ja61uWcubMdZkXkkTRVwpmW1ht
+HEaPzSL3apJDiVu4zxsKR0jiwxnEelVl0bLMRywpVZ/Y4161n0PWmQnS7i/XMDGI4JM16en47l70
+vCp9yEOqaO1OGHP9XCKelT938698OHXuSj2OxWZtzsZ+Fvj/GYnUv8IBYPtNccK/3f/6Ced//eT/
+uIm1OSfXfy/YAJa/a7rAv9N/AFBLAQIeAxQAAgAIAMO71EorAaH28wwAAPQMAAAJABgAAAAAAAAA
+AACkgQAAAAAyNDQzMC56aXBVVAUAA55bSVl1eAsAAQQAAAAABAAAAABQSwUGAAAAAAEAAQBPAAAA
+Ng0AAAAA
