@@ -1,283 +1,143 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 28/31] quota: add get_inode_usage callback to transfer
- multi-inode charges
-Date: Tue, 20 Jun 2017 17:28:16 +0200
-Message-ID: <20170620152816.GA31922@quack2.suse.cz>
-References: <20170619123614.GA20405@quack2.suse.cz>
- <20170620091210.13343-1-tahsin@google.com>
+Subject: Re: [PATCH v7 05/22] jbd2: don't clear and reset errors after
+ waiting on writeback
+Date: Tue, 20 Jun 2017 17:32:43 +0200
+Message-ID: <20170620153243.GB31922@quack2.suse.cz>
+References: <20170616193427.13955-1-jlayton@redhat.com>
+ <20170616193427.13955-6-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com, corbet@lwn.net,
+	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>,
+	Carlos Maiolino <cmaiolino@redhat.com>,
+	Eryu Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170620091210.13343-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20170616193427.13955-6-jlayton@redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 20-06-17 02:12:10, Tahsin Erdogan wrote:
-> Ext4 ea_inode feature allows storing xattr values in external inodes to
-> be able to store values that are bigger than a block in size. Ext4 also
-> has deduplication support for these type of inodes. With deduplication,
-> the actual storage waste is eliminated but the users of such inodes are
-> still charged full quota for the inodes as if there was no sharing
-> happening in the background.
+On Fri 16-06-17 15:34:10, Jeff Layton wrote:
+> Resetting this flag is almost certainly racy, and will be problematic
+> with some coming changes.
 > 
-> This design requires ext4 to manually charge the users because the
-> inodes are shared.
+> Make filemap_fdatawait_keep_errors return int, but not clear the flag(s).
+> Have jbd2 call it instead of filemap_fdatawait and don't attempt to
+> re-set the error flag if it fails.
 > 
-> An implication of this is that, if someone calls chown on a file that
-> has such references we need to transfer the quota for the file and xattr
-> inodes. Current dquot_transfer() function implicitly transfers one inode
-> charge. With ea_inode feature, we would like to transfer multiple inode
-> charges.
-> 
-> Add get_inode_usage callback which can interrogate the total number of
-> inodes that were charged for a given inode.
-> 
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-The patch looks good to me. Feel free to add:
+Looks good to me. You can add:
 
-Acked-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
-> v2:
->   - added get_inode_usage() callback to query total inodes charge to
->     be transferred
+>  fs/jbd2/commit.c   | 15 +++------------
+>  include/linux/fs.h |  2 +-
+>  mm/filemap.c       | 16 ++++++++++++++--
+>  3 files changed, 18 insertions(+), 15 deletions(-)
 > 
->  fs/ext4/inode.c       |  7 +++++++
->  fs/ext4/ioctl.c       |  6 ++++++
->  fs/ext4/super.c       | 21 ++++++++++----------
->  fs/ext4/xattr.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/xattr.h       |  2 ++
->  fs/quota/dquot.c      | 16 +++++++++++----
->  include/linux/quota.h |  2 ++
->  7 files changed, 94 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ea95bd9eab81..cd22de0b5d2c 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5295,7 +5295,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  			error = PTR_ERR(handle);
->  			goto err_out;
->  		}
-> +
-> +		/* dquot_transfer() calls back ext4_get_inode_usage() which
-> +		 * counts xattr inode references.
-> +		 */
-> +		down_read(&EXT4_I(inode)->xattr_sem);
->  		error = dquot_transfer(inode, attr);
-> +		up_read(&EXT4_I(inode)->xattr_sem);
-> +
->  		if (error) {
->  			ext4_journal_stop(handle);
->  			return error;
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index dde8deb11e59..42b3a73143cf 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -373,7 +373,13 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
->  
->  	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
->  	if (!IS_ERR(transfer_to[PRJQUOTA])) {
-> +
-> +		/* __dquot_transfer() calls back ext4_get_inode_usage() which
-> +		 * counts xattr inode references.
-> +		 */
-> +		down_read(&EXT4_I(inode)->xattr_sem);
->  		err = __dquot_transfer(inode, transfer_to);
-> +		up_read(&EXT4_I(inode)->xattr_sem);
->  		dqput(transfer_to[PRJQUOTA]);
->  		if (err)
->  			goto out_dirty;
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 2bfacd737bb6..4b15bf674d45 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1263,16 +1263,17 @@ static struct dquot **ext4_get_dquots(struct inode *inode)
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index b6b194ec1b4f..502110540598 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -263,18 +263,9 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
+>  			continue;
+>  		jinode->i_flags |= JI_COMMIT_RUNNING;
+>  		spin_unlock(&journal->j_list_lock);
+> -		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
+> -		if (err) {
+> -			/*
+> -			 * Because AS_EIO is cleared by
+> -			 * filemap_fdatawait_range(), set it again so
+> -			 * that user process can get -EIO from fsync().
+> -			 */
+> -			mapping_set_error(jinode->i_vfs_inode->i_mapping, -EIO);
+> -
+> -			if (!ret)
+> -				ret = err;
+> -		}
+> +		err = filemap_fdatawait_keep_errors(jinode->i_vfs_inode->i_mapping);
+> +		if (!ret)
+> +			ret = err;
+>  		spin_lock(&journal->j_list_lock);
+>  		jinode->i_flags &= ~JI_COMMIT_RUNNING;
+>  		smp_mb();
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 1a135274b4f8..1b1233a1db1e 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2509,7 +2509,7 @@ extern int write_inode_now(struct inode *, int);
+>  extern int filemap_fdatawrite(struct address_space *);
+>  extern int filemap_flush(struct address_space *);
+>  extern int filemap_fdatawait(struct address_space *);
+> -extern void filemap_fdatawait_keep_errors(struct address_space *);
+> +extern int filemap_fdatawait_keep_errors(struct address_space *);
+>  extern int filemap_fdatawait_range(struct address_space *, loff_t lstart,
+>  				   loff_t lend);
+>  extern int filemap_write_and_wait(struct address_space *mapping);
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index b9e870600572..37f286df7c95 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -311,6 +311,16 @@ int filemap_check_errors(struct address_space *mapping)
 >  }
+>  EXPORT_SYMBOL(filemap_check_errors);
 >  
->  static const struct dquot_operations ext4_quota_operations = {
-> -	.get_reserved_space = ext4_get_reserved_space,
-> -	.write_dquot	= ext4_write_dquot,
-> -	.acquire_dquot	= ext4_acquire_dquot,
-> -	.release_dquot	= ext4_release_dquot,
-> -	.mark_dirty	= ext4_mark_dquot_dirty,
-> -	.write_info	= ext4_write_info,
-> -	.alloc_dquot	= dquot_alloc,
-> -	.destroy_dquot	= dquot_destroy,
-> -	.get_projid	= ext4_get_projid,
-> -	.get_next_id	= ext4_get_next_id,
-> +	.get_reserved_space	= ext4_get_reserved_space,
-> +	.write_dquot		= ext4_write_dquot,
-> +	.acquire_dquot		= ext4_acquire_dquot,
-> +	.release_dquot		= ext4_release_dquot,
-> +	.mark_dirty		= ext4_mark_dquot_dirty,
-> +	.write_info		= ext4_write_info,
-> +	.alloc_dquot		= dquot_alloc,
-> +	.destroy_dquot		= dquot_destroy,
-> +	.get_projid		= ext4_get_projid,
-> +	.get_inode_usage	= ext4_get_inode_usage,
-> +	.get_next_id		= ext4_get_next_id,
->  };
->  
->  static const struct quotactl_ops ext4_qctl_operations = {
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index d7e60358ec91..5e20f29afe9e 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -734,6 +734,60 @@ static void ext4_xattr_update_super_block(handle_t *handle,
->  	}
->  }
->  
-> +int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
+> +static int filemap_check_and_keep_errors(struct address_space *mapping)
 > +{
-> +	struct ext4_iloc iloc = { .bh = NULL };
-> +	struct buffer_head *bh = NULL;
-> +	struct ext4_inode *raw_inode;
-> +	struct ext4_xattr_ibody_header *header;
-> +	struct ext4_xattr_entry *entry;
-> +	qsize_t ea_inode_refs = 0;
-> +	void *end;
-> +	int ret;
-> +
-> +	lockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);
-> +
-> +	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
-> +		ret = ext4_get_inode_loc(inode, &iloc);
-> +		if (ret)
-> +			goto out;
-> +		raw_inode = ext4_raw_inode(&iloc);
-> +		header = IHDR(inode, raw_inode);
-> +		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
-> +		ret = xattr_check_inode(inode, header, end);
-> +		if (ret)
-> +			goto out;
-> +
-> +		for (entry = IFIRST(header); !IS_LAST_ENTRY(entry);
-> +		     entry = EXT4_XATTR_NEXT(entry))
-> +			if (entry->e_value_inum)
-> +				ea_inode_refs++;
-> +	}
-> +
-> +	if (EXT4_I(inode)->i_file_acl) {
-> +		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
-> +		if (!bh) {
-> +			ret = -EIO;
-> +			goto out;
-> +		}
-> +
-> +		if (ext4_xattr_check_block(inode, bh)) {
-> +			ret = -EFSCORRUPTED;
-> +			goto out;
-> +		}
-> +
-> +		for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
-> +		     entry = EXT4_XATTR_NEXT(entry))
-> +			if (entry->e_value_inum)
-> +				ea_inode_refs++;
-> +	}
-> +	*usage = ea_inode_refs + 1;
-> +out:
-> +	brelse(iloc.bh);
-> +	brelse(bh);
-> +	return ret;
+> +	/* Check for outstanding write errors */
+> +	if (test_bit(AS_EIO, &mapping->flags))
+> +		return -EIO;
+> +	if (test_bit(AS_ENOSPC, &mapping->flags))
+> +		return -ENOSPC;
+> +	return 0;
 > +}
 > +
->  static inline size_t round_up_cluster(struct inode *inode, size_t length)
+>  /**
+>   * __filemap_fdatawrite_range - start writeback on mapping dirty pages in range
+>   * @mapping:	address space structure to write
+> @@ -455,15 +465,17 @@ EXPORT_SYMBOL(filemap_fdatawait_range);
+>   * call sites are system-wide / filesystem-wide data flushers: e.g. sync(2),
+>   * fsfreeze(8)
+>   */
+> -void filemap_fdatawait_keep_errors(struct address_space *mapping)
+> +int filemap_fdatawait_keep_errors(struct address_space *mapping)
 >  {
->  	struct super_block *sb = inode->i_sb;
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index 67616cb9a059..26119a67c8c3 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -193,3 +193,5 @@ extern void ext4_xattr_inode_set_class(struct inode *ea_inode);
->  #else
->  static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
->  #endif
-> +
-> +extern int ext4_get_inode_usage(struct inode *inode, qsize_t *usage);
-> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-> index 48813aeaab80..53a17496c5c5 100644
-> --- a/fs/quota/dquot.c
-> +++ b/fs/quota/dquot.c
-> @@ -1910,6 +1910,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  {
->  	qsize_t space, cur_space;
->  	qsize_t rsv_space = 0;
-> +	qsize_t inode_usage = 1;
->  	struct dquot *transfer_from[MAXQUOTAS] = {};
->  	int cnt, ret = 0;
->  	char is_valid[MAXQUOTAS] = {};
-> @@ -1919,6 +1920,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+>  	loff_t i_size = i_size_read(mapping->host);
 >  
->  	if (IS_NOQUOTA(inode))
->  		return 0;
-> +
-> +	if (inode->i_sb->dq_op->get_inode_usage) {
-> +		ret = inode->i_sb->dq_op->get_inode_usage(inode, &inode_usage);
-> +		if (ret)
-> +			return ret;
-> +	}
-> +
->  	/* Initialize the arrays */
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		warn_to[cnt].w_type = QUOTA_NL_NOWARN;
-> @@ -1946,7 +1954,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  			continue;
->  		is_valid[cnt] = 1;
->  		transfer_from[cnt] = i_dquot(inode)[cnt];
-> -		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
-> +		ret = check_idq(transfer_to[cnt], inode_usage, &warn_to[cnt]);
->  		if (ret)
->  			goto over_quota;
->  		ret = check_bdq(transfer_to[cnt], space, 0, &warn_to[cnt]);
-> @@ -1963,7 +1971,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  		/* Due to IO error we might not have transfer_from[] structure */
->  		if (transfer_from[cnt]) {
->  			int wtype;
-> -			wtype = info_idq_free(transfer_from[cnt], 1);
-> +			wtype = info_idq_free(transfer_from[cnt], inode_usage);
->  			if (wtype != QUOTA_NL_NOWARN)
->  				prepare_warning(&warn_from_inodes[cnt],
->  						transfer_from[cnt], wtype);
-> @@ -1971,13 +1979,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
->  			if (wtype != QUOTA_NL_NOWARN)
->  				prepare_warning(&warn_from_space[cnt],
->  						transfer_from[cnt], wtype);
-> -			dquot_decr_inodes(transfer_from[cnt], 1);
-> +			dquot_decr_inodes(transfer_from[cnt], inode_usage);
->  			dquot_decr_space(transfer_from[cnt], cur_space);
->  			dquot_free_reserved_space(transfer_from[cnt],
->  						  rsv_space);
->  		}
+>  	if (i_size == 0)
+> -		return;
+> +		return 0;
 >  
-> -		dquot_incr_inodes(transfer_to[cnt], 1);
-> +		dquot_incr_inodes(transfer_to[cnt], inode_usage);
->  		dquot_incr_space(transfer_to[cnt], cur_space);
->  		dquot_resv_space(transfer_to[cnt], rsv_space);
+>  	__filemap_fdatawait_range(mapping, 0, i_size - 1);
+> +	return filemap_check_and_keep_errors(mapping);
+>  }
+> +EXPORT_SYMBOL(filemap_fdatawait_keep_errors);
 >  
-> diff --git a/include/linux/quota.h b/include/linux/quota.h
-> index 3434eef2a5aa..bfd077ca6ac3 100644
-> --- a/include/linux/quota.h
-> +++ b/include/linux/quota.h
-> @@ -332,6 +332,8 @@ struct dquot_operations {
->  	 * quota code only */
->  	qsize_t *(*get_reserved_space) (struct inode *);
->  	int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
-> +	/* Get number of inodes that were charged for a given inode */
-> +	int (*get_inode_usage) (struct inode *, qsize_t *);
->  	/* Get next ID with active quota structure */
->  	int (*get_next_id) (struct super_block *sb, struct kqid *qid);
->  };
+>  /**
+>   * filemap_fdatawait - wait for all under-writeback pages to complete
 > -- 
-> 2.13.1.518.g3df882009-goog
+> 2.13.0
 > 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
