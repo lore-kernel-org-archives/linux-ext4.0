@@ -1,62 +1,134 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 07/32] ext4: call journal revoke when freeing ea_inode blocks
-Date: Wed, 21 Jun 2017 14:21:17 -0700
-Message-ID: <20170621212142.16581-7-tahsin@google.com>
+Subject: [PATCH 02/32] ext4: fix lockdep warning about recursive inode locking
+Date: Wed, 21 Jun 2017 14:21:12 -0700
+Message-ID: <20170621212142.16581-2-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f43.google.com ([74.125.83.43]:34499 "EHLO
-        mail-pg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752571AbdFUVWE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 17:22:04 -0400
-Received: by mail-pg0-f43.google.com with SMTP id e187so29804611pgc.1
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 14:22:04 -0700 (PDT)
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ea_inode contents are treated as metadata, that's why it is journaled
-during initial writes. Failing to call revoke during freeing could cause
-user data to be overwritten with original ea_inode contents during journal
-replay.
+Setting a large xattr value may require writing the attribute contents
+to an external inode. In this case we may need to lock the xattr inode
+along with the parent inode. This doesn't pose a deadlock risk because
+xattr inodes are not directly visible to the user and their access is
+restricted.
+
+Assign a lockdep subclass to xattr inode's lock.
+
+ ============================================
+ WARNING: possible recursive locking detected
+ 4.12.0-rc1+ #740 Not tainted
+ --------------------------------------------
+ python/1822 is trying to acquire lock:
+  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff804912ca>] ext4_xattr_set_entry+0x65a/0x7b0
+
+ but task is already holding lock:
+  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
+
+ other info that might help us debug this:
+  Possible unsafe locking scenario:
+
+        CPU0
+        ----
+   lock(&sb->s_type->i_mutex_key#15);
+   lock(&sb->s_type->i_mutex_key#15);
+
+  *** DEADLOCK ***
+
+  May be due to missing lock nesting notation
+
+ 4 locks held by python/1822:
+  #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d0eef>] mnt_want_write+0x1f/0x50
+  #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
+  #2:  (jbd2_handle){.+.+..}, at: [<ffffffff80493f40>] start_this_handle+0xf0/0x420
+  #3:  (&ei->xattr_sem){++++..}, at: [<ffffffff804920ba>] ext4_xattr_set_handle+0x9a/0x4f0
+
+ stack backtrace:
+ CPU: 0 PID: 1822 Comm: python Not tainted 4.12.0-rc1+ #740
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+ Call Trace:
+  dump_stack+0x67/0x9e
+  __lock_acquire+0x5f3/0x1750
+  lock_acquire+0xb5/0x1d0
+  down_write+0x2c/0x60
+  ext4_xattr_set_entry+0x65a/0x7b0
+  ext4_xattr_block_set+0x1b2/0x9b0
+  ext4_xattr_set_handle+0x322/0x4f0
+  ext4_xattr_set+0x144/0x1a0
+  ext4_xattr_user_set+0x34/0x40
+  __vfs_setxattr+0x66/0x80
+  __vfs_setxattr_noperm+0x69/0x1c0
+  vfs_setxattr+0xa2/0xb0
+  setxattr+0x12e/0x150
+  path_setxattr+0x87/0xb0
+  SyS_setxattr+0xf/0x20
+  entry_SYSCALL_64_fastpath+0x18/0xad
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/extents.c  | 3 ++-
- fs/ext4/indirect.c | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 2 ++
+ fs/ext4/xattr.c | 8 ++++++++
+ fs/ext4/xattr.h | 6 ++++++
+ 3 files changed, 16 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 3e36508610b7..e0a8425ff74d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2488,7 +2488,8 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int extents)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e5535e5b3dc5..d095bf7ad390 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4877,6 +4877,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	}
+ 	brelse(iloc.bh);
+ 	ext4_set_inode_flags(inode);
++	if (ei->i_flags & EXT4_EA_INODE_FL)
++		ext4_xattr_inode_set_class(inode);
+ 	unlock_new_inode(inode);
+ 	return inode;
  
- static inline int get_default_free_blocks_flags(struct inode *inode)
- {
--	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode) ||
-+	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
- 		return EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
- 	else if (ext4_should_journal_data(inode))
- 		return EXT4_FREE_BLOCKS_FORGET;
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index bc15c2c17633..7ffa290cbb8e 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -829,7 +829,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 	int	flags = EXT4_FREE_BLOCKS_VALIDATED;
- 	int	err;
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 444be5c7a1d5..26d2705950a5 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -107,6 +107,13 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
+ #define EXT4_GET_MB_CACHE(inode)	(((struct ext4_sb_info *) \
+ 				inode->i_sb->s_fs_info)->s_mb_cache)
  
--	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
-+	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode) ||
-+	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
- 		flags |= EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_METADATA;
- 	else if (ext4_should_journal_data(inode))
- 		flags |= EXT4_FREE_BLOCKS_FORGET;
++#ifdef CONFIG_LOCKDEP
++void ext4_xattr_inode_set_class(struct inode *ea_inode)
++{
++	lockdep_set_subclass(&ea_inode->i_rwsem, 1);
++}
++#endif
++
+ static __le32 ext4_xattr_block_csum(struct inode *inode,
+ 				    sector_t block_nr,
+ 				    struct ext4_xattr_header *hdr)
+@@ -830,6 +837,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 		ea_inode->i_op = &ext4_file_inode_operations;
+ 		ea_inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(ea_inode);
++		ext4_xattr_inode_set_class(ea_inode);
+ 		ea_inode->i_generation = inode->i_generation;
+ 		EXT4_I(ea_inode)->i_flags |= EXT4_EA_INODE_FL;
+ 
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 6e10ff9393d4..e8bef79bdc38 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -196,3 +196,9 @@ static inline int ext4_init_security(handle_t *handle, struct inode *inode,
+ 	return 0;
+ }
+ #endif
++
++#ifdef CONFIG_LOCKDEP
++extern void ext4_xattr_inode_set_class(struct inode *ea_inode);
++#else
++static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
++#endif
 -- 
 2.13.1.611.g7e3b11ae1-goog
