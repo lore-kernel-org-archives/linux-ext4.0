@@ -1,63 +1,39 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 03/32] ext4: lock inode before calling ext4_orphan_add()
-Date: Wed, 21 Jun 2017 14:21:13 -0700
-Message-ID: <20170621212142.16581-3-tahsin@google.com>
-References: <20170621212142.16581-1-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Andreas Dilger <adilger@dilger.ca>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v5 27/28] ext4: xattr inode deduplication
+Date: Wed, 21 Jun 2017 14:34:12 -0700
+Message-ID: <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
+References: <6E41DA31-A524-4E0E-BD0B-5C994399BBC6@dilger.ca>
+ <20170620090721.12480-1-tahsin@google.com> <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
+In-Reply-To: <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_orphan_add() requires caller to be holding the inode lock.
-Add missing lock statements.
+> Tashin, we are already using the "no_mbcache" option name, so would prefer
+> to keep that working.  It would be OK to accept both option names to mean
+> the same thing, and only document the "nombcache" option.
 
- WARNING: CPU: 3 PID: 1806 at fs/ext4/namei.c:2731 ext4_orphan_add+0x4e/0x240
- CPU: 3 PID: 1806 Comm: python Not tainted 4.12.0-rc1+ #746
- Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
- task: ffff880135d466c0 task.stack: ffffc900014b0000
- RIP: 0010:ext4_orphan_add+0x4e/0x240
- RSP: 0018:ffffc900014b3d50 EFLAGS: 00010246
- RAX: 0000000000000000 RBX: ffff8801348fe1f0 RCX: ffffc900014b3c64
- RDX: 0000000000000000 RSI: ffff8801348fe1f0 RDI: ffff8801348fe1f0
- RBP: ffffc900014b3da0 R08: 0000000000000000 R09: ffffffff80e82025
- R10: 0000000000004692 R11: 000000000000468d R12: ffff880137598000
- R13: ffff880137217000 R14: ffff880134ac58d0 R15: 0000000000000000
- FS:  00007fc50f09e740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 00000000008bc2e0 CR3: 00000001375ac000 CR4: 00000000000006e0
- Call Trace:
-  ext4_xattr_inode_orphan_add.constprop.19+0x9d/0xf0
-  ext4_xattr_delete_inode+0x1c4/0x2f0
-  ext4_evict_inode+0x15a/0x7f0
-  evict+0xc0/0x1a0
-  iput+0x16a/0x270
-  do_unlinkat+0x172/0x290
-  SyS_unlink+0x11/0x20
-  entry_SYSCALL_64_fastpath+0x18/0xad
+Updated patch to accept both nombcache and no_mbcache.
 
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- fs/ext4/xattr.c | 2 ++
- 1 file changed, 2 insertions(+)
+>>       struct mb_cache *s_mb_cache;
+>> +     struct mb_cache *s_ea_inode_cache;
+>
+> These names should be consistent, like "s_ea_block_cache".
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 26d2705950a5..09ba0137d529 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1963,7 +1963,9 @@ ext4_xattr_inode_orphan_add(handle_t *handle, struct inode *inode,
- 				lea_ino_array->xia_inodes[idx], &error);
- 		if (error)
- 			continue;
-+		inode_lock(ea_inode);
- 		ext4_orphan_add(handle, ea_inode);
-+		inode_unlock(ea_inode);
- 		/* the inode's i_count will be released by caller */
- 	}
- 
--- 
-2.13.1.611.g7e3b11ae1-goog
+Yes, I will rename this to s_ea_block_cache.
+
+>> #define EXT4_GET_MB_CACHE(inode)      (((struct ext4_sb_info *) \
+>>                               inode->i_sb->s_fs_info)->s_mb_cache)
+>>
+>> +#define EA_INODE_CACHE(inode)        (((struct ext4_sb_info *) \
+>> +                             inode->i_sb->s_fs_info)->s_ea_inode_cache)
+>
+> These names should be consistent, like EXT4_GET_EA_CACHE() or maybe
+> EXT4_GET_EA_BLOCK_CACHE() and EXT4_GET_EA_INODE_CACHE().
+
+How about EA_BLOCK_CACHE() and EA_INODE_CACHE() to keep them short?
