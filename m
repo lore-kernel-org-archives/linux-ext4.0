@@ -1,79 +1,54 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v5 27/28] ext4: xattr inode deduplication
-Date: Wed, 21 Jun 2017 15:42:09 -0600
-Message-ID: <E4913B36-9018-4915-9E3F-4CBD73DEF7BE@dilger.ca>
-References: <6E41DA31-A524-4E0E-BD0B-5C994399BBC6@dilger.ca>
- <20170620090721.12480-1-tahsin@google.com>
- <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
- <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH 32/32] ext4: add nombcache mount option
+Date: Wed, 21 Jun 2017 16:46:48 -0700
+Message-ID: <CAAeU0aNUvSBkicQgnc9V4dWicZKWutum9aUsFy7oTLasRinhfQ@mail.gmail.com>
+References: <20170620091435.13560-1-tahsin@google.com> <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-yw0-f180.google.com ([209.85.161.180]:35886 "EHLO
+        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751641AbdFUXqu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 19:46:50 -0400
+Received: by mail-yw0-f180.google.com with SMTP id l75so205899ywc.3
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 16:46:49 -0700 (PDT)
+In-Reply-To: <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+>> +     if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_NO_MBCACHE) {
+>> +             ext4_msg(sb, KERN_ERR, "can't enable nombcache during remount");
+>> +             err = -EINVAL;
+>> +             goto restore_opts;
+>> +     }
+>
+> It appears that this restriction also applies to enabling mbcache during
+> remount as well, so the message should be updated?  In particular, if
+> NO_MBCACHE is currently set but isn't passed during the remount then this
+> will always cause the remount to fail.  That makes it harder for users to
+> just run something like "mount -o remount,ro".
 
---Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+Remount option handling is a bit strange. If an option is not
+specified, it is not automatically cleared in sbi->s_mount_opt. So,
+once nombcache option is set in the original mount, it is not possible
+to clear it. I don't know whether this option handling behavior in
+ext4 is deliberate but because of that, the mount -o remount,ro does
+not result in a mount failure. The check above is effectively only to
+protect against going from not having nombcache option to having
+nombcache option, because the opposite is not possible.
 
+Following shows how "debug" option remains set even though it wasn't
+specified during remount:
 
-> On Jun 21, 2017, at 3:34 PM, Tahsin Erdogan <tahsin@google.com> wrote:
-> 
->> Tashin, we are already using the "no_mbcache" option name, so would prefer
->> to keep that working.  It would be OK to accept both option names to mean
->> the same thing, and only document the "nombcache" option.
-> 
-> Updated patch to accept both nombcache and no_mbcache.
-> 
->>>      struct mb_cache *s_mb_cache;
->>> +     struct mb_cache *s_ea_inode_cache;
->> 
->> These names should be consistent, like "s_ea_block_cache".
-> 
-> Yes, I will rename this to s_ea_block_cache.
-> 
->>> #define EXT4_GET_MB_CACHE(inode)      (((struct ext4_sb_info *) \
->>>                              inode->i_sb->s_fs_info)->s_mb_cache)
->>> 
->>> +#define EA_INODE_CACHE(inode)        (((struct ext4_sb_info *) \
->>> +                             inode->i_sb->s_fs_info)->s_ea_inode_cache)
->> 
->> These names should be consistent, like EXT4_GET_EA_CACHE() or maybe
->> EXT4_GET_EA_BLOCK_CACHE() and EXT4_GET_EA_INODE_CACHE().
-> 
-> How about EA_BLOCK_CACHE() and EA_INODE_CACHE() to keep them short?
-
-Sure, that is fine since these macros are local to xattr.c.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZSugypIg59Q01vtYRAn66AJ9kzORNGFoU0YMHBKkjqWSoagEASwCgpM8N
-wc0dUkj7V/4rQBcRXWi8cwo=
-=w3sc
------END PGP SIGNATURE-----
-
---Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B--
+# mount -o debug /dev/sdb /mnt/sdb
+# mount | grep sdb
+/dev/sdb on /mnt/sdb type ext4 (rw,debug)
+# cat /proc/mounts | grep sdb
+/dev/sdb /mnt/sdb ext4 rw,relatime,debug,data=ordered 0 0
+# mount -o remount,ro /dev/sdb /mnt/sdb
+# mount | grep sdb
+/dev/sdb on /mnt/sdb type ext4 (ro)
+# cat /proc/mounts | grep sdb
+/dev/sdb /mnt/sdb ext4 ro,relatime,debug,data=ordered 0 0
