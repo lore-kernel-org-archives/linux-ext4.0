@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 04/32] ext4: do not set posix acls on xattr inodes
-Date: Wed, 21 Jun 2017 14:21:14 -0700
-Message-ID: <20170621212142.16581-4-tahsin@google.com>
+Subject: [PATCH 03/32] ext4: lock inode before calling ext4_orphan_add()
+Date: Wed, 21 Jun 2017 14:21:13 -0700
+Message-ID: <20170621212142.16581-3-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,166 +13,51 @@ In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-We don't need acls on xattr inodes because they are not directly
-accessible from user mode.
+ext4_orphan_add() requires caller to be holding the inode lock.
+Add missing lock statements.
 
-Besides lockdep complains about recursive locking of xattr_sem as seen
-below.
-
-  =============================================
-  [ INFO: possible recursive locking detected ]
-  4.11.0-rc8+ #402 Not tainted
-  ---------------------------------------------
-  python/1894 is trying to acquire lock:
-   (&ei->xattr_sem){++++..}, at: [<ffffffff804878a6>] ext4_xattr_get+0x66/0x270
-
-  but task is already holding lock:
-   (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-
-  other info that might help us debug this:
-   Possible unsafe locking scenario:
-
-         CPU0
-         ----
-    lock(&ei->xattr_sem);
-    lock(&ei->xattr_sem);
-
-   *** DEADLOCK ***
-
-   May be due to missing lock nesting notation
-
-  3 locks held by python/1894:
-   #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d829f>] mnt_want_write+0x1f/0x50
-   #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803dda27>] vfs_setxattr+0x57/0xb0
-   #2:  (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-
-  stack backtrace:
-  CPU: 0 PID: 1894 Comm: python Not tainted 4.11.0-rc8+ #402
-  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-  Call Trace:
-   dump_stack+0x67/0x99
-   __lock_acquire+0x5f3/0x1830
-   lock_acquire+0xb5/0x1d0
-   down_read+0x2f/0x60
-   ext4_xattr_get+0x66/0x270
-   ext4_get_acl+0x43/0x1e0
-   get_acl+0x72/0xf0
-   posix_acl_create+0x5e/0x170
-   ext4_init_acl+0x21/0xc0
-   __ext4_new_inode+0xffd/0x16b0
-   ext4_xattr_set_entry+0x5ea/0xb70
-   ext4_xattr_block_set+0x1b5/0x970
-   ext4_xattr_set_handle+0x351/0x5d0
-   ext4_xattr_set+0x124/0x180
-   ext4_xattr_user_set+0x34/0x40
-   __vfs_setxattr+0x66/0x80
-   __vfs_setxattr_noperm+0x69/0x1c0
-   vfs_setxattr+0xa2/0xb0
-   setxattr+0x129/0x160
-   path_setxattr+0x87/0xb0
-   SyS_setxattr+0xf/0x20
-   entry_SYSCALL_64_fastpath+0x18/0xad
+ WARNING: CPU: 3 PID: 1806 at fs/ext4/namei.c:2731 ext4_orphan_add+0x4e/0x240
+ CPU: 3 PID: 1806 Comm: python Not tainted 4.12.0-rc1+ #746
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+ task: ffff880135d466c0 task.stack: ffffc900014b0000
+ RIP: 0010:ext4_orphan_add+0x4e/0x240
+ RSP: 0018:ffffc900014b3d50 EFLAGS: 00010246
+ RAX: 0000000000000000 RBX: ffff8801348fe1f0 RCX: ffffc900014b3c64
+ RDX: 0000000000000000 RSI: ffff8801348fe1f0 RDI: ffff8801348fe1f0
+ RBP: ffffc900014b3da0 R08: 0000000000000000 R09: ffffffff80e82025
+ R10: 0000000000004692 R11: 000000000000468d R12: ffff880137598000
+ R13: ffff880137217000 R14: ffff880134ac58d0 R15: 0000000000000000
+ FS:  00007fc50f09e740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
+ CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+ CR2: 00000000008bc2e0 CR3: 00000001375ac000 CR4: 00000000000006e0
+ Call Trace:
+  ext4_xattr_inode_orphan_add.constprop.19+0x9d/0xf0
+  ext4_xattr_delete_inode+0x1c4/0x2f0
+  ext4_evict_inode+0x15a/0x7f0
+  evict+0xc0/0x1a0
+  iput+0x16a/0x270
+  do_unlinkat+0x172/0x290
+  SyS_unlink+0x11/0x20
+  entry_SYSCALL_64_fastpath+0x18/0xad
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/ext4.h    | 11 ++++++-----
- fs/ext4/ialloc.c  | 14 +++++++++-----
- fs/ext4/migrate.c |  2 +-
- fs/ext4/xattr.c   |  3 ++-
- 4 files changed, 18 insertions(+), 12 deletions(-)
+ fs/ext4/xattr.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 24ef56b4572f..5d5fc0d0e2bc 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2400,16 +2400,17 @@ extern int ext4fs_dirhash(const char *name, int len, struct
- /* ialloc.c */
- extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
- 				      const struct qstr *qstr, __u32 goal,
--				      uid_t *owner, int handle_type,
--				      unsigned int line_no, int nblocks);
-+				      uid_t *owner, __u32 i_flags,
-+				      int handle_type, unsigned int line_no,
-+				      int nblocks);
- 
--#define ext4_new_inode(handle, dir, mode, qstr, goal, owner) \
-+#define ext4_new_inode(handle, dir, mode, qstr, goal, owner, i_flags) \
- 	__ext4_new_inode((handle), (dir), (mode), (qstr), (goal), (owner), \
--			 0, 0, 0)
-+			 i_flags, 0, 0, 0)
- #define ext4_new_inode_start_handle(dir, mode, qstr, goal, owner, \
- 				    type, nblocks)		    \
- 	__ext4_new_inode(NULL, (dir), (mode), (qstr), (goal), (owner), \
--			 (type), __LINE__, (nblocks))
-+			 0, (type), __LINE__, (nblocks))
- 
- 
- extern void ext4_free_inode(handle_t *, struct inode *);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index e2eb3cc06820..fb1b3df17f6e 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -742,8 +742,9 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
-  */
- struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			       umode_t mode, const struct qstr *qstr,
--			       __u32 goal, uid_t *owner, int handle_type,
--			       unsigned int line_no, int nblocks)
-+			       __u32 goal, uid_t *owner, __u32 i_flags,
-+			       int handle_type, unsigned int line_no,
-+			       int nblocks)
- {
- 	struct super_block *sb;
- 	struct buffer_head *inode_bitmap_bh = NULL;
-@@ -1052,6 +1053,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	/* Don't inherit extent flag from directory, amongst others. */
- 	ei->i_flags =
- 		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
-+	ei->i_flags |= i_flags;
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
-@@ -1108,9 +1110,11 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			goto fail_free_drop;
- 	}
- 
--	err = ext4_init_acl(handle, inode, dir);
--	if (err)
--		goto fail_free_drop;
-+	if (!(ei->i_flags & EXT4_EA_INODE_FL)) {
-+		err = ext4_init_acl(handle, inode, dir);
-+		if (err)
-+			goto fail_free_drop;
-+	}
- 
- 	err = ext4_init_security(handle, inode, dir, qstr);
- 	if (err)
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 364ea4d4a943..cf5181b62df1 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -475,7 +475,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	owner[0] = i_uid_read(inode);
- 	owner[1] = i_gid_read(inode);
- 	tmp_inode = ext4_new_inode(handle, d_inode(inode->i_sb->s_root),
--				   S_IFREG, NULL, goal, owner);
-+				   S_IFREG, NULL, goal, owner, 0);
- 	if (IS_ERR(tmp_inode)) {
- 		retval = PTR_ERR(tmp_inode);
- 		ext4_journal_stop(handle);
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 09ba0137d529..12210fe87ea3 100644
+index 26d2705950a5..09ba0137d529 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -832,7 +832,8 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
- 	 * in the same group, or nearby one.
- 	 */
- 	ea_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
--				  S_IFREG | 0600, NULL, inode->i_ino + 1, NULL);
-+				  S_IFREG | 0600, NULL, inode->i_ino + 1, NULL,
-+				  EXT4_EA_INODE_FL);
- 	if (!IS_ERR(ea_inode)) {
- 		ea_inode->i_op = &ext4_file_inode_operations;
- 		ea_inode->i_fop = &ext4_file_operations;
+@@ -1963,7 +1963,9 @@ ext4_xattr_inode_orphan_add(handle_t *handle, struct inode *inode,
+ 				lea_ino_array->xia_inodes[idx], &error);
+ 		if (error)
+ 			continue;
++		inode_lock(ea_inode);
+ 		ext4_orphan_add(handle, ea_inode);
++		inode_unlock(ea_inode);
+ 		/* the inode's i_count will be released by caller */
+ 	}
+ 
 -- 
 2.13.1.611.g7e3b11ae1-goog
