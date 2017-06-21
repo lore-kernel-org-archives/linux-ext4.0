@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 13/32] ext4: ext4_xattr_value_same() should return false for external data
-Date: Wed, 21 Jun 2017 14:21:23 -0700
-Message-ID: <20170621212142.16581-13-tahsin@google.com>
+Subject: [PATCH 18/32] ext4: retry storing value in external inode with xattr block too
+Date: Wed, 21 Jun 2017 14:21:28 -0700
+Message-ID: <20170621212142.16581-18-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,29 +13,90 @@ In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4_xattr_value_same() is used as a quick optimization in case the new
-xattr value is identical to the previous value. When xattr value is
-stored in a xattr inode the check becomes expensive so it is better to
-just assume that they are not equal.
+When value size is <= EXT4_XATTR_MIN_LARGE_EA_SIZE(), and it
+doesn't fit in either inline or xattr block, a second try is made to
+store it in an external inode while storing the entry itself in inline
+area. There should also be an attempt to store the entry in xattr block.
+
+This patch adds a retry loop to do that. It also makes the caller the
+sole decider on whether to store a value in an external inode.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 3 +++
- 1 file changed, 3 insertions(+)
+v2: fix checkpatch.pl warning about indented retry_inode: label
+
+ fs/ext4/xattr.c | 35 ++++++++++++++++++-----------------
+ 1 file changed, 18 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 4dd8be16d175..681a9b5eefd8 100644
+index dcf7ec98f138..0dfae3f8e209 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -1428,6 +1428,9 @@ static int ext4_xattr_value_same(struct ext4_xattr_search *s,
- {
- 	void *value;
+@@ -911,11 +911,6 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 	int in_inode = i->in_inode;
+ 	int rc;
  
-+	/* When e_value_inum is set the value is stored externally. */
-+	if (s->here->e_value_inum)
-+		return 0;
- 	if (le32_to_cpu(s->here->e_value_size) != i->value_len)
- 		return 0;
- 	value = ((void *)s->base) + le16_to_cpu(s->here->e_value_offs);
+-	if (ext4_has_feature_ea_inode(inode->i_sb) &&
+-	    (EXT4_XATTR_SIZE(i->value_len) >
+-	     EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
+-		in_inode = 1;
+-
+ 	/* Compute min_offs and last. */
+ 	last = s->first;
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+@@ -1097,7 +1092,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *new_bh = NULL;
+-	struct ext4_xattr_search *s = &bs->s;
++	struct ext4_xattr_search s_copy = bs->s;
++	struct ext4_xattr_search *s = &s_copy;
+ 	struct mb_cache_entry *ce = NULL;
+ 	int error = 0;
+ 	struct mb_cache *ext4_mb_cache = EXT4_GET_MB_CACHE(inode);
+@@ -1519,6 +1515,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		if (!bs.s.not_found && ext4_xattr_value_same(&bs.s, &i))
+ 			goto cleanup;
+ 
++		if (ext4_has_feature_ea_inode(inode->i_sb) &&
++		    (EXT4_XATTR_SIZE(i.value_len) >
++			EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
++			i.in_inode = 1;
++retry_inode:
+ 		error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+ 		if (!error && !bs.s.not_found) {
+ 			i.value = NULL;
+@@ -1530,20 +1531,20 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 					goto cleanup;
+ 			}
+ 			error = ext4_xattr_block_set(handle, inode, &i, &bs);
+-			if (ext4_has_feature_ea_inode(inode->i_sb) &&
+-			    error == -ENOSPC) {
+-				/* xattr not fit to block, store at external
+-				 * inode */
+-				i.in_inode = 1;
+-				error = ext4_xattr_ibody_set(handle, inode,
+-							     &i, &is);
+-			}
+-			if (error)
+-				goto cleanup;
+-			if (!is.s.not_found) {
++			if (!error && !is.s.not_found) {
+ 				i.value = NULL;
+ 				error = ext4_xattr_ibody_set(handle, inode, &i,
+ 							     &is);
++			} else if (error == -ENOSPC) {
++				/*
++				 * Xattr does not fit in the block, store at
++				 * external inode if possible.
++				 */
++				if (ext4_has_feature_ea_inode(inode->i_sb) &&
++				    !i.in_inode) {
++					i.in_inode = 1;
++					goto retry_inode;
++				}
+ 			}
+ 		}
+ 	}
 -- 
 2.13.1.611.g7e3b11ae1-goog
