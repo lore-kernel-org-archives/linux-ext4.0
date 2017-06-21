@@ -1,80 +1,30 @@
-From: <koopk@madisonnjps.org>
-Subject: (unknown)
-Date: Wed, 21 Jun 2017 07:43:10 -0000
-Message-ID: <149803099053.12492.4448920785465716065@chtts.ru>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH v3 28/31] quota: add get_inode_usage callback to transfer
+ multi-inode charges
+Date: Wed, 21 Jun 2017 04:22:35 -0700
+Message-ID: <CAAeU0aNUiAzTNLtL0M-nrVF3N5zc-MkorfADT0F7HR6VFv7iFw@mail.gmail.com>
+References: <20170620152816.GA31922@quack2.suse.cz> <20170620180804.17618-1-tahsin@google.com>
+ <20170621044814.3mqkzi3xpb6i7se6@thunk.org>
 Mime-Version: 1.0
-Content-Type: application/zip; name="170045.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Tahsin Erdogan <tahsin@google.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 083.228.81.95.chtts.ru ([95.81.228.83]:46471 "HELO chtts.ru"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750927AbdFUHnP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Jun 2017 03:43:15 -0400
-Content-Disposition: attachment
-Subject: 
+Received: from mail-yw0-f171.google.com ([209.85.161.171]:36318 "EHLO
+        mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750823AbdFULWh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 07:22:37 -0400
+Received: by mail-yw0-f171.google.com with SMTP id l75so63088359ywc.3
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 04:22:36 -0700 (PDT)
+In-Reply-To: <20170621044814.3mqkzi3xpb6i7se6@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+On Tue, Jun 20, 2017 at 9:48 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Tahsin, when you think we've closed on the reviews, could you send out
+> a complete set of all of the patches on a new mail thread, using git
+> send-email so I can make sure I'm grabbing the final version of all of
+> the patches in this patch series?
+
+Sure, I will.
