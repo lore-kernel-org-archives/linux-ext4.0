@@ -1,33 +1,21 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: check return value of kstrtoull correctly in
- reserved_clusters_store
-Date: Fri, 23 Jun 2017 01:09:39 -0400
-Message-ID: <20170623050937.v2c44cyp3i7mtpnv@thunk.org>
-References: <20170615095730.36627-1-yuchao0@huawei.com>
+From: "CELINE" <vendce@bolaget.fr>
+Subject: let me know
+Date: Wed, 21 Jun 2017 14:58:15 +0100
+Message-ID: <201706211358.v5LDf0uS028510@www.brfliseberg.se>
+Reply-To: celineroullier200@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, chao@kernel.org,
-        Miao Xie <miaoxie@huawei.com>
-To: Chao Yu <yuchao0@huawei.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 8BIT
+To: Recipients <vendce@bolaget.fr>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34888 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754504AbdFWFJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Jun 2017 01:09:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20170615095730.36627-1-yuchao0@huawei.com>
+Received: from www.brfliseberg.se ([213.242.162.1]:37180 "EHLO
+        www.brfliseberg.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754277AbdFWFt6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jun 2017 01:49:58 -0400
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 15, 2017 at 05:57:30PM +0800, Chao Yu wrote:
-> kstrtoull returns 0 on success, however, in reserved_clusters_store we
-> will return -EINVAL if kstrtoull returns 0, it makes us fail to update
-> reserved_clusters value through sysfs.
-> 
-> Signed-off-by: Chao Yu <yuchao0@huawei.com>
-> Signed-off-by: Miao Xie <miaoxie@huawei.com>
-
-Thanks, applied.
-
-					- Ted
+Hello, important charity foundation proposal to discuss with you, if you are interested please reply urgently for details. 
+with love,
+CELINE
