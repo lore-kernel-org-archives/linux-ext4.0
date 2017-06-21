@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 30/32] ext4: eliminate xattr entry e_hash recalculation for removes
-Date: Wed, 21 Jun 2017 14:21:40 -0700
-Message-ID: <20170621212142.16581-30-tahsin@google.com>
+Subject: [PATCH 25/32] ext4: add ext4_is_quota_file()
+Date: Wed, 21 Jun 2017 14:21:35 -0700
+Message-ID: <20170621212142.16581-25-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,174 +13,97 @@ In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When an extended attribute block is modified, ext4_xattr_hash_entry()
-recalculates e_hash for the entry that is pointed by s->here. This is
-unnecessary if the modification is to remove an entry.
+IS_NOQUOTA() indicates whether quota is disabled for an inode. Ext4
+also uses it to check whether an inode is for a quota file. The
+distinction currently doesn't matter because quota is disabled only
+for the quota files. When we start disabling quota for other inodes
+in the future, we will want to make the distinction clear.
 
-Currently, if the removed entry is the last one and there are other
-entries remaining, hash calculation targets the just erased entry which
-has been filled with zeroes and effectively does nothing. If the removed
-entry is not the last one and there are more entries, this time it will
-recalculate hash on the next entry which is totally unnecessary.
-
-Fix these by moving the decision on when to recalculate hash to
-ext4_xattr_set_entry().
+Replace IS_NOQUOTA() call with ext4_is_quota_file() at places where
+we are checking for quota files.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 50 ++++++++++++++++++++++++++------------------------
- 1 file changed, 26 insertions(+), 24 deletions(-)
+ fs/ext4/ext4.h        | 2 ++
+ fs/ext4/inode.c       | 2 +-
+ fs/ext4/ioctl.c       | 4 ++--
+ fs/ext4/mballoc.c     | 2 +-
+ fs/ext4/move_extent.c | 2 +-
+ 5 files changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index e5ff4d5a0618..b1bd60244978 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -77,8 +77,9 @@ static void ext4_xattr_block_cache_insert(struct mb_cache *,
- static struct buffer_head *
- ext4_xattr_block_cache_find(struct inode *, struct ext4_xattr_header *,
- 			    struct mb_cache_entry **);
--static void ext4_xattr_rehash(struct ext4_xattr_header *,
--			      struct ext4_xattr_entry *);
-+static void ext4_xattr_hash_entry(struct ext4_xattr_entry *entry,
-+				  void *value_base);
-+static void ext4_xattr_rehash(struct ext4_xattr_header *);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2969f5251774..4309afa27fdb 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2099,6 +2099,8 @@ static inline struct ext4_inode *ext4_raw_inode(struct ext4_iloc *iloc)
+ 	return (struct ext4_inode *) (iloc->bh->b_data + iloc->offset);
+ }
  
- static const struct xattr_handler * const ext4_xattr_handler_map[] = {
- 	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
-@@ -1454,7 +1455,8 @@ static int ext4_xattr_inode_lookup_create(handle_t *handle, struct inode *inode,
- 
- static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 				struct ext4_xattr_search *s,
--				handle_t *handle, struct inode *inode)
-+				handle_t *handle, struct inode *inode,
-+				bool is_block)
- {
- 	struct ext4_xattr_entry *last;
- 	struct ext4_xattr_entry *here = s->here;
-@@ -1518,8 +1520,8 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 		 * attribute block so that a long value does not occupy the
- 		 * whole space and prevent futher entries being added.
- 		 */
--		if (ext4_has_feature_ea_inode(inode->i_sb) && new_size &&
--		    (s->end - s->base) == i_blocksize(inode) &&
-+		if (ext4_has_feature_ea_inode(inode->i_sb) &&
-+		    new_size && is_block &&
- 		    (min_offs + old_size - new_size) <
- 					EXT4_XATTR_BLOCK_RESERVE(inode)) {
- 			ret = -ENOSPC;
-@@ -1649,6 +1651,13 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 		}
- 		here->e_value_size = cpu_to_le32(i->value_len);
- 	}
++#define ext4_is_quota_file(inode) IS_NOQUOTA(inode)
 +
-+	if (is_block) {
-+		if (i->value)
-+			ext4_xattr_hash_entry(here, s->base);
-+		ext4_xattr_rehash((struct ext4_xattr_header *)s->base);
-+	}
-+
- 	ret = 0;
- out:
- 	iput(old_ea_inode);
-@@ -1738,14 +1747,11 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			mb_cache_entry_delete(mb_block_cache, hash,
- 					      bs->bh->b_blocknr);
- 			ea_bdebug(bs->bh, "modifying in-place");
--			error = ext4_xattr_set_entry(i, s, handle, inode);
--			if (!error) {
--				if (!IS_LAST_ENTRY(s->first))
--					ext4_xattr_rehash(header(s->base),
--							  s->here);
-+			error = ext4_xattr_set_entry(i, s, handle, inode,
-+						     true /* is_block */);
-+			if (!error)
- 				ext4_xattr_block_cache_insert(mb_block_cache,
- 							      bs->bh);
--			}
- 			ext4_xattr_block_csum_set(inode, bs->bh);
- 			unlock_buffer(bs->bh);
- 			if (error == -EFSCORRUPTED)
-@@ -1805,7 +1811,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 		s->end = s->base + sb->s_blocksize;
+ /*
+  * This structure is stuffed into the struct file's private_data field
+  * for directories.  It is where we put information so that we can do
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8ee20b586567..cf91532765a4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -739,7 +739,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		if (map->m_flags & EXT4_MAP_NEW &&
+ 		    !(map->m_flags & EXT4_MAP_UNWRITTEN) &&
+ 		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
+-		    !IS_NOQUOTA(inode) &&
++		    !ext4_is_quota_file(inode) &&
+ 		    ext4_should_order_data(inode)) {
+ 			if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
+ 				ret = ext4_jbd2_inode_add_wait(handle, inode);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0c21e22acd74..dde8deb11e59 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -218,7 +218,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	unsigned int jflag;
+ 
+ 	/* Is it quota file? Do not allow user to mess with it */
+-	if (IS_NOQUOTA(inode))
++	if (ext4_is_quota_file(inode))
+ 		goto flags_out;
+ 
+ 	oldflags = ei->i_flags;
+@@ -342,7 +342,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	err = -EPERM;
+ 	inode_lock(inode);
+ 	/* Is it quota file? Do not allow user to mess with it */
+-	if (IS_NOQUOTA(inode))
++	if (ext4_is_quota_file(inode))
+ 		goto out_unlock;
+ 
+ 	err = ext4_get_inode_loc(inode, &iloc);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index b7928cddd539..d109a2a2fea0 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4464,7 +4464,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	trace_ext4_request_blocks(ar);
+ 
+ 	/* Allow to use superuser reservation for quota file */
+-	if (IS_NOQUOTA(ar->inode))
++	if (ext4_is_quota_file(ar->inode))
+ 		ar->flags |= EXT4_MB_USE_ROOT_BLOCKS;
+ 
+ 	if ((ar->flags & EXT4_MB_DELALLOC_RESERVED) == 0) {
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index c992ef2c2f94..9bb36909ec92 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -484,7 +484,7 @@ mext_check_arguments(struct inode *orig_inode,
+ 		return -EBUSY;
  	}
  
--	error = ext4_xattr_set_entry(i, s, handle, inode);
-+	error = ext4_xattr_set_entry(i, s, handle, inode, true /* is_block */);
- 	if (error == -EFSCORRUPTED)
- 		goto bad_block;
- 	if (error)
-@@ -1828,9 +1834,6 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 		}
- 	}
- 
--	if (!IS_LAST_ENTRY(s->first))
--		ext4_xattr_rehash(header(s->base), s->here);
--
- inserted:
- 	if (!IS_LAST_ENTRY(s->first)) {
- 		new_bh = ext4_xattr_block_cache_find(inode, header(s->base),
-@@ -2063,7 +2066,7 @@ int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
- 
- 	if (EXT4_I(inode)->i_extra_isize == 0)
- 		return -ENOSPC;
--	error = ext4_xattr_set_entry(i, s, handle, inode);
-+	error = ext4_xattr_set_entry(i, s, handle, inode, false /* is_block */);
- 	if (error) {
- 		if (error == -ENOSPC &&
- 		    ext4_has_inline_data(inode)) {
-@@ -2075,7 +2078,8 @@ int ext4_xattr_ibody_inline_set(handle_t *handle, struct inode *inode,
- 			error = ext4_xattr_ibody_find(inode, i, is);
- 			if (error)
- 				return error;
--			error = ext4_xattr_set_entry(i, s, handle, inode);
-+			error = ext4_xattr_set_entry(i, s, handle, inode,
-+						     false /* is_block */);
- 		}
- 		if (error)
- 			return error;
-@@ -2101,7 +2105,7 @@ static int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 
- 	if (EXT4_I(inode)->i_extra_isize == 0)
- 		return -ENOSPC;
--	error = ext4_xattr_set_entry(i, s, handle, inode);
-+	error = ext4_xattr_set_entry(i, s, handle, inode, false /* is_block */);
- 	if (error)
- 		return error;
- 	header = IHDR(inode, ext4_raw_inode(&is->iloc));
-@@ -2927,8 +2931,8 @@ ext4_xattr_block_cache_find(struct inode *inode,
-  *
-  * Compute the hash of an extended attribute.
-  */
--static inline void ext4_xattr_hash_entry(struct ext4_xattr_header *header,
--					 struct ext4_xattr_entry *entry)
-+static void ext4_xattr_hash_entry(struct ext4_xattr_entry *entry,
-+				  void *value_base)
- {
- 	__u32 hash = 0;
- 	char *name = entry->e_name;
-@@ -2941,7 +2945,7 @@ static inline void ext4_xattr_hash_entry(struct ext4_xattr_header *header,
- 	}
- 
- 	if (!entry->e_value_inum && entry->e_value_size) {
--		__le32 *value = (__le32 *)((char *)header +
-+		__le32 *value = (__le32 *)((char *)value_base +
- 			le16_to_cpu(entry->e_value_offs));
- 		for (n = (le32_to_cpu(entry->e_value_size) +
- 		     EXT4_XATTR_ROUND) >> EXT4_XATTR_PAD_BITS; n; n--) {
-@@ -2963,13 +2967,11 @@ static inline void ext4_xattr_hash_entry(struct ext4_xattr_header *header,
-  *
-  * Re-compute the extended attribute hash value after an entry has changed.
-  */
--static void ext4_xattr_rehash(struct ext4_xattr_header *header,
--			      struct ext4_xattr_entry *entry)
-+static void ext4_xattr_rehash(struct ext4_xattr_header *header)
- {
- 	struct ext4_xattr_entry *here;
- 	__u32 hash = 0;
- 
--	ext4_xattr_hash_entry(header, entry);
- 	here = ENTRY(header+1);
- 	while (!IS_LAST_ENTRY(here)) {
- 		if (!here->e_hash) {
+-	if (IS_NOQUOTA(orig_inode) || IS_NOQUOTA(donor_inode)) {
++	if (ext4_is_quota_file(orig_inode) && ext4_is_quota_file(donor_inode)) {
+ 		ext4_debug("ext4 move extent: The argument files should "
+ 			"not be quota files [ino:orig %lu, donor %lu]\n",
+ 			orig_inode->i_ino, donor_inode->i_ino);
 -- 
 2.13.1.611.g7e3b11ae1-goog
