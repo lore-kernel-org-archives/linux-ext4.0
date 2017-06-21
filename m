@@ -1,39 +1,43 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH v5 27/28] ext4: xattr inode deduplication
-Date: Wed, 21 Jun 2017 14:34:12 -0700
-Message-ID: <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
-References: <6E41DA31-A524-4E0E-BD0B-5C994399BBC6@dilger.ca>
- <20170620090721.12480-1-tahsin@google.com> <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
+Subject: Re: [PATCH v2 23/31] mbcache: make mbcache naming more generic
+Date: Wed, 21 Jun 2017 14:39:35 -0700
+Message-ID: <CAAeU0aNHS3yfMRm3aeTq2YHqg58oQTE48Pi32rgt0YKJv5EOYA@mail.gmail.com>
+References: <20170619085026.GD11837@quack2.suse.cz> <20170620090113.6658-1-tahsin@google.com>
+ <6A43096F-633E-4FBF-9827-6EC36D92B659@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
+In-Reply-To: <6A43096F-633E-4FBF-9827-6EC36D92B659@dilger.ca>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> Tashin, we are already using the "no_mbcache" option name, so would prefer
-> to keep that working.  It would be OK to accept both option names to mean
-> the same thing, and only document the "nombcache" option.
+Hi Andreas, I have incorporated your suggestions into another patch
+that renames things in ext2/ext4 ("[PATCH 24/32] ext2, ext4: make mb
+block cache names more explicit").
 
-Updated patch to accept both nombcache and no_mbcache.
+> Since we now also have the ea_inode cache, it would be better to rename
+> s_mb_cache to s_mb_block_cache to make it more clear what it is.  That
+> isn't strictly needed for ext2, but better to keep it consistent with ext4.
 
->>       struct mb_cache *s_mb_cache;
->> +     struct mb_cache *s_ea_inode_cache;
->
-> These names should be consistent, like "s_ea_block_cache".
+Done
 
-Yes, I will rename this to s_ea_block_cache.
+> Minor nit - having a function-local variable named "ext2_mb_cache" and
+> "ext4_mb_cache" makes it look like this is a global variable.  I think
+> this name is left over from when it _was_ actually a single global cache
+> rather than a per-filesystem cache.  It would be better to use a name
+> like "mb_block_cache" to make it clear that this is the local block cache.
 
->> #define EXT4_GET_MB_CACHE(inode)      (((struct ext4_sb_info *) \
->>                               inode->i_sb->s_fs_info)->s_mb_cache)
->>
->> +#define EA_INODE_CACHE(inode)        (((struct ext4_sb_info *) \
->> +                             inode->i_sb->s_fs_info)->s_ea_inode_cache)
->
-> These names should be consistent, like EXT4_GET_EA_CACHE() or maybe
-> EXT4_GET_EA_BLOCK_CACHE() and EXT4_GET_EA_INODE_CACHE().
+Done
 
-How about EA_BLOCK_CACHE() and EA_INODE_CACHE() to keep them short?
+> This local variable should be named "mb_block_cache" or similar.
+
+Done
+
+> s/ext4_mb_cache/mb_block_cache/
+Done
+
+> (style) no space after typecast
+Fixed
