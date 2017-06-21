@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 22/32] ext4: move struct ext4_xattr_inode_array to xattr.h
-Date: Wed, 21 Jun 2017 14:21:32 -0700
-Message-ID: <20170621212142.16581-22-tahsin@google.com>
+Subject: [PATCH 19/32] ext4: ext4_xattr_delete_inode() should return accurate errors
+Date: Wed, 21 Jun 2017 14:21:29 -0700
+Message-ID: <20170621212142.16581-19-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,45 +13,80 @@ In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Since this is a xattr specific data structure it is cleaner to keep it in
-xattr header file.
+In a few places the function returns without trying to pass the actual
+error code to the caller. Fix those.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/ext4.h  | 4 ----
- fs/ext4/xattr.h | 5 +++++
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ fs/ext4/xattr.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 603edb5ff304..580fdb753f29 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2232,10 +2232,6 @@ struct mmpd_data {
- # define ATTRIB_NORET	__attribute__((noreturn))
- # define NORET_AND	noreturn,
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 0dfae3f8e209..97d33ecf0818 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -2026,7 +2026,8 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 		if (!entry->e_value_inum)
+ 			continue;
+ 		ea_ino = le32_to_cpu(entry->e_value_inum);
+-		if (ext4_expand_ino_array(lea_ino_array, ea_ino) != 0) {
++		error = ext4_expand_ino_array(lea_ino_array, ea_ino);
++		if (error) {
+ 			brelse(iloc.bh);
+ 			goto cleanup;
+ 		}
+@@ -2037,20 +2038,22 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ delete_external_ea:
+ 	if (!EXT4_I(inode)->i_file_acl) {
+ 		/* add xattr inode to orphan list */
+-		ext4_xattr_inode_orphan_add(handle, inode, credits,
+-						*lea_ino_array);
++		error = ext4_xattr_inode_orphan_add(handle, inode, credits,
++						    *lea_ino_array);
+ 		goto cleanup;
+ 	}
+ 	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+ 	if (!bh) {
+ 		EXT4_ERROR_INODE(inode, "block %llu read error",
+ 				 EXT4_I(inode)->i_file_acl);
++		error = -EIO;
+ 		goto cleanup;
+ 	}
+ 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
+ 	    BHDR(bh)->h_blocks != cpu_to_le32(1)) {
+ 		EXT4_ERROR_INODE(inode, "bad block %llu",
+ 				 EXT4_I(inode)->i_file_acl);
++		error = -EFSCORRUPTED;
+ 		goto cleanup;
+ 	}
  
--struct ext4_xattr_inode_array {
--	unsigned int count;		/* # of used items in the array */
--	struct inode *inodes[0];
--};
- /* bitmap.c */
- extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
- void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 323eba54f72f..adf761518a73 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -117,6 +117,11 @@ struct ext4_xattr_ibody_find {
- 	struct ext4_iloc iloc;
- };
+@@ -2059,7 +2062,8 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 		if (!entry->e_value_inum)
+ 			continue;
+ 		ea_ino = le32_to_cpu(entry->e_value_inum);
+-		if (ext4_expand_ino_array(lea_ino_array, ea_ino) != 0)
++		error = ext4_expand_ino_array(lea_ino_array, ea_ino);
++		if (error)
+ 			goto cleanup;
+ 		entry->e_value_inum = 0;
+ 	}
+@@ -2067,7 +2071,7 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 	/* add xattr inode to orphan list */
+ 	error = ext4_xattr_inode_orphan_add(handle, inode, credits,
+ 					*lea_ino_array);
+-	if (error != 0)
++	if (error)
+ 		goto cleanup;
  
-+struct ext4_xattr_inode_array {
-+	unsigned int count;		/* # of used items in the array */
-+	struct inode *inodes[0];
-+};
-+
- extern const struct xattr_handler ext4_xattr_user_handler;
- extern const struct xattr_handler ext4_xattr_trusted_handler;
- extern const struct xattr_handler ext4_xattr_security_handler;
+ 	if (!IS_NOQUOTA(inode))
+@@ -2077,7 +2081,7 @@ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 		error = ext4_journal_extend(handle, credits);
+ 		if (error > 0)
+ 			error = ext4_journal_restart(handle, credits);
+-		if (error != 0) {
++		if (error) {
+ 			ext4_warning(inode->i_sb,
+ 				"couldn't extend journal (err %d)", error);
+ 			goto cleanup;
 -- 
 2.13.1.611.g7e3b11ae1-goog
