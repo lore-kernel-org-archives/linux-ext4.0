@@ -1,109 +1,62 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 11/32] ext4: clean up ext4_xattr_inode_get()
-Date: Wed, 21 Jun 2017 14:21:21 -0700
-Message-ID: <20170621212142.16581-11-tahsin@google.com>
+Subject: [PATCH 07/32] ext4: call journal revoke when freeing ea_inode blocks
+Date: Wed, 21 Jun 2017 14:21:17 -0700
+Message-ID: <20170621212142.16581-7-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f43.google.com ([74.125.83.43]:34499 "EHLO
+        mail-pg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752571AbdFUVWE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 17:22:04 -0400
+Received: by mail-pg0-f43.google.com with SMTP id e187so29804611pgc.1
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 14:22:04 -0700 (PDT)
 In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The input and output values of *size parameter are equal on successful
-return from ext4_xattr_inode_get(). On error return, the callers ignore
-the output value so there is no need to update it.
-
-Also check for NULL return from ext4_bread(). If the actual xattr inode
-size happens to be smaller than the expected size, ext4_bread() may
-return NULL which would indicate data corruption.
+ea_inode contents are treated as metadata, that's why it is journaled
+during initial writes. Failing to call revoke during freeing could cause
+user data to be overwritten with original ea_inode contents during journal
+replay.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 35 +++++++++++++----------------------
- 1 file changed, 13 insertions(+), 22 deletions(-)
+ fs/ext4/extents.c  | 3 ++-
+ fs/ext4/indirect.c | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index d9477d01be9b..8e855fc2eb03 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -278,37 +278,28 @@ ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
- /*
-  * Read the EA value from an inode.
-  */
--static int
--ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t *size)
-+static int ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t size)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3e36508610b7..e0a8425ff74d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2488,7 +2488,8 @@ int ext4_ext_index_trans_blocks(struct inode *inode, int extents)
+ 
+ static inline int get_default_free_blocks_flags(struct inode *inode)
  {
- 	unsigned long block = 0;
- 	struct buffer_head *bh = NULL;
--	int blocksize;
--	size_t csize, ret_size = 0;
--
--	if (*size == 0)
--		return 0;
-+	int blocksize = ea_inode->i_sb->s_blocksize;
-+	size_t csize, copied = 0;
+-	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
++	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode) ||
++	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
+ 		return EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET;
+ 	else if (ext4_should_journal_data(inode))
+ 		return EXT4_FREE_BLOCKS_FORGET;
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index bc15c2c17633..7ffa290cbb8e 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -829,7 +829,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
+ 	int	flags = EXT4_FREE_BLOCKS_VALIDATED;
+ 	int	err;
  
--	blocksize = ea_inode->i_sb->s_blocksize;
--
--	while (ret_size < *size) {
--		csize = (*size - ret_size) > blocksize ? blocksize :
--							*size - ret_size;
-+	while (copied < size) {
-+		csize = (size - copied) > blocksize ? blocksize : size - copied;
- 		bh = ext4_bread(NULL, ea_inode, block, 0);
--		if (IS_ERR(bh)) {
--			*size = ret_size;
-+		if (IS_ERR(bh))
- 			return PTR_ERR(bh);
--		}
-+		if (!bh)
-+			return -EFSCORRUPTED;
-+
- 		memcpy(buf, bh->b_data, csize);
- 		brelse(bh);
- 
- 		buf += csize;
- 		block += 1;
--		ret_size += csize;
-+		copied += csize;
- 	}
--
--	*size = ret_size;
--
- 	return 0;
- }
- 
-@@ -360,7 +351,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
-  */
- static int
- ext4_xattr_inode_get(struct inode *inode, unsigned long ea_ino, void *buffer,
--		     size_t *size)
-+		     size_t size)
- {
- 	struct inode *ea_inode;
- 	int ret;
-@@ -417,7 +408,7 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 		if (entry->e_value_inum) {
- 			error = ext4_xattr_inode_get(inode,
- 					     le32_to_cpu(entry->e_value_inum),
--					     buffer, &size);
-+					     buffer, size);
- 			if (error)
- 				goto cleanup;
- 		} else {
-@@ -467,7 +458,7 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
- 		if (entry->e_value_inum) {
- 			error = ext4_xattr_inode_get(inode,
- 					     le32_to_cpu(entry->e_value_inum),
--					     buffer, &size);
-+					     buffer, size);
- 			if (error)
- 				goto cleanup;
- 		} else {
+-	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
++	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode) ||
++	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
+ 		flags |= EXT4_FREE_BLOCKS_FORGET | EXT4_FREE_BLOCKS_METADATA;
+ 	else if (ext4_should_journal_data(inode))
+ 		flags |= EXT4_FREE_BLOCKS_FORGET;
 -- 
 2.13.1.611.g7e3b11ae1-goog
