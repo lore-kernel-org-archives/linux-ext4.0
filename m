@@ -1,43 +1,79 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH v2 23/31] mbcache: make mbcache naming more generic
-Date: Wed, 21 Jun 2017 14:39:35 -0700
-Message-ID: <CAAeU0aNHS3yfMRm3aeTq2YHqg58oQTE48Pi32rgt0YKJv5EOYA@mail.gmail.com>
-References: <20170619085026.GD11837@quack2.suse.cz> <20170620090113.6658-1-tahsin@google.com>
- <6A43096F-633E-4FBF-9827-6EC36D92B659@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v5 27/28] ext4: xattr inode deduplication
+Date: Wed, 21 Jun 2017 15:42:09 -0600
+Message-ID: <E4913B36-9018-4915-9E3F-4CBD73DEF7BE@dilger.ca>
+References: <6E41DA31-A524-4E0E-BD0B-5C994399BBC6@dilger.ca>
+ <20170620090721.12480-1-tahsin@google.com>
+ <C5BD0B33-E343-405A-B74F-1F1717B618F9@dilger.ca>
+ <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <6A43096F-633E-4FBF-9827-6EC36D92B659@dilger.ca>
+In-Reply-To: <CAAeU0aN8_WUTkBM8XgiNXtGFxCRqjeftnG_v3V_8dCaiWmYwog@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Andreas, I have incorporated your suggestions into another patch
-that renames things in ext2/ext4 ("[PATCH 24/32] ext2, ext4: make mb
-block cache names more explicit").
 
-> Since we now also have the ea_inode cache, it would be better to rename
-> s_mb_cache to s_mb_block_cache to make it more clear what it is.  That
-> isn't strictly needed for ext2, but better to keep it consistent with ext4.
+--Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-Done
 
-> Minor nit - having a function-local variable named "ext2_mb_cache" and
-> "ext4_mb_cache" makes it look like this is a global variable.  I think
-> this name is left over from when it _was_ actually a single global cache
-> rather than a per-filesystem cache.  It would be better to use a name
-> like "mb_block_cache" to make it clear that this is the local block cache.
+> On Jun 21, 2017, at 3:34 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+> 
+>> Tashin, we are already using the "no_mbcache" option name, so would prefer
+>> to keep that working.  It would be OK to accept both option names to mean
+>> the same thing, and only document the "nombcache" option.
+> 
+> Updated patch to accept both nombcache and no_mbcache.
+> 
+>>>      struct mb_cache *s_mb_cache;
+>>> +     struct mb_cache *s_ea_inode_cache;
+>> 
+>> These names should be consistent, like "s_ea_block_cache".
+> 
+> Yes, I will rename this to s_ea_block_cache.
+> 
+>>> #define EXT4_GET_MB_CACHE(inode)      (((struct ext4_sb_info *) \
+>>>                              inode->i_sb->s_fs_info)->s_mb_cache)
+>>> 
+>>> +#define EA_INODE_CACHE(inode)        (((struct ext4_sb_info *) \
+>>> +                             inode->i_sb->s_fs_info)->s_ea_inode_cache)
+>> 
+>> These names should be consistent, like EXT4_GET_EA_CACHE() or maybe
+>> EXT4_GET_EA_BLOCK_CACHE() and EXT4_GET_EA_INODE_CACHE().
+> 
+> How about EA_BLOCK_CACHE() and EA_INODE_CACHE() to keep them short?
 
-Done
+Sure, that is fine since these macros are local to xattr.c.
 
-> This local variable should be named "mb_block_cache" or similar.
+Cheers, Andreas
 
-Done
 
-> s/ext4_mb_cache/mb_block_cache/
-Done
 
-> (style) no space after typecast
-Fixed
+
+
+
+--Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZSugypIg59Q01vtYRAn66AJ9kzORNGFoU0YMHBKkjqWSoagEASwCgpM8N
+wc0dUkj7V/4rQBcRXWi8cwo=
+=w3sc
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_AA83EEB5-B2F0-4820-A493-245434EB750B--
