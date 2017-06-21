@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 02/32] ext4: fix lockdep warning about recursive inode locking
-Date: Wed, 21 Jun 2017 14:21:12 -0700
-Message-ID: <20170621212142.16581-2-tahsin@google.com>
+Subject: [PATCH 06/32] ext4: ea_inode owner should be the same as the inode owner
+Date: Wed, 21 Jun 2017 14:21:16 -0700
+Message-ID: <20170621212142.16581-6-tahsin@google.com>
 References: <20170621212142.16581-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,122 +13,36 @@ In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Setting a large xattr value may require writing the attribute contents
-to an external inode. In this case we may need to lock the xattr inode
-along with the parent inode. This doesn't pose a deadlock risk because
-xattr inodes are not directly visible to the user and their access is
-restricted.
-
-Assign a lockdep subclass to xattr inode's lock.
-
- ============================================
- WARNING: possible recursive locking detected
- 4.12.0-rc1+ #740 Not tainted
- --------------------------------------------
- python/1822 is trying to acquire lock:
-  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff804912ca>] ext4_xattr_set_entry+0x65a/0x7b0
-
- but task is already holding lock:
-  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
-
- other info that might help us debug this:
-  Possible unsafe locking scenario:
-
-        CPU0
-        ----
-   lock(&sb->s_type->i_mutex_key#15);
-   lock(&sb->s_type->i_mutex_key#15);
-
-  *** DEADLOCK ***
-
-  May be due to missing lock nesting notation
-
- 4 locks held by python/1822:
-  #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d0eef>] mnt_want_write+0x1f/0x50
-  #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
-  #2:  (jbd2_handle){.+.+..}, at: [<ffffffff80493f40>] start_this_handle+0xf0/0x420
-  #3:  (&ei->xattr_sem){++++..}, at: [<ffffffff804920ba>] ext4_xattr_set_handle+0x9a/0x4f0
-
- stack backtrace:
- CPU: 0 PID: 1822 Comm: python Not tainted 4.12.0-rc1+ #740
- Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
- Call Trace:
-  dump_stack+0x67/0x9e
-  __lock_acquire+0x5f3/0x1750
-  lock_acquire+0xb5/0x1d0
-  down_write+0x2c/0x60
-  ext4_xattr_set_entry+0x65a/0x7b0
-  ext4_xattr_block_set+0x1b2/0x9b0
-  ext4_xattr_set_handle+0x322/0x4f0
-  ext4_xattr_set+0x144/0x1a0
-  ext4_xattr_user_set+0x34/0x40
-  __vfs_setxattr+0x66/0x80
-  __vfs_setxattr_noperm+0x69/0x1c0
-  vfs_setxattr+0xa2/0xb0
-  setxattr+0x12e/0x150
-  path_setxattr+0x87/0xb0
-  SyS_setxattr+0xf/0x20
-  entry_SYSCALL_64_fastpath+0x18/0xad
+Quota charging is based on the ownership of the inode. Currently, the
+xattr inode owner is set to the caller which may be different from the
+parent inode owner. This is inconsistent with how quota is charged for
+xattr block and regular data block writes.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/inode.c | 2 ++
- fs/ext4/xattr.c | 8 ++++++++
- fs/ext4/xattr.h | 6 ++++++
- 3 files changed, 16 insertions(+)
+ fs/ext4/xattr.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e5535e5b3dc5..d095bf7ad390 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4877,6 +4877,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	}
- 	brelse(iloc.bh);
- 	ext4_set_inode_flags(inode);
-+	if (ei->i_flags & EXT4_EA_INODE_FL)
-+		ext4_xattr_inode_set_class(inode);
- 	unlock_new_inode(inode);
- 	return inode;
- 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 444be5c7a1d5..26d2705950a5 100644
+index 8e123533315f..32ad2f2870e9 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -107,6 +107,13 @@ const struct xattr_handler *ext4_xattr_handlers[] = {
- #define EXT4_GET_MB_CACHE(inode)	(((struct ext4_sb_info *) \
- 				inode->i_sb->s_fs_info)->s_mb_cache)
+@@ -826,6 +826,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 					     struct inode *inode)
+ {
+ 	struct inode *ea_inode = NULL;
++	uid_t owner[2] = { i_uid_read(inode), i_gid_read(inode) };
+ 	int err;
  
-+#ifdef CONFIG_LOCKDEP
-+void ext4_xattr_inode_set_class(struct inode *ea_inode)
-+{
-+	lockdep_set_subclass(&ea_inode->i_rwsem, 1);
-+}
-+#endif
-+
- static __le32 ext4_xattr_block_csum(struct inode *inode,
- 				    sector_t block_nr,
- 				    struct ext4_xattr_header *hdr)
-@@ -830,6 +837,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 	/*
+@@ -833,7 +834,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 	 * in the same group, or nearby one.
+ 	 */
+ 	ea_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
+-				  S_IFREG | 0600, NULL, inode->i_ino + 1, NULL,
++				  S_IFREG | 0600, NULL, inode->i_ino + 1, owner,
+ 				  EXT4_EA_INODE_FL);
+ 	if (!IS_ERR(ea_inode)) {
  		ea_inode->i_op = &ext4_file_inode_operations;
- 		ea_inode->i_fop = &ext4_file_operations;
- 		ext4_set_aops(ea_inode);
-+		ext4_xattr_inode_set_class(ea_inode);
- 		ea_inode->i_generation = inode->i_generation;
- 		EXT4_I(ea_inode)->i_flags |= EXT4_EA_INODE_FL;
- 
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 6e10ff9393d4..e8bef79bdc38 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -196,3 +196,9 @@ static inline int ext4_init_security(handle_t *handle, struct inode *inode,
- 	return 0;
- }
- #endif
-+
-+#ifdef CONFIG_LOCKDEP
-+extern void ext4_xattr_inode_set_class(struct inode *ea_inode);
-+#else
-+static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
-+#endif
 -- 
 2.13.1.611.g7e3b11ae1-goog
