@@ -1,387 +1,208 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v2 23/31] mbcache: make mbcache naming more generic
-Date: Wed, 21 Jun 2017 12:33:02 -0600
-Message-ID: <6A43096F-633E-4FBF-9827-6EC36D92B659@dilger.ca>
-References: <20170619085026.GD11837@quack2.suse.cz>
- <20170620090113.6658-1-tahsin@google.com>
+Subject: Re: [PATCH 32/32] ext4: add nombcache mount option
+Date: Wed, 21 Jun 2017 15:02:49 -0600
+Message-ID: <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
+References: <20170620091435.13560-1-tahsin@google.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_888D7F7D-BF61-4299-88BE-8094D4ACE40D";
+ boundary="Apple-Mail=_1C8959A3-E391-437E-919B-9C8AD21DD534";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:32814 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751085AbdFUSdI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 14:33:08 -0400
-Received: by mail-it0-f68.google.com with SMTP id x12so869255itb.0
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 11:33:08 -0700 (PDT)
-In-Reply-To: <20170620090113.6658-1-tahsin@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170620091435.13560-1-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
---Apple-Mail=_888D7F7D-BF61-4299-88BE-8094D4ACE40D
+--Apple-Mail=_1C8959A3-E391-437E-919B-9C8AD21DD534
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Jun 20, 2017, at 3:01 AM, Tahsin Erdogan <tahsin@google.com> wrote:
+On Jun 20, 2017, at 3:14 AM, Tahsin Erdogan <tahsin@google.com> wrote:
 >=20
-> Make names more generic so that mbcache usage is not limited to
-> block sharing. In a subsequent patch in the series
-> ("ext4: xattr inode deduplication"), we start using the mbcache code
-> for sharing xattr inodes. With that patch, old mb_cache_entry.e_block
-> field could be holding either a block number or an inode number.
-
-Actually, looking at the later 28/31 patch made me come back to add a =
-few
-comments to this patch.  Not strictly required, but I think it makes the
-code a bit more clear.
-
+> The main purpose of mb cache is to achieve deduplication in
+> extended attributes. In use cases where opportunity for deduplication
+> is unlikely, it only adds overhead.
+>=20
+> Add a mount option to explicitly turn off mb cache.
+>=20
+> Suggested-by: Andreas Dilger <adilger@dilger.ca>
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 > ---
-> v2: updated commit title and description
+> fs/ext4/ext4.h  |  1 +
+> fs/ext4/super.c | 33 ++++++++++++++++++++++-----------
+> fs/ext4/xattr.c | 55 =
+++++++++++++++++++++++++++++++++++++-------------------
+> 3 files changed, 59 insertions(+), 30 deletions(-)
 >=20
-> fs/ext2/xattr.c         | 18 +++++++++---------
-> fs/ext4/xattr.c         | 10 +++++-----
-> fs/mbcache.c            | 43 =
-+++++++++++++++++++++----------------------
-> include/linux/mbcache.h | 11 +++++------
-> 4 files changed, 40 insertions(+), 42 deletions(-)
->=20
-> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-> index fbdb8f171893..1e5f76070580 100644
-> --- a/fs/ext2/xattr.c
-> +++ b/fs/ext2/xattr.c
-> @@ -493,8 +493,8 @@ bad_block:		ext2_error(sb, =
-"ext2_xattr_set",
-> 			 * This must happen under buffer lock for
-> 			 * ext2_xattr_set2() to reliably detect modified =
-block
-> 			 */
-> -			=
-mb_cache_entry_delete_block(EXT2_SB(sb)->s_mb_cache,
-> -						    hash, =
-bh->b_blocknr);
-> +			mb_cache_entry_delete(EXT2_SB(sb)->s_mb_cache, =
-hash,
-> +					      bh->b_blocknr);
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 59e9488c4876..21aca1f87187 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1149,6 +1149,7 @@ struct ext4_inode_info {
+> #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for =
+dio read nolocking */
+> #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+> #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal =
+Async Commit */
+> +#define EXT4_MOUNT_NO_MBCACHE		0x2000000 /* No mbcache =
+usage */
 
-Since we now also have the ea_inode cache, it would be better to rename
-s_mb_cache to s_mb_block_cache to make it more clear what it is.  That
-isn't strictly needed for ext2, but better to keep it consistent with =
-ext4.
+We've been using 0x00001 for EXT4_MOUNT_NO_MBCACHE.
 
-> 			/* keep the buffer locked while modifying it. */
-> 		} else {
-> @@ -721,8 +721,8 @@ ext2_xattr_set2(struct inode *inode, struct =
-buffer_head *old_bh,
-> 			 * This must happen under buffer lock for
-> 			 * ext2_xattr_set2() to reliably detect freed =
-block
-> 			 */
-> -			mb_cache_entry_delete_block(ext2_mb_cache,
-> -						    hash, =
-old_bh->b_blocknr);
-> +			mb_cache_entry_delete(ext2_mb_cache, hash,
-> +					      old_bh->b_blocknr);
-
-Minor nit - having a function-local variable named "ext2_mb_cache" and
-"ext4_mb_cache" makes it look like this is a global variable.  I think
-this name is left over from when it _was_ actually a single global cache
-rather than a per-filesystem cache.  It would be better to use a name
-like "mb_block_cache" to make it clear that this is the local block =
-cache.
-
-> 			/* Free the old block. */
-> 			ea_bdebug(old_bh, "freeing");
-> 			ext2_free_blocks(inode, old_bh->b_blocknr, 1);
-> @@ -795,8 +795,8 @@ ext2_xattr_delete_inode(struct inode *inode)
-> 		 * This must happen under buffer lock for =
-ext2_xattr_set2() to
-> 		 * reliably detect freed block
-> 		 */
-> -		=
-mb_cache_entry_delete_block(EXT2_SB(inode->i_sb)->s_mb_cache,
-> -					    hash, bh->b_blocknr);
-> +		mb_cache_entry_delete(EXT2_SB(inode->i_sb)->s_mb_cache, =
-hash,
-> +				      bh->b_blocknr);
-> 		ext2_free_blocks(inode, EXT2_I(inode)->i_file_acl, 1);
-> 		get_bh(bh);
-> 		bforget(bh);
-> @@ -907,11 +907,11 @@ ext2_xattr_cache_find(struct inode *inode, =
-struct ext2_xattr_header *header)
-> 	while (ce) {
-> 		struct buffer_head *bh;
->=20
-> -		bh =3D sb_bread(inode->i_sb, ce->e_block);
-> +		bh =3D sb_bread(inode->i_sb, ce->e_value);
-> 		if (!bh) {
-> 			ext2_error(inode->i_sb, "ext2_xattr_cache_find",
-> 				"inode %ld: block %ld read error",
-> -				inode->i_ino, (unsigned long) =
-ce->e_block);
-> +				inode->i_ino, (unsigned long) =
-ce->e_value);
-> 		} else {
-> 			lock_buffer(bh);
-> 			/*
-> @@ -931,7 +931,7 @@ ext2_xattr_cache_find(struct inode *inode, struct =
-ext2_xattr_header *header)
-> 			} else if (le32_to_cpu(HDR(bh)->h_refcount) >
-> 				   EXT2_XATTR_REFCOUNT_MAX) {
-> 				ea_idebug(inode, "block %ld refcount =
-%d>%d",
-> -					  (unsigned long) ce->e_block,
-> +					  (unsigned long) ce->e_value,
-> 					  =
-le32_to_cpu(HDR(bh)->h_refcount),
-> 					  EXT2_XATTR_REFCOUNT_MAX);
-> 			} else if (!ext2_xattr_cmp(header, HDR(bh))) {
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index c09fcffb0878..0b43e0e52e26 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -678,7 +678,7 @@ ext4_xattr_release_block(handle_t *handle, struct =
-inode *inode,
-> 		 * This must happen under buffer lock for
-> 		 * ext4_xattr_block_set() to reliably detect freed block
-> 		 */
-> -		mb_cache_entry_delete_block(ext4_mb_cache, hash, =
-bh->b_blocknr);
-> +		mb_cache_entry_delete(ext4_mb_cache, hash, =
-bh->b_blocknr);
-
-This local variable should be named "mb_block_cache" or similar.
-
-> 		get_bh(bh);
-> 		unlock_buffer(bh);
-> 		ext4_free_blocks(handle, inode, bh, 0, 1,
-> @@ -1115,8 +1115,8 @@ ext4_xattr_block_set(handle_t *handle, struct =
-inode *inode,
-> 			 * ext4_xattr_block_set() to reliably detect =
-modified
-> 			 * block
-> 			 */
-> -			mb_cache_entry_delete_block(ext4_mb_cache, hash,
-> -						    bs->bh->b_blocknr);
-> +			mb_cache_entry_delete(ext4_mb_cache, hash,
-> +					      bs->bh->b_blocknr);
-
-s/ext4_mb_cache/mb_block_cache/
-
-> 			ea_bdebug(bs->bh, "modifying in-place");
-> 			error =3D ext4_xattr_set_entry(i, s, handle, =
-inode);
-> 			if (!error) {
-> @@ -2238,10 +2238,10 @@ ext4_xattr_cache_find(struct inode *inode, =
-struct ext4_xattr_header *header,
-> 	while (ce) {
-> 		struct buffer_head *bh;
->=20
-> -		bh =3D sb_bread(inode->i_sb, ce->e_block);
-> +		bh =3D sb_bread(inode->i_sb, ce->e_value);
-> 		if (!bh) {
-> 			EXT4_ERROR_INODE(inode, "block %lu read error",
-> -					 (unsigned long) ce->e_block);
-> +					 (unsigned long) ce->e_value);
-
-(style) no space after typecast
-
-> 		} else if (ext4_xattr_cmp(header, BHDR(bh)) =3D=3D 0) {
-> 			*pce =3D ce;
-> 			return bh;
-> diff --git a/fs/mbcache.c b/fs/mbcache.c
-> index b19be429d655..45a8d52dc991 100644
-> --- a/fs/mbcache.c
-> +++ b/fs/mbcache.c
-> @@ -10,7 +10,7 @@
-> /*
->  * Mbcache is a simple key-value store. Keys need not be unique, =
-however
->  * key-value pairs are expected to be unique (we use this fact in
-> - * mb_cache_entry_delete_block()).
-> + * mb_cache_entry_delete()).
->  *
->  * Ext2 and ext4 use this cache for deduplication of extended =
-attribute blocks.
->  * They use hash of a block contents as a key and block number as a =
-value.
-> @@ -62,15 +62,15 @@ static inline struct hlist_bl_head =
-*mb_cache_entry_head(struct mb_cache *cache,
->  * @cache - cache where the entry should be created
->  * @mask - gfp mask with which the entry should be allocated
->  * @key - key of the entry
-> - * @block - block that contains data
-> - * @reusable - is the block reusable by other inodes?
-> + * @value - value of the entry
-> + * @reusable - is the entry reusable by others?
->  *
-> - * Creates entry in @cache with key @key and records that data is =
-stored in
-> - * block @block. The function returns -EBUSY if entry with the same =
-key
-> - * and for the same block already exists in cache. Otherwise 0 is =
-returned.
-> + * Creates entry in @cache with key @key and value @value. The =
-function returns
-> + * -EBUSY if entry with the same key and value already exists in =
-cache.
-> + * Otherwise 0 is returned.
->  */
-> int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
-> -			  sector_t block, bool reusable)
-> +			  u64 value, bool reusable)
-> {
-> 	struct mb_cache_entry *entry, *dup;
-> 	struct hlist_bl_node *dup_node;
-> @@ -91,12 +91,12 @@ int mb_cache_entry_create(struct mb_cache *cache, =
-gfp_t mask, u32 key,
-> 	/* One ref for hash, one ref returned */
-> 	atomic_set(&entry->e_refcnt, 1);
-> 	entry->e_key =3D key;
-> -	entry->e_block =3D block;
-> +	entry->e_value =3D value;
-> 	entry->e_reusable =3D reusable;
-> 	head =3D mb_cache_entry_head(cache, key);
-> 	hlist_bl_lock(head);
-> 	hlist_bl_for_each_entry(dup, dup_node, head, e_hash_list) {
-> -		if (dup->e_key =3D=3D key && dup->e_block =3D=3D block) =
-{
-> +		if (dup->e_key =3D=3D key && dup->e_value =3D=3D value) =
-{
-> 			hlist_bl_unlock(head);
-> 			kmem_cache_free(mb_entry_cache, entry);
-> 			return -EBUSY;
-> @@ -187,13 +187,13 @@ struct mb_cache_entry =
-*mb_cache_entry_find_next(struct mb_cache *cache,
-> EXPORT_SYMBOL(mb_cache_entry_find_next);
->=20
-> /*
-> - * mb_cache_entry_get - get a cache entry by block number (and key)
-> + * mb_cache_entry_get - get a cache entry by value (and key)
->  * @cache - cache we work with
-> - * @key - key of block number @block
-> - * @block - block number
-> + * @key - key
-> + * @value - value
->  */
-> struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 =
-key,
-> -					  sector_t block)
-> +					  u64 value)
-> {
-> 	struct hlist_bl_node *node;
-> 	struct hlist_bl_head *head;
-> @@ -202,7 +202,7 @@ struct mb_cache_entry *mb_cache_entry_get(struct =
-mb_cache *cache, u32 key,
-> 	head =3D mb_cache_entry_head(cache, key);
-> 	hlist_bl_lock(head);
-> 	hlist_bl_for_each_entry(entry, node, head, e_hash_list) {
-> -		if (entry->e_key =3D=3D key && entry->e_block =3D=3D =
-block) {
-> +		if (entry->e_key =3D=3D key && entry->e_value =3D=3D =
-value) {
-> 			atomic_inc(&entry->e_refcnt);
-> 			goto out;
-> 		}
-> @@ -214,15 +214,14 @@ struct mb_cache_entry *mb_cache_entry_get(struct =
-mb_cache *cache, u32 key,
-> }
-> EXPORT_SYMBOL(mb_cache_entry_get);
->=20
-> -/* mb_cache_entry_delete_block - remove information about block from =
-cache
-> +/* mb_cache_entry_delete - remove a cache entry
->  * @cache - cache we work with
-> - * @key - key of block @block
-> - * @block - block number
-> + * @key - key
-> + * @value - value
->  *
-> - * Remove entry from cache @cache with key @key with data stored in =
-@block.
-> + * Remove entry from cache @cache with key @key and value @value.
->  */
-> -void mb_cache_entry_delete_block(struct mb_cache *cache, u32 key,
-> -				 sector_t block)
-> +void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 =
-value)
-> {
-> 	struct hlist_bl_node *node;
-> 	struct hlist_bl_head *head;
-> @@ -231,7 +230,7 @@ void mb_cache_entry_delete_block(struct mb_cache =
-*cache, u32 key,
-> 	head =3D mb_cache_entry_head(cache, key);
-> 	hlist_bl_lock(head);
-> 	hlist_bl_for_each_entry(entry, node, head, e_hash_list) {
-> -		if (entry->e_key =3D=3D key && entry->e_block =3D=3D =
-block) {
-> +		if (entry->e_key =3D=3D key && entry->e_value =3D=3D =
-value) {
-> 			/* We keep hash list reference to keep entry =
-alive */
-> 			hlist_bl_del_init(&entry->e_hash_list);
-> 			hlist_bl_unlock(head);
-> @@ -248,7 +247,7 @@ void mb_cache_entry_delete_block(struct mb_cache =
-*cache, u32 key,
-> 	}
-> 	hlist_bl_unlock(head);
-> }
-> -EXPORT_SYMBOL(mb_cache_entry_delete_block);
-> +EXPORT_SYMBOL(mb_cache_entry_delete);
->=20
-> /* mb_cache_entry_touch - cache entry got used
->  * @cache - cache the entry belongs to
-> diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
-> index 86c9a8b480c5..e1bc73414983 100644
-> --- a/include/linux/mbcache.h
-> +++ b/include/linux/mbcache.h
-> @@ -19,15 +19,15 @@ struct mb_cache_entry {
-> 	u32			e_key;
-> 	u32			e_referenced:1;
-> 	u32			e_reusable:1;
-> -	/* Block number of hashed block - stable during lifetime of the =
-entry */
-> -	sector_t		e_block;
-> +	/* User provided value - stable during lifetime of the entry */
-> +	u64			e_value;
+> #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+> #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data =
+write */
+> #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity =
+checking */
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 4b15bf674d45..4262a1b9b5b2 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1336,7 +1336,7 @@ enum {
+> 	Opt_inode_readahead_blks, Opt_journal_ioprio,
+> 	Opt_dioread_nolock, Opt_dioread_lock,
+> 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+> -	Opt_max_dir_size_kb, Opt_nojournal_checksum,
+> +	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
 > };
 >=20
-> struct mb_cache *mb_cache_create(int bucket_bits);
-> void mb_cache_destroy(struct mb_cache *cache);
+> static const match_table_t tokens =3D {
+> @@ -1419,6 +1419,7 @@ static const match_table_t tokens =3D {
+> 	{Opt_noinit_itable, "noinit_itable"},
+> 	{Opt_max_dir_size_kb, "max_dir_size_kb=3D%u"},
+> 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+> +	{Opt_nombcache, "nombcache"},
+
+For compatibility, please also add:
+
+	{Opt_nombcache, "no_mbcache"},
+
+> 	{Opt_removed, "check=3Dnone"},	/* mount option from ext2/3 */
+> 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+> 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
+> @@ -1626,6 +1627,7 @@ static const struct mount_opts {
+> 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
+> 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+> 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
+> +	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
+> 	{Opt_err, 0, 0}
+> };
 >=20
-> int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
-> -			  sector_t block, bool reusable);
-> +			  u64 value, bool reusable);
-> void __mb_cache_entry_free(struct mb_cache_entry *entry);
-> static inline int mb_cache_entry_put(struct mb_cache *cache,
-> 				     struct mb_cache_entry *entry)
-> @@ -38,10 +38,9 @@ static inline int mb_cache_entry_put(struct =
-mb_cache *cache,
-> 	return 1;
-> }
+> @@ -4080,19 +4082,22 @@ static int ext4_fill_super(struct super_block =
+*sb, void *data, int silent)
+> 	sbi->s_journal->j_commit_callback =3D =
+ext4_journal_commit_callback;
 >=20
-> -void mb_cache_entry_delete_block(struct mb_cache *cache, u32 key,
-> -				  sector_t block);
-> +void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 =
-value);
-> struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 =
-key,
-> -					  sector_t block);
-> +					  u64 value);
-> struct mb_cache_entry *mb_cache_entry_find_first(struct mb_cache =
-*cache,
-> 						 u32 key);
-> struct mb_cache_entry *mb_cache_entry_find_next(struct mb_cache =
-*cache,
-> --
-> 2.13.1.518.g3df882009-goog
+> no_journal:
+> -	sbi->s_mb_cache =3D ext4_xattr_create_cache();
+> -	if (!sbi->s_mb_cache) {
+> -		ext4_msg(sb, KERN_ERR, "Failed to create an mb_cache");
+> -		goto failed_mount_wq;
+> -	}
+> -
+> -	if (ext4_has_feature_ea_inode(sb)) {
+> -		sbi->s_ea_inode_cache =3D ext4_xattr_create_cache();
+> -		if (!sbi->s_ea_inode_cache) {
+> +	if (!test_opt(sb, NO_MBCACHE)) {
+> +		sbi->s_mb_cache =3D ext4_xattr_create_cache();
+
+Should be named "s_mb_ea_block_cache" or similar?
+
+> +		if (!sbi->s_mb_cache) {
+> 			ext4_msg(sb, KERN_ERR,
+> -				 "Failed to create an =
+s_ea_inode_cache");
+> +				 "Failed to create xattr block =
+mb_cache");
+> 			goto failed_mount_wq;
+> 		}
+> +
+> +		if (ext4_has_feature_ea_inode(sb)) {
+> +			sbi->s_ea_inode_cache =3D =
+ext4_xattr_create_cache();
+
+Should be named "s_mb_ea_inode_cache", or alternately use =
+"s_ea_block_cache"
+above?
+
+> +			if (!sbi->s_ea_inode_cache) {
+> +				ext4_msg(sb, KERN_ERR,
+> +					 "Failed to create ea_inode =
+mb_cache");
+> +				goto failed_mount_wq;
+> +			}
+> +		}
+> 	}
 >=20
+> 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || =
+ext4_has_feature_encrypt(sb)) &&
+> @@ -4989,6 +4994,12 @@ static int ext4_remount(struct super_block *sb, =
+int *flags,
+> 		}
+> 	}
+>=20
+> +	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & =
+EXT4_MOUNT_NO_MBCACHE) {
+> +		ext4_msg(sb, KERN_ERR, "can't enable nombcache during =
+remount");
+> +		err =3D -EINVAL;
+> +		goto restore_opts;
+> +	}
+
+It appears that this restriction also applies to enabling mbcache during
+remount as well, so the message should be updated?  In particular, if
+NO_MBCACHE is currently set but isn't passed during the remount then =
+this
+will always cause the remount to fail.  That makes it harder for users =
+to
+just run something like "mount -o remount,ro".
+
+It seems we are a bit inconsistent with how we handle changing mount =
+options.
+In some cases, if an option is set to be enabled but cannot be, it is =
+actually
+ignored (e.g. DAX, JOURNAL_CHECKSUM).  In other cases this returns an =
+error.
+
+In this case it is probably easiest to just ignore the change to this =
+option,
+as is done with JOURNAL_CHECKSUM and DAX.
+
+> 	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX) =
+{
+> 		ext4_msg(sb, KERN_WARNING, "warning: refusing change of =
+"
+> 			"dax flag with busy inodes while remounting");
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 9d1b600dc827..65ead540c684 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+
+> @@ -1200,11 +1206,13 @@ ext4_xattr_release_block(handle_t *handle,
+> 		if (ref =3D=3D EXT4_XATTR_REFCOUNT_MAX - 1) {
+> 			struct mb_cache_entry *ce;
+
+This could go inside the "if (ext4_mb_cache)" block.
+
+> -			ce =3D mb_cache_entry_get(ext4_mb_cache, hash,
+> -						bh->b_blocknr);
+> -			if (ce) {
+> -				ce->e_reusable =3D 1;
+> -				mb_cache_entry_put(ext4_mb_cache, ce);
+> +			if (ext4_mb_cache) {
+> +				ce =3D mb_cache_entry_get(ext4_mb_cache, =
+hash,
+> +							bh->b_blocknr);
+> +				if (ce) {
+> +					ce->e_reusable =3D 1;
+> +					=
+mb_cache_entry_put(ext4_mb_cache, ce);
+> +				}
+> 			}
+> 		}
 
 
 Cheers, Andreas
@@ -391,7 +212,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_888D7F7D-BF61-4299-88BE-8094D4ACE40D
+--Apple-Mail=_1C8959A3-E391-437E-919B-9C8AD21DD534
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -402,9 +223,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFZSrvepIg59Q01vtYRAtdBAKCzSV7ckUckVa9ixiRjsMYvzZWCVACgtTtQ
-j1Sg4ZGnE53wIIl3AHsgTI0=
-=otc9
+iD8DBQFZSt77pIg59Q01vtYRAsGXAKCQEPMO/hC9AhOyqmrb8L8xO9eWCQCdE2JG
+NyFez2yiR3nl4R6KECDZ8FE=
+=WY31
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_888D7F7D-BF61-4299-88BE-8094D4ACE40D--
+--Apple-Mail=_1C8959A3-E391-437E-919B-9C8AD21DD534--
