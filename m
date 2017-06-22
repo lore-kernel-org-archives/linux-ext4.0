@@ -1,9 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 03/32] ext4: lock inode before calling ext4_orphan_add()
-Date: Wed, 21 Jun 2017 21:20:50 -0400
-Message-ID: <20170622012050.j7zrfiflipc67dpk@thunk.org>
+Subject: Re: [PATCH 04/32] ext4: do not set posix acls on xattr inodes
+Date: Wed, 21 Jun 2017 21:23:37 -0400
+Message-ID: <20170622012337.pemajnble5pvyhst@thunk.org>
 References: <20170621212142.16581-1-tahsin@google.com>
- <20170621212142.16581-3-tahsin@google.com>
+ <20170621212142.16581-4-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -13,37 +13,70 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170621212142.16581-3-tahsin@google.com>
+In-Reply-To: <20170621212142.16581-4-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 02:21:13PM -0700, Tahsin Erdogan wrote:
-> ext4_orphan_add() requires caller to be holding the inode lock.
-> Add missing lock statements.
+On Wed, Jun 21, 2017 at 02:21:14PM -0700, Tahsin Erdogan wrote:
+> We don't need acls on xattr inodes because they are not directly
+> accessible from user mode.
 > 
->  WARNING: CPU: 3 PID: 1806 at fs/ext4/namei.c:2731 ext4_orphan_add+0x4e/0x240
->  CPU: 3 PID: 1806 Comm: python Not tainted 4.12.0-rc1+ #746
->  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
->  task: ffff880135d466c0 task.stack: ffffc900014b0000
->  RIP: 0010:ext4_orphan_add+0x4e/0x240
->  RSP: 0018:ffffc900014b3d50 EFLAGS: 00010246
->  RAX: 0000000000000000 RBX: ffff8801348fe1f0 RCX: ffffc900014b3c64
->  RDX: 0000000000000000 RSI: ffff8801348fe1f0 RDI: ffff8801348fe1f0
->  RBP: ffffc900014b3da0 R08: 0000000000000000 R09: ffffffff80e82025
->  R10: 0000000000004692 R11: 000000000000468d R12: ffff880137598000
->  R13: ffff880137217000 R14: ffff880134ac58d0 R15: 0000000000000000
->  FS:  00007fc50f09e740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
->  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->  CR2: 00000000008bc2e0 CR3: 00000001375ac000 CR4: 00000000000006e0
->  Call Trace:
->   ext4_xattr_inode_orphan_add.constprop.19+0x9d/0xf0
->   ext4_xattr_delete_inode+0x1c4/0x2f0
->   ext4_evict_inode+0x15a/0x7f0
->   evict+0xc0/0x1a0
->   iput+0x16a/0x270
->   do_unlinkat+0x172/0x290
->   SyS_unlink+0x11/0x20
->   entry_SYSCALL_64_fastpath+0x18/0xad
+> Besides lockdep complains about recursive locking of xattr_sem as seen
+> below.
+> 
+>   =============================================
+>   [ INFO: possible recursive locking detected ]
+>   4.11.0-rc8+ #402 Not tainted
+>   ---------------------------------------------
+>   python/1894 is trying to acquire lock:
+>    (&ei->xattr_sem){++++..}, at: [<ffffffff804878a6>] ext4_xattr_get+0x66/0x270
+> 
+>   but task is already holding lock:
+>    (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
+> 
+>   other info that might help us debug this:
+>    Possible unsafe locking scenario:
+> 
+>          CPU0
+>          ----
+>     lock(&ei->xattr_sem);
+>     lock(&ei->xattr_sem);
+> 
+>    *** DEADLOCK ***
+> 
+>    May be due to missing lock nesting notation
+> 
+>   3 locks held by python/1894:
+>    #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d829f>] mnt_want_write+0x1f/0x50
+>    #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803dda27>] vfs_setxattr+0x57/0xb0
+>    #2:  (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
+> 
+>   stack backtrace:
+>   CPU: 0 PID: 1894 Comm: python Not tainted 4.11.0-rc8+ #402
+>   Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+>   Call Trace:
+>    dump_stack+0x67/0x99
+>    __lock_acquire+0x5f3/0x1830
+>    lock_acquire+0xb5/0x1d0
+>    down_read+0x2f/0x60
+>    ext4_xattr_get+0x66/0x270
+>    ext4_get_acl+0x43/0x1e0
+>    get_acl+0x72/0xf0
+>    posix_acl_create+0x5e/0x170
+>    ext4_init_acl+0x21/0xc0
+>    __ext4_new_inode+0xffd/0x16b0
+>    ext4_xattr_set_entry+0x5ea/0xb70
+>    ext4_xattr_block_set+0x1b5/0x970
+>    ext4_xattr_set_handle+0x351/0x5d0
+>    ext4_xattr_set+0x124/0x180
+>    ext4_xattr_user_set+0x34/0x40
+>    __vfs_setxattr+0x66/0x80
+>    __vfs_setxattr_noperm+0x69/0x1c0
+>    vfs_setxattr+0xa2/0xb0
+>    setxattr+0x129/0x160
+>    path_setxattr+0x87/0xb0
+>    SyS_setxattr+0xf/0x20
+>    entry_SYSCALL_64_fastpath+0x18/0xad
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
