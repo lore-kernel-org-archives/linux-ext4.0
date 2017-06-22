@@ -1,9 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 04/32] ext4: do not set posix acls on xattr inodes
-Date: Wed, 21 Jun 2017 21:23:37 -0400
-Message-ID: <20170622012337.pemajnble5pvyhst@thunk.org>
+Subject: Re: [PATCH 05/32] ext4: attach jinode after creation of xattr inode
+Date: Wed, 21 Jun 2017 21:26:09 -0400
+Message-ID: <20170622012608.gzvj37gfsjupukph@thunk.org>
 References: <20170621212142.16581-1-tahsin@google.com>
- <20170621212142.16581-4-tahsin@google.com>
+ <20170621212142.16581-5-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -13,73 +13,57 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170621212142.16581-4-tahsin@google.com>
+In-Reply-To: <20170621212142.16581-5-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 02:21:14PM -0700, Tahsin Erdogan wrote:
-> We don't need acls on xattr inodes because they are not directly
-> accessible from user mode.
+On Wed, Jun 21, 2017 at 02:21:15PM -0700, Tahsin Erdogan wrote:
+> In data=ordered mode jinode needs to be attached to the xattr inode when
+> writing data to it. Attachment normally occurs during file open for regular
+> files. Since we are not using file interface to write to the xattr inode,
+> the jinode attach needs to be done manually.
 > 
-> Besides lockdep complains about recursive locking of xattr_sem as seen
-> below.
+> Otherwise the following crash occurs in data=ordered mode.
 > 
->   =============================================
->   [ INFO: possible recursive locking detected ]
->   4.11.0-rc8+ #402 Not tainted
->   ---------------------------------------------
->   python/1894 is trying to acquire lock:
->    (&ei->xattr_sem){++++..}, at: [<ffffffff804878a6>] ext4_xattr_get+0x66/0x270
+>  BUG: unable to handle kernel NULL pointer dereference at           (null)
+>  IP: jbd2_journal_file_inode+0x37/0x110
+>  PGD 13b3c0067
+>  P4D 13b3c0067
+>  PUD 137660067
+>  PMD 0
 > 
->   but task is already holding lock:
->    (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-> 
->   other info that might help us debug this:
->    Possible unsafe locking scenario:
-> 
->          CPU0
->          ----
->     lock(&ei->xattr_sem);
->     lock(&ei->xattr_sem);
-> 
->    *** DEADLOCK ***
-> 
->    May be due to missing lock nesting notation
-> 
->   3 locks held by python/1894:
->    #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d829f>] mnt_want_write+0x1f/0x50
->    #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803dda27>] vfs_setxattr+0x57/0xb0
->    #2:  (&ei->xattr_sem){++++..}, at: [<ffffffff80489500>] ext4_xattr_set_handle+0xa0/0x5d0
-> 
->   stack backtrace:
->   CPU: 0 PID: 1894 Comm: python Not tainted 4.11.0-rc8+ #402
->   Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
->   Call Trace:
->    dump_stack+0x67/0x99
->    __lock_acquire+0x5f3/0x1830
->    lock_acquire+0xb5/0x1d0
->    down_read+0x2f/0x60
->    ext4_xattr_get+0x66/0x270
->    ext4_get_acl+0x43/0x1e0
->    get_acl+0x72/0xf0
->    posix_acl_create+0x5e/0x170
->    ext4_init_acl+0x21/0xc0
->    __ext4_new_inode+0xffd/0x16b0
->    ext4_xattr_set_entry+0x5ea/0xb70
->    ext4_xattr_block_set+0x1b5/0x970
->    ext4_xattr_set_handle+0x351/0x5d0
->    ext4_xattr_set+0x124/0x180
->    ext4_xattr_user_set+0x34/0x40
->    __vfs_setxattr+0x66/0x80
->    __vfs_setxattr_noperm+0x69/0x1c0
->    vfs_setxattr+0xa2/0xb0
->    setxattr+0x129/0x160
->    path_setxattr+0x87/0xb0
->    SyS_setxattr+0xf/0x20
->    entry_SYSCALL_64_fastpath+0x18/0xad
+>  Oops: 0000 [#1] SMP
+>  CPU: 3 PID: 1877 Comm: python Not tainted 4.12.0-rc1+ #749
+>  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+>  task: ffff88010e368980 task.stack: ffffc90000374000
+>  RIP: 0010:jbd2_journal_file_inode+0x37/0x110
+>  RSP: 0018:ffffc90000377980 EFLAGS: 00010246
+>  RAX: 0000000000000000 RBX: ffff880123b06230 RCX: 0000000000280000
+>  RDX: 0000000000000006 RSI: 0000000000000000 RDI: ffff88012c8585d0
+>  RBP: ffffc900003779b0 R08: 0000000000000202 R09: 0000000000000001
+>  R10: 0000000000000000 R11: 0000000000000400 R12: ffff8801111f81c0
+>  R13: ffff88013b2b6800 R14: ffffc90000377ab0 R15: 0000000000000001
+>  FS:  00007f0c99b77740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
+>  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>  CR2: 0000000000000000 CR3: 0000000136d91000 CR4: 00000000000006e0
+>  Call Trace:
+>   jbd2_journal_inode_add_write+0xe/0x10
+>   ext4_map_blocks+0x59e/0x620
+>   ext4_xattr_set_entry+0x501/0x7d0
+>   ext4_xattr_block_set+0x1b2/0x9b0
+>   ext4_xattr_set_handle+0x322/0x4f0
+>   ext4_xattr_set+0x144/0x1a0
+>   ext4_xattr_user_set+0x34/0x40
+>   __vfs_setxattr+0x66/0x80
+>   __vfs_setxattr_noperm+0x69/0x1c0
+>   vfs_setxattr+0xa2/0xb0
+>   setxattr+0x12e/0x150
+>   path_setxattr+0x87/0xb0
+>   SyS_setxattr+0xf/0x20
+>   entry_SYSCALL_64_fastpath+0x18/0xad
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Thanks, added to the ext4 patch queue.
+Thanks, applied.
 
-						- Ted
+					- Ted
