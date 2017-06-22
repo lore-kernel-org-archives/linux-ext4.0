@@ -1,54 +1,50 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH 32/32] ext4: add nombcache mount option
-Date: Wed, 21 Jun 2017 16:46:48 -0700
-Message-ID: <CAAeU0aNUvSBkicQgnc9V4dWicZKWutum9aUsFy7oTLasRinhfQ@mail.gmail.com>
-References: <20170620091435.13560-1-tahsin@google.com> <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v3] Add largedir feature
+Date: Wed, 21 Jun 2017 21:11:42 -0400
+Message-ID: <20170622011142.gu5qdyqsmuox7v4f@thunk.org>
+References: <A4690934-D680-4735-AEA6-8BF995990546@dilger.ca>
+ <1494094761-19108-1-git-send-email-artem.blagodarenko@seagate.com>
+ <19F5F19B-23F5-466A-B934-EB15896E1B15@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
+        Eric Biggers <ebiggers3@gmail.com>,
+        Yang Sheng <yang.sheng@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f180.google.com ([209.85.161.180]:35886 "EHLO
-        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751641AbdFUXqu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 19:46:50 -0400
-Received: by mail-yw0-f180.google.com with SMTP id l75so205899ywc.3
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 16:46:49 -0700 (PDT)
-In-Reply-To: <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
+Received: from imap.thunk.org ([74.207.234.97]:57270 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751108AbdFVBL5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Jun 2017 21:11:57 -0400
+Content-Disposition: inline
+In-Reply-To: <19F5F19B-23F5-466A-B934-EB15896E1B15@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->> +     if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_NO_MBCACHE) {
->> +             ext4_msg(sb, KERN_ERR, "can't enable nombcache during remount");
->> +             err = -EINVAL;
->> +             goto restore_opts;
->> +     }
->
-> It appears that this restriction also applies to enabling mbcache during
-> remount as well, so the message should be updated?  In particular, if
-> NO_MBCACHE is currently set but isn't passed during the remount then this
-> will always cause the remount to fail.  That makes it harder for users to
-> just run something like "mount -o remount,ro".
+On Mon, May 08, 2017 at 05:17:05PM -0600, Andreas Dilger wrote:
+> On May 6, 2017, at 12:19 PM, Artem Blagodarenko <artem.blagodarenko@gmail.com> wrote:
+> > 
+> > From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> > 
+> > This INCOMPAT_LARGEDIR feature allows larger directories to be created
+> > in ldiskfs, both with directory sizes over 2GB and and a maximum htree
+> > depth of 3 instead of the current limit of 2. These features are needed
+> > in order to exceed the current limit of approximately 10M entries in a
+> > single directory.
+> 
+> Please also credit the original author.  Yang Sheng has been maintaining this
+> patch and is listed as the author of the patches for other kernels.
+> 
+> Signed-off-by: Liang Zhen <liang.zhen@intel.com>
+> 
+> > Signed-off-by: Yang Sheng <yang.sheng@intel.com>
+> > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+> 
+> Reviewed-by: Andreas Dilger <andreas.dilger@intel.com>
 
-Remount option handling is a bit strange. If an option is not
-specified, it is not automatically cleared in sbi->s_mount_opt. So,
-once nombcache option is set in the original mount, it is not possible
-to clear it. I don't know whether this option handling behavior in
-ext4 is deliberate but because of that, the mount -o remount,ro does
-not result in a mount failure. The check above is effectively only to
-protect against going from not having nombcache option to having
-nombcache option, because the opposite is not possible.
+Applied, thanks.
 
-Following shows how "debug" option remains set even though it wasn't
-specified during remount:
-
-# mount -o debug /dev/sdb /mnt/sdb
-# mount | grep sdb
-/dev/sdb on /mnt/sdb type ext4 (rw,debug)
-# cat /proc/mounts | grep sdb
-/dev/sdb /mnt/sdb ext4 rw,relatime,debug,data=ordered 0 0
-# mount -o remount,ro /dev/sdb /mnt/sdb
-# mount | grep sdb
-/dev/sdb on /mnt/sdb type ext4 (ro)
-# cat /proc/mounts | grep sdb
-/dev/sdb /mnt/sdb ext4 ro,relatime,debug,data=ordered 0 0
+					- Ted
