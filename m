@@ -1,106 +1,31 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] ext2: Don't clear SGID when inheriting ACLs
-Date: Thu, 22 Jun 2017 15:31:06 +0200
-Message-ID: <20170622133115.16968-3-jack@suse.cz>
-References: <20170622133115.16968-1-jack@suse.cz>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org, linux-ext4@vger.kernel.org
-To: <linux-fsdevel@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20170622133115.16968-1-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 21/32] ext4: modify ext4_xattr_ino_array to hold struct
+ inode *
+Date: Thu, 22 Jun 2017 10:28:04 -0400
+Message-ID: <20170622142804.trfy3ce6wibh5amx@thunk.org>
+References: <20170621212142.16581-1-tahsin@google.com>
+ <20170621212142.16581-21-tahsin@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170621212142.16581-21-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-set, DIR1 is expected to have SGID bit set (and owning group equal to
-the owning group of 'DIR0'). However when 'DIR0' also has some default
-ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-'DIR1' to get cleared if user is not member of the owning group.
+On Wed, Jun 21, 2017 at 02:21:31PM -0700, Tahsin Erdogan wrote:
+> Tracking struct inode * rather than the inode number eliminates the
+> repeated ext4_xattr_inode_iget() call later. The second call cannot
+> fail in practice but still requires explanation when it wants to ignore
+> the return value. Avoid the trouble and make things simple.
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Fix the problem by creating __ext2_set_acl() function that does not call
-posix_acl_update_mode() and use it when inheriting ACLs. That prevents
-SGID bit clearing and the mode has been properly set by
-posix_acl_create() anyway.
+Added to the ext4 patch queue, thanks.
 
-Fixes: 073931017b49d9458aa351605b43a7e34598caef
-CC: stable@vger.kernel.org
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/acl.c | 36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
-
-diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-index 79dafa71effd..069c0dceda01 100644
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -175,11 +175,8 @@ ext2_get_acl(struct inode *inode, int type)
- 	return acl;
- }
- 
--/*
-- * inode->i_mutex: down
-- */
--int
--ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+static int
-+__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	int name_index;
- 	void *value = NULL;
-@@ -189,13 +186,6 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 	switch(type) {
- 		case ACL_TYPE_ACCESS:
- 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
--			if (acl) {
--				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
--				if (error)
--					return error;
--				inode->i_ctime = current_time(inode);
--				mark_inode_dirty(inode);
--			}
- 			break;
- 
- 		case ACL_TYPE_DEFAULT:
-@@ -222,6 +212,24 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- }
- 
- /*
-+ * inode->i_mutex: down
-+ */
-+int
-+ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+{
-+	int error;
-+
-+	if (type == ACL_TYPE_ACCESS && acl) {
-+		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+		if (error)
-+			return error;
-+		inode->i_ctime = current_time(inode);
-+		mark_inode_dirty(inode);
-+	}
-+	return __ext2_set_acl(inode, acl, type);
-+}
-+
-+/*
-  * Initialize the ACLs of a new inode. Called from ext2_new_inode.
-  *
-  * dir->i_mutex: down
-@@ -238,12 +246,12 @@ ext2_init_acl(struct inode *inode, struct inode *dir)
- 		return error;
- 
- 	if (default_acl) {
--		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
-+		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
- 		posix_acl_release(default_acl);
- 	}
- 	if (acl) {
- 		if (!error)
--			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
-+			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
- 		posix_acl_release(acl);
- 	}
- 	return error;
--- 
-2.12.3
+      	     	  	       - Ted
