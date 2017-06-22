@@ -1,55 +1,72 @@
-From: <jeffrey.faulkenberg@triadunit2.org>
-Subject: (unknown)
-Date: Thu, 22 Jun 2017 13:22:09 -0000
-Message-ID: <149813772922.19456.15858807389516519799@hinet.net>
-Mime-Version: 1.0
-Content-Type: application/zip; name="475333248096240.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 114-24-51-229.dynamic-ip.hinet.net ([114.24.51.229]:60708 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1752332AbdFVNWY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Jun 2017 09:22:24 -0400
-Content-Disposition: attachment
-Subject: 
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 01/11] ext4: Don't clear SGID when inheriting ACLs
+Date: Thu, 22 Jun 2017 15:31:05 +0200
+Message-ID: <20170622133115.16968-2-jack@suse.cz>
+References: <20170622133115.16968-1-jack@suse.cz>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>
+To: <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170622133115.16968-1-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
+When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
+set, DIR1 is expected to have SGID bit set (and owning group equal to
+the owning group of 'DIR0'). However when 'DIR0' also has some default
+ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
+'DIR1' to get cleared if user is not member of the owning group.
+
+Fix the problem by moving posix_acl_update_mode() out of
+__ext4_set_acl() into ext4_set_acl(). That way the function will not be
+called when inheriting ACLs which is what we want as it prevents SGID
+bit clearing and the mode has been properly set by posix_acl_create()
+anyway.
+
+Fixes: 073931017b49d9458aa351605b43a7e34598caef
+CC: stable@vger.kernel.org
+CC: linux-ext4@vger.kernel.org
+CC: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/acl.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 3ec0e46de95f..37242af33ff2 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -193,13 +193,6 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+ 		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
+-		if (acl) {
+-			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+-			if (error)
+-				return error;
+-			inode->i_ctime = current_time(inode);
+-			ext4_mark_inode_dirty(handle, inode);
+-		}
+ 		break;
+ 
+ 	case ACL_TYPE_DEFAULT:
+@@ -242,7 +235,16 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+ 
++	if (type == ACL_TYPE_ACCESS && acl) {
++		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++		if (error)
++			goto out_stop;
++		inode->i_ctime = current_time(inode);
++		ext4_mark_inode_dirty(handle, inode);
++	}
++
+ 	error = __ext4_set_acl(handle, inode, type, acl);
++out_stop:
+ 	ext4_journal_stop(handle);
+ 	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+-- 
+2.12.3
