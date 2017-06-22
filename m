@@ -1,9 +1,10 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 25/32] ext4: add ext4_is_quota_file()
-Date: Thu, 22 Jun 2017 11:39:33 -0400
-Message-ID: <20170622153933.gjc4ni47spchlix6@thunk.org>
+Subject: Re: [PATCH 26/32] ext4: cleanup transaction restarts during inode
+ deletion
+Date: Thu, 22 Jun 2017 11:43:36 -0400
+Message-ID: <20170622154336.5ry5lzhw3yv27u4q@thunk.org>
 References: <20170622014939.3592-1-tahsin@google.com>
- <20170622014939.3592-2-tahsin@google.com>
+ <20170622014939.3592-3-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -13,22 +14,24 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170622014939.3592-2-tahsin@google.com>
+In-Reply-To: <20170622014939.3592-3-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 06:49:32PM -0700, Tahsin Erdogan wrote:
-> IS_NOQUOTA() indicates whether quota is disabled for an inode. Ext4
-> also uses it to check whether an inode is for a quota file. The
-> distinction currently doesn't matter because quota is disabled only
-> for the quota files. When we start disabling quota for other inodes
-> in the future, we will want to make the distinction clear.
+On Wed, Jun 21, 2017 at 06:49:33PM -0700, Tahsin Erdogan wrote:
+> During inode deletion, journal credits that will be needed are hard to
+> determine, that is why we have journal extend/restart calls in several
+> places. Whenever a transaction is restarted, filesystem must be in a
+> consistent state because there is no atomicity guarantee beyond a
+> restart call.
 > 
-> Replace IS_NOQUOTA() call with ext4_is_quota_file() at places where
-> we are checking for quota files.
+> Add ext4_xattr_ensure_credits() helper function which takes care of
+> journal extend/restart logic. It also handles getting jbd2 write access
+> and dirty metadata calls. This function is called at every iteration of
+> handling an ea_inode reference.
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Added to the ext4 patch queue, thanks.
+Applied, thanks.
 
-				- Ted
+					- Ted
