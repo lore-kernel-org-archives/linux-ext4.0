@@ -1,66 +1,83 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 01/32] ext4: xattr-in-inode support
-Date: Wed, 21 Jun 2017 21:16:08 -0400
-Message-ID: <20170622011608.3uhx32zgl3t3n3t7@thunk.org>
+Subject: Re: [PATCH 02/32] ext4: fix lockdep warning about recursive inode
+ locking
+Date: Wed, 21 Jun 2017 21:18:34 -0400
+Message-ID: <20170622011834.kvbsjvcpit233n5d@thunk.org>
 References: <20170621212142.16581-1-tahsin@google.com>
+ <20170621212142.16581-2-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Andreas Dilger <andreas.dilger@intel.com>,
-        Kalpak Shah <kalpak.shah@sun.com>,
-        James Simmons <uja.ornl@gmail.com>
+        linux-kernel@vger.kernel.org
 To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57302 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751126AbdFVBQW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Jun 2017 21:16:22 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170621212142.16581-1-tahsin@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170621212142.16581-2-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 02:21:11PM -0700, Tahsin Erdogan wrote:
-> From: Andreas Dilger <andreas.dilger@intel.com>
+On Wed, Jun 21, 2017 at 02:21:12PM -0700, Tahsin Erdogan wrote:
+> Setting a large xattr value may require writing the attribute contents
+> to an external inode. In this case we may need to lock the xattr inode
+> along with the parent inode. This doesn't pose a deadlock risk because
+> xattr inodes are not directly visible to the user and their access is
+> restricted.
 > 
-> Large xattr support is implemented for EXT4_FEATURE_INCOMPAT_EA_INODE.
+> Assign a lockdep subclass to xattr inode's lock.
 > 
-> If the size of an xattr value is larger than will fit in a single
-> external block, then the xattr value will be saved into the body
-> of an external xattr inode.
+>  ============================================
+>  WARNING: possible recursive locking detected
+>  4.12.0-rc1+ #740 Not tainted
+>  --------------------------------------------
+>  python/1822 is trying to acquire lock:
+>   (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff804912ca>] ext4_xattr_set_entry+0x65a/0x7b0
 > 
-> The also helps support a larger number of xattr, since only the headers
-> will be stored in the in-inode space or the single external block.
+>  but task is already holding lock:
+>   (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
 > 
-> The inode is referenced from the xattr header via "e_value_inum",
-> which was formerly "e_value_block", but that field was never used.
-> The e_value_size still contains the xattr size so that listing
-> xattrs does not need to look up the inode if the data is not accessed.
+>  other info that might help us debug this:
+>   Possible unsafe locking scenario:
 > 
-> struct ext4_xattr_entry {
->         __u8    e_name_len;     /* length of name */
->         __u8    e_name_index;   /* attribute name index */
->         __le16  e_value_offs;   /* offset in disk block of value */
->         __le32  e_value_inum;   /* inode in which value is stored */
->         __le32  e_value_size;   /* size of attribute value */
->         __le32  e_hash;         /* hash value of name and value */
->         char    e_name[0];      /* attribute name */
-> };
+>         CPU0
+>         ----
+>    lock(&sb->s_type->i_mutex_key#15);
+>    lock(&sb->s_type->i_mutex_key#15);
 > 
-> The xattr inode is marked with the EXT4_EA_INODE_FL flag and also
-> holds a back-reference to the owning inode in its i_mtime field,
-> allowing the ext4/e2fsck to verify the correct inode is accessed.
+>   *** DEADLOCK ***
 > 
-> Lustre-Jira: https://jira.hpdd.intel.com/browse/LU-80
-> Lustre-bugzilla: https://bugzilla.lustre.org/show_bug.cgi?id=4424
-> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
-> Signed-off-by: James Simmons <uja.ornl@gmail.com>
-> Signed-off-by: Andreas Dilger <andreas.dilger@intel.com>
+>   May be due to missing lock nesting notation
+> 
+>  4 locks held by python/1822:
+>   #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d0eef>] mnt_want_write+0x1f/0x50
+>   #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
+>   #2:  (jbd2_handle){.+.+..}, at: [<ffffffff80493f40>] start_this_handle+0xf0/0x420
+>   #3:  (&ei->xattr_sem){++++..}, at: [<ffffffff804920ba>] ext4_xattr_set_handle+0x9a/0x4f0
+> 
+>  stack backtrace:
+>  CPU: 0 PID: 1822 Comm: python Not tainted 4.12.0-rc1+ #740
+>  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+>  Call Trace:
+>   dump_stack+0x67/0x9e
+>   __lock_acquire+0x5f3/0x1750
+>   lock_acquire+0xb5/0x1d0
+>   down_write+0x2c/0x60
+>   ext4_xattr_set_entry+0x65a/0x7b0
+>   ext4_xattr_block_set+0x1b2/0x9b0
+>   ext4_xattr_set_handle+0x322/0x4f0
+>   ext4_xattr_set+0x144/0x1a0
+>   ext4_xattr_user_set+0x34/0x40
+>   __vfs_setxattr+0x66/0x80
+>   __vfs_setxattr_noperm+0x69/0x1c0
+>   vfs_setxattr+0xa2/0xb0
+>   setxattr+0x12e/0x150
+>   path_setxattr+0x87/0xb0
+>   SyS_setxattr+0xf/0x20
+>   entry_SYSCALL_64_fastpath+0x18/0xad
+> 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
