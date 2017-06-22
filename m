@@ -1,9 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 10/32] ext4: change ext4_xattr_inode_iget() signature
-Date: Wed, 21 Jun 2017 21:55:46 -0400
-Message-ID: <20170622015546.q4okustbh4yyxwjr@thunk.org>
+Subject: Re: [PATCH 11/32] ext4: clean up ext4_xattr_inode_get()
+Date: Wed, 21 Jun 2017 21:58:30 -0400
+Message-ID: <20170622015830.x26e5pbmmjj7tmzy@thunk.org>
 References: <20170621212142.16581-1-tahsin@google.com>
- <20170621212142.16581-10-tahsin@google.com>
+ <20170621212142.16581-11-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -13,25 +13,21 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170621212142.16581-10-tahsin@google.com>
+In-Reply-To: <20170621212142.16581-11-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 02:21:20PM -0700, Tahsin Erdogan wrote:
-> In general, kernel functions indicate success/failure through their return
-> values. This function returns the status as an output parameter and reserves
-> the return value for the inode. Make it follow the general convention.
+On Wed, Jun 21, 2017 at 02:21:21PM -0700, Tahsin Erdogan wrote:
+> The input and output values of *size parameter are equal on successful
+> return from ext4_xattr_inode_get(). On error return, the callers ignore
+> the output value so there is no need to update it.
+> 
+> Also check for NULL return from ext4_bread(). If the actual xattr inode
+> size happens to be smaller than the expected size, ext4_bread() may
+> return NULL which would indicate data corruption.
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-The fact that we have several conventions for error passing, is due to
-the long history of the ext2/3/4 code base.  In the long term, I'd
-actually like to see us gradually move everyhing to use the ERR_PTR
-convention.  It's a bit more efficient for the common (no error) case,
-and it allows us to drop an extra parameter from the function
-signature.
-
-Still, it's incrementally better this way, so thanks, added to the
-ext4 patch queue.
+Thanks, applied.
 
 					- Ted
