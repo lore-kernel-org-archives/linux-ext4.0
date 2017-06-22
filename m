@@ -1,7 +1,7 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 29/32] ext4: reserve space for xattr entries/names
-Date: Wed, 21 Jun 2017 18:49:36 -0700
-Message-ID: <20170622014939.3592-6-tahsin@google.com>
+Subject: [PATCH 31/32] ext4: strong binding of xattr inode references
+Date: Wed, 21 Jun 2017 18:49:38 -0700
+Message-ID: <20170622014939.3592-8-tahsin@google.com>
 References: <20170622014939.3592-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
@@ -13,75 +13,221 @@ In-Reply-To: <20170622014939.3592-1-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-New ea_inode feature allows putting large xattr values into external
-inodes. struct ext4_xattr_entry and the attribute name however have to
-remain in the inode extra space or external attribute block. Once that
-space is exhausted, no further entries can be added. Some of that space
-could also be used by values that fit in there at the time of addition.
+To verify that a xattr entry is not pointing to the wrong xattr inode,
+we currently check that the target inode has EXT4_EA_INODE_FL flag set and
+also the entry size matches the target inode size.
 
-So, a single xattr entry whose value barely fits in the external block
-could prevent further entries being added.
-
-To mitigate the problem, this patch introduces a notion of reserve in
-the
-external attribute block that cannot be used by value data. This reserve
-is enforced when ea_inode feature is enabled. The amount of reserve is
-arbitrarily chosen to be min(block_size/8, 1024). The table below shows
-how much space is reserved for each block size and the guaranteed
-mininum
-number of entries that can be placed in the external attribute block.
-
-block size     reserved bytes  entries (name length = 16)
- 1k            128              3
- 2k            256              7
- 4k            512             15
- 8k            1024            31
-16k            1024            31
-32k            1024            31
-64k            1024            31
+For stronger validation, also incorporate crc32c hash of the value into
+the e_hash field. This is done regardless of whether the entry lives in
+the inode body or external attribute block.
 
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/xattr.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+v2: naming updates to adapt to other patch changes in the series
+
+ fs/ext4/xattr.c | 104 +++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 65 insertions(+), 39 deletions(-)
 
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index a3f8bf4558f3..835b3dca5b65 100644
+index 9cb15f2069bd..3f16dc979012 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -1446,6 +1446,12 @@ static int ext4_xattr_inode_lookup_create(handle_t *handle, struct inode *inode,
+@@ -77,8 +77,8 @@ static void ext4_xattr_block_cache_insert(struct mb_cache *,
+ static struct buffer_head *
+ ext4_xattr_block_cache_find(struct inode *, struct ext4_xattr_header *,
+ 			    struct mb_cache_entry **);
+-static void ext4_xattr_hash_entry(struct ext4_xattr_entry *entry,
+-				  void *value_base);
++static __le32 ext4_xattr_hash_entry(char *name, size_t name_len, __le32 *value,
++				    size_t value_count);
+ static void ext4_xattr_rehash(struct ext4_xattr_header *);
+ 
+ static const struct xattr_handler * const ext4_xattr_handler_map[] = {
+@@ -380,7 +380,9 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+ }
+ 
+ static int
+-ext4_xattr_inode_verify_hash(struct inode *ea_inode, void *buffer, size_t size)
++ext4_xattr_inode_verify_hashes(struct inode *ea_inode,
++			       struct ext4_xattr_entry *entry, void *buffer,
++			       size_t size)
+ {
+ 	u32 hash;
+ 
+@@ -388,23 +390,35 @@ ext4_xattr_inode_verify_hash(struct inode *ea_inode, void *buffer, size_t size)
+ 	hash = ext4_xattr_inode_hash(EXT4_SB(ea_inode->i_sb), buffer, size);
+ 	if (hash != ext4_xattr_inode_get_hash(ea_inode))
+ 		return -EFSCORRUPTED;
++
++	if (entry) {
++		__le32 e_hash, tmp_data;
++
++		/* Verify entry hash. */
++		tmp_data = cpu_to_le32(hash);
++		e_hash = ext4_xattr_hash_entry(entry->e_name, entry->e_name_len,
++					       &tmp_data, 1);
++		if (e_hash != entry->e_hash)
++			return -EFSCORRUPTED;
++	}
  	return 0;
  }
  
-+/*
-+ * Reserve min(block_size/8, 1024) bytes for xattr entries/names if ea_inode
-+ * feature is enabled.
-+ */
-+#define EXT4_XATTR_BLOCK_RESERVE(inode)	min(i_blocksize(inode)/8, 1024U)
-+
- static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 				struct ext4_xattr_search *s,
- 				handle_t *handle, struct inode *inode)
-@@ -1505,6 +1511,20 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 			ret = -ENOSPC;
- 			goto out;
- 		}
-+
-+		/*
-+		 * If storing the value in an external inode is an option,
-+		 * reserve space for xattr entries/names in the external
-+		 * attribute block so that a long value does not occupy the
-+		 * whole space and prevent futher entries being added.
-+		 */
-+		if (ext4_has_feature_ea_inode(inode->i_sb) && new_size &&
-+		    (s->end - s->base) == i_blocksize(inode) &&
-+		    (min_offs + old_size - new_size) <
-+					EXT4_XATTR_BLOCK_RESERVE(inode)) {
-+			ret = -ENOSPC;
-+			goto out;
-+		}
+ #define EXT4_XATTR_INODE_GET_PARENT(inode) ((__u32)(inode)->i_mtime.tv_sec)
+ 
+ /*
+- * Read the value from the EA inode.
++ * Read xattr value from the EA inode.
+  */
+ static int
+-ext4_xattr_inode_get(struct inode *inode, unsigned long ea_ino, void *buffer,
+-		     size_t size)
++ext4_xattr_inode_get(struct inode *inode, struct ext4_xattr_entry *entry,
++		     void *buffer, size_t size)
+ {
+ 	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(inode);
+ 	struct inode *ea_inode;
+ 	int err;
+ 
+-	err = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
++	err = ext4_xattr_inode_iget(inode, le32_to_cpu(entry->e_value_inum),
++				    &ea_inode);
+ 	if (err) {
+ 		ea_inode = NULL;
+ 		goto out;
+@@ -422,7 +436,7 @@ ext4_xattr_inode_get(struct inode *inode, unsigned long ea_ino, void *buffer,
+ 	if (err)
+ 		goto out;
+ 
+-	err = ext4_xattr_inode_verify_hash(ea_inode, buffer, size);
++	err = ext4_xattr_inode_verify_hashes(ea_inode, entry, buffer, size);
+ 	/*
+ 	 * Compatibility check for old Lustre ea_inode implementation. Old
+ 	 * version does not have hash validation, but it has a backpointer
+@@ -489,9 +503,8 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+ 		if (size > buffer_size)
+ 			goto cleanup;
+ 		if (entry->e_value_inum) {
+-			error = ext4_xattr_inode_get(inode,
+-					     le32_to_cpu(entry->e_value_inum),
+-					     buffer, size);
++			error = ext4_xattr_inode_get(inode, entry, buffer,
++						     size);
+ 			if (error)
+ 				goto cleanup;
+ 		} else {
+@@ -539,9 +552,8 @@ ext4_xattr_ibody_get(struct inode *inode, int name_index, const char *name,
+ 		if (size > buffer_size)
+ 			goto cleanup;
+ 		if (entry->e_value_inum) {
+-			error = ext4_xattr_inode_get(inode,
+-					     le32_to_cpu(entry->e_value_inum),
+-					     buffer, size);
++			error = ext4_xattr_inode_get(inode, entry, buffer,
++						     size);
+ 			if (error)
+ 				goto cleanup;
+ 		} else {
+@@ -1387,8 +1399,8 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
+ 		    (EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) &&
+ 		    i_size_read(ea_inode) == value_len &&
+ 		    !ext4_xattr_inode_read(ea_inode, ea_data, value_len) &&
+-		    !ext4_xattr_inode_verify_hash(ea_inode, ea_data,
+-						  value_len) &&
++		    !ext4_xattr_inode_verify_hashes(ea_inode, NULL, ea_data,
++						    value_len) &&
+ 		    !memcmp(value, ea_data, value_len)) {
+ 			mb_cache_entry_touch(ea_inode_cache, ce);
+ 			mb_cache_entry_put(ea_inode_cache, ce);
+@@ -1652,12 +1664,36 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 		here->e_value_size = cpu_to_le32(i->value_len);
  	}
  
- 	/*
+-	if (is_block) {
+-		if (i->value)
+-			ext4_xattr_hash_entry(here, s->base);
+-		ext4_xattr_rehash((struct ext4_xattr_header *)s->base);
++	if (i->value) {
++		__le32 hash = 0;
++
++		/* Entry hash calculation. */
++		if (in_inode) {
++			__le32 crc32c_hash;
++
++			/*
++			 * Feed crc32c hash instead of the raw value for entry
++			 * hash calculation. This is to avoid walking
++			 * potentially long value buffer again.
++			 */
++			crc32c_hash = cpu_to_le32(
++				       ext4_xattr_inode_get_hash(new_ea_inode));
++			hash = ext4_xattr_hash_entry(here->e_name,
++						     here->e_name_len,
++						     &crc32c_hash, 1);
++		} else if (is_block) {
++			__le32 *value = s->base + min_offs - new_size;
++
++			hash = ext4_xattr_hash_entry(here->e_name,
++						     here->e_name_len, value,
++						     new_size >> 2);
++		}
++		here->e_hash = hash;
+ 	}
+ 
++	if (is_block)
++		ext4_xattr_rehash((struct ext4_xattr_header *)s->base);
++
+ 	ret = 0;
+ out:
+ 	iput(old_ea_inode);
+@@ -2439,9 +2475,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 
+ 	/* Save the entry name and the entry value */
+ 	if (entry->e_value_inum) {
+-		error = ext4_xattr_inode_get(inode,
+-					     le32_to_cpu(entry->e_value_inum),
+-					     buffer, value_size);
++		error = ext4_xattr_inode_get(inode, entry, buffer, value_size);
+ 		if (error)
+ 			goto out;
+ 	} else {
+@@ -2931,30 +2965,22 @@ ext4_xattr_block_cache_find(struct inode *inode,
+  *
+  * Compute the hash of an extended attribute.
+  */
+-static void ext4_xattr_hash_entry(struct ext4_xattr_entry *entry,
+-				  void *value_base)
++static __le32 ext4_xattr_hash_entry(char *name, size_t name_len, __le32 *value,
++				    size_t value_count)
+ {
+ 	__u32 hash = 0;
+-	char *name = entry->e_name;
+-	int n;
+ 
+-	for (n = 0; n < entry->e_name_len; n++) {
++	while (name_len--) {
+ 		hash = (hash << NAME_HASH_SHIFT) ^
+ 		       (hash >> (8*sizeof(hash) - NAME_HASH_SHIFT)) ^
+ 		       *name++;
+ 	}
+-
+-	if (!entry->e_value_inum && entry->e_value_size) {
+-		__le32 *value = (__le32 *)((char *)value_base +
+-			le16_to_cpu(entry->e_value_offs));
+-		for (n = (le32_to_cpu(entry->e_value_size) +
+-		     EXT4_XATTR_ROUND) >> EXT4_XATTR_PAD_BITS; n; n--) {
+-			hash = (hash << VALUE_HASH_SHIFT) ^
+-			       (hash >> (8*sizeof(hash) - VALUE_HASH_SHIFT)) ^
+-			       le32_to_cpu(*value++);
+-		}
++	while (value_count--) {
++		hash = (hash << VALUE_HASH_SHIFT) ^
++		       (hash >> (8*sizeof(hash) - VALUE_HASH_SHIFT)) ^
++		       le32_to_cpu(*value++);
+ 	}
+-	entry->e_hash = cpu_to_le32(hash);
++	return cpu_to_le32(hash);
+ }
+ 
+ #undef NAME_HASH_SHIFT
 -- 
 2.13.1.611.g7e3b11ae1-goog
