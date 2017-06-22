@@ -1,10 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 02/32] ext4: fix lockdep warning about recursive inode
- locking
-Date: Wed, 21 Jun 2017 21:18:34 -0400
-Message-ID: <20170622011834.kvbsjvcpit233n5d@thunk.org>
+Subject: Re: [PATCH 03/32] ext4: lock inode before calling ext4_orphan_add()
+Date: Wed, 21 Jun 2017 21:20:50 -0400
+Message-ID: <20170622012050.j7zrfiflipc67dpk@thunk.org>
 References: <20170621212142.16581-1-tahsin@google.com>
- <20170621212142.16581-2-tahsin@google.com>
+ <20170621212142.16581-3-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -14,70 +13,40 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
 To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170621212142.16581-2-tahsin@google.com>
+In-Reply-To: <20170621212142.16581-3-tahsin@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 02:21:12PM -0700, Tahsin Erdogan wrote:
-> Setting a large xattr value may require writing the attribute contents
-> to an external inode. In this case we may need to lock the xattr inode
-> along with the parent inode. This doesn't pose a deadlock risk because
-> xattr inodes are not directly visible to the user and their access is
-> restricted.
+On Wed, Jun 21, 2017 at 02:21:13PM -0700, Tahsin Erdogan wrote:
+> ext4_orphan_add() requires caller to be holding the inode lock.
+> Add missing lock statements.
 > 
-> Assign a lockdep subclass to xattr inode's lock.
-> 
->  ============================================
->  WARNING: possible recursive locking detected
->  4.12.0-rc1+ #740 Not tainted
->  --------------------------------------------
->  python/1822 is trying to acquire lock:
->   (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff804912ca>] ext4_xattr_set_entry+0x65a/0x7b0
-> 
->  but task is already holding lock:
->   (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
-> 
->  other info that might help us debug this:
->   Possible unsafe locking scenario:
-> 
->         CPU0
->         ----
->    lock(&sb->s_type->i_mutex_key#15);
->    lock(&sb->s_type->i_mutex_key#15);
-> 
->   *** DEADLOCK ***
-> 
->   May be due to missing lock nesting notation
-> 
->  4 locks held by python/1822:
->   #0:  (sb_writers#10){.+.+.+}, at: [<ffffffff803d0eef>] mnt_want_write+0x1f/0x50
->   #1:  (&sb->s_type->i_mutex_key#15){+.+...}, at: [<ffffffff803d6687>] vfs_setxattr+0x57/0xb0
->   #2:  (jbd2_handle){.+.+..}, at: [<ffffffff80493f40>] start_this_handle+0xf0/0x420
->   #3:  (&ei->xattr_sem){++++..}, at: [<ffffffff804920ba>] ext4_xattr_set_handle+0x9a/0x4f0
-> 
->  stack backtrace:
->  CPU: 0 PID: 1822 Comm: python Not tainted 4.12.0-rc1+ #740
+>  WARNING: CPU: 3 PID: 1806 at fs/ext4/namei.c:2731 ext4_orphan_add+0x4e/0x240
+>  CPU: 3 PID: 1806 Comm: python Not tainted 4.12.0-rc1+ #746
 >  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+>  task: ffff880135d466c0 task.stack: ffffc900014b0000
+>  RIP: 0010:ext4_orphan_add+0x4e/0x240
+>  RSP: 0018:ffffc900014b3d50 EFLAGS: 00010246
+>  RAX: 0000000000000000 RBX: ffff8801348fe1f0 RCX: ffffc900014b3c64
+>  RDX: 0000000000000000 RSI: ffff8801348fe1f0 RDI: ffff8801348fe1f0
+>  RBP: ffffc900014b3da0 R08: 0000000000000000 R09: ffffffff80e82025
+>  R10: 0000000000004692 R11: 000000000000468d R12: ffff880137598000
+>  R13: ffff880137217000 R14: ffff880134ac58d0 R15: 0000000000000000
+>  FS:  00007fc50f09e740(0000) GS:ffff88013fd80000(0000) knlGS:0000000000000000
+>  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>  CR2: 00000000008bc2e0 CR3: 00000001375ac000 CR4: 00000000000006e0
 >  Call Trace:
->   dump_stack+0x67/0x9e
->   __lock_acquire+0x5f3/0x1750
->   lock_acquire+0xb5/0x1d0
->   down_write+0x2c/0x60
->   ext4_xattr_set_entry+0x65a/0x7b0
->   ext4_xattr_block_set+0x1b2/0x9b0
->   ext4_xattr_set_handle+0x322/0x4f0
->   ext4_xattr_set+0x144/0x1a0
->   ext4_xattr_user_set+0x34/0x40
->   __vfs_setxattr+0x66/0x80
->   __vfs_setxattr_noperm+0x69/0x1c0
->   vfs_setxattr+0xa2/0xb0
->   setxattr+0x12e/0x150
->   path_setxattr+0x87/0xb0
->   SyS_setxattr+0xf/0x20
+>   ext4_xattr_inode_orphan_add.constprop.19+0x9d/0xf0
+>   ext4_xattr_delete_inode+0x1c4/0x2f0
+>   ext4_evict_inode+0x15a/0x7f0
+>   evict+0xc0/0x1a0
+>   iput+0x16a/0x270
+>   do_unlinkat+0x172/0x290
+>   SyS_unlink+0x11/0x20
 >   entry_SYSCALL_64_fastpath+0x18/0xad
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Thanks, applied.
+Thanks, added to the ext4 patch queue.
 
-					- Ted
+						- Ted
