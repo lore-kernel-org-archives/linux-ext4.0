@@ -1,33 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 32/32] ext4: add nombcache mount option
-Date: Thu, 22 Jun 2017 00:42:00 -0400
-Message-ID: <20170622044200.lf6klrvlxlr2zbxy@thunk.org>
-References: <20170620091435.13560-1-tahsin@google.com>
- <B63F04AF-ED74-4A05-BA5A-160A97C61106@dilger.ca>
- <CAAeU0aNUvSBkicQgnc9V4dWicZKWutum9aUsFy7oTLasRinhfQ@mail.gmail.com>
+From: <jeffrey.faulkenberg@triadunit2.org>
+Subject: (unknown)
+Date: Thu, 22 Jun 2017 13:22:09 -0000
+Message-ID: <149813772922.19456.15858807389516519799@hinet.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAAeU0aNUvSBkicQgnc9V4dWicZKWutum9aUsFy7oTLasRinhfQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="475333248096240.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 114-24-51-229.dynamic-ip.hinet.net ([114.24.51.229]:60708 "HELO
+        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1752332AbdFVNWY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Jun 2017 09:22:24 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 21, 2017 at 04:46:48PM -0700, Tahsin Erdogan wrote:
-> Remount option handling is a bit strange. If an option is not
-> specified, it is not automatically cleared in sbi->s_mount_opt. So,
-> once nombcache option is set in the original mount, it is not possible
-> to clear it. I don't know whether this option handling behavior in
-> ext4 is deliberate but because of that, the mount -o remount,ro does
-> not result in a mount failure. The check above is effectively only to
-> protect against going from not having nombcache option to having
-> nombcache option, because the opposite is not possible.
-
-The option handling behavior is deliberate, yes.  This is why we have
-the mount options "lazytime" and "nolazytime", "discard" and
-"nodiscard", "barrier" and "nobarrier", etc.
-
-							 -Ted
+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
