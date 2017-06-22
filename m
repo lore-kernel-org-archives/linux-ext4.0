@@ -1,81 +1,34 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 01/11] ext4: Don't clear SGID when inheriting ACLs
-Date: Thu, 22 Jun 2017 17:32:05 +0200
-Message-ID: <CAHc6FU6fb3mVFaHi1-8VtAkSfLNd-L26455PreBMpW_G1Qe3Gg@mail.gmail.com>
-References: <20170622133115.16968-1-jack@suse.cz> <20170622133115.16968-2-jack@suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 25/32] ext4: add ext4_is_quota_file()
+Date: Thu, 22 Jun 2017 11:39:33 -0400
+Message-ID: <20170622153933.gjc4ni47spchlix6@thunk.org>
+References: <20170622014939.3592-1-tahsin@google.com>
+ <20170622014939.3592-2-tahsin@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        stable@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20170622133115.16968-2-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170622014939.3592-2-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 22, 2017 at 3:31 PM, Jan Kara <jack@suse.cz> wrote:
-> When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-> set, DIR1 is expected to have SGID bit set (and owning group equal to
-> the owning group of 'DIR0'). However when 'DIR0' also has some default
-> ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-> 'DIR1' to get cleared if user is not member of the owning group.
->
-> Fix the problem by moving posix_acl_update_mode() out of
-> __ext4_set_acl() into ext4_set_acl(). That way the function will not be
-> called when inheriting ACLs which is what we want as it prevents SGID
-> bit clearing and the mode has been properly set by posix_acl_create()
-> anyway.
->
-> Fixes: 073931017b49d9458aa351605b43a7e34598caef
-> CC: stable@vger.kernel.org
-> CC: linux-ext4@vger.kernel.org
-> CC: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Wed, Jun 21, 2017 at 06:49:32PM -0700, Tahsin Erdogan wrote:
+> IS_NOQUOTA() indicates whether quota is disabled for an inode. Ext4
+> also uses it to check whether an inode is for a quota file. The
+> distinction currently doesn't matter because quota is disabled only
+> for the quota files. When we start disabling quota for other inodes
+> in the future, we will want to make the distinction clear.
+> 
+> Replace IS_NOQUOTA() call with ext4_is_quota_file() at places where
+> we are checking for quota files.
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-This is looking good, thanks.
+Added to the ext4 patch queue, thanks.
 
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
-
-> ---
->  fs/ext4/acl.c | 16 +++++++++-------
->  1 file changed, 9 insertions(+), 7 deletions(-)
->
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 3ec0e46de95f..37242af33ff2 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -193,13 +193,6 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
->         switch (type) {
->         case ACL_TYPE_ACCESS:
->                 name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
-> -               if (acl) {
-> -                       error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-> -                       if (error)
-> -                               return error;
-> -                       inode->i_ctime = current_time(inode);
-> -                       ext4_mark_inode_dirty(handle, inode);
-> -               }
->                 break;
->
->         case ACL_TYPE_DEFAULT:
-> @@ -242,7 +235,16 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
->         if (IS_ERR(handle))
->                 return PTR_ERR(handle);
->
-> +       if (type == ACL_TYPE_ACCESS && acl) {
-> +               error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-> +               if (error)
-> +                       goto out_stop;
-> +               inode->i_ctime = current_time(inode);
-> +               ext4_mark_inode_dirty(handle, inode);
-> +       }
-> +
->         error = __ext4_set_acl(handle, inode, type, acl);
-> +out_stop:
->         ext4_journal_stop(handle);
->         if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->                 goto retry;
-> --
-> 2.12.3
->
+				- Ted
