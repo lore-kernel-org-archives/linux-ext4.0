@@ -1,241 +1,277 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH 32/32] ext4: add nombcache mount option
-Date: Wed, 21 Jun 2017 18:49:39 -0700
-Message-ID: <20170622014939.3592-9-tahsin@google.com>
+Subject: [PATCH 28/32] quota: add get_inode_usage callback to transfer multi-inode charges
+Date: Wed, 21 Jun 2017 18:49:35 -0700
+Message-ID: <20170622014939.3592-5-tahsin@google.com>
 References: <20170622014939.3592-1-tahsin@google.com>
 Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f49.google.com ([74.125.83.49]:35288 "EHLO
+        mail-pg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752340AbdFVBuL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Jun 2017 21:50:11 -0400
+Received: by mail-pg0-f49.google.com with SMTP id 132so1424665pgb.2
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Jun 2017 18:50:06 -0700 (PDT)
 In-Reply-To: <20170622014939.3592-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The main purpose of mb cache is to achieve deduplication in
-extended attributes. In use cases where opportunity for deduplication
-is unlikely, it only adds overhead.
+Ext4 ea_inode feature allows storing xattr values in external inodes to
+be able to store values that are bigger than a block in size. Ext4 also
+has deduplication support for these type of inodes. With deduplication,
+the actual storage waste is eliminated but the users of such inodes are
+still charged full quota for the inodes as if there was no sharing
+happening in the background.
 
-Add a mount option to explicitly turn off mb cache.
+This design requires ext4 to manually charge the users because the
+inodes are shared.
 
-Suggested-by: Andreas Dilger <adilger@dilger.ca>
+An implication of this is that, if someone calls chown on a file that
+has such references we need to transfer the quota for the file and xattr
+inodes. Current dquot_transfer() function implicitly transfers one inode
+charge. With ea_inode feature, we would like to transfer multiple inode
+charges.
+
+Add get_inode_usage callback which can interrogate the total number of
+inodes that were charged for a given inode.
+
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
+v3: added Acked-by
+
 v2:
- - updated definition of EXT4_MOUNT_NO_MBCACHE to be 0x00001
+  - added get_inode_usage() callback to query total inodes charge to
+    be transferred
 
- fs/ext4/ext4.h  |  1 +
- fs/ext4/super.c | 34 +++++++++++++++++++++++-----------
- fs/ext4/xattr.c | 52 +++++++++++++++++++++++++++++++++++-----------------
- 3 files changed, 59 insertions(+), 28 deletions(-)
+ fs/ext4/inode.c       |  7 +++++++
+ fs/ext4/ioctl.c       |  6 ++++++
+ fs/ext4/super.c       | 21 ++++++++++----------
+ fs/ext4/xattr.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/xattr.h       |  2 ++
+ fs/quota/dquot.c      | 16 +++++++++++----
+ include/linux/quota.h |  2 ++
+ 7 files changed, 94 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index dc06287ddec8..7d66e1dade45 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1114,6 +1114,7 @@ struct ext4_inode_info {
- /*
-  * Mount flags set via mount options or defaults
-  */
-+#define EXT4_MOUNT_NO_MBCACHE		0x00001 /* Do not use mbcache */
- #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
- #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
- #define EXT4_MOUNT_ERRORS_CONT		0x00010	/* Continue on errors */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ea95bd9eab81..cd22de0b5d2c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5295,7 +5295,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 			error = PTR_ERR(handle);
+ 			goto err_out;
+ 		}
++
++		/* dquot_transfer() calls back ext4_get_inode_usage() which
++		 * counts xattr inode references.
++		 */
++		down_read(&EXT4_I(inode)->xattr_sem);
+ 		error = dquot_transfer(inode, attr);
++		up_read(&EXT4_I(inode)->xattr_sem);
++
+ 		if (error) {
+ 			ext4_journal_stop(handle);
+ 			return error;
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index dde8deb11e59..42b3a73143cf 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -373,7 +373,13 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 
+ 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+ 	if (!IS_ERR(transfer_to[PRJQUOTA])) {
++
++		/* __dquot_transfer() calls back ext4_get_inode_usage() which
++		 * counts xattr inode references.
++		 */
++		down_read(&EXT4_I(inode)->xattr_sem);
+ 		err = __dquot_transfer(inode, transfer_to);
++		up_read(&EXT4_I(inode)->xattr_sem);
+ 		dqput(transfer_to[PRJQUOTA]);
+ 		if (err)
+ 			goto out_dirty;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5ac76e8d4013..1fec35bd4084 100644
+index d501f8256dc4..5ac76e8d4013 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -1336,7 +1336,7 @@ enum {
- 	Opt_inode_readahead_blks, Opt_journal_ioprio,
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
--	Opt_max_dir_size_kb, Opt_nojournal_checksum,
-+	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+@@ -1263,16 +1263,17 @@ static struct dquot **ext4_get_dquots(struct inode *inode)
+ }
+ 
+ static const struct dquot_operations ext4_quota_operations = {
+-	.get_reserved_space = ext4_get_reserved_space,
+-	.write_dquot	= ext4_write_dquot,
+-	.acquire_dquot	= ext4_acquire_dquot,
+-	.release_dquot	= ext4_release_dquot,
+-	.mark_dirty	= ext4_mark_dquot_dirty,
+-	.write_info	= ext4_write_info,
+-	.alloc_dquot	= dquot_alloc,
+-	.destroy_dquot	= dquot_destroy,
+-	.get_projid	= ext4_get_projid,
+-	.get_next_id	= ext4_get_next_id,
++	.get_reserved_space	= ext4_get_reserved_space,
++	.write_dquot		= ext4_write_dquot,
++	.acquire_dquot		= ext4_acquire_dquot,
++	.release_dquot		= ext4_release_dquot,
++	.mark_dirty		= ext4_mark_dquot_dirty,
++	.write_info		= ext4_write_info,
++	.alloc_dquot		= dquot_alloc,
++	.destroy_dquot		= dquot_destroy,
++	.get_projid		= ext4_get_projid,
++	.get_inode_usage	= ext4_get_inode_usage,
++	.get_next_id		= ext4_get_next_id,
  };
  
- static const match_table_t tokens = {
-@@ -1419,6 +1419,8 @@ static const match_table_t tokens = {
- 	{Opt_noinit_itable, "noinit_itable"},
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
- 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
-+	{Opt_nombcache, "nombcache"},
-+	{Opt_nombcache, "no_mbcache"},	/* for backward compatibility */
- 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
- 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
- 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
-@@ -1626,6 +1628,7 @@ static const struct mount_opts {
- 	{Opt_jqfmt_vfsv1, QFMT_VFS_V1, MOPT_QFMT},
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
- 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
-+	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -4080,19 +4083,22 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
- 
- no_journal:
--	sbi->s_ea_block_cache = ext4_xattr_create_cache();
--	if (!sbi->s_ea_block_cache) {
--		ext4_msg(sb, KERN_ERR, "Failed to create ea_block_cache");
--		goto failed_mount_wq;
--	}
--
--	if (ext4_has_feature_ea_inode(sb)) {
--		sbi->s_ea_inode_cache = ext4_xattr_create_cache();
--		if (!sbi->s_ea_inode_cache) {
-+	if (!test_opt(sb, NO_MBCACHE)) {
-+		sbi->s_ea_block_cache = ext4_xattr_create_cache();
-+		if (!sbi->s_ea_block_cache) {
- 			ext4_msg(sb, KERN_ERR,
--				 "Failed to create ea_inode_cache");
-+				 "Failed to create ea_block_cache");
- 			goto failed_mount_wq;
- 		}
-+
-+		if (ext4_has_feature_ea_inode(sb)) {
-+			sbi->s_ea_inode_cache = ext4_xattr_create_cache();
-+			if (!sbi->s_ea_inode_cache) {
-+				ext4_msg(sb, KERN_ERR,
-+					 "Failed to create ea_inode_cache");
-+				goto failed_mount_wq;
-+			}
-+		}
- 	}
- 
- 	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
-@@ -4989,6 +4995,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		}
- 	}
- 
-+	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_NO_MBCACHE) {
-+		ext4_msg(sb, KERN_ERR, "can't enable nombcache during remount");
-+		err = -EINVAL;
-+		goto restore_opts;
-+	}
-+
- 	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX) {
- 		ext4_msg(sb, KERN_WARNING, "warning: refusing change of "
- 			"dax flag with busy inodes while remounting");
+ static const struct quotactl_ops ext4_qctl_operations = {
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 3f16dc979012..ce12c3fb7e59 100644
+index 15c9f736dcc4..a3f8bf4558f3 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -976,10 +976,13 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 			set_nlink(ea_inode, 1);
- 			ext4_orphan_del(handle, ea_inode);
- 
--			hash = ext4_xattr_inode_get_hash(ea_inode);
--			mb_cache_entry_create(ea_inode_cache, GFP_NOFS, hash,
--					      ea_inode->i_ino,
--					      true /* reusable */);
-+			if (ea_inode_cache) {
-+				hash = ext4_xattr_inode_get_hash(ea_inode);
-+				mb_cache_entry_create(ea_inode_cache,
-+						      GFP_NOFS, hash,
-+						      ea_inode->i_ino,
-+						      true /* reusable */);
-+			}
- 		}
- 	} else {
- 		WARN_ONCE(ref_count < 0, "EA inode %lu ref_count=%lld",
-@@ -993,9 +996,11 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 			clear_nlink(ea_inode);
- 			ext4_orphan_add(handle, ea_inode);
- 
--			hash = ext4_xattr_inode_get_hash(ea_inode);
--			mb_cache_entry_delete(ea_inode_cache, hash,
--					      ea_inode->i_ino);
-+			if (ea_inode_cache) {
-+				hash = ext4_xattr_inode_get_hash(ea_inode);
-+				mb_cache_entry_delete(ea_inode_cache, hash,
-+						      ea_inode->i_ino);
-+			}
- 		}
+@@ -733,6 +733,60 @@ static void ext4_xattr_update_super_block(handle_t *handle,
  	}
+ }
  
-@@ -1179,7 +1184,9 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 		 * This must happen under buffer lock for
- 		 * ext4_xattr_block_set() to reliably detect freed block
- 		 */
--		mb_cache_entry_delete(ea_block_cache, hash, bh->b_blocknr);
-+		if (ea_block_cache)
-+			mb_cache_entry_delete(ea_block_cache, hash,
-+					      bh->b_blocknr);
- 		get_bh(bh);
- 		unlock_buffer(bh);
- 
-@@ -1199,11 +1206,13 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 		if (ref == EXT4_XATTR_REFCOUNT_MAX - 1) {
- 			struct mb_cache_entry *ce;
- 
--			ce = mb_cache_entry_get(ea_block_cache, hash,
--						bh->b_blocknr);
--			if (ce) {
--				ce->e_reusable = 1;
--				mb_cache_entry_put(ea_block_cache, ce);
-+			if (ea_block_cache) {
-+				ce = mb_cache_entry_get(ea_block_cache, hash,
-+							bh->b_blocknr);
-+				if (ce) {
-+					ce->e_reusable = 1;
-+					mb_cache_entry_put(ea_block_cache, ce);
-+				}
- 			}
- 		}
- 
-@@ -1382,6 +1391,9 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(inode);
- 	void *ea_data;
- 
-+	if (!ea_inode_cache)
-+		return NULL;
++int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
++{
++	struct ext4_iloc iloc = { .bh = NULL };
++	struct buffer_head *bh = NULL;
++	struct ext4_inode *raw_inode;
++	struct ext4_xattr_ibody_header *header;
++	struct ext4_xattr_entry *entry;
++	qsize_t ea_inode_refs = 0;
++	void *end;
++	int ret;
 +
- 	ce = mb_cache_entry_find_first(ea_inode_cache, hash);
- 	if (!ce)
- 		return NULL;
-@@ -1452,8 +1464,9 @@ static int ext4_xattr_inode_lookup_create(handle_t *handle, struct inode *inode,
- 		return err;
- 	}
++	lockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);
++
++	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
++		ret = ext4_get_inode_loc(inode, &iloc);
++		if (ret)
++			goto out;
++		raw_inode = ext4_raw_inode(&iloc);
++		header = IHDR(inode, raw_inode);
++		end = (void *)raw_inode + EXT4_SB(inode->i_sb)->s_inode_size;
++		ret = xattr_check_inode(inode, header, end);
++		if (ret)
++			goto out;
++
++		for (entry = IFIRST(header); !IS_LAST_ENTRY(entry);
++		     entry = EXT4_XATTR_NEXT(entry))
++			if (entry->e_value_inum)
++				ea_inode_refs++;
++	}
++
++	if (EXT4_I(inode)->i_file_acl) {
++		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++		if (!bh) {
++			ret = -EIO;
++			goto out;
++		}
++
++		if (ext4_xattr_check_block(inode, bh)) {
++			ret = -EFSCORRUPTED;
++			goto out;
++		}
++
++		for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
++		     entry = EXT4_XATTR_NEXT(entry))
++			if (entry->e_value_inum)
++				ea_inode_refs++;
++	}
++	*usage = ea_inode_refs + 1;
++out:
++	brelse(iloc.bh);
++	brelse(bh);
++	return ret;
++}
++
+ static inline size_t round_up_cluster(struct inode *inode, size_t length)
+ {
+ 	struct super_block *sb = inode->i_sb;
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 67616cb9a059..26119a67c8c3 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -193,3 +193,5 @@ extern void ext4_xattr_inode_set_class(struct inode *ea_inode);
+ #else
+ static inline void ext4_xattr_inode_set_class(struct inode *ea_inode) { }
+ #endif
++
++extern int ext4_get_inode_usage(struct inode *inode, qsize_t *usage);
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 48813aeaab80..53a17496c5c5 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1910,6 +1910,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ {
+ 	qsize_t space, cur_space;
+ 	qsize_t rsv_space = 0;
++	qsize_t inode_usage = 1;
+ 	struct dquot *transfer_from[MAXQUOTAS] = {};
+ 	int cnt, ret = 0;
+ 	char is_valid[MAXQUOTAS] = {};
+@@ -1919,6 +1920,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
  
--	mb_cache_entry_create(EA_INODE_CACHE(inode), GFP_NOFS, hash,
--			      ea_inode->i_ino, true /* reusable */);
-+	if (EA_INODE_CACHE(inode))
-+		mb_cache_entry_create(EA_INODE_CACHE(inode), GFP_NOFS, hash,
-+				      ea_inode->i_ino, true /* reusable */);
+ 	if (IS_NOQUOTA(inode))
+ 		return 0;
++
++	if (inode->i_sb->dq_op->get_inode_usage) {
++		ret = inode->i_sb->dq_op->get_inode_usage(inode, &inode_usage);
++		if (ret)
++			return ret;
++	}
++
+ 	/* Initialize the arrays */
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		warn_to[cnt].w_type = QUOTA_NL_NOWARN;
+@@ -1946,7 +1954,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 			continue;
+ 		is_valid[cnt] = 1;
+ 		transfer_from[cnt] = i_dquot(inode)[cnt];
+-		ret = check_idq(transfer_to[cnt], 1, &warn_to[cnt]);
++		ret = check_idq(transfer_to[cnt], inode_usage, &warn_to[cnt]);
+ 		if (ret)
+ 			goto over_quota;
+ 		ret = check_bdq(transfer_to[cnt], space, 0, &warn_to[cnt]);
+@@ -1963,7 +1971,7 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 		/* Due to IO error we might not have transfer_from[] structure */
+ 		if (transfer_from[cnt]) {
+ 			int wtype;
+-			wtype = info_idq_free(transfer_from[cnt], 1);
++			wtype = info_idq_free(transfer_from[cnt], inode_usage);
+ 			if (wtype != QUOTA_NL_NOWARN)
+ 				prepare_warning(&warn_from_inodes[cnt],
+ 						transfer_from[cnt], wtype);
+@@ -1971,13 +1979,13 @@ int __dquot_transfer(struct inode *inode, struct dquot **transfer_to)
+ 			if (wtype != QUOTA_NL_NOWARN)
+ 				prepare_warning(&warn_from_space[cnt],
+ 						transfer_from[cnt], wtype);
+-			dquot_decr_inodes(transfer_from[cnt], 1);
++			dquot_decr_inodes(transfer_from[cnt], inode_usage);
+ 			dquot_decr_space(transfer_from[cnt], cur_space);
+ 			dquot_free_reserved_space(transfer_from[cnt],
+ 						  rsv_space);
+ 		}
  
- 	*ret_inode = ea_inode;
- 	return 0;
-@@ -1780,8 +1793,9 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			 * ext4_xattr_block_set() to reliably detect modified
- 			 * block
- 			 */
--			mb_cache_entry_delete(ea_block_cache, hash,
--					      bs->bh->b_blocknr);
-+			if (ea_block_cache)
-+				mb_cache_entry_delete(ea_block_cache, hash,
-+						      bs->bh->b_blocknr);
- 			ea_bdebug(bs->bh, "modifying in-place");
- 			error = ext4_xattr_set_entry(i, s, handle, inode,
- 						     true /* is_block */);
-@@ -2870,6 +2884,8 @@ ext4_xattr_block_cache_insert(struct mb_cache *ea_block_cache,
- 		       EXT4_XATTR_REFCOUNT_MAX;
- 	int error;
+-		dquot_incr_inodes(transfer_to[cnt], 1);
++		dquot_incr_inodes(transfer_to[cnt], inode_usage);
+ 		dquot_incr_space(transfer_to[cnt], cur_space);
+ 		dquot_resv_space(transfer_to[cnt], rsv_space);
  
-+	if (!ea_block_cache)
-+		return;
- 	error = mb_cache_entry_create(ea_block_cache, GFP_NOFS, hash,
- 				      bh->b_blocknr, reusable);
- 	if (error) {
-@@ -2936,6 +2952,8 @@ ext4_xattr_block_cache_find(struct inode *inode,
- 	struct mb_cache_entry *ce;
- 	struct mb_cache *ea_block_cache = EA_BLOCK_CACHE(inode);
- 
-+	if (!ea_block_cache)
-+		return NULL;
- 	if (!header->h_hash)
- 		return NULL;  /* never share */
- 	ea_idebug(inode, "looking for cached blocks [%x]", (int)hash);
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index 3434eef2a5aa..bfd077ca6ac3 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -332,6 +332,8 @@ struct dquot_operations {
+ 	 * quota code only */
+ 	qsize_t *(*get_reserved_space) (struct inode *);
+ 	int (*get_projid) (struct inode *, kprojid_t *);/* Get project ID */
++	/* Get number of inodes that were charged for a given inode */
++	int (*get_inode_usage) (struct inode *, qsize_t *);
+ 	/* Get next ID with active quota structure */
+ 	int (*get_next_id) (struct super_block *sb, struct kqid *qid);
+ };
 -- 
 2.13.1.611.g7e3b11ae1-goog
