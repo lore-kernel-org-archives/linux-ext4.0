@@ -1,10 +1,9 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 30/32] ext4: eliminate xattr entry e_hash recalculation
- for removes
-Date: Thu, 22 Jun 2017 11:52:36 -0400
-Message-ID: <20170622155236.ncjwgdhlhwd5mssg@thunk.org>
+Subject: Re: [PATCH 31/32] ext4: strong binding of xattr inode references
+Date: Thu, 22 Jun 2017 11:54:24 -0400
+Message-ID: <20170622155424.jj6c3fglp3vehddq@thunk.org>
 References: <20170622014939.3592-1-tahsin@google.com>
- <20170622014939.3592-7-tahsin@google.com>
+ <20170622014939.3592-8-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@dilger.ca>,
@@ -12,32 +11,23 @@ Cc: Andreas Dilger <adilger@dilger.ca>,
         Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
 To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60672 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751927AbdFVPwo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Jun 2017 11:52:44 -0400
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170622014939.3592-7-tahsin@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170622014939.3592-8-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 21, 2017 at 06:49:37PM -0700, Tahsin Erdogan wrote:
-> When an extended attribute block is modified, ext4_xattr_hash_entry()
-> recalculates e_hash for the entry that is pointed by s->here. This is
-> unnecessary if the modification is to remove an entry.
+On Wed, Jun 21, 2017 at 06:49:38PM -0700, Tahsin Erdogan wrote:
+> To verify that a xattr entry is not pointing to the wrong xattr inode,
+> we currently check that the target inode has EXT4_EA_INODE_FL flag set and
+> also the entry size matches the target inode size.
 > 
-> Currently, if the removed entry is the last one and there are other
-> entries remaining, hash calculation targets the just erased entry which
-> has been filled with zeroes and effectively does nothing. If the removed
-> entry is not the last one and there are more entries, this time it will
-> recalculate hash on the next entry which is totally unnecessary.
-> 
-> Fix these by moving the decision on when to recalculate hash to
-> ext4_xattr_set_entry().
+> For stronger validation, also incorporate crc32c hash of the value into
+> the e_hash field. This is done regardless of whether the entry lives in
+> the inode body or external attribute block.
 > 
 > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Thanks, applied.
+Added to the ext4 patch queue, thanks.
 
 					- Ted
