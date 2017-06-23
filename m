@@ -1,48 +1,51 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] test-appliance: add new test configuration:
- ext4/lustre_mds
-Date: Fri, 23 Jun 2017 19:08:19 -0400
-Message-ID: <20170623230819.r5j63cmdb5aafdc2@thunk.org>
-References: <20170609035943.26447-1-tytso@mit.edu>
- <CAO3qy=EVQtVVe2hvEvaYOTyArPpK7U6AYA9abu6Zum-p_sWqpg@mail.gmail.com>
- <20170609175910.shwqocbi3npfmoid@thunk.org>
- <087C00FA-AF13-498F-8D6A-B67A115D8DCE@dilger.ca>
- <20170623214109.3kwtxj3owi4noxda@thunk.org>
- <3625058A-4B6D-4C28-B231-61DFED33F0B4@dilger.ca>
+Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
+Date: Fri, 23 Jun 2017 19:26:16 -0400
+Message-ID: <20170623232616.r3ffksjntjfbrzgb@thunk.org>
+References: <20170622232307.48392-1-khazhy@google.com>
+ <20170623044314.7f23ighkelnpgnah@thunk.org>
+ <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca>
+ <20170623122603.jmvyw4oqkojcapv3@thunk.org>
+ <C37CE24B-A6E7-4B65-B0C4-4965B3C45007@dilger.ca>
+ <CACGdZYJb4ouFMORaMTM5KubJv_SFpms35fXrTdAK0kxsa7-5Cg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>, G@thunk.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38462 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752075AbdFWXIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Jun 2017 19:08:22 -0400
+Cc: Andreas Dilger <adilger@dilger.ca>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Khazhismel Kumykov <khazhy@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <3625058A-4B6D-4C28-B231-61DFED33F0B4@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CACGdZYJb4ouFMORaMTM5KubJv_SFpms35fXrTdAK0kxsa7-5Cg@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 23, 2017 at 04:00:05PM -0600, Andreas Dilger wrote:
-> > Are you really using large_dir on a file system that is using indirect
-> > block mapped files?
+On Fri, Jun 23, 2017 at 03:33:46PM -0700, Khazhismel Kumykov wrote:
 > 
-> Like I wrote above, we haven't been using large_dir in production yet.
-> My plan was only to use it on the MDT, which is where the filesystem
-> namespace is located.  Indeed, we don't use extents on the MDT because:
-> a) ext4 MDTs are strictly less than 16TB in size (usually < 8TB, even with
->    4B inodes) because of using "-I 2048" to limit the space per inode,
->    so they never need more than 2^32 blocks
-> b) the only files of any size on the MDT are directories or other log
->    files, which are rarely created with contiguous block allocations,
->    so extents usually take more space than indirect blocks (12 bytes vs 4).
+> Giving up early or checking future blocks both work, critical thing
+> here is not returning NULL after seeing a read error.
+> Previously to this the behavior was to continue to check future blocks
+> after a read error, and it seemed OK.
 
-OK, I'll try adding large_dir to the luster_mds configuration.  I'm
-not sure we're actually going to end up creating a directory with 3
-levels of htree nodes, though.  In order to force that we'll probably
-need to create a new ext4-specific htree stress tester which creates a
-large number of filenames that very long, preferably while using a 1k
-block file system.
+Whether or not it is OK probably depends on how big the directory is.
+If we need to suffer through N long error retries, whether it is
+caused by long SCSI error retries, or long iSCSI error retries, sooner
+or later it's going to be problematic if the process which is taking
+forever to search through the whole directory has a some kind health
+monitoring service or other watchdog timer.
+
+Still, I agree that there will be some cases where instead of "Fast
+fail", having the file server try as hard as possible fetch the file
+from the failing disk is worthwhile.  I tend to be focused on the
+cluster file system case where if it's going to several hundred
+milliseconds to fetch the file, you're better off getting it from the
+one other replicated copies from another server, or start the
+reed-solomon reconstruction from.  However, if you have an
+architecture where the only copy of the file is on the particular file
+server (perhaps because you are depending on RAID instead of n=3
+replication or reed-solomon erasure codes), having the file server try
+as hard as possible to find the file is a good thing.
+
+I wonder if the right answer is to have "fastfail" and "nofastfail"
+mount option.
 
 					- Ted
