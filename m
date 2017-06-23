@@ -1,32 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix off-by-one fsmap error on 1k block filesystems
-Date: Fri, 23 Jun 2017 01:01:31 -0400
-Message-ID: <20170623050131.2feyc7daq7adwtat@thunk.org>
-References: <20170621182940.GB4728@birch.djwong.org>
+Subject: Re: [PATCH] ext4: check return value of kstrtoull correctly in
+ reserved_clusters_store
+Date: Fri, 23 Jun 2017 01:09:39 -0400
+Message-ID: <20170623050937.v2c44cyp3i7mtpnv@thunk.org>
+References: <20170615095730.36627-1-yuchao0@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, chao@kernel.org,
+        Miao Xie <miaoxie@huawei.com>
+To: Chao Yu <yuchao0@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34860 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:34888 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751409AbdFWFBe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Jun 2017 01:01:34 -0400
+        id S1754504AbdFWFJu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Jun 2017 01:09:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20170621182940.GB4728@birch.djwong.org>
+In-Reply-To: <20170615095730.36627-1-yuchao0@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 21, 2017 at 11:29:40AM -0700, Darrick J. Wong wrote:
-> For 1k-block filesystems, the filesystem starts at block 1, not block 0.
-> This fact is recorded in s_first_data_block, so use that to bump up the
-> start_fsb before we start querying the filesystem for its space map.
-> Without this, ext4/026 fails on 1k block ext4 because various functions
-> (notably ext4_get_group_no_and_offset) don't know what to do with an
-> fsblock that is "before" the start of the filesystem and return garbage
-> results (blockgroup 2^32-1, etc.) that confuse fsmap.
+On Thu, Jun 15, 2017 at 05:57:30PM +0800, Chao Yu wrote:
+> kstrtoull returns 0 on success, however, in reserved_clusters_store we
+> will return -EINVAL if kstrtoull returns 0, it makes us fail to update
+> reserved_clusters value through sysfs.
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Signed-off-by: Chao Yu <yuchao0@huawei.com>
+> Signed-off-by: Miao Xie <miaoxie@huawei.com>
 
 Thanks, applied.
 
