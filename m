@@ -1,21 +1,35 @@
-From: "CELINE" <vendce@bolaget.fr>
-Subject: let me know
-Date: Wed, 21 Jun 2017 14:58:15 +0100
-Message-ID: <201706211358.v5LDf0uS028510@www.brfliseberg.se>
-Reply-To: celineroullier200@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <vendce@bolaget.fr>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.brfliseberg.se ([213.242.162.1]:37180 "EHLO
-        www.brfliseberg.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754277AbdFWFt6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jun 2017 01:49:58 -0400
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
+Date: Fri, 23 Jun 2017 00:33:02 -0600
+Message-ID: <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca>
+References: <20170622232307.48392-1-khazhy@google.com> <20170623044314.7f23ighkelnpgnah@thunk.org>
+Mime-Version: 1.0 (1.0)
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Cc: Khazhismel Kumykov <khazhy@google.com>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170623044314.7f23ighkelnpgnah@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello, important charity foundation proposal to discuss with you, if you are interested please reply urgently for details. 
-with love,
-CELINE
+On Jun 22, 2017, at 22:43, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+>> On Thu, Jun 22, 2017 at 04:23:07PM -0700, Khazhismel Kumykov wrote:
+>> Previously, a read error would be ignored and we would eventually return
+>> NULL from ext4_find_entry, which signals "no such file or directory". We
+>> should be returning EIO.
+>>=20
+>> Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
+>=20
+> Thanks, applied.
+
+I don't necessarily agree that this is an improvement.=20
+
+If the requested entry is not in the bad block, this will return an error ev=
+en if the file name could be found in another block. It would be better to s=
+ave the error until the end and only return -EIO if the entry cannot be foun=
+d.=20
+
+Cheers, Andreas=
