@@ -1,50 +1,41 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH -v2] mke2fs: fix hugefile creation so the hugefile(s) are
- contiguous
-Date: Fri, 23 Jun 2017 12:19:25 -0700
-Message-ID: <20170623191925.GC84943@gmail.com>
-References: <20170623000009.27984-1-tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Possible regression in e2fsprogs-1.43.4
+Date: Fri, 23 Jun 2017 15:53:18 -0400
+Message-ID: <20170623195318.cfs4ftpmy5nhcccy@thunk.org>
+References: <B2DFC17F-1CFC-410E-9449-2393D51C700B@illumenos.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, grub-devel@gnu.org
+To: Felipe A Rodriguez <far@illumenos.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f196.google.com ([209.85.192.196]:34056 "EHLO
-        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754327AbdFWTTj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jun 2017 15:19:39 -0400
-Received: by mail-pf0-f196.google.com with SMTP id d5so8690727pfe.1
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Jun 2017 12:19:39 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:37812 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754814AbdFWTxX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Jun 2017 15:53:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20170623000009.27984-1-tytso@mit.edu>
+In-Reply-To: <B2DFC17F-1CFC-410E-9449-2393D51C700B@illumenos.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
++grub-devel
 
-On Thu, Jun 22, 2017 at 08:00:09PM -0400, Theodore Ts'o wrote:
->  .I make_hugefiles
->  This boolean relation enables the creation of pre-allocated files as
-> -part of formatting the file system.
-> +part of formatting the file system.  If the file system is configured so
-> +that the block group descriptors are located at beginning file system
-> +space (by using the packed_meta_blocks option), the data blocks of the
-> +huge files will be contiguous, with the extent tree blocks allocated
-> +near the beginning of the file system space.
+On Sat, Jun 10, 2017 at 04:00:20PM +0200, Felipe A Rodriguez wrote:
+> Upgrading from e2fsprogs-1.42.13 to e2fsprogs-1.43.4 causes the boot
+> loader to fail (unknown filesystem error) on the x86_64 VM I use for
+> initial testing.  I traced the problem to changes in the e2fsprogs
+> configuration file which now sets 64 bit flags.  I tried upgrading
+> to GRUB 2.02 but that did not resolve the problem.  Reverting the
+> changes per the patch below fixes the problem.
 
-It's not quite that simple.  The presence of backup superblocks can also cause a
-discontinuity.  If I remove 'num_backup_sb = 0' from mke2fs.conf, I see:
+Hmm, my laptop has been using a file system with the 64-bit feature
+enabled for quite some time, and my Debian Stretch system has been
+using Grub 2.02 to boot my system without any difficulties.
 
-	PHYSICAL DISCONTINUITY between extents:
-		  2  2 219 220 1073545216  1073577983 1073676288  1073709055  32768 
-		  2  2 220 220 1073577984  1073610398 1073709409  1073741823  32415 
+I've done a quick check of the Debian patches and none of them seem to
+modify Grub's ext2/ext4 file system implementation.  So I don't know
+what to tell you.  Are you sure you properly reinstalled grub on the
+boot device after you upgraded to grub 2.02?
 
-Also, for packed_meta_blocks to take effect, flex_bg must be enabled.  This is
-documented in mke2fs(8) but not in mke2fs.conf(5).
+Cheers,
 
-There could be other issues as well; those are just the ones I found.
-
-Perhaps there should be an option hugefiles_contiguous which makes the mke2fs
-command fail if the hugefiles can't be allocated contiguously?
-
-Eric
+						- Ted
