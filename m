@@ -1,25 +1,70 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH][ext4-next] ext4: ensure error return ret is zero on
- successful return
-Date: Fri, 23 Jun 2017 10:04:32 -0700
-Message-ID: <CAAeU0aMtbRBN80fhPza4QS-77Mn=KAPO8STt__tq8UjtQuuk2Q@mail.gmail.com>
-References: <20170623145840.26779-1-colin.king@canonical.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 3/4] ubifs: don't bother checking for encryption key in
+ ->mmap()
+Date: Fri, 23 Jun 2017 10:18:07 -0700
+Message-ID: <20170623171807.GA84943@gmail.com>
+References: <20170523003945.14279-1-ebiggers3@gmail.com>
+ <20170523003945.14279-4-ebiggers3@gmail.com>
+ <CAFLxGvxaiWFKH5L_BwPXGuG9PxA+0BkJ1qMvaDgAeVwBw+nCoQ@mail.gmail.com>
+ <20170623160907.ppwcqehvrehjtury@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Colin King <colin.king@canonical.com>
-Return-path: <kernel-janitors-owner@vger.kernel.org>
-In-Reply-To: <20170623145840.26779-1-colin.king@canonical.com>
-Sender: kernel-janitors-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Richard Weinberger <richard.weinberger@gmail.com>,
+        linux-fscrypt@vger.kernel.org, Eric Biggers <ebiggers@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:36234 "EHLO
+        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753870AbdFWRSL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jun 2017 13:18:11 -0400
+Content-Disposition: inline
+In-Reply-To: <20170623160907.ppwcqehvrehjtury@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 23, 2017 at 7:58 AM, Colin King <colin.king@canonical.com> wrote:
-> The error return ret is not set on a successful return path and
-> so it returns a garbage value. Ensure it is is set to zero on
-> a successful return.
-Thanks for catching this bug!
+Ted + Richard,
 
-Reviewed-by: Tahsin Erdogan <tahsin@google.com>
+On Fri, Jun 23, 2017 at 12:09:07PM -0400, Theodore Ts'o wrote:
+> On Tue, May 23, 2017 at 04:14:20PM +0200, Richard Weinberger wrote:
+> > On Tue, May 23, 2017 at 2:39 AM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > > From: Eric Biggers <ebiggers@google.com>
+> > >
+> > > Since only an open file can be mmap'ed, and we only allow open()ing an
+> > > encrypted file when its key is available, there is no need to check for
+> > > the key again before permitting each mmap().
+> > >
+> > > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > 
+> > Acked-by: Richard Weinberger <richard@nod.at>
+> 
+> There are some patches that were sent to linux-fscrypt (including this
+> one) that are specific to ubifs that don't appear to be in linux-next
+> as of this writing.
+> 
+> I can include them in the fscrypt tree (which I am updating somewhat
+> belatedly; sorry, crazy travel schedule has made me be late attending
+> to fscrypt), but it probably makes more sense for the change to go in
+> via the ubifs tree.  The f2fs version of the "don't bother checking
+> for encryption key" is already in linux-next, via the f2fs tree, for
+> example.
+> 
+> So I'm planning on NOT taking the ubifs-specific patches that are in
+> the linux-fscrypto patch queue; unless Richard, you want to
+> specifically ask me to do so.
+> 
+
+The mmap and truncate patches were basically the same for each filesystem, but
+yes it's fine for them to go in separately.  Richard, can you take for ubifs:
+
+	ubifs: don't bother checking for encryption key in ->mmap()
+	ubifs: require key for truncate(2) of encrypted file
+
+and Ted can you take for ext4:
+
+	ext4: don't bother checking for encryption key in ->mmap()
+	ext4: require key for truncate(2) of encrypted file
+
+- Eric
