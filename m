@@ -1,142 +1,48 @@
-From: Khazhismel Kumykov <khazhy@google.com>
-Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
-Date: Fri, 23 Jun 2017 15:33:46 -0700
-Message-ID: <CACGdZYJb4ouFMORaMTM5KubJv_SFpms35fXrTdAK0kxsa7-5Cg@mail.gmail.com>
-References: <20170622232307.48392-1-khazhy@google.com> <20170623044314.7f23ighkelnpgnah@thunk.org>
- <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca> <20170623122603.jmvyw4oqkojcapv3@thunk.org>
- <C37CE24B-A6E7-4B65-B0C4-4965B3C45007@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] test-appliance: add new test configuration:
+ ext4/lustre_mds
+Date: Fri, 23 Jun 2017 19:08:19 -0400
+Message-ID: <20170623230819.r5j63cmdb5aafdc2@thunk.org>
+References: <20170609035943.26447-1-tytso@mit.edu>
+ <CAO3qy=EVQtVVe2hvEvaYOTyArPpK7U6AYA9abu6Zum-p_sWqpg@mail.gmail.com>
+ <20170609175910.shwqocbi3npfmoid@thunk.org>
+ <087C00FA-AF13-498F-8D6A-B67A115D8DCE@dilger.ca>
+ <20170623214109.3kwtxj3owi4noxda@thunk.org>
+ <3625058A-4B6D-4C28-B231-61DFED33F0B4@dilger.ca>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256;
-        boundary="94eb2c043d4ed9eb8f0552a831dc"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <C37CE24B-A6E7-4B65-B0C4-4965B3C45007@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Artem Blagodarenko <artem.blagodarenko@seagate.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>, G@thunk.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:38462 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752075AbdFWXIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Jun 2017 19:08:22 -0400
+Content-Disposition: inline
+In-Reply-To: <3625058A-4B6D-4C28-B231-61DFED33F0B4@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---94eb2c043d4ed9eb8f0552a831dc
-Content-Type: text/plain; charset="UTF-8"
+On Fri, Jun 23, 2017 at 04:00:05PM -0600, Andreas Dilger wrote:
+> > Are you really using large_dir on a file system that is using indirect
+> > block mapped files?
+> 
+> Like I wrote above, we haven't been using large_dir in production yet.
+> My plan was only to use it on the MDT, which is where the filesystem
+> namespace is located.  Indeed, we don't use extents on the MDT because:
+> a) ext4 MDTs are strictly less than 16TB in size (usually < 8TB, even with
+>    4B inodes) because of using "-I 2048" to limit the space per inode,
+>    so they never need more than 2^32 blocks
+> b) the only files of any size on the MDT are directories or other log
+>    files, which are rarely created with contiguous block allocations,
+>    so extents usually take more space than indirect blocks (12 bytes vs 4).
 
-On Fri, Jun 23, 2017 at 2:36 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Jun 23, 2017, at 6:26 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->>
->> The problem is that if we continue, successive reads may all take
->> seconds or minutes to fail, thus tieing up the process for a long
->> time.
->
-> Sorry, I don't understand where the seconds or minutes of delay come from?
-> Is that because of long SCSI retries in the block layer, or in the disk
-> itself, or something caused specifically because of this code?
+OK, I'll try adding large_dir to the luster_mds configuration.  I'm
+not sure we're actually going to end up creating a directory with 3
+levels of htree nodes, though.  In order to force that we'll probably
+need to create a new ext4-specific htree stress tester which creates a
+large number of filenames that very long, preferably while using a 1k
+block file system.
 
-For a networked block device we may be retrying for a while before
-giving up, although this also applies to the initial failed read.
-
->
->> By returning EIO right away, we can "fast fail".
->
-> But it seems like you don't necessarily need to fail at all?  Something like the
-> following would return an error if the entry is not found, but still search the
-> rest of the leaf blocks (if any) before giving up:
->
-
-Giving up early or checking future blocks both work, critical thing
-here is not returning NULL after seeing a read error.
-Previously to this the behavior was to continue to check future blocks
-after a read error, and it seemed OK.
-
-Khazhy
-
---94eb2c043d4ed9eb8f0552a831dc
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIIS5wYJKoZIhvcNAQcCoIIS2DCCEtQCAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGg
-ghBNMIIEXDCCA0SgAwIBAgIOSBtqDm4P/739RPqw/wcwDQYJKoZIhvcNAQELBQAwZDELMAkGA1UE
-BhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExOjA4BgNVBAMTMUdsb2JhbFNpZ24gUGVy
-c29uYWxTaWduIFBhcnRuZXJzIENBIC0gU0hBMjU2IC0gRzIwHhcNMTYwNjE1MDAwMDAwWhcNMjEw
-NjE1MDAwMDAwWjBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEiMCAG
-A1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
-AQoCggEBALR23lKtjlZW/17kthzYcMHHKFgywfc4vLIjfq42NmMWbXkNUabIgS8KX4PnIFsTlD6F
-GO2fqnsTygvYPFBSMX4OCFtJXoikP2CQlEvO7WooyE94tqmqD+w0YtyP2IB5j4KvOIeNv1Gbnnes
-BIUWLFxs1ERvYDhmk+OrvW7Vd8ZfpRJj71Rb+QQsUpkyTySaqALXnyztTDp1L5d1bABJN/bJbEU3
-Hf5FLrANmognIu+Npty6GrA6p3yKELzTsilOFmYNWg7L838NS2JbFOndl+ce89gM36CW7vyhszi6
-6LqqzJL8MsmkP53GGhf11YMP9EkmawYouMDP/PwQYhIiUO0CAwEAAaOCASIwggEeMA4GA1UdDwEB
-/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwEgYDVR0TAQH/BAgwBgEB/wIB
-ADAdBgNVHQ4EFgQUyzgSsMeZwHiSjLMhleb0JmLA4D8wHwYDVR0jBBgwFoAUJiSSix/TRK+xsBtt
-r+500ox4AAMwSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDovL2NybC5nbG9iYWxzaWduLmNvbS9ncy9n
-c3BlcnNvbmFsc2lnbnB0bnJzc2hhMmcyLmNybDBMBgNVHSAERTBDMEEGCSsGAQQBoDIBKDA0MDIG
-CCsGAQUFBwIBFiZodHRwczovL3d3dy5nbG9iYWxzaWduLmNvbS9yZXBvc2l0b3J5LzANBgkqhkiG
-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
-BQUHMAKGNGh0dHA6Ly9zZWN1cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L2dzaHZzbWltZWNhMS5j
-cnQwHQYDVR0OBBYEFHzUvJSIM43gV3UoAu3dP07Q/FuLMB8GA1UdIwQYMBaAFMs4ErDHmcB4koyz
-IZXm9CZiwOA/MEwGA1UdIARFMEMwQQYJKwYBBAGgMgEoMDQwMgYIKwYBBQUHAgEWJmh0dHBzOi8v
-d3d3Lmdsb2JhbHNpZ24uY29tL3JlcG9zaXRvcnkvMDsGA1UdHwQ0MDIwMKAuoCyGKmh0dHA6Ly9j
-cmwuZ2xvYmFsc2lnbi5jb20vZ3NodnNtaW1lY2ExLmNybDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0l
-BBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4IBAQBg7Qbu4VpOAskP0s9y
-RdGLVhfSJiiB7v2bmQ2jQ3vNdjRMlQB+7VWpI/6GI2j/pEhuDgvy7S7JMOH3081bu4ACwNndLDNq
-ngSmEAf8InveMEHDpmxWXEVdMjpuqXVWICW6d3MJITMTxWF7egIcY7xL8Qx3JSOlGtBn02mxVGU6
-1ETqDl9Nd8QYc0HsHWwBnxjThl53LaZrUMtIKQLz5DDHgsf0zn4G42iguJ+2NdctVvvIcoDRnO/H
-sNtG3VNV0qa7qzr4/AozF3LuboWTB7f5gfDi3W8USCZrSqlUzy8lb82NwVsBES7UItW8dQlf/hp+
-Cd++WeP4c6uf70pQOdNkMYICXjCCAloCAQEwXDBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xv
-YmFsU2lnbiBudi1zYTEiMCAGA1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMQIMP55JyaS9
-Y5gDDRLjMA0GCWCGSAFlAwQCAQUAoIHUMC8GCSqGSIb3DQEJBDEiBCBuDmpdZSuHcqVyOYMGKzAy
-ETuw9x12PhNUg/tbcpra8zAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEP
-Fw0xNzA2MjMyMjMzNDdaMGkGCSqGSIb3DQEJDzFcMFowCwYJYIZIAWUDBAEqMAsGCWCGSAFlAwQB
-FjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwCwYJKoZIhvcNAQEKMAsGCSqGSIb3DQEBBzALBglg
-hkgBZQMEAgEwDQYJKoZIhvcNAQEBBQAEggEAG8q/7Ne1OXN2wgRIM9yX71u73qNPLCxepcEmBr5o
-XhWXuS1+MZNOTjHU8kXMtUveV33hLSF3dgoQp9EICPjwfrkAKo3SubxcDV0XdHwqZKlnwq9n6FJM
-HArd3BLhkUt0eSzQsNBQzaxLQTTZgzwe/yeqsGBYW3kgRh1cf22MAjNxbGb8sJpJE8uuGPYIWYHI
-QKDE1OIKicslK+r5QnICs1ReWGcWz9rI6AruwnEKFmm8APA3HCTWMhsdc8TNzL3upzgLS7QSKRUU
-DmxV0mvHigZmIHWlypOOBPeruUOjgi1QITbMU30uI0KBQN9X+e0lgyKIC3RiUipZoj2aahiwnA==
---94eb2c043d4ed9eb8f0552a831dc--
+					- Ted
