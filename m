@@ -1,60 +1,49 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix reserved_clusters_store()
-Date: Fri, 23 Jun 2017 08:14:26 -0400
-Message-ID: <20170623121426.3e7sivaip6izvz5c@thunk.org>
-References: <20170623092800.eize6ayzkvngpseq@mwanda>
+Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
+Date: Fri, 23 Jun 2017 08:26:03 -0400
+Message-ID: <20170623122603.jmvyw4oqkojcapv3@thunk.org>
+References: <20170622232307.48392-1-khazhy@google.com>
+ <20170623044314.7f23ighkelnpgnah@thunk.org>
+ <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36166 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751282AbdFWMO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Jun 2017 08:14:29 -0400
+Cc: Khazhismel Kumykov <khazhy@google.com>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170623092800.eize6ayzkvngpseq@mwanda>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 23, 2017 at 12:28:00PM +0300, Dan Carpenter wrote:
-> The test if kstrtoull() failed is reversed so we can't set cluster_store
-> any more.
+On Fri, Jun 23, 2017 at 12:33:02AM -0600, Andreas Dilger wrote:
+> On Jun 22, 2017, at 22:43, Theodore Ts'o <tytso@mit.edu> wrote:
+> > 
+> >> On Thu, Jun 22, 2017 at 04:23:07PM -0700, Khazhismel Kumykov wrote:
+> >> Previously, a read error would be ignored and we would eventually return
+> >> NULL from ext4_find_entry, which signals "no such file or directory". We
+> >> should be returning EIO.
+> >> 
+> >> Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
+> > 
+> > Thanks, applied.
 > 
-> Fixes: 76d33bca5581 ("ext4: refactor sysfs support code")
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> I don't necessarily agree that this is an improvement. 
+> 
+> If the requested entry is not in the bad block, this will return an
+> error even if the file name could be found in another block. It
+> would be better to save the error until the end and only return -EIO
+> if the entry cannot be found.
 
-Thanks, this should already be fixed in the ext4.git tree.
+The problem is that if we continue, successive reads may all take
+seconds or minutes to fail, thus tieing up the process for a long
+time.  If this process happens to be, say, the node's Kubernetes
+management server it can take down the entire node (since if there is
+a watchdog daemon which assumes that if the management server is down,
+it's time to kill and reset the entire node), and the file system is,
+say, a network file system error which should only kill the individual
+job, and not the entire node, the results could be quite unfortunate.
 
-	     	    	       	     	- Ted
-			
-commit f5b877c913026b9c5d4d1ac2916eff46c49b37a0
-Author: Chao Yu <yuchao0@huawei.com>
-Date:   Fri Jun 23 01:08:22 2017 -0400
+By returning EIO right away, we can "fast fail".
 
-    ext4: check return value of kstrtoull correctly in reserved_clusters_store
-    
-    kstrtoull returns 0 on success, however, in reserved_clusters_store we
-    will return -EINVAL if kstrtoull returns 0, it makes us fail to update
-    reserved_clusters value through sysfs.
-    
-    Fixes: 76d33bca5581b1dd5c3157fa168db849a784ada4
-    Cc: stable@vger.kernel.org # 4.4
-    Signed-off-by: Chao Yu <yuchao0@huawei.com>
-    Signed-off-by: Miao Xie <miaoxie@huawei.com>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index d74dc5f81a04..48c7a7d55ed3 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -100,7 +100,7 @@ static ssize_t reserved_clusters_store(struct ext4_attr *a,
- 	int ret;
- 
- 	ret = kstrtoull(skip_spaces(buf), 0, &val);
--	if (!ret || val >= clusters)
-+	if (ret || val >= clusters)
- 		return -EINVAL;
- 
- 	atomic64_set(&sbi->s_resv_clusters, val);
+   	     	       	     	    - Ted
