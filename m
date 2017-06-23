@@ -1,43 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] ext4: don't bother checking for
- encryption key in ->mmap()
-Date: Fri, 23 Jun 2017 19:46:27 -0400
-Message-ID: <20170623234627.ok4ge3lldrieknq4@thunk.org>
-References: <20170523003945.14279-1-ebiggers3@gmail.com>
-	<20170523003945.14279-2-ebiggers3@gmail.com>
+Subject: Re: [PATCH 1/3] ext4: require key for truncate(2) of encrypted file
+Date: Fri, 23 Jun 2017 19:52:54 -0400
+Message-ID: <20170623235254.l5wyukjiy2mdms3m@thunk.org>
+References: <20170613234755.111167-1-ebiggers3@gmail.com>
+ <20170613234755.111167-2-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net,
-	linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
-	Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
 To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170523003945.14279-2-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+In-Reply-To: <20170613234755.111167-2-ebiggers3@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 22, 2017 at 05:39:42PM -0700, Eric Biggers wrote:
+On Tue, Jun 13, 2017 at 04:47:53PM -0700, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> Since only an open file can be mmap'ed, and we only allow open()ing an
-> encrypted file when its key is available, there is no need to check for
-> the key again before permitting each mmap().
+> Currently, filesystems allow truncate(2) on an encrypted file without
+> the encryption key.  However, it's impossible to correctly handle the
+> case where the size being truncated to is not a multiple of the
+> filesystem block size, because that would require decrypting the final
+> block, zeroing the part beyond i_size, then encrypting the block.
+> 
+> As other modifications to encrypted file contents are prohibited without
+> the key, just prohibit truncate(2) as well, making it fail with ENOKEY.
 > 
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
 
 Thanks, applied.
 
 					- Ted
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
