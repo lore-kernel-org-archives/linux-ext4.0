@@ -1,144 +1,297 @@
-From: Khazhismel Kumykov <khazhy@google.com>
-Subject: [PATCH] ext4: Return EIO on read error in ext4_find_entry
-Date: Thu, 22 Jun 2017 16:23:07 -0700
-Message-ID: <20170622232307.48392-1-khazhy@google.com>
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256;
-        boundary="94eb2c18aabcaf84ff055294c78e"
-Cc: Khazhismel Kumykov <khazhy@google.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] mke2fs: fix hugefile creation so the hugefile(s) are contiguous
+Date: Thu, 22 Jun 2017 20:00:09 -0400
+Message-ID: <20170623000009.27984-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f45.google.com ([74.125.83.45]:34141 "EHLO
-        mail-pg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752714AbdFVXYC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jun 2017 19:24:02 -0400
-Received: by mail-pg0-f45.google.com with SMTP id e187so13949348pgc.1
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Jun 2017 16:24:02 -0700 (PDT)
+Received: from imap.thunk.org ([74.207.234.97]:34224 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753877AbdFWAAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Jun 2017 20:00:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---94eb2c18aabcaf84ff055294c78e
+Commit 4f868703f6f2: "libext2fs: use fallocate for creating journals
+and hugefiles" introduced a regression for the mke2fs hugefile
+feature.  The problem is that the fallocate library function
+intersperses the extent tree metadata blocks with the data blocks, and
+this violates the hugefile guarantee that the created files should be
+physically contiguous on disk.
 
-Previously, a read error would be ignored and we would eventually return
-NULL from ext4_find_entry, which signals "no such file or directory". We
-should be returning EIO.
+Unfortuantely the m_hugefile regression test was flawed, and didn't
+pick up the regression.
 
-Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
+This commit fixes the regression test so that it detects the problem
+before fixing mke2fs, and also fixes the mke2fs hugefile by reverting
+the mke2fs hugefile portion of commit 4f868703f6f2.
+
+Google-Bug-Id: 62791459
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/namei.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ misc/mk_hugefiles.c     | 107 ++++++++++++++++++++++++++++++++++++++++++------
+ misc/mke2fs.conf.5.in   |   6 ++-
+ tests/m_hugefile/expect |  23 ++---------
+ tests/m_hugefile/script |  52 ++++++++++++++++++++++-
+ 4 files changed, 152 insertions(+), 36 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 404256caf9cf..6fa17e9f7b6d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1428,11 +1428,11 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
- 			goto next;
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
--			/* read error, skip block & hope for the best */
- 			EXT4_ERROR_INODE(dir, "reading directory lblock %lu",
- 					 (unsigned long) block);
- 			brelse(bh);
--			goto next;
-+			ret = ERR_PTR(-EIO);
-+			goto cleanup_and_exit;
- 		}
- 		if (!buffer_verified(bh) &&
- 		    !is_dx_internal_node(dir, block,
+diff --git a/misc/mk_hugefiles.c b/misc/mk_hugefiles.c
+index 5882394d..f34fa411 100644
+--- a/misc/mk_hugefiles.c
++++ b/misc/mk_hugefiles.c
+@@ -262,8 +262,12 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
+ 
+ {
+ 	errcode_t		retval;
++	blk64_t			lblk, bend = 0;
++	__u64			size;
++	blk64_t			left;
++	blk64_t			count = 0;
+ 	struct ext2_inode	inode;
+-	int			falloc_flags;
++	ext2_extent_handle_t	handle;
+ 
+ 	retval = ext2fs_new_inode(fs, 0, LINUX_S_IFREG, NULL, ino);
+ 	if (retval)
+@@ -283,20 +287,93 @@ static errcode_t mk_hugefile(ext2_filsys fs, blk64_t num,
+ 
+ 	ext2fs_inode_alloc_stats2(fs, *ino, +1, 0);
+ 
+-	if (ext2fs_has_feature_extents(fs->super))
+-		inode.i_flags |= EXT4_EXTENTS_FL;
+-
+-	falloc_flags = EXT2_FALLOCATE_FORCE_INIT;
+-	if (zero_hugefile)
+-		falloc_flags |= EXT2_FALLOCATE_ZERO_BLOCKS;
+-	retval = ext2fs_fallocate(fs, falloc_flags, *ino, &inode, goal, 0, num);
++	retval = ext2fs_extent_open2(fs, *ino, &inode, &handle);
+ 	if (retval)
+ 		return retval;
+-	retval = ext2fs_inode_size_set(fs, &inode, num * fs->blocksize);
++
++	/*
++	 * We don't use ext2fs_fallocate() here because hugefiles are
++	 * designed to be physically contiguous (if the block group
++	 * descriptors are configured to be in a single block at the
++	 * beginning of the file system, by using the
++	 * packed_meta_blocks layout), with the extent tree blocks
++	 * allocated near the beginning of the file system.
++	 */
++	lblk = 0;
++	left = num ? num : 1;
++	while (left) {
++		blk64_t pblk, end;
++		blk64_t n = left;
++
++		retval =  ext2fs_find_first_zero_block_bitmap2(fs->block_map,
++			goal, ext2fs_blocks_count(fs->super) - 1, &end);
++		if (retval)
++			goto errout;
++		goal = end;
++
++		retval =  ext2fs_find_first_set_block_bitmap2(fs->block_map, goal,
++			       ext2fs_blocks_count(fs->super) - 1, &bend);
++		if (retval == ENOENT) {
++			bend = ext2fs_blocks_count(fs->super);
++			if (num == 0)
++				left = 0;
++		}
++		if (!num || bend - goal < left)
++			n = bend - goal;
++		pblk = goal;
++		if (num)
++			left -= n;
++		goal += n;
++		count += n;
++		ext2fs_block_alloc_stats_range(fs, pblk, n, +1);
++
++		if (zero_hugefile) {
++			blk64_t ret_blk;
++			retval = ext2fs_zero_blocks2(fs, pblk, n,
++						     &ret_blk, NULL);
++
++			if (retval)
++				com_err(program_name, retval,
++					_("while zeroing block %llu "
++					  "for hugefile"), ret_blk);
++		}
++
++		while (n) {
++			blk64_t l = n;
++			struct ext2fs_extent newextent;
++
++			if (l > EXT_INIT_MAX_LEN)
++				l = EXT_INIT_MAX_LEN;
++
++			newextent.e_len = l;
++			newextent.e_pblk = pblk;
++			newextent.e_lblk = lblk;
++			newextent.e_flags = 0;
++
++			retval = ext2fs_extent_insert(handle,
++					EXT2_EXTENT_INSERT_AFTER, &newextent);
++			if (retval)
++				return retval;
++			pblk += l;
++			lblk += l;
++			n -= l;
++		}
++	}
++
++	retval = ext2fs_read_inode(fs, *ino, &inode);
+ 	if (retval)
+-		return retval;
++		goto errout;
+ 
+-	retval = ext2fs_write_inode(fs, *ino, &inode);
++	retval = ext2fs_iblk_add_blocks(fs, &inode,
++					count / EXT2FS_CLUSTER_RATIO(fs));
++	if (retval)
++		goto errout;
++	size = (__u64) count * fs->blocksize;
++	retval = ext2fs_inode_size_set(fs, &inode, size);
++	if (retval)
++		goto errout;
++
++	retval = ext2fs_write_new_inode(fs, *ino, &inode);
+ 	if (retval)
+ 		goto errout;
+ 
+@@ -314,7 +391,13 @@ retry:
+ 		goto retry;
+ 	}
+ 
++	if (retval)
++		goto errout;
++
+ errout:
++	if (handle)
++		ext2fs_extent_free(handle);
++
+ 	return retval;
+ }
+ 
+@@ -499,8 +582,6 @@ errcode_t mk_hugefiles(ext2_filsys fs, const char *device_name)
+ 			printf(_("with %llu blocks each"), num_blocks);
+ 		fputs(": ", stdout);
+ 	}
+-	if (num_blocks == 0)
+-		num_blocks = ext2fs_blocks_count(fs->super) - goal;
+ 	for (i=0; i < num_files; i++) {
+ 		ext2_ino_t ino;
+ 
+diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
+index 1ce0f5eb..da105d6b 100644
+--- a/misc/mke2fs.conf.5.in
++++ b/misc/mke2fs.conf.5.in
+@@ -441,7 +441,11 @@ command line option to
+ .TP
+ .I make_hugefiles
+ This boolean relation enables the creation of pre-allocated files as
+-part of formatting the file system.
++part of formatting the file system.  If the file system is configured so
++that the block group descriptors are located at beginning file system
++space (by using the packed_meta_blocks option), the data blocks of the
++huge files will be contiguous, with the extent tree blocks allocated
++near the beginning of the file system space.
+ .TP
+ .I hugefiles_uid
+ This relation controls the user ownership for all of the files and
+diff --git a/tests/m_hugefile/expect b/tests/m_hugefile/expect
+index 82a60319..831d31ad 100644
+--- a/tests/m_hugefile/expect
++++ b/tests/m_hugefile/expect
+@@ -14,23 +14,6 @@ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+ 
+ Exit status is 0
+-debugfs -R "extents /store/big-data" test.img | head
+-Level Entries                 Logical                Physical Length Flags
+- 0/ 2   1/  1          0 - 1073610751     131070              1073610752
+- 1/ 2   1/ 97          0 -   11108351     131071              11108352
+- 2/ 2   1/339          0 -      32767     131072 -     163839  32768 
+- 2/ 2   2/339      32768 -      65535     163840 -     196607  32768 
+- 2/ 2   3/339      65536 -      98303     196608 -     229375  32768 
+- 2/ 2   4/339      98304 -     131071     229376 -     262143  32768 
+- 2/ 2   5/339     131072 -     163839     262144 -     294911  32768 
+- 2/ 2   6/339     163840 -     196607     294912 -     327679  32768 
+- 2/ 2   7/339     196608 -     229375     327680 -     360447  32768 
+- 2/ 2   8/339     229376 -     262143     360448 -     393215  32768 
+- 2/ 2   9/339     262144 -     294911     393216 -     425983  32768 
+- 2/ 2  10/339     294912 -     327679     425984 -     458751  32768 
+- 2/ 2  11/339     327680 -     360447     458752 -     491519  32768 
+- 2/ 2  12/339     360448 -     393215     491520 -     524287  32768 
+- 2/ 2  13/339     393216 -     425983     524288 -     557055  32768 
+- 2/ 2  14/339     425984 -     458751     557056 -     589823  32768 
+- 2/ 2  15/339     458752 -     491519     589824 -     622591  32768 
+- 2/ 2  16/339     491520 -     524287     622592 -     655359  32768 
++debugfs -R "extents /store/big-data" test.img
++Last logical block: 1073610751
++Last physical block: 1073741823
+diff --git a/tests/m_hugefile/script b/tests/m_hugefile/script
+index 2750d538..d2b92e2f 100644
+--- a/tests/m_hugefile/script
++++ b/tests/m_hugefile/script
+@@ -44,9 +44,57 @@ $FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
+ status=$?
+ echo Exit status is $status >> $OUT
+ 
+-echo 'debugfs -R "extents /store/big-data" test.img | head' >> $OUT
++echo 'debugfs -R "extents /store/big-data" test.img' >> $OUT
+ 
+-$DEBUGFS -R "extents /store/big-data" $TMPFILE 2>&1 | head -n 20 >> $OUT 2>&1
++$DEBUGFS -R "extents /store/big-data" $TMPFILE 2>&1 | tr / " " | tr -d - | awk '
++BEGIN {
++	expected_logical_start = 0;
++	expected_physical_start = 0;
++}
++{
++	if (NR != 1) {
++		level = $1;
++		total_levels = $2;
++
++		if (level == total_levels) {
++			logical_start=$5;
++			logical_end=$6;
++			physical_start=$7;
++			physical_end=$8;
++			len = $9;
++
++			if (logical_end + 1 - logical_start != len) {
++			  print logical_end + 1 - logical_start, len;
++				print "UNEXPECTED LENGTH for extent", $0;
++			}
++			if (physical_end + 1 - physical_start != len) {
++			  print physical_end + 1 - physical_start, len;
++				print "UNEXPECTED LENGTH for extent", $0;
++			}
++
++			if (logical_start != expected_logical_start) {
++				print "UNEXPECTED LOGICAL DISCONTINUITY between extents:";
++				print "\t", prev;
++				print "\t", $0;
++			}
++			if (physical_start != expected_physical_start &&
++				expected_logical_start != 0) {
++				print "PHYSICAL DISCONTINUITY between extents:";
++				print "\t", prev;
++				print "\t", $0;
++			}
++
++			expected_logical_start = logical_end + 1;
++			expected_physical_start = physical_end + 1;
++		}
++	}
++	prev=$0;
++}
++END {
++    print "Last logical block:", expected_logical_start-1;
++    print "Last physical block:", expected_physical_start-1;
++}
++' >> $OUT 2>&1
+ 
+ rm $TMPFILE
+ 
 -- 
-2.13.1.611.g7e3b11ae1-goog
-
-
---94eb2c18aabcaf84ff055294c78e
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIIS5wYJKoZIhvcNAQcCoIIS2DCCEtQCAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGg
-ghBNMIIEXDCCA0SgAwIBAgIOSBtqDm4P/739RPqw/wcwDQYJKoZIhvcNAQELBQAwZDELMAkGA1UE
-BhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExOjA4BgNVBAMTMUdsb2JhbFNpZ24gUGVy
-c29uYWxTaWduIFBhcnRuZXJzIENBIC0gU0hBMjU2IC0gRzIwHhcNMTYwNjE1MDAwMDAwWhcNMjEw
-NjE1MDAwMDAwWjBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEiMCAG
-A1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
-AQoCggEBALR23lKtjlZW/17kthzYcMHHKFgywfc4vLIjfq42NmMWbXkNUabIgS8KX4PnIFsTlD6F
-GO2fqnsTygvYPFBSMX4OCFtJXoikP2CQlEvO7WooyE94tqmqD+w0YtyP2IB5j4KvOIeNv1Gbnnes
-BIUWLFxs1ERvYDhmk+OrvW7Vd8ZfpRJj71Rb+QQsUpkyTySaqALXnyztTDp1L5d1bABJN/bJbEU3
-Hf5FLrANmognIu+Npty6GrA6p3yKELzTsilOFmYNWg7L838NS2JbFOndl+ce89gM36CW7vyhszi6
-6LqqzJL8MsmkP53GGhf11YMP9EkmawYouMDP/PwQYhIiUO0CAwEAAaOCASIwggEeMA4GA1UdDwEB
-/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwEgYDVR0TAQH/BAgwBgEB/wIB
-ADAdBgNVHQ4EFgQUyzgSsMeZwHiSjLMhleb0JmLA4D8wHwYDVR0jBBgwFoAUJiSSix/TRK+xsBtt
-r+500ox4AAMwSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDovL2NybC5nbG9iYWxzaWduLmNvbS9ncy9n
-c3BlcnNvbmFsc2lnbnB0bnJzc2hhMmcyLmNybDBMBgNVHSAERTBDMEEGCSsGAQQBoDIBKDA0MDIG
-CCsGAQUFBwIBFiZodHRwczovL3d3dy5nbG9iYWxzaWduLmNvbS9yZXBvc2l0b3J5LzANBgkqhkiG
-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
-BQUHMAKGNGh0dHA6Ly9zZWN1cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L2dzaHZzbWltZWNhMS5j
-cnQwHQYDVR0OBBYEFHzUvJSIM43gV3UoAu3dP07Q/FuLMB8GA1UdIwQYMBaAFMs4ErDHmcB4koyz
-IZXm9CZiwOA/MEwGA1UdIARFMEMwQQYJKwYBBAGgMgEoMDQwMgYIKwYBBQUHAgEWJmh0dHBzOi8v
-d3d3Lmdsb2JhbHNpZ24uY29tL3JlcG9zaXRvcnkvMDsGA1UdHwQ0MDIwMKAuoCyGKmh0dHA6Ly9j
-cmwuZ2xvYmFsc2lnbi5jb20vZ3NodnNtaW1lY2ExLmNybDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0l
-BBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4IBAQBg7Qbu4VpOAskP0s9y
-RdGLVhfSJiiB7v2bmQ2jQ3vNdjRMlQB+7VWpI/6GI2j/pEhuDgvy7S7JMOH3081bu4ACwNndLDNq
-ngSmEAf8InveMEHDpmxWXEVdMjpuqXVWICW6d3MJITMTxWF7egIcY7xL8Qx3JSOlGtBn02mxVGU6
-1ETqDl9Nd8QYc0HsHWwBnxjThl53LaZrUMtIKQLz5DDHgsf0zn4G42iguJ+2NdctVvvIcoDRnO/H
-sNtG3VNV0qa7qzr4/AozF3LuboWTB7f5gfDi3W8USCZrSqlUzy8lb82NwVsBES7UItW8dQlf/hp+
-Cd++WeP4c6uf70pQOdNkMYICXjCCAloCAQEwXDBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xv
-YmFsU2lnbiBudi1zYTEiMCAGA1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMQIMP55JyaS9
-Y5gDDRLjMA0GCWCGSAFlAwQCAQUAoIHUMC8GCSqGSIb3DQEJBDEiBCD+XNVUJ8A+yqIzPRa+huLL
-bD8uq2IBXRiidv36GC2q7TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEP
-Fw0xNzA2MjIyMzI0MDJaMGkGCSqGSIb3DQEJDzFcMFowCwYJYIZIAWUDBAEqMAsGCWCGSAFlAwQB
-FjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwCwYJKoZIhvcNAQEKMAsGCSqGSIb3DQEBBzALBglg
-hkgBZQMEAgEwDQYJKoZIhvcNAQEBBQAEggEAZ/6PycYbqxG1py3NnhGMPc1Hk8BuP5/E31K/bxfz
-IhZ6YKHmdCoNX+cGl0iq+diqTxFPyVOuqVXWFjowsS2gButVyc+6tCXbalaq+RjxUe2P3VmgNBCM
-tmZ4/T9SFxzjcuDkP0ld9Uu7/xK+YvmO7afn6onp0K6z0loHpE40t1s6yx9J1eLReN6CAq44saj2
-Xw8K0uZMVOSRgKqtmUQMPpQtzmiEangtwT2eVaFppIXVvS1k9lRparhpLDcWfjk775xOyc4290Os
-rzCP/2ELvwaXd+/9lfp9G4ENQX4YPhj2m/+32XaOHUM8dxj1BuWRGeziqXCV6hc9WGXqvFZPFw==
---94eb2c18aabcaf84ff055294c78e--
+2.11.0.rc0.7.gbe5a750
