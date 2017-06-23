@@ -1,58 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: forbid encrypting root directory
-Date: Fri, 23 Jun 2017 00:27:20 -0400
-Message-ID: <20170623042720.r6bhmp7ru5vfcrfx@thunk.org>
-References: <20170616183411.31587-1-ebiggers3@gmail.com>
- <CFA0E924-C86A-4B01-8104-4B89FDCDF10E@dilger.ca>
+Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
+Date: Fri, 23 Jun 2017 00:43:14 -0400
+Message-ID: <20170623044314.7f23ighkelnpgnah@thunk.org>
+References: <20170622232307.48392-1-khazhy@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34758 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751162AbdFWE1X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Jun 2017 00:27:23 -0400
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Khazhismel Kumykov <khazhy@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CFA0E924-C86A-4B01-8104-4B89FDCDF10E@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170622232307.48392-1-khazhy@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 19, 2017 at 03:18:24PM -0600, Andreas Dilger wrote:
-> On Jun 16, 2017, at 12:34 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> > 
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > Currently it's possible to encrypt all files and directories on an ext4
-> > filesystem by deleting everything, including lost+found, then setting an
-> > encryption policy on the root directory.  However, this is incompatible
-> > with e2fsck because e2fsck expects to find, create, and/or write to
-> > lost+found and does not have access to any encryption keys.  Especially
-> > problematic is that if e2fsck can't find lost+found, it will create it
-> > without regard for whether the root directory is encrypted.  This is
-> > wrong for obvious reasons, and it causes a later run of e2fsck to
-> > consider the lost+found directory entry to be corrupted.
-> > 
-> > Encrypting the root directory may also be of limited use because it is
-> > the "all-or-nothing" use case, for which dm-crypt can be used instead.
-> > (By design, encryption policies are inherited and cannot be overridden;
-> > so the root directory having an encryption policy implies that all files
-> > and directories on the filesystem have that same encryption policy.)
-> > 
-> > In any case, encrypting the root directory is broken currently and must
-> > not be allowed; so start returning an error if userspace requests it.
-> > For now only do this in ext4, because f2fs and ubifs do not appear to
-> > have the lost+found requirement.  We could move it into
-> > fscrypt_ioctl_set_policy() later if desired, though.
-> > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+On Thu, Jun 22, 2017 at 04:23:07PM -0700, Khazhismel Kumykov wrote:
+> Previously, a read error would be ignored and we would eventually return
+> NULL from ext4_find_entry, which signals "no such file or directory". We
+> should be returning EIO.
 > 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
 
 Thanks, applied.
 
