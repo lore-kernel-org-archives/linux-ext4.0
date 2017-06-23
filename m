@@ -1,44 +1,126 @@
-From: Colin King <colin.king@canonical.com>
-Subject: [PATCH][ext4-next] ext4: ensure error return ret is zero on successful return
-Date: Fri, 23 Jun 2017 15:58:40 +0100
-Message-ID: <20170623145840.26779-1-colin.king@canonical.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 1/3] mm: add vm_insert_mixed_mkwrite()
+Date: Fri, 23 Jun 2017 17:25:29 +0200
+Message-ID: <20170623152529.GA7967@quack2.suse.cz>
+References: <20170614172211.19820-1-ross.zwisler@linux.intel.com>
+ <20170614172211.19820-2-ross.zwisler@linux.intel.com>
+ <20170615144204.GN1764@quack2.suse.cz>
+ <20170617040926.GA26554@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170617040926.GA26554@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Colin Ian King <colin.king@canonical.com>
+On Fri 16-06-17 22:09:26, Ross Zwisler wrote:
+> On Thu, Jun 15, 2017 at 04:42:04PM +0200, Jan Kara wrote:
+> > On Wed 14-06-17 11:22:09, Ross Zwisler wrote:
+> > > To be able to use the common 4k zero page in DAX we need to have our PTE
+> > > fault path look more like our PMD fault path where a PTE entry can be
+> > > marked as dirty and writeable as it is first inserted, rather than waiting
+> > > for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
+> > > 
+> > > Right now we can rely on having a dax_pfn_mkwrite() call because we can
+> > > distinguish between these two cases in do_wp_page():
+> > > 
+> > > 	case 1: 4k zero page => writable DAX storage
+> > > 	case 2: read-only DAX storage => writeable DAX storage
+> > > 
+> > > This distinction is made by via vm_normal_page().  vm_normal_page() returns
+> > > false for the common 4k zero page, though, just as it does for DAX ptes.
+> > > Instead of special casing the DAX + 4k zero page case, we will simplify our
+> > > DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
+> > > get rid of dax_pfn_mkwrite() completely.
+> > > 
+> > > This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
+> > > and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
+> > > will do the work that was previously done by wp_page_reuse() as part of the
+> > > dax_pfn_mkwrite() call path.
+> > > 
+> > > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > 
+> > So I agree that getting rid of dax_pfn_mkwrite() and using fault handler in
+> > that case is a way to go. However I somewhat dislike the
+> > vm_insert_mixed_mkwrite() thing - it looks like a hack - and I'm aware that
+> > we have a similar thing for PMD which is ugly as well. Besides being ugly
+> > I'm also concerned that when 'mkwrite' is set, we just silently overwrite
+> > whatever PTE was installed at that position. Not that I'd see how that
+> > could screw us for DAX but still a concern that e.g. some PTE flag could
+> > get discarded by this is there... In fact, for !HAVE_PTE_SPECIAL
+> > architectures, you will leak zero page references by just overwriting the
+> > PTE - for those archs you really need to unmap zero page before replacing
+> > PTE (and the same for PMD I suppose).
+> > 
+> > So how about some vmf_insert_pfn(vmf, pe_size, pfn) helper that would
+> > properly detect PTE / PMD case, read / write case etc., check that PTE did
+> > not change from orig_pte, and handle all the nasty details instead of
+> > messing with insert_pfn?
+> 
+> I played around with this some today, and I wasn't super happy with the
+> results.  Here were some issues I encountered:
+> 
+> 1) The pte_mkyoung(), maybe_mkwrite() and pte_mkdirty() calls need to happen
+> with the PTE locked, and I'm currently able to piggy-back on the locking done
+> in insert_pfn().  If I keep those steps out of insert_pfn() I either have to
+> essentially duplicate all the work done by insert_pfn() into another function
+> so I can do everything I need under one lock, or I have to insert the PFN via
+> insert_pfn() (which as you point out, will just leave the pfn alone if it's
+> already present), then for writes I have to re-grab the PTE lock and set do
+> the mkwrite steps.
+> 
+> Either of these work, but they both also seem kind of gross...
+> 
+> 2) Combining the PTE and PMD cases into a common function will require
+> mm/memory.c to call vmf_insert_pfn_pmd(), which depends on
+> CONFIG_TRANSPARENT_HUGEPAGE being defined.  This works, it just means some
+> more #ifdef CONFIG_TRANSPARENT_HUGEPAGE hackery in mm/memory.c.
+> 
+> I agree that unconditionally overwriting the PTE when mkwrite is set is
+> undesireable, and should be fixed.  My implementation of the wrapper just
+> didn't seem that natural, which usually tells me I'm headed down the wrong
+> path.  Maybe I'm just not fully understanding what you intended?
+> 
+> In any case, my current favorite soultion for this issue is still what I had
+> in v1:
+> 
+> https://patchwork.kernel.org/patch/9772809/
+> 
+> with perhaps the removal of the new vm_insert_mixed_mkwrite() symbol, and just
+> adding a 'write' flag to vm_insert_mixed() and updating all the call sites,
+> and fixing the flow where mkwrite unconditionally overwrites the PTE?
+> 
+> If not, can you help me understand what you think is ugly about the 'write'
+> flag to vm_insert_mixed() and vmf_insert_pfn_pmd()?
 
-The error return ret is not set on a successful return path and
-so it returns a garbage value. Ensure it is is set to zero on
-a successful return.
+Yeah, so write flag is probably OK. I just dislike the implicit "replace"
+side-effect of the write flag. If 'write' would just mean whether PTE is
+created writeable, that is fine with me.
 
-Detected by CoverityScan, CID#1446616 ("Uninitialized scalar variable")
-
-Fixes: 3499c0fb822d ("quota: add get_inode_usage callback to transfer multi-inode charges")
-
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
----
- fs/ext4/xattr.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index ce12c3fb7e59..f454b2709b5a 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -794,6 +794,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 				ea_inode_refs++;
- 	}
- 	*usage = ea_inode_refs + 1;
-+	ret = 0;
- out:
- 	brelse(iloc.bh);
- 	brelse(bh);
+								Honza
 -- 
-2.11.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
