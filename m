@@ -1,43 +1,44 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v3] Add largedir feature
-Date: Sat, 24 Jun 2017 01:43:56 -0400
-Message-ID: <20170624054356.43nui7l6o27dphrr@thunk.org>
-References: <A4690934-D680-4735-AEA6-8BF995990546@dilger.ca>
- <1494094761-19108-1-git-send-email-artem.blagodarenko@seagate.com>
- <19F5F19B-23F5-466A-B934-EB15896E1B15@dilger.ca>
- <20170622011142.gu5qdyqsmuox7v4f@thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v7 16/22] block: convert to errseq_t based writeback
+ error tracking
+Date: Sat, 24 Jun 2017 04:59:46 -0700
+Message-ID: <20170624115946.GA22561@infradead.org>
+References: <20170616193427.13955-1-jlayton@redhat.com>
+ <20170616193427.13955-17-jlayton@redhat.com>
+ <20170620123544.GC19781@infradead.org>
+ <1497980684.4555.16.camel@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Eric Biggers <ebiggers3@gmail.com>,
-        Yang Sheng <yang.sheng@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39000 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750805AbdFXFoE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 24 Jun 2017 01:44:04 -0400
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        David Sterba <dsterba@suse.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Carlos Maiolino <cmaiolino@redhat.com>,
+        Eryu Guan <eguan@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170622011142.gu5qdyqsmuox7v4f@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1497980684.4555.16.camel@redhat.com>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-It looks like there are at least two xfstests failures if the largedir
-feature is enabled.  generic/021 fails, but I think this may be a test
-issue because it seems to be a mke2fs complaining about not having
-enough space to create the file system.
+On Tue, Jun 20, 2017 at 01:44:44PM -0400, Jeff Layton wrote:
+> In order to query for errors with errseq_t, you need a previously-
+> sampled point from which to check. When you call
+> filemap_write_and_wait_range though you don't have a struct file and so
+> no previously-sampled value.
 
-generic/027, which is an ENOSPC hitter, is failing with largedir
-enabled, but apparently it hasn't been failing w/o this feature being
-enabled.  The test description is "Run 8 processes writing 1k files to
-seperate files in seperate dirs to hit ENOSPC on small fs with little
-free space. Loop for 100 iterations."
+So can we simply introduce variants of them that take a struct file?
+That would be:
 
-This was using the following configuration:
-
-export EXT_MKFS_OPTIONS="-I 2048 -O ^64bit,mmp,uninit_bg,^extents,large_dir,dir_nlink,quota,huge_file,flex_bg -E lazy_journal_init"
-
-						- Ted
+ a) less churn
+ b) less code
+ c) less chance to get data integrity wrong
