@@ -1,96 +1,43 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH v7 21/22] xfs: minimal conversion to errseq_t writeback
- error reporting
-Date: Mon, 26 Jun 2017 15:40:24 +0200
-Message-ID: <20170626134024.mhnzoz5mjfrzkekd@eorzea.usersys.redhat.com>
-References: <20170616193427.13955-1-jlayton@redhat.com>
- <20170616193427.13955-22-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com, corbet@lwn.net,
-	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	Eryu Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170616193427.13955-22-jlayton@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH 02/12] tune2fs: do not allow disabling ea_inode feature
+Date: Mon, 26 Jun 2017 06:43:38 -0700
+Message-ID: <20170626134348.1240-2-tahsin@google.com>
+References: <20170626134348.1240-1-tahsin@google.com>
+Cc: Tahsin Erdogan <tahsin@google.com>
+To: Andreas Dilger <adilger@dilger.ca>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f42.google.com ([74.125.83.42]:32798 "EHLO
+        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752423AbdFZNoB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 09:44:01 -0400
+Received: by mail-pg0-f42.google.com with SMTP id f127so739237pgc.0
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 06:44:01 -0700 (PDT)
+In-Reply-To: <20170626134348.1240-1-tahsin@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 16, 2017 at 03:34:26PM -0400, Jeff Layton wrote:
-> Just check and advance the data errseq_t in struct file before
-> before returning from fsync on normal files. Internal filemap_*
-> callers are left as-is.
-> 
+Disabling ea_inode feature would require inlining all the existing
+xattr values that are currently stored in external inodes. This is
+not always possible. Just disallow it.
 
-Looks good.
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+---
+ misc/tune2fs.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
-
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/xfs/xfs_file.c | 15 +++++++++++----
->  1 file changed, 11 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 5fb5a0958a14..bc3b1575e8db 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -134,7 +134,7 @@ xfs_file_fsync(
->  	struct inode		*inode = file->f_mapping->host;
->  	struct xfs_inode	*ip = XFS_I(inode);
->  	struct xfs_mount	*mp = ip->i_mount;
-> -	int			error = 0;
-> +	int			error = 0, err2;
->  	int			log_flushed = 0;
->  	xfs_lsn_t		lsn = 0;
->  
-> @@ -142,10 +142,12 @@ xfs_file_fsync(
->  
->  	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
->  	if (error)
-> -		return error;
-> +		goto out;
->  
-> -	if (XFS_FORCED_SHUTDOWN(mp))
-> -		return -EIO;
-> +	if (XFS_FORCED_SHUTDOWN(mp)) {
-> +		error = -EIO;
-> +		goto out;
-> +	}
->  
->  	xfs_iflags_clear(ip, XFS_ITRUNCATED);
->  
-> @@ -197,6 +199,11 @@ xfs_file_fsync(
->  	    mp->m_logdev_targp == mp->m_ddev_targp)
->  		xfs_blkdev_issue_flush(mp->m_ddev_targp);
->  
-> +out:
-> +	err2 = filemap_report_wb_err(file);
-> +	if (!error)
-> +		error = err2;
-> +
->  	return error;
->  }
->  
-> -- 
-> 2.13.0
-> 
-
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 90746707064b..2a437b9fc7b7 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -180,7 +180,6 @@ static __u32 clear_ok_features[3] = {
+ 	/* Incompat */
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+-		EXT4_FEATURE_INCOMPAT_EA_INODE|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED,
 -- 
-Carlos
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.13.1.611.g7e3b11ae1-goog
