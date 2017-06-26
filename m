@@ -1,76 +1,81 @@
-From: Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH v2 42/51] ext4: convert to bio_for_each_segment_all_sp()
-Date: Mon, 26 Jun 2017 20:10:25 +0800
-Message-ID: <20170626121034.3051-43-ming.lei@redhat.com>
-References: <20170626121034.3051-1-ming.lei@redhat.com>
-Cc: linux-kernel@vger.kernel.org,
-	linux-block@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	Ming Lei <ming.lei@redhat.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org
-To: Jens Axboe <axboe@fb.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Huang Ying <ying.huang@intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170626121034.3051-1-ming.lei@redhat.com>
-Sender: owner-linux-mm@kvack.org
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
+Date: Mon, 26 Jun 2017 22:39:50 +1000
+Message-ID: <20170626123949.GP17542@dastard>
+References: <20170602060457.GG23805@eguan.usersys.redhat.com>
+ <20170623072656.GI23360@eguan.usersys.redhat.com>
+ <20170623074334.GE5308@dhcp22.suse.cz>
+ <20170623075156.GF5308@dhcp22.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+To: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170623075156.GF5308-2MMpYkNvuYDjFM9bn6wA6Q@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- fs/ext4/page-io.c  | 3 ++-
- fs/ext4/readpage.c | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
+> On Fri 23-06-17 09:43:34, Michal Hocko wrote:
+> > [Let's add Jack and keep the full email for reference]
+> > 
+> > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
+> [...]
+> > > Then I did further confirmation tests:
+> > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
+> > > kernel, run test with both ext4 and XFS exported on this newly compiled
+> > > kernel, it crashed within 5 iterations.
+> > > 
+> > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
+> > > and XFS exported, kernel survived 20 iterations of full fstests run.
+> > > 
+> > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
+> > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
+> > > 
+> > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
+> > > /export/test and /export/scratch were mounted as ext4, and this was done
+> > > on another test host because I don't have another spare test partition)
+> > > 
+> > > 
+> > > All these facts seem to confirm that commit 81378da64de6 really is the
+> > > culprit, I just don't see how..
+> 
+> AFAIR, no follow up patches to remove GFP_NOFS have been merged into
+> ext4 so we are currently only with 81378da64de6 and all it does is that
+> _all_ allocations from the transaction context are implicitly GFP_NOFS.
+> I can imagine that if there is a GFP_KERNEL allocation in this context
+> (which would be incorrect AFAIU) some shrinkers will not be called as a
+> result and that might lead to an observable behavior change. But this
+> sounds like a wild speculation. The mere fact that xfs oopses and there
+> is no ext code in the backtrace is suspicious on its own. Does this oops
+> sound familiar to xfs guys?
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 930ca0fc9a0f..0e59404fc530 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -62,8 +62,9 @@ static void ext4_finish_bio(struct bio *bio)
- {
- 	int i;
- 	struct bio_vec *bvec;
-+	struct bvec_iter_all bia;
- 
--	bio_for_each_segment_all(bvec, bio, i) {
-+	bio_for_each_segment_all_sp(bvec, bio, i, bia) {
- 		struct page *page = bvec->bv_page;
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 		struct page *data_page = NULL;
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 40a5497b0f60..6bd33c4c1f7f 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -71,6 +71,7 @@ static void mpage_end_io(struct bio *bio)
- {
- 	struct bio_vec *bv;
- 	int i;
-+	struct bvec_iter_all bia;
- 
- 	if (ext4_bio_encrypted(bio)) {
- 		if (bio->bi_status) {
-@@ -80,7 +81,7 @@ static void mpage_end_io(struct bio *bio)
- 			return;
- 		}
- 	}
--	bio_for_each_segment_all(bv, bio, i) {
-+	bio_for_each_segment_all_sp(bv, bio, i, bia) {
- 		struct page *page = bv->bv_page;
- 
- 		if (!bio->bi_status) {
+Nope, but if it's in write_cache_pages() then it's not actually
+crashing in XFS code, but in generic page cache and radix tree
+traversal code. Which means objects that are allocated from slabs
+and pools that are shared by both XFS and ext4.
+
+We've had problems in the past where use after free of bufferheads
+in reiserfs was discovered by corruption of bufferheads in XFS code,
+so maybe there's a similar issue being exposed by the ext4
+GFP_NOFS changes? i.e. try debugging this by treating it as memory
+corruption until we know more...
+
+> > > > [88901.418500]  write_cache_pages+0x26f/0x510
+
+Knowing what line of code is failing would help identify what object
+is problematic....
+
+Cheers,
+
+Dave.
 -- 
-2.9.4
-
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
