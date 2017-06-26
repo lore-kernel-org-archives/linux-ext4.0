@@ -1,81 +1,96 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
-Date: Mon, 26 Jun 2017 22:39:50 +1000
-Message-ID: <20170626123949.GP17542@dastard>
-References: <20170602060457.GG23805@eguan.usersys.redhat.com>
- <20170623072656.GI23360@eguan.usersys.redhat.com>
- <20170623074334.GE5308@dhcp22.suse.cz>
- <20170623075156.GF5308@dhcp22.suse.cz>
+From: Carlos Maiolino <cmaiolino@redhat.com>
+Subject: Re: [PATCH v7 21/22] xfs: minimal conversion to errseq_t writeback
+ error reporting
+Date: Mon, 26 Jun 2017 15:40:24 +0200
+Message-ID: <20170626134024.mhnzoz5mjfrzkekd@eorzea.usersys.redhat.com>
+References: <20170616193427.13955-1-jlayton@redhat.com>
+ <20170616193427.13955-22-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-To: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+	ross.zwisler@linux.intel.com, corbet@lwn.net,
+	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	"Darrick J . Wong" <darrick.wong@oracle.com>,
+	Eryu Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170623075156.GF5308-2MMpYkNvuYDjFM9bn6wA6Q@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+In-Reply-To: <20170616193427.13955-22-jlayton@redhat.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
-> On Fri 23-06-17 09:43:34, Michal Hocko wrote:
-> > [Let's add Jack and keep the full email for reference]
-> > 
-> > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
-> [...]
-> > > Then I did further confirmation tests:
-> > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
-> > > kernel, run test with both ext4 and XFS exported on this newly compiled
-> > > kernel, it crashed within 5 iterations.
-> > > 
-> > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
-> > > and XFS exported, kernel survived 20 iterations of full fstests run.
-> > > 
-> > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
-> > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
-> > > 
-> > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
-> > > /export/test and /export/scratch were mounted as ext4, and this was done
-> > > on another test host because I don't have another spare test partition)
-> > > 
-> > > 
-> > > All these facts seem to confirm that commit 81378da64de6 really is the
-> > > culprit, I just don't see how..
+On Fri, Jun 16, 2017 at 03:34:26PM -0400, Jeff Layton wrote:
+> Just check and advance the data errseq_t in struct file before
+> before returning from fsync on normal files. Internal filemap_*
+> callers are left as-is.
 > 
-> AFAIR, no follow up patches to remove GFP_NOFS have been merged into
-> ext4 so we are currently only with 81378da64de6 and all it does is that
-> _all_ allocations from the transaction context are implicitly GFP_NOFS.
-> I can imagine that if there is a GFP_KERNEL allocation in this context
-> (which would be incorrect AFAIU) some shrinkers will not be called as a
-> result and that might lead to an observable behavior change. But this
-> sounds like a wild speculation. The mere fact that xfs oopses and there
-> is no ext code in the backtrace is suspicious on its own. Does this oops
-> sound familiar to xfs guys?
 
-Nope, but if it's in write_cache_pages() then it's not actually
-crashing in XFS code, but in generic page cache and radix tree
-traversal code. Which means objects that are allocated from slabs
-and pools that are shared by both XFS and ext4.
+Looks good.
 
-We've had problems in the past where use after free of bufferheads
-in reiserfs was discovered by corruption of bufferheads in XFS code,
-so maybe there's a similar issue being exposed by the ext4
-GFP_NOFS changes? i.e. try debugging this by treating it as memory
-corruption until we know more...
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 
-> > > > [88901.418500]  write_cache_pages+0x26f/0x510
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/xfs/xfs_file.c | 15 +++++++++++----
+>  1 file changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 5fb5a0958a14..bc3b1575e8db 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -134,7 +134,7 @@ xfs_file_fsync(
+>  	struct inode		*inode = file->f_mapping->host;
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	struct xfs_mount	*mp = ip->i_mount;
+> -	int			error = 0;
+> +	int			error = 0, err2;
+>  	int			log_flushed = 0;
+>  	xfs_lsn_t		lsn = 0;
+>  
+> @@ -142,10 +142,12 @@ xfs_file_fsync(
+>  
+>  	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
+>  	if (error)
+> -		return error;
+> +		goto out;
+>  
+> -	if (XFS_FORCED_SHUTDOWN(mp))
+> -		return -EIO;
+> +	if (XFS_FORCED_SHUTDOWN(mp)) {
+> +		error = -EIO;
+> +		goto out;
+> +	}
+>  
+>  	xfs_iflags_clear(ip, XFS_ITRUNCATED);
+>  
+> @@ -197,6 +199,11 @@ xfs_file_fsync(
+>  	    mp->m_logdev_targp == mp->m_ddev_targp)
+>  		xfs_blkdev_issue_flush(mp->m_ddev_targp);
+>  
+> +out:
+> +	err2 = filemap_report_wb_err(file);
+> +	if (!error)
+> +		error = err2;
+> +
+>  	return error;
+>  }
+>  
+> -- 
+> 2.13.0
+> 
 
-Knowing what line of code is failing would help identify what object
-is problematic....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+Carlos
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
