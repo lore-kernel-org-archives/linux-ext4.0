@@ -1,102 +1,42 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v7 21/22] xfs: minimal conversion to errseq_t writeback
- error reporting
-Date: Mon, 26 Jun 2017 08:22:41 -0700
-Message-ID: <20170626152241.GC4733@birch.djwong.org>
-References: <20170616193427.13955-1-jlayton@redhat.com>
- <20170616193427.13955-22-jlayton@redhat.com>
+From: Marc Thomas <marc@dragonfly.plus.com>
+Subject: [PATCH 1/2] filefrag: fix GCC7.x compiler warning
+Date: Mon, 26 Jun 2017 16:39:47 +0100
+Message-ID: <856ed7be-9cb4-eb8d-1ce5-3f07adf600b6@dragonfly.plus.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-        ross.zwisler@linux.intel.com, corbet@lwn.net,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        Carlos Maiolino <cmaiolino@redhat.com>,
-        Eryu Guan <eguan@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-block-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170616193427.13955-22-jlayton@redhat.com>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from avasout01.plus.net ([84.93.230.227]:38113 "EHLO
+        avasout01.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751366AbdFZPju (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 11:39:50 -0400
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        by anvil.lan (8.15.2/8.15.2) with ESMTP id v5QFdl6t003862
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 16:39:47 +0100
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 16, 2017 at 03:34:26PM -0400, Jeff Layton wrote:
-> Just check and advance the data errseq_t in struct file before
-> before returning from fsync on normal files. Internal filemap_*
-> callers are left as-is.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/xfs/xfs_file.c | 15 +++++++++++----
->  1 file changed, 11 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 5fb5a0958a14..bc3b1575e8db 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -134,7 +134,7 @@ xfs_file_fsync(
->  	struct inode		*inode = file->f_mapping->host;
->  	struct xfs_inode	*ip = XFS_I(inode);
->  	struct xfs_mount	*mp = ip->i_mount;
-> -	int			error = 0;
-> +	int			error = 0, err2;
->  	int			log_flushed = 0;
->  	xfs_lsn_t		lsn = 0;
->  
-> @@ -142,10 +142,12 @@ xfs_file_fsync(
->  
->  	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
->  	if (error)
-> -		return error;
-> +		goto out;
->  
-> -	if (XFS_FORCED_SHUTDOWN(mp))
-> -		return -EIO;
-> +	if (XFS_FORCED_SHUTDOWN(mp)) {
-> +		error = -EIO;
-> +		goto out;
-> +	}
->  
->  	xfs_iflags_clear(ip, XFS_ITRUNCATED);
->  
-> @@ -197,6 +199,11 @@ xfs_file_fsync(
->  	    mp->m_logdev_targp == mp->m_ddev_targp)
->  		xfs_blkdev_issue_flush(mp->m_ddev_targp);
->  
-> +out:
-> +	err2 = filemap_report_wb_err(file);
+../../misc/filefrag.c:591:33: warning: comparison between pointer and
+zero character constant [-Wpointer-compare]
+  for (cpp = argv + optind; *cpp != '\0'; cpp++) {
 
-Could we have a comment here to remind anyone reading the code a year
-from now that filemap_report_wb_err has side effects?  Pre-coffee me was
-wondering why we'd bother calling filemap_report_wb_err in the
-XFS_FORCED_SHUTDOWN case, then remembered that it touches data
-structures.
+Signed-off-by: Marc Thomas <marc@dragonfly.plus.com>
+---
+ misc/filefrag.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-The first sentence of the commit message (really, the word 'advance')
-added as a comment was adequate to remind me of the side effects.
-
-Once that's added,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-> +	if (!error)
-> +		error = err2;
-> +
->  	return error;
->  }
->  
-> -- 
-> 2.13.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/misc/filefrag.c b/misc/filefrag.c
+index 1a185124..9c57ab93 100644
+--- a/misc/filefrag.c
++++ b/misc/filefrag.c
+@@ -588,7 +588,7 @@ int main(int argc, char**argv)
+ 	if (optind == argc)
+ 		usage(argv[0]);
+ -	for (cpp = argv + optind; *cpp != '\0'; cpp++) {
++	for (cpp = argv + optind; *cpp != NULL; cpp++) {
+ 		int rc2 = frag_report(*cpp);
+  		if (rc2 < 0 && rc == 0)
+-- 
+2.13.0
