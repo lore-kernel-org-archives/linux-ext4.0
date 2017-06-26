@@ -1,86 +1,102 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v7 16/22] block: convert to errseq_t based writeback
- error tracking
-Date: Mon, 26 Jun 2017 10:34:18 -0400
-Message-ID: <1498487658.5168.8.camel@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v7 21/22] xfs: minimal conversion to errseq_t writeback
+ error reporting
+Date: Mon, 26 Jun 2017 08:22:41 -0700
+Message-ID: <20170626152241.GC4733@birch.djwong.org>
 References: <20170616193427.13955-1-jlayton@redhat.com>
-         <20170616193427.13955-17-jlayton@redhat.com>
-         <20170620123544.GC19781@infradead.org>
-         <1497980684.4555.16.camel@redhat.com>
-         <20170624115946.GA22561@infradead.org> <1498310166.4796.4.camel@redhat.com>
+ <20170616193427.13955-22-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>,
         Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
         tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
         ross.zwisler@linux.intel.com, corbet@lwn.net,
         Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
         David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
         Carlos Maiolino <cmaiolino@redhat.com>,
         Eryu Guan <eguan@redhat.com>,
         David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f169.google.com ([209.85.220.169]:35662 "EHLO
-        mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751491AbdFZOeV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 10:34:21 -0400
-Received: by mail-qk0-f169.google.com with SMTP id 16so2742657qkg.2
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 07:34:20 -0700 (PDT)
-In-Reply-To: <1498310166.4796.4.camel@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-block-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170616193427.13955-22-jlayton@redhat.com>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 2017-06-24 at 09:16 -0400, Jeff Layton wrote:
-> On Sat, 2017-06-24 at 04:59 -0700, Christoph Hellwig wrote:
-> > On Tue, Jun 20, 2017 at 01:44:44PM -0400, Jeff Layton wrote:
-> > > In order to query for errors with errseq_t, you need a previously-
-> > > sampled point from which to check. When you call
-> > > filemap_write_and_wait_range though you don't have a struct file and so
-> > > no previously-sampled value.
-> > 
-> > So can we simply introduce variants of them that take a struct file?
-> > That would be:
-> > 
-> >  a) less churn
-> >  b) less code
-> >  c) less chance to get data integrity wrong
+On Fri, Jun 16, 2017 at 03:34:26PM -0400, Jeff Layton wrote:
+> Just check and advance the data errseq_t in struct file before
+> before returning from fsync on normal files. Internal filemap_*
+> callers are left as-is.
 > 
-> Yeah, I had that thought after I sent the reply to you earlier.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/xfs/xfs_file.c | 15 +++++++++++----
+>  1 file changed, 11 insertions(+), 4 deletions(-)
 > 
-> The main reason I didn't do that before was that I had myself convinced
-> that we needed to do the check_and_advance as late as possible in the
-> fsync process, after the metadata had been written.
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 5fb5a0958a14..bc3b1575e8db 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -134,7 +134,7 @@ xfs_file_fsync(
+>  	struct inode		*inode = file->f_mapping->host;
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	struct xfs_mount	*mp = ip->i_mount;
+> -	int			error = 0;
+> +	int			error = 0, err2;
+>  	int			log_flushed = 0;
+>  	xfs_lsn_t		lsn = 0;
+>  
+> @@ -142,10 +142,12 @@ xfs_file_fsync(
+>  
+>  	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
+>  	if (error)
+> -		return error;
+> +		goto out;
+>  
+> -	if (XFS_FORCED_SHUTDOWN(mp))
+> -		return -EIO;
+> +	if (XFS_FORCED_SHUTDOWN(mp)) {
+> +		error = -EIO;
+> +		goto out;
+> +	}
+>  
+>  	xfs_iflags_clear(ip, XFS_ITRUNCATED);
+>  
+> @@ -197,6 +199,11 @@ xfs_file_fsync(
+>  	    mp->m_logdev_targp == mp->m_ddev_targp)
+>  		xfs_blkdev_issue_flush(mp->m_ddev_targp);
+>  
+> +out:
+> +	err2 = filemap_report_wb_err(file);
+
+Could we have a comment here to remind anyone reading the code a year
+from now that filemap_report_wb_err has side effects?  Pre-coffee me was
+wondering why we'd bother calling filemap_report_wb_err in the
+XFS_FORCED_SHUTDOWN case, then remembered that it touches data
+structures.
+
+The first sentence of the commit message (really, the word 'advance')
+added as a comment was adequate to remind me of the side effects.
+
+Once that's added,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+--D
+
+> +	if (!error)
+> +		error = err2;
+> +
+>  	return error;
+>  }
+>  
+> -- 
+> 2.13.0
 > 
-> Now that I think about it more, I think you're probably correct. As long
-> as we do the check and advance at some point after doing the
-> write_and_wait, we're fine here and shouldn't violate exactly once
-> semantics on the fsync return.
-
-So I have a file_write_and_wait_range now that should DTRT for this
-patch.
-
-The bigger question is -- what about more complex filesystems like
-ext4?  There are a couple of cases where we can return -EIO or -EROFS on
-fsync before filemap_write_and_wait_range is ever called. Like this one
-for instance:
-
-        if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-                return -EIO;
-
-...and the EXT4_MF_FS_ABORTED case.
-
-Are those conditions ever recoverable, such that a later fsync could
-succeed? IOW, could I do a remount or something such that the existing
-fds are left open and become usable again? 
-
-If so, then we really ought to advance the errseq_t in the file when we
-catch those cases as well. If we have to do that, then it probably makes
-sense to leave the ext4 patch as-is.
--- 
-Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
