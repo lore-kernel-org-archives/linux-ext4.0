@@ -1,43 +1,76 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 1/3] vfs: Add page_cache_seek_hole_data helper
-Date: Mon, 26 Jun 2017 12:51:29 +0200
-Message-ID: <CAHc6FU4FdeceDTZHDN4NtH2oA2Yq-XcmAceVaSJY3y2g40-w0g@mail.gmail.com>
-References: <1498177173-30798-1-git-send-email-agruenba@redhat.com> <20170626104156.GA23149@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ua0-f175.google.com ([209.85.217.175]:36034 "EHLO
-        mail-ua0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751353AbdFZKva (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 06:51:30 -0400
-Received: by mail-ua0-f175.google.com with SMTP id g40so64963545uaa.3
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 03:51:30 -0700 (PDT)
-In-Reply-To: <20170626104156.GA23149@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH v2 42/51] ext4: convert to bio_for_each_segment_all_sp()
+Date: Mon, 26 Jun 2017 20:10:25 +0800
+Message-ID: <20170626121034.3051-43-ming.lei@redhat.com>
+References: <20170626121034.3051-1-ming.lei@redhat.com>
+Cc: linux-kernel@vger.kernel.org,
+	linux-block@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	Ming Lei <ming.lei@redhat.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org
+To: Jens Axboe <axboe@fb.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Huang Ying <ying.huang@intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170626121034.3051-1-ming.lei@redhat.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 26, 2017 at 12:41 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Fri, Jun 23, 2017 at 02:19:31AM +0200, Andreas Gruenbacher wrote:
->> Both ext4 and xfs implement seeking for the next hole or piece of data
->> in unwritten extents by scanning the page cache, and both versions share
->> the same bug when iterating the buffers of a page: the start offset into
->> the page isn't taken into account, so when a page fits more than two
->> filesystem blocks, things will go wrong.  For example, on a filesystem
->> with a block size of 1k, the following command will fail:
->>
->>   xfs_io -f -c "falloc 0 4k" \
->>             -c "pwrite 1k 1k" \
->>             -c "pwrite 3k 1k" \
->>             -c "seek -a -r 0" foo
->
-> Can you wire this up for xfstests, please?
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ fs/ext4/page-io.c  | 3 ++-
+ fs/ext4/readpage.c | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-I did:
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 930ca0fc9a0f..0e59404fc530 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -62,8 +62,9 @@ static void ext4_finish_bio(struct bio *bio)
+ {
+ 	int i;
+ 	struct bio_vec *bvec;
++	struct bvec_iter_all bia;
+ 
+-	bio_for_each_segment_all(bvec, bio, i) {
++	bio_for_each_segment_all_sp(bvec, bio, i, bia) {
+ 		struct page *page = bvec->bv_page;
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 		struct page *data_page = NULL;
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index 40a5497b0f60..6bd33c4c1f7f 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -71,6 +71,7 @@ static void mpage_end_io(struct bio *bio)
+ {
+ 	struct bio_vec *bv;
+ 	int i;
++	struct bvec_iter_all bia;
+ 
+ 	if (ext4_bio_encrypted(bio)) {
+ 		if (bio->bi_status) {
+@@ -80,7 +81,7 @@ static void mpage_end_io(struct bio *bio)
+ 			return;
+ 		}
+ 	}
+-	bio_for_each_segment_all(bv, bio, i) {
++	bio_for_each_segment_all_sp(bv, bio, i, bia) {
+ 		struct page *page = bv->bv_page;
+ 
+ 		if (!bio->bi_status) {
+-- 
+2.9.4
 
-  https://marc.info/?l=fstests&m=149817668119033
-
-Andreas
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
