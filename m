@@ -1,73 +1,122 @@
-From: Marc Thomas <marc@dragonfly.plus.com>
-Subject: [PATCH 2/2] e4defrag: fix GCC7.x compiler warning
-Date: Mon, 26 Jun 2017 16:40:39 +0100
-Message-ID: <17cefd39-75bf-45e5-38fa-2eac38f6e081@dragonfly.plus.com>
+From: jlayton@redhat.com
+Subject: Re: [PATCH v7 21/22] xfs: minimal conversion to errseq_t writeback
+ error reporting
+Date: Mon, 26 Jun 2017 13:58:32 -0400
+Message-ID: <1498499912.10049.2.camel@redhat.com>
+References: <20170616193427.13955-1-jlayton@redhat.com>
+         <20170616193427.13955-22-jlayton@redhat.com>
+         <20170626152241.GC4733@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from avasout01.plus.net ([84.93.230.227]:38113 "EHLO
-        avasout01.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751366AbdFZPkm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 11:40:42 -0400
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        by anvil.lan (8.15.2/8.15.2) with ESMTP id v5QFee4N003961
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 16:40:40 +0100
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        David Sterba <dsterba@suse.com>,
+        Carlos Maiolino <cmaiolino@redhat.com>,
+        Eryu Guan <eguan@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170626152241.GC4733@birch.djwong.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-../../misc/e4defrag.c:1821:8: warning: statement will never be executed
-[-Wswitch-unreachable]
-    int mount_dir_len = 0;
+On Mon, 2017-06-26 at 08:22 -0700, Darrick J. Wong wrote:
+> On Fri, Jun 16, 2017 at 03:34:26PM -0400, Jeff Layton wrote:
+> > Just check and advance the data errseq_t in struct file before
+> > before returning from fsync on normal files. Internal filemap_*
+> > callers are left as-is.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/xfs/xfs_file.c | 15 +++++++++++----
+> >  1 file changed, 11 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> > index 5fb5a0958a14..bc3b1575e8db 100644
+> > --- a/fs/xfs/xfs_file.c
+> > +++ b/fs/xfs/xfs_file.c
+> > @@ -134,7 +134,7 @@ xfs_file_fsync(
+> >  	struct inode		*inode = file->f_mapping-
+> > >host;
+> >  	struct xfs_inode	*ip = XFS_I(inode);
+> >  	struct xfs_mount	*mp = ip->i_mount;
+> > -	int			error = 0;
+> > +	int			error = 0, err2;
+> >  	int			log_flushed = 0;
+> >  	xfs_lsn_t		lsn = 0;
+> >  
+> > @@ -142,10 +142,12 @@ xfs_file_fsync(
+> >  
+> >  	error = filemap_write_and_wait_range(inode->i_mapping,
+> > start, end);
+> >  	if (error)
+> > -		return error;
+> > +		goto out;
+> >  
+> > -	if (XFS_FORCED_SHUTDOWN(mp))
+> > -		return -EIO;
+> > +	if (XFS_FORCED_SHUTDOWN(mp)) {
+> > +		error = -EIO;
+> > +		goto out;
+> > +	}
+> >  
+> >  	xfs_iflags_clear(ip, XFS_ITRUNCATED);
+> >  
+> > @@ -197,6 +199,11 @@ xfs_file_fsync(
+> >  	    mp->m_logdev_targp == mp->m_ddev_targp)
+> >  		xfs_blkdev_issue_flush(mp->m_ddev_targp);
+> >  
+> > +out:
+> > +	err2 = filemap_report_wb_err(file);
+> 
+> Could we have a comment here to remind anyone reading the code a year
+> from now that filemap_report_wb_err has side effects?  Pre-coffee me
+> was
+> wondering why we'd bother calling filemap_report_wb_err in the
+> XFS_FORCED_SHUTDOWN case, then remembered that it touches data
+> structures.
+> 
+> The first sentence of the commit message (really, the word 'advance')
+> added as a comment was adequate to remind me of the side effects.
+> 
+> Once that's added,
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> --D
+> 
 
-Also fix a typo in a few comments.
+Yeah, definitely. I'm working on a respin of the series now to
+incorporate HCH's suggestion too. I'll add that in as well.
 
-Signed-off-by: Marc Thomas <marc@dragonfly.plus.com>
----
- misc/e4defrag.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Maybe I should rename that function to file_check_and_advance_wb_err()
+? It would be good to make it clear that it does advance the errseq_t
+cursor.
 
-diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-index 84501d17..62860eb1 100644
---- a/misc/e4defrag.c
-+++ b/misc/e4defrag.c
-@@ -1676,6 +1676,7 @@ int main(int argc, char *argv[])
- 	int	flags = FTW_PHYS | FTW_MOUNT;
- 	int	arg_type = -1;
- 	int	success_flag = 0;
-+	int	mount_dir_len = 0;
- 	char	dir_name[PATH_MAX + 1];
- 	char	dev_name[PATH_MAX + 1];
- 	struct stat64	buf;
-@@ -1818,7 +1819,6 @@ int main(int argc, char *argv[])
- 		}
-  		switch (arg_type) {
--			int mount_dir_len = 0;
-  		case DIRNAME:
- 			if (!(mode_flag & STATISTIC))
-@@ -1830,11 +1830,11 @@ int main(int argc, char *argv[])
- 			strncat(lost_found_dir, "/lost+found",
- 				PATH_MAX - strnlen(lost_found_dir, PATH_MAX));
- -			/* Not the case("e4defrag  mount_piont_dir") */
-+			/* Not the case("e4defrag  mount_point_dir") */
- 			if (dir_name[mount_dir_len] != '\0') {
- 				/*
--				 * "e4defrag mount_piont_dir/lost+found"
--				 * or "e4defrag mount_piont_dir/lost+found/"
-+				 * "e4defrag mount_point_dir/lost+found"
-+				 * or "e4defrag mount_point_dir/lost+found/"
- 				 */
- 				if (strncmp(lost_found_dir, dir_name,
- 					    strnlen(lost_found_dir,
-@@ -1848,7 +1848,7 @@ int main(int argc, char *argv[])
- 					continue;
- 				}
- -				/* "e4defrag mount_piont_dir/else_dir" */
-+				/* "e4defrag mount_point_dir/else_dir" */
- 				memset(lost_found_dir, 0, PATH_MAX + 1);
- 			}
- 		case DEVNAME:
--- 
-2.13.0
+> > +	if (!error)
+> > +		error = err2;
+> > +
+> >  	return error;
+> >  }
+> >  
+> > -- 
+> > 2.13.0
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-
+> > xfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-
+> btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
