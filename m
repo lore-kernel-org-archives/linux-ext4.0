@@ -1,46 +1,56 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH 07/12] e2fsck: track ea_inode references
-Date: Mon, 26 Jun 2017 18:25:48 -0700
-Message-ID: <CAAeU0aMBM0DASLL_WjpNS=hvx9n4ntEJEKs_X=a948oJiHV26w@mail.gmail.com>
-References: <20170626134348.1240-1-tahsin@google.com> <20170626134348.1240-7-tahsin@google.com>
- <2822BB00-1A19-4DE4-8532-63FC307E5D7B@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Possible regression in e2fsprogs-1.43.4  [RESOLVED]
+Date: Mon, 26 Jun 2017 21:53:38 -0400
+Message-ID: <20170627015338.5heipzrsmp4dwsmd@thunk.org>
+References: <B2DFC17F-1CFC-410E-9449-2393D51C700B@illumenos.com>
+	<20170623195318.cfs4ftpmy5nhcccy@thunk.org>
+	<20170623232935.13fa4688@leda>
+	<048DD704-9937-4E2F-9BBD-2430CB734E2D@illumenos.com>
+	<F43FD2C9-608B-4D5E-A61A-749993688E61@illumenos.com>
+	<20170626024019.hni2k6uwfb7sknaw@thunk.org>
+	<53DF6A08-AA60-4A9C-BD29-46475DAB528A@illumenos.com>
+Reply-To: The development of GNU GRUB <grub-devel@gnu.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f179.google.com ([209.85.161.179]:34222 "EHLO
-        mail-yw0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751445AbdF0BZu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jun 2017 21:25:50 -0400
-Received: by mail-yw0-f179.google.com with SMTP id s127so6873858ywg.1
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Jun 2017 18:25:49 -0700 (PDT)
-In-Reply-To: <2822BB00-1A19-4DE4-8532-63FC307E5D7B@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: The development of GNU GRUB <grub-devel@gnu.org>,
+	Christian Hesse <list@eworm.de>, linux-ext4@vger.kernel.org
+To: Felipe A Rodriguez <far@illumenos.com>
+Return-path: <grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org>
+Content-Disposition: inline
+In-Reply-To: <53DF6A08-AA60-4A9C-BD29-46475DAB528A@illumenos.com>
+List-Unsubscribe: <https://lists.gnu.org/mailman/options/grub-devel>,
+	<mailto:grub-devel-request@gnu.org?subject=unsubscribe>
+List-Archive: <http://lists.gnu.org/archive/html/grub-devel/>
+List-Post: <mailto:grub-devel@gnu.org>
+List-Help: <mailto:grub-devel-request@gnu.org?subject=help>
+List-Subscribe: <https://lists.gnu.org/mailman/listinfo/grub-devel>,
+	<mailto:grub-devel-request@gnu.org?subject=subscribe>
+Errors-To: grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org
+Sender: "Grub-devel" <grub-devel-bounces+gcbgd-grub-devel=m.gmane.org@gnu.org>
+List-Id: linux-ext4.vger.kernel.org
 
->> +#ifdef EXT2_NO_64_TYPE
->> +             fprintf(f, "%*u", width, ctx->num2);
->> +#else
->> +             fprintf(f, "%*llu", width, (long long)ctx->num2);
->> #endif
->
-> Rather than a series of "#ifdef EXT2_NO_64_TYPE" checks, it would be cleaner
-> to have a single #define to set the printf type, like:
->
-> #ifdef EXT2_NO_64_TYPE
-> #define EXT2_64U "%*u"
-> #define EXT2_64D "%*d"
-> #define EXT2_64X "%*x"
-> #else
-> #define EXT2_64U "%*llu"
-> #define EXT2_64D "%*lld"
-> #define EXT2_64X "%*llx"
-> #endif
+On Mon, Jun 26, 2017 at 08:46:48AM +0200, Felipe A Rodriguez wrote:
+> > So when you say that enabling the 64-bit file system feature causes a
+> > regression by causing Grub to fail to be able to read the root file
+> > system, I have to respectfully disagree.  I do it all the time when I
+> > reboot my kernel, and it Works For Me...
+> 
+> Huh ???  I indicated GRUB 2.00 stopped working with the upgrade to 1.43.4, but GRUB 2.02 works fine.
 
-I am trying to figure out the purpose of #ifdef EXT2_NO_64_TYPE checks
-now. Who defines it and what problem does it solve?
+You originally said:
 
-thanks
+On Sat, Jun 10, 2017 at 04:00:20PM +0200, Felipe A Rodriguez wrote:
+> Upgrading from e2fsprogs-1.42.13 to e2fsprogs-1.43.4 causes the boot
+> loader to fail (unknown filesystem error) on the x86_64 VM I use for
+> initial testing.  I traced the problem to changes in the e2fsprogs
+> configuration file which now sets 64 bit flags.  I tried upgrading
+> to GRUB 2.02 but that did not resolve the problem.
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In your follow up, you didn't bother line wrapping your message, so I
+misparsed the sentence where you stated "Grub 2.02 does resolve the
+problem" because it was burried in a several hundred character long
+line.  My apologies.
+
+					- Ted
