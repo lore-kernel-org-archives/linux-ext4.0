@@ -1,82 +1,170 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [PATCH] ext4: Return EIO on read error in ext4_find_entry
-Date: Tue, 27 Jun 2017 23:58:04 +0200
-Message-ID: <20170627215804.GD5250@amd>
-References: <20170622232307.48392-1-khazhy@google.com>
- <20170623044314.7f23ighkelnpgnah@thunk.org>
- <204110E6-EECE-4925-9020-EC6D9633C822@dilger.ca>
- <20170623122603.jmvyw4oqkojcapv3@thunk.org>
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+Subject: Re: [PATCH 4/6] vfs: Add iomap_seek_hole and iomap_seek_data helpers
+Date: Wed, 28 Jun 2017 00:14:57 +0200
+Message-ID: <CAHpGcM+Dy+9dNwNpCmu492ayjbSnW-eeivw3+CfJUfbDHajn9w@mail.gmail.com>
+References: <20170627214828.1029-1-hch@lst.de> <20170627214828.1029-5-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="RhUH2Ysw6aD5utA4"
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-        Khazhismel Kumykov <khazhy@google.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:57950 "EHLO
-        atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753827AbdF0V6H (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jun 2017 17:58:07 -0400
-Content-Disposition: inline
-In-Reply-To: <20170623122603.jmvyw4oqkojcapv3@thunk.org>
+Received: from mail-yb0-f196.google.com ([209.85.213.196]:35738 "EHLO
+        mail-yb0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753883AbdF0WO6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jun 2017 18:14:58 -0400
+In-Reply-To: <20170627214828.1029-5-hch@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+2017-06-27 23:48 GMT+02:00 Christoph Hellwig <hch@lst.de>:
+> From: Andreas Gruenbacher <agruenba@redhat.com>
+>
+> Filesystems can use this for implementing lseek SEEK_HOLE / SEEK_DATA
+> support via iomap.
+>
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> [hch: split functions, coding style cleanups]
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/iomap.c            | 98 +++++++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/iomap.h |  4 +++
+>  2 files changed, 102 insertions(+)
+>
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 4b10892967a5..c90cda33994b 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -584,6 +584,104 @@ int iomap_fiemap(struct inode *inode, struct fiemap_extent_info *fi,
+>  }
+>  EXPORT_SYMBOL_GPL(iomap_fiemap);
+>
+> +static loff_t
+> +iomap_seek_hole_actor(struct inode *inode, loff_t offset, loff_t length,
+> +                     void *data, struct iomap *iomap)
+> +{
+> +       switch (iomap->type) {
+> +       case IOMAP_UNWRITTEN:
+> +               offset = page_cache_seek_hole_data(inode, offset, length,
+> +                                                  SEEK_HOLE);
+> +               if (offset < 0)
+> +                       return length;
+> +               /* fall through */
+> +       case IOMAP_HOLE:
+> +               *(loff_t *)data = offset;
+> +               return 0;
+> +       default:
+> +               return length;
+> +       }
+> +}
+> +
+> +loff_t
+> +iomap_seek_hole(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
+> +{
+> +       loff_t size = i_size_read(inode);
+> +       loff_t length = size - offset;
+> +       loff_t ret;
+> +
+> +       /* Nothing to be found beyond the end of the file. */
+> +       if (offset >= size)
+> +               return -ENXIO;
+> +
+> +       while (length > 0) {
+> +               ret = iomap_apply(inode, offset, length, IOMAP_REPORT, ops,
+> +                                 &offset, iomap_seek_hole_actor);
+> +               if (ret < 0)
+> +                       return ret;
+> +               if (ret == 0)
+> +                       break;
+> +
+> +               offset += ret;
+> +               length -= ret;
+> +       }
+> +
+> +       /* The last segment can extend beyond the end of the file. */
+> +       if (length <= 0)
+> +               return min(offset, size);
 
---RhUH2Ysw6aD5utA4
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+This shouldn't be true anymore now that the actors don't recompute the
+length; the above three lines should be obsolete.
 
-Hi!
+> +       return offset;
+> +}
+> +EXPORT_SYMBOL_GPL(iomap_seek_hole);
+> +
+> +static loff_t
+> +iomap_seek_data_actor(struct inode *inode, loff_t offset, loff_t length,
+> +                     void *data, struct iomap *iomap)
+> +{
+> +       switch (iomap->type) {
+> +       case IOMAP_HOLE:
+> +               return length;
+> +       case IOMAP_UNWRITTEN:
+> +               offset = page_cache_seek_hole_data(inode, offset, length,
+> +                                                  SEEK_DATA);
+> +               if (offset < 0)
+> +                       return length;
+> +               /*FALLTHRU*/
+> +       default:
+> +               *(loff_t *)data = offset;
+> +               return 0;
+> +       }
+> +}
+> +
+> +loff_t
+> +iomap_seek_data(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
+> +{
+> +       loff_t size = i_size_read(inode);
+> +       loff_t length = size - offset;
+> +       loff_t ret;
+> +
+> +       /* Nothing to be found beyond the end of the file. */
+> +       if (offset >= size)
+> +               return -ENXIO;
+> +
+> +       while (length > 0) {
+> +               ret = iomap_apply(inode, offset, length, IOMAP_REPORT, ops,
+> +                                 &offset, iomap_seek_data_actor);
+> +               if (ret < 0)
+> +                       return ret;
+> +               if (ret == 0)
+> +                       break;
+> +
+> +               offset += ret;
+> +               length -= ret;
+> +       }
+> +
+> +       /* There is an implicit hole at the end of the file. */
 
-> > >> Previously, a read error would be ignored and we would eventually re=
-turn
-> > >> NULL from ext4_find_entry, which signals "no such file or directory"=
-=2E We
-> > >> should be returning EIO.
-> > >>=20
-> > >> Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
-> > >=20
-> > > Thanks, applied.
-> >=20
-> > I don't necessarily agree that this is an improvement.=20
-> >=20
-> > If the requested entry is not in the bad block, this will return an
-> > error even if the file name could be found in another block. It
-> > would be better to save the error until the end and only return -EIO
-> > if the entry cannot be found.
->=20
-> The problem is that if we continue, successive reads may all take
-> seconds or minutes to fail, thus tieing up the process for a long
-> time.  If this process happens to be, say, the node's Kubernetes
-> management server it can take down the entire node (since if there
-=2E..
-> By returning EIO right away, we can "fast fail".
+This comment makes more sense in iomap_seek_hole now.
 
-Well, OTOH if I have a bad flash, and get EIO trying to read
-~/my-disertation-thesis.tex because ~/.emacs could not be read... I'll be
-quite unhappy.
+> +       if (length <= 0)
+> +               return -ENXIO;
+> +       return offset;
+> +}
+> +EXPORT_SYMBOL_GPL(iomap_seek_data);
+> +
+>  /*
+>   * Private flags for iomap_dio, must not overlap with the public ones in
+>   * iomap.h:
+> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+> index f753e788da31..8a03f5dcd89b 100644
+> --- a/include/linux/iomap.h
+> +++ b/include/linux/iomap.h
+> @@ -83,6 +83,10 @@ int iomap_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
+>  int iomap_page_mkwrite(struct vm_fault *vmf, const struct iomap_ops *ops);
+>  int iomap_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+>                 loff_t start, loff_t len, const struct iomap_ops *ops);
+> +loff_t iomap_seek_hole(struct inode *inode, loff_t offset,
+> +               const struct iomap_ops *ops);
+> +loff_t iomap_seek_data(struct inode *inode, loff_t offset,
+> +               const struct iomap_ops *ops);
+>
+>  /*
+>   * Flags for direct I/O ->end_io:
+> --
+> 2.11.0
 
-Yes, fast fail is nice when you have redundant machines, but can be a
-problem otherwise.
-									Pavel
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---RhUH2Ysw6aD5utA4
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAllS1OwACgkQMOfwapXb+vKXjQCfT4PW8G6eSy6aiXCikrvayMvq
-f20AnjPlBfTOcmJBvwNbvhgjrWl2QTW1
-=jujb
------END PGP SIGNATURE-----
-
---RhUH2Ysw6aD5utA4--
+Thanks,
+Andreas
