@@ -1,77 +1,42 @@
-From: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
-Date: Tue, 27 Jun 2017 15:01:19 +0200
-Message-ID: <20170627130118.GM28072@dhcp22.suse.cz>
-References: <20170602060457.GG23805@eguan.usersys.redhat.com>
- <20170623072656.GI23360@eguan.usersys.redhat.com>
- <20170623074334.GE5308@dhcp22.suse.cz>
- <20170623075156.GF5308@dhcp22.suse.cz>
- <20170626123949.GP17542@dastard>
+From: Colin King <colin.king@canonical.com>
+Subject: [PATCH] ext4: fix spelling mistake: "prellocated" -> "preallocated"
+Date: Tue, 27 Jun 2017 14:33:22 +0100
+Message-ID: <20170627133322.22701-1-colin.king@canonical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170626123949.GP17542@dastard>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from youngberry.canonical.com ([91.189.89.112]:38630 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752128AbdF0Nd0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jun 2017 09:33:26 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 26-06-17 22:39:50, Dave Chinner wrote:
-> On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
-> > On Fri 23-06-17 09:43:34, Michal Hocko wrote:
-> > > [Let's add Jack and keep the full email for reference]
-> > > 
-> > > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
-> > [...]
-> > > > Then I did further confirmation tests:
-> > > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
-> > > > kernel, run test with both ext4 and XFS exported on this newly compiled
-> > > > kernel, it crashed within 5 iterations.
-> > > > 
-> > > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
-> > > > and XFS exported, kernel survived 20 iterations of full fstests run.
-> > > > 
-> > > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
-> > > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
-> > > > 
-> > > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
-> > > > /export/test and /export/scratch were mounted as ext4, and this was done
-> > > > on another test host because I don't have another spare test partition)
-> > > > 
-> > > > 
-> > > > All these facts seem to confirm that commit 81378da64de6 really is the
-> > > > culprit, I just don't see how..
-> > 
-> > AFAIR, no follow up patches to remove GFP_NOFS have been merged into
-> > ext4 so we are currently only with 81378da64de6 and all it does is that
-> > _all_ allocations from the transaction context are implicitly GFP_NOFS.
-> > I can imagine that if there is a GFP_KERNEL allocation in this context
-> > (which would be incorrect AFAIU) some shrinkers will not be called as a
-> > result and that might lead to an observable behavior change. But this
-> > sounds like a wild speculation. The mere fact that xfs oopses and there
-> > is no ext code in the backtrace is suspicious on its own. Does this oops
-> > sound familiar to xfs guys?
-> 
-> Nope, but if it's in write_cache_pages() then it's not actually
-> crashing in XFS code, but in generic page cache and radix tree
-> traversal code. Which means objects that are allocated from slabs
-> and pools that are shared by both XFS and ext4.
-> 
-> We've had problems in the past where use after free of bufferheads
-> in reiserfs was discovered by corruption of bufferheads in XFS code,
-> so maybe there's a similar issue being exposed by the ext4
-> GFP_NOFS changes? i.e. try debugging this by treating it as memory
-> corruption until we know more...
+From: Colin Ian King <colin.king@canonical.com>
 
-Yes this makes a lot of sense. Maybe slab debugging can catch such a
-corruption earlier?
+Trivial fix to spelling mistake in mb_debug debug message
+
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 95425918875e..581e357e8406 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3567,7 +3567,7 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 		ext4_set_bits(bitmap, start, len);
+ 		preallocated += len;
+ 	}
+-	mb_debug(1, "prellocated %u for group %u\n", preallocated, group);
++	mb_debug(1, "preallocated %u for group %u\n", preallocated, group);
+ }
+ 
+ static void ext4_mb_pa_callback(struct rcu_head *head)
 -- 
-Michal Hocko
-SUSE Labs
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+2.11.0
