@@ -1,64 +1,72 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v7 16/22] block: convert to errseq_t based writeback
- error tracking
-Date: Tue, 27 Jun 2017 08:20:00 -0700
-Message-ID: <20170627152000.GA29664@infradead.org>
-References: <20170616193427.13955-1-jlayton@redhat.com>
- <20170616193427.13955-17-jlayton@redhat.com>
- <20170620123544.GC19781@infradead.org>
- <1497980684.4555.16.camel@redhat.com>
- <20170624115946.GA22561@infradead.org>
- <1498310166.4796.4.camel@redhat.com>
- <1498487658.5168.8.camel@redhat.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] ext4: remove timebomb in ext4_decode_extra_time()
+Date: Tue, 27 Jun 2017 11:35:43 -0700
+Message-ID: <20170627183543.GA39374@gmail.com>
+References: <20170614112238.14121-1-hch@lst.de>
+ <20170627140326.GA25210@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com, corbet@lwn.net,
-	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	Carlos Maiolino <cmaiolino@redhat.com>,
-	Eryu Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:32935 "EHLO
+        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752311AbdF0Sfr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jun 2017 14:35:47 -0400
+Received: by mail-pf0-f193.google.com with SMTP id e199so5783697pfh.0
+        for <linux-ext4@vger.kernel.org>; Tue, 27 Jun 2017 11:35:47 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1498487658.5168.8.camel@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170627140326.GA25210@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 26, 2017 at 10:34:18AM -0400, Jeff Layton wrote:
-> The bigger question is -- what about more complex filesystems like
-> ext4?  There are a couple of cases where we can return -EIO or -EROFS on
-> fsync before filemap_write_and_wait_range is ever called. Like this one
-> for instance:
+On Tue, Jun 27, 2017 at 04:03:26PM +0200, Christoph Hellwig wrote:
+> ping?
 > 
->         if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
->                 return -EIO;
-> 
-> ...and the EXT4_MF_FS_ABORTED case.
-> 
-> Are those conditions ever recoverable, such that a later fsync could
-> succeed? IOW, could I do a remount or something such that the existing
-> fds are left open and become usable again? 
+> On Wed, Jun 14, 2017 at 01:22:38PM +0200, Christoph Hellwig wrote:
+> > Changing behavior based on the version code is a timebomb waiting to
+> > happen, and not easily bisectable.  Drop it and leave any removal
+> > to explicit developer action. (And I don't think file system
+> > should _ever_ remove backwards compatibility that has no explicit
+> > flag, but I'll leave that to the ext4 folks).
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/ext4/ext4.h | 12 +++---------
+> >  1 file changed, 3 insertions(+), 9 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 32191548abed..d35749e7cf9f 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -838,21 +838,15 @@ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+> >  {
+> >  	if (unlikely(sizeof(time->tv_sec) > 4 &&
+> >  			(extra & cpu_to_le32(EXT4_EPOCH_MASK)))) {
+> > -#if LINUX_VERSION_CODE < KERNEL_VERSION(4,20,0)
+> > +
+> >  		/* Handle legacy encoding of pre-1970 dates with epoch
+> > -		 * bits 1,1.  We assume that by kernel version 4.20,
+> > -		 * everyone will have run fsck over the affected
+> > -		 * filesystems to correct the problem.  (This
+> > -		 * backwards compatibility may be removed before this
+> > -		 * time, at the discretion of the ext4 developers.)
+> > +		 * bits 1,1. (This backwards compatibility may be removed
+> > +		 * at the discretion of the ext4 developers.)
+> >  		 */
+> >  		u64 extra_bits = le32_to_cpu(extra) & EXT4_EPOCH_MASK;
+> >  		if (extra_bits == 3 && ((time->tv_sec) & 0x80000000) != 0)
+> >  			extra_bits = 0;
+> >  		time->tv_sec += extra_bits << 32;
+> > -#else
+> > -		time->tv_sec += (u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK) << 32;
+> > -#endif
+> >  	}
+> >  	time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+> >  }
 
-This looks copied from the xfs forced shutdown code, and in that
-case it's final and permanent - you'll need an unmount to
-clear it.
+Looks good --- I agree that timebombs are a very bad idea.
 
-> If so, then we really ought to advance the errseq_t in the file when we
-> catch those cases as well. If we have to do that, then it probably makes
-> sense to leave the ext4 patch as-is.
+Reviewed-by: Eric Biggers <ebiggers@google.com>
 
-I think it can switch to the new file helper.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+- Eric
