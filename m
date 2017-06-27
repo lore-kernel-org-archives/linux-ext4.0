@@ -1,97 +1,77 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v3 5/5] xfs: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Tue, 27 Jun 2017 22:56:15 +1000
-Message-ID: <20170627125615.GQ17542@dastard>
-References: <1498487118-6564-1-git-send-email-agruenba@redhat.com>
- <1498487118-6564-6-git-send-email-agruenba@redhat.com>
- <20170627003435.GI4733@birch.djwong.org>
+From: Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
+Date: Tue, 27 Jun 2017 15:01:19 +0200
+Message-ID: <20170627130118.GM28072@dhcp22.suse.cz>
+References: <20170602060457.GG23805@eguan.usersys.redhat.com>
+ <20170623072656.GI23360@eguan.usersys.redhat.com>
+ <20170623074334.GE5308@dhcp22.suse.cz>
+ <20170623075156.GF5308@dhcp22.suse.cz>
+ <20170626123949.GP17542@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:33004 "EHLO
-        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752924AbdF0M4Z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Jun 2017 08:56:25 -0400
+Cc: Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170627003435.GI4733@birch.djwong.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170626123949.GP17542@dastard>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 26, 2017 at 05:34:35PM -0700, Darrick J. Wong wrote:
-> [adding Christoph to cc]
-> 
-> On Mon, Jun 26, 2017 at 04:25:18PM +0200, Andreas Gruenbacher wrote:
-> > Switch to the iomap_seek_hole_data vfs helper for implementing lseek
-> > SEEK_HOLE / SEEK_DATA.  __xfs_seek_hole_data can go away once it's no
-> > longer used by the quota code.
+On Mon 26-06-17 22:39:50, Dave Chinner wrote:
+> On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
+> > On Fri 23-06-17 09:43:34, Michal Hocko wrote:
+> > > [Let's add Jack and keep the full email for reference]
+> > > 
+> > > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
+> > [...]
+> > > > Then I did further confirmation tests:
+> > > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
+> > > > kernel, run test with both ext4 and XFS exported on this newly compiled
+> > > > kernel, it crashed within 5 iterations.
+> > > > 
+> > > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
+> > > > and XFS exported, kernel survived 20 iterations of full fstests run.
+> > > > 
+> > > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
+> > > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
+> > > > 
+> > > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
+> > > > /export/test and /export/scratch were mounted as ext4, and this was done
+> > > > on another test host because I don't have another spare test partition)
+> > > > 
+> > > > 
+> > > > All these facts seem to confirm that commit 81378da64de6 really is the
+> > > > culprit, I just don't see how..
 > > 
-> > Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> > ---
-> >  fs/xfs/xfs_file.c | 21 +++++----------------
-> >  1 file changed, 5 insertions(+), 16 deletions(-)
-> > 
-> > diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> > index 962dafd..94fe89a 100644
-> > --- a/fs/xfs/xfs_file.c
-> > +++ b/fs/xfs/xfs_file.c
-> > @@ -1131,29 +1131,18 @@ xfs_seek_hole_data(
-> >  	struct xfs_inode	*ip = XFS_I(inode);
-> >  	struct xfs_mount	*mp = ip->i_mount;
-> >  	uint			lock;
-> > -	loff_t			offset, end;
-> > -	int			error = 0;
-> > +	loff_t			offset;
-> >  
-> >  	if (XFS_FORCED_SHUTDOWN(mp))
-> >  		return -EIO;
-> >  
-> >  	lock = xfs_ilock_data_map_shared(ip);
-> > -
-> > -	end = i_size_read(inode);
-> > -	offset = __xfs_seek_hole_data(inode, start, end, whence);
-> > -	if (offset < 0) {
-> > -		error = offset;
-> > -		goto out_unlock;
-> > -	}
-> > -
-> > -	offset = vfs_setpos(file, offset, inode->i_sb->s_maxbytes);
-> > -
-> > -out_unlock:
-> > +	offset = iomap_seek_hole_data(inode, start, whence, &xfs_iomap_ops);
+> > AFAIR, no follow up patches to remove GFP_NOFS have been merged into
+> > ext4 so we are currently only with 81378da64de6 and all it does is that
+> > _all_ allocations from the transaction context are implicitly GFP_NOFS.
+> > I can imagine that if there is a GFP_KERNEL allocation in this context
+> > (which would be incorrect AFAIU) some shrinkers will not be called as a
+> > result and that might lead to an observable behavior change. But this
+> > sounds like a wild speculation. The mere fact that xfs oopses and there
+> > is no ext code in the backtrace is suspicious on its own. Does this oops
+> > sound familiar to xfs guys?
 > 
-> Hm.  We grab the data map ilock above, then we call
-> iomap_seek_hole_data, which (eventually) calls xfs_file_iomap_begin,
-> which tries to grab the data map ilock.  We shouldn't be grabbing the
-> ilock twice, obviously, but on the other hand...
+> Nope, but if it's in write_cache_pages() then it's not actually
+> crashing in XFS code, but in generic page cache and radix tree
+> traversal code. Which means objects that are allocated from slabs
+> and pools that are shared by both XFS and ext4.
 > 
-> ...under the old code, we'd take the ilock and do the whole block map
-> and page cache scans without ever dropping the ilock.
+> We've had problems in the past where use after free of bufferheads
+> in reiserfs was discovered by corruption of bufferheads in XFS code,
+> so maybe there's a similar issue being exposed by the ext4
+> GFP_NOFS changes? i.e. try debugging this by treating it as memory
+> corruption until we know more...
 
-Which I'm pretty sure I've previously pointed out is broken and
-needed fixing (lockdep reports, IIRC), as the lock order is iolock
--> page lock -> ilock.
-
-(yes, I'm using "iolock" as shorthand for inode->i_rwsem)
-
-> This new iomap
-> based thing only holds the ilock during ->iomap_begin, which makes me
-> worry that someone else can wander in and mess with things while we're
-> looking for holes/data?
-
-Locking won't prevent seek races with concurrent modifications from
-the perspective of userspace.
-
-i.e. we can lock the inode down, seek to data, unlock it, and before
-we get back to userspace something else punches out that data. So by
-the time the app gets to use the position set by the seek, there's a
-hole where it's being told there *was* data....
-
--Dave.
+Yes this makes a lot of sense. Maybe slab debugging can catch such a
+corruption earlier?
 -- 
-Dave Chinner
-david@fromorbit.com
+Michal Hocko
+SUSE Labs
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
