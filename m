@@ -1,149 +1,95 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v3 5/5] dax: move all DAX radix tree defs to fs/dax.c
-Date: Wed, 28 Jun 2017 16:01:52 -0600
-Message-ID: <20170628220152.28161-6-ross.zwisler@linux.intel.com>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
+From: Kyungchan Koh <kkc6196@fb.com>
+Subject: [PATCH] fs: ext4: inode->i_generation not assigned 0.
+Date: Wed, 28 Jun 2017 15:06:42 -0700
+Message-ID: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
- Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Dave Hansen <dave.hansen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170628220152.28161-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain
+Cc: <kernel-team@fb.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:38780 "EHLO
+        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751518AbdF1WGp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Jun 2017 18:06:45 -0400
+Received: from pps.filterd (m0001303.ppops.net [127.0.0.1])
+        by m0001303.ppops.net (8.16.0.20/8.16.0.20) with SMTP id v5SM3FBO004055
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2017 15:06:45 -0700
+Received: from mail.thefacebook.com ([199.201.64.23])
+        by m0001303.ppops.net with ESMTP id 2bbxkhuue7-1
+        (version=TLSv1 cipher=ECDHE-RSA-AES256-SHA bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Jun 2017 15:06:45 -0700
+Received: from facebook.com (2401:db00:21:6029:face:0:5:0)      by
+ mx-out.facebook.com (10.212.232.59) with ESMTP id
+ 119c56b85c4e11e794a60002c991e86a-a5b3e8f0 for <linux-ext4@vger.kernel.org>;
+        Wed, 28 Jun 2017 15:06:43 -0700
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Now that we no longer insert struct page pointers in DAX radix trees the
-page cache code no longer needs to know anything about DAX exceptional
-entries.  Move all the DAX exceptional entry definitions from dax.h to
-fs/dax.c.
+In fs/ext4/super.c, the function ext4_nfs_get_inode takes as input
+"generation" that can be used to specify the generation of the inode to
+be returned. When 0 is given as input, then inodes of any generation can
+be returned. Therefore, generation 0 is a special case that should be
+avoided when assigning generation to inodes.
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+A new inline function, ext4_inode_set_gen, will take care of the
+problem.  Now, inodes cannot have a generation of 0, so this patch fixes
+the issue.
+
+Signed-off-by: Kyungchan Koh <kkc6196@fb.com>
 ---
- fs/dax.c            | 34 ++++++++++++++++++++++++++++++++++
- include/linux/dax.h | 40 ----------------------------------------
- 2 files changed, 34 insertions(+), 40 deletions(-)
+ fs/ext4/ext4.h   | 8 ++++++++
+ fs/ext4/ialloc.c | 2 +-
+ fs/ext4/ioctl.c  | 4 ++--
+ 3 files changed, 11 insertions(+), 3 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 896e2e7..1f1064e 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -55,6 +55,40 @@ static int __init init_dax_wait_table(void)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3219154..74c6677 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1549,6 +1549,14 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
  }
- fs_initcall(init_dax_wait_table);
  
-+/*
-+ * We use lowest available bit in exceptional entry for locking, one bit for
-+ * the entry size (PMD) and two more to tell us if the entry is a zero page or
-+ * an empty entry that is just used for locking.  In total four special bits.
-+ *
-+ * If the PMD bit isn't set the entry has size PAGE_SIZE, and if the ZERO_PAGE
-+ * and EMPTY bits aren't set the entry is a normal DAX entry with a filesystem
-+ * block allocation.
-+ */
-+#define RADIX_DAX_SHIFT		(RADIX_TREE_EXCEPTIONAL_SHIFT + 4)
-+#define RADIX_DAX_ENTRY_LOCK	(1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
-+#define RADIX_DAX_PMD		(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-+#define RADIX_DAX_ZERO_PAGE	(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-+#define RADIX_DAX_EMPTY		(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
-+
-+static unsigned long dax_radix_sector(void *entry)
++static inline void ext4_inode_set_gen(struct inode *inode,
++				      struct ext4_sb_info *sbi)
 +{
-+	return (unsigned long)entry >> RADIX_DAX_SHIFT;
++	inode->i_generation = sbi->s_next_generation++;
++	if (!inode->i_generation)
++		inode->i_generation = sbi->s_next_generation++;
 +}
 +
-+static void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
-+{
-+	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
-+			((unsigned long)sector << RADIX_DAX_SHIFT) |
-+			RADIX_DAX_ENTRY_LOCK);
-+}
-+
-+static unsigned int dax_radix_order(void *entry)
-+{
-+	if ((unsigned long)entry & RADIX_DAX_PMD)
-+		return PMD_SHIFT - PAGE_SHIFT;
-+	return 0;
-+}
-+
- static int dax_is_pmd_entry(void *entry)
- {
- 	return (unsigned long)entry & RADIX_DAX_PMD;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index d6fd797..3dcaec5 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -76,33 +76,6 @@ void *dax_get_private(struct dax_device *dax_dev);
- long dax_direct_access(struct dax_device *dax_dev, pgoff_t pgoff, long nr_pages,
- 		void **kaddr, pfn_t *pfn);
+ /*
+  * Inode dynamic state flags
+  */
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 98ac2f1..d33f6f0 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1072,7 +1072,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		goto out;
+ 	}
+ 	spin_lock(&sbi->s_next_gen_lock);
+-	inode->i_generation = sbi->s_next_generation++;
++	ext4_inode_set_gen(inode, sbi);
+ 	spin_unlock(&sbi->s_next_gen_lock);
  
--/*
-- * We use lowest available bit in exceptional entry for locking, one bit for
-- * the entry size (PMD) and two more to tell us if the entry is a zero page or
-- * an empty entry that is just used for locking.  In total four special bits.
-- *
-- * If the PMD bit isn't set the entry has size PAGE_SIZE, and if the ZERO_PAGE
-- * and EMPTY bits aren't set the entry is a normal DAX entry with a filesystem
-- * block allocation.
-- */
--#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 4)
--#define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
--#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
--#define RADIX_DAX_ZERO_PAGE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
--#define RADIX_DAX_EMPTY (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
--
--static inline unsigned long dax_radix_sector(void *entry)
--{
--	return (unsigned long)entry >> RADIX_DAX_SHIFT;
--}
--
--static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
--{
--	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
--			((unsigned long)sector << RADIX_DAX_SHIFT) |
--			RADIX_DAX_ENTRY_LOCK);
--}
--
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops);
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
-@@ -124,19 +97,6 @@ static inline int __dax_zero_page_range(struct block_device *bdev,
- }
- #endif
+ 	/* Precompute checksum seed for inode metadata */
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0c21e22..d52a467 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -160,8 +160,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
  
--#ifdef CONFIG_FS_DAX_PMD
--static inline unsigned int dax_radix_order(void *entry)
--{
--	if ((unsigned long)entry & RADIX_DAX_PMD)
--		return PMD_SHIFT - PAGE_SHIFT;
--	return 0;
--}
--#else
--static inline unsigned int dax_radix_order(void *entry)
--{
--	return 0;
--}
--#endif
- static inline bool vma_is_dax(struct vm_area_struct *vma)
- {
- 	return vma->vm_file && IS_DAX(vma->vm_file->f_mapping->host);
+ 	spin_lock(&sbi->s_next_gen_lock);
+-	inode->i_generation = sbi->s_next_generation++;
+-	inode_bl->i_generation = sbi->s_next_generation++;
++	ext4_inode_set_gen(inode, sbi);
++	ext4_inode_set_gen(inode_bl, sbi);
+ 	spin_unlock(&sbi->s_next_gen_lock);
+ 
+ 	ext4_discard_preallocations(inode);
 -- 
-2.9.4
+2.9.3
