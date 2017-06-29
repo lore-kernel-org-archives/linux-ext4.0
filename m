@@ -1,89 +1,134 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: mkfs.ext4 -D option fails to mount
-Date: Thu, 29 Jun 2017 09:57:27 -0600
-Message-ID: <20170629155727.GA8536@linux.intel.com>
-References: <20170629153538.GA4268@linux.intel.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v8 12/18] Documentation: flesh out the section in vfs.txt
+ on storing and reporting writeback errors
+Date: Thu, 29 Jun 2017 10:11:37 -0700
+Message-ID: <20170629171137.GE5874@birch.djwong.org>
+References: <20170629131954.28733-1-jlayton@kernel.org>
+ <20170629131954.28733-13-jlayton@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:47204 "EHLO mga14.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751685AbdF2P5n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Jun 2017 11:57:43 -0400
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
+        ross.zwisler@linux.intel.com, corbet@lwn.net, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, David Sterba <dsterba@suse.com>,
+        Carlos Maiolino <cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>, Liu Bo <bo.li.liu@oracle.com>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: jlayton@kernel.org
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170629153538.GA4268@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170629131954.28733-13-jlayton@kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 29, 2017 at 09:35:38AM -0600, Ross Zwisler wrote:
-> Our validation team noticed that in some configurations mkfs.ext4 with the
-> -D option creates a filesystem that can't be mounted:
+On Thu, Jun 29, 2017 at 09:19:48AM -0400, jlayton@kernel.org wrote:
+> From: Jeff Layton <jlayton@redhat.com>
 > 
->   # mkfs.ext4 -D -F /dev/pmem5 
->   mke2fs 1.43.3 (04-Sep-2016)
->   /dev/pmem5 contains a ext4 file system
->   	last mounted on Tue Jul 26 07:44:19 2016
->   Creating filesystem with 65027584 4k blocks and 16261120 inodes
->   Filesystem UUID: 6f95ece9-d4cb-4cfc-bc22-211119d5efe7
->   Superblock backups stored on blocks: 
->   	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
->   	4096000, 7962624, 11239424, 20480000, 23887872
->   
->   Allocating group tables: done                            
->   Writing inode tables: done                            
->   Creating journal (262144 blocks): done
->   Writing superblocks and filesystem accounting information: done     
->   
->   # mount /dev/pmem5 /mnt
->   mount: wrong fs type, bad option, bad superblock on /dev/pmem5,
->          missing codepage or helper program, or other error
->   
->          In some cases useful info is found in syslog - try
->          dmesg | tail or so.
+> Let's try to make this extra clear for fs authors.
 > 
-> where dmesg says:
+> Cc: Jan Kara <jack@suse.cz>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  Documentation/filesystems/vfs.txt | 43 ++++++++++++++++++++++++++++++++++++---
+>  1 file changed, 40 insertions(+), 3 deletions(-)
 > 
->   EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 1 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 1 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 1 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 2 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 2 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 2 overlaps superblock
->   ...
->   EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 63 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 63 overlaps superblock
->   EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 63 overlaps superblock
->   EXT4-fs (pmem5): no journal found
+> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+> index f42b90687d40..1366043b3942 100644
+> --- a/Documentation/filesystems/vfs.txt
+> +++ b/Documentation/filesystems/vfs.txt
+> @@ -576,7 +576,42 @@ should clear PG_Dirty and set PG_Writeback.  It can be actually
+>  written at any point after PG_Dirty is clear.  Once it is known to be
+>  safe, PG_Writeback is cleared.
+>  
+> -Writeback makes use of a writeback_control structure...
+> +Writeback makes use of a writeback_control structure to direct the
+> +operations.  This gives the the writepage and writepages operations some
+> +information about the nature of and reason for the writeback request,
+> +and the constraints under which it is being done.  It is also used to
+> +return information back to the caller about the result of a writepage or
+> +writepages request.
+> +
+> +Handling errors during writeback
+> +--------------------------------
+> +Most applications that utilize the pagecache will periodically call
+> +fsync to ensure that data written has made it to the backing store.
+
+/me wonders if this sentence ought to be worded more strongly, e.g.
+
+"Applications that utilize the pagecache must call a data
+synchronization syscall such as fsync, fdatasync, or msync to ensure
+that data written has made it to the backing store."
+
+I'm also wondering -- fdatasync and msync will also report any writeback
+errors that have happened anywhere (like fsync), since they all map to
+vfs_fsync_range, correct?  If so, I think it worth it to state
+explicitly that the other *sync methods behave the same as fsync w.r.t.
+writeback error reporting.
+
+--D
+
+> +When there is an error during writeback, they expect that error to be
+> +reported when fsync is called.  After an error has been reported on one
+> +fsync, subsequent fsync calls on the same file descriptor should return
+> +0, unless further writeback errors have occurred since the previous
+> +fsync.
+> +
+> +Ideally, the kernel would report an error only on file descriptions on
+> +which writes were done that subsequently failed to be written back.  The
+> +generic pagecache infrastructure does not track the file descriptions
+> +that have dirtied each individual page however, so determining which
+> +file descriptors should get back an error is not possible.
+> +
+> +Instead, the generic writeback error tracking infrastructure in the
+> +kernel settles for reporting errors to fsync on all file descriptions
+> +that were open at the time that the error occurred.  In a situation with
+> +multiple writers, all of them will get back an error on a subsequent fsync,
+> +even if all of the writes done through that particular file descriptor
+> +succeeded (or even if there were no writes on that file descriptor at all).
+> +
+> +Filesystems that wish to use this infrastructure should call
+> +mapping_set_error to record the error in the address_space when it
+> +occurs.  Then, at the end of their fsync operation, they should call
+> +file_check_and_advance_wb_err to ensure that the struct file's error
+> +cursor has advanced to the correct point in the stream of errors emitted
+> +by the backing device(s).
+>  
+>  struct address_space_operations
+>  -------------------------------
+> @@ -804,7 +839,8 @@ struct address_space_operations {
+>  The File Object
+>  ===============
+>  
+> -A file object represents a file opened by a process.
+> +A file object represents a file opened by a process. This is also known
+> +as an "open file description" in POSIX parlance.
+>  
+>  
+>  struct file_operations
+> @@ -887,7 +923,8 @@ otherwise noted.
+>  
+>    release: called when the last reference to an open file is closed
+>  
+> -  fsync: called by the fsync(2) system call
+> +  fsync: called by the fsync(2) system call. Also see the section above
+> +	 entitled "Handling errors during writeback".
+>  
+>    fasync: called by the fcntl(2) system call when asynchronous
+>  	(non-blocking) mode is enabled for a file
+> -- 
+> 2.13.0
 > 
-> If we omit the "-D" option from mkfs.ext4, everything works.  Note also that
-> this behavior is independent of the DAX mount option.
-> 
-> This isn't blocking us, I just thought you would want to know.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-One more bit of info - this seems to be strongly tied to the size of the
-block device.  With a 32 GB block device it works fine, with 248 GB you get
-overlap messages for groups 1 through 63, and with a 250 GB device you get
-overlaps for groups 1 through 1999.
-
-I've been varying my virtual NVDIMM namespace size via QEMU.
-Here's are the relevant bits from my QEMU my command line to enable the
-NVDIMM:
-
--m 8G,slots=3,maxmem=512G -machine pc,accel=kvm,nvdimm
--object memory-backend-file,id=mem1,share,mem-path=/tmp/nvdimm-8,size=250G
--device nvdimm,memdev=mem1,id=nv1
-
-Here's my full QEMU command line, in case that's interesting:
-
-sudo /usr/bin/qemu-system-x86_64 /home/rzwisler/vms/amonkhet-8.qcow2 -m
-8G,slots=3,maxmem=512G -smp 6 -machine pc,accel=kvm,nvdimm -enable-kvm -netdev
-tap,id=hostnet0,ifname=tap8,script=no,downscript=no -device
-virtio-net-pci,netdev=hostnet0,id=net0,mac=52:54:00:48:94:b8,bus=pci.0,addr=0x8
--rtc base=localtime -serial stdio -display none -monitor
-unix:/tmp/amonkhet-8.monitor,server,nowait -object
-memory-backend-file,id=mem1,share,mem-path=/tmp/nvdimm-8,size=250G -device
-nvdimm,memdev=mem1,id=nv1
-
-- Ross
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
