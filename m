@@ -1,7 +1,7 @@
 From: jlayton@kernel.org
-Subject: [PATCH v8 18/18] btrfs: minimal conversion to errseq_t writeback error reporting on fsync
-Date: Thu, 29 Jun 2017 09:19:54 -0400
-Message-ID: <20170629131954.28733-19-jlayton@kernel.org>
+Subject: [PATCH v8 17/18] xfs: minimal conversion to errseq_t writeback error reporting
+Date: Thu, 29 Jun 2017 09:19:53 -0400
+Message-ID: <20170629131954.28733-18-jlayton@kernel.org>
 References: <20170629131954.28733-1-jlayton@kernel.org>
 Cc: Carlos Maiolino <cmaiolino@redhat.com>,
 	Eryu Guan <eguan@redhat.com>,
@@ -33,45 +33,27 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
-Just check and advance the errseq_t in the file before returning.
-Internal callers of filemap_* functions are left as-is.
+Just check and advance the data errseq_t in struct file before
+before returning from fsync on normal files. Internal filemap_*
+callers are left as-is.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/btrfs/file.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/xfs/xfs_file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index da1096eb1a40..1f57e1a523d9 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -2011,7 +2011,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	struct btrfs_root *root = BTRFS_I(inode)->root;
- 	struct btrfs_trans_handle *trans;
- 	struct btrfs_log_ctx ctx;
--	int ret = 0;
-+	int ret = 0, err;
- 	bool full_sync = 0;
- 	u64 len;
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 5fb5a0958a14..6600b264b0b6 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -140,7 +140,7 @@ xfs_file_fsync(
  
-@@ -2030,7 +2030,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	 */
- 	ret = start_ordered_ops(inode, start, end);
- 	if (ret)
--		return ret;
-+		goto out;
+ 	trace_xfs_file_fsync(ip);
  
- 	inode_lock(inode);
- 	atomic_inc(&root->log_batch);
-@@ -2227,6 +2227,9 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 		ret = btrfs_end_transaction(trans);
- 	}
- out:
-+	err = file_check_and_advance_wb_err(file);
-+	if (!ret)
-+		ret = err;
- 	return ret > 0 ? -EIO : ret;
- }
+-	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
++	error = file_write_and_wait_range(file, start, end);
+ 	if (error)
+ 		return error;
  
 -- 
 2.13.0
