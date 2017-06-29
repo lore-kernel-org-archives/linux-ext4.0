@@ -1,67 +1,54 @@
-From: Matthew Wilcox <mawilcox@microsoft.com>
-Subject: RE: [PATCH v8 12/18] Documentation: flesh out the section in vfs.txt
- on storing and reporting writeback errors
-Date: Thu, 29 Jun 2017 18:21:50 +0000
-Message-ID: <BY2PR21MB003653755FD85FCE2C49393ECBD20@BY2PR21MB0036.namprd21.prod.outlook.com>
-References: <20170629131954.28733-1-jlayton@kernel.org>
-	 <20170629131954.28733-13-jlayton@kernel.org>
-	 <20170629171137.GE5874@birch.djwong.org>
- <1498760014.22569.13.camel@poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
+Date: Thu, 29 Jun 2017 14:30:53 -0400
+Message-ID: <20170629183053.GA4178@fieldses.org>
+References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
+ <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
+ <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
+ <20170629045940.GB5865@birch.djwong.org>
+ <20170629143551.GB1651@fieldses.org>
+ <20170629172528.GA5869@birch.djwong.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
-	<viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>, "tytso@mit.edu"
-	<tytso@mit.edu>, "axboe@kernel.dk" <axboe@kernel.dk>,
-	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-	"corbet@lwn.net" <corbet@lwn.net>, Chris Mason <clm@fb.com>, Josef Bacik
-	<jbacik@fb.com>, David Sterba <dsterba@suse.com>, Carlos Maiolino
-	<cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>, David Howells
-	<dhowells@redhat.com>, Christoph Hellwig <hch@infradead.org>, Liu Bo
-	<bo.li.liu@oracle.com>, "linux-fsdevel@vger.kernel.org"
-	<linux-fsdevel@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>
-To: Jeff Layton <jlayton@poochiereds.net>, "Darrick J. Wong"
-	<darrick.wong@oracle.com>, "jlayton@kernel.org" <jlayton@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1498760014.22569.13.camel@poochiereds.net>
-Content-Language: en-US
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: William Koh <kkc6196@fb.com>, Andreas Dilger <adilger@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Kernel Team <Kernel-team@fb.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        xfs <linux-xfs@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:51016 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753234AbdF2Saz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Jun 2017 14:30:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20170629172528.GA5869@birch.djwong.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-RnJvbTogSmVmZiBMYXl0b24gW21haWx0bzpqbGF5dG9uQHBvb2NoaWVyZWRzLm5ldF0NCj4gT24g
-VGh1LCAyMDE3LTA2LTI5IGF0IDEwOjExIC0wNzAwLCBEYXJyaWNrIEouIFdvbmcgd3JvdGU6DQo+
-ID4gT24gVGh1LCBKdW4gMjksIDIwMTcgYXQgMDk6MTk6NDhBTSAtMDQwMCwgamxheXRvbkBrZXJu
-ZWwub3JnIHdyb3RlOg0KPiA+ID4gK0hhbmRsaW5nIGVycm9ycyBkdXJpbmcgd3JpdGViYWNrDQo+
-ID4gPiArLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ICtNb3N0IGFwcGxp
-Y2F0aW9ucyB0aGF0IHV0aWxpemUgdGhlIHBhZ2VjYWNoZSB3aWxsIHBlcmlvZGljYWxseSBjYWxs
-DQo+ID4gPiArZnN5bmMgdG8gZW5zdXJlIHRoYXQgZGF0YSB3cml0dGVuIGhhcyBtYWRlIGl0IHRv
-IHRoZSBiYWNraW5nIHN0b3JlLg0KPiA+DQo+ID4gL21lIHdvbmRlcnMgaWYgdGhpcyBzZW50ZW5j
-ZSBvdWdodCB0byBiZSB3b3JkZWQgbW9yZSBzdHJvbmdseSwgZS5nLg0KPiA+DQo+ID4gIkFwcGxp
-Y2F0aW9ucyB0aGF0IHV0aWxpemUgdGhlIHBhZ2VjYWNoZSBtdXN0IGNhbGwgYSBkYXRhDQo+ID4g
-c3luY2hyb25pemF0aW9uIHN5c2NhbGwgc3VjaCBhcyBmc3luYywgZmRhdGFzeW5jLCBvciBtc3lu
-YyB0byBlbnN1cmUNCj4gPiB0aGF0IGRhdGEgd3JpdHRlbiBoYXMgbWFkZSBpdCB0byB0aGUgYmFj
-a2luZyBzdG9yZS4iDQo+IA0KPiBXZWxsLi4ub25seSBpZiB0aGV5IGNhcmUgYWJvdXQgdGhlIGRh
-dGEuIFRoZXJlIGFyZSBzb21lIHRoYXQgZG9uJ3QuIDopDQoNCkFsc28sIGFwcGxpY2F0aW9ucyBk
-b24ndCAidXRpbGl6ZSB0aGUgcGFnZWNhY2hlIjsgZmlsZXN5c3RlbXMgdXNlIHRoZSBwYWdlY2Fj
-aGUuDQpBcHBsaWNhdGlvbnMgbWF5IG9yIG1heSBub3QgdXNlIGNhY2hlZCBJL08uICBIb3cgYWJv
-dXQgdGhpczoNCg0KQXBwbGljYXRpb25zIHdoaWNoIGNhcmUgYWJvdXQgZGF0YSBpbnRlZ3JpdHkg
-YW5kIHVzZSBjYWNoZWQgSS9PIHdpbGwNCnBlcmlvZGljYWxseSBjYWxsIGZzeW5jKCksIG1zeW5j
-KCkgb3IgZmRhdGFzeW5jKCkgdG8gZW5zdXJlIHRoYXQgdGhlaXINCmRhdGEgaXMgZHVyYWJsZS4N
-Cg0KPiBXaGF0IHNob3VsZCB3ZSBkbyBhYm91dCBzeW5jX2ZpbGVfcmFuZ2UgaGVyZT8gSXQgZG9l
-c24ndCBjdXJyZW50bHkgY2FsbA0KPiBhbnkgZmlsZXN5c3RlbSBvcGVyYXRpb25zIGRpcmVjdGx5
-LCBzbyB3ZSBkb24ndCBoYXZlIGEgZ29vZCB3YXkgdG8gbWFrZQ0KPiBpdCBzZWxlY3RpdmVseSB1
-c2UgZXJyc2VxX3QgaGFuZGxpbmcgdGhlcmUuDQo+IA0KPiBJIGNvdWxkIHJlc3VycmVjdCB0aGUg
-RlNfKiBmbGFnIGZvciB0aGF0LCB0aG91Z2ggSSBkb24ndCByZWFsbHkgbGlrZQ0KPiB0aGF0LiBT
-aG91bGQgSSBqdXN0IGdvIGFoZWFkIGFuZCBjb252ZXJ0IGl0IG92ZXIgdG8gdXNlIGVycnNlcV90
-IHVuZGVyDQo+IHRoZSB0aGVvcnkgdGhhdCBtb3N0IGNhbGxlcnMgd2lsbCBldmVudHVhbGx5IHdh
-bnQgdGhhdCBhbnl3YXk/DQoNCkkgdGhpbmsgc28uDQoNCg==
+On Thu, Jun 29, 2017 at 10:25:28AM -0700, Darrick J. Wong wrote:
+> Was there ever a version of NFS (or more generally callers of the
+> exportfs code) that couldn't deal with i_generation in the file handle,
+> and therefore we invented this generation hack to work around the loss
+> of the generation information?
+> 
+> There's a comment in xfs_fs_encode_fh about not supporting 64bit inodes
+> with subtree_check (which seems to require one ino/gen pair for the file
+> and a second pair for the file's parent) on NFSv2 because v2 doesn't
+> provide enough space for all the file handle information, but that's the
+> furthest I got with lazy-mining the git history. :)
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+There's a comment in fs/ext4/super.c:ext4_nfs_get_inode
+
+	* Currently we don't know the generation for parent directory, so
+	* a generation of 0 means "accept any"
+
+But I don't see that used.
+
+It was used once upon a time; I see it actually used in old 2.5 code in
+nfsd_get_dentry.  Hm.
+
+--b.
