@@ -1,7 +1,7 @@
 From: jlayton@kernel.org
-Subject: [PATCH v8 11/18] mm: set both AS_EIO/AS_ENOSPC and errseq_t in mapping_set_error
-Date: Thu, 29 Jun 2017 09:19:47 -0400
-Message-ID: <20170629131954.28733-12-jlayton@kernel.org>
+Subject: [PATCH v8 14/18] block: convert to errseq_t based writeback error tracking
+Date: Thu, 29 Jun 2017 09:19:50 -0400
+Message-ID: <20170629131954.28733-15-jlayton@kernel.org>
 References: <20170629131954.28733-1-jlayton@kernel.org>
 Cc: Carlos Maiolino <cmaiolino@redhat.com>,
 	Eryu Guan <eguan@redhat.com>,
@@ -33,66 +33,33 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
-When a writeback error occurs, we want later callers to be able to pick
-up that fact when they go to wait on that writeback to complete.
-Traditionally, we've used AS_EIO/AS_ENOSPC flags to track that, but
-that's problematic since only one "checker" will be informed when an
-error occurs.
+This is a very minimal conversion to errseq_t based error tracking
+for raw block device access. Just have it use the standard
+file_write_and_wait_range call.
 
-In later patches, we're going to want to convert many of these callers
-to check for errors since a well-defined point in time. For now, ensure
-that we can handle both sorts of checks by both setting errors in both
-places when there is a writeback failure.
+Note that there are internal callers that call sync_blockdev
+and the like that are not affected by this. They'll continue
+to use the AS_EIO/AS_ENOSPC flags for error reporting like
+they always have for now.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/pagemap.h | 31 +++++++++++++++++++++++++------
- 1 file changed, 25 insertions(+), 6 deletions(-)
+ fs/block_dev.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 316a19f6b635..28acc94e0f81 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -28,14 +28,33 @@ enum mapping_flags {
- 	AS_NO_WRITEBACK_TAGS = 5,
- };
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 4d62fe771587..bcb0be6e423a 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -624,7 +624,7 @@ int blkdev_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
+ 	struct block_device *bdev = I_BDEV(bd_inode);
+ 	int error;
+ 	
+-	error = filemap_write_and_wait_range(filp->f_mapping, start, end);
++	error = file_write_and_wait_range(filp, start, end);
+ 	if (error)
+ 		return error;
  
-+/**
-+ * mapping_set_error - record a writeback error in the address_space
-+ * @mapping - the mapping in which an error should be set
-+ * @error - the error to set in the mapping
-+ *
-+ * When writeback fails in some way, we must record that error so that
-+ * userspace can be informed when fsync and the like are called.  We endeavor
-+ * to report errors on any file that was open at the time of the error.  Some
-+ * internal callers also need to know when writeback errors have occurred.
-+ *
-+ * When a writeback error occurs, most filesystems will want to call
-+ * mapping_set_error to record the error in the mapping so that it can be
-+ * reported when the application calls fsync(2).
-+ */
- static inline void mapping_set_error(struct address_space *mapping, int error)
- {
--	if (unlikely(error)) {
--		if (error == -ENOSPC)
--			set_bit(AS_ENOSPC, &mapping->flags);
--		else
--			set_bit(AS_EIO, &mapping->flags);
--	}
-+	if (likely(!error))
-+		return;
-+
-+	/* Record in wb_err for checkers using errseq_t based tracking */
-+	filemap_set_wb_err(mapping, error);
-+
-+	/* Record it in flags for now, for legacy callers */
-+	if (error == -ENOSPC)
-+		set_bit(AS_ENOSPC, &mapping->flags);
-+	else
-+		set_bit(AS_EIO, &mapping->flags);
- }
- 
- static inline void mapping_set_unevictable(struct address_space *mapping)
 -- 
 2.13.0
 
