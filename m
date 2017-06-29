@@ -1,121 +1,110 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH v8 12/18] Documentation: flesh out the section in
- vfs.txt on storing and reporting writeback errors
-Date: Thu, 29 Jun 2017 16:42:14 -0400
-Message-ID: <1498768934.5710.7.camel@poochiereds.net>
-References: <20170629131954.28733-1-jlayton@kernel.org>
-	 <20170629131954.28733-13-jlayton@kernel.org>
-	 <20170629171137.GE5874@birch.djwong.org>
-	 <1498760014.22569.13.camel@poochiereds.net>
-	 <BY2PR21MB003653755FD85FCE2C49393ECBD20@BY2PR21MB0036.namprd21.prod.outlook.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: mkfs.ext4 -D option fails to mount
+Date: Thu, 29 Jun 2017 17:06:37 -0600
+Message-ID: <20170629230637.GA14347@linux.intel.com>
+References: <20170629153538.GA4268@linux.intel.com>
+ <20170629155727.GA8536@linux.intel.com>
+ <20170629175319.s75rdncvejil357p@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
- <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, "tytso@mit.edu"
- <tytso@mit.edu>, "axboe@kernel.dk" <axboe@kernel.dk>,
- "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
- "corbet@lwn.net" <corbet@lwn.net>, Chris Mason <clm@fb.com>, Josef Bacik
- <jbacik@fb.com>, David Sterba <dsterba@suse.com>,  Carlos Maiolino
- <cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>, David Howells
- <dhowells@redhat.com>,  Christoph Hellwig <hch@infradead.org>, Liu Bo
- <bo.li.liu@oracle.com>,  "linux-fsdevel@vger.kernel.org"
- <linux-fsdevel@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
-  "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
- "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
- "linux-block@vger.kernel.org" <linux-block@vger.kernel.o
-To: Matthew Wilcox <mawilcox@microsoft.com>, "Darrick J. Wong"
-	 <darrick.wong@oracle.com>, "jlayton@kernel.org" <jlayton@kernel.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <BY2PR21MB003653755FD85FCE2C49393ECBD20@BY2PR21MB0036.namprd21.prod.outlook.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga14.intel.com ([192.55.52.115]:29896 "EHLO mga14.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751950AbdF2XGo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Jun 2017 19:06:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20170629175319.s75rdncvejil357p@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2017-06-29 at 18:21 +0000, Matthew Wilcox wrote:
-> From: Jeff Layton [mailto:jlayton@poochiereds.net]
-> > On Thu, 2017-06-29 at 10:11 -0700, Darrick J. Wong wrote:
-> > > On Thu, Jun 29, 2017 at 09:19:48AM -0400, jlayton@kernel.org wrote:
-> > > > +Handling errors during writeback
-> > > > +--------------------------------
-> > > > +Most applications that utilize the pagecache will periodically call
-> > > > +fsync to ensure that data written has made it to the backing store.
-> > > 
-> > > /me wonders if this sentence ought to be worded more strongly, e.g.
-> > > 
-> > > "Applications that utilize the pagecache must call a data
-> > > synchronization syscall such as fsync, fdatasync, or msync to ensure
-> > > that data written has made it to the backing store."
-> > 
-> > Well...only if they care about the data. There are some that don't. :)
+On Thu, Jun 29, 2017 at 01:53:19PM -0400, Theodore Ts'o wrote:
+> On Thu, Jun 29, 2017 at 09:57:27AM -0600, Ross Zwisler wrote:
+> > On Thu, Jun 29, 2017 at 09:35:38AM -0600, Ross Zwisler wrote:
+> > > Our validation team noticed that in some configurations mkfs.ext4 with the
+> > > -D option creates a filesystem that can't be mounted:
 > 
-> Also, applications don't "utilize the pagecache"; filesystems use the pagecache.
-> Applications may or may not use cached I/O.  How about this:
+> The -D option just means that we're doing the I/O using Direct I/O (as
+> opposed to buffered I/O).  It shouldn't make any difference to what
+> gets written, so this very much smells like a bug in how /dev/pmem
+> supports Direct I/O...
 > 
-
-I meant "applications that do buffered I/O" as opposed to O_DIRECT, but
-yeah that's not very clear.
-
-
-> Applications which care about data integrity and use cached I/O will
-> periodically call fsync(), msync() or fdatasync() to ensure that their
-> data is durable.
+> > One more bit of info - this seems to be strongly tied to the size of the
+> > block device.  With a 32 GB block device it works fine, with 248 GB you get
+> > overlap messages for groups 1 through 63, and with a 250 GB device you get
+> > overlaps for groups 1 through 1999.
 > 
-> > What should we do about sync_file_range here? It doesn't currently call
-> > any filesystem operations directly, so we don't have a good way to make
-> > it selectively use errseq_t handling there.
-> > 
-> > I could resurrect the FS_* flag for that, though I don't really like
-> > that. Should I just go ahead and convert it over to use errseq_t under
-> > the theory that most callers will eventually want that anyway?
-> 
-> I think so.
+> This very much sounds like Direct I/O is just getting completely
+> botched for the pmem device, and writes to a block group descriptor
+> block is affecting the wrong place on the storage device.
 
-Ok, I'll leave that for the next pile of patches though.
+This also reproduces with brd or loop as our block device:
 
-Here's a revised section
+  # modprobe brd rd_size=$((1024*1024*248))
+  
+  # mkfs.ext4 /dev/ram0 -F -D 
+  mke2fs 1.43.3 (04-Sep-2016)
+  Discarding device blocks: done                            
+  Creating filesystem with 65011712 4k blocks and 16252928 inodes
+  Filesystem UUID: 1632baa4-7260-4cc1-9558-0cb3aa2f213e
+  Superblock backups stored on blocks: 
+  	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+  	4096000, 7962624, 11239424, 20480000, 23887872
+  
+  Allocating group tables: done                            
+  Writing inode tables: done                            
+  Creating journal (262144 blocks): done
+  Writing superblocks and filesystem accounting information: done     
+  
+  # mount /dev/ram0 /mnt
+  mount: wrong fs type, bad option, bad superblock on /dev/ram0,
+         missing codepage or helper program, or other error
+  
+         In some cases useful info is found in syslog - try
+         dmesg | tail or so.
 
-------------------------------8<--------------------------------
-Handling errors during writeback
---------------------------------
-Most applications that do buffered I/O will periodically call a file
-synchronization call (fsync, fdatasync, msync or sync_file_range) to
-ensure that data written has made it to the backing store.  When there
-is an error during writeback, they expect that error to be reported when
-a file sync request is made.  After an error has been reported on one
-request, subsequent requests on the same file descriptor should return
-0, unless further writeback errors have occurred since the previous file
-syncronization.
+where dmesg says:
 
-Ideally, the kernel would report errors only on file descriptions on
-which writes were done that subsequently failed to be written back.  The
-generic pagecache infrastructure does not track the file descriptions
-that have dirtied each individual page however, so determining which
-file descriptors should get back an error is not possible.
+  EXT4-fs (ram0): ext4_check_descriptors: Block bitmap for group 64 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Inode bitmap for group 64 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Inode table for group 64 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Block bitmap for group 65 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Inode bitmap for group 65 overlaps superblock
+  ...
+  EXT4-fs (ram0): ext4_check_descriptors: Block bitmap for group 1983 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Inode bitmap for group 1983 overlaps superblock
+  EXT4-fs (ram0): ext4_check_descriptors: Inode table for group 1983 overlaps superblock
+  EXT4-fs (ram0): no journal found
 
-Instead, the generic writeback error tracking infrastructure in the
-kernel settles for reporting errors to fsync on all file descriptions
-that were open at the time that the error occurred.  In a situation with
-multiple writers, all of them will get back an error on a subsequent
-fsync,
-even if all of the writes done through that particular file descriptor
-succeeded (or even if there were no writes on that file descriptor at
-all).
+or
 
-Filesystems that wish to use this infrastructure should call
-mapping_set_error to record the error in the address_space when it
-occurs.  Then, after writing back data from the pagecache in their
-file->fsync operation, they should call file_check_and_advance_wb_err to
-ensure that the struct file's error cursor has advanced to the correct
-point in the stream of errors emitted by the backing device(s).
-------------------------------8<--------------------------------
+  # truncate -s 248G loop_fs
+  # losetup /dev/loop0 ./loop_fs 
+  # mkfs.ext4 /dev/loop0 -F -D
+  mke2fs 1.43.3 (04-Sep-2016)
+  /dev/loop0 contains a ext4 file system
+  	last mounted on Thu Jun 29 17:03:07 2017
+  Discarding device blocks: done                            
+  Creating filesystem with 65011712 4k blocks and 16252928 inodes
+  Filesystem UUID: 00912ac9-599a-4396-9ef3-a353bdec69ea
+  Superblock backups stored on blocks: 
+  	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+  	4096000, 7962624, 11239424, 20480000, 23887872
+  
+  Allocating group tables: done                            
+  Writing inode tables: done                            
+  Creating journal (262144 blocks): done
+  Writing superblocks and filesystem accounting information: done     
+  
+  # mount /dev/loop0 /tmp
+  mount: wrong fs type, bad option, bad superblock on /dev/loop0,
+         missing codepage or helper program, or other error
+  
+         In some cases useful info is found in syslog - try
+         dmesg | tail or so.
 
-Thanks for the review so far!
--- 
-Jeff Layton <jlayton@poochiereds.net>
+with similar messages.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+- Ross
