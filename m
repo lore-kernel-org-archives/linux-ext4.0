@@ -1,98 +1,102 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: fix __ext4_xattr_set_credits()
-Date: Wed, 28 Jun 2017 16:26:39 -0600
-Message-ID: <4D46B5E7-4001-44FE-BE94-82636D1F8512@dilger.ca>
-References: <20170628214750.31548-1-tahsin@google.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_3DD69996-ABDB-44CA-886B-5A3126E9F6B3";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170628214750.31548-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
+Date: Wed, 28 Jun 2017 17:48:25 -0700
+Message-ID: <20170629004825.GA5865@birch.djwong.org>
+References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel-team@fb.com
+To: Kyungchan Koh <kkc6196@fb.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:40226 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751554AbdF2Asg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Jun 2017 20:48:36 -0400
+Content-Disposition: inline
+In-Reply-To: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jun 28, 2017 at 03:06:42PM -0700, Kyungchan Koh wrote:
+> In fs/ext4/super.c, the function ext4_nfs_get_inode takes as input
+> "generation" that can be used to specify the generation of the inode to
+> be returned. When 0 is given as input, then inodes of any generation can
+> be returned. Therefore, generation 0 is a special case that should be
+> avoided when assigning generation to inodes.
+> 
+> A new inline function, ext4_inode_set_gen, will take care of the
+> problem.  Now, inodes cannot have a generation of 0, so this patch fixes
+> the issue.
 
---Apple-Mail=_3DD69996-ABDB-44CA-886B-5A3126E9F6B3
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Forgive my ignorance, but why is generation == 0 a special case?
 
-On Jun 28, 2017, at 3:47 PM, Tahsin Erdogan <tahsin@google.com> wrote:
->=20
-> __ext4_xattr_set_credits() calculates journal credits needed for a
-> set xattr operation. Currently, credits needed for quota updates are
-> added only if ea_inode feature is enabled which is wrong. Fix this by
-> moving quota related additions to above ea_inode feature check.
->=20
-> Fixes: 74c5bfa651af ("ext4: xattr inode deduplication")
->=20
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+>From a quick scan of the code it seems that filesystems hand out
+handles to NFS with parent_{ino,gen} set (or zeroed).  That implies that
+we have to check ino/gen for zeroes and garbage, but I don't see why
+you'd exempt gen == 0 from checking?
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+(Really what I'm fishing for is whether or not there's some precedent
+for this that I don't know about.)
 
+--D
+
+> 
+> Signed-off-by: Kyungchan Koh <kkc6196@fb.com>
 > ---
-> fs/ext4/xattr.c | 6 +++---
-> 1 file changed, 3 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index ce12c3fb7e59..062756b4e6d8 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -845,6 +845,9 @@ static int __ext4_xattr_set_credits(struct =
-super_block *sb,
-> 	 */
-> 	credits =3D 5;
->=20
-> +	/* Quota updates. */
-> +	credits +=3D EXT4_MAXQUOTAS_TRANS_BLOCKS(sb);
+>  fs/ext4/ext4.h   | 8 ++++++++
+>  fs/ext4/ialloc.c | 2 +-
+>  fs/ext4/ioctl.c  | 4 ++--
+>  3 files changed, 11 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3219154..74c6677 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1549,6 +1549,14 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>  		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+>  }
+>  
+> +static inline void ext4_inode_set_gen(struct inode *inode,
+> +				      struct ext4_sb_info *sbi)
+> +{
+> +	inode->i_generation = sbi->s_next_generation++;
+> +	if (!inode->i_generation)
+> +		inode->i_generation = sbi->s_next_generation++;
+> +}
 > +
-> 	/* We are done if ea_inode feature is not enabled. */
-> 	if (!ext4_has_feature_ea_inode(sb))
-> 		return credits;
-> @@ -878,9 +881,6 @@ static int __ext4_xattr_set_credits(struct =
-super_block *sb,
-> 	/* Block bitmap and group descriptor updates for each block. */
-> 	credits +=3D blocks * 2;
->=20
-> -	/* Quota updates. */
-> -	credits +=3D EXT4_MAXQUOTAS_TRANS_BLOCKS(sb);
-> -
-> 	/* We may need to clone the existing xattr block in which case =
-we need
-> 	 * to increment ref counts for existing ea_inodes referenced by =
-it.
-> 	 */
-> --
-> 2.13.2.725.g09c95d1e9-goog
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_3DD69996-ABDB-44CA-886B-5A3126E9F6B3
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZVC0hpIg59Q01vtYRAsSkAJ4kdi1no8xSAGQj54o180Yfjj7mFQCcD+Do
-saXStyyu3hEMStvoMewoKGc=
-=S7Ue
------END PGP SIGNATURE-----
-
---Apple-Mail=_3DD69996-ABDB-44CA-886B-5A3126E9F6B3--
+>  /*
+>   * Inode dynamic state flags
+>   */
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 98ac2f1..d33f6f0 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -1072,7 +1072,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  		goto out;
+>  	}
+>  	spin_lock(&sbi->s_next_gen_lock);
+> -	inode->i_generation = sbi->s_next_generation++;
+> +	ext4_inode_set_gen(inode, sbi);
+>  	spin_unlock(&sbi->s_next_gen_lock);
+>  
+>  	/* Precompute checksum seed for inode metadata */
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 0c21e22..d52a467 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -160,8 +160,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
+>  	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
+>  
+>  	spin_lock(&sbi->s_next_gen_lock);
+> -	inode->i_generation = sbi->s_next_generation++;
+> -	inode_bl->i_generation = sbi->s_next_generation++;
+> +	ext4_inode_set_gen(inode, sbi);
+> +	ext4_inode_set_gen(inode_bl, sbi);
+>  	spin_unlock(&sbi->s_next_gen_lock);
+>  
+>  	ext4_discard_preallocations(inode);
+> -- 
+> 2.9.3
+> 
