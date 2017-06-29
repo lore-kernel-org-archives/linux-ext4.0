@@ -1,61 +1,61 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
-Date: Thu, 29 Jun 2017 10:35:51 -0400
-Message-ID: <20170629143551.GB1651@fieldses.org>
-References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
- <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
- <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
- <20170629045940.GB5865@birch.djwong.org>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: mkfs.ext4 -D option fails to mount
+Date: Thu, 29 Jun 2017 09:35:38 -0600
+Message-ID: <20170629153538.GA4268@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: William Koh <kkc6196@fb.com>, Andreas Dilger <adilger@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Kernel Team <Kernel-team@fb.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        xfs <linux-xfs@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga04.intel.com ([192.55.52.120]:59112 "EHLO mga04.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753299AbdF2Pfk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Jun 2017 11:35:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20170629045940.GB5865@birch.djwong.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 28, 2017 at 09:59:40PM -0700, Darrick J. Wong wrote:
-> AFAICT, i_generation == 0 in XFS and btrfs is just as valid as any other
-> number.  There is no special casing of zero in either filesystem.
-> 
-> So now, my curiosity intrigued, I surveyed all the Linux filesystems
-> that can export to NFS.  I see that there are actually quite a few fs
-> (ext[2-4], exofs, efs, fat, jfs, f2fs, isofs, nilfs2, reiserfs, udf,
-> ufs) that treat zero as a special value meaning "ignore generation
-> check"; others (xfs, btrfs, fuse, ntfs, ocfs2) that don't consider zero
-> special and always require a match; and still others (affs, befs, ceph,
-> gfs2, jffs2, squashfs) that don't check at all.
-> 
-> That to mean strongly suggests that more research is necessary to figure
-> out why some of the filesystems that support i_generation reserve zero
-> as a special value to disable generation checks and why others always
-> require an exact match.  Until we can recapture why things are they way
-> they are, it doesn't make much sense to have a helper that only applies
-> to half the filesystems.
+Our validation team noticed that in some configurations mkfs.ext4 with the
+-D option creates a filesystem that can't be mounted:
 
->From a quick look at ext2; correct me if I got anything wrong:
+  # mkfs.ext4 -D -F /dev/pmem5 
+  mke2fs 1.43.3 (04-Sep-2016)
+  /dev/pmem5 contains a ext4 file system
+  	last mounted on Tue Jul 26 07:44:19 2016
+  Creating filesystem with 65027584 4k blocks and 16261120 inodes
+  Filesystem UUID: 6f95ece9-d4cb-4cfc-bc22-211119d5efe7
+  Superblock backups stored on blocks: 
+  	32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 
+  	4096000, 7962624, 11239424, 20480000, 23887872
+  
+  Allocating group tables: done                            
+  Writing inode tables: done                            
+  Creating journal (262144 blocks): done
+  Writing superblocks and filesystem accounting information: done     
+  
+  # mount /dev/pmem5 /mnt
+  mount: wrong fs type, bad option, bad superblock on /dev/pmem5,
+         missing codepage or helper program, or other error
+  
+         In some cases useful info is found in syslog - try
+         dmesg | tail or so.
 
-	- it looks like this is *only* used by NFS fh->inode lookups,
-	  there's not some other internal use for this special case.
-	- filehandles are never encoded with i_generation 0, so will
-	  never be returned to clients.
+where dmesg says:
 
-So, this could only ever be used by an NFS client.  But the only NFS
-client that could ever use it would be a non-standard client that knew
-this special feature of these particular filesystems.
+  EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 1 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 1 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 1 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 2 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 2 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 2 overlaps superblock
+  ...
+  EXT4-fs (pmem5): ext4_check_descriptors: Block bitmap for group 63 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode bitmap for group 63 overlaps superblock
+  EXT4-fs (pmem5): ext4_check_descriptors: Inode table for group 63 overlaps superblock
+  EXT4-fs (pmem5): no journal found
 
-Sounds like at most a slightly useful tool for malicious clients
-attempting filehandle-guessing attacks.
+If we omit the "-D" option from mkfs.ext4, everything works.  Note also that
+this behavior is independent of the DAX mount option.
 
-I'm probably missing something.
+This isn't blocking us, I just thought you would want to know.
 
---b.
+- Ross
