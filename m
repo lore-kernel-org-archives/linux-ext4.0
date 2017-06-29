@@ -1,181 +1,98 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH] ext4: have ext4_xattr_set_handle() allocate journal credits
-Date: Wed, 28 Jun 2017 17:50:29 -0700
-Message-ID: <20170629005029.13302-1-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
+From: William Koh <kkc6196@fb.com>
+Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
+Date: Thu, 29 Jun 2017 00:58:17 +0000
+Message-ID: <36EC19C1-8C8C-4B95-B263-8684BEDCE591@fb.com>
+References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
+ <20170629004825.GA5865@birch.djwong.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Kernel Team <Kernel-team@fb.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170629004825.GA5865@birch.djwong.org>
+Content-Language: en-US
+Content-ID: <270361338485F14BB1C0F9F68BEB701B@namprd15.prod.outlook.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently, callers of ext4_xattr_set_handle() are expected to allocate
-journal credits for setting extended attributes. ext4_xattr_set_credits()
-helps them figure out necessary credits. ext4_xattr_set_handle()
-performs a sufficient credits check before starting data updates.
-
-This model works fine for callers that start the transaction handle
-themselves, such as ext4_xattr_set(). Other callers like ext4_set_context()
-and __ext4_set_acl() use transaction handles that were started by outer
-scopes so for this to work properly we would have to involve outer scope
-callers to incorporate xattr credits.
-
-Also, existing sufficient credits check in ext4_xattr_set_handle()
-ignores the fact that allocated credits may have been intended for
-operations other than setting extended attributes. So in theory
-ext4_xattr_set_handle() may finish successfully but have also depleted
-the journal credits that were supposed to be used by other operations
-afterwards.
-
-In this patch, responsibility of allocating journal credits is moved to
-ext4_xattr_set_handle(). It tries to extend the journal credits as
-needed or will restart the transaction handle if extend doesn't work.
-
-Fixes: 021264a98d700e8 ("ext4: improve journal credit handling in set xattr paths")
-
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- fs/ext4/acl.c   | 10 +++-------
- fs/ext4/super.c |  9 +++------
- fs/ext4/xattr.c | 39 +++++++--------------------------------
- fs/ext4/xattr.h |  2 --
- 4 files changed, 13 insertions(+), 47 deletions(-)
-
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 8db03e5c78bc..537a469d8039 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -231,18 +231,14 @@ int
- ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	handle_t *handle;
--	int error, credits, retries = 0;
--	size_t acl_size = acl ? ext4_acl_size(acl->a_count) : 0;
-+	int error, retries = 0;
- 
- 	error = dquot_initialize(inode);
- 	if (error)
- 		return error;
- retry:
--	error = ext4_xattr_set_credits(inode, acl_size, &credits);
--	if (error)
--		return error;
--
--	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
-+	/* ext4_xattr_set_handle() allocates journal credits if necessary. */
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR, 0 /* credits */);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 56c971807df5..96d4b5296fa0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1150,7 +1150,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 							void *fs_data)
- {
- 	handle_t *handle = fs_data;
--	int res, res2, credits, retries = 0;
-+	int res, res2, retries = 0;
- 
- 	/*
- 	 * Encrypting the root directory is not allowed because e2fsck expects
-@@ -1194,11 +1194,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 	if (res)
- 		return res;
- retry:
--	res = ext4_xattr_set_credits(inode, len, &credits);
--	if (res)
--		return res;
--
--	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
-+	/* ext4_xattr_set_handle() allocates journal credits if necessary. */
-+	handle = ext4_journal_start(inode, EXT4_HT_MISC, 0 /* credits */);
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 062756b4e6d8..6b909804aa5e 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2253,7 +2253,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 		credits = __ext4_xattr_set_credits(inode->i_sb, bh, value_len);
- 		brelse(bh);
- 
--		if (!ext4_handle_has_enough_credits(handle, credits)) {
-+		if (ext4_xattr_ensure_credits(
-+					handle, inode,
-+					handle->h_buffer_credits + credits,
-+					NULL /* bh */, false /* dirty */,
-+					false /* block_csum */)) {
- 			error = -ENOSPC;
- 			goto cleanup;
- 		}
-@@ -2357,31 +2361,6 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	return error;
- }
- 
--int ext4_xattr_set_credits(struct inode *inode, size_t value_len, int *credits)
--{
--	struct buffer_head *bh;
--	int err;
--
--	*credits = 0;
--
--	if (!EXT4_SB(inode->i_sb)->s_journal)
--		return 0;
--
--	down_read(&EXT4_I(inode)->xattr_sem);
--
--	bh = ext4_xattr_get_block(inode);
--	if (IS_ERR(bh)) {
--		err = PTR_ERR(bh);
--	} else {
--		*credits = __ext4_xattr_set_credits(inode->i_sb, bh, value_len);
--		brelse(bh);
--		err = 0;
--	}
--
--	up_read(&EXT4_I(inode)->xattr_sem);
--	return err;
--}
--
- /*
-  * ext4_xattr_set()
-  *
-@@ -2397,18 +2376,14 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
- 	handle_t *handle;
- 	struct super_block *sb = inode->i_sb;
- 	int error, retries = 0;
--	int credits;
- 
- 	error = dquot_initialize(inode);
- 	if (error)
- 		return error;
- 
- retry:
--	error = ext4_xattr_set_credits(inode, value_len, &credits);
--	if (error)
--		return error;
--
--	handle = ext4_journal_start(inode, EXT4_HT_XATTR, credits);
-+	/* ext4_xattr_set_handle() allocates journal credits if necessary. */
-+	handle = ext4_journal_start(inode, EXT4_HT_XATTR, 0 /* credits */);
- 	if (IS_ERR(handle)) {
- 		error = PTR_ERR(handle);
- 	} else {
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 26119a67c8c3..f81cee5c21cc 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -152,8 +152,6 @@ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
- extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
- extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
- extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
--extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
--				  int *credits);
- 
- extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 				   struct ext4_xattr_inode_array **array,
--- 
-2.13.2.725.g09c95d1e9-goog
+T24gNi8yOC8xNywgNTo0OCBQTSwgIkRhcnJpY2sgSi4gV29uZyIgPGRhcnJpY2sud29uZ0BvcmFj
+bGUuY29tPiB3cm90ZToNCg0KICAgIE9uIFdlZCwgSnVuIDI4LCAyMDE3IGF0IDAzOjA2OjQyUE0g
+LTA3MDAsIEt5dW5nY2hhbiBLb2ggd3JvdGU6DQogICAgPiBJbiBmcy9leHQ0L3N1cGVyLmMsIHRo
+ZSBmdW5jdGlvbiBleHQ0X25mc19nZXRfaW5vZGUgdGFrZXMgYXMgaW5wdXQNCiAgICA+ICJnZW5l
+cmF0aW9uIiB0aGF0IGNhbiBiZSB1c2VkIHRvIHNwZWNpZnkgdGhlIGdlbmVyYXRpb24gb2YgdGhl
+IGlub2RlIHRvDQogICAgPiBiZSByZXR1cm5lZC4gV2hlbiAwIGlzIGdpdmVuIGFzIGlucHV0LCB0
+aGVuIGlub2RlcyBvZiBhbnkgZ2VuZXJhdGlvbiBjYW4NCiAgICA+IGJlIHJldHVybmVkLiBUaGVy
+ZWZvcmUsIGdlbmVyYXRpb24gMCBpcyBhIHNwZWNpYWwgY2FzZSB0aGF0IHNob3VsZCBiZQ0KICAg
+ID4gYXZvaWRlZCB3aGVuIGFzc2lnbmluZyBnZW5lcmF0aW9uIHRvIGlub2Rlcy4NCiAgICA+IA0K
+ICAgID4gQSBuZXcgaW5saW5lIGZ1bmN0aW9uLCBleHQ0X2lub2RlX3NldF9nZW4sIHdpbGwgdGFr
+ZSBjYXJlIG9mIHRoZQ0KICAgID4gcHJvYmxlbS4gIE5vdywgaW5vZGVzIGNhbm5vdCBoYXZlIGEg
+Z2VuZXJhdGlvbiBvZiAwLCBzbyB0aGlzIHBhdGNoIGZpeGVzDQogICAgPiB0aGUgaXNzdWUuDQog
+ICAgDQogICAgRm9yZ2l2ZSBteSBpZ25vcmFuY2UsIGJ1dCB3aHkgaXMgZ2VuZXJhdGlvbiA9PSAw
+IGEgc3BlY2lhbCBjYXNlPw0KICAgIA0KICAgIEZyb20gYSBxdWljayBzY2FuIG9mIHRoZSBjb2Rl
+IGl0IHNlZW1zIHRoYXQgZmlsZXN5c3RlbXMgaGFuZCBvdXQNCiAgICBoYW5kbGVzIHRvIE5GUyB3
+aXRoIHBhcmVudF97aW5vLGdlbn0gc2V0IChvciB6ZXJvZWQpLiAgVGhhdCBpbXBsaWVzIHRoYXQN
+CiAgICB3ZSBoYXZlIHRvIGNoZWNrIGluby9nZW4gZm9yIHplcm9lcyBhbmQgZ2FyYmFnZSwgYnV0
+IEkgZG9uJ3Qgc2VlIHdoeQ0KICAgIHlvdSdkIGV4ZW1wdCBnZW4gPT0gMCBmcm9tIGNoZWNraW5n
+Pw0KICAgIA0KICAgIChSZWFsbHkgd2hhdCBJJ20gZmlzaGluZyBmb3IgaXMgd2hldGhlciBvciBu
+b3QgdGhlcmUncyBzb21lIHByZWNlZGVudA0KICAgIGZvciB0aGlzIHRoYXQgSSBkb24ndCBrbm93
+IGFib3V0LikNCiAgICANCiAgICAtLUQNCiAgICANCiAgICA+IA0KICAgID4gU2lnbmVkLW9mZi1i
+eTogS3l1bmdjaGFuIEtvaCA8a2tjNjE5NkBmYi5jb20+DQogICAgPiAtLS0NCiAgICA+ICBmcy9l
+eHQ0L2V4dDQuaCAgIHwgOCArKysrKysrKw0KICAgID4gIGZzL2V4dDQvaWFsbG9jLmMgfCAyICst
+DQogICAgPiAgZnMvZXh0NC9pb2N0bC5jICB8IDQgKystLQ0KICAgID4gIDMgZmlsZXMgY2hhbmdl
+ZCwgMTEgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCiAgICA+IA0KICAgID4gZGlmZiAt
+LWdpdCBhL2ZzL2V4dDQvZXh0NC5oIGIvZnMvZXh0NC9leHQ0LmgNCiAgICA+IGluZGV4IDMyMTkx
+NTQuLjc0YzY2NzcgMTAwNjQ0DQogICAgPiAtLS0gYS9mcy9leHQ0L2V4dDQuaA0KICAgID4gKysr
+IGIvZnMvZXh0NC9leHQ0LmgNCiAgICA+IEBAIC0xNTQ5LDYgKzE1NDksMTQgQEAgc3RhdGljIGlu
+bGluZSBpbnQgZXh0NF92YWxpZF9pbnVtKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHVuc2lnbmVk
+IGxvbmcgaW5vKQ0KICAgID4gIAkJIGlubyA8PSBsZTMyX3RvX2NwdShFWFQ0X1NCKHNiKS0+c19l
+cy0+c19pbm9kZXNfY291bnQpKTsNCiAgICA+ICB9DQogICAgPiAgDQogICAgPiArc3RhdGljIGlu
+bGluZSB2b2lkIGV4dDRfaW5vZGVfc2V0X2dlbihzdHJ1Y3QgaW5vZGUgKmlub2RlLA0KICAgID4g
+KwkJCQkgICAgICBzdHJ1Y3QgZXh0NF9zYl9pbmZvICpzYmkpDQogICAgPiArew0KICAgID4gKwlp
+bm9kZS0+aV9nZW5lcmF0aW9uID0gc2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gKwlp
+ZiAoIWlub2RlLT5pX2dlbmVyYXRpb24pDQogICAgPiArCQlpbm9kZS0+aV9nZW5lcmF0aW9uID0g
+c2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gK30NCiAgICA+ICsNCiAgICA+ICAvKg0K
+ICAgID4gICAqIElub2RlIGR5bmFtaWMgc3RhdGUgZmxhZ3MNCiAgICA+ICAgKi8NCiAgICA+IGRp
+ZmYgLS1naXQgYS9mcy9leHQ0L2lhbGxvYy5jIGIvZnMvZXh0NC9pYWxsb2MuYw0KICAgID4gaW5k
+ZXggOThhYzJmMS4uZDMzZjZmMCAxMDA2NDQNCiAgICA+IC0tLSBhL2ZzL2V4dDQvaWFsbG9jLmMN
+CiAgICA+ICsrKyBiL2ZzL2V4dDQvaWFsbG9jLmMNCiAgICA+IEBAIC0xMDcyLDcgKzEwNzIsNyBA
+QCBzdHJ1Y3QgaW5vZGUgKl9fZXh0NF9uZXdfaW5vZGUoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0
+IGlub2RlICpkaXIsDQogICAgPiAgCQlnb3RvIG91dDsNCiAgICA+ICAJfQ0KICAgID4gIAlzcGlu
+X2xvY2soJnNiaS0+c19uZXh0X2dlbl9sb2NrKTsNCiAgICA+IC0JaW5vZGUtPmlfZ2VuZXJhdGlv
+biA9IHNiaS0+c19uZXh0X2dlbmVyYXRpb24rKzsNCiAgICA+ICsJZXh0NF9pbm9kZV9zZXRfZ2Vu
+KGlub2RlLCBzYmkpOw0KICAgID4gIAlzcGluX3VubG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2sp
+Ow0KICAgID4gIA0KICAgID4gIAkvKiBQcmVjb21wdXRlIGNoZWNrc3VtIHNlZWQgZm9yIGlub2Rl
+IG1ldGFkYXRhICovDQogICAgPiBkaWZmIC0tZ2l0IGEvZnMvZXh0NC9pb2N0bC5jIGIvZnMvZXh0
+NC9pb2N0bC5jDQogICAgPiBpbmRleCAwYzIxZTIyLi5kNTJhNDY3IDEwMDY0NA0KICAgID4gLS0t
+IGEvZnMvZXh0NC9pb2N0bC5jDQogICAgPiArKysgYi9mcy9leHQ0L2lvY3RsLmMNCiAgICA+IEBA
+IC0xNjAsOCArMTYwLDggQEAgc3RhdGljIGxvbmcgc3dhcF9pbm9kZV9ib290X2xvYWRlcihzdHJ1
+Y3Qgc3VwZXJfYmxvY2sgKnNiLA0KICAgID4gIAlpbm9kZS0+aV9jdGltZSA9IGlub2RlX2JsLT5p
+X2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsNCiAgICA+ICANCiAgICA+ICAJc3Bpbl9sb2Nr
+KCZzYmktPnNfbmV4dF9nZW5fbG9jayk7DQogICAgPiAtCWlub2RlLT5pX2dlbmVyYXRpb24gPSBz
+YmktPnNfbmV4dF9nZW5lcmF0aW9uKys7DQogICAgPiAtCWlub2RlX2JsLT5pX2dlbmVyYXRpb24g
+PSBzYmktPnNfbmV4dF9nZW5lcmF0aW9uKys7DQogICAgPiArCWV4dDRfaW5vZGVfc2V0X2dlbihp
+bm9kZSwgc2JpKTsNCiAgICA+ICsJZXh0NF9pbm9kZV9zZXRfZ2VuKGlub2RlX2JsLCBzYmkpOw0K
+ICAgID4gIAlzcGluX3VubG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2spOw0KICAgID4gIA0KICAg
+ID4gIAlleHQ0X2Rpc2NhcmRfcHJlYWxsb2NhdGlvbnMoaW5vZGUpOw0KICAgID4gLS0gDQogICAg
+PiAyLjkuMw0KICAgID4gDQogICAgIA0KDQpHZW5lcmF0aW9uID09IDAgc2VlbXMgdG8gYmUgYSBz
+cGVjaWFsIGNhc2UgZm9yIG1hbnkgZmlsZXN5c3RlbXMsIG5vdCBqdXN0IGV4dDQuIEZvciBqZnMs
+IGluIGpmc19uZnNfZ2V0X2lub2RlLCBpZiB0aGUgaW5wdXQgZ2VuZXJhdGlvbiBpcyAwLCB0aGVu
+IG5vIGlub2RlcyBhcmUgcmV0dXJuZWQuIFN1Y2ggZmlsZXN5c3RlbXMgdGhhdCBzZWVtIHRvIHRy
+ZWF0IGdlbmVyYXRpb24gMCBhcyBhIHNwZWNpYWwgY2FzZSBuZnNfZ2V0X2lub2RlIHRoYXQgSSBo
+YXZlIGZvdW5kIHNvIGZhciBhcmUgZXh0MiwgZXh0NCwgamZzLCAgZXhvZnMsIGFuZCBmMmZzLiBU
+aGVyZWZvcmUsIEkgd2FzIGFjdHVhbGx5IHRoaW5raW5nIGFib3V0IGltcGxlbWVudGluZyBhIHNo
+YXJlZCBoZWxwZXIgaW4gbGludXgvZnMuaCB0aGF0IGhhcyB0aGUgcHJvdG90eXBlIOKAnHN0YXRp
+YyBpbmxpbmUgdm9pZCBpbm9kZV9zZXRfZ2VuKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHVuc2lnbmVk
+IGludCAqZ2VuZXJhdGlvbinigJ0gdGhhdCBjYW4gYmUgdXNlZCBmb3IgYWxsIGZpbGVzeXN0ZW1z
+LiBGb3IgZXhhbXBsZSwgZm9yIGpmcywgSSBjYW4gZG8g4oCcaW5vZGVfc2V0X2dlbihpbm9kZSwg
+JkpGU19TQkkoc2IpLT5nZW5nZW4pO+KAnSBvciBmb3IgZXh0WCwgSSBjYW4gZG8g4oCcaW5vZGVf
+c2V0X2dlbihpbm9kZSwgJkVYVFhfU0Ioc2IpLT5zX25leHRfZ2VuZXJhdGlvbik74oCdLiBUaGlz
+IGFsbG93cyBhIGNsZWFuZXIgY2hhbmdlIG9mIGFkZGluZyBhIGZldyBsaW5lcyBvZiBjb2RlIHRv
+IGxpbnV4L2ZzLmggYW5kIHJlcGxhY2luZyBvbmUgdG8gYSBmZXcgbGluZXMgZm9yIGVhY2ggZmls
+ZXN5c3RlbS4gSSBhbSBvcGVuIHRvIGJvdGggb3B0aW9ucywgaWYgYW55b25lIGhhcyBhIHN0cm9u
+ZyBwcmVmZXJlbmNlIGZvciBlaXRoZXIgb3B0aW9uLg0KDQpCZXN0LA0KS3l1bmdjaGFuIEtvaA0K
+DQo=
