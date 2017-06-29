@@ -1,11 +1,11 @@
 From: Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH v8 16/18] ext4: use errseq_t based error handling for
- reporting data writeback errors
-Date: Thu, 29 Jun 2017 16:26:12 -0400
-Message-ID: <1498767972.5710.4.camel@poochiereds.net>
+Subject: Re: [PATCH v8 18/18] btrfs: minimal conversion to errseq_t
+ writeback error reporting on fsync
+Date: Thu, 29 Jun 2017 16:32:05 -0400
+Message-ID: <1498768325.5710.6.camel@poochiereds.net>
 References: <20170629131954.28733-1-jlayton@kernel.org>
-	 <20170629131954.28733-17-jlayton@kernel.org>
-	 <20170629141221.GA17251@infradead.org>
+	 <20170629131954.28733-19-jlayton@kernel.org>
+	 <20170629141741.GC17251@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
@@ -21,48 +21,68 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
  linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
 To: Christoph Hellwig <hch@infradead.org>, jlayton@kernel.org
 Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170629141221.GA17251@infradead.org>
+In-Reply-To: <20170629141741.GC17251@infradead.org>
 Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2017-06-29 at 07:12 -0700, Christoph Hellwig wrote:
-> > -	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-> > -		return -EIO;
-> > +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
-> > +		ret = -EIO;
-> > +		goto out;
-> > +	}
-> 
-> This just seems to add a call to trace_ext4_sync_file_exit for this
-> case, which seems unrelated to the patch.
-> 
+On Thu, 2017-06-29 at 07:17 -0700, Christoph Hellwig wrote:
+> On Thu, Jun 29, 2017 at 09:19:54AM -0400, jlayton@kernel.org wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > Just check and advance the errseq_t in the file before returning.
+> > Internal callers of filemap_* functions are left as-is.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/btrfs/file.c | 7 +++++--
+> >  1 file changed, 5 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+> > index da1096eb1a40..1f57e1a523d9 100644
+> > --- a/fs/btrfs/file.c
+> > +++ b/fs/btrfs/file.c
+> > @@ -2011,7 +2011,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  	struct btrfs_root *root = BTRFS_I(inode)->root;
+> >  	struct btrfs_trans_handle *trans;
+> >  	struct btrfs_log_ctx ctx;
+> > -	int ret = 0;
+> > +	int ret = 0, err;
+> >  	bool full_sync = 0;
+> >  	u64 len;
+> >  
+> > @@ -2030,7 +2030,7 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  	 */
+> >  	ret = start_ordered_ops(inode, start, end);
 > >  	if (ret)
 > > -		return ret;
 > > +		goto out;
-> > +
+> >  
+> >  	inode_lock(inode);
+> >  	atomic_inc(&root->log_batch);
+> > @@ -2227,6 +2227,9 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+> >  		ret = btrfs_end_transaction(trans);
+> >  	}
+> >  out:
+> > +	err = file_check_and_advance_wb_err(file);
+> > +	if (!ret)
+> > +		ret = err;
+> >  	return ret > 0 ? -EIO : ret;
 > 
-> Same here.
-> 
-> >  	/*
-> >  	 * data=writeback,ordered:
-> >  	 *  The caller's filemap_fdatawrite()/wait will sync the data.
-> > @@ -152,7 +155,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
-> >  		needs_barrier = true;
-> >  	ret = jbd2_complete_transaction(journal, commit_tid);
-> >  	if (needs_barrier) {
-> > -	issue_flush:
-> > +issue_flush:
-> >  		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
-> 
-> And while I much prefer your new label placement it also doesn't
-> seem to belong into this patch.
+> This means that we'll lose the exact error returned from
+> start_ordered_ops.  Beyond that I can't really provide good feedback
+> as the btrfs fsync code looks so much different from all the other
+> fs fsync code..
 
-I revised the patch description earlier to say:
+Well, no...we'll keep the error from start_ordered_ops if there was one.
+ We just advance the cursor past any stored error in that case without
+returning it.
 
-    While we're at it, ensure we always "goto out" instead of just
-    returning directly, so that we always hit the exit tracepoint.
+I have another fix for this patch too: there's a call to
+filemap_check_errors in this function that I think should probably use
+filemap_check_wb_err instead. Fixed in my tree.
 
-...but I'm fine with taking that out if you prefer.
+I do agree though that while this works in my testing I'd like the btrfs
+guys to ACK this as I don't fully grok the btrfs fsync code at all.
 -- 
 Jeff Layton <jlayton@poochiereds.net>
 
