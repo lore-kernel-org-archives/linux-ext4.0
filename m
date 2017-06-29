@@ -1,98 +1,132 @@
-From: William Koh <kkc6196@fb.com>
+From: Andreas Dilger <adilger@dilger.ca>
 Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
-Date: Thu, 29 Jun 2017 00:58:17 +0000
-Message-ID: <36EC19C1-8C8C-4B95-B263-8684BEDCE591@fb.com>
+Date: Wed, 28 Jun 2017 20:32:10 -0600
+Message-ID: <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
 References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
- <20170629004825.GA5865@birch.djwong.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "tytso@mit.edu" <tytso@mit.edu>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Kernel Team <Kernel-team@fb.com>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170629004825.GA5865@birch.djwong.org>
-Content-Language: en-US
-Content-ID: <270361338485F14BB1C0F9F68BEB701B@namprd15.prod.outlook.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_C75BFE3F-33DB-479E-87CB-3FACC32D6A8B";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>, kernel-team@fb.com,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+To: Kyungchan Koh <kkc6196@fb.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gNi8yOC8xNywgNTo0OCBQTSwgIkRhcnJpY2sgSi4gV29uZyIgPGRhcnJpY2sud29uZ0BvcmFj
-bGUuY29tPiB3cm90ZToNCg0KICAgIE9uIFdlZCwgSnVuIDI4LCAyMDE3IGF0IDAzOjA2OjQyUE0g
-LTA3MDAsIEt5dW5nY2hhbiBLb2ggd3JvdGU6DQogICAgPiBJbiBmcy9leHQ0L3N1cGVyLmMsIHRo
-ZSBmdW5jdGlvbiBleHQ0X25mc19nZXRfaW5vZGUgdGFrZXMgYXMgaW5wdXQNCiAgICA+ICJnZW5l
-cmF0aW9uIiB0aGF0IGNhbiBiZSB1c2VkIHRvIHNwZWNpZnkgdGhlIGdlbmVyYXRpb24gb2YgdGhl
-IGlub2RlIHRvDQogICAgPiBiZSByZXR1cm5lZC4gV2hlbiAwIGlzIGdpdmVuIGFzIGlucHV0LCB0
-aGVuIGlub2RlcyBvZiBhbnkgZ2VuZXJhdGlvbiBjYW4NCiAgICA+IGJlIHJldHVybmVkLiBUaGVy
-ZWZvcmUsIGdlbmVyYXRpb24gMCBpcyBhIHNwZWNpYWwgY2FzZSB0aGF0IHNob3VsZCBiZQ0KICAg
-ID4gYXZvaWRlZCB3aGVuIGFzc2lnbmluZyBnZW5lcmF0aW9uIHRvIGlub2Rlcy4NCiAgICA+IA0K
-ICAgID4gQSBuZXcgaW5saW5lIGZ1bmN0aW9uLCBleHQ0X2lub2RlX3NldF9nZW4sIHdpbGwgdGFr
-ZSBjYXJlIG9mIHRoZQ0KICAgID4gcHJvYmxlbS4gIE5vdywgaW5vZGVzIGNhbm5vdCBoYXZlIGEg
-Z2VuZXJhdGlvbiBvZiAwLCBzbyB0aGlzIHBhdGNoIGZpeGVzDQogICAgPiB0aGUgaXNzdWUuDQog
-ICAgDQogICAgRm9yZ2l2ZSBteSBpZ25vcmFuY2UsIGJ1dCB3aHkgaXMgZ2VuZXJhdGlvbiA9PSAw
-IGEgc3BlY2lhbCBjYXNlPw0KICAgIA0KICAgIEZyb20gYSBxdWljayBzY2FuIG9mIHRoZSBjb2Rl
-IGl0IHNlZW1zIHRoYXQgZmlsZXN5c3RlbXMgaGFuZCBvdXQNCiAgICBoYW5kbGVzIHRvIE5GUyB3
-aXRoIHBhcmVudF97aW5vLGdlbn0gc2V0IChvciB6ZXJvZWQpLiAgVGhhdCBpbXBsaWVzIHRoYXQN
-CiAgICB3ZSBoYXZlIHRvIGNoZWNrIGluby9nZW4gZm9yIHplcm9lcyBhbmQgZ2FyYmFnZSwgYnV0
-IEkgZG9uJ3Qgc2VlIHdoeQ0KICAgIHlvdSdkIGV4ZW1wdCBnZW4gPT0gMCBmcm9tIGNoZWNraW5n
-Pw0KICAgIA0KICAgIChSZWFsbHkgd2hhdCBJJ20gZmlzaGluZyBmb3IgaXMgd2hldGhlciBvciBu
-b3QgdGhlcmUncyBzb21lIHByZWNlZGVudA0KICAgIGZvciB0aGlzIHRoYXQgSSBkb24ndCBrbm93
-IGFib3V0LikNCiAgICANCiAgICAtLUQNCiAgICANCiAgICA+IA0KICAgID4gU2lnbmVkLW9mZi1i
-eTogS3l1bmdjaGFuIEtvaCA8a2tjNjE5NkBmYi5jb20+DQogICAgPiAtLS0NCiAgICA+ICBmcy9l
-eHQ0L2V4dDQuaCAgIHwgOCArKysrKysrKw0KICAgID4gIGZzL2V4dDQvaWFsbG9jLmMgfCAyICst
-DQogICAgPiAgZnMvZXh0NC9pb2N0bC5jICB8IDQgKystLQ0KICAgID4gIDMgZmlsZXMgY2hhbmdl
-ZCwgMTEgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCiAgICA+IA0KICAgID4gZGlmZiAt
-LWdpdCBhL2ZzL2V4dDQvZXh0NC5oIGIvZnMvZXh0NC9leHQ0LmgNCiAgICA+IGluZGV4IDMyMTkx
-NTQuLjc0YzY2NzcgMTAwNjQ0DQogICAgPiAtLS0gYS9mcy9leHQ0L2V4dDQuaA0KICAgID4gKysr
-IGIvZnMvZXh0NC9leHQ0LmgNCiAgICA+IEBAIC0xNTQ5LDYgKzE1NDksMTQgQEAgc3RhdGljIGlu
-bGluZSBpbnQgZXh0NF92YWxpZF9pbnVtKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHVuc2lnbmVk
-IGxvbmcgaW5vKQ0KICAgID4gIAkJIGlubyA8PSBsZTMyX3RvX2NwdShFWFQ0X1NCKHNiKS0+c19l
-cy0+c19pbm9kZXNfY291bnQpKTsNCiAgICA+ICB9DQogICAgPiAgDQogICAgPiArc3RhdGljIGlu
-bGluZSB2b2lkIGV4dDRfaW5vZGVfc2V0X2dlbihzdHJ1Y3QgaW5vZGUgKmlub2RlLA0KICAgID4g
-KwkJCQkgICAgICBzdHJ1Y3QgZXh0NF9zYl9pbmZvICpzYmkpDQogICAgPiArew0KICAgID4gKwlp
-bm9kZS0+aV9nZW5lcmF0aW9uID0gc2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gKwlp
-ZiAoIWlub2RlLT5pX2dlbmVyYXRpb24pDQogICAgPiArCQlpbm9kZS0+aV9nZW5lcmF0aW9uID0g
-c2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gK30NCiAgICA+ICsNCiAgICA+ICAvKg0K
-ICAgID4gICAqIElub2RlIGR5bmFtaWMgc3RhdGUgZmxhZ3MNCiAgICA+ICAgKi8NCiAgICA+IGRp
-ZmYgLS1naXQgYS9mcy9leHQ0L2lhbGxvYy5jIGIvZnMvZXh0NC9pYWxsb2MuYw0KICAgID4gaW5k
-ZXggOThhYzJmMS4uZDMzZjZmMCAxMDA2NDQNCiAgICA+IC0tLSBhL2ZzL2V4dDQvaWFsbG9jLmMN
-CiAgICA+ICsrKyBiL2ZzL2V4dDQvaWFsbG9jLmMNCiAgICA+IEBAIC0xMDcyLDcgKzEwNzIsNyBA
-QCBzdHJ1Y3QgaW5vZGUgKl9fZXh0NF9uZXdfaW5vZGUoaGFuZGxlX3QgKmhhbmRsZSwgc3RydWN0
-IGlub2RlICpkaXIsDQogICAgPiAgCQlnb3RvIG91dDsNCiAgICA+ICAJfQ0KICAgID4gIAlzcGlu
-X2xvY2soJnNiaS0+c19uZXh0X2dlbl9sb2NrKTsNCiAgICA+IC0JaW5vZGUtPmlfZ2VuZXJhdGlv
-biA9IHNiaS0+c19uZXh0X2dlbmVyYXRpb24rKzsNCiAgICA+ICsJZXh0NF9pbm9kZV9zZXRfZ2Vu
-KGlub2RlLCBzYmkpOw0KICAgID4gIAlzcGluX3VubG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2sp
-Ow0KICAgID4gIA0KICAgID4gIAkvKiBQcmVjb21wdXRlIGNoZWNrc3VtIHNlZWQgZm9yIGlub2Rl
-IG1ldGFkYXRhICovDQogICAgPiBkaWZmIC0tZ2l0IGEvZnMvZXh0NC9pb2N0bC5jIGIvZnMvZXh0
-NC9pb2N0bC5jDQogICAgPiBpbmRleCAwYzIxZTIyLi5kNTJhNDY3IDEwMDY0NA0KICAgID4gLS0t
-IGEvZnMvZXh0NC9pb2N0bC5jDQogICAgPiArKysgYi9mcy9leHQ0L2lvY3RsLmMNCiAgICA+IEBA
-IC0xNjAsOCArMTYwLDggQEAgc3RhdGljIGxvbmcgc3dhcF9pbm9kZV9ib290X2xvYWRlcihzdHJ1
-Y3Qgc3VwZXJfYmxvY2sgKnNiLA0KICAgID4gIAlpbm9kZS0+aV9jdGltZSA9IGlub2RlX2JsLT5p
-X2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsNCiAgICA+ICANCiAgICA+ICAJc3Bpbl9sb2Nr
-KCZzYmktPnNfbmV4dF9nZW5fbG9jayk7DQogICAgPiAtCWlub2RlLT5pX2dlbmVyYXRpb24gPSBz
-YmktPnNfbmV4dF9nZW5lcmF0aW9uKys7DQogICAgPiAtCWlub2RlX2JsLT5pX2dlbmVyYXRpb24g
-PSBzYmktPnNfbmV4dF9nZW5lcmF0aW9uKys7DQogICAgPiArCWV4dDRfaW5vZGVfc2V0X2dlbihp
-bm9kZSwgc2JpKTsNCiAgICA+ICsJZXh0NF9pbm9kZV9zZXRfZ2VuKGlub2RlX2JsLCBzYmkpOw0K
-ICAgID4gIAlzcGluX3VubG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2spOw0KICAgID4gIA0KICAg
-ID4gIAlleHQ0X2Rpc2NhcmRfcHJlYWxsb2NhdGlvbnMoaW5vZGUpOw0KICAgID4gLS0gDQogICAg
-PiAyLjkuMw0KICAgID4gDQogICAgIA0KDQpHZW5lcmF0aW9uID09IDAgc2VlbXMgdG8gYmUgYSBz
-cGVjaWFsIGNhc2UgZm9yIG1hbnkgZmlsZXN5c3RlbXMsIG5vdCBqdXN0IGV4dDQuIEZvciBqZnMs
-IGluIGpmc19uZnNfZ2V0X2lub2RlLCBpZiB0aGUgaW5wdXQgZ2VuZXJhdGlvbiBpcyAwLCB0aGVu
-IG5vIGlub2RlcyBhcmUgcmV0dXJuZWQuIFN1Y2ggZmlsZXN5c3RlbXMgdGhhdCBzZWVtIHRvIHRy
-ZWF0IGdlbmVyYXRpb24gMCBhcyBhIHNwZWNpYWwgY2FzZSBuZnNfZ2V0X2lub2RlIHRoYXQgSSBo
-YXZlIGZvdW5kIHNvIGZhciBhcmUgZXh0MiwgZXh0NCwgamZzLCAgZXhvZnMsIGFuZCBmMmZzLiBU
-aGVyZWZvcmUsIEkgd2FzIGFjdHVhbGx5IHRoaW5raW5nIGFib3V0IGltcGxlbWVudGluZyBhIHNo
-YXJlZCBoZWxwZXIgaW4gbGludXgvZnMuaCB0aGF0IGhhcyB0aGUgcHJvdG90eXBlIOKAnHN0YXRp
-YyBpbmxpbmUgdm9pZCBpbm9kZV9zZXRfZ2VuKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHVuc2lnbmVk
-IGludCAqZ2VuZXJhdGlvbinigJ0gdGhhdCBjYW4gYmUgdXNlZCBmb3IgYWxsIGZpbGVzeXN0ZW1z
-LiBGb3IgZXhhbXBsZSwgZm9yIGpmcywgSSBjYW4gZG8g4oCcaW5vZGVfc2V0X2dlbihpbm9kZSwg
-JkpGU19TQkkoc2IpLT5nZW5nZW4pO+KAnSBvciBmb3IgZXh0WCwgSSBjYW4gZG8g4oCcaW5vZGVf
-c2V0X2dlbihpbm9kZSwgJkVYVFhfU0Ioc2IpLT5zX25leHRfZ2VuZXJhdGlvbik74oCdLiBUaGlz
-IGFsbG93cyBhIGNsZWFuZXIgY2hhbmdlIG9mIGFkZGluZyBhIGZldyBsaW5lcyBvZiBjb2RlIHRv
-IGxpbnV4L2ZzLmggYW5kIHJlcGxhY2luZyBvbmUgdG8gYSBmZXcgbGluZXMgZm9yIGVhY2ggZmls
-ZXN5c3RlbS4gSSBhbSBvcGVuIHRvIGJvdGggb3B0aW9ucywgaWYgYW55b25lIGhhcyBhIHN0cm9u
-ZyBwcmVmZXJlbmNlIGZvciBlaXRoZXIgb3B0aW9uLg0KDQpCZXN0LA0KS3l1bmdjaGFuIEtvaA0K
-DQo=
+
+--Apple-Mail=_C75BFE3F-33DB-479E-87CB-3FACC32D6A8B
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jun 28, 2017, at 4:06 PM, Kyungchan Koh <kkc6196@fb.com> wrote:
+>=20
+> In fs/ext4/super.c, the function ext4_nfs_get_inode takes as input
+> "generation" that can be used to specify the generation of the inode =
+to
+> be returned. When 0 is given as input, then inodes of any generation =
+can
+> be returned. Therefore, generation 0 is a special case that should be
+> avoided when assigning generation to inodes.
+
+I'd agree with this change to avoid assigning generation =3D=3D 0 to =
+real inodes.
+
+Also, the separate question arises about whether we need to allow file =
+handle
+lookup with generation =3D=3D 0?  That allows FID guessing easily, while =
+requiring
+a non-zero generation makes that a lot harder.
+
+What are the cases where generation =3D=3D 0 are used?
+
+> A new inline function, ext4_inode_set_gen, will take care of the
+> problem.  Now, inodes cannot have a generation of 0, so this patch =
+fixes
+> the issue.
+>=20
+> Signed-off-by: Kyungchan Koh <kkc6196@fb.com>
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3219154..74c6677 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1549,6 +1549,14 @@ static inline int ext4_valid_inum(struct =
+super_block *sb, unsigned long ino)
+> 		 ino <=3D =
+le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+> }
+>=20
+> +static inline void ext4_inode_set_gen(struct inode *inode,
+> +				      struct ext4_sb_info *sbi)
+> +{
+> +	inode->i_generation =3D sbi->s_next_generation++;
+> +	if (!inode->i_generation)
+
+This should be marked "unlikely()" since it happens at most once every =
+4B
+file creations (though likely even less since it is unlikely that so =
+many
+files will be created in a single mount).
+
+> +		inode->i_generation =3D sbi->s_next_generation++;
+> +}
+> +
+>=20
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 98ac2f1..d33f6f0 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -1072,7 +1072,7 @@ struct inode *__ext4_new_inode(handle_t *handle, =
+struct inode	}
+> 	spin_lock(&sbi->s_next_gen_lock);
+> -	inode->i_generation =3D sbi->s_next_generation++;
+> +	ext4_inode_set_gen(inode, sbi);
+> 	spin_unlock(&sbi->s_next_gen_lock);
+>=20
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 0c21e22..d52a467 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -160,8 +160,8 @@ static long swap_inode_boot_loader(struct =
+super_block *sb,
+>=20
+> 	spin_lock(&sbi->s_next_gen_lock);
+> -	inode->i_generation =3D sbi->s_next_generation++;
+> -	inode_bl->i_generation =3D sbi->s_next_generation++;
+> +	ext4_inode_set_gen(inode, sbi);
+> +	ext4_inode_set_gen(inode_bl, sbi);
+> 	spin_unlock(&sbi->s_next_gen_lock);
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C75BFE3F-33DB-479E-87CB-3FACC32D6A8B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZVGaspIg59Q01vtYRAsxhAKCMK35Dso7VYcjurgcOBZuw35JtggCeJTO2
+/3U+vNyZZyA6AnJKxBknlbA=
+=7Ycu
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_C75BFE3F-33DB-479E-87CB-3FACC32D6A8B--
