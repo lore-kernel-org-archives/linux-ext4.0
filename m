@@ -1,84 +1,148 @@
-From: William Koh <kkc6196@fb.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
-Date: Thu, 29 Jun 2017 04:37:14 +0000
-Message-ID: <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
+Date: Wed, 28 Jun 2017 21:59:40 -0700
+Message-ID: <20170629045940.GB5865@birch.djwong.org>
 References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
  <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
+ <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "Theodore Ts'o" <tytso@mit.edu>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
         lkml <linux-kernel@vger.kernel.org>,
         Kernel Team <Kernel-team@fb.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
-Content-Language: en-US
-Content-ID: <8A81596E499CC54E8AAC53CE7D405AA9@namprd15.prod.outlook.com>
-Sender: linux-kernel-owner@vger.kernel.org
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        xfs <linux-xfs@vger.kernel.org>
+To: William Koh <kkc6196@fb.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gNi8yOC8xNywgNzozMiBQTSwgIkFuZHJlYXMgRGlsZ2VyIiA8YWRpbGdlckBkaWxnZXIuY2E+
-IHdyb3RlOg0KDQogICAgT24gSnVuIDI4LCAyMDE3LCBhdCA0OjA2IFBNLCBLeXVuZ2NoYW4gS29o
-IDxra2M2MTk2QGZiLmNvbT4gd3JvdGU6DQogICAgPiANCiAgICA+IEluIGZzL2V4dDQvc3VwZXIu
-YywgdGhlIGZ1bmN0aW9uIGV4dDRfbmZzX2dldF9pbm9kZSB0YWtlcyBhcyBpbnB1dA0KICAgID4g
-ImdlbmVyYXRpb24iIHRoYXQgY2FuIGJlIHVzZWQgdG8gc3BlY2lmeSB0aGUgZ2VuZXJhdGlvbiBv
-ZiB0aGUgaW5vZGUgdG8NCiAgICA+IGJlIHJldHVybmVkLiBXaGVuIDAgaXMgZ2l2ZW4gYXMgaW5w
-dXQsIHRoZW4gaW5vZGVzIG9mIGFueSBnZW5lcmF0aW9uIGNhbg0KICAgID4gYmUgcmV0dXJuZWQu
-IFRoZXJlZm9yZSwgZ2VuZXJhdGlvbiAwIGlzIGEgc3BlY2lhbCBjYXNlIHRoYXQgc2hvdWxkIGJl
-DQogICAgPiBhdm9pZGVkIHdoZW4gYXNzaWduaW5nIGdlbmVyYXRpb24gdG8gaW5vZGVzLg0KICAg
-IA0KICAgIEknZCBhZ3JlZSB3aXRoIHRoaXMgY2hhbmdlIHRvIGF2b2lkIGFzc2lnbmluZyBnZW5l
-cmF0aW9uID09IDAgdG8gcmVhbCBpbm9kZXMuDQogICAgDQogICAgQWxzbywgdGhlIHNlcGFyYXRl
-IHF1ZXN0aW9uIGFyaXNlcyBhYm91dCB3aGV0aGVyIHdlIG5lZWQgdG8gYWxsb3cgZmlsZSBoYW5k
-bGUNCiAgICBsb29rdXAgd2l0aCBnZW5lcmF0aW9uID09IDA/ICBUaGF0IGFsbG93cyBGSUQgZ3Vl
-c3NpbmcgZWFzaWx5LCB3aGlsZSByZXF1aXJpbmcNCiAgICBhIG5vbi16ZXJvIGdlbmVyYXRpb24g
-bWFrZXMgdGhhdCBhIGxvdCBoYXJkZXIuDQogICAgDQogICAgV2hhdCBhcmUgdGhlIGNhc2VzIHdo
-ZXJlIGdlbmVyYXRpb24gPT0gMCBhcmUgdXNlZD8NCg0KSG9uZXN0bHksIEnigJltIG5vdCB0b28g
-c3VyZS4gSSBqdXN0IG5vdGljZWQgdGhhdCBnZW5lcmF0aW9uIDAgd2FzIGEgc3BlY2lhbA0KY2Fz
-ZSBmcm9tIHJlYWRpbmcgdGhlIGNvZGUuDQoNCiAgICA+IEEgbmV3IGlubGluZSBmdW5jdGlvbiwg
-ZXh0NF9pbm9kZV9zZXRfZ2VuLCB3aWxsIHRha2UgY2FyZSBvZiB0aGUNCiAgICA+IHByb2JsZW0u
-ICBOb3csIGlub2RlcyBjYW5ub3QgaGF2ZSBhIGdlbmVyYXRpb24gb2YgMCwgc28gdGhpcyBwYXRj
-aCBmaXhlcw0KICAgID4gdGhlIGlzc3VlLg0KICAgID4gDQogICAgPiBTaWduZWQtb2ZmLWJ5OiBL
-eXVuZ2NoYW4gS29oIDxra2M2MTk2QGZiLmNvbT4NCiAgICA+IA0KICAgID4gZGlmZiAtLWdpdCBh
-L2ZzL2V4dDQvZXh0NC5oIGIvZnMvZXh0NC9leHQ0LmgNCiAgICA+IGluZGV4IDMyMTkxNTQuLjc0
-YzY2NzcgMTAwNjQ0DQogICAgPiAtLS0gYS9mcy9leHQ0L2V4dDQuaA0KICAgID4gKysrIGIvZnMv
-ZXh0NC9leHQ0LmgNCiAgICA+IEBAIC0xNTQ5LDYgKzE1NDksMTQgQEAgc3RhdGljIGlubGluZSBp
-bnQgZXh0NF92YWxpZF9pbnVtKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IsIHVuc2lnbmVkIGxvbmcg
-aW5vKQ0KICAgID4gCQkgaW5vIDw9IGxlMzJfdG9fY3B1KEVYVDRfU0Ioc2IpLT5zX2VzLT5zX2lu
-b2Rlc19jb3VudCkpOw0KICAgID4gfQ0KICAgID4gDQogICAgPiArc3RhdGljIGlubGluZSB2b2lk
-IGV4dDRfaW5vZGVfc2V0X2dlbihzdHJ1Y3QgaW5vZGUgKmlub2RlLA0KICAgID4gKwkJCQkgICAg
-ICBzdHJ1Y3QgZXh0NF9zYl9pbmZvICpzYmkpDQogICAgPiArew0KICAgID4gKwlpbm9kZS0+aV9n
-ZW5lcmF0aW9uID0gc2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gKwlpZiAoIWlub2Rl
-LT5pX2dlbmVyYXRpb24pDQogICAgDQogICAgVGhpcyBzaG91bGQgYmUgbWFya2VkICJ1bmxpa2Vs
-eSgpIiBzaW5jZSBpdCBoYXBwZW5zIGF0IG1vc3Qgb25jZSBldmVyeSA0Qg0KICAgIGZpbGUgY3Jl
-YXRpb25zICh0aG91Z2ggbGlrZWx5IGV2ZW4gbGVzcyBzaW5jZSBpdCBpcyB1bmxpa2VseSB0aGF0
-IHNvIG1hbnkNCiAgICBmaWxlcyB3aWxsIGJlIGNyZWF0ZWQgaW4gYSBzaW5nbGUgbW91bnQpLg0K
-DQpHb3QgaXQuDQogICAgDQogICAgPiArCQlpbm9kZS0+aV9nZW5lcmF0aW9uID0gc2JpLT5zX25l
-eHRfZ2VuZXJhdGlvbisrOw0KICAgID4gK30NCiAgICA+ICsNCiAgICA+IA0KICAgID4gZGlmZiAt
-LWdpdCBhL2ZzL2V4dDQvaWFsbG9jLmMgYi9mcy9leHQ0L2lhbGxvYy5jDQogICAgPiBpbmRleCA5
-OGFjMmYxLi5kMzNmNmYwIDEwMDY0NA0KICAgID4gLS0tIGEvZnMvZXh0NC9pYWxsb2MuYw0KICAg
-ID4gKysrIGIvZnMvZXh0NC9pYWxsb2MuYw0KICAgID4gQEAgLTEwNzIsNyArMTA3Miw3IEBAIHN0
-cnVjdCBpbm9kZSAqX19leHQ0X25ld19pbm9kZShoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5v
-ZGUJfQ0KICAgID4gCXNwaW5fbG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2spOw0KICAgID4gLQlp
-bm9kZS0+aV9nZW5lcmF0aW9uID0gc2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gKwll
-eHQ0X2lub2RlX3NldF9nZW4oaW5vZGUsIHNiaSk7DQogICAgPiAJc3Bpbl91bmxvY2soJnNiaS0+
-c19uZXh0X2dlbl9sb2NrKTsNCiAgICA+IA0KICAgID4gZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW9j
-dGwuYyBiL2ZzL2V4dDQvaW9jdGwuYw0KICAgID4gaW5kZXggMGMyMWUyMi4uZDUyYTQ2NyAxMDA2
-NDQNCiAgICA+IC0tLSBhL2ZzL2V4dDQvaW9jdGwuYw0KICAgID4gKysrIGIvZnMvZXh0NC9pb2N0
-bC5jDQogICAgPiBAQCAtMTYwLDggKzE2MCw4IEBAIHN0YXRpYyBsb25nIHN3YXBfaW5vZGVfYm9v
-dF9sb2FkZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCiAgICA+IA0KICAgID4gCXNwaW5fbG9j
-aygmc2JpLT5zX25leHRfZ2VuX2xvY2spOw0KICAgID4gLQlpbm9kZS0+aV9nZW5lcmF0aW9uID0g
-c2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gLQlpbm9kZV9ibC0+aV9nZW5lcmF0aW9u
-ID0gc2JpLT5zX25leHRfZ2VuZXJhdGlvbisrOw0KICAgID4gKwlleHQ0X2lub2RlX3NldF9nZW4o
-aW5vZGUsIHNiaSk7DQogICAgPiArCWV4dDRfaW5vZGVfc2V0X2dlbihpbm9kZV9ibCwgc2JpKTsN
-CiAgICA+IAlzcGluX3VubG9jaygmc2JpLT5zX25leHRfZ2VuX2xvY2spOw0KICAgID4gDQogICAg
-DQogICAgDQogICAgQ2hlZXJzLCBBbmRyZWFzDQoNClRoaXMgaXMgYXBwbGljYWJsZSB0byBtYW55
-IGZzLCBpbmNsdWRpbmcgZXh0MiwgZXh0NCwgZXhvZnMsIGpmcywgYW5kIGYyZnMuDQpUaGVyZWZv
-cmUsIGEgc2hhcmVkIGhlbHBlciBpbiBsaW51eC9mcy5oIHdpbGwgYWxsb3cgZm9yIGVhc3kgY2hh
-bmdlcw0KaW4gYWxsIGZzLiBJcyB0aGVyZSBhbnkgcmVhc29uIHRoYXQgbWlnaHQgYmUgYSBiYWQg
-aWRlYT8NCg0KQmVzdCwNCkt5dW5nY2hhbiBLb2ggDQogICAgDQogICAgDQogICAgDQogICAgDQoN
-Cg==
+[add linux-xfs to cc]
+
+On Thu, Jun 29, 2017 at 04:37:14AM +0000, William Koh wrote:
+> On 6/28/17, 7:32 PM, "Andreas Dilger" <adilger@dilger.ca> wrote:
+> 
+>     On Jun 28, 2017, at 4:06 PM, Kyungchan Koh <kkc6196@fb.com> wrote:
+>     > 
+>     > In fs/ext4/super.c, the function ext4_nfs_get_inode takes as input
+>     > "generation" that can be used to specify the generation of the inode to
+>     > be returned. When 0 is given as input, then inodes of any generation can
+>     > be returned. Therefore, generation 0 is a special case that should be
+>     > avoided when assigning generation to inodes.
+>     
+>     I'd agree with this change to avoid assigning generation == 0 to real inodes.
+>     
+>     Also, the separate question arises about whether we need to allow file handle
+>     lookup with generation == 0?  That allows FID guessing easily, while requiring
+>     a non-zero generation makes that a lot harder.
+>     
+>     What are the cases where generation == 0 are used?
+> 
+> Honestly, I’m not too sure. I just noticed that generation 0 was a special
+> case from reading the code.
+> 
+>     > A new inline function, ext4_inode_set_gen, will take care of the
+>     > problem.  Now, inodes cannot have a generation of 0, so this patch fixes
+>     > the issue.
+>     > 
+>     > Signed-off-by: Kyungchan Koh <kkc6196@fb.com>
+>     > 
+>     > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>     > index 3219154..74c6677 100644
+>     > --- a/fs/ext4/ext4.h
+>     > +++ b/fs/ext4/ext4.h
+>     > @@ -1549,6 +1549,14 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>     > 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+>     > }
+>     > 
+>     > +static inline void ext4_inode_set_gen(struct inode *inode,
+>     > +				      struct ext4_sb_info *sbi)
+>     > +{
+>     > +	inode->i_generation = sbi->s_next_generation++;
+>     > +	if (!inode->i_generation)
+>     
+>     This should be marked "unlikely()" since it happens at most once every 4B
+>     file creations (though likely even less since it is unlikely that so many
+>     files will be created in a single mount).
+> 
+> Got it.
+>     
+>     > +		inode->i_generation = sbi->s_next_generation++;
+>     > +}
+>     > +
+>     > 
+>     > diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>     > index 98ac2f1..d33f6f0 100644
+>     > --- a/fs/ext4/ialloc.c
+>     > +++ b/fs/ext4/ialloc.c
+>     > @@ -1072,7 +1072,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode	}
+>     > 	spin_lock(&sbi->s_next_gen_lock);
+>     > -	inode->i_generation = sbi->s_next_generation++;
+>     > +	ext4_inode_set_gen(inode, sbi);
+>     > 	spin_unlock(&sbi->s_next_gen_lock);
+>     > 
+>     > diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+>     > index 0c21e22..d52a467 100644
+>     > --- a/fs/ext4/ioctl.c
+>     > +++ b/fs/ext4/ioctl.c
+>     > @@ -160,8 +160,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
+>     > 
+>     > 	spin_lock(&sbi->s_next_gen_lock);
+>     > -	inode->i_generation = sbi->s_next_generation++;
+>     > -	inode_bl->i_generation = sbi->s_next_generation++;
+>     > +	ext4_inode_set_gen(inode, sbi);
+>     > +	ext4_inode_set_gen(inode_bl, sbi);
+>     > 	spin_unlock(&sbi->s_next_gen_lock);
+>     > 
+>     
+>     
+>     Cheers, Andreas
+> 
+> This is applicable to many fs, including ext2, ext4, exofs, jfs, and f2fs.
+> Therefore, a shared helper in linux/fs.h will allow for easy changes
+> in all fs. Is there any reason that might be a bad idea?
+
+AFAICT, i_generation == 0 in XFS and btrfs is just as valid as any other
+number.  There is no special casing of zero in either filesystem.
+
+So now, my curiosity intrigued, I surveyed all the Linux filesystems
+that can export to NFS.  I see that there are actually quite a few fs
+(ext[2-4], exofs, efs, fat, jfs, f2fs, isofs, nilfs2, reiserfs, udf,
+ufs) that treat zero as a special value meaning "ignore generation
+check"; others (xfs, btrfs, fuse, ntfs, ocfs2) that don't consider zero
+special and always require a match; and still others (affs, befs, ceph,
+gfs2, jffs2, squashfs) that don't check at all.
+
+That to mean strongly suggests that more research is necessary to figure
+out why some of the filesystems that support i_generation reserve zero
+as a special value to disable generation checks and why others always
+require an exact match.  Until we can recapture why things are they way
+they are, it doesn't make much sense to have a helper that only applies
+to half the filesystems.
+
+Granted, the contents of a file handle are generally left up to the
+individual filesystem, and the behaviors are very different, so I also
+don't see that much value in hoisting i_generation updates to the VFS
+level.
+
+I guess it wouldn't really matter if XFS stopped writing i_generation =
+0 onto disk, but I'm too curious about this odd difference in behavior
+to let it go just yet. :)
+
+--D
+
+> 
+> Best,
+> Kyungchan Koh 
+>     
+>     
+>     
+>     
+> 
