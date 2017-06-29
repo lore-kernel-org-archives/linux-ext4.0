@@ -1,100 +1,67 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Question about ext4 project feature
-Date: Thu, 29 Jun 2017 12:18:03 -0600
-Message-ID: <0B0D440B-A827-471D-A797-0D94ED8F9F0E@dilger.ca>
-References: <1939863a-d866-69ff-f3ab-55692102473e@huawei.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_C8BC53B9-83C7-43CF-A5D3-D52D2B9E3200";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>, miaoxie@huawei.com,
-        Jan Kara <jack@suse.cz>, Wang Shilong <wshilong@ddn.com>
-To: "zhangyi (F)" <yi.zhang@huawei.com>, Li Xi <lixi@ddn.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33280 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751936AbdF2SSM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jun 2017 14:18:12 -0400
-Received: by mail-io0-f195.google.com with SMTP id z62so1281296ioi.0
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 11:18:12 -0700 (PDT)
-In-Reply-To: <1939863a-d866-69ff-f3ab-55692102473e@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Matthew Wilcox <mawilcox@microsoft.com>
+Subject: RE: [PATCH v8 12/18] Documentation: flesh out the section in vfs.txt
+ on storing and reporting writeback errors
+Date: Thu, 29 Jun 2017 18:21:50 +0000
+Message-ID: <BY2PR21MB003653755FD85FCE2C49393ECBD20@BY2PR21MB0036.namprd21.prod.outlook.com>
+References: <20170629131954.28733-1-jlayton@kernel.org>
+	 <20170629131954.28733-13-jlayton@kernel.org>
+	 <20170629171137.GE5874@birch.djwong.org>
+ <1498760014.22569.13.camel@poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
+	<viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>, "tytso@mit.edu"
+	<tytso@mit.edu>, "axboe@kernel.dk" <axboe@kernel.dk>,
+	"ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+	"corbet@lwn.net" <corbet@lwn.net>, Chris Mason <clm@fb.com>, Josef Bacik
+	<jbacik@fb.com>, David Sterba <dsterba@suse.com>, Carlos Maiolino
+	<cmaiolino@redhat.com>, Eryu Guan <eguan@redhat.com>, David Howells
+	<dhowells@redhat.com>, Christoph Hellwig <hch@infradead.org>, Liu Bo
+	<bo.li.liu@oracle.com>, "linux-fsdevel@vger.kernel.org"
+	<linux-fsdevel@vger.kernel.org>, "linux-mm@kvack.org" <linux-mm@kvack.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"linux-block@vger.kernel.org" <linux-block@vger.kernel.org>
+To: Jeff Layton <jlayton@poochiereds.net>, "Darrick J. Wong"
+	<darrick.wong@oracle.com>, "jlayton@kernel.org" <jlayton@kernel.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1498760014.22569.13.camel@poochiereds.net>
+Content-Language: en-US
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+RnJvbTogSmVmZiBMYXl0b24gW21haWx0bzpqbGF5dG9uQHBvb2NoaWVyZWRzLm5ldF0NCj4gT24g
+VGh1LCAyMDE3LTA2LTI5IGF0IDEwOjExIC0wNzAwLCBEYXJyaWNrIEouIFdvbmcgd3JvdGU6DQo+
+ID4gT24gVGh1LCBKdW4gMjksIDIwMTcgYXQgMDk6MTk6NDhBTSAtMDQwMCwgamxheXRvbkBrZXJu
+ZWwub3JnIHdyb3RlOg0KPiA+ID4gK0hhbmRsaW5nIGVycm9ycyBkdXJpbmcgd3JpdGViYWNrDQo+
+ID4gPiArLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiA+ICtNb3N0IGFwcGxp
+Y2F0aW9ucyB0aGF0IHV0aWxpemUgdGhlIHBhZ2VjYWNoZSB3aWxsIHBlcmlvZGljYWxseSBjYWxs
+DQo+ID4gPiArZnN5bmMgdG8gZW5zdXJlIHRoYXQgZGF0YSB3cml0dGVuIGhhcyBtYWRlIGl0IHRv
+IHRoZSBiYWNraW5nIHN0b3JlLg0KPiA+DQo+ID4gL21lIHdvbmRlcnMgaWYgdGhpcyBzZW50ZW5j
+ZSBvdWdodCB0byBiZSB3b3JkZWQgbW9yZSBzdHJvbmdseSwgZS5nLg0KPiA+DQo+ID4gIkFwcGxp
+Y2F0aW9ucyB0aGF0IHV0aWxpemUgdGhlIHBhZ2VjYWNoZSBtdXN0IGNhbGwgYSBkYXRhDQo+ID4g
+c3luY2hyb25pemF0aW9uIHN5c2NhbGwgc3VjaCBhcyBmc3luYywgZmRhdGFzeW5jLCBvciBtc3lu
+YyB0byBlbnN1cmUNCj4gPiB0aGF0IGRhdGEgd3JpdHRlbiBoYXMgbWFkZSBpdCB0byB0aGUgYmFj
+a2luZyBzdG9yZS4iDQo+IA0KPiBXZWxsLi4ub25seSBpZiB0aGV5IGNhcmUgYWJvdXQgdGhlIGRh
+dGEuIFRoZXJlIGFyZSBzb21lIHRoYXQgZG9uJ3QuIDopDQoNCkFsc28sIGFwcGxpY2F0aW9ucyBk
+b24ndCAidXRpbGl6ZSB0aGUgcGFnZWNhY2hlIjsgZmlsZXN5c3RlbXMgdXNlIHRoZSBwYWdlY2Fj
+aGUuDQpBcHBsaWNhdGlvbnMgbWF5IG9yIG1heSBub3QgdXNlIGNhY2hlZCBJL08uICBIb3cgYWJv
+dXQgdGhpczoNCg0KQXBwbGljYXRpb25zIHdoaWNoIGNhcmUgYWJvdXQgZGF0YSBpbnRlZ3JpdHkg
+YW5kIHVzZSBjYWNoZWQgSS9PIHdpbGwNCnBlcmlvZGljYWxseSBjYWxsIGZzeW5jKCksIG1zeW5j
+KCkgb3IgZmRhdGFzeW5jKCkgdG8gZW5zdXJlIHRoYXQgdGhlaXINCmRhdGEgaXMgZHVyYWJsZS4N
+Cg0KPiBXaGF0IHNob3VsZCB3ZSBkbyBhYm91dCBzeW5jX2ZpbGVfcmFuZ2UgaGVyZT8gSXQgZG9l
+c24ndCBjdXJyZW50bHkgY2FsbA0KPiBhbnkgZmlsZXN5c3RlbSBvcGVyYXRpb25zIGRpcmVjdGx5
+LCBzbyB3ZSBkb24ndCBoYXZlIGEgZ29vZCB3YXkgdG8gbWFrZQ0KPiBpdCBzZWxlY3RpdmVseSB1
+c2UgZXJyc2VxX3QgaGFuZGxpbmcgdGhlcmUuDQo+IA0KPiBJIGNvdWxkIHJlc3VycmVjdCB0aGUg
+RlNfKiBmbGFnIGZvciB0aGF0LCB0aG91Z2ggSSBkb24ndCByZWFsbHkgbGlrZQ0KPiB0aGF0LiBT
+aG91bGQgSSBqdXN0IGdvIGFoZWFkIGFuZCBjb252ZXJ0IGl0IG92ZXIgdG8gdXNlIGVycnNlcV90
+IHVuZGVyDQo+IHRoZSB0aGVvcnkgdGhhdCBtb3N0IGNhbGxlcnMgd2lsbCBldmVudHVhbGx5IHdh
+bnQgdGhhdCBhbnl3YXk/DQoNCkkgdGhpbmsgc28uDQoNCg==
 
---Apple-Mail=_C8BC53B9-83C7-43CF-A5D3-D52D2B9E3200
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Jun 29, 2017, at 4:46 AM, zhangyi (F) <yi.zhang@huawei.com> wrote:
->=20
-> Hi All:
->=20
-> I find a problem when I use project quota, my base environment is
-> radhat7.2 (kernel-3.10.y + e2fsprogs-1.42.9).
->=20
-> It will be reproduced with the following steps:
-> 1. mkfs.ext4 /dev/vdb1
-> 2. mount /dev/vdb1 /mnt
-> 3. touch /mnt/testfile
-> 4. umount /mnt
-> 5. Update kernel and e2fsprogs to *upstream stable version*
-> 6. tune2fs -O quota,project /dev/vdb1
-> 7. mount /dev/vdb1 /mnt
-> 8. chattr -p 123 /mnt/testfile
->=20
-> Execute fail and output:
-> /bin/chattr: Value too large for defined data type while setting =
-project on /mnt/aa
->=20
-> The immediate reason is the following check, i_extra_isize is not =
-updated.
-> static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
-> {
-> 	...
-> 	raw_inode =3D ext4_raw_inode(&iloc);
-> 	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
-> 		err =3D -EOVERFLOW;
-> 		brelse(iloc.bh);
-> 		goto out_unlock;
-> 	}
-> 	...
-> }
->=20
-> So if I write something to testfile before "step 8" ,the chattr will =
-execute
-> successfully, because it trigger ext4_expand_extra_isize() to update
-> i_extra_isize. So is this a BUG or I miss something?
-
-It looks like this code path should also try to expand i_extra_isize if =
-possible,
-and only return an error if that fails.
-
-Li Xi, would you be able to look into that?
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_C8BC53B9-83C7-43CF-A5D3-D52D2B9E3200
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZVURdpIg59Q01vtYRAhp9AJ4ynN3kQnT/J7qbG9t/7GYPA6qAWwCfcwHk
-8X8hg8D0SY9AxnxnbRVqp5k=
-=3FGA
------END PGP SIGNATURE-----
-
---Apple-Mail=_C8BC53B9-83C7-43CF-A5D3-D52D2B9E3200--
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
