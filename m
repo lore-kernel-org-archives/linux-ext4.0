@@ -1,43 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Fri, 30 Jun 2017 14:55:10 +0000
-Message-ID: <bug-196223-13602-nu5BpJxQvt@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v8 17/18] xfs: minimal conversion to errseq_t writeback
+ error reporting
+Date: Fri, 30 Jun 2017 12:45:54 -0400
+Message-ID: <1498841154.4689.1.camel@redhat.com>
+References: <20170629131954.28733-1-jlayton@kernel.org>
+	 <20170629131954.28733-18-jlayton@kernel.org>
+	 <20170629141235.GB17251@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52142 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751563AbdF3OzU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Jun 2017 10:55:20 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1494628670
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Jun 2017 14:55:12 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>, Al Viro
+ <viro@ZenIV.linux.org.uk>,  Jan Kara <jack@suse.cz>, tytso@mit.edu,
+ axboe@kernel.dk, mawilcox@microsoft.com,  ross.zwisler@linux.intel.com,
+ corbet@lwn.net, Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+ David Sterba <dsterba@suse.com>, "Darrick J . Wong"
+ <darrick.wong@oracle.com>, Carlos Maiolino <cmaiolino@redhat.com>, Eryu
+ Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>, Liu Bo
+ <bo.li.liu@oracle.com>, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+ linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>, jlayton@kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170629141235.GB17251@infradead.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+On Thu, 2017-06-29 at 07:12 -0700, Christoph Hellwig wrote:
+> Nice and simple, this looks great!
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Theodore Tso (tytso@mit.edu) changed:
+Thanks! I think this turned out to be a lot cleaner too.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+For filesystems that use filemap_write_and_wait_range today this now
+becomes a pretty straight conversion to file_write_and_wait_range -- one
+liner patches for the most part.
 
---- Comment #3 from Theodore Tso (tytso@mit.edu) ---
-Since this commit has been implicated in another problem (with quite different
-symptoms) it's a bit of a long shot, but since you have a quick and easy
-reproduction, can you try reverting 81378da64de6: "jbd2: mark the transaction
-context with the scope GFP_NOFS context" and see if that makes the hang go
-away?
+I've started rolling patches to do that, but now I'm wondering...
 
-Failing that, I might have to ask you to do a bisect on the ext4 patches added
-during the 4.12 merge window.
-
+Should I aim to do that with an individual patch for each fs, or is it
+better to do a swath of them all at once in a single patch here?
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jeff Layton <jlayton@redhat.com>
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
