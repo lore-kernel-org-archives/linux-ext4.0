@@ -1,72 +1,78 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: First stab at ea inode disk format doc updates
-Date: Thu, 29 Jun 2017 17:50:04 -0600
-Message-ID: <E25342D9-DF52-460C-9260-7EF7D19A7774@dilger.ca>
-References: <20170622181856.GD4728@birch.djwong.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_C71BC025-33F2-4776-8766-45E2DEC1C0AF";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Tahsin Erdogan <tahsin@google.com>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: <paloma.depping@gmx.de>
+Subject: (unknown)
+Date: Fri, 30 Jun 2017 01:14:04 -0000
+Message-ID: <149878524441.19456.3897377742975078331@asianet.co.th>
+Mime-Version: 1.0
+Content-Type: application/zip; name="820702835161.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:32815 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751333AbdF2XuJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jun 2017 19:50:09 -0400
-Received: by mail-io0-f196.google.com with SMTP id z62so1873686ioi.0
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 16:50:08 -0700 (PDT)
-In-Reply-To: <20170622181856.GD4728@birch.djwong.org>
+Received: from 61-91-62-106.static.asianet.co.th ([61.91.62.106]:34311 "HELO
+        asianet.co.th" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751333AbdF3BOI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Jun 2017 21:14:08 -0400
+Subject: 
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_C71BC025-33F2-4776-8766-45E2DEC1C0AF
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Jun 22, 2017, at 12:18 PM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> I've taken a first stab at capturing the on-disk format updates for ea
-> inodes.  Let me know about any inaccuracies (though being a wiki, you
-> can fix them yourself if you're so inclined).
->=20
-> Also -- what is the value of i_mtime (ea inode parent pointer) when =
-the
-> refcount > 1?
-
-Thanks for the update Darrick.  I clarified that i_mtime/i_generation is
-only for refcount =3D=3D 1.  I don't know if the current code will clear =
-these
-values if refcount > 1 or not, or if they are just unused in that case?
-
-> [1] https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_C71BC025-33F2-4776-8766-45E2DEC1C0AF
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZVZIspIg59Q01vtYRAoAUAKDZ2cEor8wUqDpFJvH+AMAKYhnhOwCg55S5
-K1yluhmfhIf5yk76d2mM7tc=
-=AzKY
------END PGP SIGNATURE-----
-
---Apple-Mail=_C71BC025-33F2-4776-8766-45E2DEC1C0AF--
+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
+BAAAAABQSwUGAAAAAAEAAQBPAAAA2QwAAAAA
