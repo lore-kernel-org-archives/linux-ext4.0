@@ -1,44 +1,24 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v8 17/18] xfs: minimal conversion to errseq_t writeback
- error reporting
-Date: Fri, 30 Jun 2017 09:49:59 -0700
-Message-ID: <20170630164959.GA2395@infradead.org>
-References: <20170629131954.28733-1-jlayton@kernel.org>
- <20170629131954.28733-18-jlayton@kernel.org>
- <20170629141235.GB17251@infradead.org>
- <1498841154.4689.1.camel@redhat.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Fri, 30 Jun 2017 19:37:40 +0200
+Message-ID: <20170630173740.GB11420@lst.de>
+References: <20170629135420.21357-1-hch@lst.de> <20170629135420.21357-6-hch@lst.de> <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, jlayton@kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>, Jan Kara <jack@suse.cz>,
-	tytso@mit.edu, axboe@kernel.dk, mawilcox@microsoft.com,
-	ross.zwisler@linux.intel.com, corbet@lwn.net,
-	Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-	David Sterba <dsterba@suse.com>,
-	"Darrick J . Wong" <darrick.wong@oracle.com>,
-	Carlos Maiolino <cmaiolino@redhat.com>,
-	Eryu Guan <eguan@redhat.com>, David Howells <dhowells@redhat.com>,
-	Liu Bo <bo.li.liu@oracle.com>, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-block@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1498841154.4689.1.camel@redhat.com>
-Sender: owner-linux-mm@kvack.org
+In-Reply-To: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 30, 2017 at 12:45:54PM -0400, Jeff Layton wrote:
-> Should I aim to do that with an individual patch for each fs, or is it
-> better to do a swath of them all at once in a single patch here?
+On Fri, Jun 30, 2017 at 01:51:10PM +0200, Andreas Gruenbacher wrote:
+> Also, ext4 no longer calls inode_lock or inode_lock_shared; that needs
+> to be added back for consistency between reading i_size and walking
+> the file extents.
 
-I'd be perfectly happy with one big patch for all the trivial
-conversions.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+At least for XFS we never had such a consistency as we never took
+the iolock (aka i_rwsem).
