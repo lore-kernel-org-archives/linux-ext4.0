@@ -1,65 +1,43 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v3 0/5] DAX common 4k zero page
-Date: Fri, 30 Jun 2017 13:05:56 -0600
-Message-ID: <20170630190556.GB27371@linux.intel.com>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH v2] ext4: have ext4_xattr_set_handle() allocate journal credits
+Date: Fri, 30 Jun 2017 12:36:51 -0700
+Message-ID: <CAAeU0aMSi0A_jAkzDwP6t_TApBwkjMHydxKXfnoK+ojMSxyC=A@mail.gmail.com>
+References: <20170629005029.13302-1-tahsin@google.com> <20170629030618.5101-1-tahsin@google.com>
+ <18BC3861-631F-4C45-9043-14E92B3D7922@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <18BC3861-631F-4C45-9043-14E92B3D7922@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 28, 2017 at 04:01:47PM -0600, Ross Zwisler wrote:
-> When servicing mmap() reads from file holes the current DAX code allocates
-> a page cache page of all zeroes and places the struct page pointer in the
-> mapping->page_tree radix tree.  This has three major drawbacks:
-> 
-> 1) It consumes memory unnecessarily.  For every 4k page that is read via a
-> DAX mmap() over a hole, we allocate a new page cache page.  This means that
-> if you read 1GiB worth of pages, you end up using 1GiB of zeroed memory.
-> 
-> 2) It is slower than using a common zero page because each page fault has
-> more work to do.  Instead of just inserting a common zero page we have to
-> allocate a page cache page, zero it, and then insert it.
-> 
-> 3) The fact that we had to check for both DAX exceptional entries and for
-> page cache pages in the radix tree made the DAX code more complex.
-> 
-> This series solves these issues by following the lead of the DAX PMD code
-> and using a common 4k zero page instead.  This reduces memory usage and
-> decreases latencies for some workloads, and it simplifies the DAX code,
-> removing over 100 lines in total.
-> 
-> Andrew, I'm still hoping to get this merged for v4.13 if possible. I I have
-> addressed all of Jan's feedback, but he is on vacation for the next few
-> weeks so he may not be able to give me Reviewed-by tags.  I think this
-> series is relatively low risk with clear benefits, and I think we should be
-> able to address any issues that come up during the v4.13 RC series.
-> 
-> This series has passed my targeted testing and a full xfstests run on both
-> XFS and ext4.
+> One problem with this approach is that restarting the transaction handle will
+> make the xattr update non-atomic, which could be a real problem for some
+> workloads.  For example, ACLs or SELinux or fscrypt xattrs being added in
+> a separate transaction from file creation, or being modified (delete in a
+> separate transaction from add) and then lost completely if the system crashes
+> before the second transaction is committed.
 
-This series has also passed the automated 0-day kernel builds in 168 configs.
+Agreed.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+> It isn't clear to me why using the current helper function to precompute the
+> required transaction credits doesn't get this right in the first place?  It
+> would just need to add the xattr credits to the original journal handle?
+
+An example code path is this:
+
+ext4_mkdir()
+  ext4_new_inode_start_handle()
+    __ext4_new_inode()   <<== transaction handle is started here
+      ext4_init_acl()
+        __ext4_set_acl()
+          ext4_xattr_set_handle()
+
+In this case, __ext4_new_inode() needs to figure out all journal
+credits needed including the ones for ext4_xattr_set_handle(). This is
+a few levels deep so reaching out to ext4_xattr_set_credits() with the
+right parameters is where the complexity lies.
