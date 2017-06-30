@@ -1,57 +1,43 @@
-From: Emmanuel Florac <eflorac@intellique.com>
-Subject: Re: [proposal] making filesystem tools more machine friendly
-Date: Fri, 30 Jun 2017 15:58:08 +0200
-Message-ID: <20170630155808.7cbab344@harpe.intellique.com>
-References: <CACj3i70p=ybXZWRncseqwnbs7HAYu-SL02+cj--7T5YnqcwVKQ@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
+Date: Fri, 30 Jun 2017 14:55:10 +0000
+Message-ID: <bug-196223-13602-nu5BpJxQvt@https.bugzilla.kernel.org/>
+References: <bug-196223-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/71yZifs.QAq2BYkNNL+M1nU"; protocol="application/pgp-signature"
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs <linux-xfs@vger.kernel.org>
-To: Jan Tulak <jtulak@redhat.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <CACj3i70p=ybXZWRncseqwnbs7HAYu-SL02+cj--7T5YnqcwVKQ@mail.gmail.com>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52142 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751563AbdF3OzU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Jun 2017 10:55:20 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1494628670
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Jun 2017 14:55:12 +0000 (UTC)
+In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/71yZifs.QAq2BYkNNL+M1nU
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+https://bugzilla.kernel.org/show_bug.cgi?id=196223
 
-Le Fri, 30 Jun 2017 10:17:17 +0200
-Jan Tulak <jtulak@redhat.com> =C3=A9crivait:
+Theodore Tso (tytso@mit.edu) changed:
 
-> A structured output is something we should aim for. It helps a lot
-> with the issues and it is the cheapest option. If it goes well, it can
-> be later on followed by creating a library, although, at this moment,
-> that seems a premature thing strive for. Creating a daemon is not a
-> thing any single filesystem should do on its own.
->=20
-> And thank you for reading all this, I look forward to your
-> comments. :-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-The whole concept seems a noble endeavour, I'm a bit wary of the
-possibility to convince all the teams in charge to adhere to it
-however... But that looks like a good idea for sure :)
+--- Comment #3 from Theodore Tso (tytso@mit.edu) ---
+Since this commit has been implicated in another problem (with quite different
+symptoms) it's a bit of a long shot, but since you have a quick and easy
+reproduction, can you try reverting 81378da64de6: "jbd2: mark the transaction
+context with the scope GFP_NOFS context" and see if that makes the hang go
+away?
 
---=20
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+Failing that, I might have to ask you to do a bisect on the ext4 patches added
+during the 4.12 merge window.
 
---Sig_/71yZifs.QAq2BYkNNL+M1nU
-Content-Type: application/pgp-signature
-Content-Description: Signature digitale OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iEYEARECAAYFAllWWPAACgkQX3jQXNUicVb0oQCg2x+zZeton4toXUcDWtyyRvMH
-tTEAoNozDvK6g6aiKHQNz1fe1bmYFnR7
-=H9Y+
------END PGP SIGNATURE-----
-
---Sig_/71yZifs.QAq2BYkNNL+M1nU--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
