@@ -1,78 +1,422 @@
-From: <paloma.depping@gmx.de>
-Subject: (unknown)
-Date: Fri, 30 Jun 2017 01:14:04 -0000
-Message-ID: <149878524441.19456.3897377742975078331@asianet.co.th>
-Mime-Version: 1.0
-Content-Type: application/zip; name="820702835161.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH] e2fsprogs: add ext2fs_is_fast_symlink() function
+Date: Thu, 29 Jun 2017 18:31:59 -0700
+Message-ID: <20170630013159.28178-1-tahsin@google.com>
+Cc: Tahsin Erdogan <tahsin@google.com>
+To: Andreas Dilger <adilger@dilger.ca>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 61-91-62-106.static.asianet.co.th ([61.91.62.106]:34311 "HELO
-        asianet.co.th" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751333AbdF3BOI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Jun 2017 21:14:08 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-pg0-f42.google.com ([74.125.83.42]:34114 "EHLO
+        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751715AbdF3BcD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jun 2017 21:32:03 -0400
+Received: by mail-pg0-f42.google.com with SMTP id t186so56191841pgb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 18:32:03 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-BAAAAABQSwUGAAAAAAEAAQBPAAAA2QwAAAAA
+Current way of determining whether a symlink is in fast symlink
+format is to call ext2fs_inode_data_blocks2(). If number of data
+blocks is zero and EXT4_INLINE_DATA_FL flag is not set, then symlink
+data must be in inode->i_block.
+
+This heuristic is becoming increasingly hard to maintain because
+inode->i_blocks count can also be incremented for blocks used by
+extended attributes. Before ea_inode feature, extra block could come
+from xattr block, now more blocks can be added because of xattr
+inodes.
+
+To address the issue, add a ext2fs_is_fast_symlink() function that
+gives a direct answer based on inode->i_size field. This is
+equivalent to kernel's ext4_inode_is_fast_symlink() function.
+
+This patch also fixes a few issues related to fast symlink handling:
+
+  - Both rdump_symlink() and follow_link() interpreted symlinks with
+    0 data blocks to always mean fast symlinks. This is incorrect
+    because symlinks that are stored as inline data also have
+    0 data blocks. Thus, they try to read everything from
+    inode->i_block and miss the symlink suffix in inode extra area.
+
+  - e2fsck_pass1_check_symlink() had code to handle inode with
+    EXT4_INLINE_DATA_FL flag twice. The first if block always returns
+    from the function so the second one is unreachable code.
+
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+---
+ debugfs/debugfs.c    | 55 +++++++++++++++++++++++-----------------------------
+ debugfs/dump.c       |  4 +---
+ e2fsck/pass1.c       | 42 ++++++++-------------------------------
+ lib/ext2fs/alloc.c   |  9 +++++----
+ lib/ext2fs/ext2fs.h  |  1 +
+ lib/ext2fs/namei.c   | 20 ++++++++++++++++---
+ lib/ext2fs/swapfs.c  | 46 +++++++++++++++++++++----------------------
+ lib/ext2fs/symlink.c | 11 +++++++++++
+ misc/fuse2fs.c       |  9 ++++-----
+ 9 files changed, 94 insertions(+), 103 deletions(-)
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index cef4ec2834fa..0a4b536bc25a 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -778,41 +778,31 @@ static void dump_inline_data(FILE *out, const char *prefix, ext2_ino_t inode_num
+ 		fprintf(out, "%sSize of inline data: %zu\n", prefix, size);
+ }
+ 
+-static void dump_fast_link(FILE *out, ext2_ino_t inode_num,
+-			   struct ext2_inode *inode, const char *prefix)
++static void dump_inline_symlink(FILE *out, ext2_ino_t inode_num,
++				struct ext2_inode *inode, const char *prefix)
+ {
+-	errcode_t retval = 0;
+-	char *buf;
++	errcode_t retval;
++	char *buf = NULL;
+ 	size_t size;
+ 
+-	if (inode->i_flags & EXT4_INLINE_DATA_FL) {
+-		retval = ext2fs_inline_data_size(current_fs, inode_num, &size);
+-		if (retval)
+-			goto out;
+-
+-		retval = ext2fs_get_memzero(size + 1, &buf);
+-		if (retval)
+-			goto out;
++	retval = ext2fs_inline_data_size(current_fs, inode_num, &size);
++	if (retval)
++		goto out;
+ 
+-		retval = ext2fs_inline_data_get(current_fs, inode_num,
+-						inode, buf, &size);
+-		if (retval)
+-			goto out;
+-		fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix,
+-			(int)size, buf);
++	retval = ext2fs_get_memzero(size + 1, &buf);
++	if (retval)
++		goto out;
+ 
+-		retval = ext2fs_free_mem(&buf);
+-		if (retval)
+-			goto out;
+-	} else {
+-		size_t sz = EXT2_I_SIZE(inode);
++	retval = ext2fs_inline_data_get(current_fs, inode_num,
++					inode, buf, &size);
++	if (retval)
++		goto out;
+ 
+-		if (sz > sizeof(inode->i_block))
+-			sz = sizeof(inode->i_block);
+-		fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix, (int) sz,
+-			(char *)inode->i_block);
+-	}
++	fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix,
++		(int)size, buf);
+ out:
++	if (buf)
++		ext2fs_free_mem(&buf);
+ 	if (retval)
+ 		com_err(__func__, retval, "while dumping link destination");
+ }
+@@ -938,9 +928,12 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 		fprintf(out, "Inode checksum: 0x%08x\n", crc);
+ 	}
+ 
+-	if (LINUX_S_ISLNK(inode->i_mode) &&
+-	    ext2fs_inode_data_blocks(current_fs, inode) == 0)
+-		dump_fast_link(out, inode_num, inode, prefix);
++	if (LINUX_S_ISLNK(inode->i_mode) && ext2fs_is_fast_symlink(inode))
++		fprintf(out, "%sFast link dest: \"%.*s\"\n", prefix,
++			(int)EXT2_I_SIZE(inode), (char *)inode->i_block);
++	else if (LINUX_S_ISLNK(inode->i_mode) &&
++		   (inode->i_flags & EXT4_INLINE_DATA_FL))
++		dump_inline_symlink(out, inode_num, inode, prefix);
+ 	else if (LINUX_S_ISBLK(inode->i_mode) || LINUX_S_ISCHR(inode->i_mode)) {
+ 		int major, minor;
+ 		const char *devnote;
+diff --git a/debugfs/dump.c b/debugfs/dump.c
+index 4d3865153ce0..4d5daf0ac5eb 100644
+--- a/debugfs/dump.c
++++ b/debugfs/dump.c
+@@ -208,9 +208,7 @@ static void rdump_symlink(ext2_ino_t ino, struct ext2_inode *inode,
+ 		goto errout;
+ 	}
+ 
+-	/* Apparently, this is the right way to detect and handle fast
+-	 * symlinks; see do_stat() in debugfs.c. */
+-	if (ext2fs_inode_data_blocks2(current_fs, inode) == 0)
++	if (ext2fs_is_fast_symlink(inode))
+ 		strcpy(buf, (char *) inode->i_block);
+ 	else {
+ 		unsigned bytes = inode->i_size;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 422a3d699111..dd650427795c 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -177,7 +177,6 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ {
+ 	unsigned int len;
+ 	int i;
+-	blk64_t	blocks;
+ 	ext2_extent_handle_t	handle;
+ 	struct ext2_extent_info	info;
+ 	struct ext2fs_extent	extent;
+@@ -221,12 +220,15 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 		return 1;
+ 	}
+ 
+-	blocks = ext2fs_inode_data_blocks2(fs, inode);
+-	if (blocks) {
+-		if (inode->i_flags & EXT4_INLINE_DATA_FL)
++	if (ext2fs_is_fast_symlink(inode)) {
++		if (inode->i_size >= sizeof(inode->i_block))
++			return 0;
++
++		len = strnlen((char *)inode->i_block, sizeof(inode->i_block));
++		if (len == sizeof(inode->i_block))
+ 			return 0;
++	} else {
+ 		if ((inode->i_size >= fs->blocksize) ||
+-		    (blocks != fs->blocksize >> 9) ||
+ 		    (inode->i_block[0] < fs->super->s_first_data_block) ||
+ 		    (inode->i_block[0] >= ext2fs_blocks_count(fs->super)))
+ 			return 0;
+@@ -245,34 +247,6 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 		}
+ 		if (len == fs->blocksize)
+ 			return 0;
+-	} else if (inode->i_flags & EXT4_INLINE_DATA_FL) {
+-		char *inline_buf = NULL;
+-		size_t inline_sz = 0;
+-
+-		if (ext2fs_inline_data_size(fs, ino, &inline_sz))
+-			return 0;
+-		if (inode->i_size != inline_sz)
+-			return 0;
+-		if (ext2fs_get_mem(inline_sz + 1, &inline_buf))
+-			return 0;
+-		i = 0;
+-		if (ext2fs_inline_data_get(fs, ino, inode, inline_buf, NULL))
+-			goto exit_inline;
+-		inline_buf[inline_sz] = 0;
+-		len = strnlen(inline_buf, inline_sz);
+-		if (len != inline_sz)
+-			goto exit_inline;
+-		i = 1;
+-exit_inline:
+-		ext2fs_free_mem(&inline_buf);
+-		return i;
+-	} else {
+-		if (inode->i_size >= sizeof(inode->i_block))
+-			return 0;
+-
+-		len = strnlen((char *)inode->i_block, sizeof(inode->i_block));
+-		if (len == sizeof(inode->i_block))
+-			return 0;
+ 	}
+ 	if (len != inode->i_size)
+ 		if ((inode->i_flags & EXT4_ENCRYPT_FL) == 0)
+@@ -1787,7 +1761,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			if (inode->i_flags & EXT4_INLINE_DATA_FL) {
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
+ 				continue;
+-			} else if (ext2fs_inode_data_blocks(fs, inode) == 0) {
++			} else if (ext2fs_is_fast_symlink(inode)) {
+ 				ctx->fs_fast_symlinks_count++;
+ 				check_blocks(ctx, &pctx, block_buf);
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index af214106852f..3fd921679286 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -353,10 +353,11 @@ blk64_t ext2fs_find_inode_goal(ext2_filsys fs, ext2_ino_t ino,
+ 	ext2_extent_handle_t	handle = NULL;
+ 	errcode_t		err;
+ 
+-	if (inode == NULL || ext2fs_inode_data_blocks2(fs, inode) == 0)
+-		goto no_blocks;
+-
+-	if (inode->i_flags & EXT4_INLINE_DATA_FL)
++	/* Make sure data stored in inode->i_block is neither fast symlink nor
++	 * inline data.
++	 */
++	if (inode == NULL || ext2fs_is_fast_symlink(inode) ||
++	    inode->i_flags & EXT4_INLINE_DATA_FL)
+ 		goto no_blocks;
+ 
+ 	if (inode->i_flags & EXT4_EXTENTS_FL) {
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index c18ea5f827ad..0106d705e12c 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1603,6 +1603,7 @@ errcode_t ext2fs_unlink(ext2_filsys fs, ext2_ino_t dir, const char *name,
+ /* symlink.c */
+ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 			 const char *name, const char *target);
++int ext2fs_is_fast_symlink(struct ext2_inode *inode);
+ 
+ /* mmp.c */
+ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf);
+diff --git a/lib/ext2fs/namei.c b/lib/ext2fs/namei.c
+index 307aecc88d87..d485a7209772 100644
+--- a/lib/ext2fs/namei.c
++++ b/lib/ext2fs/namei.c
+@@ -50,7 +50,21 @@ static errcode_t follow_link(ext2_filsys fs, ext2_ino_t root, ext2_ino_t dir,
+ 	if (link_count++ >= EXT2FS_MAX_NESTED_LINKS)
+ 		return EXT2_ET_SYMLINK_LOOP;
+ 
+-	if (ext2fs_inode_data_blocks(fs,&ei)) {
++	if (ext2fs_is_fast_symlink(&ei))
++		pathname = (char *)&(ei.i_block[0]);
++	else if (ei.i_flags & EXT4_INLINE_DATA_FL) {
++		retval = ext2fs_get_memzero(ei.i_size, &buffer);
++		if (retval)
++			return retval;
++
++		retval = ext2fs_inline_data_get(fs, inode,
++						&ei, buffer, NULL);
++		if (retval) {
++			ext2fs_free_mem(&buffer);
++			return retval;
++		}
++		pathname = buffer;
++	} else {
+ 		retval = ext2fs_bmap2(fs, inode, &ei, NULL, 0, 0, NULL, &blk);
+ 		if (retval)
+ 			return retval;
+@@ -65,8 +79,8 @@ static errcode_t follow_link(ext2_filsys fs, ext2_ino_t root, ext2_ino_t dir,
+ 			return retval;
+ 		}
+ 		pathname = buffer;
+-	} else
+-		pathname = (char *)&(ei.i_block[0]);
++	}
++
+ 	retval = open_namei(fs, root, dir, pathname, ei.i_size, 1,
+ 			    link_count, buf, res_inode);
+ 	if (buffer)
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index 2d05ee7b995b..4522045dd1ca 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -210,18 +210,24 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
+ 			    struct ext2_inode_large *f, int hostorder,
+ 			    int bufsize)
+ {
+-	unsigned i, has_data_blocks, extra_isize, attr_magic;
+-	int has_extents = 0;
+-	int has_inline_data = 0;
+-	int islnk = 0;
++	unsigned i, extra_isize, attr_magic;
++	int has_extents, has_inline_data, islnk, fast_symlink;
+ 	int inode_size;
+ 	__u32 *eaf, *eat;
+ 
+-	if (hostorder && LINUX_S_ISLNK(f->i_mode))
+-		islnk = 1;
++	/*
++	 * Note that t and f may point to the same address. That's why
++	 * if (hostorder) condition is executed before swab calls and
++	 * if (!hostorder) afterwards.
++	 */
++	if (hostorder) {
++		islnk = LINUX_S_ISLNK(f->i_mode);
++		fast_symlink = ext2fs_is_fast_symlink(EXT2_INODE(f));
++		has_extents = (f->i_flags & EXT4_EXTENTS_FL) != 0;
++		has_inline_data = (f->i_flags & EXT4_INLINE_DATA_FL) != 0;
++	}
++
+ 	t->i_mode = ext2fs_swab16(f->i_mode);
+-	if (!hostorder && LINUX_S_ISLNK(t->i_mode))
+-		islnk = 1;
+ 	t->i_uid = ext2fs_swab16(f->i_uid);
+ 	t->i_size = ext2fs_swab32(f->i_size);
+ 	t->i_atime = ext2fs_swab32(f->i_atime);
+@@ -231,27 +237,21 @@ void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
+ 	t->i_gid = ext2fs_swab16(f->i_gid);
+ 	t->i_links_count = ext2fs_swab16(f->i_links_count);
+ 	t->i_file_acl = ext2fs_swab32(f->i_file_acl);
+-	if (hostorder)
+-		has_data_blocks = ext2fs_inode_data_blocks(fs,
+-					   (struct ext2_inode *) f);
+ 	t->i_blocks = ext2fs_swab32(f->i_blocks);
+-	if (!hostorder)
+-		has_data_blocks = ext2fs_inode_data_blocks(fs,
+-					   (struct ext2_inode *) t);
+-	if (hostorder && (f->i_flags & EXT4_EXTENTS_FL))
+-		has_extents = 1;
+-	if (hostorder && (f->i_flags & EXT4_INLINE_DATA_FL))
+-		has_inline_data = 1;
+ 	t->i_flags = ext2fs_swab32(f->i_flags);
+-	if (!hostorder && (t->i_flags & EXT4_EXTENTS_FL))
+-		has_extents = 1;
+-	if (!hostorder && (t->i_flags & EXT4_INLINE_DATA_FL))
+-		has_inline_data = 1;
+ 	t->i_size_high = ext2fs_swab32(f->i_size_high);
++
++	if (!hostorder) {
++		islnk = LINUX_S_ISLNK(t->i_mode);
++		fast_symlink = ext2fs_is_fast_symlink(EXT2_INODE(t));
++		has_extents = (t->i_flags & EXT4_EXTENTS_FL) != 0;
++		has_inline_data = (t->i_flags & EXT4_INLINE_DATA_FL) != 0;
++	}
++
+ 	/*
+ 	 * Extent data and inline data are swapped on access, not here
+ 	 */
+-	if (!has_extents && !has_inline_data && (!islnk || has_data_blocks)) {
++	if (!has_extents && !has_inline_data && (!islnk || !fast_symlink)) {
+ 		for (i = 0; i < EXT2_N_BLOCKS; i++)
+ 			t->i_block[i] = ext2fs_swab32(f->i_block[i]);
+ 	} else if (t != f) {
+diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+index 0e6f9a9fd14e..271aa1ccc134 100644
+--- a/lib/ext2fs/symlink.c
++++ b/lib/ext2fs/symlink.c
+@@ -174,3 +174,14 @@ cleanup:
+ 		ext2fs_free_mem(&block_buf);
+ 	return retval;
+ }
++
++/*
++ * Test whether an inode is a fast symlink.
++ *
++ * A fast symlink has its symlink data stored in inode->i_block.
++ */
++int ext2fs_is_fast_symlink(struct ext2_inode *inode)
++{
++	return LINUX_S_ISLNK(inode->i_mode) && EXT2_I_SIZE(inode) &&
++	       EXT2_I_SIZE(inode) < sizeof(inode->i_block);
++}
+\ No newline at end of file
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index b5897685c466..ee7af419da71 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -863,8 +863,9 @@ static int op_readlink(const char *path, char *buf, size_t len)
+ 	len--;
+ 	if (inode.i_size < len)
+ 		len = inode.i_size;
+-	if (ext2fs_inode_data_blocks2(fs, &inode) ||
+-	    (inode.i_flags & EXT4_INLINE_DATA_FL)) {
++	if (ext2fs_is_fast_symlink(&inode))
++		memcpy(buf, (char *)inode.i_block, len);
++	else {
+ 		/* big/inline symlink */
+ 
+ 		err = ext2fs_file_open(fs, ino, 0, &file);
+@@ -888,9 +889,7 @@ out2:
+ 			ret = translate_error(fs, ino, err);
+ 			goto out;
+ 		}
+-	} else
+-		/* inline symlink */
+-		memcpy(buf, (char *)inode.i_block, len);
++	}
+ 	buf[len] = 0;
+ 
+ 	if (fs_writeable(fs)) {
+-- 
+2.13.2.725.g09c95d1e9-goog
