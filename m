@@ -1,45 +1,65 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: mkfs.ext4 -D option fails to mount
-Date: Fri, 30 Jun 2017 11:47:31 -0600
-Message-ID: <20170630174731.GA27371@linux.intel.com>
-References: <20170629153538.GA4268@linux.intel.com>
- <20170629155727.GA8536@linux.intel.com>
- <20170629175319.s75rdncvejil357p@thunk.org>
- <20170629230637.GA14347@linux.intel.com>
- <20170629234816.werual2uikyhc56k@thunk.org>
+Subject: Re: [PATCH v3 0/5] DAX common 4k zero page
+Date: Fri, 30 Jun 2017 13:05:56 -0600
+Message-ID: <20170630190556.GB27371@linux.intel.com>
+References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:8372 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751072AbdF3Rrd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Jun 2017 13:47:33 -0400
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170629234816.werual2uikyhc56k@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 29, 2017 at 07:48:16PM -0400, Theodore Ts'o wrote:
-> I'm not able to reproduce it using your reproduction receipe using
-> e2fsprogs 1.43.4.  I suspect you might be hitting a bug which was
-> fixed by this commit:
+On Wed, Jun 28, 2017 at 04:01:47PM -0600, Ross Zwisler wrote:
+> When servicing mmap() reads from file holes the current DAX code allocates
+> a page cache page of all zeroes and places the struct page pointer in the
+> mapping->page_tree radix tree.  This has three major drawbacks:
 > 
-> commit d6cad379eb6c86ca58bf5b83a586577de412a2e6
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Sun Sep 11 00:25:48 2016 -0400
+> 1) It consumes memory unnecessarily.  For every 4k page that is read via a
+> DAX mmap() over a hole, we allocate a new page cache page.  This means that
+> if you read 1GiB worth of pages, you end up using 1GiB of zeroed memory.
 > 
->     libext2fs: fix unaligned, multiblock writes in the unix_io handler
->     
->     The read-modify-write code for the unaligned fallback code wasn't
->     working for multi-block writes.  This was unmasked by FreeBSD 11-rc2,
->     since its malloc() is returning unaligned memory regions for large
->     memory regions.
->     
->     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> 2) It is slower than using a common zero page because each page fault has
+> more work to do.  Instead of just inserting a common zero page we have to
+> allocate a page cache page, zero it, and then insert it.
 > 
-> Can you retry with e2fsprogs 1.43.4 and see if it fixes your issue?
+> 3) The fact that we had to check for both DAX exceptional entries and for
+> page cache pages in the radix tree made the DAX code more complex.
+> 
+> This series solves these issues by following the lead of the DAX PMD code
+> and using a common 4k zero page instead.  This reduces memory usage and
+> decreases latencies for some workloads, and it simplifies the DAX code,
+> removing over 100 lines in total.
+> 
+> Andrew, I'm still hoping to get this merged for v4.13 if possible. I I have
+> addressed all of Jan's feedback, but he is on vacation for the next few
+> weeks so he may not be able to give me Reviewed-by tags.  I think this
+> series is relatively low risk with clear benefits, and I think we should be
+> able to address any issues that come up during the v4.13 RC series.
+> 
+> This series has passed my targeted testing and a full xfstests run on both
+> XFS and ext4.
 
-Yep, confirmed that it works with e2fsprogs v1.43.4.  Cool, thanks.
+This series has also passed the automated 0-day kernel builds in 168 configs.
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
