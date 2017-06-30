@@ -1,39 +1,57 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Fri, 30 Jun 2017 14:11:58 +0200
-Message-ID: <CAHc6FU7NOnYywJAbQTwgUS+cqkAZTSeQU3NsCMHWbQ6cztvNJw@mail.gmail.com>
-References: <20170629135420.21357-1-hch@lst.de> <20170629135420.21357-6-hch@lst.de>
- <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
+From: Emmanuel Florac <eflorac@intellique.com>
+Subject: Re: [proposal] making filesystem tools more machine friendly
+Date: Fri, 30 Jun 2017 15:58:08 +0200
+Message-ID: <20170630155808.7cbab344@harpe.intellique.com>
+References: <CACj3i70p=ybXZWRncseqwnbs7HAYu-SL02+cj--7T5YnqcwVKQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/71yZifs.QAq2BYkNNL+M1nU"; protocol="application/pgp-signature"
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs <linux-xfs@vger.kernel.org>
+To: Jan Tulak <jtulak@redhat.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <CACj3i70p=ybXZWRncseqwnbs7HAYu-SL02+cj--7T5YnqcwVKQ@mail.gmail.com>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 30, 2017 at 1:51 PM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> On Thu, Jun 29, 2017 at 3:54 PM, Christoph Hellwig <hch@lst.de> wrote:
->> Switch to the iomap_seek_hole and iomap_seek_data helpers for
->> implementing lseek SEEK_HOLE / SEEK_DATA, and remove all the
->> code that isn't needed any more.
->>
->> Note that with this patch ext4 will now always depend on the iomap
->> code instead of only when CONFIG_DAX is enabled, and it requires
->> adding a call into the extent status tree for iomap_begin as well
->> to properly deal with delalloc extents.
->
-> This breaks SEEK_HOLE / SEEK_DATA on filesystems with the inline_data feature.
->
-> Also, ext4 no longer calls inode_lock or inode_lock_shared; that needs
-> to be added back for consistency between reading i_size and walking
-> the file extents.
+--Sig_/71yZifs.QAq2BYkNNL+M1nU
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Same on xfs, btw.
+Le Fri, 30 Jun 2017 10:17:17 +0200
+Jan Tulak <jtulak@redhat.com> =C3=A9crivait:
 
-Thanks,
-Andreas
+> A structured output is something we should aim for. It helps a lot
+> with the issues and it is the cheapest option. If it goes well, it can
+> be later on followed by creating a library, although, at this moment,
+> that seems a premature thing strive for. Creating a daemon is not a
+> thing any single filesystem should do on its own.
+>=20
+> And thank you for reading all this, I look forward to your
+> comments. :-)
+
+The whole concept seems a noble endeavour, I'm a bit wary of the
+possibility to convince all the teams in charge to adhere to it
+however... But that looks like a good idea for sure :)
+
+--=20
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
+
+--Sig_/71yZifs.QAq2BYkNNL+M1nU
+Content-Type: application/pgp-signature
+Content-Description: Signature digitale OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iEYEARECAAYFAllWWPAACgkQX3jQXNUicVb0oQCg2x+zZeton4toXUcDWtyyRvMH
+tTEAoNozDvK6g6aiKHQNz1fe1bmYFnR7
+=H9Y+
+-----END PGP SIGNATURE-----
+
+--Sig_/71yZifs.QAq2BYkNNL+M1nU--
