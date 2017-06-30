@@ -1,18 +1,20 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH] e2fsprogs: add ext2fs_is_fast_symlink() function
-Date: Thu, 29 Jun 2017 18:31:59 -0700
-Message-ID: <20170630013159.28178-1-tahsin@google.com>
+Subject: [PATCH v2] e2fsprogs: add ext2fs_is_fast_symlink() function
+Date: Thu, 29 Jun 2017 18:36:08 -0700
+Message-ID: <20170630013608.29185-1-tahsin@google.com>
+References: <20170630013159.28178-1-tahsin@google.com>
 Cc: Tahsin Erdogan <tahsin@google.com>
 To: Andreas Dilger <adilger@dilger.ca>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f42.google.com ([74.125.83.42]:34114 "EHLO
-        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751715AbdF3BcD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jun 2017 21:32:03 -0400
-Received: by mail-pg0-f42.google.com with SMTP id t186so56191841pgb.1
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 18:32:03 -0700 (PDT)
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:36247 "EHLO
+        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751685AbdF3BgN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Jun 2017 21:36:13 -0400
+Received: by mail-pf0-f176.google.com with SMTP id q86so58874344pfl.3
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 18:36:13 -0700 (PDT)
+In-Reply-To: <20170630013159.28178-1-tahsin@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -43,8 +45,11 @@ This patch also fixes a few issues related to fast symlink handling:
     EXT4_INLINE_DATA_FL flag twice. The first if block always returns
     from the function so the second one is unreachable code.
 
+Suggested-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
+v2: Added Suggested-by to commit message
+
  debugfs/debugfs.c    | 55 +++++++++++++++++++++++-----------------------------
  debugfs/dump.c       |  4 +---
  e2fsck/pass1.c       | 42 ++++++++-------------------------------
