@@ -1,79 +1,94 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH] libext2fs: fix compile errors/warnings
-Date: Thu, 29 Jun 2017 21:19:32 -0700
-Message-ID: <20170630041932.5424-1-tahsin@google.com>
-Cc: Tahsin Erdogan <tahsin@google.com>
-To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>,
-        Li Xi <lixi@ddn.com>, Wang Shilong <wshilong@ddn.com>,
-        linux-ext4@vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196223] New: jdb2 journal - hung after suspend-resume test
+Date: Fri, 30 Jun 2017 06:11:18 +0000
+Message-ID: <bug-196223-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f48.google.com ([74.125.83.48]:36508 "EHLO
-        mail-pg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750730AbdF3ETp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jun 2017 00:19:45 -0400
-Received: by mail-pg0-f48.google.com with SMTP id u62so57516553pgb.3
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Jun 2017 21:19:45 -0700 (PDT)
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36624 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751744AbdF3GLZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Jun 2017 02:11:25 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id F143728504
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Jun 2017 06:11:24 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Defining DEBUG_QUOTA reveals a few compile errors. Fix these.
-Also fix format string type mismatches in a couple of log_debug()
-calls.
+https://bugzilla.kernel.org/show_bug.cgi?id=196223
 
-Fixes: 2d2d799c7261 ("Clean up codes for adding new quota type")
+            Bug ID: 196223
+           Summary: jdb2 journal - hung after suspend-resume test
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.12.0-rc7-next-20170629
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: marta.lofstedt@intel.com
+        Regression: No
 
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- lib/support/mkquota.c | 4 ++--
- lib/support/quotaio.c | 6 +++---
- 2 files changed, 5 insertions(+), 5 deletions(-)
+Created attachment 257243
+  --> https://bugzilla.kernel.org/attachment.cgi?id=257243&action=edit
+backtraces jdb2/ext4 hang
 
-diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-index 1bb43a71cfac..11a878e7f131 100644
---- a/lib/support/mkquota.c
-+++ b/lib/support/mkquota.c
-@@ -50,7 +50,7 @@ static void print_dquot(const char *desc, struct dquot *dq)
- {
- 	if (desc)
- 		fprintf(stderr, "%s: ", desc);
--	fprintf(stderr, "%u %lld:%lld:%lld %lld:%lld:%lld\n",
-+	fprintf(stderr, "%u %ld:%ld:%ld %ld:%ld:%ld\n",
- 		dq->dq_id, dq->dq_dqb.dqb_curspace,
- 		dq->dq_dqb.dqb_bsoftlimit, dq->dq_dqb.dqb_bhardlimit,
- 		dq->dq_dqb.dqb_curinodes,
-@@ -523,7 +523,7 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
- 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
- 		scan_data->usage_is_inconsistent = 1;
- 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
--			"actual (%lld, %lld) != expected (%lld, %lld)\n",
-+			"actual (%ld, %ld) != expected (%ld, %ld)\n",
- 			dq->dq_id, dq->dq_dqb.dqb_curspace,
- 			dq->dq_dqb.dqb_curinodes,
- 			dquot->dq_dqb.dqb_curspace,
-diff --git a/lib/support/quotaio.c b/lib/support/quotaio.c
-index befa832951a2..240eab3d63ea 100644
---- a/lib/support/quotaio.c
-+++ b/lib/support/quotaio.c
-@@ -230,9 +230,9 @@ errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
- 		return err;
- 
- 	if (qf_ino == 0)
--		qf_ino = *quota_sb_inump(fs->super, qtype)
-+		qf_ino = *quota_sb_inump(fs->super, qtype);
- 
--	log_debug("Opening quota ino=%lu, type=%d", qf_ino, qtype);
-+	log_debug("Opening quota ino=%u, type=%d", qf_ino, qtype);
- 	err = ext2fs_file_open(fs, qf_ino, flags, &e2_file);
- 	if (err) {
- 		log_err("ext2fs_file_open failed: %s", error_message(err));
-@@ -366,7 +366,7 @@ errcode_t quota_file_create(struct quota_handle *h, ext2_filsys fs,
- 	h->e2fs_write = quota_write_nomount;
- 	h->e2fs_read = quota_read_nomount;
- 
--	log_debug("Creating quota ino=%lu, type=%d", qf_inum, type);
-+	log_debug("Creating quota ino=%u, type=%d", qf_inum, qtype);
- 	err = ext2fs_file_open(fs, qf_inum, h->qh_file_flags, &e2_file);
- 	if (err) {
- 		log_err("ext2fs_file_open failed: %ld", err);
+While running IGT graphics test on linux-next various x86 machines hang. The
+issue is reproducible with running the fastfeedback.testlist of
+IGT(https://cgit.freedesktop.org/xorg/app/intel-gpu-tools)
+Example backtrace from BDW NUCi5, more backtraces from other machines in
+attachment.
+
+<3>[ 1330.158734] INFO: task jbd2/sda2-8:208 blocked for more than 120 seconds.
+<3>[ 1330.158814]       Tainted: G     U  W       4.12.0-rc7-next-20170629 #1
+<3>[ 1330.158877] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
+this message.
+<6>[ 1330.158950] jbd2/sda2-8     D    0   208      2 0x00000000
+<4>[ 1330.158956] Call Trace:
+<4>[ 1330.158969]  __schedule+0x3c7/0x830
+<4>[ 1330.158974]  schedule+0x36/0x80
+<4>[ 1330.158979]  io_schedule+0x16/0x40
+<4>[ 1330.158984]  wait_on_page_bit_common+0x10e/0x1d0
+<4>[ 1330.158988]  ? page_cache_tree_insert+0xf0/0xf0
+<4>[ 1330.158992]  __filemap_fdatawait_range+0x114/0x180
+<4>[ 1330.158998]  ? submit_bio+0x73/0x150
+<4>[ 1330.159002]  ? submit_bio+0x73/0x150
+<4>[ 1330.159007]  ? jbd2_journal_begin_ordered_truncate+0xb0/0xb0
+<4>[ 1330.159012]  filemap_fdatawait_keep_errors+0x27/0x50
+<4>[ 1330.159016]  jbd2_journal_commit_transaction+0x89e/0x16d0
+<4>[ 1330.159024]  kjournald2+0xd2/0x270
+<4>[ 1330.159028]  ? kjournald2+0xd2/0x270
+<4>[ 1330.159033]  ? wait_woken+0x80/0x80
+<4>[ 1330.159039]  kthread+0x109/0x140
+<4>[ 1330.159044]  ? commit_timeout+0x10/0x10
+<4>[ 1330.159049]  ? kthread_create_on_node+0x70/0x70
+<4>[ 1330.159053]  ret_from_fork+0x25/0x30
+<4>[ 1330.159057] NMI backtrace for cpu 0
+<4>[ 1330.159061] CPU: 0 PID: 36 Comm: khungtaskd Tainted: G     U  W      
+4.12.0-rc7-next-20170629 #1
+<4>[ 1330.159063] Hardware name:                  /NUC5i5RYB, BIOS
+RYBDWi35.86A.0249.2015.0529.1640 05/29/2015
+<4>[ 1330.159064] Call Trace:
+<4>[ 1330.159070]  dump_stack+0x63/0x8d
+<4>[ 1330.159076]  nmi_cpu_backtrace+0xca/0xd0
+<4>[ 1330.159081]  ? irq_force_complete_move+0x140/0x140
+<4>[ 1330.159087]  nmi_trigger_cpumask_backtrace+0xde/0x110
+<4>[ 1330.159092]  arch_trigger_cpumask_backtrace+0x19/0x20
+<4>[ 1330.159096]  watchdog+0x2dd/0x360
+<4>[ 1330.159103]  kthread+0x109/0x140
+<4>[ 1330.159106]  ? reset_hung_task_detector+0x20/0x20
+<4>[ 1330.159111]  ? kthread_create_on_node+0x70/0x70
+<4>[ 1330.159115]  ret_from_fork+0x25/0x30
+
+This issue is blocking linux-next testing for i915 driver.
+
 -- 
-2.13.2.725.g09c95d1e9-goog
+You are receiving this mail because:
+You are watching the assignee of the bug.
