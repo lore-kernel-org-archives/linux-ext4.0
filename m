@@ -1,39 +1,36 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Mon, 03 Jul 2017 13:49:12 +0000
-Message-ID: <bug-196223-13602-Kk2U7tC61O@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Mon, 3 Jul 2017 17:03:54 +0200
+Message-ID: <CAHc6FU4rK3cg+nYeOSSJirKoYiuApV9KauqE_iar+7Q7X6g20A@mail.gmail.com>
+References: <20170629135420.21357-1-hch@lst.de> <20170629135420.21357-6-hch@lst.de>
+ <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com> <20170630173740.GB11420@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41474 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S933780AbdGCNtN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2017 09:49:13 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BA71D2850D
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Jul 2017 13:49:12 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170630173740.GB11420@lst.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+On Fri, Jun 30, 2017 at 7:37 PM, Christoph Hellwig <hch@lst.de> wrote:
+> On Fri, Jun 30, 2017 at 01:51:10PM +0200, Andreas Gruenbacher wrote:
+>> Also, ext4 no longer calls inode_lock or inode_lock_shared; that needs
+>> to be added back for consistency between reading i_size and walking
+>> the file extents.
+>
+> At least for XFS we never had such a consistency as we never took
+> the iolock (aka i_rwsem).
 
---- Comment #5 from Marta Löfstedt (marta.lofstedt@intel.com) ---
-Unfortunately, this is not a fast way to bisect. Running the testlist takes ~20
-minutes. I usually hit the issue on the second repetition and usually on a
-suspend-resume related tests. So, I am still searching for a reasonably new
-good commit to start git bisect.
+What else does this piece of code from mainline xfs_seek_hole_data()
+do instead then?
 
-4.12.0-rc7-next-20170703 is bad
-4.12.0-rc7-next-20170628 is bad 
+        lock = xfs_ilock_data_map_shared(ip);
 
-I will spin 4.12.0-rc7-next-20170627 over night.
+        end = i_size_read(inode);
+        offset = __xfs_seek_hole_data(inode, start, end, whence);
 
-Are there some fs/ext4 specific test that may give a faster reproducer?
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+Andreas
