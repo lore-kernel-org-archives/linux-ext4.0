@@ -1,36 +1,41 @@
 From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Mon, 3 Jul 2017 17:03:54 +0200
-Message-ID: <CAHc6FU4rK3cg+nYeOSSJirKoYiuApV9KauqE_iar+7Q7X6g20A@mail.gmail.com>
-References: <20170629135420.21357-1-hch@lst.de> <20170629135420.21357-6-hch@lst.de>
- <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com> <20170630173740.GB11420@lst.de>
+Subject: Re: lseek SEEK_HOLE / SEEK_DATA fixes and switch to iomap V3.2-hch
+Date: Mon, 3 Jul 2017 17:11:44 +0200
+Message-ID: <CAHc6FU55dj_VBwWq=s1tgbp6nnD333PfRO_hY98GbkzqYSyTiQ@mail.gmail.com>
+References: <20170629135420.21357-1-hch@lst.de> <20170629184751.GH5874@birch.djwong.org>
+ <20170629185320.GA31467@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Jan Kara <jack@suse.cz>,
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jan Kara <jack@suse.cz>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
 To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170630173740.GB11420@lst.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ua0-f179.google.com ([209.85.217.179]:34404 "EHLO
+        mail-ua0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932065AbdGCPLq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Jul 2017 11:11:46 -0400
+Received: by mail-ua0-f179.google.com with SMTP id z22so111281515uah.1
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Jul 2017 08:11:46 -0700 (PDT)
+In-Reply-To: <20170629185320.GA31467@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 30, 2017 at 7:37 PM, Christoph Hellwig <hch@lst.de> wrote:
-> On Fri, Jun 30, 2017 at 01:51:10PM +0200, Andreas Gruenbacher wrote:
->> Also, ext4 no longer calls inode_lock or inode_lock_shared; that needs
->> to be added back for consistency between reading i_size and walking
->> the file extents.
+On Thu, Jun 29, 2017 at 8:53 PM, Christoph Hellwig <hch@lst.de> wrote:
+> On Thu, Jun 29, 2017 at 11:47:51AM -0700, Darrick J. Wong wrote:
+>> On Thu, Jun 29, 2017 at 06:54:15AM -0700, Christoph Hellwig wrote:
+>> > Here is my take on all the current seek work.  It has my XFS quota changes
+>>
+>> I think the quota change patch fell out of this series, but I can grab
+>> it from the previous iteration if it hasn't changed.
 >
-> At least for XFS we never had such a consistency as we never took
-> the iolock (aka i_rwsem).
+> It hasn't, please do.
 
-What else does this piece of code from mainline xfs_seek_hole_data()
-do instead then?
-
-        lock = xfs_ilock_data_map_shared(ip);
-
-        end = i_size_read(inode);
-        offset = __xfs_seek_hole_data(inode, start, end, whence);
+We haven't heard from the ext4 folks on this yet: is everyone happy
+with the vfs changes in this series at least? Can those be merged
+through the xfs tree? That would allow us to move ahead on the gfs2
+side.
 
 Thanks,
 Andreas
