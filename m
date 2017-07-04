@@ -1,71 +1,73 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
-Date: Mon, 3 Jul 2017 21:04:46 -0700
-Message-ID: <20170704040446.GB4704@birch.djwong.org>
-References: <c9f7090b2a58364998ad4a49cfdac379b905c7e9.1498687302.git.kkc6196@fb.com>
- <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
- <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
- <20170629045940.GB5865@birch.djwong.org>
- <20170629143551.GB1651@fieldses.org>
- <20170629172528.GA5869@birch.djwong.org>
- <20170629183053.GA4178@fieldses.org>
- <20170629185022.GB4178@fieldses.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fast symlink test should not rely on i_blocks
+Date: Tue, 4 Jul 2017 00:11:07 -0400
+Message-ID: <20170704041107.7q6jh3cpd46v3rhc@thunk.org>
+References: <20170628003455.12748-1-tahsin@google.com>
+ <1E96A392-4BE6-4078-B708-5C8C33C52654@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: William Koh <kkc6196@fb.com>, Andreas Dilger <adilger@dilger.ca>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Kernel Team <Kernel-team@fb.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        xfs <linux-xfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tahsin Erdogan <tahsin@google.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170629185022.GB4178@fieldses.org>
+In-Reply-To: <1E96A392-4BE6-4078-B708-5C8C33C52654@dilger.ca>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 29, 2017 at 02:50:22PM -0400, J. Bruce Fields wrote:
-> On Thu, Jun 29, 2017 at 02:30:53PM -0400, J. Bruce Fields wrote:
-> > On Thu, Jun 29, 2017 at 10:25:28AM -0700, Darrick J. Wong wrote:
-> > > Was there ever a version of NFS (or more generally callers of the
-> > > exportfs code) that couldn't deal with i_generation in the file handle,
-> > > and therefore we invented this generation hack to work around the loss
-> > > of the generation information?
-> > > 
-> > > There's a comment in xfs_fs_encode_fh about not supporting 64bit inodes
-> > > with subtree_check (which seems to require one ino/gen pair for the file
-> > > and a second pair for the file's parent) on NFSv2 because v2 doesn't
-> > > provide enough space for all the file handle information, but that's the
-> > > furthest I got with lazy-mining the git history. :)
-> > 
-> > There's a comment in fs/ext4/super.c:ext4_nfs_get_inode
-> > 
-> > 	* Currently we don't know the generation for parent directory, so
-> > 	* a generation of 0 means "accept any"
-> > 
-> > But I don't see that used.
-> > 
-> > It was used once upon a time; I see it actually used in old 2.5 code in
-> > nfsd_get_dentry.  Hm.
+On Wed, Jun 28, 2017 at 10:53:31AM -0600, Andreas Dilger wrote:
 > 
-> Oh, maybe it's here in fs/libfs.c:generic_fh_to_parent:
+> > On Jun 27, 2017, at 6:34 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+> > 
+> > ext4_inode_info->i_data is the storage area for 4 types of data:
+> > 
+> >  a) Extents data
+> >  b) Inline data
+> >  c) Block map
+> >  d) Fast symlink data (symlink length < 60)
+> > 
+> > Extents data case is positively identified by EXT4_INODE_EXTENTS flag.
+> > Inline data case is also obvious because of EXT4_INODE_INLINE_DATA
+> > flag.
+> > 
+> > Distinguishing c) and d) however requires additional logic. This
+> > currently relies on i_blocks count. After subtracting external xattr
+> > block from i_blocks, if it is greater than 0 then we know that some
+> > data blocks exist, so there must be a block map.
+> > 
+> > This logic got broken after ea_inode feature was added. That feature
+> > charges the data blocks of external xattr inodes to the referencing
+> > inode and so adds them to the i_blocks. To fix this, we could subtract
+> > ea_inode blocks by iterating through all xattr entries and then check
+> > whether remaining i_blocks count is zero. Besides being complicated,
+> > this won't change the fact that the current way of distinguishing
+> > between c) and d) is fragile.
+> > 
+> > The alternative solution is to test whether i_size is less than 60 to
+> > determine fast symlink case. ext4_symlink() uses the same test to decide
+> > whether to store the symlink in i_data. There is one caveat to address
+> > before this can work though.
+> > 
+> > If an inode's i_nlink is zero during eviction, its i_size is set to
+> > zero and its data is truncated. If system crashes before inode is removed
+> > from the orphan list, next boot orphan cleanup may find the inode with
+> > zero i_size. So, a symlink that had its data stored in a block may now
+> > appear to be a fast symlink. The solution used in this patch is to treat
+> > i_size = 0 as a non-fast symlink case. A zero sized symlink is not legal
+> > so the only time this can happen is the mentioned scenario. This is also
+> > logically correct because a i_size = 0 symlink has no data stored in
+> > i_data.
+> > 
+> > Fixes: 74c5bfa651af ("ext4: xattr inode deduplication")
+> > 
+> > Suggested-by: Andreas Dilger <adilger@dilger.ca>
+> > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 > 
-> 	switch (fh_type) {
-> 	case FILEID_INO32_GEN_PARENT:
-> 		inode = get_inode(sb, fid->i32.parent_ino,
->         			  (fh_len > 3 ? fid->i32.parent_gen : 0));
-> 		break;
-> 	}
+> The unfortunate bit is that this makes the inode impossible to undelete, but
+> I don't think that is a huge concern for symlinks.
 > 
-> I'm not sure under what conditions that filehandle encoding is used.
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-The best guess I can come up with is the old nfs_fhbase_old style handles,
-which (afaict) do not carry parent i_generation?
+Thanks, applied.
 
---D
-
-> 
-> --b.
+						- Ted
