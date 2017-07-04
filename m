@@ -1,29 +1,28 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Tue, 04 Jul 2017 05:56:58 +0000
-Message-ID: <bug-196223-13602-AIkqtVy4cB@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: [PATCH v2] ext4: have ext4_xattr_set_handle() allocate journal credits
+Date: Tue, 4 Jul 2017 00:23:13 -0700
+Message-ID: <CAAeU0aOGYZ-55Z2xMgHZ-02wap6Mzby3MxQaAAZSeHuLB-9JHw@mail.gmail.com>
+References: <20170629005029.13302-1-tahsin@google.com> <20170629030618.5101-1-tahsin@google.com>
+ <18BC3861-631F-4C45-9043-14E92B3D7922@dilger.ca> <CAAeU0aMSi0A_jAkzDwP6t_TApBwkjMHydxKXfnoK+ojMSxyC=A@mail.gmail.com>
+ <20170704054839.y2k2yxcjmh6b5jt4@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45950 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751845AbdGDF5A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Jul 2017 01:57:00 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5388726E74
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Jul 2017 05:56:59 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Tahsin Erdogan <tahsin@google.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170704054839.y2k2yxcjmh6b5jt4@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+> Are you aware of other cases where we're likely to run into problems
+> besides ext4_new_inode()?
 
---- Comment #6 from Marta Löfstedt (marta.lofstedt@intel.com) ---
-4.12.0-rc7-next-20170627 is good
+Nope. If we can get ext4_new_inode() case covered we should be fine.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I will abandon this patch and will work on a patch that adds extra
+credits in __ext4_new_inode().
+
+thanks
