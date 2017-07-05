@@ -1,60 +1,35 @@
-From: <koopk@madisonnjps.org>
-Subject: (unknown)
-Date: Wed, 05 Jul 2017 08:06:14 -0000
-Message-ID: <149924197464.12492.18279148411578319669@udm.net>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
+Date: Wed, 05 Jul 2017 13:12:55 +0000
+Message-ID: <bug-196223-13602-7KgADbRluH@https.bugzilla.kernel.org/>
+References: <bug-196223-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: application/zip; name="MESSAGE-9568447630-linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from a254.sub89.net78.udm.net ([78.85.89.254]:33916 "HELO udm.net"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1752345AbdGEIGT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Jul 2017 04:06:19 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36280 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752546AbdGENNA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 09:13:00 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8F89728536
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Jul 2017 13:12:59 +0000 (UTC)
+In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-WwAAALoIAAAAAA==
+https://bugzilla.kernel.org/show_bug.cgi?id=196223
+
+--- Comment #8 from Marta Löfstedt (marta.lofstedt@intel.com) ---
+FYI, for the BDW NUCi5 I am using to manually reproduce this issue, I can't not
+reproduce with next-20170704 nor next-20170705. However, we are still seeing
+the issue on a lot of machines in our i915 CI lab on the same tags built with
+the same configuration. 
+Unfortunately, this weakens my statement about next-20170627 being a good tag,
+since this tag has not been run in our lab and now the results for my local
+machine has started to diverge from the lab results.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
