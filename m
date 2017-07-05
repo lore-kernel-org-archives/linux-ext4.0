@@ -1,136 +1,148 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v2] e2fsprogs: add ext2fs_is_fast_symlink() function
-Date: Wed, 5 Jul 2017 10:26:16 -0600
-Message-ID: <4005AF3A-2FFA-4285-B4B8-9952633782FD@dilger.ca>
-References: <20170630013159.28178-1-tahsin@google.com>
- <20170630013608.29185-1-tahsin@google.com>
+Subject: Re: [PATCH v2 1/2] ext4, project: expand inode extra size if possible
+Date: Wed, 5 Jul 2017 10:31:02 -0600
+Message-ID: <987151C3-9E9D-4ACD-84BB-B9DC33C08822@dilger.ca>
+References: <20170704074210.77918-1-wshilong@ddn.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D";
+ boundary="Apple-Mail=_B4650650-F7EF-4589-82C2-2702098D2751";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>, Li Xi <lixi@ddn.com>,
+        "zhangyi (F)" <yi.zhang@huawei.com>, miaoxie@huawei.com,
+        wshilong@ddn.com, Shuichi Ihara <sihara@ddn.com>
+To: Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34195 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33373 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751681AbdGEQZI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 12:25:08 -0400
-Received: by mail-it0-f65.google.com with SMTP id o202so14566722itc.1
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Jul 2017 09:25:08 -0700 (PDT)
-In-Reply-To: <20170630013608.29185-1-tahsin@google.com>
+        with ESMTP id S1751858AbdGEQ3w (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 12:29:52 -0400
+Received: by mail-it0-f65.google.com with SMTP id 188so14475374itx.0
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Jul 2017 09:29:52 -0700 (PDT)
+In-Reply-To: <20170704074210.77918-1-wshilong@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D
+--Apple-Mail=_B4650650-F7EF-4589-82C2-2702098D2751
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Jun 29, 2017, at 7:36 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+On Jul 4, 2017, at 1:42 AM, Wang Shilong <wangshilong1991@gmail.com> =
+wrote:
 >=20
-> Current way of determining whether a symlink is in fast symlink
-> format is to call ext2fs_inode_data_blocks2(). If number of data
-> blocks is zero and EXT4_INLINE_DATA_FL flag is not set, then symlink
-> data must be in inode->i_block.
+> when upgrading from old format, try to set project id
+> to old file first time, it will return EOVERFLOW, but if
+> that file is dirtied(touch etc), changing project id will
+> be allowed, this might be confusing for users, we could
+> try to expand @i_extra_iszie here too.
 >=20
-> This heuristic is becoming increasingly hard to maintain because
-> inode->i_blocks count can also be incremented for blocks used by
-> extended attributes. Before ea_inode feature, extra block could come
-> from xattr block, now more blocks can be added because of xattr
-> inodes.
->=20
-> To address the issue, add a ext2fs_is_fast_symlink() function that
-> gives a direct answer based on inode->i_size field. This is
-> equivalent to kernel's ext4_inode_is_fast_symlink() function.
->=20
-> This patch also fixes a few issues related to fast symlink handling:
->=20
->  - Both rdump_symlink() and follow_link() interpreted symlinks with
->    0 data blocks to always mean fast symlinks. This is incorrect
->    because symlinks that are stored as inline data also have
->    0 data blocks. Thus, they try to read everything from
->    inode->i_block and miss the symlink suffix in inode extra area.
->=20
->  - e2fsck_pass1_check_symlink() had code to handle inode with
->    EXT4_INLINE_DATA_FL flag twice. The first if block always returns
->    from the function so the second one is unreachable code.
+> Reported-by: zhangyi(F) <yi.zhang@huawei.com>
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
 
-This looks mostly good, one question below.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-> Suggested-by: Andreas Dilger <adilger@dilger.ca>
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 > ---
-> v2: Added Suggested-by to commit message
+> v1->v2:
+> ext4_expand_extra_isize should be invoked after =
+ext4_reserve_inode_write
+> ---
+> fs/ext4/ext4.h  |  3 +++
+> fs/ext4/inode.c |  8 ++++----
+> fs/ext4/ioctl.c | 17 +++++++++++++++--
+> 3 files changed, 22 insertions(+), 6 deletions(-)
 >=20
-> debugfs/debugfs.c    | 55 =
-+++++++++++++++++++++++-----------------------------
-> debugfs/dump.c       |  4 +---
-> e2fsck/pass1.c       | 42 ++++++++-------------------------------
-> lib/ext2fs/alloc.c   |  9 +++++----
-> lib/ext2fs/ext2fs.h  |  1 +
-> lib/ext2fs/namei.c   | 20 ++++++++++++++++---
-> lib/ext2fs/swapfs.c  | 46 +++++++++++++++++++++----------------------
-> lib/ext2fs/symlink.c | 11 +++++++++++
-> misc/fuse2fs.c       |  9 ++++-----
-> 9 files changed, 94 insertions(+), 103 deletions(-)
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3219154..640f006 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2453,6 +2453,9 @@ int ext4_walk_page_buffers(handle_t *handle,
+> 			   int *partial,
+> 			   int (*fn)(handle_t *handle,
+> 				     struct buffer_head *bh));
+> +int ext4_expand_extra_isize(struct inode *inode,
+> +			    unsigned int new_extra_isize,
+> +			    struct ext4_iloc iloc, handle_t *handle);
+> int do_journal_get_write_access(handle_t *handle,
+> 				struct buffer_head *bh);
+> #define FALL_BACK_TO_NONDELALLOC 1
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5cf82d0..9d07554 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5632,10 +5632,10 @@ ext4_reserve_inode_write(handle_t *handle, =
+struct inode *inode,
+>  * Expand an inode by new_extra_isize bytes.
+>  * Returns 0 on success or negative error number on failure.
+>  */
+> -static int ext4_expand_extra_isize(struct inode *inode,
+> -				   unsigned int new_extra_isize,
+> -				   struct ext4_iloc iloc,
+> -				   handle_t *handle)
+> +int ext4_expand_extra_isize(struct inode *inode,
+> +			    unsigned int new_extra_isize,
+> +			    struct ext4_iloc iloc,
+> +			    handle_t *handle)
+> {
+> 	struct ext4_inode *raw_inode;
+> 	struct ext4_xattr_ibody_header *header;
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 0c21e22..d413008 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -319,6 +319,7 @@ static int ext4_ioctl_setproject(struct file =
+*filp, __u32 projid)
+> 	struct ext4_iloc iloc;
+> 	struct ext4_inode *raw_inode;
+> 	struct dquot *transfer_to[MAXQUOTAS] =3D { };
+> +	bool need_expand =3D false;
 >=20
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 422a3d699111..dd650427795c 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
+> 	if (!ext4_has_feature_project(sb)) {
+> 		if (projid !=3D EXT4_DEF_PROJID)
+> @@ -350,7 +351,10 @@ static int ext4_ioctl_setproject(struct file =
+*filp, __u32 projid)
+> 		goto out_unlock;
 >=20
-> @@ -221,12 +220,15 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, =
-ext2_ino_t ino,
-> 		return 1;
-> 	}
+> 	raw_inode =3D ext4_raw_inode(&iloc);
+> -	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
+> +	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid) &&
+> +	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
+> +		need_expand =3D true;
+> +	} else if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
+> 		err =3D -EOVERFLOW;
+> 		brelse(iloc.bh);
+> 		goto out_unlock;
+> @@ -361,7 +365,8 @@ static int ext4_ioctl_setproject(struct file =
+*filp, __u32 projid)
 >=20
-> -	blocks =3D ext2fs_inode_data_blocks2(fs, inode);
-> -	if (blocks) {
-> -		if (inode->i_flags & EXT4_INLINE_DATA_FL)
-> +	if (ext2fs_is_fast_symlink(inode)) {
-> +		if (inode->i_size >=3D sizeof(inode->i_block))
-> +			return 0;
-
-If this is a fast symlink, which is now determined by the file size, I =
-don't see
-how this i_size check can ever be true?
-
+> 	handle =3D ext4_journal_start(inode, EXT4_HT_QUOTA,
+> 		EXT4_QUOTA_INIT_BLOCKS(sb) +
+> -		EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
+> +		EXT4_QUOTA_DEL_BLOCKS(sb) + 3 +
+> +		need_expand ? EXT4_DATA_TRANS_BLOCKS(sb) : 0);
+> 	if (IS_ERR(handle)) {
+> 		err =3D PTR_ERR(handle);
+> 		goto out_unlock;
+> @@ -371,6 +376,14 @@ static int ext4_ioctl_setproject(struct file =
+*filp, __u32 projid)
+> 	if (err)
+> 		goto out_stop;
+>=20
+> +	if (need_expand) {
+> +		err =3D ext4_expand_extra_isize(inode,
+> +				      EXT4_SB(sb)->s_want_extra_isize,
+> +				      iloc, handle);
+> +		if (err)
+> +			goto out_stop;
+> +	}
 > +
-> +		len =3D strnlen((char *)inode->i_block, =
-sizeof(inode->i_block));
-> +		if (len =3D=3D sizeof(inode->i_block))
-> 			return 0;
-> +	} else {
-> 		if ((inode->i_size >=3D fs->blocksize) ||
-> 		    (inode->i_block[0] < fs->super->s_first_data_block) =
-||
-> 		    (inode->i_block[0] >=3D =
-ext2fs_blocks_count(fs->super)))
-> 			return 0;
-> diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-> index 0e6f9a9fd14e..271aa1ccc134 100644
-> --- a/lib/ext2fs/symlink.c
-> +++ b/lib/ext2fs/symlink.c
-> @@ -174,3 +174,14 @@ cleanup:
-> 		ext2fs_free_mem(&block_buf);
-> 	return retval;
-> }
-> +
-> +/*
-> + * Test whether an inode is a fast symlink.
-> + *
-> + * A fast symlink has its symlink data stored in inode->i_block.
-> + */
-> +int ext2fs_is_fast_symlink(struct ext2_inode *inode)
-> +{
-> +	return LINUX_S_ISLNK(inode->i_mode) && EXT2_I_SIZE(inode) &&
-> +	       EXT2_I_SIZE(inode) < sizeof(inode->i_block);
-> +}
-> \ No newline at end of file
-
-Need to add newline here?
+> 	transfer_to[PRJQUOTA] =3D dqget(sb, make_kqid_projid(kprojid));
+> 	if (!IS_ERR(transfer_to[PRJQUOTA])) {
+> 		err =3D __dquot_transfer(inode, transfer_to);
+> --
+> 2.9.3
+>=20
 
 
 Cheers, Andreas
@@ -140,7 +152,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D
+--Apple-Mail=_B4650650-F7EF-4589-82C2-2702098D2751
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -151,9 +163,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFZXRMqpIg59Q01vtYRAoInAKDZVNQQcW/lDipCyP9mDj/0kljQ1wCfW8GO
-pMOoUmTgIc3t8a+6Ct1zms4=
-=pa00
+iD8DBQFZXRRGpIg59Q01vtYRAiitAJ99v4nJeP0HdGsGZSBINaUZZQPAQACgib0N
+DC3F12XsROXzKPv/Pf56/zU=
+=pn4A
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D--
+--Apple-Mail=_B4650650-F7EF-4589-82C2-2702098D2751--
