@@ -1,35 +1,32 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: remove #ifdef EXT2_NO_64_TYPE blocks
-Date: Wed, 5 Jul 2017 00:09:32 -0400
-Message-ID: <20170705040932.dgunegf2qldfr76p@thunk.org>
-References: <20170628012240.9141-1-tahsin@google.com>
- <C15DD822-2183-477D-8F3F-E58E0027124F@dilger.ca>
+Subject: Re: [PATCH] libext2fs: fix compile errors/warnings
+Date: Wed, 5 Jul 2017 00:50:35 -0400
+Message-ID: <20170705045035.nccg6b3r6turno7q@thunk.org>
+References: <20170630041932.5424-1-tahsin@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tahsin Erdogan <tahsin@google.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Andreas Dilger <adilger@dilger.ca>, Li Xi <lixi@ddn.com>,
+        Wang Shilong <wshilong@ddn.com>, linux-ext4@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47748 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:47792 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750767AbdGEEJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Jul 2017 00:09:34 -0400
+        id S1752115AbdGEEui (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 5 Jul 2017 00:50:38 -0400
 Content-Disposition: inline
-In-Reply-To: <C15DD822-2183-477D-8F3F-E58E0027124F@dilger.ca>
+In-Reply-To: <20170630041932.5424-1-tahsin@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 28, 2017 at 10:38:20AM -0600, Andreas Dilger wrote:
-> On Jun 27, 2017, at 7:22 PM, Tahsin Erdogan <tahsin@google.com> wrote:
-> > 
-> > EXT2_NO_64_TYPE is not defined anywhere. It appears to be a
-> > historical artifact.
-> > 
-> > Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+On Thu, Jun 29, 2017 at 09:19:32PM -0700, Tahsin Erdogan wrote:
+> Defining DEBUG_QUOTA reveals a few compile errors. Fix these.
+> Also fix format string type mismatches in a couple of log_debug()
+> calls.
 > 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Fixes: 2d2d799c7261 ("Clean up codes for adding new quota type")
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Thanks, applied.
+Thanks, applied onto the maint branch.
 
-					- Ted
+				- Ted
