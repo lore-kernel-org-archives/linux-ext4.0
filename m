@@ -1,28 +1,28 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: [PATCH v5 27/28] ext4: xattr inode deduplication
-Date: Wed, 5 Jul 2017 10:30:17 -0700
-Message-ID: <CAAeU0aPrnLq78vD05bJD9eRU0Vw+OaRz2Tuy_sa=ybdaKWkNow@mail.gmail.com>
-References: <6E41DA31-A524-4E0E-BD0B-5C994399BBC6@dilger.ca>
- <20170620090721.12480-1-tahsin@google.com> <20170704183919.vpk7xuikjdh6s5gu@thunk.org>
+Subject: Re: ea_inode gce-xfstests results
+Date: Wed, 5 Jul 2017 10:36:53 -0700
+Message-ID: <CAAeU0aPuULL7=jqgDm5-quWXcxMWWxv+Y0ckN2T9juPKHJ6afQ@mail.gmail.com>
+References: <20170705152847.owkgnqgrb25drqby@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yb0-f173.google.com ([209.85.213.173]:34817 "EHLO
-        mail-yb0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751716AbdGERaT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 13:30:19 -0400
-Received: by mail-yb0-f173.google.com with SMTP id s15so40249392ybe.2
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Jul 2017 10:30:19 -0700 (PDT)
-In-Reply-To: <20170704183919.vpk7xuikjdh6s5gu@thunk.org>
+Received: from mail-yb0-f176.google.com ([209.85.213.176]:36520 "EHLO
+        mail-yb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751716AbdGERgy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 13:36:54 -0400
+Received: by mail-yb0-f176.google.com with SMTP id f194so15150969yba.3
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Jul 2017 10:36:54 -0700 (PDT)
+In-Reply-To: <20170705152847.owkgnqgrb25drqby@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->          * 5) group descriptor for new xattr block
-> +        * 6) block bitmap update for old xattr block
-> +        * 7) group descriptor for new old block
+> generic/319
+> ===========
+>
+> Looks like some kind of ENOSPC error when inheriting the acl
+> (this may be a journal credits issue?):
 
-s/new old block/old block/
+Yes. __ext4_new_inode() currently does not add journal credits for acl
+updates. I am working on a fix.
