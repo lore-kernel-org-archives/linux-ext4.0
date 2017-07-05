@@ -1,135 +1,159 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: ea_inode gce-xfstests results
-Date: Wed, 5 Jul 2017 11:28:48 -0400
-Message-ID: <20170705152847.owkgnqgrb25drqby@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tahsin@google.com
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] e2fsprogs: add ext2fs_is_fast_symlink() function
+Date: Wed, 5 Jul 2017 10:26:16 -0600
+Message-ID: <4005AF3A-2FFA-4285-B4B8-9952633782FD@dilger.ca>
+References: <20170630013159.28178-1-tahsin@google.com>
+ <20170630013608.29185-1-tahsin@google.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49528 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751678AbdGEP2u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Jul 2017 11:28:50 -0400
-Content-Disposition: inline
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34195 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751681AbdGEQZI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jul 2017 12:25:08 -0400
+Received: by mail-it0-f65.google.com with SMTP id o202so14566722itc.1
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Jul 2017 09:25:08 -0700 (PDT)
+In-Reply-To: <20170630013608.29185-1-tahsin@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here are the results using what I currently have in the ext4 and
-e2fsprogs git tree for ea_inode.  On the whole things look really
-good, with only a handful of failures!
 
-				- Ted
+--Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-CMDLINE: -c ea_inode -g auto
-FSTESTIMG: gce-xfstests/xfstests-201707050037
-FSTESTPRJ: gce-xfstests
-FSTESTVER: e2fsprogs	v1.43.4-119-g10118e470 (Wed, 5 Jul 2017 00:08:07 -0400)
-FSTESTVER: fio		fio-2.19 (Tue, 4 Apr 2017 08:30:59 -0600)
-FSTESTVER: quota		e0b6335 (Thu, 9 Feb 2017 11:55:45 +0100)
-FSTESTVER: stress-ng	4ad62e1 (Mon, 27 Feb 2017 14:28:36 -0500)
-FSTESTVER: xfsprogs	v4.11.0 (Fri, 5 May 2017 13:24:46 -0500)
-FSTESTVER: xfstests-bld	584c15c (Wed, 5 Jul 2017 00:02:57 -0400)
-FSTESTVER: xfstests	linux-v3.8-1538-g2abb61c (Wed, 5 Jul 2017 00:33:47 -0400)
-FSTESTVER: kernel	4.12.0-rc2-ext4-00044-ge4121843ec6d-dirty #454 SMP Tue Jul 4 21:23:31 EDT 2017 x86_64
-FSTESTCFG: "ea_inode"
-FSTESTSET: "-g auto"
-FSTESTEXC: ""
-FSTESTOPT: "aex"
-MNTOPTS: ""
-CPUS: "2"
-MEM: "6489.31"
-MEM: 7680 MB (Max capacity)
-BEGIN TEST ea_inode: xattr values in inodes with deduplication Wed Jul  5 00:56:35 EDT 2017
-Failures: ext4/004 generic/319 generic/388 generic/397 generic/422
+On Jun 29, 2017, at 7:36 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+>=20
+> Current way of determining whether a symlink is in fast symlink
+> format is to call ext2fs_inode_data_blocks2(). If number of data
+> blocks is zero and EXT4_INLINE_DATA_FL flag is not set, then symlink
+> data must be in inode->i_block.
+>=20
+> This heuristic is becoming increasingly hard to maintain because
+> inode->i_blocks count can also be incremented for blocks used by
+> extended attributes. Before ea_inode feature, extra block could come
+> from xattr block, now more blocks can be added because of xattr
+> inodes.
+>=20
+> To address the issue, add a ext2fs_is_fast_symlink() function that
+> gives a direct answer based on inode->i_size field. This is
+> equivalent to kernel's ext4_inode_is_fast_symlink() function.
+>=20
+> This patch also fixes a few issues related to fast symlink handling:
+>=20
+>  - Both rdump_symlink() and follow_link() interpreted symlinks with
+>    0 data blocks to always mean fast symlinks. This is incorrect
+>    because symlinks that are stored as inline data also have
+>    0 data blocks. Thus, they try to read everything from
+>    inode->i_block and miss the symlink suffix in inode extra area.
+>=20
+>  - e2fsck_pass1_check_symlink() had code to handle inode with
+>    EXT4_INLINE_DATA_FL flag twice. The first if block always returns
+>    from the function so the second one is unreachable code.
 
-_check_generic_filesystem: filesystem on /dev/mapper/xt-vdc is inconsistent
-(see /results/ext4/results-ea_inode/generic/388.full for details)
+This looks mostly good, one question below.
 
-Test failure initial analysis
+> Suggested-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> ---
+> v2: Added Suggested-by to commit message
+>=20
+> debugfs/debugfs.c    | 55 =
++++++++++++++++++++++++-----------------------------
+> debugfs/dump.c       |  4 +---
+> e2fsck/pass1.c       | 42 ++++++++-------------------------------
+> lib/ext2fs/alloc.c   |  9 +++++----
+> lib/ext2fs/ext2fs.h  |  1 +
+> lib/ext2fs/namei.c   | 20 ++++++++++++++++---
+> lib/ext2fs/swapfs.c  | 46 +++++++++++++++++++++----------------------
+> lib/ext2fs/symlink.c | 11 +++++++++++
+> misc/fuse2fs.c       |  9 ++++-----
+> 9 files changed, 94 insertions(+), 103 deletions(-)
+>=20
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 422a3d699111..dd650427795c 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+>=20
+> @@ -221,12 +220,15 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, =
+ext2_ino_t ino,
+> 		return 1;
+> 	}
+>=20
+> -	blocks =3D ext2fs_inode_data_blocks2(fs, inode);
+> -	if (blocks) {
+> -		if (inode->i_flags & EXT4_INLINE_DATA_FL)
+> +	if (ext2fs_is_fast_symlink(inode)) {
+> +		if (inode->i_size >=3D sizeof(inode->i_block))
+> +			return 0;
 
-ext4/004
-========
+If this is a fast symlink, which is now determined by the file size, I =
+don't see
+how this i_size check can ever be true?
 
-dump/restore doesn't support the ea_inode (will exclude in the future)
+> +
+> +		len =3D strnlen((char *)inode->i_block, =
+sizeof(inode->i_block));
+> +		if (len =3D=3D sizeof(inode->i_block))
+> 			return 0;
+> +	} else {
+> 		if ((inode->i_size >=3D fs->blocksize) ||
+> 		    (inode->i_block[0] < fs->super->s_first_data_block) =
+||
+> 		    (inode->i_block[0] >=3D =
+ext2fs_blocks_count(fs->super)))
+> 			return 0;
+> diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+> index 0e6f9a9fd14e..271aa1ccc134 100644
+> --- a/lib/ext2fs/symlink.c
+> +++ b/lib/ext2fs/symlink.c
+> @@ -174,3 +174,14 @@ cleanup:
+> 		ext2fs_free_mem(&block_buf);
+> 	return retval;
+> }
+> +
+> +/*
+> + * Test whether an inode is a fast symlink.
+> + *
+> + * A fast symlink has its symlink data stored in inode->i_block.
+> + */
+> +int ext2fs_is_fast_symlink(struct ext2_inode *inode)
+> +{
+> +	return LINUX_S_ISLNK(inode->i_mode) && EXT2_I_SIZE(inode) &&
+> +	       EXT2_I_SIZE(inode) < sizeof(inode->i_block);
+> +}
+> \ No newline at end of file
 
-generic/319
-===========
-
-Looks like some kind of ENOSPC error when inheriting the acl
-(this may be a journal credits issue?):
-
---- tests/generic/319.out	2016-09-30 00:04:41.719461931 -0400
-+++ /tmp/results-201707050054/ext4/results-ea_inode/generic/319.out.bad	2017-07-05 02:31:23.000000000 -0400
-@@ -9,13 +9,5 @@
- default:group::rwx
- default:other::---
- 
--# file: SCRATCH_MNT/testdir/testsubdir
--# owner: root
--# group: root
--user::rwx
--group::rwx
--other::---
--default:user::rwx
--default:group::rwx
--default:other::---
--
-+mkdir: cannot create directory '/xt-vdc/testdir/testsubdir': No space left on device
-+getfacl: /xt-vdc/testdir/testsubdir: No such file or directory
+Need to add newline here?
 
 
-generic/388
-===========
+Cheers, Andreas
 
-Shutting down a file system while it is busy can lead to the file
-system getting corrupted.  This failure exists on other configs, and
-is an known issue that needs to be looked into.
 
-generic/397
-===========
 
-Another ENOSPC issue, this time with the ext4 encryption feature
-enabled.  I suspect again that it's a journal credits issue because
-the file system size is not constrained and the test isn't initially
-trying to fill the free space to test for ENOSPC allocation bugs.
 
---- tests/generic/397.out	2017-01-07 11:19:15.516350149 -0500
-+++ /tmp/results-201707050054/ext4/results-ea_inode/generic/397.out.bad	2017-07-05 02:47:21.000000000 -0400
-@@ -1,7 +1,10 @@
- QA output created by 397
-+ln: failed to create symbolic link '/xt-vdc/edir/symlink3': No space left on device
-+Only in /xt-vdc/ref_dir: symlink3
-+Only in /xt-vdc/ref_dir: symlink3
- stat: cannot stat 'SCRATCH_MNT/edir/empty': No such file or directory
- stat: cannot stat 'SCRATCH_MNT/edir/symlink': No such file or directory
--8
-+7
- 1
- Required key not available
- SCRATCH_MNT/edir/newfile: Required key not available
 
-generic/422
-===========
 
-This one is weird because we're not trying to test for xattrs and I
-don't belive xattrs are being created at all.  So I'm not sure where
-the file size change is coming from:
+--Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
---- tests/generic/422.out	2017-04-30 21:56:40.053842447 -0400
-+++ /tmp/results-201707050054/ext4/results-ea_inode/generic/422.out.bad	2017-07-05 03:03:01.000000000 -0400
-@@ -27,7 +27,7 @@
- Space used by file foo3:
- 128K	SCRATCH_MNT/foo3
- Space used by file foo4:
--64K	SCRATCH_MNT/foo4
-+68K	SCRATCH_MNT/foo4
- 
- After writeback
- 
-@@ -38,4 +38,4 @@
- Space used by file foo3:
- 128K	SCRATCH_MNT/foo3
- Space used by file foo4:
--64K	SCRATCH_MNT/foo4
-+68K	SCRATCH_MNT/foo4
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZXRMqpIg59Q01vtYRAoInAKDZVNQQcW/lDipCyP9mDj/0kljQ1wCfW8GO
+pMOoUmTgIc3t8a+6Ct1zms4=
+=pa00
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_8C13ACAE-43AB-4E7B-A7EC-C01D07F2DA4D--
