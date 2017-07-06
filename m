@@ -1,127 +1,36 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: Some jbd2 philosophy about credits estimation and other things
-Date: Thu, 6 Jul 2017 10:19:06 -0700
-Message-ID: <20170706171906.GA4096@magnolia>
-References: <20170704175441.ljipnhmgli6npdt6@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH][ext4-next] ext4: ensure error return ret is zero on
+ successful return
+Date: Thu, 6 Jul 2017 15:28:15 -0400
+Message-ID: <20170706192815.pj4ptivvnuo2wrmy@thunk.org>
+References: <20170623145840.26779-1-colin.king@canonical.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        alexey.lyashkov@gmail.com, ebiggers3@gmail.com,
-        Yang Sheng <yang.sheng@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>,
-        tahsin@google.com
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49972 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751654AbdGFRTR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jul 2017 13:19:17 -0400
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Colin King <colin.king@canonical.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170704175441.ljipnhmgli6npdt6@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170623145840.26779-1-colin.king@canonical.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 04, 2017 at 01:54:41PM -0400, Theodore Ts'o wrote:
-> I'm going to be making some changes to two recent feature patches (the
-> largedir feature patch and the xattr duplication patch) to fix up some
-> potential bugs caused by under-estimating the number of credits needed
-> which can cause ext4 to get quite unhappy:
+On Fri, Jun 23, 2017 at 03:58:40PM +0100, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
 > 
-> EXT4-fs: ext4_xattr_block_set:2023: aborting transaction: error 28 in __ext4_handle_dirty_metadata
-> EXT4-fs error (device dm-2): ext4_xattr_block_set:2023: inode #131078: block 589866: comm fsstress: journal_dirty_metadata failed: handle type 10 started at line 2411, credits 5/0, errcode -28
+> The error return ret is not set on a successful return path and
+> so it returns a garbage value. Ensure it is is set to zero on
+> a successful return.
 > 
-> While I was looking into this, I realized that there are some
-> implementation details about how the jbd2 layer works that haven't
-> written down, and it might be useful to document it for everyone.
-> (This probably needs to go into the ext4 wiki, with some editing.)
-
-Additionally ext4-jbd2.h ?
-
-> In general, under-estimating of the number of credits needed is far
-> worse than over-estimating.  Under-estimating can cause the above,
-> which will end up marking the file system corrupt.  We can actually do
-> better; in fact, we probably ought to do is to try to see if we can
-> extend the transaction, print an ext4 warning plus a WARN_ON(1) to get
-
-I don't know if that's a good idea -- I'd rather train the developers
-that they cannot underestimate ever than let them paper over things like
-this that will eventually blow out on someone else's machine.
-
-But I guess a noisy WARN would get peoples' attention.
-
-> a stack dump.  If we can't continue, we will have to force an
-> ext4-error and abort the journal, since if we run out of space, we can
-> end up in a deadlock: in order to free space in the journal, we need
-> to do a commit, but we can't do a commit because handles are open and
-> we can't complete them because we're out of space.
+> Detected by CoverityScan, CID#1446616 ("Uninitialized scalar variable")
 > 
-> Also, a typical transaction has room for thousands of blocks, and a
-> handle is usually only open for a very short time.  Once a handle is
-> stopped, any unused credits are released back to the journal.  For
-> this reason, if we estimate that we need to modify 20 blocks
-> (credits), but we only need to modify 8 blocks, 4 of which have
-> already been modify in the current transaction --- this is not a
-> tragedy.  We only used up 4 new blocks in the journal by the time the
-> handle is stopped, but that's OK.  Once the handle is stopped the
-> "cost" of the over-estimation is gone.
+> Fixes: 3499c0fb822d ("quota: add get_inode_usage callback to transfer multi-inode charges")
 > 
-> What is the "cost" of the over-estimation?  Well, we need to make sure
-> that there will be enough room in the journal to write the current
-> transaction (plus have some slack space for the next transaction).  So
-> if we vastly over-estimate the number of blocks needed when we start a
-> handle, and the sum of all of the credits of currently started handles
-> is greater than free space in the journal minus some slack space,
-> instead of starting the new handle, the thread will block, and all
-> attempts to start new handles will block, until all of the currently
-> running handles have completed and a current transaction can start
-> committing.
-> 
-> So over-estimating by a few 10's of credits is probably not noticeable
-> at all.  Over-estimating by hundreds of credits can start causing
-> performance impacts.  How?  By forcing transaction to close earlier
-> than the normal 5 second timeout due of a perceived lack of space,
-> when the journal is almost full due to a credit over-estimation.  Even
-> so, the performance impact is not necessarily that great, and
-> typically only shows up under heavy load --- and we or the system
-> administrator can mitigate this problem fairly easily by increasing
-> the journal size.
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
 
-/me wonders if it'd be useful to track how closely the estimates fit
-reality in debugfs to make it easier to spot-check how good of a job
-we're all doing?
+Thanks, I've folded this into the "quota: add get_inode_usage callback
+to transfer multi-inode charges" with credit for your providing the
+fix.
 
-> So while there may be a desire out of professional pride to make the
-> credit estimation be as accurate as possible, getting the credit
-> estimation exactly write is not really critical.  It's for this reason
-> that we always add EXT4_INDEX_EXTRA_TRANS_BLOCKS to the credits
-> without testing to see if the HTree feature is enabled.  An extra 8
-> (soon to be 12) blocks doesn't really matter all that much.
-
-As general documentation, this seems fine as-is up to here.  You could
-probably rework the last two paragraphs too.
-
---D
-
-> The reason why we do try to do conditionalized credits based on quotas
-> is because when quota is enabled, some of the calculations for the
-> number of credits that are needed were extremely high.  This was
-> partially addressed by Jan Kara's change to move the call to
-> dquot_initialize to a separate transaction.  (eb9cc7e16b3: ext4: move
-> quota initialization out of inode allocation transaction)
-> 
-> The inode allocation path is still one where if we can reduce number
-> of credits needed, it can be a win.  (It currently has a worst case of
-> around 200 blocks, per Jan's comments in eb9cc7e16b3.)  Fortunately,
-> there are some assumptions we can make about inode allocation to
-> simplify things: (a) the acl will be a duplicate of the directory's
-> default acl; (b) the SELinux label is generally not that huge, and (c)
-> the encryption metadata is also fairly small, and (d) there is no
-> pre-existing inline data to worry about.  All of this means that we
-> don't need to worry about the inline data or EA-in-inode features, and
-> so we can probably rely on EXT4_XATTR_TRANS_BLOCKS estimate instead of
-> using more complex calculations found in __ext4_xattr_set_credits().
-> 
-> Cheers,
-> 
-> 						- Ted
+					- Ted
