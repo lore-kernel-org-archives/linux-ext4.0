@@ -1,282 +1,112 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Some jbd2 philosophy about credits estimation and other things
-Date: Thu, 6 Jul 2017 15:18:53 -0600
-Message-ID: <24B0A43D-B2C3-4BF4-8E97-0BA97F976204@dilger.ca>
-References: <20170704175441.ljipnhmgli6npdt6@thunk.org>
- <20170706171906.GA4096@magnolia>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_B72FCC8F-8002-43BA-A3E7-4D1B4A127048";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>,
-        Eric Biggers <ebiggers3@gmail.com>,
-        Yang Sheng <yang.sheng@intel.com>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>,
-        tahsin@google.com
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34256 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751899AbdGFVTD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jul 2017 17:19:03 -0400
-Received: by mail-it0-f65.google.com with SMTP id o202so2483352itc.1
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Jul 2017 14:19:02 -0700 (PDT)
-In-Reply-To: <20170706171906.GA4096@magnolia>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Biggers <ebiggers@google.com>
+Subject: Re: [PATCH] mbcache: initialize entry->e_referenced in
+ mb_cache_entry_create()
+Date: Thu, 6 Jul 2017 15:24:14 -0700
+Message-ID: <20170706222414.GA31138@google.com>
+References: <20170706182725.39194-1-glider@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: dvyukov@google.com, kcc@google.com, viro@zeniv.linux.org.uk,
+        tytso@mit.edu, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Alexander Potapenko <glider@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170706182725.39194-1-glider@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
++Cc linux-ext4
 
---Apple-Mail=_B72FCC8F-8002-43BA-A3E7-4D1B4A127048
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+On Thu, Jul 06, 2017 at 08:27:25PM +0200, Alexander Potapenko wrote:
+> KMSAN reported use of uninitialized |entry->e_referenced| in a condition
+> in mb_cache_shrink():
+> 
+> ==================================================================
+> BUG: KMSAN: use of uninitialized memory in mb_cache_shrink+0x3b4/0xc50 fs/mbcache.c:287
+> CPU: 2 PID: 816 Comm: kswapd1 Not tainted 4.11.0-rc5+ #2877
+> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs
+> 01/01/2011
+> Call Trace:
+>  __dump_stack lib/dump_stack.c:16 [inline]
+>  dump_stack+0x172/0x1c0 lib/dump_stack.c:52
+>  kmsan_report+0x12a/0x180 mm/kmsan/kmsan.c:927
+>  __msan_warning_32+0x61/0xb0 mm/kmsan/kmsan_instr.c:469
+>  mb_cache_shrink+0x3b4/0xc50 fs/mbcache.c:287
+>  mb_cache_scan+0x67/0x80 fs/mbcache.c:321
+>  do_shrink_slab mm/vmscan.c:397 [inline]
+>  shrink_slab+0xc3d/0x12d0 mm/vmscan.c:500
+>  shrink_node+0x208f/0x2fd0 mm/vmscan.c:2603
+>  kswapd_shrink_node mm/vmscan.c:3172 [inline]
+>  balance_pgdat mm/vmscan.c:3289 [inline]
+>  kswapd+0x160f/0x2850 mm/vmscan.c:3478
+>  kthread+0x46c/0x5f0 kernel/kthread.c:230
+>  ret_from_fork+0x29/0x40 arch/x86/entry/entry_64.S:430
+> chained origin:
+>  save_stack_trace+0x37/0x40 arch/x86/kernel/stacktrace.c:59
+>  kmsan_save_stack_with_flags mm/kmsan/kmsan.c:302 [inline]
+>  kmsan_save_stack mm/kmsan/kmsan.c:317 [inline]
+>  kmsan_internal_chain_origin+0x12a/0x1f0 mm/kmsan/kmsan.c:547
+>  __msan_store_shadow_origin_1+0xac/0x110 mm/kmsan/kmsan_instr.c:257
+>  mb_cache_entry_create+0x3b3/0xc60 fs/mbcache.c:95
+>  ext4_xattr_cache_insert fs/ext4/xattr.c:1647 [inline]
+>  ext4_xattr_block_set+0x4c82/0x5530 fs/ext4/xattr.c:1022
+>  ext4_xattr_set_handle+0x1332/0x20a0 fs/ext4/xattr.c:1252
+>  ext4_xattr_set+0x4d2/0x680 fs/ext4/xattr.c:1306
+>  ext4_xattr_trusted_set+0x8d/0xa0 fs/ext4/xattr_trusted.c:36
+>  __vfs_setxattr+0x703/0x790 fs/xattr.c:149
+>  __vfs_setxattr_noperm+0x27a/0x6f0 fs/xattr.c:180
+>  vfs_setxattr fs/xattr.c:223 [inline]
+>  setxattr+0x6ae/0x790 fs/xattr.c:449
+>  path_setxattr+0x1eb/0x380 fs/xattr.c:468
+>  SYSC_lsetxattr+0x8d/0xb0 fs/xattr.c:490
+>  SyS_lsetxattr+0x77/0xa0 fs/xattr.c:486
+>  entry_SYSCALL_64_fastpath+0x13/0x94
+> origin:
+>  save_stack_trace+0x37/0x40 arch/x86/kernel/stacktrace.c:59
+>  kmsan_save_stack_with_flags mm/kmsan/kmsan.c:302 [inline]
+>  kmsan_internal_poison_shadow+0xb1/0x1a0 mm/kmsan/kmsan.c:198
+>  kmsan_kmalloc+0x7f/0xe0 mm/kmsan/kmsan.c:337
+>  kmem_cache_alloc+0x1c2/0x1e0 mm/slub.c:2766
+>  mb_cache_entry_create+0x283/0xc60 fs/mbcache.c:86
+>  ext4_xattr_cache_insert fs/ext4/xattr.c:1647 [inline]
+>  ext4_xattr_block_set+0x4c82/0x5530 fs/ext4/xattr.c:1022
+>  ext4_xattr_set_handle+0x1332/0x20a0 fs/ext4/xattr.c:1252
+>  ext4_xattr_set+0x4d2/0x680 fs/ext4/xattr.c:1306
+>  ext4_xattr_trusted_set+0x8d/0xa0 fs/ext4/xattr_trusted.c:36
+>  __vfs_setxattr+0x703/0x790 fs/xattr.c:149
+>  __vfs_setxattr_noperm+0x27a/0x6f0 fs/xattr.c:180
+>  vfs_setxattr fs/xattr.c:223 [inline]
+>  setxattr+0x6ae/0x790 fs/xattr.c:449
+>  path_setxattr+0x1eb/0x380 fs/xattr.c:468
+>  SYSC_lsetxattr+0x8d/0xb0 fs/xattr.c:490
+>  SyS_lsetxattr+0x77/0xa0 fs/xattr.c:486
+>  entry_SYSCALL_64_fastpath+0x13/0x94
+> ==================================================================
+> 
+> Signed-off-by: Alexander Potapenko <glider@google.com>
+> ---
+>  fs/mbcache.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/mbcache.c b/fs/mbcache.c
+> index b19be429d655..fdfe8933ac6b 100644
+> --- a/fs/mbcache.c
+> +++ b/fs/mbcache.c
+> @@ -93,6 +93,7 @@ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
+>  	entry->e_key = key;
+>  	entry->e_block = block;
+>  	entry->e_reusable = reusable;
+> +	entry->e_referenced = 0;
+>  	head = mb_cache_entry_head(cache, key);
+>  	hlist_bl_lock(head);
+>  	hlist_bl_for_each_entry(dup, dup_node, head, e_hash_list) {
+> -- 
 
-On Jul 6, 2017, at 11:19 AM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> On Tue, Jul 04, 2017 at 01:54:41PM -0400, Theodore Ts'o wrote:
->> I'm going to be making some changes to two recent feature patches =
-(the
->> largedir feature patch and the xattr duplication patch) to fix up =
-some
->> potential bugs caused by under-estimating the number of credits =
-needed
->> which can cause ext4 to get quite unhappy:
->>=20
->> EXT4-fs: ext4_xattr_block_set:2023: aborting transaction: error 28 in =
-__ext4_handle_dirty_metadata
->> EXT4-fs error (device dm-2): ext4_xattr_block_set:2023: inode =
-#131078: block 589866: comm fsstress: journal_dirty_metadata failed: =
-handle type 10 started at line 2411, credits 5/0, errcode -28
->>=20
->> While I was looking into this, I realized that there are some
->> implementation details about how the jbd2 layer works that haven't
->> written down, and it might be useful to document it for everyone.
->> (This probably needs to go into the ext4 wiki, with some editing.)
->=20
-> Additionally ext4-jbd2.h ?
->=20
->> In general, under-estimating of the number of credits needed is far
->> worse than over-estimating.  Under-estimating can cause the above,
->> which will end up marking the file system corrupt.  We can actually =
-do
->> better; in fact, we probably ought to do is to try to see if we can
->> extend the transaction, print an ext4 warning plus a WARN_ON(1) to =
-get
->=20
-> I don't know if that's a good idea -- I'd rather train the developers
-> that they cannot underestimate ever than let them paper over things =
-like
-> this that will eventually blow out on someone else's machine.
->=20
-> But I guess a noisy WARN would get peoples' attention.
+Nice catch!  This looks fine.  I was wondering whether e_referenced should be
+initialized to 1 instead, but I'm thinking 0 is better so that only entries that
+have actually been deduplicated against get an extra pass through the list.
 
-The current behaviour of marking the filesystem in error is probably =
-enough
-to get the user's attention... :-/  However, that mostly punishes the =
-user
-and takes potentially a long time to get to the developer and back to =
-the
-user in a distro kernel in a production environment.
+Reviewed-by: Eric Biggers <ebiggers@google.com>
 
-For the Lustre/ext4 interface we have our own "update" accounting to =
-tracks
-how many primitive operations we declared (e.g. directory insert/delete,
-inode alloc, file write/append/truncate, setattr, setxattr, quota, etc)
-vs. how many updates were actually done on that handle.  During =
-development
-and testing, a /proc tunable is set to triggers an assertion, with stack
-trace and dump of declared vs. used credits, if the declared updates are
-exceeded.  During normal runtime this at most generates a warning and =
-the
-code continues on, and will only fail if the underlying ext4/jbd2 =
-credits are
-exceeded.  In the overwhelming majority of cases this avoids causing a =
-hard
-system failure for what is essentially worst-case-scenario debugging.
-
-
-Even though it might be 20 years late, it wouldn't be a bad idea to make
-ext4/jbd2 more robust in this area as well, since running out of =
-transaction
-credits on a single handle is very unlikely to actually induce a real =
-failure.
-The code can still abort the filesystem if it isn't possible to add =
-credits
-to the transaction handle (which isn't worse than it does today), but in =
-the
-(IMHO) very common case where it could easily continue running and just =
-dump
-a stack trace with some debug info I think it makes sense to do so.
-
-
-I recall in the olden days of early ext3 development that Andrew Morton =
-had
-a debug mode for JBD that would save a list all of the buffer heads that =
-were
-dirtied as part of a transaction handle, so that it would be possible to =
-do
-root-cause analysis of why the credits were exceeded.  It essentially =
-kept a
-list for each handle with either a pointer to the bh or the block number =
-and
-type of each buffer (e.g. SB, bitmap, GDT, inode, =
-index/indirect/directory
-block, etc.), and if the credits ran out it could dump that list.
-
-It probably wouldn't be too hard to make such debugging dynamic based on =
-the
-function that allocated the handle, and if the credit exhaustion is ever
-triggered at runtime it turns on the debugging for this callsite for =
-every
-new handle (assuming the handle could be extended in this case and the =
-journal
-is not aborted), until the problem is hit again and it dumps a stack and =
-the
-list of blocks/types for each one, then turns debugging off again.  The =
-reason
-this needs to be dynamic is that often the credit exhaustion problems =
-are only
-hit under very unusual filesystem aging and concurrent workloads.
-
-As for overhead of such debugging, it would check in =
-__ext4_journal_start_sb()
-a (usually empty) linked list if the debug mode was enabled for a given
-type/line combination (which is passed to jbd2_journal_start() already), =
-add
-a few flags in the handle to track the debug state (some bits still =
-available),
-the original requested credits (also already stored in the handle), and =
-an
-extra pointer for the memory to track the buffers dirtied under this =
-handle
-(one entry per credit, can be kvmalloc'd only if debugging is enabled).  =
-We
-could overload h_start_jiffies for this pointer if the handle debug flag =
-is set,
-since h_start_jiffies is only used in a single tracepoint, and we don't =
-need
-to be able to trace transaction performance at the same time as =
-isolating a
-credit overflow.
-
-Cheers, Andreas
-
->> a stack dump.  If we can't continue, we will have to force an
->> ext4-error and abort the journal, since if we run out of space, we =
-can
->> end up in a deadlock: in order to free space in the journal, we need
->> to do a commit, but we can't do a commit because handles are open and
->> we can't complete them because we're out of space.
->>=20
->> Also, a typical transaction has room for thousands of blocks, and a
->> handle is usually only open for a very short time.  Once a handle is
->> stopped, any unused credits are released back to the journal.  For
->> this reason, if we estimate that we need to modify 20 blocks
->> (credits), but we only need to modify 8 blocks, 4 of which have
->> already been modify in the current transaction --- this is not a
->> tragedy.  We only used up 4 new blocks in the journal by the time the
->> handle is stopped, but that's OK.  Once the handle is stopped the
->> "cost" of the over-estimation is gone.
->>=20
->> What is the "cost" of the over-estimation?  Well, we need to make =
-sure
->> that there will be enough room in the journal to write the current
->> transaction (plus have some slack space for the next transaction).  =
-So
->> if we vastly over-estimate the number of blocks needed when we start =
-a
->> handle, and the sum of all of the credits of currently started =
-handles
->> is greater than free space in the journal minus some slack space,
->> instead of starting the new handle, the thread will block, and all
->> attempts to start new handles will block, until all of the currently
->> running handles have completed and a current transaction can start
->> committing.
->>=20
->> So over-estimating by a few 10's of credits is probably not =
-noticeable
->> at all.  Over-estimating by hundreds of credits can start causing
->> performance impacts.  How?  By forcing transaction to close earlier
->> than the normal 5 second timeout due of a perceived lack of space,
->> when the journal is almost full due to a credit over-estimation.  =
-Even
->> so, the performance impact is not necessarily that great, and
->> typically only shows up under heavy load --- and we or the system
->> administrator can mitigate this problem fairly easily by increasing
->> the journal size.
->=20
-> /me wonders if it'd be useful to track how closely the estimates fit
-> reality in debugfs to make it easier to spot-check how good of a job
-> we're all doing?
->=20
->> So while there may be a desire out of professional pride to make the
->> credit estimation be as accurate as possible, getting the credit
->> estimation exactly write is not really critical.  It's for this =
-reason
->> that we always add EXT4_INDEX_EXTRA_TRANS_BLOCKS to the credits
->> without testing to see if the HTree feature is enabled.  An extra 8
->> (soon to be 12) blocks doesn't really matter all that much.
->=20
-> As general documentation, this seems fine as-is up to here.  You could
-> probably rework the last two paragraphs too.
->=20
-> --D
->=20
->> The reason why we do try to do conditionalized credits based on =
-quotas
->> is because when quota is enabled, some of the calculations for the
->> number of credits that are needed were extremely high.  This was
->> partially addressed by Jan Kara's change to move the call to
->> dquot_initialize to a separate transaction.  (eb9cc7e16b3: ext4: move
->> quota initialization out of inode allocation transaction)
->>=20
->> The inode allocation path is still one where if we can reduce number
->> of credits needed, it can be a win.  (It currently has a worst case =
-of
->> around 200 blocks, per Jan's comments in eb9cc7e16b3.)  Fortunately,
->> there are some assumptions we can make about inode allocation to
->> simplify things: (a) the acl will be a duplicate of the directory's
->> default acl; (b) the SELinux label is generally not that huge, and =
-(c)
->> the encryption metadata is also fairly small, and (d) there is no
->> pre-existing inline data to worry about.  All of this means that we
->> don't need to worry about the inline data or EA-in-inode features, =
-and
->> so we can probably rely on EXT4_XATTR_TRANS_BLOCKS estimate instead =
-of
->> using more complex calculations found in __ext4_xattr_set_credits().
->>=20
->> Cheers,
->>=20
->> 						- Ted
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_B72FCC8F-8002-43BA-A3E7-4D1B4A127048
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZXqk/pIg59Q01vtYRAiSzAKCGaDWhCV/C6QOiWzOwgm+sOPHNZgCgzPgO
-fCDpifeFAgm7fAKUBr6Fl+s=
-=rsaP
------END PGP SIGNATURE-----
-
---Apple-Mail=_B72FCC8F-8002-43BA-A3E7-4D1B4A127048--
+- Eric
