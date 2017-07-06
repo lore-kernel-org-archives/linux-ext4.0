@@ -1,176 +1,127 @@
-From: Miao Xie <miaoxie@huawei.com>
-Subject: [PATCH 2/4] ext4: restructure ext4_expand_extra_isize
-Date: Fri, 7 Jul 2017 01:09:51 +0800
-Message-ID: <1499360993-17130-2-git-send-email-miaoxie@huawei.com>
-References: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: Some jbd2 philosophy about credits estimation and other things
+Date: Thu, 6 Jul 2017 10:19:06 -0700
+Message-ID: <20170706171906.GA4096@magnolia>
+References: <20170704175441.ljipnhmgli6npdt6@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <miaoxie@huawei.com>, <tytso@mit.edu>, <lixi@ddn.com>,
-        <yi.zhang@huawei.com>, <adilger@dilger.ca>, <wshilong@ddn.com>,
-        <sihara@ddn.com>
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        alexey.lyashkov@gmail.com, ebiggers3@gmail.com,
+        Yang Sheng <yang.sheng@intel.com>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>,
+        tahsin@google.com
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga02-in.huawei.com ([45.249.212.188]:9359 "EHLO
-        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750942AbdGFIoM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jul 2017 04:44:12 -0400
-In-Reply-To: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:49972 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751654AbdGFRTR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jul 2017 13:19:17 -0400
+Content-Disposition: inline
+In-Reply-To: <20170704175441.ljipnhmgli6npdt6@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current ext4_expand_extra_isize just tries to expand extra isize, if
-someone is holding xattr lock or some check fails, it will give up.
-So rename its name to ext4_try_to_expand_extra_isize.
+On Tue, Jul 04, 2017 at 01:54:41PM -0400, Theodore Ts'o wrote:
+> I'm going to be making some changes to two recent feature patches (the
+> largedir feature patch and the xattr duplication patch) to fix up some
+> potential bugs caused by under-estimating the number of credits needed
+> which can cause ext4 to get quite unhappy:
+> 
+> EXT4-fs: ext4_xattr_block_set:2023: aborting transaction: error 28 in __ext4_handle_dirty_metadata
+> EXT4-fs error (device dm-2): ext4_xattr_block_set:2023: inode #131078: block 589866: comm fsstress: journal_dirty_metadata failed: handle type 10 started at line 2411, credits 5/0, errcode -28
+> 
+> While I was looking into this, I realized that there are some
+> implementation details about how the jbd2 layer works that haven't
+> written down, and it might be useful to document it for everyone.
+> (This probably needs to go into the ext4 wiki, with some editing.)
 
-Besides that, we clean up unnecessary check and move some relative checks
-into it.
+Additionally ext4-jbd2.h ?
 
-Signed-off-by: Miao Xie <miaoxie@huawei.com>
-Reviewed-by: Wang Shilong <wshilong@ddn.com>
----
- fs/ext4/inode.c | 67 ++++++++++++++++++++++++---------------------------------
- fs/ext4/xattr.c | 11 +++++++++-
- 2 files changed, 38 insertions(+), 40 deletions(-)
+> In general, under-estimating of the number of credits needed is far
+> worse than over-estimating.  Under-estimating can cause the above,
+> which will end up marking the file system corrupt.  We can actually do
+> better; in fact, we probably ought to do is to try to see if we can
+> extend the transaction, print an ext4 warning plus a WARN_ON(1) to get
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4af3edc..01a9340 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5632,21 +5632,35 @@ ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
-  * Expand an inode by new_extra_isize bytes.
-  * Returns 0 on success or negative error number on failure.
-  */
--static int ext4_expand_extra_isize(struct inode *inode,
--				   unsigned int new_extra_isize,
--				   struct ext4_iloc iloc,
--				   handle_t *handle)
-+static int ext4_try_to_expand_extra_isize(struct inode *inode,
-+					  unsigned int new_extra_isize,
-+					  struct ext4_iloc iloc,
-+					  handle_t *handle)
- {
- 	struct ext4_inode *raw_inode;
- 	struct ext4_xattr_ibody_header *header;
- 	int no_expand;
- 	int error;
- 
--	if (EXT4_I(inode)->i_extra_isize >= new_extra_isize)
--		return 0;
-+	if (ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND))
-+		return -EOVERFLOW;
-+
-+	/*
-+	 * In nojournal mode, we can immediately attempt to expand
-+	 * the inode.  When journaled, we first need to obtain extra
-+	 * buffer credits since we may write into the EA block
-+	 * with this same handle. If journal_extend fails, then it will
-+	 * only result in a minor loss of functionality for that inode.
-+	 * If this is felt to be critical, then e2fsck should be run to
-+	 * force a large enough s_min_extra_isize.
-+	 */
-+	if (ext4_handle_valid(handle) &&
-+	    jbd2_journal_extend(handle,
-+				EXT4_DATA_TRANS_BLOCKS(inode->i_sb)) != 0)
-+		return -ENOSPC;
- 
- 	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
--		return 0;
-+		return -EBUSY;
- 
- 	raw_inode = ext4_raw_inode(&iloc);
- 
-@@ -5673,6 +5687,7 @@ static int ext4_expand_extra_isize(struct inode *inode,
- 		no_expand = 1;
- 	}
- 	ext4_write_unlock_xattr(inode, &no_expand);
-+
- 	return error;
- }
- 
-@@ -5693,44 +5708,18 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- {
- 	struct ext4_iloc iloc;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--	static unsigned int mnt_count;
--	int err, ret;
-+	int err;
- 
- 	might_sleep();
- 	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
- 	err = ext4_reserve_inode_write(handle, inode, &iloc);
- 	if (err)
- 		return err;
--	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
--	    !ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
--		/*
--		 * In nojournal mode, we can immediately attempt to expand
--		 * the inode.  When journaled, we first need to obtain extra
--		 * buffer credits since we may write into the EA block
--		 * with this same handle. If journal_extend fails, then it will
--		 * only result in a minor loss of functionality for that inode.
--		 * If this is felt to be critical, then e2fsck should be run to
--		 * force a large enough s_min_extra_isize.
--		 */
--		if (!ext4_handle_valid(handle) ||
--		    jbd2_journal_extend(handle,
--			     EXT4_DATA_TRANS_BLOCKS(inode->i_sb)) == 0) {
--			ret = ext4_expand_extra_isize(inode,
--						      sbi->s_want_extra_isize,
--						      iloc, handle);
--			if (ret) {
--				if (mnt_count !=
--					le16_to_cpu(sbi->s_es->s_mnt_count)) {
--					ext4_warning(inode->i_sb,
--					"Unable to expand inode %lu. Delete"
--					" some EAs or run e2fsck.",
--					inode->i_ino);
--					mnt_count =
--					  le16_to_cpu(sbi->s_es->s_mnt_count);
--				}
--			}
--		}
--	}
-+
-+	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize)
-+		ext4_try_to_expand_extra_isize(inode, sbi->s_want_extra_isize,
-+					       iloc, handle);
-+
- 	return ext4_mark_iloc_dirty(handle, inode, &iloc);
- }
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 12ee5fb..3c6c225 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1465,12 +1465,14 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- {
- 	struct ext4_xattr_ibody_header *header;
- 	struct buffer_head *bh = NULL;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	static unsigned int mnt_count;
- 	size_t min_offs;
- 	size_t ifree, bfree;
- 	int total_ino;
- 	void *base, *end;
- 	int error = 0, tried_min_extra_isize = 0;
--	int s_min_extra_isize = le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
-+	int s_min_extra_isize = le16_to_cpu(sbi->s_es->s_min_extra_isize);
- 	int isize_diff;	/* How much do we need to grow i_extra_isize */
- 
- retry:
-@@ -1558,6 +1560,13 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 
- cleanup:
- 	brelse(bh);
-+
-+	if (mnt_count != le16_to_cpu(sbi->s_es->s_mnt_count)) {
-+		ext4_warning(inode->i_sb, "Unable to expand inode %lu. Delete some EAs or run e2fsck.",
-+			     inode->i_ino);
-+		mnt_count = le16_to_cpu(sbi->s_es->s_mnt_count);
-+	}
-+
- 	return error;
- }
- 
--- 
-2.5.0
+I don't know if that's a good idea -- I'd rather train the developers
+that they cannot underestimate ever than let them paper over things like
+this that will eventually blow out on someone else's machine.
+
+But I guess a noisy WARN would get peoples' attention.
+
+> a stack dump.  If we can't continue, we will have to force an
+> ext4-error and abort the journal, since if we run out of space, we can
+> end up in a deadlock: in order to free space in the journal, we need
+> to do a commit, but we can't do a commit because handles are open and
+> we can't complete them because we're out of space.
+> 
+> Also, a typical transaction has room for thousands of blocks, and a
+> handle is usually only open for a very short time.  Once a handle is
+> stopped, any unused credits are released back to the journal.  For
+> this reason, if we estimate that we need to modify 20 blocks
+> (credits), but we only need to modify 8 blocks, 4 of which have
+> already been modify in the current transaction --- this is not a
+> tragedy.  We only used up 4 new blocks in the journal by the time the
+> handle is stopped, but that's OK.  Once the handle is stopped the
+> "cost" of the over-estimation is gone.
+> 
+> What is the "cost" of the over-estimation?  Well, we need to make sure
+> that there will be enough room in the journal to write the current
+> transaction (plus have some slack space for the next transaction).  So
+> if we vastly over-estimate the number of blocks needed when we start a
+> handle, and the sum of all of the credits of currently started handles
+> is greater than free space in the journal minus some slack space,
+> instead of starting the new handle, the thread will block, and all
+> attempts to start new handles will block, until all of the currently
+> running handles have completed and a current transaction can start
+> committing.
+> 
+> So over-estimating by a few 10's of credits is probably not noticeable
+> at all.  Over-estimating by hundreds of credits can start causing
+> performance impacts.  How?  By forcing transaction to close earlier
+> than the normal 5 second timeout due of a perceived lack of space,
+> when the journal is almost full due to a credit over-estimation.  Even
+> so, the performance impact is not necessarily that great, and
+> typically only shows up under heavy load --- and we or the system
+> administrator can mitigate this problem fairly easily by increasing
+> the journal size.
+
+/me wonders if it'd be useful to track how closely the estimates fit
+reality in debugfs to make it easier to spot-check how good of a job
+we're all doing?
+
+> So while there may be a desire out of professional pride to make the
+> credit estimation be as accurate as possible, getting the credit
+> estimation exactly write is not really critical.  It's for this reason
+> that we always add EXT4_INDEX_EXTRA_TRANS_BLOCKS to the credits
+> without testing to see if the HTree feature is enabled.  An extra 8
+> (soon to be 12) blocks doesn't really matter all that much.
+
+As general documentation, this seems fine as-is up to here.  You could
+probably rework the last two paragraphs too.
+
+--D
+
+> The reason why we do try to do conditionalized credits based on quotas
+> is because when quota is enabled, some of the calculations for the
+> number of credits that are needed were extremely high.  This was
+> partially addressed by Jan Kara's change to move the call to
+> dquot_initialize to a separate transaction.  (eb9cc7e16b3: ext4: move
+> quota initialization out of inode allocation transaction)
+> 
+> The inode allocation path is still one where if we can reduce number
+> of credits needed, it can be a win.  (It currently has a worst case of
+> around 200 blocks, per Jan's comments in eb9cc7e16b3.)  Fortunately,
+> there are some assumptions we can make about inode allocation to
+> simplify things: (a) the acl will be a duplicate of the directory's
+> default acl; (b) the SELinux label is generally not that huge, and (c)
+> the encryption metadata is also fairly small, and (d) there is no
+> pre-existing inline data to worry about.  All of this means that we
+> don't need to worry about the inline data or EA-in-inode features, and
+> so we can probably rely on EXT4_XATTR_TRANS_BLOCKS estimate instead of
+> using more complex calculations found in __ext4_xattr_set_credits().
+> 
+> Cheers,
+> 
+> 						- Ted
