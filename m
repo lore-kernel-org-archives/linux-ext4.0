@@ -1,34 +1,75 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Fri, 07 Jul 2017 08:20:08 +0000
-Message-ID: <bug-196223-13602-mQ3v6mrkUr@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] fs: ext4: inode->i_generation not assigned 0.
+Date: Fri, 07 Jul 2017 06:51:37 -0400
+Message-ID: <1499424697.5826.3.camel@redhat.com>
+References: <20A40B3C-E179-432B-B56F-BDAAF0CD2E1F@dilger.ca>
+         <7CD38230-D961-428F-B2E9-2C0E28CAF442@fb.com>
+         <20170629045940.GB5865@birch.djwong.org>
+         <20170629143551.GB1651@fieldses.org>
+         <20170629172528.GA5869@birch.djwong.org>
+         <20170629183053.GA4178@fieldses.org> <20170629185022.GB4178@fieldses.org>
+         <20170704040446.GB4704@birch.djwong.org>
+         <20170705011534.GC1420@fieldses.org> <20170705191933.GA6297@magnolia>
+         <20170705202750.j5texbm2xdxnph6m@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:44606 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750848AbdGGIUY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Jul 2017 04:20:24 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4D852285A4
-        for <linux-ext4@vger.kernel.org>; Fri,  7 Jul 2017 08:20:23 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        William Koh <kkc6196@fb.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Kernel Team <Kernel-team@fb.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        xfs <linux-xfs@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170705202750.j5texbm2xdxnph6m@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+On Wed, 2017-07-05 at 16:27 -0400, Theodore Ts'o wrote:
+> On Wed, Jul 05, 2017 at 12:19:33PM -0700, Darrick J. Wong wrote:
+> > 
+> > So, what's the probability that there are clients out there that started
+> > talking to a 2.2-based knfsd and will now want to talk to a modern 4.13
+> > kernel seventeen years later?  (Do nfs handles persist across client
+> > restarts/remounts?)
+> 
+> It's whether or not nfs handles persist across server restarts which
+> would be the more interesting question.  So if you had a NAS box that
+> was using a Linux 2.2 kernel, and you had clients access the box, and
+> then that box gets upgraded to use a 4.13 kernel, what happens?
+> 
+> In the ideal world, the client wouldn't notice, and its 2.2-based file
+> handles that it obtained while the 2.2 kernel was running would
+> continue to work after the box came back up running the new 4.13
+> kernel.
+> 
 
---- Comment #9 from Marta Löfstedt (marta.lofstedt@intel.com) ---
-I have had no luck with bisecting, ending up with a commit only changing docs.
-So, I guess my reproducer isn't good, which I have already discussed above.
-I.e. I believe I have failed to establish a good base. Anyways, the back-traces
-speak for themselves, we just don't know when this issue started. We will be
-trying to do some runs on earlier tags on the next branch to establish a good
-base.
+Right. That's the case today if we don't remove support for old
+filehandles. If we were to remove them, the clients would get back
+-ESTALE there if they tried to use the old 2.2-style fh's that they saw
+before the upgrade.
 
+The main takeaway here is that NFS filehandle lifetime is really only
+bounded by the boot time of the oldest clients.
+
+> To be honest, I'm not sure I care that much, but I don't use NFS much
+> if at all these days myself.  And in reality, what's the chance that
+> an NAS box vendor would continue to support a box that is 17 years old
+> and provide an upgrade for it?  (OK, everyone can stop laughing now. :-)
+
+Agreed. I think we're safe enough to remove this support.
+
+If we were really concerned about it, we could move support for it under
+a Kconfig option that defaults to "off" for now, and then we could plan
+to just drop it in a couple of years.
+
+Vendors that thought they might need it could enable it and speak up
+with their use case if they wanted to keep it in for future releases.
+Most likely though, no-one will care.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jeff Layton <jlayton@redhat.com>
