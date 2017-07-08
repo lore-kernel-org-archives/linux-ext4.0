@@ -1,119 +1,98 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v4 3/3] ext4: Add IOMAP_REPORT support for inline data
-Date: Fri,  7 Jul 2017 23:28:01 +0200
-Message-ID: <1499462881-4238-4-git-send-email-agruenba@redhat.com>
-References: <1499462881-4238-1-git-send-email-agruenba@redhat.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41434 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752190AbdGGV2L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 7 Jul 2017 17:28:11 -0400
-In-Reply-To: <1499462881-4238-1-git-send-email-agruenba@redhat.com>
-In-Reply-To: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
-References: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] ext4: fix __ext4_new_inode() journal credits
+ calculation
+Date: Sat, 8 Jul 2017 01:09:00 -0400
+Message-ID: <20170708050900.afuwwia7c4izliir@thunk.org>
+References: <20170706023819.32272-1-tahsin@google.com>
+ <20170706023819.32272-2-tahsin@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170706023819.32272-2-tahsin@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Fixes iomap_seek_{hole,data} for files with inline data (on filesystems
-with the inline_data feature).  In addition, this will make converting
-ext4 to use iomap_fiemap easier.
+On Wed, Jul 05, 2017 at 07:38:19PM -0700, Tahsin Erdogan wrote:
+> ea_inode feature allows creating extended attributes that are up to
+> 64k in size. Update __ext4_new_inode() to pick increased credit limits.
+> 
+> To avoid overallocating too many journal credits, update
+> __ext4_xattr_set_credits() to make a distinction between xattr create
+> vs update. This helps __ext4_new_inode() because all attributes are
+> known to be new, so we can save credits that are normally needed to
+> delete old values.
+> 
+> Also, have fscrypt specify its maximum context size so that we don't
+> end up allocating credits for 64k size.
+> 
+> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/ext4/ext4.h   |  4 ++++
- fs/ext4/inline.c | 33 +++++++++++++++++++++++++++++++++
- fs/ext4/inode.c  |  9 +++++++--
- 3 files changed, 44 insertions(+), 2 deletions(-)
+I've applied the following change to this patch in order to better
+calculate the credits needed by ext4_new_inode.  The problem is that
+it was estimating a worse case of 287 blocks for ext4_new_inode() on a
+10MB file system using the default 1024 block size.  And on such a
+file system, the typical size of the journal is 1024 blocks, and the
+maximum number of credits that are allowed by a handle is 1024 / 4 =
+256 blocks.  This cases a number of regression tests to blow up.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index eb0a1f2..3eae6ae 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3017,6 +3017,10 @@ extern struct buffer_head *ext4_get_first_inline_block(struct inode *inode,
- extern int ext4_inline_data_fiemap(struct inode *inode,
- 				   struct fiemap_extent_info *fieinfo,
- 				   int *has_inline, __u64 start, __u64 len);
-+
-+struct iomap;
-+extern int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap);
-+
- extern int ext4_try_to_evict_inline_data(handle_t *handle,
- 					 struct inode *inode,
- 					 int needed);
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 8d141c0..e9d0ab1 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -12,6 +12,7 @@
-  * GNU General Public License for more details.
-  */
+In reality the SElinux label and EVM/integrity xattrs are never going
+to be 64k, so calculating the credits assuming that as the worst case
+is not productive.  And normally the Posix ACL is never going to be a
+worst case of 64k long, either...
+
+					- Ted
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 21a2538afcc2..507bfb3344d4 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -784,12 +784,38 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	}
  
-+#include <linux/iomap.h>
- #include <linux/fiemap.h>
- 
- #include "ext4_jbd2.h"
-@@ -1827,6 +1828,38 @@ int ext4_destroy_inline_data(handle_t *handle, struct inode *inode)
- 	return ret;
- }
- 
-+int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap)
-+{
-+	__u64 physical;
-+	int error = -ENOENT;
-+	struct ext4_iloc iloc;
+ 	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
+-		/*
+-		 * 2 ea entries for ext4_init_acl(), 2 for ext4_init_security().
+-		 */
+-		nblocks += 4 * __ext4_xattr_set_credits(sb, NULL /* inode */,
+-					NULL /* block_bh */, XATTR_SIZE_MAX,
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++		struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
 +
-+	down_read(&EXT4_I(inode)->xattr_sem);
-+	if (!ext4_has_inline_data(inode))
-+		goto out;
++		if (p) {
++			int acl_size = p->a_count * sizeof(ext4_acl_entry);
 +
-+	error = ext4_get_inode_loc(inode, &iloc);
-+	if (error)
-+		goto out;
++			nblocks += (S_ISDIR(mode) ? 2 : 1) *
++				__ext4_xattr_set_credits(sb, NULL /* inode */,
++					NULL /* block_bh */, acl_size,
++					true /* is_create */);
++			posix_acl_release(p);
++		}
++#endif
 +
-+	physical = (__u64)iloc.bh->b_blocknr << inode->i_sb->s_blocksize_bits;
-+	physical += (char *)ext4_raw_inode(&iloc) - iloc.bh->b_data;
-+	physical += offsetof(struct ext4_inode, i_block);
++#ifdef CONFIG_SECURITY
++		{
++			int num_security_xattrs = 1;
 +
-+	brelse(iloc.bh);
-+
-+	iomap->physical = physical;
-+	iomap->offset = 0;
-+	iomap->length = min_t(loff_t, ext4_get_inline_size(inode),
-+			      i_size_read(inode));
-+	iomap->type = IOMAP_MAPPED;
-+	iomap->flags = IOMAP_F_INLINE;
-+
-+out:
-+	up_read(&EXT4_I(inode)->xattr_sem);
-+	return error;
-+}
-+
- int ext4_inline_data_fiemap(struct inode *inode,
- 			    struct fiemap_extent_info *fieinfo,
- 			    int *has_inline, __u64 start, __u64 len)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 82f3f7d..e2b0a8a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3361,8 +3361,13 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	bool delalloc = false;
- 	int ret;
- 
--	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
--		return -ERANGE;
-+	if (ext4_has_inline_data(inode)) {
-+		if (WARN_ON_ONCE(!(flags & IOMAP_REPORT)))
-+			return -ERANGE;
-+		if (!ext4_inline_data_iomap(inode, iomap) &&
-+		    offset < iomap->length)
-+			return 0;
-+	}
- 
- 	map.m_lblk = first_block;
- 	map.m_len = last_block - first_block + 1;
--- 
-2.7.5
++#ifdef CONFIG_INTEGRITY
++			num_security_xattrs++;
++#endif
++			/*
++			 * We assume that security xattrs are never
++			 * more than 1k.  In practice they are under
++			 * 128 bytes.
++			 */
++			nblocks += num_security_xattrs *
++				__ext4_xattr_set_credits(sb, NULL /* inode */,
++					NULL /* block_bh */, 1024,
+ 					true /* is_create */);
++		}
++#endif
+ 		if (encrypt)
+ 			nblocks += __ext4_xattr_set_credits(sb,
+ 					NULL /* inode */, NULL /* block_bh */,
