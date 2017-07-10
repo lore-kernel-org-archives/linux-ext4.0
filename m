@@ -1,45 +1,34 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: More thoughts about xattrs, journal credits, and their location
-Date: Sun, 9 Jul 2017 13:01:00 -0700
-Message-ID: <CAAeU0aMZjeX6utQfAPa131mhTPK27W4BtWodXYLPT3pss7Tp-w@mail.gmail.com>
-References: <20170706023819.32272-1-tahsin@google.com> <20170706023819.32272-2-tahsin@google.com>
- <20170708050900.afuwwia7c4izliir@thunk.org> <20170708153048.3lrrcd43ptx5yuy3@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
+Date: Mon, 10 Jul 2017 05:04:39 +0000
+Message-ID: <bug-196223-13602-uf14UL2VgP@https.bugzilla.kernel.org/>
+References: <bug-196223-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yb0-f174.google.com ([209.85.213.174]:35539 "EHLO
-        mail-yb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752539AbdGIUBC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 9 Jul 2017 16:01:02 -0400
-Received: by mail-yb0-f174.google.com with SMTP id p207so22655874yba.2
-        for <linux-ext4@vger.kernel.org>; Sun, 09 Jul 2017 13:01:02 -0700 (PDT)
-In-Reply-To: <20170708153048.3lrrcd43ptx5yuy3@thunk.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53324 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750785AbdGJFEl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Jul 2017 01:04:41 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 845F028405
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Jul 2017 05:04:40 +0000 (UTC)
+In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> What we could do is have ext4_new_inode check to see if there are
-> enough credits to do add the xattr's (if necessary) in a single
-> commit.  If not, what we could do is to add the inode to the orphan
-> list, and then set an inode state flag indicating we have done this.
-> At this point, we *can* break the ext4_new_inode() operation into
-> multiple commits, because if we crash in the middle the inode will be
-> cleaned up when we do the orphan list processing.
+https://bugzilla.kernel.org/show_bug.cgi?id=196223
 
-This makes sense. Also, we currently add the worst case credit
-estimates of individual set xattr ops and start a journal handle with
-the sum of it. A slight optimization is to do this lazily.
-We can start with enough credits that can get us to a point where it
-is safe to start a new transaction (safe because of orphan addition).
-Then opportunistically extend the credits to get us to the next safe
-point, if that doesn't work, do the orphan add operation and start a
-new transaction. This should handle the worst case scenario and also
-optimize for common case. Also this should in general reduce the
-amount of allocated-but-unused credits which helps parallelism.
+--- Comment #15 from Tomi Sarvela (tomi.p.sarvela@intel.com) ---
+This S3 issue has appeared only on linux-next tree. Agree that it might be
+timing or ordering problem on resume and not jbd2/ext4 issue.
 
-> The downsides of this approach is that it causes the orphan list to be
-> a bottleneck.  So we would definitely not want to do this all time.
+I'm running linus' tree on every rc-tag. Most of the testing here is with
+DRM-Tip tree, which will pick the 4.12 changes in short time.
 
-Yes and I think lazy extend/restart should mitigate this.
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
