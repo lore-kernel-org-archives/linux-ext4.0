@@ -1,53 +1,70 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Mon, 10 Jul 2017 12:58:31 +0000
-Message-ID: <bug-196223-13602-RXtzCr66F1@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: More thoughts about xattrs, journal credits, and their location
+Date: Mon, 10 Jul 2017 11:32:59 -0400
+Message-ID: <20170710153259.ayeqsl7aacujr76c@thunk.org>
+References: <20170706023819.32272-1-tahsin@google.com>
+ <20170706023819.32272-2-tahsin@google.com>
+ <20170708050900.afuwwia7c4izliir@thunk.org>
+ <20170708153048.3lrrcd43ptx5yuy3@thunk.org>
+ <CAAeU0aMZjeX6utQfAPa131mhTPK27W4BtWodXYLPT3pss7Tp-w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47316 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753497AbdGJM6d (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 10 Jul 2017 08:58:33 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A709328462
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Jul 2017 12:58:32 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
+Received: from imap.thunk.org ([74.207.234.97]:35352 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754369AbdGJPdD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Jul 2017 11:33:03 -0400
+Content-Disposition: inline
+In-Reply-To: <CAAeU0aMZjeX6utQfAPa131mhTPK27W4BtWodXYLPT3pss7Tp-w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+On Sun, Jul 09, 2017 at 01:01:00PM -0700, Tahsin Erdogan wrote:
+> > What we could do is have ext4_new_inode check to see if there are
+> > enough credits to do add the xattr's (if necessary) in a single
+> > commit.  If not, what we could do is to add the inode to the orphan
+> > list, and then set an inode state flag indicating we have done this.
+> > At this point, we *can* break the ext4_new_inode() operation into
+> > multiple commits, because if we crash in the middle the inode will be
+> > cleaned up when we do the orphan list processing.
+> 
+> This makes sense. Also, we currently add the worst case credit
+> estimates of individual set xattr ops and start a journal handle with
+> the sum of it. A slight optimization is to do this lazily.
+> We can start with enough credits that can get us to a point where it
+> is safe to start a new transaction (safe because of orphan addition).
 
---- Comment #18 from Tomi Sarvela (tomi.p.sarvela@intel.com) ---
-I managed to reproduce the bug on next-20170626 and earlier by running
-igt@gem_exec_suspend@basic-s3 test back-to-back, takes ~5 runs. Later
-next-kernels reproduce this issue on 1-2 runs.
+I still am very concerned about the code complexity that this approach
+requires.  I am also very concerned about the CPU scalability
+bottleneck that adding and removing the inode from the orphan list
+would entail.
 
-./scripts/run-tests.sh -vt igt@gem_exec_suspend@basic-s3 -x devices
+And if we have to wait for the new commit to start so that we can
+start a new handle, that's also a CPU scalability bottleneck and is
+guaranteed to add significant latency.
 
-Issue is seen when igt test returns 'pass', but doesn't drop back to command
-line. Repeated Ctrl-C gets to the command prompt. Cached commands work, but
-anything that needs disk access doesn't.
+One of the nice things about the xattr priority proposal is that it
+would guarantee that the security xattrs would never be in an
+ea_inode.  (Since in the inode creation case, the only thing they
+would be competing with is the acl's, which are lower priority).  So
+this reduces the chances of needing to do a lazy extend/restart in the
+first place.
 
-linus-v4.12 handled ~10 runs without a problem, then same issue.
+> > The downsides of this approach is that it causes the orphan list to be
+> > a bottleneck.  So we would definitely not want to do this all time.
+> 
+> Yes and I think lazy extend/restart should mitigate this.
 
-Dmesg shows in usual case something like:
+It mitigates it so long as we the lazy extent/restart is never/rarely
+*used*, since that's when we would incur the orphan list overhead.
 
-[  137.351829] nvme nvme0: I/O 197 QID 0 timeout, disable controller
-[  137.464115] nvme nvme0: failed to set APST feature (-4)
-[  137.861403] EXT4-fs warning (device nvme0n1p2): ext4_end_bio:322: I/O error
-10 writing to inode 1453376 (offset 0 size 4096 starting block 5949696)
-[  137.861406] Buffer I/O error on device nvme0n1p2, logical block 5818368
+One other bit about the lazy extend/restart idea is that we need to
+make sure that there are enough credits left for the callers of
+ext4_new_inode() before it returns.  Otherwise the complexity of this
+approach would infect all of the users of this interface (since they
+would have to potentially do the extend/restart of the transaction).
 
-I'm concerned about the 'disable controller' part.
-
-Setup on this testing: KBL-7700K on MSI Z170 mb. Ubuntu base, Intel 600p M.2,
-one DP connected to monitor.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
