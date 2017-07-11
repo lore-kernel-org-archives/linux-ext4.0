@@ -1,218 +1,34 @@
-From: Jerry Lee <jerrylee@qnap.com>
-Subject: Re: [RFC PATCH] fs: ext4: don't trap kswapd and allocating tasks on
- ext4 inode IO
-Date: Tue, 11 Jul 2017 15:16:15 +0800
-Message-ID: <CAA1ppbjpzAomG+XztfrkzOtuBJgxtEw3UHBRV+U3WekejNC6Kg@mail.gmail.com>
-References: <20170515154634.19733-1-hannes@cmpxchg.org> <20170516143645.GA7316@quack2.suse.cz>
- <20170516154105.GA22633@cmpxchg.org> <20170516160337.GD7316@quack2.suse.cz> <20170612080957.GA22728@quack2.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
+Date: Tue, 11 Jul 2017 08:12:00 +0000
+Message-ID: <bug-196223-13602-f7L6BFNUIy@https.bugzilla.kernel.org/>
+References: <bug-196223-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Johannes Weiner <hannes@cmpxchg.org>, Jan Kara <jack@suse.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-team@fb.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170612080957.GA22728@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40982 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754510AbdGKIMI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Jul 2017 04:12:08 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EC84E2843B
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Jul 2017 08:12:07 +0000 (UTC)
+In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+https://bugzilla.kernel.org/show_bug.cgi?id=196223
 
-We seemed to get this issue on a file system with data=order mode, and
-it can steadily be re-produced by creating lots of symlinks and each
-links to a 100KB file created by dd in advance.  During the process of
-dd and making symlinks, copying a large file via samba to the file
-system would get stuck with the following call stacks:
+--- Comment #20 from Tomi Sarvela (tomi.p.sarvela@intel.com) ---
+Most of our CI machines have standard SATA SSD disks, from 3 different vendors.
+I picked just this one to test manually because it's the fastest to boot.
 
-kswapd0
-=======
-[<ffffffff81254273>] jbd2_log_wait_commit+0x93/0x100
-[<ffffffff81255700>] jbd2_complete_transaction+0x50/0x80
-[<ffffffff8120f95c>] ext4_evict_inode+0x27c/0x400
-[<ffffffff8117a4be>] evict+0xae/0x170
-[<ffffffff8117a5b5>] dispose_list+0x35/0x50
-[<ffffffff8117b396>] prune_icache_sb+0x46/0x60
-[<ffffffff8116155c>] super_cache_scan+0x14c/0x1a0
-[<ffffffff8111b98a>] shrink_slab.part.36+0x19a/0x250
-[<ffffffff8111e38c>] shrink_zone+0x23c/0x250
-[<ffffffff8111ef5a>] kswapd+0x54a/0x930
-[<ffffffff8108b316>] kthread+0xd6/0xf0
-[<ffffffff81a6afdf>] ret_from_fork+0x3f/0x70
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-kworker/u8:4
-============
-[<ffffffff8124dc74>] wait_transaction_locked+0x74/0xa0
-[<ffffffff8124df53>] start_this_handle+0x233/0x5d0
-[<ffffffff8124e502>] jbd2__journal_start+0xf2/0x180
-[<ffffffff8122f1f7>] __ext4_journal_start_sb+0x57/0x80
-[<ffffffff8120e6aa>] ext4_writepages+0x2da/0xad0
-[<ffffffff8111804e>] do_writepages+0x2e/0x70
-[<ffffffff81188163>] __writeback_single_inode+0x33/0x170
-[<ffffffff8118873a>] writeback_sb_inodes+0x20a/0x460
-[<ffffffff81188a14>] __writeback_inodes_wb+0x84/0xb0
-[<ffffffff81188be2>] wb_writeback+0x1a2/0x1b0
-[<ffffffff81189166>] wb_workfn+0x1b6/0x320
-[<ffffffff81086239>] process_one_work+0x139/0x370
-[<ffffffff810867b1>] worker_thread+0x61/0x450
-[<ffffffff8108b316>] kthread+0xd6/0xf0
-[<ffffffff81a6afdf>] ret_from_fork+0x3f/0x70
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-jbd2/dm-0-8
-===========
-[<ffffffff812508f9>] jbd2_journal_commit_transaction+0x1f9/0x1540
-[<ffffffff81254861>] kjournald2+0xd1/0x250
-[<ffffffff8108b316>] kthread+0xd6/0xf0
-[<ffffffff81a6afdf>] ret_from_fork+0x3f/0x70
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-We runs linux-4.2 and the issue is fixed with the patch you mentioned
-in previous mail (adding "&& inode->i_data.nrpages").  If there's
-anything I could help, feel free to let me know.  Thanks!
-
-
-Jerry
-
-On Mon, Jun 12, 2017 at 4:09 PM, Jan Kara <jack@suse.cz> wrote:
-> On Tue 16-05-17 18:03:37, Jan Kara wrote:
->> On Tue 16-05-17 11:41:05, Johannes Weiner wrote:
->> > On Tue, May 16, 2017 at 04:36:45PM +0200, Jan Kara wrote:
->> > > On Mon 15-05-17 11:46:34, Johannes Weiner wrote:
->> > > > We have observed across several workloads situations where kswapd and
->> > > > direct reclaimers get stuck in the inode shrinker of the ext4 / mount,
->> > > > causing allocation latencies across tasks in the system, while there
->> > > > are dozens of gigabytes of clean page cache covering multiple disks.
->> > > >
->> > > > The stack traces of such an instance looks like this:
->> > > >
->> > > > [<ffffffff812b3225>] jbd2_log_wait_commit+0x95/0x110
->> > > > [<ffffffff812b4f29>] jbd2_complete_transaction+0x59/0x90
->> > > > [<ffffffff812668da>] ext4_evict_inode+0x2da/0x480
->> > > > [<ffffffff811f2230>] evict+0xc0/0x190
->> > > > [<ffffffff811f2339>] dispose_list+0x39/0x50
->> > > > [<ffffffff811f323b>] prune_icache_sb+0x4b/0x60
->> > > > [<ffffffff811dba71>] super_cache_scan+0x141/0x190
->> > > > [<ffffffff8116e755>] shrink_slab+0x235/0x440
->> > > > [<ffffffff81172b48>] shrink_zone+0x268/0x2d0
->> > > > [<ffffffff81172f04>] do_try_to_free_pages+0x164/0x410
->> > > > [<ffffffff81173265>] try_to_free_pages+0xb5/0x160
->> > > > [<ffffffff811656b6>] __alloc_pages_nodemask+0x636/0xb30
->> > > > [<ffffffff811acac8>] alloc_pages_current+0x88/0x120
->> > > > [<ffffffff816d4e46>] skb_page_frag_refill+0xc6/0xf0
->> > > > [<ffffffff816d4e8d>] sk_page_frag_refill+0x1d/0x80
->> > > > [<ffffffff8173f86b>] tcp_sendmsg+0x28b/0xb10
->> > > > [<ffffffff81769727>] inet_sendmsg+0x67/0xa0
->> > > > [<ffffffff816d0488>] sock_sendmsg+0x38/0x50
->> > > > [<ffffffff816d0518>] sock_write_iter+0x78/0xd0
->> > > > [<ffffffff811d774e>] do_iter_readv_writev+0x5e/0xa0
->> > > > [<ffffffff811d8468>] do_readv_writev+0x178/0x210
->> > > > [<ffffffff811d871c>] vfs_writev+0x3c/0x50
->> > > > [<ffffffff811d8782>] do_writev+0x52/0xd0
->> > > > [<ffffffff811d9810>] SyS_writev+0x10/0x20
->> > > > [<ffffffff81002910>] do_syscall_64+0x50/0xa0
->> > > > [<ffffffff817eed3c>] return_from_SYSCALL_64+0x0/0x6a
->> > > > [<ffffffffffffffff>] 0xffffffffffffffff
->> > > >
->> > > > The inode shrinker has provisions to skip any inodes that require
->> > > > writeback, to avoid tarpitting the entire system behind a single
->> > > > object when there are many other pools to recycle memory from. But
->> > > > that logic doesn't cover the situation where an ext4 inode is clean
->> > > > but journaled and tied to a commit that yet needs to hit the platter.
->> > > >
->> > > > Add a superblock operation that lets the generic inode shrinker query
->> > > > the filesystem whether evicting a given inode will require any IO; add
->> > > > an ext4 implementation that checks whether the journal is caught up to
->> > > > the commit id associated with the inode.
->> > > >
->> > > > Fixes: 2d859db3e4a8 ("ext4: fix data corruption in inodes with journalled data")
->> > > > Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
->> > >
->> > > OK. I have to say I'm somewhat surprised you use data journalling on some
->> > > of your files / filesystems but whatever - maybe these are long symlink
->> > > after all which would make sense.
->> >
->> > The filesystem is actually mounted data=ordered and we didn't catch
->> > anyone in userspace enabling journaling on individual inodes. So we
->> > assumed this must be from symlinks.
->>
->> OK.
->>
->> > > And I'm actually doubly surprised you can see these stack traces as
->> > > these days inode_lru_isolate() checks inode->i_data.nrpages and
->> > > uncommitted pages cannot be evicted from pagecache
->> > > (ext4_releasepage() will refuse to free them) so I don't see how
->> > > such inode can get to dispose_list(). But maybe the inode doesn't
->> > > really have any pages and i_datasync_tid just happens to be set to
->> > > the current transaction because it is initialized that way and we
->> > > are evicting inode that was recently read from disk.
->> >
->> > Hm, we're running 4.6, but that already has the nrpages check in
->> > inode_lru_isolate(). There couldn't be any pages in those inodes by
->> > the time the shrinker gets to them.
->> >
->> > > Anyway if you add: "&& inode->i_data.nrpages" to the test in
->> > > ext4_evict_inode() do the stalls go away?
->> >
->> > Want me to still test this?
->>
->> Can you try attached patch? I'd like to confirm the theory before merging
->> this... Thanks!
->
-> Ping? Any result with this patch?
->
->                                                                 Honza
->
->> From e87281dee65589e07b9251ad98191c1e6c488870 Mon Sep 17 00:00:00 2001
->> From: Jan Kara <jack@suse.cz>
->> Date: Tue, 16 May 2017 17:56:36 +0200
->> Subject: [PATCH] ext4: Avoid unnecessary stalls in ext4_evict_inode()
->>
->> These days inode reclaim calls evict_inode() only when it has no pages
->> in the mapping. In that case it is not necessary to wait for transaction
->> commit in ext4_evict_inode() as there can be no pages waiting to be
->> committed. So avoid unnecessary transaction waiting in that case.
->>
->> We still have to keep the check for the case where ext4_evict_inode()
->> gets called from other paths (e.g. umount) where inode still can have
->> some page cache pages.
->>
->> Reported-by: Johannes Weiner <hannes@cmpxchg.org>
->> Signed-off-by: Jan Kara <jack@suse.cz>
->> ---
->>  fs/ext4/inode.c | 3 ++-
->>  1 file changed, 2 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 5834c4d76be8..3aef67ca18ac 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -213,7 +213,8 @@ void ext4_evict_inode(struct inode *inode)
->>                */
->>               if (inode->i_ino != EXT4_JOURNAL_INO &&
->>                   ext4_should_journal_data(inode) &&
->> -                 (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode))) {
->> +                 (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode)) &&
->> +                 inode->i_data.nrpages) {
->>                       journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
->>                       tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
->>
->> --
->> 2.12.0
->>
->
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
-
-
+I'm trying to reproduce the issue on todays linux-next on other machines and
+get a trace what's going on.
 
 -- 
-Jerry Lee
-QNAP Systems, Inc.
-Email: jerrylee@qnap.com
-Tel: (+886)-2-2393-5152 ext. 15019
-Address: 13F., No.56, Sec. 1, Xinsheng S. Rd., Zhongzheng Dist.,
-Taipei City, Taiwan
+You are receiving this mail because:
+You are watching the assignee of the bug.
