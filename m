@@ -1,52 +1,40 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196223] jdb2 journal - hung after suspend-resume test
-Date: Tue, 11 Jul 2017 17:17:59 +0000
-Message-ID: <bug-196223-13602-SukSUASq7J@https.bugzilla.kernel.org/>
-References: <bug-196223-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+From: Emoly Liu <emoly.liu@intel.com>
+Subject: [PATCH] ext4: error should be cleared if ea_inode isn't added to the cache
+Date: Wed, 12 Jul 2017 03:56:53 +0000
+Message-ID: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
+Cc: linux-ext4@vger.kernel.org, Emoly Liu <emoly.liu@intel.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37540 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755585AbdGKRSB (ORCPT
+Received: from [207.108.8.150] ([207.108.8.150]:57826 "HELO
+        mail-1.trevis.hpdd.intel.com" rhost-flags-FAIL-FAIL-OK-FAIL)
+        by vger.kernel.org with SMTP id S1750729AbdGLEF0 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Jul 2017 13:18:01 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 645DE2854A
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Jul 2017 17:18:00 +0000 (UTC)
-In-Reply-To: <bug-196223-13602@https.bugzilla.kernel.org/>
+        Wed, 12 Jul 2017 00:05:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196223
+For Lustre, if ea_inode fails in hash validation but passes parent
+inode and generation checks, it won't be added to the cache as well
+as the error "-EFSCORRUPTED" should be cleared, otherwise it will
+cause "Structure needs cleaning" when running getfattr command.
 
---- Comment #24 from Tomi Sarvela (tomi.p.sarvela@intel.com) ---
-Bisected by marking the merge bases good, and got the commit which looks like a
-reasonable culprit:
+Signed-off-by: Emoly Liu <emoly.liu@intel.com>
+Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9723
+---
+ fs/ext4/xattr.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-5c279bd9e40624f4ab6e688671026d6005b066fa is the first bad commit
-commit 5c279bd9e40624f4ab6e688671026d6005b066fa
-Author: Christoph Hellwig <hch@lst.de>
-Date:   Fri Jun 16 10:27:55 2017 +0200
-
-    scsi: default to scsi-mq
-
-    Remove the SCSI_MQ_DEFAULT config option and default to the blk-mq I/O
-    path now that we had plenty of testing, and have I/O schedulers for
-    blk-mq.  The module option to disable the blk-mq path is kept around for
-    now.
-
-    Signed-off-by: Christoph Hellwig <hch@lst.de>
-    Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-
-:040000 040000 57ec7d5d2ba76592a695f533a69f747700c31966
-c79f6ecb070acc4fadf6fc05ca9ba32bc9c0c665 M      drivers
-
-I'm using 'make olddefconfig' on kernel. Will doublecheck with different
-kconfig options tomorrow.
-
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index cff4f41..de217a0 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -451,6 +451,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+ 		}
+ 		/* Do not add ea_inode to the cache. */
+ 		ea_inode_cache = NULL;
++		err = 0;
+ 	} else if (err)
+ 		goto out;
+ 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.3.1
