@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the
- per-inode encryption keys
-Date: Wed, 12 Jul 2017 14:00:32 -0700
-Message-ID: <20170712210035.51534-4-ebiggers3@gmail.com>
+Subject: [PATCH 5/6] fscrypt: cache the HMAC transform for each
+ master key
+Date: Wed, 12 Jul 2017 14:00:34 -0700
+Message-ID: <20170712210035.51534-6-ebiggers3@gmail.com>
 References: <20170712210035.51534-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,718 +27,288 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-By design, the keys which userspace provides in the keyring are not used
-to encrypt data directly.  Instead, a KDF (Key Derivation Function) is
-used to derive a unique encryption key for each inode, given a "master"
-key and a nonce.  The current KDF encrypts the master key with
-AES-128-ECB using the nonce as the AES key.  This KDF is ad-hoc and is
-not specified in any standard.  While it does generate unique derived
-keys with sufficient entropy, it has several disadvantages:
+Now that we have a key_hash field which securely identifies a master key
+payload, introduce a cache of the HMAC transforms for the master keys
+currently in use for inodes using v2+ encryption policies.  The entries
+in this cache are called 'struct fscrypt_master_key' and are identified
+by key_hash.  The cache is per-superblock.  (It could be global, but
+making it per-superblock should reduce the lock contention a bit, and we
+may need to keep track of keys on a per-superblock basis for other
+reasons later, e.g. to implement an ioctl for evicting keys.)
 
-- It's reversible: an attacker who compromises a derived key, e.g. using
-  a side channel attack, can "decrypt" it to get back to the master key.
+This results in a large efficiency gain: we now only have to allocate
+and key an "hmac(sha512)" transformation, execute HKDF-Extract, and
+compute key_hash once per master key rather than once per inode.  Note
+that this optimization can't easily be applied to the original AES-based
+KDF because that uses a different AES key for each KDF execution.  In
+practice, this difference makes the HKDF per-inode encryption key
+derivation performance comparable to or even faster than the old KDF,
+which typically spends more time allocating an "ecb(aes)" transformation
+from the crypto API than doing actual crypto work.
 
-- It's not very extensible because it cannot easily be used to derive
-  other key material that may be needed and it ties the length of the
-  derived key closely to the length of the master key.
-
-- It doesn't evenly distribute the entropy from the master key.  For
-  example, the first 16 bytes of each derived key depend only on the
-  first 16 bytes of the master key.
-
-- It uses a public value as an AES key, which is unusual.  Ciphers are
-  rarely evaluated under a threat model where the keys are public and
-  the messages are secret.
-
-Solve all these problems for v2 encryption policies by changing the KDF
-to HKDF with SHA-512 as the underlying hash function.  To derive each
-inode's encryption key, HKDF is executed with the master key as the
-input key material, a fixed salt, and the per-inode nonce prefixed with
-a context byte as the application-specific information string.  Unlike
-the current KDF, HKDF has been formally published and standardized
-[1][2], is nonreversible, can be used to derive any number and length of
-secret and/or non-secret keys, and evenly distributes the entropy from
-the master key (excepting limits inherent to not using a random salt).
-
-Note that this introduces a dependency on the security and
-implementation of SHA-512, whereas before we were using only AES for
-both key derivation and encryption.  However, by using HMAC rather than
-the hash function directly, HKDF is designed to remain secure even if
-various classes of attacks, e.g. collision attacks, are found against
-the underlying unkeyed hash function.  Even HMAC-MD5 is still considered
-secure in practice, despite MD5 itself having been heavily compromised.
-
-We *could* avoid introducing a hash function by instantiating
-HKDF-Expand with CMAC-AES256 as the pseudorandom function rather than
-HMAC-SHA512.  This would work; however, the HKDF specification doesn't
-explicitly allow a non-HMAC pseudorandom function, so it would be less
-standard.  It would also require skipping HKDF-Extract and changing the
-API to accept only 32-byte master keys (since otherwise HKDF-Extract
-using CMAC-AES would produce a pseudorandom key only 16 bytes long which
-is only enough for AES-128, not AES-256).
-
-HKDF-SHA512 can require more "crypto work" per key derivation when
-compared to the current KDF.  However, later in this series, we'll start
-caching the HMAC transform for each master key, which will actually make
-the real-world performance about the same or even significantly better
-than the AES-based KDF as currently implemented.  Also, each KDF can
-actually be executed on the order of 1 million times per second, so KDF
-performance probably isn't actually the bottleneck in practice anyway.
-
-References:
-  [1] Krawczyk (2010). "Cryptographic Extraction and Key Derivation: The
-      HKDF Scheme".  https://eprint.iacr.org/2010/264.pdf
-
-  [2] RFC 5869. "HMAC-based Extract-and-Expand Key Derivation Function
-      (HKDF)".  https://tools.ietf.org/html/rfc5869
+Note that it would have been possible to make the mapping be from
+raw_key => fscrypt_master_key (where raw_key denotes the actual bytes of
+the master key) rather than from key_hash => fscrypt_master_key.
+However, an advantage of doing lookups by key_hash is that it replaces
+the keyring lookup in most cases, which opens up the future
+possibilities of not even having the master key in memory following an
+initial provisioning step (if the HMAC-SHA512 implementation is
+hardware-backed), or of introducing an ioctl to provision a key to the
+filesystem directly, avoiding keyrings and their visibility problems
+entirely.  Also, because key_hash is public information while raw_key is
+secret information, it would have been very difficult to use raw_key as
+a map key in a way that would prevent timing attacks while still being
+scalable to a large number of entries.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/Kconfig           |   2 +
- fs/crypto/fscrypt_private.h |  14 ++
- fs/crypto/keyinfo.c         | 485 +++++++++++++++++++++++++++++++++++---------
- 3 files changed, 405 insertions(+), 96 deletions(-)
+ fs/crypto/fscrypt_private.h |  11 ++++
+ fs/crypto/keyinfo.c         | 134 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/crypto/policy.c          |   5 +-
+ fs/super.c                  |   4 ++
+ include/linux/fs.h          |   5 ++
+ 5 files changed, 152 insertions(+), 7 deletions(-)
 
-diff --git a/fs/crypto/Kconfig b/fs/crypto/Kconfig
-index 02b7d91c9231..bbd4e38b293c 100644
---- a/fs/crypto/Kconfig
-+++ b/fs/crypto/Kconfig
-@@ -8,6 +8,8 @@ config FS_ENCRYPTION
- 	select CRYPTO_CTS
- 	select CRYPTO_CTR
- 	select CRYPTO_SHA256
-+	select CRYPTO_SHA512
-+	select CRYPTO_HMAC
- 	select KEYS
- 	help
- 	  Enable encryption of files and directories.  This
 diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index 5470aac82cab..095e7c16483a 100644
+index a7baeac92575..4b158717a8c3 100644
 --- a/fs/crypto/fscrypt_private.h
 +++ b/fs/crypto/fscrypt_private.h
-@@ -86,6 +86,14 @@ fscrypt_valid_context_format(const struct fscrypt_context *ctx, int size)
- 	return size >= 1 && size == fscrypt_context_size(ctx);
+@@ -88,11 +88,22 @@ fscrypt_valid_context_format(const struct fscrypt_context *ctx, int size)
+ 
+ /*
+  * fscrypt_master_key - an in-use master key
++ *
++ * This is referenced from each in-core inode that has been "unlocked" using a
++ * particular master key.  It's primarily used to cache the HMAC transform so
++ * that the per-inode encryption keys can be derived efficiently with HKDF.  It
++ * is securely erased once all inodes referencing it have been evicted.
++ *
++ * If the same master key is used on different filesystems (unusual, but
++ * possible), we'll create one of these structs for each filesystem.
+  */
+ struct fscrypt_master_key {
+ 	struct crypto_shash	*mk_hmac;
+ 	unsigned int		mk_size;
+ 	u8			mk_hash[FSCRYPT_KEY_HASH_SIZE];
++	refcount_t		mk_refcount;
++	struct rb_node		mk_node;
++	struct super_block	*mk_sb;
+ };
+ 
+ /*
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 12a60eacf819..bf60e76f9599 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -176,6 +176,14 @@ static void put_master_key(struct fscrypt_master_key *k)
+ 	if (!k)
+ 		return;
+ 
++	if (refcount_read(&k->mk_refcount) != 0) { /* in ->s_master_keys? */
++		if (!refcount_dec_and_lock(&k->mk_refcount,
++					   &k->mk_sb->s_master_keys_lock))
++			return;
++		rb_erase(&k->mk_node, &k->mk_sb->s_master_keys);
++		spin_unlock(&k->mk_sb->s_master_keys_lock);
++	}
++
+ 	crypto_free_shash(k->mk_hmac);
+ 	kzfree(k);
+ }
+@@ -231,6 +239,87 @@ alloc_master_key(const struct fscrypt_key *payload)
+ 	goto out;
  }
  
 +/*
-+ * fscrypt_master_key - an in-use master key
-+ */
-+struct fscrypt_master_key {
-+	struct crypto_shash	*mk_hmac;
-+	unsigned int		mk_size;
-+};
-+
- /*
-  * fscrypt_info - the "encryption key" for an inode
-  *
-@@ -99,6 +107,12 @@ struct fscrypt_info {
- 	struct crypto_skcipher *ci_ctfm;
- 	struct crypto_cipher *ci_essiv_tfm;
- 
-+	/*
-+	 * The master key with which this inode was "unlocked"
-+	 * (only set for inodes that use a v2+ encryption policy)
-+	 */
-+	struct fscrypt_master_key *ci_master_key;
-+
- 	/*
- 	 * Cached fields from the fscrypt_context needed for encryption policy
- 	 * inheritance and enforcement
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 5591fd24e4b2..7ed1a7fb1308 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -6,17 +6,312 @@
-  * This contains encryption key functions.
-  *
-  * Written by Michael Halcrow, Ildar Muslukhov, and Uday Savagaonkar, 2015.
-+ * HKDF support added by Eric Biggers, 2017.
++ * ->s_master_keys is a map of master keys currently in use by in-core inodes on
++ * a given filesystem, identified by key_hash which is a cryptographically
++ * secure identifier for an actual key payload.
 + *
-+ * The implementation and usage of HKDF should conform to RFC-5869 ("HMAC-based
-+ * Extract-and-Expand Key Derivation Function").
-  */
- 
- #include <keys/user-type.h>
- #include <linux/scatterlist.h>
- #include <linux/ratelimit.h>
- #include <crypto/aes.h>
-+#include <crypto/hash.h>
- #include <crypto/sha.h>
- #include "fscrypt_private.h"
- 
- static struct crypto_shash *essiv_hash_tfm;
- 
-+/*
-+ * Any unkeyed cryptographic hash algorithm can be used with HKDF, but we use
-+ * SHA-512 because it is reasonably secure and efficient; and since it produces
-+ * a 64-byte digest, deriving an AES-256-XTS key preserves all 64 bytes of
-+ * entropy from the master key and requires only one iteration of HKDF-Expand.
-+ */
-+#define HKDF_HMAC_ALG		"hmac(sha512)"
-+#define HKDF_HASHLEN		SHA512_DIGEST_SIZE
-+
-+/*
-+ * The list of contexts in which we use HKDF to derive additional keys from a
-+ * master key.  The values in this list are used as the first byte of the
-+ * application-specific info string to guarantee that info strings are never
-+ * repeated between contexts.
-+ *
-+ * Keys derived with different info strings are cryptographically isolated from
-+ * each other --- knowledge of one derived key doesn't reveal any others.
-+ */
-+#define HKDF_CONTEXT_PER_FILE_KEY	1
-+
-+/*
-+ * HKDF consists of two steps:
-+ *
-+ * 1. HKDF-Extract: extract a fixed-length pseudorandom key from the
-+ *    input keying material and optional salt.
-+ * 2. HDKF-Expand: expand the pseudorandom key into output keying material of
-+ *    any length, parameterized by an application-specific info string.
-+ *
-+ * HKDF-Extract can be skipped if the input is already a good pseudorandom key
-+ * that is at least as long as the hash.  While the fscrypt master keys should
-+ * already be good pseudorandom keys, when using encryption algorithms that use
-+ * short keys (e.g. AES-128-CBC) we'd like to permit the master key to be
-+ * shorter than HKDF_HASHLEN bytes.  Thus, we still must do HKDF-Extract.
-+ *
-+ * Ideally, HKDF-Extract would be passed a random salt for each distinct input
-+ * key.  Details about the advantages of a random salt can be found in the HKDF
-+ * paper (Krawczyk, 2010; "Cryptographic Extraction and Key Derivation: The HKDF
-+ * Scheme").  However, we do not have the ability to store a salt on a
-+ * per-master-key basis.  Thus, we have to use a fixed salt.  This is sufficient
-+ * as long as the master keys are already pseudorandom and are long enough to
-+ * make dictionary attacks infeasible.  This should be the case if userspace
-+ * used a cryptographically secure random number generator, e.g. /dev/urandom,
-+ * to generate the master keys.
-+ *
-+ * For the fixed salt we use "fscrypt_hkdf_salt" rather than default of all 0's
-+ * defined by RFC-5869.  This is only to be slightly more robust against
-+ * userspace (unwisely) reusing the master keys for different purposes.
-+ * Logically, it's more likely that the keys would be passed to unsalted
-+ * HKDF-SHA512 than specifically to "fscrypt_hkdf_salt"-salted HKDF-SHA512.
-+ * (Of course, a random salt would be better for this purpose.)
++ * Note that master_key_descriptor cannot be used to identify the keys because
++ * master_key_descriptor only identifies the "location" of a key in the keyring,
++ * not the actual key payload --- i.e., buggy or malicious userspace may provide
++ * different keys with the same master_key_descriptor.
 + */
 +
-+#define HKDF_SALT		"fscrypt_hkdf_salt"
-+#define HKDF_SALT_LEN		(sizeof(HKDF_SALT) - 1)
-+
 +/*
-+ * HKDF-Extract (RFC-5869 section 2.2).  This extracts a pseudorandom key 'prk'
-+ * from the input key material 'ikm' and a salt.  (See explanation above for why
-+ * we use a fixed salt.)
-+ */
-+static int hkdf_extract(struct crypto_shash *hmac,
-+			const u8 *ikm, unsigned int ikmlen,
-+			u8 prk[HKDF_HASHLEN])
-+{
-+	SHASH_DESC_ON_STACK(desc, hmac);
-+	int err;
-+
-+	desc->tfm = hmac;
-+	desc->flags = 0;
-+
-+	err = crypto_shash_setkey(hmac, HKDF_SALT, HKDF_SALT_LEN);
-+	if (err)
-+		goto out;
-+
-+	err = crypto_shash_digest(desc, ikm, ikmlen, prk);
-+out:
-+	shash_desc_zero(desc);
-+	return err;
-+}
-+
-+/*
-+ * HKDF-Expand (RFC-5869 section 2.3).  This expands the pseudorandom key, which
-+ * has already been keyed into 'hmac', into 'okmlen' bytes of output keying
-+ * material, parameterized by the application-specific information string of
-+ * 'info' prefixed with the 'context' byte.  ('context' isn't part of the HKDF
-+ * specification; it's just a prefix we add to our application-specific info
-+ * strings to guarantee that we don't accidentally repeat an info string when
-+ * using HKDF for different purposes.)
-+ */
-+static int hkdf_expand(struct crypto_shash *hmac, u8 context,
-+		       const u8 *info, unsigned int infolen,
-+		       u8 *okm, unsigned int okmlen)
-+{
-+	SHASH_DESC_ON_STACK(desc, hmac);
-+	int err;
-+	const u8 *prev = NULL;
-+	unsigned int i;
-+	u8 counter = 1;
-+	u8 tmp[HKDF_HASHLEN];
-+
-+	desc->tfm = hmac;
-+	desc->flags = 0;
-+
-+	if (unlikely(okmlen > 255 * HKDF_HASHLEN))
-+		return -EINVAL;
-+
-+	for (i = 0; i < okmlen; i += HKDF_HASHLEN) {
-+
-+		err = crypto_shash_init(desc);
-+		if (err)
-+			goto out;
-+
-+		if (prev) {
-+			err = crypto_shash_update(desc, prev, HKDF_HASHLEN);
-+			if (err)
-+				goto out;
-+		}
-+
-+		err = crypto_shash_update(desc, &context, 1);
-+		if (err)
-+			goto out;
-+
-+		err = crypto_shash_update(desc, info, infolen);
-+		if (err)
-+			goto out;
-+
-+		if (okmlen - i < HKDF_HASHLEN) {
-+			err = crypto_shash_finup(desc, &counter, 1, tmp);
-+			if (err)
-+				goto out;
-+			memcpy(&okm[i], tmp, okmlen - i);
-+			memzero_explicit(tmp, sizeof(tmp));
-+		} else {
-+			err = crypto_shash_finup(desc, &counter, 1, &okm[i]);
-+			if (err)
-+				goto out;
-+		}
-+		counter++;
-+		prev = &okm[i];
-+	}
-+	err = 0;
-+out:
-+	shash_desc_zero(desc);
-+	return err;
-+}
-+
-+static void put_master_key(struct fscrypt_master_key *k)
-+{
-+	if (!k)
-+		return;
-+
-+	crypto_free_shash(k->mk_hmac);
-+	kzfree(k);
-+}
-+
-+/*
-+ * Allocate a fscrypt_master_key, given the keyring key payload.  This includes
-+ * allocating and keying an HMAC transform so that we can efficiently derive
-+ * the per-inode encryption keys with HKDF-Expand later.
++ * Search ->s_master_keys for the fscrypt_master_key having the specified hash.
++ * If found return it with a reference taken, otherwise return NULL.
 + */
 +static struct fscrypt_master_key *
-+alloc_master_key(const struct fscrypt_key *payload)
++get_cached_master_key(struct super_block *sb,
++		      const u8 hash[FSCRYPT_KEY_HASH_SIZE])
++{
++	struct rb_node *node;
++	struct fscrypt_master_key *k;
++	int res;
++
++	spin_lock(&sb->s_master_keys_lock);
++	node = sb->s_master_keys.rb_node;
++	while (node) {
++		k = rb_entry(node, struct fscrypt_master_key, mk_node);
++		res = memcmp(hash, k->mk_hash, FSCRYPT_KEY_HASH_SIZE);
++		if (res < 0)
++			node = node->rb_left;
++		else if (res > 0)
++			node = node->rb_right;
++		else {
++			refcount_inc(&k->mk_refcount);
++			goto out;
++		}
++	}
++	k = NULL;
++out:
++	spin_unlock(&sb->s_master_keys_lock);
++	return k;
++}
++
++/*
++ * Try to insert the specified fscrypt_master_key into ->s_master_keys.  If it
++ * already exists, then drop the key being inserted and take a reference to the
++ * existing one instead.
++ */
++static struct fscrypt_master_key *
++insert_master_key(struct super_block *sb, struct fscrypt_master_key *new)
 +{
 +	struct fscrypt_master_key *k;
-+	int err;
-+	u8 prk[HKDF_HASHLEN];
++	struct rb_node *parent = NULL, **p;
++	int res;
 +
-+	k = kzalloc(sizeof(*k), GFP_NOFS);
-+	if (!k)
-+		return ERR_PTR(-ENOMEM);
-+	k->mk_size = payload->size;
-+
-+	k->mk_hmac = crypto_alloc_shash(HKDF_HMAC_ALG, 0, 0);
-+	if (IS_ERR(k->mk_hmac)) {
-+		err = PTR_ERR(k->mk_hmac);
-+		k->mk_hmac = NULL;
-+		pr_warn("fscrypt: error allocating " HKDF_HMAC_ALG ": %d\n",
-+			err);
-+		goto fail;
++	spin_lock(&sb->s_master_keys_lock);
++	p = &sb->s_master_keys.rb_node;
++	while (*p) {
++		parent = *p;
++		k = rb_entry(parent, struct fscrypt_master_key, mk_node);
++		res = memcmp(new->mk_hash, k->mk_hash, FSCRYPT_KEY_HASH_SIZE);
++		if (res < 0)
++			p = &parent->rb_left;
++		else if (res > 0)
++			p = &parent->rb_right;
++		else {
++			refcount_inc(&k->mk_refcount);
++			spin_unlock(&sb->s_master_keys_lock);
++			put_master_key(new);
++			return k;
++		}
 +	}
 +
-+	BUG_ON(crypto_shash_digestsize(k->mk_hmac) != sizeof(prk));
-+
-+	err = hkdf_extract(k->mk_hmac, payload->raw, payload->size, prk);
-+	if (err)
-+		goto fail;
-+
-+	err = crypto_shash_setkey(k->mk_hmac, prk, sizeof(prk));
-+	if (err)
-+		goto fail;
-+out:
-+	memzero_explicit(prk, sizeof(prk));
-+	return k;
-+
-+fail:
-+	put_master_key(k);
-+	k = ERR_PTR(err);
-+	goto out;
++	rb_link_node(&new->mk_node, parent, p);
++	rb_insert_color(&new->mk_node, &sb->s_master_keys);
++	refcount_set(&new->mk_refcount, 1);
++	new->mk_sb = sb;
++	spin_unlock(&sb->s_master_keys_lock);
++	return new;
 +}
 +
-+static void release_keyring_key(struct key *keyring_key)
-+{
-+	up_read(&keyring_key->sem);
-+	key_put(keyring_key);
-+}
-+
+ static void release_keyring_key(struct key *keyring_key)
+ {
+ 	up_read(&keyring_key->sem);
+@@ -321,6 +410,47 @@ load_master_key_from_keyring(const struct inode *inode,
+ 	return master_key;
+ }
+ 
 +/*
-+ * Find, lock, and validate the master key with the keyring description
-+ * prefix:descriptor.  It must be released with release_keyring_key() later.
++ * Get the fscrypt_master_key identified by the specified v2+ encryption
++ * context, or create it if not found.
++ *
++ * Returns the fscrypt_master_key with a reference taken, or an ERR_PTR().
 + */
-+static struct key *
-+find_and_lock_keyring_key(const char *prefix,
-+			  const u8 descriptor[FS_KEY_DESCRIPTOR_SIZE],
-+			  unsigned int min_keysize,
-+			  const struct fscrypt_key **payload_ret)
-+{
-+	char *description;
-+	struct key *keyring_key;
-+	const struct user_key_payload *ukp;
-+	const struct fscrypt_key *payload;
-+
-+	description = kasprintf(GFP_NOFS, "%s%*phN", prefix,
-+				FS_KEY_DESCRIPTOR_SIZE, descriptor);
-+	if (!description)
-+		return ERR_PTR(-ENOMEM);
-+
-+	keyring_key = request_key(&key_type_logon, description, NULL);
-+	if (IS_ERR(keyring_key))
-+		goto out;
-+
-+	down_read(&keyring_key->sem);
-+	ukp = user_key_payload_locked(keyring_key);
-+	payload = (const struct fscrypt_key *)ukp->data;
-+
-+	if (ukp->datalen != sizeof(struct fscrypt_key) ||
-+	    payload->size == 0 || payload->size > FS_MAX_KEY_SIZE) {
-+		pr_warn_ratelimited("fscrypt: key '%s' has invalid payload\n",
-+				    description);
-+		goto invalid;
-+	}
-+
-+	/*
-+	 * With the legacy AES-based KDF the master key must be at least as long
-+	 * as the derived key.  With HKDF we could accept a shorter master key;
-+	 * however, that would mean the derived key wouldn't contain as much
-+	 * entropy as intended.  So don't allow it in either case.
-+	 */
-+	if (payload->size < min_keysize) {
-+		pr_warn_ratelimited("fscrypt: key '%s' is too short (got %u bytes, wanted %u+ bytes)\n",
-+				    description, payload->size, min_keysize);
-+		goto invalid;
-+	}
-+
-+	*payload_ret = payload;
-+out:
-+	kfree(description);
-+	return keyring_key;
-+
-+invalid:
-+	release_keyring_key(keyring_key);
-+	keyring_key = ERR_PTR(-ENOKEY);
-+	goto out;
-+}
-+
 +static struct fscrypt_master_key *
-+load_master_key_from_keyring(const struct inode *inode,
-+			     const u8 descriptor[FS_KEY_DESCRIPTOR_SIZE],
-+			     unsigned int min_keysize)
++find_or_create_master_key(const struct inode *inode,
++			  const struct fscrypt_context *ctx,
++			  unsigned int min_keysize)
 +{
-+	struct key *keyring_key;
-+	const struct fscrypt_key *payload;
 +	struct fscrypt_master_key *master_key;
 +
-+	keyring_key = find_and_lock_keyring_key(FS_KEY_DESC_PREFIX, descriptor,
-+						min_keysize, &payload);
-+	if (keyring_key == ERR_PTR(-ENOKEY) && inode->i_sb->s_cop->key_prefix) {
-+		keyring_key = find_and_lock_keyring_key(
-+					inode->i_sb->s_cop->key_prefix,
-+					descriptor, min_keysize, &payload);
-+	}
-+	if (IS_ERR(keyring_key))
-+		return ERR_CAST(keyring_key);
++	if (WARN_ON(ctx->version < FSCRYPT_CONTEXT_V2))
++		return ERR_PTR(-EINVAL);
 +
-+	master_key = alloc_master_key(payload);
++	/*
++	 * First try looking up the master key by its cryptographically secure
++	 * key_hash.  If it's already in memory, there's no need to do a keyring
++	 * search.  (Note that we don't enforce access control based on which
++	 * processes "have the key" and which don't, as encryption is meant to
++	 * be orthogonal to operating-system level access control.  Hence, it's
++	 * sufficient for anyone on the system to have added the needed key.)
++	 */
++	master_key = get_cached_master_key(inode->i_sb, ctx->key_hash);
++	if (master_key)
++		return master_key;
 +
-+	release_keyring_key(keyring_key);
++	/*
++	 * The needed master key isn't in memory yet.  Load it from the keyring.
++	 */
++	master_key = load_master_key_from_keyring(inode,
++						  ctx->master_key_descriptor,
++						  min_keysize);
++	if (IS_ERR(master_key))
++		return master_key;
 +
-+	return master_key;
++	/* Cache the key for later */
++	return insert_master_key(inode->i_sb, master_key);
 +}
 +
  static void derive_crypt_complete(struct crypto_async_request *req, int rc)
  {
  	struct fscrypt_completion_result *ecr = req->data;
-@@ -28,107 +323,100 @@ static void derive_crypt_complete(struct crypto_async_request *req, int rc)
- 	complete(&ecr->completion);
- }
- 
--/**
-- * derive_key_aes() - Derive a key using AES-128-ECB
-- * @deriving_key: Encryption key used for derivation.
-- * @source_key:   Source key to which to apply derivation.
-- * @derived_raw_key:  Derived raw key.
-- *
-- * Return: Zero on success; non-zero otherwise.
-+/*
-+ * Legacy key derivation function.  This generates the derived key by encrypting
-+ * the master key with AES-128-ECB using the nonce as the AES key.  This
-+ * provides a unique derived key for each inode, but it's nonstandard, isn't
-+ * very extensible, and has the weakness that it's trivially reversible: an
-+ * attacker who compromises a derived key, e.g. with a side channel attack, can
-+ * "decrypt" it to get back to the master key, then derive any other key.
-  */
--static int derive_key_aes(u8 deriving_key[FS_AES_128_ECB_KEY_SIZE],
--				const struct fscrypt_key *source_key,
--				u8 derived_raw_key[FS_MAX_KEY_SIZE])
-+static int derive_key_aes(const struct fscrypt_key *master_key,
-+			  const struct fscrypt_context *ctx,
-+			  u8 *derived_key, unsigned int derived_keysize)
- {
--	int res = 0;
-+	int err;
- 	struct skcipher_request *req = NULL;
- 	DECLARE_FS_COMPLETION_RESULT(ecr);
- 	struct scatterlist src_sg, dst_sg;
--	struct crypto_skcipher *tfm = crypto_alloc_skcipher("ecb(aes)", 0, 0);
-+	struct crypto_skcipher *tfm;
-+
-+	tfm = crypto_alloc_skcipher("ecb(aes)", 0, 0);
-+	if (IS_ERR(tfm))
-+		return PTR_ERR(tfm);
- 
--	if (IS_ERR(tfm)) {
--		res = PTR_ERR(tfm);
--		tfm = NULL;
--		goto out;
--	}
- 	crypto_skcipher_set_flags(tfm, CRYPTO_TFM_REQ_WEAK_KEY);
- 	req = skcipher_request_alloc(tfm, GFP_NOFS);
- 	if (!req) {
--		res = -ENOMEM;
-+		err = -ENOMEM;
- 		goto out;
+@@ -638,9 +768,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 					     derived_keysize);
+ 	} else {
+ 		crypt_info->ci_master_key =
+-			load_master_key_from_keyring(inode,
+-						     ctx.master_key_descriptor,
+-						     derived_keysize);
++			find_or_create_master_key(inode, &ctx, derived_keysize);
+ 		if (IS_ERR(crypt_info->ci_master_key)) {
+ 			res = PTR_ERR(crypt_info->ci_master_key);
+ 			crypt_info->ci_master_key = NULL;
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index 2934bc2bff4b..7661c66a3533 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -259,10 +259,7 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
+ 			(parent_ci->ci_filename_mode ==
+ 			 child_ci->ci_filename_mode) &&
+ 			(parent_ci->ci_flags == child_ci->ci_flags) &&
+-			(parent_ci->ci_context_version == FSCRYPT_CONTEXT_V1 ||
+-			 (memcmp(parent_ci->ci_master_key->mk_hash,
+-				 child_ci->ci_master_key->mk_hash,
+-				 FSCRYPT_KEY_HASH_SIZE) == 0));
++			(parent_ci->ci_master_key == child_ci->ci_master_key);
  	}
- 	skcipher_request_set_callback(req,
- 			CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
- 			derive_crypt_complete, &ecr);
--	res = crypto_skcipher_setkey(tfm, deriving_key,
--					FS_AES_128_ECB_KEY_SIZE);
--	if (res < 0)
+ 
+ 	res = cops->get_context(parent, &parent_ctx, sizeof(parent_ctx));
+diff --git a/fs/super.c b/fs/super.c
+index adb0c0de428c..90bd61ea139c 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -215,6 +215,10 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
+ 	spin_lock_init(&s->s_inode_list_lock);
+ 	INIT_LIST_HEAD(&s->s_inodes_wb);
+ 	spin_lock_init(&s->s_inode_wblist_lock);
++#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
++	s->s_master_keys = RB_ROOT;
++	spin_lock_init(&s->s_master_keys_lock);
++#endif
+ 
+ 	if (list_lru_init_memcg(&s->s_dentry_lru))
+ 		goto fail;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 976aaa1af82a..4f47e1bc81bc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1417,6 +1417,11 @@ struct super_block {
+ 
+ 	spinlock_t		s_inode_wblist_lock;
+ 	struct list_head	s_inodes_wb;	/* writeback inodes */
 +
-+	BUILD_BUG_ON(sizeof(ctx->nonce) != FS_AES_128_ECB_KEY_SIZE);
-+	err = crypto_skcipher_setkey(tfm, ctx->nonce, sizeof(ctx->nonce));
-+	if (err)
- 		goto out;
++#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
++	spinlock_t		s_master_keys_lock;
++	struct rb_root		s_master_keys;	/* master crypto keys in use */
++#endif
+ };
  
--	sg_init_one(&src_sg, source_key->raw, source_key->size);
--	sg_init_one(&dst_sg, derived_raw_key, source_key->size);
--	skcipher_request_set_crypt(req, &src_sg, &dst_sg, source_key->size,
-+	sg_init_one(&src_sg, master_key->raw, derived_keysize);
-+	sg_init_one(&dst_sg, derived_key, derived_keysize);
-+	skcipher_request_set_crypt(req, &src_sg, &dst_sg, derived_keysize,
- 				   NULL);
--	res = crypto_skcipher_encrypt(req);
--	if (res == -EINPROGRESS || res == -EBUSY) {
-+	err = crypto_skcipher_encrypt(req);
-+	if (err == -EINPROGRESS || err == -EBUSY) {
- 		wait_for_completion(&ecr.completion);
--		res = ecr.res;
-+		err = ecr.res;
- 	}
- out:
- 	skcipher_request_free(req);
- 	crypto_free_skcipher(tfm);
--	return res;
-+	return err;
- }
- 
--static int validate_user_key(struct fscrypt_info *crypt_info,
--			struct fscrypt_context *ctx, u8 *raw_key,
--			const char *prefix, int min_keysize)
-+/*
-+ * HKDF-based key derivation function.  This uses HKDF-SHA512 to derive a unique
-+ * encryption key for each inode, using the inode's nonce prefixed with a
-+ * context byte as the application-specific information string.  This is more
-+ * flexible than the legacy AES-based KDF and has the advantage that it's
-+ * non-reversible: an attacker who compromises a derived key cannot calculate
-+ * the master key or any other derived keys.
-+ */
-+static int derive_key_hkdf(const struct fscrypt_master_key *master_key,
-+			   const struct fscrypt_context *ctx,
-+			   u8 *derived_key, unsigned int derived_keysize)
- {
--	char *description;
--	struct key *keyring_key;
--	struct fscrypt_key *master_key;
--	const struct user_key_payload *ukp;
--	int res;
-+	return hkdf_expand(master_key->mk_hmac, HKDF_CONTEXT_PER_FILE_KEY,
-+			   ctx->nonce, sizeof(ctx->nonce),
-+			   derived_key, derived_keysize);
-+}
- 
--	description = kasprintf(GFP_NOFS, "%s%*phN", prefix,
--				FS_KEY_DESCRIPTOR_SIZE,
--				ctx->master_key_descriptor);
--	if (!description)
--		return -ENOMEM;
-+static int find_and_derive_key_v1(const struct inode *inode,
-+				  const struct fscrypt_context *ctx,
-+				  u8 *derived_key, unsigned int derived_keysize)
-+{
-+	struct key *keyring_key;
-+	const struct fscrypt_key *payload;
-+	int err;
- 
--	keyring_key = request_key(&key_type_logon, description, NULL);
--	kfree(description);
-+	keyring_key = find_and_lock_keyring_key(FS_KEY_DESC_PREFIX,
-+						ctx->master_key_descriptor,
-+						derived_keysize, &payload);
-+	if (keyring_key == ERR_PTR(-ENOKEY) && inode->i_sb->s_cop->key_prefix) {
-+		keyring_key = find_and_lock_keyring_key(
-+					inode->i_sb->s_cop->key_prefix,
-+					ctx->master_key_descriptor,
-+					derived_keysize, &payload);
-+	}
- 	if (IS_ERR(keyring_key))
- 		return PTR_ERR(keyring_key);
--	down_read(&keyring_key->sem);
- 
--	if (keyring_key->type != &key_type_logon) {
--		printk_once(KERN_WARNING
--				"%s: key type must be logon\n", __func__);
--		res = -ENOKEY;
--		goto out;
--	}
--	ukp = user_key_payload_locked(keyring_key);
--	if (ukp->datalen != sizeof(struct fscrypt_key)) {
--		res = -EINVAL;
--		goto out;
--	}
--	master_key = (struct fscrypt_key *)ukp->data;
--	BUILD_BUG_ON(FS_AES_128_ECB_KEY_SIZE != FS_KEY_DERIVATION_NONCE_SIZE);
--
--	if (master_key->size < min_keysize || master_key->size > FS_MAX_KEY_SIZE
--	    || master_key->size % AES_BLOCK_SIZE != 0) {
--		printk_once(KERN_WARNING
--				"%s: key size incorrect: %d\n",
--				__func__, master_key->size);
--		res = -ENOKEY;
--		goto out;
--	}
--	res = derive_key_aes(ctx->nonce, master_key, raw_key);
--out:
--	up_read(&keyring_key->sem);
--	key_put(keyring_key);
--	return res;
-+	err = derive_key_aes(payload, ctx, derived_key, derived_keysize);
-+
-+	release_keyring_key(keyring_key);
-+
-+	return err;
- }
- 
- static const struct {
-@@ -179,6 +467,7 @@ static void put_crypt_info(struct fscrypt_info *ci)
- 
- 	crypto_free_skcipher(ci->ci_ctfm);
- 	crypto_free_cipher(ci->ci_essiv_tfm);
-+	put_master_key(ci->ci_master_key);
- 	kmem_cache_free(fscrypt_info_cachep, ci);
- }
- 
-@@ -254,8 +543,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	struct fscrypt_context ctx;
- 	struct crypto_skcipher *ctfm;
- 	const char *cipher_str;
--	int keysize;
--	u8 *raw_key = NULL;
-+	unsigned int derived_keysize;
-+	u8 *derived_key = NULL;
- 	int res;
- 
- 	if (inode->i_crypt_info)
-@@ -296,33 +585,40 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	memcpy(crypt_info->ci_master_key_descriptor, ctx.master_key_descriptor,
- 	       FS_KEY_DESCRIPTOR_SIZE);
- 
--	res = determine_cipher_type(crypt_info, inode, &cipher_str, &keysize);
-+	res = determine_cipher_type(crypt_info, inode, &cipher_str,
-+				    &derived_keysize);
- 	if (res)
- 		goto out;
- 
- 	/*
--	 * This cannot be a stack buffer because it is passed to the scatterlist
--	 * crypto API as part of key derivation.
-+	 * This cannot be a stack buffer because it may be passed to the
-+	 * scatterlist crypto API during key derivation.
- 	 */
- 	res = -ENOMEM;
--	raw_key = kmalloc(FS_MAX_KEY_SIZE, GFP_NOFS);
--	if (!raw_key)
-+	derived_key = kmalloc(FS_MAX_KEY_SIZE, GFP_NOFS);
-+	if (!derived_key)
- 		goto out;
- 
--	res = validate_user_key(crypt_info, &ctx, raw_key, FS_KEY_DESC_PREFIX,
--				keysize);
--	if (res && inode->i_sb->s_cop->key_prefix) {
--		int res2 = validate_user_key(crypt_info, &ctx, raw_key,
--					     inode->i_sb->s_cop->key_prefix,
--					     keysize);
--		if (res2) {
--			if (res2 == -ENOKEY)
--				res = -ENOKEY;
-+	if (ctx.version == FSCRYPT_CONTEXT_V1) {
-+		res = find_and_derive_key_v1(inode, &ctx, derived_key,
-+					     derived_keysize);
-+	} else {
-+		crypt_info->ci_master_key =
-+			load_master_key_from_keyring(inode,
-+						     ctx.master_key_descriptor,
-+						     derived_keysize);
-+		if (IS_ERR(crypt_info->ci_master_key)) {
-+			res = PTR_ERR(crypt_info->ci_master_key);
-+			crypt_info->ci_master_key = NULL;
- 			goto out;
- 		}
--	} else if (res) {
--		goto out;
-+
-+		res = derive_key_hkdf(crypt_info->ci_master_key, &ctx,
-+				      derived_key, derived_keysize);
- 	}
-+	if (res)
-+		goto out;
-+
- 	ctfm = crypto_alloc_skcipher(cipher_str, 0, 0);
- 	if (!ctfm || IS_ERR(ctfm)) {
- 		res = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
-@@ -333,17 +629,14 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	crypt_info->ci_ctfm = ctfm;
- 	crypto_skcipher_clear_flags(ctfm, ~0);
- 	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
--	/*
--	 * if the provided key is longer than keysize, we use the first
--	 * keysize bytes of the derived key only
--	 */
--	res = crypto_skcipher_setkey(ctfm, raw_key, keysize);
-+	res = crypto_skcipher_setkey(ctfm, derived_key, derived_keysize);
- 	if (res)
- 		goto out;
- 
- 	if (S_ISREG(inode->i_mode) &&
- 	    crypt_info->ci_data_mode == FS_ENCRYPTION_MODE_AES_128_CBC) {
--		res = init_essiv_generator(crypt_info, raw_key, keysize);
-+		res = init_essiv_generator(crypt_info, derived_key,
-+					   derived_keysize);
- 		if (res) {
- 			pr_debug("%s: error %d (inode %lu) allocating essiv tfm\n",
- 				 __func__, res, inode->i_ino);
-@@ -356,7 +649,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	if (res == -ENOKEY)
- 		res = 0;
- 	put_crypt_info(crypt_info);
--	kzfree(raw_key);
-+	kzfree(derived_key);
- 	return res;
- }
- EXPORT_SYMBOL(fscrypt_get_encryption_info);
+ /* Helper functions so that in most cases filesystems will
 -- 
 2.13.2.932.g7449e964c-goog
 
