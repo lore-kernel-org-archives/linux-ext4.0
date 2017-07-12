@@ -1,8 +1,8 @@
 From: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
         <ernesto.mnd.fernandez@gmail.com>
-Subject: [PATCH 3/5] ext2: fix line over 80 characters in ext2_set_acl()
-Date: Wed, 12 Jul 2017 06:54:50 -0300
-Message-ID: <8c89043c298756b37fa74403b8b9d12fac9f8783.1499805487.git.ernesto.mnd.fernandez@gmail.com>
+Subject: [PATCH 4/5] jfs: preserve i_mode if __jfs_set_acl() fails
+Date: Wed, 12 Jul 2017 06:55:35 -0300
+Message-ID: <fb576cd6fe08fb4dc61970442c529f1a3ab02b71.1499805488.git.ernesto.mnd.fernandez@gmail.com>
 References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -18,62 +18,63 @@ In-Reply-To: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
 Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Shorten the name of the error variable to 'err' so the call to
-posix_acl_update_mode() fits within 80 characters.
+When changing a file's acl mask, __jfs_set_acl() will first set the group
+bits of i_mode to the value of the mask, and only then set the actual
+extended attribute representing the new acl.
+
+If the second part fails (due to lack of space, for example) and the file
+had no acl attribute to begin with, the system will from now on assume
+that the mask permission bits are actual group permission bits, potentially
+granting access to the wrong users.
+
+Prevent this by only changing the inode mode after the acl has been set.
 
 Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
 ---
- fs/ext2/acl.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ fs/jfs/acl.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-index 4e04b7e..d2cca5c 100644
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -184,7 +184,7 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 	int name_index;
- 	void *value = NULL;
- 	size_t size = 0;
--	int error;
-+	int err;
- 	int update_mode = 0;
- 	umode_t mode = inode->i_mode;
+diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
+index 7bc186f..db5a385 100644
+--- a/fs/jfs/acl.c
++++ b/fs/jfs/acl.c
+@@ -73,16 +73,17 @@ static int __jfs_set_acl(tid_t tid, struct inode *inode, int type,
+ 	int rc;
+ 	int size = 0;
+ 	char *value = NULL;
++	int update_mode = 0;
++	umode_t mode = inode->i_mode;
  
-@@ -192,9 +192,9 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 		case ACL_TYPE_ACCESS:
- 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
- 			if (acl) {
--				error = posix_acl_update_mode(inode, &mode, &acl);
--				if (error)
--					return error;
-+				err = posix_acl_update_mode(inode, &mode, &acl);
-+				if (err)
-+					return err;
- 				update_mode = 1;
- 			}
- 			break;
-@@ -214,10 +214,10 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 			return (int)PTR_ERR(value);
- 	}
- 
--	error = ext2_xattr_set(inode, name_index, "", value, size, 0);
-+	err = ext2_xattr_set(inode, name_index, "", value, size, 0);
- 
- 	kfree(value);
--	if (!error) {
-+	if (!err) {
- 		set_cached_acl(inode, type, acl);
- 		if (update_mode) {
- 			inode->i_mode = mode;
-@@ -225,7 +225,7 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 			mark_inode_dirty(inode);
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+ 		ea_name = XATTR_NAME_POSIX_ACL_ACCESS;
+ 		if (acl) {
+-			rc = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++			rc = posix_acl_update_mode(inode, &mode, &acl);
+ 			if (rc)
+ 				return rc;
+-			inode->i_ctime = current_time(inode);
+-			mark_inode_dirty(inode);
++			update_mode = 1;
  		}
- 	}
--	return error;
-+	return err;
- }
+ 		break;
+ 	case ACL_TYPE_DEFAULT:
+@@ -105,8 +106,14 @@ static int __jfs_set_acl(tid_t tid, struct inode *inode, int type,
+ out:
+ 	kfree(value);
  
- /*
+-	if (!rc)
++	if (!rc) {
+ 		set_cached_acl(inode, type, acl);
++		if (update_mode) {
++			inode->i_mode = mode;
++			inode->i_ctime = current_time(inode);
++			mark_inode_dirty(inode);
++		}
++	}
+ 
+ 	return rc;
+ }
 -- 
 2.1.4
 
