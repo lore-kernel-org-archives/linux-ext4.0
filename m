@@ -1,8 +1,8 @@
 From: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
         <ernesto.mnd.fernandez@gmail.com>
-Subject: [PATCH 1/5] ext4: preserve i_mode if __ext4_set_acl() fails
-Date: Wed, 12 Jul 2017 06:53:51 -0300
-Message-ID: <52152ec4b83fe0c406475bfee39efafaaa2a88fb.1499805486.git.ernesto.mnd.fernandez@gmail.com>
+Subject: [PATCH 2/5] ext2: preserve i_mode if ext2_set_acl() fails
+Date: Wed, 12 Jul 2017 06:54:19 -0300
+Message-ID: <099e3ef2bf3a9ab2a1d545b65ba15fad359f2c03.1499805487.git.ernesto.mnd.fernandez@gmail.com>
 References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -18,7 +18,7 @@ In-Reply-To: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
 Sender: reiserfs-devel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When changing a file's acl mask, __ext4_set_acl() will first set the group
+When changing a file's acl mask, ext2_set_acl() will first set the group
 bits of i_mode to the value of the mask, and only then set the actual
 extended attribute representing the new acl.
 
@@ -31,36 +31,39 @@ Prevent this by only changing the inode mode after the acl has been set.
 
 Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
 ---
- fs/ext4/acl.c | 15 +++++++++++----
+A line in acl.c is too long, and checkpatch.pl complains about it when run
+against this patch. In case it matters, the next patch will fix that.
+
+ fs/ext2/acl.c | 15 +++++++++++----
  1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 09441ae..2985cd0 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -189,16 +189,17 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
+index 79dafa7..4e04b7e 100644
+--- a/fs/ext2/acl.c
++++ b/fs/ext2/acl.c
+@@ -185,16 +185,17 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
  	void *value = NULL;
  	size_t size = 0;
  	int error;
 +	int update_mode = 0;
 +	umode_t mode = inode->i_mode;
  
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
- 		if (acl) {
--			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+			error = posix_acl_update_mode(inode, &mode, &acl);
- 			if (error)
- 				return error;
--			inode->i_ctime = current_time(inode);
--			ext4_mark_inode_dirty(handle, inode);
-+			update_mode = 1;
- 		}
- 		break;
+ 	switch(type) {
+ 		case ACL_TYPE_ACCESS:
+ 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
+ 			if (acl) {
+-				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++				error = posix_acl_update_mode(inode, &mode, &acl);
+ 				if (error)
+ 					return error;
+-				inode->i_ctime = current_time(inode);
+-				mark_inode_dirty(inode);
++				update_mode = 1;
+ 			}
+ 			break;
  
-@@ -221,8 +222,14 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
- 				      value, size, xattr_flags);
+@@ -216,8 +217,14 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ 	error = ext2_xattr_set(inode, name_index, "", value, size, 0);
  
  	kfree(value);
 -	if (!error)
@@ -69,12 +72,12 @@ index 09441ae..2985cd0 100644
 +		if (update_mode) {
 +			inode->i_mode = mode;
 +			inode->i_ctime = current_time(inode);
-+			ext4_mark_inode_dirty(handle, inode);
++			mark_inode_dirty(inode);
 +		}
 +	}
- 
  	return error;
  }
+ 
 -- 
 2.1.4
 
