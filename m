@@ -1,105 +1,97 @@
-From: <befragung@hwk-erfurt.de>
-Subject: (unknown)
-Date: Thu, 13 Jul 2017 03:37:58 -0000
-Message-ID: <149991707813.2509.5193209286440100479@szgwbn.net>
-Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_6035315196369_linux-ext4.zip
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] ext4: error should be cleared if ea_inode isn't added to
+ the cache
+Date: Wed, 12 Jul 2017 22:17:58 -0700
+Message-ID: <B1CD93E6-0D69-4837-BC0F-8548A5E8473A@dilger.ca>
+References: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
+ <CAAeU0aP-v4YZN05MH=gREEpE2AORUmHSqUKkxuOQ43BvWD268g@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_A624D9C8-7728-40F0-A6EA-5E1AB91AE6CC";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Emoly Liu <emoly.liu@intel.com>, Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from servers.szgwbn.net ([220.112.194.2]:36866 "HELO szgwbn.net"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750718AbdGMDiH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Jul 2017 23:38:07 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:32797 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750748AbdGMFR6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2017 01:17:58 -0400
+Received: by mail-pg0-f67.google.com with SMTP id u62so5572803pgb.0
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Jul 2017 22:17:57 -0700 (PDT)
+In-Reply-To: <CAAeU0aP-v4YZN05MH=gREEpE2AORUmHSqUKkxuOQ43BvWD268g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+
+--Apple-Mail=_A624D9C8-7728-40F0-A6EA-5E1AB91AE6CC
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jul 11, 2017, at 9:37 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+>=20
+> Reviewed-by: tahsin@google.com
+>=20
+> On Tue, Jul 11, 2017 at 8:56 PM, Emoly Liu <emoly.liu@intel.com> =
+wrote:
+>> For Lustre, if ea_inode fails in hash validation but passes parent
+>> inode and generation checks, it won't be added to the cache as well
+>> as the error "-EFSCORRUPTED" should be cleared, otherwise it will
+>> cause "Structure needs cleaning" when running getfattr command.
+>>=20
+>> Signed-off-by: Emoly Liu <emoly.liu@intel.com>
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+This could also include:
+
+  Fixes: dec214d00e0d78a08b947d7dccdfdb84407a9f4d
+
+unless this fix is merged into the original patch.
+
+>> Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9723
+>> ---
+>> fs/ext4/xattr.c | 1 +
+>> 1 file changed, 1 insertion(+)
+>>=20
+>> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+>> index cff4f41..de217a0 100644
+>> --- a/fs/ext4/xattr.c
+>> +++ b/fs/ext4/xattr.c
+>> @@ -451,6 +451,7 @@ static int ext4_xattr_inode_iget(struct inode =
+*parent, unsigned long ea_ino,
+>>                }
+>>                /* Do not add ea_inode to the cache. */
+>>                ea_inode_cache =3D NULL;
+>> +               err =3D 0;
+>>        } else if (err)
+>>                goto out;
+
+
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_A624D9C8-7728-40F0-A6EA-5E1AB91AE6CC
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZZwKHpIg59Q01vtYRAqajAKCIV+ssfJiqD8oVYws5B7Ak3WQgbQCfY0no
+OGItZoXV5vYtktVvZaogJBo=
+=1Zb7
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_A624D9C8-7728-40F0-A6EA-5E1AB91AE6CC--
