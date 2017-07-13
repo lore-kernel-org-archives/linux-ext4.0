@@ -1,105 +1,81 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] vfs: in iomap seek_{hole,data}, return -ENXIO for
- negative offsets
-Date: Wed, 12 Jul 2017 23:08:51 -0700
-Message-ID: <566E0688-E3D4-416A-B496-6B2F0FA3C85C@dilger.ca>
-References: <20170712173650.GC4212@magnolia>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_B77E4B35-FCE5-4B96-A813-A4FE70E6CF1B";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170712173650.GC4212@magnolia>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: Fast symlinks stored slow
+Date: Thu, 13 Jul 2017 09:02:13 +0100
+Message-ID: <20170713080213.GO31999@redhat.com>
+References: <20170712170711.GA19996@redhat.com>
+ <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38393 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751075AbdGMICP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 04:02:15 -0400
+Content-Disposition: inline
+In-Reply-To: <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jul 12, 2017 at 07:17:37PM -0400, Theodore Ts'o wrote:
+> On Wed, Jul 12, 2017 at 06:07:11PM +0100, Richard W.M. Jones wrote:
+> > 
+> > https://bugzilla.redhat.com/show_bug.cgi?id=1470157
+> > 
+> > To cut a long story short, we were using libext2fs to create
+> > filesystems where short symlinks (< 60 bytes) were stored the same way
+> > as long symlinks, ie. stored as an ordinary file instead of being
+> > stored in the inode.
+> > 
+> > I think the reason we were creating filesystems wrongly in the first
+> > place is because our code has been around since about 2008, and the
+> > nice ext2fs_symlink function that deals properly with fast/slow
+> > symlinks wasn't added until 2013.
+> 
+> Thanks for the report.  I had been hesitant about making this change
+> (and had been pushing back from those who were advocating for this
+> change) precisely because I was afraid that this might be a situation.
+> 
+> What convinced me to accept the change is that (a) I had scanned all
+> of the old kernels and old versions of e2fsprogs and convinced myself
+> that aside from someone manually creating symlinks using low-level
+> libext2fs, symlinks < 60 bytes would never be stored in external
+> blocks, and (b) using the i_blocks logic to determine whether or not
+> we had a slow link was getting really painful.
+> 
+> > It's not too much trouble for us to recreate the incorrect
+> > filesystems.  Mostly we're creating one-off throwaway filesystems for
+> > appliances anyway and they don't live for long.
+> > 
+> > But I suppose this might be a warning that other incorrect filesystems
+> > exist which will break with Linux >= 4.13.
+> 
+> So I see this is going to break libvert and libguestfs.  So people who
+> are running existing distribution userspaces and then upgrade to 4.13
+> will break.
+> 
+> Hmm...  I suppose we could add back support to let the kernel to use
+> the i_blocks logic if the ea_inode feature is not enabled.  E2fsck
+> would still complain so we can try to gradually force userspace to do
+> things "correctly", but at least we would be backwards compatible.
+> 
+> Comments?
 
---Apple-Mail=_B77E4B35-FCE5-4B96-A813-A4FE70E6CF1B
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+>From my point of view it's not too much trouble to recreate these
+filesystems, and we've already proposed a fix for supermin so it
+creates symlinks properly[1].
 
-On Jul 12, 2017, at 10:36 AM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> In the iomap implementations of SEEK_HOLE and SEEK_DATA, make sure we
-> return -ENXIO for negative offsets instead of badgering the iomap
-> provider with garbage requests.
+I think it might be a good idea to get e2fsck to complain about these
+filesystems though.  It'll at least tell you how widespread (or
+otherwise) the problem might be.
 
-Hmm, wouldn't it be useful to be able to seek N bytes before the hole or =
-data?
-It would make more sense to verify the result after finding the hole or =
-data
-and adding the relative offset. It should only be an error if the =
-resulting
-offset is before the start or after the actual file end.  Of course, if
-the passed offset > size from the start then there is no way it can get =
-better
-and that would be grounds for returning early.
+Rich.
 
-Cheers, Andreas
+[1] https://www.redhat.com/archives/libguestfs/2017-July/msg00084.html
 
-> Inspired-by: Mateusz S <muttdini@gmail.com>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-> fs/iomap.c |    8 ++++----
-> 1 file changed, 4 insertions(+), 4 deletions(-)
->=20
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 432eed8..16f5c074 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -610,8 +610,8 @@ iomap_seek_hole(struct inode *inode, loff_t =
-offset, const struct iomap_ops *ops)
-> 	loff_t length =3D size - offset;
-> 	loff_t ret;
->=20
-> -	/* Nothing to be found beyond the end of the file. */
-> -	if (offset >=3D size)
-> +	/* Nothing to be found before or beyond the end of the file. */
-> +	if (offset < 0 || offset >=3D size)
-> 		return -ENXIO;
->=20
-> 	while (length > 0) {
-> @@ -656,8 +656,8 @@ iomap_seek_data(struct inode *inode, loff_t =
-offset, const struct iomap_ops *ops)
-> 	loff_t length =3D size - offset;
-> 	loff_t ret;
->=20
-> -	/* Nothing to be found beyond the end of the file. */
-> -	if (offset >=3D size)
-> +	/* Nothing to be found before or beyond the end of the file. */
-> +	if (offset < 0 || offset >=3D size)
-> 		return -ENXIO;
->=20
-> 	while (length > 0) {
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_B77E4B35-FCE5-4B96-A813-A4FE70E6CF1B
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZZw5zpIg59Q01vtYRAnWdAJ9wrNmFvf5i0uSNfMO7oWCd00zaeACg5OrW
-59Jw6IaTvWPG75yYFMIezag=
-=qIVO
------END PGP SIGNATURE-----
-
---Apple-Mail=_B77E4B35-FCE5-4B96-A813-A4FE70E6CF1B--
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+Read my programming and virtualization blog: http://rwmj.wordpress.com
+libguestfs lets you edit virtual machines.  Supports shell scripting,
+bindings from many languages.  http://libguestfs.org
