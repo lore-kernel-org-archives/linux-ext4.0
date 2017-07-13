@@ -1,76 +1,68 @@
-From: "Richard W.M. Jones" <rjones@redhat.com>
-Subject: Re: Fast symlinks stored slow
-Date: Thu, 13 Jul 2017 21:27:20 +0100
-Message-ID: <20170713202720.GV31999@redhat.com>
-References: <20170712170711.GA19996@redhat.com>
- <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
- <20170713080213.GO31999@redhat.com>
- <20170713164959.m2hf72b6zqlorn5i@thunk.org>
- <20170713171335.GT31999@redhat.com>
- <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: Re: [PATCH 4/5] jfs: preserve i_mode if
+ __jfs_set_acl() fails
+Date: Thu, 13 Jul 2017 16:01:42 -0500
+Message-ID: <9edc918e-619d-7b07-696d-c0184e42c58d@oracle.com>
+References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
+	<fb576cd6fe08fb4dc61970442c529f1a3ab02b71.1499805488.git.ernesto.mnd.fernandez@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60650 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752880AbdGMU1W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Jul 2017 16:27:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+To: "=?UTF-8?Q?Ernesto_A._Fern=c3=a1ndez?=" <ernesto.mnd.fernandez@gmail.com>,
+	Jan Kara <jack@suse.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+	jfs-discussion@lists.sourceforge.net, reiserfs-devel@vger.kernel.org
+Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
+In-Reply-To: <fb576cd6fe08fb4dc61970442c529f1a3ab02b71.1499805488.git.ernesto.mnd.fernandez@gmail.com>
+Content-Language: en-US
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
+List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
+List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
+	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 13, 2017 at 02:50:37PM -0400, Theodore Ts'o wrote:
-> On Thu, Jul 13, 2017 at 06:13:35PM +0100, Richard W.M. Jones wrote:
-> > In this case we're using libext2fs to build an appliance filesystem,
-> > used to boot a small Linux system which is then run under qemu by
-> > libguestfs.  This appliance is completely rebuilt automatically under
-> > many circumstances, for example a host package upgrade (eg. upgrading
-> > the kernel), so it's not a long-lived filesystem that would cause a
-> > problem.  Rebuilding only takes a few seconds.
-> > 
-> > The process is described in more detail here:
-> > http://libguestfs.org/supermin.1.html#SUPERMIN-APPLIANCES
-> > 
-> > From our point of view the only issue are some prebuilt appliances
-> > which we have provided to other distributions that cannot / don't want
-> > to use supermin (http://download.libguestfs.org/binaries/appliance/)
-> > and at some point I'm going to have to rebuild these using the fixed
-> > supermin.
-> 
-> OK, so the risk is if there are other people who are using supermin to
-> create appliances.  (One potential use case we might need to
-> investigate are services such as SuSE Studio, since it can create
-> turnkey VM appliances for its users.)  If these applianes are
-> distributed end users (as opposed to being automatically rebuilt as in
-> your use case), that's when we would potentially be at risk.
-
-I can't speak about SuSE Studio, but supermin appliances aren't
-distributed to end users, but get built on the fly on end user
-machines.
-
-I think you may be confusing supermin and libguestfs.  Supermin is a
-component we use to make libguestfs work, but it's not how libguestfs
-makes new filesystems.
-
-For example if you write:
-
-  $ guestfish -N disk.img=fs:ext4 -m /dev/sda1 touch /foo : ln-s /foo /bar
-  $ ll disk.img 
-  -rw-rw-r--. 1 rjones rjones 104857600 Jul 13 21:26 disk.img
-
-then the result is a new ext4 filesystem in a disk image, containing a
-symlink.  But it was created using the *kernel* + the symlink(2)
-system call (not using libext2fs), and in all cases it was in the past
-and will be in the future created correctly.
-
-Rich.
-
--- 
-Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
-Read my programming and virtualization blog: http://rwmj.wordpress.com
-virt-top is 'top' for virtual machines.  Tiny program with many
-powerful monitoring features, net stats, disk stats, logging, etc.
-http://people.redhat.com/~rjones/virt-top
+T24gMDcvMTIvMjAxNyAwNDo1NSBBTSwgRXJuZXN0byBBLiBGZXJuw6FuZGV6IHdyb3RlOgo+IFdo
+ZW4gY2hhbmdpbmcgYSBmaWxlJ3MgYWNsIG1hc2ssIF9famZzX3NldF9hY2woKSB3aWxsIGZpcnN0
+IHNldCB0aGUgZ3JvdXAKPiBiaXRzIG9mIGlfbW9kZSB0byB0aGUgdmFsdWUgb2YgdGhlIG1hc2ss
+IGFuZCBvbmx5IHRoZW4gc2V0IHRoZSBhY3R1YWwKPiBleHRlbmRlZCBhdHRyaWJ1dGUgcmVwcmVz
+ZW50aW5nIHRoZSBuZXcgYWNsLgo+IAo+IElmIHRoZSBzZWNvbmQgcGFydCBmYWlscyAoZHVlIHRv
+IGxhY2sgb2Ygc3BhY2UsIGZvciBleGFtcGxlKSBhbmQgdGhlIGZpbGUKPiBoYWQgbm8gYWNsIGF0
+dHJpYnV0ZSB0byBiZWdpbiB3aXRoLCB0aGUgc3lzdGVtIHdpbGwgZnJvbSBub3cgb24gYXNzdW1l
+Cj4gdGhhdCB0aGUgbWFzayBwZXJtaXNzaW9uIGJpdHMgYXJlIGFjdHVhbCBncm91cCBwZXJtaXNz
+aW9uIGJpdHMsIHBvdGVudGlhbGx5Cj4gZ3JhbnRpbmcgYWNjZXNzIHRvIHRoZSB3cm9uZyB1c2Vy
+cy4KPiAKPiBQcmV2ZW50IHRoaXMgYnkgb25seSBjaGFuZ2luZyB0aGUgaW5vZGUgbW9kZSBhZnRl
+ciB0aGUgYWNsIGhhcyBiZWVuIHNldC4KClRoaXMgbG9va3MgZ29vZCB0byBtZS4gSSdsbCBhZGQg
+aXQgdG8gdGhlIGpmcyBxdWV1ZS4KClRoYW5rcywKU2hhZ2d5Cgo+IAo+IFNpZ25lZC1vZmYtYnk6
+IEVybmVzdG8gQS4gRmVybsOhbmRleiA8ZXJuZXN0by5tbmQuZmVybmFuZGV6QGdtYWlsLmNvbT4K
+PiAtLS0KPiAgZnMvamZzL2FjbC5jIHwgMTUgKysrKysrKysrKystLS0tCj4gIDEgZmlsZSBjaGFu
+Z2VkLCAxMSBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQo+IAo+IGRpZmYgLS1naXQgYS9m
+cy9qZnMvYWNsLmMgYi9mcy9qZnMvYWNsLmMKPiBpbmRleCA3YmMxODZmLi5kYjVhMzg1IDEwMDY0
+NAo+IC0tLSBhL2ZzL2pmcy9hY2wuYwo+ICsrKyBiL2ZzL2pmcy9hY2wuYwo+IEBAIC03MywxNiAr
+NzMsMTcgQEAgc3RhdGljIGludCBfX2pmc19zZXRfYWNsKHRpZF90IHRpZCwgc3RydWN0IGlub2Rl
+ICppbm9kZSwgaW50IHR5cGUsCj4gIAlpbnQgcmM7Cj4gIAlpbnQgc2l6ZSA9IDA7Cj4gIAljaGFy
+ICp2YWx1ZSA9IE5VTEw7Cj4gKwlpbnQgdXBkYXRlX21vZGUgPSAwOwo+ICsJdW1vZGVfdCBtb2Rl
+ID0gaW5vZGUtPmlfbW9kZTsKPiAgCj4gIAlzd2l0Y2ggKHR5cGUpIHsKPiAgCWNhc2UgQUNMX1RZ
+UEVfQUNDRVNTOgo+ICAJCWVhX25hbWUgPSBYQVRUUl9OQU1FX1BPU0lYX0FDTF9BQ0NFU1M7Cj4g
+IAkJaWYgKGFjbCkgewo+IC0JCQlyYyA9IHBvc2l4X2FjbF91cGRhdGVfbW9kZShpbm9kZSwgJmlu
+b2RlLT5pX21vZGUsICZhY2wpOwo+ICsJCQlyYyA9IHBvc2l4X2FjbF91cGRhdGVfbW9kZShpbm9k
+ZSwgJm1vZGUsICZhY2wpOwo+ICAJCQlpZiAocmMpCj4gIAkJCQlyZXR1cm4gcmM7Cj4gLQkJCWlu
+b2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsKPiAtCQkJbWFya19pbm9kZV9kaXJ0
+eShpbm9kZSk7Cj4gKwkJCXVwZGF0ZV9tb2RlID0gMTsKPiAgCQl9Cj4gIAkJYnJlYWs7Cj4gIAlj
+YXNlIEFDTF9UWVBFX0RFRkFVTFQ6Cj4gQEAgLTEwNSw4ICsxMDYsMTQgQEAgc3RhdGljIGludCBf
+X2pmc19zZXRfYWNsKHRpZF90IHRpZCwgc3RydWN0IGlub2RlICppbm9kZSwgaW50IHR5cGUsCj4g
+IG91dDoKPiAgCWtmcmVlKHZhbHVlKTsKPiAgCj4gLQlpZiAoIXJjKQo+ICsJaWYgKCFyYykgewo+
+ICAJCXNldF9jYWNoZWRfYWNsKGlub2RlLCB0eXBlLCBhY2wpOwo+ICsJCWlmICh1cGRhdGVfbW9k
+ZSkgewo+ICsJCQlpbm9kZS0+aV9tb2RlID0gbW9kZTsKPiArCQkJaW5vZGUtPmlfY3RpbWUgPSBj
+dXJyZW50X3RpbWUoaW5vZGUpOwo+ICsJCQltYXJrX2lub2RlX2RpcnR5KGlub2RlKTsKPiArCQl9
+Cj4gKwl9Cj4gIAo+ICAJcmV0dXJuIHJjOwo+ICB9Cj4gCgotLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0K
+Q2hlY2sgb3V0IHRoZSB2aWJyYW50IHRlY2ggY29tbXVuaXR5IG9uIG9uZSBvZiB0aGUgd29ybGQn
+cyBtb3N0CmVuZ2FnaW5nIHRlY2ggc2l0ZXMsIFNsYXNoZG90Lm9yZyEgaHR0cDovL3NkbS5saW5r
+L3NsYXNoZG90Cl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+Ckpmcy1kaXNjdXNzaW9uIG1haWxpbmcgbGlzdApKZnMtZGlzY3Vzc2lvbkBsaXN0cy5zb3VyY2Vm
+b3JnZS5uZXQKaHR0cHM6Ly9saXN0cy5zb3VyY2Vmb3JnZS5uZXQvbGlzdHMvbGlzdGluZm8vamZz
+LWRpc2N1c3Npb24K
