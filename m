@@ -1,59 +1,44 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [GIT PULL] ext2, udf, reiserfs fixes for 4.13-rc1
-Date: Thu, 13 Jul 2017 18:18:16 +0200
-Message-ID: <20170713161816.GH5884@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/4] ext4: fix forgetten xattr lock protection in
+ ext4_expand_extra_isize
+Date: Thu, 13 Jul 2017 12:47:00 -0400
+Message-ID: <20170713164700.idfwntrzy2rvaagt@thunk.org>
+References: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
+ <e7301611-0fed-fbbf-3ab9-49f2287a14eb@huawei.com>
+ <3ED34739A4E85E4F894367D57617CDEFE1DD2EEC@LAX-EX-MB2.datadirect.datadirectnet.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        reiserfs-devel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "miaoxie@huawei.com" <miaoxie@huawei.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Li Xi <lixi@ddn.com>,
+        "yi.zhang@huawei.com" <yi.zhang@huawei.com>,
+        "adilger@dilger.ca" <adilger@dilger.ca>,
+        Shuichi Ihara <sihara@ddn.com>
+To: Wang Shilong <wshilong@ddn.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53636 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752517AbdGMQST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Jul 2017 12:18:19 -0400
+Received: from imap.thunk.org ([74.207.234.97]:46850 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750881AbdGMQrF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 12:47:05 -0400
 Content-Disposition: inline
+In-Reply-To: <3ED34739A4E85E4F894367D57617CDEFE1DD2EEC@LAX-EX-MB2.datadirect.datadirectnet.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+On Thu, Jul 13, 2017 at 01:04:08PM +0000, Wang Shilong wrote:
+>   I guess Maintainer will reply you when development cycle is ready for this.
+> Please be patient Miao!, let's play Glory of the king.^^^_^^^
 
-  could you please pull from
+Sorry, this come in too late for it be included in the merge window,
+since at that time I Was trying to do final regression testing before
+sending a pull request to Linus.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
+I'm also currently on travel (attending Usenix ATC and visiting $WORK
+in the Bay Area).  I will start accumulating fixes soon, probably
+shortly after 4.13-rc1 comes out.  It *would* be helpful if other ext4
+developers could review the patches while on travel (hint, hint).
+Otherwise, I'll start reviewing patches in a week or two.
 
-to get several ext2, udf, and reiserfs fixes.
+Cheers,
 
-Top of the tree is 4d9bcaddacf2. The full shortlog is:
-
-Ernesto A. Fernández (1):
-      ext2: Fix memory leak when truncate races ext2_get_blocks
-
-Jan Kara (6):
-      udf: Remove unused UDF_DEFAULT_BLOCKSIZE
-      udf: Fix races with i_size changes during readpage
-      udf: Use i_size_read() in udf_adinicb_writepage()
-      udf: Fix deadlock between writeback and udf_setsize()
-      udf: Use time64_to_tm for timestamp conversion
-      udf: Convert udf_disk_stamp_to_time() to use mktime64()
-
-Jeff Mahoney (2):
-      reiserfs: don't preallocate blocks for extended attributes
-      reiserfs: fix race in prealloc discard
-
-The diffstat is
-
- fs/ext2/inode.c      |  1 +
- fs/reiserfs/bitmap.c | 14 ++++++--
- fs/udf/file.c        | 12 +++++--
- fs/udf/inode.c       |  4 +--
- fs/udf/super.c       |  2 --
- fs/udf/udftime.c     | 98 +++++++---------------------------------------------
- 6 files changed, 36 insertions(+), 95 deletions(-)
-
-							Thanks
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+					- Ted
